@@ -189,6 +189,9 @@ body.hoverable .tile-item.clickable.item-danger:hover,
 .first-tile-item .tile-item-icon {
     @apply justify-start;
 }
+.tile-item .tile-item-icon.icon-centered {
+    @apply justify-center;
+}
 .tile-item-body {
     @apply grid;
     @apply max-w-full;

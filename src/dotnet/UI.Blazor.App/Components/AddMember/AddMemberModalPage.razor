@@ -48,7 +48,7 @@
             throw StandardError.NotSupported("Not supported model type");
         Context.Title = L.AddMember_Title;
         Context.Class = "add-member-modal-content";
-        Context.Buttons = [DialogButtonInfo.CreateCancelButton(L), _submitButtonInfo];
+        Context.Buttons = [_submitButtonInfo];
     }
 
     protected override async Task OnInitializedAsync() {

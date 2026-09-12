@@ -15,6 +15,9 @@
 
     Context.Title = L.Chat_TypeTitle;
     var isPlaceChat = _placeId is not null;
+    var showGuestsToggle = !isPlaceChat && _isAdmin && _form.IsPublic;
+    var showAnonymousToggle = !isPlaceChat && Features_EnableAnonymousChat.IsEnabled;
+    var showTemplateToggle = !isPlaceChat && m.AllowEditIsTemplate && _form.IsPublic;
     var canChangeChatType = _placeId is null
         || _place is not null && _place.Rules.CanApplyPublicChatType() && !_isPlaceWelcomeChat;
     var publicChatLabel = !isPlaceChat ? L.Chat_PublicChat : L.Chat_PlaceChat;
@@ -118,58 +121,46 @@
         </FormBlock>
     }
 
-    @if (!isPlaceChat) {
-        <FormBlock Class="with-input-radio last">
-            @if (_isAdmin && _form.IsPublic) {
-                <TileItem Class="field-allow-guest clickable" Click="OnAllowGuestAuthorsClick">
-                    <Icon>
-                        <i class="icon-guest"></i>
-                    </Icon>
-                    <Content>
-                        <Label InputId="@_form.AllowGuestAuthorsFormId" Text="@L.Chat_AllowGuests"></Label>
-                    </Content>
-                    <Caption>
-                        <Label InputId="@_form.AllowGuestAuthorsFormId" Text="@L.Chat_AllowGuestsHint"></Label>
-                    </Caption>
-                    <Right>
-                        <ToggleEdit Id="@_form.AllowGuestAuthorsFormId" @bind-Value="_form.AllowGuestAuthors"/>
-                    </Right>
-                </TileItem>
-            }
-            @if (Features_EnableAnonymousChat.IsEnabled) {
-                <TileItem Class="field-allow-anonym clickable" Click="@OnAllowAnonymousAuthorsClick">
-                    <Icon>
-                        <i class="icon-anonym"></i>
-                    </Icon>
-                    <Content>
-                        <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="@L.Chat_AllowAnonymous"></Label>
-                    </Content>
-                    <Caption>
-                        <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="@L.Chat_AllowAnonymousHint"></Label>
-                    </Caption>
-                    <Right>
-                        <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
-                    </Right>
-                </TileItem>
-            }
+    @if (showGuestsToggle || showAnonymousToggle || showTemplateToggle) {
+        <FormBlock Class="chat-type-toggles">
+            <Tile>
+                @if (showGuestsToggle) {
+                    <TileItem Class="field-allow-guest clickable" IsIconCentered="true" Click="OnAllowGuestAuthorsClick">
+                        <Icon><i class="icon-guest text-2xl"></i></Icon>
+                        <Content>@L.Chat_AllowGuests</Content>
+                        <Caption>@L.Chat_AllowGuestsHint</Caption>
+                        <Right>
+                            <ToggleEdit Id="@_form.AllowGuestAuthorsFormId" @bind-Value="_form.AllowGuestAuthors"/>
+                        </Right>
+                    </TileItem>
+                }
+                @if (showAnonymousToggle) {
+                    @if (showGuestsToggle) {
+                        <Divider/>
+                    }
+                    <TileItem Class="field-allow-anonym clickable" IsIconCentered="true" Click="@OnAllowAnonymousAuthorsClick">
+                        <Icon><i class="icon-anonym text-2xl"></i></Icon>
+                        <Content>@L.Chat_AllowAnonymous</Content>
+                        <Caption>@L.Chat_AllowAnonymousHint</Caption>
+                        <Right>
+                            <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
+                        </Right>
+                    </TileItem>
+                }
+                @if (showTemplateToggle) {
+                    @if (showGuestsToggle || showAnonymousToggle) {
+                        <Divider/>
+                    }
+                    <TileItem Class="field-is-template clickable" IsIconCentered="true" Click="OnIsTemplateClick">
+                        <Icon><i class="icon-file-text text-2xl"></i></Icon>
+                        <Content>@L.Chat_UseAsTemplate</Content>
+                        <Caption>@L.Chat_UseAsTemplateHint</Caption>
+                        <Right>
+                            <ToggleEdit Id="@_form.IsTemplateFormId" @bind-Value="_form.IsTemplate"/>
+                        </Right>
+                    </TileItem>
+                }
+            </Tile>
         </FormBlock>
-        @if (m.AllowEditIsTemplate && _form.IsPublic) {
-            <FormBlock Class="with-input-radio first last">
-                <TileItem Class="field-is-template clickable" Click="OnIsTemplateClick">
-                    <Icon>
-                        <i class="icon-file-text"></i>
-                    </Icon>
-                    <Content>
-                        <Label InputId="@_form.IsTemplateFormId" Text="@L.Chat_UseAsTemplate"></Label>
-                    </Content>
-                    <Caption>
-                        <Label InputId="@_form.IsTemplateFormId" Text="@L.Chat_UseAsTemplateHint"></Label>
-                    </Caption>
-                    <Right>
-                        <ToggleEdit Id="@_form.IsTemplateFormId" @bind-Value="_form.IsTemplate"/>
-                    </Right>
-                </TileItem>
-            </FormBlock>
-        }
     }
 </Form>

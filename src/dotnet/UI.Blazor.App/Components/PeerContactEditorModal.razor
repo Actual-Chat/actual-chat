@@ -60,7 +60,6 @@
                 @{
                     var submitClass = $"btn-modal btn-primary {_formRef.IsValid.ToEnabledClass()}";
                 }
-                <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">@L.Common_Cancel</Button>
                 <Button
                     Type="@ButtonType.Submit"
                     IsDisabled="@(_contact is null)"
@@ -124,9 +123,6 @@
         CloseModal();
         return PeerContactCommands.SetBlocked(Hub, _contact, !_contact.IsBlocked, _peerOwnName ?? "");
     }
-
-    private void OnCancel()
-        => CloseModal();
 
     private void CloseModal()
         => Modal.Close();

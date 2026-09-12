@@ -320,7 +320,7 @@ body.hoverable .btn.btn-outline.btn-cancel:hover:not(:active)::after {
     @apply justify-start w-full gap-x-4;
 }
 .btn.btn-tile > .btn-content > .c-content {
-    @apply flex-1 flex-y items-start;
+    @apply flex-1 flex-y items-start gap-1;
 }
 .btn.btn-tile > .btn-content > .c-content > .c-text {
     @apply flex justify-start;

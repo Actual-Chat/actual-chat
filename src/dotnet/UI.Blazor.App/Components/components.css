@@ -57,9 +57,6 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
 .author-settings-modal .dialog-body {
     @apply m-4;
 }
-.author-settings-modal .dialog-buttons {
-    @apply m-0;
-}
 
 .navbar-pages {
     @apply gap-y-1;
