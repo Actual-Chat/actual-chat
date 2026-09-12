@@ -127,6 +127,7 @@ public partial class AudioStreamingBackend
             OpenAudioSegmentLog);
         openSegment.SetRecordedAt(recordedAt);
         RememberChatId(openSegment.StreamId, chatId);
+        RememberAuthorId(openSegment.StreamId, author.Id);
 
         // Registered in both modes: this is the chat's live-activity signal, and a JustText
         // author is just as live as a speaking one. IsTextOnly keeps voice consumers away.

@@ -24,6 +24,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     private readonly StreamStore<TranscriptDiff> _transcriptStreams;
     private readonly ConcurrentDictionary<StreamId, StreamId> _translatingStreams = new();
     private readonly ConcurrentDictionary<StreamId, ChatId> _chatIdByStream = new();
+    private readonly ConcurrentDictionary<StreamId, AuthorId> _authorIdByStream = new();
 
     private ILogger Log => field ??= Services.LogFor(GetType());
     private ILogger OpenAudioSegmentLog => field ??= Services.LogFor<OpenAudioSegment>();
@@ -69,6 +70,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             ExpirationDelay = AudioSettings.StreamExpirationDelay,
             OnStreamExpire = id => {
                 _translatingStreams.Remove(id, out _);
+                ForgetDubs(id);
                 ForgetChatIdIfUnused(id);
             },
             Log = services.LogFor($"{typeFullName}.TranscriptStreams"),
@@ -89,6 +91,11 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
+        if (streamId.Language != null
+            && !_audioStreams.Has(streamId)
+            && !await EnsureDub(streamId, cancellationToken).ConfigureAwait(false))
+            return null;
+
         if (skipTo == Constants.Audio.SkipToLive) {
             var memoizer = await _audioStreams.GetMemoizer(streamId, true, cancellationToken).ConfigureAwait(false);
             return memoizer == null
@@ -109,32 +116,12 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("GetTranscript: #{StreamId}", streamId);
-        var stream = await _transcriptStreams.Get(streamId, false, cancellationToken).ConfigureAwait(false);
-        if (stream != null)
-            return StandardRpcStream.NewTranscriptDelivery(stream);
-
-        var language = streamId.Language;
-        if (language == null)
+        var memoizer = await GetOrStartTranslation(streamId, cancellationToken).ConfigureAwait(false);
+        if (memoizer == null)
             return null;
 
-        var originalStreamId = StreamId.New(streamId.NodeRef, streamId.LocalId);
-        if (!_translatingStreams.TryAdd(streamId, originalStreamId)) {
-            stream = await _transcriptStreams.Get(streamId, true, cancellationToken).ConfigureAwait(false);
-            return StandardRpcStream.NewTranscriptDelivery(stream!); // Already translating
-        }
-
-        DebugLog?.LogDebug("GetTranscript: #{StreamId} - Translate stream", streamId);
-
-        var cmd = new TranslationsBackend_TranslateStream(originalStreamId, language);
-        // Use ApplicationStopping as GetTranscript might be canceled, but we still want to wait
-        // for the translated stream to be created.
-        await Commander.Call(cmd, HostLifetime.StopToken()).ConfigureAwait(false);
-        stream = await _transcriptStreams.Get(streamId, true, cancellationToken).ConfigureAwait(false);
-
-        DebugLog?.LogDebug("GetTranscript: #{StreamId} - Return stream", streamId);
-        return stream == null
-            ? null
-            : StandardRpcStream.NewTranscriptDelivery(stream);
+        var stream = memoizer.Replay(_transcriptStreams.ReplayTailSize, cancellationToken);
+        return StandardRpcStream.NewTranscriptDelivery(stream);
     }
 
     // [ComputeMethod]
@@ -194,6 +181,9 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
 
     internal void RememberChatId(StreamId streamId, ChatId chatId)
         => _chatIdByStream[BaseStreamId(streamId)] = chatId;
+
+    internal void RememberAuthorId(StreamId streamId, AuthorId authorId)
+        => _authorIdByStream[BaseStreamId(streamId)] = authorId;
 
     internal static IAsyncEnumerable<AudioFrame> SkipTo(
         IAsyncEnumerable<AudioFrame> stream,
@@ -257,12 +247,39 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             : null;
     }
 
+    // A source transcript is returned as published or not at all; a translated one (language suffix)
+    // is started on first request and waited for.
+    private async Task<AsyncMemoizer<TranscriptDiff>?> GetOrStartTranslation(
+        StreamId streamId,
+        CancellationToken cancellationToken)
+    {
+        var memoizer = await _transcriptStreams.GetMemoizer(streamId, false, cancellationToken).ConfigureAwait(false);
+        if (memoizer != null)
+            return memoizer;
+
+        var language = streamId.Language;
+        if (language == null)
+            return null;
+
+        var originalStreamId = BaseStreamId(streamId);
+        if (_translatingStreams.TryAdd(streamId, originalStreamId)) {
+            DebugLog?.LogDebug("GetOrStartTranslation: #{StreamId} - Translate stream", streamId);
+            var cmd = new TranslationsBackend_TranslateStream(originalStreamId, language);
+            // Use ApplicationStopping as the caller might be canceled, but we still want to wait
+            // for the translated stream to be created.
+            await Commander.Call(cmd, HostLifetime.StopToken()).ConfigureAwait(false);
+        }
+        return await _transcriptStreams.GetMemoizer(streamId, true, cancellationToken).ConfigureAwait(false);
+    }
+
     private void ForgetChatIdIfUnused(StreamId streamId)
     {
         // ExpiringEntry self-removes before calling this, so Has already excludes it.
         var baseStreamId = BaseStreamId(streamId);
-        if (!_audioStreams.Has(baseStreamId) && !_transcriptStreams.Has(baseStreamId))
+        if (!_audioStreams.Has(baseStreamId) && !_transcriptStreams.Has(baseStreamId)) {
             _chatIdByStream.TryRemove(baseStreamId, out _);
+            _authorIdByStream.TryRemove(baseStreamId, out _);
+        }
     }
 
     private static StreamId BaseStreamId(StreamId streamId)
