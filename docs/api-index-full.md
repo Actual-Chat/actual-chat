@@ -399,6 +399,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `IEmails` - Service for sending email communications.
 - `IMobileSessions` - Service for mobile app session creation and validation.
 - `INativeAuth` - Service for native (iOS/Android) OAuth sign-in flows.
+- `IPasskeyAuth` - Service for passkey (WebAuthn) registration and sign-in; options/responses are standard WebAuthn JSON shared by every platform client.
+- `PasskeyPurpose` (enum) - Specifies why a passkey registration ceremony was started (add to account, or reserved sign-up).
 - `IPhoneAuth` - Service for phone-based authentication with TOTP codes.
 - `IPhones` - Service for parsing and validating phone numbers.
 - `ISystemProperties` - Service for system properties, version checking, and maintenance operations.
@@ -607,6 +609,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ChatUsageListKind` (enum) - Specifies the type of chat usage tracking list.
 - `ListeningLinger` (enum) - Specifies how long listening keeps running after a chat's conversation goes quiet.
 - `ListeningLingerExt` (static class) - Extension methods for ListeningLinger.
+- `Passkey` (record) - User-facing projection of a stored passkey (id, name, timestamps, synced flag).
 - `Presence` (enum) - Specifies a user's online presence status.
 - `TimeZone` (record) - Represents a time zone with identifier and display name.
 - `TotpChannel` (enum) - Specifies the delivery channel used to send a verification code (Telegram or SMS).
@@ -680,6 +683,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `IChatPositionsBackend` - Backend service for tracking user chat positions.
 - `IChatUsagesBackend` - Backend service for tracking chat usage statistics.
 - `IEmailsBackend` - Backend service for email operations.
+- `IPasskeysBackend` - Backend service for stored passkey credentials (get/list/change); `PasskeyCredential` is the stored record, `Passkey` its user-facing projection.
 - `ISessionsBackend` - Backend service for managing user sessions.
 - `ISessionTemporalsBackend` - Backend service for transient/temporal session data.
 - `SessionTemporalsBackend` - Implementation of ISessionTemporalsBackend.
@@ -1006,6 +1010,7 @@ Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 - `DeltaText` - Renders a time delta as live "5 minutes ago" text plus its staleness delay.
 - `History` - Browser navigation history management.
 - `HistoryItem` (record) - Single entry in browser history.
+- `IPasskeyClient` - Platform passkey (WebAuthn) ceremonies over standard WebAuthn JSON; one implementation per platform (web/Android/Apple).
 - `KeepAwakeUI` - Prevents screen sleep.
 - `LogUI` - Application log viewer.
 - `Menu<T>` - Menu component.
@@ -1014,6 +1019,7 @@ Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 - `ModalUI` - Modal dialog management.
 - `NavbarUI` - Navbar management.
 - `PanelsUI` - Panel management.
+- `PasskeyUI` - Passkey list/register/rename/delete/sign-in over `IPasskeyAuth`.
 - `PermissionHandler` (abstract class) - Permission request handling base.
 - `ReconnectUI` - RPC connection state monitoring.
 - `ThemeUI` - Theme management.
@@ -1048,6 +1054,9 @@ Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 - `MarkupEditor` - Markup editing component.
 - `MarkupView` (abstract class) - Markup rendering component.
 - `OnboardingUI` - User onboarding flow.
+- `PasskeyRenameModal` - Modal for renaming a stored passkey.
+- `PasskeySettings` - Settings tab listing, adding, renaming, and deleting passkeys.
+- `PasskeyStep` - Onboarding step nudging the user to add a passkey.
 - `RecorderStateHub` - Recording state management.
 - `SearchUI` - Unified search across chats.
 - `SendingMessages` - Message sending with retry logic.

@@ -68,6 +68,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.EmailVerifier>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.EmbeddedMessageEditor>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ErrorBarrier>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ErrorBarrierBoundary>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ErrorBarrierError>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ErrorBlock>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ErrorToast>();
@@ -317,6 +318,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.OnboardingModal+ViewModel, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.OutgoingCallBanner+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.PageHeader+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
+        CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.PasskeySettings+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfo+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoPage+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoTestPage+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
@@ -597,6 +599,7 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.EmailVerifier), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.EmbeddedMessageEditor), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ErrorBarrier), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.ErrorBarrierBoundary), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ErrorBarrierError), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ErrorBlock), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ErrorToast), AotTypeKind.Component),
