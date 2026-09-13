@@ -118,6 +118,16 @@
             Modal!.StepBack();
     }
 
+    public void SelectTab(string tabId) {
+        var tab = Tabs.FirstOrDefault(x => x.Id == tabId);
+        if (tab is null || tab.Content is null)
+            return;
+
+        SelectedTabId = tab.Id;
+        _isRightSideVisible = true;
+        StepIn();
+    }
+
     // Private methods
 
     private string? ResolveSelectedTabId(IReadOnlyList<SettingsTabDef> tabs, IReadOnlyList<SettingsTabDef> lastTabs) {

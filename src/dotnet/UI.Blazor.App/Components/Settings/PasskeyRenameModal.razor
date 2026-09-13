@@ -1,0 +1,78 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using System.ComponentModel.DataAnnotations
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<PasskeyRenameModal.Model>
+
+<Form @ref="_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">
+    <DataAnnotationsValidator/>
+    <DialogFrame
+        Class="passkey-rename-modal modal-sm"
+        Title="@L.Passkeys_RenameTitle"
+        HasCloseButton="true"
+        ButtonsClass="full-width">
+        <Body>
+        <FormBlock>
+            <FormSection
+                For="() => _form.Name"
+                IsRequired="true"
+                InputId="@_form.NameFieldId"
+                Label="@L.Passkeys_Name"
+                IsLabelInsideInput="true">
+                <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId" Autofocus="true" ClearButton="true"/>
+            </FormSection>
+        </FormBlock>
+        </Body>
+        <Buttons>
+            <FormButtons>
+                <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">@L.Common_Cancel</Button>
+                <Button
+                    Type="@ButtonType.Submit"
+                    Class="btn-modal btn-primary"
+                    IsDisabled="@(!_formRef.IsValid)">
+                    @L.Common_Save
+                </Button>
+            </FormButtons>
+        </Buttons>
+    </DialogFrame>
+</Form>
+
+@code {
+    private Form _formRef = null!;
+    private FormModel _form = null!;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override Task OnInitializedAsync() {
+        _form = new FormModel(ComponentIdGenerator).CopyToBase();
+        _form.Name = ModalModel.Passkey.Name;
+        _form.CopyToBase();
+        return Task.CompletedTask;
+    }
+
+    private async Task OnSave() {
+        if (!_formRef.IsValid)
+            return;
+
+        var isRenamed = await Hub.PasskeyUI.Rename(ModalModel.Passkey.Id, _form.Name).ConfigureAwait(true);
+        if (!isRenamed)
+            return;
+
+        Modal.Close();
+    }
+
+    private void OnCancel()
+        => Modal.Close();
+
+    // Nested types
+
+    public sealed class FormModel(ComponentIdGenerator? componentIdGenerator)
+        : FormModel<FormModel>("passkey-rename", componentIdGenerator)
+    {
+        [Required]
+        public string Name { get; set; } = "";
+        public string NameFieldId { get; set; } = "";
+    }
+
+    public sealed record Model(Passkey Passkey);
+}
