@@ -181,10 +181,19 @@ async function reencode(
 }
 
 /** jpegli needs ~8.8 bytes of wasm heap per pixel, on top of the bitmap and the canvas copy;
- *  a phone that runs out does not throw, the OS kills the app. A missing cap means the request
- *  is malformed, not that every encode should silently become a passthrough. */
-export const canEncodeOnThisDevice = (pixels: number, maxMobilePixels: number): boolean =>
-    !DeviceInfo.isMobile || !(maxMobilePixels > 0) || pixels <= maxMobilePixels;
+ *  a phone that runs out does not throw, the OS kills the app. */
+export const canEncodeOnThisDevice = (pixels: number, maxMobilePixels: number): boolean => {
+    if (!DeviceInfo.isMobile)
+        return true;
+
+    if (!(maxMobilePixels > 0)) {
+        // Declining is the safe answer either way: a passthrough is bigger, an OOM kill loses the draft
+        errorLog?.log(`canEncodeOnThisDevice: no mobile pixel cap in the request: ${maxMobilePixels}`);
+        return false;
+    }
+
+    return pixels <= maxMobilePixels;
+};
 
 async function encodeJpeg(canvas: OffscreenCanvas, image: ImageData): Promise<Blob> {
     const jpeg = await tryEncodeWithRebuild(getEncoder, encoder =>
