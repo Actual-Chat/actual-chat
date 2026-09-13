@@ -264,14 +264,15 @@ public sealed class ListeningStreamMuxer : WorkerBase
             streamStopTokenSource.CancelAndDisposeSilently();
             await EmitEndSafe().ConfigureAwait(false);
 
-            if (mustResume && isDub) {
-                // The dub track died; the retry serves the original from the live edge, and the
-                // source's own retry counters stay untouched - a failing dub must never exclude
-                // the speaker.
-                Log.LogWarning("ProcessStream: {Language} dub of #{StreamId} failed mid-relay, serving the original",
+            if (isDub && (mustResume || mustRetry)) {
+                // The dub track died; the retry serves the original - from the live edge if the
+                // listener already heard the dub start - and the source's own retry counters stay
+                // untouched: a failing dub must never exclude the speaker.
+                Log.LogWarning("ProcessStream: {Language} dub of #{StreamId} failed, serving the original",
                     DubLanguage, streamId);
                 _undubbedStreamIds.TryAdd(streamId, 0);
-                _resumedStreamIds.TryAdd(streamId, 0);
+                if (isStartEmitted)
+                    _resumedStreamIds.TryAdd(streamId, 0);
                 shouldRetry = true;
             }
             else if (mustResume) {
@@ -292,7 +293,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
                     _resumedStreamIds.TryRemove(streamId, out _);
                 }
             }
-            if (mustRetry) {
+            else if (mustRetry) {
                 var retryCount = _preStartRetryCountByStreamId.AddOrUpdate(streamId, 1, (_, count) => count + 1);
                 if (retryCount <= MaxPreStartRetryCount) {
                     await Task.Delay(PreStartRetryDelays[retryCount], CancellationToken.None).ConfigureAwait(false);
@@ -306,10 +307,6 @@ public sealed class ListeningStreamMuxer : WorkerBase
                     _preStartRetryCountByStreamId.TryRemove(streamId, out _);
                     _resumedStreamIds.TryRemove(streamId, out _);
                 }
-            }
-            else if (mustResume) {
-                // Nothing to clear: the resume block owns the counter, and falling through to the
-                // else below wiped the increment it had just made.
             }
             else {
                 _preStartRetryCountByStreamId.TryRemove(streamId, out _);

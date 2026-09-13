@@ -50,6 +50,37 @@ public class ListeningStreamMuxerRelayTest(ITestOutputHelper @out) : TestBase(@o
     }
 
     [Fact(Timeout = 30_000)]
+    public async Task DubErrorBeforeItsFirstFrameShouldFallBackToTheOriginal()
+    {
+        // arrange
+        var sourceId = StreamId.New(new NodeRef(Generate.Option));
+        var dubId = StreamId.New(sourceId, Languages.English);
+        var streams = new FakeLiveAudioStreams {
+            [dubId.Value] = _ => Frames(0, StandardError.External("TTS is down")),
+            [sourceId.Value] = _ => Frames(3, null),
+        };
+        await using var serviceProvider = NewServices(streams, NewStreamInfo(sourceId, new Moment(DateTime.UtcNow)));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+
+        // act
+        await using var muxer = new ListeningStreamMuxer(
+            serviceProvider, Session.New(), TestChatId, default, Languages.English);
+        var items = new List<MuxedAudioStreamItem>();
+        await foreach (var item in muxer.Output.ReadAllAsync(cts.Token)) {
+            items.Add(item);
+            if (items.OfType<MuxedAudioStreamEnd>().Any())
+                break;
+        }
+
+        // assert
+        var start = items.OfType<MuxedAudioStreamStart>().Should().ContainSingle().Subject;
+        start.StreamInfo.DubLanguage.Should().BeNull(
+            "a dub that dies before its first frame never reaches the listener, and the original takes its place");
+        streams.GetRequestCount(dubId.Value).Should().Be(1, "a failed dub isn't asked for again");
+        streams.GetRequestCount(sourceId.Value).Should().Be(1);
+    }
+
+    [Fact(Timeout = 30_000)]
     public async Task DubShouldNotBeStartedForAStaleBacklogStream()
     {
         // arrange

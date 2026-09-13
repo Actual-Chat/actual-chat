@@ -228,6 +228,40 @@ public partial class AudioStreamingBackend
             ? $"{authorId}~{dubStreamId.Language}"
             : null;
 
+    private async Task<AsyncMemoizer<TranscriptDiff>?> WaitForSourceTranscript(
+        StreamId sourceStreamId,
+        CancellationToken cancellationToken)
+    {
+        // The source transcript is published on the first STT result, which can trail the audio by
+        // more than ShareWaitDelay, so keep waiting for as long as the audio itself is live.
+        while (true) {
+            var memoizer = await _transcriptStreams
+                .GetMemoizer(sourceStreamId, true, cancellationToken)
+                .ConfigureAwait(false);
+            if (memoizer != null || !_audioStreams.Has(sourceStreamId))
+                return memoizer;
+        }
+    }
+
+    private async Task<AsyncMemoizer<TranscriptDiff>?> WaitForTranslation(
+        StreamId dubStreamId,
+        AsyncMemoizer<TranscriptDiff> sourceMemoizer,
+        CancellationToken cancellationToken)
+    {
+        // ProcessAudio creates the text entry the translation is keyed by ~100 ms after it publishes
+        // the transcript, so the first request usually lands in that window: a miss is retried for
+        // as long as the source transcript is live.
+        while (true) {
+            var memoizer = await GetOrStartTranslation(dubStreamId, cancellationToken).ConfigureAwait(false);
+            if (memoizer != null || sourceMemoizer.IsCompleted)
+                return memoizer;
+
+            await Clocks.CpuClock
+                .Delay(Constants.Audio.DubTranslationRetryDelay, cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
+
     private static async IAsyncEnumerable<TranscriptDiff> ReadTranslation(
         AsyncMemoizer<TranscriptDiff> translatedMemoizer,
         AsyncMemoizer<TranscriptDiff> sourceMemoizer,
@@ -262,40 +296,6 @@ public partial class AudioStreamingBackend
         }
         finally {
             await diffs.DisposeAsync().ConfigureAwait(false);
-        }
-    }
-
-    private async Task<AsyncMemoizer<TranscriptDiff>?> WaitForSourceTranscript(
-        StreamId sourceStreamId,
-        CancellationToken cancellationToken)
-    {
-        // The source transcript is published on the first STT result, which can trail the audio by
-        // more than ShareWaitDelay, so keep waiting for as long as the audio itself is live.
-        while (true) {
-            var memoizer = await _transcriptStreams
-                .GetMemoizer(sourceStreamId, true, cancellationToken)
-                .ConfigureAwait(false);
-            if (memoizer != null || !_audioStreams.Has(sourceStreamId))
-                return memoizer;
-        }
-    }
-
-    private async Task<AsyncMemoizer<TranscriptDiff>?> WaitForTranslation(
-        StreamId dubStreamId,
-        AsyncMemoizer<TranscriptDiff> sourceMemoizer,
-        CancellationToken cancellationToken)
-    {
-        // ProcessAudio creates the text entry the translation is keyed by ~100 ms after it publishes
-        // the transcript, so the first request usually lands in that window: a miss is retried for
-        // as long as the source transcript is live.
-        while (true) {
-            var memoizer = await GetOrStartTranslation(dubStreamId, cancellationToken).ConfigureAwait(false);
-            if (memoizer != null || sourceMemoizer.IsCompleted)
-                return memoizer;
-
-            await Clocks.CpuClock
-                .Delay(Constants.Audio.DubTranslationRetryDelay, cancellationToken)
-                .ConfigureAwait(false);
         }
     }
 
