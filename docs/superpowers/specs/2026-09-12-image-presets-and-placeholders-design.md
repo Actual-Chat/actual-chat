@@ -110,24 +110,30 @@ Every image attachment carries a tiny version of itself, generated on the client
 stored with the media, so a recipient's tile paints the photo's shapes and colors
 instantly instead of a grey pulse.
 
-**Encoding.** WebP, lossy, quality ≈ 40, long side capped at 64 px, aspect preserved
+**Encoding.** jpegli at distance 6, 4:2:0, long side exactly 64 px, aspect preserved
 with the effective ratio clamped to 2:1 so panoramas and tall crops do not degenerate
-into a line. Measured over 15 real photos: 236 / 432 / 794 bytes (min / median / max) —
-2-3× smaller than JPEG or AVIF at equal dimensions, where JPEG spends ~300 bytes on
-headers and quantization tables alone.
+into a line.
 
-WebP is produced by a WASM encoder of the same shape as the existing jpegli module.
-Canvas may be used where it genuinely produces WebP, verified by sniffing the output's
-magic bytes — WebKit's canvas silently substitutes PNG, which would otherwise ship
-5 KB placeholders to iOS users.
+The obvious choice was WebP, which wins on whole-file size. It loses once headers are
+stripped, which this container does anyway: measured over 15 real photos as stored
+bytes, jpegli is **413 bytes median against WebP's 414**, and its worst case is
+**603 against 776** — better on the number a hard ceiling actually cares about. Since
+jpegli already ships in this app, choosing it removes a second WASM codec, its binary,
+and the WebKit trap where canvas silently encodes PNG when asked for WebP.
 
-**Container.** The stored blob is not a WebP file. It is:
+The one thing WebP does better is flat regions: jpegli shows 8×8 block edges on sky
+and other smooth areas at this size, at every distance tested. The placeholder is
+painted blurred and upscaled behind the real image, which hides the blocking entirely,
+so this costs nothing in practice — but a future change that paints it sharp would
+need to revisit the choice.
+
+**Container.** The stored blob is not a JPEG file. It is:
 
 | Byte | Meaning |
 |---|---|
-| 0 | Format mark. `1` = header-stripped lossy WebP, long side 64. Other values are reserved, so the encoding can change later without touching stored rows — the decoder branches on this byte. |
+| 0 | Format mark. `1` = header-stripped jpegli, distance 6, 4:2:0, long side 64. Other values are reserved, so the encoding can change later without touching stored rows — the decoder branches on this byte. |
 | 1 | The side that is not 64, as a signed value: positive = horizontal (width = value, height = 64), negative = vertical (height = \|value\|, width = 64). `64` means square. |
-| 2.. | The VP8 bitstream, with the 20-byte `RIFF`/`WEBP`/`VP8 ` wrapper removed and rebuilt at decode time from the payload length. |
+| 2.. | The JPEG with its reconstructable 236-byte prefix removed: SOI, DQT, the SOF skeleton, the SOS header and EOI, all of which the decoder rebuilds from fixed bytes plus byte 1's dimensions. The Huffman tables stay inline — the encoder optimizes them per image, and forcing standard tables to drop them costs ~26% more than it saves. |
 
 The long side is always encoded at exactly 64 px, upscaling sources smaller than that,
 so the container never needs to express a second dimension. Byte 1 also lets the
@@ -140,8 +146,9 @@ accepts primitives only, hence base64 rather than raw bytes. Media rows without 
 — every row that predates this feature — fall back to today's behaviour.
 
 **Cost.** Media rows are eagerly joined on every chat tile read, so a placeholder is
-paid on every scrollback page, not once per send: ~576 bytes as base64 per image,
-roughly 5.6 KB for a page of ten images. This is the reason for the 64 px ceiling, and
+paid on every scrollback page, not once per send: ~550 bytes as base64 per image
+(~800 at the measured worst case), roughly 5.5 KB for a page of ten images. This is
+the reason for the 64 px ceiling, and
 the reason a raster was chosen over a separate blob row — a second row plus a blob plus
 a join for under a kilobyte would cost more than it saves.
 
