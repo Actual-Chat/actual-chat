@@ -188,7 +188,7 @@ need to revisit the choice.
 | Byte | Meaning |
 |---|---|
 | 0 | Format mark. `1` = header-stripped jpegli, distance 6, 4:2:0, long side 64. Other values are reserved, so the encoding can change later without touching stored rows — the decoder branches on this byte. |
-| 1 | The side that is not 64, as a signed value: positive = horizontal (width = value, height = 64), negative = vertical (height = \|value\|, width = 64). `64` means square. |
+| 1 | The side that is not 64, as a signed value: positive = portrait (width = value, height = 64), negative = landscape (height = \|value\|, width = 64). `64` means square. |
 | 2.. | The JPEG with its reconstructable 236-byte prefix removed: SOI, DQT, the SOF skeleton, the SOS header and EOI, all of which the decoder rebuilds from fixed bytes plus byte 1's dimensions. The Huffman tables stay inline — the encoder optimizes them per image, and forcing standard tables to drop them costs ~26% more than it saves. |
 
 The long side is always encoded at exactly 64 px, upscaling sources smaller than that,
@@ -308,7 +308,8 @@ the TypeScript → C# interop hop, decoded to bytes in `ImageAttachmentProcessor
 called for a 236-byte reconstructable prefix; what shipped strips 220 leading bytes
 (SOI + DQT + SOF0, jpegli's real Huffman-optimized encoding, not a synthetic one) plus
 a trailing `FF D9` (EOI) appended separately. Byte 0 is the format mark; byte 1 is the
-signed short side (positive = horizontal, `64` = square); the long side is always
+signed short side (positive = portrait, negative = landscape, `64` = square), which is
+what `placeholder-encoder.ts` writes as `width <= height ? width : -height`; the long side is always
 exactly 64. Format 1 patches the decoded width/height into the fixed prefix at byte
 offsets 206 and 208 (big-endian). **Changing any of those prefix bytes requires a new
 format mark** — stored rows carry the old prefix's shape, and a decoder that assumed

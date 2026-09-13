@@ -17,13 +17,31 @@ public class AttachmentImageUploadProcessorTest : IDisposable
     [Theory]
     [InlineData("image/jpeg", MediaKind.ChatEntryAttachment, true)]
     [InlineData("image/heic", MediaKind.ChatEntryAttachment, true)]
-    [InlineData("image/gif", MediaKind.ChatEntryAttachment, false)]
+    [InlineData("image/gif", MediaKind.ChatEntryAttachment, true)]
+    [InlineData("image/gif", MediaKind.UserPicture, false)]
     [InlineData("image/svg+xml", MediaKind.ChatEntryAttachment, false)]
     [InlineData("image/jpeg", MediaKind.LinkPreviewPicture, false)]
     [InlineData("image/png", MediaKind.UserPicture, false)]
     [InlineData("video/mp4", MediaKind.ChatEntryAttachment, false)]
     public void ShouldSupportOnlyChatAttachmentImages(string contentType, MediaKind mediaKind, bool expected)
         => _processor.Supports(contentType, mediaKind).Should().Be(expected);
+
+    [Fact]
+    public async Task ShouldSizeAGifWithoutRewritingIt()
+    {
+        // arrange - without a size the message list has no aspect ratio and lays the tile out square
+        var data = TestImages.CreateAnimatedGif(972, 730, 3);
+        var upload = TestImages.CreateUploadedFile("motion.gif", "image/gif", data);
+
+        // act
+        var result = await Process(upload);
+        var stored = await ReadAll(result.File);
+
+        // assert
+        result.Size.Should().Be(new Size2D(972, 730));
+        stored.Should().Equal(data, "a GIF must reach storage byte for byte - stripping would re-encode it");
+        result.File.ContentType.Should().Be("image/gif");
+    }
 
     [Fact]
     public async Task ShouldStripMetadataWithoutReencoding()

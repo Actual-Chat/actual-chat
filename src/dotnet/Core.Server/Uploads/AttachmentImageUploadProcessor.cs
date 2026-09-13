@@ -6,6 +6,8 @@ namespace ActualChat.Uploads;
 /// <summary>
 /// Chat attachment images arrive already resized and re-encoded by the client, so they are stored as-is:
 /// only dimensions are read and metadata is stripped losslessly, unless the upload keeps it.
+/// A GIF is read for its dimensions and then left completely alone - stripping would re-encode it
+/// and drop the animation.
 /// </summary>
 public sealed class AttachmentImageUploadProcessor(IServiceProvider services) : IUploadProcessor
 {
@@ -16,14 +18,14 @@ public sealed class AttachmentImageUploadProcessor(IServiceProvider services) : 
     public bool Supports(string contentType, MediaKind mediaKind)
         => mediaKind == MediaKind.ChatEntryAttachment
             && MediaTypeExt.IsImage(contentType)
-            && !MediaTypeExt.IsGif(contentType)
             && !MediaTypeExt.IsSvg(contentType);
 
     public async Task<ProcessedFile> Process(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
     {
         progress?.Report(0);
+        var isGif = MediaTypeExt.IsGif(upload.ContentType);
         // A strippable upload is read once here: every Open() is another full download from blob storage
-        var mustStrip = !upload.KeepMetadata && upload.Length <= MaxStrippableLength;
+        var mustStrip = !isGif && !upload.KeepMetadata && upload.Length <= MaxStrippableLength;
         var (imageInfo, data) = await Read(upload, mustStrip, cancellationToken).ConfigureAwait(false);
         if (imageInfo is null)
             return new ProcessedFile(upload.AsBinaryFile(), null);
@@ -43,6 +45,8 @@ public sealed class AttachmentImageUploadProcessor(IServiceProvider services) : 
         }
 
         var size = GetDisplaySize(imageInfo);
+        if (isGif)
+            return new ProcessedFile(upload, size);
         if (upload.KeepMetadata)
             return new ProcessedFile(upload, size);
         if (data is null) {

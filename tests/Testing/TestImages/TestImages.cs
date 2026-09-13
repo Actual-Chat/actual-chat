@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using ActualChat.Uploads;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Bmp;
+using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Formats.Webp;
@@ -78,6 +79,16 @@ public static class TestImages
             image.Frames.AddFrame(image.Frames.RootFrame);
         using var ms = new MemoryStream();
         image.Save(ms, new WebpEncoder());
+        return ms.ToArray();
+    }
+
+    public static byte[] CreateAnimatedGif(int width, int height, int frameCount)
+    {
+        using var image = new Image<Rgba32>(width, height);
+        for (var i = 1; i < frameCount; i++)
+            image.Frames.AddFrame(image.Frames.RootFrame);
+        using var ms = new MemoryStream();
+        image.Save(ms, new GifEncoder());
         return ms.ToArray();
     }
 
