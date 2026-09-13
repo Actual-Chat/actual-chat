@@ -42,6 +42,7 @@ export default defineConfig({
             'image-processing/image-encoding-policy': src('image-processing/image-encoding-policy'),
             'image-processing/metadata-stripper': src('image-processing/metadata-stripper'),
             'image-processing/jpegli-encoder': src('image-processing/jpegli-encoder'),
+            'image-processing/placeholder-encoder': src('image-processing/placeholder-encoder'),
             'image-processing/image-processor-worker': src('image-processing/image-processor-worker'),
             'actuallab-core': pkg('actuallab-core'),
             'actuallab-rpc': pkg('actuallab-rpc'),
