@@ -20,6 +20,7 @@ public static partial class MauiProgram
         services.AddScoped<IDeviceNotifications>(c => new MacOSDeviceNotifications(c));
         services.AddTransient<IAppIconBadge>(_ => new MacOSAppIconBadge());
         services.AddScoped<IFileSaver>(c => new MacOSFileSaver(c.UIHub()));
+        services.AddScoped<IPasskeyClient>(_ => new ApplePasskeyClient());
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
