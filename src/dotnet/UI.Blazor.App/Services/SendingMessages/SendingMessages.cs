@@ -320,6 +320,14 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         }, TaskScheduler.Default);
     }
 
+    private void UnbindMedia(IEnumerable<Attachment> attachments)
+    {
+        // No entry references the reserved media now, and the release that collects it can come
+        // much later, from the editor - this is the last place that knows what happened
+        foreach (var attachment in attachments)
+            UploadSessions.ClearMediaBound(attachment.UploadSessionId);
+    }
+
     private async Task CleanupAttachments(string postRequestUuid, IEnumerable<Attachment> attachments)
     {
         foreach (var attachment in attachments) {
@@ -401,9 +409,16 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
         if (discardSendRequest || !resultSource.Task.IsCanceled) {
             await DiscardStoredPostRequest(request.Uuid, cancellationToken).ConfigureAwait(false);
-            if (request.AttachmentUploads is not null)
+            if (request.AttachmentUploads is not null) {
+                var postedEntry = resultSource.Task.IsCompletedSuccessfully
+                    ? resultSource.Task.GetAwaiter().GetResult()
+                    : null;
+                if (discardSendRequest || postedEntry is null)
+                    UnbindMedia(request.AttachmentUploads.Attachments.Items);
+
                 await CleanupAttachments(request.Uuid, request.AttachmentUploads.Attachments.Items)
                     .ConfigureAwait(false);
+            }
             if (discardSendRequest && ChatEntryId is not null)
                 await RemoveChatEntry(ChatEntryId, cancellationToken).ConfigureAwait(false);
         }

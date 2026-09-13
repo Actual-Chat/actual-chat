@@ -98,6 +98,29 @@ public sealed class UploadSessionsTest : TestBase
     }
 
     [Fact]
+    public async Task UnbindingMediaShouldLetADiscardedSendRemoveIt()
+    {
+        // arrange - a send that failed or was discarded: the post took a bound reference, then the
+        // entry that would have referenced the media was removed or never created
+        var operations = new FakeUploadOperations(completesUpload: true);
+        var sessions = NewUploadSessions(operations);
+        var sessionId = await sessions.CreateSession(new TestFileProvider(), MetadataBag.Empty, "");
+        sessions.AddReference(sessionId, isMediaBound: true);
+        sessions.Resume(sessionId);
+        var session = await sessions.TryGetSession(sessionId);
+        await WaitUntilCompleted(session!);
+        var mediaId = session!.MediaId!;
+
+        // act
+        sessions.ClearMediaBound(sessionId);
+        sessions.ReleaseReference(sessionId);
+        await operations.WhenIdle();
+
+        // assert
+        operations.RemovedMediaIds.Should().ContainSingle().Which.Should().Be(mediaId);
+    }
+
+    [Fact]
     public void ReservedMediaShouldBeRequestedAsAChatEntryAttachment()
     {
         // arrange

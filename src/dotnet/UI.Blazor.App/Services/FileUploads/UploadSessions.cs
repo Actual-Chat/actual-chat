@@ -90,6 +90,14 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             Volatile.Write(ref sessionRef.IsMediaBound, true);
     }
 
+    public void ClearMediaBound(string sessionId)
+    {
+        // The entry that was going to reference this media was removed or never created, so what's
+        // left is an orphan again - and no later release could work that out on its own
+        if (_sessions.TryGetValue(sessionId, out var sessionRef))
+            Volatile.Write(ref sessionRef.IsMediaBound, false);
+    }
+
     public void ReleaseReference(string sessionId, bool cancel = true, bool mustKeepFile = false)
     {
         // A cleanup racing this call may have released and deleted the session already
