@@ -7,11 +7,11 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 ## ActualChat.ContentCaching
 
 - `IContentHandler` — Composable content request handler returning an owned HTTP response or null for native fallback.
-- `ContentRequest` (record) — Representation URL, method, headers, and opt-in immutable cache identity.
+- `ContentRequest` (record) — Representation URL, method, and headers.
 - `LoggingContentHandler` — Logging decorator with synchronous native pass-through when no downstream is supplied.
 - `HttpContentHandler` — Streaming HTTP fetcher using a supplied HttpClient.
 - `FileSystemContentHandler` — AES-GCM encrypted filesystem cache for complete bounded responses.
-- `FileSystemContentHandler.Options` (record) — Cache directory, root encryption key, and maximum content length.
+- `FileSystemContentHandler.Options` (record) — Cache directory, root encryption key, maximum content length, and cache URL normalization.
 
 
 ## ActualChat.Core

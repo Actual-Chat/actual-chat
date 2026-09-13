@@ -14,11 +14,13 @@ Android observes intercepted requests; Windows observes image/media requests; Ap
 the existing `content://` handler. Remote HTTPS on Apple will need URL projection before
 it can reach this pipeline. Native response adaptation and key/path wiring come later.
 
-The first filesystem implementation stores complete, explicitly immutable GETs with known
+The first filesystem implementation stores complete GETs for immutable media with known
 lengths up to 1 MiB, configurable. Headers/ranges, larger files, unknown lengths, and responses
 with private/no-store/vary/cookie state bypass persistence and retain their downstream streams.
-An immutable key must include any account/session partition; the full representation URL
-also participates in identity.
+The full representation URL identifies each cache entry by default. A configurable URL
+normalizer can remove CDN-specific signing parameters from cache identity while retaining
+content variants; downloading still uses the original signed URL. Header/cookie-based
+identity is not implemented in this phase.
 
 Encrypt metadata and payload together using AES-256-GCM with a fresh nonce per write,
 a cache-specific HKDF key, and authenticated cache identity. Publish by atomic rename only
@@ -32,7 +34,7 @@ No Kvasar index is needed for this version.
 projection after constructing image-proxy/resize URLs, and use app-issued opaque references
 as `LocalContentRegistry` does. Include avatars, transformed previews, thumbnails, and
 audio/video/file attachments. Native download/share consumers retain canonical URLs or open
-the cache directly. Arbitrary external content requires an explicit immutable identity.
+the cache directly. Arbitrary external content requires a versioned URL before caching.
 
 **Progressive storage:** replace the whole-entry envelope with independently authenticated
 chunks, including asset identity, position, and generation. Never persist plaintext staging

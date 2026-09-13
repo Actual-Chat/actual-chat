@@ -24,9 +24,7 @@ public sealed class FileSystemContentHandlerTest : IDisposable
         // arrange
         const string body = "private image payload that must not appear on disk";
         var source = new TestSource(_ => Response(body));
-        var request = new ContentRequest(new Uri("https://cdn.example/image.png?size=128")) {
-            ImmutableKey = "image-v1",
-        };
+        var request = new ContentRequest(new Uri("https://cdn.example/image.png?size=128"));
         var handler = Create(source);
 
         // act
@@ -46,7 +44,6 @@ public sealed class FileSystemContentHandlerTest : IDisposable
             Encoding.UTF8.GetString(bytes).Should().NotContain(body).And.NotContain("image/png");
         }
     }
-
 
     [Theory]
     [InlineData("Range")]
@@ -73,7 +70,7 @@ public sealed class FileSystemContentHandlerTest : IDisposable
 
     [Theory]
     [InlineData("head")]
-    [InlineData("mutable")]
+    [InlineData("post")]
     [InlineData("large")]
     [InlineData("unknown-length")]
     [InlineData("not-found")]
@@ -94,8 +91,8 @@ public sealed class FileSystemContentHandlerTest : IDisposable
         case "head":
             request = request with { Method = HttpMethod.Head };
             break;
-        case "mutable":
-            request = request with { ImmutableKey = null };
+        case "post":
+            request = request with { Method = HttpMethod.Post };
             break;
         case "large":
             content.Headers.ContentLength = 2 * 1024 * 1024;
@@ -181,10 +178,11 @@ public sealed class FileSystemContentHandlerTest : IDisposable
     }
 
     [Theory]
-    [InlineData("https://cdn.example/asset?v=2", "v1")]
-    [InlineData("https://other.example/asset", "v1")]
-    [InlineData("https://cdn.example/asset", "other-account")]
-    public async Task UrlsAndPartitionsShouldHaveSeparateEntries(string url, string immutableKey)
+    [InlineData("https://cdn.example/asset?v=2")]
+    [InlineData("https://other.example/asset")]
+    [InlineData("https://cdn.example/asset?account=other")]
+    [InlineData("https://cdn.example/asset?signature=other")]
+    public async Task UrlsShouldHaveSeparateEntries(string url)
     {
         // arrange
         var reads = 0;
@@ -192,7 +190,7 @@ public sealed class FileSystemContentHandlerTest : IDisposable
         using (var first = await handler.Handle(Request())) { }
 
         // act
-        using var second = await handler.Handle(new ContentRequest(new Uri(url)) { ImmutableKey = immutableKey });
+        using var second = await handler.Handle(new ContentRequest(new Uri(url)));
         using var cached = await handler.Handle(Request());
 
         // assert
@@ -344,10 +342,44 @@ public sealed class FileSystemContentHandlerTest : IDisposable
         (await response!.Content.ReadAsStringAsync()).Should().Be("body");
     }
 
+    [Fact]
+    public async Task NormalizedSignedUrlsShouldShareEntriesAndPreserveDownloadUrls()
+    {
+        // arrange
+        var firstUrl = new Uri("https://cdn.example/image.png?size=128&signature=first&expires=100");
+        var renewedUrl = new Uri("https://cdn.example/image.png?size=128&signature=renewed&expires=200");
+        var resizedUrl = new Uri("https://cdn.example/image.png?size=256&signature=third&expires=300");
+        var downloads = new List<Uri>();
+        var source = new TestSource(request => {
+            downloads.Add(request.Url);
+            return Response($"response-{downloads.Count}");
+        });
+        var handler = new FileSystemContentHandler(new FileSystemContentHandler.Options {
+            Directory = _directory,
+            EncryptionKey = _key,
+            CacheUrlNormalizer = url => new UriBuilder(url) {
+                Query = string.Join('&', url.Query.TrimStart('?').Split('&')
+                    .Where(x => !x.StartsWith("signature=") && !x.StartsWith("expires="))),
+            }.Uri,
+        }, source);
+
+        // act
+        using var first = await handler.Handle(new ContentRequest(firstUrl));
+        using var renewed = await handler.Handle(new ContentRequest(renewedUrl));
+        using var resized = await handler.Handle(new ContentRequest(resizedUrl));
+
+        // assert
+        (await first!.Content.ReadAsStringAsync()).Should().Be("response-1");
+        (await renewed!.Content.ReadAsStringAsync()).Should().Be("response-1");
+        (await resized!.Content.ReadAsStringAsync()).Should().Be("response-2");
+        downloads.Should().Equal(firstUrl, resizedUrl);
+        Directory.GetFiles(_directory).Should().HaveCount(2);
+    }
+
     // Private methods
 
     private static ContentRequest Request()
-        => new(new Uri("https://cdn.example/asset")) { ImmutableKey = "v1" };
+        => new(new Uri("https://cdn.example/asset"));
 
     private FileSystemContentHandler Create(IContentHandler source)
         => new(new FileSystemContentHandler.Options { Directory = _directory, EncryptionKey = _key }, source);
