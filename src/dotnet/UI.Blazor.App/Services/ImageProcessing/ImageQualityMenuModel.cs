@@ -13,8 +13,11 @@ public static class ImageQualityMenuModel
         => images.Any(a => ExceedsServerBounds(a.Source!.Size));
 
     public static bool IsDeclinedAt(IReadOnlyList<Attachment> images, ImageQualityPreset preset, bool isMobile)
-        => images.Any(a => (a.SelectedQuality == preset && a.IsDeclined)
-            || WillDecline(a.Source!.Size, preset.GetBudget(), isMobile));
+        // Same precedence as GetTotal, or the row's text and its size column can disagree: the worker
+        // decides from the decoded bitmap, which Android caps below what the source header claims
+        => images.Any(a => a.SelectedQuality == preset && !a.IsProcessing
+            ? a.IsDeclined
+            : WillDecline(a.Source!.Size, preset.GetBudget(), isMobile));
 
     public static bool WillDecline(Size2D sourceSize, ImageQualityBudget budget, bool isMobile)
     {
