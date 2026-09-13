@@ -371,8 +371,12 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
             // A newer preset took over
         }
         catch (Exception e) {
+            // A failed encode usually happens inside Send now, and the same Post goes on to demand
+            // the upload session this attachment never got - so it leaves the list, as above
             Log.LogError(e, "Failed to process or upload attachment '{AttachmentId}'", id);
             UICommander.ShowError(StandardError.Constraint("Failed to add file attachment."));
+            if (list.Items.FirstOrDefault(a => a.Id == id) is { } stale && stale.UploadSessionId.IsNullOrEmpty())
+                await list.Remove(stale);
         }
     }
 

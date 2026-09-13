@@ -15,17 +15,10 @@ public sealed class AttachmentList : IAttachmentList
     // an attachment costs nothing, so nothing about it is encoded or uploaded
     public bool IsCommitted { get; private set; }
     public event EventHandler? Changed;
-    public event Action? Committed;
     public string MediaScope { get; init; } = "";
 
     public void Commit()
-    {
-        if (IsCommitted)
-            return;
-
-        IsCommitted = true;
-        Committed?.Invoke();
-    }
+        => IsCommitted = true;
 
     public void SetImageQuality(ImageQualityPreset preset)
     {

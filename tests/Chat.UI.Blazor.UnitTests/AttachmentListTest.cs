@@ -15,12 +15,10 @@ public sealed class AttachmentListTest
     }
 
     [Fact]
-    public void CommitShouldBeIdempotentAndRaiseOnce()
+    public void CommitShouldBeIdempotent()
     {
         // arrange
         var list = new AttachmentList();
-        var commits = 0;
-        list.Committed += () => commits++;
 
         // act
         list.Commit();
@@ -28,6 +26,5 @@ public sealed class AttachmentListTest
 
         // assert
         list.IsCommitted.Should().BeTrue();
-        commits.Should().Be(1);
     }
 }

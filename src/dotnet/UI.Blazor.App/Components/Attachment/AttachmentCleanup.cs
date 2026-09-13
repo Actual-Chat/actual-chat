@@ -8,17 +8,29 @@ public sealed record AttachmentCleanup(AttachmentCleanupKind Kind, Func<Task> Cl
 
 public sealed class AttachmentCleanupCollection
 {
+    private readonly Lock _lock = new();
     private readonly List<AttachmentCleanup> _items = new ();
 
-    public IEnumerable<AttachmentCleanup> Items
-        // A snapshot: the cleanups run on a background task while the dispatcher may still mutate the list
-        => _items.ToArray();
+    public IEnumerable<AttachmentCleanup> Items {
+        // A snapshot, taken under the lock: the cleanups run on a background task while the
+        // dispatcher may still add the upload session's one to the very same collection
+        get {
+            lock (_lock)
+                return _items.ToArray();
+        }
+    }
 
     public void Add(AttachmentCleanup item)
-        => _items.Add(item);
+    {
+        lock (_lock)
+            _items.Add(item);
+    }
 
     public bool RemoveByKind(AttachmentCleanupKind kind)
-        => _items.RemoveAll(x => x.Kind == kind) > 0;
+    {
+        lock (_lock)
+            return _items.RemoveAll(x => x.Kind == kind) > 0;
+    }
 }
 
 public static class AttachmentCleanupFactory

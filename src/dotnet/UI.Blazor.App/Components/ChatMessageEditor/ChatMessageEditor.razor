@@ -177,7 +177,7 @@
 
         if (JSRef != null!) {
             // Only when rendered
-            await _attachmentListHolder.Attachments.Clear();
+            await _attachmentListHolder.Reset(chatId.Value);
             await UpdateChatId();
         }
     }
