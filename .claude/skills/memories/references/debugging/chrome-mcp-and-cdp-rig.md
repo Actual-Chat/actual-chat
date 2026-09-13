@@ -1,0 +1,9 @@
+- `mcp__chrome*__take_screenshot` with `filePath` saves inside the MCP container, not on the host; use the inline (no filePath) form to actually see it.
+- A third user needs a third Chrome: launch `chrome.exe --remote-debugging-port=9224 --user-data-dir=...\Auto-Voxt3` plus the same fake-media flags `ai chrome` uses (`--use-fake-ui-for-media-stream --use-fake-device-for-media-stream --use-file-for-fake-audio-capture=D:\Projects\AgentCli\lib\data\test-audio-1.wav`) and drive it with a tiny `ws` CDP script (`Runtime.evaluate`, `awaitPromise`, `returnByValue`); `tmp/cdp-eval.mjs <port> <jsFile>` was the shape that worked.
+- `debugUI.signIn('+1 555 555 555X', { register: true, skipOnboarding: true, skipBubbles: true })` on a fresh profile; "The Actual One" (`/chat/the-actual-one`) is public, a new user joins with the "Join this chat" button.
+- The recorder toggle is `.recorder-wrapper button` (not `.recorder-button`); `record-on` in the wrapper's class confirms it. Stop it as soon as the measurement is done — fake audio still costs real transcription.
+- Sending a message from script: `execCommand('insertText')` into `.editor-content`, then the MCP `press_key Enter` — a synthetic KeyboardEvent does not submit.
+- Server-mode sessions log ChatView `GetData:` debug lines into `tmp/server-loop-server-run.log`; WASM sessions do not. To isolate one session's lines, put the others in WASM (`debugUI.setRenderMode('w')`).
+- To simulate a VirtualList render state in the page (e.g. `hasVeryLastItem=false`), stub `il.requestData = async () => {}` first, or Blazor re-renders within the wait and resets it; `InfiniteList.instances` is a Set of instances with private members reachable as plain props.
+
+**How to apply:** reach for this rig instead of re-deriving it when a VirtualList or live-conversation bug needs two or three users. See [[server-loop-iteration-gotchas]] for the rebuild side.
