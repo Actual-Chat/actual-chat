@@ -61,7 +61,7 @@ public sealed class SonioxTranscriber : ITranscriber
 
         Exception? error = null;
         using var webSocket = new ClientWebSocket();
-        using var sender = new SonioxSocketSender(webSocket, Clocks.CpuClock);
+        using var sender = new Sender(webSocket, Clocks.CpuClock);
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         Task? keepAliveTask = null;
         try {
@@ -92,7 +92,7 @@ public sealed class SonioxTranscriber : ITranscriber
     // Private methods
 
     private async Task SendConfig(
-        SonioxSocketSender sender,
+        Sender sender,
         string apiKey,
         TranscriptionOptions options,
         CancellationToken cancellationToken)
@@ -122,7 +122,7 @@ public sealed class SonioxTranscriber : ITranscriber
             .ConfigureAwait(false);
     }
 
-    private async Task KeepAlive(SonioxSocketSender sender, CancellationToken cancellationToken)
+    private async Task KeepAlive(Sender sender, CancellationToken cancellationToken)
     {
         var clock = Clocks.CpuClock;
         while (true) {
@@ -137,7 +137,7 @@ public sealed class SonioxTranscriber : ITranscriber
     }
 
     private async Task PushAudio(
-        SonioxSocketSender sender,
+        Sender sender,
         AudioSource audioSource,
         CancellationToken cancellationToken)
     {
@@ -232,5 +232,34 @@ public sealed class SonioxTranscriber : ITranscriber
         var partial = builder.Complete(false);
         if (!partial.Text.IsNullOrEmpty())
             await output.WriteAsync(partial, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Nested types
+
+    // ClientWebSocket allows just one send at a time, and the keepalive loop sends
+    // concurrently with the audio push.
+    private sealed class Sender(ClientWebSocket webSocket, MomentClock clock) : IDisposable
+    {
+        private readonly SemaphoreSlim _lock = new(1, 1);
+
+        public Moment LastSendAt { get; private set; } = clock.Now;
+
+        public void Dispose()
+            => _lock.Dispose();
+
+        public async Task Send(
+            ReadOnlyMemory<byte> data,
+            WebSocketMessageType messageType,
+            CancellationToken cancellationToken)
+        {
+            await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try {
+                await webSocket.SendAsync(data, messageType, true, cancellationToken).ConfigureAwait(false);
+                LastSendAt = clock.Now;
+            }
+            finally {
+                _lock.Release();
+            }
+        }
     }
 }
