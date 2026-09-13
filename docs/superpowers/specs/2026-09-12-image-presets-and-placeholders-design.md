@@ -113,18 +113,26 @@ estimatedBytes = f(targetPixels, sourceBytesPerPixel)
 ```
 
 The source's bytes-per-pixel is a free proxy for how busy the photo is: a wall and a
-forest differ several-fold at the same resolution. The model, its constants and its
-measured error come from a study over real phone photos, fitted on one month's photos
-and validated on another (`tmp/size-model/REPORT.md`). Two cases carry their own rule:
+forest differ several-fold at the same resolution. The constants come from a study over
+1200 real photos spanning four cameras, fitted on 41 and validated on 25 the fit never
+saw (`tmp/size-model/`, data and scripts). Three cases carry their own rule:
 
-- **No resize** (source below the cap, and always for the Original presets) — a recode
-  of already-compressed bytes, which predicts differently from a downscale.
-- **HEIC sources**, whose bytes-per-pixel is far lower than JPEG's at equal quality, so
-  the complexity proxy needs a correction factor.
+- **Resize + re-encode** — the main path.
+- **No resize** — a recode of already-compressed bytes, which predicts differently from
+  a downscale, and whose ratio turns out to be a property of the source's own encoder
+  rather than a universal function.
+- **Sources with no usable bitrate signal** — PNG, screenshots, anything lossless — fall
+  back to a pixels-only model, since their byte size reflects the encoder, not the
+  content. A per-format multiplier corrects HEIC, WebP and AVIF sources, whose
+  bytes-per-pixel is far lower than JPEG's at equal quality.
 
-Estimates are labelled as approximate in the UI. If the validated error is too large to
-be honest about, the sizes come out of the menu rather than shipping a number that
-misleads.
+**The estimates are coarse on purpose.** Holdout error is ~20% median overall but ~34%
+median on phone photos with a p90 near 160%, the worst cases being smooth hazy scenes
+where a phone's computational pipeline spends bytes that do not survive a resize. A
+number like "2.14 MB" would imply a precision the model does not have. So sizes are
+shown rounded — to 0.1 MB below 1 MB, and progressively coarser above it, up to whole
+megabytes — and prefixed to read as approximate. The menu's job is to let someone tell
+2 MB from 12 MB, not to predict the byte count.
 
 ## Inline placeholders
 
