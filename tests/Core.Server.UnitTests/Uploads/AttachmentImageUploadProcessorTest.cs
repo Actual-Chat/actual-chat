@@ -86,16 +86,15 @@ public class AttachmentImageUploadProcessorTest : IDisposable
     [Fact]
     public async Task ShouldStoreAnOversizedImageAsABinaryFile()
     {
-        // arrange: an image whose header claims more pixels than the server stores
-        var data = TestImages.CreateJpeg(13000, 9000);
-        var upload = TestImages.CreateUploadedFile("huge.jpg", "image/jpeg", data);
+        // arrange: a header that claims more pixels than the server stores, without any pixel data
+        var upload = TestImages.CreateUploadedFile("huge.png", "image/png", TestImages.CreatePngHeader(13000, 9000));
 
         // act
         var result = await Process(upload);
 
-        // assert: no exception, and the result is the untouched bytes without image metadata
+        // assert: no exception, and the result is stored as a binary file
         result.Size.Should().BeNull();
-        result.File.Length.Should().Be(data.Length);
+        result.File.ContentType.Should().Be("application/octet-stream");
     }
 
     [Fact]
@@ -113,6 +112,24 @@ public class AttachmentImageUploadProcessorTest : IDisposable
     }
 
     [Fact]
+    public async Task ShouldStripMetadataFromAnOversizedImage()
+    {
+        // arrange: oversized on one side only, so the file stays small enough to carry real EXIF
+        var data = TestImages.CreateJpegWithExif(13000, 1, 1);
+        var upload = TestImages.CreateUploadedFile("huge.jpg", "image/jpeg", data);
+
+        // act
+        var result = await Process(upload);
+        var stored = await ReadAll(result.File);
+
+        // assert: still stored as a binary file, but with the EXIF segment gone
+        result.Size.Should().BeNull();
+        result.File.ContentType.Should().Be("application/octet-stream");
+        stored.Should().Equal(ImageMetadataStripper.Strip(data));
+        stored.Length.Should().BeLessThan(data.Length, "the EXIF segment must be gone");
+    }
+
+    [Fact]
     public async Task ShouldAcceptSquare8KImage()
     {
         // arrange
@@ -122,7 +139,7 @@ public class AttachmentImageUploadProcessorTest : IDisposable
         var result = await Process(upload);
 
         // assert
-        result.Size.Should().Be(new Size2D(7680, 7680), "above ImageLimits.MaxPixelCount, but within the 8K bound");
+        result.Size.Should().Be(new Size2D(7680, 7680), "above ImageLimits.MaxPixelCount, but within the 12K bound");
     }
 
     [Fact]

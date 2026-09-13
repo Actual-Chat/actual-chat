@@ -34,9 +34,12 @@ public sealed class AttachmentImageUploadProcessor(IServiceProvider services) : 
             && (long)imageInfo.Width * imageInfo.Height <= Constants.Attachments.MaxImagePixelCount;
         if (!isWithinBounds) {
             // Storing it as a file keeps the bytes the sender chose; rejecting after Send would not
-            Log.LogInformation("Image {Width}x{Height} exceeds the stored-image bounds, keeping it as a file",
-                imageInfo.Width, imageInfo.Height);
-            return new ProcessedFile(upload.AsBinaryFile(), null);
+            Log.LogInformation("'{FileName}': {Width}x{Height} exceeds the stored-image bounds, keeping it as a file",
+                upload.FileName, imageInfo.Width, imageInfo.Height);
+            var oversizedFile = data is null
+                ? upload
+                : await StripMetadata(upload, data, cancellationToken).ConfigureAwait(false);
+            return new ProcessedFile(oversizedFile.AsBinaryFile(), null);
         }
 
         var size = GetDisplaySize(imageInfo);
@@ -48,13 +51,7 @@ public sealed class AttachmentImageUploadProcessor(IServiceProvider services) : 
             return new ProcessedFile(upload, size);
         }
 
-        var stripped = ImageMetadataStripper.Strip(data);
-        if (ReferenceEquals(stripped, data))
-            return new ProcessedFile(upload, size);
-
-        var tempFilePath = UploadedFileExt.NewTempFilePath();
-        await File.WriteAllBytesAsync(tempFilePath, stripped, cancellationToken).ConfigureAwait(false);
-        var strippedFile = new UploadedTempFile(upload.GetDisplayFileName(), upload.ContentType, tempFilePath);
+        var strippedFile = await StripMetadata(upload, data, cancellationToken).ConfigureAwait(false);
         return new ProcessedFile(strippedFile, size);
     }
 
@@ -84,6 +81,20 @@ public sealed class AttachmentImageUploadProcessor(IServiceProvider services) : 
             Log.LogWarning(e, "Failed to extract image info from '{FileName}'", upload.FileName);
             return (null, null);
         }
+    }
+
+    private static async Task<UploadedFile> StripMetadata(
+        UploadedFile upload,
+        byte[] data,
+        CancellationToken cancellationToken)
+    {
+        var stripped = ImageMetadataStripper.Strip(data);
+        if (ReferenceEquals(stripped, data))
+            return upload;
+
+        var tempFilePath = UploadedFileExt.NewTempFilePath();
+        await File.WriteAllBytesAsync(tempFilePath, stripped, cancellationToken).ConfigureAwait(false);
+        return new UploadedTempFile(upload.GetDisplayFileName(), upload.ContentType, tempFilePath);
     }
 
     private static Size2D GetDisplaySize(ImageInfo imageInfo)
