@@ -35,6 +35,7 @@ public static class AppColors
     public static readonly UIColor PrimaryTitle = White;
     public static readonly UIColor Input = Dynamic(Black.ColorWithAlpha(0.05f), Ash99.ColorWithAlpha(0.05f));
     public static readonly UIColor Square = Dynamic(Gray95, Ash26);
+    public static readonly UIColor SquareTitle = Dynamic(Gray40, Ash90);
     // Read per resolve rather than captured: the dynamic providers below outlive a share, and
     // the extension's process outlives many of them. Null means "follow the system appearance".
     private static Theme? Theme => MauiPreferences.Theme;

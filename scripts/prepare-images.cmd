@@ -13,15 +13,23 @@
     )
 
     set inDir=src\nodejs\images
+    set iconDir=src\nodejs\icons
     set outDir=resources\images\converted
     if not exist "%outDir%" mkdir "%outDir%"
 
     for %%N in (error-cat-dark error-cat-light share-cat-dark share-cat-light) do (
-        echo Converting %%N.svg
-        rsvg-convert -o %outDir%\%%N.png %inDir%\%%N.svg || exit /b 1
-        rsvg-convert -z 2 -o %outDir%\%%N@2x.png %inDir%\%%N.svg || exit /b 1
-        rsvg-convert -z 3 -o %outDir%\%%N@3x.png %inDir%\%%N.svg || exit /b 1
+        call :rasterize %inDir%\%%N.svg %%N || exit /b 1
     )
+    for %%N in (message-ellipse) do (
+        call :rasterize %iconDir%\%%N.svg %%N || exit /b 1
+    )
+    exit /b 0
+
+    :rasterize
+    echo Converting %1
+    rsvg-convert -o %outDir%\%2.png %1 || exit /b 1
+    rsvg-convert -z 2 -o %outDir%\%2@2x.png %1 || exit /b 1
+    rsvg-convert -z 3 -o %outDir%\%2@3x.png %1 || exit /b 1
     exit /b 0
 BATCH
 
@@ -43,15 +51,25 @@ fi
 # web, which is served every other file under $inDir as-is. A new name also needs an .imageset
 # - Contents.json plus an ImageAsset link - in every project that renders it.
 # @2x/@3x come from the SVG's own size, so each image keeps its dimensions.
+# $iconDir holds the icon font's glyphs; those image sets are template images.
 names="error-cat-dark error-cat-light share-cat-dark share-cat-light"
+iconNames="message-ellipse"
 
 inDir="src/nodejs/images"
+iconDir="src/nodejs/icons"
 outDir="resources/images/converted"
 mkdir -p "$outDir"
 
+rasterize() {
+    echo "Converting $1"
+    rsvg-convert      -o "$outDir/$2.png"    "$1"
+    rsvg-convert -z 2 -o "$outDir/$2@2x.png" "$1"
+    rsvg-convert -z 3 -o "$outDir/$2@3x.png" "$1"
+}
+
 for name in $names; do
-    echo "Converting ${name}.svg"
-    rsvg-convert      -o "$outDir/${name}.png"    "$inDir/${name}.svg"
-    rsvg-convert -z 2 -o "$outDir/${name}@2x.png" "$inDir/${name}.svg"
-    rsvg-convert -z 3 -o "$outDir/${name}@3x.png" "$inDir/${name}.svg"
+    rasterize "$inDir/${name}.svg" "$name"
+done
+for name in $iconNames; do
+    rasterize "$iconDir/${name}.svg" "$name"
 done
