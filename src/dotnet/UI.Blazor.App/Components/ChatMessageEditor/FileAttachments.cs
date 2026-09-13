@@ -7,6 +7,8 @@ namespace ActualChat.UI.Blazor.App.Components;
 public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase<AppUIHub>(hub)
 {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.WebFileProviders.createFromFileId";
+    private static readonly HashSet<string> PreviewConversionContentTypes =
+        new (StringComparer.OrdinalIgnoreCase) { "image/heif", "image/heic", "image/avif" };
 
     private readonly ConcurrentDictionary<AttachmentId, PendingWork> _pendingWork = new();
 
@@ -58,7 +60,7 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
             if (await createTask is not { } attachment)
                 continue;
 
-            AddAttachment(list, attachment);
+            await AddAttachment(list, attachment);
             if (!hasAdded)
                 _ = TuneUI.Play(Tune.ChangeAttachments);
             hasAdded = true;
@@ -146,7 +148,7 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
         if (await TryCreateAttachment(webFileProvider) is not { } attachment)
             return false;
 
-        AddAttachment(list, attachment);
+        await AddAttachment(list, attachment);
         return true;
     }
 
@@ -222,13 +224,15 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
         return attachment;
     }
 
-    private void AddAttachment(AttachmentList list, Attachment attachment)
+    private async Task AddAttachment(AttachmentList list, Attachment attachment)
     {
         // Nothing is encoded or uploaded here unless the draft is already committed
         if (attachment.IsProcessableImage) {
             var fileProvider = attachment.FileProvider!;
             attachment.Cleanups.RemoveByKind(AttachmentCleanupKind.File);
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForSourceFile(fileProvider));
+            if (attachment is SourceAttachment sourceAttachment && NeedsPreviewConversion(attachment.FileType))
+                attachment = await ConvertPreview(sourceAttachment, fileProvider);
             attachment = attachment with {
                 Source = new AttachmentSource(
                     fileProvider, attachment.FileName, attachment.FileType, attachment.Length, attachment.Size),
@@ -240,6 +244,29 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
         if (list.IsCommitted)
             StartWorkIfNeeded(list, attachment);
     }
+
+    private async Task<SourceAttachment> ConvertPreview(SourceAttachment attachment, IFileProvider fileProvider)
+    {
+        // A Chromium WebView can't paint HEIC/AVIF, so this is the one exception to "nothing before commit":
+        // the source preview would otherwise stay a permanently stuck "loading" tile
+        try {
+            var result = await ImageAttachmentProcessor
+                .Process(fileProvider, attachment.Size, ImageQualityPreset.Mpx3, Hub.StopToken);
+            if (result?.FileProvider is not { } previewProvider)
+                return attachment;
+
+            var preview = await FilePreviews.Get(previewProvider, "image/jpeg", Hub.StopToken);
+            attachment.Cleanups.Add(AttachmentCleanupFactory.ForPreviewFile(previewProvider));
+            return attachment with { Preview = preview, Size = preview?.Dimensions ?? attachment.Size };
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to convert HEIC/AVIF preview for attachment '{AttachmentId}'", attachment.Id);
+            return attachment;
+        }
+    }
+
+    private static bool NeedsPreviewConversion(string fileType)
+        => PreviewConversionContentTypes.Contains(fileType);
 
     private void StartWorkIfNeeded(AttachmentList list, Attachment attachment)
     {

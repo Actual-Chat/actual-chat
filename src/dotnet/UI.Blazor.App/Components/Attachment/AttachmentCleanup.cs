@@ -2,7 +2,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public enum AttachmentCleanupKind { File, UploadSession, PersistedPostMessageRequest, SourceFile }
+public enum AttachmentCleanupKind { File, UploadSession, PersistedPostMessageRequest, SourceFile, PreviewFile }
 
 public sealed record AttachmentCleanup(AttachmentCleanupKind Kind, Func<Task> Cleanup);
 
@@ -41,6 +41,11 @@ public static class AttachmentCleanupFactory
     public static AttachmentCleanup ForSourceFile(IFileProvider fileProvider)
         // Unlike ForFile, InitUploadSession doesn't replace it: the source outlives the processed file's session
         => new (AttachmentCleanupKind.SourceFile, fileProvider.ClearForRemoving);
+
+    public static AttachmentCleanup ForPreviewFile(IFileProvider fileProvider)
+        // Its own kind for the same reason as SourceFile: InitUploadSession's RemoveByKind(File) must not
+        // drop it, since it's unrelated to whatever file the committed pipeline ends up uploading
+        => new (AttachmentCleanupKind.PreviewFile, fileProvider.ClearForRemoving);
 
     public static AttachmentCleanup ForUploadSession(UploadSessions uploadSessions, string uploadSessionId)
         => new (AttachmentCleanupKind.UploadSession,

@@ -66,6 +66,12 @@ export function getImageMimeType(format: ImageFormat): string {
     return MIME_TYPES[format];
 }
 
+/** Formats a Chromium WebView cannot paint, so their preview must come from a converted copy.
+ *  WebKit decodes both, but converting there too keeps one code path. */
+export function needsPreviewConversion(format: ImageFormat): boolean {
+    return format === 'heif' || format === 'avif';
+}
+
 // Private methods
 
 function readJpegDimensions(bytes: Uint8Array): ImageSize | null {

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
     getImageMimeType,
     isAnimatedImage,
+    needsPreviewConversion,
     readImageDimensions,
     sniffImageFormat,
 } from 'image-processing/image-format';
@@ -102,5 +103,15 @@ describe('getImageMimeType', () => {
         expect(getImageMimeType('jpeg')).toBe('image/jpeg');
         expect(getImageMimeType('heif')).toBe('image/heif');
         expect(getImageMimeType('unknown')).toBe('application/octet-stream');
+    });
+});
+
+describe('needsPreviewConversion', () => {
+    it.each(['heif', 'avif'] as const)('should convert %s', (format) => {
+        expect(needsPreviewConversion(format)).toBe(true);
+    });
+
+    it.each(['jpeg', 'png', 'webp', 'gif', 'bmp'] as const)('should leave %s alone', (format) => {
+        expect(needsPreviewConversion(format)).toBe(false);
     });
 });
