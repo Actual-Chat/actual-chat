@@ -84,16 +84,32 @@ public class AttachmentImageUploadProcessorTest : IDisposable
     }
 
     [Fact]
-    public async Task ShouldRejectImageExceedingPixelBudget()
+    public async Task ShouldStoreAnOversizedImageAsABinaryFile()
+    {
+        // arrange: an image whose header claims more pixels than the server stores
+        var data = TestImages.CreateJpeg(13000, 9000);
+        var upload = TestImages.CreateUploadedFile("huge.jpg", "image/jpeg", data);
+
+        // act
+        var result = await Process(upload);
+
+        // assert: no exception, and the result is the untouched bytes without image metadata
+        result.Size.Should().BeNull();
+        result.File.Length.Should().Be(data.Length);
+    }
+
+    [Fact]
+    public async Task ShouldStoreImageExceedingPixelBudgetAsBinaryFile()
     {
         // arrange
         var upload = TestImages.CreateUploadedFile("huge.png", "image/png", TestImages.CreatePngHeader(65535, 65535));
 
         // act
-        var process = () => _processor.Process(upload, null, CancellationToken.None);
+        var result = await Process(upload);
 
         // assert
-        await process.Should().ThrowAsync<InvalidOperationException>().WithMessage("*too big*");
+        result.Size.Should().BeNull();
+        result.File.ContentType.Should().Be("application/octet-stream");
     }
 
     [Fact]

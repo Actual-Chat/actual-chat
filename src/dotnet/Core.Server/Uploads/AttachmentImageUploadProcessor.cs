@@ -28,8 +28,17 @@ public sealed class AttachmentImageUploadProcessor(IServiceProvider services) : 
         if (imageInfo is null)
             return new ProcessedFile(upload.AsBinaryFile(), null);
 
-        // Nothing is decoded here, so the bound is the client's 8K limit rather than the decode limit
-        imageInfo.RequireWithinLimits(Constants.Attachments.MaxImagePixelCount);
+        // Nothing is decoded here, so the bound is the stored-image limit rather than the decode limit
+        var isWithinBounds = imageInfo.Width <= Constants.Attachments.MaxImageSize
+            && imageInfo.Height <= Constants.Attachments.MaxImageSize
+            && (long)imageInfo.Width * imageInfo.Height <= Constants.Attachments.MaxImagePixelCount;
+        if (!isWithinBounds) {
+            // Storing it as a file keeps the bytes the sender chose; rejecting after Send would not
+            Log.LogInformation("Image {Width}x{Height} exceeds the stored-image bounds, keeping it as a file",
+                imageInfo.Width, imageInfo.Height);
+            return new ProcessedFile(upload.AsBinaryFile(), null);
+        }
+
         var size = GetDisplaySize(imageInfo);
         if (upload.KeepMetadata)
             return new ProcessedFile(upload, size);
