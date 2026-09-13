@@ -10,7 +10,7 @@ public sealed class AttachmentList : IAttachmentList
     public int Count => _attachments.Count;
     public IEnumerable<Attachment> Items => _attachments;
     public ImageQualityPreset ImageQuality { get; private set; }
-    public bool HasProcessableImages => _attachments.Any(a => a.Source is not null);
+    public bool HasReEncodableImages => _attachments.Any(a => a.IsReEncodable);
     // Set once the user shows commitment - by typing, picking a preset, or sending; until then
     // an attachment costs nothing, so nothing about it is encoded or uploaded
     public bool IsCommitted { get; private set; }

@@ -86,7 +86,7 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
             return Task.CompletedTask;
         }
 
-        foreach (var attachment in list.Items.Where(a => a.Source is not null).ToList())
+        foreach (var attachment in list.Items.Where(a => a.IsReEncodable).ToList())
             _ = Reprocess(list, attachment.Id, preset)
                 .WithErrorLog(Log, "Failed to reprocess attachment '{AttachmentId}'", attachment.Id)
                 .SilentAwait();

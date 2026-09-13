@@ -6,7 +6,7 @@
 
 <OnUIEvent TEvent="ImageQualityPresetSelectedEvent" Handler="@OnPresetSelectedEvent"/>
 
-@if (Attachments.HasProcessableImages) {
+@if (Attachments.HasReEncodableImages) {
     <div class="mqs-wrapper">
         <button class="mqs-chip"
                 data-menu="@(MenuRef.New<ImageQualityMenu>(_selectorId).ToString())"
@@ -51,8 +51,8 @@
 
     private void RegisterMenuModel() {
         var items = Attachments.Items.ToList();
-        var images = items.Where(a => a.Source is not null).ToList();
-        var otherFilesLength = items.Where(a => a.Source is null).Sum(a => a.Length);
+        var images = items.Where(a => a.IsReEncodable).ToList();
+        var otherFilesLength = items.Where(a => !a.IsReEncodable).Sum(a => a.Length);
         var options = Presets
             .Select(p => new ImageQualityMenu.OptionModel(
                 p, GetLabel(p), GetSpec(p), FormatLength(GetTotalLength(images, p, otherFilesLength))))

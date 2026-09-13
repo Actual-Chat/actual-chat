@@ -27,4 +27,34 @@ public sealed class AttachmentListTest
         // assert
         list.IsCommitted.Should().BeTrue();
     }
+
+    [Fact]
+    public void HasReEncodableImagesShouldBeFalseForAGifOnlyDraft()
+    {
+        // arrange
+        var list = new AttachmentList();
+        var gif = new Attachment("clip.gif", "image/gif", 1000, new Size2D(10, 10));
+
+        // act
+        list.Add(gif);
+
+        // assert
+        list.HasReEncodableImages.Should().BeFalse();
+    }
+
+    [Fact]
+    public void HasReEncodableImagesShouldBeTrueWhenAJpegIsMixedInWithAGif()
+    {
+        // arrange
+        var list = new AttachmentList();
+        var gif = new Attachment("clip.gif", "image/gif", 1000, new Size2D(10, 10));
+        var jpeg = new Attachment("photo.jpg", "image/jpeg", 2000, new Size2D(20, 20));
+
+        // act
+        list.Add(gif);
+        list.Add(jpeg);
+
+        // assert
+        list.HasReEncodableImages.Should().BeTrue();
+    }
 }

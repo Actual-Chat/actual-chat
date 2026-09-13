@@ -22,8 +22,11 @@ public record Attachment(string FileName, string FileType, long Length, Size2D S
 
     public bool IsSupportedImage => MediaTypeExt.IsSupportedImage(FileType);
     public bool IsSupportedVideo => MediaTypeExt.IsSupportedVideo(FileType);
-    public bool IsProcessableImage
-        => IsSupportedImage && !MediaTypeExt.IsGif(FileType) && !MediaTypeExt.IsSvg(FileType);
+    // Reaches the image processor for a placeholder even though GIF can't be re-encoded (below);
+    // SVG stays out - it's vector, so the worker has nothing useful to decode
+    public bool IsProcessableImage => IsSupportedImage && !MediaTypeExt.IsSvg(FileType);
+    // Animated formats lose their animation if re-encoded, so no preset applies to them
+    public bool IsReEncodable => IsProcessableImage && !MediaTypeExt.IsGif(FileType);
 
     public string DemandUploadSessionId()
         => !UploadSessionId.IsNullOrEmpty()
