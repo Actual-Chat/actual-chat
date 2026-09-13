@@ -18,6 +18,8 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
     private const string CreateChallengeKeyPrefix = ".PasskeyChallenge:create:";
     private const string GetChallengeKeyPrefix = ".PasskeyChallenge:get:";
     private const string VerificationFailedMessage = "This passkey couldn't be verified. Please try again.";
+    private const string NameLengthMessage = "Passkey name must be 1 to 64 characters long.";
+    private const int MaxNameLength = 64;
     private const int UserHandleLength = 32;
 
     private UsersSettings Settings { get; }
@@ -94,8 +96,7 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
             AttestationPreference = AttestationConveyancePreference.None,
         });
         var json = options.ToJson();
-        var name = command.Name.IsNullOrWhiteSpace() ? null : command.Name.Trim();
-        var pending = new PendingRegistration(account.Id, json, name);
+        var pending = new PendingRegistration(account.Id, json, NormalizeName(command.Name));
         await StoreChallenge(CreateChallengeKeyPrefix, session, JsonSerializer.Serialize(pending), cancellationToken)
             .ConfigureAwait(false);
         return json;
@@ -215,6 +216,7 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
             Log.LogWarning(e, "Passkey sign-in failed: {Code}", e.Code);
             throw StandardError.Unauthorized(VerificationFailedMessage);
         }
+
         // Fido2NetLib skips the counter check when the assertion carries 0, but WebAuthn §7.2 step 21
         // rejects that once the stored counter is nonzero - and 0 must never overwrite a real counter
         if (stored.SignCount > 0 && verified.SignCount == 0) {
@@ -242,9 +244,8 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
         if (Invalidation.IsActive)
             return;
 
-        var (session, id, name) = (command.Session, command.Id, command.Name.Trim());
-        if (name.IsNullOrEmpty() || name.Length > 64)
-            throw StandardError.Constraint("Passkey name must be 1 to 64 characters long.");
+        var (session, id) = (command.Session, command.Id);
+        var name = NormalizeName(command.Name) ?? throw StandardError.Constraint(NameLengthMessage);
 
         var (account, stored) = await GetOwnPasskey(session, id, cancellationToken).ConfigureAwait(false);
         var changeCommand = new PasskeysBackend_Change(account.Id, id, Change.Update(stored with { Name = name }));
@@ -322,6 +323,17 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
             throw StandardError.Constraint("This passkey request has expired. Please try again.");
 
         return (string)value!;
+    }
+
+    private static string? NormalizeName(string? name)
+    {
+        name = name?.Trim();
+        if (name.IsNullOrEmpty())
+            return null;
+        if (name.Length > MaxNameLength)
+            throw StandardError.Constraint(NameLengthMessage);
+
+        return name;
     }
 
     private static T Deserialize<T>(string json)

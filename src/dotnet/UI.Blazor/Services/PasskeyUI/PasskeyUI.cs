@@ -2,7 +2,9 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class PasskeyUI(UIHub hub) : UIServiceBase<UIHub>(hub), IComputeService
 {
-    private Task<bool>? _whenClientAvailable;
+    private static readonly TimeSpan ProbeRetryDelay = TimeSpan.FromSeconds(5);
+
+    private Task<bool?>? _whenClientAvailable;
 
     private IPasskeyAuth PasskeyAuth => field ??= Services.GetRequiredService<IPasskeyAuth>();
     private IPasskeyClient Client => field ??= Services.GetRequiredService<IPasskeyClient>();
@@ -13,7 +15,13 @@ public class PasskeyUI(UIHub hub) : UIServiceBase<UIHub>(hub), IComputeService
         if (!await PasskeyAuth.IsEnabled(cancellationToken).ConfigureAwait(false))
             return false;
 
-        return await IsClientAvailable(cancellationToken).ConfigureAwait(false);
+        var isAvailable = await IsClientAvailable(cancellationToken).ConfigureAwait(false);
+        if (isAvailable is null) {
+            Computed.GetCurrent().Invalidate(ProbeRetryDelay);
+            return false;
+        }
+
+        return isAvailable.Value;
     }
 
     [ComputeMethod]
@@ -87,30 +95,26 @@ public class PasskeyUI(UIHub hub) : UIServiceBase<UIHub>(hub), IComputeService
 
     // Private methods
 
-    private Task<bool> IsClientAvailable(CancellationToken cancellationToken)
+    // Null means the probe threw (e.g. the circuit isn't interactive yet), so the answer isn't cached and
+    // CanUse invalidates itself after ProbeRetryDelay; a real answer is a property of the device and sticks.
+    private Task<bool?> IsClientAvailable(CancellationToken cancellationToken)
     {
-        // The JS interop this needs isn't available yet during prerendering, so don't probe -
-        // and don't cache the guess, since the real answer still has to be probed once we're live.
         if (IsPrerendering)
-            return Task.FromResult(false);
+            return Task.FromResult<bool?>(null);
 
-        // Cached per scope once the probe completes without throwing: the answer is a property
-        // of the device, not of the moment. A probe that throws (e.g. run before the circuit is
-        // interactive) is not cached, so the next CanUse() call retries it instead of sticking.
         var whenAvailable = _whenClientAvailable;
-        if (whenAvailable is { IsCompletedSuccessfully: true })
+        if (whenAvailable is { IsCompletedSuccessfully: true, Result: not null })
             return whenAvailable;
 
         return _whenClientAvailable = Probe();
 
-        async Task<bool> Probe() {
+        async Task<bool?> Probe() {
             try {
                 return await Client.IsAvailable(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                 Log.LogWarning(e, "IsClientAvailable: probe failed");
-                _whenClientAvailable = null;
-                return false;
+                return null;
             }
         }
     }

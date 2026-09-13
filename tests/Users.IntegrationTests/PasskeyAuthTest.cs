@@ -76,6 +76,22 @@ public class PasskeyAuthTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
+    public async Task BeginRegistrationShouldRefuseOverlongName()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        await tester.SignInAsUniqueAlice();
+        var name = new string('x', 65);
+
+        // act
+        var act = () => Commander.Call(new PasskeyAuth_BeginRegistration { Session = tester.Session, Name = name });
+
+        // assert
+        await act.Should().ThrowAsync<InvalidOperationException>("the name is bounded at Begin, not only at Rename")
+            .WithMessage("*1 to 64 characters*");
+    }
+
+    [Fact]
     public async Task ChallengeShouldBeSingleUse()
     {
         // arrange
@@ -242,6 +258,29 @@ public class PasskeyAuthTest(AppHostFixture fixture, ITestOutputHelper @out)
         // assert
         var listed = await PasskeyAuth.ListOwn(tester.Session, default);
         listed.Single().Name.Should().Be("Work laptop");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("x", 65)]
+    public async Task RenameShouldRefuseEmptyAndOverlongNames(string namePart, int repeatCount = 1)
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        await tester.SignInAsUniqueAlice();
+        using var authenticator = new SoftwareAuthenticator(RpId, Origin);
+        var passkey = await Register(tester.Session, authenticator);
+        var name = string.Concat(Enumerable.Repeat(namePart, repeatCount));
+
+        // act
+        var act = () => Commander.Call(
+            new PasskeyAuth_Rename { Session = tester.Session, Id = passkey.Id, Name = name });
+
+        // assert
+        await act.Should().ThrowAsync<InvalidOperationException>("a passkey name is 1 to 64 characters after trimming")
+            .WithMessage("*1 to 64 characters*");
+        (await PasskeyAuth.ListOwn(tester.Session, default)).Single().Name.Should().Be(passkey.Name);
     }
 
     [Fact]

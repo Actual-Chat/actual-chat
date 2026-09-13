@@ -24,11 +24,12 @@
             TitleBadge = m.NeedsPasskey ? @<WarningBadge IsMuted="true"/> : null,
             Content = @<YourAccount OpenPasskeys="@(() => _panel.SelectTab(SettingsTabId.Passkeys))"/>,
         });
-        tabs.Add(new(SettingsTabId.Passkeys, L.Settings_Passkeys) {
-            IconClass = "icon-key",
-            TitleBadge = m.NeedsPasskey ? @<WarningBadge IsMuted="true"/> : null,
-            Content = @<PasskeySettings/>,
-        });
+        if (m.ShowPasskeys)
+            tabs.Add(new(SettingsTabId.Passkeys, L.Settings_Passkeys) {
+                IconClass = "icon-key",
+                TitleBadge = m.NeedsPasskey ? @<WarningBadge IsMuted="true"/> : null,
+                Content = @<PasskeySettings/>,
+            });
     }
     tabs.Add(new(SettingsTabId.UserInterface, L.Settings_UserInterface) {
         IconClass = "icon-interface",
@@ -154,13 +155,14 @@
             && await Hub.LogUI.IsEnabled.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var permissions = await PermissionsUI.GetState(cancellationToken).ConfigureAwait(false);
-        var needsPasskey = await Hub.PasskeyUI.CanUse(cancellationToken).ConfigureAwait(false)
-            && (await Hub.PasskeyUI.ListOwn(cancellationToken).ConfigureAwait(false)).Count == 0;
+        var canUsePasskey = await Hub.PasskeyUI.CanUse(cancellationToken).ConfigureAwait(false);
+        var passkeyCount = (await Hub.PasskeyUI.ListOwn(cancellationToken).ConfigureAwait(false)).Count;
         return new ComputedModel(account, tabId) {
             ShowLogViewer = showLogViewer,
             EnableIncompleteUI = enableIncompleteUI,
             Permissions = permissions,
-            NeedsPasskey = needsPasskey,
+            ShowPasskeys = canUsePasskey || passkeyCount > 0,
+            NeedsPasskey = canUsePasskey && passkeyCount == 0,
         };
     }
 
@@ -192,6 +194,7 @@
         public bool ShowLogViewer { get; init; }
         public bool EnableIncompleteUI { get; init; }
         public PermissionsState Permissions { get; init; } = PermissionsState.Unknown;
+        public bool ShowPasskeys { get; init; }
         public bool NeedsPasskey { get; init; }
     }
 
