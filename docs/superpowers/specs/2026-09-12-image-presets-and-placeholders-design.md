@@ -50,10 +50,18 @@ The budgets are chosen so the common case does not resize at all:
 - **The 12mpx preset passes a phone's main sensor through untouched** — 4032×3024 on
   iPhone, 4000×3000 on Samsung. A 3840-based cap would have resized both by ~1% for no
   reason, which is why the nominal is 4096.
-- **The 50mpx preset** covers 48 and 50 MP sensors without resizing, and keeps the largest
-  encode the client ever attempts inside the range jpegli is known to handle. A higher
-  top preset was considered and dropped: at ~96 MP the encode needs ~384 MB of RGBA,
-  past anything measured and well past what a phone WebView reliably gives us.
+- **The 50mpx preset** covers 48 and 50 MP sensors without resizing, and stays far
+  inside what the encoder can do: jpegli was measured encoding up to 240 MP before
+  failing, so 50 MP has roughly 5× margin.
+
+  Memory, not the encoder, is the limit on a phone. jpegli needs ~8.8 bytes of wasm
+  heap per input pixel — ~440 MB at 50 MP — on top of the decoded bitmap and the canvas
+  copy, all inside one process budget. Desktop has room; a phone may not, and it does
+  not fail politely: iOS kills the app and Android kills the WebView renderer, taking
+  the draft with it. So the client checks the target pixel count **before** decoding and
+  declines the preset on a device that cannot afford it, leaving the user to pick a
+  smaller one. Huge photos are a desktop activity; the product's answer on a phone is a
+  smaller preset, not a lost draft.
 - **The 3mpx preset** yields 1920×1440 for a 4:3 photo.
 
 `Original (with EXIF)` is the only preset that passes bytes through untouched, and the
@@ -203,6 +211,24 @@ component, behind the existing proxy thumbnail and the full image. Because it tr
 inside the media row, the message list, the media gallery and the full-screen viewer
 all get it from one change. The existing grey pulse remains the fallback when a media
 row has no placeholder.
+
+## A poisoned encoder is never rebuilt
+
+Measuring the encoder's ceiling turned up a defect in the shipped pipeline. jpegli has
+two distinct failure modes: past ~245 MP it throws a `WebAssembly.RuntimeError` from
+inside the wasm call and **the instance is poisoned** — every later encode on it traps
+too, reproducibly — while past ~255 MP it merely returns null and the instance stays
+perfectly healthy. A fresh instance recovers completely in the first case.
+
+`getEncoder()` in `image-processor-worker.ts` caches the encoder indefinitely and never
+invalidates it. So a single trap would silently downgrade every subsequent image to the
+canvas encoder for the life of the page — worse output, no error, nothing a user or a
+log would show. The encoder is discarded and rebuilt on `WebAssembly.RuntimeError`
+specifically, and kept on a plain `Error`, which is the failure that leaves it usable.
+
+The new pixel budgets keep the client far from that band, so this is belt and braces —
+but it is cheap, and the current behaviour fails invisibly, which is the worst way to
+fail.
 
 ## Orphan media rows
 
