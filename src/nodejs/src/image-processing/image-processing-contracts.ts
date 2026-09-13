@@ -1,16 +1,17 @@
 import type { RpcTimeout } from 'rpc';
 
 export type ImageFormat = 'jpeg' | 'png' | 'webp' | 'gif' | 'bmp' | 'heif' | 'avif' | 'svg' | 'unknown';
-export type ImageOutputKind = 'main' | 'estimate';
-export type ImageOutputCodec = 'auto' | 'passthrough';
+export type ImageOutputKind = 'main' | 'placeholder';
+export type ImageOutputCodec = 'auto' | 'passthrough' | 'placeholder';
 
 export interface ImageOutputSpec {
     kind: ImageOutputKind;
-    maxSize: number | null;
+    maxPixels: number | null;
+    maxLongSide: number | null;
     codec: ImageOutputCodec;
     stripMetadata: boolean;
-    /** A passthrough output of an image whose long side exceeds this is re-encoded within maxSize instead. */
-    maxPassthroughSize: number | null;
+    /** A passthrough output above this pixel count is re-encoded within the budget instead. */
+    maxPassthroughPixels: number | null;
 }
 
 export interface ImageProcessRequest {
@@ -26,6 +27,8 @@ export interface ImageOutput {
     height: number;
     /** True when blob is the source itself, i.e. nothing had to change. */
     isSource: boolean;
+    /** Set only on the placeholder output: the packed container bytes, base64'd. */
+    placeholder?: string;
 }
 
 export interface ImageProcessResult {

@@ -18,7 +18,6 @@ public record Attachment(string FileName, string FileType, long Length, Size2D S
     public AttachmentSource? Source { get; init; }
     public bool IsProcessing { get; init; }
     public ImageQualityPreset SelectedQuality { get; init; }
-    public ImageSizeEstimate? SizeEstimate { get; init; }
 
     public bool IsSupportedImage => MediaTypeExt.IsSupportedImage(FileType);
     public bool IsSupportedVideo => MediaTypeExt.IsSupportedVideo(FileType);

@@ -1,50 +1,51 @@
-using System.Text.Json;
 using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
-public sealed class ImageQualityPresetTest
+public class ImageQualityPresetTest
 {
     [Fact]
-    public void ReencodingPresetsShouldRequestMainAndEstimateOutputs()
-    {
-        // act
-        var uhd4K = ImageQualityPreset.Uhd4K.ToRequest()!;
-        var fullHd = ImageQualityPreset.FullHd.ToRequest()!;
+    public void DefaultPresetShouldBe12Mpx()
+        => default(ImageQualityPreset).Should().Be(ImageQualityPreset.Mpx12);
 
-        // assert
-        uhd4K.Outputs.Should().Equal(ImageOutputSpec.Main(3840), ImageOutputSpec.Estimate(1920));
-        fullHd.Outputs.Should().Equal(ImageOutputSpec.Main(1920), ImageOutputSpec.Estimate(3840));
+    [Theory]
+    [InlineData(ImageQualityPreset.Mpx50, 50_331_648, 12288)]
+    [InlineData(ImageQualityPreset.Mpx12, 12_582_912, 6144)]
+    [InlineData(ImageQualityPreset.Mpx3, 2_764_800, 2880)]
+    public void ReEncodingPresetsShouldCarryTheirBudget(ImageQualityPreset preset, int maxPixels, int maxLongSide)
+    {
+        var budget = preset.GetBudget();
+        budget.MaxPixels.Should().Be(maxPixels);
+        budget.MaxLongSide.Should().Be(maxLongSide);
+    }
+
+    [Theory]
+    [InlineData(ImageQualityPreset.Original)]
+    [InlineData(ImageQualityPreset.OriginalWithExif)]
+    public void OriginalPresetsShouldHaveNoBudget(ImageQualityPreset preset)
+    {
+        var budget = preset.GetBudget();
+        budget.MaxPixels.Should().BeNull();
+        budget.MaxLongSide.Should().BeNull();
     }
 
     [Fact]
-    public void OriginalPresetsShouldPassFilesThroughUnlessAbove8K()
-    {
-        // act
-        var original = ImageQualityPreset.Original.ToRequest().Outputs.Single();
-        var originalWithExif = ImageQualityPreset.OriginalWithExif.ToRequest().Outputs.Single();
+    public void OriginalWithExifShouldKeepMetadata()
+        => ImageQualityPreset.OriginalWithExif.ToRequest().Outputs[0].StripMetadata.Should().BeFalse();
 
-        // assert
-        original.Should().Be(new ImageOutputSpec("main", 7680, "passthrough", true, 7680));
-        originalWithExif.Should().Be(new ImageOutputSpec("main", 7680, "passthrough", false, 7680));
-        ImageQualityPreset.Original.GetMaxSize().Should().BeNull();
-        ImageQualityPreset.Uhd4K.GetMaxSize().Should().Be(3840);
+    [Fact]
+    public void OriginalShouldStripMetadataWithoutReEncoding()
+    {
+        var spec = ImageQualityPreset.Original.ToRequest().Outputs[0];
+        spec.StripMetadata.Should().BeTrue();
+        spec.Codec.Should().Be("passthrough");
     }
 
     [Fact]
-    public void RequestShouldSerializeToTheShapeTheWorkerReads()
+    public void ReEncodingPresetShouldRequestMainAndPlaceholder()
     {
-        // act
-        var json = JsonSerializer.Serialize(
-            ImageQualityPreset.FullHd.ToRequest(),
-            new JsonSerializerOptions(JsonSerializerDefaults.Web));
-
-        // assert
-        json.Should().Be(
-            """{"outputs":[{"kind":"main","maxSize":1920,"codec":"auto","stripMetadata":true,"maxPassthroughSize":null},{"kind":"estimate","maxSize":3840,"codec":"auto","stripMetadata":true,"maxPassthroughSize":null}]}""");
+        var outputs = ImageQualityPreset.Mpx12.ToRequest().Outputs;
+        outputs.Select(o => o.Kind).Should().Contain("main");
+        outputs.Select(o => o.Kind).Should().Contain("placeholder");
     }
-
-    [Fact]
-    public void DefaultPresetShouldBeUhd4K()
-        => default(ImageQualityPreset).Should().Be(ImageQualityPreset.Uhd4K);
 }

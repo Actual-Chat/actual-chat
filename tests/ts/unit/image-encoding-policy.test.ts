@@ -10,10 +10,11 @@ const pngChunk = (type: string, data: number[] = []): number[] =>
 const PNG_SIGNATURE = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 const SPEC: ImageOutputSpec = {
     kind: 'main',
-    maxSize: 3840,
+    maxPixels: null,
+    maxLongSide: 3840,
     codec: 'auto',
     stripMetadata: true,
-    maxPassthroughSize: null,
+    maxPassthroughPixels: null,
 };
 const SIZE = { width: 800, height: 600 };
 

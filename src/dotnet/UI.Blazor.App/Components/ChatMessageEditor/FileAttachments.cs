@@ -301,7 +301,6 @@ public class FileAttachments : UIServiceBase<AppUIHub>
                     FileType = source.FileType,
                     Length = source.Length,
                     Size = source.Size,
-                    SizeEstimate = result?.SizeEstimate ?? attachment.SizeEstimate,
                 }
                 : attachment with {
                     FileProvider = result.FileProvider,
@@ -309,7 +308,6 @@ public class FileAttachments : UIServiceBase<AppUIHub>
                     FileType = result.FileProvider.Metadata.FileType,
                     Length = result.FileProvider.Metadata.Length,
                     Size = result.Size,
-                    SizeEstimate = result.SizeEstimate ?? attachment.SizeEstimate,
                 };
             processed = processed with { IsProcessing = false, SelectedQuality = preset };
             try {

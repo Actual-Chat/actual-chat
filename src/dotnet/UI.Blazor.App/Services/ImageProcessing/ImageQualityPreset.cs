@@ -2,27 +2,32 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public enum ImageQualityPreset
 {
-    Uhd4K = 0,
-    FullHd,
+    Mpx12 = 0,
+    Mpx50,
+    Mpx3,
     Original,
     OriginalWithExif,
 }
 
+public readonly record struct ImageQualityBudget(int? MaxPixels, int? MaxLongSide);
+
 public static class ImageQualityPresetExt
 {
-    public static int? GetMaxSize(this ImageQualityPreset preset)
+    public static ImageQualityBudget GetBudget(this ImageQualityPreset preset)
         => preset switch {
-            ImageQualityPreset.Uhd4K => 3840,
-            ImageQualityPreset.FullHd => 1920,
-            _ => null,
+            ImageQualityPreset.Mpx50 => new(50_331_648, 12288),
+            ImageQualityPreset.Mpx12 => new(12_582_912, 6144),
+            ImageQualityPreset.Mpx3 => new(2_764_800, 2880),
+            _ => new(null, null),
         };
 
     public static ImageProcessRequest ToRequest(this ImageQualityPreset preset)
-        // Re-encoding presets also encode the other size from the same decode, so the menu can show it
-        => preset switch {
-            ImageQualityPreset.Uhd4K => new([ImageOutputSpec.Main(3840), ImageOutputSpec.Estimate(1920)]),
-            ImageQualityPreset.FullHd => new([ImageOutputSpec.Main(1920), ImageOutputSpec.Estimate(3840)]),
-            ImageQualityPreset.Original => new([ImageOutputSpec.Original(stripMetadata: true)]),
-            _ => new([ImageOutputSpec.Original(stripMetadata: false)]),
+    {
+        var placeholder = ImageOutputSpec.Placeholder();
+        return preset switch {
+            ImageQualityPreset.Original => new([ImageOutputSpec.Original(stripMetadata: true), placeholder]),
+            ImageQualityPreset.OriginalWithExif => new([ImageOutputSpec.Original(stripMetadata: false), placeholder]),
+            _ => new([ImageOutputSpec.Main(preset.GetBudget()), placeholder]),
         };
+    }
 }

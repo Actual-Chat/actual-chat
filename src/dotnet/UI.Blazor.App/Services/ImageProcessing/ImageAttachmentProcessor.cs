@@ -27,7 +27,7 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
         try {
             return source switch {
                 WebFileProvider webSource
-                    => await ProcessWeb(webSource, request, sourceSize, preset, cancellationToken).ConfigureAwait(false),
+                    => await ProcessWeb(webSource, request, sourceSize, cancellationToken).ConfigureAwait(false),
                 MauiFileProvider mauiSource
                     => await ProcessMaui(mauiSource, request, sourceSize, preset, cancellationToken).ConfigureAwait(false),
                 _ => null,
@@ -47,12 +47,11 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
         WebFileProvider source,
         ImageProcessRequest request,
         Size2D sourceSize,
-        ImageQualityPreset preset,
         CancellationToken cancellationToken)
     {
         var image = await source.ProcessImage(request, cancellationToken).ConfigureAwait(false);
         if (image.IsSource || image.FileProvider is null)
-            return CreateResult(null, image, sourceSize, preset);
+            return CreateResult(null, image, sourceSize);
 
         var provider = new WebFileProvider {
             Metadata = CreateMetadata(source.Metadata, image),
@@ -60,7 +59,7 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
                 image.FileProvider, null, false, Task.FromResult(true)),
         };
         provider.Initialize(Services);
-        return CreateResult(provider, image, sourceSize, preset);
+        return CreateResult(provider, image, sourceSize);
     }
 
     private async Task<ImageProcessingResult> ProcessMaui(
@@ -70,7 +69,7 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
         ImageQualityPreset preset,
         CancellationToken cancellationToken)
     {
-        var url = await source.GetContentUrl(preset.GetMaxSize(), cancellationToken).ConfigureAwait(false);
+        var url = await source.GetContentUrl(preset.GetBudget().MaxLongSide, cancellationToken).ConfigureAwait(false);
         // The worker has no per-job cancellation, so cancellationToken isn't passed to JS: the job
         // completes anyway, and abandoning its stream reference would leak the processed blob for good
         var image = await JS
@@ -78,7 +77,7 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
             .ConfigureAwait(false);
         if (image.IsSource || image.Stream is null) {
             cancellationToken.ThrowIfCancellationRequested();
-            return CreateResult(null, image, sourceSize, preset);
+            return CreateResult(null, image, sourceSize);
         }
 
         await using var __ = image.Stream.ConfigureAwait(false);
@@ -89,7 +88,7 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
         await using var _ = stream.ConfigureAwait(false);
         var metadata = CreateMetadata(source.Metadata, image);
         var provider = await ProcessedImageStore.Save(stream, metadata, cancellationToken).ConfigureAwait(false);
-        return CreateResult(provider, image, sourceSize, preset);
+        return CreateResult(provider, image, sourceSize);
     }
 
     private static FileMetadata CreateMetadata(FileMetadata source, ProcessedImage image)
@@ -109,19 +108,9 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
         };
     }
 
-    private static ImageProcessingResult CreateResult(
-        IFileProvider? provider,
-        ProcessedImage image,
-        Size2D sourceSize,
-        ImageQualityPreset preset)
+    private static ImageProcessingResult CreateResult(IFileProvider? provider, ProcessedImage image, Size2D sourceSize)
     {
         var size = image.Width > 0 && image.Height > 0 ? new Size2D(image.Width, image.Height) : sourceSize;
-        var hasEstimate = image.EstimateSizes.Length > 0;
-        var sizeEstimate = preset switch {
-            ImageQualityPreset.Uhd4K when hasEstimate => new ImageSizeEstimate(image.Size, image.EstimateSizes[0]),
-            ImageQualityPreset.FullHd when hasEstimate => new ImageSizeEstimate(image.EstimateSizes[0], image.Size),
-            _ => null,
-        };
-        return new ImageProcessingResult(provider, size, sizeEstimate);
+        return new ImageProcessingResult(provider, size);
     }
 }

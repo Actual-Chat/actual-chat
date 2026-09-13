@@ -19,10 +19,11 @@
 
 @code {
     private static readonly ImageQualityPreset[] Presets = [
-        ImageQualityPreset.Uhd4K,
-        ImageQualityPreset.FullHd,
-        ImageQualityPreset.Original,
         ImageQualityPreset.OriginalWithExif,
+        ImageQualityPreset.Original,
+        ImageQualityPreset.Mpx50,
+        ImageQualityPreset.Mpx12,
+        ImageQualityPreset.Mpx3,
     ];
 
     private readonly string _selectorId = RandomStringGenerator.Default.Next();
@@ -72,28 +73,27 @@
 
     private string GetLabel(ImageQualityPreset preset)
         => preset switch {
-            ImageQualityPreset.Uhd4K => "4K",
-            ImageQualityPreset.FullHd => "1080p",
+            ImageQualityPreset.OriginalWithExif => L.Editor_QualityOriginalWithExif,
             ImageQualityPreset.Original => L.Editor_QualityOriginal,
-            _ => L.Editor_QualityOriginalWithExif,
+            ImageQualityPreset.Mpx50 => "50 MP",
+            ImageQualityPreset.Mpx12 => "12 MP",
+            _ => "3 MP",
         };
 
     private string GetSpec(ImageQualityPreset preset)
         => preset switch {
-            ImageQualityPreset.Uhd4K => "3840 px",
-            ImageQualityPreset.FullHd => "1920 px",
+            ImageQualityPreset.OriginalWithExif => L.Editor_QualityKeepsMetadata,
             ImageQualityPreset.Original => L.Editor_QualityFullSize,
-            _ => L.Editor_QualityKeepsMetadata,
+            _ => $"{preset.GetBudget().MaxLongSide} px",
         };
 
     private static long GetTotalLength(List<Attachment> images, ImageQualityPreset preset, long otherFilesLength) {
-        // 0 = unknown: a re-encoded size is known only once some preset produced its estimate
+        // 0 = unknown: a re-encoded preset's size isn't known without re-encoding the source
         var total = otherFilesLength;
         foreach (var image in images) {
             long? length = preset switch {
-                ImageQualityPreset.Uhd4K => image.SizeEstimate?.Uhd4KLength,
-                ImageQualityPreset.FullHd => image.SizeEstimate?.FullHdLength,
-                _ => image.Source!.Length,
+                ImageQualityPreset.Original or ImageQualityPreset.OriginalWithExif => image.Source!.Length,
+                _ => null,
             };
             if (length is null)
                 return 0;

@@ -3,7 +3,7 @@ import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { canHaveAlpha, chooseEncoding, tryKeepSource } from './image-encoding-policy';
 import { getImageMimeType, isAnimatedImage, readImageDimensions, sniffImageFormat } from './image-format';
-import { fitWithin } from './image-geometry';
+import { fitWithinBudget } from './image-geometry';
 import { JpegliEncoder } from './jpegli-encoder';
 import { stripImageMetadata } from './metadata-stripper';
 import type {
@@ -49,12 +49,17 @@ async function processImage(source: Blob, request: ImageProcessRequest): Promise
     const format = sniffImageFormat(bytes);
     const isAnimated = isAnimatedImage(bytes, format);
     const dimensions = readImageDimensions(bytes, format);
-    const longSide = dimensions ? Math.max(dimensions.width, dimensions.height) : 0;
+    const width = dimensions?.width ?? 0;
+    const height = dimensions?.height ?? 0;
     const outputs: ImageOutput[] = [];
     let bitmap: ImageBitmap | null = null;
     try {
         for (const spec of request.outputs) {
-            const isOversized = spec.maxPassthroughSize !== null && longSide > spec.maxPassthroughSize;
+            // Not implemented yet: a later task teaches the worker to build this output
+            if (spec.codec === 'placeholder')
+                continue;
+
+            const isOversized = spec.maxPassthroughPixels !== null && width * height > spec.maxPassthroughPixels;
             if (chooseEncoding(format, isAnimated, spec.codec, isOversized) === 'passthrough') {
                 outputs.push(createPassthroughOutput(source, bytes, format, spec));
                 continue;
@@ -92,36 +97,38 @@ async function reencode(
     format: ImageFormat,
     spec: ImageOutputSpec,
 ): Promise<ImageOutput> {
-    const size = fitWithin(bitmap.width, bitmap.height, spec.maxSize);
-    const canvas = new OffscreenCanvas(size.width, size.height);
+    const target = fitWithinBudget(bitmap.width, bitmap.height, spec.maxPixels, spec.maxLongSide);
+    const canvas = new OffscreenCanvas(target.width, target.height);
     const context = canvas.getContext('2d')!;
     context.imageSmoothingQuality = 'high';
-    context.drawImage(bitmap, 0, 0, size.width, size.height);
-    const image = context.getImageData(0, 0, size.width, size.height);
-    const isUnscaled = size.width === bitmap.width && size.height === bitmap.height;
+    context.drawImage(bitmap, 0, 0, target.width, target.height);
+    const image = context.getImageData(0, 0, target.width, target.height);
+    const isUnscaled = target.width === bitmap.width && target.height === bitmap.height;
     if (canHaveAlpha(format) && hasTransparentPixels(image.data)) {
         const png = await canvas.convertToBlob({ type: 'image/png' });
         const kept = isUnscaled && format === 'png'
-            ? tryKeepSource(source, bytes, format, spec, size, png.size)
+            ? tryKeepSource(source, bytes, format, spec, target, png.size)
             : null;
         return kept ?? {
             kind: spec.kind,
             blob: png,
             mimeType: 'image/png',
-            width: size.width,
-            height: size.height,
+            width: target.width,
+            height: target.height,
             isSource: false,
         };
     }
 
     const jpeg = await encodeJpeg(canvas, image);
-    const kept = isUnscaled && format === 'jpeg' ? tryKeepSource(source, bytes, format, spec, size, jpeg.size) : null;
+    const kept = isUnscaled && format === 'jpeg'
+        ? tryKeepSource(source, bytes, format, spec, target, jpeg.size)
+        : null;
     return kept ?? {
         kind: spec.kind,
         blob: jpeg,
         mimeType: 'image/jpeg',
-        width: size.width,
-        height: size.height,
+        width: target.width,
+        height: target.height,
         isSource: false,
     };
 }

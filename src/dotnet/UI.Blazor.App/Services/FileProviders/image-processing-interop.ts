@@ -6,7 +6,6 @@ export interface ProcessedImageInfo {
     width: number;
     height: number;
     size: number;
-    estimateSizes: number[];
     isSource: boolean;
 }
 
@@ -39,7 +38,6 @@ export function getProcessedImageInfo(result: ImageProcessResult): ProcessedImag
         width: main.width,
         height: main.height,
         size: main.blob.size,
-        estimateSizes: result.outputs.filter(o => o.kind === 'estimate').map(o => o.blob.size),
         isSource: main.isSource,
     };
 }
