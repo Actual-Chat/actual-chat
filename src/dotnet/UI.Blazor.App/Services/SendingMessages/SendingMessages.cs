@@ -245,7 +245,9 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                     UploadSessionId = uploadSessionId,
                 };
                 attachment.Cleanups.Add(new AttachmentCleanup(AttachmentCleanupKind.PersistedPostMessageRequest, CleanupRequest));
-                UploadSessions.AddReference(uploadSessionId);
+                // The stored post request references this session from here on, so its reserved
+                // media must survive whichever reference happens to be released last
+                UploadSessions.AddReference(uploadSessionId, isMediaBound: true);
                 attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
                 if (sourceAttachmentId is not null)
                     AttachmentsState.Unregister(sourceAttachmentId.Value);

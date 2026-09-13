@@ -56,13 +56,13 @@ public sealed class UploadSessionsTest : TestBase
     }
 
     [Fact]
-    public async Task CompletedSessionShouldKeepItsMedia()
+    public async Task MediaBoundSessionShouldKeepItsMedia()
     {
         // arrange
         var operations = new FakeUploadOperations(completesUpload: true);
         var sessions = NewUploadSessions(operations);
         var sessionId = await sessions.CreateSession(new TestFileProvider(), MetadataBag.Empty, "");
-        sessions.AddReference(sessionId);
+        sessions.AddReference(sessionId, isMediaBound: true);
         sessions.Resume(sessionId);
         var session = await sessions.TryGetSession(sessionId);
         await WaitUntilCompleted(session!);
@@ -72,7 +72,29 @@ public sealed class UploadSessionsTest : TestBase
         await operations.WhenIdle();
 
         // assert
-        operations.RemovedMediaIds.Should().BeEmpty();
+        operations.RemovedMediaIds.Should().BeEmpty(
+            "media a posted message references is not an orphan, whichever reference is released last");
+    }
+
+    [Fact]
+    public async Task CompletedButUnboundSessionShouldRemoveItsMedia()
+    {
+        // arrange - what a preset change after the upload already finished discards
+        var operations = new FakeUploadOperations(completesUpload: true);
+        var sessions = NewUploadSessions(operations);
+        var sessionId = await sessions.CreateSession(new TestFileProvider(), MetadataBag.Empty, "");
+        sessions.AddReference(sessionId);
+        sessions.Resume(sessionId);
+        var session = await sessions.TryGetSession(sessionId);
+        await WaitUntilCompleted(session!);
+        var mediaId = session!.MediaId!;
+
+        // act
+        sessions.ReleaseReference(sessionId);
+        await operations.WhenIdle();
+
+        // assert
+        operations.RemovedMediaIds.Should().ContainSingle().Which.Should().Be(mediaId);
     }
 
     [Fact]
@@ -134,7 +156,8 @@ public sealed class UploadSessionsTest : TestBase
 
     private async Task<UploadSessionSnapshot> SaveStaleSnapshot(UploadSessionState state, MediaId mediaId)
     {
-        var snapshot = UploadSession.NewUploadSnapshot(new TestFileProvider(), MetadataBag.Empty, Moment.EpochStart, "");
+        var snapshot = UploadSession.NewUploadSnapshot(
+            new TestFileProvider(), MetadataBag.Empty, Moment.EpochStart, "");
         snapshot = snapshot with { CurrentState = state, ReservedMediaId = mediaId };
         await ScopedServices.GetRequiredService<IUploadSessionRepo>().Save(snapshot);
         return snapshot;
@@ -216,7 +239,9 @@ public sealed class UploadSessionsTest : TestBase
 
         public Moment Now() => Moment.EpochStart;
 
-        public Task<MediaId> ReserveMediaId(UploadSessionSnapshot snapshot, CancellationToken cancellationToken = default)
+        public Task<MediaId> ReserveMediaId(
+            UploadSessionSnapshot snapshot,
+            CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref ReserveMediaIdCallCount);
             return Track(() => Task.FromResult(MediaId.New(MediaId.NewScope())));

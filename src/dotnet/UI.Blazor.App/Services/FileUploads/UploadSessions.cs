@@ -28,7 +28,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
     public async Task<string> CreateSession(IFileProvider fileProvider, MetadataBag metadata, string mediaScope)
     {
-        if (fileProvider == null)
+        if (fileProvider is null)
             throw new ArgumentNullException(nameof(fileProvider));
 
         fileProvider.Initialize(Hub.Services);
@@ -74,12 +74,16 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         return await session.WhenMediaReserved.ConfigureAwait(false);
     }
 
-    public void AddReference(string sessionId)
+    public void AddReference(string sessionId, bool isMediaBound = false)
     {
+        // isMediaBound marks the session's reserved media as belonging to a posted message. It's
+        // sticky, not per-release: reference counting means an unrelated release can be the last one
         if (!_sessions.TryGetValue(sessionId, out var sessionRef))
             throw new InvalidOperationException($"Session {sessionId} not found");
 
         Interlocked.Increment(ref sessionRef.ReferenceCount);
+        if (isMediaBound)
+            Volatile.Write(ref sessionRef.IsMediaBound, true);
     }
 
     public void ReleaseReference(string sessionId, bool cancel = true, bool mustKeepFile = false)
@@ -97,7 +101,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         if (!cancel)
             return;
 
-        ReleaseSessionInternal(sessionRef.Session, mustKeepFile);
+        ReleaseSessionInternal(sessionRef.Session, mustKeepFile, Volatile.Read(ref sessionRef.IsMediaBound));
     }
 
     public async Task DeleteStaleSession(string sessionId)
@@ -106,7 +110,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             throw StandardError.Constraint($"Session {sessionId} is active");
 
         if (sessionRef is not null) {
-            ReleaseSessionInternal(sessionRef.Session);
+            ReleaseSessionInternal(sessionRef.Session, isMediaBound: Volatile.Read(ref sessionRef.IsMediaBound));
             return;
         }
 
@@ -127,6 +131,8 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         Log.LogDebug("Deleted stale session '{SessionId}' ('{FileName}')", sessionId, fileProvider.Metadata.FileName);
     }
 
+    // Private methods
+
     private UploadSession NewSession(UploadSessionSnapshot snapshot)
     {
         var session = new UploadSession(snapshot, _uploadOperations, _storage);
@@ -142,7 +148,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             UICommander.ShowError(error);
     }
 
-    private void ReleaseSessionInternal(UploadSession session, bool mustKeepFile = false)
+    private void ReleaseSessionInternal(UploadSession session, bool mustKeepFile = false, bool isMediaBound = false)
     {
         Log.LogDebug("Releasing reference for session '{SessionId}' ('{FileName}')",
             session.SessionId,
@@ -150,17 +156,18 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         var completed = session.Cancel();
         _ = BackgroundTask.Run(async () => {
             await completed.WaitAsync(TimeSpan.FromSeconds(30)).SilentAwait(false);
-            await DeleteSessionInternal(session, mustKeepFile).ConfigureAwait(false);
+            await DeleteSessionInternal(session, mustKeepFile, isMediaBound).ConfigureAwait(false);
         });
     }
 
-    private async Task DeleteSessionInternal(UploadSession session, bool mustKeepFile)
+    private async Task DeleteSessionInternal(UploadSession session, bool mustKeepFile, bool isMediaBound)
     {
         var sessionId = session.SessionId;
         _sessions.TryRemove(sessionId, out _);
         var fileProvider = session.FileProvider;
-        // A completed session's reserved media is bound to a posted message, not an orphan - keep it
-        var reservedMediaId = session.IsCompleted ? null : session.MediaId;
+        // "Completed" isn't the same predicate as "bound to a posted message": a preset change after
+        // the upload finished discards the session too, and that media really is an orphan
+        var reservedMediaId = isMediaBound ? null : session.MediaId;
         await DeleteSessionResources(
             sessionId,
             fileProvider,
@@ -250,9 +257,12 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     }
 
     // Nested types
+
     private sealed class SessionRef(UploadSession session)
     {
         public long ReferenceCount;
+        // Set once the reserved media belongs to a posted message, so no release may remove it
+        public bool IsMediaBound;
         public UploadSession Session { get; } = session;
     }
 }
