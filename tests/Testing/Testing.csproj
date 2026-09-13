@@ -15,6 +15,7 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Seq.Extensions.Logging" />
+    <PackageReference Include="System.Formats.Cbor" />
   </ItemGroup>
 
   <ItemGroup>
