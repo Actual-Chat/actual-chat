@@ -13,8 +13,9 @@ public sealed class ImageSizeEstimatorTest
         var estimate = ImageSizeEstimator.Estimate(3_500_000, Phone12Mp, "image/jpeg", new(2_764_800, 2880));
 
         // assert
-        // The model verifiably puts this input at ~268 KB (below the brief's 300_000 floor)
-        estimate.Should().BeInRange(200_000, 1_500_000);
+        // Verified model output for this exact input is 268_193; ±1% keeps the assertion tied
+        // to a resize-branch value instead of a range the recode/pixels-only branches also hit
+        estimate.Should().BeInRange(265_511, 270_875);
     }
 
     [Fact]
@@ -39,6 +40,17 @@ public sealed class ImageSizeEstimatorTest
     }
 
     [Fact]
+    public void ShouldCorrectAnUnresizedRecodeForAMoreEfficientSourceFormat()
+    {
+        // act
+        var jpeg = ImageSizeEstimator.Estimate(2_000_000, Phone12Mp, "image/jpeg", new(50_331_648, 12288));
+        var heic = ImageSizeEstimator.Estimate(2_000_000, Phone12Mp, "image/heic", new(50_331_648, 12288));
+
+        // assert
+        heic.Should().BeGreaterThan(jpeg);
+    }
+
+    [Fact]
     public void ShouldIgnoreSourceBytesForLosslessSources()
     {
         // act
@@ -50,6 +62,7 @@ public sealed class ImageSizeEstimatorTest
     }
 
     [Theory]
+    [InlineData(40_000, "~0.1 MB")]
     [InlineData(412_000, "~0.4 MB")]
     [InlineData(1_600_000, "~1.5 MB")]
     [InlineData(12_400_000, "~12 MB")]

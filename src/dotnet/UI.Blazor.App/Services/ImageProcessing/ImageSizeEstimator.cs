@@ -24,20 +24,20 @@ public static class ImageSizeEstimator
 
         var bpp = sourceBytes / sourcePixels * multiplier;
         var estimate = targetPixels >= sourcePixels
-            ? RecodeK * sourceBytes * Math.Pow(bpp, RecodeC)
+            ? RecodeK * sourceBytes * multiplier * Math.Pow(bpp, RecodeC)
             : ResizeK * Math.Pow(targetPixels, ResizeA) * Math.Pow(bpp, ResizeC);
-        return (long)Math.Min(estimate, sourceBytes);
+        return (long)Math.Min(estimate, sourceBytes * multiplier);
     }
 
     public static string Format(long bytes)
     {
         var mb = bytes / 1_000_000.0;
         var rounded = mb switch {
-            < 1 => Math.Round(mb, 1),
+            < 1 => Math.Max(0.1, Math.Round(mb, 1)),
             < 10 => Math.Round(mb * 2, MidpointRounding.AwayFromZero) / 2,
             _ => Math.Round(mb),
         };
-        return $"~{rounded:0.#} MB";
+        return $"~{rounded.ToString("0.#", null)} MB";
     }
 
     // Private methods
@@ -47,7 +47,9 @@ public static class ImageSizeEstimator
         multiplier = contentType switch {
             "image/jpeg" or "image/jpg" => 1,
             "image/webp" => 3.52,
-            "image/heic" or "image/heif" or "image/avif" => 5.27,
+            // Unmeasured: no HEIC sample in the study; interim between JPEG's 1.0 and AVIF's measured 5.27
+            "image/heic" or "image/heif" => 3.0,
+            "image/avif" => 5.27,
             _ => 0,
         };
         return multiplier > 0;
