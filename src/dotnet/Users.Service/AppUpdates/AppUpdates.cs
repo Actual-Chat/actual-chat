@@ -60,11 +60,12 @@ public class AppUpdates : IAppUpdates
         if (lastAppUpdateInfo is not null && lastVersion >= ownVersion)
             return lastAppUpdateInfo; // Settled: the store serves everything this server has
 
-        // Play Store publishes before the other stores, so while it's behind we can await for this record's update
+        // Play publishes first, so until it has something newer than this kind, there's nothing to
+        // ask. Not ownVersion: every store trails the deployed server, so that gate never opens.
         if (appKind != AppKind.Android && !Settings.GetStoreId(AppKind.Android).IsNullOrEmpty()) {
             var androidInfo = await GetLatestUpdateInfo(AppKind.Android, cancellationToken)
                 .ConfigureAwait(false);
-            if ((androidInfo?.Version ?? VersionExt.Zero) < ownVersion)
+            if ((androidInfo?.Version ?? VersionExt.Zero) <= lastVersion)
                 // We depend on Play Store's record, so we'll be invalidated when it updates
                 return lastAppUpdateInfo;
         }
