@@ -8,6 +8,7 @@ export interface ProcessedImageInfo {
     size: number;
     isSource: boolean;
     declined: boolean;
+    placeholder: string;
 }
 
 export interface ProcessedStreamImage extends ProcessedImageInfo {
@@ -41,5 +42,6 @@ export function getProcessedImageInfo(result: ImageProcessResult): ProcessedImag
         size: main.blob.size,
         isSource: main.isSource,
         declined: main.declined ?? false,
+        placeholder: result.outputs.find(o => o.kind === 'placeholder')?.placeholder ?? '',
     };
 }

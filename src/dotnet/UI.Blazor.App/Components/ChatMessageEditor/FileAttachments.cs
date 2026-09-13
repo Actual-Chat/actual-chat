@@ -309,7 +309,11 @@ public class FileAttachments : UIServiceBase<AppUIHub>
                     Length = result.FileProvider.Metadata.Length,
                     Size = result.Size,
                 };
-            processed = processed with { IsProcessing = false, SelectedQuality = preset };
+            processed = processed with {
+                IsProcessing = false,
+                SelectedQuality = preset,
+                Placeholder = result?.Placeholder ?? "",
+            };
             try {
                 processed = await StartUpload(processed, list.MediaScope);
             }

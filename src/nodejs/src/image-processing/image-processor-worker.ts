@@ -1,11 +1,13 @@
 import { rpcServer } from 'rpc';
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
+import { base64Encode } from '../actuallab-rpc/base64.js';
 import { canHaveAlpha, chooseEncoding, tryKeepSource } from './image-encoding-policy';
 import { getImageMimeType, isAnimatedImage, readImageDimensions, sniffImageFormat } from './image-format';
 import { fitWithinBudget } from './image-geometry';
 import { JpegliEncoder } from './jpegli-encoder';
 import { stripImageMetadata } from './metadata-stripper';
+import { encodePlaceholder } from './placeholder-encoder';
 import type {
     ImageFormat,
     ImageOutput,
@@ -26,7 +28,7 @@ let jpegliBaseUrl = '';
 let whenEncoderLoaded: Promise<JpegliEncoder | null> | null = null;
 let queueTail: Promise<unknown> = Promise.resolve();
 
-const serverImpl: ImageProcessorWorker = {
+export const serverImpl: ImageProcessorWorker = {
     init: (baseUrl: string): Promise<void> => {
         jpegliBaseUrl = baseUrl;
         return Promise.resolve();
@@ -56,9 +58,10 @@ async function processImage(source: Blob, request: ImageProcessRequest): Promise
     let bitmap: ImageBitmap | null = null;
     try {
         for (const spec of request.outputs) {
-            // Not implemented yet: a later task teaches the worker to build this output
-            if (spec.codec === 'placeholder')
+            if (spec.kind === 'placeholder') {
+                outputs.push(await createPlaceholderOutput(source, bitmap));
                 continue;
+            }
 
             const isOversized = spec.maxPassthroughPixels !== null && width * height > spec.maxPassthroughPixels;
             if (chooseEncoding(format, isAnimated, spec.codec, isOversized) === 'passthrough') {
@@ -85,6 +88,35 @@ async function processImage(source: Blob, request: ImageProcessRequest): Promise
     }
     finally {
         bitmap?.close();
+    }
+}
+
+async function createPlaceholderOutput(source: Blob, bitmap: ImageBitmap | null): Promise<ImageOutput> {
+    const placeholderBitmap = bitmap ?? await tryCreatePlaceholderBitmap(source);
+    try {
+        const packed = placeholderBitmap
+            ? await tryEncodeWithRebuild(getEncoder, encoder => encodePlaceholder(placeholderBitmap, encoder))
+            : null;
+        return {
+            kind: 'placeholder', blob: new Blob(), mimeType: '', width: 0, height: 0, isSource: false,
+            placeholder: packed ? base64Encode(packed) : '',
+        };
+    }
+    finally {
+        if (placeholderBitmap && placeholderBitmap !== bitmap)
+            placeholderBitmap.close();
+    }
+}
+
+async function tryCreatePlaceholderBitmap(source: Blob): Promise<ImageBitmap | null> {
+    // Runs only when the main output left bitmap null (a passthrough format, or a source too
+    // big to decode on this device); never grows past ~64px on the long side, so it's always cheap
+    try {
+        return await createImageBitmap(source, { resizeWidth: 64, resizeQuality: 'high' });
+    }
+    catch (e) {
+        errorLog?.log('tryCreatePlaceholderBitmap: decode failed', e);
+        return null;
     }
 }
 
