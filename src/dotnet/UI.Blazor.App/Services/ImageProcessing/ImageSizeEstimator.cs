@@ -29,6 +29,26 @@ public static class ImageSizeEstimator
         return (long)Math.Min(estimate, sourceBytes * multiplier);
     }
 
+    // Public so the mobile decline predicate can test the same target this estimates from
+    public static Size2D FitWithinBudget(Size2D size, ImageQualityBudget budget)
+    {
+        // Mirrors fitWithinBudget in image-geometry.ts
+        var sourcePixels = (double)size.Width * size.Height;
+        if (sourcePixels <= 0)
+            return size;
+
+        var pixelScale = budget.MaxPixels is { } maxPixels
+            ? Math.Sqrt(maxPixels / sourcePixels)
+            : 1;
+        var sideScale = budget.MaxLongSide is { } maxLongSide
+            ? maxLongSide / (double)Math.Max(size.Width, size.Height)
+            : 1;
+        var scale = Math.Min(1, Math.Min(pixelScale, sideScale));
+        return scale >= 1
+            ? size
+            : new Size2D(Math.Max(1, (int)(size.Width * scale)), Math.Max(1, (int)(size.Height * scale)));
+    }
+
     public static string Format(long bytes)
     {
         var mb = bytes / 1_000_000.0;
@@ -55,23 +75,5 @@ public static class ImageSizeEstimator
             _ => 0,
         };
         return multiplier > 0;
-    }
-
-    private static Size2D FitWithinBudget(Size2D size, ImageQualityBudget budget)
-    {
-        var sourcePixels = (double)size.Width * size.Height;
-        if (sourcePixels <= 0)
-            return size;
-
-        var pixelScale = budget.MaxPixels is { } maxPixels
-            ? Math.Sqrt(maxPixels / sourcePixels)
-            : 1;
-        var sideScale = budget.MaxLongSide is { } maxLongSide
-            ? maxLongSide / (double)Math.Max(size.Width, size.Height)
-            : 1;
-        var scale = Math.Min(1, Math.Min(pixelScale, sideScale));
-        return scale >= 1
-            ? size
-            : new Size2D(Math.Max(1, (int)(size.Width * scale)), Math.Max(1, (int)(size.Height * scale)));
     }
 }

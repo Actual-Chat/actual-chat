@@ -54,9 +54,13 @@
         var images = items.Where(a => a.IsReEncodable).ToList();
         var otherFilesLength = items.Where(a => !a.IsReEncodable).Sum(a => a.Length);
         var isSentAsFile = ImageQualityMenuModel.IsSentAsFile(images);
+        var isMobile = Hub.BrowserInfo.IsMobile;
         var options = Presets
             .Select(p => new ImageQualityMenu.OptionModel(
-                p, GetLabel(p), GetSpec(p, images, isSentAsFile), FormatTotal(images, otherFilesLength, p)))
+                p,
+                GetLabel(p),
+                GetSpec(p, images, isSentAsFile, isMobile),
+                FormatTotal(images, otherFilesLength, p, isMobile)))
             .ToArray();
         var scopeText = otherFilesLength > 0 ? L.Editor_QualityAppliesToPhotos(images.Count, images.Count) : null;
         ImageQualityMenu.MenuModels.Register(
@@ -81,7 +85,7 @@
             _ => L.Editor_QualityUpTo3Mpx,
         };
 
-    private string GetSpec(ImageQualityPreset preset, List<Attachment> images, bool isSentAsFile)
+    private string GetSpec(ImageQualityPreset preset, List<Attachment> images, bool isSentAsFile, bool isMobile)
         // The source (not the current output) decides every branch below, so a HEIC/AVIF preview
         // conversion or a mid-flight reprocess never changes what a row says
         => preset switch {
@@ -89,14 +93,18 @@
                 ? L.Editor_QualityOriginalAsFile
                 : L.Editor_QualityKeepsMetadata,
             ImageQualityPreset.Original => isSentAsFile ? L.Editor_QualityOriginalAsFile : L.Editor_QualityFullSize,
-            // The device already tried this preset and passed the source through unchanged
-            _ => ImageQualityMenuModel.IsDeclinedAt(images, preset)
+            // The device already passed the source through unchanged at this preset, or it will
+            _ => ImageQualityMenuModel.IsDeclinedAt(images, preset, isMobile)
                 ? (isSentAsFile ? L.Editor_QualityOriginalAsFile : L.Editor_QualityFullSize)
                 : "",
         };
 
-    private static string FormatTotal(List<Attachment> images, long otherFilesLength, ImageQualityPreset preset) {
-        var total = ImageQualityMenuModel.GetTotal(images, otherFilesLength, preset);
+    private static string FormatTotal(
+        List<Attachment> images,
+        long otherFilesLength,
+        ImageQualityPreset preset,
+        bool isMobile) {
+        var total = ImageQualityMenuModel.GetTotal(images, otherFilesLength, preset, isMobile);
         if (total is null)
             return "—";
 

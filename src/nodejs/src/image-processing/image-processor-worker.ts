@@ -22,7 +22,6 @@ const { debugLog, errorLog } = getLogs('ImageProcessorWorker');
 const JPEG_DISTANCE = 1.9;
 // WebKit's canvas encoder maps quality much higher than Chromium's; both land near SSIMULACRA2 74
 const FALLBACK_JPEG_QUALITY = DeviceInfo.isWebKit ? 0.5 : 0.75;
-const MAX_ENCODE_PIXELS_MOBILE = 16_000_000;
 
 let jpegliBaseUrl = '';
 let whenEncoderLoaded: Promise<JpegliEncoder | null> | null = null;
@@ -73,14 +72,15 @@ async function processImage(source: Blob, request: ImageProcessRequest): Promise
             // reencode() repeats it from the decoded bitmap for a source whose header has none.
             if (dimensions) {
                 const target = fitWithinBudget(dimensions.width, dimensions.height, spec.maxPixels, spec.maxLongSide);
-                if (!canEncodeOnThisDevice(target.width * target.height)) {
+                if (!canEncodeOnThisDevice(target.width * target.height, request.maxMobileEncodePixels)) {
                     outputs.push({ ...createPassthroughOutput(source, bytes, format, spec), declined: true });
                     continue;
                 }
             }
 
             bitmap ??= await createImageBitmap(source);
-            outputs.push(await reencode(bitmap, source, bytes, format, spec));
+            outputs.push(
+                await reencode(bitmap, source, bytes, format, spec, request.maxMobileEncodePixels));
         }
         const elapsedMs = Math.round(performance.now() - startedAt);
         debugLog?.log(`processImage: ${format}, ${outputs.length} output(s) in ${elapsedMs}ms`);
@@ -139,9 +139,10 @@ async function reencode(
     bytes: Uint8Array,
     format: ImageFormat,
     spec: ImageOutputSpec,
+    maxMobileEncodePixels: number,
 ): Promise<ImageOutput> {
     const target = fitWithinBudget(bitmap.width, bitmap.height, spec.maxPixels, spec.maxLongSide);
-    if (!canEncodeOnThisDevice(target.width * target.height))
+    if (!canEncodeOnThisDevice(target.width * target.height, maxMobileEncodePixels))
         return { ...createPassthroughOutput(source, bytes, format, spec), declined: true };
 
     const canvas = new OffscreenCanvas(target.width, target.height);
@@ -179,10 +180,10 @@ async function reencode(
     };
 }
 
-export const canEncodeOnThisDevice = (pixels: number): boolean =>
-    // jpegli needs ~8.8 bytes of wasm heap per pixel, on top of the bitmap and the canvas copy;
-    // a phone that runs out does not throw, the OS kills the app
-    !DeviceInfo.isMobile || pixels <= MAX_ENCODE_PIXELS_MOBILE;
+/** jpegli needs ~8.8 bytes of wasm heap per pixel, on top of the bitmap and the canvas copy;
+ *  a phone that runs out does not throw, the OS kills the app. */
+export const canEncodeOnThisDevice = (pixels: number, maxMobilePixels: number): boolean =>
+    !DeviceInfo.isMobile || pixels <= maxMobilePixels;
 
 async function encodeJpeg(canvas: OffscreenCanvas, image: ImageData): Promise<Blob> {
     const jpeg = await tryEncodeWithRebuild(getEncoder, encoder =>

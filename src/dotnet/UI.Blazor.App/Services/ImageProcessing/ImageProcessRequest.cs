@@ -1,6 +1,8 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed record ImageProcessRequest(ImageOutputSpec[] Outputs);
+public sealed record ImageProcessRequest(
+    ImageOutputSpec[] Outputs,
+    int MaxMobileEncodePixels = Constants.Attachments.MaxMobileEncodePixelCount);
 
 public sealed record ImageOutputSpec(
     string Kind,

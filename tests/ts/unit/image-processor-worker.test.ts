@@ -174,8 +174,13 @@ beforeAll(async () => {
     await worker.serverImpl.init(BASE_URL);
 });
 
-function processInWorker(source: Blob, request: ImageProcessRequest): Promise<ImageProcessResult> {
-    return worker.serverImpl.process(source, request);
+function processInWorker(
+    source: Blob,
+    request: Omit<ImageProcessRequest, 'maxMobileEncodePixels'>,
+): Promise<ImageProcessResult> {
+    // C# owns the value (Constants.Attachments.MaxMobileEncodePixelCount); these tests run as desktop,
+    // where canEncodeOnThisDevice ignores it anyway
+    return worker.serverImpl.process(source, { ...request, maxMobileEncodePixels: 16_000_000 });
 }
 
 describe('placeholder output', () => {

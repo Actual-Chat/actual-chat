@@ -187,6 +187,9 @@ public static partial class Constants
         // The client re-encodes within a pixel budget; these are the outer bounds a stored image may have
         public const int MaxImageSize = 12288;
         public const long MaxImagePixelCount = 96_000_000;
+        // Above this target size a phone declines the encode and passes the source through: jpegli
+        // needs ~8.8 bytes of wasm heap per pixel, and running out kills the app. A judgement call.
+        public const int MaxMobileEncodePixelCount = 16_000_000;
 
         /// <summary>HTML accept attribute value for avatar picture file inputs.</summary>
         public static readonly string AvatarPictureAccept = string.Join(',',

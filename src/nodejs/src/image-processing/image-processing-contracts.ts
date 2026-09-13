@@ -16,6 +16,8 @@ export interface ImageOutputSpec {
 
 export interface ImageProcessRequest {
     outputs: ImageOutputSpec[];
+    /** Declared by Constants.Attachments.MaxMobileEncodePixelCount; no default lives here. */
+    maxMobileEncodePixels: number;
 }
 
 export interface ImageOutput {

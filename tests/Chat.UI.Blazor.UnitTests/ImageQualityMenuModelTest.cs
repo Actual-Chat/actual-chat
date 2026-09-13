@@ -43,14 +43,14 @@ public sealed class ImageQualityMenuModelTest
         var images = new List<Attachment> { attachment };
 
         // act
-        var resolvedTotal = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx50);
-        var otherTotal = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx12);
+        var resolvedTotal = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx50, isMobile: false);
+        var otherTotal = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx12, isMobile: false);
 
         // assert
         resolvedTotal.Should().Be(new ImageQualityMenuModel.PresetTotal(18_000_000, true));
         otherTotal!.Value.IsExact.Should().BeFalse();
-        ImageQualityMenuModel.IsDeclinedAt(images, ImageQualityPreset.Mpx50).Should().BeTrue();
-        ImageQualityMenuModel.IsDeclinedAt(images, ImageQualityPreset.Mpx12).Should().BeFalse();
+        ImageQualityMenuModel.IsDeclinedAt(images, ImageQualityPreset.Mpx50, isMobile: false).Should().BeTrue();
+        ImageQualityMenuModel.IsDeclinedAt(images, ImageQualityPreset.Mpx12, isMobile: false).Should().BeFalse();
     }
 
     [Fact]
@@ -67,8 +67,8 @@ public sealed class ImageQualityMenuModelTest
         var images = new List<Attachment> { attachment };
 
         // act
-        var total = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx3);
-        var resolvedTotal = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx12);
+        var total = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx3, isMobile: false);
+        var resolvedTotal = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx12, isMobile: false);
 
         // assert
         var expected = ImageSizeEstimator.Estimate(
@@ -91,7 +91,7 @@ public sealed class ImageQualityMenuModelTest
         var images = new List<Attachment> { attachment };
 
         // act
-        var total = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.OriginalWithExif);
+        var total = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.OriginalWithExif, isMobile: false);
 
         // assert
         total.Should().Be(new ImageQualityMenuModel.PresetTotal(8_000_000, true));
@@ -110,12 +110,51 @@ public sealed class ImageQualityMenuModelTest
         var images = new List<Attachment> { attachment };
 
         // act
-        var resizeTotal = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx12);
-        var originalTotal = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Original);
+        var resizeTotal = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx12, isMobile: false);
+        var originalTotal = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Original, isMobile: false);
 
         // assert
         resizeTotal.Should().BeNull();
         originalTotal.Should().Be(new ImageQualityMenuModel.PresetTotal(3_000_000, true));
+    }
+
+    [Fact]
+    public void MobileShouldPriceADeclinedResizeAtTheSourceLength()
+    {
+        // arrange - a 50 MP phone shot: the Mpx50 budget resizes nothing, so the target stays
+        // 50 MP, which is past the 16 MP a phone will attempt
+        var size = new Size2D(8160, 6144);
+        var attachment = NewImage("image/jpeg", 18_000_000, size);
+        var images = new List<Attachment> { attachment };
+
+        // act
+        var onMobile = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx50, isMobile: true);
+        var onDesktop = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx50, isMobile: false);
+
+        // assert
+        onMobile.Should().Be(new ImageQualityMenuModel.PresetTotal(18_000_000, true),
+            "the worker declines this encode on a phone and uploads the source unchanged");
+        onDesktop!.Value.IsExact.Should().BeFalse();
+        ImageQualityMenuModel.IsDeclinedAt(images, ImageQualityPreset.Mpx50, isMobile: true).Should().BeTrue();
+        ImageQualityMenuModel.IsDeclinedAt(images, ImageQualityPreset.Mpx50, isMobile: false).Should().BeFalse();
+    }
+
+    [Fact]
+    public void MobileShouldStillEstimateAPresetThatResizesUnderTheCap()
+    {
+        // arrange - the same 50 MP source at Mpx12, whose target is 12.6 MP. SelectedQuality is
+        // deliberately another preset, so the row queried below is not the already-resolved one
+        var attachment = NewImage("image/jpeg", 18_000_000, new Size2D(8160, 6144)) with {
+            SelectedQuality = ImageQualityPreset.Mpx3,
+        };
+        var images = new List<Attachment> { attachment };
+
+        // act
+        var total = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx12, isMobile: true);
+
+        // assert
+        total!.Value.IsExact.Should().BeFalse("a target under the cap is encoded, so the row is an estimate");
+        ImageQualityMenuModel.IsDeclinedAt(images, ImageQualityPreset.Mpx12, isMobile: true).Should().BeFalse();
     }
 
     // Private methods
