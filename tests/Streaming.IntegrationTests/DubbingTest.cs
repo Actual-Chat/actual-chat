@@ -30,7 +30,7 @@ public class DubbingTest(DubbingCollection.AppHostFixture fixture, ITestOutputHe
             ct);
         source.Writer.TryWrite(Stable("Hello there, how are you doing today?") - Transcript.Empty);
         translated.Writer.TryWrite(Stable("Привет, как у тебя сегодня дела?") - Transcript.Empty);
-        await WhenTranscriptPublished(backend, dubId, ct);
+        await backend.WhenTranscriptPublished(dubId, ct);
 
         // act
         var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
@@ -73,7 +73,7 @@ public class DubbingTest(DubbingCollection.AppHostFixture fixture, ITestOutputHe
         var text = Stable("Hello there, how are you doing today?", Languages.English);
         source.Writer.TryWrite(text - Transcript.Empty);
         translated.Writer.TryWrite(text - Transcript.Empty);
-        await WhenTranscriptPublished(backend, dubId, ct);
+        await backend.WhenTranscriptPublished(dubId, ct);
 
         // act
         var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
@@ -115,7 +115,7 @@ public class DubbingTest(DubbingCollection.AppHostFixture fixture, ITestOutputHe
             ct);
         source.Writer.TryWrite(Stable("Hello there, how are you doing today?") - Transcript.Empty);
         translated.Writer.TryWrite(Stable("Привет, как у тебя сегодня дела?") - Transcript.Empty);
-        await WhenTranscriptPublished(backend, dubId, ct);
+        await backend.WhenTranscriptPublished(dubId, ct);
 
         // act
         var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
@@ -138,19 +138,6 @@ public class DubbingTest(DubbingCollection.AppHostFixture fixture, ITestOutputHe
     }
 
     // Private methods
-
-    private static async Task WhenTranscriptPublished(
-        IAudioStreamingBackend backend,
-        StreamId streamId,
-        CancellationToken cancellationToken)
-    {
-        var cTranscript = await Computed.Capture(
-            () => backend.GetTranscriptSnapshot(streamId, cancellationToken),
-            cancellationToken);
-        await cTranscript
-            .When(x => x != null, cancellationToken)
-            .WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
-    }
 
     private static Transcript Stable(string text, params Language[] languages)
         => new(text, LinearMap.Zero.Append(new Vector2(text.Length, text.Length)), languages) { IsStable = true };
