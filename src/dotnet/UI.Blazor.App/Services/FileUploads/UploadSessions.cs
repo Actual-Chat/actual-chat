@@ -116,11 +116,14 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
         var fileProvider = snapshot.FileProvider;
         fileProvider.Initialize(Hub.Services);
+        // A completed session's reserved media is bound to a posted message, not an orphan - keep it
+        var reservedMediaId = snapshot.CurrentState == UploadSessionState.Completed ? null : snapshot.ReservedMediaId;
         await DeleteSessionResources(
             sessionId,
             fileProvider,
             snapshot.TranscodedFilePath,
-            snapshot.UploadId).ConfigureAwait(false);
+            snapshot.UploadId,
+            reservedMediaId).ConfigureAwait(false);
         Log.LogDebug("Deleted stale session '{SessionId}' ('{FileName}')", sessionId, fileProvider.Metadata.FileName);
     }
 
@@ -227,7 +230,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
                 await _uploadOperations.RemoveMedia(mediaId, CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception e) {
-                Log.LogWarning(e,
+                Log.LogError(e,
                     "Failed to remove reserved media '{MediaId}' for session '{SessionId}'", mediaId, sessionId);
             }
         }

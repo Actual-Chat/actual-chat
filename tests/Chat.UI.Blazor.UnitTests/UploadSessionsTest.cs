@@ -45,20 +45,47 @@ public sealed class UploadSessionsTest : TestBase
         var sessionId = await sessions.CreateSession(new TestFileProvider(), MetadataBag.Empty, "");
         sessions.AddReference(sessionId);
         sessions.Resume(sessionId);
-        await sessions.GetOrReserveMedia(sessionId, CancellationToken.None);
+        var mediaId = await sessions.GetOrReserveMedia(sessionId, CancellationToken.None);
 
         // act
         sessions.ReleaseReference(sessionId);
         await operations.WhenIdle();
 
         // assert
-        operations.RemovedMediaIds.Should().ContainSingle();
+        operations.RemovedMediaIds.Should().ContainSingle().Which.Should().Be(mediaId);
+    }
+
+    [Fact]
+    public async Task CompletedSessionShouldKeepItsMedia()
+    {
+        // arrange
+        var operations = new FakeUploadOperations(completesUpload: true);
+        var sessions = NewUploadSessions(operations);
+        var sessionId = await sessions.CreateSession(new TestFileProvider(), MetadataBag.Empty, "");
+        sessions.AddReference(sessionId);
+        sessions.Resume(sessionId);
+        var session = await sessions.TryGetSession(sessionId);
+        await WaitUntilCompleted(session!);
+
+        // act
+        sessions.ReleaseReference(sessionId);
+        await operations.WhenIdle();
+
+        // assert
+        operations.RemovedMediaIds.Should().BeEmpty();
     }
 
     // Private methods
 
     private UploadSessions NewUploadSessions(IUploadOperations operations)
         => new (ScopedServices.GetRequiredService<AppUIHub>(), operations);
+
+    private static async Task WaitUntilCompleted(UploadSession session)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while (!session.IsCompleted)
+            await Task.Delay(10, cts.Token).ConfigureAwait(false);
+    }
 
     // Nested types
 
@@ -108,9 +135,11 @@ public sealed class UploadSessionsTest : TestBase
     }
 
     // A minimal IUploadOperations double: ReserveMediaId resolves right away so
-    // GetOrReserveMedia can complete, everything past it hangs (respecting cancellation)
-    // so the session is always caught mid-flight, never Completed, once discarded.
-    private sealed class FakeUploadOperations : IUploadOperations
+    // GetOrReserveMedia can complete. By default everything past it hangs (respecting
+    // cancellation) so the session is always caught mid-flight, never Completed, once
+    // discarded; completesUpload: true instead lets the whole pipeline run to Completed,
+    // for the "must not touch a bound media" test.
+    private sealed class FakeUploadOperations(bool completesUpload = false) : IUploadOperations
     {
         private int _pendingCount;
 
@@ -127,19 +156,18 @@ public sealed class UploadSessionsTest : TestBase
             UploadSessionSnapshotAccessor snapshotAccessor,
             IProgress<double>? progress = null,
             CancellationToken cancellationToken = default)
-            => Track(() => TaskExt.NeverEnding(cancellationToken));
+            => Track(() => completesUpload ? Task.CompletedTask : TaskExt.NeverEnding(cancellationToken));
 
         public Task StartServerProcessing(UploadSessionSnapshot snapshot, CancellationToken cancellationToken = default)
-            => Track(() => TaskExt.NeverEnding(cancellationToken));
+            => Track(() => completesUpload ? Task.CompletedTask : TaskExt.NeverEnding(cancellationToken));
 
         public Task<MediaRef> WaitForProcessingCompletion(
             UploadSessionSnapshot snapshot,
             IProgress<double>? progress = null,
-            CancellationToken cancellationToken1 = default)
-            => Track<MediaRef>(async () => {
-                await TaskExt.NeverEnding(cancellationToken1).ConfigureAwait(false);
-                throw new InvalidOperationException("Not reached in tests");
-            });
+            CancellationToken cancellationToken = default)
+            => Track(() => completesUpload
+                ? Task.FromResult(new MediaRef(snapshot.ReservedMediaId!, "fake-blob"))
+                : WaitForever(cancellationToken));
 
         public Task RemoveUpload(UploadId uploadId, CancellationToken cancellationToken)
             => Track(() => Task.CompletedTask);
@@ -180,6 +208,12 @@ public sealed class UploadSessionsTest : TestBase
             finally {
                 Interlocked.Decrement(ref _pendingCount);
             }
+        }
+
+        private static async Task<MediaRef> WaitForever(CancellationToken cancellationToken)
+        {
+            await TaskExt.NeverEnding(cancellationToken).ConfigureAwait(false);
+            throw new InvalidOperationException("Not reached in tests");
         }
     }
 }

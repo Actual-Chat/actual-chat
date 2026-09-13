@@ -18,7 +18,7 @@ public interface IUploadOperations
     Task<MediaRef> WaitForProcessingCompletion(
         UploadSessionSnapshot snapshot,
         IProgress<double>? progress = null,
-        CancellationToken cancellationToken1 = default);
+        CancellationToken cancellationToken = default);
     Task RemoveUpload(UploadId uploadId, CancellationToken cancellationToken);
     Task RemoveMedia(MediaId mediaId, CancellationToken cancellationToken);
 }
