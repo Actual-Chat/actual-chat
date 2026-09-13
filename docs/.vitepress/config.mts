@@ -115,6 +115,7 @@ export default withMermaid(defineConfig({
               { text: "Server Clock Sync", link: "/architecture/server-clock-sync" },
               { text: "Offline Render Path", link: "/architecture/offline-render-path" },
               { text: "Notifications", link: "/notifications" },
+              { text: "Passkeys", link: "/passkeys" },
             ],
           },
           {
