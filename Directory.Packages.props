@@ -62,8 +62,10 @@
     <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.19.0.1" />
     <PackageVersion Include="Xamarin.AndroidX.Collection" Version="1.6.0.1" />
     <PackageVersion Include="Xamarin.AndroidX.Collection.Ktx" Version="1.6.0.1" />
+    <PackageVersion Include="Xamarin.AndroidX.Credentials" Version="1.6.0.1" />
+    <PackageVersion Include="Xamarin.AndroidX.Credentials.PlayServicesAuth" Version="1.6.0.2" />
     <PackageVersion Include="Xamarin.AndroidX.DataStore.Preferences" Version="1.2.1" />
-    <PackageVersion Include="Xamarin.AndroidX.Fragment.Ktx" Version="1.8.9.4" />
+    <PackageVersion Include="Xamarin.AndroidX.Fragment.Ktx" Version="1.9.0" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Common" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Common.Java8" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Runtime" Version="$(XamarinAndroidLifecycle)" />
@@ -73,11 +75,12 @@
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.LiveData.Core.Ktx" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Process" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Media" Version="1.8.0" />
+    <PackageVersion Include="Xamarin.AndroidX.Tracing.Tracing.Ktx" Version="2.0.0" />
     <PackageVersion Include="Xamarin.AndroidX.Work.Runtime" Version="2.11.2.1" />
     <PackageVersion Include="Xamarin.Firebase.Analytics" Version="123.2.0" />
     <PackageVersion Include="Xamarin.Firebase.Crashlytics" Version="120.0.6" />
     <PackageVersion Include="Xamarin.Firebase.Messaging" Version="125.0.2" />
-    <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="121.5.1.1" />
+    <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="121.6.0.2" />
     <PackageVersion Include="Xamarin.GooglePlayServices.CroNet" Version="118.1.1.2" />
     <PackageVersion Include="Xamarin.Google.Dagger" Version="2.59.2.1" />
     <PackageVersion Include="Xamarin.Google.AI.Edge.LiteRT" Version="2.1.5" />
