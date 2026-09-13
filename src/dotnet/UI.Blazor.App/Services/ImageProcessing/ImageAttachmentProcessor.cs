@@ -69,7 +69,7 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
         ImageQualityPreset preset,
         CancellationToken cancellationToken)
     {
-        var url = await source.GetContentUrl(preset.GetBudget().MaxLongSide, cancellationToken).ConfigureAwait(false);
+        var url = await source.GetContentUrl(preset.GetBudget(), cancellationToken).ConfigureAwait(false);
         // The worker has no per-job cancellation, so cancellationToken isn't passed to JS: the job
         // completes anyway, and abandoning its stream reference would leak the processed blob for good
         var image = await JS

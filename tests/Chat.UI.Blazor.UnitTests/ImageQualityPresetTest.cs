@@ -1,8 +1,9 @@
+using System.Text.Json;
 using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
-public class ImageQualityPresetTest
+public sealed class ImageQualityPresetTest
 {
     [Fact]
     public void DefaultPresetShouldBe12Mpx()
@@ -47,5 +48,18 @@ public class ImageQualityPresetTest
         var outputs = ImageQualityPreset.Mpx12.ToRequest().Outputs;
         outputs.Select(o => o.Kind).Should().Contain("main");
         outputs.Select(o => o.Kind).Should().Contain("placeholder");
+    }
+
+    [Fact]
+    public void RequestShouldSerializeToTheShapeTheWorkerReads()
+    {
+        // act
+        var json = JsonSerializer.Serialize(
+            ImageQualityPreset.Mpx12.ToRequest(),
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        // assert
+        json.Should().Be(
+            """{"outputs":[{"kind":"main","maxPixels":12582912,"maxLongSide":6144,"codec":"auto","stripMetadata":true,"maxPassthroughPixels":null},{"kind":"placeholder","maxPixels":null,"maxLongSide":null,"codec":"placeholder","stripMetadata":true,"maxPassthroughPixels":null}]}""");
     }
 }

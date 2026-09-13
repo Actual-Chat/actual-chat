@@ -46,13 +46,13 @@ public class AndroidFileProviderImpl : IMauiFileProviderImpl
         return Task.FromResult(stream);
     }
 
-    public async Task<string> GetContentUrl(int? decodeMaxSize, CancellationToken cancellationToken)
+    public async Task<string> GetContentUrl(ImageQualityBudget decodeBudget, CancellationToken cancellationToken)
     {
-        if (decodeMaxSize is not { } maxSize)
+        if (decodeBudget.MaxPixels is null && decodeBudget.MaxLongSide is null)
             return AndroidContentDownloader.CreateWebRequestUri(Uri);
 
         var decodedUri = await AndroidHeifDecoder
-            .TryDecodeToJpeg(Uri, maxSize, cancellationToken)
+            .TryDecodeToJpeg(Uri, decodeBudget, cancellationToken)
             .ConfigureAwait(false);
         if (decodedUri is null)
             return AndroidContentDownloader.CreateWebRequestUri(Uri);
