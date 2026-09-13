@@ -4,27 +4,20 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class FileAttachments : UIServiceBase<AppUIHub>
+public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase<AppUIHub>(hub)
 {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.WebFileProviders.createFromFileId";
 
-    private readonly ConcurrentDictionary<AttachmentId, ImageProcessing> _imageProcessings = new();
+    private readonly ConcurrentDictionary<AttachmentId, PendingWork> _pendingWork = new();
 
-    private AttachmentsController AttachmentsController { get; }
-    private AttachmentsState AttachmentsState { get; }
-    private FilePreviews FilePreviews { get; }
-    private ImageAttachmentProcessor ImageAttachmentProcessor { get; }
+    private AttachmentsController AttachmentsController
+        => field ??= Services.GetRequiredService<AttachmentsController>();
+    private AttachmentsState AttachmentsState => Hub.AttachmentsState;
+    private FilePreviews FilePreviews => field ??= Services.GetRequiredService<FilePreviews>();
+    private ImageAttachmentProcessor ImageAttachmentProcessor
+        => field ??= Services.GetRequiredService<ImageAttachmentProcessor>();
     private UploadSessions UploadSessions => Hub.UploadSessions;
-    public ChatId ChatId { get; }
-
-    public FileAttachments(AppUIHub hub, ChatId chatId) : base(hub)
-    {
-        AttachmentsController = Hub.Services.GetRequiredService<AttachmentsController>();
-        AttachmentsState = Hub.AttachmentsState;
-        FilePreviews = Hub.Services.GetRequiredService<FilePreviews>();
-        ImageAttachmentProcessor = Hub.Services.GetRequiredService<ImageAttachmentProcessor>();
-        ChatId = chatId;
-    }
+    public ChatId ChatId { get; } = chatId;
 
     public async Task<bool> TryAddWebFileAttachments(AttachmentList list, WebFileInfo[] fileInfos)
     {
@@ -65,7 +58,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             if (await createTask is not { } attachment)
                 continue;
 
-            await AddAttachment(list, attachment);
+            AddAttachment(list, attachment);
             if (!hasAdded)
                 _ = TuneUI.Play(Tune.ChangeAttachments);
             hasAdded = true;
@@ -75,12 +68,19 @@ public class FileAttachments : UIServiceBase<AppUIHub>
 
     public Task SetImageQuality(AttachmentList list, ImageQualityPreset preset)
     {
-        // Returns as soon as the reprocessing is started: Send awaits it via WhenImagesProcessed,
+        // Returns as soon as the (re)processing is started: Send awaits it via WhenReadyToPost,
         // and the caller is a menu that must not stay open for the whole batch
-        if (list.ImageQuality == preset)
+        if (list.ImageQuality == preset && list.IsCommitted)
             return Task.CompletedTask;
 
         list.SetImageQuality(preset);
+        if (!list.IsCommitted) {
+            // Picking a preset is what commits the draft, and the commit starts the first pass with
+            // the preset just set - so a reprocess on top of it would be a second, racing pass
+            CommitDraft(list);
+            return Task.CompletedTask;
+        }
+
         foreach (var attachment in list.Items.Where(a => a.Source is not null).ToList())
             _ = Reprocess(list, attachment.Id, preset)
                 .WithErrorLog(Log, "Failed to reprocess attachment '{AttachmentId}'", attachment.Id)
@@ -89,14 +89,23 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         return Task.CompletedTask;
     }
 
-    public async Task WhenImagesProcessed(AttachmentList list)
+    public void CommitDraft(AttachmentList list)
     {
-        // An attachment added while Send is waiting starts its own processing, so one pass isn't enough
+        // Idempotent: typing calls this per keystroke, and an attachment that already has its work
+        // in flight or its upload session is skipped rather than started a second time
+        list.Commit();
+        foreach (var attachment in list.Items.ToList())
+            StartWorkIfNeeded(list, attachment);
+    }
+
+    public async Task WhenReadyToPost(AttachmentList list)
+    {
+        // An attachment added while Send is waiting starts its own work, so one pass isn't enough
         while (true) {
             var tasks = new List<Task>();
             foreach (var item in list.Items) {
-                if (_imageProcessings.TryGetValue(item.Id, out var processing) && !processing.Task.IsCompleted)
-                    tasks.Add(processing.Task);
+                if (_pendingWork.TryGetValue(item.Id, out var work) && !work.Task.IsCompleted)
+                    tasks.Add(work.Task);
             }
             if (tasks.Count == 0)
                 return;
@@ -137,7 +146,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         if (await TryCreateAttachment(webFileProvider) is not { } attachment)
             return false;
 
-        await AddAttachment(list, attachment);
+        AddAttachment(list, attachment);
         return true;
     }
 
@@ -169,6 +178,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             Log.LogError(ex, "Failed to create file provider");
             return null;
         }
+
         var webFileProvider = new WebFileProvider {
             Metadata = new () {
                 FileName = fileName,
@@ -212,34 +222,45 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         return attachment;
     }
 
-    private async Task AddAttachment(AttachmentList list, Attachment attachment)
+    private void AddAttachment(AttachmentList list, Attachment attachment)
     {
-        if (!attachment.IsProcessableImage) {
-            list.Add(await StartUpload(attachment, list.MediaScope));
-            return;
+        // Nothing is encoded or uploaded here unless the draft is already committed
+        if (attachment.IsProcessableImage) {
+            var fileProvider = attachment.FileProvider!;
+            attachment.Cleanups.RemoveByKind(AttachmentCleanupKind.File);
+            attachment.Cleanups.Add(AttachmentCleanupFactory.ForSourceFile(fileProvider));
+            attachment = attachment with {
+                Source = new AttachmentSource(
+                    fileProvider, attachment.FileName, attachment.FileType, attachment.Length, attachment.Size),
+                IsProcessing = true,
+            };
         }
-
-        var fileProvider = attachment.FileProvider!;
-        attachment.Cleanups.RemoveByKind(AttachmentCleanupKind.File);
-        attachment.Cleanups.Add(AttachmentCleanupFactory.ForSourceFile(fileProvider));
-        attachment = attachment with {
-            Source = new AttachmentSource(
-                fileProvider, attachment.FileName, attachment.FileType, attachment.Length, attachment.Size),
-            IsProcessing = true,
-        };
         SetSourcePreview(attachment);
         list.Add(attachment);
-        _ = StartImageProcessing(list, attachment.Id, list.ImageQuality, null, isReprocess: false)
-            .WithErrorLog(Log, "Failed to process attachment '{AttachmentId}'", attachment.Id)
+        if (list.IsCommitted)
+            StartWorkIfNeeded(list, attachment);
+    }
+
+    private void StartWorkIfNeeded(AttachmentList list, Attachment attachment)
+    {
+        var id = attachment.Id;
+        if (!attachment.UploadSessionId.IsNullOrEmpty() || _pendingWork.ContainsKey(id))
+            return;
+
+        var task = attachment.IsProcessableImage
+            ? StartImageProcessing(list, id, list.ImageQuality, null, isReprocess: false)
+            : StartUploadOnly(list, id);
+        _ = task
+            .WithErrorLog(Log, "Failed to process attachment '{AttachmentId}'", id)
             .SilentAwait();
     }
 
     private async Task Reprocess(AttachmentList list, AttachmentId id, ImageQualityPreset preset)
     {
         // The replacement entry is registered before the cancelled one is awaited, so
-        // WhenImagesProcessed never sees this attachment as idle mid-reprocess
+        // WhenReadyToPost never sees this attachment as idle mid-reprocess
         Task? previousTask = null;
-        if (_imageProcessings.TryRemove(id, out var previous)) {
+        if (_pendingWork.TryRemove(id, out var previous)) {
             previous.CancellationTokenSource.CancelAndDisposeSilently();
             previousTask = previous.Task;
         }
@@ -252,15 +273,24 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         ImageQualityPreset preset,
         Task? previousTask,
         bool isReprocess)
+        => StartPendingWork(
+            id,
+            cancellationToken
+                => ProcessImageAndUpload(list, id, preset, previousTask, isReprocess, cancellationToken));
+
+    private Task StartUploadOnly(AttachmentList list, AttachmentId id)
+        => StartPendingWork(id, _ => UploadOnly(list, id));
+
+    private Task StartPendingWork(AttachmentId id, Func<CancellationToken, Task> taskFactory)
     {
         var cancellationTokenSource = new CancellationTokenSource();
-        var task = ProcessImageAndUpload(list, id, preset, previousTask, isReprocess, cancellationTokenSource.Token);
-        var processing = new ImageProcessing(cancellationTokenSource, task);
-        _imageProcessings[id] = processing;
+        var task = taskFactory.Invoke(cancellationTokenSource.Token);
+        var work = new PendingWork(cancellationTokenSource, task);
+        _pendingWork[id] = work;
         _ = task.ContinueWith(
             _ => {
                 // Reprocess removes (and disposes) a superseded entry itself
-                if (_imageProcessings.TryRemove(new KeyValuePair<AttachmentId, ImageProcessing>(id, processing)))
+                if (_pendingWork.TryRemove(new KeyValuePair<AttachmentId, PendingWork>(id, work)))
                     cancellationTokenSource.Dispose();
             },
             TaskScheduler.Default);
@@ -346,6 +376,35 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         }
     }
 
+    private async Task UploadOnly(AttachmentList list, AttachmentId id)
+    {
+        if (list.Items.FirstOrDefault(a => a.Id == id) is not { } attachment)
+            return;
+
+        Attachment uploading;
+        try {
+            uploading = await StartUpload(attachment, list.MediaScope);
+        }
+        catch (Exception e) {
+            // Without a session the attachment can't be posted, so it leaves the list
+            Log.LogError(e, "Failed to start the upload of attachment '{AttachmentId}'", id);
+            UICommander.ShowError(StandardError.Constraint("Failed to add file attachment."));
+            if (ReferenceEquals(list.Items.FirstOrDefault(a => a.Id == id), attachment))
+                await list.Remove(attachment);
+            return;
+        }
+
+        if (!ReferenceEquals(list.Items.FirstOrDefault(a => a.Id == id), attachment)) {
+            // Removed while its upload session was being created: release what StartUpload registered
+            uploading.Cleanups.RemoveByKind(AttachmentCleanupKind.UploadSession);
+            AttachmentsState.Unregister(id);
+            UploadSessions.ReleaseReference(uploading.UploadSessionId);
+            return;
+        }
+
+        list.Replace(attachment, uploading);
+    }
+
     private void ReleaseForReprocessing(AttachmentList list, Attachment attachment, AttachmentSource source)
     {
         if (!attachment.UploadSessionId.IsNullOrEmpty()) {
@@ -382,5 +441,5 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         public IJSObjectReference FileProvider { get; init; }
     }
 
-    private sealed record ImageProcessing(CancellationTokenSource CancellationTokenSource, Task Task);
+    private sealed record PendingWork(CancellationTokenSource CancellationTokenSource, Task Task);
 }

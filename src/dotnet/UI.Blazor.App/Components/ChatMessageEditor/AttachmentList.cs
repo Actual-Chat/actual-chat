@@ -11,8 +11,21 @@ public sealed class AttachmentList : IAttachmentList
     public IEnumerable<Attachment> Items => _attachments;
     public ImageQualityPreset ImageQuality { get; private set; }
     public bool HasProcessableImages => _attachments.Any(a => a.Source is not null);
+    // Set once the user shows commitment - by typing, picking a preset, or sending; until then
+    // an attachment costs nothing, so nothing about it is encoded or uploaded
+    public bool IsCommitted { get; private set; }
     public event EventHandler? Changed;
+    public event Action? Committed;
     public string MediaScope { get; init; } = "";
+
+    public void Commit()
+    {
+        if (IsCommitted)
+            return;
+
+        IsCommitted = true;
+        Committed?.Invoke();
+    }
 
     public void SetImageQuality(ImageQualityPreset preset)
     {
