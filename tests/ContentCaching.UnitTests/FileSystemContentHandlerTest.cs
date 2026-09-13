@@ -6,7 +6,7 @@ using ActualLab.IO;
 
 namespace ActualChat.ContentCaching.UnitTests;
 
-public sealed class FileSystemContentHandlerTest : IDisposable
+public sealed partial class FileSystemContentHandlerTest : IDisposable
 {
     private readonly FilePath _directory =
         FilePath.GetApplicationTempDirectory() & $"content-{RandomStringGenerator.Default.Next()}";
@@ -37,7 +37,7 @@ public sealed class FileSystemContentHandlerTest : IDisposable
         (await cached!.Content.ReadAsStringAsync()).Should().Be(body);
         cached.Content.Headers.ContentType!.MediaType.Should().Be("image/png");
         cached.Headers.ETag!.Tag.Should().Be("\"v1\"");
-        var files = Directory.GetFiles(_directory, "*", SearchOption.AllDirectories);
+        var files = GetCacheFiles();
         files.Should().ContainSingle();
         foreach (var file in files) {
             var bytes = await File.ReadAllBytesAsync(file);
@@ -143,7 +143,7 @@ public sealed class FileSystemContentHandlerTest : IDisposable
         if (hasWrongKey)
             RandomNumberGenerator.Fill(_key);
         else {
-            var path = Directory.GetFiles(_directory).Single();
+            var path = GetCacheFiles().Single();
             var bytes = await File.ReadAllBytesAsync(path);
             bytes[^1] ^= 1;
             await File.WriteAllBytesAsync(path, bytes);
@@ -154,7 +154,7 @@ public sealed class FileSystemContentHandlerTest : IDisposable
 
         // assert
         (await result!.Content.ReadAsStringAsync()).Should().Be("refetched");
-        Directory.GetFiles(_directory).Should().ContainSingle();
+        GetCacheFiles().Should().ContainSingle();
     }
 
     [Fact]
@@ -165,9 +165,9 @@ public sealed class FileSystemContentHandlerTest : IDisposable
         var secondRequest = Request() with { Url = new Uri("https://cdn.example/other") };
         var handler = Create(new TestSource(r => Response(r.Url.AbsolutePath)));
         using (var first = await handler.Handle(firstRequest)) { }
-        var firstPath = Directory.GetFiles(_directory).Single();
+        var firstPath = GetCacheFiles().Single();
         using (var second = await handler.Handle(secondRequest)) { }
-        var secondPath = Directory.GetFiles(_directory).Single(x => x != firstPath);
+        var secondPath = GetCacheFiles().Single(x => x != firstPath);
         File.Copy(firstPath, secondPath, true);
 
         // act
@@ -273,7 +273,7 @@ public sealed class FileSystemContentHandlerTest : IDisposable
 
         // assert
         (await cached!.Content.ReadAsStringAsync()).Should().Be("same immutable bytes");
-        Directory.GetFiles(_directory).Should().ContainSingle();
+        GetCacheFiles().Should().ContainSingle();
     }
 
     [Fact]
@@ -295,7 +295,7 @@ public sealed class FileSystemContentHandlerTest : IDisposable
     {
         // arrange
         using (var first = await Create(new TestSource(_ => Response("cached"))).Handle(Request())) { }
-        var path = Directory.GetFiles(_directory).Single();
+        var path = GetCacheFiles().Single();
         var bytes = await File.ReadAllBytesAsync(path);
         bytes[0] = 2;
         await File.WriteAllBytesAsync(path, bytes);
@@ -373,10 +373,13 @@ public sealed class FileSystemContentHandlerTest : IDisposable
         (await renewed!.Content.ReadAsStringAsync()).Should().Be("response-1");
         (await resized!.Content.ReadAsStringAsync()).Should().Be("response-2");
         downloads.Should().Equal(firstUrl, resizedUrl);
-        Directory.GetFiles(_directory).Should().HaveCount(2);
+        GetCacheFiles().Should().HaveCount(2);
     }
 
     // Private methods
+
+    private string[] GetCacheFiles()
+        => Directory.GetFiles(_directory, "*", SearchOption.AllDirectories);
 
     private static ContentRequest Request()
         => new(new Uri("https://cdn.example/asset"));

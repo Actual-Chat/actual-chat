@@ -3,8 +3,8 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using ActualChat.Hashing;
-using ActualLab.Generators;
 using ActualLab.IO;
+using ActualLab.Locking;
 
 namespace ActualChat.ContentCaching;
 
@@ -20,6 +20,13 @@ public sealed class FileSystemContentHandler : IContentHandler
 
     private const int EnvelopeOverhead = 29;
     private const int MaxMetadataLength = 64 * 1024;
+    private static readonly AsyncLockSet<FilePath> FillLocks = new(
+        LockReentryMode.Unchecked,
+        AsyncLockSet<FilePath>.DefaultConcurrencyLevel,
+        AsyncLockSet<FilePath>.DefaultCapacity,
+        EqualityComparer<FilePath>.Create(
+            static (x, y) => StringComparer.OrdinalIgnoreCase.Equals(x.Value, y.Value),
+            static path => StringComparer.OrdinalIgnoreCase.GetHashCode(path.Value)));
     private readonly byte[] _encryptionKey;
 
     private IContentHandler Downstream { get; }
@@ -50,9 +57,15 @@ public sealed class FileSystemContentHandler : IContentHandler
         if (request.Method != HttpMethod.Get || request.Headers.Count != 0)
             return await Downstream.Handle(request, cancellationToken).ConfigureAwait(false);
 
-        var key = Settings.CacheUrlNormalizer(request.Url).AbsoluteUri.Hash().SHA256().AlphaNumeric();
-        var path = Settings.Directory & (key + ".cache");
+        var hash = Settings.CacheUrlNormalizer(request.Url).AbsoluteUri.Hash(Encoding.UTF8).SHA256();
+        var key = hash.Base64Url();
+        var path = (Settings.Directory & hash.Bytes[0].ToString("x2") & key).FullPath;
         var cached = await TryRead(path, key, cancellationToken).ConfigureAwait(false);
+        if (cached != null)
+            return cached;
+
+        using var _ = await FillLocks.Lock(path, cancellationToken).ConfigureAwait(false);
+        cached = await TryRead(path, key, cancellationToken).ConfigureAwait(false);
         if (cached != null)
             return cached;
 
@@ -124,7 +137,7 @@ public sealed class FileSystemContentHandler : IContentHandler
         FilePath path, string key, HttpResponseMessage response, byte[] body,
         CancellationToken cancellationToken)
     {
-        FilePath temporaryPath = path + "." + RandomStringGenerator.Default.Next() + ".tmp";
+        var temporaryPath = path + ".p";
         try {
             var plain = Serialize(response, body);
             byte[] envelope;
@@ -136,7 +149,7 @@ public sealed class FileSystemContentHandler : IContentHandler
             finally {
                 CryptographicOperations.ZeroMemory(plain);
             }
-            Directory.CreateDirectory(Settings.Directory);
+            Directory.CreateDirectory(path.DirectoryPath);
             await File.WriteAllBytesAsync(temporaryPath, envelope, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
             File.Move(temporaryPath, path, true);
