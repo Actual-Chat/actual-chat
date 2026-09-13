@@ -7,6 +7,7 @@ export interface ProcessedImageInfo {
     height: number;
     size: number;
     isSource: boolean;
+    declined: boolean;
 }
 
 export interface ProcessedStreamImage extends ProcessedImageInfo {
@@ -39,5 +40,6 @@ export function getProcessedImageInfo(result: ImageProcessResult): ProcessedImag
         height: main.height,
         size: main.blob.size,
         isSource: main.isSource,
+        declined: main.declined ?? false,
     };
 }

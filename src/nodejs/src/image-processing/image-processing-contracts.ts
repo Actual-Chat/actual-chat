@@ -29,6 +29,8 @@ export interface ImageOutput {
     isSource: boolean;
     /** Set only on the placeholder output: the packed container bytes, base64'd. */
     placeholder?: string;
+    /** True when a mobile pixel-budget guard declined the encode instead of running it. */
+    declined?: boolean;
 }
 
 export interface ImageProcessResult {

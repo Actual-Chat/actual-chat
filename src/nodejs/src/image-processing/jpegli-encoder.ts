@@ -82,6 +82,11 @@ export class JpegliEncoder {
             if (this._inputPointer)
                 module._free(this._inputPointer);
             this._inputPointer = module._malloc(length);
+            if (!this._inputPointer) {
+                this._inputCapacity = 0;
+                throw new Error('JpegliEncoder.encode: out of memory.');
+            }
+
             this._inputCapacity = length;
         }
         // HEAPU8/HEAPU32 are re-read after every call that may grow memory: growth replaces them

@@ -111,6 +111,6 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
     private static ImageProcessingResult CreateResult(IFileProvider? provider, ProcessedImage image, Size2D sourceSize)
     {
         var size = image.Width > 0 && image.Height > 0 ? new Size2D(image.Width, image.Height) : sourceSize;
-        return new ImageProcessingResult(provider, size);
+        return new ImageProcessingResult(provider, size, image.Declined);
     }
 }

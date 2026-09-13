@@ -1,6 +1,8 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { MockInstance } from 'vitest';
 import { JpegliEncoder } from 'image-processing/jpegli-encoder';
-import type { tryEncodeWithRebuild as TryEncodeWithRebuild } from 'image-processing/image-processor-worker';
+
+type ImageProcessorWorkerModule = typeof import('image-processing/image-processor-worker');
 
 const BASE_URL = new URL('../../../src/nodejs/jpegli', import.meta.url).href;
 
@@ -66,31 +68,51 @@ describe('JpegliEncoder', () => {
     });
 });
 
-describe('tryEncodeWithRebuild', () => {
-    let tryEncodeWithRebuild: typeof TryEncodeWithRebuild;
+// image-processor-worker runs as a module worker in production, where `self` is the worker's
+// own global scope; stand one in so its top-level rpcServer(...) call can bind to it.
+(globalThis as unknown as { self?: unknown }).self ??= globalThis;
 
-    beforeAll(async () => {
-        // image-processor-worker runs as a module worker in production, where `self` is the
-        // worker's own global scope; stand one in so its top-level rpcServer(...) call can bind to it.
-        (globalThis as unknown as { self?: unknown }).self ??= globalThis;
-        ({ tryEncodeWithRebuild } = await import('image-processing/image-processor-worker'));
+// Each test needs its own copy of the module: whenEncoderLoaded is cached at module scope, and
+// the whole point here is observing whether that cache survives a failed encode.
+async function loadWorkerWithFakeEncoder(fakeEncoder: { encode: () => never }): Promise<{
+    worker: ImageProcessorWorkerModule;
+    loadSpy: MockInstance;
+}> {
+    vi.resetModules();
+    const { JpegliEncoder: FreshJpegliEncoder } = await import('image-processing/jpegli-encoder');
+    const loadSpy = vi.spyOn(FreshJpegliEncoder, 'load').mockResolvedValue(fakeEncoder as never);
+    const worker: ImageProcessorWorkerModule = await import('image-processing/image-processor-worker');
+    return { worker, loadSpy };
+}
+
+describe('the shared jpegli encoder cache', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
     it('should drop a poisoned encoder so the next call rebuilds it', async () => {
         // arrange
-        const loads: number[] = [];
-        const encoder = {
-            encode: () => { throw new WebAssembly.RuntimeError('memory access out of bounds'); },
-        };
-        const factory = () => { loads.push(1); return Promise.resolve(encoder as never); };
+        const encoder = { encode: () => { throw new WebAssembly.RuntimeError('memory access out of bounds'); } };
+        const { worker, loadSpy } = await loadWorkerWithFakeEncoder(encoder);
 
         // act
-        const first = await tryEncodeWithRebuild(factory, () => encoder.encode());
-        const second = await tryEncodeWithRebuild(factory, () => encoder.encode());
+        await worker.tryEncodeWithRebuild(worker.getEncoder, () => encoder.encode());
+        await worker.tryEncodeWithRebuild(worker.getEncoder, () => encoder.encode());
 
-        // assert: each attempt loaded a fresh encoder rather than reusing the trapped one
-        expect(first).toBeNull();
-        expect(second).toBeNull();
-        expect(loads.length).toBe(2);
+        // assert: the trap poisoned the instance, so the second call had to load a fresh one
+        expect(loadSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should keep a healthy encoder cached after a plain Error', async () => {
+        // arrange
+        const encoder = { encode: () => { throw new Error('jpegli refused the image'); } };
+        const { worker, loadSpy } = await loadWorkerWithFakeEncoder(encoder);
+
+        // act
+        await worker.tryEncodeWithRebuild(worker.getEncoder, () => encoder.encode());
+        await worker.tryEncodeWithRebuild(worker.getEncoder, () => encoder.encode());
+
+        // assert: a plain refusal doesn't poison the instance, so the cache survives
+        expect(loadSpy).toHaveBeenCalledTimes(1);
     });
 });

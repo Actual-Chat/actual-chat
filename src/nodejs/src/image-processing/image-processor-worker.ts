@@ -66,6 +66,16 @@ async function processImage(source: Blob, request: ImageProcessRequest): Promise
                 continue;
             }
 
+            // Checked from the header's dimensions, before the decode it exists to avoid;
+            // reencode() repeats it from the decoded bitmap for a source whose header has none.
+            if (dimensions) {
+                const target = fitWithinBudget(dimensions.width, dimensions.height, spec.maxPixels, spec.maxLongSide);
+                if (!canEncodeOnThisDevice(target.width * target.height)) {
+                    outputs.push({ ...createPassthroughOutput(source, bytes, format, spec), declined: true });
+                    continue;
+                }
+            }
+
             bitmap ??= await createImageBitmap(source);
             outputs.push(await reencode(bitmap, source, bytes, format, spec));
         }
@@ -100,7 +110,7 @@ async function reencode(
 ): Promise<ImageOutput> {
     const target = fitWithinBudget(bitmap.width, bitmap.height, spec.maxPixels, spec.maxLongSide);
     if (!canEncodeOnThisDevice(target.width * target.height))
-        return createPassthroughOutput(source, bytes, format, spec);
+        return { ...createPassthroughOutput(source, bytes, format, spec), declined: true };
 
     const canvas = new OffscreenCanvas(target.width, target.height);
     const context = canvas.getContext('2d')!;
@@ -176,7 +186,7 @@ export async function tryEncodeWithRebuild<T>(
     }
 }
 
-function getEncoder(): Promise<JpegliEncoder | null> {
+export function getEncoder(): Promise<JpegliEncoder | null> {
     whenEncoderLoaded ??= JpegliEncoder.load(jpegliBaseUrl).catch((e: unknown) => {
         errorLog?.log('getEncoder: jpegli failed to load, falling back to canvas:', e);
         whenEncoderLoaded = null;

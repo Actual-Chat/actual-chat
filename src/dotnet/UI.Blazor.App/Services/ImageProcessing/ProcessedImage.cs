@@ -7,6 +7,7 @@ public record ProcessedImage
     public int Height { get; init; }
     public long Size { get; init; }
     public bool IsSource { get; init; }
+    public bool Declined { get; init; }
 }
 
 public sealed record ProcessedWebImage : ProcessedImage
@@ -19,4 +20,4 @@ public sealed record ProcessedStreamImage : ProcessedImage
     public IJSStreamReference? Stream { get; init; }
 }
 
-public sealed record ImageProcessingResult(IFileProvider? FileProvider, Size2D Size);
+public sealed record ImageProcessingResult(IFileProvider? FileProvider, Size2D Size, bool Declined = false);
