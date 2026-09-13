@@ -407,6 +407,12 @@ protected override async Task OnRun(CancellationToken cancellationToken)
 - **Braces for single statements** are not required,
   typically they're used only if the statement is prefixed with a comment,
   or when it significantly improves the readability.
+- **`=> field ??= ...;` in a `record`**: the generated `Equals` compares every
+  field and the copy constructor copies them, so an instance that's been read
+  differs from one that hasn't, and `with` carries a stale value. Either drop
+  the cache (`=> Compute();`, see `AppUpdateInfo`), or add a copy constructor
+  resetting it to `null!` plus properly overridden equality — consider a
+  reference-based one (see `AppStoreProbeResult`).
 
 ### Shared Fields and Memory Ordering
 
