@@ -201,7 +201,7 @@ public sealed class ChatAttentionService
         if (!hasRequests)
             return;
 
-        NotificationHelper.EnsureAttentionNotificationChannelExist(Context, NotificationHelper.Constants.AttentionChannelId);
+        NotificationHelper.EnsureAttentionNotificationChannelExist(Context);
 
         var snoozeIntent = new Intent(Context, typeof(AlarmReceiver));
         snoozeIntent.SetAction(SnoozeAction);

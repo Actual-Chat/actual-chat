@@ -97,7 +97,7 @@ public static class MauiPreferences
     }
 
     // An Android NotificationChannel's sound/vibration/importance are frozen at first creation, so a
-    // mismatch here tells NotificationHelper to delete and recreate the channel under the same id.
+    // mismatch here tells NotificationHelper to retire the channel this version names for a new one.
     public static int AttentionChannelConfigVersion {
         get => Get<int?>(AttentionChannelConfigVersionKey) ?? 0;
         set => Set(AttentionChannelConfigVersionKey, value);
