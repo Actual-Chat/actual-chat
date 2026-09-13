@@ -43,19 +43,7 @@ public sealed class UploadOperations(AppUIHub hub) : IUploadOperations
         UploadSessionSnapshot snapshot,
         CancellationToken cancellationToken = default)
     {
-        var sessionMetadata = snapshot.Metadata;
-        var fileMetadata = snapshot.FileProvider.Metadata;
-        var metadata = sessionMetadata
-            .Set(nameof(ActualChat.Media.Media.FileName), fileMetadata.FileName)
-            .Set(nameof(ActualChat.Media.Media.ContentType), fileMetadata.FileType)
-            .Set(nameof(ActualChat.Media.Media.Length), fileMetadata.Length);
-        var mediaScope = snapshot.MediaScope.NullIfEmpty() ?? MediaId.NewScope();
-        var command = new Media_ReserveMedia {
-            Session = Session,
-            Scope = mediaScope,
-            Metadata = metadata,
-            Kind = MediaKind.ChatEntryAttachment,
-        };
+        var command = CreateReserveMediaCommand(Session, snapshot);
         var mediaId = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         return mediaId;
     }
@@ -125,6 +113,7 @@ public sealed class UploadOperations(AppUIHub hub) : IUploadOperations
                     Log.LogWarning(error, "Error getting status for media {MediaId}", mediaId);
                     continue;
                 }
+
                 if (status == null)
                     throw new InvalidOperationException("Media not found");
 
@@ -138,6 +127,7 @@ public sealed class UploadOperations(AppUIHub hub) : IUploadOperations
 
                     return content;
                 }
+
                 if (status.Stage is MediaProcessingStage.ServerProcessing)
                     progress?.Report(status.StageProgress);
             }
@@ -163,6 +153,29 @@ public sealed class UploadOperations(AppUIHub hub) : IUploadOperations
             Session = Session,
             MediaId = mediaId,
         }, cancellationToken).ConfigureAwait(false);
+
+    // Protected/internal methods
+
+    // It's internal to be accessible from tests, which have no AppUIHub to build a UploadOperations on
+    internal static Media_ReserveMedia CreateReserveMediaCommand(Session session, UploadSessionSnapshot snapshot)
+    {
+        // Kind is load-bearing: without it the server routes every attachment to the legacy
+        // 1920px image processor instead of AttachmentImageUploadProcessor, and says nothing
+        var sessionMetadata = snapshot.Metadata;
+        var fileMetadata = snapshot.FileProvider.Metadata;
+        var metadata = sessionMetadata
+            .Set(nameof(ActualChat.Media.Media.FileName), fileMetadata.FileName)
+            .Set(nameof(ActualChat.Media.Media.ContentType), fileMetadata.FileType)
+            .Set(nameof(ActualChat.Media.Media.Length), fileMetadata.Length);
+        return new Media_ReserveMedia {
+            Session = session,
+            Scope = snapshot.MediaScope.NullIfEmpty() ?? MediaId.NewScope(),
+            Metadata = metadata,
+            Kind = MediaKind.ChatEntryAttachment,
+        };
+    }
+
+    // Private methods
 
     private async Task<UploadId> GetOrRegisterUpload(
         UploadSource source,

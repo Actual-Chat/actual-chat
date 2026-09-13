@@ -98,6 +98,21 @@ public sealed class UploadSessionsTest : TestBase
     }
 
     [Fact]
+    public void ReservedMediaShouldBeRequestedAsAChatEntryAttachment()
+    {
+        // arrange
+        var snapshot = UploadSession.NewUploadSnapshot(
+            new TestFileProvider(), MetadataBag.Empty, Moment.EpochStart, "");
+
+        // act
+        var command = UploadOperations.CreateReserveMediaCommand(Session.New(), snapshot);
+
+        // assert
+        command.Kind.Should().Be(MediaKind.ChatEntryAttachment,
+            "a media row reserved without it falls back to the legacy 1920px image processor");
+    }
+
+    [Fact]
     public async Task StaleSessionShouldRemoveItsReservedMedia()
     {
         // arrange
