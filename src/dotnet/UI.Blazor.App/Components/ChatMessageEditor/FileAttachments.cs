@@ -4,7 +4,7 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase<AppUIHub>(hub)
+public sealed class FileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
 {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.WebFileProviders.createFromFileId";
     private static readonly HashSet<string> PreviewConversionContentTypes =
@@ -22,7 +22,6 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
     private ImageAttachmentProcessor ImageAttachmentProcessor
         => field ??= Services.GetRequiredService<ImageAttachmentProcessor>();
     private UploadSessions UploadSessions => Hub.UploadSessions;
-    public ChatId ChatId { get; } = chatId;
 
     public async Task<bool> TryAddWebFileAttachments(AttachmentList list, WebFileInfo[] fileInfos)
     {

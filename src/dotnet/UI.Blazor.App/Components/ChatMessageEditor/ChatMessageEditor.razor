@@ -141,7 +141,7 @@
     protected override void OnInitialized() {
         _attachmentListHolder = new AttachmentListHolder(Hub, Chat.Id.Value);
         _attachmentListHolder.Changed += OnAttachmentListChanged;
-        FileAttachments =  new FileAttachments(Hub, Chat.Id);
+        FileAttachments = new FileAttachments(Hub);
         AttachmentFilePicker = Hub.Services.GetService<IAttachmentFilePicker>();
         PanelsUI.Right.IsVisible.Updated += OnRightPanelVisibilityChanged;
     }
