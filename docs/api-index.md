@@ -181,6 +181,7 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 
 ### User Services
 - `IAccounts` — account management
+- `IPasskeyAuth` — passkey (WebAuthn) registration and sign-in
 - `IAvatars` — avatar management
 - `IUserPresences` — presence tracking
 - `IAppUpdates` — the newest build published in a store for an app kind, held back for `AnnounceDelay` after detection; `null` means "unknown"
@@ -205,7 +206,7 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 
 Backend interfaces follow the pattern `I{Service}Backend` for internal service communication:
 - `IChatsBackend`, `IAuthorsBackend`, `IPlacesBackend`, `IChatThreadsBackend`, `IChatEntryLanguagesBackend` — chat backends
-- `IAccountsBackend`, `IAvatarsBackend`, `ISessionTemporalsBackend`, `UserScopedKvasBackend` — user backends
+- `IAccountsBackend`, `IAvatarsBackend`, `ISessionTemporalsBackend`, `UserScopedKvasBackend`, `IPasskeysBackend` — user backends
 - `IContactsBackend` — contact backend
 - `IMediaBackend`, `IMediaProgressBackend`, `IUploadsBackend` — media backends
 - `INotificationsBackend` — notification backend
@@ -293,6 +294,8 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `ToastUI` — toast notification management
 - `PanelsUI` — left/middle/right panel management
 - `AccountUI` — account state and authentication flow
+- `PasskeyUI` — passkey list/register/rename/delete/sign-in over `IPasskeyAuth`
+- `IPasskeyClient` — platform passkey (WebAuthn) ceremonies, one implementation per platform (web/Android/Apple)
 - `ThemeUI` — theme (light/dark) management
 - `ReconnectUI` — RPC connection state monitoring
 - `AppUpdateUI` — whether this client is behind its store, and the tap that updates it
