@@ -4,6 +4,7 @@ import {
     PLACEHOLDER_DISTANCE,
     PLACEHOLDER_FORMAT_STRIPPED,
     PLACEHOLDER_LONG_SIDE,
+    PLACEHOLDER_PREFIX,
 } from 'image-processing/placeholder-encoder';
 import { JpegliEncoder } from 'image-processing/jpegli-encoder';
 
@@ -94,9 +95,8 @@ function toImageBitmap(bitmap: TestBitmap): Promise<ImageBitmap> {
     return Promise.resolve(bitmap as unknown as ImageBitmap);
 }
 
-// Shared with the "prints the prefix template" test below: PLACEHOLDER_PREFIX was captured from
-// this exact fill, so a bitmap built from it must keep matching for PLACEHOLDER_FORMAT_STRIPPED
-// to come out.
+// Shared with the PLACEHOLDER_PREFIX test below: the prefix was captured from this exact fill,
+// so a bitmap built from it must keep matching for PLACEHOLDER_FORMAT_STRIPPED to come out.
 const TEST_FILL_COLOR: readonly [number, number, number, number] = [128, 96, 160, 255];
 
 function createTestBitmap(width: number, height: number): Promise<ImageBitmap> {
@@ -140,17 +140,18 @@ function loadEncoder(): Promise<JpegliEncoder> {
     return cachedEncoder ??= JpegliEncoder.load(BASE_URL);
 }
 
-function findScanStart(jpeg: Uint8Array): number {
+const SOF0_MARKER = 0xC0;
+
+function findSegmentEnd(jpeg: Uint8Array, marker: number): number {
     let offset = 2;
     while (offset + 4 <= jpeg.length) {
-        const marker = jpeg[offset + 1];
         const segmentLength = (jpeg[offset + 2] << 8) | jpeg[offset + 3];
-        if (marker === 0xDA)
+        if (jpeg[offset + 1] === marker)
             return offset + 2 + segmentLength;
 
         offset += 2 + segmentLength;
     }
-    throw new Error('findScanStart: no SOS marker');
+    throw new Error(`findSegmentEnd: no 0x${marker.toString(16)} marker`);
 }
 
 describe('placeholder container', () => {
@@ -190,7 +191,8 @@ describe('placeholder container', () => {
         expect(packed.length).toBeLessThan(900);
     });
 
-    it('prints the prefix template (run when PLACEHOLDER_DISTANCE changes)', async () => {
+    it('should match PLACEHOLDER_PREFIX byte for byte (prints the template when it does not)', async () => {
+        // arrange: the exact fill, size and settings PLACEHOLDER_PREFIX was captured from
         const rgba = new Uint8ClampedArray(64 * 48 * 4);
         const [r, g, b, a] = TEST_FILL_COLOR;
         for (let i = 0; i < rgba.length; i += 4) {
@@ -199,12 +201,18 @@ describe('placeholder container', () => {
             rgba[i + 2] = b;
             rgba[i + 3] = a;
         }
+
+        // act: the prefix ends with SOF0 - the Huffman tables after it stay in the payload
         const jpeg = (await loadEncoder()).encode(rgba, 64, 48, {
             distance: PLACEHOLDER_DISTANCE,
             subsampling: 420,
             progressive: 0,
         });
-        console.log('PLACEHOLDER_PREFIX =', Array.from(jpeg.subarray(0, findScanStart(jpeg))));
-        expect(true).toBe(true);
+        const prefix = Array.from(jpeg.subarray(0, findSegmentEnd(jpeg, SOF0_MARKER)));
+
+        // assert: a failure means jpegli or PLACEHOLDER_DISTANCE changed, which needs a NEW format
+        // mark plus this printout pasted into PLACEHOLDER_PREFIX - never an edit under mark 1
+        console.log('PLACEHOLDER_PREFIX =', prefix);
+        expect(prefix).toEqual(Array.from(PLACEHOLDER_PREFIX));
     });
 });

@@ -8,10 +8,10 @@ export const PLACEHOLDER_FORMAT_FULL = 2;
 
 // SOI+DQT+SOF0, baseline (progressive: 0) 4:2:0 at PLACEHOLDER_DISTANCE, jpegli commit
 // 031a0077f5799a6041004267fc12b956c1f52a20 (src/nodejs/jpegli/README.md) — content-independent
-// except SOF0's 4 dimension bytes, which byte 1 rebuilds. Regenerate via the "prints the prefix
-// template" test below after changing any of those. PLACEHOLDER_PREFIX and PLACEHOLDER_DISTANCE
-// change together; changing either needs a new format mark, never an edit — stored rows were
-// packed against the old one.
+// except SOF0's 4 dimension bytes, which byte 1 rebuilds. placeholder-encoder.test.ts asserts this
+// array against the encoder's own output and prints a replacement when it stops matching.
+// PLACEHOLDER_PREFIX and PLACEHOLDER_DISTANCE change together; changing either needs a new format
+// mark, never an edit — stored rows were packed against the old one.
 export const PLACEHOLDER_PREFIX = new Uint8Array([
     255, 216, 255, 219, 0, 197, 0, 16, 11, 11, 24, 17, 24, 25, 24, 24,
     25, 43, 29, 30, 29, 43, 44, 44, 34, 34, 44, 44, 49, 40, 44, 43,
