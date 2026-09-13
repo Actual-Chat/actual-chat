@@ -30,6 +30,8 @@ public partial class MauiWebView
         };
         var coreWebView2 = WindowsWebView.CoreWebView2;
         coreWebView2.PermissionRequested += OnPermissionRequested;
+        coreWebView2.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.Image);
+        coreWebView2.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.Media);
         // Allow loading images and media from the 'content' scheme.
         // NOTE(DF): Check also https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/
         // overview-features-apis?tabs=dotnetcsharp#custom-scheme-registration-
@@ -48,6 +50,7 @@ public partial class MauiWebView
         // But I still have some doubts about using 2 subscribers for handling web resource requests
         // and using `args.GetDeferral()`.
         var sUri = args.Request.Uri;
+        MauiContentRequests.Observe(sUri, args.Request.Method);
         if (!sUri.StartsWith(ContentResolver.UriContentScheme))
             return;
 
