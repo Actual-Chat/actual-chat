@@ -120,10 +120,10 @@ public sealed class UploadSessionsTest : TestBase
         // act
         var session = await sessions.TryGetSession(snapshot.SessionId);
         sessions.Resume(snapshot.SessionId);
-        await WaitUntilCompleted(session!);
+        await WaitUntilTerminatedOrFailed(session!);
 
         // assert
-        session!.IsCompleted.Should().BeTrue();
+        session!.IsCompleted.Should().BeTrue(session!.LastError?.ToString() ?? "no error");
         operations.ReserveMediaIdCallCount.Should().Be(0);
     }
 
@@ -144,6 +144,13 @@ public sealed class UploadSessionsTest : TestBase
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         while (!session.IsCompleted)
+            await Task.Delay(10, cts.Token).ConfigureAwait(false);
+    }
+
+    private static async Task WaitUntilTerminatedOrFailed(UploadSession session)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while (!session.IsCompleted && !session.IsFailed)
             await Task.Delay(10, cts.Token).ConfigureAwait(false);
     }
 
