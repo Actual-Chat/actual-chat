@@ -123,6 +123,13 @@ pwsh -NoProfile -File scripts/New-StartupMibc.ps1 -Platform Windows
 No tracing build is needed here — `dotnet-trace collect -- <exe>` launches and suspends the
 app itself.
 
+**The Windows step replaces `windows.mibc`, it does not accumulate into it** — unlike the
+Android step, which stages the committed profile into `tmp/mibc` and merges. A plain run
+therefore drops everything the previous recording had captured but this one did not; that cost
+~23k methods once. Stage the committed `windows.mibc` and merge the previous profile back in by
+hand, then check the method count against the numbers in *Verify before reporting* before
+committing.
+
 `New-StartupMibc.ps1` rebuilds `merged.mibc` at the end of **every** run, so there is no
 separate merge step.
 

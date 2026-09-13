@@ -441,3 +441,7 @@ position in wrapper coordinates, the item's offset within the chain, and the scr
 
 Validation of any TypeScript change: **do not run `npm`/`dotnet` yourself if `/server-loop` is
 running** — trigger its rebuild and read the errors there. Otherwise `npm run build:Verify`.
+
+**Any logic change to the virtual list updates `docs/ui/virtual-list.md` in the same pass.**
+The spec is the component's contract, not a description written after the fact; a change that
+lands without it leaves the next reader debugging against a document that is quietly wrong.

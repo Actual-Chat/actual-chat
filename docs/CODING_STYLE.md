@@ -1146,3 +1146,35 @@ if (Api._isDotNetRpcConnected === value)
 
 Api._isDotNetRpcConnected = value;
 ```
+
+### Single-caller helpers are nested and named `impl`
+
+A helper with exactly one caller is nested inside that caller's body rather than
+declared at module scope, and it is named simply `impl` — the `xxx` prefix is
+redundant once it is scoped to its only caller.
+
+A separate top-level `fooImpl` makes the reader follow an indirection to find the
+body. Nesting keeps the implementation directly under the function it serves, with
+closure state and parameters visible at one level.
+
+```ts
+export function foo(opts: FooOptions): OperatorAsyncFunction<TIn, TOut> {
+    const { thing } = opts;
+    return source => {
+        return from(impl());
+
+        async function* impl(): AsyncIterable<TOut> {
+            for await (const item of source) // source, thing: closure-captured
+                yield transform(item, thing);
+        }
+    };
+}
+```
+
+`impl` takes no parameters when it wraps an async iterable — closure capture of
+the source, the options and any factory-built collaborators is just as clear, and
+threading them through a parameter list buys nothing. Parameter lists are for
+top-level functions with more than one caller.
+
+A helper with multiple callers, or one that exists as a test seam, stays a
+top-level function with a descriptive name.
