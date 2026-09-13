@@ -1,3 +1,4 @@
+using ActualChat.Audio;
 using ActualChat.Live;
 using ActualChat.Streaming.Services;
 
@@ -241,6 +242,23 @@ public class ListeningStreamMuxerTest
         cts2.IsCancellationRequested.Should().BeFalse();
         h.GetActiveStreamId(Author1).Should().Be("stream-2");
         h.IsExcluded("stream-1").Should().BeTrue();
+    }
+
+    [Fact]
+    public void StampDubStartShouldPutTheTimelineOriginAtTheFirstFrame()
+    {
+        // arrange
+        var streamInfo = StreamInfo(Author1, "stream-1", Now() - TimeSpan.FromMinutes(1));
+        var now = Now();
+        var firstFrame = new AudioFrame { Offset = TimeSpan.FromSeconds(12) };
+
+        // act
+        var stamped = ListeningStreamMuxer.StampDubStart(streamInfo, firstFrame, now);
+
+        // assert
+        stamped.BeginsAt.Should().Be(now - TimeSpan.FromSeconds(12),
+            "a listener joining mid-dub gets a frame at a non-zero offset, and BeginsAt + Offset must be now");
+        stamped.SourceBeginsAt.Should().Be(stamped.BeginsAt);
     }
 
     private static Moment Now() => new(DateTime.UtcNow);

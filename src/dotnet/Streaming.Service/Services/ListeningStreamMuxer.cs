@@ -71,6 +71,15 @@ public sealed class ListeningStreamMuxer : WorkerBase
     internal static bool MustDub(LiveAudioStreamInfo streamInfo, Language? dubLanguage)
         => dubLanguage != null && streamInfo.Languages.Count > 0 && !streamInfo.MaySpeak(dubLanguage);
 
+    // internal for tests
+    internal static LiveAudioStreamInfo StampDubStart(LiveAudioStreamInfo streamInfo, AudioFrame firstFrame, Moment now)
+    {
+        // The dub's timeline origin: a mid-join listener's first frame sits at a non-zero offset,
+        // and the client derives the presentation lag from BeginsAt + Offset
+        var beginsAt = now - firstFrame.Offset;
+        return streamInfo with { BeginsAt = beginsAt, SourceBeginsAt = beginsAt };
+    }
+
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         // Two tricky races handled here:
@@ -111,13 +120,24 @@ public sealed class ListeningStreamMuxer : WorkerBase
                             if (_streamById.ContainsKey(streamInfo.StreamId))
                                 continue; // Already processing this stream
 
+                            var isDubbed = MustDub(streamInfo, DubLanguage);
+                            if (isDubbed && IsStaleDub(streamInfo, currentStreams)) {
+                                // Dropped the way a merge loser is: a backlog flush lists an author's
+                                // stale streams next to the live one, and a dub of each would play in
+                                // full, serialized, before the live one is heard
+                                Log.LogInformation("Author {AuthorId}: stream {StreamId} is stale, not dubbing it",
+                                    streamInfo.AuthorId, streamInfo.StreamId);
+                                _excludedStreamIds.TryAdd(streamInfo.StreamId, 0);
+                                continue;
+                            }
+
                             var streamEntry = new StreamEntry(
                                 Interlocked.Increment(ref _nextStreamIndex),
                                 streamInfo,
                                 cancellationToken.CreateLinkedTokenSource()) {
                                 IsPreexisting = isColdSnapshot
                                     || _resumedStreamIds.ContainsKey(streamInfo.StreamId),
-                                IsDubbed = MustDub(streamInfo, DubLanguage),
+                                IsDubbed = isDubbed,
                             };
                             Log.LogDebug(
                                 "Starting stream #{StreamIndex} for {AuthorId} stream #{StreamId}",
@@ -194,10 +214,8 @@ public sealed class ListeningStreamMuxer : WorkerBase
                 }
 
                 if (frameCount == 0) {
-                    if (isDub) {
-                        var now = Clocks.ServerClock.Now;
-                        startInfo = startInfo with { BeginsAt = now, SourceBeginsAt = now };
-                    }
+                    if (isDub)
+                        startInfo = StampDubStart(startInfo, frame, Clocks.ServerClock.Now);
                     var startItem = new MuxedAudioStreamStart() {
                         StreamIndex = streamIndex,
                         StreamInfo = startInfo,
@@ -361,9 +379,21 @@ public sealed class ListeningStreamMuxer : WorkerBase
         return (original, streamInfo);
     }
 
-    // Called after GetStream: a dubbed entry that fell back to the original must still merge
+    private bool IsStaleDub(LiveAudioStreamInfo streamInfo, ApiArray<LiveAudioStreamInfo> currentStreams)
+    {
+        // Ties go to the newcomer, as in TryRegister, so only a strictly fresher sibling wins here
+        var listed = currentStreams
+            .Where(x => !x.IsTextOnly)
+            .Select(x => (x.StreamId, x.AuthorId, x.BeginsAt));
+        var processed = _streamById.Values.Select(x => (x.StreamId, x.AuthorId, x.BeginsAt));
+        return listed.Concat(processed).Any(x => x.AuthorId == streamInfo.AuthorId
+            && x.StreamId != streamInfo.StreamId
+            && x.BeginsAt > streamInfo.BeginsAt);
+    }
+
     private bool TryRegister(StreamEntry entry, bool isDub)
     {
+        // Called after GetStream: a dubbed entry that fell back to the original must still merge.
         // A dub outlives its source by the translation lag plus the spoken length, so the author's
         // next utterance must not evict it; the backend serializes an author's dubs instead.
         if (isDub)

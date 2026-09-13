@@ -139,8 +139,10 @@ public partial class AudioStreamingBackend
             SourceBeginsAt = sourceBeginsAt,
             Format = audio.Format,
             IsTextOnly = !mustStreamVoice,
-            Languages = languages.ChatLanguage is { } chatLanguage
-                ? new ApiArray<Language>([chatLanguage])
+            // Empty = never dub: without a transcript there's nothing to translate, and a dubbing
+            // listener would hold this speaker's audio for the whole DubWaitTimeout on every utterance
+            Languages = !mustTranscribe ? ApiArray<Language>.Empty
+                : languages.ChatLanguage is { } chatLanguage ? new ApiArray<Language>([chatLanguage])
                 : languages.UserSettings.ListSpoken().ToApiArray(),
         };
         await LiveAudioBackend.Register(chatId, streamInfo, cancellationToken).ConfigureAwait(false);

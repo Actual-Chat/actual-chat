@@ -19,23 +19,11 @@ public class ListeningStreamMuxerRelayTest(ITestOutputHelper @out) : TestBase(@o
         // arrange
         var sourceId = StreamId.New(new NodeRef(Generate.Option));
         var dubId = StreamId.New(sourceId, Languages.English);
-        var streamInfo = new LiveAudioStreamInfo {
-            ChatId = TestChatId,
-            AuthorId = Author1,
-            StreamId = sourceId.Value,
-            BeginsAt = new Moment(DateTime.UtcNow),
-            Languages = new ApiArray<Language>([Languages.Russian]),
-        };
         var streams = new FakeLiveAudioStreams {
             [dubId.Value] = _ => Frames(1, StandardError.External("TTS is down")),
             [sourceId.Value] = _ => Frames(3, null),
         };
-        var services = new ServiceCollection()
-            .AddLogging(logging => logging.SetMinimumLevel(LogLevel.Debug).AddXUnit(Out))
-            .AddSingleton<ILiveAudioStreams>(streams)
-            .AddSingleton(new LiveAudioStreamInfo[] { streamInfo });
-        services.AddFusion().AddService<ILiveAudioBackend, FakeLiveAudioBackend>();
-        await using var serviceProvider = services.BuildServiceProvider();
+        await using var serviceProvider = NewServices(streams, NewStreamInfo(sourceId, new Moment(DateTime.UtcNow)));
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
 
         // act
@@ -61,7 +49,60 @@ public class ListeningStreamMuxerRelayTest(ITestOutputHelper @out) : TestBase(@o
         streams.GetRequestCount(dubId.Value).Should().Be(1, "a failed dub isn't asked for again");
     }
 
+    [Fact(Timeout = 30_000)]
+    public async Task DubShouldNotBeStartedForAStaleBacklogStream()
+    {
+        // arrange
+        var staleId = StreamId.New(new NodeRef(Generate.Option));
+        var freshId = StreamId.New(new NodeRef(Generate.Option));
+        var now = new Moment(DateTime.UtcNow);
+        var stale = NewStreamInfo(staleId, now - TimeSpan.FromSeconds(30));
+        var fresh = NewStreamInfo(freshId, now);
+        var streams = new FakeLiveAudioStreams {
+            [StreamId.New(staleId, Languages.English).Value] = _ => Frames(3, null),
+            [StreamId.New(freshId, Languages.English).Value] = _ => Frames(3, null),
+        };
+        await using var serviceProvider = NewServices(streams, stale, fresh);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+
+        // act
+        await using var muxer = new ListeningStreamMuxer(
+            serviceProvider, Session.New(), TestChatId, default, Languages.English);
+        var items = new List<MuxedAudioStreamItem>();
+        await foreach (var item in muxer.Output.ReadAllAsync(cts.Token)) {
+            items.Add(item);
+            if (items.OfType<MuxedAudioStreamEnd>().Any())
+                break;
+        }
+
+        // assert
+        var start = items.OfType<MuxedAudioStreamStart>().Should().ContainSingle().Subject;
+        start.StreamInfo.StreamId.Should().Be(freshId.Value);
+        streams.GetRequestCount(StreamId.New(staleId, Languages.English).Value).Should().Be(0,
+            "a backlog flush lists the author's stale streams next to the live one, and each dub would "
+            + "otherwise play in full before the live one");
+    }
+
     // Private methods
+
+    private static LiveAudioStreamInfo NewStreamInfo(StreamId streamId, Moment beginsAt)
+        => new() {
+            ChatId = TestChatId,
+            AuthorId = Author1,
+            StreamId = streamId.Value,
+            BeginsAt = beginsAt,
+            Languages = new ApiArray<Language>([Languages.Russian]),
+        };
+
+    private ServiceProvider NewServices(FakeLiveAudioStreams streams, params LiveAudioStreamInfo[] streamInfos)
+    {
+        var services = new ServiceCollection()
+            .AddLogging(logging => logging.SetMinimumLevel(LogLevel.Debug).AddXUnit(Out))
+            .AddSingleton<ILiveAudioStreams>(streams)
+            .AddSingleton(streamInfos);
+        services.AddFusion().AddService<ILiveAudioBackend, FakeLiveAudioBackend>();
+        return services.BuildServiceProvider();
+    }
 
     private static async IAsyncEnumerable<AudioFrame> Frames(int dataFrameCount, Exception? error)
     {

@@ -49,6 +49,21 @@ public class DubStabilizerTest
     }
 
     [Fact]
+    public void SkipShouldLeaveOnlyTheTextAfterItToSpeak()
+    {
+        // arrange
+        var stabilizer = new DubStabilizer();
+
+        // act
+        stabilizer.Skip(Unstable("Hello there"));
+        var chunk = stabilizer.Next(Stable("Hello there, how are you?"));
+
+        // assert
+        chunk.Should().Be(", how are you?", "a listener who joined late must not hear the backlog read out");
+        stabilizer.SentText.Should().Be("Hello there, how are you?");
+    }
+
+    [Fact]
     public void DecideShouldSayNoDubWhenTheSourceIsAlreadyInTheTargetLanguage()
     {
         // act
@@ -89,7 +104,8 @@ public class DubStabilizerTest
             .Decide(Unstable("Hello there, how are you doing"), Stable("Hello there, how are you"), Languages.English);
 
         // assert
-        decision.Should().Be(DubDecision.NoDub, "the translator hands the text back verbatim when no translation is needed");
+        decision.Should().Be(DubDecision.NoDub,
+            "the translator hands the text back verbatim when no translation is needed");
     }
 
     [Fact]

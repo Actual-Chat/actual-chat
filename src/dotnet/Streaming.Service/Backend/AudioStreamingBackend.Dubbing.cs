@@ -81,10 +81,14 @@ public partial class AudioStreamingBackend
                 return;
             }
 
+            // Measured when the dub is requested: a listener who joins mid-utterance finds seconds of
+            // audio already transcribed, and must not hear that backlog read out before the live text
+            var isLate = Fold(sourceMemoizer).TimeRange.End > Constants.Audio.DubBacklogThreshold.TotalSeconds;
             var stabilizer = new DubStabilizer();
             var decision = DubDecision.Undecided;
             var translated = Transcript.Empty;
-            await foreach (var diff in translatedMemoizer.Replay(cancellationToken).ConfigureAwait(false)) {
+            await foreach (var diff in ReadTranslation(translatedMemoizer, sourceMemoizer, cancellationToken)
+                               .ConfigureAwait(false)) {
                 translated += diff;
                 if (decision == DubDecision.Undecided) {
                     decision = DubStabilizer.Decide(Fold(sourceMemoizer), translated, language);
@@ -92,8 +96,11 @@ public partial class AudioStreamingBackend
                         Log.LogInformation("RunDub: #{StreamId} - already in {Language}", dubStreamId, language);
                         return;
                     }
-                    if (decision == DubDecision.Dub)
+                    if (decision == DubDecision.Dub) {
+                        if (isLate)
+                            stabilizer.Skip(translated);
                         synthesizeTask = StartSynthesis(dubStreamId, text.Reader, decidedSource, cancellationToken);
+                    }
                 }
                 if (decision != DubDecision.Dub)
                     continue;
@@ -221,6 +228,43 @@ public partial class AudioStreamingBackend
             ? $"{authorId}~{dubStreamId.Language}"
             : null;
 
+    private static async IAsyncEnumerable<TranscriptDiff> ReadTranslation(
+        AsyncMemoizer<TranscriptDiff> translatedMemoizer,
+        AsyncMemoizer<TranscriptDiff> sourceMemoizer,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        // The translated stream stays open until the entry is finalized, which waits for the
+        // re-transcription; but nothing more comes once the source has ended and its last
+        // translation is stable, and the author's next dub is chained behind this one - so the
+        // read ends at whichever of the two happens second.
+        using var replayCts = cancellationToken.CreateLinkedTokenSource();
+        var sourceEndTask = sourceMemoizer.WhenRunning ?? Task.CompletedTask;
+        var diffs = translatedMemoizer.Replay(replayCts.Token).GetAsyncEnumerator(replayCts.Token);
+        try {
+            var isStable = false;
+            while (true) {
+                var moveNextTask = diffs.MoveNextAsync().AsTask();
+                if (isStable) {
+                    await Task.WhenAny(moveNextTask, sourceEndTask).ConfigureAwait(false);
+                    if (!moveNextTask.IsCompleted) {
+                        replayCts.Cancel();
+                        await moveNextTask.SilentAwait(false);
+                        yield break;
+                    }
+                }
+                if (!await moveNextTask.ConfigureAwait(false))
+                    yield break;
+
+                var diff = diffs.Current;
+                isStable = diff.IsStable;
+                yield return diff;
+            }
+        }
+        finally {
+            await diffs.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
     private async Task<AsyncMemoizer<TranscriptDiff>?> WaitForSourceTranscript(
         StreamId sourceStreamId,
         CancellationToken cancellationToken)
@@ -264,10 +308,12 @@ public partial class AudioStreamingBackend
 
     private void ForgetDubs(StreamId streamId)
     {
+        // Only the entries: the transcript expires 60 s after it completes, while its dub can still
+        // be draining, so the worker ends on its own (WorkerBase disposes its CTS then)
         var baseStreamId = BaseStreamId(streamId);
         foreach (var dubStreamId in _dubs.Keys)
-            if (BaseStreamId(dubStreamId) == baseStreamId && _dubs.TryRemove(dubStreamId, out var entry))
-                _ = entry.Worker.DisposeSilentlyAsync();
+            if (BaseStreamId(dubStreamId) == baseStreamId)
+                _dubs.TryRemove(dubStreamId, out _);
     }
 
     private static Transcript Fold(AsyncMemoizer<TranscriptDiff> memoizer)

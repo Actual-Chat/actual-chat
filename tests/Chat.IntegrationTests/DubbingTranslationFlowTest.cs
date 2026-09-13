@@ -31,9 +31,17 @@ public class DubbingTranslationFlowTest(
     public Task DubShouldWaitForTheEntryTheTranslationIsKeyedBy()
         => AssertDubSpeaksTheTranslation(TimeSpan.FromMilliseconds(300), mustRequestBeforeEntry: true);
 
+    [Fact(Timeout = 90_000)]
+    public Task LateListenerShouldNotHearTheBacklog()
+        => AssertDubSpeaksTheTranslation(TimeSpan.FromMilliseconds(100), mustRequestBeforeEntry: false,
+            backlogSeconds: (float)Constants.Audio.DubBacklogThreshold.TotalSeconds + 1);
+
     // Private methods
 
-    private async Task AssertDubSpeaksTheTranslation(TimeSpan entryDelay, bool mustRequestBeforeEntry)
+    private async Task AssertDubSpeaksTheTranslation(
+        TimeSpan entryDelay,
+        bool mustRequestBeforeEntry,
+        float backlogSeconds = 0)
     {
         // arrange
         FakeTranslator.Reset();
@@ -52,13 +60,15 @@ public class DubbingTranslationFlowTest(
             () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
             ct);
         var last = Transcript.Empty;
-        Push(Unstable(SourceSteps[0]));
+        var backlog = Unstable(SourceSteps[0], backlogSeconds);
+        Push(backlog);
         await backend.WhenTranscriptPublished(sourceId, ct);
 
         // act
         var createEntryTask = BackgroundTask.Run(async () => {
             await Task.Delay(entryDelay, ct);
-            await Tester.CreateStreamingEntry(chatId, Languages.Russian, streamId: sourceId.Value, cancellationToken: ct);
+            await Tester.CreateStreamingEntry(
+                chatId, Languages.Russian, streamId: sourceId.Value, cancellationToken: ct);
         }, ct);
         if (!mustRequestBeforeEntry)
             await createEntryTask;
@@ -71,14 +81,22 @@ public class DubbingTranslationFlowTest(
         // assert
         stream.Should().NotBeNull("a Russian speaker is dubbed for an English listener");
         var chunks = await recorder.WhenSpoken(dubId.Value, 1, ct);
-        chunks.Should().Equal(
-            [FakeTranslator.Translated(SourceText, Languages.English)],
-            "only the stable translation is spoken, and once");
+        var translation = FakeTranslator.Translated(SourceText, Languages.English);
+        var expectedChunk = backlogSeconds > 0
+            ? translation[FakeTranslator.Translated(backlog.Text, Languages.English).Length..]
+            : translation;
+        chunks.Should().Equal([expectedChunk], backlogSeconds > 0
+            ? "a listener who joined seconds into the utterance hears only what was said after that"
+            : "only the stable translation is spoken, and once");
         var captions = await backend.GetTranscript(dubId, ct);
         captions.Should().NotBeNull("the caption reader must get the same translated stream");
 
         source.Writer.Complete();
         await pushSourceTask.SilentAwait(false);
+        var frameCount = await stream!.CountAsync(ct).AsTask().WaitAsync(TimeSpan.FromSeconds(10), ct);
+        frameCount.Should().BeGreaterThan(1,
+            "the dub ends once the source has ended and its last translation is spoken, not when the "
+            + "entry is finalized, or the author's next dub would wait for the re-transcription");
         return;
 
         void Push(Transcript transcript) {
@@ -87,8 +105,13 @@ public class DubbingTranslationFlowTest(
         }
     }
 
-    private static Transcript Unstable(string text)
-        => new(text, LinearMap.Zero.Append(new Vector2(text.Length, text.Length)), [Languages.Russian]);
+    private static Transcript Unstable(string text, float endTime = 0)
+    {
+        // ~10 chars per second of speech unless the test asks for a specific backlog
+        if (endTime <= 0)
+            endTime = text.Length * 0.1f;
+        return new Transcript(text, LinearMap.Zero.Append(new Vector2(text.Length, endTime)), [Languages.Russian]);
+    }
 
     private static Transcript Stable(string text)
         => Unstable(text) with { IsStable = true };

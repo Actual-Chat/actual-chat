@@ -24,6 +24,10 @@ public sealed partial class DubStabilizer
 
     public string SentText { get; private set; } = "";
 
+    public void Skip(Transcript translated)
+        // Whatever is spoken next starts after this text - the backlog a late listener must not hear
+        => SentText = translated.Text;
+
     public string? Next(Transcript translated)
     {
         if (!translated.IsStable)

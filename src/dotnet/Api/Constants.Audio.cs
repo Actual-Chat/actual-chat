@@ -150,6 +150,8 @@ public static partial class Constants
         public static readonly TimeSpan DubCooldown = TimeSpan.FromSeconds(30);
         // After a synthesis failure, how long every dub is skipped - the provider is assumed down
         public static readonly TimeSpan DubSynthesizerDownDelay = TimeSpan.FromSeconds(60);
+        // Audio already transcribed when a dub is requested beyond which the listener counts as late
+        public static readonly TimeSpan DubBacklogThreshold = TimeSpan.FromSeconds(5);
 
         // Watchdog: cancel ProcessAudio handler if no frame arrives within this window.
         // Opus frames are 20 ms; 2 s of silence means the producer is pathologically stalled.
