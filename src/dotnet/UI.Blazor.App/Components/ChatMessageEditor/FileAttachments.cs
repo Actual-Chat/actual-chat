@@ -215,10 +215,13 @@ public sealed class FileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
     private async Task<Attachment> CreateAttachment(IFileProvider fileProvider)
     {
         var fileMetadata = fileProvider.Metadata;
-        var preview = await FilePreviews.Get(fileProvider, fileMetadata.FileType, Hub.StopToken);
+        // Android's gallery picker types a HEIC as application/octet-stream, which would keep it out
+        // of the image pipeline: no preview, no preset menu, and the original uploaded as a plain file
+        var fileType = MediaTypeExt.NormalizeContentType(fileMetadata.FileType, fileMetadata.FileName);
+        var preview = await FilePreviews.Get(fileProvider, fileType, Hub.StopToken);
         var attachment = new SourceAttachment(
             fileMetadata.FileName,
-            fileMetadata.FileType,
+            fileType,
             fileMetadata.Length,
             preview) {
             FileProvider = fileProvider,
