@@ -25,14 +25,15 @@ Device testing of the first pipeline surfaced the problems this design answers:
 
 ## Presets
 
-Four presets, ordered best-first in the menu:
+Five presets, ordered best-first in the menu:
 
 | Order | Label | Pixel budget | Long-side cap | Re-encode | EXIF |
 |---|---|---|---|---|---|
 | 1 | Original (with EXIF) | — | — | no | kept |
-| 2 | Up to 50mpx / 12K | 50.3 MP | 12288 | yes | stripped |
-| 3 | **Up to 12mpx / 6K** (default) | 12.6 MP | 6144 | yes | stripped |
-| 4 | Up to 3mpx / 3K | 2.8 MP | 2880 | yes | stripped |
+| 2 | Original | — | — | no | stripped |
+| 3 | Up to 50mpx / 12K | 50.3 MP | 12288 | yes | stripped |
+| 4 | **Up to 12mpx / 6K** (default) | 12.6 MP | 6144 | yes | stripped |
+| 5 | Up to 3mpx / 3K | 2.8 MP | 2880 | yes | stripped |
 
 The label states both limits — the pixel budget and the longest side it permits — since
 either can be the one that binds. The figures are rounded for the menu; the exact
@@ -64,8 +65,9 @@ The budgets are chosen so the common case does not resize at all:
   smaller preset, not a lost draft.
 - **The 3mpx preset** yields 1920×1440 for a 4:3 photo.
 
-`Original (with EXIF)` is the only preset that passes bytes through untouched, and the
-only one that sets `KeepMetadata` on the upload. The 7680 px rule from the first spec
+Both Original presets pass the bytes through untouched; they differ only in metadata —
+`Original (with EXIF)` is the one that sets `KeepMetadata` on the upload, while `Original`
+has the server strip it. Neither ever re-encodes. The 7680 px rule from the first spec
 is gone, replaced by these budgets.
 
 ### Sources too large for the server's image bounds

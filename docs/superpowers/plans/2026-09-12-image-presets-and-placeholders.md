@@ -150,7 +150,7 @@ git commit -m "feat(image-processing): fit an image to a pixel budget and a long
 
 **Interfaces:**
 - Consumes: `fitWithinBudget` (Task 1).
-- Produces: `ImageOutputSpec` gains `maxPixels: number | null` (TS) / `int? MaxPixels` (C#); `ImageQualityPreset` becomes `Mpx50 = 0, Mpx12, Mpx3, Original, OriginalWithExif` with `GetBudget()` returning `(int? MaxPixels, int? MaxLongSide)`.
+- Produces: `ImageOutputSpec` gains `maxPixels: number | null` (TS) / `int? MaxPixels` (C#); `ImageQualityPreset` becomes `Mpx12 = 0, Mpx50, Mpx3, Original, OriginalWithExif` with `GetBudget()` returning `(int? MaxPixels, int? MaxLongSide)`.
 
 - [ ] **Step 1: Write the failing C# test**
 
