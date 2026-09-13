@@ -98,6 +98,14 @@ The only exception is when `/server-loop` is running - in this case you should t
 
 **Running the server (direct)**: Use `/server-start`, `/server-restart`, `/server-stop`. Use `--watch` flag for auto-reload.
 
+## The `voxt-*` MCP servers talk to PRODUCTION
+
+`mcp__voxt-alex__*`, `mcp__voxt-robokitty__*` and the other `voxt-*` MCP tools operate against
+**production** Voxt, never the local dev server. Posting or creating chats through them to seed
+*local* test data writes to prod; aimed at a local-only chat it just errors.
+
+For local test data, drive the local UI instead — see *Seed local test data* in `/debug-ui`.
+
 ## When work on a task starts
 
 Every task maps to one GitHub issue on the org's Team project board. Run the
@@ -284,14 +292,37 @@ What `install` does, by host OS:
 - **Linux / WSL** — same as macOS, but the aliases go into `~/.bashrc`.
 
 After the PATH/alias step, `install` also links AgentCli's shared
-`.claude/{commands,skills}` into `~/.claude/{commands,skills}/team/` and
-triggers a Docker build of the AgentCli image (`claude-agentcli`). Install is
-idempotent — running it again only updates what's stale.
+`.claude/commands` and `.claude/skills` into the user's global Claude config,
+then triggers a Docker build of the AgentCli image (`claude-agentcli`).
+Install is idempotent — running it again only updates what's stale.
+
+The two folders are linked differently, because Claude Code discovers them
+differently:
+
+| Folder | Link | Why | Invoked as |
+|---|---|---|---|
+| `.claude/commands` | one link → `~/.claude/commands/team/` | commands recurse into subfolders, and the subfolder becomes a namespace | `/team:<name>` |
+| `.claude/skills` | one link *per skill* → `~/.claude/skills/<name>/` | skills are discovered exactly one level deep (`~/.claude/skills/<name>/SKILL.md`); a link to the whole folder is never scanned | `/<name>` |
+
+So shared skills are **not** namespaced — `/pair`, not `/team:pair`. If a
+personal skill in `~/.claude/skills/` already uses the same name, `install`
+leaves it alone and says so rather than overwriting it. Skills removed or
+renamed in AgentCli have their stale links pruned on the next `install`, and
+`uninstall` removes every link that points into AgentCli's skills folder
+(dangling ones included) while leaving your own skills untouched.
+
+Inside Docker these host links always dangle — they point at host paths the
+container doesn't have, on **every** OS including Windows, where Docker Desktop
+surfaces an NTFS junction as a symlink to an unmounted `/mnt/host/<drive>/…`.
+So the launcher bind-mounts AgentCli's source folders read-only on top of them:
+`.claude/commands` → `/home/claude/.claude/commands/team`, and each skill →
+`/home/claude/.claude/skills/<name>`.
 
 Re-open the shell (or `source ~/.zshrc` / `~/.bashrc`) before using `ai`.
 
 To undo everything `install` did — unregister those entry points, remove the
-`team` links, stop the AgentCli docker-compose stack, and remove the AgentCli Docker image:
+command and skill links, stop the AgentCli docker-compose stack, and remove the
+AgentCli Docker image:
 
 ```
 ./ai.ps1 uninstall

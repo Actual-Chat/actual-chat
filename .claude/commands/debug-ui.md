@@ -279,6 +279,22 @@ location.assign(pm);
 Skipping the modal/captcha/onboarding/bubbles takes ~1s per user — well
 inside the 5s `When(!IsGuest)` window built into `signIn`.
 
+### Seed local test data
+
+Two admin slash-commands (local + admin only, defined in
+`src/dotnet/Chat.Service/Chats.AdminCommands.cs`) are typed straight into the
+chat editor:
+
+- `/bot-army N` — creates N test bots **and adds each as a contact**. The fast
+  way to populate the ChatList / People list.
+- `/lorem-ipsum N [min..max]` — posts N markdown messages, for stress-testing
+  the chat view.
+
+To send, insert the text into the editor and press Enter (or click send).
+
+Never seed local data through the `voxt-*` MCP servers — they talk to
+production.
+
 ### Switch render mode mid-session
 
 ```js
@@ -619,3 +635,9 @@ mute flag just keeps your speakers quiet.
 - **Stale snapshot uids**: every `take_snapshot` invalidates the prior
   snapshot's uids. If a `click(uid)` fails with "Element with uid X no
   longer exists", re-snapshot.
+
+The rig's failure modes — a wedged renderer that hangs every MCP call, the
+fake camera stuck in `NotReadableError`, screenshots that never leave the MCP
+container, rAF throttling in a hidden Chrome, running a second user headless
+when chrome2 is down — are indexed in the **`/memories`** skill (`areas/debugging.md`), with the full
+write-ups in that skill's `references/`.

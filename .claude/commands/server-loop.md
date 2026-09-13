@@ -46,6 +46,47 @@ To rebuild **only the TS/CSS bundle** without stopping anything, press `j`
 in the loop terminal or `touch tmp/server-loop-rebundle` — see "Rebundle
 without restarting the server" below for what it does and does not get you.
 
+### Prefer the loop over building a native app
+
+When a change is testable in a browser, test it here rather than deploying to
+the iPhone or launching the Windows dev app. A rebundle is ~8s; an iOS build is
+~2m45s plus install, launch and a phone interaction, and a Windows dev-app
+launch opens a "Voxt (Dev)" window on the developer's desktop and steals his
+screen. Shared UI code (ChatUI, VirtualList, everything in `src/nodejs`) is
+fully exercised in Chrome.
+
+This applies **during** a native debugging session too: if the loop is running
+and the change can be seen in the browser, check it there first and go back to
+the device for the part that genuinely needs it.
+
+Two conditions on that:
+
+- **If you don't know whether the loop is available, ask** — don't assume it is
+  running, and don't start one on your own.
+- **Say what the browser pass does not cover.** Chrome sets `device-chrome`,
+  not `device-webkit`, so it verifies logic and DOM writes but not
+  WebKit-specific rendering or feel. State that rather than implying the check
+  covers iOS.
+
+For a MAUI-only change, verify the build output statically and ask before
+launching the app. Platform-specific traps live in the `/memories` skill —
+`areas/ios.md` and `areas/windows.md`.
+
+### One rebuild per batch of edits, not one per edit
+
+The loop rebuilds only when the .NET server is stopped, and it auto-rebuilds
+**once** per stop. After an edit, don't immediately trigger `/health/stop` if
+there is any chance of another edit in the next minute — group the edits and
+let one rebuild ship them all.
+
+Queuing a second stop on top of a rebuild that is already running wastes 30–45s
+and is confusing to watch: the loop reports "already rebuilt" while another stop
+is pending. Trigger a rebuild when you actually want to look at the result.
+
+When waiting, wait for a **new** loop iteration — not merely for a success line
+to be present in the log, which may be the previous one. Recipe and the rest of
+the traps: `/memories`, `references/debugging/server-loop-iteration-gotchas.md`.
+
 ### The loop rebuild is the PREFERRED way to check everything
 
 When the loop is running, validate TS / shared-code changes by triggering a
@@ -144,6 +185,17 @@ for:
 [hh:mm:ss] Rebundle: done in 8.2s.
 [hh:mm:ss] Rebundle: the server serves the new bundle — reload the page with caching disabled …
 ```
+
+**Getting the page to actually run the new bundle is its own problem.** Even an
+ignore-cache reload plus a service-worker unregister can keep serving the old
+immutable bundle. Verify a marker from the new code is really live before
+concluding anything about the change — see `/memories`,
+`references/debugging/server-loop-iteration-gotchas.md`.
+
+**Check which clone the loop is running from.** The host's loop often runs out of
+`D:\Projects\ActualChat-C1`, so `local.voxt.ai` may be serving code from a
+different working copy than the one you just edited. Read the process path before
+trusting a result — `references/debugging/server-loop-runs-in-c1-clone.md`.
 
 TS/lint errors land in `tmp/server-loop-npm-build.log` and produce a
 `Rebundle: FAILED (exit code N) …` line. A failed rebundle does **not** park

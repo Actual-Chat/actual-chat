@@ -36,6 +36,17 @@ queue drains below `pushPullBufferSize/4`. Skipping at capture is the cheapest
 place to absorb wire stalls — the GPU pool, downscaler, and encoder never see
 the dropped frame.
 
+Dropping rather than queueing is not a preference. A `VideoFrame` holds a GPU
+buffer and Chromium's WebCodecs pool is small (~12–20 frames), so any backlog —
+encoder warmup, downscale jitter, a GC pause — exhausts the pool, subsequent
+`new VideoFrame(<video>)` calls fail, and **the camera freezes** until a much
+later GC. An earlier build with an unbounded pushed-frames array stalled at
+exactly 1 s of content, with Chrome warning "A VideoFrame was garbage collected
+without being closed." This is why nothing between the flood gate and the
+RpcStream ring is more than one frame deep, and why every operator that yields a
+frame transfers ownership at the yield site. Do not add a queue here to "smooth
+jitter" or "cover warmup".
+
 > Why not transfer the `MediaStreamTrack` directly? `MediaStreamTrackProcessor`
 > across realms starves after ~20 frames in current Chrome; Safari only honors
 > track transfer in 18+. Tier 2 (Chromium with stable cross-realm transfer)
