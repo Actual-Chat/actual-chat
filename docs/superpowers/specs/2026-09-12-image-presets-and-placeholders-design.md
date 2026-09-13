@@ -351,7 +351,19 @@ Other places the implementation differed from this design:
   read by `VisualMediaList`, is a denormalized projection written by
   `ChatMediaIndexingFlow` with no `Media`/`Placeholder` field; filling it needs a new
   column on `DbChatVisualMediaItem` plus an indexing-flow change, and is its own task.
-  The full-screen viewer already gets placeholders, via `ChatEntryAttachment.Media`.
+- **The full-screen viewer gets placeholders only in its slide strip.** Ruling P9 said
+  the viewer already got them "via `ChatEntryAttachment.Media`"; that was never true of
+  the shipped code, and what shipped since is narrower than "the viewer". The strip
+  (`media-preview-swiper`, `VisualMediaViewerModal.razor`) passes `placeholderSrc` and
+  `initial-state`, and it is rendered only when the collection holds more than one item.
+  **The main slide — the big image — still has no placeholder.** It is not an
+  `image-skeleton` at all: it is a raw `<img class="image-original">` /
+  `<img class="image-plug">` / spinner trio inside a `.swiper-zoom-container`, sized and
+  toggled by `visual-media-viewer.ts`. Adding a layer there means a third `<img>`, CSS
+  under the zoom container, and hooks into that script's show/hide points — a visual
+  change on a component with no test coverage. Its own task, like the gallery grid.
+  So the spec's "Rendering" claim above, that one change gives it to the message list,
+  the gallery and the viewer alike, holds only for the message list.
 
 Deferred, not attempted, with reasons recorded in the execution ledger: tiling for very
 large images (measured slower than one scaled decode — cost scales with tile count
