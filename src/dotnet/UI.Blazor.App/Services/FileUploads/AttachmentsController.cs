@@ -2,7 +2,7 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IAttachmentListEventsListener
+public sealed class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IAttachmentListEventsListener
 {
     private UploadSessions UploadSessions => Hub.UploadSessions;
     private AttachmentsState AttachmentsState => Hub.AttachmentsState;
@@ -17,13 +17,20 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
                 $"Can't initialize upload for attachment '{attachment.Id}'. No file provider assigned.");
 
         try {
-            var uploadSessionId = await UploadSessions.CreateSession(fileProvider, attachment.GetMetadataForUploadSession(), mediaScope).ConfigureAwait(false);
+            var uploadSessionId = await UploadSessions
+                .CreateSession(fileProvider, attachment.GetMetadataForUploadSession(), mediaScope)
+                .ConfigureAwait(false);
             attachment = attachment with {
                 UploadSessionId = uploadSessionId,
             };
             // UploadSession cleanup will handle file cleanup. So just replace it.
             UploadSessions.AddReference(uploadSessionId);
             attachment.Cleanups.RemoveByKind(AttachmentCleanupKind.File);
+            if (ReferenceEquals(attachment.Source?.FileProvider, fileProvider)) {
+                // A passthrough session owns the very file the SourceFile cleanup does, and two
+                // owners clear it twice; ReleaseForReprocessing hands the ownership back.
+                attachment.Cleanups.RemoveByKind(AttachmentCleanupKind.SourceFile);
+            }
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
             return attachment;
         }
@@ -44,6 +51,7 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
         var progress = await AttachmentsState.GetProgress(attachment.Id, default).ConfigureAwait(false);
         if (!progress.CanRestart)
             throw new InvalidOperationException("Can't restart. Upload is not failed or can't succeed");
+
         var previewState = await AttachmentsState.GetPreview(attachment.Id, default).ConfigureAwait(false);
         if (previewState.State is PreviewAccessState.NoFileAccess)
             throw new InvalidOperationException("Can't restart. No access to file");

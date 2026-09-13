@@ -475,6 +475,11 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
             // The source is processed again right after, so its file must survive the released session
             var isSourceUpload = ReferenceEquals(attachment.FileProvider, source.FileProvider);
             UploadSessions.ReleaseReference(attachment.UploadSessionId, mustKeepFile: isSourceUpload);
+            if (isSourceUpload) {
+                // InitUploadSession dropped this cleanup when the session took the source over;
+                // with the session gone, the source needs its owner back
+                attachment.Cleanups.Add(AttachmentCleanupFactory.ForSourceFile(source.FileProvider));
+            }
         }
         var reset = attachment with { UploadSessionId = "", IsProcessing = true };
         list.Replace(attachment, reset);
