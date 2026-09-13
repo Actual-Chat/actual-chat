@@ -5,6 +5,14 @@ Use this to find existing abstractions before writing new code.
 See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-index-ts.md).
 
 
+## Content Caching (`ActualChat.ContentCaching`)
+
+- `IContentHandler` / `ContentRequest` — MAUI-independent content pipeline; a null response leaves native handling unchanged
+- `LoggingContentHandler` — observes requests without exposing URL paths or credentials
+- `HttpContentHandler` — pluggable HTTP source returning headers before reading the body
+- `FileSystemContentHandler` — encrypted filesystem cache for bounded, explicitly immutable responses
+
+
 ## Core (`ActualChat.Core`)
 
 ### Identifiers

@@ -151,6 +151,7 @@
       <IsWatchApp>false</IsWatchApp>
     </ProjectReference>
     <ProjectReference Include="..\Core.Audio\Core.Audio.csproj" />
+    <ProjectReference Include="..\ContentCaching\ContentCaching.csproj" />
     <ProjectReference Include="..\Maui\Maui.csproj" />
     <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
   </ItemGroup>

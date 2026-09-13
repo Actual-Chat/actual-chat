@@ -59,6 +59,7 @@ public class AndroidWebViewClient(
         if (IsDisconnected)
             return null;
 
+        MauiContentRequests.Observe(request?.Url?.ToString(), request?.Method);
         var requestUrl = request?.Url;
         if (request != null && requestUrl != null
             && IsAppOrigin(requestUrl)

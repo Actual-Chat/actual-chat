@@ -20,6 +20,7 @@ internal sealed class ContentSchemeHandler : NSObject, IWKUrlSchemeHandler
     {
         try {
             var requestUrl = urlSchemeTask.Request?.Url?.AbsoluteString;
+            MauiContentRequests.Observe(requestUrl, urlSchemeTask.Request?.HttpMethod);
             if (requestUrl.IsNullOrEmpty()) {
                 urlSchemeTask.DidFailWithError(new NSError(new NSString("ContentScheme"), -1));
                 return;
