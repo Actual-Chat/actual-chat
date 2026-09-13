@@ -7,9 +7,9 @@ public static class ImagePlaceholder
     private const int LongSide = 64;
     private const string DataUrlPrefix = "data:image/jpeg;base64,";
 
-    // Must stay byte-identical to PLACEHOLDER_PREFIX in placeholder-encoder.ts;
-    // a change there needs a new format mark, not an edit here
-    private static readonly byte[] Prefix = [
+    // Internal so ImagePlaceholderTest can compare it against PLACEHOLDER_PREFIX in
+    // placeholder-encoder.ts, which it must stay byte-identical to (Ruling P2)
+    internal static readonly byte[] Prefix = [
         255, 216, 255, 219, 0, 197, 0, 16, 11, 11, 24, 17, 24, 25, 24, 24,
         25, 43, 29, 30, 29, 43, 44, 44, 34, 34, 44, 44, 49, 40, 44, 43,
         44, 40, 49, 49, 51, 50, 53, 53, 50, 51, 49, 51, 48, 54, 58, 54,
@@ -69,6 +69,7 @@ public static class ImagePlaceholder
             var segmentLength = (jpeg[offset + 2] << 8) | jpeg[offset + 3];
             offset += 2 + segmentLength;
         }
+
         throw new InvalidOperationException("ImagePlaceholder: prefix has no SOF0 marker");
     }
 

@@ -15,11 +15,14 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void Media_Basic()
     {
         var mediaId = MediaId.New(TestUserId.Value, "local1");
-        var media = new Media(mediaId, "content-1", 0, MediaKind.Unknown, new MetadataBag(), null);
+        var placeholder = new byte[] { 1, 208, 255, 196 };
+        var media = new Media(mediaId, "content-1", 0, MediaKind.Unknown, new MetadataBag(), placeholder);
 
         var s = media.PassThroughSerializers(Out);
         s.Id.Should().Be(media.Id);
         s.BlobId.Should().Be(media.BlobId);
+        s.Placeholder.Should().Equal(placeholder,
+            "a placeholder that doesn't survive Key(5) leaves every recipient with the grey skeleton");
     }
 
     [Fact]

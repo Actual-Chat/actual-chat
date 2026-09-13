@@ -1,10 +1,15 @@
+using System.Text.RegularExpressions;
 using ActualChat.UI.Blazor.Services;
+using ActualLab.IO;
 using SixLabors.ImageSharp;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
-public sealed class ImagePlaceholderTest
+public sealed partial class ImagePlaceholderTest
 {
+    private static readonly FilePath TypeScriptEncoderPath
+        = (FilePath)"src" & "nodejs" & "src" & "image-processing" & "placeholder-encoder.ts";
+
     // Packed bytes for a 128x96 flat-fill bitmap, captured from Task 6's
     // "should encode a landscape image with a negative short-side byte" test fixture.
     private static readonly byte[] StrippedFlatFillFixture = [
@@ -73,6 +78,29 @@ public sealed class ImagePlaceholderTest
     }
 
     [Fact]
+    public void PrefixShouldMatchTheTypeScriptOne()
+    {
+        // The two runtimes hand-copy these bytes (Ruling P2), and a one-byte DQT difference still
+        // decodes as a 64x48 JPEG - just with the wrong colours, which no other test would catch
+
+        // arrange
+        var source = File.ReadAllText(FindRepoRoot() & TypeScriptEncoderPath);
+
+        // act
+        var literal = TypeScriptPrefixRe().Match(source);
+        var bytes = literal.Success
+            ? literal.Groups[1].Value
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(byte.Parse)
+                .ToArray()
+            : null;
+
+        // assert
+        literal.Success.Should().BeTrue("PLACEHOLDER_PREFIX must still be a Uint8Array literal");
+        bytes.Should().Equal(ImagePlaceholder.Prefix);
+    }
+
+    [Fact]
     public void ShouldRebuildAStrippedPlaceholderThatIdentifiesAs64x48()
     {
         // arrange
@@ -89,4 +117,23 @@ public sealed class ImagePlaceholderTest
         info!.Width.Should().Be(64);
         info.Height.Should().Be(48);
     }
+
+    // Private methods
+
+    private static FilePath FindRepoRoot()
+    {
+        var directory = new DirectoryInfo(Environment.CurrentDirectory);
+        for (var i = 0; i < 8 && directory is not null; i++) {
+            var path = (FilePath)directory.FullName;
+            if (File.Exists(path & "ActualChat.sln"))
+                return path;
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Repository root not found (ActualChat.sln).");
+    }
+
+    [GeneratedRegex(@"PLACEHOLDER_PREFIX\s*=\s*new Uint8Array\(\[([\s\d,]*)\]\)")]
+    private static partial Regex TypeScriptPrefixRe();
 }
