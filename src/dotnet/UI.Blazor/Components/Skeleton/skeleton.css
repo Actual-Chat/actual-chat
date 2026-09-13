@@ -507,7 +507,7 @@ chat-view-footer-skeleton .footer-editor {
 
 /* Image Skeleton */
 image-skeleton {
-    @apply block;
+    @apply relative block;
 }
 image-skeleton[data-image-state="skeleton"] {
     @apply bg-05;
@@ -535,6 +535,15 @@ image-skeleton .image-thumbnail {
     @apply w-full h-full;
     @apply object-cover;
     border-radius: inherit;
+}
+image-skeleton .image-placeholder {
+    @apply absolute inset-0 w-full h-full;
+    object-fit: cover;
+    filter: blur(12px);
+    transform: scale(1.1);
+}
+image-skeleton[data-image-state="original"] .image-placeholder {
+    @apply hidden;
 }
 
 /* Round Skeleton */

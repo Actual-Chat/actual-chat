@@ -54,6 +54,12 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
     }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public string Placeholder {
+        get => this.GetMetadataValue("");
+        init => this.SetMetadataValue(value);
+    }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public long DurationMs {
         get => this.GetMetadataValue(0L);
         init => this.SetMetadataValue(value);

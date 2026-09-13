@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <PackageReference Include="bunit" />
+    <PackageReference Include="SixLabors.ImageSharp" />
   </ItemGroup>
 
   <ItemGroup>
