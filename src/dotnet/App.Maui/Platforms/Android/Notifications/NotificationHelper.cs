@@ -152,23 +152,21 @@ public static class NotificationHelper
         notificationManager.CreateNotificationChannel(channel);
     }
 
-    // Bump whenever this method's channel config (sound, vibration, importance, ...) intentionally
-    // changes - see MauiPreferences.AttentionChannelConfigVersion.
-    private const int AttentionChannelConfigVersion = 1;
-
-    public static void EnsureAttentionNotificationChannelExist(Context context, string channelId)
+    public static void EnsureAttentionNotificationChannelExist(Context context)
     {
         var notificationManager = (NotificationManager)context.GetSystemService(Context.NotificationService)!;
         // A channel's sound is fixed at creation and never updated by a later CreateNotificationChannel
         // call - e.g. a numeric-id resource URI baked in by an older build can dangle after a rebuild
         // renumbers raw resource ids, and MediaPlayer then fails to prepare it while vibration, not
-        // resource-backed, still fires. Deleting an out-of-date channel makes Android recreate it
-        // fresh under the same id.
-        if (MauiPreferences.AttentionChannelConfigVersion != AttentionChannelConfigVersion) {
-            notificationManager.DeleteNotificationChannel(channelId);
-            MauiPreferences.AttentionChannelConfigVersion = AttentionChannelConfigVersion;
+        // resource-backed, still fires. Nor does delete + recreate help: Android un-deletes a channel
+        // recreated under a known id with all of its old settings. Hence the id carries the config
+        // version, and the previous channel is only deleted so it leaves the app's settings page.
+        var storedVersion = MauiPreferences.AttentionChannelConfigVersion;
+        if (storedVersion != Constants.AttentionChannelConfigVersion) {
+            notificationManager.DeleteNotificationChannel(Constants.GetAttentionChannelId(storedVersion));
+            MauiPreferences.AttentionChannelConfigVersion = Constants.AttentionChannelConfigVersion;
         }
-        var channel = new NotificationChannel(channelId,
+        var channel = new NotificationChannel(Constants.AttentionChannelId,
             L.NotificationChannel_Attention,
             NotificationImportance.High);
         var attrs = new AudioAttributes.Builder()
@@ -328,8 +326,15 @@ public static class NotificationHelper
         // share the tray and must never be pruned by an active-set diff.
         public const string PushTagExtra = "voxt.pushTag";
         public const string DefaultChannelId = "default_channel";
-        public const string AttentionChannelId = "internal_attention_channel";
+        // Bump whenever the attention channel's config (sound, vibration, importance, ...) intentionally
+        // changes: the channel id is derived from it, since Android freezes a channel's config at creation.
+        public const int AttentionChannelConfigVersion = 2;
+        public static string AttentionChannelId => GetAttentionChannelId(AttentionChannelConfigVersion);
         public const string ActivityUploadChannelId = "activity_upload";
         public const int UploadNotificationId = 3002;
+
+        public static string GetAttentionChannelId(int configVersion)
+            // Builds before version 2 (and the never-stamped 0) all used the bare id.
+            => configVersion <= 1 ? "internal_attention_channel" : $"internal_attention_channel_v{configVersion}";
     }
 }
