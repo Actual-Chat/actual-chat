@@ -22,30 +22,30 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
         Size2D sourceSize,
         ImageQualityPreset preset,
         CancellationToken cancellationToken)
-        => Process(source, sourceSize, preset, preset.ToRequest(), cancellationToken);
+        => Process(source, sourceSize, preset.GetBudget(), preset.ToRequest(), cancellationToken);
 
     public async Task<ImageProcessingResult?> Process(
         IFileProvider source,
         Size2D sourceSize,
-        ImageQualityPreset preset,
+        ImageQualityBudget budget,
         ImageProcessRequest request,
         CancellationToken cancellationToken)
     {
         // The request is decoupled from the preset so a caller can ask for a subset of preset.ToRequest()'s
-        // outputs (e.g. skip the placeholder) while the preset itself still drives the Maui decode budget
+        // outputs (e.g. skip the placeholder); the budget still drives the Maui decode size explicitly
         try {
             return source switch {
                 WebFileProvider webSource
                     => await ProcessWeb(webSource, request, sourceSize, cancellationToken).ConfigureAwait(false),
                 MauiFileProvider mauiSource
-                    => await ProcessMaui(mauiSource, request, sourceSize, preset, cancellationToken).ConfigureAwait(false),
+                    => await ProcessMaui(mauiSource, request, sourceSize, budget, cancellationToken).ConfigureAwait(false),
                 _ => null,
             };
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e,
-                "Failed to process image '{FileName}' with {Preset}, uploading the source instead",
-                source.Metadata.FileName, preset);
+                "Failed to process image '{FileName}' with {Budget}, uploading the source instead",
+                source.Metadata.FileName, budget);
             return null;
         }
     }
@@ -75,10 +75,10 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
         MauiFileProvider source,
         ImageProcessRequest request,
         Size2D sourceSize,
-        ImageQualityPreset preset,
+        ImageQualityBudget budget,
         CancellationToken cancellationToken)
     {
-        var url = await source.GetContentUrl(preset.GetBudget(), cancellationToken).ConfigureAwait(false);
+        var url = await source.GetContentUrl(budget, cancellationToken).ConfigureAwait(false);
         // The worker has no per-job cancellation, so cancellationToken isn't passed to JS: the job
         // completes anyway, and abandoning its stream reference would leak the processed blob for good
         var image = await JS

@@ -11,6 +11,9 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
         new (StringComparer.OrdinalIgnoreCase) { "image/heif", "image/heic", "image/avif" };
 
     private readonly ConcurrentDictionary<AttachmentId, PendingWork> _pendingWork = new();
+    // A HEIC/AVIF preview that landed while the commit pipeline was already running for the same id:
+    // replacing the list item then would break the pipeline's ReferenceEquals-based removal check
+    private readonly ConcurrentDictionary<AttachmentId, FilePreview?> _pendingPreviews = new();
 
     private AttachmentsController AttachmentsController
         => field ??= Services.GetRequiredService<AttachmentsController>();
@@ -254,9 +257,9 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
     {
         // A Chromium WebView can't paint HEIC/AVIF, so this is the one exception to "nothing before commit" -
         // it runs in the background so the tile itself is added at zero cost, same as every other format
-        var request = new ImageProcessRequest([ImageOutputSpec.Main(ImageQualityPreset.Mpx3.GetBudget())]);
-        var result = await ImageAttachmentProcessor
-            .Process(fileProvider, sourceSize, ImageQualityPreset.Mpx3, request, Hub.StopToken);
+        var budget = ImageQualityPreset.Mpx3.GetBudget();
+        var request = new ImageProcessRequest([ImageOutputSpec.Main(budget)]);
+        var result = await ImageAttachmentProcessor.Process(fileProvider, sourceSize, budget, request, Hub.StopToken);
         if (result?.FileProvider is not { } previewProvider)
             return;
 
@@ -271,6 +274,15 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
         var preview = await FilePreviews.Get(previewProvider, "image/jpeg", Hub.StopToken);
         if (list.Items.FirstOrDefault(a => a.Id == id) is not SourceAttachment { IsProcessing: true } current)
             return; // Removed or already replaced meanwhile; the cleanup above still owns the file
+
+        if (_pendingWork.ContainsKey(id)) {
+            // The commit pipeline is actively running for this id right now: replacing the list item
+            // would break its ReferenceEquals-based "was this removed mid-flight" check on completion.
+            // Stash the preview instead, so it can fold it into the attachment it eventually produces.
+            _pendingPreviews[id] = preview;
+            AttachmentsState.SetPreview(id, AttachmentPreview.From(preview));
+            return;
+        }
 
         var updated = current with { Preview = preview, Size = preview?.Dimensions ?? current.Size };
         list.Replace(current, updated);
@@ -383,6 +395,10 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
                 SelectedQuality = preset,
                 Placeholder = result?.Placeholder ?? "",
             };
+            // A HEIC/AVIF preview that landed while this was running is stashed rather than applied
+            // directly (see ConvertPreview) - fold it in now instead of the source's broken preview
+            if (_pendingPreviews.TryRemove(id, out var pendingPreview) && processed is SourceAttachment withPreview)
+                processed = withPreview with { Preview = pendingPreview };
             try {
                 processed = await StartUpload(processed, list.MediaScope);
             }
@@ -414,8 +430,10 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
             // the upload session this attachment never got - so it leaves the list, as above
             Log.LogError(e, "Failed to process or upload attachment '{AttachmentId}'", id);
             UICommander.ShowError(StandardError.Constraint("Failed to add file attachment."));
-            if (list.Items.FirstOrDefault(a => a.Id == id) is { } stale && stale.UploadSessionId.IsNullOrEmpty())
+            if (list.Items.FirstOrDefault(a => a.Id == id) is { } stale && stale.UploadSessionId.IsNullOrEmpty()) {
+                _pendingPreviews.TryRemove(id, out _);
                 await list.Remove(stale);
+            }
         }
     }
 
