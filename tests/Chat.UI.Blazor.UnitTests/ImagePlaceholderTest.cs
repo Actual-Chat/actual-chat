@@ -3,7 +3,7 @@ using SixLabors.ImageSharp;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
-public class ImagePlaceholderTest
+public sealed class ImagePlaceholderTest
 {
     // Packed bytes for a 128x96 flat-fill bitmap, captured from Task 6's
     // "should encode a landscape image with a negative short-side byte" test fixture.
@@ -60,6 +60,16 @@ public class ImagePlaceholderTest
 
         // assert
         Convert.FromBase64String(url["data:image/jpeg;base64,".Length..]).Should().Equal(jpeg);
+    }
+
+    [Fact]
+    public void ShouldReturnEmptyForAZeroShortSide()
+    {
+        // arrange
+        var packed = Convert.ToBase64String(new byte[] { 1, 0, 0xFF, 0xC4, 0x00, 0x02 });
+
+        // act & assert
+        ImagePlaceholder.ToDataUrl(packed).Should().BeEmpty();
     }
 
     [Fact]

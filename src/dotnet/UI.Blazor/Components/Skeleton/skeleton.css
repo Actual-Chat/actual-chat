@@ -542,6 +542,7 @@ image-skeleton .image-placeholder {
     filter: blur(12px);
     transform: scale(1.1);
 }
+image-skeleton[data-image-state="thumbnail"] .image-placeholder,
 image-skeleton[data-image-state="original"] .image-placeholder {
     @apply hidden;
 }

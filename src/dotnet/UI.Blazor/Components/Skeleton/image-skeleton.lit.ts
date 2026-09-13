@@ -62,13 +62,14 @@ export class ImageSkeleton extends LitElement {
         const h = this.height && this.height > 0 ? this.height : nothing;
         if (this.thumbnailSrc && this.thumbnailSrc != '') {
             return html`
-                <img
-                    part='image-placeholder'
-                    class='image-placeholder'
-                    draggable='false'
-                    alt=''
-                    .src='${this.placeholderSrc}'
-                />
+                ${this.placeholderSrc ? html`
+                    <img
+                        part='image-placeholder'
+                        class='image-placeholder'
+                        draggable='false'
+                        alt=''
+                        .src='${this.placeholderSrc}'
+                    />` : nothing}
                 <img
                     part='image'
                     ${ref(this._imageRef)}
@@ -98,13 +99,14 @@ export class ImageSkeleton extends LitElement {
             `;
         } else {
             return html`
-                <img
-                    part='image-placeholder'
-                    class='image-placeholder'
-                    draggable='false'
-                    alt=''
-                    .src='${this.placeholderSrc}'
-                />
+                ${this.placeholderSrc ? html`
+                    <img
+                        part='image-placeholder'
+                        class='image-placeholder'
+                        draggable='false'
+                        alt=''
+                        .src='${this.placeholderSrc}'
+                    />` : nothing}
                 <img
                     part='image'
                     ${ref(this._imageRef)}

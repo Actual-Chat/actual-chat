@@ -50,6 +50,9 @@ public static class ImagePlaceholder
             return "";
 
         var shortSide = unchecked((sbyte)packed[1]);
+        if (shortSide == 0)
+            return "";
+
         var width = shortSide > 0 ? shortSide : LongSide;
         var height = shortSide > 0 ? LongSide : -shortSide;
         var jpeg = new byte[Prefix.Length + payload.Length + Eoi.Length];
