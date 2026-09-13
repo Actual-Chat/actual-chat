@@ -546,6 +546,11 @@ image-skeleton[data-image-state="thumbnail"] .image-placeholder,
 image-skeleton[data-image-state="original"] .image-placeholder {
     @apply hidden;
 }
+/* A host that passes placeholderSrc without initial-state never reaches a state the rules above
+   can hide, so its blur would stay over the loaded image. */
+image-skeleton:not([data-image-state]) .image-placeholder {
+    @apply hidden;
+}
 
 /* Round Skeleton */
 round-skeleton {

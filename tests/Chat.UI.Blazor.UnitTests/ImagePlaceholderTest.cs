@@ -1,4 +1,4 @@
-using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Services;
 using SixLabors.ImageSharp;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;

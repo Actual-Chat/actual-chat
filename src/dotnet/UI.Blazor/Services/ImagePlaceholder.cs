@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.App.Services;
+namespace ActualChat.UI.Blazor.Services;
 
 public static class ImagePlaceholder
 {

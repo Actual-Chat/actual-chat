@@ -295,6 +295,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `ThemeUI` — theme (light/dark) management
 - `ReconnectUI` — RPC connection state monitoring
 - `AppUpdateUI` — whether this client is behind its store, and the tap that updates it
+- `ImagePlaceholder` — rebuilds a stored media placeholder into a data URL for `image-skeleton`
 
 ### Components
 - `VirtualList<T>` — abstract base of the two virtualized lists (data source, JS bridge, visibility)
@@ -339,7 +340,6 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `IProcessedImageStore` — stores a processed attachment image as a local file; implemented by the MAUI host
 - `ImageQualityBudget` — a preset's pixel budget and long-side cap
 - `ImageSizeEstimator` — predicts an upload's size from the source's bytes and dimensions
-- `ImagePlaceholder` — rebuilds a stored placeholder into a data URL
 
 ### Components
 - `ChatView` — main chat view component
