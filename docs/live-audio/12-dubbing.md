@@ -4,7 +4,7 @@ A listener with **Translated voice** on hears, in a live session, every
 speaker of another language dubbed into the listener's translation
 language by a stock Soniox TTS voice. The dub is a derived audio stream
 that rides the fan-out described in [doc 06](./06-server-fanout-and-replay.md):
-nothing new crosses the wire, the listening muxer just asks for a
+no new stream type crosses the wire, the listening muxer just asks for a
 different stream id.
 
 This doc covers the server-side dub pipeline, the muxer substitution,
@@ -123,10 +123,10 @@ Encodes 48 kHz mono PCM with OpusSharp (`OPUS_APPLICATION_VOIP`,
 `Constants.Audio.Bitrate` = 32 kbps, VBR, voice signal) into
 `FrameLength` = 960-sample (20 ms, `Constants.Audio.OpusFrameDurationMs`)
 frames. The loop drains whatever PCM is queued, takes one frame's worth
-— or, when the buffer is short, encodes a frame of silence — and waits
-until `startedAt + 20 ms × frameIndex` before writing it, so frame
-`Offset`s are contiguous from 0 and the stream advances at real time
-regardless of how bursty Soniox's output is. Once the input completes, a
+— or, when the buffer is short, encodes a frame of silence — and writes
+frame `i` (offset `20 ms × i`) no earlier than `startedAt + 20 ms × (i + 1)`,
+the end of its slot, so frame `Offset`s are contiguous from 0 and the
+stream advances at real time regardless of how bursty Soniox's output is. Once the input completes, a
 partial tail frame is zero-padded and the loop ends. PCM arrives as byte
 chunks that need not be sample-aligned: a lone trailing byte waits for
 the next chunk to pair up with, unless it is the last byte of the stream.
@@ -150,17 +150,38 @@ the muxer's cue to serve the original. The worker itself keeps running
 past the timeout: a slow-to-decide dub can still be picked up by a later
 request.
 
+Two cool-downs make `EnsureDub` answer `false` at once, so the muxer
+serves the original without the hold:
+
+- a timed-out decision cools the `(authorId, language)` key down for
+  `Constants.Audio.DubCooldown` (30 s), logged once per cool-down;
+- a synthesis failure marks the synthesizer down for every dub for
+  `Constants.Audio.DubSynthesizerDownDelay` (60 s) — a Soniox outage
+  costs one warning per utterance, not a hold plus a failure each.
+
+A dub that is already published is served regardless: the cool-down only
+skips the wait.
+
 ### `RunDub`
 
 1. **Wait for the source transcript.** The source transcript is published
    on the first STT result, which can trail the audio by more than the
    store's `ShareWaitDelay`, so `WaitForSourceTranscript` keeps re-asking
    `_transcriptStreams` for as long as `_audioStreams.Has(S)`. A miss is
-   not a decision: the entry is removed from `_dubs` so the next
-   `GetAudio` retries instead of inheriting it.
+   not a decision: the worker removes its own entry from `_dubs` so the
+   next `GetAudio` retries instead of inheriting it.
 2. **Start or join the translation** with `GetOrStartTranslation(S~lang)`
    — the same code `GetTranscript` uses, so a listener with captions on
    and one with dubbing on share one `TranslationsBackend_TranslateStream`.
+   `ProcessAudio` creates the text entry the translation is keyed by
+   ~100 ms *after* it publishes the transcript, so the dub's first request
+   usually lands in that window: `GetOrStartTranslation` releases its
+   `_translatingStreams` latch when the command starts nothing (or nothing
+   gets published within `ShareWaitDelay`), and `WaitForTranslation`
+   retries every `Constants.Audio.DubTranslationRetryDelay` (250 ms) for as
+   long as the source transcript is live. A latch that outlived the miss
+   used to make every later caller — the caption reader included — wait
+   for a stream nobody published.
 3. **Decide, then feed.** For every translated diff, the worker folds the
    running `Transcript` and, while undecided, calls
    `DubStabilizer.Decide(Fold(source), translated, language)`. `NoDub`
@@ -168,6 +189,17 @@ request.
    `StartSynthesis`. Once dubbing, each `DubStabilizer.Next(translated)`
    chunk is written to the text channel. A stream that ends `Undecided`
    is logged "too short to decide" and not dubbed.
+   **Late listener.** If, when the dub was requested, the source
+   transcript already covered more than `Constants.Audio.DubBacklogThreshold`
+   (5 s) of audio, the listener joined mid-utterance: at the moment the
+   decision becomes `Dub` the translation present so far is handed to
+   `DubStabilizer.Skip`, so only what is said after that point is spoken
+   rather than the whole backlog read out first.
+   **End.** The translated stream stays open until the entry is finalized,
+   which waits for the re-transcription; the dub reads it only until the
+   source transcript has ended *and* its last translation is stable
+   (`ReadTranslation`), because nothing more is spoken after that and the
+   author's next dub is chained behind this one.
 4. `finally`: the decision defaults to `false`, the text channel is
    completed (with the error, if any), and the synthesis task is awaited.
 
@@ -181,13 +213,27 @@ ignores unstable transcripts (`!IsStable`), then returns whatever extends
 `SentText`. If the stable text no longer starts with `SentText` — the
 translator revised something already spoken — the chunk restarts from the
 common prefix, i.e. the divergent tail is re-spoken; there is no way to
-un-say audio. Whitespace-only chunks are skipped.
+un-say audio. Whitespace-only chunks are skipped. `Skip(translated)` sets
+`SentText` without speaking, for the late-listener case above.
+
+Stability reaches the dub through the translated diffs:
+`TranslationsBackend.TranslateTranscriptStream` writes every diff off a
+transcript that carries `IsStable`, and promotes the stable prefix even
+when the newly stable text is unchanged (Soniox finalizes an utterance
+with the text it already showed) — an empty diff with `IsStable = true`
+folds to a stable transcript on the reader side. Before that, no
+translated diff on the wire was ever stable and a dub had nothing it
+could speak.
 
 `Decide(source, translated, target)`:
 
 | Condition | Result |
 |---|---|
 | Source transcript carries `Languages` and ≥ 10 chars of text | `NoDub` if any of them matches `target` by ISO code, else `Dub` |
+
+The detected languages ride on the diffs: `TranscriptDiff.Languages`
+(null = unchanged) is what lets the folded source transcript carry them —
+a text diff alone never did, and the first row was dead on the real path.
 | Otherwise, translated transcript not yet stable | `Undecided` |
 | Normalized translated text < 10 chars | `Undecided` |
 | Normalized source text starts with normalized translated text | `NoDub` |
@@ -209,20 +255,26 @@ published the memoizer is disposed and the call throws.
 
 The synthesis runs as a background task. Before calling
 `ISpeechSynthesizer.Synthesize` it awaits the previous dub of the same
-`(authorId, language)` — `ChainDub` keeps `_dubChains[$"{authorId}~{lang}"]`,
-the author coming from `_authorIdByStream`, filled by `ProcessAudio` via
-`RememberAuthorId`. A dub outlives its source by the translation lag plus
-the spoken length, so without the chain an author's next utterance would
-talk over their still-draining previous one.
+`(authorId, language)` — `ChainDub` swaps `_dubChains[$"{authorId}~{lang}"]`
+atomically, the author coming from `_authorIdByStream`, filled by
+`ProcessAudio` via `RememberAuthorId`. A dub outlives its source by the
+translation lag plus the spoken length, so without the chain an author's
+next utterance would talk over their still-draining previous one.
+
+A synthesis failure completes the frame channel with the error (the
+muxer falls back to the original, see below), marks the synthesizer down
+for `DubSynthesizerDownDelay`, and is logged once as a warning.
 
 ### Lifetime
 
 `_transcriptStreams` expires entries after
 `AudioSettings.StreamExpirationDelay` (60 s); its `OnStreamExpire` calls
-`ForgetDubs`, which removes and disposes every `DubEntry` whose base id
-matches, and `ForgetChatIdIfUnused`, which drops the chat/author maps once
-neither store holds the base stream. The dub's own audio memoizer expires
-on the same schedule as any published stream.
+`ForgetDubs`, which only drops the `_dubs` entries whose base id matches
+— the worker ends on its own, since the transcript expires 60 s after it
+completes while its dub may still be draining — and `ForgetChatIdIfUnused`,
+which drops the chat/author maps once neither store holds the base
+stream. The dub's own audio memoizer expires like any published stream,
+`StreamExpirationDelay` after it completes.
 
 The dub is **not** registered in `LiveAudioBackend` and **not** persisted:
 the registry's records carry `DubLanguage = null`, no blob and no
@@ -235,28 +287,60 @@ File: `src/dotnet/Streaming.Service/Services/ListeningStreamMuxer.cs`.
 `ILiveAudioStreams.GetListeningStream` gained a 5-argument overload with
 `Language? dubLanguage` (`src/dotnet/Api.Contracts/Streaming/ILiveAudioStreams.cs`);
 the 4-argument one stays for older clients and forwards `null`.
-`LiveAudioStreams` passes the language into the muxer's constructor.
+`LiveAudioStreams` validates the language, canonicalizes it and passes it
+into the muxer's constructor.
 
-- **`MustDub(streamInfo, dubLanguage)`** decides per speaker when the
+- **Validation.** A dub is a TTS stream per (source stream, language), so
+  `LiveAudioStreams` serves one only in a language the listener reads or
+  hears the chat in: the spoken languages of `UserLanguageSettings`, the
+  chat's `ChatUserSettings.TranslationTargetLanguage` or its `Language`,
+  matched by ISO code and read off `UserSettingsUI(session)` (a thread
+  uses its outermost parent's settings, as `TranslationUI` does). The
+  listening stream treats a mismatch as no dub (logged as a warning); a
+  direct `GetStream("S~lang")` returns `null`. The language is then
+  folded onto its canonical variant by `Languages.GetCanonical` — the
+  `Languages.All` entry with the same ISO code that carries
+  `LanguageSupport.UI`, else the first match — so `en-GB` and `en-US`
+  listeners share one translation and one TTS stream. `IsTextOnly`
+  compares the base stream id, so a dub of a JustText author is refused
+  like the author's own stream is.
+- **`MustDub(streamInfo, dubLanguage)`** decides per stream when its
   registry entry is first seen: dub only if a language was requested, the
   speaker's `LiveAudioStreamInfo.Languages` is non-empty, and none of them
   matches the listener's language by ISO code (`MaySpeak`). `Languages` is
   filled in `ProcessAudio`: the chat language if the chat has one, else
-  the speaker's spoken languages from `UserLanguageSettings.ListSpoken()`.
-  An empty list means "don't know" and is never dubbed.
+  the speaker's spoken languages from `UserLanguageSettings.ListSpoken()`
+  — and left empty when the speaker isn't transcribed (JustVoice), since
+  there is nothing to translate. An empty list means "never dub".
+- **Stale backlog streams.** Before starting a dubbed entry the scanner
+  checks whether a strictly fresher stream of the same author is listed
+  or being processed; if so the entry is excluded outright, the way a
+  merge loser is. A recorder reconnect flushing several streams would
+  otherwise start a dub of each, and they would play in full, serialized,
+  before the live one.
 - **`GetStream`** for a dubbed entry asks `LiveAudioStreams.GetStream`
   for `S~lang` (the id carries the owner's `NodeRef`, so the request
   reaches the owner node's `GetAudio` locally or through
   `RemoteAudioStreamCache` exactly like `S`). `null` — no synthesizer,
-  `NoDub`, or the 5 s wait ran out — falls back to `S`. A successful dub
-  returns the **source's** info `with { DubLanguage }`; nothing else in
-  the start item changes.
+  `NoDub`, a cool-down, or the 5 s wait ran out — falls back to `S`, and
+  so does a request that throws (the source is remembered in
+  `_undubbedStreamIds`). A successful dub returns the **source's** info
+  `with { DubLanguage }`; nothing else in the start item changes.
+- **Dub failure mid-relay.** When a dub track errors after its start item
+  was emitted, the end item is emitted, the source goes into
+  `_undubbedStreamIds`, and the same entry is retried at once with the
+  original from the live edge (a fresh entry with a new index, marked
+  resumed). The source's own retry counters are never touched by a dub
+  failure, so a TTS outage cannot exclude a speaker.
 - **Header held, timestamps re-stamped.** The dub's first frame is the
   header, published long before any audio. `ProcessStream` holds it, and
   when the first data frame arrives stamps `BeginsAt = SourceBeginsAt =
-  ServerClock.Now` on the start info, emits `MuxedAudioStreamStart`, then
-  the held header, then the frame. So the start item's time is the time
-  dubbed audio actually started, not when the worker published its header.
+  ServerClock.Now − frame.Offset` on the start info (`StampDubStart`),
+  emits `MuxedAudioStreamStart`, then the held header, then the frame. So
+  the start item's time is the dub's timeline origin: for a listener
+  joining at the start it is when dubbed audio actually started, and for
+  one joining mid-dub (`SkipToLive`, first frame at a non-zero offset)
+  `BeginsAt + Offset` is still now.
 - **Merge exemption.** `TryRegister` runs after `GetStream` and skips the
   per-author merge for dub start infos: the author's next original
   utterance must not evict a dub that is still draining, and the backend
@@ -286,15 +370,20 @@ the 4-argument one stays for older clients and forwards `null`.
 - **Per-chat chip.** `LiveConversationHeaderView.razor` shows a
   translated-voice chip only while the conversation is live, translation
   is on for the chat and the user-level flag is on; it reflects
-  `GetDubLanguage != null`. Clicking it on writes the per-chat override
-  `false` (`TranslationUI.SetTranslatedVoice`); clicking it off writes
-  `null`, i.e. back to inheriting the user-level setting.
+  `GetDubLanguage != null`. Clicking the chip while it is on writes the
+  per-chat override `false` (`TranslationUI.SetTranslatedVoice`); clicking
+  it while it is off writes `null`, i.e. back to inheriting the user-level
+  setting.
 
 ## Constants
 
 | Constant | Value | Role |
 |---|---|---|
 | `Constants.Audio.DubWaitTimeout` | 5 s | How long `EnsureDub` (and so the muxer) waits for a decision before serving the original |
+| `Constants.Audio.DubTranslationRetryDelay` | 250 ms | Between attempts to start the translation while the source transcript is live |
+| `Constants.Audio.DubCooldown` | 30 s | After a timed-out decision, how long that `(author, language)` skips the hold |
+| `Constants.Audio.DubSynthesizerDownDelay` | 60 s | After a synthesis failure, how long every dub is skipped |
+| `Constants.Audio.DubBacklogThreshold` | 5 s | Audio already transcribed when a dub is requested beyond which the listener counts as late |
 | `Constants.Transcription.Soniox.TtsChunkTimeout` | 30 s | Connect + synthesis of one text chunk; exceeded = error, not hang |
 | `AudioSettings.StreamExpirationDelay` | 60 s | Store expiry; bounds the transcript wait via `_audioStreams.Has` and triggers `ForgetDubs` |
 | `OpusFramePump.FrameLength` / `FrameByteLength` | 960 samples / 1920 bytes | One 20 ms frame at 48 kHz, 16-bit mono |
@@ -304,11 +393,20 @@ the 4-argument one stays for older clients and forwards `null`.
 ## Tests
 
 `tests/Transcription.UnitTests/OpusFramePumpTest.cs`,
-`tests/Streaming.UnitTests/DubStabilizerTest.cs`,
+`tests/Transcription.UnitTests/TranscriptDiffTest.cs` (languages and
+stability through a diff), `tests/Streaming.UnitTests/DubStabilizerTest.cs`,
 `tests/Streaming.UnitTests/ListeningStreamMuxerTest.cs` (`MustDub`, the
-fallback and the merge exemption), `tests/Streaming.IntegrationTests/DubbingTest.cs`
-(end to end with the fake synthesizer), and the two Soniox spikes
-`tests/Transcription.IntegrationTests/SonioxTtsClientTest.cs` /
+re-stamp, the fallback and the merge exemption),
+`tests/Streaming.UnitTests/ListeningStreamMuxerRelayTest.cs` (a real
+muxer over fake stream services: the dub-error fallback, the stale
+backlog skip), `tests/Streaming.IntegrationTests/DubbingTest.cs`
+(backend-level: `GetAudio(S~lang)` with the fake synthesizer and
+hand-made translated diffs, no muxer),
+`tests/Chat.IntegrationTests/DubbingTranslationFlowTest.cs` (the real
+`TranslationsBackend` stream with a recording synthesizer: the spoken
+text, the entry-after-transcript ordering, the late listener, the end of
+the dub), `tests/Core.UnitTests/Identifiers/CanonicalLanguageTest.cs`,
+and the two Soniox spikes `tests/Transcription.IntegrationTests/SonioxTtsClientTest.cs` /
 `SonioxSpeechSynthesizerTest.cs`, which self-skip without
 `CoreSettings__SonioxKey`.
 
