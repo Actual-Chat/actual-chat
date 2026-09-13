@@ -267,3 +267,86 @@ so the fix belongs here regardless.
 - **Placeholders make every chat tile read slightly heavier** — see the cost note
   above. The alternative, a 28-byte BlurHash, was measured and rejected: at this budget
   the extra bytes buy recognizable shapes instead of an abstract gradient.
+
+## Implementation notes
+
+Recorded after all thirteen implementation tasks landed, where the shipped behaviour
+differs from or sharpens what is written above.
+
+**The preset enum's declaration order is not the menu order.** `ImageQualityPreset` is
+`Mpx12 = 0, Mpx50, Mpx3, Original, OriginalWithExif` — `Mpx12` is first only so it is
+the type's default value. The menu order given in the table above (EXIF, Original, 50,
+12, 3) lives entirely in the quality selector's `Presets` array; nothing about the enum
+declaration reflects it.
+
+**`ImageOutputSpec.Original` passes `MaxPassthroughPixels: null`**, not the server's
+pixel bound (Ruling P1). This is what makes both Original presets impossible for the
+mobile encode guard to decline — passthrough for them is unconditional, and it is the
+server, not the client, that decides whether an oversize source becomes a file
+attachment.
+
+**"Sent as a file" fires on three arms, not two** (Rulings P12/P13): whenever the
+source's bytes are uploaded unchanged AND the source exceeds the server's bound
+(12288 px / 96 MP). That covers both Original presets and a resize preset the mobile
+encode guard declined — a decline also passes the source through unchanged. One shared
+`ExceedsServerBounds` predicate covers all three.
+
+**Once a preset is applied and the attachment is idle (not processing), its menu row
+shows the real `attachment.Length`**, not the estimate (Ruling P14) — including a
+declined or failed-encode row — so the row the user is about to send always matches
+what will actually go out.
+
+**The placeholder container's numbers above are superseded.** The design originally
+called for a 236-byte reconstructable prefix; what shipped strips 220 leading bytes
+(SOI + DQT + SOF0, jpegli's real Huffman-optimized encoding, not a synthetic one) plus
+a trailing `FF D9` (EOI) appended separately. Byte 0 is the format mark; byte 1 is the
+signed short side (positive = horizontal, `64` = square); the long side is always
+exactly 64. Format 1 patches the decoded width/height into the fixed prefix at byte
+offsets 206 and 208 (big-endian). **Changing any of those prefix bytes requires a new
+format mark** — stored rows carry the old prefix's shape, and a decoder that assumed
+the new one would misdecode every placeholder already written.
+
+**jpegli's measured ceiling is 240 MP.** Between roughly 245 and 250 MP the encoder
+throws `WebAssembly.RuntimeError` from inside the wasm call and *poisons the instance* —
+every later encode on that same instance traps too, until it is discarded and rebuilt.
+At 255 MP and above it instead returns null cleanly, leaving the instance healthy. The
+mobile encode guard checks the *target* pixel count before decoding and declines a
+preset a device cannot afford, rather than attempting the encode and hitting the crash;
+its 16 MP threshold is a judgement call, not a measured one, settled by the device
+matrix rather than by this document.
+
+**Android's Chromium silently caps decode at roughly 75% linear scale for very large
+sources** — a ~200 MP source comes back from `createImageBitmap` at ~112 MP regardless
+of what was requested, with no error. No preset can recode such a photo at full
+resolution on that platform; an Original preset (passthrough) is the only way to
+preserve it there.
+
+Other places the implementation differed from this design:
+
+- **Placeholder generation happens at draft commit, not at attach time** (Ruling P10),
+  unlike the "two things still happen at attach time" list above. It is only needed if
+  the message is actually sent, and generating it at attach would spend work on
+  attachments that get removed before commit — the opposite of what deferring upload is
+  for.
+- **The HEIC/HEIF size-estimate multiplier shipped at 2.0**, arrived at by measuring six
+  real iPhone HEIC photos recoded end-to-end through jpegli at the default budget
+  (20.0% median / 80.9% worst error, near-unbiased). Data and scripts are in
+  `tmp/heic-multiplier/` for a future re-fit.
+- **Animated WebP and APNG still show the quality-preset chip**, even though — like
+  GIF — they are never re-encoded (Ruling P11). C# cannot tell an animated WebP or APNG
+  from a still one by content type alone, and surfacing the worker's own answer back to
+  the chip was judged worse: the chip would appear, offer a preset, then have it vanish
+  after commit. The never-re-encoded invariant holds regardless, at the worker. Proper
+  fix, not yet scheduled: an attach-time header sniff (APNG `acTL` before `IDAT`; WebP
+  `VP8X` flag).
+- **The media gallery grid does not get placeholders** (Ruling P9). `VisualMediaItem`,
+  read by `VisualMediaList`, is a denormalized projection written by
+  `ChatMediaIndexingFlow` with no `Media`/`Placeholder` field; filling it needs a new
+  column on `DbChatVisualMediaItem` plus an indexing-flow change, and is its own task.
+  The full-screen viewer already gets placeholders, via `ChatEntryAttachment.Media`.
+
+Deferred, not attempted, with reasons recorded in the execution ledger: tiling for very
+large images (measured slower than one scaled decode — cost scales with tile count
+since each `createImageBitmap` crop re-decodes the whole file), and backfilling
+placeholders for media that predates this feature (old rows return `""` and fall back
+to the grey skeleton, same as before).

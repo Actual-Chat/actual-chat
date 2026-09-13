@@ -337,6 +337,9 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `ImageQualityPreset` — the quality presets the attachment editor offers (4K, 1080p, Original, Original with EXIF)
 - `ImageProcessRequest` / `ProcessedImage` — what the JS image processor is asked for and what it returns
 - `IProcessedImageStore` — stores a processed attachment image as a local file; implemented by the MAUI host
+- `ImageQualityBudget` — a preset's pixel budget and long-side cap
+- `ImageSizeEstimator` — predicts an upload's size from the source's bytes and dimensions
+- `ImagePlaceholder` — rebuilds a stored placeholder into a data URL
 
 ### Components
 - `ChatView` — main chat view component

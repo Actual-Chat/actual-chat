@@ -291,6 +291,9 @@ See also: [C# Full API Index](api-index-full.md), [Condensed API Index](api-inde
 - `JpegliEncoder` (class) - jpegli WebAssembly JPEG encoder.
 - `stripImageMetadata` (function) - Lossless JPEG/PNG/WebP metadata removal.
 - `sniffImageFormat` (function) - Detects an image format from its bytes.
+- `fitWithinBudget` (function) - Fits an image to a pixel budget and a long-side cap.
+- `encodePlaceholder` (function) - Encodes a 64px blurred placeholder into its container.
+- `needsPreviewConversion` (function) - True for formats a Chromium WebView cannot paint.
 
 
 ## Worklets (`src/nodejs/src/worklets`)
