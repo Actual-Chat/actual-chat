@@ -9,9 +9,11 @@ using ActualChat.Users.Email;
 using ActualChat.Users.Flows;
 using ActualChat.Users.Internal;
 using ActualChat.Users.Models;
+using ActualChat.Users.Passkeys;
 using ActualChat.Users.Phone;
 using ActualChat.Users.Phone.Internal;
 using ActualLab.Fusion.Server;
+using Fido2NetLib;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -181,6 +183,20 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddLocalApi<IUserSettings, UserSettings>();
         rpcHost.AddLocalApi<IServerKvas, ServerKvas>(); // Used by Authors, Avatars -> Chats, etc.
         rpcHost.AddBackend<IServerKvasBackend, ServerKvasBackend>();
+
+        // Passkeys
+        rpcHost.AddBackend<IPasskeysBackend, PasskeysBackend>();
+        rpcHost.AddApi<IPasskeyAuth, PasskeyAuth>(); // Requires Redis
+        services.AddSingleton<IFido2>(c => {
+            var settings = c.GetRequiredService<UsersSettings>();
+            var hostInfo = c.HostInfo();
+            var config = new Fido2Configuration {
+                ServerDomain = settings.GetPasskeyRpId(hostInfo),
+                ServerName = CoreConstants.AppName,
+                Origins = settings.GetPasskeyOrigins(hostInfo),
+            };
+            return new Fido2(config, null);
+        });
 
         // PhoneAuth
         rpcHost.AddApi<IPhoneAuth, PhoneAuth>(); // Requires Redis & IVerificationCodeSender

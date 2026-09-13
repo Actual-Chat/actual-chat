@@ -16,6 +16,7 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
     public DbSet<DbUserPresence> UserPresences { get; protected set; } = null!;
     public DbSet<DbChatPosition> ChatPositions { get; protected set; } = null!;
     public DbSet<DbChatUsage> ChatUsages { get; protected set; } = null!;
+    public DbSet<DbPasskey> Passkeys { get; protected set; } = null!;
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
@@ -57,6 +58,10 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
 
         var userPresence = model.Entity<DbUserPresence>();
         userPresence.Property(e => e.UserId).UseCollation("C");
+
+        var passkey = model.Entity<DbPasskey>();
+        passkey.Property(e => e.Id).UseCollation("C");
+        passkey.Property(e => e.UserId).UseCollation("C");
 
         var chatPosition = model.Entity<DbChatPosition>();
         chatPosition.Property(e => e.Id).UseCollation("C");
