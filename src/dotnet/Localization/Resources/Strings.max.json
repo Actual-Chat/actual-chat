@@ -58,6 +58,7 @@
   "Settings_Application": "アプリケーション",
   "Settings_Permissions": "Berechtigungen",
   "Settings_Sessions": "Phiên làm việc",
+  "Settings_Passkeys": "Приступни кључеви",
   "Settings_ApiKeys": "API Anahtarları",
   "Settings_ApiAndApps": "API ve uygulamalar",
   "Settings_Documents": "ドキュメント",
@@ -151,6 +152,26 @@
   "Sessions_SignOutAll": "他のすべてのセッションをサインアウト",
   "Sessions_SignOutAllConfirm": "他のすべてのセッションがサインアウトされます。続行しますか？",
   "Sessions_SignOutAllTitle": "모든 세션을 로그아웃하시겠습니까?",
+
+  // Settings > Passkeys - the passkey list. Intro/Add sit above it; the rest describe one row
+  // (its sync state and last-used date) and its rename/delete actions.
+  "Passkeys_Intro": "Connectez-vous avec Face ID, Touch ID, une empreinte digitale ou Windows Hello au lieu d'un code.",
+  "Passkeys_Add": "Adicionar uma chave de acesso",
+  "Passkeys_Unavailable": "Приступни кључеви нису доступни на овом уређају или у овом прегледачу.",
+  "Passkeys_YourPasskeys": "Вашите ключове за достъп",
+  "Passkeys_NotSetUp": "Nie skonfigurowano",
+  "Passkeys_Count": "{0} приступних кључева",
+  "Passkeys_Synced": "Синхронизирован",
+  "Passkeys_ThisDeviceOnly": "Только на этом устройстве",
+  "Passkeys_Added_Format": "Hinzugefügt am {0}",
+  "Passkeys_LastUsed_Format": "आख़िरी बार {0} को इस्तेमाल की गई",
+  "Passkeys_NeverUsed": "Ще не використовувався",
+  "Passkeys_Rename": "Yeniden adlandırın",
+  "Passkeys_RenameTitle": "Erişim Anahtarını Yeniden Adlandırın",
+  "Passkeys_Name": "Nombre",
+  "Passkeys_Delete": "Избришите",
+  "Passkeys_DeleteConfirm_Format": "「{0}」を削除しますか？ このパスキーではサインインできなくなります。",
+  "Passkeys_Added": "Ключът за достъп е добавен",
 
   // Settings > API Keys - the key list. Its create form and reveal page are the two groups
   // after this one.
@@ -921,6 +942,12 @@
   "Onboarding_GenerateAvatar": "Сгенерировать аватар",
   "Onboarding_UploadPhoto": "Отпремите своју фотографију",
 
+  // A one-time nudge shown after sign-up, suggesting a passkey instead of a code next time.
+  "Onboarding_PasskeyTitle": "Connectez-vous plus vite la prochaine fois",
+  "Onboarding_PasskeyText": "Erstellen Sie einen Passkey und nutzen Sie Face ID, Touch ID, Fingerabdruck oder Windows Hello, statt auf einen Code zu warten.",
+  "Onboarding_CreatePasskey": "Направите приступни кључ",
+  "Onboarding_NotNow": "Pas maintenant",
+
   // The rationale shown above each OS permission prompt, and - as Permissions_* - the Settings >
   // Permissions page listing them all. The system dialog itself is not ours and stays in the OS
   // language; only this explanation is translated. "Calls on the lock screen" and "Live Activities"
@@ -1687,6 +1714,7 @@
   "SignIn_VerifyPhoneText_Format": "Devam etmek ve arkadaşlarınızın sizi {0} uygulamasında bulabilmesi için lütfen telefon numaranızı doğrulayın.",
   "SignIn_VerifyEmailText_Format": "続けるにはメールアドレスを確認してください。{0} で友だちがあなたを見つけられるようになります。",
   "SignIn_PopupBlocked": "El navegador bloqueó la ventana emergente de inicio de sesión. Permite las ventanas emergentes para este sitio e inténtalo de nuevo.",
+  "SignIn_SignInWithPasskey": "Iniciar sesión con una llave de acceso",
 
   // Asking to join a place that does not accept open joins.
   "JoinRequest_NotMember": "まだメンバーではありません",
