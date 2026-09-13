@@ -15,6 +15,7 @@ public sealed class FileSystemContentHandler : IContentHandler
         public required FilePath Directory { get; init; }
         public required byte[] EncryptionKey { get; init; }
         public int MaxContentLength { get; init; } = 1024 * 1024;
+        public Func<Uri, Uri> CacheUrlNormalizer { get; init; } = static url => url;
     }
 
     private const int EnvelopeOverhead = 29;
@@ -46,11 +47,10 @@ public sealed class FileSystemContentHandler : IContentHandler
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (request.Method != HttpMethod.Get || request.ImmutableKey.IsNullOrEmpty() || request.Headers.Count != 0)
+        if (request.Method != HttpMethod.Get || request.Headers.Count != 0)
             return await Downstream.Handle(request, cancellationToken).ConfigureAwait(false);
 
-        var key = $"{request.ImmutableKey.Length}:{request.ImmutableKey}{request.Url.AbsoluteUri}"
-            .Hash().SHA256().AlphaNumeric();
+        var key = Settings.CacheUrlNormalizer(request.Url).AbsoluteUri.Hash().SHA256().AlphaNumeric();
         var path = Settings.Directory & (key + ".cache");
         var cached = await TryRead(path, key, cancellationToken).ConfigureAwait(false);
         if (cached != null)

@@ -10,7 +10,7 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `IContentHandler` / `ContentRequest` — MAUI-independent content pipeline; a null response leaves native handling unchanged
 - `LoggingContentHandler` — observes requests without exposing URL paths or credentials
 - `HttpContentHandler` — pluggable HTTP source returning headers before reading the body
-- `FileSystemContentHandler` — encrypted filesystem cache for bounded, explicitly immutable responses
+- `FileSystemContentHandler` — encrypted filesystem cache for bounded immutable media responses
 
 
 ## Core (`ActualChat.Core`)

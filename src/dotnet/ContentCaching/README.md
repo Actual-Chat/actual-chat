@@ -11,9 +11,10 @@ native platform should keep handling the request. Callers must dispose returned 
   and leaves the body streaming. The caller owns the client; normal HTTP failures retain
   their status codes.
 - `FileSystemContentHandler` decorates any downstream handler with an encrypted filesystem
-  cache. Set `ContentRequest.ImmutableKey` only when the representation is immutable;
-  include a session/account partition for private content. The URL also participates in
-  identity, so hosts and query variants cannot share entries accidentally.
+  cache for immutable media. By default, the full URL identifies each entry. Configure
+  `Options.CacheUrlNormalizer` to remove CDN-specific signing parameters from cache identity;
+  the downloader still receives the original signed URL. Preserve parameters that change
+  content, such as image size or version. Route only immutable content through this handler.
 
 The first cache stores complete GET responses with known lengths up to 1 MiB (configurable).
 Requests carrying headers, including ranges and credentials, and responses with private,
