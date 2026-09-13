@@ -111,7 +111,10 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
 
     public async Task SignIn(string schema)
     {
-        await SignInBackend(schema).ConfigureAwait(false);
+        if (schema == AuthSchema.Passkey)
+            await Hub.PasskeyUI.SignIn().ConfigureAwait(false);
+        else
+            await SignInBackend(schema).ConfigureAwait(false);
         // TODO(AY): Make it reliable
         await NotificationUI.EnsureDeviceRegistered(CancellationToken.None).ConfigureAwait(false);
     }

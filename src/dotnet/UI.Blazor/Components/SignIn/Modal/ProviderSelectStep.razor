@@ -13,6 +13,14 @@
 
 <div class="sign-in-step provider-select-step">
     <div class="c-auth-providers">
+        @if (m.CanUsePasskey) {
+            <Button
+                Class="btn-modal sign-in sign-in-with sign-in-passkey"
+                Click="@(_ => OnSignInWithProvider(AuthSchema.Passkey))">
+                <Icon><i class="icon-key"></i></Icon>
+                <Title>@L.SignIn_SignInWithPasskey</Title>
+            </Button>
+        }
         @foreach (var provider in _authProviders!) {
             <Button
                 Class="btn-modal sign-in sign-in-with"
@@ -111,6 +119,7 @@
     private ISessionTemporals SessionTemporals => Hub.SessionTemporals;
     private CaptchaUI CaptchaUI => Hub.CaptchaUI;
     private TotpUI TotpUI => Hub.TotpUI;
+    private PasskeyUI PasskeyUI => Hub.PasskeyUI;
 
     [Parameter, EditorRequired] public TotpSignInModel TotpSignInModel { get; set; } = null!;
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -190,7 +199,8 @@
         var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
         var signInError = await SessionTemporals.Get(Session, SessionTemporals_SignInErrorKey, cancellationToken)
             ?? "";
-        return new(hasSentCodeRecently, signInError);
+        var canUsePasskey = await PasskeyUI.CanUse(cancellationToken);
+        return new(hasSentCodeRecently, signInError, canUsePasskey);
     }
 
     protected override async Task<bool> Validate() {
@@ -357,7 +367,7 @@
         public string Class { get; init; } = null!;
     }
 
-    public sealed record Model(bool HasSentCodeRecently = false, string SignInError = "");
+    public sealed record Model(bool HasSentCodeRecently = false, string SignInError = "", bool CanUsePasskey = false);
 
     public sealed class StepModel(ComponentIdGenerator? componentIdGenerator = null)
         : FormModel<StepModel>("phone-signin", componentIdGenerator) {
