@@ -47,8 +47,17 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     {
         var parsedStreamId = StreamId.Parse(streamId);
         await Access.RequireReadAudio(session, parsedStreamId, cancellationToken).ConfigureAwait(false);
-        if (await IsTextOnly(parsedStreamId, cancellationToken).ConfigureAwait(false))
+        var chatId = await Backend.GetChatId(parsedStreamId, cancellationToken).ConfigureAwait(false);
+        if (await IsTextOnly(chatId, parsedStreamId, cancellationToken).ConfigureAwait(false))
             return null;
+
+        if (parsedStreamId.Language is { } dubLanguage) {
+            if (chatId == null
+                || !await IsDubLanguageAllowed(session, chatId, dubLanguage, cancellationToken).ConfigureAwait(false))
+                return null;
+
+            parsedStreamId = StreamId.New(parsedStreamId.BaseStreamId, Languages.GetCanonical(dubLanguage));
+        }
 
         var isLocal = parsedStreamId.NodeRef == MeshWatcher.ThisNode.Ref;
 
@@ -178,6 +187,15 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
         chat.Rules.Require(ChatPermissions.ReadAudio);
+        if (dubLanguage != null) {
+            if (await IsDubLanguageAllowed(session, chatId, dubLanguage, cancellationToken).ConfigureAwait(false))
+                dubLanguage = Languages.GetCanonical(dubLanguage);
+            else {
+                Log.LogWarning("GetListeningStream: {DubLanguage} isn't a language of this listener, not dubbing",
+                    dubLanguage);
+                dubLanguage = null;
+            }
+        }
 
         Log.LogInformation("GetListeningStream: chat '{ChatId}', catchUpFrom={CatchUpFrom}, dub={DubLanguage}",
             chatId, catchUpFrom, dubLanguage);
@@ -221,16 +239,38 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
 
     // Private methods
 
-    private async Task<bool> IsTextOnly(StreamId streamId, CancellationToken cancellationToken)
+    private async Task<bool> IsTextOnly(ChatId? chatId, StreamId streamId, CancellationToken cancellationToken)
     {
-        // Isolated: an SSB caller must not depend on this.
-        using var _ = Computed.BeginIsolation();
-        var chatId = await Backend.GetChatId(streamId, cancellationToken).ConfigureAwait(false);
         if (chatId is not { } || chatId.Value.IsNullOrEmpty())
             return false;
 
+        // Isolated: an SSB caller must not depend on this.
+        using var _ = Computed.BeginIsolation();
         var streams = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
-        return streams.Any(x => x.StreamId == streamId.Value && x.IsTextOnly);
+        var baseStreamId = streamId.BaseStreamId.Value;
+        return streams.Any(x => x.StreamId == baseStreamId && x.IsTextOnly);
+    }
+
+    private async Task<bool> IsDubLanguageAllowed(
+        Session session,
+        ChatId chatId,
+        Language language,
+        CancellationToken cancellationToken)
+    {
+        // A dub costs a TTS stream per (speaker, language), so it's served only in a language the
+        // listener reads or hears this chat in - the same set TranslationUI.GetTranslationLanguage
+        // picks from, read off the same settings
+        using var _ = Computed.BeginIsolation();
+        var userSettingsUI = Services.UserSettingsUI(session);
+        var chatSettings = await userSettingsUI
+            .ChatUserSettings(chatId.GetThreadOutermostParentOrSelf())
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
+        var languageSettings = await userSettingsUI.UserLanguageSettings().Get(cancellationToken).ConfigureAwait(false);
+        return languageSettings.ListSpoken()
+            .Append(chatSettings.TranslationTargetLanguage)
+            .Append(chatSettings.Language)
+            .Any(x => x?.IsoCode == language.IsoCode);
     }
 
     private async Task<ChatEntryId?> ResolveEntryId(

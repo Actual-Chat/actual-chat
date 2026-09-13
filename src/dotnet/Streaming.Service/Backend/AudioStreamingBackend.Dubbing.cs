@@ -56,7 +56,7 @@ public partial class AudioStreamingBackend
         TaskCompletionSource<bool> decidedSource,
         CancellationToken cancellationToken)
     {
-        var sourceStreamId = BaseStreamId(dubStreamId);
+        var sourceStreamId = dubStreamId.BaseStreamId;
         var language = dubStreamId.Language!;
         var text = Channel.CreateUnbounded<string>(new UnboundedChannelOptions {
             SingleReader = true,
@@ -224,7 +224,7 @@ public partial class AudioStreamingBackend
     }
 
     private string? GetDubChainKey(StreamId dubStreamId)
-        => _authorIdByStream.TryGetValue(BaseStreamId(dubStreamId), out var authorId)
+        => _authorIdByStream.TryGetValue(dubStreamId.BaseStreamId, out var authorId)
             ? $"{authorId}~{dubStreamId.Language}"
             : null;
 
@@ -310,9 +310,9 @@ public partial class AudioStreamingBackend
     {
         // Only the entries: the transcript expires 60 s after it completes, while its dub can still
         // be draining, so the worker ends on its own (WorkerBase disposes its CTS then)
-        var baseStreamId = BaseStreamId(streamId);
+        var baseStreamId = streamId.BaseStreamId;
         foreach (var dubStreamId in _dubs.Keys)
-            if (BaseStreamId(dubStreamId) == baseStreamId)
+            if (dubStreamId.BaseStreamId == baseStreamId)
                 _dubs.TryRemove(dubStreamId, out _);
     }
 

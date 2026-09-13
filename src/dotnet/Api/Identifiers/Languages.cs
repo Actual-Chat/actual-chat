@@ -144,6 +144,18 @@ public static class Languages
                 ? Max
                 : DetectUILanguage([languageOverride]);
 
+    public static Language GetCanonical(Language language)
+    {
+        // en-GB and en-US share one catalog, one translation and one dub; the UI variant is the
+        // canonical one, and a language with no UI variant is canonical by itself
+        if (language.Support.HasFlag(LanguageSupport.UI))
+            return language;
+
+        return AllUI.FirstOrDefault(x => x.IsoCode == language.IsoCode)
+            ?? All.FirstOrDefault(x => x.IsoCode == language.IsoCode)
+            ?? language;
+    }
+
     public static Language DetectUILanguage(IReadOnlyList<string> clientLanguages)
     {
         // Matched by IsoCode rather than by Value: the client reports "en-GB" or a bare "en",

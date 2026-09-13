@@ -84,7 +84,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     }
 
     public virtual Task<ChatId?> GetChatId(StreamId streamId, CancellationToken cancellationToken)
-        => Task.FromResult(_chatIdByStream.GetValueOrDefault(BaseStreamId(streamId)));
+        => Task.FromResult(_chatIdByStream.GetValueOrDefault(streamId.BaseStreamId));
 
     public virtual async Task<RpcStream<AudioFrame>?> GetAudio(
         StreamId streamId,
@@ -180,10 +180,10 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     // Protected/internal methods
 
     internal void RememberChatId(StreamId streamId, ChatId chatId)
-        => _chatIdByStream[BaseStreamId(streamId)] = chatId;
+        => _chatIdByStream[streamId.BaseStreamId] = chatId;
 
     internal void RememberAuthorId(StreamId streamId, AuthorId authorId)
-        => _authorIdByStream[BaseStreamId(streamId)] = authorId;
+        => _authorIdByStream[streamId.BaseStreamId] = authorId;
 
     internal static IAsyncEnumerable<AudioFrame> SkipTo(
         IAsyncEnumerable<AudioFrame> stream,
@@ -261,7 +261,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         if (language == null)
             return null;
 
-        var originalStreamId = BaseStreamId(streamId);
+        var originalStreamId = streamId.BaseStreamId;
         if (_translatingStreams.TryAdd(streamId, originalStreamId)) {
             DebugLog?.LogDebug("GetOrStartTranslation: #{StreamId} - Translate stream", streamId);
             var cmd = new TranslationsBackend_TranslateStream(originalStreamId, language);
@@ -285,15 +285,12 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     private void ForgetChatIdIfUnused(StreamId streamId)
     {
         // ExpiringEntry self-removes before calling this, so Has already excludes it.
-        var baseStreamId = BaseStreamId(streamId);
+        var baseStreamId = streamId.BaseStreamId;
         if (!_audioStreams.Has(baseStreamId) && !_transcriptStreams.Has(baseStreamId)) {
             _chatIdByStream.TryRemove(baseStreamId, out _);
             _authorIdByStream.TryRemove(baseStreamId, out _);
         }
     }
-
-    private static StreamId BaseStreamId(StreamId streamId)
-        => streamId.Language == null ? streamId : StreamId.New(streamId.NodeRef, streamId.LocalId);
 
     private void ValidateStreamId(StreamId streamId)
     {
