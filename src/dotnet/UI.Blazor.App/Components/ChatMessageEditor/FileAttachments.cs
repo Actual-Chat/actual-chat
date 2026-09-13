@@ -38,6 +38,7 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
             if (!prevHasAdded && hasAdded)
                 _ = TuneUI.Play(Tune.ChangeAttachments);
         }
+
         return hasAdded;
     }
 
@@ -68,6 +69,7 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
                 _ = TuneUI.Play(Tune.ChangeAttachments);
             hasAdded = true;
         }
+
         return hasAdded;
     }
 
@@ -223,6 +225,7 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
             FileProvider = fileProvider,
             DurationMs = preview?.DurationMs ?? 0,
         };
+        attachment.Cleanups.Add(AttachmentCleanupFactory.ForPendingWork(() => CancelWork(attachment.Id)));
         attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));
         return attachment;
     }
@@ -348,6 +351,14 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
         return task;
     }
 
+    private void CancelWork(AttachmentId id)
+    {
+        // Runs from the attachment's first cleanup, i.e. on every removal path: the encode this
+        // attachment still has in flight reads files the remaining cleanups are about to delete
+        if (_pendingWork.TryRemove(id, out var work))
+            work.CancellationTokenSource.CancelAndDisposeSilently();
+    }
+
     private async Task ProcessImageAndUpload(
         AttachmentList list,
         AttachmentId id,
@@ -430,8 +441,15 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
             // A failed encode usually happens inside Send now, and the same Post goes on to demand
             // the upload session this attachment never got - so it leaves the list, as above
             Log.LogError(e, "Failed to process or upload attachment '{AttachmentId}'", id);
+            if (list.Items.FirstOrDefault(a => a.Id == id) is not { } stale) {
+                // Already removed by the user, so whatever this failed against was being torn down
+                // anyway - telling them the attachment failed to be added would be a lie
+                _pendingPreviews.TryRemove(id, out _);
+                return;
+            }
+
             UICommander.ShowError(StandardError.Constraint("Failed to add file attachment."));
-            if (list.Items.FirstOrDefault(a => a.Id == id) is { } stale && stale.UploadSessionId.IsNullOrEmpty()) {
+            if (stale.UploadSessionId.IsNullOrEmpty()) {
                 _pendingPreviews.TryRemove(id, out _);
                 await list.Remove(stale);
             }

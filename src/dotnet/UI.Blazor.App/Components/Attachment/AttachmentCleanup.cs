@@ -2,7 +2,15 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public enum AttachmentCleanupKind { File, UploadSession, PersistedPostMessageRequest, SourceFile, PreviewFile }
+public enum AttachmentCleanupKind
+{
+    PendingWork,
+    File,
+    UploadSession,
+    PersistedPostMessageRequest,
+    SourceFile,
+    PreviewFile,
+}
 
 public sealed record AttachmentCleanup(AttachmentCleanupKind Kind, Func<Task> Cleanup);
 
@@ -35,6 +43,15 @@ public sealed class AttachmentCleanupCollection
 
 public static class AttachmentCleanupFactory
 {
+    public static AttachmentCleanup ForPendingWork(Action cancel)
+        // Registered first, so the encode/upload in flight is cancelled before the cleanups
+        // below tear down the files it reads
+        => new (AttachmentCleanupKind.PendingWork,
+            () => {
+                cancel.Invoke();
+                return Task.CompletedTask;
+            });
+
     public static AttachmentCleanup ForFile(IFileProvider fileProvider)
         => new (AttachmentCleanupKind.File, fileProvider.ClearForRemoving);
 
