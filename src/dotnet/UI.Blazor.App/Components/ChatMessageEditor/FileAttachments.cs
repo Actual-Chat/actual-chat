@@ -60,7 +60,7 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
             if (await createTask is not { } attachment)
                 continue;
 
-            await AddAttachment(list, attachment);
+            AddAttachment(list, attachment);
             if (!hasAdded)
                 _ = TuneUI.Play(Tune.ChangeAttachments);
             hasAdded = true;
@@ -148,7 +148,7 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
         if (await TryCreateAttachment(webFileProvider) is not { } attachment)
             return false;
 
-        await AddAttachment(list, attachment);
+        AddAttachment(list, attachment);
         return true;
     }
 
@@ -224,15 +224,13 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
         return attachment;
     }
 
-    private async Task AddAttachment(AttachmentList list, Attachment attachment)
+    private void AddAttachment(AttachmentList list, Attachment attachment)
     {
         // Nothing is encoded or uploaded here unless the draft is already committed
         if (attachment.IsProcessableImage) {
             var fileProvider = attachment.FileProvider!;
             attachment.Cleanups.RemoveByKind(AttachmentCleanupKind.File);
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForSourceFile(fileProvider));
-            if (attachment is SourceAttachment sourceAttachment && NeedsPreviewConversion(attachment.FileType))
-                attachment = await ConvertPreview(sourceAttachment, fileProvider);
             attachment = attachment with {
                 Source = new AttachmentSource(
                     fileProvider, attachment.FileName, attachment.FileType, attachment.Length, attachment.Size),
@@ -241,28 +239,42 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
         }
         SetSourcePreview(attachment);
         list.Add(attachment);
+        // WebKit paints HEIC/AVIF natively, so the source preview is already fine there - converting
+        // would only cost a full-resolution decode for nothing
+        if (attachment.IsProcessableImage && NeedsPreviewConversion(attachment.FileType) && !Hub.BrowserInfo.IsWebKit)
+            _ = ConvertPreview(list, attachment.Id, attachment.FileProvider!, attachment.Size)
+                .WithErrorLog(Log, "Failed to convert HEIC/AVIF preview for attachment '{AttachmentId}'", attachment.Id)
+                .SilentAwait();
         if (list.IsCommitted)
             StartWorkIfNeeded(list, attachment);
     }
 
-    private async Task<SourceAttachment> ConvertPreview(SourceAttachment attachment, IFileProvider fileProvider)
+    private async Task ConvertPreview(
+        AttachmentList list, AttachmentId id, IFileProvider fileProvider, Size2D sourceSize)
     {
-        // A Chromium WebView can't paint HEIC/AVIF, so this is the one exception to "nothing before commit":
-        // the source preview would otherwise stay a permanently stuck "loading" tile
-        try {
-            var result = await ImageAttachmentProcessor
-                .Process(fileProvider, attachment.Size, ImageQualityPreset.Mpx3, Hub.StopToken);
-            if (result?.FileProvider is not { } previewProvider)
-                return attachment;
+        // A Chromium WebView can't paint HEIC/AVIF, so this is the one exception to "nothing before commit" -
+        // it runs in the background so the tile itself is added at zero cost, same as every other format
+        var request = new ImageProcessRequest([ImageOutputSpec.Main(ImageQualityPreset.Mpx3.GetBudget())]);
+        var result = await ImageAttachmentProcessor
+            .Process(fileProvider, sourceSize, ImageQualityPreset.Mpx3, request, Hub.StopToken);
+        if (result?.FileProvider is not { } previewProvider)
+            return;
 
-            var preview = await FilePreviews.Get(previewProvider, "image/jpeg", Hub.StopToken);
-            attachment.Cleanups.Add(AttachmentCleanupFactory.ForPreviewFile(previewProvider));
-            return attachment with { Preview = preview, Size = preview?.Dimensions ?? attachment.Size };
+        // The committed pipeline may have already replaced this attachment with the real thing by now;
+        // re-read it by id rather than trusting a stale reference, same as ProcessImageAndUpload does
+        if (list.Items.FirstOrDefault(a => a.Id == id) is not SourceAttachment { IsProcessing: true } pending) {
+            await previewProvider.ClearForRemoving();
+            return;
         }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogWarning(e, "Failed to convert HEIC/AVIF preview for attachment '{AttachmentId}'", attachment.Id);
-            return attachment;
-        }
+
+        pending.Cleanups.Add(AttachmentCleanupFactory.ForPreviewFile(previewProvider));
+        var preview = await FilePreviews.Get(previewProvider, "image/jpeg", Hub.StopToken);
+        if (list.Items.FirstOrDefault(a => a.Id == id) is not SourceAttachment { IsProcessing: true } current)
+            return; // Removed or already replaced meanwhile; the cleanup above still owns the file
+
+        var updated = current with { Preview = preview, Size = preview?.Dimensions ?? current.Size };
+        list.Replace(current, updated);
+        SetSourcePreview(updated);
     }
 
     private static bool NeedsPreviewConversion(string fileType)

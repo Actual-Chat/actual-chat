@@ -17,13 +17,22 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
     private IProcessedImageStore ProcessedImageStore => field ??= Services.GetRequiredService<IProcessedImageStore>();
     private ILogger Log => field ??= Services.LogFor(GetType());
 
-    public async Task<ImageProcessingResult?> Process(
+    public Task<ImageProcessingResult?> Process(
         IFileProvider source,
         Size2D sourceSize,
         ImageQualityPreset preset,
         CancellationToken cancellationToken)
+        => Process(source, sourceSize, preset, preset.ToRequest(), cancellationToken);
+
+    public async Task<ImageProcessingResult?> Process(
+        IFileProvider source,
+        Size2D sourceSize,
+        ImageQualityPreset preset,
+        ImageProcessRequest request,
+        CancellationToken cancellationToken)
     {
-        var request = preset.ToRequest();
+        // The request is decoupled from the preset so a caller can ask for a subset of preset.ToRequest()'s
+        // outputs (e.g. skip the placeholder) while the preset itself still drives the Maui decode budget
         try {
             return source switch {
                 WebFileProvider webSource
