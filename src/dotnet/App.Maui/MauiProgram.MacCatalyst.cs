@@ -19,6 +19,7 @@ public static partial class MauiProgram
         services.AddScoped<INotificationsPermission>(_ => new MacNotificationsPermission());
         services.AddScoped<IRecordingPermissionRequester>(_ => new AppleRecordingPermissionRequester());
         services.AddScoped(c => new NativeAppleAuth(c));
+        services.AddScoped<IPasskeyClient>(_ => new ApplePasskeyClient());
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
         services.AddScoped<IFileSaver>(c => new AppleFileSaver(c.UIHub()));
         services.AddScoped<ClipboardUI>(c => new MacClipboardUI(c.UIHub()));
