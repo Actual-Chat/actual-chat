@@ -1565,13 +1565,13 @@ public static class LocalizedStringsLocalizerExt
         public string Call_Entry_NoAnswer => l["Call_Entry_NoAnswer"].Value;
         public string Call_Entry_TapToCallBack => l["Call_Entry_TapToCallBack"].Value;
         public string Call_Join => l["Call_Join"].Value;
-        public string LiveConversation_TranslatedVoice => l["LiveConversation_TranslatedVoice"].Value;
         public string Call_JoinMuted => l["Call_JoinMuted"].Value;
         public string Call_ShareScreen => l["Call_ShareScreen"].Value;
         public string Call_StopScreenShare => l["Call_StopScreenShare"].Value;
         public string Call_Transcribing => l["Call_Transcribing"].Value;
         public string Call_UnavailableInChat => l["Call_UnavailableInChat"].Value;
         public string Call_VideoOff => l["Call_VideoOff"].Value;
+        public string LiveConversation_TranslatedVoice => l["LiveConversation_TranslatedVoice"].Value;
         public string Share_FailedToShareFiles => l["Share_FailedToShareFiles"].Value;
         public string Share_PrivateChatJoinLink => l["Share_PrivateChatJoinLink"].Value;
         public string Share_PrivatePlaceJoinLink => l["Share_PrivatePlaceJoinLink"].Value;

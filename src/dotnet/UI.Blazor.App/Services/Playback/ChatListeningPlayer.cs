@@ -102,15 +102,17 @@ public sealed class ChatListeningPlayer : ChatPlayer
         var computed = await Computed
             .Capture(() => Hub.TranslationUI.GetDubLanguage(ChatId, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
+        var previous = computed.ValueOrDefault;
         while (true) {
             await computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
-            var previous = computed.Value;
             computed = await computed.Update(cancellationToken).ConfigureAwait(false);
-            if (Equals(computed.Value, previous))
+            // An error computed is skipped rather than ending the watcher for the rest of the playback
+            if (!computed.IsValue(out var current) || Equals(current, previous))
                 continue;
 
             Log.LogInformation("Re-subscribing to #{ChatId}: dub language {Old} -> {New}",
-                ChatId, previous, computed.Value);
+                ChatId, previous, current);
+            previous = current;
             streamProcessor.Break();
         }
     }
