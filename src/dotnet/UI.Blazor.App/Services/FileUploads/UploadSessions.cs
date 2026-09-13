@@ -6,16 +6,22 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 {
     private readonly Task _cleanupTask;
     private readonly IUploadSessionRepo _repo;
-    private readonly UploadOperations _uploadOperations;
+    private readonly IUploadOperations _uploadOperations;
     private readonly ConcurrentDictionary<string, SessionRef> _sessions = new ();
     private readonly Func<UploadSessionSnapshot, bool, CancellationToken, Task> _storage;
 
     private UploadSessionsState UploadSessionsState => Hub.UploadSessionsState;
 
-    public UploadSessions(AppUIHub hub) : base(hub)
+    public UploadSessions(AppUIHub hub) : this(hub, new UploadOperations(hub))
+    {
+    }
+
+    // A test-only seam: production always goes through the ctor above,
+    // which builds the real UploadOperations
+    internal UploadSessions(AppUIHub hub, IUploadOperations uploadOperations) : base(hub)
     {
         _repo = hub.Services.GetRequiredService<IUploadSessionRepo>();
-        _uploadOperations = new UploadOperations(hub);
+        _uploadOperations = uploadOperations;
         _cleanupTask = BackgroundTask.Run(Cleanup);
         _storage = CreateStorage();
     }
@@ -150,11 +156,14 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         var sessionId = session.SessionId;
         _sessions.TryRemove(sessionId, out _);
         var fileProvider = session.FileProvider;
+        // A completed session's reserved media is bound to a posted message, not an orphan - keep it
+        var reservedMediaId = session.IsCompleted ? null : session.MediaId;
         await DeleteSessionResources(
             sessionId,
             fileProvider,
             session.TranscodedFilePath,
             session.UploadId,
+            reservedMediaId,
             mustKeepFile).ConfigureAwait(false);
         Log.LogDebug("Deleted session '{SessionId}' ('{FileName}')", sessionId, fileProvider.Metadata.FileName);
     }
@@ -207,10 +216,21 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         IFileProvider fileProvider,
         string? transcodedFilePath,
         UploadId? uploadId,
+        MediaId? reservedMediaId = null,
         bool mustKeepFile = false)
     {
         if (uploadId is not null)
             await _uploadOperations.RemoveUpload(uploadId, CancellationToken.None).ConfigureAwait(false);
+        if (reservedMediaId is { } mediaId) {
+            // The session is being thrown away either way, so a failure here must not block the rest of the cleanup
+            try {
+                await _uploadOperations.RemoveMedia(mediaId, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception e) {
+                Log.LogWarning(e,
+                    "Failed to remove reserved media '{MediaId}' for session '{SessionId}'", mediaId, sessionId);
+            }
+        }
         if (!mustKeepFile)
             await fileProvider.ClearForRemoving().ConfigureAwait(false);
         DeleteFile(transcodedFilePath);

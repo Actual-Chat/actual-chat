@@ -4,7 +4,26 @@ using ActualChat.UI.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed class UploadOperations(AppUIHub hub)
+public interface IUploadOperations
+{
+    VideoTranscoder VideoTranscoder { get; }
+    Moment Now();
+    Task<MediaId> ReserveMediaId(UploadSessionSnapshot snapshot, CancellationToken cancellationToken = default);
+    Task UploadData(
+        UploadSource source,
+        UploadSessionSnapshotAccessor snapshotAccessor,
+        IProgress<double>? progress = null,
+        CancellationToken cancellationToken = default);
+    Task StartServerProcessing(UploadSessionSnapshot snapshot, CancellationToken cancellationToken = default);
+    Task<MediaRef> WaitForProcessingCompletion(
+        UploadSessionSnapshot snapshot,
+        IProgress<double>? progress = null,
+        CancellationToken cancellationToken1 = default);
+    Task RemoveUpload(UploadId uploadId, CancellationToken cancellationToken);
+    Task RemoveMedia(MediaId mediaId, CancellationToken cancellationToken);
+}
+
+public sealed class UploadOperations(AppUIHub hub) : IUploadOperations
 {
     private static readonly TimeSpan MonitorServerProcessingTimeout = TimeSpan.FromMinutes(15);
 
@@ -137,6 +156,12 @@ public sealed class UploadOperations(AppUIHub hub)
         => await Commander.Call(new Uploads_Remove {
             Session = Session,
             UploadId = uploadId,
+        }, cancellationToken).ConfigureAwait(false);
+
+    public async Task RemoveMedia(MediaId mediaId, CancellationToken cancellationToken)
+        => await Commander.Call(new Media_RemoveMedia {
+            Session = Session,
+            MediaId = mediaId,
         }, cancellationToken).ConfigureAwait(false);
 
     private async Task<UploadId> GetOrRegisterUpload(

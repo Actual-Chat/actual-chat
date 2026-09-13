@@ -29,7 +29,7 @@ public class UploadSession
     private UploadSessionSnapshot _snapshot;
     private int _isRunning;
     private Task _runTask = Task.CompletedTask;
-    private readonly UploadOperations _uploadOperations;
+    private readonly IUploadOperations _uploadOperations;
 
     public static UploadSessionSnapshot NewUploadSnapshot(IFileProvider fileProvider, MetadataBag metadata,
         Moment now, string mediaScope)
@@ -48,7 +48,7 @@ public class UploadSession
     }
 
     public UploadSession(UploadSessionSnapshot snapshot,
-        UploadOperations uploadOperations,
+        IUploadOperations uploadOperations,
         Func<UploadSessionSnapshot, bool, CancellationToken, Task>? storage = null)
     {
         _uploadOperations = uploadOperations;
