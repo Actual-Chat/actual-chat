@@ -21,6 +21,17 @@ Requests carrying headers, including ranges and credentials, and responses with 
 no-store, varying, or cookie state bypass persistence. Larger or unknown-length responses
 retain their downstream streams without being read by the cache.
 
+Cache fills are coordinated by absolute file path within the process, including across handler
+instances. A waiter rechecks the cache after the active fill, then opens its own response.
+Canceling a waiter leaves the active download running; a canceled/failed owner releases the
+entry for a retry. Different entries download independently. If persistence fails, a waiter
+may need another download. Large-file/range streams remain pass-through.
+
+Files use one level of 256 buckets: the first SHA-256 byte in lowercase hex is the directory,
+and the complete Base64Url-encoded hash of the UTF-8 normalized URL is the filename.
+Encrypted staging files append `.p`; completed files have no extension. Stale partials are
+never read as cached responses and are replaced by the next successful fill.
+
 Payload and response metadata are encrypted together with AES-256-GCM, with a fresh nonce
 per write and an HKDF key derived for this cache. The cache identity is authenticated to
 prevent file swaps. Only a complete response is atomically published; corruption and
