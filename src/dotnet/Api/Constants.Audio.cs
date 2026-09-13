@@ -146,6 +146,10 @@ public static partial class Constants
         public static readonly TimeSpan DubWaitTimeout = TimeSpan.FromSeconds(5);
         // Between attempts to start the translation a dub reads, while the source transcript is live
         public static readonly TimeSpan DubTranslationRetryDelay = TimeSpan.FromMilliseconds(250);
+        // After a timed-out dub decision, how long that author's utterances skip the hold
+        public static readonly TimeSpan DubCooldown = TimeSpan.FromSeconds(30);
+        // After a synthesis failure, how long every dub is skipped - the provider is assumed down
+        public static readonly TimeSpan DubSynthesizerDownDelay = TimeSpan.FromSeconds(60);
 
         // Watchdog: cancel ProcessAudio handler if no frame arrives within this window.
         // Opus frames are 20 ms; 2 s of silence means the producer is pathologically stalled.

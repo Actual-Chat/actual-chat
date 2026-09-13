@@ -7,16 +7,19 @@ public partial class AudioStreamingBackend
 {
     private readonly ConcurrentDictionary<StreamId, DubEntry> _dubs = new();
     private readonly ConcurrentDictionary<string, Task> _dubChains = new();
+    private readonly ConcurrentDictionary<string, Moment> _dubCooldowns = new();
+    // Written by the synthesis task, read by every EnsureDub
+    private long _synthesizerDownUntilTicks;
 
     private ISpeechSynthesizer? SpeechSynthesizer => field ??= Services.GetService<ISpeechSynthesizer>();
 
     // Private methods
 
-    // Starts the dub of dubStreamId's base stream into dubStreamId.Language unless it's running or
-    // decided already. True means the dub stream is published; false means serve the original.
     private async Task<bool> EnsureDub(StreamId dubStreamId, CancellationToken cancellationToken)
     {
-        if (SpeechSynthesizer == null)
+        // Starts the dub of dubStreamId's base stream into dubStreamId.Language unless it's running
+        // or decided already. True means the dub stream is published; false means serve the original.
+        if (SpeechSynthesizer == null || IsCoolingDown(dubStreamId))
             return false;
 
         var entry = _dubs.GetOrAdd(dubStreamId, static (id, self) => self.StartDub(id), this);
@@ -30,6 +33,7 @@ public partial class AudioStreamingBackend
         catch (TimeoutException) {
             Log.LogWarning("EnsureDub: #{StreamId} - no decision in {Timeout}s, serving the original",
                 dubStreamId, Constants.Audio.DubWaitTimeout.TotalSeconds);
+            StartCooldown(dubStreamId);
             return false;
         }
     }
@@ -148,7 +152,14 @@ public partial class AudioStreamingBackend
             }
             catch (Exception e) {
                 frames.Writer.TryComplete(e);
-                throw;
+                if (e.IsCancellationOf(cancellationToken))
+                    throw;
+
+                // The muxer falls back to the original on the erroring stream; later utterances skip
+                // the hold and the failure instead of paying both again while the provider is down.
+                var downUntil = Clocks.CpuClock.Now + Constants.Audio.DubSynthesizerDownDelay;
+                Volatile.Write(ref _synthesizerDownUntilTicks, downUntil.EpochOffsetTicks);
+                Log.LogWarning(e, "Dub #{StreamId} failed, no dubs until {DownUntil}", dubStreamId, downUntil);
             }
             finally {
                 frames.Writer.TryComplete();
@@ -162,15 +173,53 @@ public partial class AudioStreamingBackend
     private Task ChainDub(StreamId dubStreamId, out TaskCompletionSource whenDoneSource, out string? chainKey)
     {
         whenDoneSource = TaskCompletionSourceExt.New();
-        chainKey = null;
-        if (!_authorIdByStream.TryGetValue(BaseStreamId(dubStreamId), out var authorId))
+        chainKey = GetDubChainKey(dubStreamId);
+        if (chainKey == null)
             return Task.CompletedTask;
 
-        chainKey = $"{authorId}~{dubStreamId.Language}";
-        var previousDubTask = _dubChains.GetValueOrDefault(chainKey) ?? Task.CompletedTask;
-        _dubChains[chainKey] = whenDoneSource.Task;
+        var whenDone = whenDoneSource.Task;
+        var previousDubTask = Task.CompletedTask;
+        _dubChains.AddOrUpdate(chainKey, whenDone, (_, previous) => {
+            previousDubTask = previous;
+            return whenDone;
+        });
         return previousDubTask;
     }
+
+    private bool IsCoolingDown(StreamId dubStreamId)
+    {
+        var now = Clocks.CpuClock.Now;
+        if (new Moment(Volatile.Read(ref _synthesizerDownUntilTicks)) > now)
+            return true;
+
+        return GetDubChainKey(dubStreamId) is { } key
+            && _dubCooldowns.TryGetValue(key, out var until)
+            && until > now;
+    }
+
+    private void StartCooldown(StreamId dubStreamId)
+    {
+        // After a timed-out decision the next utterances of this author are served undubbed at
+        // once rather than each paying the hold; logged once per cool-down.
+        if (GetDubChainKey(dubStreamId) is not { } key)
+            return;
+
+        var now = Clocks.CpuClock.Now;
+        if (_dubCooldowns.TryGetValue(key, out var current) && current > now)
+            return;
+
+        foreach (var (expiredKey, expiredUntil) in _dubCooldowns)
+            if (expiredUntil <= now)
+                _dubCooldowns.TryRemove(new KeyValuePair<string, Moment>(expiredKey, expiredUntil));
+        var until = now + Constants.Audio.DubCooldown;
+        _dubCooldowns[key] = until;
+        Log.LogWarning("StartCooldown: {Key} - serving the original without a hold until {Until}", key, until);
+    }
+
+    private string? GetDubChainKey(StreamId dubStreamId)
+        => _authorIdByStream.TryGetValue(BaseStreamId(dubStreamId), out var authorId)
+            ? $"{authorId}~{dubStreamId.Language}"
+            : null;
 
     private async Task<AsyncMemoizer<TranscriptDiff>?> WaitForSourceTranscript(
         StreamId sourceStreamId,

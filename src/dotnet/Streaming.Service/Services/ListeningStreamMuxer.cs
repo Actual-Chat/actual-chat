@@ -23,6 +23,8 @@ public sealed class ListeningStreamMuxer : WorkerBase
     // Restarted after failing mid-relay: marked preexisting so GetSkipTo serves them live rather
     // than replaying the utterance.
     private readonly ConcurrentDictionary<string, byte> _resumedStreamIds = new();
+    // Sources whose dub failed: served as originals from then on, so a TTS outage never mutes a speaker
+    private readonly ConcurrentDictionary<string, byte> _undubbedStreamIds = new();
     private TaskCompletionSource _whenRetryNeededSource = TaskCompletionSourceExt.New();
     private int _nextStreamIndex;
 
@@ -167,6 +169,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
         var isStartEmitted = false;
         var shouldRetry = false;
         var mustResume = false;
+        var isDub = false;
         try {
             _streamById[streamId] = streamEntry;
             var skipTo = GetSkipTo(streamEntry.IsPreexisting, streamInfo, CatchUpFrom);
@@ -177,7 +180,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
                 return;
             }
 
-            var isDub = startInfo.DubLanguage != null;
+            isDub = startInfo.DubLanguage != null;
             if (!TryRegister(streamEntry, isDub))
                 return; // See `finally` block below
 
@@ -243,7 +246,17 @@ public sealed class ListeningStreamMuxer : WorkerBase
             streamStopTokenSource.CancelAndDisposeSilently();
             await EmitEndSafe().ConfigureAwait(false);
 
-            if (mustResume) {
+            if (mustResume && isDub) {
+                // The dub track died; the retry serves the original from the live edge, and the
+                // source's own retry counters stay untouched - a failing dub must never exclude
+                // the speaker.
+                Log.LogWarning("ProcessStream: {Language} dub of #{StreamId} failed mid-relay, serving the original",
+                    DubLanguage, streamId);
+                _undubbedStreamIds.TryAdd(streamId, 0);
+                _resumedStreamIds.TryAdd(streamId, 0);
+                shouldRetry = true;
+            }
+            else if (mustResume) {
                 // Excluding here silenced the speaker until their next utterance. The retry path
                 // builds a fresh entry with a new index, so the listener gets a clean start item.
                 var resumeCount = _preStartRetryCountByStreamId.AddOrUpdate(streamId, 1, (_, count) => count + 1);
@@ -324,17 +337,23 @@ public sealed class ListeningStreamMuxer : WorkerBase
         CancellationToken cancellationToken)
     {
         var streamInfo = entry.StreamInfo;
-        if (entry.IsDubbed) {
+        if (entry.IsDubbed && !_undubbedStreamIds.ContainsKey(streamInfo.StreamId)) {
             var dubStreamId = StreamId.New(StreamId.Parse(streamInfo.StreamId), DubLanguage!).Value;
-            var dub = await LiveAudioStreams
-                .GetStream(Session, dubStreamId, skipTo, cancellationToken)
-                .ConfigureAwait(false);
-            // ProcessStream re-stamps BeginsAt/SourceBeginsAt when the dub's first data frame arrives
-            if (dub != null)
-                return (dub, streamInfo with { DubLanguage = DubLanguage });
+            try {
+                var dub = await LiveAudioStreams
+                    .GetStream(Session, dubStreamId, skipTo, cancellationToken)
+                    .ConfigureAwait(false);
+                if (dub != null)
+                    return (dub, streamInfo with { DubLanguage = DubLanguage });
 
-            Log.LogDebug("GetStream: no {Language} dub for #{StreamId}, serving the original",
-                DubLanguage, streamInfo.StreamId);
+                Log.LogDebug("GetStream: no {Language} dub for #{StreamId}, serving the original",
+                    DubLanguage, streamInfo.StreamId);
+            }
+            catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+                Log.LogWarning(e, "GetStream: {Language} dub of #{StreamId} failed, serving the original",
+                    DubLanguage, streamInfo.StreamId);
+                _undubbedStreamIds.TryAdd(streamInfo.StreamId, 0);
+            }
         }
         var original = await LiveAudioStreams
             .GetStream(Session, streamInfo.StreamId, skipTo, cancellationToken)
