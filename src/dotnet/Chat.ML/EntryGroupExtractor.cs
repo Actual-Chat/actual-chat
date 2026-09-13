@@ -1,6 +1,8 @@
 namespace ActualChat.Chat.ML;
 
-public record EntryGroup(IReadOnlyList<ChatEntrySlim> Entries, int WordCount = 0, bool IsCompleted = false)
+public sealed record EntryGroup(
+    IReadOnlyList<ChatEntrySlim> Entries,
+    int WordCount = 0)
 {
     public IReadOnlyList<Range<long>> LocalIdRanges => field ??= GetLocalIdRanges();
 
@@ -28,6 +30,11 @@ public record EntryGroup(IReadOnlyList<ChatEntrySlim> Entries, int WordCount = 0
 
         return idRanges;
     }
+
+    // This record relies on referential equality: LocalIdRanges is a `field ??=` cache, so the
+    // generated Equals would call two identical groups different once one of them is read
+    public bool Equals(EntryGroup? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
 public record ReplySequence(IReadOnlyList<ChatEntrySlim> Entries);
