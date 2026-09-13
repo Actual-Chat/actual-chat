@@ -144,7 +144,7 @@ public class UploadSession
         var mediaId = await _uploadOperations.ReserveMediaId(_snapshot, cancellationToken).ConfigureAwait(false);
         await UpdateState(s => s with {
             ReservedMediaId = mediaId
-        }, save: false, cancellationToken: cancellationToken).ConfigureAwait(false);
+        }, cancellationToken: cancellationToken).ConfigureAwait(false);
         _whenMediaIdReserved.TrySetResult(mediaId);
         await TransitionTo(UploadSessionState.ClientProcessing).ConfigureAwait(false);
     }, cancellationToken);

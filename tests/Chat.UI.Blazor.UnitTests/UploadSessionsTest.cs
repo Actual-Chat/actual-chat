@@ -75,10 +75,50 @@ public sealed class UploadSessionsTest : TestBase
         operations.RemovedMediaIds.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task StaleSessionShouldRemoveItsReservedMedia()
+    {
+        // arrange
+        var operations = new FakeUploadOperations();
+        var sessions = NewUploadSessions(operations);
+        var mediaId = MediaId.New(MediaId.NewScope());
+        var snapshot = await SaveStaleSnapshot(UploadSessionState.Uploading, mediaId);
+
+        // act - no in-memory session exists for this id, so this hits the crash-recovery branch
+        await sessions.DeleteStaleSession(snapshot.SessionId);
+
+        // assert
+        operations.RemovedMediaIds.Should().ContainSingle().Which.Should().Be(mediaId);
+    }
+
+    [Fact]
+    public async Task StaleCompletedSessionShouldKeepItsMedia()
+    {
+        // arrange
+        var operations = new FakeUploadOperations();
+        var sessions = NewUploadSessions(operations);
+        var mediaId = MediaId.New(MediaId.NewScope());
+        var snapshot = await SaveStaleSnapshot(UploadSessionState.Completed, mediaId);
+
+        // act
+        await sessions.DeleteStaleSession(snapshot.SessionId);
+
+        // assert
+        operations.RemovedMediaIds.Should().BeEmpty();
+    }
+
     // Private methods
 
     private UploadSessions NewUploadSessions(IUploadOperations operations)
         => new (ScopedServices.GetRequiredService<AppUIHub>(), operations);
+
+    private async Task<UploadSessionSnapshot> SaveStaleSnapshot(UploadSessionState state, MediaId mediaId)
+    {
+        var snapshot = UploadSession.NewUploadSnapshot(new TestFileProvider(), MetadataBag.Empty, Moment.EpochStart, "");
+        snapshot = snapshot with { CurrentState = state, ReservedMediaId = mediaId };
+        await ScopedServices.GetRequiredService<IUploadSessionRepo>().Save(snapshot);
+        return snapshot;
+    }
 
     private static async Task WaitUntilCompleted(UploadSession session)
     {
