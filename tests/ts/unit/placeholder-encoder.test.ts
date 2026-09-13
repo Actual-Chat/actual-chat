@@ -177,6 +177,12 @@ describe('placeholder container', () => {
         expect(Math.abs(new Int8Array(packed.buffer, 1, 1)[0])).toBe(PLACEHOLDER_LONG_SIDE / 2);
     });
 
+    it('should encode a square image with a positive short-side byte', async () => {
+        const bitmap = await createTestBitmap(200, 200);
+        const packed = encodePlaceholder(bitmap, await loadEncoder());
+        expect(new Int8Array(packed.buffer, 1, 1)[0]).toBe(PLACEHOLDER_LONG_SIDE);
+    });
+
     it('should stay well inside the byte budget on a photo', async () => {
         const bitmap = await createPhotoBitmap(1200, 900);
         const packed = encodePlaceholder(bitmap, await loadEncoder());
