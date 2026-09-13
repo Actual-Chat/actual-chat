@@ -144,6 +144,8 @@ public static partial class Constants
         public static readonly TimeSpan MaxBeginsAtDrift = TimeSpan.FromSeconds(5);
         // How long a dubbing listener's muxer holds a speaker's original before serving it undubbed
         public static readonly TimeSpan DubWaitTimeout = TimeSpan.FromSeconds(5);
+        // Between attempts to start the translation a dub reads, while the source transcript is live
+        public static readonly TimeSpan DubTranslationRetryDelay = TimeSpan.FromMilliseconds(250);
 
         // Watchdog: cancel ProcessAudio handler if no frame arrives within this window.
         // Opus frames are 20 ms; 2 s of silence means the producer is pathologically stalled.

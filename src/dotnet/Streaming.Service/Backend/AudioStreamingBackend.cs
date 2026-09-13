@@ -267,9 +267,19 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             var cmd = new TranslationsBackend_TranslateStream(originalStreamId, language);
             // Use ApplicationStopping as the caller might be canceled, but we still want to wait
             // for the translated stream to be created.
-            await Commander.Call(cmd, HostLifetime.StopToken()).ConfigureAwait(false);
+            var translatedStreamId = await Commander.Call(cmd, HostLifetime.StopToken()).ConfigureAwait(false);
+            if (translatedStreamId == null) {
+                // Nothing was started - typically the text entry the translation is keyed by isn't
+                // created yet. A latch that outlived the miss made every later caller wait
+                // ShareWaitDelay for a stream nobody publishes, until the store entry expired.
+                _translatingStreams.TryRemove(streamId, out _);
+                return null;
+            }
         }
-        return await _transcriptStreams.GetMemoizer(streamId, true, cancellationToken).ConfigureAwait(false);
+        memoizer = await _transcriptStreams.GetMemoizer(streamId, true, cancellationToken).ConfigureAwait(false);
+        if (memoizer == null)
+            _translatingStreams.TryRemove(streamId, out _);
+        return memoizer;
     }
 
     private void ForgetChatIdIfUnused(StreamId streamId)

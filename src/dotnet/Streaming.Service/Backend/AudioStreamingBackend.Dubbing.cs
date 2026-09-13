@@ -65,14 +65,15 @@ public partial class AudioStreamingBackend
             if (sourceMemoizer == null) {
                 Log.LogWarning("RunDub: #{StreamId} - no transcript to dub", dubStreamId);
                 // A miss isn't a decision: drop the entry so the next GetAudio retries instead of inheriting it
-                _dubs.TryRemove(dubStreamId, out _);
+                ForgetDub(dubStreamId, decidedSource.Task);
                 return;
             }
 
-            var translatedMemoizer = await GetOrStartTranslation(dubStreamId, cancellationToken).ConfigureAwait(false);
+            var translatedMemoizer = await WaitForTranslation(dubStreamId, sourceMemoizer, cancellationToken)
+                .ConfigureAwait(false);
             if (translatedMemoizer == null) {
                 Log.LogWarning("RunDub: #{StreamId} - no translation to dub", dubStreamId);
-                _dubs.TryRemove(dubStreamId, out _);
+                ForgetDub(dubStreamId, decidedSource.Task);
                 return;
             }
 
@@ -184,6 +185,32 @@ public partial class AudioStreamingBackend
             if (memoizer != null || !_audioStreams.Has(sourceStreamId))
                 return memoizer;
         }
+    }
+
+    private async Task<AsyncMemoizer<TranscriptDiff>?> WaitForTranslation(
+        StreamId dubStreamId,
+        AsyncMemoizer<TranscriptDiff> sourceMemoizer,
+        CancellationToken cancellationToken)
+    {
+        // ProcessAudio creates the text entry the translation is keyed by ~100 ms after it publishes
+        // the transcript, so the first request usually lands in that window: a miss is retried for
+        // as long as the source transcript is live.
+        while (true) {
+            var memoizer = await GetOrStartTranslation(dubStreamId, cancellationToken).ConfigureAwait(false);
+            if (memoizer != null || sourceMemoizer.IsCompleted)
+                return memoizer;
+
+            await Clocks.CpuClock
+                .Delay(Constants.Audio.DubTranslationRetryDelay, cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
+
+    private void ForgetDub(StreamId dubStreamId, Task<bool> whenDecided)
+    {
+        // Only this worker's own entry: a fresh one may already have taken the key
+        if (_dubs.TryGetValue(dubStreamId, out var entry) && entry.WhenDecided == whenDecided)
+            _dubs.TryRemove(new KeyValuePair<StreamId, DubEntry>(dubStreamId, entry));
     }
 
     private void ForgetDubs(StreamId streamId)
