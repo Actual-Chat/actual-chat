@@ -15,11 +15,12 @@ import type {
     ImageProcessResult,
 } from './image-processing-contracts';
 
-const { debugLog, warnLog, errorLog } = getLogs('ImageProcessorWorker');
+const { debugLog, errorLog } = getLogs('ImageProcessorWorker');
 
 const JPEG_DISTANCE = 1.9;
 // WebKit's canvas encoder maps quality much higher than Chromium's; both land near SSIMULACRA2 74
 const FALLBACK_JPEG_QUALITY = DeviceInfo.isWebKit ? 0.5 : 0.75;
+const MAX_ENCODE_PIXELS_MOBILE = 16_000_000;
 
 let jpegliBaseUrl = '';
 let whenEncoderLoaded: Promise<JpegliEncoder | null> | null = null;
@@ -98,6 +99,9 @@ async function reencode(
     spec: ImageOutputSpec,
 ): Promise<ImageOutput> {
     const target = fitWithinBudget(bitmap.width, bitmap.height, spec.maxPixels, spec.maxLongSide);
+    if (!canEncodeOnThisDevice(target.width * target.height))
+        return createPassthroughOutput(source, bytes, format, spec);
+
     const canvas = new OffscreenCanvas(target.width, target.height);
     const context = canvas.getContext('2d')!;
     context.imageSmoothingQuality = 'high';
@@ -133,22 +137,43 @@ async function reencode(
     };
 }
 
+export const canEncodeOnThisDevice = (pixels: number): boolean =>
+    // jpegli needs ~8.8 bytes of wasm heap per pixel, on top of the bitmap and the canvas copy;
+    // a phone that runs out does not throw, the OS kills the app
+    !DeviceInfo.isMobile || pixels <= MAX_ENCODE_PIXELS_MOBILE;
+
 async function encodeJpeg(canvas: OffscreenCanvas, image: ImageData): Promise<Blob> {
-    const encoder = await getEncoder();
-    if (encoder) {
-        try {
-            const jpeg = encoder.encode(image.data, image.width, image.height, {
-                distance: JPEG_DISTANCE,
-                subsampling: 420,
-                progressive: 2,
-            });
-            return new Blob([jpeg as BlobPart], { type: 'image/jpeg' });
-        }
-        catch (e) {
-            warnLog?.log('encodeJpeg: jpegli failed, falling back to canvas:', e);
-        }
-    }
+    const jpeg = await tryEncodeWithRebuild(getEncoder, encoder =>
+        encoder.encode(image.data, image.width, image.height, {
+            distance: JPEG_DISTANCE,
+            subsampling: 420,
+            progressive: 2,
+        }));
+    if (jpeg)
+        return new Blob([jpeg as BlobPart], { type: 'image/jpeg' });
+
     return await canvas.convertToBlob({ type: 'image/jpeg', quality: FALLBACK_JPEG_QUALITY });
+}
+
+export async function tryEncodeWithRebuild<T>(
+    load: () => Promise<JpegliEncoder | null>,
+    encode: (encoder: JpegliEncoder) => T,
+): Promise<T | null> {
+    const encoder = await load();
+    if (!encoder)
+        return null;
+
+    try {
+        return encode(encoder);
+    }
+    catch (e) {
+        // A wasm trap poisons the instance: every later encode on it traps too, so it must go.
+        // A plain Error is jpegli refusing the image, and leaves the instance usable.
+        if (e instanceof WebAssembly.RuntimeError)
+            whenEncoderLoaded = null;
+        errorLog?.log('encode failed', e);
+        return null;
+    }
 }
 
 function getEncoder(): Promise<JpegliEncoder | null> {

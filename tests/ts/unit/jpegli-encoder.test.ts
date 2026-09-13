@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { JpegliEncoder } from 'image-processing/jpegli-encoder';
+import type { tryEncodeWithRebuild as TryEncodeWithRebuild } from 'image-processing/image-processor-worker';
 
 const BASE_URL = new URL('../../../src/nodejs/jpegli', import.meta.url).href;
 
@@ -62,5 +63,34 @@ describe('JpegliEncoder', () => {
         expect(() => encoder.encode(
             new Uint8ClampedArray(10), 64, 48, { distance: 1.9, subsampling: 420, progressive: 2 }))
             .toThrow(/shorter/);
+    });
+});
+
+describe('tryEncodeWithRebuild', () => {
+    let tryEncodeWithRebuild: typeof TryEncodeWithRebuild;
+
+    beforeAll(async () => {
+        // image-processor-worker runs as a module worker in production, where `self` is the
+        // worker's own global scope; stand one in so its top-level rpcServer(...) call can bind to it.
+        (globalThis as unknown as { self?: unknown }).self ??= globalThis;
+        ({ tryEncodeWithRebuild } = await import('image-processing/image-processor-worker'));
+    });
+
+    it('should drop a poisoned encoder so the next call rebuilds it', async () => {
+        // arrange
+        const loads: number[] = [];
+        const encoder = {
+            encode: () => { throw new WebAssembly.RuntimeError('memory access out of bounds'); },
+        };
+        const factory = () => { loads.push(1); return Promise.resolve(encoder as never); };
+
+        // act
+        const first = await tryEncodeWithRebuild(factory, () => encoder.encode());
+        const second = await tryEncodeWithRebuild(factory, () => encoder.encode());
+
+        // assert: each attempt loaded a fresh encoder rather than reusing the trapped one
+        expect(first).toBeNull();
+        expect(second).toBeNull();
+        expect(loads.length).toBe(2);
     });
 });
