@@ -421,6 +421,10 @@
   "Editor_QualityAppliesToPhotos": "Примјењује се на {0} фотографије",
   "Editor_QualityOriginalWithExif": "オリジナル（EXIF付き）",
   "Editor_QualityKeepsMetadata": "Conserve la position et les données de l'appareil photo",
+  "Editor_QualityUpTo50Mpx": "50mpx / 12K'ye kadar",
+  "Editor_QualityUpTo12Mpx": "12mpx / 6K'ye kadar",
+  "Editor_QualityUpTo3Mpx": "3mpx / 3K'ye kadar",
+  "Editor_QualityOriginalAsFile": "ファイルとして送信されます",
 
   // "Alert" is the notify-everyone action in the message editor. An alert is loud and behaves
   // like an incoming call, which is why this whole group reads as a warning - keep one word for

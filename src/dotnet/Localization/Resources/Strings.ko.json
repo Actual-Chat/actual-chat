@@ -336,6 +336,10 @@
   "Editor_QualityAppliesToPhotos": "{0}장의 사진에 적용",
   "Editor_QualityOriginalWithExif": "원본(EXIF 포함)",
   "Editor_QualityKeepsMetadata": "위치 및 카메라 정보 유지",
+  "Editor_QualityUpTo50Mpx": "최대 50mpx / 12K",
+  "Editor_QualityUpTo12Mpx": "최대 12mpx / 6K",
+  "Editor_QualityUpTo3Mpx": "최대 3mpx / 3K",
+  "Editor_QualityOriginalAsFile": "파일로 전송됨",
 
   "Alert_Alert_Format": "{0}에게 긴급 알림",
   "Alert_TargetEveryone": "모두",

@@ -358,6 +358,10 @@ public static class LocalizedStringsLocalizerExt
         public string Editor_QualityFullSize => l["Editor_QualityFullSize"].Value;
         public string Editor_QualityOriginalWithExif => l["Editor_QualityOriginalWithExif"].Value;
         public string Editor_QualityKeepsMetadata => l["Editor_QualityKeepsMetadata"].Value;
+        public string Editor_QualityUpTo50Mpx => l["Editor_QualityUpTo50Mpx"].Value;
+        public string Editor_QualityUpTo12Mpx => l["Editor_QualityUpTo12Mpx"].Value;
+        public string Editor_QualityUpTo3Mpx => l["Editor_QualityUpTo3Mpx"].Value;
+        public string Editor_QualityOriginalAsFile => l["Editor_QualityOriginalAsFile"].Value;
         public string Editor_QualityAppliesToPhotos(long count, object arg0)
             => l.Plural("Editor_QualityAppliesToPhotos", count, arg0);
 

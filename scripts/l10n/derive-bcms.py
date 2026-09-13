@@ -173,6 +173,9 @@ KEEP_LATIN = [
     "Telegram", "KLIPY", "GIF", "API", "URL", "SMS", "EXIF", "ID", "QR", "OK",
     "emoji", "Emoji", "Cookie", "cookie",
     "Live Activities", "AI", "txt", "MB", "&nbsp;", "&ndash;", "Welcome", "DELETE", "Voxt",
+    # Not bare "K" - it would swallow the rest of an ordinary word (e.g. "Kontakt", "Korijenski")
+    # via the trailing [a-z]* below; the quality menu never needs a K count other than these three.
+    "mpx", "12K", "6K", "3K",
 ]
 
 CYRILLIC = {

@@ -55,7 +55,7 @@
         var otherFilesLength = items.Where(a => !a.IsReEncodable).Sum(a => a.Length);
         var options = Presets
             .Select(p => new ImageQualityMenu.OptionModel(
-                p, GetLabel(p), GetSpec(p), FormatLength(GetTotalLength(images, p, otherFilesLength))))
+                p, GetLabel(p), GetSpec(p, images), FormatTotal(images, p, otherFilesLength)))
             .ToArray();
         var scopeText = otherFilesLength > 0 ? L.Editor_QualityAppliesToPhotos(images.Count, images.Count) : null;
         ImageQualityMenu.MenuModels.Register(
@@ -75,34 +75,41 @@
         => preset switch {
             ImageQualityPreset.OriginalWithExif => L.Editor_QualityOriginalWithExif,
             ImageQualityPreset.Original => L.Editor_QualityOriginal,
-            ImageQualityPreset.Mpx50 => "50 MP",
-            ImageQualityPreset.Mpx12 => "12 MP",
-            _ => "3 MP",
+            ImageQualityPreset.Mpx50 => L.Editor_QualityUpTo50Mpx,
+            ImageQualityPreset.Mpx12 => L.Editor_QualityUpTo12Mpx,
+            _ => L.Editor_QualityUpTo3Mpx,
         };
 
-    private string GetSpec(ImageQualityPreset preset)
+    private string GetSpec(ImageQualityPreset preset, List<Attachment> images)
+        // The source (not the current output) decides both branches below, so a HEIC/AVIF preview
+        // conversion or a mid-flight reprocess never changes what a row says
         => preset switch {
-            ImageQualityPreset.OriginalWithExif => L.Editor_QualityKeepsMetadata,
+            ImageQualityPreset.OriginalWithExif => images.Any(a => ExceedsServerBounds(a.Source!.Size))
+                ? L.Editor_QualityOriginalAsFile
+                : L.Editor_QualityKeepsMetadata,
             ImageQualityPreset.Original => L.Editor_QualityFullSize,
-            _ => $"{preset.GetBudget().MaxLongSide} px",
+            // The device already tried this preset and passed the source through unchanged
+            _ => images.Any(a => a.SelectedQuality == preset && a.IsDeclined) ? L.Editor_QualityFullSize : "",
         };
 
-    private static long GetTotalLength(List<Attachment> images, ImageQualityPreset preset, long otherFilesLength) {
-        // 0 = unknown: a re-encoded preset's size isn't known without re-encoding the source
-        var total = otherFilesLength;
-        foreach (var image in images) {
-            long? length = preset switch {
-                ImageQualityPreset.Original or ImageQualityPreset.OriginalWithExif => image.Source!.Length,
-                _ => null,
-            };
-            if (length is null)
-                return 0;
-
-            total += length.Value;
-        }
-        return total;
+    private static string FormatTotal(List<Attachment> images, ImageQualityPreset preset, long otherFilesLength) {
+        var total = otherFilesLength + images.Sum(a => EstimateLength(a, preset));
+        return total > 0 ? ImageSizeEstimator.Format(total) : "—";
     }
 
-    private static string FormatLength(long length)
-        => length > 0 ? FileSizeFormatter.Format(length) : "—";
+    private static long EstimateLength(Attachment attachment, ImageQualityPreset preset) {
+        var source = attachment.Source!;
+        if (attachment.SelectedQuality == preset && attachment.IsDeclined)
+            return source.Length;
+
+        var budget = preset.GetBudget();
+        return budget.MaxPixels is null && budget.MaxLongSide is null
+            ? source.Length
+            : ImageSizeEstimator.Estimate(source.Length, source.Size, source.FileType, budget);
+    }
+
+    private static bool ExceedsServerBounds(Size2D size)
+        => size.Width > Constants.Attachments.MaxImageSize
+            || size.Height > Constants.Attachments.MaxImageSize
+            || (long)size.Width * size.Height > Constants.Attachments.MaxImagePixelCount;
 }

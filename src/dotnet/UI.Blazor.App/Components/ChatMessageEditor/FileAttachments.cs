@@ -394,6 +394,7 @@ public sealed class FileAttachments(AppUIHub hub, ChatId chatId) : UIServiceBase
                 IsProcessing = false,
                 SelectedQuality = preset,
                 Placeholder = result?.Placeholder ?? "",
+                IsDeclined = result?.Declined ?? false,
             };
             // A HEIC/AVIF preview that landed while this was running is stashed rather than applied
             // directly (see ConvertPreview) - fold it in now instead of the source's broken preview

@@ -336,6 +336,10 @@
   "Editor_QualityAppliesToPhotos": "Primjenjuje se na {0} fotografiju|Primjenjuje se na {0} fotografije|Primjenjuje se na {0} fotografija",
   "Editor_QualityOriginalWithExif": "Original s EXIF-om",
   "Editor_QualityKeepsMetadata": "Zadržava lokaciju i podatke kamere",
+  "Editor_QualityUpTo50Mpx": "Do 50mpx / 12K",
+  "Editor_QualityUpTo12Mpx": "Do 12mpx / 6K",
+  "Editor_QualityUpTo3Mpx": "Do 3mpx / 3K",
+  "Editor_QualityOriginalAsFile": "Poslano kao datoteka",
 
   "Alert_Alert_Format": "Upozori {0}",
   "Alert_TargetEveryone": "sve",

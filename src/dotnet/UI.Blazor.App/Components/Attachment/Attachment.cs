@@ -19,6 +19,8 @@ public record Attachment(string FileName, string FileType, long Length, Size2D S
     public bool IsProcessing { get; init; }
     public ImageQualityPreset SelectedQuality { get; init; }
     public string Placeholder { get; init; } = "";
+    // Set when the device declined to re-encode at SelectedQuality and passed the source through unchanged
+    public bool IsDeclined { get; init; }
 
     public bool IsSupportedImage => MediaTypeExt.IsSupportedImage(FileType);
     public bool IsSupportedVideo => MediaTypeExt.IsSupportedVideo(FileType);

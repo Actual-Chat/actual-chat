@@ -336,6 +336,10 @@
   "Editor_QualityAppliesToPhotos": "{0} fotoğrafa uygulanır",
   "Editor_QualityOriginalWithExif": "EXIF ile orijinal",
   "Editor_QualityKeepsMetadata": "Konum ve kamera bilgilerini korur",
+  "Editor_QualityUpTo50Mpx": "50mpx / 12K'ye kadar",
+  "Editor_QualityUpTo12Mpx": "12mpx / 6K'ye kadar",
+  "Editor_QualityUpTo3Mpx": "3mpx / 3K'ye kadar",
+  "Editor_QualityOriginalAsFile": "Dosya olarak gönderildi",
 
   "Alert_Alert_Format": "{0} için acil bildirim",
   "Alert_TargetEveryone": "herkes",

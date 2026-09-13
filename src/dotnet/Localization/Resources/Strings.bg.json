@@ -336,6 +336,10 @@
   "Editor_QualityAppliesToPhotos": "Важи за {0} снимка|Важи за {0} снимки",
   "Editor_QualityOriginalWithExif": "Оригинал с EXIF",
   "Editor_QualityKeepsMetadata": "Запазва местоположението и данните от камерата",
+  "Editor_QualityUpTo50Mpx": "До 50mpx / 12K",
+  "Editor_QualityUpTo12Mpx": "До 12mpx / 6K",
+  "Editor_QualityUpTo3Mpx": "До 3mpx / 3K",
+  "Editor_QualityOriginalAsFile": "Изпратено като файл",
 
   "Alert_Alert_Format": "Предупреди {0}",
   "Alert_TargetEveryone": "всички",

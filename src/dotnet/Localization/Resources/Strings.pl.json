@@ -336,6 +336,10 @@
   "Editor_QualityAppliesToPhotos": "Dotyczy {0} zdjęcia|Dotyczy {0} zdjęć|Dotyczy {0} zdjęć",
   "Editor_QualityOriginalWithExif": "Oryginał z EXIF",
   "Editor_QualityKeepsMetadata": "Zachowuje lokalizację i dane aparatu",
+  "Editor_QualityUpTo50Mpx": "Do 50mpx / 12K",
+  "Editor_QualityUpTo12Mpx": "Do 12mpx / 6K",
+  "Editor_QualityUpTo3Mpx": "Do 3mpx / 3K",
+  "Editor_QualityOriginalAsFile": "Wysłane jako plik",
 
   "Alert_Alert_Format": "Zaalarmuj {0}",
   "Alert_TargetEveryone": "wszystkich",

@@ -421,6 +421,10 @@
   "Editor_QualityAppliesToPhotos": "Applies to {0} photo|Applies to {0} photos",
   "Editor_QualityOriginalWithExif": "Original with EXIF",
   "Editor_QualityKeepsMetadata": "Keeps location and camera data",
+  "Editor_QualityUpTo50Mpx": "Up to 50mpx / 12K",
+  "Editor_QualityUpTo12Mpx": "Up to 12mpx / 6K",
+  "Editor_QualityUpTo3Mpx": "Up to 3mpx / 3K",
+  "Editor_QualityOriginalAsFile": "Sent as a file",
 
   // "Alert" is the notify-everyone action in the message editor. An alert is loud and behaves
   // like an incoming call, which is why this whole group reads as a warning - keep one word for
