@@ -1,4 +1,5 @@
 using ActualChat.App.Maui.IosShareExt.Services;
+using ActualChat.App.Maui.IosShareExt.UI;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 using ActualChat.Maui;
 using ActualChat.Maui.Services;
@@ -17,7 +18,8 @@ public sealed class PlaceView(Place? place, IosHub hub) : ComputedStateView<bool
         TranslatesAutoresizingMaskIntoConstraints = false;
 
         // Icon view
-        _iconView = new ContactIconView(place?.GetIconQuery(), UIImage.GetSystemImage("message"), place?.Title ?? "", false, Hub);
+        _iconView = new ContactIconView(
+            place?.GetIconQuery(), AppImages.MessageEllipse, place?.Title ?? "", false, Hub);
         _iconView.TranslatesAutoresizingMaskIntoConstraints = false;
 
         // Underline indicator
@@ -61,7 +63,10 @@ public sealed class PlaceView(Place? place, IosHub hub) : ComputedStateView<bool
         => SetIsSelected(isSelected);
 
     private void SetIsSelected(bool isSelected)
-        => _underlineView.Hidden = !isSelected;
+    {
+        _underlineView.Hidden = !isSelected;
+        _iconView!.TintColor = isSelected ? AppColors.SquareTitle : AppColors.Primary;
+    }
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
     {
