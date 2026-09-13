@@ -33,9 +33,9 @@ public sealed class ImageQualityMenuModelTest
     }
 
     [Fact]
-    public void DeclinedRowShouldUseTheRealLengthOnlyOnItsOwnPreset()
+    public void ResolvedPresetRowShouldUseTheRealLengthOnlyOnItsOwnPreset()
     {
-        // arrange - a declined preset passes the source through unchanged
+        // arrange
         var attachment = NewImage("image/jpeg", 18_000_000, new Size2D(9000, 7000)) with {
             SelectedQuality = ImageQualityPreset.Mpx50,
             IsDeclined = true,
@@ -43,11 +43,11 @@ public sealed class ImageQualityMenuModelTest
         var images = new List<Attachment> { attachment };
 
         // act
-        var declinedTotal = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx50);
+        var resolvedTotal = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx50);
         var otherTotal = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx12);
 
         // assert
-        declinedTotal.Should().Be(new ImageQualityMenuModel.PresetTotal(18_000_000, true));
+        resolvedTotal.Should().Be(new ImageQualityMenuModel.PresetTotal(18_000_000, true));
         otherTotal!.Value.IsExact.Should().BeFalse();
         ImageQualityMenuModel.IsDeclinedAt(images, ImageQualityPreset.Mpx50).Should().BeTrue();
         ImageQualityMenuModel.IsDeclinedAt(images, ImageQualityPreset.Mpx12).Should().BeFalse();
@@ -68,11 +68,14 @@ public sealed class ImageQualityMenuModelTest
 
         // act
         var total = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx3);
+        var resolvedTotal = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx12);
 
         // assert
         var expected = ImageSizeEstimator.Estimate(
             3_500_000, sourceSize, "image/heic", ImageQualityPreset.Mpx3.GetBudget());
         total.Should().Be(new ImageQualityMenuModel.PresetTotal(expected, false));
+        // Pins the real upload length (900_000), not the source's (3_500_000), on the resolved row
+        resolvedTotal.Should().Be(new ImageQualityMenuModel.PresetTotal(900_000, true));
     }
 
     [Fact]
@@ -97,8 +100,13 @@ public sealed class ImageQualityMenuModelTest
     [Fact]
     public void UnknownSourceDimensionsShouldMakeAResizeRowUnknownButNotAnOriginalRow()
     {
-        // arrange - an unconverted, not-yet-processed HEIC on Chromium: dimensions unknown, bytes known
-        var attachment = NewImage("image/heic", 3_000_000, default) with { IsProcessing = true };
+        // arrange - an unconverted HEIC on Chromium: dimensions unknown, bytes known; SelectedQuality
+        // is deliberately a different preset than the one queried below, so the null result is not
+        // an artefact of IsProcessing or of Mpx12 happening to be the enum default
+        var attachment = NewImage("image/heic", 3_000_000, default) with {
+            SelectedQuality = ImageQualityPreset.Mpx3,
+            IsProcessing = false,
+        };
         var images = new List<Attachment> { attachment };
 
         // act
