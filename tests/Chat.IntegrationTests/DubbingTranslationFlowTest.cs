@@ -44,7 +44,6 @@ public class DubbingTranslationFlowTest(
         float backlogSeconds = 0)
     {
         // arrange
-        FakeTranslator.Reset();
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false);
         var services = Tester.AppServices;
