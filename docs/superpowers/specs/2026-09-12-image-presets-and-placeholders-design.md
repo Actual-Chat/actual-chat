@@ -30,32 +30,48 @@ Four presets, ordered best-first in the menu:
 | Order | Label | Pixel budget | Long-side cap | Re-encode | EXIF |
 |---|---|---|---|---|---|
 | 1 | Original (with EXIF) | — | — | no | kept |
-| 2 | 12K (up to 113mpx) | 113 MP | 18K | yes | stripped |
-| 3 | **4K (up to 12.6mpx)** (default) | 12.6 MP | 6K | yes | stripped |
-| 4 | 1080p (up to 2.8mpx) | 2.8 MP | 2.9K | yes | stripped |
+| 2 | Up to 50mpx / 12K | 50.3 MP | 12288 | yes | stripped |
+| 3 | **Up to 12mpx / 6K** (default) | 12.6 MP | 6144 | yes | stripped |
+| 4 | Up to 3mpx / 3K | 2.8 MP | 2880 | yes | stripped |
 
-Each preset caps two things: the **total pixel count**, and the **long side**
-separately. The budget is the area of a 4:3 box at the nominal size — `L² × ¾` for
-L = 12288, 4096, 1920 — and the long-side cap is `1.5 × L`, so a wide photo keeps its
-area instead of being punished for its shape, and only extreme panoramas are clipped
-by length. Nothing is ever upscaled: an image already inside both limits is re-encoded
-at its own size.
+The label states both limits — the pixel budget and the longest side it permits — since
+either can be the one that binds. The figures are rounded for the menu; the exact
+budgets are the ones in the table.
+
+One rule generates every row: the budget is the area of a 4:3 box at the nominal size,
+`L² × ¾` for L = 8192, 4096, 1920, and the long side may reach `1.5 × L`. So a wide
+photo spends its budget on width instead of being punished for its shape — the top
+preset silently allows 12288 px of length — and only extreme panoramas are clipped by
+the long-side cap. Nothing is ever upscaled: an image already inside both limits is
+re-encoded at its own size.
 
 The budgets are chosen so the common case does not resize at all:
 
-- **4K at 12.6 MP passes a phone's main sensor through untouched** — 4032×3024 on
-  iPhone, 4000×3000 on Samsung. A 3840-based cap would have resized both by ~1% for
-  no reason, which is why the nominal is 4096.
-- **12K at 113 MP** covers every phone sensor except the 200 MP ones. Those downscale,
-  and that is the case that already broke the encoder: ~450 MB of RGBA at 12K, more
-  than a phone WebView reliably gives us. When processing at 12K fails, the attachment
-  falls back to passthrough rather than failing.
-- **1080p at 2.8 MP** yields 1920×1440 for a 4:3 photo.
+- **The 12mpx preset passes a phone's main sensor through untouched** — 4032×3024 on
+  iPhone, 4000×3000 on Samsung. A 3840-based cap would have resized both by ~1% for no
+  reason, which is why the nominal is 4096.
+- **The 50mpx preset** covers 48 and 50 MP sensors without resizing, and keeps the largest
+  encode the client ever attempts inside the range jpegli is known to handle. A higher
+  top preset was considered and dropped: at ~96 MP the encode needs ~384 MB of RGBA,
+  past anything measured and well past what a phone WebView reliably gives us.
+- **The 3mpx preset** yields 1920×1440 for a 4:3 photo.
 
 `Original (with EXIF)` is the only preset that passes bytes through untouched, and the
-only one that sets `KeepMetadata` on the upload. The 8K rule from the first spec is
-gone, replaced by these budgets; the server's pixel bound has to rise with it, or a
-12K image and every passthrough Original would be rejected.
+only one that sets `KeepMetadata` on the upload. The 7680 px rule from the first spec
+is gone, replaced by these budgets.
+
+### Sources too large for the server's image bounds
+
+The server bounds a stored image at 12288 px per side and 96 MP total. A 200 MP phone
+shot sent as `Original (with EXIF)` exceeds that, and rejecting it after the user
+pressed Send is the worst possible outcome.
+
+Such an upload is stored as a **file attachment** instead — the exact bytes, which is
+what Original promises, on the path `AttachmentImageUploadProcessor` already uses for
+images it cannot identify. The recipient sees a download card rather than an inline
+image: no preview, no placeholder, no dimensions. That is a real difference, so the
+menu says so on the entry itself rather than letting it surprise the sender. Every
+other preset re-encodes such a source down and stays a normal image.
 
 The menu is ordered highest quality at the top. Localization gains keys for the three
 new labels; the existing `Original with EXIF` key is reused.
@@ -214,8 +230,8 @@ so the fix belongs here regardless.
 
 - **Send is slower for the attach-and-send-immediately user**, by roughly the encode
   time of their photos. This is the cost of not uploading what may never be sent.
-- **The default preset sends more bytes than before.** 4K remains the default but its
-  budget grew from a 3840 long side to 12.6 MP, so a phone photo now uploads at its
+- **The default preset sends more bytes than before.** The default is still the 4K-class
+  option, but its budget grew from a 3840 long side to 12.6 MP, so a phone photo uploads at its
   full 12 MP instead of being downscaled. Recipients decode a larger image, and the
   sender's bandwidth bill goes up — bought deliberately, so the common case is never
   resized. The quality menu is where anyone who cares opts down, and the estimates are
