@@ -92,6 +92,9 @@ features:
 - [App updates](./app-updates.md) — how the "Update Voxt" banner learns that a
   newer build is actually published in the user's store, per app kind, and what
   that costs the release process.
+- [Passkeys](./passkeys.md) — the feature flag, RP id and origin allow-list, the
+  Android `apk-key-hash` derivation, association files, the client seam per
+  platform, and the manual verification recipe.
 
 ## Related Projects
 
