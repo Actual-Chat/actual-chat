@@ -58,6 +58,7 @@
   "Settings_Application": "Application",
   "Settings_Permissions": "Permissions",
   "Settings_Sessions": "Sessions",
+  "Settings_Passkeys": "Passkeys",
   "Settings_ApiKeys": "API Keys",
   "Settings_Documents": "Documents",
   "Settings_DeveloperTools": "Developer tools",
@@ -150,6 +151,26 @@
   "Sessions_SignOutAll": "Sign out all other sessions",
   "Sessions_SignOutAllConfirm": "This will sign out all other sessions. Continue?",
   "Sessions_SignOutAllTitle": "Sign out all?",
+
+  // Settings > Passkeys - the passkey list. Intro/Add sit above it; the rest describe one row
+  // (its sync state and last-used date) and its rename/delete actions.
+  "Passkeys_Intro": "Sign in with Face ID, Touch ID, fingerprint or Windows Hello instead of a code.",
+  "Passkeys_Add": "Add a passkey",
+  "Passkeys_Unavailable": "Passkeys aren't available on this device or browser.",
+  "Passkeys_YourPasskeys": "Your passkeys",
+  "Passkeys_NotSetUp": "Not set up",
+  "Passkeys_Count": "{0} passkey|{0} passkeys",
+  "Passkeys_Synced": "Synced",
+  "Passkeys_ThisDeviceOnly": "This device only",
+  "Passkeys_Added_Format": "Added {0}",
+  "Passkeys_LastUsed_Format": "Last used {0}",
+  "Passkeys_NeverUsed": "Never used",
+  "Passkeys_Rename": "Rename",
+  "Passkeys_RenameTitle": "Rename passkey",
+  "Passkeys_Name": "Name",
+  "Passkeys_Delete": "Delete",
+  "Passkeys_DeleteConfirm_Format": "Delete \"{0}\"? You won't be able to sign in with it anymore.",
+  "Passkeys_Added": "Passkey added",
 
   // Settings > API Keys - the key list. Its create form and reveal page are the two groups
   // after this one.
@@ -912,6 +933,12 @@
   "Onboarding_GenerateAvatar": "Generate avatar",
   "Onboarding_UploadPhoto": "Upload your photo",
 
+  // A one-time nudge shown after sign-up, suggesting a passkey instead of a code next time.
+  "Onboarding_PasskeyTitle": "Sign in faster next time",
+  "Onboarding_PasskeyText": "Create a passkey and use Face ID, Touch ID, fingerprint or Windows Hello instead of waiting for a code.",
+  "Onboarding_CreatePasskey": "Create passkey",
+  "Onboarding_NotNow": "Not now",
+
   // The rationale shown above each OS permission prompt, and - as Permissions_* - the Settings >
   // Permissions page listing them all. The system dialog itself is not ours and stays in the OS
   // language; only this explanation is translated. "Calls on the lock screen" and "Live Activities"
@@ -1658,6 +1685,7 @@
   "SignIn_VerifyPhoneText_Format": "Please verify your phone number to continue and make it discoverable to friends on {0}.",
   "SignIn_VerifyEmailText_Format": "Please verify your email address to continue and make it discoverable to friends on {0}.",
   "SignIn_PopupBlocked": "The browser blocked the sign-in popup. Please allow popups for this site and try again.",
+  "SignIn_SignInWithPasskey": "Sign in with a passkey",
 
   // Asking to join a place that does not accept open joins.
   "JoinRequest_NotMember": "Not member yet",
