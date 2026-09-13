@@ -51,6 +51,16 @@ public sealed class ImageSizeEstimatorTest
     }
 
     [Fact]
+    public void ShouldGoAboveTheSourceBytesForALowBppRecode()
+    {
+        // act
+        var estimate = ImageSizeEstimator.Estimate(500_000, Phone12Mp, "image/heic", new(12_582_912, 6144));
+
+        // assert
+        estimate.Should().BeGreaterThan(500_000);
+    }
+
+    [Fact]
     public void ShouldIgnoreSourceBytesForLosslessSources()
     {
         // act

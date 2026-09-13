@@ -47,8 +47,10 @@ public static class ImageSizeEstimator
         multiplier = contentType switch {
             "image/jpeg" or "image/jpg" => 1,
             "image/webp" => 3.52,
-            // Unmeasured: no HEIC sample in the study; interim between JPEG's 1.0 and AVIF's measured 5.27
-            "image/heic" or "image/heif" => 3.0,
+            // Calibrated end to end against real iPhone HEICs vs the shipped jpegli output, not codec
+            // efficiency (matched-VMAF gives 0.68 - Apple's encoder spends more bytes than JPEG here);
+            // absorbs the recode branch's own bias for phone HEICs. See tmp/heic-multiplier/REPORT.md
+            "image/heic" or "image/heif" => 2.0,
             "image/avif" => 5.27,
             _ => 0,
         };
