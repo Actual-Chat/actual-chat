@@ -358,6 +358,10 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             var cancellationToken1 = cancellationTokenSource.Token;
             var sendingMessage = CreateAndRegisterSendingMessage(request, () => {
                 discardSendRequest = true;
+                // Here rather than only in the cleanup below: this runs before resultSource
+                // completes, so it beats the editor's own release to the flag
+                if (request.AttachmentUploads is not null)
+                    UnbindMedia(request.AttachmentUploads.Attachments.Items);
                 cancellationTokenSource.Cancel();
             });
             if (request.NewChatEntryLocalId.HasValue)
