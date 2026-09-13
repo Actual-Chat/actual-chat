@@ -119,7 +119,8 @@ public class UploadSession
     private async Task RunSteps(CancellationToken cancellationToken)
     {
         while (!IsTerminated && !IsFailed) {
-            switch (CurrentState) {
+            var stateBeforeStep = CurrentState;
+            switch (stateBeforeStep) {
                 case UploadSessionState.Initializing:
                     await InitializeUpload(cancellationToken).ConfigureAwait(false);
                     break;
@@ -135,17 +136,26 @@ public class UploadSession
                 default:
                     return;
             }
+
+            // A step that returns without transitioning, failing or cancelling would otherwise
+            // spin this loop forever on a pool thread with no cancellation check
+            if (!IsTerminated && !IsFailed && CurrentState == stateBeforeStep)
+                await OnFailed(
+                    StandardError.Internal($"Step '{stateBeforeStep}' returned without changing the session's state"),
+                    cancellationToken).ConfigureAwait(false);
         }
     }
 
     private Task InitializeUpload(CancellationToken cancellationToken) => ExecuteStep(async () => {
-        if (_snapshot.ReservedMediaId != null)
-            return; // Already initialized
-        var mediaId = await _uploadOperations.ReserveMediaId(_snapshot, cancellationToken).ConfigureAwait(false);
-        await UpdateState(s => s with {
-            ReservedMediaId = mediaId
-        }, cancellationToken: cancellationToken).ConfigureAwait(false);
-        _whenMediaIdReserved.TrySetResult(mediaId);
+        if (_snapshot.ReservedMediaId is null) {
+            var mediaId = await _uploadOperations.ReserveMediaId(_snapshot, cancellationToken).ConfigureAwait(false);
+            await UpdateState(s => s with {
+                ReservedMediaId = mediaId
+            }, cancellationToken: cancellationToken).ConfigureAwait(false);
+            _whenMediaIdReserved.TrySetResult(mediaId);
+        }
+        // Resuming a persisted snapshot that already has ReservedMediaId (a crash right after
+        // reserving it) must still transition - otherwise RunSteps spins on this state forever
         await TransitionTo(UploadSessionState.ClientProcessing).ConfigureAwait(false);
     }, cancellationToken);
 

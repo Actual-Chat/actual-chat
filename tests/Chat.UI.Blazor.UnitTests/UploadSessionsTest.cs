@@ -107,6 +107,26 @@ public sealed class UploadSessionsTest : TestBase
         operations.RemovedMediaIds.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task ResumingAnInitializingSnapshotWithReservedMediaShouldStillComplete()
+    {
+        // arrange - simulates a crash between reserving the media id and persisting
+        // the ClientProcessing transition: Initializing on disk, but ReservedMediaId is set
+        var operations = new FakeUploadOperations(completesUpload: true);
+        var sessions = NewUploadSessions(operations);
+        var mediaId = MediaId.New(MediaId.NewScope());
+        var snapshot = await SaveStaleSnapshot(UploadSessionState.Initializing, mediaId);
+
+        // act
+        var session = await sessions.TryGetSession(snapshot.SessionId);
+        sessions.Resume(snapshot.SessionId);
+        await WaitUntilCompleted(session!);
+
+        // assert
+        session!.IsCompleted.Should().BeTrue();
+        operations.ReserveMediaIdCallCount.Should().Be(0);
+    }
+
     // Private methods
 
     private UploadSessions NewUploadSessions(IUploadOperations operations)
@@ -185,11 +205,15 @@ public sealed class UploadSessionsTest : TestBase
 
         public List<MediaId> RemovedMediaIds { get; } = new();
         public VideoTranscoder VideoTranscoder { get; } = new();
+        public int ReserveMediaIdCallCount;
 
         public Moment Now() => Moment.EpochStart;
 
         public Task<MediaId> ReserveMediaId(UploadSessionSnapshot snapshot, CancellationToken cancellationToken = default)
-            => Track(() => Task.FromResult(MediaId.New(MediaId.NewScope())));
+        {
+            Interlocked.Increment(ref ReserveMediaIdCallCount);
+            return Track(() => Task.FromResult(MediaId.New(MediaId.NewScope())));
+        }
 
         public Task UploadData(
             UploadSource source,
