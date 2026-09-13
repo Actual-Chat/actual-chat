@@ -22,6 +22,14 @@ normalizer can remove CDN-specific signing parameters from cache identity while 
 content variants; downloading still uses the original signed URL. Header/cookie-based
 identity is not implemented in this phase.
 
+Use one directory level of 256 buckets for the expected maximum of 100K files: the first
+SHA-256 byte as two lowercase hex characters, then the full Base64Url hash as the filename.
+Hash the normalized URL as UTF-8. Encrypted staging uses `.p`; completed files have no extension.
+
+Coordinate fills by absolute file path within the process, including across handler instances.
+After waiting, recheck the cache and return a separate response. Waiter cancellation is isolated;
+a failed/canceled owner or failed persistence allows a retry. Large/ranged bypasses are unchanged.
+
 Encrypt metadata and payload together using AES-256-GCM with a fresh nonce per write,
 a cache-specific HKDF key, and authenticated cache identity. Publish by atomic rename only
 after a complete download. Corrupt entries become misses; unavailable storage does not
@@ -61,8 +69,8 @@ the fetchers. Do not combine bytes until range responses and representation iden
 
 ## Reuse
 
-**Existing abstractions:** use `FilePath`, `RandomStringGenerator`, and the existing SHA-256
-hashing helpers from Core/Fusion; BCL `HttpRequestMessage`/`HttpResponseMessage` and
+**Existing abstractions:** use `FilePath`, `AsyncLockSet<FilePath>`, and the existing SHA-256 /
+Base64Url helpers from Core/Fusion; BCL `HttpRequestMessage`/`HttpResponseMessage` and
 `HttpClient.ResponseHeadersRead` for the streaming HTTP boundary; BCL `AesGcm` and `HKDF`
 for encryption with the same cipher family as the database cache. Existing native WebView
 hooks supply the observation points. Fusion's `FileSystemCache` is a text key/value store;
@@ -84,6 +92,7 @@ WebAssembly and new TypeScript infrastructure are outside scope.
 ## Verification boundary
 
 This branch tests encrypted restart hits, identity isolation, corrupted/torn entries,
-concurrent publication, cancellation, stream ownership, and streaming bypass behavior.
+coordinated publication, cancellation, stream ownership, hash buckets, stale partials, and
+streaming bypass behavior.
 Enabling media routing requires separate device tests for offline images, throttled video
 startup, seeking into an uncached tail, and cancellation on each native platform.
