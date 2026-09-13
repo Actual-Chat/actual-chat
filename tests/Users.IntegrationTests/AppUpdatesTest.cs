@@ -100,23 +100,51 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
     }
 
     [Fact]
-    public async Task ShouldNotProbeOtherStoresUntilPlayHasTheBuild()
+    public async Task ShouldProbeOtherStoresWhilePlayIsBehindTheServer()
     {
-        // arrange
+        // arrange - the steady state in production: every store trails the deployed server, so
+        // Play is behind it and must not gate a kind whose own record holds nothing yet
         const AppKind appKind = AppKind.Windows;
         using var __ = await NewTestSettings(appKind, isPlayGateEnabled: true);
-        var playProbe = Probes.Script(AppKind.Android, new(NewBuildBehindOwn(1), null));
+        var storeBuild = NewBuildBehindOwn(1);
+        var playProbe = Probes.Script(AppKind.Android, new(storeBuild, null));
+        Probes.Script(appKind, new(storeBuild, null));
+
+        // act
+        var published = await ComputedTest.When(async ct => {
+            var info = await Service.GetLatestUpdateInfo(appKind, ct);
+            info!.VersionString.Should().Be(storeBuild);
+            return info;
+        }, TestTimeout);
+        await SettleAndroid(playProbe);
+
+        // assert
+        published.Should().NotBeNull("Play trailing the server can't mean the other stores are empty");
+    }
+
+    [Fact]
+    public async Task ShouldNotProbeOtherStoresUntilPlayHasSomethingNewer()
+    {
+        // arrange - both Play and this kind's record sit on the same build, so there's nothing
+        // to ask about. Both are behind the server, which is the normal steady state.
+        const AppKind appKind = AppKind.Windows;
+        using var __ = await NewTestSettings(appKind, isPlayGateEnabled: true);
+        var knownBuild = NewBuildBehindOwn(1);
+        var detectedAt = Clocks.SystemClock.Now;
+        var known = new AppUpdateInfo(appKind, knownBuild, knownBuild, detectedAt, detectedAt);
+        await Service.SetCachedStoreUpdateInfo(appKind, new AppUpdates.CachedUpdateInfo(known), default);
+        var playProbe = Probes.Script(AppKind.Android, new(knownBuild, null));
         var probe = Probes.Script(appKind, new(OwnVersion.ToString(), null));
 
         // act
-        var whilePlayIsBehind = await Service.GetLatestUpdateInfo(appKind, default);
         await ComputedTest.When(async ct => {
             var info = await Service.GetLatestUpdateInfo(AppKind.Android, ct);
             info.Should().NotBeNull("Play has to be probed regardless");
         }, TestTimeout);
         await Task.Delay(TimeSpan.FromSeconds(2));
+        Service.Invalidate(appKind);
         _ = await Service.GetLatestUpdateInfo(appKind, default);
-        var callCountWhilePlayIsBehind = probe.CallCount;
+        var callCountWhilePlayHasNothingNewer = probe.CallCount;
         playProbe.Result = new(OwnVersion.ToString(), null);
         var published = await ComputedTest.When(async ct => {
             var info = await Service.GetLatestUpdateInfo(appKind, ct);
@@ -125,8 +153,8 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         }, TestTimeout);
 
         // assert
-        whilePlayIsBehind.Should().BeNull();
-        callCountWhilePlayIsBehind.Should().Be(0, "Play publishes first, so nothing else is worth asking");
+        callCountWhilePlayHasNothingNewer.Should()
+            .Be(0, "Play publishes first, so nothing else is worth asking");
         published.Should().NotBeNull();
     }
 
@@ -319,6 +347,17 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
             await WhenClear(AppKind.Android);
 
         return restore;
+    }
+
+    private Task SettleAndroid(ScriptedStoreProbe playProbe)
+    {
+        // A kind the store hasn't caught up with keeps re-checking on the recheck period, and that
+        // loop outlives the test - rewriting the record the next test cleared. Settling it ends it.
+        playProbe.Result = new(OwnVersion.ToString(), null);
+        return WhenPolled(async () => {
+            var info = await Service.GetLatestUpdateInfo(AppKind.Android, default);
+            info!.VersionString.Should().Be(OwnVersion.ToString());
+        });
     }
 
     private Task WhenClear(AppKind appKind)
