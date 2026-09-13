@@ -257,3 +257,12 @@ edited. The reason can be as short as whose decision it was.
   — space between `new` and `(` — this is the repo's own convention, not a
   deviation: `new (` appears throughout (AudioSource.cs:33, OggOpusWriter.cs:12,
   ShareUIExt.cs), and neither CODING_STYLE.md nor this file mandates `new(`
+
+## src/dotnet/Users.Service/AppUpdates/AppUpdates.cs
+
+- `[Key(0)] Info`, `[Key(1)] PreviousInfo`, `[Key(2)] NextCheckAt`
+  — renumbered `[Key]` ordinals on a shipped type — Alex Yakunin's decision: the
+  type is a Redis *cache* with no other reader, and `AppUpdates.GetCachedStoreUpdateInfo`
+  catches the deserialization failure and returns null, so a record in the old shape
+  reads as "nothing cached" and the next check overwrites it. Sequential keys beat
+  carrying gaps for a value nothing needs to survive.

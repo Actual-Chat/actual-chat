@@ -253,6 +253,11 @@ public class Invites(IServiceProvider services) : IInvites
 
     private void AutoInvalidate(Invite invite1, TimeSpan minInviteLifespan)
     {
+        // ChooseInvite reads a default ExpiresOn as "never expires", and EpochStart would make
+        // the delay negative - i.e. invalidate at once, and again on every recompute
+        if (invite1.ExpiresOn == default)
+            return;
+
         var delay = invite1.ExpiresOn - Clocks.SystemClock.Now - minInviteLifespan + TimeSpan.FromSeconds(1);
         Computed.GetCurrent().InvalidateSafely(delay, TimeSpan.FromMinutes(10));
     }

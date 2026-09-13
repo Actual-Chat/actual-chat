@@ -25,6 +25,32 @@ This document describes the coding conventions used in Voxt (formerly Actual Cha
   - etc.
 - When in Doubt, examine existing code in the same area and match its style.
 
+## SRP needs weight behind it
+
+Single responsibility is a real principle, but it justifies a *separate type*
+only when the responsibility being isolated has some weight. Extracting a
+50-line service that nothing else will ever call is a net loss: it adds a DI
+registration, a constructor dependency, a file, and a name the reader has to
+resolve, and it buys nothing — the logic still has exactly one caller.
+
+Two `Get`/`Set` methods over a Redis key are not a responsibility. They're four
+lines of the class that uses them.
+
+Extract when at least one of these holds:
+
+- **More than one caller**, actual or clearly imminent — not "someone might".
+- **Substance**: enough logic that reading it inline would crowd out the thing
+  the class is actually about. A parser, a state machine, a protocol, a
+  non-trivial algorithm. A pass-through to another API is not substance.
+- **A seam you need**: the thing has to be swapped in tests or by
+  configuration, and an interface with two implementations is the honest way
+  to say so.
+
+Otherwise keep it as private members of the one class that needs it, ordered
+per [Member Ordering](#member-ordering). Wait for the second caller — that is
+the moment the abstraction's shape becomes knowable, and it's cheap to extract
+then. Guessing it earlier usually produces the wrong shape *and* the extra file.
+
 ## Regular comments, docstrings, XML documentation comments
 
 This section applies to **C# and TypeScript** equally. Claude has a strong
@@ -434,6 +460,16 @@ Members within a class should be ordered as follows:
     Use `// Private methods` comment to separate this section.
 12. All other nested types.
     Use `// Nested types` comment to separate this section.
+
+**Within a section, order methods dependant-first**: a method comes before the
+ones it calls, so the file reads top-down from the entry point into the details.
+A private helper called only by one method sits right after it; a helper shared
+by several goes after the last of them. Ordering the section by the order the
+public methods above it use the helpers is the usual result.
+
+**Keep the DI-injected properties together** at the top of the property block,
+whether they're constructor-assigned or `=> field ??= Services.GetRequiredService<T>()`.
+Plain state (a captured `StartedAt`, a counter) goes after them, not interleaved.
 
 For typical RPC API (interface):
 1. Read methods go first.
