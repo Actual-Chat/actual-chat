@@ -27,27 +27,49 @@ Device testing of the first pipeline surfaced the problems this design answers:
 
 Four presets, ordered best-first in the menu:
 
-| Order | Label | Resolution | Re-encode | EXIF |
-|---|---|---|---|---|
-| 1 | Original (with EXIF) | unchanged | no | kept |
-| 2 | **Original resolution** (default) | unchanged | yes | stripped |
-| 3 | 4K | long side ≤ 3840 | yes | stripped |
-| 4 | 1080p | long side ≤ 1920 | yes | stripped |
+| Order | Label | Pixel budget | Long-side cap | Re-encode | EXIF |
+|---|---|---|---|---|---|
+| 1 | Original (with EXIF) | — | — | no | kept |
+| 2 | 12K (up to 113mpx) | 113 MP | 18K | yes | stripped |
+| 3 | **4K (up to 12.6mpx)** (default) | 12.6 MP | 6K | yes | stripped |
+| 4 | 1080p (up to 2.8mpx) | 2.8 MP | 2.9K | yes | stripped |
 
-- The effective output size is always `min(source, cap)` per axis. A 3000 px photo at
-  the 4K preset encodes at 3000 px; no preset ever upscales.
-- The 8K rule from the first spec stands: a source whose long side exceeds 7680 px is
-  re-encoded to 7680 even under the Original presets, so the server's pixel bound can
-  stay.
-- `Original (with EXIF)` is the only preset that passes bytes through untouched, and
-  the only one that sets `KeepMetadata` on the upload.
-- The default moves from 4K to `Original resolution`: recipients get the full frame,
-  and the sender still pays less than the raw camera file because jpegli at
-  distance 1.9 beats a phone's own encoder.
+Each preset caps two things: the **total pixel count**, and the **long side**
+separately. The budget is the area of a 4:3 box at the nominal size — `L² × ¾` for
+L = 12288, 4096, 1920 — and the long-side cap is `1.5 × L`, so a wide photo keeps its
+area instead of being punished for its shape, and only extreme panoramas are clipped
+by length. Nothing is ever upscaled: an image already inside both limits is re-encoded
+at its own size.
 
-The menu is ordered highest quality at the top. Localization gains one key for the new
-`Original resolution` entry; the existing `Original`/`Original with EXIF` keys are
-reused and relabelled where the wording changes.
+The budgets are chosen so the common case does not resize at all:
+
+- **4K at 12.6 MP passes a phone's main sensor through untouched** — 4032×3024 on
+  iPhone, 4000×3000 on Samsung. A 3840-based cap would have resized both by ~1% for
+  no reason, which is why the nominal is 4096.
+- **12K at 113 MP** covers every phone sensor except the 200 MP ones. Those downscale,
+  and that is the case that already broke the encoder: ~450 MB of RGBA at 12K, more
+  than a phone WebView reliably gives us. When processing at 12K fails, the attachment
+  falls back to passthrough rather than failing.
+- **1080p at 2.8 MP** yields 1920×1440 for a 4:3 photo.
+
+`Original (with EXIF)` is the only preset that passes bytes through untouched, and the
+only one that sets `KeepMetadata` on the upload. The 8K rule from the first spec is
+gone, replaced by these budgets; the server's pixel bound has to rise with it, or a
+12K image and every passthrough Original would be rejected.
+
+The menu is ordered highest quality at the top. Localization gains keys for the three
+new labels; the existing `Original with EXIF` key is reused.
+
+### Formats that are never re-encoded
+
+GIF cannot be re-encoded without destroying its animation, so it passes through at any
+preset — as do animated WebP and APNG. The preset menu has nothing to offer for these
+and should not imply otherwise.
+
+They still get a placeholder: `createImageBitmap` on an animated source decodes its
+first frame, which encodes exactly like any other photo. A still image that the client
+cannot decode at all gets no placeholder, and the recipient falls back to the grey
+skeleton.
 
 ## Upload timing
 
@@ -184,10 +206,12 @@ so the fix belongs here regardless.
 
 - **Send is slower for the attach-and-send-immediately user**, by roughly the encode
   time of their photos. This is the cost of not uploading what may never be sent.
-- **The default preset sends more bytes than before.** `Original resolution` replaces
-  4K as the default, so a 12 MP photo uploads at 12 MP. Recipients decode a larger
-  image; the sender's own bandwidth bill goes up. The quality menu is where anyone who
-  cares opts down, and the estimates are what makes that choice informed.
+- **The default preset sends more bytes than before.** 4K remains the default but its
+  budget grew from a 3840 long side to 12.6 MP, so a phone photo now uploads at its
+  full 12 MP instead of being downscaled. Recipients decode a larger image, and the
+  sender's bandwidth bill goes up — bought deliberately, so the common case is never
+  resized. The quality menu is where anyone who cares opts down, and the estimates are
+  what makes that choice informed.
 - **Placeholders make every chat tile read slightly heavier** — see the cost note
   above. The alternative, a 28-byte BlurHash, was measured and rejected: at this budget
   the extra bytes buy recognizable shapes instead of an abstract gradient.
