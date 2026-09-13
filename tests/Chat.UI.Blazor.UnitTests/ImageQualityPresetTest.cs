@@ -60,6 +60,6 @@ public sealed class ImageQualityPresetTest
 
         // assert
         json.Should().Be(
-            """{"outputs":[{"kind":"main","maxPixels":12582912,"maxLongSide":6144,"codec":"auto","stripMetadata":true,"maxPassthroughPixels":null},{"kind":"placeholder","maxPixels":null,"maxLongSide":null,"codec":"placeholder","stripMetadata":true,"maxPassthroughPixels":null}],"maxMobileEncodePixels":16000000}""");
+            """{"outputs":[{"kind":"main","maxPixels":12582912,"maxLongSide":6144,"codec":"auto","stripMetadata":true,"maxPassthroughPixels":null},{"kind":"placeholder","maxPixels":null,"maxLongSide":null,"codec":"placeholder","stripMetadata":true,"maxPassthroughPixels":null}],"maxMobileEncodePixels":52428800}""");
     }
 }

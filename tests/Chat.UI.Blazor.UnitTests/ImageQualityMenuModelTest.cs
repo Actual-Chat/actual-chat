@@ -121,22 +121,33 @@ public sealed class ImageQualityMenuModelTest
     [Fact]
     public void MobileShouldPriceADeclinedResizeAtTheSourceLength()
     {
-        // arrange - a 50 MP phone shot: the Mpx50 budget resizes nothing, so the target stays
-        // 50 MP, which is past the 16 MP a phone will attempt
-        var size = new Size2D(8160, 6144);
+        // arrange - a budget past the mobile cap, which no shipped preset has since the cap was
+        // raised to 50 MP; the guard is what a future larger budget would meet
+        var size = new Size2D(12288, 9216);
+        var pastTheCap = new ImageQualityBudget(120_000_000, 16384);
         var attachment = NewImage("image/jpeg", 18_000_000, size);
         var images = new List<Attachment> { attachment };
 
         // act
         var onMobile = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx50, isMobile: true);
-        var onDesktop = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx50, isMobile: false);
 
         // assert
-        onMobile.Should().Be(new ImageQualityMenuModel.PresetTotal(18_000_000, true),
-            "the worker declines this encode on a phone and uploads the source unchanged");
-        onDesktop!.Value.IsExact.Should().BeFalse();
-        ImageQualityMenuModel.IsDeclinedAt(images, ImageQualityPreset.Mpx50, isMobile: true).Should().BeTrue();
-        ImageQualityMenuModel.IsDeclinedAt(images, ImageQualityPreset.Mpx50, isMobile: false).Should().BeFalse();
+        ImageQualityMenuModel.WillDecline(size, pastTheCap, isMobile: true).Should().BeTrue();
+        ImageQualityMenuModel.WillDecline(size, pastTheCap, isMobile: false).Should().BeFalse(
+            "the guard is about what a phone can afford, not what the image is");
+        onMobile!.Value.IsExact.Should().BeFalse("every shipped budget now fits under the cap");
+    }
+
+    [Fact]
+    public void NoShippedPresetShouldDeclineOnAPhone()
+    {
+        // arrange - the largest source the server accepts, so each preset's target sits at its budget
+        var size = new Size2D(Constants.Attachments.MaxImageSize, 7812);
+
+        // assert
+        foreach (var preset in Enum.GetValues<ImageQualityPreset>())
+            ImageQualityMenuModel.WillDecline(size, preset.GetBudget(), isMobile: true)
+                .Should().BeFalse($"{preset}'s budget must stay under the mobile encode cap");
     }
 
     [Fact]

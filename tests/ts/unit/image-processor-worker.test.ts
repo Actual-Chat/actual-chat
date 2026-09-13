@@ -180,7 +180,7 @@ function processInWorker(
 ): Promise<ImageProcessResult> {
     // C# owns the value (Constants.Attachments.MaxMobileEncodePixelCount); these tests run as desktop,
     // where canEncodeOnThisDevice ignores it anyway
-    return worker.serverImpl.process(source, { ...request, maxMobileEncodePixels: 16_000_000 });
+    return worker.serverImpl.process(source, { ...request, maxMobileEncodePixels: 52_428_800 });
 }
 
 describe('placeholder output', () => {
