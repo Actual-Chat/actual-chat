@@ -107,6 +107,7 @@ export default withMermaid(defineConfig({
               { text: "Offline Render Path", link: "/architecture/offline-render-path" },
               { text: "Notifications", link: "/notifications" },
               { text: "Call entries", link: "/call-entries" },
+              { text: "Passkeys", link: "/passkeys" },
             ],
           },
           {
