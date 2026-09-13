@@ -10,7 +10,10 @@ public class UserCollection : ICollectionFixture<AppHostFixture>;
 public class AppHostFixture(IMessageSink messageSink)
     : ActualChat.Testing.Host.AppHostFixture("users", messageSink, TestAppHostOptions.WithDefaultChat with {
         ConfigureHost = (_, cfg) => {
-            cfg.AddInMemory<UsersSettings>((x => x.AppleAppId, "com.test.app"));
+            cfg.AddInMemory<UsersSettings>(
+                (x => x.AppleAppId, "com.test.app"),
+                (x => x.PasskeyRpId, "localhost"),
+                (x => x.PasskeyOrigins, "https://localhost"));
         },
         ConfigureServices = (_, services) => {
             var handler = new AppleTokenEndpointHandlerMock();

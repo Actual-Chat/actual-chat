@@ -8,6 +8,7 @@ public static class AuthSchema
     public const string HashedPhone = "phone-hash";
     public const string Email = "email";
     public const string HashedEmail = "email-hash";
+    public const string Passkey = "passkey";
     public const string EmailVerifiedClaim = "email_verified";
 
     public static readonly string[] AllExternal = [Google, Apple];
@@ -20,6 +21,7 @@ public static class AuthSchema
             [HashedPhone] = "Phone",
             [Email] = "Email",
             [HashedEmail] = "Email",
+            [Passkey] = "Passkey",
         };
     public static readonly IReadOnlySet<string> ExternalSchemas
         = new HashSet<string>() { Google, Apple };

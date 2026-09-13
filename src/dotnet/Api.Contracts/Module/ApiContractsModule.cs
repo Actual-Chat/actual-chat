@@ -91,6 +91,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         if (HostInfo.HostKind.IsMauiApp())
             fusion.AddClient<INativeAuth>();
         fusion.AddClient<IPhoneAuth>();
+        fusion.AddClient<IPasskeyAuth>();
         fusion.AddClient<IEmailAuth>();
 
         // Misc.

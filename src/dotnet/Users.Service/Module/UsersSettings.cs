@@ -40,6 +40,14 @@ public sealed class UsersSettings
     // reports Sec-Fetch-Site: none. Turn this off if some platform turns out not to.
     public bool IsMauiAuthFetchSiteCheckEnabled { get; set; } = true;
     public AccountStatus NewAccountStatus { get; set; } = AccountStatus.Active;
+    // Null = on everywhere except production; set explicitly to override
+    public bool? IsPasskeyAuthEnabled { get; set; }
+    // Empty = the public host of HostInfo.BaseUrl
+    public string PasskeyRpId { get; set; } = "";
+    // ';'-separated; empty = the origin of HostInfo.BaseUrl. Android app origins look like
+    // android:apk-key-hash:<base64url(sha256(signing cert))>
+    public string PasskeyOrigins { get; set; } = "";
+    public TimeSpan PasskeyChallengeLifetime { get; set; } = TimeSpan.FromMinutes(2);
     public TimeSpan TotpCodeLifetime { get; set; } = TimeSpan.FromMinutes(15);
     public int TotpMaxAttemptCount { get; set; } = 5;
     public TimeSpan TotpUIThrottling => TotpCodeLifetime.Clamp(TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1));
@@ -56,4 +64,20 @@ public sealed class UsersSettings
     // anything outside 30s..1h and refunds the fee for a message it couldn't deliver within the ttl.
     public TimeSpan TelegramGatewayMessageTtl
         => (TelegramGatewayTtl ?? TotpCodeLifetime).Clamp(TimeSpan.FromSeconds(30), TimeSpan.FromHours(1));
+
+    public string GetPasskeyRpId(HostInfo hostInfo)
+        => PasskeyRpId.IsNullOrEmpty()
+            ? hostInfo.BaseUrl.EnsureSuffix("/").ToUri().Host
+            : PasskeyRpId;
+
+    public HashSet<string> GetPasskeyOrigins(HostInfo hostInfo)
+    {
+        var origins = PasskeyOrigins
+            .Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet();
+        if (origins.Count == 0)
+            origins.Add(hostInfo.BaseUrl.EnsureSuffix("/").ToUri().GetLeftPart(UriPartial.Authority));
+
+        return origins;
+    }
 }
