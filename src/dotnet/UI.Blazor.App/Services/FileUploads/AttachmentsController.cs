@@ -18,7 +18,8 @@ public sealed class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub
 
         try {
             var uploadSessionId = await UploadSessions
-                .CreateSession(fileProvider, attachment.GetMetadataForUploadSession(), mediaScope)
+                .CreateSession(
+                    fileProvider, attachment.GetMetadataForUploadSession(), mediaScope, attachment.Placeholder)
                 .ConfigureAwait(false);
             attachment = attachment with {
                 UploadSessionId = uploadSessionId,

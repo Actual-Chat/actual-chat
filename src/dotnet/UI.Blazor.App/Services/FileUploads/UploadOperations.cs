@@ -172,6 +172,7 @@ public sealed class UploadOperations(AppUIHub hub) : IUploadOperations
             Scope = snapshot.MediaScope.NullIfEmpty() ?? MediaId.NewScope(),
             Metadata = metadata,
             Kind = MediaKind.ChatEntryAttachment,
+            Placeholder = snapshot.Placeholder,
         };
     }
 

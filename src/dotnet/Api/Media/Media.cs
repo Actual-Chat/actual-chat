@@ -17,6 +17,7 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
     [DataMember, Key(2)] public long Version { get; init; }
     [DataMember, Key(3)] public MediaKind Kind { get; init; }
     [DataMember, Key(4)] public MetadataBag Metadata { get; init; }
+    [DataMember, Key(5)] public byte[]? Placeholder { get; init; }
 
     // Computed properties
 
@@ -50,12 +51,6 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public int Height {
         get => this.GetMetadataValue<int>();
-        init => this.SetMetadataValue(value);
-    }
-
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public string Placeholder {
-        get => this.GetMetadataValue("");
         init => this.SetMetadataValue(value);
     }
 
@@ -98,13 +93,20 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
         => Id = id;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
-    public Media(MediaId id, string blobId, long version, MediaKind kind, MetadataBag metadata)
+    public Media(
+        MediaId id,
+        string blobId,
+        long version,
+        MediaKind kind,
+        MetadataBag metadata,
+        byte[]? placeholder)
     {
         Id = id;
         BlobId = blobId;
         Version = version;
         Kind = kind;
         Metadata = metadata;
+        Placeholder = placeholder;
     }
 
     // This record relies on referential equality

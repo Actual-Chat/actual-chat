@@ -31,8 +31,12 @@ public class UploadSession
     private Task _runTask = Task.CompletedTask;
     private readonly IUploadOperations _uploadOperations;
 
-    public static UploadSessionSnapshot NewUploadSnapshot(IFileProvider fileProvider, MetadataBag metadata,
-        Moment now, string mediaScope)
+    public static UploadSessionSnapshot NewUploadSnapshot(
+        IFileProvider fileProvider,
+        MetadataBag metadata,
+        Moment now,
+        string mediaScope,
+        byte[]? placeholder = null)
     {
         var snapshot = new UploadSessionSnapshot {
             SessionId = Guid.NewGuid().ToString(),
@@ -43,6 +47,7 @@ public class UploadSession
             CreatedAt = now,
             LastUpdatedAt = now,
             MediaScope = mediaScope,
+            Placeholder = placeholder,
         };
         return snapshot;
     }

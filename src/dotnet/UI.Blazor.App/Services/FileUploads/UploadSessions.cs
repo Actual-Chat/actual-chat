@@ -26,7 +26,11 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         _storage = CreateStorage();
     }
 
-    public async Task<string> CreateSession(IFileProvider fileProvider, MetadataBag metadata, string mediaScope)
+    public async Task<string> CreateSession(
+        IFileProvider fileProvider,
+        MetadataBag metadata,
+        string mediaScope,
+        byte[]? placeholder = null)
     {
         if (fileProvider is null)
             throw new ArgumentNullException(nameof(fileProvider));
@@ -35,7 +39,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         await fileProvider.PrepareForSaving().ConfigureAwait(false);
 
         var now = _uploadOperations.Now();
-        var snapshot = UploadSession.NewUploadSnapshot(fileProvider, metadata, now, mediaScope);
+        var snapshot = UploadSession.NewUploadSnapshot(fileProvider, metadata, now, mediaScope, placeholder);
         var session = NewSession(snapshot);
         // Register in memory before persisting, so cleanup never reclaims it before the caller references it.
         _sessions[session.SessionId] = new SessionRef(session);

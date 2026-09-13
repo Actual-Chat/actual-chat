@@ -148,7 +148,7 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `RecentMentions` / `RecentGifs` — per-user `StoredSettings` (MessagePack-only) tracking recently picked mentions (recency+frequency score) and GIFs (MRU); surfaced via `RecentMentionsUI` / `RecentGifsUI` synced-state services
 
 ### Media
-- `Media` (record) — media metadata (content type, size, dimensions)
+- `Media` (record) — media metadata (content type, size, dimensions) plus the inline `Placeholder` bytes
 - `Picture` (record) — picture with multiple sizes
 - `LinkPreview` (record) — preview of linked content
 

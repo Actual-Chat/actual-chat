@@ -296,6 +296,14 @@ shows the real `attachment.Length`**, not the estimate (Ruling P14) — includin
 declined or failed-encode row — so the row the user is about to send always matches
 what will actually go out.
 
+**The placeholder is stored as `byte[]?` in its own `bytea` column, not in the metadata bag.**
+The "Storage" section above says base64 in the media row's metadata bag, chosen to avoid a
+migration. That trade was reversed: base64 text inside an opaque JSON column costs ~33% extra
+storage plus a decode on a read path every chat tile hits, which is not worth skipping one
+`AddColumn`. `Media.Placeholder` is `byte[]?`, `DbMedia.Placeholder` is a nullable `bytea`
+(NULL for every pre-existing row, no backfill), and base64 survives only as the wire format on
+the TypeScript → C# interop hop, decoded to bytes in `ImageAttachmentProcessor`.
+
 **The placeholder container's numbers above are superseded.** The design originally
 called for a 236-byte reconstructable prefix; what shipped strips 220 leading bytes
 (SOI + DQT + SOF0, jpegli's real Huffman-optimized encoding, not a synthetic one) plus

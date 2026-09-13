@@ -28,19 +28,9 @@ public static class ImagePlaceholder
     private static readonly byte[] Eoi = [0xFF, 0xD9];
     private static readonly int SofHeightOffset = FindSofDimensionOffset(Prefix);
 
-    public static string ToDataUrl(string? packedBase64)
+    public static string ToDataUrl(byte[]? packed)
     {
-        if (packedBase64.IsNullOrEmpty())
-            return "";
-
-        byte[] packed;
-        try {
-            packed = Convert.FromBase64String(packedBase64);
-        }
-        catch (FormatException) {
-            return "";
-        }
-        if (packed.Length < 3)
+        if (packed is not { Length: >= 3 })
             return "";
 
         var payload = packed.AsSpan(2);

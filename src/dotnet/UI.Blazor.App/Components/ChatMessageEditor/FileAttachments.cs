@@ -403,7 +403,7 @@ public sealed class FileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
             processed = processed with {
                 IsProcessing = false,
                 SelectedQuality = preset,
-                Placeholder = result?.Placeholder ?? "",
+                Placeholder = result?.Placeholder,
                 IsDeclined = result?.Declined ?? false,
             };
             // A HEIC/AVIF preview that landed while this was running is stashed rather than applied

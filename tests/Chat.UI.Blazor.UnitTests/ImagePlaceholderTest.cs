@@ -19,14 +19,14 @@ public sealed class ImagePlaceholderTest
     {
         // act & assert
         ImagePlaceholder.ToDataUrl(null).Should().BeEmpty();
-        ImagePlaceholder.ToDataUrl("").Should().BeEmpty();
+        ImagePlaceholder.ToDataUrl([]).Should().BeEmpty();
     }
 
     [Fact]
     public void ShouldReturnEmptyForAnUnknownFormatMark()
     {
         // arrange
-        var packed = Convert.ToBase64String(new byte[] { 99, 32, 1, 2, 3 });
+        var packed = new byte[] { 99, 32, 1, 2, 3 };
 
         // act & assert
         ImagePlaceholder.ToDataUrl(packed).Should().BeEmpty();
@@ -36,7 +36,7 @@ public sealed class ImagePlaceholderTest
     public void ShouldRebuildAStrippedPlaceholderIntoAJpegDataUrl()
     {
         // arrange
-        var packed = Convert.ToBase64String(new byte[] { 1, unchecked((byte)-48), 0xFF, 0xC4, 0x00, 0x02 });
+        var packed = new byte[] { 1, unchecked((byte)-48), 0xFF, 0xC4, 0x00, 0x02 };
 
         // act
         var url = ImagePlaceholder.ToDataUrl(packed);
@@ -53,7 +53,7 @@ public sealed class ImagePlaceholderTest
     {
         // arrange
         var jpeg = new byte[] { 0xFF, 0xD8, 0xFF, 0xD9 };
-        var packed = Convert.ToBase64String(new byte[] { 2, 64 }.Concat(jpeg).ToArray());
+        var packed = new byte[] { 2, 64 }.Concat(jpeg).ToArray();
 
         // act
         var url = ImagePlaceholder.ToDataUrl(packed);
@@ -66,7 +66,7 @@ public sealed class ImagePlaceholderTest
     public void ShouldReturnEmptyForAZeroShortSide()
     {
         // arrange
-        var packed = Convert.ToBase64String(new byte[] { 1, 0, 0xFF, 0xC4, 0x00, 0x02 });
+        var packed = new byte[] { 1, 0, 0xFF, 0xC4, 0x00, 0x02 };
 
         // act & assert
         ImagePlaceholder.ToDataUrl(packed).Should().BeEmpty();
@@ -76,7 +76,7 @@ public sealed class ImagePlaceholderTest
     public void ShouldRebuildAStrippedPlaceholderThatIdentifiesAs64x48()
     {
         // arrange
-        var packed = Convert.ToBase64String(StrippedFlatFillFixture);
+        var packed = StrippedFlatFillFixture;
 
         // act
         var url = ImagePlaceholder.ToDataUrl(packed);

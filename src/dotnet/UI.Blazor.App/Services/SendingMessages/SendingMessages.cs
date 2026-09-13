@@ -68,7 +68,10 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 if (attachment.FileProvider is not { } fileProvider)
                     throw new InvalidOperationException($"Can't initialize upload for attachment '{attachment.Id}'. No file provider assigned.");
 
-                uploadSessionId = await UploadSessions.CreateSession(fileProvider, attachment.GetMetadataForUploadSession(), mediaScope).ConfigureAwait(false);
+                uploadSessionId = await UploadSessions
+                    .CreateSession(
+                        fileProvider, attachment.GetMetadataForUploadSession(), mediaScope, attachment.Placeholder)
+                    .ConfigureAwait(false);
             }
             var attachEntry = new UploadFileRequestEntry(uploadSessionId, attachment.FileName, attachment.FileType, attachment.Length, attachment.Width, attachment.Height, attachment.Id);
             uploadEntries.Add(attachEntry);

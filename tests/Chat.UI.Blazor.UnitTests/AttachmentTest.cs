@@ -39,7 +39,7 @@ public sealed class AttachmentTest
         var attachment = new Attachment("clip.gif", "image/gif", 1000, new Size2D(10, 10));
 
         // act
-        attachment = attachment with { Placeholder = "cGxhY2Vob2xkZXI=" };
+        attachment = attachment with { Placeholder = [1, 208, 255, 196] };
 
         // assert
         attachment.IsProcessableImage.Should().BeTrue();

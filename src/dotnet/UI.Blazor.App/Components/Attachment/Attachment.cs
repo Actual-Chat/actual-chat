@@ -18,7 +18,7 @@ public record Attachment(string FileName, string FileType, long Length, Size2D S
     public AttachmentSource? Source { get; init; }
     public bool IsProcessing { get; init; }
     public ImageQualityPreset SelectedQuality { get; init; }
-    public string Placeholder { get; init; } = "";
+    public byte[]? Placeholder { get; init; }
     // Set when the device declined to re-encode at SelectedQuality and passed the source through unchanged
     public bool IsDeclined { get; init; }
 
@@ -47,8 +47,7 @@ public record Attachment(string FileName, string FileType, long Length, Size2D S
                 .Set(nameof(Media.Media.Height), Size.Height);
         if (Source is not null && SelectedQuality == ImageQualityPreset.OriginalWithExif)
             metadata = metadata.Set(nameof(Media.Upload.KeepMetadata), true);
-        if (!Placeholder.IsNullOrEmpty())
-            metadata = metadata.Set(nameof(Media.Media.Placeholder), Placeholder);
+
         return metadata;
     }
 }

@@ -15,7 +15,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void Media_Basic()
     {
         var mediaId = MediaId.New(TestUserId.Value, "local1");
-        var media = new Media(mediaId, "content-1", 0, MediaKind.Unknown, new MetadataBag());
+        var media = new Media(mediaId, "content-1", 0, MediaKind.Unknown, new MetadataBag(), null);
 
         var s = media.PassThroughSerializers(Out);
         s.Id.Should().Be(media.Id);

@@ -120,6 +120,21 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
     private static ImageProcessingResult CreateResult(IFileProvider? provider, ProcessedImage image, Size2D sourceSize)
     {
         var size = image.Width > 0 && image.Height > 0 ? new Size2D(image.Width, image.Height) : sourceSize;
-        return new ImageProcessingResult(provider, size, image.Declined, image.Placeholder);
+        return new ImageProcessingResult(provider, size, image.Declined, DecodePlaceholder(image.Placeholder));
+    }
+
+    private static byte[]? DecodePlaceholder(string base64)
+    {
+        // The only place base64 exists: the worker packs bytes, JS interop can't carry them, and
+        // everything past here - attachment, upload session, media row - stores the bytes
+        if (base64.IsNullOrEmpty())
+            return null;
+
+        try {
+            return Convert.FromBase64String(base64);
+        }
+        catch (FormatException) {
+            return null;
+        }
     }
 }
