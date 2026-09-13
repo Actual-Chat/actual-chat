@@ -90,6 +90,26 @@
         </Caption>
     </TileItem>
 
+    @if (_showPasskeys) {
+        <TileItem Click="@(() => OpenPasskeys?.Invoke())">
+            <Icon>
+                <i class="icon-key"></i>
+            </Icon>
+            <Content>
+                @(_passkeyCount > 0 ? L.Passkeys_Count(_passkeyCount, _passkeyCount) : L.Passkeys_NotSetUp)
+            </Content>
+            <Caption>
+                @L.Settings_Passkeys
+            </Caption>
+            <Right>
+                @if (_passkeyCount == 0) {
+                    <WarningBadge IsMuted="true"/>
+                }
+                <i class="icon-chevron-right text-xl text-03"></i>
+            </Right>
+        </TileItem>
+    }
+
     <TileItem Click="@OnTimeZoneClick">
         <Icon>
             <i class="icon-globe"></i>
@@ -140,8 +160,12 @@
 @code {
     private TimeZone? _selectedTimeZone;
     private IReadOnlyCollection<TimeZone>? _timeZones;
+    private int _passkeyCount;
+    private bool _showPasskeys;
 
     private ITimeZones TimeZones => Hub.TimeZones;
+
+    [Parameter] public Action? OpenPasskeys { get; set; }
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
@@ -153,6 +177,10 @@
         var account = await AccountUI.OwnAccount.Use(cancellationToken);
         _timeZones = await TimeZones.List("en-US", cancellationToken);
         _selectedTimeZone = _timeZones.FirstOrDefault(z => z.Id == account.TimeZone);
+        var canUsePasskey = await Hub.PasskeyUI.CanUse(cancellationToken);
+        var passkeys = await Hub.PasskeyUI.ListOwn(cancellationToken);
+        _passkeyCount = passkeys.Count;
+        _showPasskeys = canUsePasskey || _passkeyCount > 0;
         return account;
     }
 

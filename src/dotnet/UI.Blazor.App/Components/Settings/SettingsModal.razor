@@ -18,11 +18,19 @@
     var quitTitle = L.Settings_Quit_Format(CoreConstants.AppName);
 
     var tabs = new List<SettingsTabDef>();
-    if (showMyAccount)
+    if (showMyAccount) {
         tabs.Add(new(SettingsTabId.Account, L.Settings_YourAccount) {
             IconClass = "icon-person",
-            Content = @<YourAccount/>,
+            TitleBadge = m.NeedsPasskey ? @<WarningBadge IsMuted="true"/> : null,
+            Content = @<YourAccount OpenPasskeys="@(() => _panel.SelectTab(SettingsTabId.Passkeys))"/>,
         });
+        if (m.ShowPasskeys)
+            tabs.Add(new(SettingsTabId.Passkeys, L.Settings_Passkeys) {
+                IconClass = "icon-key",
+                TitleBadge = m.NeedsPasskey ? @<WarningBadge IsMuted="true"/> : null,
+                Content = @<PasskeySettings/>,
+            });
+    }
     tabs.Add(new(SettingsTabId.UserInterface, L.Settings_UserInterface) {
         IconClass = "icon-interface",
         HasSeparatorBefore = showMyAccount,
@@ -119,7 +127,7 @@
             <i class="icon-close text-xl"></i>
         </ButtonRound>
     }
-    <SettingsPanel Tabs="@tabs" Title="@L.Settings_Title" CloseModalClick="OnCloseClick" DefaultTabId="@m.TabId"/>
+    <SettingsPanel @ref="_panel" Tabs="@tabs" Title="@L.Settings_Title" CloseModalClick="OnCloseClick" DefaultTabId="@m.TabId"/>
 </ModalFrame>
 
 @code {
@@ -130,6 +138,7 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
+    private SettingsPanel _panel = null!;
     private PermissionsUI PermissionsUI => field ??= Hub.Services.GetRequiredService<PermissionsUI>();
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
@@ -146,10 +155,14 @@
             && await Hub.LogUI.IsEnabled.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var permissions = await PermissionsUI.GetState(cancellationToken).ConfigureAwait(false);
+        var canUsePasskey = await Hub.PasskeyUI.CanUse(cancellationToken).ConfigureAwait(false);
+        var passkeyCount = (await Hub.PasskeyUI.ListOwn(cancellationToken).ConfigureAwait(false)).Count;
         return new ComputedModel(account, tabId) {
             ShowLogViewer = showLogViewer,
             EnableIncompleteUI = enableIncompleteUI,
             Permissions = permissions,
+            ShowPasskeys = canUsePasskey || passkeyCount > 0,
+            NeedsPasskey = canUsePasskey && passkeyCount == 0,
         };
     }
 
@@ -181,6 +194,8 @@
         public bool ShowLogViewer { get; init; }
         public bool EnableIncompleteUI { get; init; }
         public PermissionsState Permissions { get; init; } = PermissionsState.Unknown;
+        public bool ShowPasskeys { get; init; }
+        public bool NeedsPasskey { get; init; }
     }
 
     public sealed record Model(string? TabId = null) {
