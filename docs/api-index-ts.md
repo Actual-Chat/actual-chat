@@ -288,6 +288,11 @@ See also: [C# Full API Index](api-index-full.md), [Condensed API Index](api-inde
 - `Log` (class) - Logging system instance.
 - `LogLevelController` (class) - Control log levels at runtime.
 - `escapeHtml` (function) - Escape &, <, >, " for HTML/SVG markup.
+- `base64UrlToBytes` (function) - Decode a base64url string to bytes (`webauthn-json.ts`).
+- `bytesToBase64Url` (function) - Encode bytes to a base64url string (`webauthn-json.ts`).
+- `creationOptionsFromJson` (function) - WebAuthn L3 JSON to `PublicKeyCredentialCreationOptions`, using native `parseCreationOptionsFromJSON` when available (`webauthn-json.ts`).
+- `requestOptionsFromJson` (function) - WebAuthn L3 JSON to `PublicKeyCredentialRequestOptions`, using native `parseRequestOptionsFromJSON` when available (`webauthn-json.ts`).
+- `credentialToJson` (function) - `PublicKeyCredential` to WebAuthn L3 JSON, using native `toJSON()` when available (`webauthn-json.ts`).
 
 
 ## Worklets (`src/nodejs/src/worklets`)
@@ -378,6 +383,14 @@ See also: [C# Full API Index](api-index-full.md), [Condensed API Index](api-inde
 
 - `VisualMediaViewer` (class) - Visual media viewer modal.
 - `YoutubePlayer` (class) - YouTube video player.
+
+
+## UI Blazor — Passkeys (`src/dotnet/UI.Blazor/Services/PasskeyUI`)
+
+- `PasskeyResult` (interface) - Ceremony outcome: either a WebAuthn JSON response or an error.
+- `Passkeys` (class) - Platform passkey (WebAuthn) ceremonies backing `IPasskeyClient`'s web
+  implementation: availability check, `create`/`get` over `webauthn-json.ts`, cancellation
+  normalized to `Passkeys.cancelledError`.
 
 
 ## UI Blazor.App — Audio Player (`src/dotnet/UI.Blazor.App/Components/AudioPlayer`)
