@@ -9,9 +9,10 @@ queues a notification. The notification pipeline turns it into one `CallNotifica
 invitee and pushes it to every device. On the client, every delivery path ends in
 `IncomingCallUI.OnRing(chatId)`, and that call only records a *candidate*. Whether the device
 actually rings is decided by the reactive live session: the call is still unanswered, the
-reader isn't its host, and the reader's invite is `Ringing`. The same reactive read ends the
-ring when the call is answered elsewhere, canceled, declined or timed out, so a lost or stale
-push can neither start a ring nor leave one stranded.
+reader isn't its host, and the reader's invite is `Ringing`. The first candidate that passes
+is latched and held until its ring ends: answered elsewhere, canceled, declined or timed out.
+A ring that arrives meanwhile waits its turn, so a lost or stale push can neither start a
+ring nor leave one stranded, and a second ring never takes over the first.
 
 [[toc]]
 
@@ -33,7 +34,8 @@ sequenceDiagram
     Push->>Callee: data message / APNs alert
     Callee->>Callee: IncomingCallUI.OnRing(chatId)
     Callee->>LS: LiveSessions.Get - is my invite Ringing?
-    Callee->>LS: ConfirmRing(Ringing)
+    Callee->>Callee: latch the ring until it ends
+    Callee->>LS: ConfirmRing(Ringing or Busy)
     Callee->>LS: AcceptCall or DeclineCall
     LS->>NB: NotificationsBackend_CancelCall - stop the ring on other devices
 ```
@@ -118,13 +120,40 @@ A stale push, or a call already answered on another device, produces nothing, an
 candidates are pruned.
 :::
 
+## Latching one ring
+
+`TrackIncomingCall` turns the candidate list into the one ring the device handles, and it
+alternates between two modes.
+
+**Searching**, while nothing is latched. On every change of the list it walks the
+candidates newest first, skipping the chat the reader is already in a call with, and asks
+`GetRingingCall` about each. The first confirmed ring is latched into a `MutableState`, and
+`GetIncomingCall` returns it from then on. Candidates that aren't ringing at that moment are
+dropped.
+
+**Holding**, while a ring is latched. Only that chat is watched; the other candidates aren't
+looked at. The hold ends when the ring stops, or when `Accept`, `Decline` or a dismissal push
+drops it. The chat then leaves the list and the search starts over, so a ring that arrived
+meanwhile surfaces now if it is still ringing.
+
+Everything that decides whether a chat rings reads the latched call, not the session: the
+modal, the island, the over-lock and narrow full-screen views. A second ring therefore never
+takes over the first one's screen. `Accept` is the exception and checks the session directly,
+because Answer on an Android notification can name a ring that is still waiting.
+
+The server hears about the ring through `ConfirmRing`:
+
+| Situation | Ack |
+|---|---|
+| A ring is latched and the reader isn't in a call | `Ringing` |
+| A ring is latched while the reader is in a call in another chat | `Busy` |
+| `OnRing` arrives for another chat while a ring is latched | `Busy`, once per chat |
+
 ## Presenting the ring
 
-`IncomingCallUI` is a UI worker that runs several reactive loops:
+`IncomingCallUI` is a UI worker; besides `TrackIncomingCall` it runs these reactive loops:
 
-- **`SyncRings`** watches `GetIncomingCall`, the newest confirmed candidate. It starts and
-  stops the ringtone, sends `ConfirmRing(RingAck.Ringing)` once per ring, and prunes dead
-  candidates.
+- **`SyncRings`** watches `GetIncomingCall` and starts or stops the ringtone.
 - **`SyncIncomingCallModal`** shows `IncomingCallModal`, except when the ring is shown over
   the lock screen or collapsed into the island.
 - **`SyncActiveCallNotifications`** is the `ListActive` path from the table above.
@@ -162,9 +191,10 @@ On the callee's client, `IncomingCallUI.Accept`:
 
 1. Re-verifies the ring through `GetRingingCall`. If it is gone, shows a "Call ended" toast
    instead of joining.
-2. Ends the local ring, which also cancels the Android system notification, and marks the
-   chat as in-call *before* the RPC, so the call screen doesn't blink between "ring ended" and
-   "audio started".
+2. Marks the chat as in-call, then ends the local ring, which also cancels the Android system
+   notification. Both happen *before* the RPC: the call screen doesn't blink between "ring
+   ended" and "audio started", and the search for the next ring already skips this chat while
+   its invite still reads `Ringing`.
 3. Calls `AcceptCall`.
 4. On Android, dismisses the keyguard, unless the call was accepted over the lock screen.
    Then audio starts without unlocking: the activity shown over the lock counts as
@@ -254,9 +284,12 @@ notification's own `SetTimeoutAfter(RingTimeout)`.
 
 - **`RingTimeout` is 20 s only for testing.** It was lowered from 40 s to test call
   statuses, and the code still carries a TODO to restore it.
-- **`ConfirmRing` only ever sends `Ringing`.** `Received` and `Busy` exist in `RingAck` but no
-  client sends them. The ack also goes out after the session confirms the ring, not when the
-  push arrives, so it can't show "the push arrived but the session read failed".
+- **`RingAck.Received` is never sent.** The ack for a latched ring goes out after the session
+  confirms it, not when the push arrives, so it can't show "the push arrived but the session
+  read failed". A ring that arrives while the search is still checking a candidate, before
+  anything is latched, doesn't get its `Busy` either.
+- **Only one over-lock ring.** If two rings arrive together on a locked device and the search
+  latches the other one, the over-lock screen the first one asked for shows nothing.
 - **iOS has no call-specific path**, neither CallKit nor PushKit. A ring is an ordinary alert
   with a ringtone, and the in-app ring appears only once the app is open, through
   `ListActive`.

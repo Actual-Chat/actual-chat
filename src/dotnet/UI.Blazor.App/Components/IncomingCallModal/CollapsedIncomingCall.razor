@@ -43,8 +43,8 @@
         if (chatId is not { } id)
             return ComputedModel.None;
 
-        var call = await IncomingCallUI.GetRingingCall(id, cancellationToken).ConfigureAwait(false);
-        return call is null ? ComputedModel.None : new ComputedModel { Call = call };
+        var call = await IncomingCallUI.GetIncomingCall(cancellationToken).ConfigureAwait(false);
+        return call?.ChatId == id ? new ComputedModel { Call = call } : ComputedModel.None;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

@@ -70,8 +70,8 @@
         if (author == null)
             return ComputedModel.None;
 
-        var call = await IncomingCallUI.GetRingingCall(chatId, cancellationToken).ConfigureAwait(false);
-        if (call is null)
+        var call = await IncomingCallUI.GetIncomingCall(cancellationToken).ConfigureAwait(false);
+        if (call?.ChatId != chatId)
             return ComputedModel.None;
 
         // Collapsed into the island → close the modal; the island takes over.

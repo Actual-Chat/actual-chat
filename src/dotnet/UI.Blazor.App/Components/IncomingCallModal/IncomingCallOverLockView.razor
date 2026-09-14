@@ -231,8 +231,8 @@
             return ComputedModel.None;
         }
 
-        var ringing = await IncomingCallUI.GetRingingCall(id, cancellationToken).ConfigureAwait(false);
-        if (ringing is not null) {
+        var ringing = await IncomingCallUI.GetIncomingCall(cancellationToken).ConfigureAwait(false);
+        if (ringing?.ChatId == id) {
             var muted = await IncomingCallUI.MutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
             DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → Ringing", id);
             return new() {
