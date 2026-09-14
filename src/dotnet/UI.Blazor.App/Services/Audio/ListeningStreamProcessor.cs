@@ -66,9 +66,12 @@ public sealed class ListeningStreamProcessor : WorkerBase
                 Log.LogInformation(
                     "-> LiveStreams.GetListeningStream({ChatId}), catchUpFrom={CatchUpFrom}, dub={DubLanguage}",
                     ChatId, catchUpFrom, dubLanguage);
-                var stream = await liveStreams
-                    .GetListeningStream(Session, ChatId, catchUpFrom, dubLanguage, ct)
-                    .ConfigureAwait(false);
+                // The four-argument call is what every published server speaks; only a dub asks for more
+                var stream = dubLanguage == null
+                    ? await liveStreams.GetListeningStream(Session, ChatId, catchUpFrom, ct).ConfigureAwait(false)
+                    : await liveStreams
+                        .GetListeningStream(Session, ChatId, catchUpFrom, dubLanguage, ct)
+                        .ConfigureAwait(false);
                 _isCatchUpConsumed = true;
                 DebugLog?.LogInformation("<- LiveStreams.GetListeningStream({ChatId})", ChatId);
                 return stream;
