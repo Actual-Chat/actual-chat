@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "",
   "ChatView_SayHiTo_Suffix": " чекає на ваше привітання!",
   "ChatView_ForwardedFrom": "Переслано з",
+  "ChatView_SentViaApi": "Надіслано через API, наприклад ШІ-\u2060агентом",
   "ChatView_MessageDeleted": "Повідомлення видалено.",
   "ChatView_SendingAttachments": "Надсилання вкладень…",
   "ChatView_ShowDetails": "Показати деталі",

@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "Chào ",
   "ChatView_SayHiTo_Suffix": " đi nào!",
   "ChatView_ForwardedFrom": "Chuyển tiếp từ",
+  "ChatView_SentViaApi": "Được gửi qua API, ví dụ bởi một tác tử AI",
   "ChatView_MessageDeleted": "Tin nhắn đã bị xóa.",
   "ChatView_SendingAttachments": "Đang gửi tệp đính kèm…",
   "ChatView_ShowDetails": "Hiện chi tiết",

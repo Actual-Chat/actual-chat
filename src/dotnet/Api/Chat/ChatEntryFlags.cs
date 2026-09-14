@@ -10,4 +10,5 @@ public enum ChatEntryFlags
     IsThread = 1 << 3,
     HasUploadingAttachments = 1 << 4,
     IsUnsupported = 1 << 5,
+    IsViaApi = 1 << 6,
 }

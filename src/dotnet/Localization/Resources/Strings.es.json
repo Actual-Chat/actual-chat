@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "¡Saluda a ",
   "ChatView_SayHiTo_Suffix": "!",
   "ChatView_ForwardedFrom": "Reenviado de",
+  "ChatView_SentViaApi": "Enviado mediante la API, por ejemplo, por un agente de IA",
   "ChatView_MessageDeleted": "El mensaje se eliminó.",
   "ChatView_SendingAttachments": "Enviando adjuntos…",
   "ChatView_ShowDetails": "Mostrar detalles",

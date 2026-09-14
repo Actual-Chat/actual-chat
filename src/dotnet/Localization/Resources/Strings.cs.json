@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "Pozdravte ",
   "ChatView_SayHiTo_Suffix": "!",
   "ChatView_ForwardedFrom": "Přeposláno od",
+  "ChatView_SentViaApi": "Odesláno přes API, např. agentem AI",
   "ChatView_MessageDeleted": "Zpráva byla smazána.",
   "ChatView_SendingAttachments": "Odesílání příloh…",
   "ChatView_ShowDetails": "Zobrazit podrobnosti",

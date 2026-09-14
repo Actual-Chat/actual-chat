@@ -478,6 +478,9 @@ public partial class Chats(IServiceProvider services) : IChats
             && command is { HasUploadingAttachments: false, LocationId: null })
             throw StandardError.Constraint("Sorry, you can't post empty messages.");
 
+        // Null rather than false for a regular session: an entry an API key wrote or rewrote
+        // stays marked after the author edits it by hand.
+        var isViaApi = session.Kind is SessionKind.ApiKey ? true : (bool?)null;
         ChatEntry textEntry;
         if (localId is { } vLocalId) {
             // Update
@@ -504,6 +507,7 @@ public partial class Chats(IServiceProvider services) : IChats
                 Content = text,
                 RepliedEntryLid = repliedEntryLid,
                 Attachments = attachments.Length > 0 || isUploadCompletion ? attachments : null,
+                IsViaApi = isViaApi,
             };
 
             if (textEntry.HasAudio) {
@@ -591,6 +595,7 @@ public partial class Chats(IServiceProvider services) : IChats
                     Attachments = attachments.Length == 0 ? null : attachments,
                     LocationId = command.LocationId,
                     LinkPreviewMode = linkPreviewMode,
+                    IsViaApi = isViaApi,
                     ClientId = command.ClientId,
                 }));
             var userId = chat.Rules.Account.Require().Id;

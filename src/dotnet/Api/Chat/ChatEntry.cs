@@ -116,6 +116,11 @@ public abstract partial record ChatEntry(
         get => Flags.HasFlag(ChatEntryFlags.HasUploadingAttachments);
         init => Flags = value ? Flags | ChatEntryFlags.HasUploadingAttachments : Flags & ~ChatEntryFlags.HasUploadingAttachments;
     }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public bool IsViaApi {
+        get => Flags.HasFlag(ChatEntryFlags.IsViaApi);
+        init => Flags = value ? Flags | ChatEntryFlags.IsViaApi : Flags & ~ChatEntryFlags.IsViaApi;
+    }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
@@ -170,6 +175,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
     [DataMember] public bool? HasReactions { get; init; }
     [DataMember] public bool? IsThreadStart { get; init; }
     [DataMember] public bool? IsThread { get; init; }
+    [DataMember] public bool? IsViaApi { get; init; }
     [DataMember] public string? ClientId { get; init; } // Soon obsolete
 
     // System-entry payload (applied when the target is a SystemEntry descendant)
@@ -204,6 +210,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
         IsRemoved = entry.IsRemoved;
         IsThreadStart = entry.IsThreadStart;
         IsThread = entry.IsThread;
+        IsViaApi = entry.IsViaApi;
         HasReactions = entry.HasReactions;
         ClientId = entry.ClientId;
 

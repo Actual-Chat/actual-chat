@@ -289,6 +289,9 @@
   "ChatView_SayHiTo_Prefix": "Say \"Hi\" to ",
   "ChatView_SayHiTo_Suffix": "!",
   "ChatView_ForwardedFrom": "Forwarded from",
+  // Tooltip on the robot icon beside the time of a message an app or an AI agent posted
+  // through the author's API key rather than the author typing it.
+  "ChatView_SentViaApi": "Sent via API, e.g. by an AI agent",
   "ChatView_MessageDeleted": "The message was deleted.",
   "ChatView_SendingAttachments": "Sending attachments…",
   "ChatView_ShowDetails": "Show details",

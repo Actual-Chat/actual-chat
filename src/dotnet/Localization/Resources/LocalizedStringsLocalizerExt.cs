@@ -247,6 +247,7 @@ public static class LocalizedStringsLocalizerExt
         public string ChatView_SayHiTo_Prefix => l["ChatView_SayHiTo_Prefix"].Value;
         public string ChatView_SayHiTo_Suffix => l["ChatView_SayHiTo_Suffix"].Value;
         public string ChatView_ForwardedFrom => l["ChatView_ForwardedFrom"].Value;
+        public string ChatView_SentViaApi => l["ChatView_SentViaApi"].Value;
         public string ChatView_MessageDeleted => l["ChatView_MessageDeleted"].Value;
         public string ChatView_SendingAttachments => l["ChatView_SendingAttachments"].Value;
         public string ChatView_ShowDetails => l["ChatView_ShowDetails"].Value;
