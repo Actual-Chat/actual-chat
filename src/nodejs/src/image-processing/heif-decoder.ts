@@ -18,8 +18,17 @@ interface LibheifImage {
     display(target: RgbaImage, callback: (result: RgbaImage | null) => void): void;
 }
 
+interface LibheifDecoder {
+    /** The glue's heif_context pointer, 0 or null when it holds none. */
+    decoder: number | null;
+    decode(bytes: Uint8Array): LibheifImage[];
+}
+
 interface LibheifModule {
-    HeifDecoder: new () => { decode(bytes: Uint8Array): LibheifImage[] };
+    HEAPU8: Uint8Array;
+    HeifDecoder: new () => LibheifDecoder;
+    heif_context_free(context: number): void;
+    onAbort?: (reason: unknown) => void;
 }
 
 type LibheifFactory = (options: { wasmBinary: ArrayBuffer }) => LibheifModule;
@@ -27,7 +36,28 @@ type LibheifFactory = (options: { wasmBinary: ArrayBuffer }) => LibheifModule;
 /** HEIC/HEIF decoder for browsers that have none - Chromium cannot decode HEIC at all, and
  *  Firefox lacks HEVC on most platforms. WebKit decodes it natively and never loads this. */
 export class HeifDecoder {
-    private constructor(private readonly module: LibheifModule) {}
+    private readonly _decoder: LibheifDecoder;
+    private _abortPendingDecode: (() => void) | null = null;
+
+    /** The wasm heap never shrinks, so a leak shows up here and nowhere else. */
+    public get heapByteLength(): number {
+        return this.module.HEAPU8.length;
+    }
+    /** True while a parsed heif_context is still held - never once decode() has returned. */
+    public get hasContext(): boolean {
+        return !!this._decoder.decoder;
+    }
+    public isPoisoned = false;
+
+    private constructor(private readonly module: LibheifModule) {
+        this._decoder = new module.HeifDecoder();
+        // A wasm abort leaves every later call trapping, and an abort inside display() would
+        // otherwise never settle its callback
+        module.onAbort = () => {
+            this.isPoisoned = true;
+            this._abortPendingDecode?.();
+        };
+    }
 
     public static async load(baseUrl: string): Promise<HeifDecoder> {
         const base = baseUrl.replace(/\/$/, '');
@@ -48,22 +78,40 @@ export class HeifDecoder {
     /** Applies EXIF Orientation, which libheif ignores and WebKit applies: without it the same
      *  photo arrives upright from Safari and sideways from Chrome. */
     public async decode(bytes: Uint8Array): Promise<RgbaImage | null> {
-        const images = new this.module.HeifDecoder().decode(bytes);
-        if (images.length === 0)
-            return null;
-
+        // One glue decoder for the lifetime of this instance: it frees the previous heif_context
+        // on every decode but never the last, and a fresh one per call retains all of them
+        const images = this._decoder.decode(bytes);
         try {
+            if (images.length === 0)
+                return null;
+
             const image = images.find(x => x.is_primary()) ?? images[0];
             const width = image.get_width();
             const height = image.get_height();
             const target: RgbaImage = { data: new Uint8ClampedArray(width * height * 4), width, height };
-            const decoded = await new Promise<RgbaImage | null>(resolve => image.display(target, resolve));
+            const decoded = await new Promise<RgbaImage | null>(resolve => {
+                this._abortPendingDecode = () => resolve(null);
+                image.display(target, resolve);
+            });
             return decoded && applyOrientation(decoded, readHeifOrientation(bytes));
         }
         finally {
+            this._abortPendingDecode = null;
             for (const image of images)
                 image.free();
+            this.freeContext();
         }
+    }
+
+    // Private methods
+
+    private freeContext(): void {
+        const context = this._decoder.decoder;
+        if (!context || this.isPoisoned)
+            return;
+
+        this.module.heif_context_free(context);
+        this._decoder.decoder = null;
     }
 }
 
