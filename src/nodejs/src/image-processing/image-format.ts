@@ -135,6 +135,10 @@ function hasTransformProperty(bytes: Uint8Array): boolean {
     // Both boxes are exactly 9 bytes - size, type, one payload byte - and the size makes a stray
     // match inside compressed data implausible; every camera HEIC carries an irot, angle 0 included
     for (let offset = 4; offset + TRANSFORM_BOX_LENGTH <= bytes.length; offset++) {
+        // Both types start with 'i', so one byte test skips the string for all but 1/256 offsets
+        if (bytes[offset] !== 0x69)
+            continue;
+
         const type = readAscii(bytes, offset, 4);
         if ((type === 'irot' || type === 'imir') && readUint32BE(bytes, offset - 4) === TRANSFORM_BOX_LENGTH)
             return true;

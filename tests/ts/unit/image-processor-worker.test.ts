@@ -158,6 +158,17 @@ function makeJpegHeader(width: number, height: number): Uint8Array {
     ]);
 }
 
+function makeHeaderlessHeic(): Uint8Array {
+    // A valid heic ftyp and nothing else: sniffs as heif, but readImageDimensions finds no ispe
+    return new Uint8Array([
+        0x00, 0x00, 0x00, 0x14,
+        0x66, 0x74, 0x79, 0x70,
+        0x68, 0x65, 0x69, 0x63,
+        0x00, 0x00, 0x00, 0x00,
+        0x68, 0x65, 0x69, 0x63,
+    ]);
+}
+
 function readHeicFixture(): Uint8Array {
     return new Uint8Array(fs.readFileSync(new URL('fixtures/orientation1.heic', import.meta.url)));
 }
@@ -336,5 +347,25 @@ describe('the libheif fallback', () => {
         expect(main?.declined).toBe(true);
         expect(loadSpy).not.toHaveBeenCalled();
         expect(decode).not.toHaveBeenCalled();
+    });
+    it('should decline a HEIC whose header has no size rather than trust it on a phone', async () => {
+        // arrange: libheif decodes a malformed header from the bitstream anyway, so an unknown
+        // size is exactly the case the gate exists for - it must not read as zero pixels
+        const decode = vi.fn(() => Promise.resolve(null));
+        const { worker: fresh, loadSpy, deviceInfo } = await loadWorkerWithFakeDecoder(decode);
+        deviceInfo.isMobile = true;
+        const heic = new Blob([makeHeaderlessHeic() as BlobPart], { type: 'image/heic' });
+
+        // act
+        const result = await fresh.serverImpl.process(heic, {
+            outputs: [mainSpec(900, 6144)],
+            maxMobileEncodePixels: 52_428_800,
+        });
+
+        // assert
+        const main = result.outputs.find(o => o.kind === 'main');
+        expect(result.format).toBe('heif');
+        expect(main?.declined).toBe(true);
+        expect(loadSpy).not.toHaveBeenCalled();
     });
 });

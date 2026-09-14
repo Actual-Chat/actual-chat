@@ -164,8 +164,10 @@ async function decodeBitmap(
 
         // libheif decodes at the source's own resolution - there is no resizeWidth equivalent - so
         // the budget that guards the encode has to guard this decode too, off the header's pixels
+        // A header with no readable ispe still decodes, at whatever size the bitstream turns out
+        // to hold, so an unknown size has to count as over the budget rather than under it
         const dimensions = readImageDimensions(bytes, format);
-        const pixels = dimensions ? dimensions.width * dimensions.height : 0;
+        const pixels = dimensions ? dimensions.width * dimensions.height : Number.POSITIVE_INFINITY;
         if (!canEncodeOnThisDevice(pixels, maxMobileEncodePixels))
             return null;
 
