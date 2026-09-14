@@ -2,14 +2,14 @@
 @using ActualChat.Live
 @using ActualChat.UI.Blazor.App.Module
 @using ActualLab.Diagnostics
-@inherits ComputedStateComponent<AppUIHub, IncomingCallOverLockView.ComputedModel>
+@inherits ComputedStateComponent<AppUIHub, FullScreenCallView.ComputedModel>
 @{
     var m = State.Value;
     if (m.Chat is not { } chat)
         return;
 }
 
-<div class="incoming-call-overlock @(m.Phase == CallPhase.InCall ? "in-call" : "ringing")">
+<div class="full-screen-call-view @(m.Phase == CallPhase.InCall ? "in-call" : "ringing")">
     <div class="c-bg">
         <ChatIcon Chat="@chat" Size="SquareSize.SizeFull"
                   IsSquare="@true" IsBlurred="@true" ShowFullSizeAvatar="@true" HideTitle="@true"/>
@@ -150,7 +150,7 @@
 
     private bool _shownOverLock;
     private ElementReference _ringButtons;
-    private DotNetObjectReference<IncomingCallOverLockView>? _dotNetRef;
+    private DotNetObjectReference<FullScreenCallView>? _dotNetRef;
     private IJSObjectReference? _swipeRef;
     private CallScreensUI CallScreensUI => Hub.CallScreensUI;
     private CallUI CallUI => Hub.CallUI;
@@ -167,10 +167,10 @@
         var m = State.Value;
         var isShowing = m.Chat is not null && m.IsOverLock;
         if (firstRender)
-            DebugLog?.LogInformation("CALL_TRACE: OverLockView first render, isShowing={IsShowing}", isShowing);
+            DebugLog?.LogInformation("CALL_TRACE: FullScreenCallView first render, isShowing={IsShowing}", isShowing);
         if (isShowing && !_shownOverLock) {
             _shownOverLock = true;
-            DebugLog?.LogInformation("CALL_TRACE: OverLockView became visible → OnOverLockScreenRendered");
+            DebugLog?.LogInformation("CALL_TRACE: FullScreenCallView became visible → OnOverLockScreenRendered");
             CallScreensUI.OnOverLockScreenRendered();
         }
         else if (!isShowing && _shownOverLock)
@@ -222,20 +222,21 @@
         var chatId = overLockChatId
             ?? await CallScreensUI.GetForegroundCallChatId(cancellationToken).ConfigureAwait(false);
         if (chatId is not { } id) {
-            DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState → None (no active chat)");
+            DebugLog?.LogInformation("CALL_TRACE: FullScreenCallView.ComputeState → None (no active chat)");
             return ComputedModel.None;
         }
 
         var chat = await Hub.Chats.Get(Session, id, cancellationToken).ConfigureAwait(false);
         if (chat is null) {
-            DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → None (chat not loaded)", id);
+            DebugLog?.LogInformation(
+                "CALL_TRACE: FullScreenCallView.ComputeState #{ChatId} → None (chat not loaded)", id);
             return ComputedModel.None;
         }
 
         var ringing = await CallScreensUI.GetIncomingCall(cancellationToken).ConfigureAwait(false);
         if (ringing?.ChatId == id) {
             var muted = await CallScreensUI.MutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
-            DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → Ringing", id);
+            DebugLog?.LogInformation("CALL_TRACE: FullScreenCallView.ComputeState #{ChatId} → Ringing", id);
             return new() {
                 Chat = chat, Phase = CallPhase.Ringing, HasVideo = ringing.HasVideo,
                 IsMuted = muted == id, IsOverLock = isOverLock,
@@ -248,7 +249,8 @@
         var inCall = await LiveSessionUI.AmIInLiveConversation(id, cancellationToken).ConfigureAwait(false);
         if (inCall) {
             var joinedAt = await GetJoinedAt(id, cancellationToken).ConfigureAwait(false);
-            DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → InCall, joinedAt={JoinedAt}",
+            DebugLog?.LogInformation(
+                "CALL_TRACE: FullScreenCallView.ComputeState #{ChatId} → InCall, joinedAt={JoinedAt}",
                 id, joinedAt);
             return new() {
                 Chat = chat, Phase = CallPhase.InCall, JoinedAt = joinedAt,
@@ -260,7 +262,7 @@
         // same full-screen call view with a "Dialing..." status instead of nothing.
         var callStatus = await CallUI.GetCallStatus(id, cancellationToken).ConfigureAwait(false);
         if (callStatus == CallerStatus.Dialing) {
-            DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → Outgoing", id);
+            DebugLog?.LogInformation("CALL_TRACE: FullScreenCallView.ComputeState #{ChatId} → Outgoing", id);
             return new() {
                 Chat = chat, Phase = CallPhase.InCall,
                 IsDialing = true,
@@ -269,7 +271,7 @@
         }
 
         DebugLog?.LogInformation(
-            "CALL_TRACE: OverLockView.ComputeState #{ChatId} → None (ring not confirmed, not in call)", id);
+            "CALL_TRACE: FullScreenCallView.ComputeState #{ChatId} → None (ring not confirmed, not in call)", id);
         return ComputedModel.None;
     }
 

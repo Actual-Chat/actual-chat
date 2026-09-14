@@ -53,7 +53,7 @@ export * from './Components/SubHeader/sub-header';
 export * from './Components/SubHeader/sub-header.lit';
 export * from './Components/Banners/banner-stack';
 export * from './Components/CollapsedCall/draggable-call-island';
-export * from './Components/IncomingCallModal/incoming-call-swipe';
+export * from './Components/FullScreenCallView/incoming-call-swipe';
 export * from './Services/incoming-call-ringtone';
 export * from './Services/outgoing-call-ringback';
 export * from './Services/Location/location-tracker';

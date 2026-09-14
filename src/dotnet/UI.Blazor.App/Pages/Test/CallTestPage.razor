@@ -135,9 +135,10 @@
         <div class="c-section-note">
             Rendered with the REAL production classes — <code>author-modal</code>,
             <code>incoming-call-modal</code>, <code>collapsed-call</code>,
-            <code>incoming-call-overlock</code> — so edits to <code>incoming-call-modal.css</code> /
-            <code>account-modal.css</code> show up here. Modal = foreground (X collapses to the draggable
-            island, ring muted). Over-lock = locked screen. Avatars are placeholders.
+            <code>full-screen-call-view</code> — so edits to <code>incoming-call-modal.css</code> /
+            <code>full-screen-call-view.css</code> / <code>account-modal.css</code> show up here.
+            Modal = foreground (X collapses to the draggable island, ring muted). Over-lock = locked screen.
+            Avatars are placeholders.
         </div>
         <div class="c-frames">
             @* Modal — real classes: author-modal + incoming-call-modal *@
@@ -192,11 +193,11 @@
                 </div>
             </div>
 
-            @* Over-lock — real class: incoming-call-overlock (locked screen) *@
+            @* Over-lock — real class: full-screen-call-view (locked screen) *@
             <div class="dev-frame dev-phone">
                 <div class="dev-label">Over-lock <span class="c-tag">locked screen</span></div>
                 <div class="dev-screen">
-                    <div class="incoming-call-overlock">
+                    <div class="full-screen-call-view">
                         <div class="c-body">
                             <div class="avatar-circle" style="width:5rem;height:5rem;border-radius:.75rem;background:linear-gradient(135deg,#f0c987,#b06a3a)"></div>
                             <div class="c-title">Romeo Yellow</div>

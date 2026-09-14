@@ -49,6 +49,7 @@
 @import './Components/AudioAttachmentPlayer/audio-attachment-player.css';
 @import './Components/AudioSubHeader/audio-subheader.css';
 @import './Components/IncomingCallModal/incoming-call-modal.css';
+@import './Components/FullScreenCallView/full-screen-call-view.css';
 @import './Components/OutgoingCallModal/outgoing-call-modal.css';
 @import './Components/CollapsedCall/collapsed-call.css';
 @import './Components/AddMember/add-member-modal.css';
