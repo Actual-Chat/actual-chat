@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -8,25 +9,25 @@ using ActualLab.Locking;
 
 namespace ActualChat.ContentCaching;
 
-public sealed class FileSystemContentHandler : IContentHandler
+public sealed partial class FileSystemContentHandler : IContentHandler
 {
     public sealed record Options
     {
         public required FilePath Directory { get; init; }
         public required byte[] EncryptionKey { get; init; }
-        public int MaxContentLength { get; init; } = 1024 * 1024;
+        public int DownloadBufferSize { get; init; } = 64 * 1024;
         public Func<Uri, Uri> CacheUrlNormalizer { get; init; } = static url => url;
     }
 
-    private const int EnvelopeOverhead = 29;
-    private const int MaxMetadataLength = 64 * 1024;
+    private static readonly IEqualityComparer<FilePath> PathComparer = EqualityComparer<FilePath>.Create(
+        static (x, y) => StringComparer.OrdinalIgnoreCase.Equals(x.Value, y.Value),
+        static path => StringComparer.OrdinalIgnoreCase.GetHashCode(path.Value));
     private static readonly AsyncLockSet<FilePath> FillLocks = new(
         LockReentryMode.Unchecked,
         AsyncLockSet<FilePath>.DefaultConcurrencyLevel,
         AsyncLockSet<FilePath>.DefaultCapacity,
-        EqualityComparer<FilePath>.Create(
-            static (x, y) => StringComparer.OrdinalIgnoreCase.Equals(x.Value, y.Value),
-            static path => StringComparer.OrdinalIgnoreCase.GetHashCode(path.Value)));
+        PathComparer);
+    private static readonly ConcurrentDictionary<FilePath, Download> Downloads = new(PathComparer);
     private readonly byte[] _encryptionKey;
 
     private IContentHandler Downstream { get; }
@@ -35,8 +36,7 @@ public sealed class FileSystemContentHandler : IContentHandler
 
     public FileSystemContentHandler(Options settings, IContentHandler downstream, ILogger? log = null)
     {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.MaxContentLength);
-        if (settings.MaxContentLength > int.MaxValue - MaxMetadataLength - EnvelopeOverhead)
+        if (settings.DownloadBufferSize is <= 0 or > 64 * 1024)
             throw new ArgumentOutOfRangeException(nameof(settings));
         if (settings.EncryptionKey.Length != 32)
             throw new ArgumentException("A 32-byte encryption key is required.", nameof(settings));
@@ -54,43 +54,75 @@ public sealed class FileSystemContentHandler : IContentHandler
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (request.Method != HttpMethod.Get || request.Headers.Count != 0)
+        if (!TryGetRange(request, out var range))
             return await Downstream.Handle(request, cancellationToken).ConfigureAwait(false);
 
-        var hash = Settings.CacheUrlNormalizer(request.Url).AbsoluteUri.Hash(Encoding.UTF8).SHA256();
-        var key = hash.Base64Url();
-        var path = (Settings.Directory & hash.Bytes[0].ToString("x2") & key).FullPath;
-        var cached = await TryRead(path, key, cancellationToken).ConfigureAwait(false);
-        if (cached != null)
-            return cached;
+        var url = Settings.CacheUrlNormalizer(request.Url).AbsoluteUri;
+        var (fullPath, fullKey) = GetPath(url);
+        if (range != null) {
+            var full = await TryRead(fullPath, fullKey, request, range, true, cancellationToken).ConfigureAwait(false);
+            if (full != null)
+                return full;
+        }
 
-        using var _ = await FillLocks.Lock(path, cancellationToken).ConfigureAwait(false);
-        cached = await TryRead(path, key, cancellationToken).ConfigureAwait(false);
-        if (cached != null)
-            return cached;
+        var (path, key) = range == null ? (fullPath, fullKey) : GetPath(url + "\nRange: " + range);
+        using var fillLock = await FillLocks.Lock(path, cancellationToken).ConfigureAwait(false);
+        while (true) {
+            var cached = await TryRead(path, key, request, range, false, cancellationToken).ConfigureAwait(false);
+            if (cached != null)
+                return cached;
+
+            if (!Downloads.TryGetValue(path, out var active))
+                break;
+            if (!active.HasEncryptionKey(_encryptionKey))
+                return await Downstream.Handle(request, cancellationToken).ConfigureAwait(false);
+            if (active.TryCreateResponse(cancellationToken) is { } shared)
+                return shared;
+
+            await active.WhenRunning!.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
 
         var response = await Downstream.Handle(request, cancellationToken).ConfigureAwait(false);
-        if (response == null || !CanCache(response))
+        if (response == null || !CanCache(response, range))
             return response;
 
+        EncryptedContentFile? file = null;
+        var partialPath = path + ".p";
+        Download? download = null;
         try {
-            var content = response.Content;
-            var length = checked((int)content.Headers.ContentLength!.Value);
-            var bytes = new byte[length];
-            var stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            await stream.ReadExactlyAsync(bytes, cancellationToken).ConfigureAwait(false);
-            var probe = new byte[1];
-            if (await stream.ReadAsync(probe, cancellationToken).ConfigureAwait(false) != 0)
-                throw new InvalidDataException("Content exceeded its declared length.");
+            var metadata = ResponseMetadata.FromResponse(response);
+            var bytes = metadata.Serialize();
+            if (bytes.Length > 64 * 1024)
+                return response;
 
-            var replacement = new ByteArrayContent(bytes);
-            CopyHeaders(content.Headers, replacement.Headers);
-            response.Content = replacement;
-            content.Dispose();
-            await TryWrite(path, key, response, bytes, cancellationToken).ConfigureAwait(false);
-            return response;
+            var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            try {
+                Directory.CreateDirectory(path.DirectoryPath);
+                Delete(partialPath);
+                file = await EncryptedContentFile.Create(
+                    partialPath, key, _encryptionKey, bytes, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (IsStorageError(e)) {
+                Log?.LogDebug("Content cache unavailable: {Key}, {ErrorType}", key, e.GetType().Name);
+                Delete(partialPath);
+                return response;
+            }
+
+            download = new Download(
+                this, path, request, response, stream, file,
+                metadata);
+            Downloads[path] = download;
+            var result = download.TryCreateResponse(cancellationToken)!;
+            file = null;
+            return result;
         }
         catch {
+            if (download != null) {
+                await download.Stop().ConfigureAwait(false);
+                Downloads.TryRemove(KeyValuePair.Create(path, download));
+            }
+            file?.Dispose();
+            Delete(partialPath);
             response.Dispose();
             throw;
         }
@@ -98,206 +130,146 @@ public sealed class FileSystemContentHandler : IContentHandler
 
     // Private methods
 
-    private async Task<HttpResponseMessage?> TryRead(FilePath path, string key, CancellationToken cancellationToken)
+    private (FilePath Path, string Key) GetPath(string identity)
     {
-        try {
-            await using var file = new FileStream(
-                path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete,
-                4096, FileOptions.Asynchronous);
-            if (file.Length < EnvelopeOverhead
-                || file.Length > Settings.MaxContentLength + MaxMetadataLength + EnvelopeOverhead)
-                return null;
+        var hash = identity.Hash(Encoding.UTF8).SHA256();
+        var key = hash.Base64Url();
+        return ((Settings.Directory & hash.Bytes[0].ToString("x2") & key).FullPath, key);
+    }
 
-            var envelope = new byte[(int)file.Length];
-            await file.ReadExactlyAsync(envelope, cancellationToken).ConfigureAwait(false);
-            var plain = Unprotect(envelope, key);
-            try {
-                var response = Deserialize(plain);
-                try {
-                    File.SetLastAccessTimeUtc(path, DateTime.UtcNow);
-                }
-                catch (Exception e) when (IsStorageError(e)) {
-                    Log?.LogDebug(e, "Could not record content cache access");
-                }
-                Log?.LogDebug("Content cache hit: {Key}", key);
-                return response;
+    private async Task<HttpResponseMessage?> TryRead(
+        FilePath path, string key, ContentRequest request,
+        RangeHeaderValue? range, bool mustSelectRange,
+        CancellationToken cancellationToken)
+    {
+        EncryptedContentFile? file = null;
+        ReadStream? body = null;
+        try {
+            file = await EncryptedContentFile.Open(path, key, _encryptionKey, cancellationToken).ConfigureAwait(false);
+            var metadata = ResponseMetadata.Deserialize(file.Metadata);
+            if (metadata.ExpectedLength is { } expected && expected != file.Length)
+                throw new InvalidDataException("Cached content length does not match its metadata.");
+
+            using var probe = metadata.CreateResponse(Stream.Null, file.Length);
+            if (!CanCache(probe, mustSelectRange ? null : range))
+                throw new InvalidDataException("Invalid cached response metadata.");
+
+            long offset = 0;
+            var length = file.Length;
+            if (mustSelectRange && !TryResolveRange(range!, length, out offset, out length)) {
+                file.Dispose();
+                file = null;
+                return new HttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable) {
+                    Content = new ByteArrayContent([]) {
+                        Headers = {
+                            ContentRange = new ContentRangeHeaderValue(probe.Content.Headers.ContentLength!.Value),
+                        },
+                    },
+                };
             }
-            finally {
-                CryptographicOperations.ZeroMemory(plain);
+
+            var sourceRequest = mustSelectRange ? new ContentRequest(request.Url) : request;
+            body = new ReadStream(
+                this, path, file, offset, length, null,
+                sourceRequest, metadata, cancellationToken);
+            var response = metadata.CreateResponse(body, length);
+            if (mustSelectRange) {
+                response.StatusCode = HttpStatusCode.PartialContent;
+                response.ReasonPhrase = null;
+                response.Content.Headers.ContentRange = new ContentRangeHeaderValue(
+                    offset, offset + length - 1, file.Length);
             }
+            response.Headers.AcceptRanges.Clear();
+            response.Headers.AcceptRanges.Add("bytes");
+            file = null;
+            body.ActivateCancellation();
+            cancellationToken.ThrowIfCancellationRequested();
+            Touch(path);
+            Log?.LogDebug("Content cache hit: {Key}", key);
+            return response;
         }
         catch (Exception e) when (IsStorageError(e)
-            || e is CryptographicException or InvalidDataException or FormatException or ArgumentException) {
+            || e is CryptographicException or InvalidDataException or FormatException or ArgumentException
+                or OverflowException) {
+            body?.Dispose();
+            file?.Dispose();
             Log?.LogDebug("Content cache miss: {Key}, {ErrorType}", key, e.GetType().Name);
             return null;
         }
-    }
-
-    private async Task TryWrite(
-        FilePath path, string key, HttpResponseMessage response, byte[] body,
-        CancellationToken cancellationToken)
-    {
-        var temporaryPath = path + ".p";
-        try {
-            var plain = Serialize(response, body);
-            byte[] envelope;
-            try {
-                if (plain.Length > body.Length + MaxMetadataLength)
-                    return;
-                envelope = Protect(plain, key);
-            }
-            finally {
-                CryptographicOperations.ZeroMemory(plain);
-            }
-            Directory.CreateDirectory(path.DirectoryPath);
-            await File.WriteAllBytesAsync(temporaryPath, envelope, cancellationToken).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
-            File.Move(temporaryPath, path, true);
-            File.SetLastAccessTimeUtc(path, DateTime.UtcNow);
-            Log?.LogDebug("Content cache stored: {Key}, {Length} bytes", key, envelope.Length);
-        }
-        catch (Exception e) when (IsStorageError(e)) {
-            Log?.LogWarning(e, "Could not persist content cache entry: {Key}", key);
-        }
-        finally {
-            try {
-                File.Delete(temporaryPath);
-            }
-            catch (Exception e) when (IsStorageError(e)) {
-                Log?.LogDebug(e, "Could not remove content cache staging file");
-            }
-        }
-    }
-
-    private bool CanCache(HttpResponseMessage response)
-        => response.StatusCode == HttpStatusCode.OK
-            && response.Content.Headers.ContentLength is >= 0
-            && response.Content.Headers.ContentLength <= Settings.MaxContentLength
-            && response.Headers.CacheControl is not { NoStore: true }
-            && response.Headers.CacheControl is not { Private: true }
-            && response.Headers.Vary.Count == 0
-            && !response.Headers.Contains("Set-Cookie")
-            && response.Content.Headers.ContentRange == null;
-
-    private byte[] Protect(byte[] plain, string key)
-    {
-        var envelope = new byte[plain.Length + EnvelopeOverhead];
-        envelope[0] = 1;
-        RandomNumberGenerator.Fill(envelope.AsSpan(1, 12));
-        using var cipher = CreateCipher();
-        cipher.Encrypt(envelope.AsSpan(1, 12), plain, envelope.AsSpan(EnvelopeOverhead),
-            envelope.AsSpan(13, 16), Encoding.UTF8.GetBytes(key));
-        return envelope;
-    }
-
-    private byte[] Unprotect(byte[] envelope, string key)
-    {
-        if (envelope[0] != 1)
-            throw new InvalidDataException("Unknown content cache format.");
-
-        var plain = new byte[envelope.Length - EnvelopeOverhead];
-        using var cipher = CreateCipher();
-        cipher.Decrypt(envelope.AsSpan(1, 12), envelope.AsSpan(EnvelopeOverhead), envelope.AsSpan(13, 16),
-            plain, Encoding.UTF8.GetBytes(key));
-        return plain;
-    }
-
-    private AesGcm CreateCipher()
-    {
-        var key = HKDF.DeriveKey(HashAlgorithmName.SHA256, _encryptionKey, 32,
-            info: "ActualChat.ContentCaching.v1"u8.ToArray());
-        try {
-            return new AesGcm(key, 16);
-        }
-        finally {
-            CryptographicOperations.ZeroMemory(key);
-        }
-    }
-
-    private static byte[] Serialize(HttpResponseMessage response, byte[] body)
-    {
-        using var buffer = new MemoryStream();
-        using var writer = new BinaryWriter(buffer, Encoding.UTF8, true);
-        writer.Write(response.ReasonPhrase ?? "OK");
-        writer.Write(response.Version.Major);
-        writer.Write(response.Version.Minor);
-        WriteHeaders(writer, response.Headers);
-        WriteHeaders(writer, response.Content.Headers);
-        writer.Write(body.Length);
-        writer.Write(body);
-        return buffer.ToArray();
-    }
-
-    private HttpResponseMessage Deserialize(byte[] plain)
-    {
-        using var buffer = new MemoryStream(plain, false);
-        using var reader = new BinaryReader(buffer, Encoding.UTF8, true);
-        var response = new HttpResponseMessage(HttpStatusCode.OK);
-        try {
-            response.ReasonPhrase = reader.ReadString();
-            response.Version = new Version(reader.ReadInt32(), reader.ReadInt32());
-            ReadHeaders(reader, response.Headers);
-            var contentHeaders = new ByteArrayContent([]);
-            response.Content = contentHeaders;
-            ReadHeaders(reader, contentHeaders.Headers);
-            var length = reader.ReadInt32();
-            if (length < 0 || length > Settings.MaxContentLength || buffer.Length - buffer.Position != length)
-                throw new InvalidDataException("Invalid cached content length.");
-
-            var content = new ByteArrayContent(reader.ReadBytes(length));
-            CopyHeaders(contentHeaders.Headers, content.Headers);
-            response.Content = content;
-            contentHeaders.Dispose();
-            if (content.Headers.ContentLength != length)
-                throw new InvalidDataException("Cached content length does not match its headers.");
-
-            return response;
-        }
         catch {
-            response.Dispose();
+            body?.Dispose();
+            file?.Dispose();
             throw;
         }
     }
 
-    private static void WriteHeaders(BinaryWriter writer, HttpHeaders headers)
+    private static bool TryGetRange(ContentRequest request, out RangeHeaderValue? range)
     {
-        var items = headers.ToArray();
-        writer.Write(items.Length);
-        foreach (var item in items) {
-            writer.Write(item.Key);
-            var values = item.Value.ToArray();
-            writer.Write(values.Length);
-            foreach (var value in values)
-                writer.Write(value);
+        range = null;
+        if (request.Method != HttpMethod.Get)
+            return false;
+        if (request.Headers.Count == 0)
+            return true;
+        if (request.Headers.Count != 1)
+            return false;
+
+        var header = request.Headers.Single();
+        if (!header.Key.Equals("Range", StringComparison.OrdinalIgnoreCase)
+            || !RangeHeaderValue.TryParse(header.Value, out range)
+            || !range.Unit.Equals("bytes", StringComparison.OrdinalIgnoreCase)
+            || range.Ranges.Count != 1)
+            return false;
+
+        range.Unit = "bytes";
+        return true;
+    }
+
+    private static bool CanCache(HttpResponseMessage response, RangeHeaderValue? range)
+    {
+        if (response.Headers.CacheControl is { NoStore: true } or { Private: true }
+            || response.Headers.Vary.Any(x => !x.Equals("Origin", StringComparison.OrdinalIgnoreCase))
+            || response.Headers.Contains("Set-Cookie"))
+            return false;
+        if (response.StatusCode == HttpStatusCode.OK)
+            return response.Content.Headers.ContentRange == null;
+        if (response.StatusCode != HttpStatusCode.PartialContent || range == null)
+            return false;
+
+        var contentRange = response.Content.Headers.ContentRange;
+        return contentRange is { HasRange: true, HasLength: true }
+            && contentRange.Unit.Equals("bytes", StringComparison.OrdinalIgnoreCase)
+            && TryResolveRange(range, contentRange.Length!.Value, out var start, out var length)
+            && contentRange.From == start && contentRange.To == start + length - 1
+            && (response.Content.Headers.ContentLength == null || response.Content.Headers.ContentLength == length);
+    }
+
+    private static bool TryResolveRange(RangeHeaderValue range, long total, out long start, out long length)
+    {
+        var item = range.Ranges.Single();
+        start = item.From ?? Math.Max(0, total - item.To!.Value);
+        var end = item.From == null ? total - 1 : Math.Min(item.To ?? total - 1, total - 1);
+        length = start < total && end >= start ? end - start + 1 : 0;
+        return length > 0;
+    }
+
+    private void Touch(FilePath path)
+    {
+        try {
+            File.SetLastAccessTimeUtc(path, DateTime.UtcNow);
+        }
+        catch (Exception e) when (IsStorageError(e)) {
+            Log?.LogDebug("Could not record content cache access: {ErrorType}", e.GetType().Name);
         }
     }
 
-    private static void ReadHeaders(BinaryReader reader, HttpHeaders headers)
+    private void Delete(FilePath path)
     {
-        var count = ReadCount(reader);
-        for (var i = 0; i < count; i++) {
-            var name = reader.ReadString();
-            var values = new string[ReadCount(reader)];
-            for (var j = 0; j < values.Length; j++)
-                values[j] = reader.ReadString();
-            if (!headers.TryAddWithoutValidation(name, values))
-                throw new InvalidDataException("Invalid cached response header.");
+        try {
+            File.Delete(path);
         }
-    }
-
-    private static int ReadCount(BinaryReader reader)
-    {
-        var count = reader.ReadInt32();
-        if (count is < 0 or > 1024)
-            throw new InvalidDataException("Invalid cached header count.");
-
-        return count;
-    }
-
-    private static void CopyHeaders(HttpHeaders source, HttpHeaders target)
-    {
-        foreach (var header in source)
-            target.TryAddWithoutValidation(header.Key, header.Value);
+        catch (Exception e) when (IsStorageError(e)) {
+            Log?.LogDebug("Could not remove content cache file: {ErrorType}", e.GetType().Name);
+        }
     }
 
     private static bool IsStorageError(Exception error)
