@@ -61,14 +61,17 @@ public class ReplayDubsTest(
         var (chatId, _) = await Tester.CreateChat(false);
         var services = Tester.AppServices;
         var dubs = services.GetRequiredService<ReplayDubs>();
+        var mediaBackend = services.GetRequiredService<IMediaBackend>();
+        var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
         var commander = services.Commander();
         var entry = await Tester.RecordVoiceEntry(chatId, Languages.Russian);
         var ct = CancellationToken.None;
         var first = await dubs.GetOrCreate(entry, Languages.English, ct);
         var id = TranslationId.New(entry.Id, Languages.English);
         var translation = await services.GetRequiredService<ITranslationsBackend>().Get(id, false, ct);
-        await commander.Call(new TranslationsBackend_Change(id, translation!.Version, Change.Update(new TranslationDiff {
-            Content = translation.Content + " Again.",
+        var newContent = translation!.Content + " Again.";
+        await commander.Call(new TranslationsBackend_Change(id, translation.Version, Change.Update(new TranslationDiff {
+            Content = newContent,
             SourceContentHash = translation.SourceContentHash,
         })));
 
@@ -76,5 +79,27 @@ public class ReplayDubsTest(
 
         second.Should().NotBeNull();
         second!.Id.Should().NotBe(first!.Id, "the old dub spoke the old text");
+        var spoken = recorder.GetChunks(RecordingSpeechSynthesizer.OneShotStreamId(Languages.English, newContent));
+        spoken.Should().Equal([newContent], "the new dub is synthesized from the re-translated content");
+        var oldMedia = await mediaBackend.Get(first.Id, ct);
+        oldMedia.Should().BeNull("the superseded dub's media must not linger once it's replaced");
+    }
+
+    [Fact(Timeout = 90_000)]
+    public async Task InFlightEntryIsForgottenAfterCompletion()
+    {
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var dubs = Tester.AppServices.GetRequiredService<ReplayDubs>();
+        var entry = await Tester.RecordVoiceEntry(chatId, Languages.English);
+        var ct = CancellationToken.None;
+
+        // Both calls resolve on the synchronously-completing "already spoken in" guard, which is
+        // exactly the case that used to leak a permanently-cached null task into the in-flight map
+        await dubs.GetOrCreate(entry, Languages.English, ct);
+        dubs.InFlightCount.Should().Be(0, "a completed run must remove its own map entry");
+
+        await dubs.GetOrCreate(entry, Languages.English, ct);
+        dubs.InFlightCount.Should().Be(0, "a second, synchronously-completing call must clean up too");
     }
 }

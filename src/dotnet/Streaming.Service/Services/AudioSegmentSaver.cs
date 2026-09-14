@@ -54,8 +54,8 @@ public sealed class AudioSegmentSaver(IServiceProvider services) : AudioProcesso
 
     public async Task<MediaId> SaveAndCreateMedia(
         AudioSource audio,
+        MediaId mediaId,
         string blobId,
-        ChatId chatId,
         CancellationToken cancellationToken)
     {
         var converter = new WebMStreamConverter(Clocks, Log);
@@ -63,7 +63,6 @@ public sealed class AudioSegmentSaver(IServiceProvider services) : AudioProcesso
         await Blobs[BlobScope.AudioRecord].UploadByteStream(blobId, byteStream, cancellationToken).ConfigureAwait(false);
         await audio.WhenDurationAvailable.ConfigureAwait(false);
 
-        var mediaId = MediaId.New(chatId.Value);
         var media = new MediaFull(mediaId) {
             BlobId = blobId,
             ContentType = "audio/webm",

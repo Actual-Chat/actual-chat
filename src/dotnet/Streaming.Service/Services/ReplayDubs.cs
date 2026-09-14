@@ -16,38 +16,46 @@ public sealed class ReplayDubs(IServiceProvider services)
     private ISpeechSynthesizer Synthesizer => field ??= Services.GetRequiredService<ISpeechSynthesizer>();
     private AudioSegmentSaver Saver => field ??= Services.GetRequiredService<AudioSegmentSaver>();
     private ICommander Commander => field ??= Services.Commander();
-    private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILogger Log => field ??= Services.LogFor<ReplayDubs>();
 
     public Task<ActualChat.Media.Media?> GetOrCreate(ChatEntry entry, Language language, CancellationToken cancellationToken)
     {
         var key = (entry.Id, language);
-        // The first caller does the work; the others await the same task, and it's forgotten once done
-        var task = _inFlight.GetOrAdd(key, _ => Run());
-        return task.WaitAsync(cancellationToken);
+        var source = TaskCompletionSourceExt.New<ActualChat.Media.Media?>();
+        var mediaTask = _inFlight.GetOrAdd(key, source.Task);
+        // Only the winner of the race starts the work, and only after it's published in the map -
+        // a synchronously-completing Run() can then never race its own removal out of the map
+        if (ReferenceEquals(mediaTask, source.Task))
+            _ = Run();
+        return mediaTask.WaitAsync(cancellationToken);
 
-        async Task<ActualChat.Media.Media?> Run()
+        async Task Run()
         {
+            ActualChat.Media.Media? result;
             try {
                 using var cts = new CancellationTokenSource(Constants.Audio.ReplayDubTimeout);
-                return await GetOrCreateImpl(entry, language, cts.Token).ConfigureAwait(false);
+                result = await GetOrCreateImpl(entry, language, cts.Token).ConfigureAwait(false);
             }
             catch (Exception e) {
                 Log.LogInformation(e, "GetOrCreate: no {Language} dub for #{EntryId}, serving the original",
                     language, entry.Id);
-                return null;
+                result = null;
             }
-            finally {
-                _inFlight.TryRemove(key, out _);
-            }
+            // Only our own entry: a fresh one may already have taken the key
+            _inFlight.TryRemove(new KeyValuePair<(ChatEntryId, Language), Task<ActualChat.Media.Media?>>(key, source.Task));
+            source.SetResult(result);
         }
     }
+
+    // Internal for tests
+
+    internal int InFlightCount => _inFlight.Count;
 
     // Private methods
 
     private async Task<ActualChat.Media.Media?> GetOrCreateImpl(ChatEntry entry, Language language, CancellationToken cancellationToken)
     {
-        if (entry.Audio is not { } audio || audio.BlobId.IsNullOrEmpty() || entry.Content.IsNullOrWhiteSpace())
+        if (entry.Audio is not { } audio || audio.BlobId.IsNullOrEmpty() || !entry.SupportsTranslation(false))
             return null;
         if (await IsSpokenIn(entry, language, cancellationToken).ConfigureAwait(false))
             return null;
@@ -67,8 +75,11 @@ public sealed class ReplayDubs(IServiceProvider services)
         var text = translation.Content;
         var synthesized = await Synthesizer.Synthesize(text, new SpeechSynthesisOptions(language), cancellationToken)
             .ConfigureAwait(false);
-        var blobId = BlobPath.Format(BlobScope.AudioRecord, audio.StreamId.NullIfEmpty() ?? entry.Id.Value, $"{language.Value}.webm");
-        var mediaId = await Saver.SaveAndCreateMedia(synthesized, blobId, entry.ChatId, cancellationToken).ConfigureAwait(false);
+        // The MediaId is generated up front so the blob path is unique per attempt: a raced-out
+        // loser's cleanup below must never delete a blob another attempt is still using
+        var mediaId = MediaId.New(entry.ChatId.Value);
+        var blobId = BlobPath.Format(BlobScope.AudioRecord, mediaId.LocalId, $"{language.Value}.webm");
+        await Saver.SaveAndCreateMedia(synthesized, mediaId, blobId, cancellationToken).ConfigureAwait(false);
         Translation? stamped;
         try {
             stamped = await Commander.Call(new TranslationsBackend_Change(id, translation.Version, Change.Update(new TranslationDiff {
@@ -99,13 +110,13 @@ public sealed class ReplayDubs(IServiceProvider services)
 
     private async Task<Translation?> WaitForTranslation(TranslationId id, CancellationToken cancellationToken)
     {
-        // Get(translateIfMissing: true) only enqueues the translation and returns what's there now;
-        // the entry's translation isn't live, so waiting it out here is the only way to speak it
-        var translation = await Translations.Get(id, translateIfMissing: true, cancellationToken).ConfigureAwait(false);
-        while (translation == null || translation.IsStreaming) {
-            await Clocks.CpuClock.Delay(Constants.Audio.DubTranslationRetryDelay, cancellationToken).ConfigureAwait(false);
-            translation = await Translations.Get(id, translateIfMissing: false, cancellationToken).ConfigureAwait(false);
-        }
-        return translation;
+        // Get(translateIfMissing: true) only enqueues the translation; OnChange invalidates the
+        // compute method this depends on, so Computed.When wakes on the exact write instead of polling
+        await Translations.Get(id, translateIfMissing: true, cancellationToken).ConfigureAwait(false);
+        var computed = await Computed
+            .Capture(() => Translations.Get(id, translateIfMissing: false, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        computed = await computed.When(t => t is { IsStreaming: false }, cancellationToken).ConfigureAwait(false);
+        return computed.Value;
     }
 }
