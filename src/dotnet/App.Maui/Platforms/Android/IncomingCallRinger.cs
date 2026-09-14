@@ -80,11 +80,10 @@ public static class IncomingCallRinger
     {
         // Only the start that armed this may be stopped by it: any later Start or Stop moved the generation on.
         await Task.Delay(delay).ConfigureAwait(false);
-        bool isCurrent;
-        lock (Lock)
-            isCurrent = _generation == generation;
-        if (isCurrent)
-            Stop();
+        lock (Lock) {
+            if (_generation == generation)
+                Stop();
+        }
     }
 
     private static void StartRingtone()

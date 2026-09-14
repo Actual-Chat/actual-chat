@@ -175,6 +175,23 @@ public static class IncomingCallNotifications
             .ToArray();
     }
 
+    public static bool CanPostCalls()
+    {
+        // Fails open: only a definite "disabled" may keep a call from ringing.
+        try {
+            var notificationManager = NotificationManagerCompat.From(Context)!;
+            if (!notificationManager.AreNotificationsEnabled())
+                return false;
+
+            var channel = notificationManager.GetNotificationChannel(ChannelId);
+            return channel is not null && channel.Importance != NotificationImportance.None;
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "CanPostCalls failed; assuming call notifications are shown");
+            return true;
+        }
+    }
+
     // Private methods
 
     private static void EnsureChannelExists()

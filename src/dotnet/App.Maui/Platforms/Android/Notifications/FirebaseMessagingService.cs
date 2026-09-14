@@ -88,7 +88,14 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
 
         if (data.DismissedTags.Count > 0) {
             // Read before cancelling: afterwards nothing tells which call notification was on screen.
-            var shownCallChatIds = IncomingCallNotifications.ListActiveCallChatIds();
+            ChatId[] shownCallChatIds;
+            try {
+                shownCallChatIds = IncomingCallNotifications.ListActiveCallChatIds();
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Couldn't list the shown call notifications; dismissing without stopping the ring");
+                shownCallChatIds = [];
+            }
             var notificationManager = NotificationManagerCompat.From(this)!;
             foreach (var tag in data.DismissedTags)
                 notificationManager.Cancel(tag, 0);
@@ -208,8 +215,8 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
 
     private static void StopRingForDismissedCalls(IReadOnlyList<string> dismissedTags, ChatId[] shownCallChatIds)
     {
-        // The ringtone that started with a shown call notification goes with it. One Blazor drives stops
-        // on its own through IncomingCallUI; stopping it twice is harmless.
+        // The ringtone that started with a shown call notification goes with it. A ring Blazor drives is stopped
+        // by IncomingCallUI too; a double stop is harmless.
         var isShownCallDismissed = dismissedTags
             .Select(IncomingCallNotifications.TryParseCallTag)
             .Any(chatId => chatId is not null && shownCallChatIds.Contains(chatId));
@@ -244,10 +251,11 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
         // One call at a time: a ring behind another chat's call shows nothing here and doesn't ring. Busy
         // is the Blazor side's to send once it sees the ring - native does nothing for it at all.
         if (!IsAnotherCallHeld(chatId, scopedServices)) {
-            // The channel is silent, so the ringtone starts with the notification: heads-up or full-screen,
-            // a call notification without one is a missed call.
+            // The channel is silent, so the ringtone starts with the notification, or it's a missed call - but
+            // not while notifications are blocked: nothing was posted to answer or silence it.
             IncomingCallNotifications.Show(data);
-            IncomingCallRinger.Start(Constants.Call.RingTimeout);
+            if (IncomingCallNotifications.CanPostCalls())
+                IncomingCallRinger.Start(Constants.Call.RingTimeout);
         }
         if (scopeAlive)
             _ = DispatchToBlazor(
