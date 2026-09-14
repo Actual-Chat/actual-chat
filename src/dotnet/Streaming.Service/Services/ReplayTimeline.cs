@@ -6,7 +6,6 @@ internal static class ReplayTimeline
 {
     public static TimeSpan PlaysAt(TimeSpan timelinePlaysAt, TimeSpan notBefore)
         => timelinePlaysAt > notBefore ? timelinePlaysAt : notBefore;
-
     public static TimeSpan ScaleSkip(TimeSpan skipTo, TimeSpan entryDuration, TimeSpan dubDuration)
         => entryDuration <= TimeSpan.Zero || skipTo <= TimeSpan.Zero
             ? TimeSpan.Zero
