@@ -9,6 +9,7 @@ import { SharedSettings } from 'shared-settings';
 import { ServiceWorker } from 'service-worker';
 import { ScreenOrientation, DeviceOrientation } from 'orientation';
 import { CompactLayout } from 'compact-layout';
+import { WindowDrag } from 'window-drag';
 import { MutationProcessor } from 'mutation-processor';
 import { initWebCodecsCompat } from 'web-codecs-compat/settings';
 import { AppRecovery } from '../../dotnet/UI.Blazor/Services/AppRecovery/app-recovery';
@@ -36,6 +37,7 @@ ScreenOrientation.init();
 DeviceOrientation.init();
 Interactive.init();
 Gestures.init();
+WindowDrag.init();
 EmojiPreview.init();
 void ServiceWorker.init();
 
