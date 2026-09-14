@@ -64,19 +64,19 @@
                             <path d="M2 11 12 3l10 8"/>
                         </svg>
                     </div>
-                    <Button Class="c-call-btn c-decline" Click="@OnDeclineClick">
+                    <Button Class="btn-call c-decline" Click="@OnDeclineClick">
                         <i class="icon-close"></i>
                     </Button>
                     <span class="c-btn-label">@L.Common_Decline</span>
                 </div>
                 <div class="c-btn-cell">
-                    <Button Class="c-call-btn c-mute" Click="@OnMuteClick">
+                    <Button Class="btn-call c-mute" Click="@OnMuteClick">
                         <i class="@(m.IsMuted ? "icon-bell" : "icon-bell-off")"></i>
                     </Button>
                     <span class="c-btn-label">@L.Call_Mute</span>
                 </div>
                 <div class="c-btn-cell">
-                    <Button Class="c-call-btn c-message" Click="@OnMessageClick">
+                    <Button Class="btn-call c-message" Click="@OnMessageClick">
                         <i class="icon-message-ellipse"></i>
                     </Button>
                     <span class="c-btn-label">@L.Call_Message</span>
@@ -96,7 +96,7 @@
                             <path d="M2 11 12 3l10 8"/>
                         </svg>
                     </div>
-                    <Button Class="c-call-btn c-accept" Click="@OnAcceptClick">
+                    <Button Class="btn-call c-accept" Click="@OnAcceptClick">
                         <i class="icon-phone-take"></i>
                     </Button>
                     <span class="c-btn-label">@L.Common_Accept</span>
@@ -123,7 +123,7 @@
                 <HeaderButton
                     Click="@(() => OnToggleRecordingClick(!m.IsRecording))"
                     IsDisabled="@(m.Phase == CallPhase.Dialing)"
-                    Class="@("btn-video-panel rec-btn " + (m.IsRecording ? "recording" : ""))">
+                    Class="@("btn-video-panel btn-rec " + (m.IsRecording ? "recording" : ""))">
                     @if (m.IsRecording) {
                         <active-recording-svg size="8" isRecording="true"/>
                     } else {

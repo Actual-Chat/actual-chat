@@ -62,9 +62,6 @@
     @apply flex-x items-center justify-center gap-2;
     @apply text-headline-6 text-white;
 }
-.full-screen-call-view .c-name-mic {
-    @apply text-lg text-white opacity-80;
-}
 .full-screen-call-view .c-status,
 .full-screen-call-view .c-timer {
     @apply text-base text-white opacity-70;
@@ -120,7 +117,7 @@ body.touch-capable .full-screen-call-view .c-hints {
 .full-screen-call-view .c-btn-label {
     @apply text-xs text-white opacity-80;
 }
-.full-screen-call-view .c-call-btn {
+.full-screen-call-view .btn-call {
     @apply flex items-center justify-center;
     @apply w-14 h-14 flex-none;
     @apply rounded-full;
@@ -128,19 +125,19 @@ body.touch-capable .full-screen-call-view .c-hints {
 }
 /* Swipe-to-answer buttons: claim the vertical gesture so the browser doesn't hijack the drag as a
    page scroll (which cancels the pointer and snaps the button back before the threshold). */
-.full-screen-call-view .c-call-btn.c-decline,
-.full-screen-call-view .c-call-btn.c-accept {
+.full-screen-call-view .btn-call.c-decline,
+.full-screen-call-view .btn-call.c-accept {
     touch-action: none;
 }
 /* Solid gradients as plain CSS: the shorthand also clears .btn-round's default fill. */
-.full-screen-call-view .c-call-btn.c-decline {
+.full-screen-call-view .btn-call.c-decline {
     background: linear-gradient(180deg, var(--magenta-60) 0%, var(--magenta-50) 100%);
 }
-.full-screen-call-view .c-call-btn.c-accept {
+.full-screen-call-view .btn-call.c-accept {
     background: linear-gradient(180deg, var(--emerald-40) 0%, var(--emerald-30) 100%);
 }
-.full-screen-call-view .c-call-btn.c-mute,
-.full-screen-call-view .c-call-btn.c-message {
+.full-screen-call-view .btn-call.c-mute,
+.full-screen-call-view .btn-call.c-message {
     /* Same neutral glass as the video-panel controls. */
     background: linear-gradient(180deg, var(--black-20) -20.83%, var(--black-40) 100%);
     text-shadow: 0 1px 3px rgb(0 0 0 / 60%);
@@ -153,20 +150,20 @@ body.touch-capable .full-screen-call-view .c-hints {
 .full-screen-call-view .c-toolbar .btn-video-panel.btn-h {
     @apply w-12 h-12;
 }
-/* Record button — identical to the video-panel full-screen footer rec-btn. */
-.full-screen-call-view .c-toolbar > button.rec-btn {
+/* Record button — styled like the video panel's full-screen footer record button. */
+.full-screen-call-view .c-toolbar > button.btn-rec {
     background: linear-gradient(180deg, #C60077 -18.32%, #2970FF 132%);
     background-size: 100% 180%;
     background-position: center center;
     background-repeat: no-repeat;
     animation: bgShake 3s steps(30) infinite alternate;
 }
-.full-screen-call-view .c-toolbar > button.rec-btn.recording {
+.full-screen-call-view .c-toolbar > button.btn-rec.recording {
     background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
     background-size: auto;
     animation: record-btn-on-pulse 2s steps(10) infinite;
 }
-.full-screen-call-view .c-toolbar > button.rec-btn::after {
+.full-screen-call-view .c-toolbar > button.btn-rec::after {
     @apply content-empty;
     @apply absolute inset-0;
     @apply pointer-events-none;
@@ -174,18 +171,18 @@ body.touch-capable .full-screen-call-view .c-hints {
     border-radius: inherit;
     box-shadow: 0 0 1rem 0 var(--magenta-60);
 }
-.full-screen-call-view .c-toolbar > button.rec-btn.recording::after {
+.full-screen-call-view .c-toolbar > button.btn-rec.recording::after {
     animation: record-btn-glow 1s steps(10) forwards;
     animation-delay: var(--anim-phase, 0s);
 }
-.full-screen-call-view .c-toolbar > button.rec-btn i {
+.full-screen-call-view .c-toolbar > button.btn-rec i {
     @apply text-xl leading-5;
 }
-.full-screen-call-view .c-toolbar > button.rec-btn i.left {
+.full-screen-call-view .c-toolbar > button.btn-rec i.left {
     @apply -mr-0.5;
 }
 /* Dialing: nothing to record yet, so the button is disabled until the peer answers. */
-.full-screen-call-view .c-toolbar > button.rec-btn:disabled {
+.full-screen-call-view .c-toolbar > button.btn-rec:disabled {
     @apply opacity-40;
     animation-play-state: paused;
 }
