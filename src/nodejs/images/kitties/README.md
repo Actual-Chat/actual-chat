@@ -55,11 +55,31 @@ The sleeping, error and loading cats keep their fill-inset clips inside each mot
 so the clipping follows the part when it moves. Keep white markings joined internally;
 insetting each white patch separately can introduce visible seams.
 
-These assets are currently static. Porting the existing sleeping-cat sequence requires
-separating its extended hind leg and adding the fly; the existing paw groups are the front paws.
-Use the new viewBox coordinates for pivots and movement distances, and include reduced-motion handling.
-Timed CSS animation can live inside SVGs used through `<img>`. Parent-controlled animation
-needs an inline SVG because `<img>` does not expose its internal elements to the page.
+Five sources include self-contained CSS animations that also run through ordinary, cacheable
+`<img>` elements. Both themes use the same timing and geometry.
+
+| Source | Loop | Motion |
+| --- | --- | --- |
+| `empty-chat.svg` | 5 seconds | Fly approaches the image-right ear; ear flicks twice. Extended hind leg twitches with a 2.5-second offset. |
+| `error-cat.svg` | 5 seconds | Two quick mouse taps in a row, each completing in 0.275 seconds. The pair starts at 3.5 seconds; the full loop remains 5 seconds. |
+| `invite-cat.svg` | 10 seconds | Grounded robot flicks its image-left ear at 1.3–1.625 seconds; all three flying robots respond together at 1.775–2.075 seconds. |
+| `loading-cat.svg` | 8 seconds | Tail sways and head tilts slightly upright, then returns. The nearby star now occupies the lower-left pane. |
+| `phone-verification-cat.svg` | 8 seconds | Smile moves left, center, right, center in 0.25-second moves, holding 0.5 seconds at each side and 3 seconds at center. Nose-to-lip connector is 15% longer; screen keeps its fixed blue gradient. |
+
+All five honor `prefers-reduced-motion: reduce`: moving parts stay in their resting poses
+and the sleeping cat's fly is hidden. Animation styles, pivots and grouped parts live in
+the light source; regenerate after editing instead of changing the dark file directly.
+The sleeping cat's `hind-leg-right` group is separate from its two front paw groups.
+
+Animated ears keep their base outlines with the stationary head. Only their fills and
+upper edges rotate; the head paints over the ear underlap. Preserve that draw order when editing.
+Invite's grounded ear turns counterclockwise and the three flying ears turn clockwise
+around their upper head attachments.
+In the invite SVG, ear IDs name image sides: the flying cats' anatomical left ears
+use the image-right `ear-right` groups.
+
+Parent-controlled playback needs an inline SVG because `<img>` does not expose its
+internal elements to the page. Runtime component migration is separate from these assets.
 
 The app's effective `Theme.currentTheme` should select the image URL during runtime integration.
 Use the dark sibling for `dark`; the approved light source also suits the light-background `ash` theme.

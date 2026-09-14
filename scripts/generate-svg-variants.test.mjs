@@ -14,8 +14,9 @@ const source = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <defs><linearGradient id="abc"><stop stop-color="#ABC"/>
     <stop offset="1" style="stop-color: #fff; stop-opacity: .5"/>
   </linearGradient></defs>
-  <style>#abc { fill: #abc; animation: twitch 5s infinite; }
-    @keyframes twitch { 50% { transform: rotate(2deg); } }</style>
+  <style>#abc { fill: #abc; animation: twitch 5s infinite; transform-origin: 10px 20px; }
+    @keyframes twitch { 50% { transform: rotate(2deg); } }
+    @media (prefers-reduced-motion: reduce) { #abc { animation: none; } }</style>
   <g id="cat--ear" data-part="ear" data-pivot="10 20" transform="translate(2 3)">
     <path d="M0 0L10 20Z" fill="url(#abc)" stroke="#abc"/>
     <animateTransform attributeName="transform" type="rotate" values="0;2;0" dur="5s"/>
@@ -35,6 +36,8 @@ test('remaps paint and gradient stops without changing geometry or animation ref
     assert.match(dark, /d="M0 0L10 20Z"/);
     assert.match(dark, /values="0;2;0" dur="5s"/);
     assert.match(dark, /transform: rotate\(2deg\)/);
+    assert.match(dark, /transform-origin: 10px 20px/);
+    assert.match(dark, /@media \(prefers-reduced-motion: reduce\) \{ #abc \{ animation: none; \} \}/);
     assert.doesNotMatch(dark, /<palette/);
 });
 
