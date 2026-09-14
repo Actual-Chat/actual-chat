@@ -7,26 +7,32 @@ namespace ActualChat.Maui;
 // file-based login keychain, whose per-app ACLs make macOS prompt for the keychain password
 // whenever a differently signed build (local vs. App Store) reads the item. iOS and Mac
 // Catalyst always use the data protection keychain, so the flag is a no-op there.
-public class AppleSharedSecureStorage : ISecureStorage
+public sealed class AppleSharedSecureStorage(string serviceName = "Voxt") : ISecureStorage
 {
-    private const string ServiceName = "Voxt";
     private static string AccessGroup => field ??= MauiSettings.IsDevApp
         ? "M287G8G83F.chat.actual.dev.app.shared"
         // ReSharper disable once HeuristicUnreachableCode
         : "M287G8G83F.chat.actual.app.shared";
 
-    public static AppleSharedSecureStorage Default { get; } = new ();
+    public static AppleSharedSecureStorage Default { get; } = new();
+    public static AppleSharedSecureStorage PerApp { get; } = new(
+        NSBundle.MainBundle.BundleIdentifier + ".encryption");
+
+    private string ServiceName { get; } = serviceName;
 
     public Task<string?> GetAsync(string key)
     {
         using var query = ExistingQuery(key);
         using var result = SecKeyChain.QueryAsRecord(query, out var resultCode);
 
-        if (resultCode != SecStatusCode.Success || result?.ValueData == null)
+        if (resultCode == SecStatusCode.ItemNotFound)
             return Task.FromResult<string?>(null);
+        if (resultCode != SecStatusCode.Success || result?.ValueData == null)
+            throw new InvalidOperationException($"Failed to read from keychain. Status: {resultCode}");
 
         var value = NSString.FromData(result.ValueData, NSStringEncoding.UTF8);
-        return Task.FromResult(value?.ToString());
+        return Task.FromResult<string?>(value?.ToString()
+            ?? throw new InvalidDataException("The keychain value is not valid UTF-8."));
     }
 
     public Task SetAsync(string key, string value)
@@ -34,7 +40,6 @@ public class AppleSharedSecureStorage : ISecureStorage
         using var existingQuery = ExistingQuery(key);
         SecKeyChain.Remove(existingQuery);
 
-        // Add new item
         using var newRecord = BuildRecord(key, value);
         var addResult = SecKeyChain.Add(newRecord);
 
@@ -57,10 +62,11 @@ public class AppleSharedSecureStorage : ISecureStorage
         SecKeyChain.Remove(query);
     }
 
+    // Private methods
+
     private SecRecord ExistingQuery(string? key)
     {
-        var query = new SecRecord(SecKind.GenericPassword)
-        {
+        var query = new SecRecord(SecKind.GenericPassword) {
             Account = key,
             Service = ServiceName,
             AccessGroup = AccessGroup,
@@ -70,8 +76,7 @@ public class AppleSharedSecureStorage : ISecureStorage
     }
 
     private SecRecord BuildRecord(string key, string value)
-        => new (SecKind.GenericPassword)
-        {
+        => new(SecKind.GenericPassword) {
             Account = key,
             Label = key,
             Service = ServiceName,
