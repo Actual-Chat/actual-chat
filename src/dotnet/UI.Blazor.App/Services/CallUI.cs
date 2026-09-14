@@ -120,8 +120,8 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             if (_callChatId.Value is not null)
                 return false;
 
-            _callChatId.Value = chatId;
             _activeCall.Value = new ActiveCall(chatId, CallOrigin.Outgoing, CallPhase.Dialing, null, hasVideo);
+            _callChatId.Value = chatId;
             return true;
         }
     }
@@ -135,9 +135,9 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             if (slotChatId is not null && slotChatId != chatId)
                 return false;
 
-            _callChatId.Value = chatId;
             _activeCall.Value = new ActiveCall(
                 chatId, CallOrigin.Incoming, CallPhase.Active, call.Caller, call.HasVideo);
+            _callChatId.Value = chatId;
             RemoveCandidate(chatId);
             _busyAckedChatIds.Remove(chatId);
             return true;
