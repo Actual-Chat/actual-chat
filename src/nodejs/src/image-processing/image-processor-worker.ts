@@ -2,7 +2,7 @@ import { rpcServer } from 'rpc';
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { base64Encode } from '../actuallab-rpc/base64.js';
-import { HeifDecoder } from './heif-decoder';
+import { HeifDecoder, type RgbaImage } from './heif-decoder';
 import { canHaveAlpha, chooseEncoding, tryKeepSource } from './image-encoding-policy';
 import { getImageMimeType, isAnimatedImage, readImageDimensions, sniffImageFormat } from './image-format';
 import { fitWithinBudget } from './image-geometry';
@@ -60,7 +60,9 @@ async function processImage(source: Blob, request: ImageProcessRequest): Promise
     try {
         for (const spec of request.outputs) {
             if (spec.kind === 'placeholder') {
-                outputs.push(await createPlaceholderOutput(source, bytes, format, bitmap));
+                outputs.push(
+                    await createPlaceholderOutput(
+                        source, bytes, format, bitmap, request.maxMobileEncodePixels));
                 continue;
             }
 
@@ -80,7 +82,12 @@ async function processImage(source: Blob, request: ImageProcessRequest): Promise
                 }
             }
 
-            bitmap ??= await decodeBitmap(source, bytes, format);
+            bitmap ??= await decodeBitmap(source, bytes, format, request.maxMobileEncodePixels);
+            if (!bitmap) {
+                outputs.push({ ...createPassthroughOutput(source, bytes, format, spec), declined: true });
+                continue;
+            }
+
             outputs.push(
                 await reencode(bitmap, source, bytes, format, spec, request.maxMobileEncodePixels));
         }
@@ -98,8 +105,10 @@ async function createPlaceholderOutput(
     bytes: Uint8Array,
     format: ImageFormat,
     bitmap: ImageBitmap | null,
+    maxMobileEncodePixels: number,
 ): Promise<ImageOutput> {
-    const placeholderBitmap = bitmap ?? await tryCreatePlaceholderBitmap(source, bytes, format);
+    const placeholderBitmap = bitmap
+        ?? await tryCreatePlaceholderBitmap(source, bytes, format, maxMobileEncodePixels);
     try {
         const packed = placeholderBitmap
             ? await tryEncodeWithRebuild(getEncoder, encoder => encodePlaceholder(placeholderBitmap, encoder))
@@ -119,11 +128,13 @@ async function tryCreatePlaceholderBitmap(
     source: Blob,
     bytes: Uint8Array,
     format: ImageFormat,
+    maxMobileEncodePixels: number,
 ): Promise<ImageBitmap | null> {
     // Runs only when the main output left bitmap null (a passthrough format, or a source too
     // big to decode on this device); never grows past ~64px on the long side, so it's always cheap
     try {
-        return await decodeBitmap(source, bytes, format, { resizeWidth: 64, resizeQuality: 'high' });
+        return await decodeBitmap(
+            source, bytes, format, maxMobileEncodePixels, { resizeWidth: 64, resizeQuality: 'high' });
     }
     catch (e) {
         errorLog?.log('tryCreatePlaceholderBitmap: decode failed', e);
@@ -132,14 +143,16 @@ async function tryCreatePlaceholderBitmap(
 }
 
 /** Decodes via the browser, falling back to the libheif wasm for the HEIC that Chromium and
- *  Firefox cannot read. Trying the browser first keeps WebKit on its native path, and lets a
- *  browser that gains HEIC support drop the fallback on its own. */
+ *  Firefox cannot read. Null means this device declined the wasm decode. */
 async function decodeBitmap(
     source: Blob,
     bytes: Uint8Array,
     format: ImageFormat,
+    maxMobileEncodePixels: number,
     options?: ImageBitmapOptions,
-): Promise<ImageBitmap> {
+): Promise<ImageBitmap | null> {
+    // Trying the browser first keeps WebKit on its native path, and lets a browser that gains
+    // HEIC support drop the fallback on its own
     const toBitmap = (image: ImageBitmapSource): Promise<ImageBitmap> =>
         options ? createImageBitmap(image, options) : createImageBitmap(image);
     try {
@@ -149,9 +162,15 @@ async function decodeBitmap(
         if (format !== 'heif')
             throw e;
 
+        // libheif decodes at the source's own resolution - there is no resizeWidth equivalent - so
+        // the budget that guards the encode has to guard this decode too, off the header's pixels
+        const dimensions = readImageDimensions(bytes, format);
+        const pixels = dimensions ? dimensions.width * dimensions.height : 0;
+        if (!canEncodeOnThisDevice(pixels, maxMobileEncodePixels))
+            return null;
+
         debugLog?.log('decodeBitmap: no native HEIC decode, falling back to libheif');
-        const decoder = await getDecoder();
-        const image = await decoder?.decode(bytes);
+        const image = await tryDecodeHeif(bytes);
         if (!image)
             throw e;
 
@@ -275,6 +294,24 @@ export function getEncoder(): Promise<JpegliEncoder | null> {
         return null;
     });
     return whenEncoderLoaded;
+}
+
+export async function tryDecodeHeif(bytes: Uint8Array): Promise<RgbaImage | null> {
+    const decoder = await getDecoder();
+    if (!decoder)
+        return null;
+
+    try {
+        return await decoder.decode(bytes);
+    }
+    finally {
+        // An abort - an OOM on a phone, most likely - leaves every later call on the instance
+        // trapping, so the poisoned one must go and the next call rebuild it
+        if (decoder.isPoisoned) {
+            errorLog?.log('tryDecodeHeif: libheif aborted, dropping the instance');
+            whenDecoderLoaded = null;
+        }
+    }
 }
 
 export function getDecoder(): Promise<HeifDecoder | null> {
