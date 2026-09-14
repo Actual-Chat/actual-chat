@@ -135,8 +135,70 @@ public sealed partial class FileSystemContentHandlerTest
         (await cached.Content.ReadAsStringAsync()).Should().Be(expected);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(64)]
+    public async Task ReadersShouldWakeForRepeatedUpdatesAndCompletion(int length)
+    {
+        // arrange
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var data = Enumerable.Range(0, length).Select(x => (byte)x).ToArray();
+        using var sourceStream = new SteppedContentStream(data);
+        var handler = Create(new TestSource(_ => {
+            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(sourceStream) };
+            response.Content.Headers.ContentLength = length;
+            return response;
+        }));
+        using var first = await handler.Handle(Request(), timeout.Token);
+        using var second = await handler.Handle(Request(), timeout.Token);
+        using var idle = await handler.Handle(Request(), timeout.Token);
+        var firstStream = await first!.Content.ReadAsStreamAsync(timeout.Token);
+        var secondStream = await second!.Content.ReadAsStreamAsync(timeout.Token);
+        var firstBytes = new byte[1];
+        var secondBytes = new byte[1];
+
+        // act
+        for (var i = 0; i <= length; i++) {
+            var firstReadTask = firstStream.ReadAsync(firstBytes, timeout.Token).AsTask();
+            var secondReadTask = secondStream.ReadAsync(secondBytes, timeout.Token).AsTask();
+            firstReadTask.IsCompleted.Should().BeFalse();
+            secondReadTask.IsCompleted.Should().BeFalse();
+            sourceStream.Release();
+            var expectedCount = i == length ? 0 : 1;
+            (await firstReadTask.WaitAsync(timeout.Token)).Should().Be(expectedCount);
+            (await secondReadTask.WaitAsync(timeout.Token)).Should().Be(expectedCount);
+            if (expectedCount != 0) {
+                firstBytes[0].Should().Be(data[i]);
+                secondBytes[0].Should().Be(data[i]);
+            }
+        }
+
+        // assert
+        (await idle!.Content.ReadAsByteArrayAsync(timeout.Token)).Should().Equal(data);
+        GetCacheFiles().Should().ContainSingle().Which.Should().NotEndWith(".p");
+    }
     // Nested types
 
+    private sealed class SteppedContentStream(byte[] data) : MemoryStream(data)
+    {
+        private readonly SemaphoreSlim _steps = new(0);
+
+        public void Release() => _steps.Release();
+
+        public override async ValueTask<int> ReadAsync(
+            Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            await _steps.WaitAsync(cancellationToken).ConfigureAwait(false);
+            return await base.ReadAsync(buffer[..Math.Min(buffer.Length, 1)], cancellationToken).ConfigureAwait(false);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                _steps.Dispose();
+            base.Dispose(disposing);
+        }
+    }
     private sealed class GatedContentStream() : MemoryStream(Encoding.UTF8.GetBytes("headtail"))
     {
         private readonly TaskCompletionSource _whenReleasedSource = TaskCompletionSourceExt.New();

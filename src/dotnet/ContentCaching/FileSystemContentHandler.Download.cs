@@ -15,13 +15,22 @@ public sealed partial class FileSystemContentHandler
         ResponseMetadata metadata) : WorkerBase
     {
         private readonly Lock _lock = new();
-        private AsyncState<Progress> _progress = new(new Progress(0, false, null));
+        private Progress _progress;
+        private TaskCompletionSource<long>? _whenAvailableSource;
         private Exception? _readerError;
         private int _readerCount;
         private bool _isClosed;
         private bool _isFinished;
 
-        public AsyncState<Progress> Progress => Volatile.Read(ref _progress);
+        public Progress GetProgress(long position, out Task<long>? whenAvailable)
+        {
+            lock (_lock) {
+                whenAvailable = _progress.Length <= position && !_progress.IsCompleted
+                    ? (_whenAvailableSource ??= TaskCompletionSourceExt.New<long>()).Task
+                    : null;
+                return _progress;
+            }
+        }
 
         public bool HasEncryptionKey(byte[] other)
             => CryptographicOperations.FixedTimeEquals(owner._encryptionKey, other);
@@ -80,7 +89,7 @@ public sealed partial class FileSystemContentHandler
                 _isClosed = true;
                 if (_isFinished) {
                     owner.Delete(path);
-                    Publish(new Progress(Progress.Value.Length, true, _readerError));
+                    Publish(new Progress(_progress.Length, true, _readerError));
                 }
             }
             _ = Stop();
@@ -155,11 +164,13 @@ public sealed partial class FileSystemContentHandler
 
         private void Publish(Progress progress)
         {
-            var current = Volatile.Read(ref _progress);
-            Volatile.Write(ref _progress, current.SetNext(progress));
+            _progress = progress;
+            var whenAvailableSource = _whenAvailableSource;
+            _whenAvailableSource = null;
+            whenAvailableSource?.TrySetResult(progress.Length);
         }
     }
 
-    private sealed record Progress(long Length, bool IsCompleted, Exception? Error);
+    private readonly record struct Progress(long Length, bool IsCompleted, Exception? Error);
     private sealed class StorageFailure(Exception inner) : IOException("Content cache storage failed.", inner);
 }

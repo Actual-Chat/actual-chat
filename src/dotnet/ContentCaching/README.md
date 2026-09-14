@@ -31,9 +31,12 @@ Multipart ranges and conditional range requests retain downstream handling.
 
 Cache fills are coordinated by absolute file path within one process, including across handler
 instances. A concurrent dictionary tracks downloads, an AsyncLockSet serializes startup, and
-AsyncState publishes available byte counts and completion/failure. Every response has its own
-reader and cursor. Canceling or disposing a response releases just its reader; leaving no
-readers cancels the download. A failed download releases the entry for a later retry. Different
+The latest progress is stored separately from a shared Task<long> notification. Readers that
+catch up register their wait under the same lock as publication. A write detaches and completes
+that task with the available length; tasks do not link to later notifications. A task source is
+allocated only when a reader needs to wait. Completion/failure also wakes waiters, even without
+a length increase. Every response has its own reader and cursor. Canceling or disposing a
+response releases just its reader; leaving no readers cancels the download. A failed download releases the entry for a later retry. Different
 entries download independently.
 
 Files use one level of 256 buckets: the first SHA-256 byte in lowercase hex is the directory,

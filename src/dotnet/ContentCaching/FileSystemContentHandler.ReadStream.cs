@@ -153,8 +153,7 @@ public sealed partial class FileSystemContentHandler
             var available = _file.Length;
             if (_download != null) {
                 while (true) {
-                    var progress = _download.Progress;
-                    var state = progress.Value;
+                    var state = _download.GetProgress(_position, out var whenAvailable);
                     if (state.Error is StorageFailure) {
                         await OpenFallback(cancellationToken).ConfigureAwait(false);
                         return await ReadFallback(buffer, cancellationToken).ConfigureAwait(false);
@@ -163,10 +162,10 @@ public sealed partial class FileSystemContentHandler
                         ExceptionDispatchInfo.Capture(state.Error).Throw();
 
                     available = state.Length;
-                    if (available > _position || state.IsCompleted)
+                    if (whenAvailable == null)
                         break;
 
-                    await progress.WhenNext(cancellationToken).ConfigureAwait(false);
+                    await whenAvailable.WaitAsync(cancellationToken).ConfigureAwait(false);
                 }
             }
             var remaining = Math.Min(available - _offset - _position, (_length ?? long.MaxValue) - _position);

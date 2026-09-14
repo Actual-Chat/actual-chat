@@ -31,8 +31,10 @@ characters, then the full Base64Url hash of the UTF-8 identity as the filename. 
 staging uses .p; complete responses publish by atomic rename to extensionless files.
 
 Coordinate startup with AsyncLockSet and active downloads with a concurrent dictionary.
-AsyncState publishes available lengths and completion/failure without retaining a replay
-history. Each reader owns its cursor and cancellation; the final departing reader cancels
+Keep the latest progress separately from a replaceable Task<long> notification, created only
+when a reader catches up. Snapshot and wait registration share the publication lock; completion
+also wakes waiters without a length increase. Notifications have no links to later tasks.
+Each reader owns its cursor and cancellation; the final departing reader cancels
 the source. Coordination includes handler instances sharing an absolute path in one process.
 
 Encrypt metadata and bounded records with AES-256-GCM and a per-file HKDF key bound to
@@ -91,7 +93,8 @@ the fetchers. Do not combine bytes until range responses and representation iden
 
 ## Reuse
 
-**Existing abstractions:** use `FilePath`, `AsyncLockSet<FilePath>`, `AsyncState<T>`, `WorkerBase`, and SHA-256 /
+**Existing abstractions:** use `FilePath`, `AsyncLockSet<FilePath>`,
+`TaskCompletionSourceExt.New<long>()`, `WorkerBase`, and SHA-256 /
 Base64Url helpers from Core/Fusion; BCL `HttpRequestMessage`/`HttpResponseMessage` and
 `HttpClient.ResponseHeadersRead` for the streaming HTTP boundary; BCL `AesGcm` and `HKDF`
 for encryption with the same cipher family as the database cache. Existing native WebView
