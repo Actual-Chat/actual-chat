@@ -2,6 +2,9 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class CallScreensUI
 {
+    // Outlives a restart of SyncCallView, so a restarted loop still tears down the call it last showed.
+    private CallView _lastCallView = CallView.None;
+
     // Protected/internal methods
 
     protected override Task OnRun(CancellationToken cancellationToken)
@@ -61,14 +64,19 @@ public partial class CallScreensUI
         var cView = await Computed
             .Capture(() => GetCallView(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        var last = CallView.None;
         await foreach (var c in cView.Changes(cancellationToken).ConfigureAwait(false)) {
+            // A failed read isn't a released slot: the last view stands until a good one arrives.
+            if (c.HasError)
+                continue;
+
+            var last = _lastCallView;
             var view = c.Value;
             if (view == last)
                 continue;
 
+            // Remembered first: a teardown that throws must not rerun on every restart of the loop.
+            _lastCallView = view;
             OnCallViewChanged(last, view);
-            last = view;
         }
     }
 
@@ -100,10 +108,15 @@ public partial class CallScreensUI
 
     private async Task CloseCall(ActiveCall call, bool mustOpenChat)
     {
-        if (call.Phase == CallPhase.Active)
-            await CallUI.HangUp(call.ChatId).ConfigureAwait(true);
-        if (mustOpenChat)
-            await OpenChat(call.ChatId).ConfigureAwait(true);
+        try {
+            if (call.Phase == CallPhase.Active)
+                await CallUI.HangUp(call.ChatId).ConfigureAwait(true);
+            if (mustOpenChat)
+                await OpenChat(call.ChatId).ConfigureAwait(true);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Closing the released call failed for chat #{ChatId}", call.ChatId);
+        }
     }
 
     private void ClearCallFlags(ChatId chatId)
