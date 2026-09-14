@@ -294,10 +294,12 @@ var action = () => {
 
 ### Blank Lines
 
-More restrictive than default:
-- **0 blank lines** inside namespaces (default allows 1)
-- **0 blank lines** inside types (default allows 1)
-- **0 blank lines** around single-line properties, fields, and methods
+These restate the ReSharper settings in `.editorconfig`, where every number is a minimum:
+- No blank line right after the opening `{` or before the closing `}` of a type or namespace
+- A multi-line member is separated from its neighbours by **1 blank line**. A member is
+  multi-line when it spans several lines — e.g. a method whose `=>` body is on the next line
+- Between adjacent single-line members (fields, properties, one-line methods) a blank line
+  is optional; one blank line may separate groups of them
 - Keep maximum **1 blank line** in code (default allows more)
 - See [Control-Flow Statements](#control-flow-statements) for the blank lines
   around `return`, `break`, `continue`, etc.

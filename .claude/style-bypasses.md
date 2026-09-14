@@ -113,20 +113,8 @@ edited. The reason can be as short as whose decision it was.
 - L184 `mask-position: var(--c-wipe-from);`
   — same, in the `content-swap-wipe-out` keyframes the rule above runs
 
-## src/dotnet/App.Maui/Platforms/Windows/Audio/WindowsAudioCapture.cs
-
-- L20 `private ILogger Log { get; } = log;`
-  — blank line after a single-line property — the hook alternates between
-  demanding and forbidding the blank line after this property on successive
-  runs; settled on no blank line, which is what "0 blank lines around
-  single-line properties, fields, and methods" says literally
-
 ## src/dotnet/UI.Blazor.App/Components/AudioRecorder/AudioRecorder.cs
 
-- L14 `private readonly MutableState<AudioRecorderState> _state;`
-  — blank lines between members — the hook reads "0 blank lines inside types" as
-  "strip every blank line between members"; every other type in the repo separates
-  members with blank lines, so the file is left as it is. NEEDS ALEX'S CALL
 - L19 `private readonly AudioFocusRequester _audioFocusRequester;`
   — readonly field after a mutable one — field order predates this branch and
   reordering it is unrelated churn. NEEDS ALEX'S CALL
@@ -166,30 +154,6 @@ edited. The reason can be as short as whose decision it was.
   CODING_STYLE.md's Localization section already exempts (`GIF`, `Google Play`,
   `Sentry`); it is the tab title itself here, not an incidental mention, but the
   exemption's rationale (brand names aren't translated) applies identically
-
-## src/dotnet/UI.Blazor.App/Services/Gestures/GravityHighPassFilter.cs
-
-- L11 `private static readonly TimeSpan GravityTau = TimeSpan.FromMilliseconds(400);`
-  — blank line after this field, before the instance-field group — code review on
-  Task 4 asked to match `ShakeDetector.cs` (the sibling this type was extracted
-  from), which separates static fields, instance fields, and methods with a blank
-  line each; same "hook reads '0 blank lines inside types' as 'strip every blank
-  line between members'" conflict as the `AudioRecorder.cs` entry. NEEDS ALEX'S CALL
-- L13 `private (float X, float Y, float Z)? _gravity;`
-  — blank line before this field group and after it, before `Process` — same reason
-
-## src/dotnet/UI.Blazor.App/Services/Gestures/PatDetector.cs
-
-- L12 `public static readonly TimeSpan Debounce = TimeSpan.FromSeconds(1);`
-  — blank line after the static-field group, before the `Threshold` const — code
-  review on Task 4 asked to match `ShakeDetector.cs`'s member-group spacing; same
-  "0 blank lines inside types" conflict as `AudioRecorder.cs`. NEEDS ALEX'S CALL
-- L15 `public const float Threshold = 1.2f;`
-  — blank line after the const, before the instance-field group — same reason
-- L21 `private Moment _debouncedUntil;`
-  — blank line after the instance-field group, before `PeakDeviation` — same reason
-- L23 `public float PeakDeviation { get; private set; }`
-  — blank line after the property, before `Process` — same reason
 
 ## src/dotnet/UI.Blazor.App/Services/ChatUI.cs
 
@@ -243,13 +207,6 @@ edited. The reason can be as short as whose decision it was.
   — MemoryPack attribute on a new member — required: the type is `[MemoryPackable]`
   for legacy KVAS reads, and MemoryPack's generator rejects a partially annotated
   object outright (MEMPACK025), so a new member cannot opt out of `MemoryPackOrder`
-
-## src/dotnet/App.Maui/MauiThemeHandler.cs
-
-- L95 `protected virtual void ApplyStatusBar(ThemeColors colors, Theme? theme)`
-  — blank line between two multi-line methods — same "0 blank lines inside types" read
-  as "strip every blank line between members" as the `AudioRecorder.cs` entry; every
-  other method pair in this file is separated the same way. NEEDS ALEX'S CALL
 
 ## src/dotnet/UI.Blazor.App/Components/Share/ShareQrModal.razor
 
