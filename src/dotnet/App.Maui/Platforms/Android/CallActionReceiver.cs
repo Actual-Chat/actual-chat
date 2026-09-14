@@ -27,8 +27,8 @@ public class CallActionReceiver : BroadcastReceiver
         // resolves from may lack the Fusion client stack, so it can't be relied on while alive.
         if (AppServicesAccessor.TryGetScopedServices(out _)) {
             _ = AppServicesAccessor.DispatchToBlazor(
-                c => c.GetRequiredService<IncomingCallUI>().Decline(chatId),
-                "IncomingCallUI.Decline");
+                c => c.GetRequiredService<CallScreensUI>().Decline(chatId),
+                "CallScreensUI.Decline");
             return;
         }
 

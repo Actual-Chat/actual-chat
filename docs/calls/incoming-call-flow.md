@@ -7,7 +7,7 @@ both sides. What a finished call leaves in the chat is covered separately, in
 **The short version.** `StartCall` writes the call into the chat's live session in Redis and
 queues a notification. The notification pipeline turns it into one `CallNotification` per
 invitee and pushes it to every device. On the client, every delivery path only records the
-chat as a *candidate* in `CallUI`, through `IncomingCallUI.OnRing(chatId)` or straight
+chat as a *candidate* in `CallUI`, through `CallScreensUI.OnRing(chatId)` or straight
 through `CallUI.AddCandidate(chatId)`. Whether the device
 actually rings is decided by the reactive live session: the call is still unanswered, the
 reader isn't its host, and the reader's invite is `Ringing`. The first candidate that passes
@@ -34,7 +34,7 @@ sequenceDiagram
     NB->>NB: CallNotification per invitee, commit to active set
     NB->>Push: NotificationsBackend_Push
     Push->>Callee: data message / APNs alert
-    Callee->>Callee: CallUI.AddCandidate(chatId), directly or via IncomingCallUI.OnRing
+    Callee->>Callee: CallUI.AddCandidate(chatId), directly or via CallScreensUI.OnRing
     Callee->>LS: LiveSessions.Get - is my invite Ringing?
     Callee->>Callee: hold the ring in the call slot until it ends
     Callee->>LS: ConfirmRing(Ringing or Busy)
@@ -97,17 +97,17 @@ notification id. The notification leaves the active set, and a dismissal push ca
 
 ## How the client learns about the ring
 
-Pushes and taps on the call notification go through `IncomingCallUI.OnRing(chatId)`, which
+Pushes and taps on the call notification go through `CallScreensUI.OnRing(chatId)`, which
 adds the chat to `CallUI`'s candidates and, for a ring shown over the lock screen, sets the
 over-lock flag. The two notification lists, the system's on start and `ListActive`, call
 `CallUI.AddCandidate(chatId)` directly, with no over-lock flag. Answer skips the candidates
-and goes straight to `IncomingCallUI.Accept`.
+and goes straight to `CallScreensUI.Accept`.
 
 | Situation | Path |
 |---|---|
 | Android, app in the foreground and unlocked | `FirebaseMessagingService` dispatches `OnRing` straight into Blazor. No system notification is shown, because the in-app modal and ringer already own the ring. |
 | Android, backgrounded, killed or locked | `IncomingCallNotifications.Show` posts a `CallStyle` notification with Answer/Decline and a full-screen intent, and `IncomingCallRinger` starts the ringtone with it. Neither happens when another chat's call notification is shown or the slot is held by another chat. If the Blazor scope is alive, `OnRing` is dispatched as well. |
-| Android, opened from that notification | `NotificationHandler` → `IncomingCallNotifications.HandleViewIntent`. A full-screen intent passes `overLockScreen: true`; Answer goes straight to `IncomingCallUI.Accept`. |
+| Android, opened from that notification | `NotificationHandler` → `IncomingCallNotifications.HandleViewIntent`. A full-screen intent passes `overLockScreen: true`; Answer goes straight to `CallScreensUI.Accept`. |
 | Android, opened from the launcher after a push | `CallUI`'s search loop (`SearchRings`) picks the ring up from the still-active system notifications on start (`Bridge.ListActiveCallChatIds` → `AddCandidate`). |
 | Web, tab in the foreground | Firebase `onMessage` → `NotificationUI.OnIncomingCall`. |
 | Web, tab in the background or closed | The service worker posts `INCOMING_CALL` to every open tab and shows an OS notification. |
@@ -166,9 +166,10 @@ full-screen views, the ringtone, the ringback. `GetIncomingCall` is the slot fil
 
 ## Presenting the ring
 
-`IncomingCallUI` is a UI worker; it runs these reactive loops:
+`CallScreensUI` is a UI worker; it runs these reactive loops:
 
-- **SyncRings** starts or stops the ringtone as the slot enters or leaves Incoming/Ringing.
+- **`SyncRingtone`** plays the ringtone while the slot holds an Incoming/Ringing call the user
+  hasn't muted; muting or collapsing the ring only changes that state.
 - **`SyncIncomingCallModal`** shows `IncomingCallModal`, except when the ring is shown over
   the lock screen or collapsed into the island.
 - **SyncCallScreens** follows the slot: an outgoing call that starts dialing gets its modal
@@ -198,7 +199,7 @@ keyguard and removes the cover.
 
 ### Accept
 
-On the callee's client, `IncomingCallUI.Accept`:
+On the callee's client, `CallScreensUI.Accept`:
 
 1. Re-verifies the ring through `GetRingingCall`. If it is gone, shows a "Call ended" toast
    instead of joining.
@@ -264,7 +265,7 @@ On the callee's side two paths race, and either one ends the ring:
 
 - **The dismissal push.**
   - Android cancels the system notification and, when the app is in the foreground, calls
-    `IncomingCallUI.OnCallDismissed` through `ClearForegroundCallRings`.
+    `CallScreensUI.OnCallDismissed` through `ClearForegroundCallRings`.
   - The web service worker closes the OS notification and posts `INCOMING_CALL_CANCELLED` to
     every open tab.
 - **The reactive session.** `LiveSessions.Get` is invalidated, `GetRingingCall` returns

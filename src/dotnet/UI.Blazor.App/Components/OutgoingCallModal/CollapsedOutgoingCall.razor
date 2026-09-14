@@ -29,7 +29,7 @@
     private IAuthors Authors => Hub.Authors;
     private CallUI CallUI => Hub.CallUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
-    private IncomingCallUI IncomingCallUI => Hub.IncomingCallUI;
+    private CallScreensUI CallScreensUI => Hub.CallScreensUI;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -40,7 +40,7 @@
             });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var chatId = await IncomingCallUI.CollapsedOutgoingChatId.Use(cancellationToken).ConfigureAwait(false);
+        var chatId = await CallScreensUI.CollapsedOutgoingChatId.Use(cancellationToken).ConfigureAwait(false);
         if (chatId is not { } id)
             return ComputedModel.None;
 
@@ -77,7 +77,7 @@
 
     private void OnExpandClick() {
         if (State.Value.ChatId is { } chatId)
-            IncomingCallUI.ExpandOutgoing(chatId);
+            CallScreensUI.ExpandOutgoing(chatId);
     }
 
     private Task OnHangUpClick()

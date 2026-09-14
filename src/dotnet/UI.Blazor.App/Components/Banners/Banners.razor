@@ -7,8 +7,6 @@
 
 @* Urgent, actionable banners stay full-size above the stack *@
 <ReconnectBanner/>
-@* Incoming and outgoing calls surface as modals (IncomingCallUI.SyncIncomingCallModal,
-   IncomingCallUI.SyncCallScreens), not banners. *@
 @foreach (var banner in m.Banners.Take(MaxCount)) {
     @banner.View
 }

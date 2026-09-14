@@ -152,7 +152,7 @@
     private ElementReference _ringButtons;
     private DotNetObjectReference<IncomingCallOverLockView>? _dotNetRef;
     private IJSObjectReference? _swipeRef;
-    private IncomingCallUI IncomingCallUI => Hub.IncomingCallUI;
+    private CallScreensUI CallScreensUI => Hub.CallScreensUI;
     private CallUI CallUI => Hub.CallUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
@@ -171,7 +171,7 @@
         if (isShowing && !_shownOverLock) {
             _shownOverLock = true;
             DebugLog?.LogInformation("CALL_TRACE: OverLockView became visible → OnOverLockScreenRendered");
-            IncomingCallUI.OnOverLockScreenRendered();
+            CallScreensUI.OnOverLockScreenRendered();
         }
         else if (!isShowing && _shownOverLock)
             _shownOverLock = false;
@@ -217,10 +217,10 @@
             });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var overLockChatId = await IncomingCallUI.OverLockChatId.Use(cancellationToken).ConfigureAwait(false);
+        var overLockChatId = await CallScreensUI.GetOverLockChatId(cancellationToken).ConfigureAwait(false);
         var isOverLock = overLockChatId is not null;
         var chatId = overLockChatId
-            ?? await IncomingCallUI.ForegroundCallChatId.Use(cancellationToken).ConfigureAwait(false);
+            ?? await CallScreensUI.GetForegroundCallChatId(cancellationToken).ConfigureAwait(false);
         if (chatId is not { } id) {
             DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState → None (no active chat)");
             return ComputedModel.None;
@@ -232,9 +232,9 @@
             return ComputedModel.None;
         }
 
-        var ringing = await IncomingCallUI.GetIncomingCall(cancellationToken).ConfigureAwait(false);
+        var ringing = await CallScreensUI.GetIncomingCall(cancellationToken).ConfigureAwait(false);
         if (ringing?.ChatId == id) {
-            var muted = await IncomingCallUI.MutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
+            var muted = await CallScreensUI.MutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
             DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → Ringing", id);
             return new() {
                 Chat = chat, Phase = CallPhase.Ringing, HasVideo = ringing.HasVideo,
@@ -289,39 +289,26 @@
     }
 
     private Task OnAcceptClick()
-        => State.Value.Chat is { } chat ? IncomingCallUI.Accept(chat.Id) : Task.CompletedTask;
+        => State.Value.Chat is { } chat ? CallScreensUI.Accept(chat.Id) : Task.CompletedTask;
 
     private Task OnDeclineClick()
-        => State.Value.Chat is { } chat ? IncomingCallUI.Decline(chat.Id) : Task.CompletedTask;
+        => State.Value.Chat is { } chat ? CallScreensUI.Decline(chat.Id) : Task.CompletedTask;
 
     private void OnMuteClick() {
         if (State.Value.Chat is { } chat)
-            IncomingCallUI.ToggleMuteRing(chat.Id);
+            CallScreensUI.ToggleMuteRing(chat.Id);
     }
 
     // Over the lock screen "Message" declines the ring; opening the chat still needs a keyguard dismiss,
     // so the chat only surfaces once the user unlocks.
     private Task OnMessageClick()
-        => State.Value.Chat is { } chat ? IncomingCallUI.DeclineAndOpenChat(chat.Id) : Task.CompletedTask;
+        => State.Value.Chat is { } chat ? CallScreensUI.DeclineAndOpenChat(chat.Id) : Task.CompletedTask;
 
-    private Task OnGoToChatClick() {
-        var m = State.Value;
-        if (m.Chat is not { } chat)
-            return Task.CompletedTask;
+    private Task OnGoToChatClick()
+        => State.Value.Chat is { } chat ? CallScreensUI.LeaveCallScreen(chat.Id) : Task.CompletedTask;
 
-        return m.IsOverLock ? IncomingCallUI.GoToChat(chat.Id) : IncomingCallUI.DismissForegroundCall(chat.Id);
-    }
-
-    private Task OnHangUpClick() {
-        var m = State.Value;
-        if (m.Chat is not { } chat)
-            return Task.CompletedTask;
-
-        if (m.IsDialing)
-            return IncomingCallUI.CancelForegroundCall(chat.Id);
-
-        return m.IsOverLock ? IncomingCallUI.HangUp(chat.Id) : IncomingCallUI.HangUpForegroundCall(chat.Id);
-    }
+    private Task OnHangUpClick()
+        => State.Value.Chat is { } chat ? CallScreensUI.HangUp(chat.Id) : Task.CompletedTask;
 
     private void OnVideoClick() {
         if (State.Value.Chat is { } chat)

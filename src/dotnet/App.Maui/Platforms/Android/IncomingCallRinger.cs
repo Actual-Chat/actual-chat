@@ -6,7 +6,7 @@ using Application = Android.App.Application;
 
 namespace ActualChat.App.Maui;
 
-// The single ring melody/vibration source, driven by IncomingCallUI via AndroidIncomingCallsBridge
+// The single ring melody/vibration source, driven by CallScreensUI via AndroidIncomingCallsBridge
 // once Blazor is up, and started natively together with a shown call notification. Uses a looping
 // MediaPlayer rather than Ringtone: Ringtone.Play() is unreliable on the first invocation
 // (occasionally silent), while a prepared MediaPlayer plays deterministically.

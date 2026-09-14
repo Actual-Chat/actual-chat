@@ -53,7 +53,7 @@
     private bool _handled;
 
     private IAuthors Authors => Hub.Authors;
-    private IncomingCallUI IncomingCallUI => Hub.IncomingCallUI;
+    private CallScreensUI CallScreensUI => Hub.CallScreensUI;
 
     private AuthorId CallerId => ModalModel.CallerId;  // Shortcut
     private ChatId ChatId => CallerId.ChatId; // Shortcut
@@ -70,16 +70,16 @@
         if (author == null)
             return ComputedModel.None;
 
-        var call = await IncomingCallUI.GetIncomingCall(cancellationToken).ConfigureAwait(false);
+        var call = await CallScreensUI.GetIncomingCall(cancellationToken).ConfigureAwait(false);
         if (call?.ChatId != chatId)
             return ComputedModel.None;
 
         // Collapsed into the island → close the modal; the island takes over.
-        var collapsed = await IncomingCallUI.CollapsedChatId.Use(cancellationToken).ConfigureAwait(false);
+        var collapsed = await CallScreensUI.CollapsedIncomingChatId.Use(cancellationToken).ConfigureAwait(false);
         if (collapsed == chatId)
             return ComputedModel.None;
 
-        var muted = await IncomingCallUI.MutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
+        var muted = await CallScreensUI.MutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
         return new() {
             Author = author,
             Call = call,
@@ -92,7 +92,7 @@
     // already resolved it, treat the dismissal as "collapse to the island".
     public override async ValueTask DisposeAsync() {
         if (!_handled)
-            IncomingCallUI.Collapse(ChatId);
+            CallScreensUI.CollapseIncoming(ChatId);
         await base.DisposeAsync().ConfigureAwait(false);
     }
 
@@ -100,31 +100,31 @@
         _handled = true;
         var chatId = ChatId;
         Modal.Close();
-        return IncomingCallUI.Accept(chatId);
+        return CallScreensUI.Accept(chatId);
     }
 
     private Task OnDeclineClick() {
         _handled = true;
         var chatId = ChatId;
         Modal.Close();
-        return IncomingCallUI.Decline(chatId);
+        return CallScreensUI.Decline(chatId);
     }
 
     private Task OnMessageClick() {
         _handled = true;
         var chatId = ChatId;
         Modal.Close();
-        return IncomingCallUI.DeclineAndOpenChat(chatId);
+        return CallScreensUI.DeclineAndOpenChat(chatId);
     }
 
-    // Collapse to the island: the modal auto-closes because ComputeState reads CollapsedChatId.
+    // Collapse to the island: the modal auto-closes because ComputeState reads CollapsedIncomingChatId.
     private void OnCollapseClick() {
         _handled = true;
-        IncomingCallUI.Collapse(ChatId);
+        CallScreensUI.CollapseIncoming(ChatId);
     }
 
     private void OnMuteClick()
-        => IncomingCallUI.ToggleMuteRing(ChatId);
+        => CallScreensUI.ToggleMuteRing(ChatId);
 
     // Nested types
 

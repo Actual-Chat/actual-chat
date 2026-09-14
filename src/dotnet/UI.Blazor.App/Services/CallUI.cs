@@ -48,6 +48,9 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public virtual Task<ActiveCall?> GetActiveCall(CancellationToken cancellationToken)
         => _activeCall.Use(cancellationToken);
 
+    public ActiveCall? GetActiveCallNonComputed()
+        => _activeCall.Value;
+
     [ComputeMethod]
     public virtual async Task<ChatId?> GetCallChatId(CancellationToken cancellationToken)
         => (await GetActiveCall(cancellationToken).ConfigureAwait(false))?.ChatId;
@@ -154,6 +157,27 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public Task ConfirmRing(ChatId chatId, RingAck ack, CancellationToken cancellationToken)
         => LiveSessions.ConfirmRing(Session, chatId, ack, cancellationToken);
+
+    public async Task StartCallAudio(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // Listening goes first, so a pending OS mic prompt can't fail the server's connect grace check;
+        // a denied mic still joins the call, listening only.
+        await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(true);
+        var hasMic = await AudioRecorder.MicrophonePermission
+            .CheckOrRequest(cancellationToken)
+            .ConfigureAwait(true);
+        if (hasMic)
+            await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(true);
+    }
+
+    public async Task HangUp(ChatId chatId)
+    {
+        // Leaving the call server-side follows from the stopped audio, through the same SetParticipation
+        // path as any other presence change - see LiveSessionUI.RunParticipationSync.
+        Release(chatId);
+        await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(true);
+        await ChatAudioUI.SetListeningState(chatId, false).ConfigureAwait(true);
+    }
 
     public void AddCandidate(ChatId chatId)
     {

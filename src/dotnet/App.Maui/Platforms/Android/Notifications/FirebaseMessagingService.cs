@@ -194,7 +194,7 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
     private static void ClearForegroundCallRings(IReadOnlyList<string> dismissedTags)
     {
         // A foreground ring lives in the in-app call UI/ringer, not a system notification, so a
-        // cancel/decline/timeout dismissal must reach IncomingCallUI directly — the reactive
+        // cancel/decline/timeout dismissal must reach CallScreensUI directly — the reactive
         // live-session computed (NoCache) would otherwise clear the ring only on its slow self-heal.
         if (!(AndroidUtils.IsAppForeground() ?? false) || !TryGetScopedServices(out _))
             return;
@@ -208,15 +208,15 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
                 continue;
 
             _ = DispatchToBlazor(
-                c => c.GetRequiredService<IncomingCallUI>().OnCallDismissed(chatId),
-                "IncomingCallUI.OnCallDismissed");
+                c => c.GetRequiredService<CallScreensUI>().OnCallDismissed(chatId),
+                "CallScreensUI.OnCallDismissed");
         }
     }
 
     private static void StopRingForDismissedCalls(IReadOnlyList<string> dismissedTags, ChatId[] shownCallChatIds)
     {
         // The ringtone that started with a shown call notification goes with it. A ring Blazor drives is stopped
-        // by IncomingCallUI too; a double stop is harmless.
+        // by CallScreensUI too; a double stop is harmless.
         var isShownCallDismissed = dismissedTags
             .Select(IncomingCallNotifications.TryParseCallTag)
             .Any(chatId => chatId is not null && shownCallChatIds.Contains(chatId));
@@ -243,8 +243,8 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
         // backgrounded, killed, or locked - where its full-screen intent is the only way to reach the user.
         if (scopeAlive && isForeground == true) {
             _ = DispatchToBlazor(
-                c => c.GetRequiredService<IncomingCallUI>().OnRing(chatId),
-                "IncomingCallUI.OnRing");
+                c => c.GetRequiredService<CallScreensUI>().OnRing(chatId),
+                "CallScreensUI.OnRing");
             return;
         }
 
@@ -259,8 +259,8 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
         }
         if (scopeAlive)
             _ = DispatchToBlazor(
-                c => c.GetRequiredService<IncomingCallUI>().OnRing(chatId),
-                "IncomingCallUI.OnRing");
+                c => c.GetRequiredService<CallScreensUI>().OnRing(chatId),
+                "CallScreensUI.OnRing");
     }
 
     private static bool IsAnotherCallHeld(ChatId chatId, IServiceProvider? scopedServices)

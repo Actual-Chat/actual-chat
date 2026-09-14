@@ -125,14 +125,8 @@ public partial class CallUI
     private async Task StartAnsweredCallAudio(ChatId chatId, CancellationToken cancellationToken)
     {
         // Placing a call is itself the intent to talk, so answering it puts the caller on the line.
-        // A denied mic still joins them - listening only, same as anywhere else.
         try {
-            await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(false);
-            var hasMic = await AudioRecorder.MicrophonePermission
-                .CheckOrRequest(cancellationToken)
-                .ConfigureAwait(false);
-            if (hasMic)
-                await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(false);
+            await StartCallAudio(chatId, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Couldn't join the answered call in chat #{ChatId}", chatId);

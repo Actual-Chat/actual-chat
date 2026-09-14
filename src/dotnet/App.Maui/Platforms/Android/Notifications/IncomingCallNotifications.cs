@@ -139,8 +139,8 @@ public static class IncomingCallNotifications
             // Accept re-verifies the ring against LiveSessionUI.Get once Blazor is up —
             // a stale tap yields a "Call ended" toast, not a phantom join.
             _ = AppServicesAccessor.DispatchToBlazor(
-                c => c.GetRequiredService<IncomingCallUI>().Accept(chatId),
-                "IncomingCallUI.Accept", whenRendered: true);
+                c => c.GetRequiredService<CallScreensUI>().Accept(chatId),
+                "CallScreensUI.Accept", whenRendered: true);
             return;
         }
 
@@ -152,8 +152,8 @@ public static class IncomingCallNotifications
             "CALL_TRACE: HandleViewIntent → dispatch OnRing #{ChatId}, overLockScreen={OverLockScreen}",
             chatId, overLockScreen);
         _ = AppServicesAccessor.DispatchToBlazor(
-            c => c.GetRequiredService<IncomingCallUI>().OnRing(chatId, overLockScreen),
-            "IncomingCallUI.OnRing", whenRendered: true);
+            c => c.GetRequiredService<CallScreensUI>().OnRing(chatId, overLockScreen),
+            "CallScreensUI.OnRing", whenRendered: true);
     }
 
     public static ChatId? TryParseCallTag(string? tag)
