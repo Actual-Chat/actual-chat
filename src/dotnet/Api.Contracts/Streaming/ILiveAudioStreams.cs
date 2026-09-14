@@ -49,6 +49,16 @@ public interface ILiveAudioStreams : IComputeService
         double speed,
         CancellationToken cancellationToken);
 
+    // dubLanguage: entries the listener wouldn't understand are served dubbed into it (see ReplayStreamMuxer)
+    Task<RpcStream<MuxedAudioStreamItem>> GetReplayStream(
+        Session session,
+        ChatId chatId,
+        Moment startAt,
+        TimeSpan rewindOffset,
+        double speed,
+        Language? dubLanguage,
+        CancellationToken cancellationToken);
+
     // The call completes only when its stream does, so the default 30s DelayTimeout is pure log noise
     [RpcMethod(
         RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect,

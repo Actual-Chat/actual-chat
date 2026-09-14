@@ -212,6 +212,11 @@ public class ListeningStreamMuxerRelayTest(ITestOutputHelper @out) : TestBase(@o
             CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
+        public Task<RpcStream<MuxedAudioStreamItem>> GetReplayStream(
+            Session session, ChatId chatId, Moment startAt, TimeSpan rewindOffset, double speed,
+            Language? dubLanguage, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+
         public Task PushStream(
             Session session, string chatId, string? repliedChatEntryId, double clientStartAt, int preSkip,
             RpcStream<AudioFrame> frameStream, CancellationToken cancellationToken)

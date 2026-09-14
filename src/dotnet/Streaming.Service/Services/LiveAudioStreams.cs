@@ -204,19 +204,40 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         return StandardRpcStream.NewAudioDelivery(stream, allowReconnect: false);
     }
 
-    public async Task<RpcStream<MuxedAudioStreamItem>> GetReplayStream(
+    public Task<RpcStream<MuxedAudioStreamItem>> GetReplayStream(
         Session session,
         ChatId chatId,
         Moment startAt,
         TimeSpan rewindOffset,
         double speed,
         CancellationToken cancellationToken)
+        => GetReplayStream(session, chatId, startAt, rewindOffset, speed, null, cancellationToken);
+
+    public async Task<RpcStream<MuxedAudioStreamItem>> GetReplayStream(
+        Session session,
+        ChatId chatId,
+        Moment startAt,
+        TimeSpan rewindOffset,
+        double speed,
+        Language? dubLanguage,
+        CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
         chat.Rules.Require(ChatPermissions.ReadAudio);
+        if (dubLanguage != null) {
+            if (await IsDubLanguageAllowed(session, chatId, dubLanguage, cancellationToken).ConfigureAwait(false))
+                dubLanguage = Languages.GetCanonical(dubLanguage);
+            else {
+                Log.LogWarning("GetReplayStream: {DubLanguage} isn't a language of this listener, not dubbing",
+                    dubLanguage);
+                dubLanguage = null;
+            }
+        }
 
-        var muxer = new ReplayStreamMuxer(Services, session, chatId, startAt, rewindOffset, speed);
+        Log.LogInformation("GetReplayStream: chat '{ChatId}', startAt={StartAt}, dub={DubLanguage}",
+            chatId, startAt, dubLanguage);
+        var muxer = new ReplayStreamMuxer(Services, session, chatId, startAt, rewindOffset, speed, dubLanguage);
         var stream = ToReplayAsyncEnumerable(muxer, muxer.Output, cancellationToken);
         return StandardRpcStream.NewAudioDelivery(stream, allowReconnect: false);
     }

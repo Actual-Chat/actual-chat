@@ -266,3 +266,10 @@ edited. The reason can be as short as whose decision it was.
   catches the deserialization failure and returns null, so a record in the old shape
   reads as "nothing cached" and the next check overwrites it. Sequential keys beat
   carrying gaps for a value nothing needs to survive.
+
+## src/dotnet/Streaming.Service/Services/ReplayTimeline.cs
+
+- L9 `public static TimeSpan ScaleSkip(TimeSpan skipTo, TimeSpan entryDuration, TimeSpan dubDuration)`
+  — blank line between the two static methods — same "0 blank lines inside types"
+  read as "strip every blank line between members" as the `AudioRecorder.cs` entry.
+  NEEDS ALEX'S CALL
