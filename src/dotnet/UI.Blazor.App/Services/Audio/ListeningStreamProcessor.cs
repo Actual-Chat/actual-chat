@@ -22,6 +22,7 @@ public sealed class ListeningStreamProcessor : WorkerBase
     public Session Session { get; }
     public ChatId ChatId { get; }
     public Moment CatchUpFrom { get; }
+    public Func<CancellationToken, Task<Language?>>? DubLanguageProvider { get; init; }
 
     public event Action<LiveAudioStreamInfo, TimeSpan, IAsyncEnumerable<AudioFrame>>? StreamStarted;
 
@@ -59,9 +60,14 @@ public sealed class ListeningStreamProcessor : WorkerBase
                 var catchUpFrom = _isCatchUpConsumed || Ptt.IsStaleWake(CatchUpFrom, clocks.ServerClock.Now)
                     ? default
                     : CatchUpFrom;
-                Log.LogInformation("-> LiveStreams.GetListeningStream({ChatId}), catchUpFrom={CatchUpFrom}",
-                    ChatId, catchUpFrom);
-                var stream = await liveStreams.GetListeningStream(Session, ChatId, catchUpFrom, ct)
+                var dubLanguage = DubLanguageProvider == null
+                    ? null
+                    : await DubLanguageProvider.Invoke(ct).ConfigureAwait(false);
+                Log.LogInformation(
+                    "-> LiveStreams.GetListeningStream({ChatId}), catchUpFrom={CatchUpFrom}, dub={DubLanguage}",
+                    ChatId, catchUpFrom, dubLanguage);
+                var stream = await liveStreams
+                    .GetListeningStream(Session, ChatId, catchUpFrom, dubLanguage, ct)
                     .ConfigureAwait(false);
                 _isCatchUpConsumed = true;
                 DebugLog?.LogInformation("<- LiveStreams.GetListeningStream({ChatId})", ChatId);

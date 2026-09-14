@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 секунд",
   "ListeningLinger_10Seconds": "10 секунд",
   "ListeningLinger_30Seconds": "30 секунд",
+  "Transcription_TranslatedVoiceTopic": "Перекладений голос",
+  "Transcription_TranslatedVoice": "Слухати переклад голосом",
+  "Transcription_TranslatedVoiceCaption": "У живих розмовах мовців інших мов замінює озвучений переклад вашою мовою",
   "Transcription_LanguageDetected_Format": "Визначена мова розшифровки для чату «{0}» — {1}.",
 
   "Sessions_CurrentSession": "Поточний сеанс",
@@ -1514,6 +1517,9 @@
   "Call_Entry_Ended": "Дзвінок",
   "Call_Entry_NoAnswer": "Немає відповіді",
   "Call_Entry_TapToCallBack": "Натисніть, щоб передзвонити",
+
+  "LiveConversation_TranslatedVoice": "Перекладений голос",
+
   "Share_FailedToShareFiles": "Не вдалося поділитися файлами",
   "Share_PrivateChatJoinLink": "Поділитися посиланням на закритий чат",
   "Share_PrivatePlaceJoinLink": "Поділитися посиланням на закрите Місце",

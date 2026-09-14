@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 segundos",
   "ListeningLinger_10Seconds": "10 segundos",
   "ListeningLinger_30Seconds": "30 segundos",
+  "Transcription_TranslatedVoiceTopic": "Voz traducida",
+  "Transcription_TranslatedVoice": "Escuchar traducciones habladas",
+  "Transcription_TranslatedVoiceCaption": "En las conversaciones en vivo, los hablantes de otros idiomas se sustituyen por una traducción hablada en tu idioma",
   "Transcription_LanguageDetected_Format": "El idioma de transcripción detectado para el chat «{0}» es {1}.",
 
   "Sessions_CurrentSession": "Sesión actual",
@@ -1514,6 +1517,9 @@
   "Call_Entry_Ended": "Llamada",
   "Call_Entry_NoAnswer": "Sin respuesta",
   "Call_Entry_TapToCallBack": "Toca para devolver la llamada",
+
+  "LiveConversation_TranslatedVoice": "Voz traducida",
+
   "Share_FailedToShareFiles": "No se pudieron compartir los archivos",
   "Share_PrivateChatJoinLink": "Compartir enlace de acceso al chat privado",
   "Share_PrivatePlaceJoinLink": "Compartir enlace de acceso al Lugar privado",

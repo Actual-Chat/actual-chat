@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 secondes",
   "ListeningLinger_10Seconds": "10 secondes",
   "ListeningLinger_30Seconds": "30 secondes",
+  "Transcription_TranslatedVoiceTopic": "Voix traduite",
+  "Transcription_TranslatedVoice": "Écouter les traductions parlées",
+  "Transcription_TranslatedVoiceCaption": "Dans les conversations en direct, les personnes parlant d'autres langues sont remplacées par une traduction parlée dans votre langue",
   "Transcription_LanguageDetected_Format": "La langue de transcription détectée pour la discussion « {0} » est {1}.",
 
   "Sessions_CurrentSession": "Session actuelle",
@@ -1514,6 +1517,9 @@
   "Call_Entry_Ended": "Appel",
   "Call_Entry_NoAnswer": "Sans réponse",
   "Call_Entry_TapToCallBack": "Appuyez pour rappeler",
+
+  "LiveConversation_TranslatedVoice": "Voix traduite",
+
   "Share_FailedToShareFiles": "Impossible de partager les fichiers",
   "Share_PrivateChatJoinLink": "Partager le lien d'accès à la discussion privée",
   "Share_PrivatePlaceJoinLink": "Partager le lien d'accès au Lieu privé",

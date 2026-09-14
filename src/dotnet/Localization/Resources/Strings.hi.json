@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 सेकंड",
   "ListeningLinger_10Seconds": "10 सेकंड",
   "ListeningLinger_30Seconds": "30 सेकंड",
+  "Transcription_TranslatedVoiceTopic": "अनूदित आवाज़",
+  "Transcription_TranslatedVoice": "अनुवाद सुनें",
+  "Transcription_TranslatedVoiceCaption": "लाइव बातचीत में, अन्य भाषाएँ बोलने वालों की जगह आपकी भाषा में बोला गया अनुवाद सुनाया जाता है",
   "Transcription_LanguageDetected_Format": "चैट '{0}' के लिए पहचानी गई ट्रांसक्रिप्शन भाषा {1} है।",
 
   "Sessions_CurrentSession": "वर्तमान सत्र",
@@ -1514,6 +1517,9 @@
   "Call_Entry_Ended": "कॉल",
   "Call_Entry_NoAnswer": "जवाब नहीं मिला",
   "Call_Entry_TapToCallBack": "वापस कॉल करने के लिए टैप करें",
+
+  "LiveConversation_TranslatedVoice": "अनूदित आवाज़",
+
   "Share_FailedToShareFiles": "फ़ाइलें साझा नहीं हो सकीं",
   "Share_PrivateChatJoinLink": "निजी चैट का जॉइन लिंक साझा करें",
   "Share_PrivatePlaceJoinLink": "निजी प्लेस का जॉइन लिंक साझा करें",

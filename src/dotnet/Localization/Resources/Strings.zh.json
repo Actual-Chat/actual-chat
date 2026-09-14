@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 秒",
   "ListeningLinger_10Seconds": "10 秒",
   "ListeningLinger_30Seconds": "30 秒",
+  "Transcription_TranslatedVoiceTopic": "翻译语音",
+  "Transcription_TranslatedVoice": "收听语音翻译",
+  "Transcription_TranslatedVoiceCaption": "在实时对话中，讲其他语言的人会被替换为用您的语言朗读的翻译",
   "Transcription_LanguageDetected_Format": "聊天“{0}”检测到的转录语言为 {1}。",
 
   "Sessions_CurrentSession": "当前会话",
@@ -1514,6 +1517,9 @@
   "Call_Entry_Ended": "通话",
   "Call_Entry_NoAnswer": "无人接听",
   "Call_Entry_TapToCallBack": "点按回拨",
+
+  "LiveConversation_TranslatedVoice": "翻译语音",
+
   "Share_FailedToShareFiles": "文件分享失败",
   "Share_PrivateChatJoinLink": "分享私密聊天的加入链接",
   "Share_PrivatePlaceJoinLink": "分享私密地点的加入链接",

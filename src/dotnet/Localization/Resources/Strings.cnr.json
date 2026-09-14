@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 sekundi",
   "ListeningLinger_10Seconds": "10 sekundi",
   "ListeningLinger_30Seconds": "30 sekundi",
+  "Transcription_TranslatedVoiceTopic": "Prevedeni glas",
+  "Transcription_TranslatedVoice": "Slušajte izgovoreni prijevod",
+  "Transcription_TranslatedVoiceCaption": "U živim razgovorima, govornici drugih jezika se zamjenjuju izgovorenim prijevodom na vaš jezik",
   "Transcription_LanguageDetected_Format": "Otkriveni jezik transkripcije za chat „{0}“ je {1}.",
 
   "Sessions_CurrentSession": "Trenutna sesija",
@@ -1514,6 +1517,9 @@
   "Call_Entry_Ended": "Poziv",
   "Call_Entry_NoAnswer": "Nema odgovora",
   "Call_Entry_TapToCallBack": "Dodirnite za povratni poziv",
+
+  "LiveConversation_TranslatedVoice": "Prevedeni glas",
+
   "Share_FailedToShareFiles": "Fajlovi se nisu mogli podijeliti",
   "Share_PrivateChatJoinLink": "Podijelite link za pridruživanje zatvorenom chatu",
   "Share_PrivatePlaceJoinLink": "Podijelite link za pridruživanje zatvorenom Mjestu",

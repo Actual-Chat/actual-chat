@@ -27,6 +27,9 @@ public sealed partial record UserLanguageSettings : StoredSettings, IHasOrigin, 
     // A ?ui-language= override never lands here - it is deliberately non-persistent.
     [DataMember, MemoryPackOrder(5), Key(5)]
     public Language? DetectedUILanguage { get; init; }
+    // Listener side of voice dubbing: other-language speakers in live sessions are heard dubbed
+    [DataMember, MemoryPackOrder(6), Key(6)]
+    public bool IsTranslatedVoiceEnabled { get; init; }
 
     public List<Language> ListSpoken()
     {
