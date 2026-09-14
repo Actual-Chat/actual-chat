@@ -10,7 +10,7 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
 
         // act
         builder.Update([Token("Hello", 0, 500, true)]);
-        var second = builder.Update([Token(" world", 500, 1000, true)]);
+        var second = builder.Update([Token(" world", 500, 1000, true)])[^1];
 
         // assert
         second.Text.Should().Be("Hello world");
@@ -23,8 +23,8 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
         var builder = new SonioxTranscriptBuilder();
 
         // act
-        var first = builder.Update([Token("Hello", 0, 500, true), Token(" wor", 500, 700, false)]);
-        var second = builder.Update([Token(" world", 500, 1000, false)]);
+        var first = builder.Update([Token("Hello", 0, 500, true), Token(" wor", 500, 700, false)])[^1];
+        var second = builder.Update([Token(" world", 500, 1000, false)])[^1];
 
         // assert
         first.Text.Should().Be("Hello wor");
@@ -77,13 +77,63 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
-    public void StreamingTranscriptsAreNotStable()
+    public void FinalsOnlyResponseShouldBeStable()
     {
         // act
-        var transcript = new SonioxTranscriptBuilder().Update([Token("Hello", 0, 500, true)]);
+        var transcripts = new SonioxTranscriptBuilder().Update([Token("Hello", 0, 500, true)]);
 
         // assert
-        transcript.IsStable.Should().BeFalse();
+        transcripts.Should().ContainSingle();
+        transcripts[0].Text.Should().Be("Hello");
+        transcripts[0].IsStable.Should().BeTrue("a final token never changes, so the finals alone are stable");
+    }
+
+    [Fact]
+    public void FinalsWithATailShouldEmitTheStableFinalsBeforeTheUnstableWhole()
+    {
+        // act
+        var transcripts = new SonioxTranscriptBuilder()
+            .Update([Token("Hello", 0, 500, true), Token(" wor", 500, 700, false)]);
+
+        // assert
+        transcripts.Should().HaveCount(2);
+        transcripts[0].Text.Should().Be("Hello");
+        transcripts[0].IsStable.Should().BeTrue();
+        transcripts[1].Text.Should().Be("Hello wor");
+        transcripts[1].IsStable.Should().BeFalse("the tail may still change");
+    }
+
+    [Fact]
+    public void ATailOnlyResponseShouldNotRepeatTheStableFinals()
+    {
+        // arrange
+        var builder = new SonioxTranscriptBuilder();
+        builder.Update([Token("Hello", 0, 500, true)]);
+
+        // act
+        var transcripts = builder.Update([Token(" wor", 500, 700, false)]);
+
+        // assert
+        transcripts.Should().ContainSingle();
+        transcripts[0].Text.Should().Be("Hello wor");
+        transcripts[0].IsStable.Should().BeFalse();
+    }
+
+    [Fact]
+    public void StableFinalsShouldGrowByTheNewFinalsOnly()
+    {
+        // arrange
+        var builder = new SonioxTranscriptBuilder();
+        builder.Update([Token("Hello", 0, 500, true), Token(" wor", 500, 700, false)]);
+
+        // act - the tail became final, and a new tail starts
+        var transcripts = builder.Update([Token(" world", 500, 1000, true), Token(" how", 1000, 1200, false)]);
+
+        // assert
+        transcripts[0].Text.Should().Be("Hello world");
+        transcripts[0].IsStable.Should().BeTrue();
+        transcripts[0].TimeRange.End.Should().BeApproximately(1f, 0.01f);
+        transcripts[1].Text.Should().Be("Hello world how");
     }
 
     [Fact]
@@ -91,7 +141,7 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     {
         // act
         var transcript = new SonioxTranscriptBuilder()
-            .Update([Token("Hello", 0, 500, true), Token(" world", 500, 2000, true)]);
+            .Update([Token("Hello", 0, 500, true), Token(" world", 500, 2000, true)])[^1];
 
         // assert
         WriteLine(transcript.TimeMap.ToString());
@@ -104,7 +154,7 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     {
         // act
         var transcript = new SonioxTranscriptBuilder()
-            .Update([Token("Hello", 0, 500, true, "en"), Token(" мир", 500, 1000, true, "ru")]);
+            .Update([Token("Hello", 0, 500, true, "en"), Token(" мир", 500, 1000, true, "ru")])[^1];
 
         // assert
         transcript.Languages.Should().Contain(Languages.English);
@@ -118,7 +168,7 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
         var builder = new SonioxTranscriptBuilder();
 
         // act
-        var update = builder.Update([Token("Проверка", 0, 500, true), Token("<end>", 500, 520, true)]);
+        var update = builder.Update([Token("Проверка", 0, 500, true), Token("<end>", 500, 520, true)])[^1];
         var completed = builder.Complete();
 
         // assert
@@ -131,7 +181,7 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     {
         // act
         var transcript = new SonioxTranscriptBuilder()
-            .Update([Token("Hi", 0, 500, true), Token("<end>", 500, 520, false)]);
+            .Update([Token("Hi", 0, 500, true), Token("<end>", 500, 520, false)])[^1];
 
         // assert
         transcript.Text.Should().Be("Hi");
@@ -142,7 +192,7 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     {
         // act
         var transcript = new SonioxTranscriptBuilder()
-            .Update([Token("", 0, 100, true), Token("Hi", 100, 500, true)]);
+            .Update([Token("", 0, 100, true), Token("Hi", 100, 500, true)])[^1];
 
         // assert
         transcript.Text.Should().Be("Hi");
