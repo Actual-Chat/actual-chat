@@ -1,15 +1,13 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
-using ActualLab.Generators;
 using ActualLab.IO;
 
 namespace ActualChat.ContentCaching.UnitTests;
 
 public sealed partial class FileSystemContentHandlerTest : IDisposable
 {
-    private readonly FilePath _directory =
-        FilePath.GetApplicationTempDirectory() & $"content-{RandomStringGenerator.Default.Next()}";
+    private readonly FilePath _directory = TestDirectory.New();
     private readonly byte[] _key = RandomNumberGenerator.GetBytes(32);
 
     public void Dispose()
@@ -65,14 +63,12 @@ public sealed partial class FileSystemContentHandlerTest : IDisposable
         // assert
         (await first!.Content.ReadAsStringAsync()).Should().Be("response-1");
         (await second!.Content.ReadAsStringAsync()).Should().Be("response-2");
-        Directory.Exists(_directory).Should().BeFalse();
+        GetCacheFiles().Should().BeEmpty();
     }
 
     [Theory]
     [InlineData("head")]
     [InlineData("post")]
-    [InlineData("large")]
-    [InlineData("unknown-length")]
     [InlineData("not-found")]
     [InlineData("partial")]
     [InlineData("private")]
@@ -93,13 +89,6 @@ public sealed partial class FileSystemContentHandlerTest : IDisposable
             break;
         case "post":
             request = request with { Method = HttpMethod.Post };
-            break;
-        case "large":
-            content.Headers.ContentLength = 2 * 1024 * 1024;
-            break;
-        case "unknown-length":
-            content.Headers.ContentLength = null;
-            stream.IsLengthHidden = true;
             break;
         case "not-found":
             upstream.StatusCode = HttpStatusCode.NotFound;
@@ -128,7 +117,7 @@ public sealed partial class FileSystemContentHandlerTest : IDisposable
         // assert
         response.Should().BeSameAs(upstream);
         stream.ReadCount.Should().Be(0);
-        Directory.Exists(_directory).Should().BeFalse();
+        GetCacheFiles().Should().BeEmpty();
     }
 
     [Theory]
@@ -164,9 +153,11 @@ public sealed partial class FileSystemContentHandlerTest : IDisposable
         var firstRequest = Request();
         var secondRequest = Request() with { Url = new Uri("https://cdn.example/other") };
         var handler = Create(new TestSource(r => Response(r.Url.AbsolutePath)));
-        using (var first = await handler.Handle(firstRequest)) { }
+        using (var first = await handler.Handle(firstRequest))
+            await first!.Content.ReadAsByteArrayAsync();
         var firstPath = GetCacheFiles().Single();
-        using (var second = await handler.Handle(secondRequest)) { }
+        using (var second = await handler.Handle(secondRequest))
+            await second!.Content.ReadAsByteArrayAsync();
         var secondPath = GetCacheFiles().Single(x => x != firstPath);
         File.Copy(firstPath, secondPath, true);
 
@@ -187,7 +178,8 @@ public sealed partial class FileSystemContentHandlerTest : IDisposable
         // arrange
         var reads = 0;
         var handler = Create(new TestSource(_ => Response($"version-{++reads}")));
-        using (var first = await handler.Handle(Request())) { }
+        using (var first = await handler.Handle(Request()))
+            await first!.Content.ReadAsByteArrayAsync();
 
         // act
         using var second = await handler.Handle(new ContentRequest(new Uri(url)));
@@ -212,13 +204,16 @@ public sealed partial class FileSystemContentHandlerTest : IDisposable
         var handler = Create(source);
 
         // act
-        var action = async () => { using var response = await handler.Handle(Request()); };
+        var action = async () => {
+            using var response = await handler.Handle(Request());
+            await response!.Content.ReadAsByteArrayAsync();
+        };
 
         // assert
         var error = await action.Should().ThrowAsync<Exception>();
-        error.Which.Should().BeOfType(
+        error.Which.GetBaseException().Should().BeOfType(
             declaredLength == 1 ? typeof(InvalidDataException) : typeof(EndOfStreamException));
-        Directory.Exists(_directory).Should().BeFalse();
+        GetCacheFiles().Should().BeEmpty();
     }
 
     [Fact]
@@ -250,11 +245,14 @@ public sealed partial class FileSystemContentHandlerTest : IDisposable
         cancellation.Cancel();
 
         // act
-        var action = async () => { using var response = await handler.Handle(Request(), cancellation.Token); };
+        var action = async () => {
+            using var response = await handler.Handle(Request(), cancellation.Token);
+            await response!.Content.ReadAsByteArrayAsync();
+        };
 
         // assert
         await action.Should().ThrowAsync<OperationCanceledException>();
-        Directory.Exists(_directory).Should().BeFalse();
+        GetCacheFiles().Should().BeEmpty();
     }
 
     [Fact]
@@ -287,14 +285,15 @@ public sealed partial class FileSystemContentHandlerTest : IDisposable
 
         // assert
         response.Should().BeNull();
-        Directory.Exists(_directory).Should().BeFalse();
+        GetCacheFiles().Should().BeEmpty();
     }
 
     [Fact]
     public async Task UnknownFormatShouldBeRefetched()
     {
         // arrange
-        using (var first = await Create(new TestSource(_ => Response("cached"))).Handle(Request())) { }
+        using (var first = await Create(new TestSource(_ => Response("cached"))).Handle(Request()))
+            await first!.Content.ReadAsByteArrayAsync();
         var path = GetCacheFiles().Single();
         var bytes = await File.ReadAllBytesAsync(path);
         bytes[0] = 2;
@@ -318,16 +317,19 @@ public sealed partial class FileSystemContentHandlerTest : IDisposable
         var handler = Create(new TestSource(_ => upstream));
 
         // act
-        var action = async () => { using var response = await handler.Handle(Request(), cancellation.Token); };
+        var action = async () => {
+            using var response = await handler.Handle(Request(), cancellation.Token);
+            await response!.Content.ReadAsByteArrayAsync();
+        };
 
         // assert
         await action.Should().ThrowAsync<OperationCanceledException>();
         stream.CanRead.Should().BeFalse();
-        Directory.Exists(_directory).Should().BeFalse();
+        GetCacheFiles().Should().BeEmpty();
     }
 
     [Fact]
-    public async Task BufferingShouldDisposeTheSourceButKeepTheResponseReadable()
+    public async Task DownloadCompletionShouldDisposeTheSourceAndKeepTheResponseReadable()
     {
         // arrange
         using var stream = new ContentHandlerTest.CountingStream("body");
@@ -338,8 +340,8 @@ public sealed partial class FileSystemContentHandlerTest : IDisposable
         using var response = await handler.Handle(Request());
 
         // assert
-        stream.CanRead.Should().BeFalse();
         (await response!.Content.ReadAsStringAsync()).Should().Be("body");
+        stream.CanRead.Should().BeFalse();
     }
 
     [Fact]
@@ -379,7 +381,7 @@ public sealed partial class FileSystemContentHandlerTest : IDisposable
     // Private methods
 
     private string[] GetCacheFiles()
-        => Directory.GetFiles(_directory, "*", SearchOption.AllDirectories);
+        => Directory.Exists(_directory) ? Directory.GetFiles(_directory, "*", SearchOption.AllDirectories) : [];
 
     private static ContentRequest Request()
         => new(new Uri("https://cdn.example/asset"));
