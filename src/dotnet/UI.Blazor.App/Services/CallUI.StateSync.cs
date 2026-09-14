@@ -64,12 +64,9 @@ public partial class CallUI
         var cChatId = await Computed
             .Capture(() => GetCallChatId(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        while (!cancellationToken.IsCancellationRequested) {
-            cChatId = await cChatId.When(chatId => chatId is not null, cancellationToken).ConfigureAwait(false);
-            if (cChatId.Value is { } chatId)
+        await foreach (var c in cChatId.Changes(cancellationToken).ConfigureAwait(false))
+            if (c.Value is { } chatId)
                 await Hold(chatId, cancellationToken).ConfigureAwait(false);
-            cChatId = await cChatId.Update(cancellationToken).ConfigureAwait(false);
-        }
     }
 
     private async Task Hold(ChatId chatId, CancellationToken cancellationToken)
@@ -173,11 +170,8 @@ public partial class CallUI
         var cInput = await Computed
             .Capture(() => GetSearchInput(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        while (!cancellationToken.IsCancellationRequested) {
-            ApplySearch(cInput.Value);
-            await cInput.WhenInvalidated(cancellationToken).ConfigureAwait(false);
-            cInput = await cInput.Update(cancellationToken).ConfigureAwait(false);
-        }
+        await foreach (var c in cInput.Changes(cancellationToken).ConfigureAwait(false))
+            ApplySearch(c.Value);
     }
 
     private void ApplySearch(SearchInput input)
