@@ -132,7 +132,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatWelcomeBlock>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatsNavbarButtonBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ClientUpgradeCover>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CollapsedCall>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CollapsedCallView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ContactSelector>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ContactSelectorBadges>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ContactSelectorListView>();
@@ -907,7 +907,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatWelcomeBlock), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatsNavbarButtonBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ClientUpgradeCover), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.CollapsedCall), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CollapsedCallView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ContactSelector), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ContactSelectorBadges), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ContactSelectorListView), AotTypeKind.Component),

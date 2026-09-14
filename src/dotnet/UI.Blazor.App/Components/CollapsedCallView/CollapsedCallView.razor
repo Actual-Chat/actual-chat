@@ -1,13 +1,13 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Module
-@inherits ComputedStateComponent<AppUIHub, CollapsedCall.ComputedModel>
+@inherits ComputedStateComponent<AppUIHub, CollapsedCallView.ComputedModel>
 @{
     var m = State.Value;
     if (m.ChatId is null)
         return;
 }
 
-<div class="collapsed-call" @ref="Ref">
+<div class="collapsed-call-view" @ref="Ref">
     <div class="c-av" @onclick="@OnExpandClick">
         <AuthorCircle AuthorId="@m.PeerId" Size="SquareSize.Size10"/>
     </div>

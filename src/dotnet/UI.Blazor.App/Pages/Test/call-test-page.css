@@ -318,7 +318,7 @@
 .dev-desktop .call-pill { top: .5rem; }
 
 /* ── Real-class stages: reproduce the production incoming-call surfaces on the test page using the
-   SAME classes (author-modal / incoming-call-modal / collapsed-call / full-screen-call-view),
+   SAME classes (author-modal / incoming-call-modal / collapsed-call-view / full-screen-call-view),
    so editing those stylesheets is reflected here. Only positioning is scoped to the preview frame. ── */
 .tp-stage {
   position: absolute;
@@ -339,7 +339,7 @@
   box-shadow: 0 8px 32px rgb(0 0 0 / 30%);
 }
 .dev-screen .full-screen-call-view { position: absolute; }
-.dev-screen .collapsed-call { position: absolute; left: .75rem; top: 3.5rem; }
+.dev-screen .collapsed-call-view { position: absolute; left: .75rem; top: 3.5rem; }
 
 /* how-to-call header hint */
 .hint-btn {

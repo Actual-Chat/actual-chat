@@ -51,7 +51,7 @@
 @import './Components/IncomingCallModal/incoming-call-modal.css';
 @import './Components/FullScreenCallView/full-screen-call-view.css';
 @import './Components/OutgoingCallModal/outgoing-call-modal.css';
-@import './Components/CollapsedCall/collapsed-call.css';
+@import './Components/CollapsedCallView/collapsed-call-view.css';
 @import './Components/AddMember/add-member-modal.css';
 @import './Components/MarkupEditor/markup-editor.css';
 @import './Components/MarkupParts/markup-parts.css';
