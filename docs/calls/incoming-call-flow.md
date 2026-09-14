@@ -207,9 +207,10 @@ swaps the dialing full-screen view for the modal.
   screens down: it clears the chat's flags, moves the app back behind the lock screen if the
   call was shown over it, otherwise opens the chat if the call had the full-screen view, and
   stops an active call's audio. This is the only place that tears down a call the slot held.
-  Decline, Hang up and the other actions only change the slot; the one exception is a ring
-  that ends before the slot ever held it, whose flags `EndRing` clears itself, since there is
-  no release to do it.
+  It keeps the last view across restarts of the loop and skips a failed read, so a release
+  can't slip through a gap. Decline, Hang up and the other actions don't tear the screens
+  down; the one exception is a ring that ends before the slot ever held it, whose flags
+  `EndRing` clears itself, since there is no release to do it.
 
 `ConfirmRing` is telemetry only. The server stores it on the invite (`CallInvite.Ack`) and
 changes nothing else.
@@ -234,9 +235,9 @@ On the callee's client, `CallScreensUI.Accept`:
 1. Re-verifies the ring through `GetRingingCall`. If it is gone, shows a "Call ended" toast
    instead of joining.
 2. Commits the ring to `Active` in the slot (refusing with "You're already in a call" if
-   another chat holds it), then ends the local ring and cancels the Android system
-   notification. Both happen before the RPC, so the call screen doesn't blink between "ring
-   ended" and "audio started".
+   another chat holds it), then clears the ring's collapsed and muted flags and cancels the
+   Android system notification. All of it happens before the RPC, so the call screen doesn't
+   blink between "ring ended" and "audio started".
 3. Calls `AcceptCall`.
 4. On Android, dismisses the keyguard, unless the call was accepted over the lock screen.
    Then audio starts without unlocking: the activity shown over the lock counts as
@@ -271,7 +272,8 @@ The callee declines from the modal, the island, the over-lock screen, or the Dec
 of the Android notification (`CallActionReceiver`). The client ends the local ring and calls
 `DeclineCall`. The Message action declines the call and opens the chat. If the ring was shown
 over the lock screen, it is moved back behind it as part of the release teardown once the slot
-is released.
+is released. A ring the slot never held, declined from the notification before the search
+claimed it, has no release, so `Decline` moves it back itself.
 
 On the server, `DeclineCall`:
 
