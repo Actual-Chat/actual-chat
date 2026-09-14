@@ -18,6 +18,7 @@ public sealed class ReplayStreamProcessor : WorkerBase
     public Moment StartAt { get; }
     public TimeSpan RewindOffset { get; }
     public double Speed { get; }
+    public Func<CancellationToken, Task<Language?>>? DubLanguageProvider { get; init; }
 
     public event Action<LiveAudioStreamInfo, TimeSpan, IAsyncEnumerable<AudioFrame>>? StreamStarted;
 
@@ -46,11 +47,18 @@ public sealed class ReplayStreamProcessor : WorkerBase
         var demuxerLog = Services.LogFor<AudioStreamDemuxer>();
 
         try {
-            Log.LogInformation("-> LiveStreams.GetReplayStream({ChatId}, {StartAt}, {RewindOffset}, speed={Speed})",
-                ChatId, StartAt, RewindOffset, Speed);
-            var stream = await liveStreams
-                .GetReplayStream(Session, ChatId, StartAt, RewindOffset, Speed, cancellationToken)
-                .ConfigureAwait(false);
+            var dubLanguage = DubLanguageProvider == null
+                ? null
+                : await DubLanguageProvider.Invoke(cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("-> LiveStreams.GetReplayStream({ChatId}, {StartAt}, {RewindOffset}, speed={Speed}, dub={DubLanguage})",
+                ChatId, StartAt, RewindOffset, Speed, dubLanguage);
+            var stream = dubLanguage == null
+                ? await liveStreams
+                    .GetReplayStream(Session, ChatId, StartAt, RewindOffset, Speed, cancellationToken)
+                    .ConfigureAwait(false)
+                : await liveStreams
+                    .GetReplayStream(Session, ChatId, StartAt, RewindOffset, Speed, dubLanguage, cancellationToken)
+                    .ConfigureAwait(false);
             Log.LogInformation("<- LiveStreams.GetReplayStream({ChatId})", ChatId);
 
             var demuxer = new AudioStreamDemuxer(stream, demuxerLog, cancellationToken.CreateLinkedTokenSource());
