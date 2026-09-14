@@ -128,6 +128,9 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
             return;
         }
 
+        // Cleared only once committed: on a ring still in the slot, dropping collapsed would bring the modal back.
+        ClearIf(_collapsedChatId, chatId);
+        ClearIf(_mutedRingChatId, chatId);
         Bridge?.DismissCallNotification(chatId);
         try {
             await CallUI.AcceptCall(chatId, CancellationToken.None).ConfigureAwait(true);
@@ -151,11 +154,11 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
 
     public async Task Decline(ChatId chatId)
     {
-        // Moving back behind the lock screen is the release teardown's, as for a ring that ends on its own -
-        // EndRing only clears the flags of a ring the slot never held.
+        // A held over-lock ring goes back behind the lock screen in the release teardown, as a ring that ends
+        // on its own does; a ring the slot never held has no release, so it goes back here.
         var isOverLock = _overLockRingChatId.Value == chatId;
-        EndRing(chatId);
-        if (!isOverLock)
+        var isHeld = EndRing(chatId);
+        if (!isOverLock || !isHeld)
             _ = Bridge?.OnCallHandled(false);
         try {
             await CallUI.DeclineCall(chatId, CancellationToken.None).ConfigureAwait(false);
@@ -242,15 +245,16 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         }
     }
 
-    private void EndRing(ChatId chatId)
+    private bool EndRing(ChatId chatId)
     {
-        // A ring the slot never held (e.g. declined before the search claimed it) has no release to
-        // clear its flags, so this is the only place left to drop them.
+        // A ring the slot never held (e.g. declined before the search claimed it) has no release to clear
+        // its flags, so they go here.
         var isHeld = CallUI.GetCallChatIdNonComputed() == chatId;
         CallUI.DropRing(chatId);
         Bridge?.DismissCallNotification(chatId);
         if (!isHeld)
             ClearCallFlags(chatId);
+        return isHeld;
     }
 
     private Task OpenChat(ChatId chatId)
