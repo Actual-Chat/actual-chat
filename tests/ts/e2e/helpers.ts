@@ -95,14 +95,18 @@ function getCdpHosts(): string[] {
     return getLocalHosts();
 }
 
+/** AC_E2E_HOST_RESOLVER_RULES: Chromium's --host-resolver-rules, e.g. "MAP *.local.voxt.ai 127.0.0.1"
+ *  when the worktree's /etc/hosts entry points at a LAN IP the machine no longer has. */
 async function launchHeadless(): Promise<BrowserConnection> {
     try {
+        const hostResolverRules = process.env.AC_E2E_HOST_RESOLVER_RULES;
         const browser = await chromium.launch({
             headless: true,
             args: [
                 '--no-sandbox', '--disable-setuid-sandbox',
                 // A grantable fake mic, so tests can start recording (call activity)
                 '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
+                ...(hostResolverRules ? [`--host-resolver-rules=${hostResolverRules}`] : []),
             ],
         });
         const context = await browser.newContext({ ignoreHTTPSErrors: true });
