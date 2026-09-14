@@ -26,6 +26,9 @@
     @apply flex-y items-end;
     @apply h-full;
 }
+.left-panel-buttons > .c-content > .safe-area-top {
+    height: calc(var(--safe-area-top) + var(--titlebar-inset));
+}
 .left-panel-buttons .settings-btn > .btn.btn-square,
 .left-panel-buttons .settings-btn > .btn.btn-square:hover {
     @apply bg-transparent;
