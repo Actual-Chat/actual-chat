@@ -50,7 +50,8 @@ public sealed class ReplayStreamProcessor : WorkerBase
             var dubLanguage = DubLanguageProvider == null
                 ? null
                 : await DubLanguageProvider.Invoke(cancellationToken).ConfigureAwait(false);
-            Log.LogInformation("-> LiveStreams.GetReplayStream({ChatId}, {StartAt}, {RewindOffset}, speed={Speed}, dub={DubLanguage})",
+            Log.LogInformation(
+                "-> LiveStreams.GetReplayStream({ChatId}, {StartAt}, {RewindOffset}, speed={Speed}, dub={DubLanguage})",
                 ChatId, StartAt, RewindOffset, Speed, dubLanguage);
             var stream = dubLanguage == null
                 ? await liveStreams
