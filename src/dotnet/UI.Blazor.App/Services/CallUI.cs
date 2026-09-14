@@ -1,5 +1,7 @@
+using ActualChat.Localization;
 using ActualChat.Live;
 using ActualChat.Notifications;
+using ActualChat.Streaming;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Diagnostics;
 using ActualLab.Interception;
@@ -20,8 +22,10 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private readonly HashSet<ChatId> _busyAckedChatIds = [];
 
     private IIncomingCallsBridge? Bridge { get; }
+    private ILiveSessions LiveSessions => Hub.LiveSessions;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private IAuthors Authors => Hub.Authors;
     private INotifications Notifications => Hub.Notifications;
     private Moment Now => Clocks.CpuClock.Now;
@@ -73,6 +77,10 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     [ComputeMethod]
+    public virtual Task<CallerStatus?> GetCallStatus(ChatId chatId, CancellationToken cancellationToken)
+        => LiveSessions.GetCallStatus(Session, chatId, cancellationToken);
+
+    [ComputeMethod]
     public virtual async Task<IncomingCall?> GetRingingCall(ChatId chatId, CancellationToken cancellationToken)
     {
         // Straight from the session, for any chat - whether that ring may hold the slot is the search's call.
@@ -101,6 +109,56 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
         return new IncomingCall(live.ChatId, live.Host, live.Rules.VideoAllowed);
     }
+
+    public async Task StartCall(
+        ChatId chatId,
+        ApiArray<AuthorId> invitees,
+        bool hasVideo,
+        CancellationToken cancellationToken)
+    {
+        // Ask on the click itself: it's a real user gesture, the request can't yet race the ringback,
+        // and the answered call's join re-reads the (now cached) verdict without prompting again.
+        // A call the caller can't be heard on isn't worth ringing the other side for, so a denial
+        // stops it here instead of falling back to a listen-only call as the callee side does.
+        if (!await AudioRecorder.MicrophonePermission.CheckOrRequest(cancellationToken).ConfigureAwait(false)) {
+            Hub.ToastUI.Show(L.Call_NoMicrophoneAccess, "icon-phone-hang-up", ToastDismissDelay.Short);
+            return;
+        }
+        // The slot is taken before the RPC, so a ring arriving meanwhile is already answered Busy.
+        if (!TryClaimOutgoing(chatId, hasVideo)) {
+            Hub.ToastUI.Show(L.Call_AlreadyInCall, "icon-phone-hang-up", ToastDismissDelay.Short);
+            return;
+        }
+
+        try {
+            await LiveSessions.StartCall(Session, chatId, invitees, hasVideo, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Release(chatId);
+            if (e is OperationCanceledException)
+                throw;
+
+            // Only StandardError.Constraint (e.g. the peer-call gate) carries user-facing text.
+            Log.LogWarning(e, "StartCall failed for chat #{ChatId}", chatId);
+            var message = e is InvalidOperationException ? e.Message : L.Call_CouldntStart;
+            Hub.ToastUI.Show(message, "icon-phone-hang-up", ToastDismissDelay.Short);
+        }
+    }
+
+    public Task CancelCall(ChatId chatId, CancellationToken cancellationToken)
+    {
+        Release(chatId);
+        return LiveSessions.CancelCall(Session, chatId, cancellationToken);
+    }
+
+    public Task AcceptCall(ChatId chatId, CancellationToken cancellationToken)
+        => LiveSessions.AcceptCall(Session, chatId, cancellationToken);
+
+    public Task DeclineCall(ChatId chatId, CancellationToken cancellationToken)
+        => LiveSessions.DeclineCall(Session, chatId, cancellationToken);
+
+    public Task ConfirmRing(ChatId chatId, RingAck ack, CancellationToken cancellationToken)
+        => LiveSessions.ConfirmRing(Session, chatId, ack, cancellationToken);
 
     public void AddCandidate(ChatId chatId)
     {

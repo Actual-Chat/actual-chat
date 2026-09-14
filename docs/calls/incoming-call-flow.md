@@ -44,7 +44,7 @@ sequenceDiagram
 
 ## Starting a call
 
-`LiveSessionUI.StartCall` asks for the microphone first: a caller who can't be heard doesn't
+`CallUI.StartCall` asks for the microphone first: a caller who can't be heard doesn't
 ring anyone. The public `LiveSessions.StartCall` then checks that:
 
 - the caller is a member of the chat;

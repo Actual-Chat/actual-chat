@@ -44,7 +44,7 @@
     private DateFormatter DateFormatter => Hub.DateFormatter;
     private IStringLocalizer L => Hub.StringLocalizer;
     private MomentClockSet Clocks => Hub.Clocks;
-    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private CallUI CallUI => Hub.CallUI;
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public CallEntry Entry { get; set; } = null!;
     private bool _isIncompleteUIEnabled;
@@ -53,6 +53,6 @@
         => _isIncompleteUIEnabled = await Hub.Features.IsIncompleteUIEnabled(CancellationToken.None);
 
     private Task OnCallBack()
-        => LiveSessionUI.StartCall(
+        => CallUI.StartCall(
             Entry.ChatId, new[] { Entry.CallerId }.ToApiArray(), Entry.HasVideo, default);
 }

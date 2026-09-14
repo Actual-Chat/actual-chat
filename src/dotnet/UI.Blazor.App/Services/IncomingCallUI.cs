@@ -41,7 +41,6 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     private IIncomingCallsBridge? Bridge { get; }
     private CallUI CallUI => Hub.CallUI;
-    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ILogger? CallDebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
@@ -159,7 +158,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // the chat once it closes.
         var showsForegroundCall = !isOverLockScreen && Hub.BrowserInfo.ScreenSize.Value.IsNarrow();
         try {
-            await LiveSessionUI.AcceptCall(chatId, default).ConfigureAwait(true);
+            await CallUI.AcceptCall(chatId, default).ConfigureAwait(true);
         }
         catch (Exception e) {
             CallUI.Release(chatId);
@@ -218,7 +217,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     {
         ClearForegroundCall(chatId);
         try {
-            await LiveSessionUI.CancelCall(chatId, CancellationToken.None).ConfigureAwait(false);
+            await CallUI.CancelCall(chatId, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogWarning(e, "CancelCall failed for chat #{ChatId}", chatId);
@@ -235,7 +234,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         else
             _ = Bridge?.OnCallHandled(false);
         try {
-            await LiveSessionUI.DeclineCall(chatId, default).ConfigureAwait(false);
+            await CallUI.DeclineCall(chatId, default).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogWarning(e, "DeclineCall failed for chat #{ChatId}", chatId);

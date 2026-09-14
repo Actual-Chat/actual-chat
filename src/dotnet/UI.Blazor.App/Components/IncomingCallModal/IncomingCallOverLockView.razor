@@ -153,6 +153,7 @@
     private DotNetObjectReference<IncomingCallOverLockView>? _dotNetRef;
     private IJSObjectReference? _swipeRef;
     private IncomingCallUI IncomingCallUI => Hub.IncomingCallUI;
+    private CallUI CallUI => Hub.CallUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
@@ -257,7 +258,7 @@
 
         // My own outgoing call, still dialing (or just answered, before my audio has started): show the
         // same full-screen call view with a "Dialing..." status instead of nothing.
-        var callStatus = await LiveSessionUI.GetCallStatus(id, cancellationToken).ConfigureAwait(false);
+        var callStatus = await CallUI.GetCallStatus(id, cancellationToken).ConfigureAwait(false);
         if (callStatus == CallerStatus.Dialing) {
             DebugLog?.LogInformation("CALL_TRACE: OverLockView.ComputeState #{ChatId} → Outgoing", id);
             return new() {

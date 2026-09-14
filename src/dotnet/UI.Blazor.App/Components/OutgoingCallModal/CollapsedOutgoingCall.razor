@@ -27,6 +27,7 @@
     private IJSObjectReference? _jsRef;
 
     private IAuthors Authors => Hub.Authors;
+    private CallUI CallUI => Hub.CallUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private IncomingCallUI IncomingCallUI => Hub.IncomingCallUI;
 
@@ -81,7 +82,7 @@
 
     private Task OnHangUpClick()
         => State.Value.ChatId is { } chatId
-            ? LiveSessionUI.CancelCall(chatId, CancellationToken.None)
+            ? CallUI.CancelCall(chatId, CancellationToken.None)
             : Task.CompletedTask;
 
     // Nested types

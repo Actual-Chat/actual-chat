@@ -17,7 +17,7 @@
 </HeaderButton>
 
 @code {
-    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private CallUI CallUI => Hub.CallUI;
     private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
 
     private Chat Chat => ChatContext.Chat;
@@ -42,12 +42,12 @@
         // re-notify every invitee and extend the ring window.
         var isBusy = activity.IsActive || activity.IsDialing;
         // One call at a time: a call held in another chat disables the button here.
-        var canStartCall = await Hub.CallUI.CanStartCall(cancellationToken).ConfigureAwait(false);
+        var canStartCall = await CallUI.CanStartCall(cancellationToken).ConfigureAwait(false);
         return new Model(true, isBusy, canCall, !isBusy && !canStartCall);
     }
 
     private Task OnClick()
-        => LiveSessionUI.StartCall(Chat.Id, default, false, CancellationToken.None);
+        => CallUI.StartCall(Chat.Id, default, false, CancellationToken.None);
 
     private string GetTooltip(Model m)
         => m.IsInAnotherCall

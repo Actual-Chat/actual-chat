@@ -919,7 +919,7 @@ rarely moves; skipped where it doesn't:
 | `ChatUI.GetUnreadCount` | `Trimmed<int>` | ✅ — collapses `ChatUI.Get`, which fires on news, mentions, read position or settings |
 | `ChatVideoUI.IsOwnCameraRecording` / `IsOwnScreenCasting` | `bool` | ❌ — read local state set by the user's own click, so a delay lags their own feedback; only upstream is the now-consolidated `IsVideoAvailable` |
 | `TranslationUI.MustTranslate` / `NeedsTranslation` / `IsEnabled` | `bool(?)` | ❌ — derive from settings that rarely change, so there is nothing to suppress |
-| `LiveSessionUI.GetCallStatus` | `CallerStatus?` | ✅ — consolidated at its source, `ILiveSessions.GetCallStatus` |
+| `CallUI.GetCallStatus` | `CallerStatus?` | ✅ — consolidated at its source, `ILiveSessions.GetCallStatus` |
 | `LocationUI.IsOwnLive` | `bool` | ✅ — collapses `GetOwnLive`, which every sharer's position fix invalidates |
 | `LocationUI.IsOneTime` | `bool` | ❌ — not needed: `Duration` is immutable, so it captures `SharedLocations.Get` in isolation and never sees the fixes |
 

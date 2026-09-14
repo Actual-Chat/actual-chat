@@ -127,6 +127,7 @@ else {
 
     private IAuthors Authors => Hub.Authors;
     private ChatListUI ChatListUI => Hub.ChatListUI;
+    private CallUI CallUI => Hub.CallUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
@@ -226,18 +227,18 @@ else {
             : _selectedInvitees.Value.Remove(authorId);
 
     private Task StartCall()
-        => Run(_chatId, id => LiveSessionUI.StartCall(id, _selectedInvitees.Value.ToApiArray(), _hasVideo, default));
+        => Run(_chatId, id => CallUI.StartCall(id, _selectedInvitees.Value.ToApiArray(), _hasVideo, default));
     private async Task Accept() {
         if (State.Value.Incoming is not { } incoming)
             return;
 
-        await Run(incoming.ChatId, id => LiveSessionUI.AcceptCall(id, default));
+        await Run(incoming.ChatId, id => CallUI.AcceptCall(id, default));
         OpenChat(incoming.ChatId);
     }
     private Task Decline()
-        => Run(State.Value.Incoming?.ChatId, id => LiveSessionUI.DeclineCall(id, default));
+        => Run(State.Value.Incoming?.ChatId, id => CallUI.DeclineCall(id, default));
     private Task Cancel()
-        => Run(_chatId, id => LiveSessionUI.CancelCall(id, default));
+        => Run(_chatId, id => CallUI.CancelCall(id, default));
     private Task Stop()
         // LeaveCall is gone - hanging up now goes through the same SetParticipation path as the chat
         // header's hang-up button, via ChatAudioUI's recording/listening state.

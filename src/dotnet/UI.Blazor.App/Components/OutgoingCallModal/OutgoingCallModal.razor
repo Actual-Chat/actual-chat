@@ -43,6 +43,7 @@
     private bool _handled;
 
     private IAuthors Authors => Hub.Authors;
+    private CallUI CallUI => Hub.CallUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private IncomingCallUI IncomingCallUI => Hub.IncomingCallUI;
 
@@ -87,7 +88,7 @@
         _handled = true;
         var chatId = ChatId;
         Modal.Close();
-        return LiveSessionUI.CancelCall(chatId, CancellationToken.None);
+        return CallUI.CancelCall(chatId, CancellationToken.None);
     }
 
     // Collapse to the island: the modal auto-closes because ComputeState reads CollapsedOutgoingChatId.

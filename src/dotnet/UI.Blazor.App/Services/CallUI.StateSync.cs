@@ -129,7 +129,7 @@ public partial class CallUI
             _activeCall.Value = new ActiveCall(
                 chatId, CallOrigin.Incoming, CallPhase.Ringing, ring.Caller, ring.HasVideo);
         }
-        _ = ConfirmRing(chatId, RingAck.Ringing);
+        _ = SendRingAck(chatId, RingAck.Ringing);
     }
 
     private bool TryCommitActive(ChatId chatId)
@@ -149,7 +149,7 @@ public partial class CallUI
         // A denied mic still joins them - listening only, same as anywhere else.
         try {
             await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(false);
-            var hasMic = await Hub.AudioRecorder.MicrophonePermission
+            var hasMic = await AudioRecorder.MicrophonePermission
                 .CheckOrRequest(cancellationToken)
                 .ConfigureAwait(false);
             if (hasMic)
@@ -209,7 +209,7 @@ public partial class CallUI
         }
         foreach (var chatId in busyChatIds) {
             CallDebugLog?.LogInformation("CALL_TRACE: Busy #{ChatId}", chatId);
-            _ = ConfirmRing(chatId, RingAck.Busy);
+            _ = SendRingAck(chatId, RingAck.Busy);
             Bridge?.DismissCallNotification(chatId);
         }
     }
@@ -231,11 +231,11 @@ public partial class CallUI
         }
     }
 
-    private async Task ConfirmRing(ChatId chatId, RingAck ack)
+    private async Task SendRingAck(ChatId chatId, RingAck ack)
     {
         // Telemetry only (see RingAck), so it's fire-and-forget: a slow or failed ack never holds up the ring.
         try {
-            await LiveSessionUI.ConfirmRing(chatId, ack, CancellationToken.None).ConfigureAwait(false);
+            await ConfirmRing(chatId, ack, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogWarning(e, "ConfirmRing({Ack}) #{ChatId} failed", ack, chatId);
