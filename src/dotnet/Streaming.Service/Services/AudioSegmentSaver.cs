@@ -60,7 +60,8 @@ public sealed class AudioSegmentSaver(IServiceProvider services) : AudioProcesso
     {
         var converter = new WebMStreamConverter(Clocks, Log);
         var byteStream = converter.ToByteStream(audio, cancellationToken);
-        await Blobs[BlobScope.AudioRecord].UploadByteStream(blobId, byteStream, cancellationToken).ConfigureAwait(false);
+        await Blobs[BlobScope.AudioRecord].UploadByteStream(blobId, byteStream, cancellationToken)
+            .ConfigureAwait(false);
         await audio.WhenDurationAvailable.ConfigureAwait(false);
 
         var media = new MediaFull(mediaId) {

@@ -1,3 +1,4 @@
+using ActualChat.Audio;
 using ActualChat.Chat;
 using ActualChat.Transcription;
 using ActualLab.Versioning;
@@ -8,9 +9,12 @@ namespace ActualChat.Streaming.Services;
 // translation; it's made the first time a listener needs it and reused until the translation changes
 public sealed class ReplayDubs(IServiceProvider services)
 {
-    private readonly ConcurrentDictionary<(ChatEntryId Id, Language Language), Task<ActualChat.Media.Media?>> _inFlight = new();
+    private readonly ConcurrentDictionary<(ChatEntryId Id, Language Language), Task<ActualChat.Media.Media?>>
+        _inFlight = new();
+    private readonly SemaphoreSlim _synthesisLimiter = new(Constants.Audio.ReplayDubMaxConcurrentSynthesis);
     private IServiceProvider Services { get; } = services;
-    private IChatEntryLanguagesBackend EntryLanguages => field ??= Services.GetRequiredService<IChatEntryLanguagesBackend>();
+    private IChatEntryLanguagesBackend EntryLanguages
+        => field ??= Services.GetRequiredService<IChatEntryLanguagesBackend>();
     private ITranslationsBackend Translations => field ??= Services.GetRequiredService<ITranslationsBackend>();
     private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
     private ISpeechSynthesizer Synthesizer => field ??= Services.GetRequiredService<ISpeechSynthesizer>();
@@ -18,7 +22,8 @@ public sealed class ReplayDubs(IServiceProvider services)
     private ICommander Commander => field ??= Services.Commander();
     private ILogger Log => field ??= Services.LogFor<ReplayDubs>();
 
-    public Task<ActualChat.Media.Media?> GetOrCreate(ChatEntry entry, Language language, CancellationToken cancellationToken)
+    public async Task<ActualChat.Media.Media?> GetOrCreate(
+        ChatEntry entry, Language language, CancellationToken cancellationToken)
     {
         var key = (entry.Id, language);
         var source = TaskCompletionSourceExt.New<ActualChat.Media.Media?>();
@@ -27,22 +32,38 @@ public sealed class ReplayDubs(IServiceProvider services)
         // a synchronously-completing Run() can then never race its own removal out of the map
         if (ReferenceEquals(mediaTask, source.Task))
             _ = Run();
-        return mediaTask.WaitAsync(cancellationToken);
+        try {
+            return await mediaTask.WaitAsync(Constants.Audio.ReplayDubTimeout, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            // The work keeps running on its own budget; a later call may still reuse its result
+            return null;
+        }
 
         async Task Run()
         {
             ActualChat.Media.Media? result;
+            // Independent of our own caller's token: a slow entry must keep synthesizing after
+            // ReplayDubTimeout elapses above, bounded only by shutdown and ReplayDubSynthesisTimeout
+            using var cts = Services.HostLifetime().CreateStopTokenSource();
+            cts.CancelAfter(Constants.Audio.ReplayDubSynthesisTimeout);
             try {
-                using var cts = new CancellationTokenSource(Constants.Audio.ReplayDubTimeout);
                 result = await GetOrCreateImpl(entry, language, cts.Token).ConfigureAwait(false);
             }
+            catch (Exception e) when (e.IsCancellationOf(cts.Token)) {
+                Log.LogInformation("GetOrCreate: no {Language} dub for #{EntryId}, timed out, serving the original",
+                    language, entry.Id);
+                result = null;
+            }
             catch (Exception e) {
-                Log.LogInformation(e, "GetOrCreate: no {Language} dub for #{EntryId}, serving the original",
+                Log.LogWarning(e, "GetOrCreate: no {Language} dub for #{EntryId}, serving the original",
                     language, entry.Id);
                 result = null;
             }
             // Only our own entry: a fresh one may already have taken the key
-            _inFlight.TryRemove(new KeyValuePair<(ChatEntryId, Language), Task<ActualChat.Media.Media?>>(key, source.Task));
+            _inFlight.TryRemove(
+                new KeyValuePair<(ChatEntryId, Language), Task<ActualChat.Media.Media?>>(key, source.Task));
             source.SetResult(result);
         }
     }
@@ -53,7 +74,8 @@ public sealed class ReplayDubs(IServiceProvider services)
 
     // Private methods
 
-    private async Task<ActualChat.Media.Media?> GetOrCreateImpl(ChatEntry entry, Language language, CancellationToken cancellationToken)
+    private async Task<ActualChat.Media.Media?> GetOrCreateImpl(
+        ChatEntry entry, Language language, CancellationToken cancellationToken)
     {
         if (entry.Audio is not { } audio || audio.BlobId.IsNullOrEmpty() || !entry.SupportsTranslation(false))
             return null;
@@ -73,26 +95,45 @@ public sealed class ReplayDubs(IServiceProvider services)
         }
 
         var text = translation.Content;
-        var synthesized = await Synthesizer.Synthesize(text, new SpeechSynthesisOptions(language), cancellationToken)
-            .ConfigureAwait(false);
         // The MediaId is generated up front so the blob path is unique per attempt: a raced-out
         // loser's cleanup below must never delete a blob another attempt is still using
         var mediaId = MediaId.New(entry.ChatId.Value);
         var blobId = BlobPath.Format(BlobScope.AudioRecord, mediaId.LocalId, $"{language.Value}.webm");
-        await Saver.SaveAndCreateMedia(synthesized, mediaId, blobId, cancellationToken).ConfigureAwait(false);
+        AudioSource synthesized;
+        // Caps concurrent Soniox REST calls; held only around the TTS + upload, not the wait above
+        await _synthesisLimiter.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try {
+            synthesized = await Synthesizer.Synthesize(text, new SpeechSynthesisOptions(language), cancellationToken)
+                .ConfigureAwait(false);
+            await Saver.SaveAndCreateMedia(synthesized, mediaId, blobId, cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            _synthesisLimiter.Release();
+        }
+        if (synthesized.Duration <= TimeSpan.Zero) {
+            // Nothing was actually spoken - the media just created is useless
+            await Commander
+                .Call(new MediaBackend_Change(mediaId, null, Change.Remove<MediaFull>()), true, cancellationToken)
+                .ConfigureAwait(false);
+            return null;
+        }
+
         Translation? stamped;
         try {
-            stamped = await Commander.Call(new TranslationsBackend_Change(id, translation.Version, Change.Update(new TranslationDiff {
+            var diff = new TranslationDiff {
                 DubMediaId = mediaId,
                 DubContentHash = ChatEntryHashExt.GetContentHashString(text),
-            })), true, cancellationToken).ConfigureAwait(false);
+            };
+            var translateChange = new TranslationsBackend_Change(id, translation.Version, Change.Update(diff));
+            stamped = await Commander.Call(translateChange, true, cancellationToken).ConfigureAwait(false);
         }
         catch (VersionMismatchException) {
             stamped = null;
         }
         if (stamped?.DubMediaId != mediaId) {
             // A re-translation raced us: its content is newer than what we spoke
-            await Commander.Call(new MediaBackend_Change(mediaId, null, Change.Remove<MediaFull>()), true, cancellationToken)
+            await Commander
+                .Call(new MediaBackend_Change(mediaId, null, Change.Remove<MediaFull>()), true, cancellationToken)
                 .ConfigureAwait(false);
             return null;
         }

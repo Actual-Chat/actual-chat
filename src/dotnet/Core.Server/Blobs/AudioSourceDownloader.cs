@@ -14,24 +14,31 @@ public sealed class AudioSourceDownloader(IServiceProvider services)
         string blobId,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
+        => await TryDownload(blobId, skipTo, cancellationToken).ConfigureAwait(false)
+            ?? new AudioSource(
+                Clocks.SystemClock.Now,
+                AudioSource.DefaultFormat,
+                AsyncEnumerable.Empty<AudioFrame>(),
+                TimeSpan.Zero,
+                AudioSourceLog,
+                cancellationToken);
+
+    public async Task<AudioSource?> TryDownload(
+        string blobId,
+        TimeSpan skipTo,
+        CancellationToken cancellationToken)
     {
         Log.LogDebug("Fetching blob #{BlobId}", blobId);
         var blobStorage = Blobs[BlobScope.AudioRecord];
         var stream = await blobStorage.Read(blobId, cancellationToken).ConfigureAwait(false);
         if (stream == null) {
             Log.LogWarning("Blob #{BlobId} is not found", blobId);
-            var clocks = Services.Clocks();
-            return new AudioSource(
-                clocks.SystemClock.Now,
-                AudioSource.DefaultFormat,
-                AsyncEnumerable.Empty<AudioFrame>(),
-                TimeSpan.Zero,
-                Services.LogFor<AudioSource>(),
-                cancellationToken);
+            return null;
         }
+
         var byteStream = stream.ReadByteStream(true, cancellationToken);
-        var audio = await AudioSource.ReadFromByteStream(byteStream, Clocks, AudioSourceLog, cancellationToken).ConfigureAwait(false);
-        var skipped = audio.SkipTo(skipTo, cancellationToken);
-        return skipped;
+        var audio = await AudioSource.ReadFromByteStream(byteStream, Clocks, AudioSourceLog, cancellationToken)
+            .ConfigureAwait(false);
+        return audio.SkipTo(skipTo, cancellationToken);
     }
 }

@@ -37,7 +37,8 @@ public class ReplayDubsTest(
         var translation = await translations.Get(TranslationId.New(entry.Id, Languages.English), false, ct);
         translation!.HasValidDub().Should().BeTrue();
         translation.DubMediaId.Should().Be(first.Id);
-        var spoken = recorder.GetChunks(RecordingSpeechSynthesizer.OneShotStreamId(Languages.English, translation.Content));
+        var spoken = recorder.GetChunks(
+            RecordingSpeechSynthesizer.OneShotStreamId(Languages.English, translation.Content));
         spoken.Should().Equal([translation.Content], "synthesized once, from the stored translation");
     }
 
@@ -70,10 +71,8 @@ public class ReplayDubsTest(
         var id = TranslationId.New(entry.Id, Languages.English);
         var translation = await services.GetRequiredService<ITranslationsBackend>().Get(id, false, ct);
         var newContent = translation!.Content + " Again.";
-        await commander.Call(new TranslationsBackend_Change(id, translation.Version, Change.Update(new TranslationDiff {
-            Content = newContent,
-            SourceContentHash = translation.SourceContentHash,
-        })));
+        var diff = new TranslationDiff { Content = newContent, SourceContentHash = translation.SourceContentHash };
+        await commander.Call(new TranslationsBackend_Change(id, translation.Version, Change.Update(diff)));
 
         var second = await dubs.GetOrCreate(entry, Languages.English, ct);
 

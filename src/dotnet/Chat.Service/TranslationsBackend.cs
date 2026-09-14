@@ -174,9 +174,10 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 .ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         var result = dbTranslation.ToModel();
-        if (previousDubMediaId is { } orphan && result.DubMediaId != orphan)
-            await Commander.Call(new MediaBackend_Change(orphan, null, Change.Remove<MediaFull>()), true, cancellationToken)
-                .ConfigureAwait(false);
+        if (previousDubMediaId is { } orphan && result.DubMediaId != orphan) {
+            var removeOrphan = new MediaBackend_Change(orphan, null, Change.Remove<MediaFull>());
+            await Commander.Call(removeOrphan, true, cancellationToken).ConfigureAwait(false);
+        }
         return result;
 
         Translation ApplyDiff(Translation originalTranslation, TranslationDiff? diff) {

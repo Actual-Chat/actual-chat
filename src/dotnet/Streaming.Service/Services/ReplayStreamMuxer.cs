@@ -190,19 +190,11 @@ public sealed class ReplayStreamMuxer : WorkerBase
                 return;
             }
 
-            var downloadBlobId = dub != null ? dub.BlobId : blobId;
-            var downloadSkipTo = dub != null ? dubSkipTo : skipTo;
-
-            AudioSource audioSource;
-            try {
-                audioSource = await AudioDownloader.Download(downloadBlobId, downloadSkipTo, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception e) when (dub != null && !e.IsCancellationOf(cancellationToken)) {
-                Log.LogInformation(e,
-                    "ProcessEntry: {Language} dub blob for entry {EntryId} failed to download, serving the original",
-                    DubLanguage, entry.Id);
-                dub = null;
+            var audioSource = dub != null
+                ? await TryDownloadDub(dub, dubSkipTo, entry, cancellationToken).ConfigureAwait(false)
+                : null;
+            if (audioSource == null) {
+                dub = null; // No blob (or a download error) - fall back to the original
                 audioSource = await AudioDownloader.Download(blobId, skipTo, cancellationToken).ConfigureAwait(false);
             }
 
@@ -268,6 +260,20 @@ public sealed class ReplayStreamMuxer : WorkerBase
         }
     }
 
+    private async Task<AudioSource?> TryDownloadDub(
+        ActualChat.Media.Media dub, TimeSpan dubSkipTo, ChatEntry entry, CancellationToken cancellationToken)
+    {
+        try {
+            return await AudioDownloader.TryDownload(dub.BlobId, dubSkipTo, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogInformation(e,
+                "ProcessEntry: {Language} dub blob for entry {EntryId} failed to download, serving the original",
+                DubLanguage, entry.Id);
+            return null;
+        }
+    }
+
     // Dubbing lookahead
 
     // Yields entries in order while keeping dub synthesis running ReplayDubLookahead entries ahead,
@@ -302,7 +308,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
         var next = enumerator.Current;
         queue.Enqueue(next);
         if (DubLanguage != null)
-            dubTasks[next.Id] = Dubs.GetOrCreate(next, DubLanguage!, cancellationToken);
+            dubTasks[next.Id] = Dubs.GetOrCreate(next, DubLanguage, cancellationToken);
         return true;
     }
 

@@ -16,9 +16,12 @@ public sealed class ReplayStreamProcessorTest(ITestOutputHelper @out) : TestBase
         // arrange
         var liveStreams = new Mock<ILiveAudioStreams>(MockBehavior.Strict);
         liveStreams
-            .Setup(x => x.GetReplayStream(It.IsAny<Session>(), It.IsAny<ChatId>(), It.IsAny<Moment>(), It.IsAny<TimeSpan>(), 1.0, Languages.English, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetReplayStream(
+                It.IsAny<Session>(), It.IsAny<ChatId>(), It.IsAny<Moment>(), It.IsAny<TimeSpan>(),
+                1.0, Languages.English, It.IsAny<CancellationToken>()))
             .ReturnsAsync(EmptyStream());
-        var processor = new ReplayStreamProcessor(Services(liveStreams.Object), TestSession, TestChatId, Moment.EpochStart, TimeSpan.Zero) {
+        var processor = new ReplayStreamProcessor(
+            Services(liveStreams.Object), TestSession, TestChatId, Moment.EpochStart, TimeSpan.Zero) {
             DubLanguageProvider = _ => Task.FromResult<Language?>(Languages.English),
         };
 
@@ -35,9 +38,12 @@ public sealed class ReplayStreamProcessorTest(ITestOutputHelper @out) : TestBase
         // arrange
         var liveStreams = new Mock<ILiveAudioStreams>(MockBehavior.Strict);
         liveStreams
-            .Setup(x => x.GetReplayStream(It.IsAny<Session>(), It.IsAny<ChatId>(), It.IsAny<Moment>(), It.IsAny<TimeSpan>(), 1.0, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetReplayStream(
+                It.IsAny<Session>(), It.IsAny<ChatId>(), It.IsAny<Moment>(), It.IsAny<TimeSpan>(),
+                1.0, It.IsAny<CancellationToken>()))
             .ReturnsAsync(EmptyStream());
-        var processor = new ReplayStreamProcessor(Services(liveStreams.Object), TestSession, TestChatId, Moment.EpochStart, TimeSpan.Zero) {
+        var processor = new ReplayStreamProcessor(
+            Services(liveStreams.Object), TestSession, TestChatId, Moment.EpochStart, TimeSpan.Zero) {
             DubLanguageProvider = _ => Task.FromResult<Language?>(null),
         };
 
