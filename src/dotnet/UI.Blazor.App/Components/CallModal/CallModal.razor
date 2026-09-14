@@ -95,11 +95,20 @@
         await base.DisposeAsync().ConfigureAwait(false);
     }
 
-    private Task OnAcceptClick() {
+    private async Task OnAcceptClick() {
+        // Unlike the other actions it leaves the close to the view moving off Modal, so the chat doesn't flash
+        // before the full-screen view. A throw hands the ring back to the user, dismissal included.
+        if (_handled)
+            return;
+
         _handled = true;
-        var chatId = ChatId;
-        Modal.Close();
-        return CallScreensUI.Accept(chatId);
+        try {
+            await CallScreensUI.Accept(ChatId).ConfigureAwait(true);
+        }
+        catch {
+            _handled = false;
+            throw;
+        }
     }
 
     private Task OnDeclineClick() {
@@ -123,8 +132,8 @@
         return CallScreensUI.HangUp(chatId);
     }
 
-    // The modal closes on its own: the view turns Collapsed.
     private void OnCollapseClick() {
+        // The modal closes on its own: the view turns Collapsed.
         _handled = true;
         CallScreensUI.Collapse(ChatId);
     }
