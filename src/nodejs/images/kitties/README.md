@@ -5,23 +5,53 @@ The gallery offers side-by-side, light-only and dark-only views, plus three prev
 Its backgrounds come from `--background-01` in `src/nodejs/styles/colors.css`:
 light `#FFFFFF`, dark `#28282E`.
 
+## Files to edit
+
+| File | Purpose |
+| --- | --- |
+| `name.svg` | Editable light original: geometry, palette metadata and animation. |
+| `name-dark.svg` | Generated dark variant. Change its light original and regenerate. |
+| [index.html](index.html) | Generated preview gallery; opens without a build or server. |
+| [svg-preview.template.html](../../../../scripts/svg-preview.template.html) | Editable gallery layout and controls. |
+| [generate-svg-variants.mjs](../../../../scripts/generate-svg-variants.mjs) | Palette remapping and gallery generation. |
+
+Commit the light sources, generated dark siblings and any changed gallery output together.
+All commands below run from the repository root with the project's npm dependencies installed.
+
 ## Editing and generation
 
-`name.svg` is the editable light source. `name-dark.svg` and `index.html` are generated;
-keep them with the sources so the gallery also works without a build or server.
+1. Edit the relevant `name.svg` in a text or vector editor. Keep its `viewBox`, IDs,
+   `data-*` attributes, palette metadata, definitions, motion groups and embedded `<style>`.
+   Inspect the export diff: some editors strip metadata or flatten groups and transforms.
+2. Keep the background transparent, the palette at eight distinct paint colors or fewer,
+   and the outline a single color. Reuse existing colors where possible. Use native SVG
+   gradients, with a palette rule for every stop color, instead of raster images or bands
+   of tiny paths. Generation recolors gradients; it does not create them from traced bands.
+3. Regenerate, check the outputs, and run the generator tests:
 
-From the repository root:
+   ```sh
+   npm run images:kitties
+   npm run images:kitties:check
+   npm run test:svg-variants
+   ```
 
-```sh
-npm run images:kitties
-npm run images:kitties:check
-npm run test:svg-variants
-```
+4. Reload `index.html` and inspect both themes at normal and large sizes. Watch a full
+   animation cycle, including the most extreme pose, and check reduced motion. Inspect
+   ears, paws, tail joins and light fills against the dark background.
+5. Review the diff and commit the edited sources with their generated outputs.
 
-The existing `build.mjs` asset-copy step also regenerates changed outputs before copying
-the images. `--check` reports missing or stale outputs without writing anything.
+`images:kitties` writes dark variants and the gallery; it does not modify the light originals.
+`images:kitties:check` reports missing or stale outputs without writing anything.
+`test:svg-variants` checks the remapping behavior, including preservation of animation CSS.
+The existing [build.mjs](../../../../build.mjs) asset-copy step also regenerates changed outputs
+before copying the images. The generator does not simplify or retrace geometry, so keep
+source paths compact and avoid exporting raster content or excessive path points.
 
-Each light source includes a palette inside SVG metadata:
+## Dark palette rules
+
+To change only the dark appearance, edit the `dark` value in the light source's metadata.
+To introduce a new light paint, add or update its `light`/`dark` mapping too. Rules live in
+structured SVG metadata, not comments. Keep exactly one version-1 palette per source:
 
 ```xml
 <metadata>
@@ -44,6 +74,25 @@ for paint declarations in styles. It remaps fills, strokes, gradient/filter colo
 CSS paint declarations, then removes the palette metadata from the dark output.
 Missing colors, unknown scopes, duplicate rules and unsupported schema versions fail generation.
 Palette colors in `<style>` blocks use global rules; use attributes or inline styles for scoped exceptions.
+
+For example, these rules keep one part's white fill brighter and recolor a gradient's white
+stop separately from the global white rule:
+
+```xml
+<color role="highlight" light="#ffffff" dark="#e5e5f2" part="ear-right"/>
+<color role="backdrop" light="#ffffff" dark="#303038" target="asset--backdrop-gradient"/>
+```
+
+Place scoped rules inside the same palette as the global rules, using existing `data-part`
+values or IDs from that SVG. A `part` rule matches every group with that `data-part` value;
+use an ID rule to distinguish individual elements. To recolor a shared gradient separately,
+copy its definition under a unique ID, update the relevant `url(#...)` reference and target
+the new gradient ID. A rule on the shape using a gradient does not reach its definition in
+`<defs>`.
+
+Use an identity mapping (`light` and `dark` set to the same hex color) to retain a color in
+both themes. Keep alpha in `opacity`, `fill-opacity`, `stroke-opacity` or `stop-opacity`;
+named colors, `rgb(...)` and eight-digit hex paints are not supported by the palette parser.
 
 ## Animation
 
@@ -71,6 +120,12 @@ and the sleeping cat's fly is hidden. Animation styles, pivots and grouped parts
 the light source; regenerate after editing instead of changing the dark file directly.
 The sleeping cat's `hind-leg-right` group is separate from its two front paw groups.
 
+Keep each moving part's fill, markings, outline and clips together so none remain behind
+when it moves. Match CSS `transform-origin` to the intended pivot in the group's coordinate
+system; `data-pivot` records that point but does not drive the animation. Preserve existing
+parent transforms and `transform-box: view-box` when adjusting an ear or other joint.
+Use asset-specific class and keyframe names, and retain the reduced-motion resting pose.
+
 Animated ears keep their base outlines with the stationary head. Only their fills and
 upper edges rotate; the head paints over the ear underlap. Preserve that draw order when editing.
 Invite's grounded ear turns counterclockwise and the three flying ears turn clockwise
@@ -83,3 +138,30 @@ internal elements to the page. Runtime component migration is separate from thes
 
 The app's effective `Theme.currentTheme` should select the image URL during runtime integration.
 Use the dark sibling for `dark`; the approved light source also suits the light-background `ash` theme.
+
+## Adding or renaming an illustration
+
+Add an editable SVG with a lowercase, hyphenated name, such as `new-cat.svg`, and a complete
+palette. The generator discovers all `.svg` files here except names ending in `-dark.svg`;
+it adds each source to the gallery automatically. Prefix IDs with the asset name and update
+all `url(#...)` references and animation selectors when copying an existing illustration.
+
+Regenerate and review both themes. On rename or removal, also remove the old source and its
+old generated dark sibling: the generator does not delete orphaned outputs. Update any app
+references to the old filename separately.
+
+## Common editing problems
+
+| Symptom | Fix |
+| --- | --- |
+| `Unmapped paint` | Add a rule for that literal color in the light source's palette. Check gradient stops and CSS paints as well as paths. |
+| `Unknown palette scope` | Correct the `part` or `target` to match an existing `data-part` or ID. Editors may have renamed or removed it. |
+| Missing palette or unsupported version | Restore the source metadata; do not use a generated dark file as the editable original. |
+| `Stale SVG outputs` | Run `npm run images:kitties`, then include the regenerated files in the commit. |
+| Light rims show outside a dark outline | Inset or clip the underlying fill beneath the outline. Keep adjacent interior markings joined to avoid new seams. |
+| A moving part leaves a line or gap behind | Check group membership, stationary duplicate paths, pivot coordinates and overlap at the joint throughout the cycle. |
+| Browser still shows an old image | Reload the gallery and, if necessary, open the SVG directly and force-refresh it. |
+
+Checks verify generated output and remapping behavior; visual review is still needed for
+palette quality, geometry, seams and animation. The eight-color limit and compact path
+geometry are authoring constraints, not enforced by the generation command.
