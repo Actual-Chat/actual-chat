@@ -59,7 +59,8 @@ members. WebKit accepts extra URL scheme handlers only before the WKWebView exis
 | [MacOSCustomBlazorWebViewHandler.CreatePlatformView](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/MacOSCustomBlazorWebViewHandler.cs) replays the base handler's three config lines (`webwindowinterop` message handler, Blazor init script, `app://` scheme handler) and adds `content://`, autoplay and `__useWebAudio` | the labs handler raises `BlazorWebViewInitializing`; the config then moves back to `MauiWebView.MaciOS.OnInitializing` |
 | [LabsBlazorWebViewHandlerExt](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/LabsBlazorWebViewHandlerExt.cs) reaches the private `BlazorInitScript`, `WebViewScriptMessageHandler`, `SchemeHandler` and `MessageReceived` by reflection, failing fast on a rename | same as above |
 | `PatchedWKWebView` in the same file sets `Superview.NeedsLayout` on attach, because the labs `ContentPageHandler` adds content without invalidating layout and a late-attached WebView keeps a zero frame | the labs page handler invalidates layout |
-| The same subclass calls [WindowConfigurator.KeepTitlebarAboveContent](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/WindowConfigurator.cs) once it has a window: the labs handler installs a titlebar-wide drag overlay above the titlebar itself, so clicks on the traffic lights started a window drag until the first full-screen round trip put the titlebar back on top | `TitlebarDragOverlayView.HitTest` skips the standard window buttons |
+| The same subclass calls [WindowConfigurator.RemoveTitlebarDragOverlay](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/WindowConfigurator.cs) once it has a window: the labs handler installs a titlebar-wide drag overlay above the titlebar itself, so clicks on the traffic lights started a window drag, and with the page under the titlebar it would take every click in the headers' top strip. The page moves the window from its own drag regions instead: `window-drag.ts` posts to the `windowDrag` message handler `CreatePlatformView` registers, and `WindowConfigurator.WindowDragHandler` starts the drag from the last left-mouse event | the overlay is opt-out or hit-tests the page |
+| It also calls `WindowConfigurator.ExtendContentUnderTitlebar` there, which zeroes the content insets the labs handler applies once the WebView has a window (`setObscuredContentInsets`, the titlebar height, never reset in full screen) and hands that height to the page as `--titlebar-inset` instead - a document-start user script added in `CreatePlatformView` carries it across reloads | `MacOSBlazorWebView.ContentInsets` can opt out of the auto inset |
 | The `#if MACOS` branch in [MauiWebView.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/WebView/MauiWebView.cs) builds the view without event subscriptions | `MacOSBlazorWebView` gets the three events |
 | [MauiWebView.MacOS.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/WebView/MauiWebView.MacOS.cs) attaches its own `WKNavigationDelegate` and `WKUIDelegate` as the stand-in for `UrlLoading` | same |
 
@@ -154,6 +155,17 @@ markers:
   good and nothing reopens it, which left a windowless process in the Dock. The background
   state follows focus and window visibility, so a hidden or minimized window stops auto-reading
   chats. Cmd+Q quits as usual.
+- **The web UI extends under the titlebar**, the way Telegram's does. The labs window is a
+  full-size-content-view with a transparent titlebar and no title; only the navbar column reserves
+  the titlebar height (`--titlebar-inset`, the corner with the traffic lights) and lines its buttons
+  up under them (the `native-titlebar` class on `html`) at every window width, the chat list, the
+  chat header and the right panel run to the top edge. In narrow mode the chat header and full-screen
+  modals put their back button in that corner, so there the titlebar joins `--safe-area-top` the way
+  the notch does on iOS; the left and right panels keep the Telegram layout. Elements marked
+  `data-window-drag` (the navbar column, the layout header, the left and right panel headers) move
+  the window on a press that moves and follow the system double-click setting; plain clicks on them
+  keep working. In full screen the inset drops to 0 and
+  the titlebar slides over the page when the pointer reaches the top.
 - **Sign-in** uses the Windows-style flow: the default browser plus a `voxt-dev://` callback
   registered in `Info.plist` (a prod-flavour build needs `voxt` there). `ASWebAuthenticationSession` was tried and dropped, its
   handoff stalls in Chromium browsers and its ephemeral session forces a separate Google login.
