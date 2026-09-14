@@ -116,8 +116,9 @@ export function getImageMimeType(format: ImageFormat): string {
     return MIME_TYPES[format];
 }
 
-/** Formats a Chromium WebView cannot paint, so their preview must come from a converted copy.
- *  WebKit decodes both, but converting there too keeps one code path. */
+/** Formats whose preview must come from a converted copy. Chromium cannot paint HEIF at all, so
+ *  the conversion now runs on the wasm decode; it paints AVIF natively, kept here for older
+ *  WebViews. WebKit reads both and its caller skips the conversion. */
 export function needsPreviewConversion(format: ImageFormat): boolean {
     return format === 'heif' || format === 'avif';
 }
