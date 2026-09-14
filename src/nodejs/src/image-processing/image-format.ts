@@ -7,6 +7,7 @@ const HEIF_BRANDS = new Set(['heic', 'heix', 'hevc', 'hevx', 'heif', 'heim', 'he
 export const EXIF_HEADER = [0x45, 0x78, 0x69, 0x66, 0x00, 0x00];
 const EXIF_ORIENTATION_TAG = 0x0112;
 const TIFF_HEADER_LENGTH = 8;
+const TRANSFORM_BOX_LENGTH = 9;
 const WEBP_ANIMATION_FLAG = 0x02;
 const MIME_TYPES: Record<ImageFormat, string> = {
     jpeg: 'image/jpeg',
@@ -65,9 +66,12 @@ export function readImageDimensions(bytes: Uint8Array, format: ImageFormat): Ima
     }
 }
 
-/** EXIF Orientation of a HEIF/AVIF image, 1 when it has none. libheif ignores the tag and WebKit
- *  applies it, so a wasm decode has to apply it itself to land on the same pixels. */
+/** The orientation a HEIF/AVIF decode still owes, 1 when none: the EXIF tag, which libheif ignores
+ *  and WebKit applies, but only for a file with no irot/imir - both apply those and stop there. */
 export function readHeifOrientation(bytes: Uint8Array): number {
+    if (hasTransformProperty(bytes))
+        return 1;
+
     // The Exif item's payload is a TIFF block behind an 'Exif\0\0' marker; found by scanning
     // rather than by walking iinf/iloc, the same shortcut readLargestIspeDimensions takes
     const end = bytes.length - EXIF_HEADER.length - TIFF_HEADER_LENGTH;
@@ -79,6 +83,7 @@ export function readHeifOrientation(bytes: Uint8Array): number {
         if (orientation > 1)
             return orientation;
     }
+
     return 1;
 }
 
@@ -109,6 +114,7 @@ export function readExifOrientation(tiff: Uint8Array): number {
         const value = readUint16(entry + 8);
         return value >= 1 && value <= 8 ? value : 1;
     }
+
     return 1;
 }
 
@@ -124,6 +130,18 @@ export function needsPreviewConversion(format: ImageFormat): boolean {
 }
 
 // Private methods
+
+function hasTransformProperty(bytes: Uint8Array): boolean {
+    // Both boxes are exactly 9 bytes - size, type, one payload byte - and the size makes a stray
+    // match inside compressed data implausible; every camera HEIC carries an irot, angle 0 included
+    for (let offset = 4; offset + TRANSFORM_BOX_LENGTH <= bytes.length; offset++) {
+        const type = readAscii(bytes, offset, 4);
+        if ((type === 'irot' || type === 'imir') && readUint32BE(bytes, offset - 4) === TRANSFORM_BOX_LENGTH)
+            return true;
+    }
+
+    return false;
+}
 
 function readJpegDimensions(bytes: Uint8Array): ImageSize | null {
     // Same marker walk as stripJpeg in metadata-stripper.ts
@@ -197,6 +215,7 @@ function getIsoBaseMediaFormat(bytes: Uint8Array): ImageFormat {
         if (readAscii(bytes, offset, 4) === 'avif')
             return 'avif';
     }
+
     return HEIF_BRANDS.has(majorBrand) ? 'heif' : 'unknown';
 }
 
