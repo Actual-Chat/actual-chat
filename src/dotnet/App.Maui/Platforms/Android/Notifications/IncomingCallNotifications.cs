@@ -102,7 +102,8 @@ public static class IncomingCallNotifications
 
         // Native call notification: caller avatar/name, an "Incoming call" label, and prominent
         // Answer/Decline buttons the style builds from the intents (so no manual AddAction).
-        var callStyle = NotificationCompat.CallStyle.ForIncomingCall(caller, declinePendingIntent, acceptPendingIntent)!;
+        var callStyle = NotificationCompat.CallStyle
+            .ForIncomingCall(caller, declinePendingIntent, acceptPendingIntent)!;
 
         var builder = new NotificationCompat.Builder(Context, ChannelId)
             // ReSharper disable once AccessToStaticMemberViaDerivedType
@@ -133,6 +134,8 @@ public static class IncomingCallNotifications
 
         if (intent.GetBooleanExtra(AcceptExtraKey, false)) {
             Dismiss(chatId);
+            // Blazor starting up sees the call already Active and would never stop a ring it didn't start.
+            IncomingCallRinger.Stop();
             // Accept re-verifies the ring against LiveSessionUI.Get once Blazor is up —
             // a stale tap yields a "Call ended" toast, not a phantom join.
             _ = AppServicesAccessor.DispatchToBlazor(
@@ -145,7 +148,8 @@ public static class IncomingCallNotifications
         // take over once the app is up. The full-screen-intent path (over the lock screen / screen
         // off) shows the full-screen call view instead of the modal; a plain tap shows the modal.
         var overLockScreen = intent.GetBooleanExtra(FullScreenExtraKey, false);
-        DebugLog?.LogInformation("CALL_TRACE: HandleViewIntent → dispatch OnRing #{ChatId}, overLockScreen={OverLockScreen}",
+        DebugLog?.LogInformation(
+            "CALL_TRACE: HandleViewIntent → dispatch OnRing #{ChatId}, overLockScreen={OverLockScreen}",
             chatId, overLockScreen);
         _ = AppServicesAccessor.DispatchToBlazor(
             c => c.GetRequiredService<IncomingCallUI>().OnRing(chatId, overLockScreen),

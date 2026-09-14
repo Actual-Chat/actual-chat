@@ -20,6 +20,7 @@ public class CallActionReceiver : BroadcastReceiver
             return;
 
         IncomingCallNotifications.Dismiss(chatId);
+        IncomingCallRinger.Stop();
 
         // App alive: decline through the live Blazor scope — the same RPC client (and connection)
         // the in-app call UI uses. It also ends the in-app ring. The root container this receiver
