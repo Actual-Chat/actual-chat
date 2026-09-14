@@ -9,9 +9,9 @@
 
 <HeaderButton
     Class="btn-start-call"
-    Tooltip="@(m.CanCall ? L.ChatHeader_StartCall : L.ChatHeader_CallUnavailable)"
+    Tooltip="@GetTooltip(m)"
     TooltipPosition="FloatingPosition.Bottom"
-    IsDisabled="@(!m.CanCall)"
+    IsDisabled="@(!m.CanCall || m.IsInAnotherCall)"
     Click="OnClick">
     <i class="icon-phone text-2xl"></i>
 </HeaderButton>
@@ -27,7 +27,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         if (!enableIncompleteUI)
-            return new Model(false, false, false);
+            return new Model(false, false, false, false);
 
         var chatId = Chat.Id;
         var activity = await ChatActivityUI.GetCallActivity(chatId, cancellationToken).ConfigureAwait(false);
@@ -40,13 +40,23 @@
         }
         // A dialing call counts as busy: the ring is already ours, and offering the button again would
         // re-notify every invitee and extend the ring window.
-        return new Model(true, activity.IsActive || activity.IsDialing, canCall);
+        var isBusy = activity.IsActive || activity.IsDialing;
+        // One call at a time: a call held in another chat disables the button here.
+        var canStartCall = await Hub.CallUI.CanStartCall(cancellationToken).ConfigureAwait(false);
+        return new Model(true, isBusy, canCall, !isBusy && !canStartCall);
     }
 
     private Task OnClick()
         => LiveSessionUI.StartCall(Chat.Id, default, false, CancellationToken.None);
 
+    private string GetTooltip(Model m)
+        => m.IsInAnotherCall
+            ? L.Call_AlreadyInCall
+            : m.CanCall
+                ? L.ChatHeader_StartCall
+                : L.ChatHeader_CallUnavailable;
+
     // Nested types
 
-    public sealed record Model(bool EnableIncompleteUI, bool IsBusy, bool CanCall);
+    public sealed record Model(bool EnableIncompleteUI, bool IsBusy, bool CanCall, bool IsInAnotherCall);
 }
