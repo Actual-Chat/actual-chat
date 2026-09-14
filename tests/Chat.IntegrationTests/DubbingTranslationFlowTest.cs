@@ -4,6 +4,7 @@ using ActualChat.Module;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
+using ActualChat.Transcription.Module;
 using ActualLab.Rpc;
 
 namespace ActualChat.Chat.IntegrationTests;
@@ -178,6 +179,7 @@ public sealed class DubbingTranslationCollection : ICollectionFixture<DubbingTra
                 ConfigureHost = (_, cfg) => {
                     cfg.AddInMemory<ChatSettings>((x => x.IsTranslationEnabled, "true"));
                     cfg.AddInMemory<CoreServerSettings>((x => x.OpenAIKey, "test-key"));
+                    cfg.AddInMemory<TranscriptionSettings>((x => x.UseFakeTranscriber, "true"));
                 },
                 ConfigureServices = (_, services) => {
                     services.AddSingleton<Translator>(c => new FakeTranslator(c));

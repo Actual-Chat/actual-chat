@@ -152,6 +152,10 @@ public static partial class Constants
         public static readonly TimeSpan DubSynthesizerDownDelay = TimeSpan.FromSeconds(60);
         // Audio already transcribed when a dub is requested beyond which the listener counts as late
         public static readonly TimeSpan DubBacklogThreshold = TimeSpan.FromSeconds(5);
+        // A replay dub that isn't ready within this is served as the original for that entry
+        public static readonly TimeSpan ReplayDubTimeout = TimeSpan.FromSeconds(20);
+        // Entries whose dubs are prepared while the current one streams
+        public static readonly int ReplayDubLookahead = 2;
 
         // Watchdog: cancel ProcessAudio handler if no frame arrives within this window.
         // Opus frames are 20 ms; 2 s of silence means the producer is pathologically stalled.

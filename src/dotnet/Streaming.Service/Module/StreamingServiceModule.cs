@@ -39,6 +39,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         // Internal services
         services.AddSingleton(_ => new AudioSettings()); // Used in BlazorUIAppModule as well
         services.AddSingleton<AudioSegmentSaver>();
+        services.AddSingleton<ReplayDubs>();
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
