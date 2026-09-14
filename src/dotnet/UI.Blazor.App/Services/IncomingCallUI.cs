@@ -9,8 +9,6 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed record IncomingCall(ChatId ChatId, AuthorId Caller, bool HasVideo);
-
 /// <summary>
 /// Client-side incoming-ring state: pushes and notification reconciliation add candidate chats via
 /// <see cref="OnRing"/>; the first one <see cref="LiveSessionUI.Get"/> confirms as ringing is latched
