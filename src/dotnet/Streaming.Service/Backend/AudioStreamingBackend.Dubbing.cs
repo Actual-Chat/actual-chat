@@ -91,8 +91,13 @@ public partial class AudioStreamingBackend
             var decision = DubDecision.Undecided;
             var translated = Transcript.Empty;
             var spokenChunkCount = 0;
-            await foreach (var diff in ReadTranslation(translatedMemoizer, sourceMemoizer, cancellationToken)
-                               .ConfigureAwait(false)) {
+            bool IsTranslationComplete()
+                // The translator scales each increment's time map from the source's, so a translated
+                // transcript that reaches the source's end has nothing left to translate
+                => translated.IsStable
+                    && translated.TimeRange.End + Transcript.TimeMapEpsilon.Y >= Fold(sourceMemoizer).TimeRange.End;
+            var diffs = ReadTranslation(translatedMemoizer, sourceMemoizer, IsTranslationComplete, cancellationToken);
+            await foreach (var diff in diffs.ConfigureAwait(false)) {
                 translated += diff;
                 if (decision == DubDecision.Undecided) {
                     decision = DubStabilizer.Decide(Fold(sourceMemoizer), translated, language);
@@ -280,25 +285,28 @@ public partial class AudioStreamingBackend
         }
     }
 
-    private static async IAsyncEnumerable<TranscriptDiff> ReadTranslation(
+    // internal for tests
+    internal static async IAsyncEnumerable<TranscriptDiff> ReadTranslation(
         AsyncMemoizer<TranscriptDiff> translatedMemoizer,
         AsyncMemoizer<TranscriptDiff> sourceMemoizer,
+        Func<bool> isTranslationComplete,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         // The translated stream stays open until the entry is finalized, which waits for the
-        // re-transcription; but nothing more comes once the source has ended and its last
-        // translation is stable, and the author's next dub is chained behind this one - so the
-        // read ends at whichever of the two happens second.
+        // re-transcription; but nothing more comes once the source has ended and the whole of it is
+        // translated (a stable diff alone isn't that: with progressive finals one can land while the
+        // last increment is still with the translator), and the author's next dub is chained behind
+        // this one - so the read ends at whichever of the two happens second.
         using var replayCts = cancellationToken.CreateLinkedTokenSource();
         var sourceEndTask = sourceMemoizer.WhenRunning ?? Task.CompletedTask;
         var diffs = translatedMemoizer.Replay(replayCts.Token).GetAsyncEnumerator(replayCts.Token);
         try {
-            var isStable = false;
             while (true) {
                 var moveNextTask = diffs.MoveNextAsync().AsTask();
-                if (isStable) {
+                if (isTranslationComplete()) {
                     await Task.WhenAny(moveNextTask, sourceEndTask).ConfigureAwait(false);
-                    if (!moveNextTask.IsCompleted) {
+                    // Re-asked once the source has ended: it may have grown since the last translation
+                    if (!moveNextTask.IsCompleted && isTranslationComplete()) {
                         replayCts.Cancel();
                         await moveNextTask.SilentAwait(false);
                         yield break;
@@ -307,9 +315,7 @@ public partial class AudioStreamingBackend
                 if (!await moveNextTask.ConfigureAwait(false))
                     yield break;
 
-                var diff = diffs.Current;
-                isStable = diff.IsStable;
-                yield return diff;
+                yield return diffs.Current;
             }
         }
         finally {

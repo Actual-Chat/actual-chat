@@ -36,6 +36,57 @@ public class DubbingTranslationFlowTest(
         => AssertDubSpeaksTheTranslation(TimeSpan.FromMilliseconds(100), mustRequestBeforeEntry: false,
             backlogSeconds: (float)Constants.Audio.DubBacklogThreshold.TotalSeconds + 1);
 
+    [Fact(Timeout = 90_000)]
+    public async Task DubShouldSpeakEachStablePhraseAsItArrives()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        var sourceId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
+        var dubId = StreamId.New(sourceId, Languages.English);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var ct = cts.Token;
+        const string firstPhrase = "Привет, как у тебя дела?";
+        const string secondPhrase = firstPhrase + " Хорошо, спасибо.";
+        var source = Channel.CreateUnbounded<TranscriptDiff>();
+        var pushSourceTask = BackgroundTask.Run(
+            () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
+            ct);
+        var last = Transcript.Empty;
+        Push(Unstable("Привет, как"));
+        await backend.WhenTranscriptPublished(sourceId, ct);
+        await Tester.CreateStreamingEntry(chatId, Languages.Russian, streamId: sourceId.Value, cancellationToken: ct);
+
+        // act - the first phrase turns stable while the speaker goes on talking
+        var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+        Push(Stable(firstPhrase));
+        var firstChunks = await recorder.WhenSpoken(dubId.Value, 1, ct);
+        Push(Unstable(secondPhrase[..^5]));
+        Push(Stable(secondPhrase));
+        source.Writer.Complete();
+        await pushSourceTask.SilentAwait(false);
+        var chunks = await recorder.WhenSpoken(dubId.Value, 2, ct);
+
+        // assert
+        stream.Should().NotBeNull();
+        firstChunks.Should().Equal([FakeTranslator.Translated(firstPhrase, Languages.English)],
+            "a phrase that is final is spoken before the utterance ends");
+        chunks.Should().HaveCount(2);
+        chunks[1].Should().Contain("Хорошо, спасибо.").And.NotContain(firstPhrase,
+            "the second chunk is only the increment, never a re-read of the first phrase");
+        var frameCount = await stream!.CountAsync(ct).AsTask().WaitAsync(TimeSpan.FromSeconds(10), ct);
+        frameCount.Should().BeGreaterThan(1, "the dub ends on its own once the whole source is translated");
+        return;
+
+        void Push(Transcript transcript) {
+            source.Writer.TryWrite(transcript - last);
+            last = transcript;
+        }
+    }
+
     // Private methods
 
     private async Task AssertDubSpeaksTheTranslation(

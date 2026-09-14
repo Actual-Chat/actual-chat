@@ -197,9 +197,15 @@ skips the wait.
    rather than the whole backlog read out first.
    **End.** The translated stream stays open until the entry is finalized,
    which waits for the re-transcription; the dub reads it only until the
-   source transcript has ended *and* its last translation is stable
-   (`ReadTranslation`), because nothing more is spoken after that and the
-   author's next dub is chained behind this one.
+   source transcript has ended *and* the whole of it is translated
+   (`ReadTranslation`): the translated transcript is stable and its time map
+   reaches the source's end — the translator scales each increment's time
+   map from the source's, so the ends line up. A stable diff alone is not
+   enough: with progressive finals one lands while the last increment is
+   still with the translator. The check is re-asked once the source has
+   actually ended, since the source can grow after the translation last
+   caught up with it. Nothing more is spoken after that, and the author's
+   next dub is chained behind this one.
 4. `finally`: the decision defaults to `false`, the text channel is
    completed (with the error, if any), and the synthesis task is awaited.
 
@@ -219,11 +225,22 @@ un-say audio. Whitespace-only chunks are skipped. `Skip(translated)` sets
 Stability reaches the dub through the translated diffs:
 `TranslationsBackend.TranslateTranscriptStream` writes every diff off a
 transcript that carries `IsStable`, and promotes the stable prefix even
-when the newly stable text is unchanged (Soniox finalizes an utterance
-with the text it already showed) — an empty diff with `IsStable = true`
-folds to a stable transcript on the reader side. Before that, no
-translated diff on the wire was ever stable and a dub had nothing it
-could speak.
+when the newly stable text is unchanged — an empty diff with
+`IsStable = true` folds to a stable transcript on the reader side. Before
+that, no translated diff on the wire was ever stable and a dub had
+nothing it could speak.
+
+Where the stability comes from: Soniox streams `is_final` tokens
+progressively (a few seconds behind the tail, and immediately at every
+pause with endpoint detection on), and `SonioxTranscriptBuilder.Update`
+turns each message that brings new finals into a stable finals-only
+transcript followed, if there is a tail, by the unstable finals+tail one
+(`src/dotnet/Transcription.Service/Transcribers/SonioxTranscriptBuilder.cs`).
+The throttle passes stable transcripts through untouched, the translator
+promotes per increment, and the dub speaks per increment — one TTS request
+per finalized phrase. Deepgram and Google mark their final results stable
+the same way. Manual `finalize` is not used: endpoints give the phrase
+granularity and forcing finals early degrades accuracy.
 
 `Decide(source, translated, target)`:
 
