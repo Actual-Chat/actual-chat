@@ -19,11 +19,15 @@ public class CallScreensUIDecisionsTest
     [InlineData(CallOrigin.Outgoing, CallPhase.Active, true, CallViewKind.FullScreen)]
     public void ViewShouldFollowPhaseAndWidth(CallOrigin origin, CallPhase phase, bool isNarrow, CallViewKind expected)
     {
+        // arrange
+        var call = Call(origin, phase);
+
         // act
-        var view = Decide(Call(origin, phase), isNarrow);
+        var view = Decide(call, isNarrow);
 
         // assert
         view.Kind.Should().Be(expected);
+        view.Call.Should().Be(call, "the view loop tells a released slot by the call going away, even from None");
         view.IsOverLock.Should().BeFalse();
     }
 
@@ -49,6 +53,19 @@ public class CallScreensUIDecisionsTest
         // assert
         view.Kind.Should().Be(CallViewKind.None, "there's no invitee to show before the server's dialing");
         view.Call.Should().Be(call, "the view loop tells a released slot by the call going away");
+    }
+
+    [Fact]
+    public void UnconfirmedDialingShouldIgnoreCollapse()
+    {
+        // arrange
+        var call = Call(CallOrigin.Outgoing, CallPhase.Dialing);
+
+        // act
+        var view = Decide(call, isNarrow: true, Flags(collapsed: ChatA), isDialingConfirmed: false);
+
+        // assert
+        view.Kind.Should().Be(CallViewKind.None, "the island names the invitee too, so it waits as well");
     }
 
     [Theory]
