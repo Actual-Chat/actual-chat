@@ -52,7 +52,7 @@ export class ImageProcessor {
             this.reset();
         };
         const client = rpcClient<ImageProcessorWorker>('ImageProcessor.client', worker, PROCESS_TIMEOUT_MS);
-        client.init(new URL('/dist/jpegli', globalThis.location.href).href)
+        client.init(new URL('/dist', globalThis.location.href).href)
             .catch((e: unknown) => errorLog?.log('init failed:', e));
         this._current = { worker, client, pendingCount: 0 };
         return this._current;

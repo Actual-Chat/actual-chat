@@ -2,6 +2,7 @@ import { rpcServer } from 'rpc';
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { base64Encode } from '../actuallab-rpc/base64.js';
+import { HeifDecoder } from './heif-decoder';
 import { canHaveAlpha, chooseEncoding, tryKeepSource } from './image-encoding-policy';
 import { getImageMimeType, isAnimatedImage, readImageDimensions, sniffImageFormat } from './image-format';
 import { fitWithinBudget } from './image-geometry';
@@ -23,13 +24,14 @@ const JPEG_DISTANCE = 1.9;
 // WebKit's canvas encoder maps quality much higher than Chromium's; both land near SSIMULACRA2 74
 const FALLBACK_JPEG_QUALITY = DeviceInfo.isWebKit ? 0.5 : 0.75;
 
-let jpegliBaseUrl = '';
+let distBaseUrl = '';
 let whenEncoderLoaded: Promise<JpegliEncoder | null> | null = null;
+let whenDecoderLoaded: Promise<HeifDecoder | null> | null = null;
 let queueTail: Promise<unknown> = Promise.resolve();
 
 export const serverImpl: ImageProcessorWorker = {
     init: (baseUrl: string): Promise<void> => {
-        jpegliBaseUrl = baseUrl;
+        distBaseUrl = baseUrl.replace(/\/$/, '');
         return Promise.resolve();
     },
     // One image at a time: a decoded 4K frame alone is ~44 MB
@@ -58,7 +60,7 @@ async function processImage(source: Blob, request: ImageProcessRequest): Promise
     try {
         for (const spec of request.outputs) {
             if (spec.kind === 'placeholder') {
-                outputs.push(await createPlaceholderOutput(source, bitmap));
+                outputs.push(await createPlaceholderOutput(source, bytes, format, bitmap));
                 continue;
             }
 
@@ -78,7 +80,7 @@ async function processImage(source: Blob, request: ImageProcessRequest): Promise
                 }
             }
 
-            bitmap ??= await createImageBitmap(source);
+            bitmap ??= await decodeBitmap(source, bytes, format);
             outputs.push(
                 await reencode(bitmap, source, bytes, format, spec, request.maxMobileEncodePixels));
         }
@@ -91,8 +93,13 @@ async function processImage(source: Blob, request: ImageProcessRequest): Promise
     }
 }
 
-async function createPlaceholderOutput(source: Blob, bitmap: ImageBitmap | null): Promise<ImageOutput> {
-    const placeholderBitmap = bitmap ?? await tryCreatePlaceholderBitmap(source);
+async function createPlaceholderOutput(
+    source: Blob,
+    bytes: Uint8Array,
+    format: ImageFormat,
+    bitmap: ImageBitmap | null,
+): Promise<ImageOutput> {
+    const placeholderBitmap = bitmap ?? await tryCreatePlaceholderBitmap(source, bytes, format);
     try {
         const packed = placeholderBitmap
             ? await tryEncodeWithRebuild(getEncoder, encoder => encodePlaceholder(placeholderBitmap, encoder))
@@ -108,15 +115,47 @@ async function createPlaceholderOutput(source: Blob, bitmap: ImageBitmap | null)
     }
 }
 
-async function tryCreatePlaceholderBitmap(source: Blob): Promise<ImageBitmap | null> {
+async function tryCreatePlaceholderBitmap(
+    source: Blob,
+    bytes: Uint8Array,
+    format: ImageFormat,
+): Promise<ImageBitmap | null> {
     // Runs only when the main output left bitmap null (a passthrough format, or a source too
     // big to decode on this device); never grows past ~64px on the long side, so it's always cheap
     try {
-        return await createImageBitmap(source, { resizeWidth: 64, resizeQuality: 'high' });
+        return await decodeBitmap(source, bytes, format, { resizeWidth: 64, resizeQuality: 'high' });
     }
     catch (e) {
         errorLog?.log('tryCreatePlaceholderBitmap: decode failed', e);
         return null;
+    }
+}
+
+/** Decodes via the browser, falling back to the libheif wasm for the HEIC that Chromium and
+ *  Firefox cannot read. Trying the browser first keeps WebKit on its native path, and lets a
+ *  browser that gains HEIC support drop the fallback on its own. */
+async function decodeBitmap(
+    source: Blob,
+    bytes: Uint8Array,
+    format: ImageFormat,
+    options?: ImageBitmapOptions,
+): Promise<ImageBitmap> {
+    const toBitmap = (image: ImageBitmapSource): Promise<ImageBitmap> =>
+        options ? createImageBitmap(image, options) : createImageBitmap(image);
+    try {
+        return await toBitmap(source);
+    }
+    catch (e) {
+        if (format !== 'heif')
+            throw e;
+
+        debugLog?.log('decodeBitmap: no native HEIC decode, falling back to libheif');
+        const decoder = await getDecoder();
+        const image = await decoder?.decode(bytes);
+        if (!image)
+            throw e;
+
+        return await toBitmap(new ImageData(image.data, image.width, image.height));
     }
 }
 
@@ -230,12 +269,21 @@ export async function tryEncodeWithRebuild<T>(
 }
 
 export function getEncoder(): Promise<JpegliEncoder | null> {
-    whenEncoderLoaded ??= JpegliEncoder.load(jpegliBaseUrl).catch((e: unknown) => {
+    whenEncoderLoaded ??= JpegliEncoder.load(`${distBaseUrl}/jpegli`).catch((e: unknown) => {
         errorLog?.log('getEncoder: jpegli failed to load, falling back to canvas:', e);
         whenEncoderLoaded = null;
         return null;
     });
     return whenEncoderLoaded;
+}
+
+export function getDecoder(): Promise<HeifDecoder | null> {
+    whenDecoderLoaded ??= HeifDecoder.load(`${distBaseUrl}/libheif`).catch((e: unknown) => {
+        errorLog?.log('getDecoder: libheif failed to load:', e);
+        whenDecoderLoaded = null;
+        return null;
+    });
+    return whenDecoderLoaded;
 }
 
 function hasTransparentPixels(rgba: Uint8ClampedArray): boolean {

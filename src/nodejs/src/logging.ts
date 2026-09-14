@@ -150,7 +150,8 @@ export type LogScope =
     | 'WebFileProvider'
     | 'ImageProcessor'
     | 'ImageProcessorWorker'
-    | 'JpegliEncoder';
+    | 'JpegliEncoder'
+    | 'HeifDecoder';
 
 const defaults: Record<LogScope, LogLevel> = {
     default: LogLevel.Warn,
@@ -274,6 +275,7 @@ const defaults: Record<LogScope, LogLevel> = {
     ImageProcessor: LogLevel.Warn,
     ImageProcessorWorker: LogLevel.Warn,
     JpegliEncoder: LogLevel.Info,
+    HeifDecoder: LogLevel.Info,
 };
 
 export const getLogs = createLogProvider<LogScope>('', defaults);

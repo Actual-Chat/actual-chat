@@ -41,7 +41,8 @@ export interface ImageProcessResult {
 }
 
 export interface ImageProcessorWorker {
-    init(jpegliBaseUrl: string): Promise<void>;
+    /** The folder holding the wasm subfolders - `jpegli` and `libheif`. */
+    init(distBaseUrl: string): Promise<void>;
     /** `timeout` is consumed by the RPC client, the worker never receives it. */
     process(source: Blob, request: ImageProcessRequest, timeout?: RpcTimeout): Promise<ImageProcessResult>;
 }
