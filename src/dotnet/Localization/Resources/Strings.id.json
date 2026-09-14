@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "Sapa ",
   "ChatView_SayHiTo_Suffix": "!",
   "ChatView_ForwardedFrom": "Diteruskan dari",
+  "ChatView_SentViaApi": "Dikirim melalui API, misalnya oleh agen AI",
   "ChatView_MessageDeleted": "Pesan telah dihapus.",
   "ChatView_SendingAttachments": "Mengirim lampiran…",
   "ChatView_ShowDetails": "Tampilkan detail",

@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "Pozdravite ",
   "ChatView_SayHiTo_Suffix": "!",
   "ChatView_ForwardedFrom": "Proslijeđeno od",
+  "ChatView_SentViaApi": "Poslano putem API-⁠ja, npr. od AI agenta",
   "ChatView_MessageDeleted": "Poruka je obrisana.",
   "ChatView_SendingAttachments": "Slanje priloga…",
   "ChatView_ShowDetails": "Prikažite detalje",

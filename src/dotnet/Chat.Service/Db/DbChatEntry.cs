@@ -37,6 +37,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool IsSystemEntry { get; set; }
     public bool IsThreadStartEntry { get; set; }
     public bool IsThreadEntry { get; set; }
+    public bool IsViaApi { get; set; }
     public string ClientId { get; set; } = "";
 
     public string? ForwardedChatTitle { get; set; }
@@ -98,6 +99,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         if (HasReactions) flags |= ChatEntryFlags.HasReactions;
         if (IsThreadStartEntry) flags |= ChatEntryFlags.IsThreadStart;
         if (IsThreadEntry) flags |= ChatEntryFlags.IsThread;
+        if (IsViaApi) flags |= ChatEntryFlags.IsViaApi;
         if (hasUploadingAttachments) flags |= ChatEntryFlags.HasUploadingAttachments;
 
         // Build partial audio from DB columns
@@ -204,6 +206,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsRemoved = model.IsRemoved;
         IsThreadStartEntry = model.IsThreadStart;
         IsThreadEntry = model.IsThread;
+        IsViaApi = model.IsViaApi;
         ClientId = model.ClientId;
 
         AuthorId = model.AuthorId.Value;

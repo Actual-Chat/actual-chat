@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "",
   "ChatView_SayHiTo_Suffix": " さんに挨拶しましょう!",
   "ChatView_ForwardedFrom": "転送元:",
+  "ChatView_SentViaApi": "API 経由で送信されました（AI エージェントなど）",
   "ChatView_MessageDeleted": "このメッセージは削除されました。",
   "ChatView_SendingAttachments": "添付ファイルを送信中…",
   "ChatView_ShowDetails": "詳細を表示",

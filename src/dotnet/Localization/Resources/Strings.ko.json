@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "",
   "ChatView_SayHiTo_Suffix": "님에게 인사해 보세요!",
   "ChatView_ForwardedFrom": "전달한 곳:",
+  "ChatView_SentViaApi": "API를 통해 전송됨(예: AI 에이전트)",
   "ChatView_MessageDeleted": "메시지가 삭제되었습니다.",
   "ChatView_SendingAttachments": "첨부 파일 전송 중…",
   "ChatView_ShowDetails": "세부 정보 보기",

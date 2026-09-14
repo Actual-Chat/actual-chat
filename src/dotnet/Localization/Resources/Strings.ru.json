@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "",
   "ChatView_SayHiTo_Suffix": " ждёт вашего приветствия!",
   "ChatView_ForwardedFrom": "Переслано из",
+  "ChatView_SentViaApi": "Отправлено через API, например ИИ-\u2060агентом",
   "ChatView_MessageDeleted": "Сообщение удалено.",
   "ChatView_SendingAttachments": "Отправка вложений…",
   "ChatView_ShowDetails": "Показать детали",

@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "",
   "ChatView_SayHiTo_Suffix": " kişisine merhaba deyin!",
   "ChatView_ForwardedFrom": "Şuradan iletildi:",
+  "ChatView_SentViaApi": "API üzerinden gönderildi, örneğin bir yapay zekâ ajanı tarafından",
   "ChatView_MessageDeleted": "Mesaj silindi.",
   "ChatView_SendingAttachments": "Ekler gönderiliyor…",
   "ChatView_ShowDetails": "Ayrıntıları gösterin",

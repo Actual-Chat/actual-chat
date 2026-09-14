@@ -289,6 +289,9 @@
   "ChatView_SayHiTo_Prefix": "Dites bonjour à ",
   "ChatView_SayHiTo_Suffix": " чекає на ваше привітання!",
   "ChatView_ForwardedFrom": "Weitergeleitet von",
+  // Tooltip on the robot icon beside the time of a message an app or an AI agent posted
+  // through the author's API key rather than the author typing it.
+  "ChatView_SentViaApi": "API üzerinden gönderildi, örneğin bir yapay zekâ ajanı tarafından",
   "ChatView_MessageDeleted": "このメッセージは削除されました。",
   "ChatView_SendingAttachments": "Изпращане на прикачени файлове…",
   "ChatView_ShowDetails": "Покажете подробностите",

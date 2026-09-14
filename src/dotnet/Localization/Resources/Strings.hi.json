@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "",
   "ChatView_SayHiTo_Suffix": " को नमस्ते कहें!",
   "ChatView_ForwardedFrom": "यहाँ से अग्रेषित:",
+  "ChatView_SentViaApi": "API के ज़रिए भेजा गया, जैसे किसी AI एजेंट द्वारा",
   "ChatView_MessageDeleted": "यह संदेश हटा दिया गया था।",
   "ChatView_SendingAttachments": "अटैचमेंट भेजे जा रहे हैं…",
   "ChatView_ShowDetails": "विवरण दिखाएँ",

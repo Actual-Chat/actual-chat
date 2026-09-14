@@ -1142,10 +1142,10 @@ public partial class ChatUI
                     && entry.LocalId > lastDissolvingLid
                     && (prevEntry == null || prevEntry.LocalId <= lastDissolvingLid))
                     isBlockStart = true;
-                // A same-author message that switches kind (transcribed vs not) starts a new block,
-                // so its author header signals the kind change.
+                // A same-author message that switches kind (transcribed vs not, typed vs sent via API)
+                // starts a new block, so its author header signals the kind change.
                 if (!isBlockStart && prevEntry != null && prevEntry.AuthorId == entry.AuthorId
-                    && isPrevAudio != IsAudioKind(entry))
+                    && (isPrevAudio != IsAudioKind(entry) || prevEntry.IsViaApi != entry.IsViaApi))
                     isBlockStart = true;
                 var isForward = entry.Forwarded is not null;
                 var isPrevForward = prevEntry is not null && prevEntry.Forwarded is not null;

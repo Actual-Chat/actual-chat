@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "跟 ",
   "ChatView_SayHiTo_Suffix": " 打个招呼吧!",
   "ChatView_ForwardedFrom": "转发自",
+  "ChatView_SentViaApi": "通过 API 发送，例如由 AI 智能体发送",
   "ChatView_MessageDeleted": "该消息已删除。",
   "ChatView_SendingAttachments": "正在发送附件…",
   "ChatView_ShowDetails": "显示详情",
