@@ -67,6 +67,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public GestureUI GestureUI => field ??= Services.GetRequiredService<GestureUI>();
     public LiveSessionUI LiveSessionUI => field ??= Services.GetRequiredService<LiveSessionUI>();
     public IncomingCallUI IncomingCallUI => field ??= Services.GetRequiredService<IncomingCallUI>();
+    public CallUI CallUI => field ??= Services.GetRequiredService<CallUI>();
     public LiveBlockUI LiveBlockUI => field ??= Services.GetRequiredService<LiveBlockUI>();
     public ChatActivityUI ChatActivityUI => field ??= Services.GetRequiredService<ChatActivityUI>();
     public new NotificationUI NotificationUI => field ??= Services.GetRequiredService<NotificationUI>();

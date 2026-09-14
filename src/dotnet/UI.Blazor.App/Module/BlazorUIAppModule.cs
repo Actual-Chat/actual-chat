@@ -112,6 +112,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<LiveSessionUI>(ServiceLifetime.Scoped);
         fusion.AddService<LiveBlockUI>(ServiceLifetime.Scoped);
         fusion.AddService<IncomingCallUI>(ServiceLifetime.Scoped);
+        fusion.AddService<CallUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatActivityUI>(ServiceLifetime.Scoped);
 
         // Settings

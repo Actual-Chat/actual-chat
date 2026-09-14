@@ -160,21 +160,6 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public virtual Task<IncomingCall?> GetIncomingCall(CancellationToken cancellationToken)
         => _incomingCall.Use(cancellationToken);
 
-    public static IncomingCall? FindRingingCall(LiveSession? live, AuthorId ownAuthorId)
-    {
-        // No conversation yet means nobody has answered; once someone does, it's no longer an incoming ring.
-        if (live is not { Kind: LiveSessionKind.Call, Conversation: null })
-            return null;
-        if (live.Host == ownAuthorId)
-            return null;
-
-        var invite = live.Invites.FirstOrDefault(i => i.InviteeId == ownAuthorId);
-        if (invite is not { Status: CallInviteStatus.Ringing })
-            return null;
-
-        return new IncomingCall(live.ChatId, live.Host, live.Rules.VideoAllowed);
-    }
-
     public async Task Accept(ChatId chatId)
     {
         var isOverLockScreen = _overLockRingChatId.Value == chatId;
@@ -463,7 +448,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     {
         var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var call = ownAuthor is null ? null : FindRingingCall(live, ownAuthor.Id);
+        var call = ownAuthor is null ? null : CallUI.FindRingingCall(live, ownAuthor.Id);
         CallDebugLog?.LogInformation(
             "CALL_TRACE: GetRingingCall #{ChatId} → hasCall={HasCall}; liveNull={LiveNull}, "
             + "liveKind={Kind}, host={Host}, ownNull={OwnNull}, own={Own}, invites=[{Invites}]",
