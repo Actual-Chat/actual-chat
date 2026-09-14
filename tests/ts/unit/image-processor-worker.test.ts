@@ -1,5 +1,6 @@
 import fs from 'node:fs';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import type { MockInstance } from 'vitest';
 import { HeifDecoder } from 'image-processing/heif-decoder';
 import type {
     ImageOutputSpec,
@@ -115,9 +116,21 @@ function makeGradientRgba(width: number, height: number): Uint8ClampedArray {
 // registered for that exact Blob and synthesizes a bitmap of it (or of the requested resize).
 const sourceSizeByBlob = new WeakMap<Blob, ImageSize>();
 
+class TestImageData {
+    constructor(
+        public readonly data: Uint8ClampedArray,
+        public readonly width: number,
+        public readonly height: number,
+    ) {}
+}
+vi.stubGlobal('ImageData', TestImageData);
+
 const createImageBitmapMock = vi.fn(
-    (source: Blob, options?: { resizeWidth?: number; resizeHeight?: number }): Promise<ImageBitmap> => {
-        const size = sourceSizeByBlob.get(source);
+    (
+        source: Blob | TestImageData,
+        options?: { resizeWidth?: number; resizeHeight?: number },
+    ): Promise<ImageBitmap> => {
+        const size = source instanceof TestImageData ? source : sourceSizeByBlob.get(source);
         if (!size)
             throw new Error('createImageBitmapMock: unregistered source blob');
 
@@ -257,5 +270,71 @@ describe('placeholder output', () => {
         const placeholder = result.outputs.find(o => o.kind === 'placeholder');
         expect(main).toBeTruthy();
         expect(placeholder?.placeholder).toBe('');
+    });
+});
+
+// A fresh copy of the module per test: whenDecoderLoaded is cached at module scope, and these
+// tests are about whether it gets populated at all
+async function loadWorkerWithFakeDecoder(decode: () => Promise<unknown>): Promise<{
+    worker: ImageProcessorWorkerModule;
+    loadSpy: MockInstance;
+    deviceInfo: { isMobile: boolean };
+}> {
+    vi.resetModules();
+    const { HeifDecoder: FreshHeifDecoder } = await import('image-processing/heif-decoder');
+    const loadSpy = vi.spyOn(FreshHeifDecoder, 'load')
+        .mockResolvedValue({ decode, isPoisoned: false } as never);
+    const { DeviceInfo: deviceInfo } = await import('device-info');
+    const worker: ImageProcessorWorkerModule = await import('image-processing/image-processor-worker');
+    await worker.serverImpl.init(BASE_URL);
+    return { worker, loadSpy, deviceInfo };
+}
+
+describe('the libheif fallback', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('should decode a HEIC through libheif when the browser cannot', async () => {
+        // arrange: an unregistered blob makes the fake createImageBitmap throw for the source
+        // itself, which is what Chromium does with every HEIC
+        const decode = vi.fn(() => Promise.resolve({
+            data: makeGradientRgba(240, 160), width: 240, height: 160,
+        }));
+        const { worker: fresh, loadSpy } = await loadWorkerWithFakeDecoder(decode);
+        const heic = new Blob([readHeicFixture() as BlobPart], { type: 'image/heic' });
+
+        // act
+        const result = await fresh.serverImpl.process(heic, {
+            outputs: [mainSpec(12582912, 6144)],
+            maxMobileEncodePixels: 52_428_800,
+        });
+
+        // assert
+        const main = result.outputs.find(o => o.kind === 'main');
+        expect(loadSpy).toHaveBeenCalledTimes(1);
+        expect(decode).toHaveBeenCalledTimes(1);
+        expect(main?.declined).toBeFalsy();
+        expect([main?.width, main?.height]).toEqual([240, 160]);
+    });
+    it('should decline a HEIC a phone cannot decode rather than load the wasm at all', async () => {
+        // arrange: libheif decodes at the source's resolution, so a budget met by the 36x24 target
+        // says nothing about the 240x160 decode that would have to happen first
+        const decode = vi.fn(() => Promise.resolve(null));
+        const { worker: fresh, loadSpy, deviceInfo } = await loadWorkerWithFakeDecoder(decode);
+        deviceInfo.isMobile = true;
+        const heic = new Blob([readHeicFixture() as BlobPart], { type: 'image/heic' });
+
+        // act
+        const result = await fresh.serverImpl.process(heic, {
+            outputs: [mainSpec(900, 6144)],
+            maxMobileEncodePixels: 1000,
+        });
+
+        // assert
+        const main = result.outputs.find(o => o.kind === 'main');
+        expect(main?.declined).toBe(true);
+        expect(loadSpy).not.toHaveBeenCalled();
+        expect(decode).not.toHaveBeenCalled();
     });
 });
