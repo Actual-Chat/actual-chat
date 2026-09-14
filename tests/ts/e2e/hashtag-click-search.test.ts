@@ -96,7 +96,8 @@ describe('hashtag click-to-search', () => {
         await searchPanel.waitFor({ state: 'visible', timeout: 10_000 });
 
         const input = page.locator('.left-chat-search-input input[type="text"]').first();
-        await expect.poll(() => input.inputValue(), { timeout: 10_000 }).toBe(tag);
+        // HashtagMarkupView appends a space so the tag is searched as a whole word, not a prefix
+        await expect.poll(() => input.inputValue(), { timeout: 10_000 }).toBe(`${tag} `);
 
         const messagesBadge = page
             .locator('.left-chat-search-input .search-filter-badge:has-text("Messages")')
