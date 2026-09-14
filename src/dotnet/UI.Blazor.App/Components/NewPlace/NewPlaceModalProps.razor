@@ -87,9 +87,9 @@
             </Button>
         }
         <Button
-            Click="@OnCreate"
+            Click="@_createHandler.Execute"
             Type="@ButtonType.Button"
-            IsDisabled="@(!context.Validate())"
+            IsDisabled="@(!context.Validate() || !CanCreate)"
             Class="btn-modal btn-primary">
             Create
         </Button>
@@ -101,8 +101,13 @@
     private static readonly string AvatarKey = "a-random-string";
     private Form _formRef = null!;
     private FormModel _form = null!;
+    // One Uuid per command per form, so a repeated submit is replayed by ApiCommandDeduplicator, not re-run
+    private readonly string _createPlaceUuid = ApiCommand.NewUuid();
+    private readonly string _createChatUuid = ApiCommand.NewUuid();
+    private IUIActionHandler _createHandler = null!;
     private bool _isAdmin;
-
+    private bool _isCreated;
+    private bool CanCreate => _createHandler.IsReady && !_isCreated;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
     [Parameter, EditorRequired] public Action<Place, Chat?> PlaceCreated { get; set; } = null!;
@@ -111,6 +116,7 @@
     protected override void OnInitialized() {
         _form = new(ComponentIdGenerator);
         _isAdmin = Hub.AccountUI.OwnAccount.Value.IsAdmin;
+        _createHandler = UIActionHandler.Create(this, OnCreate);
     }
 
     private void OnImagePicked(MediaRef mediaRef) {
@@ -125,11 +131,12 @@
     }
 
     private async Task OnCreate() {
-        if (!_formRef.IsValid)
+        if (_isCreated || !_formRef.IsValid)
             return;
         try {
             var session = Hub.Session;
             var createPlaceCommand = new Places_Change {
+                Uuid = _createPlaceUuid,
                 Session = session,
                 PlaceId = default,
                 ExpectedVersion = default,
@@ -152,6 +159,7 @@
             // Create default chat. Later we should add place templates.
             var description = $"Welcome chat for {place.Title}";
             var createChatCommand = new Chats_Change {
+                Uuid = _createChatUuid,
                 Session = session,
                 ChatId = default,
                 ExpectedVersion = null,
@@ -169,6 +177,7 @@
             };
             var (chat, _) = await Hub.UICommander.Run(createChatCommand, CancellationToken.None);
 
+            _isCreated = true;
             PlaceCreated(place, chat);
         }
         catch { // Intended: command errors are shown in the UI anyway
