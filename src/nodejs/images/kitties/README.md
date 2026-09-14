@@ -1,6 +1,6 @@
 # Kitty SVGs
 
-Open `index.html` directly in a browser to compare all eleven illustrations.
+Open `index.html` directly in a browser to compare all illustrations.
 The gallery offers side-by-side, light-only and dark-only views, plus three preview sizes.
 Its backgrounds come from `--background-01` in `src/nodejs/styles/colors.css`:
 light `#FFFFFF`, dark `#28282E`.
@@ -93,6 +93,25 @@ the new gradient ID. A rule on the shape using a gradient does not reach its def
 Use an identity mapping (`light` and `dark` set to the same hex color) to retain a color in
 both themes. Keep alpha in `opacity`, `fill-opacity`, `stroke-opacity` or `stop-opacity`;
 named colors, `rgb(...)` and eight-digit hex paints are not supported by the palette parser.
+
+## Upgrade-screen artwork
+
+`upgrade-app-cat.svg` preserves the blue-and-white robot and mismatched connectors from
+its approved raster concept, with the headphone pieces removed and the stepped pixel mouth restored.
+It uses native paths and gradients with a transparent background.
+The source palette uses identity mappings, so `upgrade-app-cat-dark.svg` has the same colors.
+The upgrade screen has a fixed blue/pink background in both themes; this cat does not use
+the gray palette of the other illustrations.
+
+Preview it against the gradient in
+[client-upgrade-cover.css](../../../dotnet/UI.Blazor.App/Components/ClientUpgradeCover/client-upgrade-cover.css),
+as well as the gallery backgrounds. Its current colors resolve to deep blue `#0036A3` and
+pink `#FF3880` from [colors.css](../../styles/colors.css). The screen background is not baked into the SVG.
+The existing Lit component remains the runtime implementation until the app adopts these assets.
+
+The cat is static. Named groups separate the ears, paws, connectors, display features and badge
+for editing. Before animating a part, give it the corresponding section of the shared silhouette
+and a hidden overlap at its joint; moving only a fill group would leave the outline behind.
 
 ## Animation
 
