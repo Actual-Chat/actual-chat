@@ -97,17 +97,21 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public static IncomingCall? FindRingingCall(LiveSession? live, AuthorId ownAuthorId)
     {
-        // No conversation yet means nobody has answered; once someone does, it's no longer an incoming ring.
-        if (live is not { Kind: LiveSessionKind.Call, Conversation: null })
+        // Only my own invite decides: someone else answering a group call leaves it Ringing, and answering it
+        // myself on another device moves it past Ringing.
+        if (live is not { Kind: LiveSessionKind.Call })
             return null;
-        if (live.Host == ownAuthorId)
+
+        // Host stands in only for a server that predates LiveSession.CallerId.
+        var callerId = live.CallerId ?? live.Host;
+        if (callerId == ownAuthorId)
             return null;
 
         var invite = live.Invites.FirstOrDefault(i => i.InviteeId == ownAuthorId);
         if (invite is not { Status: CallInviteStatus.Ringing })
             return null;
 
-        return new IncomingCall(live.ChatId, live.Host, live.Rules.VideoAllowed);
+        return new IncomingCall(live.ChatId, callerId, live.Rules.VideoAllowed);
     }
 
     public async Task StartCall(

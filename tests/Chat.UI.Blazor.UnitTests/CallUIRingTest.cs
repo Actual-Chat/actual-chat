@@ -61,10 +61,57 @@ public class CallUIRingTest
         calls.Should().AllSatisfy(call => call.Should().BeNull());
     }
 
+    [Fact]
+    public void FindRingingCallShouldKeepRingingAfterSomeoneElseAnswered()
+    {
+        // arrange
+        var other = AuthorId.New(TestChatId, 3);
+        var live = NewCall(
+                new CallInvite { InviteeId = other, Status = CallInviteStatus.Accepted },
+                new CallInvite { InviteeId = Me, Status = CallInviteStatus.Ringing })
+            with { Conversation = new Conversation(ConversationId.New(TestChatId, 1)) };
+
+        // act
+        var call = CallUI.FindRingingCall(live, Me);
+
+        // assert
+        call.Should().NotBeNull("only my own invite decides whether a group call still rings me");
+    }
+
+    [Fact]
+    public void FindRingingCallShouldReportCallerAfterHostMoved()
+    {
+        // arrange
+        var live = NewCall(new CallInvite { InviteeId = Me, Status = CallInviteStatus.Ringing })
+            with { Host = AuthorId.New(TestChatId, 3) };
+
+        // act
+        var call = CallUI.FindRingingCall(live, Me);
+
+        // assert
+        call.Should().NotBeNull();
+        call!.Caller.Should().Be(Host, "the host moves when a group call's host hangs up, the caller never does");
+    }
+
+    [Fact]
+    public void FindRingingCallShouldIgnoreMyOwnCallAfterHostMoved()
+    {
+        // arrange
+        var live = NewCall(new CallInvite { InviteeId = Me, Status = CallInviteStatus.Ringing })
+            with { CallerId = Me };
+
+        // act
+        var call = CallUI.FindRingingCall(live, Me);
+
+        // assert
+        call.Should().BeNull("the call is mine even though someone else hosts it now");
+    }
+
     private static LiveSession NewCall(params CallInvite[] invites)
         => new() {
             ChatId = TestChatId,
             Host = Host,
+            CallerId = Host,
             Kind = LiveSessionKind.Call,
             Invites = invites,
         };

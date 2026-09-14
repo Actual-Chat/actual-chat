@@ -118,12 +118,13 @@ and goes straight to `IncomingCallUI.Accept`.
 `LiveSessionUI.Get(chatId)` and returns a call only when all of these hold:
 
 - `Kind == Call`;
-- `Conversation == null`, meaning nobody has answered yet;
-- `Host` isn't the reader;
+- the reader isn't the caller (`CallerId`, which unlike `Host` never moves);
 - the reader's invite is `Ringing`.
 
-A stale push, or a call already answered on another device, produces nothing, and dead
-candidates are pruned.
+Only the reader's own invite decides: someone else answering a group call leaves it
+`Ringing`, while the reader answering on another device moves it on. A stale push, or a
+call the reader already answered elsewhere, produces nothing, and dead candidates are
+pruned.
 :::
 
 ## The call slot

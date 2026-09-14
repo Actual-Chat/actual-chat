@@ -28,6 +28,10 @@ public sealed partial record LiveSession
     public LiveSessionKind Kind { get; init; } = LiveSessionKind.Ambient;
     [DataMember(Order = 9), Key(9)]
     public IReadOnlyList<CallInvite> Invites { get; init; } = [];
+    // Set once when the call is dialled and never moved, unlike Host, which moves to another participant
+    // when the host of a group call hangs up while others stay on.
+    [DataMember(Order = 10), Key(10)]
+    public AuthorId? CallerId { get; init; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ConversationId? ConversationId => Conversation?.Id;
 }
