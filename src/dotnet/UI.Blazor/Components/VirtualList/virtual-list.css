@@ -106,9 +106,8 @@ body.app-ready .virtual-list > .c-wrapper > ul.c-virtual-container {
     animation: top-overscroll-cue-appear 250ms ease-out 3s forwards;
 }
 
-.virtual-list > .c-wrapper > ul.c-virtual-container > .c-top-overscroll-cue > img {
+.virtual-list > .c-wrapper > ul.c-virtual-container > .c-top-overscroll-cue > .kitty {
     @apply block w-full h-full;
-    object-fit: contain;
     user-select: none;
 }
 

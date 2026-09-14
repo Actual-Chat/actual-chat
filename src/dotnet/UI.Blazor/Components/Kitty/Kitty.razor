@@ -1,0 +1,9 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="kitty kitty-@Name @Class" role="img" aria-label="@AriaLabel" aria-hidden="@(AriaLabel.IsNullOrEmpty())"></div>
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+}
