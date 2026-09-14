@@ -197,8 +197,7 @@ export class AppRecovery {
                 <div class="c-bg"></div>
                 <div class="c-circle-blur"></div>
                 <div class="c-circle">
-                    <!-- Must have open and close tags, otherwise doesn't work! -->
-                    <loading-cat-svg></loading-cat-svg>
+                    <div class="kitty kitty-loading-cat" role="img" aria-hidden="true"></div>
                     <span class="c-text">${state}</span>
                 </div>
             `;

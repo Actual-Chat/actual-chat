@@ -347,6 +347,9 @@ body.hoverable .stepper-skip-filler .btn-h:hover {
 .onboarding-modal .stepper-footer .btn.btn-cancel {
     @apply bg-white;
 }
+.onboarding-modal .stepper-footer .btn.btn-square.btn-back {
+    @apply min-w-10 max-w-10;
+}
 .step-title {
     @apply mb-8;
     @apply text-headline-5 text-center wrap-anywhere;

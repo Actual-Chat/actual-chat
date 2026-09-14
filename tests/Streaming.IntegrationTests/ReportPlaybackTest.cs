@@ -150,6 +150,7 @@ public class ReportPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
             },
         });
         chat.Require();
+        await services.WaitForOpeningEntry(chat.Id);
 
         var author = await services.GetRequiredService<IAuthors>()
             .GetOwn(session, chat.Id, CancellationToken.None);

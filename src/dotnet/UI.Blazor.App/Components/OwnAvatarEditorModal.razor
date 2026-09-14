@@ -75,7 +75,6 @@
                 @{
                     var submitClass = $"btn-modal btn-primary {_formRef.IsValid.ToEnabledClass()}";
                 }
-                <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">@L.Common_Cancel</Button>
                 <Button Type="@ButtonType.Submit" Class="@submitClass">@L.Common_Save</Button>
             </FormButtons>
         </Buttons>
@@ -173,9 +172,6 @@
         var command = new Authors_SetAvatar { Session = Session, ChatId = chatId, AvatarId = avatarId };
         await UICommander.Run(command);
     }
-
-    private void OnCancel()
-        => CloseModal();
 
     private async Task OnDeleteAvatarClick() {
         var command = new Avatars_Change {

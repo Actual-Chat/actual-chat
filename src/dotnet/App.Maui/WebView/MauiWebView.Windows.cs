@@ -10,6 +10,7 @@ namespace ActualChat.App.Maui;
 public partial class MauiWebView
 {
     public WebView2Control WindowsWebView { get; private set; } = null!;
+
     public partial void SetPlatformWebView(object platformWebView)
     {
         if (ReferenceEquals(PlatformWebView, platformWebView))
@@ -143,15 +144,18 @@ public partial class MauiWebView
         private const string StaticContentProviderType =
             "Microsoft.AspNetCore.Components.WebView.Maui.StaticContentProvider"
             + ", Microsoft.AspNetCore.Components.WebView.Maui";
+
         [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "GetResponseContentTypeOrDefault")]
         public static extern string GetResponseContentTypeOrDefault(
             [UnsafeAccessorType(StaticContentProviderType)] object? _,
             string path);
+
         public static IDictionary<string, string> GetResponseHeaders(string contentType)
             => new Dictionary<string, string> {
                 { "Content-Type", contentType },
                 { "Cache-Control", "no-cache, max-age=0, must-revalidate, no-store" },
             };
+
         public static string GetHeaderString(IDictionary<string, string> headers)
             => string.Join(Environment.NewLine, headers.Select(kvp => $"{kvp.Key}: {kvp.Value}"));
     }
@@ -163,12 +167,16 @@ public partial class MauiWebView
         public override bool CanWrite => inner.CanWrite;
         public override long Length => inner.Length;
         public override long Position { get => inner.Position; set => inner.Position = value; }
+
         public override void Flush()
             => throw new NotSupportedException();
+
         public override long Seek(long offset, SeekOrigin origin)
             => inner.Seek(offset, origin);
+
         public override void SetLength(long value)
             => throw new NotSupportedException();
+
         public override void Write(byte[] buffer, int offset, int count)
             => throw new NotSupportedException();
 

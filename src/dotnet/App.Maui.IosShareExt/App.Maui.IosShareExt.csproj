@@ -77,6 +77,8 @@
                 Link="Assets.xcassets\error-cat.imageset\%(Filename)%(Extension)" />
     <ImageAsset Include="..\..\..\resources\images\converted\share-cat*.png"
                 Link="Assets.xcassets\share-cat.imageset\%(Filename)%(Extension)" />
+    <ImageAsset Include="..\..\..\resources\images\converted\message-ellipse*.png"
+                Link="Assets.xcassets\message-ellipse.imageset\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- TODO: Move GoogleService-Info.plist files to Maui project and define BundleResource there,

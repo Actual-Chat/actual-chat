@@ -76,8 +76,11 @@
     }
     public bool CanMoveForward => CurrentStepIndex is var i and >= 0 && i < LastStepIndex;
     public bool CanMoveBack => SkipCompletedSteps
-        ? CurrentStepIndex > 0 && _steps.Take(CurrentStepIndex).Any(s => !s.IsCompleted)
+        ? CurrentStepIndex > 0 && _steps.Take(CurrentStepIndex).Any(IsReturnTarget)
         : CurrentStepIndex > 0;
+
+    private bool IsReturnTarget(IStep step)
+        => step.CanReturnTo && !_skippedSteps.Contains(step);
     public bool CanSkip => _currentStep is { CanSkip: true };
     public string SkipTitle => _currentStep?.SkipTitle ?? L.Common_Skip;
     public string NextTitle => _currentStep?.NextTitle ?? L.Common_Next;
@@ -122,12 +125,20 @@
 
         var newStepIndex = CurrentStepIndex + offset;
 
-        // Skip completed steps when SkipCompletedSteps is enabled
         if (SkipCompletedSteps) {
             var direction = Math.Sign(offset);
-            while (newStepIndex >= 0 && newStepIndex < StepCount && _steps[newStepIndex].IsCompleted) {
-                _skippedSteps.Add(_steps[newStepIndex]);
-                newStepIndex += direction;
+            if (direction > 0) {
+                // Forward: skip steps already completed before this run, remembering them
+                while (newStepIndex >= 0 && newStepIndex < StepCount && _steps[newStepIndex].IsCompleted) {
+                    _skippedSteps.Add(_steps[newStepIndex]);
+                    newStepIndex += direction;
+                }
+            } else {
+                // Back: skip auto-skipped and non-returnable (informational) steps, so we land on
+                // the last step the user could actually act on
+                while (newStepIndex >= 0 && newStepIndex < StepCount && !IsReturnTarget(_steps[newStepIndex])) {
+                    newStepIndex += direction;
+                }
             }
         }
 

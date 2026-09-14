@@ -5,7 +5,6 @@ namespace ActualChat;
 
 public static class ComputedExt
 {
-    public static readonly TimeSpan MinSafeInvalidationDelay = TimeSpan.FromSeconds(1);
     public static readonly TimeSpan MaxSafeInvalidationDelay = TimeSpan.FromMinutes(30);
 
     private static readonly ConcurrentDictionary<(Type, string), PropertyInfo?> PropertyCache = new();
@@ -26,14 +25,15 @@ public static class ComputedExt
         [CallerLineNumber] int line = 0)
     {
         // A pending invalidation pins its Computed<T> until it fires, so a far-future delay retains
-        // it for that long - and the cost scales with the method's parameter cardinality. Clamping
+        // it for that long - and the cost scales with the method's parameter cardinality. Capping
         // only makes the method recompute (and re-arm) earlier; it never changes the result.
-        // The lower bound matters too: a delay of 0 invalidates immediately, so an already-past
-        // expiration would spin.
+        // There is no lower bound: a non-positive delay means Invalidate(immediately: true), which
+        // from inside a compute method discards the result as soon as it's produced - so a caller
+        // must pass a delay it has already checked to be positive.
         if (computed is null)
             return;
 
-        delay = delay.Clamp(MinSafeInvalidationDelay, maxDelay);
+        delay = TimeSpanExt.Min(delay, maxDelay);
         computed.Invalidate(delay, new InvalidationSource(file, member, line));
     }
 

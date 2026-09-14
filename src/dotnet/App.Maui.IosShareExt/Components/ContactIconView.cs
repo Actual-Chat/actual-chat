@@ -26,7 +26,6 @@ public sealed class ContactIconView(IconQuery? iconQuery, UIImage? defaultImage,
             TranslatesAutoresizingMaskIntoConstraints = false,
             ContentMode = UIViewContentMode.ScaleAspectFill,
             BackgroundColor = AppColors.Primary,
-            TintColor = AppColors.Primary,
             Layer = { CornerRadius = CornerRadius, MasksToBounds = true },
         };
 
@@ -69,12 +68,21 @@ public sealed class ContactIconView(IconQuery? iconQuery, UIImage? defaultImage,
             _image.Image = null;
             _initialLabel.Hidden = false;
         }
+        else if (ReferenceEquals(image, defaultImage)) {
+            // A glyph on a square, drawn at its own point size in the tint the owner sets, as in
+            // the navbar. Not set here: this render is deferred, so it would undo the owner's tint.
+            _image.ContentMode = UIViewContentMode.Center;
+            _image.BackgroundColor = AppColors.Square;
+            _image.Image = image;
+            _initialLabel.Hidden = true;
+        }
         else {
+            _image.ContentMode = UIViewContentMode.ScaleAspectFill;
             _image.BackgroundColor = UIColor.Clear;
             _image.Image = image;
             _initialLabel.Hidden = model?.AvatarKind is not AvatarKind.Marble;
         }
-        if (!ReferenceEquals(old, image))
+        if (!ReferenceEquals(old, image) && !ReferenceEquals(old, defaultImage))
             old.DisposeSilently();
     }
 

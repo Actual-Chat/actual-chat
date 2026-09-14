@@ -153,8 +153,8 @@ public partial class EntryGroupBuilder
         return (int)Math.Max(0, (entry.BeginsAt - lastEntryTime).TotalSeconds);
     }
 
-    public EntryGroup Build(bool isCompleted = true)
-        => new (_entries, _wordCount, isCompleted);
+    public EntryGroup Build()
+        => new (_entries, _wordCount);
 
     // Private methods
 

@@ -165,7 +165,7 @@
         _avatarKind = AvatarKind.Marble;
         _avatarKey = ChatId.Value;
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton(L.Common_Save, OnSubmit);
-        Context.Buttons = [DialogButtonInfo.CreateCancelButton(L), _submitButtonInfo];
+        Context.Buttons = [_submitButtonInfo];
     }
 
     protected override async Task OnInitializedAsync() {

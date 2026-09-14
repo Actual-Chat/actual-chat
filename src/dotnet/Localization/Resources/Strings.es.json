@@ -308,7 +308,11 @@
   "ConversationMenu_CopySummaryLink": "Copiar enlace al resumen",
 
   "ThreadMenu_GoToThread": "Ir al hilo",
-  "ThreadMenu_CopyThread": "Copiar hilo",
+  "ThreadMenu_CopyThread": "Copiar título y enlace",
+  "ThreadMenu_Mute": "Silenciar",
+  "ThreadMenu_Unmute": "Reactivar",
+  "ThreadMenu_GoToStartMessage": "Ir al mensaje inicial",
+  "ThreadMenu_CopyThreadLink": "Copiar enlace al hilo",
 
   "LocationMessage_Live": "Ubicación en tiempo real",
   "LocationMessage_Static": "Ubicación",

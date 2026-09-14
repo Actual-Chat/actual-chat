@@ -1,0 +1,121 @@
+/* Themed illustration assets from src/nodejs/images/kitties, published to /dist/images/kitties.
+   The light source also serves the light-background ash theme; only theme-dark swaps to the dark sibling. */
+/* --kitty-w is the design width; sizes are tuned so the visible cat matches the retired inline SVGs.
+   Several sources are a padded square 1254 canvas, so the box is larger than the visible cat.
+   max-width keeps it inside a narrow container on mobile, aspect-ratio then drives the height. */
+.kitty {
+    @apply block max-w-full;
+    width: var(--kitty-w);
+    aspect-ratio: var(--kitty-ar);
+    background: center / contain no-repeat;
+}
+
+/* The source is a square 1254 canvas with padding; ~280px makes the visible cat about the
+   165x257 of the retired inline SVG (its portrait bounds), so the reconnect overlay reads the same. */
+.kitty-loading-cat {
+    --kitty-w: 280px;
+    --kitty-ar: 1 / 1;
+    background-image: url("images/kitties/loading-cat.svg");
+}
+.theme-dark .kitty-loading-cat {
+    background-image: url("images/kitties/loading-cat-dark.svg");
+}
+
+.kitty-empty-chat {
+    --kitty-w: 210px;
+    --kitty-ar: 1 / 1;
+    background-image: url("images/kitties/empty-chat.svg");
+}
+.theme-dark .kitty-empty-chat {
+    background-image: url("images/kitties/empty-chat-dark.svg");
+}
+
+.kitty-empty-search-chat {
+    --kitty-w: 168px;
+    --kitty-ar: 166 / 222;
+    background-image: url("images/kitties/empty-search-chat.svg");
+}
+.theme-dark .kitty-empty-search-chat {
+    background-image: url("images/kitties/empty-search-chat-dark.svg");
+}
+
+.kitty-chat-not-found {
+    --kitty-w: 200px;
+    --kitty-ar: 1 / 1;
+    background-image: url("images/kitties/chat-not-found.svg");
+}
+.theme-dark .kitty-chat-not-found {
+    background-image: url("images/kitties/chat-not-found-dark.svg");
+}
+
+.kitty-not-member-yet {
+    --kitty-w: 165px;
+    --kitty-ar: 1 / 1;
+    background-image: url("images/kitties/not-member-yet.svg");
+}
+.theme-dark .kitty-not-member-yet {
+    background-image: url("images/kitties/not-member-yet-dark.svg");
+}
+
+.kitty-no-search-results {
+    --kitty-w: 198px;
+    --kitty-ar: 198 / 234;
+    background-image: url("images/kitties/no-search-results.svg");
+}
+.theme-dark .kitty-no-search-results {
+    background-image: url("images/kitties/no-search-results-dark.svg");
+}
+
+.kitty-error-cat {
+    --kitty-w: 260px;
+    --kitty-ar: 1 / 1;
+    background-image: url("images/kitties/error-cat.svg");
+}
+.theme-dark .kitty-error-cat {
+    background-image: url("images/kitties/error-cat-dark.svg");
+}
+
+.kitty-phone-verification-cat {
+    --kitty-w: 176px;
+    --kitty-ar: 1 / 1;
+    background-image: url("images/kitties/phone-verification-cat.svg");
+}
+.theme-dark .kitty-phone-verification-cat {
+    background-image: url("images/kitties/phone-verification-cat-dark.svg");
+}
+
+.kitty-invite-cat {
+    --kitty-w: 224px;
+    --kitty-ar: 224 / 197;
+    background-image: url("images/kitties/invite-cat.svg");
+}
+.theme-dark .kitty-invite-cat {
+    background-image: url("images/kitties/invite-cat-dark.svg");
+}
+
+.kitty-share-cat {
+    --kitty-w: 210px;
+    --kitty-ar: 210 / 200;
+    background-image: url("images/kitties/share-cat.svg");
+}
+.theme-dark .kitty-share-cat {
+    background-image: url("images/kitties/share-cat-dark.svg");
+}
+
+.kitty-top-overscroll-cue {
+    --kitty-w: 128px;
+    --kitty-ar: 1024 / 1536;
+    background-image: url("images/kitties/top-overscroll-cue.svg");
+}
+.theme-dark .kitty-top-overscroll-cue {
+    background-image: url("images/kitties/top-overscroll-cue-dark.svg");
+}
+
+.kitty-upgrade-app-cat {
+    --kitty-w: 255px;
+    --kitty-ar: 1 / 1;
+    background-image: url("images/kitties/upgrade-app-cat.svg");
+}
+.theme-dark .kitty-upgrade-app-cat {
+    background-image: url("images/kitties/upgrade-app-cat-dark.svg");
+}

@@ -96,6 +96,14 @@ The only exception is when `/server-loop` is running - in this case you should t
 
 **Running the server (direct)**: Use `/server-start`, `/server-restart`, `/server-stop`. Use `--watch` flag for auto-reload.
 
+## The `voxt-*` MCP servers talk to PRODUCTION
+
+`mcp__voxt-alex__*`, `mcp__voxt-robokitty__*` and the other `voxt-*` MCP tools operate against
+**production** Voxt, never the local dev server. Posting or creating chats through them to seed
+*local* test data writes to prod; aimed at a local-only chat it just errors.
+
+For local test data, drive the local UI instead — see *Seed local test data* in `/debug-ui`.
+
 ## When work on a task starts
 
 Every task maps to one GitHub issue on the org's Team project board. Run the

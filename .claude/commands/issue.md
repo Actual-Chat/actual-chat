@@ -74,16 +74,13 @@ gh issue create --repo Actual-Chat/actual-chat --assignee @me \
 
 Record the issue number from the returned URL.
 
-Then set the org-level **issue type** (not labels — labels are ignored in this repo). The org defines `Task`, `Bug`, and `Feature`; `gh issue create` has no flag for them, so fetch the ids and set the type with one mutation:
+Then set the org-level **issue type** (not labels — labels are ignored in this repo). The org defines `Task`, `Bug`, and `Feature`; `gh issue create` has no flag for them, but the REST endpoint takes the type by name:
 
 ```bash
-gh api graphql -f query='{ organization(login:"Actual-Chat"){ issueTypes(first:10){ nodes{ id name } } } }'
-ISSUE_ID=$(gh api graphql -F n=<NUMBER> -f query='query($n:Int!){ repository(owner:"Actual-Chat",name:"actual-chat"){ issue(number:$n){ id } } }' --jq .data.repository.issue.id)
-gh api graphql -F id="$ISSUE_ID" -F typeId=<TYPE_ID> \
-  -f query='mutation($id:ID!,$typeId:ID!){ updateIssue(input:{id:$id, issueTypeId:$typeId}){ issue{ number issueType{name} } } }'
+gh api -X PATCH repos/Actual-Chat/actual-chat/issues/<NUMBER> -f type=Bug --jq '.type.name'
 ```
 
-Pick `Bug` for defects, `Feature` for new user-visible capability, `Task` for everything else. If the type query returns 403 (token cannot read org issue types), ask the user which type to use rather than guessing — and if they cannot help, leave the type unset and say so.
+Pick `Bug` for defects, `Feature` for new user-visible capability, `Task` for everything else. The type is mandatory: an issue is not done until the call above echoes the type back. Do not go through GraphQL for it — the `organization.issueTypes` lookup is refused for the usual personal access tokens, while the REST call is not.
 
 Do **not** pass `--label` — this repo doesn't use labels for triage.
 

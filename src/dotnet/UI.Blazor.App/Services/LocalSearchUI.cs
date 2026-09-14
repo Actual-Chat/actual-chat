@@ -36,6 +36,8 @@ public class LocalSearchUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         int limit,
         CancellationToken cancellationToken)
     {
+        // A thread has no members of its own - its authors are the parent chat's
+        chatId = chatId?.GetThreadOutermostParentOrSelf();
         // The empty-query views are served from the precomputed per-category top lists.
         if (query.IsNullOrEmpty()) {
             FoundMention[]? mentions = null;
@@ -381,7 +383,7 @@ public class LocalSearchUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             if (ChatUI.SelectedChatId.Value != chatId)
                 continue;
 
-            await ListDefaultMentions(chatId, cancellationToken).ConfigureAwait(false);
+            await ListDefaultMentions(chatId.GetThreadOutermostParentOrSelf(), cancellationToken).ConfigureAwait(false);
         }
     }
 

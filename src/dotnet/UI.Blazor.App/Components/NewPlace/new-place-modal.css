@@ -5,6 +5,9 @@
     @apply flex-y;
     @apply gap-y-2;
 }
+.new-place-modal .dialog-footer {
+    @apply pt-2;
+}
 .new-place-modal .tile-item {
     @apply hover:bg-inherit;
 }

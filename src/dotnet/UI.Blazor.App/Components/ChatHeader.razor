@@ -108,17 +108,9 @@
 
     private async Task OnOpenLeftPanelClick() {
         if (Chat is not null && Chat.Id.IsThread(out var threadChatId)) {
-            var parentChatId = threadChatId.ParentChatId;
-            var parentChatLink = Links.Chat(parentChatId);
-            if (History.TryGetStepBackUrl(out var backUrl)) {
-                var threadChatLink = Links.Chat(Chat.Id);
-                if (backUrl.StartsWith(parentChatLink) && !backUrl.StartsWith(threadChatLink)) {
-                    if (await History.TryStepBack())
-                        return;
-                }
-            }
-
-            await History.NavigateTo(parentChatLink, true);
+            // Not a step back: that restores the parent's old scroll position instead of the thread start
+            var threadStartLink = Links.Chat(threadChatId.ParentChatId, threadChatId.ThreadId);
+            await History.NavigateTo(threadStartLink, true);
             return;
         }
 

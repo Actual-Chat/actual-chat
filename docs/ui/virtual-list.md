@@ -562,7 +562,16 @@ screen, or the `retainedItemCount` (5) items nearest the viewport centre when no
 the difference, but only if the gap is worth a render (half a viewport) or a skeleton is already
 visible. At a known edge the zone is clamped one way only: there is nothing further out to ask for,
 but the zone moving inwards must still be able to drop what it left behind, or a long read through
-history ends up holding thousands of items. Move counts are rounded to 5 so a drifting viewport does
+history ends up holding thousands of items. The edge item itself is held longer than the zone —
+`MacOSEdgeReachScreens` (12) screens from the viewport on macOS, `EdgeReachScreens` (3) elsewhere, and
+never less than `expandMultiplier` — because dropping it is what makes the edge unknown: the limit on
+that side then moves out by `MaxOverscrollScreens`, and a fling back runs past the content into blank
+until the edge reloads, then snaps to it (#4427). Twelve because one Mac trackpad flick was measured at
+7.8 screens, and six — the first setting — let exactly that flick drop the edge again. Other platforms
+stay at 3 because twelve is not free: in Chrome it doubled what the list holds near the end (82 → 171
+items, 1,575 → 3,552 DOM nodes on desktop), and a message arriving in the chat drops the held edge
+anyway, since the rebuild it triggers re-centres the window on the visible range.
+Move counts are rounded to 5 so a drifting viewport does
 not produce a new query every frame. A query identical to the last one is dropped, except while a
 skeleton is on screen, where it is retried once a second. A request that never produces a render is
 released after 2.5s and retried after 1s; `renderSkipped` from Blazor does the same, because a render
@@ -1125,6 +1134,19 @@ Two properties of the engine shape this, both measured on the rig:
 The claim is therefore made blind and given back later: once a decisive delta shows the gesture leaving
 the edge behind — past `WheelOwnScreens` (2) screens from either limit — one event goes uncancelled and
 the compositor scrolls the rest of it, which it does better than the main thread can.
+
+**Desktop WebKit is the exception: every precise gesture is driven whole**, from its first event to its
+last, whatever its distance from a limit (`mustOwnWholeWheelGesture`, `?vlwheelall=0|1`). A gesture
+given back there cannot be stopped at a limit later: its remaining events arrive uncancelable, Safari
+scrolls them off the main thread, and nothing ends the inertia — `killMomentum` is off on WebKit
+(§3.7), and a rubber band over it was measured absorbing 16073px of native travel past the end, a
+disagreement with the compositor on every frame. The case that reaches a limit that way is ordinary on
+a trackpad: a flick up and a flick back are one gesture (no `MotionGapMs` gap), so the flick back
+arrives after the hand-back and runs into the end uncancelable. Snapped per event, that was a step out
+and home every frame for the length of the inertial tail, measured at 438px (#4427). The hand-back
+itself also showed once as a 216px one-frame step, the compositor resuming from where it last was.
+Driving the whole gesture costs a `scrollTop` write per wheel event on the main thread, at ~16ms frames
+in the same measurements.
 
 Notched wheels are deliberately never driven. They don't shake at an edge, and a click at a time is an
 animation the browser owns; `isPreciseWheel` separates them by `wheelDeltaY` being a whole multiple of

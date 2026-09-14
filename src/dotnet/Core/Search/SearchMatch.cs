@@ -72,4 +72,9 @@ public sealed partial record SearchMatch
         var parts = Parts.Select(p => p.ToString(text)).ToDelimitedString(", ");
         return $"{GetType().GetName()}(\"{text}\", {Rank:F3}, {{ {parts} }})";
     }
+
+    // This record relies on referential equality: Parts is a `field ??=` cache, so the generated
+    // Equals would call two identical matches different once one of them is read
+    public bool Equals(SearchMatch? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

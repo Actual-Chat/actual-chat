@@ -26,10 +26,7 @@ public class AppUpdateUI(UIHub hub) : UIServiceBase<UIHub>(hub), IComputeService
             return null;
 
         var info = await AppUpdates.GetLatestUpdateInfo(AppKind, cancellationToken).ConfigureAwait(false);
-        if (info is null || !VersionExt.TryParseBuildVersion(info.Version, out var latestVersion))
-            return null;
-
-        return latestVersion > ApiConstants.BuildVersion ? info : null;
+        return info is not null && info.Version > ApiConstants.BuildVersion ? info : null;
     }
 
     public async Task Update()

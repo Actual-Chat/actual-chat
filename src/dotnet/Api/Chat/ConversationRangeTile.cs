@@ -48,4 +48,9 @@ public sealed partial record ConversationRangeTile(
             .SkipNullItems()
             .ToArray();
     }
+
+    // This record relies on referential equality: ConversationIds is a `field ??=` cache,
+    // so the generated Equals would call two identical tiles different once one is read
+    public bool Equals(ConversationRangeTile? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

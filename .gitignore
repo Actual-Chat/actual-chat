@@ -65,6 +65,7 @@ log.txt
 
 # MAUI replaced index.html
 index.html
+!/src/nodejs/images/kitties/index.html
 sw.js
 
 # VIM swap files

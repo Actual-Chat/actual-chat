@@ -287,6 +287,7 @@ See also: [C# Full API Index](api-index-full.md), [Condensed API Index](api-inde
 - `LogLevel` (enum) - Log severity level.
 - `Log` (class) - Logging system instance.
 - `LogLevelController` (class) - Control log levels at runtime.
+- `escapeHtml` (function) - Escape &, <, >, " for HTML/SVG markup.
 
 
 ## Worklets (`src/nodejs/src/worklets`)

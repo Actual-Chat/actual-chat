@@ -163,7 +163,7 @@
         PlaceId = Context.GetModel<PlaceId>();
         Context.Title = L.Place_SettingsTitle;
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton(L.Common_Save, OnSubmit);
-        Context.Buttons = [DialogButtonInfo.CreateCancelButton(L), _submitButtonInfo];
+        Context.Buttons = [_submitButtonInfo];
     }
 
     protected override async Task OnInitializedAsync() {

@@ -1,0 +1,18 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase<AppUIHub>
+
+<MenuEntry
+    Icon="@(IsFollowing ? "icon-eye-off" : "icon-eye")"
+    Text="@(IsFollowing ? L.ChatHeader_UnfollowThread : L.ChatHeader_FollowThread)"
+    Click="@OnClick">
+</MenuEntry>
+
+@code {
+    [Parameter, EditorRequired] public ThreadChatId ThreadChatId { get; set; } = null!;
+    [Parameter, EditorRequired] public bool IsFollowing { get; set; }
+    private async Task OnClick()
+        => await UICommander.Call(new ChatThreads_ToggleThreadFollowStatus {
+            Session = Session,
+            ThreadChatId = ThreadChatId,
+        }).ConfigureAwait(false);
+}

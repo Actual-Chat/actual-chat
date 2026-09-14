@@ -350,6 +350,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `IEmbeddingsCalculator` — text embeddings
 - `IEntryGroupExtractor`, `EntryGroupBuilder` — group entries for ML
 - `RateLimitedChatCompletionService` — rate-limited LLM calls
+- `OpenAIModels` — per-model OpenAI request capabilities (lowest `reasoning_effort` a model accepts)
 - `OpenAITranscriber` — OpenAI-based ASR
 - `TokenEstimator` — token-count estimator
 

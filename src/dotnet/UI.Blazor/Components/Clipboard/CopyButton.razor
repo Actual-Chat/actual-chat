@@ -6,13 +6,19 @@
         <i class="copied-hint icon-checkmark-simple text-xl" aria-hidden="true"></i>
     </text>;
 }
-@if (IsSquare) {
-    <ButtonSquare ContentClass="flex-x gap-x-1" Class="@Class">@icons</ButtonSquare>
-} else {
-    <ButtonRound ContentClass="flex-x gap-x-1" Class="@Class">@icons</ButtonRound>
+@switch (Kind) {
+    case CopyButtonKind.Square:
+        <ButtonSquare ContentClass="flex-x gap-x-1" Class="@Class">@icons</ButtonSquare>
+        break;
+    case CopyButtonKind.Header:
+        <HeaderButton ContentClass="flex-x gap-x-1" Class="@Class">@icons</HeaderButton>
+        break;
+    default:
+        <ButtonRound ContentClass="flex-x gap-x-1" Class="@Class">@icons</ButtonRound>
+        break;
 }
 
 @code {
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public bool IsSquare { get; set; }
+    [Parameter] public CopyButtonKind Kind { get; set; }
 }

@@ -1,0 +1,65 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedRenderStateComponent<AppUIHub, ThreadListTabUnreadCount.Model>
+@{
+    var m = State.Value;
+    if (m.Count <= 0)
+        return;
+    var notificationMode = m.IsMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default;
+}
+
+<div class="c-badge" data-child="badge">
+    <UnreadCount Value="@m.Count" NotificationMode="@notificationMode" Click="OnUnreadBadgeClick"/>
+</div>
+
+@code {
+    private ChatUI ChatUI => Hub.ChatUI;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+
+    [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = new(),
+                UpdateDelayer = FixedDelayer.Get(0.1),
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var placeId = PlaceId;
+        // Done w/ preps for .ConfigureAwait(false)
+
+        var count = await ChatListUI.GetUnreadThreadCount(placeId, false, cancellationToken)
+            .ConfigureAwait(false);
+        if (count <= 0)
+            return new(count);
+
+        var unmutedCount = await ChatListUI.GetUnreadThreadCount(placeId, true, cancellationToken)
+            .ConfigureAwait(false);
+        return new(count, unmutedCount <= 0);
+    }
+
+    private async Task OnUnreadBadgeClick() {
+        var placeId = PlaceId;
+        var threads = await ChatListUI.ListThreads(placeId);
+        if (placeId != PlaceId)
+            return;
+
+        // The selected thread is excluded for the same reason ChatListTabUnreadCount excludes the selected chat
+        var selectedChatId = ChatUI.SelectedChatId.Value;
+        var firstUnreadThread = threads.FirstOrDefault(c => c.UnmutedUnreadCount > 0 && c.Id != selectedChatId)
+            ?? threads.FirstOrDefault(c => c.UnreadCount > 0 && c.Id != selectedChatId);
+        if (firstUnreadThread == null)
+            return;
+
+        _ = History.NavigateTo(Links.Chat(firstUnreadThread.Id));
+    }
+
+    protected override void OnInitialized()
+        // Same as ChatListTabUnreadCount: it renders nothing but the model
+        => StateEqualityComparer = EqualityComparer<Model>.Default;
+
+    // Nested types
+
+    public sealed record Model(Trimmed<int> Count = default, bool IsMuted = false);
+}

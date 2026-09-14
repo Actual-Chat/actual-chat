@@ -1,0 +1,179 @@
+@page "/test/modals"
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Modals</MainHeader>
+
+@{
+    RenderFragment gallery =
+        @<text>
+            <div class="flex-y gap-y-1 text-sm text-03 max-w-3xl">
+                <p>
+                    Every schematic is built from the <b>real</b> modal classes
+                    (<code>.modal-frame</code>, <code>.modal-header</code>, <code>.dialog-body</code>,
+                    <code>.dialog-footer</code>, <code>.dialog-buttons</code>, <code>.form-block</code>),
+                    so inspecting an element — or reading its corner tag — tells you exactly which class to edit.
+                </p>
+                <p class="text-primary">
+                    These are real classes, so they are <b>responsive</b>: narrow the browser window to flip
+                    every modal to its mobile / <code>body.narrow</code> layout (the <code>md:</code>
+                    breakpoints are viewport-based, so a nested container cannot fake it). The last row wraps
+                    a few in <code>.narrow</code> to preview the class-gated bits (corner rounding, position),
+                    but their width stays desktop until you actually narrow the viewport.
+                </p>
+            </div>
+
+            <h2>Desktop — real archetypes</h2>
+            <div class="flex-x gap-8 flex-wrap items-start">
+                @Cap("Confirm (modal-sm)", Stage(Frame("modal-sm", Head("Delete chat?"), TextBody(), null, Buttons(2))))
+                @Cap("Form (default)", Stage(Frame("", Head("Edit"), FormBody(), null, Buttons(2))))
+                @Cap("Picker + input (Share)", Stage(Frame("", Head("Share"), ListBody(), FooterInput(), Buttons(1))))
+                @Cap("Settings (tiles, no footer)", Stage(Frame("edit-settings-modal", Head("Settings"), TilesBody(), null, null)))
+                @Cap("Map (full-bleed)", Stage(Frame("full-bleed", Head("Location"), BleedBody(), null, null)))
+            </div>
+
+            <h2>Footer / buttons variants</h2>
+            <div class="flex-x gap-8 flex-wrap items-start">
+                @Cap("No footer", Stage(Frame("", Head("Info"), TextBody(), null, null)))
+                @Cap(".dialog-buttons ×1", Stage(Frame("", Head("Info"), TextBody(), null, Buttons(1))))
+                @Cap(".dialog-buttons ×2", Stage(Frame("", Head("Info"), TextBody(), null, Buttons(2))))
+                @Cap(".dialog-footer + .dialog-buttons", Stage(Frame("", Head("Share"), TextBody(), FooterInput(), Buttons(1))))
+                @Cap("Submit-in-header", Stage(Frame("", HeadSubmit("Edit"), FormBody(), null, null)))
+            </div>
+
+            <h2>Body variants</h2>
+            <div class="flex-x gap-8 flex-wrap items-start">
+                @Cap(".form-block (default)", Stage(Frame("", Head("Title"), FormBody(), null, Buttons(2))))
+                @Cap(".form-block.with-contact-list (flush)", Stage(Frame("", Head("Title"), ListBody(), null, Buttons(2))))
+                @Cap("tiles (settings)", Stage(Frame("edit-settings-modal", Head("Settings"), TilesBody(), null, null)))
+            </div>
+
+            <h2>Narrow-gated preview (wrap in .narrow — width stays desktop until you resize)</h2>
+            <div class="narrow flex-x gap-8 flex-wrap items-start">
+                @Cap("position-stretch", Stage(Frame("narrow-view__modal__position-stretch", Head("Edit"), FormBody(), null, Buttons(2))))
+                @Cap("position-bottom", Stage(Frame("narrow-view__modal__position-bottom", Head("Pick"), ListBody(), null, Buttons(1))))
+            </div>
+        </text>;
+}
+
+<div class="test-page-wrapper flex-y gap-y-8 p-4" data-child="test-page">
+    <div class="theme-light flex-y gap-y-6 p-6 rounded-2xl bg-01 text-01">
+        <h1>theme-light</h1>
+        @gallery
+    </div>
+    <div class="theme-dark flex-y gap-y-6 p-6 rounded-2xl bg-01 text-01">
+        <h1>theme-dark</h1>
+        @gallery
+    </div>
+</div>
+
+@code {
+    // A caption above a stage.
+    private RenderFragment Cap(string label, RenderFragment content) =>
+        @<div class="flex-y gap-y-1 items-start">
+            <span class="text-xs text-03 font-mono">@label</span>
+            @content
+        </div>;
+
+    // Dimmed backdrop that hugs a real modal frame (frame keeps its own md: width/height).
+    private RenderFragment Stage(RenderFragment frame) =>
+        @<div class="relative inline-flex p-6 rounded-2xl bg-03 max-h-[34rem] overflow-hidden">
+            @frame
+        </div>;
+
+    // A small tag naming the real class of a region.
+    private RenderFragment Tag(string cls) =>
+        @<span class="absolute top-0 right-0 z-10 px-1 rounded-bl bg-01 text-03 font-mono opacity-70 pointer-events-none" style="font-size:10px">@cls</span>;
+
+    // The real modal frame: header + body + [footer] + [buttons].
+    private RenderFragment Frame(string frameCls, RenderFragment header, RenderFragment body, RenderFragment? footer, RenderFragment? buttons) =>
+        @<div class="@($"relative modal-frame {frameCls}")">
+            @Tag($".modal-frame {frameCls}".TrimEnd())
+            @header
+            @body
+            @footer
+            @buttons
+        </div>;
+
+    private RenderFragment Head(string title) =>
+        @<div class="relative modal-header">
+            @Tag(".modal-header")
+            <h3 class="modal-title">@title</h3>
+            <HeaderButton><i class="icon-close"></i></HeaderButton>
+        </div>;
+
+    private RenderFragment HeadSubmit(string title) =>
+        @<div class="relative modal-header-interactive">
+            @Tag(".modal-header-interactive")
+            <h3 class="modal-title">@title</h3>
+            <Button Class="btn-submit btn-primary">Save</Button>
+        </div>;
+
+    private RenderFragment TextBody() =>
+        @<div class="relative dialog-body">
+            @Tag(".dialog-body")
+            <div class="form-block">
+                <div class="text-03 text-sm">Are you sure you want to do this? This cannot be undone.</div>
+            </div>
+        </div>;
+
+    private RenderFragment FormBody() =>
+        @<div class="relative dialog-body">
+            @Tag(".dialog-body")
+            <div class="form-block">
+                <span class="form-block-title">.form-block</span>
+                <div class="flex-x items-center h-10 px-3 rounded-lg bg-modal-input border border-modal-input text-03 text-sm">Field</div>
+                <div class="flex-x items-start h-16 px-3 pt-2 rounded-lg bg-modal-input border border-modal-input text-03 text-sm">Field</div>
+            </div>
+        </div>;
+
+    private RenderFragment ListBody() =>
+        @<div class="relative dialog-body">
+            @Tag(".dialog-body")
+            <div class="form-block with-contact-list">
+                <div class="flex-x items-center h-10 px-3 rounded-lg bg-modal-input border border-modal-input text-03 text-sm">Search</div>
+                <div class="flex-y">
+                    @for (var i = 0; i < 4; i++) {
+                        <div class="flex-x items-center gap-3 h-11 px-2 text-03 text-sm">
+                            <span class="flex-none w-7 h-7 rounded-full bg-03"></span>Contact @(i + 1)
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>;
+
+    private RenderFragment TilesBody() =>
+        @<div class="relative dialog-body">
+            @Tag(".dialog-body")
+            <div class="form-block">
+                @for (var i = 0; i < 3; i++) {
+                    <div class="flex-x items-center gap-3 h-11 px-3 rounded-lg bg-01 text-03 text-sm">
+                        <span class="flex-none w-6 h-6 rounded bg-03"></span>Tile item
+                    </div>
+                }
+            </div>
+        </div>;
+
+    private RenderFragment BleedBody() =>
+        @<div class="relative dialog-body min-h-40">
+            @Tag(".dialog-body")
+            <div class="absolute inset-0 flex items-center justify-center bg-03 text-03 text-sm">edge-to-edge (map / image)</div>
+        </div>;
+
+    private RenderFragment FooterInput() =>
+        @<div class="relative dialog-footer">
+            @Tag(".dialog-footer")
+            <div class="flex-x items-center h-10 px-3 rounded-lg bg-modal-input border border-modal-input text-03 text-sm">Add a comment…</div>
+        </div>;
+
+    private RenderFragment Buttons(int n) =>
+        @<div class="relative dialog-buttons">
+            @Tag(".dialog-buttons")
+            @if (n == 1) {
+                <Button Class="btn-modal btn-primary">OK</Button>
+            }
+            else {
+                <Button Class="btn-modal">Cancel</Button>
+                <Button Class="btn-modal btn-primary">OK</Button>
+            }
+        </div>;
+}
