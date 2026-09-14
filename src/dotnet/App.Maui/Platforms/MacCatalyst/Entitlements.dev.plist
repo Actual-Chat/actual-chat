@@ -18,6 +18,7 @@
 	<array>
 		<string>applinks:dev.voxt.ai</string>
 		<string>applinks:dev.actual.chat</string>
+		<string>webcredentials:dev.voxt.ai</string>
 	</array>
 	<key>com.apple.security.network.client</key>
 	<true/>

@@ -91,6 +91,7 @@ public class UIHub : CircuitHub, IDispatcherResolver
     public INotificationUI NotificationUI => field ??= Services.GetRequiredService<INotificationUI>();
     public VisualMediaViewerUI VisualMediaViewerUI => field ??= Services.GetRequiredService<VisualMediaViewerUI>();
     public TotpUI TotpUI => field ??= Services.GetRequiredService<TotpUI>();
+    public PasskeyUI PasskeyUI => field ??= Services.GetRequiredService<PasskeyUI>();
     public CaptchaUI CaptchaUI => field ??= Services.GetRequiredService<CaptchaUI>();
     public ConnectivityUI ConnectivityUI => field ??= Services.GetRequiredService<ConnectivityUI>();
     public AudioFocusUI AudioFocusUI => field ??= Services.GetRequiredService<AudioFocusUI>();

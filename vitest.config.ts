@@ -36,6 +36,7 @@ export default defineConfig({
             'web-codecs-compat/vp9-encoder': src('web-codecs-compat/vp9-encoder'),
             'orientation': src('orientation'),
             'async-processor': src('async-processor'),
+            'webauthn-json': src('webauthn-json'),
             'actuallab-core': pkg('actuallab-core'),
             'actuallab-rpc': pkg('actuallab-rpc'),
         },

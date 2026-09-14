@@ -24,6 +24,7 @@ export * from './Services/InteractiveUI/interactive-ui';
 export * from './Services/KeepAwakeUI/keep-awake-ui';
 export * from './Services/KeyboardUI/keyboard-ui';
 export * from './Services/Kvas/web-kvas-backend';
+export * from './Services/PasskeyUI/passkeys';
 export * from './Services/ScreenSize/screen-size';
 export * from './Services/Security/session-tokens';
 export * from './Services/Settings/local-settings';
