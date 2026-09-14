@@ -10,8 +10,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ContentRequest` (record) — Representation URL, method, and headers.
 - `LoggingContentHandler` — Logging decorator with synchronous native pass-through when no downstream is supplied.
 - `HttpContentHandler` — Streaming HTTP fetcher using a supplied HttpClient.
-- `FileSystemContentHandler` — AES-GCM encrypted filesystem cache with hash buckets and coordinated cache fills.
-- `FileSystemContentHandler.Options` (record) — Cache directory, root encryption key, maximum content length, and cache URL normalization.
+- `FileSystemContentHandler` — Progressive AES-GCM filesystem cache with hash buckets, shared downloads, and byte ranges.
+- `FileSystemContentHandler.Options` (record) — Cache directory, root encryption key, download buffer size, and cache URL normalization.
 
 
 ## ActualChat.Core

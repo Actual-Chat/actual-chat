@@ -14,27 +14,32 @@ Android observes intercepted requests; Windows observes image/media requests; Ap
 the existing `content://` handler. Remote HTTPS on Apple will need URL projection before
 it can reach this pipeline. Native response adaptation and key/path wiring come later.
 
-The first filesystem implementation stores complete GETs for immutable media with known
-lengths up to 1 MiB, configurable. Headers/ranges, larger files, unknown lengths, and responses
-with private/no-store/vary/cookie state bypass persistence and retain their downstream streams.
+The filesystem handler progressively caches large and unknown-length GET bodies with bounded
+buffers. Readers share an active download and independently consume authenticated records
+as they arrive. Completed full responses serve byte ranges locally; cold ranges fetch directly
+from the source and cache validated 206 segments separately. Identical ranges coalesce.
+Multipart/conditional ranges, other request headers, and private/no-store/cookie responses
+bypass persistence. Vary is accepted only for Origin when the request has no Origin header.
+
 The full representation URL identifies each cache entry by default. A configurable URL
-normalizer can remove CDN-specific signing parameters from cache identity while retaining
-content variants; downloading still uses the original signed URL. Header/cookie-based
-identity is not implemented in this phase.
+normalizer removes CDN-specific signing parameters while retaining content variants; the
+downloader uses the original signed URL. Range entries include the requested range in their
+identity. Header/cookie-based identity is outside this phase.
 
-Use one directory level of 256 buckets for the expected maximum of 100K files: the first
-SHA-256 byte as two lowercase hex characters, then the full Base64Url hash as the filename.
-Hash the normalized URL as UTF-8. Encrypted staging uses `.p`; completed files have no extension.
+Use one directory level of 256 buckets: the first SHA-256 byte as two lowercase hex
+characters, then the full Base64Url hash of the UTF-8 identity as the filename. Encrypted
+staging uses .p; complete responses publish by atomic rename to extensionless files.
 
-Coordinate fills by absolute file path within the process, including across handler instances.
-After waiting, recheck the cache and return a separate response. Waiter cancellation is isolated;
-a failed/canceled owner or failed persistence allows a retry. Large/ranged bypasses are unchanged.
+Coordinate startup with AsyncLockSet and active downloads with a concurrent dictionary.
+AsyncState publishes available lengths and completion/failure without retaining a replay
+history. Each reader owns its cursor and cancellation; the final departing reader cancels
+the source. Coordination includes handler instances sharing an absolute path in one process.
 
-Encrypt metadata and payload together using AES-256-GCM with a fresh nonce per write,
-a cache-specific HKDF key, and authenticated cache identity. Publish by atomic rename only
-after a complete download. Corrupt entries become misses; unavailable storage does not
-prevent serving downloaded bytes. Record access time and physical file size for later eviction.
-No Kvasar index is needed for this version.
+Encrypt metadata and bounded records with AES-256-GCM and a per-file HKDF key bound to
+cache identity and generation. Authenticate record positions and the final length. Corrupt
+records fail the read and invalidate the entry; storage I/O failures can continue through
+the downstream fetcher at the current position after checking representation metadata.
+Record access time and physical file size for later eviction; no Kvasar index is needed.
 
 ## Next decisions
 
@@ -57,23 +62,16 @@ requires HTTPS `static.klipy.com` ending in `.gif`; without an image proxy, pick
 are direct and messages are links. Legacy direct external pictures, including remaining
 DiceBear bot/admin URLs, may remain uncached. Do not add a general external-origin rule.
 
-Map backgrounds use `MapTilesBaseUrl`: styles, geographic tiles, glyphs, and sprites for
-location messages and sharing views. Their nested requests are issued by MapLibre, so
-rewriting only the initial style URL would not cover them. Defer map caching until it has
-a freshness/version policy; map-marker avatar images still follow the media policy.
-
 **Server reuse:** the shared handler/fetcher contract operates on canonical URLs without
 MAUI or local-route dependencies. Keep filesystem layout an implementation/configuration
 choice: the one-level 256-bucket scheme targets MAUI, while a future API-server cache with
 millions of entries may use deeper sharding or a different backend. Defer server/RPC
 integration and coordination between server processes.
 
-**Progressive storage:** replace the whole-entry envelope with independently authenticated
-chunks, including asset identity, position, and generation. Never persist plaintext staging
-files. Readers consume completed chunks while later chunks download; seeking fetches missing
-ranges directly. Coalesce overlapping downloads, isolate reader cancellation, and retain
-valid completed chunks after interruption. Transport/RPC message size must not dictate disk
-chunk size or playback startup latency.
+**Further range storage:** interrupted partials are currently discarded, and different ranges
+remain separate files. Resume and sparse-range merging can follow once retention and
+representation validation warrant the extra state. RPC message size must not dictate disk
+record size or playback startup latency.
 
 **Platform delivery:** Android can return a progressive stream. Apple can incrementally call
 [`WKURLSchemeTask.didReceive`](https://developer.apple.com/documentation/webkit/wkurlschemetask/didreceive%28_%3A%29-8t5f8);
@@ -93,7 +91,7 @@ the fetchers. Do not combine bytes until range responses and representation iden
 
 ## Reuse
 
-**Existing abstractions:** use `FilePath`, `AsyncLockSet<FilePath>`, and the existing SHA-256 /
+**Existing abstractions:** use `FilePath`, `AsyncLockSet<FilePath>`, `AsyncState<T>`, `WorkerBase`, and SHA-256 /
 Base64Url helpers from Core/Fusion; BCL `HttpRequestMessage`/`HttpResponseMessage` and
 `HttpClient.ResponseHeadersRead` for the streaming HTTP boundary; BCL `AesGcm` and `HKDF`
 for encryption with the same cipher family as the database cache. Existing native WebView
@@ -116,7 +114,7 @@ WebAssembly and new TypeScript infrastructure are outside scope.
 ## Verification boundary
 
 This branch tests encrypted restart hits, identity isolation, corrupted/torn entries,
-coordinated publication, cancellation, stream ownership, hash buckets, stale partials, and
-streaming bypass behavior.
+progressive large/unknown-length reads, byte ranges, shared downloads, cancellation, stream
+ownership, failed publication, hash buckets, stale partials, and streaming bypass behavior.
 Enabling media routing requires separate device tests for offline images, throttled video
 startup, seeking into an uncached tail, and cancellation on each native platform.
