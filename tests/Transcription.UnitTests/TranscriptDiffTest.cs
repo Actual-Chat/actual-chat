@@ -64,6 +64,27 @@ public class TranscriptDiffTest(ITestOutputHelper @out) : TestBase(@out)
         char GetRandomChar() => (char)('0' + rnd.Next(10));
     }
 
+    [Fact]
+    public void DiffShouldCarryLanguagesAndStability()
+    {
+        // arrange
+        var unstable = new Transcript("Hello", LinearMap.Zero, [Languages.Russian]);
+        var stable = unstable with { IsStable = true };
+
+        // act
+        var grown = Transcript.Empty + (unstable - Transcript.Empty);
+        var promotion = stable - unstable;
+        var promoted = grown + promotion;
+
+        // assert
+        grown.Languages.Should().Equal([Languages.Russian],
+            "detected languages don't fit a text diff, so the diff carries them explicitly");
+        grown.IsStable.Should().BeFalse();
+        promotion.IsNone.Should().BeTrue("the text didn't change");
+        promoted.IsStable.Should().BeTrue("an empty diff still promotes the transcript it's applied to");
+        promoted.Languages.Should().Equal([Languages.Russian]);
+    }
+
     // Private methods
 
     private async Task CheckDiff(string title, IReadOnlyList<Transcript> transcripts)
