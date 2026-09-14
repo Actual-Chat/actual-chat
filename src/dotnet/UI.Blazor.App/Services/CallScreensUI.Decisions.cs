@@ -25,4 +25,8 @@ public partial class CallScreensUI
         };
         return new CallView(call, kind, false);
     }
+
+    internal static bool IsOverLockFlagStale(
+        ChatId? overLockChatId, ChatId ringChatId, bool isSameRing, ChatId? heldChatId)
+        => isSameRing && overLockChatId == ringChatId && heldChatId != ringChatId;
 }

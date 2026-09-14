@@ -18,6 +18,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     private readonly MutableState<ChatId?> _inChatChatId;
     // The ring whose ringtone the user silenced; the ring itself keeps going.
     private readonly MutableState<ChatId?> _mutedRingChatId;
+    private int _overLockRingGeneration;
 
     public IState<ChatId?> MutedRingChatId => _mutedRingChatId;
 
@@ -87,8 +88,10 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         // A ring that can't hold the slot must not take the screen over the lock: it would swap the held
         // call's screen for its own.
         var slotChatId = CallUI.GetCallChatIdNonComputed();
-        if (showOverLockScreen && (slotChatId is null || slotChatId == chatId))
+        if (showOverLockScreen && (slotChatId is null || slotChatId == chatId)) {
             _overLockRingChatId.Value = chatId;
+            _ = ClearOverLockAfterRing(chatId, Interlocked.Increment(ref _overLockRingGeneration));
+        }
     }
 
     public void OnCallDismissed(ChatId chatId)
@@ -214,6 +217,21 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     }
 
     // Private methods
+
+    private async Task ClearOverLockAfterRing(ChatId chatId, int generation)
+    {
+        // No unanswered ring outlives RingTimeout, so past it only a held call keeps the flag.
+        try {
+            await Task.Delay(Constants.Call.RingTimeout, StopToken).ConfigureAwait(false);
+            var isSameRing = Volatile.Read(ref _overLockRingGeneration) == generation;
+            var heldChatId = CallUI.GetCallChatIdNonComputed();
+            if (IsOverLockFlagStale(_overLockRingChatId.Value, chatId, isSameRing, heldChatId))
+                ClearIf(_overLockRingChatId, chatId);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Clearing the over-lock flag of the ring in chat #{ChatId} failed", chatId);
+        }
+    }
 
     private async Task RevealCallScreenAfterPaint()
     {

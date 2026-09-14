@@ -169,6 +169,31 @@ public class CallScreensUIDecisionsTest
         activeView.Kind.Should().Be(CallViewKind.FullScreen);
     }
 
+    [Theory]
+    [InlineData(true, true, false, true)]
+    [InlineData(false, true, false, false)]
+    [InlineData(true, false, false, false)]
+    [InlineData(true, true, true, false)]
+    public void OverLockFlagShouldGoStaleOnceRingOutlived(bool isFlagSet, bool isSameRing, bool isHeld, bool isStale)
+    {
+        // act
+        var isFlagStale = CallScreensUI.IsOverLockFlagStale(
+            isFlagSet ? ChatA : null, ChatA, isSameRing, isHeld ? ChatA : null);
+
+        // assert
+        isFlagStale.Should().Be(isStale);
+    }
+
+    [Fact]
+    public void OverLockFlagShouldGoStaleWhenAnotherChatHoldsSlot()
+    {
+        // act
+        var isFlagStale = CallScreensUI.IsOverLockFlagStale(ChatA, ChatA, isSameRing: true, ChatB);
+
+        // assert
+        isFlagStale.Should().BeTrue("only the slot holding the ring's own chat keeps its flag");
+    }
+
     private static CallView Decide(
         ActiveCall? call,
         bool isNarrow,
