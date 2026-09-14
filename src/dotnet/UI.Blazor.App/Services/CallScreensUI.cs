@@ -152,7 +152,8 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
 
     public async Task Decline(ChatId chatId)
     {
-        // Moving back behind the lock screen is the release teardown's, as for a ring that ends on its own.
+        // Moving back behind the lock screen is the release teardown's, as for a ring that ends on its own -
+        // EndRing only clears the flags of a ring the slot never held.
         var isOverLock = _overLockRingChatId.Value == chatId;
         EndRing(chatId);
         if (!isOverLock)
@@ -244,8 +245,13 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
 
     private void EndRing(ChatId chatId)
     {
+        // A ring the slot never held (e.g. declined before the search claimed it) has no release to
+        // clear its flags, so this is the only place left to drop them.
+        var isHeld = CallUI.GetCallChatIdNonComputed() == chatId;
         CallUI.DropRing(chatId);
         Bridge?.DismissCallNotification(chatId);
+        if (!isHeld)
+            ClearCallFlags(chatId);
     }
 
     private Task OpenChat(ChatId chatId)
