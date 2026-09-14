@@ -1,4 +1,6 @@
+import fs from 'node:fs';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { HeifDecoder } from 'image-processing/heif-decoder';
 import type {
     ImageOutputSpec,
     ImageProcessRequest,
@@ -6,7 +8,7 @@ import type {
 } from 'image-processing/image-processing-contracts';
 import type { ImageSize } from 'image-processing/image-geometry';
 
-const BASE_URL = new URL('../../../src/nodejs/jpegli', import.meta.url).href;
+const BASE_URL = new URL('../../../src/nodejs', import.meta.url).href;
 
 // image-processor-worker runs as a module worker in production, where `self` is the worker's
 // own global scope; stand one in so its top-level rpcServer(...) call can bind to it. This must
@@ -143,6 +145,10 @@ function makeJpegHeader(width: number, height: number): Uint8Array {
     ]);
 }
 
+function readHeicFixture(): Uint8Array {
+    return new Uint8Array(fs.readFileSync(new URL('fixtures/orientation1.heic', import.meta.url)));
+}
+
 function makeJpegBlob(width: number, height: number): Blob {
     const blob = new Blob([makeJpegHeader(width, height) as BlobPart], { type: 'image/jpeg' });
     sourceSizeByBlob.set(blob, { width, height });
@@ -219,6 +225,23 @@ describe('placeholder output', () => {
         expect(placeholder?.placeholder).toBeTruthy();
         expect(createImageBitmapMock).toHaveBeenCalledTimes(1);
         expect(createImageBitmapMock).toHaveBeenCalledWith(source, { resizeWidth: 64, resizeQuality: 'high' });
+    });
+
+    it('should keep libheif unloaded when the browser decodes the HEIC itself', async () => {
+        // arrange: WebKit decodes HEIC natively, and must never pay for the 1.4 MB wasm
+        const heic = new Blob([readHeicFixture() as BlobPart], { type: 'image/heic' });
+        sourceSizeByBlob.set(heic, { width: 240, height: 160 });
+        const loadSpy = vi.spyOn(HeifDecoder, 'load');
+        createImageBitmapMock.mockClear();
+
+        // act
+        const result = await processInWorker(heic, { outputs: [mainSpec(12582912, 6144), placeholderSpec()] });
+
+        // assert
+        expect(result.format).toBe('heif');
+        expect(createImageBitmapMock).toHaveBeenCalledTimes(1);
+        expect(loadSpy).not.toHaveBeenCalled();
+        loadSpy.mockRestore();
     });
 
     it('should return an empty placeholder without failing the main output when decoding fails', async () => {
