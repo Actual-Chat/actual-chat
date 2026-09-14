@@ -204,10 +204,12 @@ swaps the dialing full-screen view for the modal.
   hasn't muted.
 - **`SyncCallView`** follows `GetCallView`. It opens `CallModal` when the view switches to it;
   the modal closes itself once the view moves on. When the slot is released it tears the
-  screens down, and it is the only place that does: it clears the chat's flags, moves the app
-  back behind the lock screen if the call was shown over it, opens the chat if the call had the
-  full-screen view, and stops an active call's audio. Decline, Hang up and the other actions
-  only change the slot.
+  screens down: it clears the chat's flags, moves the app back behind the lock screen if the
+  call was shown over it, otherwise opens the chat if the call had the full-screen view, and
+  stops an active call's audio. This is the only place that tears down a call the slot held.
+  Decline, Hang up and the other actions only change the slot; the one exception is a ring
+  that ends before the slot ever held it, whose flags `EndRing` clears itself, since there is
+  no release to do it.
 
 `ConfirmRing` is telemetry only. The server stores it on the invite (`CallInvite.Ack`) and
 changes nothing else.
@@ -266,9 +268,10 @@ that and joins the conversation, moving the slot to `Active`.
 ### Decline
 
 The callee declines from the modal, the island, the over-lock screen, or the Decline button
-of the Android notification (`CallActionReceiver`). The client ends the local ring, moves the
-app back behind the lock screen if the ring was shown over it, and calls `DeclineCall`. The
-Message action declines the call and opens the chat.
+of the Android notification (`CallActionReceiver`). The client ends the local ring and calls
+`DeclineCall`. The Message action declines the call and opens the chat. If the ring was shown
+over the lock screen, it is moved back behind it as part of the release teardown once the slot
+is released.
 
 On the server, `DeclineCall`:
 
