@@ -263,7 +263,13 @@ next utterance would talk over their still-draining previous one.
 
 A synthesis failure completes the frame channel with the error (the
 muxer falls back to the original, see below), marks the synthesizer down
-for `DubSynthesizerDownDelay`, and is logged once as a warning.
+for `DubSynthesizerDownDelay`, and is logged once as a warning. A failure
+that arrives through the text channel — the translation errored, or the
+language said "dub" but no stable translation ever came, so nothing was
+spoken — ends the dub the same way for the muxer but does not touch the
+synthesizer-down flag: only the provider's own failures cool every dub
+down. The late-listener case is the exception: a dub that skipped its
+backlog may legitimately have nothing left to say.
 
 ### Lifetime
 

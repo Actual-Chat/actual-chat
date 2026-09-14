@@ -61,7 +61,11 @@ public sealed class OpusFramePump : IDisposable
             await pcm.Completion.ConfigureAwait(false);
         }
         catch (Exception e) {
-            error = e;
+            // A producer fault usually arrives as the cancellation that stops this side; the output
+            // must carry the fault, or the consumer sees a clean end where the speech failed
+            error = pcm.Completion is { IsFaulted: true, Exception: { } producerError }
+                ? producerError.GetBaseException()
+                : e;
             throw;
         }
         finally {

@@ -22,9 +22,12 @@ public partial class AudioStreamingBackend
         if (SpeechSynthesizer == null || IsCoolingDown(dubStreamId))
             return false;
 
-        var entry = _dubs.GetOrAdd(dubStreamId, static (id, self) => self.StartDub(id), this);
-        // Start is idempotent, and GetOrAdd may run the factory twice: a loser must never run.
-        entry.Worker.Start();
+        var candidate = NewDub(dubStreamId);
+        var entry = _dubs.GetOrAdd(dubStreamId, candidate);
+        if (ReferenceEquals(entry, candidate))
+            entry.Worker.Start();
+        else
+            _ = candidate.Worker.DisposeSilentlyAsync();
         try {
             return await entry.WhenDecided
                 .WaitAsync(Constants.Audio.DubWaitTimeout, cancellationToken)
@@ -38,7 +41,7 @@ public partial class AudioStreamingBackend
         }
     }
 
-    private DubEntry StartDub(StreamId dubStreamId)
+    private DubEntry NewDub(StreamId dubStreamId)
     {
         var decidedSource = TaskCompletionSourceExt.New<bool>();
 #pragma warning disable CA2016 // Pass cancellationToken
@@ -87,6 +90,7 @@ public partial class AudioStreamingBackend
             var stabilizer = new DubStabilizer();
             var decision = DubDecision.Undecided;
             var translated = Transcript.Empty;
+            var spokenChunkCount = 0;
             await foreach (var diff in ReadTranslation(translatedMemoizer, sourceMemoizer, cancellationToken)
                                .ConfigureAwait(false)) {
                 translated += diff;
@@ -105,11 +109,19 @@ public partial class AudioStreamingBackend
                 if (decision != DubDecision.Dub)
                     continue;
 
-                if (stabilizer.Next(translated) is { } chunk)
+                if (stabilizer.Next(translated) is { } chunk) {
+                    spokenChunkCount++;
                     await text.Writer.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
+                }
             }
             if (decision == DubDecision.Undecided)
                 Log.LogInformation("RunDub: #{StreamId} - too short to decide, not dubbed", dubStreamId);
+            else if (decision == DubDecision.Dub && spokenChunkCount == 0 && !isLate) {
+                // The language decided "dub" but the translation never became stable: a clean end here
+                // would leave the listener with a header-only track and no fallback to the original
+                error = StandardError.External($"Dub #{dubStreamId} got no stable text to speak.");
+                Log.LogWarning("RunDub: #{StreamId} - no stable text to speak, failing the dub", dubStreamId);
+            }
         }
         catch (Exception e) {
             error = e;
@@ -161,6 +173,12 @@ public partial class AudioStreamingBackend
                 frames.Writer.TryComplete(e);
                 if (e.IsCancellationOf(cancellationToken))
                     throw;
+                if (text.Completion.IsFaulted) {
+                    // The failure came in through the text channel (translation, nothing to speak):
+                    // the muxer still falls back, but the provider is fine
+                    Log.LogInformation("Dub #{StreamId} ended without speech: {Error}", dubStreamId, e.Message);
+                    return;
+                }
 
                 // The muxer falls back to the original on the erroring stream; later utterances skip
                 // the hold and the failure instead of paying both again while the provider is down.
