@@ -4,16 +4,14 @@ import {
     indexOfAscii,
     readAscii,
     readUint16BE,
-    readUint16LE,
     readUint32BE,
     readUint32LE,
     startsWith,
     writeUint32LE,
 } from './image-bytes';
+import { EXIF_HEADER, readExifOrientation } from './image-format';
 
-const EXIF_HEADER = [0x45, 0x78, 0x69, 0x66, 0x00, 0x00];
 const XMP_HEADER = 'http://ns.adobe.com/xap/1.0/\0';
-const EXIF_ORIENTATION_TAG = 0x0112;
 const PNG_DROPPED_CHUNKS = new Set(['eXIf', 'tEXt', 'iTXt', 'zTXt', 'tIME']);
 const WEBP_DROPPED_CHUNKS = new Set(['EXIF', 'XMP ']);
 const WEBP_METADATA_FLAGS = 0x08 | 0x04;
@@ -49,6 +47,7 @@ function stripJpeg(bytes: Uint8Array): Uint8Array {
             parts.push(bytes.subarray(offset));
             return isChanged ? concatBytes(parts) : bytes;
         }
+
         if (marker === 0xFF || marker === 0x01 || (marker >= 0xD0 && marker <= 0xD7)) {
             const length = marker === 0xFF ? 1 : 2;
             parts.push(bytes.subarray(offset, offset + length));
@@ -80,6 +79,7 @@ function filterJpegSegment(marker: number, segment: Uint8Array, payload: Uint8Ar
         return null;
     if (marker !== 0xE1)
         return segment;
+
     if (startsWith(payload, 0, EXIF_HEADER)) {
         const orientation = readExifOrientation(payload.subarray(EXIF_HEADER.length));
         if (orientation <= 1)
@@ -91,33 +91,6 @@ function filterJpegSegment(marker: number, segment: Uint8Array, payload: Uint8Ar
 
     const isHdrXmp = readAscii(payload, 0, XMP_HEADER.length) === XMP_HEADER && indexOfAscii(payload, 'hdrgm') >= 0;
     return isHdrXmp ? segment : null;
-}
-
-function readExifOrientation(tiff: Uint8Array): number {
-    if (tiff.length < 8)
-        return 1;
-
-    const isLittleEndian = tiff[0] === 0x49 && tiff[1] === 0x49;
-    if (!isLittleEndian && !(tiff[0] === 0x4D && tiff[1] === 0x4D))
-        return 1;
-
-    const readUint16 = (offset: number): number => isLittleEndian ? readUint16LE(tiff, offset) : readUint16BE(tiff, offset);
-    const ifdOffset = isLittleEndian ? readUint32LE(tiff, 4) : readUint32BE(tiff, 4);
-    if (ifdOffset + 2 > tiff.length)
-        return 1;
-
-    const entryCount = readUint16(ifdOffset);
-    for (let i = 0; i < entryCount; i++) {
-        const entry = ifdOffset + 2 + i * 12;
-        if (entry + 12 > tiff.length)
-            break;
-        if (readUint16(entry) !== EXIF_ORIENTATION_TAG)
-            continue;
-
-        const value = readUint16(entry + 8);
-        return value >= 1 && value <= 8 ? value : 1;
-    }
-    return 1;
 }
 
 function createOrientationExifSegment(orientation: number): Uint8Array {

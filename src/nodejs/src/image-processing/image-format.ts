@@ -4,6 +4,9 @@ import { readAscii, readUint16BE, readUint16LE, readUint32BE, readUint32LE, star
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 const HEIF_BRANDS = new Set(['heic', 'heix', 'hevc', 'hevx', 'heif', 'heim', 'heis', 'mif1', 'msf1']);
+export const EXIF_HEADER = [0x45, 0x78, 0x69, 0x66, 0x00, 0x00];
+const EXIF_ORIENTATION_TAG = 0x0112;
+const TIFF_HEADER_LENGTH = 8;
 const WEBP_ANIMATION_FLAG = 0x02;
 const MIME_TYPES: Record<ImageFormat, string> = {
     jpeg: 'image/jpeg',
@@ -60,6 +63,53 @@ export function readImageDimensions(bytes: Uint8Array, format: ImageFormat): Ima
     default:
         return null;
     }
+}
+
+/** EXIF Orientation of a HEIF/AVIF image, 1 when it has none. libheif ignores the tag and WebKit
+ *  applies it, so a wasm decode has to apply it itself to land on the same pixels. */
+export function readHeifOrientation(bytes: Uint8Array): number {
+    // The Exif item's payload is a TIFF block behind an 'Exif\0\0' marker; found by scanning
+    // rather than by walking iinf/iloc, the same shortcut readLargestIspeDimensions takes
+    const end = bytes.length - EXIF_HEADER.length - TIFF_HEADER_LENGTH;
+    for (let offset = 0; offset <= end; offset++) {
+        if (bytes[offset] !== EXIF_HEADER[0] || !startsWith(bytes, offset, EXIF_HEADER))
+            continue;
+
+        const orientation = readExifOrientation(bytes.subarray(offset + EXIF_HEADER.length));
+        if (orientation > 1)
+            return orientation;
+    }
+    return 1;
+}
+
+/** Reads Orientation out of a TIFF block - the payload of a JPEG APP1 segment or a HEIF Exif item,
+ *  in both cases past the 'Exif\0\0' marker. Returns 1 for anything it can't parse. */
+export function readExifOrientation(tiff: Uint8Array): number {
+    if (tiff.length < TIFF_HEADER_LENGTH)
+        return 1;
+
+    const isLittleEndian = tiff[0] === 0x49 && tiff[1] === 0x49;
+    if (!isLittleEndian && !(tiff[0] === 0x4D && tiff[1] === 0x4D))
+        return 1;
+
+    const readUint16 = (offset: number): number =>
+        isLittleEndian ? readUint16LE(tiff, offset) : readUint16BE(tiff, offset);
+    const ifdOffset = isLittleEndian ? readUint32LE(tiff, 4) : readUint32BE(tiff, 4);
+    if (ifdOffset + 2 > tiff.length)
+        return 1;
+
+    const entryCount = readUint16(ifdOffset);
+    for (let i = 0; i < entryCount; i++) {
+        const entry = ifdOffset + 2 + i * 12;
+        if (entry + 12 > tiff.length)
+            break;
+        if (readUint16(entry) !== EXIF_ORIENTATION_TAG)
+            continue;
+
+        const value = readUint16(entry + 8);
+        return value >= 1 && value <= 8 ? value : 1;
+    }
+    return 1;
 }
 
 export function getImageMimeType(format: ImageFormat): string {
