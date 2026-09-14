@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kitties · Light &amp; dark</title>
+  <style>
+    :root {
+        color-scheme: light;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        color: #303038;
+        background: #f5f5fc;
+        --light-background: {{light-background}};
+        --dark-background: {{dark-background}};
+        --preview-size: 320px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header, main, footer { max-width: 1440px; margin: auto; padding: 32px; }
+    header { display: flex; justify-content: space-between; align-items: end; gap: 24px; }
+    .eyebrow { margin: 0 0 10px; color: #6d6d80; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(28px, 4vw, 44px); font-weight: 600; letter-spacing: -.04em; }
+    .intro { margin: 12px 0 0; color: #575766; line-height: 1.6; max-width: 640px; }
+    .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    label { display: flex; align-items: center; gap: 8px; font-size: 13px; white-space: nowrap; }
+    select { font: inherit; background: white; color: #303038; border: 1px solid #b6b6cc; padding: 8px; border-radius: 6px; }
+    main { padding-top: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+    .asset { min-width: 0; border: 1px solid #dfdff2; border-radius: 12px; overflow: hidden; background: white; }
+    h2 { margin: 0; padding: 16px 20px; font-size: 15px; font-weight: 600; }
+    .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    figure { margin: 0; min-width: 0; padding: 16px 12px 14px; }
+    figure > a { min-height: var(--preview-size); display: grid; place-items: center; }
+    img { width: 100%; height: var(--preview-size); max-width: var(--preview-size); object-fit: contain; }
+    .light { background: var(--light-background); color: #575766; }
+    .dark { background: var(--dark-background); color: #b6b6cc; color-scheme: dark; }
+    figcaption { margin-top: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    figcaption span { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; }
+    figcaption a { font-size: 11px; overflow-wrap: anywhere; text-align: center; }
+    a { color: inherit; text-decoration-color: #858599; text-underline-offset: 3px; }
+    a:hover { text-decoration-thickness: 2px; }
+    :focus-visible { outline: 3px solid #6d6d80; outline-offset: 3px; }
+    footer { padding-top: 0; font-size: 12px; line-height: 1.7; color: #6d6d80; }
+    body[data-view="light"] .dark, body[data-view="dark"] .light { display: none; }
+    body[data-view="light"] .pair, body[data-view="dark"] .pair { grid-template-columns: 1fr; }
+    body[data-view="dark"] { background: var(--dark-background); color: #dfdff2; }
+    body[data-view="dark"] .asset { background: var(--dark-background); border-color: #42424d; }
+    body[data-view="dark"] .intro, body[data-view="dark"] .eyebrow, body[data-view="dark"] footer { color: #b6b6cc; }
+    body[data-size="large"] main { grid-template-columns: 1fr; max-width: 1120px; }
+    @media (max-width: 900px) {
+        header { align-items: start; flex-direction: column; }
+        main { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+        header, main, footer { padding-left: 16px; padding-right: 16px; }
+        figure { padding: 12px 6px; }
+        figure > a { min-height: 200px; }
+        img { height: min(var(--preview-size), 220px); }
+    }
+  </style>
+</head>
+<body data-view="both" data-size="normal">
+  <header>
+    <div>
+      <p class="eyebrow">Voxt · Illustration library</p>
+      <h1>Kitties, in both themes.</h1>
+      <p class="intro">{{count}} illustrations on the app’s light and dark backgrounds.
+        Choose a size to inspect the details, or open an illustration on its own.</p>
+    </div>
+    <div class="controls">
+      <label>Theme <select id="theme"><option value="both">Side by side</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+      <label>Size <select id="size"><option value="small">Small</option><option value="normal" selected>Normal</option><option value="large">Large</option></select></label>
+    </div>
+  </header>
+  <main>
+{{cards}}
+  </main>
+  <footer>Light {{light-background}} · Dark {{dark-background}} · Transparent SVGs.
+    Backgrounds follow the app’s background-01 theme colors.</footer>
+  <script>
+    document.querySelector('#theme').addEventListener('change', event => {
+        document.body.dataset.view = event.target.value;
+    });
+    document.querySelector('#size').addEventListener('change', event => {
+        const size = event.target.value;
+        document.body.dataset.size = size;
+        document.documentElement.style.setProperty('--preview-size', { small: '160px', normal: '320px', large: '460px' }[size]);
+    });
+  </script>
+</body>
+</html>
