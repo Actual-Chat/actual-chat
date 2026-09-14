@@ -103,6 +103,9 @@ public static partial class Constants
         public static readonly TimeSpan RecorderDrainTimeout = TimeSpan.FromSeconds(1);
         // Startup waits the recorder proceeds without rather than lose the utterance.
         public static readonly TimeSpan RecorderStartupWaitTimeout = TimeSpan.FromSeconds(3);
+        // The recording start awaits its begin tune, so an unbounded wait here stops recording
+        // from ever starting. Generous: every tune sound is under a second.
+        public static readonly TimeSpan TunePlayTimeout = TimeSpan.FromSeconds(2);
         // Between a failed audio push and the retry that replaces it. Short, because the usual
         // cause is a peer change that the next attempt resolves - it exists to stop a persistent
         // rejection tight-looping, not to pace a reconnect - and every millisecond here is

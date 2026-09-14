@@ -101,15 +101,23 @@ public class MauiTuneUI : TuneUI
             if (scope is null)
                 return;
 
-            // In a finally, because a throw from PlayAsync used to skip the release: the tune's
-            // scope then kept the holder non-empty, so the "last scope released" cleanup that
-            // abandons focus, restores Mode.Normal and stops SCO never ran until the next tune
-            // that happened to succeed.
+            // PlayAsync completes on PlaybackEnded, which a player whose audio endpoint died never
+            // raises, and the player is cached - so a wedged one has to be dropped here or every
+            // later tune hangs on it too.
+            using var playCts = new CancellationTokenSource(Constants.Audio.TunePlayTimeout);
             try {
-                await player.PlayAsync(CancellationToken.None).ConfigureAwait(false);
+                await player.PlayAsync(playCts.Token).ConfigureAwait(false);
             }
             finally {
+                // In a finally: a throw from PlayAsync used to skip the release, leaving the holder
+                // non-empty, so the "last scope released" cleanup never ran.
                 ReleaseAudioFocus();
+                if (playCts.IsCancellationRequested) {
+                    Log.LogWarning("Sound '{SoundName}' didn't finish in {Timeout} - dropping its player",
+                        soundName, Constants.Audio.TunePlayTimeout);
+                    _players.TryRemove(new KeyValuePair<string, Task<AsyncAudioPlayer>>(soundName, playerTask));
+                    player.DisposeSilently();
+                }
             }
         }
         catch (Exception e) {
