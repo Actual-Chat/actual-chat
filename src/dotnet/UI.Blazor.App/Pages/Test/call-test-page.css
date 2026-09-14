@@ -318,7 +318,7 @@
 .dev-desktop .call-pill { top: .5rem; }
 
 /* ── Real-class stages: reproduce the production incoming-call surfaces on the test page using the
-   SAME classes (author-modal / incoming-call-modal / collapsed-call-view / full-screen-call-view),
+   SAME classes (author-modal / call-modal / collapsed-call-view / full-screen-call-view),
    so editing those stylesheets is reflected here. Only positioning is scoped to the preview frame. ── */
 .tp-stage {
   position: absolute;
@@ -347,58 +347,6 @@
   width: 2.25rem; height: 2.25rem; border-radius: 50%;
   background-color: var(--background-03); color: var(--call-accent);
 }
-
-/* ===== Incoming call modal (foreground: desktop + unlocked mobile) ===== */
-.call-modal {
-  position: absolute; inset: 0; z-index: 20;
-  display: flex; align-items: center; justify-content: center;
-  background: rgb(0 0 0 / 40%); padding: .75rem;
-}
-.call-modal .c-card {
-  position: relative; width: 100%; max-width: 19rem;
-  border-radius: 1rem; overflow: hidden;
-  background: var(--background-01);
-  box-shadow: 0 8px 32px rgb(0 0 0 / 30%);
-  display: flex; flex-direction: column;
-}
-.call-modal .c-hero {
-  position: relative;
-  padding: 1.5rem 1rem 1rem;
-  display: flex; flex-direction: column; align-items: center; gap: .375rem;
-  background: var(--call-ring-grad);
-  color: white;
-}
-.call-modal .c-hero .c-avatar {
-  width: 4.5rem; height: 4.5rem; border-radius: 50%;
-  background: linear-gradient(135deg, #f0c987, #b06a3a);
-  box-shadow: 0 4px 16px rgb(0 0 0 / 25%);
-}
-.call-modal .c-hero .c-title { font-size: .8125rem; opacity: .85; }
-.call-modal .c-hero .c-name { font-size: 1.125rem; font-weight: 600; }
-.call-modal .c-x {
-  position: absolute; top: .5rem; right: .5rem;
-  width: 2rem; height: 2rem; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  background: rgb(255 255 255 / 18%); color: white;
-}
-.call-modal .c-tools { position: absolute; top: .5rem; left: .5rem; display: flex; gap: .375rem; }
-.call-modal .c-tools .c-t {
-  width: 2rem; height: 2rem; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  background: rgb(255 255 255 / 18%); color: white;
-}
-.call-modal .c-buttons { display: flex; gap: .5rem; padding: .75rem; }
-.call-modal .c-buttons > * { flex: 1; }
-.call-modal .cbtn {
-  display: flex; align-items: center; justify-content: center; gap: .375rem;
-  height: 2.5rem; border-radius: .625rem; font-weight: 500; color: white;
-}
-.call-modal .cbtn.c-decline { background: var(--call-magenta); }
-.call-modal .cbtn.c-accept { background: var(--call-green); }
-/* narrow: 2 icon-only round buttons */
-.call-modal.c-narrow .c-buttons { justify-content: center; gap: 2.5rem; }
-.call-modal.c-narrow .cbtn { flex: 0 0 auto; width: 3.25rem; height: 3.25rem; border-radius: 50%; font-size: 1.375rem; }
-.call-modal.c-narrow .cbtn .c-lbl { display: none; }
 
 /* ===== Collapsed incoming-call island (draggable) ===== */
 .call-island {

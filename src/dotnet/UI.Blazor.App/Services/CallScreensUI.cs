@@ -19,7 +19,6 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     // The ring whose ringtone the user silenced; the ring itself keeps going.
     private readonly MutableState<ChatId?> _mutedRingChatId;
 
-    public IState<ChatId?> CollapsedChatId => _collapsedChatId;
     public IState<ChatId?> MutedRingChatId => _mutedRingChatId;
 
     private IIncomingCallsBridge? Bridge { get; }

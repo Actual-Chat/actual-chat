@@ -61,6 +61,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Banners>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.BreakableWord>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallMessageView>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallModal>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallModalHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CameraMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CarAudioSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivities>();
@@ -202,8 +204,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.HasContextMenuBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ImageCropPicker>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.InaccessiblePlace>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingCallModal>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingCallModalHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingShareModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.InviteFriendsBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IosAppGuideContent>();
@@ -314,7 +314,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotifyCallPanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotifyMentionedMembers>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OnboardingModal>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OutgoingCallModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OwnAccountEditorModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OwnAvatarAddTile>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OwnAvatarEditorModal>();
@@ -836,6 +835,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.Banners), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.BreakableWord), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CallMessageView), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CallModal), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CallModalHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CameraMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CarAudioSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivities), AotTypeKind.Component),
@@ -977,8 +978,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.HasContextMenuBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ImageCropPicker), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.InaccessiblePlace), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingCallModal), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingCallModalHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingShareModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.InviteFriendsBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IosAppGuideContent), AotTypeKind.Component),
@@ -1089,7 +1088,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotifyCallPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotifyMentionedMembers), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.OnboardingModal), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.OutgoingCallModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.OwnAccountEditorModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.OwnAvatarAddTile), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.OwnAvatarEditorModal), AotTypeKind.Component),

@@ -82,7 +82,7 @@ public partial class CallScreensUI
         // The modal closes itself once the view moves on, so it opens only on the switch to it.
         var wasModal = last.Kind == CallViewKind.Modal && last.Call?.ChatId == call.ChatId;
         if (!wasModal)
-            ShowCallModal(call);
+            ShowModal(new CallModal.Model(call.ChatId));
     }
 
     private void OnCallReleased(ActiveCall call, CallView last)
@@ -104,14 +104,6 @@ public partial class CallScreensUI
             await CallUI.HangUp(call.ChatId).ConfigureAwait(true);
         if (mustOpenChat)
             await OpenChat(call.ChatId).ConfigureAwait(true);
-    }
-
-    private void ShowCallModal(ActiveCall call)
-    {
-        if (call.Origin == CallOrigin.Outgoing)
-            ShowModal(new OutgoingCallModal.Model(call.ChatId));
-        else if (call.PeerId is { } callerId)
-            ShowModal(new IncomingCallModal.Model(callerId));
     }
 
     private void ClearCallFlags(ChatId chatId)

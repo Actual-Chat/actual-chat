@@ -134,14 +134,14 @@
         <div class="c-section-title">3. Incoming call</div>
         <div class="c-section-note">
             Rendered with the REAL production classes — <code>author-modal</code>,
-            <code>incoming-call-modal</code>, <code>collapsed-call-view</code>,
-            <code>full-screen-call-view</code> — so edits to <code>incoming-call-modal.css</code> /
+            <code>call-modal</code>, <code>collapsed-call-view</code>,
+            <code>full-screen-call-view</code> — so edits to <code>call-modal.css</code> /
             <code>full-screen-call-view.css</code> / <code>account-modal.css</code> show up here.
             Modal = foreground (X collapses to the draggable island, ring muted). Over-lock = locked screen.
             Avatars are placeholders.
         </div>
         <div class="c-frames">
-            @* Modal — real classes: author-modal + incoming-call-modal *@
+            @* Modal — real classes: author-modal + call-modal *@
             <div class="dev-frame dev-desktop">
                 <div class="dev-label">Modal <span class="c-tag">foreground</span></div>
                 <div class="dev-screen">
@@ -152,7 +152,7 @@
                         </div>
                         <div class="transcript"></div>
                         <div class="tp-stage">
-                            <div class="author-modal incoming-call-modal tp-modal-card">
+                            <div class="author-modal call-modal tp-modal-card">
                                 <div class="dialog-body">
                                     <div class="c-header">
                                         <button type="button" class="btn btn-round author-modal-close-btn close-btn btn-sm"><i class="icon-close text-2xl"></i></button>
@@ -162,10 +162,10 @@
                                     </div>
                                 </div>
                                 <div class="dialog-buttons">
-                                    <button type="button" class="c-call-btn c-decline"><i class="icon-close"></i></button>
-                                    <button type="button" class="c-call-btn c-mute"><i class="icon-bell-off"></i></button>
-                                    <button type="button" class="c-call-btn c-message"><i class="icon-message-ellipse"></i></button>
-                                    <button type="button" class="c-call-btn c-accept"><i class="icon-phone-take"></i></button>
+                                    <button type="button" class="btn-call c-decline"><i class="icon-close"></i></button>
+                                    <button type="button" class="btn-call c-mute"><i class="icon-bell-off"></i></button>
+                                    <button type="button" class="btn-call c-message"><i class="icon-message-ellipse"></i></button>
+                                    <button type="button" class="btn-call c-accept"><i class="icon-phone-take"></i></button>
                                 </div>
                             </div>
                         </div>
