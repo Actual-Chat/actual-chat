@@ -103,7 +103,7 @@ Every path below calls `IncomingCallUI.OnRing(chatId)`.
 | Android, app in the foreground and unlocked | `FirebaseMessagingService` dispatches `OnRing` straight into Blazor. No system notification is shown, because the in-app modal and ringer already own the ring. |
 | Android, backgrounded, killed or locked | `IncomingCallNotifications.Show` posts a `CallStyle` notification with Answer/Decline and a full-screen intent, and `IncomingCallRinger` starts the ringtone with it. Neither happens when another chat's call notification is shown or the slot is held by another chat. If the Blazor scope is alive, `OnRing` is dispatched as well. |
 | Android, opened from that notification | `NotificationHandler` → `IncomingCallNotifications.HandleViewIntent`. A full-screen intent passes `overLockScreen: true`; Answer goes straight to `IncomingCallUI.Accept`. |
-| Android, opened from the launcher after a push | `SyncRings` picks the ring up from the still-active system notifications on start. |
+| Android, opened from the launcher after a push | `CallUI`'s search loop (`SearchRings`) picks the ring up from the still-active system notifications on start. |
 | Web, tab in the foreground | Firebase `onMessage` → `NotificationUI.OnIncomingCall`. |
 | Web, tab in the background or closed | The service worker posts `INCOMING_CALL` to every open tab and shows an OS notification. |
 | Every platform | `SyncActiveCallNotifications` watches `Notifications.ListActive` and calls `OnRing` for every `CallNotification`. Off Android this is the primary trigger; on Android it covers a dropped push while the app is alive. |
@@ -126,7 +126,9 @@ candidates are pruned.
 `CallUI` holds the one call this client is in, incoming or outgoing: `_callChatId` names the
 chat, `_activeCall` the confirmed call with its origin and phase (`Ringing`, `Dialing`,
 `Active`). While the slot is held, every other ring is answered `Busy` and doesn't ring, and
-no new outgoing call can start. Ambient live sessions never hold it.
+no new outgoing call can start. Ambient live sessions never hold it. Besides searching and
+holding, `CallUI` runs `SyncActiveCallNotifications`, which feeds `Notifications.ListActive`
+call notifications into the candidates.
 
 **Searching.** Whenever the candidate list, a candidate's ring or the slot changes, the
 search walks the ringing candidates newest first:
@@ -165,7 +167,6 @@ full-screen views, the ringtone, the ringback. `GetIncomingCall` is the slot fil
 - **SyncRings** starts or stops the ringtone as the slot enters or leaves Incoming/Ringing.
 - **`SyncIncomingCallModal`** shows `IncomingCallModal`, except when the ring is shown over
   the lock screen or collapsed into the island.
-- **`SyncActiveCallNotifications`** is the `ListActive` path from the table above.
 - **SyncCallScreens** follows the slot: an outgoing call that starts dialing gets its modal
   or full-screen view, and a released call gets its screens closed and its audio stopped.
 
