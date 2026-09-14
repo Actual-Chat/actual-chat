@@ -6,8 +6,9 @@ both sides. What a finished call leaves in the chat is covered separately, in
 
 **The short version.** `StartCall` writes the call into the chat's live session in Redis and
 queues a notification. The notification pipeline turns it into one `CallNotification` per
-invitee and pushes it to every device. On the client, every delivery path ends in
-`IncomingCallUI.OnRing(chatId)`, and that call only records a *candidate*. Whether the device
+invitee and pushes it to every device. On the client, every delivery path only records the
+chat as a *candidate* in `CallUI`, through `IncomingCallUI.OnRing(chatId)` or straight
+through `CallUI.AddCandidate(chatId)`. Whether the device
 actually rings is decided by the reactive live session: the call is still unanswered, the
 reader isn't its host, and the reader's invite is `Ringing`. The first candidate that passes
 claims the client's call slot and is held there until its ring ends: answered elsewhere,
@@ -33,7 +34,7 @@ sequenceDiagram
     NB->>NB: CallNotification per invitee, commit to active set
     NB->>Push: NotificationsBackend_Push
     Push->>Callee: data message / APNs alert
-    Callee->>Callee: IncomingCallUI.OnRing(chatId)
+    Callee->>Callee: CallUI.AddCandidate(chatId), directly or via IncomingCallUI.OnRing
     Callee->>LS: LiveSessions.Get - is my invite Ringing?
     Callee->>Callee: hold the ring in the call slot until it ends
     Callee->>LS: ConfirmRing(Ringing or Busy)
@@ -96,20 +97,24 @@ notification id. The notification leaves the active set, and a dismissal push ca
 
 ## How the client learns about the ring
 
-Every path below calls `IncomingCallUI.OnRing(chatId)`.
+Pushes and taps on the call notification go through `IncomingCallUI.OnRing(chatId)`, which
+adds the chat to `CallUI`'s candidates and, for a ring shown over the lock screen, sets the
+over-lock flag. The two notification lists, the system's on start and `ListActive`, call
+`CallUI.AddCandidate(chatId)` directly, with no over-lock flag. Answer skips the candidates
+and goes straight to `IncomingCallUI.Accept`.
 
 | Situation | Path |
 |---|---|
 | Android, app in the foreground and unlocked | `FirebaseMessagingService` dispatches `OnRing` straight into Blazor. No system notification is shown, because the in-app modal and ringer already own the ring. |
 | Android, backgrounded, killed or locked | `IncomingCallNotifications.Show` posts a `CallStyle` notification with Answer/Decline and a full-screen intent, and `IncomingCallRinger` starts the ringtone with it. Neither happens when another chat's call notification is shown or the slot is held by another chat. If the Blazor scope is alive, `OnRing` is dispatched as well. |
 | Android, opened from that notification | `NotificationHandler` → `IncomingCallNotifications.HandleViewIntent`. A full-screen intent passes `overLockScreen: true`; Answer goes straight to `IncomingCallUI.Accept`. |
-| Android, opened from the launcher after a push | `CallUI`'s search loop (`SearchRings`) picks the ring up from the still-active system notifications on start. |
+| Android, opened from the launcher after a push | `CallUI`'s search loop (`SearchRings`) picks the ring up from the still-active system notifications on start (`Bridge.ListActiveCallChatIds` → `AddCandidate`). |
 | Web, tab in the foreground | Firebase `onMessage` → `NotificationUI.OnIncomingCall`. |
 | Web, tab in the background or closed | The service worker posts `INCOMING_CALL` to every open tab and shows an OS notification. |
-| Every platform | `SyncActiveCallNotifications` watches `Notifications.ListActive` and calls `OnRing` for every `CallNotification`. Off Android this is the primary trigger; on Android it covers a dropped push while the app is alive. |
+| Every platform | `CallUI.SyncActiveCallNotifications` watches `Notifications.ListActive` and calls `CallUI.AddCandidate` for every `CallNotification`. Off Android this is the primary trigger; on Android it covers a dropped push while the app is alive. |
 
 ::: info The push is only a hint
-`OnRing` only appends the chat to a list of candidates. `GetRingingCall` reads
+`AddCandidate` only appends the chat to a list of candidates. `GetRingingCall` reads
 `LiveSessionUI.Get(chatId)` and returns a call only when all of these hold:
 
 - `Kind == Call`;
