@@ -8,8 +8,7 @@ public partial class CallScreensUI
     {
         var baseChains = new[] {
             AsyncChain.From(SyncRingtone),
-            AsyncChain.From(SyncIncomingCallModal),
-            AsyncChain.From(SyncCallScreens),
+            AsyncChain.From(SyncCallView),
         };
         var retryDelays = RetryDelaySeq.Exp(0.5, 10);
         return (
@@ -29,27 +28,6 @@ public partial class CallScreensUI
 
         var mutedChatId = await _mutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
         return mutedChatId != call.ChatId;
-    }
-
-    [ComputeMethod]
-    protected virtual async Task<IncomingCall?> GetModalCall(CancellationToken cancellationToken)
-    {
-        // No modal while the ring is shown over the lock screen or collapsed into the island.
-        var call = await GetIncomingCall(cancellationToken).ConfigureAwait(false);
-        if (call is null)
-            return null;
-
-        var overLockChatId = await GetOverLockChatId(cancellationToken).ConfigureAwait(false);
-        var collapsedChatId = await _collapsedChatId.Use(cancellationToken).ConfigureAwait(false);
-        return overLockChatId == call.ChatId || collapsedChatId == call.ChatId ? null : call;
-    }
-
-    [ComputeMethod]
-    protected virtual async Task<ScreenInput> GetScreenInput(CancellationToken cancellationToken)
-    {
-        var call = await CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
-        var dialingOutChatId = await CallUI.GetDialingOutChatId(cancellationToken).ConfigureAwait(false);
-        return new ScreenInput(call, dialingOutChatId);
     }
 
     // Private methods
@@ -78,90 +56,69 @@ public partial class CallScreensUI
         }
     }
 
-    private async Task SyncIncomingCallModal(CancellationToken cancellationToken)
+    private async Task SyncCallView(CancellationToken cancellationToken)
     {
-        // The modal closes itself once GetModalCall drops to null; shownChatId keeps it from re-popping.
-        var cCall = await Computed
-            .Capture(() => GetModalCall(cancellationToken), cancellationToken)
+        var cView = await Computed
+            .Capture(() => GetCallView(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        ChatId? shownChatId = null;
-        await foreach (var c in cCall.Changes(cancellationToken).ConfigureAwait(false)) {
-            var call = c.Value;
-            if (call is null)
-                shownChatId = null;
-            else if (shownChatId != call.ChatId) {
-                shownChatId = call.ChatId;
-                ShowModal(new IncomingCallModal.Model(call.Caller), cancellationToken);
-            }
-        }
-    }
-
-    private async Task SyncCallScreens(CancellationToken cancellationToken)
-    {
-        var cInput = await Computed
-            .Capture(() => GetScreenInput(cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        var last = new ScreenInput(null, null);
-        await foreach (var c in cInput.Changes(cancellationToken).ConfigureAwait(false)) {
-            var input = c.Value;
-            if (input == last)
+        var last = CallView.None;
+        await foreach (var c in cView.Changes(cancellationToken).ConfigureAwait(false)) {
+            var view = c.Value;
+            if (view == last)
                 continue;
 
-            OnScreenInputChanged(last, input);
-            last = input;
+            OnCallViewChanged(last, view);
+            last = view;
         }
     }
 
-    private void OnScreenInputChanged(ScreenInput last, ScreenInput input)
+    private void OnCallViewChanged(CallView last, CallView view)
     {
-        if (input.DialingOutChatId is { } dialingOutChatId && dialingOutChatId != last.DialingOutChatId)
-            ShowOutgoingCall(dialingOutChatId);
+        if (last.Call is { } lastCall && lastCall.ChatId != view.Call?.ChatId)
+            OnCallReleased(lastCall, last);
+        if (view is not { Kind: CallViewKind.Modal, Call: { } call })
+            return;
 
-        var (lastCall, call) = (last.Call, input.Call);
-        // An answered outgoing call gets the same full-screen view as an accepted incoming one.
-        if (call is { Origin: CallOrigin.Outgoing, Phase: CallPhase.Active }
-            && lastCall is { Phase: CallPhase.Dialing }
-            && lastCall.ChatId == call.ChatId
-            && IsNarrowScreen)
-            _foregroundCallChatId.Value = call.ChatId;
-        if (lastCall is not null && lastCall.ChatId != call?.ChatId)
-            OnCallReleased(lastCall);
+        // The modal closes itself once the view moves on, so it opens only on the switch to it.
+        var wasModal = last.Kind == CallViewKind.Modal && last.Call?.ChatId == call.ChatId;
+        if (!wasModal)
+            ShowCallModal(call);
     }
 
-    private void OnCallReleased(ActiveCall call)
+    private void OnCallReleased(ActiveCall call, CallView last)
     {
+        // The one place a call's screens are torn down, however the call ended.
         var chatId = call.ChatId;
         CallDebugLog?.LogInformation("CALL_TRACE: slot released #{ChatId} from {Phase}", chatId, call.Phase);
         ClearCallFlags(chatId);
-        switch (call.Phase) {
-        case CallPhase.Ringing:
-            if (IsOverLock(chatId, call)) {
-                _overLockRingChatId.Value = null;
-                Bridge?.MoveBehindLockScreen();
-            }
-            break;
-        case CallPhase.Dialing:
-            // On a wide screen dialing is shown by OutgoingCallModal, which closes itself.
-            if (_foregroundCallChatId.Value == chatId)
-                _ = Hub.Dispatcher.InvokeAsync(() => CloseCall(chatId, call));
-            break;
-        case CallPhase.Active:
-            _ = Hub.Dispatcher.InvokeAsync(() => CloseCall(chatId, call));
-            break;
-        }
+        if (last.IsOverLock)
+            Bridge?.MoveBehindLockScreen();
+        var mustOpenChat = last is { Kind: CallViewKind.FullScreen, IsOverLock: false };
+        if (call.Phase == CallPhase.Active || mustOpenChat)
+            _ = Hub.Dispatcher.InvokeAsync(() => CloseCall(call, mustOpenChat));
     }
 
-    private void ShowOutgoingCall(ChatId chatId)
+    private async Task CloseCall(ActiveCall call, bool mustOpenChat)
     {
-        // A prior call to this chat may have left it collapsed, and a fresh dial must not start in the island.
-        ClearIf(_collapsedChatId, chatId);
-        if (IsNarrowScreen)
-            _foregroundCallChatId.Value = chatId;
-        else
-            ShowModal(new OutgoingCallModal.Model(chatId));
+        if (call.Phase == CallPhase.Active)
+            await CallUI.HangUp(call.ChatId).ConfigureAwait(true);
+        if (mustOpenChat)
+            await OpenChat(call.ChatId).ConfigureAwait(true);
     }
 
-    // Nested types
+    private void ShowCallModal(ActiveCall call)
+    {
+        if (call.Origin == CallOrigin.Outgoing)
+            ShowModal(new OutgoingCallModal.Model(call.ChatId));
+        else if (call.PeerId is { } callerId)
+            ShowModal(new IncomingCallModal.Model(callerId));
+    }
 
-    protected sealed record ScreenInput(ActiveCall? Call, ChatId? DialingOutChatId);
+    private void ClearCallFlags(ChatId chatId)
+    {
+        ClearIf(_collapsedChatId, chatId);
+        ClearIf(_inChatChatId, chatId);
+        ClearIf(_overLockRingChatId, chatId);
+        ClearIf(_mutedRingChatId, chatId);
+    }
 }

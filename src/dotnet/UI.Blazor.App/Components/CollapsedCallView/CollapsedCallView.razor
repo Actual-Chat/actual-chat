@@ -34,9 +34,7 @@
     private ElementReference Ref { get; set; }
     private IJSObjectReference? _jsRef;
 
-    private CallUI CallUI => Hub.CallUI;
     private CallScreensUI CallScreensUI => Hub.CallScreensUI;
-    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -47,22 +45,15 @@
             });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var chatId = await CallScreensUI.CollapsedChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (chatId is not { } id)
+        var view = await CallScreensUI.GetCallView(cancellationToken).ConfigureAwait(false);
+        if (view is not { Kind: CallViewKind.Collapsed, Call: { } call })
             return ComputedModel.None;
 
-        var ring = await CallScreensUI.GetIncomingCall(cancellationToken).ConfigureAwait(false);
-        if (ring?.ChatId == id)
-            return new ComputedModel { ChatId = id, PeerId = ring.Caller, IsIncoming = true };
-
-        var dialingOutChatId = await CallUI.GetDialingOutChatId(cancellationToken).ConfigureAwait(false);
-        if (dialingOutChatId != id)
+        if (await CallScreensUI.GetCallPeerId(cancellationToken).ConfigureAwait(false) is not { } peerId)
             return ComputedModel.None;
 
-        var live = await LiveSessionUI.Get(id, cancellationToken).ConfigureAwait(false);
-        return live is { Invites.Count: > 0 }
-            ? new ComputedModel { ChatId = id, PeerId = live.Invites[0].InviteeId }
-            : ComputedModel.None;
+        var isIncoming = call.Origin == CallOrigin.Incoming;
+        return new ComputedModel { ChatId = call.ChatId, PeerId = peerId, IsIncoming = isIncoming };
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

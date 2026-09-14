@@ -6,17 +6,16 @@ using ActualLab.Interception;
 namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
-/// Everything that shows the call <see cref="CallUI"/> holds: the incoming and outgoing modals and their
-/// islands, the over-lock and narrow full-screen views, the ringtone. The call mechanics live in <see cref="CallUI"/>.
+/// Everything that shows the call <see cref="CallUI"/> holds: the modal, the island, the full-screen view,
+/// the ringtone. <see cref="GetCallView"/> alone decides which of them shows it.
 /// </summary>
 public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
-    // Screen requests that can outlive their call: GetOverLockChatId, GetForegroundCallChatId and IsOverLock
-    // honor them only while the slot holds that call.
+    // Screen requests that can outlive their call: DecideView honors them only while the slot holds that call.
     private readonly MutableState<ChatId?> _overLockRingChatId;
-    private readonly MutableState<ChatId?> _foregroundCallChatId;
-    // The call collapsed into the island - the slot holds one call, so one is enough for either direction.
     private readonly MutableState<ChatId?> _collapsedChatId;
+    // The active call whose full-screen view gave way to its chat.
+    private readonly MutableState<ChatId?> _inChatChatId;
     // The ring whose ringtone the user silenced; the ring itself keeps going.
     private readonly MutableState<ChatId?> _mutedRingChatId;
 
@@ -25,20 +24,49 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
 
     private IIncomingCallsBridge? Bridge { get; }
     private CallUI CallUI => Hub.CallUI;
-    private bool IsNarrowScreen => Hub.BrowserInfo.ScreenSize.Value.IsNarrow();
     private ILogger? CallDebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
     public CallScreensUI(AppUIHub hub) : base(hub)
     {
         Bridge = hub.Services.GetService<IIncomingCallsBridge>();
         _overLockRingChatId = NewChatIdState("OverLockRingChatId");
-        _foregroundCallChatId = NewChatIdState("ForegroundCallChatId");
         _collapsedChatId = NewChatIdState("CollapsedChatId");
+        _inChatChatId = NewChatIdState("InChatChatId");
         _mutedRingChatId = NewChatIdState("MutedRingChatId");
     }
 
     void INotifyInitialized.Initialized()
         => this.Start();
+
+    [ComputeMethod]
+    public virtual async Task<CallView> GetCallView(CancellationToken cancellationToken)
+    {
+        var call = await CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
+        if (call is null)
+            return CallView.None;
+
+        var dialingOutChatId = await CallUI.GetDialingOutChatId(cancellationToken).ConfigureAwait(false);
+        var screenSize = await Hub.BrowserInfo.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
+        var flags = new CallScreenFlags(
+            await _collapsedChatId.Use(cancellationToken).ConfigureAwait(false),
+            await _inChatChatId.Use(cancellationToken).ConfigureAwait(false),
+            await _overLockRingChatId.Use(cancellationToken).ConfigureAwait(false));
+        return DecideView(call, dialingOutChatId == call.ChatId, screenSize.IsNarrow(), flags);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<AuthorId?> GetCallPeerId(CancellationToken cancellationToken)
+    {
+        // The caller of a ring; for my own call, whoever I'm calling.
+        var call = await CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
+        if (call is null)
+            return null;
+        if (call.Origin == CallOrigin.Incoming)
+            return call.PeerId;
+
+        var live = await Hub.LiveSessionUI.Get(call.ChatId, cancellationToken).ConfigureAwait(false);
+        return live is { Invites.Count: > 0 } ? live.Invites[0].InviteeId : null;
+    }
 
     [ComputeMethod]
     public virtual async Task<IncomingCall?> GetIncomingCall(CancellationToken cancellationToken)
@@ -47,28 +75,6 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         return call is { Origin: CallOrigin.Incoming, Phase: CallPhase.Ringing, PeerId: { } callerId }
             ? new IncomingCall(call.ChatId, callerId, call.HasVideo)
             : null;
-    }
-
-    [ComputeMethod]
-    public virtual async Task<ChatId?> GetOverLockChatId(CancellationToken cancellationToken)
-    {
-        var chatId = await _overLockRingChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (chatId is null)
-            return null;
-
-        var call = await CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
-        return call is { Origin: CallOrigin.Incoming } && call.ChatId == chatId ? chatId : null;
-    }
-
-    [ComputeMethod]
-    public virtual async Task<ChatId?> GetForegroundCallChatId(CancellationToken cancellationToken)
-    {
-        var chatId = await _foregroundCallChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (chatId is null)
-            return null;
-
-        var callChatId = await CallUI.GetCallChatId(cancellationToken).ConfigureAwait(false);
-        return callChatId == chatId ? chatId : null;
     }
 
     public void OnRing(ChatId chatId, bool showOverLockScreen = false)
@@ -116,14 +122,13 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
             return;
         }
 
-        // Committed before the ring is dropped and before the accept RPC starts: screen visibility, derived
-        // from the slot, must not blink off between "ring ended" and "audio started".
+        // Committed before the ring is dropped and before the accept RPC starts: the view, derived from
+        // the slot, must not blink off between "ring ended" and "audio started".
         if (!CallUI.TryCommitAccept(call)) {
             ShowToast(L.Call_AlreadyInCall);
             return;
         }
 
-        ClearCallFlags(chatId);
         Bridge?.DismissCallNotification(chatId);
         try {
             await CallUI.AcceptCall(chatId, CancellationToken.None).ConfigureAwait(true);
@@ -147,12 +152,10 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
 
     public async Task Decline(ChatId chatId)
     {
+        // Moving back behind the lock screen is the release teardown's, as for a ring that ends on its own.
         var isOverLock = _overLockRingChatId.Value == chatId;
-        _overLockRingChatId.Value = null;
         EndRing(chatId);
-        if (isOverLock)
-            Bridge?.MoveBehindLockScreen();
-        else
+        if (!isOverLock)
             _ = Bridge?.OnCallHandled(false);
         try {
             await CallUI.DeclineCall(chatId, CancellationToken.None).ConfigureAwait(false);
@@ -184,38 +187,26 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     }
 
     public void Expand(ChatId chatId)
-    {
-        if (_collapsedChatId.Value != chatId)
-            return;
-
-        _collapsedChatId.Value = null;
-        // A ring's modal comes back on its own (see GetModalCall), but collapsing closed the outgoing
-        // modal for good, so it's shown anew.
-        if (CallUI.GetActiveCallNonComputed() is { Origin: CallOrigin.Outgoing, Phase: CallPhase.Dialing } call
-            && call.ChatId == chatId)
-            ShowModal(new OutgoingCallModal.Model(chatId));
-    }
+        => ClearIf(_collapsedChatId, chatId);
 
     public Task HangUp(ChatId chatId)
-    {
-        var call = CallUI.GetActiveCallNonComputed();
-        return call is { Origin: CallOrigin.Outgoing, Phase: CallPhase.Dialing } && call.ChatId == chatId
-            ? CancelDialing(chatId)
-            : CloseCall(chatId, call);
-    }
+        => CallUI.GetActiveCallNonComputed() is { Origin: CallOrigin.Outgoing, Phase: CallPhase.Dialing } call
+            && call.ChatId == chatId
+            ? CancelCall(chatId)
+            : CallUI.HangUp(chatId);
 
     public async Task LeaveCallScreen(ChatId chatId)
     {
-        if (IsOverLock(chatId, CallUI.GetActiveCallNonComputed())) {
+        if (_overLockRingChatId.Value == chatId) {
             // The chat is behind the keyguard; a cancelled PIN keeps the call screen up.
             var isUnlocked = Bridge is null || await Bridge.OnCallHandled(true).ConfigureAwait(true);
             if (!isUnlocked)
                 return;
-
-            _overLockRingChatId.Value = null;
         }
-        else
-            ClearIf(_foregroundCallChatId, chatId);
+
+        // In chat goes first: the over-lock flag cleared alone would bring the narrow full-screen view back.
+        _inChatChatId.Value = chatId;
+        ClearIf(_overLockRingChatId, chatId);
         await OpenChat(chatId).ConfigureAwait(true);
     }
 
@@ -233,20 +224,16 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     {
         // Over the lock screen the activity shown via SetShowWhenLocked counts as foreground, so the mic FGS
         // starts without unlocking; anywhere else the keyguard goes first, as the FGS can't start from the
-        // background. A narrow screen gets the full-screen call view, which opens the chat once it closes.
+        // background. The chat opens under the call; over the lock screen it waits for the user to unlock.
         var canStartAudio = isOverLock || Bridge is null || await Bridge.OnCallHandled(true).ConfigureAwait(true);
-        var showsForegroundCall = !isOverLock && IsNarrowScreen;
-        if (!isOverLock && !showsForegroundCall)
+        if (!isOverLock)
             await OpenChat(chatId).ConfigureAwait(true);
         if (canStartAudio)
             await CallUI.StartCallAudio(chatId, CancellationToken.None).ConfigureAwait(true);
-        if (showsForegroundCall)
-            _foregroundCallChatId.Value = chatId;
     }
 
-    private async Task CancelDialing(ChatId chatId)
+    private async Task CancelCall(ChatId chatId)
     {
-        ClearIf(_foregroundCallChatId, chatId);
         try {
             await CallUI.CancelCall(chatId, CancellationToken.None).ConfigureAwait(false);
         }
@@ -255,39 +242,11 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         }
     }
 
-    private async Task CloseCall(ChatId chatId, ActiveCall? call)
-    {
-        // Over the lock screen the app goes back behind it; a foreground call screen gives way to the chat.
-        if (IsOverLock(chatId, call)) {
-            _overLockRingChatId.Value = null;
-            Bridge?.MoveBehindLockScreen();
-            await CallUI.HangUp(chatId).ConfigureAwait(true);
-            return;
-        }
-
-        var hasForegroundScreen = _foregroundCallChatId.Value == chatId;
-        if (hasForegroundScreen)
-            _foregroundCallChatId.Value = null;
-        await CallUI.HangUp(chatId).ConfigureAwait(true);
-        if (hasForegroundScreen)
-            await OpenChat(chatId).ConfigureAwait(true);
-    }
-
     private void EndRing(ChatId chatId)
     {
         CallUI.DropRing(chatId);
-        ClearCallFlags(chatId);
         Bridge?.DismissCallNotification(chatId);
     }
-
-    private void ClearCallFlags(ChatId chatId)
-    {
-        ClearIf(_collapsedChatId, chatId);
-        ClearIf(_mutedRingChatId, chatId);
-    }
-
-    private bool IsOverLock(ChatId chatId, ActiveCall? call)
-        => _overLockRingChatId.Value == chatId && call is { Origin: CallOrigin.Incoming } && call.ChatId == chatId;
 
     private Task OpenChat(ChatId chatId)
         => Hub.History.NavigateTo(Links.Chat(chatId));

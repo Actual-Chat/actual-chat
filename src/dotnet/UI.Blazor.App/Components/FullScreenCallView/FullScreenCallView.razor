@@ -9,7 +9,7 @@
         return;
 }
 
-<div class="full-screen-call-view @(m.Phase == CallPhase.InCall ? "in-call" : "ringing")">
+<div class="full-screen-call-view @(m.Phase == CallPhase.Ringing ? "ringing" : "in-call")">
     <div class="c-bg">
         <ChatIcon Chat="@chat" Size="SquareSize.SizeFull"
                   IsSquare="@true" IsBlurred="@true" ShowFullSizeAvatar="@true" HideTitle="@true"/>
@@ -24,7 +24,7 @@
     }
     else {
         <div class="c-topbar c-call-bar">
-            <HeaderButton Class="btn-video-panel" Click="@OnGoToChatClick">
+            <HeaderButton Class="btn-video-panel" Click="@OnCollapseClick">
                 <i class="icon-collapse text-lg"></i>
             </HeaderButton>
             <HeaderButton Class="btn-video-panel talking" Click="@OnHangUpClick">
@@ -38,13 +38,10 @@
             <ChatIcon Chat="@chat" Size="SquareSize.Size24" HideTitle="@true"/>
         </div>
         <div class="c-name">
-            @if (m is { Phase: CallPhase.InCall, IsMuted: true }) {
-                <i class="icon-mic-off c-name-mic"></i>
-            }
             <span class="c-name-text">@chat.Title</span>
         </div>
         <div class="c-status">@StatusText(m)</div>
-        @if (m is { Phase: CallPhase.InCall, JoinedAt: { } joinedAt }) {
+        @if (m.JoinedAt is { } joinedAt) {
             <div class="c-timer"><LiveDuration StartedAt="@joinedAt"/></div>
         }
     </div>
@@ -125,7 +122,7 @@
                 </HeaderButton>
                 <HeaderButton
                     Click="@(() => OnToggleRecordingClick(!m.IsRecording))"
-                    IsDisabled="@m.IsDialing"
+                    IsDisabled="@(m.Phase == CallPhase.Dialing)"
                     Class="@("btn-video-panel rec-btn " + (m.IsRecording ? "recording" : ""))">
                     @if (m.IsRecording) {
                         <active-recording-svg size="8" isRecording="true"/>
@@ -153,7 +150,6 @@
     private DotNetObjectReference<FullScreenCallView>? _dotNetRef;
     private IJSObjectReference? _swipeRef;
     private CallScreensUI CallScreensUI => Hub.CallScreensUI;
-    private CallUI CallUI => Hub.CallUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
@@ -217,62 +213,34 @@
             });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var overLockChatId = await CallScreensUI.GetOverLockChatId(cancellationToken).ConfigureAwait(false);
-        var isOverLock = overLockChatId is not null;
-        var chatId = overLockChatId
-            ?? await CallScreensUI.GetForegroundCallChatId(cancellationToken).ConfigureAwait(false);
-        if (chatId is not { } id) {
-            DebugLog?.LogInformation("CALL_TRACE: FullScreenCallView.ComputeState → None (no active chat)");
+        var view = await CallScreensUI.GetCallView(cancellationToken).ConfigureAwait(false);
+        if (view is not { Kind: CallViewKind.FullScreen, Call: { } call })
             return ComputedModel.None;
-        }
 
-        var chat = await Hub.Chats.Get(Session, id, cancellationToken).ConfigureAwait(false);
+        var chatId = call.ChatId;
+        var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null) {
             DebugLog?.LogInformation(
-                "CALL_TRACE: FullScreenCallView.ComputeState #{ChatId} → None (chat not loaded)", id);
+                "CALL_TRACE: FullScreenCallView.ComputeState #{ChatId} → None (chat not loaded)", chatId);
             return ComputedModel.None;
-        }
-
-        var ringing = await CallScreensUI.GetIncomingCall(cancellationToken).ConfigureAwait(false);
-        if (ringing?.ChatId == id) {
-            var muted = await CallScreensUI.MutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
-            DebugLog?.LogInformation("CALL_TRACE: FullScreenCallView.ComputeState #{ChatId} → Ringing", id);
-            return new() {
-                Chat = chat, Phase = CallPhase.Ringing, HasVideo = ringing.HasVideo,
-                IsMuted = muted == id, IsOverLock = isOverLock,
-            };
-        }
-
-        var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
-        var isRecording = recordingChatId == id;
-
-        var inCall = await LiveSessionUI.AmIInLiveConversation(id, cancellationToken).ConfigureAwait(false);
-        if (inCall) {
-            var joinedAt = await GetJoinedAt(id, cancellationToken).ConfigureAwait(false);
-            DebugLog?.LogInformation(
-                "CALL_TRACE: FullScreenCallView.ComputeState #{ChatId} → InCall, joinedAt={JoinedAt}",
-                id, joinedAt);
-            return new() {
-                Chat = chat, Phase = CallPhase.InCall, JoinedAt = joinedAt,
-                IsRecording = isRecording, IsOverLock = isOverLock,
-            };
-        }
-
-        // My own outgoing call, still dialing (or just answered, before my audio has started): show the
-        // same full-screen call view with a "Dialing..." status instead of nothing.
-        var callStatus = await CallUI.GetCallStatus(id, cancellationToken).ConfigureAwait(false);
-        if (callStatus == CallerStatus.Dialing) {
-            DebugLog?.LogInformation("CALL_TRACE: FullScreenCallView.ComputeState #{ChatId} → Outgoing", id);
-            return new() {
-                Chat = chat, Phase = CallPhase.InCall,
-                IsDialing = true,
-                IsRecording = isRecording, IsOverLock = isOverLock,
-            };
         }
 
         DebugLog?.LogInformation(
-            "CALL_TRACE: FullScreenCallView.ComputeState #{ChatId} → None (ring not confirmed, not in call)", id);
-        return ComputedModel.None;
+            "CALL_TRACE: FullScreenCallView.ComputeState #{ChatId} → {Phase}", chatId, call.Phase);
+        var m = new ComputedModel {
+            Chat = chat, Phase = call.Phase, HasVideo = call.HasVideo, IsOverLock = view.IsOverLock,
+        };
+        if (call.Phase == CallPhase.Ringing) {
+            var mutedChatId = await CallScreensUI.MutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
+            return m with { IsMuted = mutedChatId == chatId };
+        }
+
+        var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
+        // Hidden until my own join is known: Accept commits the call before my audio starts.
+        var joinedAt = call.Phase == CallPhase.Active
+            ? await GetJoinedAt(chatId, cancellationToken).ConfigureAwait(false)
+            : null;
+        return m with { IsRecording = recordingChatId == chatId, JoinedAt = joinedAt };
     }
 
     private async Task<Moment?> GetJoinedAt(ChatId chatId, CancellationToken cancellationToken) {
@@ -306,8 +274,18 @@
     private Task OnMessageClick()
         => State.Value.Chat is { } chat ? CallScreensUI.DeclineAndOpenChat(chat.Id) : Task.CompletedTask;
 
-    private Task OnGoToChatClick()
-        => State.Value.Chat is { } chat ? CallScreensUI.LeaveCallScreen(chat.Id) : Task.CompletedTask;
+    private Task OnCollapseClick() {
+        var m = State.Value;
+        if (m.Chat is not { } chat)
+            return Task.CompletedTask;
+
+        // A dialing call collapses into the island; an active one gives way to its chat.
+        if (m.Phase == CallPhase.Active)
+            return CallScreensUI.LeaveCallScreen(chat.Id);
+
+        CallScreensUI.Collapse(chat.Id);
+        return Task.CompletedTask;
+    }
 
     private Task OnHangUpClick()
         => State.Value.Chat is { } chat ? CallScreensUI.HangUp(chat.Id) : Task.CompletedTask;
@@ -336,13 +314,13 @@
     }
 
     private string StatusText(ComputedModel m)
-        => m.Phase == CallPhase.InCall
-            ? m.IsDialing ? L.Call_Dialing : L.Call_InCall
-            : L.Call_IsCallingYou;
+        => m.Phase switch {
+            CallPhase.Ringing => L.Call_IsCallingYou,
+            CallPhase.Dialing => L.Call_Dialing,
+            _ => L.Call_InCall,
+        };
 
     // Nested types
-
-    public enum CallPhase { Ringing, InCall }
 
     public sealed record ComputedModel {
         public static readonly ComputedModel None = new();
@@ -351,8 +329,6 @@
         public bool HasVideo { get; init; }
         public bool IsMuted { get; init; }
         public Moment? JoinedAt { get; init; }
-        // True for my own outgoing call that's still dialing (hang-up cancels it).
-        public bool IsDialing { get; init; }
         public bool IsRecording { get; init; }
         // False when this is the narrow-layout foreground screen rather than the real over-lock one.
         public bool IsOverLock { get; init; }
