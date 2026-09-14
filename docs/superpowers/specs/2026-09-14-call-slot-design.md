@@ -291,3 +291,16 @@ land.
 3. `JoinAnsweredCall` currently calls `IncomingCallUI.PrepareForegroundCall` /
    `ShowForegroundCall`; after the move it only commits `Active`, and the screen loop
    shows the view.
+
+## As built
+
+- **The call card isn't reactive.** `CallMessageView` renders once, so its "Tap to call back"
+  stays enabled while a call is held; `LiveSessionUI.StartCall` refuses with the
+  `Call_AlreadyInCall` toast instead. Only the header button is disabled.
+- **Hanging up releases the slot at once.** `HangUpQuietly` calls `CallUI.Release` itself
+  rather than waiting for the holding loop to notice the conversation ended; the loop's
+  release then finds an empty slot.
+- **Outgoing screens and the ringback wait for the server.** The slot is claimed before the
+  `StartCall` RPC, but the outgoing modal reads the invitee from the session and a refused
+  call must not ring back first, so both follow `CallUI.GetDialingOutChatId` — the held
+  outgoing call once its session is dialing.
