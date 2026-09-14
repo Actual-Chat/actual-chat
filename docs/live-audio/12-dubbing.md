@@ -302,7 +302,9 @@ stream. The dub's own audio memoizer expires like any published stream,
 
 The dub is **not** registered in `LiveAudioBackend` and **not** persisted:
 the registry's records carry `DubLanguage = null`, no blob and no
-`ChatEntry` field exist for it, and replay never sees it (phase 4).
+`ChatEntry` field exist for it, and replay never sees it — a replay dub
+is a separate, independently stored `Media`, made on demand; see
+[Replay](#replay).
 
 ## Muxer substitution — `ListeningStreamMuxer`
 
@@ -567,9 +569,10 @@ a warning, same as live.
   `notBefore` — the end of the previously emitted entry's *played*
   duration — but only `stretchTimeline: true` when `DubLanguage != null`;
   an undubbed replay keeps concurrent speakers concurrent exactly as
-  before. After each entry, `notBefore` advances by its played duration
-  (the dub's, or the source's, minus whatever was skipped) divided by
-  `Speed`.
+  before. After each entry, `notBefore` is pinned to that entry's own
+  `playsAt` plus its played duration (the dub's, or the source's, minus
+  whatever was skipped) divided by `Speed`
+  (`notBefore = playsAt + playedDuration / Speed`).
 - **`ScaleSkip`.** Seeking into a dubbed entry (`skipTo` into the source)
   is rescaled to the dub's own length:
   `ReplayTimeline.ScaleSkip(skipTo, entryDuration, dubDuration) = skipTo *
