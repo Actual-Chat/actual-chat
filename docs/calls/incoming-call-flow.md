@@ -129,10 +129,10 @@ pruned.
 
 ## The call slot
 
-`CallUI` holds the one call this client is in, incoming or outgoing: `_callChatId` names the
-chat, `_activeCall` the confirmed call with its origin and phase (`Ringing`, `Dialing`,
-`Active`). While the slot is held, every other ring is answered `Busy` and doesn't ring, and
-no new outgoing call can start. Ambient live sessions never hold it. Besides searching and
+`CallUI` holds the one call this client is in, incoming or outgoing: `_activeCall` names its
+chat, origin and phase (`Ringing`, `Dialing`, `Active`), and an empty `_activeCall` is a free
+slot. While the slot is held, every other ring is answered `Busy` and doesn't ring, and no
+new outgoing call can start. Ambient live sessions never hold it. Besides searching and
 holding, `CallUI` runs `SyncActiveCallNotifications`, which feeds `Notifications.ListActive`
 call notifications into the candidates.
 
@@ -141,8 +141,7 @@ search walks the ringing candidates newest first:
 
 | Slot | Outcome |
 |---|---|
-| free | claim it for this chat |
-| claimed, call not confirmed yet | wait for the next pass |
+| free | take it as `Incoming/Ringing` and send `ConfirmRing(Ringing)` — the ring was just read from the session |
 | held by this chat | nothing |
 | held by another chat | `ConfirmRing(Busy)` once per chat, and close its Android notification |
 
@@ -153,7 +152,6 @@ the slot when the call ends:
 
 | Held call | Released when |
 |---|---|
-| claimed by the search | confirmed as `Incoming/Ringing` (and acked `Ringing`) if the chat rings, else released |
 | `Incoming/Ringing` | the ring ends — canceled, timed out, answered or declined elsewhere |
 | `Outgoing/Dialing` | no answer, declined, canceled, the session vanished; an answer joins the call and moves it to `Active` |
 | `Active` | the session stops being a call, or I was in the conversation and left it |

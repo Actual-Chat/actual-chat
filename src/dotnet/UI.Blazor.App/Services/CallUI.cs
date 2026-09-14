@@ -16,7 +16,6 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 {
     private readonly Lock _lock = new();
     private readonly MutableState<ImmutableList<ChatId>> _ringingChatIds;
-    private readonly MutableState<ChatId?> _callChatId;
     private readonly MutableState<ActiveCall?> _activeCall;
     // Rings answered Busy while the slot is held - ListActive repeats a ring on every change.
     private readonly HashSet<ChatId> _busyAckedChatIds = [];
@@ -37,9 +36,6 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _ringingChatIds = StateFactory.NewMutable(
             ImmutableList<ChatId>.Empty,
             StateCategories.Get(GetType(), "RingingChatIds"));
-        _callChatId = StateFactory.NewMutable(
-            (ChatId?)null,
-            StateCategories.Get(GetType(), "CallChatId"));
         _activeCall = StateFactory.NewMutable(
             (ActiveCall?)null,
             StateCategories.Get(GetType(), "ActiveCall"));
@@ -53,11 +49,11 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         => _activeCall.Use(cancellationToken);
 
     [ComputeMethod]
-    public virtual Task<ChatId?> GetCallChatId(CancellationToken cancellationToken)
-        => _callChatId.Use(cancellationToken);
+    public virtual async Task<ChatId?> GetCallChatId(CancellationToken cancellationToken)
+        => (await GetActiveCall(cancellationToken).ConfigureAwait(false))?.ChatId;
 
     public ChatId? GetCallChatIdNonComputed()
-        => _callChatId.Value;
+        => _activeCall.Value?.ChatId;
 
     [ComputeMethod]
     public virtual async Task<bool> CanStartCall(CancellationToken cancellationToken)
@@ -171,11 +167,10 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public bool TryClaimOutgoing(ChatId chatId, bool hasVideo)
     {
         lock (_lock) {
-            if (_callChatId.Value is not null)
+            if (_activeCall.Value is not null)
                 return false;
 
             _activeCall.Value = new ActiveCall(chatId, CallOrigin.Outgoing, CallPhase.Dialing, null, hasVideo);
-            _callChatId.Value = chatId;
             return true;
         }
     }
@@ -185,13 +180,11 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // From a free slot this claims it too: Answer on a notification can land before the search does.
         var chatId = call.ChatId;
         lock (_lock) {
-            var slotChatId = _callChatId.Value;
-            if (slotChatId is not null && slotChatId != chatId)
+            if (_activeCall.Value is { } heldCall && heldCall.ChatId != chatId)
                 return false;
 
             _activeCall.Value = new ActiveCall(
                 chatId, CallOrigin.Incoming, CallPhase.Active, call.Caller, call.HasVideo);
-            _callChatId.Value = chatId;
             RemoveCandidate(chatId);
             _busyAckedChatIds.Remove(chatId);
             return true;
@@ -205,7 +198,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         lock (_lock) {
             RemoveCandidate(chatId);
             _busyAckedChatIds.Remove(chatId);
-            if (_callChatId.Value == chatId && _activeCall.Value is null or { Phase: CallPhase.Ringing })
+            if (_activeCall.Value is { Phase: CallPhase.Ringing } call && call.ChatId == chatId)
                 ReleaseUnsafe();
         }
     }
@@ -213,7 +206,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public void Release(ChatId chatId)
     {
         lock (_lock) {
-            if (_callChatId.Value == chatId)
+            if (_activeCall.Value?.ChatId == chatId)
                 ReleaseUnsafe();
         }
     }
@@ -223,10 +216,9 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     // Caller must hold _lock.
     private void ReleaseUnsafe()
     {
-        if (_callChatId.Value is { } chatId)
-            RemoveCandidate(chatId);
+        if (_activeCall.Value is { } call)
+            RemoveCandidate(call.ChatId);
         _activeCall.Value = null;
-        _callChatId.Value = null;
         _busyAckedChatIds.Clear();
     }
 

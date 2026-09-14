@@ -17,7 +17,7 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private static readonly string JSStopRingtone = $"{BlazorUIAppModule.ImportName}.IncomingCallRingtone.stop";
 
     // Ring-time-only signal: OnRing sets it when the device is locked. It can outlive its ring, so
-    // OverLockChatId honors it only while that chat holds the slot with an incoming or unconfirmed call.
+    // OverLockChatId honors it only while that chat holds the slot with an incoming call.
     private readonly MutableState<ChatId?> _overLockRingChatId;
     // The raw candidate ForegroundCallChatId derives from.
     private readonly MutableState<ChatId?> _foregroundRawChatId;
@@ -336,11 +336,9 @@ public class IncomingCallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         var chatId = await _overLockRingChatId.Use(cancellationToken).ConfigureAwait(false);
         if (chatId is null)
             return null;
-        if (await CallUI.GetCallChatId(cancellationToken).ConfigureAwait(false) != chatId)
-            return null;
 
         var call = await CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
-        return call is { Origin: CallOrigin.Outgoing } ? null : chatId;
+        return call is { Origin: CallOrigin.Incoming } && call.ChatId == chatId ? chatId : null;
     }
 
     private async Task<ChatId?> ComputeForegroundCallChatId(CancellationToken cancellationToken)

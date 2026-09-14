@@ -2,27 +2,18 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class CallUI
 {
-    internal static SearchOutcome DecideSearch(
-        ChatId? slotChatId,
-        ActiveCall? activeCall,
-        ChatId foundChatId,
-        bool isBusyAcked)
+    internal static SearchOutcome DecideSearch(ActiveCall? heldCall, ChatId foundChatId, bool isBusyAcked)
     {
-        if (slotChatId is null)
+        if (heldCall is null)
             return SearchOutcome.Claim;
-        if (slotChatId == foundChatId)
+        if (heldCall.ChatId == foundChatId)
             return SearchOutcome.None;
-        if (activeCall is null)
-            return SearchOutcome.Wait;
 
         return isBusyAcked ? SearchOutcome.None : SearchOutcome.Busy;
     }
 
-    internal static HoldingAction DecideHolding(ActiveCall? call, CallFacts facts, HoldingMemory memory)
+    internal static HoldingAction DecideHolding(ActiveCall call, CallFacts facts, HoldingMemory memory)
     {
-        if (call is null)
-            return facts.Ring is not null ? HoldingAction.Confirm : HoldingAction.Release;
-
         switch (call.Phase) {
         case CallPhase.Ringing:
             return facts.Ring is not null ? HoldingAction.Keep : HoldingAction.Release;
@@ -47,9 +38,9 @@ public partial class CallUI
     }
 }
 
-internal enum SearchOutcome { Claim, Wait, None, Busy }
+internal enum SearchOutcome { Claim, None, Busy }
 
-internal enum HoldingAction { Keep, Confirm, Join, Release }
+internal enum HoldingAction { Keep, Join, Release }
 
 // What the holding loop remembers about the call it holds across wake-ups.
 internal readonly record struct HoldingMemory(bool HasSeenDialing, bool WasInConversation, bool IsDialingWaitOver)

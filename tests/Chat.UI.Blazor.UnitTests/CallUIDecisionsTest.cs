@@ -13,7 +13,7 @@ public class CallUIDecisionsTest
     public void SearchShouldClaimFreeSlot()
     {
         // act
-        var outcome = CallUI.DecideSearch(null, null, ChatA, false);
+        var outcome = CallUI.DecideSearch(null, ChatA, false);
 
         // assert
         outcome.Should().Be(SearchOutcome.Claim);
@@ -23,7 +23,7 @@ public class CallUIDecisionsTest
     public void SearchShouldIgnoreRingOfClaimedChat()
     {
         // act
-        var outcome = CallUI.DecideSearch(ChatA, null, ChatA, false);
+        var outcome = CallUI.DecideSearch(Call(CallOrigin.Incoming, CallPhase.Ringing), ChatA, false);
 
         // assert
         outcome.Should().Be(SearchOutcome.None, "the slot already belongs to this very ring");
@@ -33,27 +33,17 @@ public class CallUIDecisionsTest
     public void SearchShouldIgnoreRingOfHeldChat()
     {
         // act
-        var outcome = CallUI.DecideSearch(ChatA, Call(CallOrigin.Incoming, CallPhase.Active), ChatA, false);
+        var outcome = CallUI.DecideSearch(Call(CallOrigin.Incoming, CallPhase.Active), ChatA, false);
 
         // assert
         outcome.Should().Be(SearchOutcome.None, "an accepted call's invite still reads Ringing for a moment");
     }
 
     [Fact]
-    public void SearchShouldWaitWhileClaimIsUnconfirmed()
-    {
-        // act
-        var outcome = CallUI.DecideSearch(ChatA, null, ChatB, false);
-
-        // assert
-        outcome.Should().Be(SearchOutcome.Wait);
-    }
-
-    [Fact]
     public void SearchShouldAnswerBusyForAnotherChat()
     {
         // act
-        var outcome = CallUI.DecideSearch(ChatA, Call(CallOrigin.Incoming, CallPhase.Active), ChatB, false);
+        var outcome = CallUI.DecideSearch(Call(CallOrigin.Incoming, CallPhase.Active), ChatB, false);
 
         // assert
         outcome.Should().Be(SearchOutcome.Busy);
@@ -63,7 +53,7 @@ public class CallUIDecisionsTest
     public void SearchShouldAnswerBusyDuringOutgoingCall()
     {
         // act
-        var outcome = CallUI.DecideSearch(ChatA, Call(CallOrigin.Outgoing, CallPhase.Dialing), ChatB, false);
+        var outcome = CallUI.DecideSearch(Call(CallOrigin.Outgoing, CallPhase.Dialing), ChatB, false);
 
         // assert
         outcome.Should().Be(SearchOutcome.Busy);
@@ -73,30 +63,10 @@ public class CallUIDecisionsTest
     public void SearchShouldNotRepeatBusy()
     {
         // act
-        var outcome = CallUI.DecideSearch(ChatA, Call(CallOrigin.Incoming, CallPhase.Ringing), ChatB, true);
+        var outcome = CallUI.DecideSearch(Call(CallOrigin.Incoming, CallPhase.Ringing), ChatB, true);
 
         // assert
         outcome.Should().Be(SearchOutcome.None);
-    }
-
-    [Fact]
-    public void HoldingShouldConfirmClaimedRing()
-    {
-        // act
-        var action = CallUI.DecideHolding(null, Facts(RingA, CallSessionState.Dialing), default);
-
-        // assert
-        action.Should().Be(HoldingAction.Confirm);
-    }
-
-    [Fact]
-    public void HoldingShouldReleaseClaimWithoutRing()
-    {
-        // act
-        var action = CallUI.DecideHolding(null, Facts(), default);
-
-        // assert
-        action.Should().Be(HoldingAction.Release);
     }
 
     [Fact]

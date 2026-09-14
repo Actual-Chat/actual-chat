@@ -29,7 +29,6 @@ public partial class CallUI
     [ComputeMethod]
     protected virtual async Task<HoldingInput> GetHoldingInput(ChatId chatId, CancellationToken cancellationToken)
     {
-        var slotChatId = await _callChatId.Use(cancellationToken).ConfigureAwait(false);
         var call = await _activeCall.Use(cancellationToken).ConfigureAwait(false);
         var ring = await GetRingingCall(chatId, cancellationToken).ConfigureAwait(false);
         var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
@@ -40,7 +39,7 @@ public partial class CallUI
         };
         var isInConversation = await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken)
             .ConfigureAwait(false);
-        return new HoldingInput(slotChatId, call, new CallFacts(ring, session, isInConversation));
+        return new HoldingInput(call, new CallFacts(ring, session, isInConversation));
     }
 
     [ComputeMethod]
@@ -48,7 +47,6 @@ public partial class CallUI
     {
         var chatIds = await _ringingChatIds.Use(cancellationToken).ConfigureAwait(false);
         // Read only to wake the search when the slot moves: ApplySearch decides against the live slot.
-        await _callChatId.Use(cancellationToken).ConfigureAwait(false);
         await _activeCall.Use(cancellationToken).ConfigureAwait(false);
         var rings = ImmutableList.CreateBuilder<IncomingCall>();
         for (var i = chatIds.Count - 1; i >= 0; i--)
@@ -78,17 +76,14 @@ public partial class CallUI
             .ConfigureAwait(false);
         while (true) {
             var input = cInput.Value;
-            if (input.SlotChatId != chatId)
+            if (input.Call is not { } call || call.ChatId != chatId)
                 return;
 
             memory = memory.Observe(input.Facts) with { IsDialingWaitOver = Now >= dialingDeadline };
-            var action = DecideHolding(input.Call, input.Facts, memory);
+            var action = DecideHolding(call, input.Facts, memory);
             CallDebugLog?.LogInformation("CALL_TRACE: Hold #{ChatId} {Origin}/{Phase} → {Action}",
-                chatId, input.Call?.Origin, input.Call?.Phase, action);
+                chatId, call.Origin, call.Phase, action);
             switch (action) {
-            case HoldingAction.Confirm:
-                TryConfirm(input.Facts.Ring!);
-                break;
             case HoldingAction.Join:
                 if (TryCommitActive(chatId))
                     _ = StartAnsweredCallAudio(chatId, cancellationToken);
@@ -98,7 +93,7 @@ public partial class CallUI
                 return;
             }
 
-            if (input.Call is { Phase: CallPhase.Dialing } && !memory.HasSeenDialing) {
+            if (call.Phase == CallPhase.Dialing && !memory.HasSeenDialing) {
                 // A session that never shows up as dialing must still time out, with nothing to invalidate it.
                 using var cts = cancellationToken.CreateLinkedTokenSource();
                 var remaining = dialingDeadline - Now;
@@ -116,23 +111,10 @@ public partial class CallUI
         }
     }
 
-    private void TryConfirm(IncomingCall ring)
-    {
-        var chatId = ring.ChatId;
-        lock (_lock) {
-            if (_callChatId.Value != chatId || _activeCall.Value is not null)
-                return;
-
-            _activeCall.Value = new ActiveCall(
-                chatId, CallOrigin.Incoming, CallPhase.Ringing, ring.Caller, ring.HasVideo);
-        }
-        _ = SendRingAck(chatId, RingAck.Ringing);
-    }
-
     private bool TryCommitActive(ChatId chatId)
     {
         lock (_lock) {
-            if (_callChatId.Value != chatId || _activeCall.Value is not { } call)
+            if (_activeCall.Value is not { } call || call.ChatId != chatId)
                 return false;
 
             _activeCall.Value = call with { Phase = CallPhase.Active };
@@ -176,6 +158,7 @@ public partial class CallUI
 
     private void ApplySearch(SearchInput input)
     {
+        ChatId? claimedChatId = null;
         var busyChatIds = new List<ChatId>();
         lock (_lock) {
             // Checked and not ringing: dropped, or dead candidates would pile up for the scope's lifetime.
@@ -188,11 +171,13 @@ public partial class CallUI
             foreach (var ring in input.Rings) {
                 var chatId = ring.ChatId;
                 // Against the live slot, not the input's: a claim earlier in this pass has to count.
-                var outcome = DecideSearch(
-                    _callChatId.Value, _activeCall.Value, chatId, _busyAckedChatIds.Contains(chatId));
+                var outcome = DecideSearch(_activeCall.Value, chatId, _busyAckedChatIds.Contains(chatId));
                 switch (outcome) {
                 case SearchOutcome.Claim:
-                    _callChatId.Value = chatId;
+                    // The ring was just read from the session, so it takes the slot already confirmed.
+                    _activeCall.Value = new ActiveCall(
+                        chatId, CallOrigin.Incoming, CallPhase.Ringing, ring.Caller, ring.HasVideo);
+                    claimedChatId = chatId;
                     break;
                 case SearchOutcome.Busy:
                     _busyAckedChatIds.Add(chatId);
@@ -201,6 +186,8 @@ public partial class CallUI
                 }
             }
         }
+        if (claimedChatId is { } ringingChatId)
+            _ = SendRingAck(ringingChatId, RingAck.Ringing);
         foreach (var chatId in busyChatIds) {
             CallDebugLog?.LogInformation("CALL_TRACE: Busy #{ChatId}", chatId);
             _ = SendRingAck(chatId, RingAck.Busy);
@@ -238,7 +225,7 @@ public partial class CallUI
 
     // Nested types
 
-    protected sealed record HoldingInput(ChatId? SlotChatId, ActiveCall? Call, CallFacts Facts);
+    protected sealed record HoldingInput(ActiveCall? Call, CallFacts Facts);
 
     protected sealed record SearchInput(ImmutableList<ChatId> CheckedChatIds, ImmutableList<IncomingCall> Rings);
 }
