@@ -16,8 +16,6 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     // Refresh interval for active participations; must stay under the server's
     // ParticipantStaleness (90s) so a still-joined viewer never expires mid-call.
     private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(45);
-    // Give up watching if the call we just started never shows up as dialing.
-    private static readonly TimeSpan DialingWaitTimeout = TimeSpan.FromSeconds(15);
     // How long a mute verdict must survive before it stops a recording - long enough for a
     // peer's own mute lift to come back from the server, short enough to feel immediate.
     private static readonly TimeSpan MuteEnforcementDelay = TimeSpan.FromSeconds(1);
@@ -25,19 +23,15 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     private static readonly string JSStartRingback = $"{BlazorUIAppModule.ImportName}.OutgoingCallRingback.start";
     private static readonly string JSStopRingback = $"{BlazorUIAppModule.ImportName}.OutgoingCallRingback.stop";
 
-    private readonly ConcurrentDictionary<ChatId, CancellationTokenSource> _callWatches = new();
     private readonly ConcurrentDictionary<ChatId, Conversation?> _lastConversations = new();
     private readonly ConcurrentDictionary<ChatId, LiveBlockSnapshot?> _lastBlockSnapshots = new();
-    private readonly Lock _ringbackLock = new();
-    private object? _ringbackOwner;
 
     private ILiveSessions LiveSessions => Hub.LiveSessions;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
-    private IncomingCallUI IncomingCallUI => Hub.IncomingCallUI;
-    private Moment Now => Clocks.CpuClock.Now;
+    private CallUI CallUI => Hub.CallUI;
 
     void INotifyInitialized.Initialized()
         => this.Start();
@@ -109,26 +103,32 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         CancellationToken cancellationToken)
     {
         // Ask on the click itself: it's a real user gesture, the request can't yet race the ringback,
-        // and JoinAnsweredCall's own check re-reads the (now cached) verdict without prompting again.
+        // and the answered call's join re-reads the (now cached) verdict without prompting again.
         // A call the caller can't be heard on isn't worth ringing the other side for, so a denial
         // stops it here instead of falling back to a listen-only call as the callee side does.
         if (!await AudioRecorder.MicrophonePermission.CheckOrRequest(cancellationToken).ConfigureAwait(false)) {
             Hub.ToastUI.Show(L.Call_NoMicrophoneAccess, "icon-phone-hang-up", ToastDismissDelay.Short);
             return;
         }
+        // The slot is taken before the RPC, so a ring arriving meanwhile is already answered Busy.
+        if (!CallUI.TryClaimOutgoing(chatId, hasVideo)) {
+            Hub.ToastUI.Show(L.Call_AlreadyInCall, "icon-phone-hang-up", ToastDismissDelay.Short);
+            return;
+        }
 
         try {
             await LiveSessions.StartCall(Session, chatId, invitees, hasVideo, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception e) when (e is not OperationCanceledException) {
+        catch (Exception e) {
+            CallUI.Release(chatId);
+            if (e is OperationCanceledException)
+                throw;
+
             // Only StandardError.Constraint (e.g. the peer-call gate) carries user-facing text.
             Log.LogWarning(e, "StartCall failed for chat #{ChatId}", chatId);
             var message = e is InvalidOperationException ? e.Message : L.Call_CouldntStart;
             Hub.ToastUI.Show(message, "icon-phone-hang-up", ToastDismissDelay.Short);
-            return;
         }
-
-        StartCallWatch(chatId);
     }
 
     public Task AcceptCall(ChatId chatId, CancellationToken cancellationToken)
@@ -142,7 +142,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
 
     public Task CancelCall(ChatId chatId, CancellationToken cancellationToken)
     {
-        StopCallWatch(chatId);
+        CallUI.Release(chatId);
         return LiveSessions.CancelCall(Session, chatId, cancellationToken);
     }
 
@@ -187,6 +187,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         var baseChains = new[] {
             AsyncChain.From(RunParticipationSync),
             AsyncChain.From(RunMuteEnforcement),
+            AsyncChain.From(SyncRingback),
         };
         var retryDelays = RetryDelaySeq.Exp(0.5, 8);
         return (
@@ -330,98 +331,30 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             }
     }
 
-    private void StartCallWatch(ChatId chatId)
+    private async Task SyncRingback(CancellationToken cancellationToken)
     {
-        StopCallWatch(chatId);
-        var cts = StopToken.CreateLinkedTokenSource();
-        _callWatches[chatId] = cts;
-        _ = WatchOutgoingCall(chatId, cts);
-    }
-
-    private void StopCallWatch(ChatId chatId)
-    {
-        if (_callWatches.TryRemove(chatId, out var cts))
-            cts.CancelAndDisposeSilently();
-    }
-
-    private async Task WatchOutgoingCall(ChatId chatId, CancellationTokenSource cts)
-    {
-        var cancellationToken = cts.Token;
+        // Follows the server's dialing, not the slot's: the slot is claimed before the StartCall RPC, and a
+        // refused call must not ring back first.
+        var cDialing = await Computed
+            .Capture(() => CallUI.GetDialingOutChatId(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
         var isRingbackOn = false;
         try {
-            var watchStartedAt = Now;
-            var isDialing = false;
-            var computed = await Computed
-                .Capture(() => Get(chatId, cancellationToken), cancellationToken)
-                .ConfigureAwait(false);
             while (!cancellationToken.IsCancellationRequested) {
-                var live = computed.Value;
-                if (live is { Kind: LiveSessionKind.Call, Conversation: null }) {
-                    isDialing = true;
-                    // The caller hears the ringback for as long as the call is dialing; the exits that
-                    // don't stop it themselves (timeout, cancel) unwind through the finally.
-                    if (!isRingbackOn) {
-                        isRingbackOn = true;
-                        StartRingback(cts);
-                        // Narrow: raise the full-screen "Dialing..." view alongside the ringback.
-                        IncomingCallUI.ShowOutgoingCall(chatId);
-                    }
+                var mustPlay = cDialing.Value is not null;
+                if (mustPlay != isRingbackOn) {
+                    isRingbackOn = mustPlay;
+                    _ = PlayRingback(mustPlay);
                 }
-                else if (isDialing) {
-                    // Dialing is over either way, so the tone goes now rather than in the finally:
-                    // JoinAnsweredCall below awaits a mic permission prompt that can stay unanswered
-                    // for as long as the user likes, and the ringback would play through all of it.
-                    if (isRingbackOn) {
-                        isRingbackOn = false;
-                        StopRingback(cts);
-                    }
-                    // A session that outlives dialing was answered; a vanished one ended without one.
-                    if (live is not null)
-                        await JoinAnsweredCall(chatId, cancellationToken).ConfigureAwait(false);
-                    return;
-                }
-                else if (Now - watchStartedAt > DialingWaitTimeout)
-                    return;
 
-                await computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
-                computed = await computed.Update(cancellationToken).ConfigureAwait(false);
+                await cDialing.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+                cDialing = await cDialing.Update(cancellationToken).ConfigureAwait(false);
             }
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogWarning(e, "WatchOutgoingCall failed for chat #{ChatId}", chatId);
         }
         finally {
             if (isRingbackOn)
-                StopRingback(cts);
-            // Only our own registration: a restart has already replaced it by the time we unwind.
-            _callWatches.TryRemove(new KeyValuePair<ChatId, CancellationTokenSource>(chatId, cts));
+                _ = PlayRingback(false);
         }
-    }
-
-    private void StartRingback(object owner)
-    {
-        // One shared tone: a restarted watch takes it over instead of re-starting it, so the
-        // cancelled watch's teardown can't silence the new one.
-        lock (_ringbackLock) {
-            var wasPlaying = _ringbackOwner is not null;
-            _ringbackOwner = owner;
-            if (wasPlaying)
-                return;
-        }
-
-        _ = PlayRingback(true);
-    }
-
-    private void StopRingback(object owner)
-    {
-        lock (_ringbackLock) {
-            if (!ReferenceEquals(_ringbackOwner, owner))
-                return;
-
-            _ringbackOwner = null;
-        }
-
-        _ = PlayRingback(false);
     }
 
     private async Task PlayRingback(bool start)
@@ -431,28 +364,6 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         }
         catch (Exception e) {
             Log.LogWarning(e, "Outgoing-call ringback {Action} failed", start ? "start" : "stop");
-        }
-    }
-
-    private async Task JoinAnsweredCall(ChatId chatId, CancellationToken cancellationToken)
-    {
-        // Placing a call is itself the intent to talk, so answering it puts the caller on the line.
-        // A denied mic still joins them — listening only, same as anywhere else.
-        IncomingCallUI.PrepareForegroundCall(chatId);
-        try {
-            await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(false);
-            var hasMic = await AudioRecorder.MicrophonePermission
-                .CheckOrRequest(cancellationToken)
-                .ConfigureAwait(false);
-            if (hasMic)
-                await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(false);
-        }
-        catch {
-            IncomingCallUI.CancelPreparedCall(chatId);
-            throw;
-        }
-        finally {
-            IncomingCallUI.ShowForegroundCall(chatId);
         }
     }
 
