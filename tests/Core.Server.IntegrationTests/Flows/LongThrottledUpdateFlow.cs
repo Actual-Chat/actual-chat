@@ -11,6 +11,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 public sealed partial class LongThrottledUpdateFlow : ThrottledUpdateFlow
 {
     protected override TimeSpan ThrottlePeriod => TimeSpan.FromMinutes(1);
+
     protected override ValueTask Run(CancellationToken cancellationToken)
     {
         Console.Log($"Run: Target={Target}");
