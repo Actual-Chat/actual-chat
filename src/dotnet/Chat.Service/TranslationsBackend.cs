@@ -4,6 +4,7 @@ using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Diagnostics;
 using ActualChat.Flows;
+using ActualChat.Hashing;
 using ActualChat.Queues;
 using ActualChat.Streaming;
 using ActualChat.Transcription;
@@ -122,6 +123,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var now = Clocks.SystemClock.Now;
 
         DbTranslation? dbTranslation;
+        MediaId? previousDubMediaId = null;
         if (change.IsCreate(out var update)) {
             // Lock is required. We can't double-check the existence of the translation because we use RepeatableRead isolation level..
             await dbContext.Translations.Lock(id, cancellationToken).ConfigureAwait(false);
@@ -148,7 +150,9 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 return null;
 
             dbTranslation.RequireVersion(expectedVersion);
-            var translation = ApplyDiff(dbTranslation.ToModel(), update);
+            var currentTranslation = dbTranslation.ToModel();
+            previousDubMediaId = currentTranslation.DubMediaId;
+            var translation = ApplyDiff(currentTranslation, update);
             dbContext.Translations.Attach(dbTranslation);
             dbTranslation.UpdateFrom(translation);
         }
@@ -169,7 +173,11 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 .Schedule(cancellationToken)
                 .ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return dbTranslation.ToModel();
+        var result = dbTranslation.ToModel();
+        if (previousDubMediaId is { } orphan && result.DubMediaId != orphan)
+            await Commander.Call(new MediaBackend_Change(orphan, null, Change.Remove<MediaFull>()), true, cancellationToken)
+                .ConfigureAwait(false);
+        return result;
 
         Translation ApplyDiff(Translation originalTranslation, TranslationDiff? diff) {
             // Update
@@ -177,6 +185,9 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 ModifiedAt = now,
                 Version = diff?.Version ?? VersionGenerator.NextVersion(originalTranslation.Version),
             };
+            // A dub is audio of one specific Content; a new Content orphans it
+            if (diff?.Content is { } content && content != originalTranslation.Content)
+                newTranslation = newTranslation with { DubMediaId = null, DubContentHash = HashString.None };
             // Validate
             if (!newTranslation.Content.IsNullOrEmpty() && newTranslation.SourceContentHash.IsNone)
                 throw StandardError.Constraint("SourceContentHash must be set for non-empty Content.");

@@ -22,12 +22,26 @@ public sealed partial record Translation(
     [DataMember, Key(4)] public Moment CreatedAt { get; init; }
     [DataMember, Key(5)] public Moment ModifiedAt { get; init; }
     [DataMember, Key(6)] public StreamId? StreamId { get; set; }
+    [DataMember, Key(7)] public MediaId? DubMediaId { get; init; }
+    [DataMember, Key(8)] public HashString DubContentHash { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Language TargetLanguage => Id.Language;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsStreaming => StreamId is not null;
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public bool HasValidDub {
+        get {
+            if (DubMediaId is null)
+                return false;
+
+            var hash = new HashOutput32();
+            global::Blake3.Hasher.Hash(Content.Hash().Bytes, hash.Bytes);
+            return DubContentHash == hash.ToBlake3Base64HashString();
+        }
+    }
 
     public bool MatchesOriginal(string originalContent)
         // we ask llm to ignore text already in the target language
@@ -52,4 +66,6 @@ public sealed partial record TranslationDiff : RecordDiff, ISanitized
     }
     [DataMember] public HashString? SourceContentHash { get; init; }
     [DataMember] public Option<StreamId?> StreamId { get; init; }
+    [DataMember] public Option<MediaId?> DubMediaId { get; init; }
+    [DataMember] public HashString? DubContentHash { get; init; }
 }

@@ -10,6 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Blake3" />
     <PackageReference Include="Pidgin" />
   </ItemGroup>
 

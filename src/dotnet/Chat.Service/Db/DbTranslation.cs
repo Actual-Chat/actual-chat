@@ -16,6 +16,8 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
     public string Content { get; set; } = "";
     public string SourceContentHash { get; set; } = "";
     public string? StreamId { get; set; }
+    public string? DubMediaId { get; set; }
+    public string DubContentHash { get; set; } = "";
     public string ChatId { get; set; } = "";
     public string? EntryId { get; set; }
 
@@ -37,6 +39,8 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
             Content = Content,
             SourceContentHash = new HashString(SourceContentHash),
             StreamId = ActualChat.StreamId.ParseNullable(StreamId),
+            DubMediaId = MediaId.ParseNullable(DubMediaId),
+            DubContentHash = new HashString(DubContentHash),
             CreatedAt = CreatedAt,
             ModifiedAt = ModifiedAt,
         };
@@ -54,6 +58,8 @@ public class DbTranslation : IHasId<string>, IHasVersion<long>, IRequirementTarg
         Content = model.Content;
         SourceContentHash = model.SourceContentHash;
         StreamId = model.StreamId?.Value;
+        DubMediaId = model.DubMediaId?.Value;
+        DubContentHash = model.DubContentHash;
         CreatedAt = model.CreatedAt;
         ModifiedAt = model.ModifiedAt;
     }
