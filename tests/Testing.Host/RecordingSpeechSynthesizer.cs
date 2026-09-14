@@ -47,14 +47,26 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
         CancellationToken cancellationToken = default)
     {
         var forwarded = Channel.CreateUnbounded<string>();
-        var recordTask = Record(streamId, text, forwarded.Writer, cancellationToken);
+        var recordTask = ForwardAndRecord(streamId, text, forwarded.Writer, cancellationToken);
         await Inner.Synthesize(streamId, forwarded.Reader, options, output, cancellationToken).ConfigureAwait(false);
         await recordTask.ConfigureAwait(false);
     }
 
+    public Task<AudioSource> Synthesize(
+        string text,
+        SpeechSynthesisOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        Record(OneShotStreamId(options.Language, text), text);
+        return Inner.Synthesize(text, options, cancellationToken);
+    }
+
+    public static string OneShotStreamId(Language language, string text)
+        => $"{language.Value}:{text.GetHashCode()}";
+
     // Private methods
 
-    private async Task Record(
+    private async Task ForwardAndRecord(
         string streamId,
         ChannelReader<string> text,
         ChannelWriter<string> forwarded,
@@ -63,12 +75,7 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
         Exception? error = null;
         try {
             await foreach (var chunk in text.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
-                lock (_lock) {
-                    _chunks.Add((streamId, chunk));
-                    var whenChangedSource = _whenChangedSource;
-                    _whenChangedSource = TaskCompletionSourceExt.New();
-                    whenChangedSource.TrySetResult();
-                }
+                Record(streamId, chunk);
                 await forwarded.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -78,6 +85,16 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
         }
         finally {
             forwarded.TryComplete(error);
+        }
+    }
+
+    private void Record(string streamId, string chunk)
+    {
+        lock (_lock) {
+            _chunks.Add((streamId, chunk));
+            var whenChangedSource = _whenChangedSource;
+            _whenChangedSource = TaskCompletionSourceExt.New();
+            whenChangedSource.TrySetResult();
         }
     }
 }

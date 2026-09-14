@@ -8,6 +8,7 @@ namespace ActualChat.Transcription;
 public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSynthesizer
 {
     private MomentClockSet Clocks { get; } = services.Clocks();
+    private ILogger Log { get; } = services.LogFor<FakeSpeechSynthesizer>();
 
     public async Task Synthesize(
         string streamId,
@@ -25,6 +26,13 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
                 cts)
             .ConfigureAwait(false);
     }
+
+    public Task<AudioSource> Synthesize(
+        string text,
+        SpeechSynthesisOptions options,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult(SpeechSynthesizerExt.ToAudioSource(
+            (pcm, ct) => PushOne(text, pcm, ct), Clocks, Log, cancellationToken));
 
     // Private methods
 
@@ -48,5 +56,13 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
         finally {
             pcm.TryComplete(error);
         }
+    }
+
+    private static async Task PushOne(string text, ChannelWriter<byte[]> pcm, CancellationToken cancellationToken)
+    {
+        var frameCount = Math.Max(1, text.Length / 4);
+        await pcm.WriteAsync(new byte[OpusFramePump.FrameByteLength * frameCount], cancellationToken)
+            .ConfigureAwait(false);
+        pcm.TryComplete();
     }
 }

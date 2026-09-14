@@ -107,6 +107,27 @@ public class OpusFramePumpTest
     }
 
     [Fact]
+    public async Task AnUnpacedPumpEncodesASecondOfPcmWithoutWaitingASecond()
+    {
+        // arrange
+        var pcm = Channel.CreateUnbounded<byte[]>();
+        var output = Channel.CreateUnbounded<AudioFrame>();
+        using var pump = new OpusFramePump(MomentClockSet.Default.CpuClock, isPaced: false);
+        pcm.Writer.TryWrite(new byte[OpusFramePump.FrameByteLength * 50]);
+        pcm.Writer.Complete();
+
+        // act
+        var startedAt = CpuTimestamp.Now;
+        await pump.Run(pcm.Reader, output.Writer, CancellationToken.None);
+        var frames = await output.Reader.ReadAllAsync().ToListAsync();
+
+        // assert
+        frames.Should().HaveCount(50);
+        frames[^1].Offset.Should().Be(TimeSpan.FromMilliseconds(20 * 49));
+        startedAt.Elapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(500), "no pacing delay");
+    }
+
+    [Fact]
     public async Task PumpShouldPropagateTheProducersError()
     {
         // arrange

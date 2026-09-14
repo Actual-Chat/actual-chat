@@ -5,7 +5,7 @@ using OpusSharp.Core.Extensions;
 namespace ActualChat.Transcription;
 
 /// <summary>
-/// Encodes 48 kHz mono PCM into 20 ms Opus <see cref="AudioFrame"/>s emitted at wall-clock pace;
+/// Encodes 48 kHz mono PCM into 20 ms Opus <see cref="AudioFrame"/>s emitted at wall-clock pace by default;
 /// every gap in the input becomes encoded silence, so offsets stay contiguous from zero.
 /// </summary>
 public sealed class OpusFramePump : IDisposable
@@ -21,10 +21,12 @@ public sealed class OpusFramePump : IDisposable
     private readonly PcmBuffer _buffer = new();
 
     private MomentClock Clock { get; }
+    private bool IsPaced { get; }
 
-    public OpusFramePump(MomentClock clock)
+    public OpusFramePump(MomentClock clock, bool isPaced = true)
     {
         Clock = clock;
+        IsPaced = isPaced;
         _encoder = new OpusEncoder(SampleRate, Constants.Audio.Channels, OpusPredefinedValues.OPUS_APPLICATION_VOIP);
         _encoder.SetBitRate(Constants.Audio.Bitrate);
         _encoder.SetVbr(true);
@@ -53,9 +55,11 @@ public sealed class OpusFramePump : IDisposable
                 if (!_buffer.TryTake(_pcm, mustPadTail: isInputCompleted))
                     Array.Clear(_pcm);
                 var frame = Encode(frameIndex++);
-                var delay = startedAt + Constants.Audio.OpusFrameDuration * frameIndex - Clock.Now;
-                if (delay > TimeSpan.Zero)
-                    await Clock.Delay(delay, cancellationToken).ConfigureAwait(false);
+                if (IsPaced) {
+                    var delay = startedAt + Constants.Audio.OpusFrameDuration * frameIndex - Clock.Now;
+                    if (delay > TimeSpan.Zero)
+                        await Clock.Delay(delay, cancellationToken).ConfigureAwait(false);
+                }
                 await output.WriteAsync(frame, cancellationToken).ConfigureAwait(false);
             }
             await pcm.Completion.ConfigureAwait(false);

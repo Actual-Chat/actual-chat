@@ -8,6 +8,7 @@ public sealed class SonioxSpeechSynthesizer(IServiceProvider services) : ISpeech
     private IServiceProvider Services { get; } = services;
     private TranscriptionSettings Settings { get; } = services.GetRequiredService<TranscriptionSettings>();
     private MomentClockSet Clocks { get; } = services.Clocks();
+    private ILogger Log { get; } = services.LogFor<SonioxSpeechSynthesizer>();
 
     public async Task Synthesize(
         string streamId,
@@ -30,4 +31,13 @@ public sealed class SonioxSpeechSynthesizer(IServiceProvider services) : ISpeech
                 cts)
             .ConfigureAwait(false);
     }
+
+    public Task<AudioSource> Synthesize(
+        string text,
+        SpeechSynthesisOptions options,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult(SpeechSynthesizerExt.ToAudioSource(
+            (pcm, ct) => new SonioxTtsClient(Services).Generate(
+                options.Language.ToSoniox(), options.VoiceId ?? Settings.SonioxTtsVoice, text, pcm, ct),
+            Clocks, Log, cancellationToken));
 }

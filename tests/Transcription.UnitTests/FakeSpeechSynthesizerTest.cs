@@ -45,6 +45,23 @@ public sealed class FakeSpeechSynthesizerTest
         await readAll.Should().ThrowAsync<InvalidOperationException>("the output carries the same error");
     }
 
+    [Fact]
+    public async Task OneShotSynthesisReturnsAWholeAudioSource()
+    {
+        // arrange
+        var synthesizer = new FakeSpeechSynthesizer(CreateServices());
+
+        // act
+        var audio = await synthesizer.Synthesize(
+            "Hello there, how are you?", new SpeechSynthesisOptions(Languages.English));
+        var frames = await audio.GetFrames(CancellationToken.None).ToListAsync();
+
+        // assert
+        frames.Should().HaveCount(6, "one 20ms frame per four characters");
+        await audio.WhenDurationAvailable;
+        audio.Duration.Should().Be(TimeSpan.FromMilliseconds(120));
+    }
+
     private static IServiceProvider CreateServices()
         => new ServiceCollection()
             .AddSingleton(MomentClockSet.Default)
