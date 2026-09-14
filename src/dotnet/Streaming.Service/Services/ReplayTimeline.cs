@@ -4,8 +4,10 @@ namespace ActualChat.Streaming.Services;
 // from the dub durations rather than the source entries' own BeginsAt/EndsAt.
 internal static class ReplayTimeline
 {
-    public static TimeSpan PlaysAt(TimeSpan timelinePlaysAt, TimeSpan notBefore)
-        => timelinePlaysAt > notBefore ? timelinePlaysAt : notBefore;
+    // stretchTimeline: false for an undubbed replay, where concurrent speakers must stay concurrent
+    // rather than being serialized by a dub-reservation timeline that never applied to them
+    public static TimeSpan PlaysAt(TimeSpan timelinePlaysAt, TimeSpan notBefore, bool stretchTimeline = true)
+        => stretchTimeline && timelinePlaysAt < notBefore ? notBefore : timelinePlaysAt;
     public static TimeSpan ScaleSkip(TimeSpan skipTo, TimeSpan entryDuration, TimeSpan dubDuration)
         => entryDuration <= TimeSpan.Zero || skipTo <= TimeSpan.Zero
             ? TimeSpan.Zero

@@ -56,6 +56,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
+        var dubTasks = new Dictionary<ChatEntryId, Task<ActualChat.Media.Media?>>();
         try {
             Log.LogInformation("OnRun: Starting for chat {ChatId}, startAt={StartAt}, rewindOffset={RewindOffset}",
                 ChatId, StartAt, RewindOffset);
@@ -81,7 +82,6 @@ public sealed class ReplayStreamMuxer : WorkerBase
             var lastEntryEnd = resolvedStartAt.Value;
             var notBefore = TimeSpan.Zero;
             var streamTasks = new List<Task>();
-            var dubTasks = new Dictionary<ChatEntryId, Task<ActualChat.Media.Media?>>();
 
             var entryReader = new ChatEntryReader(Chats, Session, ChatId);
             var idRange = await Chats.GetIdRange(Session, ChatId, cancellationToken).ConfigureAwait(false);
@@ -95,14 +95,10 @@ public sealed class ReplayStreamMuxer : WorkerBase
 
             idRange = (startEntry.LocalId, idRange.End);
             var entries = entryReader.Read(idRange, cancellationToken)
-                .Where(x => x.HasAudio && !x.IsContentStreaming);
+                .Where(x => x.HasAudio && !x.IsContentStreaming && x.GetEndsAt() >= resolvedStartAt.Value);
 
             await foreach (var entry in WithDubLookahead(entries, dubTasks, cancellationToken).ConfigureAwait(false)) {
                 var entryEndsAt = entry.GetEndsAt();
-                if (entryEndsAt < resolvedStartAt.Value) {
-                    dubTasks.Remove(entry.Id);
-                    continue;
-                }
 
                 // Detect and skip gaps: only count time after lastEntryEnd
                 // that isn't covered by this entry's audio range
@@ -129,17 +125,24 @@ public sealed class ReplayStreamMuxer : WorkerBase
                 var dub = DubLanguage == null
                     ? null
                     : await GetDub(entry, dubTasks, cancellationToken).ConfigureAwait(false);
-                // A dub's spoken length rarely matches the source's, so later entries are pushed out
-                // to never start before the previous one - dubbed or not - finished playing
-                var playsAt = ReplayTimeline.PlaysAt(timelinePlaysAt, notBefore);
-                var playedDuration = dub != null
-                    ? dub.EndsAt - dub.BeginsAt
-                    : entryEndsAt - entry.BeginsAt - skipTo;
-                notBefore = playsAt + playedDuration.Positive() / Speed;
+                var dubSkipTo = dub != null
+                    ? ReplayTimeline.ScaleSkip(skipTo, entryEndsAt - entry.BeginsAt, dub.EndsAt - dub.BeginsAt)
+                    : TimeSpan.Zero;
+                // A dub's spoken length rarely matches the source's, so later entries in a dubbed
+                // replay are pushed out to never start before the previous one finished playing;
+                // an undubbed replay (no DubLanguage) keeps concurrent speakers concurrent, as before
+                var playsAt = ReplayTimeline.PlaysAt(timelinePlaysAt, notBefore, DubLanguage != null);
+                if (DubLanguage != null) {
+                    var playedDuration = dub != null
+                        ? (dub.EndsAt - dub.BeginsAt) - dubSkipTo
+                        : entryEndsAt - entry.BeginsAt - skipTo;
+                    notBefore = playsAt + playedDuration.Positive() / Speed;
+                }
 
                 // Start streaming this entry (allows concurrent speakers)
                 var streamIndex = Interlocked.Increment(ref _nextStreamIndex);
-                var streamTask = ProcessEntry(entry, dub, streamIndex, skipTo, playsAt, cancellationToken);
+                var streamTask = ProcessEntry(
+                    entry, dub, dubSkipTo, streamIndex, skipTo, playsAt, cancellationToken);
                 streamTasks.Add(streamTask);
 
                 // Clean up completed tasks
@@ -157,11 +160,18 @@ public sealed class ReplayStreamMuxer : WorkerBase
         catch (Exception e) when (!e.IsCancellationOf(StopToken)) {
             Log.LogError(e, "OnRun: Failed for chat {ChatId}", ChatId);
         }
+        finally {
+            // Lookahead dubs still in flight when the replay stops early would otherwise fault
+            // unobserved - their token is this method's own, so they're already unwinding
+            foreach (var dubTask in dubTasks.Values)
+                await dubTask.SilentAwait(false);
+        }
     }
 
     private async Task ProcessEntry(
         ChatEntry entry,
         ActualChat.Media.Media? dub,
+        TimeSpan dubSkipTo,
         int streamIndex,
         TimeSpan skipTo,
         TimeSpan playsAt,
@@ -180,13 +190,8 @@ public sealed class ReplayStreamMuxer : WorkerBase
                 return;
             }
 
-            var downloadBlobId = blobId;
-            var downloadSkipTo = skipTo;
-            if (dub != null) {
-                downloadBlobId = dub.BlobId;
-                downloadSkipTo = ReplayTimeline.ScaleSkip(
-                    skipTo, entry.GetEndsAt() - entry.BeginsAt, dub.EndsAt - dub.BeginsAt);
-            }
+            var downloadBlobId = dub != null ? dub.BlobId : blobId;
+            var downloadSkipTo = dub != null ? dubSkipTo : skipTo;
 
             AudioSource audioSource;
             try {

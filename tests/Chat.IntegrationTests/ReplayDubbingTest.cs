@@ -51,16 +51,21 @@ public class ReplayDubbingTest(
         // arrange
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false);
-        var liveStreams = Tester.AppServices.GetRequiredService<ILiveAudioStreams>();
+        var services = Tester.AppServices;
+        var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
         var entry = await Tester.RecordVoiceEntry(chatId, Languages.Russian);
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var ct = cts.Token;
 
         // act
         var stream = await liveStreams.GetReplayStream(
-            Tester.Session, chatId, entry.BeginsAt, TimeSpan.Zero, 1.0, null, cts.Token);
-        var items = await stream.ToListAsync(cts.Token);
+            Tester.Session, chatId, entry.BeginsAt, TimeSpan.Zero, 1.0, null, ct);
+        var items = await stream.ToListAsync(ct);
 
         // assert
         items.OfType<MuxedAudioStreamStart>().Should().ContainSingle().Which.StreamInfo.DubLanguage.Should().BeNull();
+        var translation = await services.GetRequiredService<ITranslationsBackend>()
+            .Get(TranslationId.New(entry.Id, Languages.English), false, ct);
+        translation.Should().BeNull("a replay without a dub language never asks the translator to synthesize anything");
     }
 }

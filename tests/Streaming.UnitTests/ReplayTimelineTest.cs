@@ -13,6 +13,14 @@ public class ReplayTimelineTest
     }
 
     [Fact]
+    public void AnUndubbedReplayNeverStretchesTheTimeline()
+    {
+        // act & assert
+        ReplayTimeline.PlaysAt(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(12), stretchTimeline: false)
+            .Should().Be(TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public void ASeekIntoADubbedEntryIsScaledToTheDubsLength()
     {
         // act & assert
