@@ -118,10 +118,10 @@ and goes straight to `IncomingCallUI.Accept`.
 `LiveSessionUI.Get(chatId)` and returns a call only when all of these hold:
 
 - `Kind == Call`;
-- the reader isn't the caller (`CallerId`, which unlike `Host` never moves);
 - the reader's invite is `Ringing`.
 
-Only the reader's own invite decides: someone else answering a group call leaves it
+Only the reader's own invite decides. The caller is never invited, so their own call
+never rings them; someone else answering a group call leaves the reader's invite
 `Ringing`, while the reader answering on another device moves it on. A stale push, or a
 call the reader already answered elsewhere, produces nothing, and dead candidates are
 pruned.

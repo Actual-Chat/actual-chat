@@ -234,7 +234,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             Version = state.Version,
             Kind = state.Kind,
             Invites = invites,
-            CallerId = state.IsCall ? state.CallerId ?? state.Host : null,
         };
     }
 
