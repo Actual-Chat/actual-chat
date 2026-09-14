@@ -270,6 +270,52 @@ body.narrow .chat-settings-header > .c-top .right-panel-close-btn {
     @apply bg-transparent;
 }
 
+/* Narrow + on-screen keyboard up: the keyboard shrinks the viewport and scrolls the tall wallpaper
+   hero out from under the overlaid title. Collapse it to a slim, sticky wallpaper strip (small avatar
+   kept, "add photo" hidden) so the edited field stays visible; the dark gradient over the strip keeps
+   the light title readable, so no chrome recolour is needed.
+   Gated by body.keyboard-open (set from visual-viewport in keyboard-visibility.ts) rather than
+   :has(:focus): a container :has() on a focus state re-matches up the ancestor chain on every focus
+   change - see docs/ui/components.md "Presence classes". The swap is instant because it changes layout
+   height, which can't be animated on the compositor (components.md "Prefer Composited Properties"). */
+body.narrow.keyboard-open .edit-settings-modal .own-avatar-edit-header,
+body.narrow.keyboard-open .edit-settings-modal .chat-settings-header {
+    /* Pin the strip to the top of the scroll body: focusing a lower field scrolls the body to reveal it,
+       which would otherwise carry the strip off-screen and leave the overlaid title over bare content.
+       Back it with the modal colour so fields scrolling underneath never show through the wallpaper. */
+    @apply sticky top-0 z-40;
+    background-color: var(--modal-background);
+    min-height: calc(3rem + var(--safe-area-top-narrow));
+}
+body.narrow.keyboard-open .edit-settings-modal .own-avatar-edit-header > .c-top,
+body.narrow.keyboard-open .edit-settings-modal .chat-settings-header > .c-top {
+    height: 3rem;
+}
+body.narrow.keyboard-open .edit-settings-modal .own-avatar-edit-header > .c-center,
+body.narrow.keyboard-open .edit-settings-modal .chat-settings-header > .c-center {
+    @apply items-center;
+    height: 3rem;
+    top: var(--safe-area-top-narrow);
+}
+body.narrow.keyboard-open .edit-settings-modal .own-avatar-edit-header > .c-center .pic,
+body.narrow.keyboard-open .edit-settings-modal .chat-settings-header > .c-center .pic {
+    transform: scale(0.5);
+    transform-origin: left center;
+}
+body.narrow.keyboard-open .edit-settings-modal .own-avatar-edit-header > .c-center > .c-buttons,
+body.narrow.keyboard-open .edit-settings-modal .chat-settings-header > .c-center > .c-buttons {
+    @apply opacity-0 pointer-events-none;
+}
+/* Frame-level title chrome sits outside the hero, so scope it to hero pages via the same structural
+   :has() the transparent-header rules above already evaluate (no extra cost); the shrink centres the
+   title with the 3rem strip and the indent clears the avatar. */
+body.narrow.keyboard-open .edit-settings-modal:has(.chat-settings-header, .own-avatar-edit-header) .modal-header-interactive {
+    @apply min-h-12 max-h-12;
+}
+body.narrow.keyboard-open .edit-settings-modal:has(.chat-settings-header, .own-avatar-edit-header) .modal-header-interactive .modal-title {
+    padding-left: 2.5rem;
+}
+
 .edit-settings-modal .chat-settings-header.place .c-center .pic.pic-square {
     @apply rounded-2xl;
     @apply border-2 border-bg-01;
