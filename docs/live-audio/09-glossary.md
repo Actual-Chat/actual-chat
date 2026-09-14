@@ -33,6 +33,12 @@ live-audio docs.
   (sender's wall-clock at stream start) and a `BeginsAt` (server's
   wall-clock at first frame). Drift > 5 s ⇒ server overrides
   `SourceBeginsAt`.
+- **Dub** — a derived live audio stream `S~lang`: the owner node of `S`
+  speaks the stable prefix of `S`'s translated transcript through a TTS
+  voice and publishes the frames under the language-suffixed id. Never
+  registered in `LiveAudioBackend`, never persisted; the listening muxer
+  substitutes it for `S` when the listener asked for `lang` and the
+  speaker's candidate languages exclude it. See [doc 12](./12-dubbing.md).
 - **A/V sync** — receiver-side feature where audio adopts video's target
   presentation delay; if drift, audio either hard-skips (≥ 2 s) or
   speeds up (drop every 4th frame). **Currently disabled** by default
@@ -87,6 +93,11 @@ live-audio docs.
 | `AudioProcessorBase` | same | Base for transcription processors |
 | `AudioSourceDownloader` | `Core.Server/Blobs/` | Blob → AudioSource read path |
 | `Transcribers/{TranscriberFactory,GoogleTranscriber,DeepgramTranscriber,FakeTranscriber,OpenAITranscriber}` | `Streaming.Service/Services/Transcribers/` | Transcription providers |
+| `ISpeechSynthesizer` / `SpeechSynthesisOptions` | `Transcription.Contracts/` | Text chunks → paced 20 ms Opus frames |
+| `SonioxSpeechSynthesizer`, `FakeSpeechSynthesizer`, `OpusFramePump` | `Transcription.Service/Synthesis/` | Soniox TTS + PCM → Opus pump; test double |
+| `SonioxTtsClient` | `Transcription.Service/Transcribers/` | One `tts-rt-v2` WebSocket connection per text chunk |
+| `DubStabilizer` / `DubDecision` | `Streaming.Service/Audio/` | Stable-prefix feed + dub / no-dub decision |
+| `AudioStreamingBackend.Dubbing` | `Streaming.Service/Backend/` | Lazy dub start from `GetAudio(S~lang)`, per-voice chain, expiry |
 | `PlaybackLagTracker` | `UI.Blazor.App/Services/` | EMAs of audio + video presentation lag, keyed by author |
 | `ChatPlayer` / `ChatListener` / `ChatReplayer` | `UI.Blazor.App/Services/Playback/` | Per-chat playback orchestrators |
 | `ChatAudioUI` (+ `.Players`, `.StateSync`) | `UI.Blazor.App/Services/` | Top-level toggle + state |

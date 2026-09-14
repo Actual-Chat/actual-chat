@@ -142,6 +142,7 @@ export default withMermaid(defineConfig({
               { text: "Diagnostics and tuning", link: "/live-audio/08-diagnostics-and-tuning" },
               { text: "Glossary", link: "/live-audio/09-glossary" },
               { text: "PTT", link: "/live-audio/10-push-to-talk" },
+              { text: "Dubbing", link: "/live-audio/12-dubbing" },
             ],
           },
           {
