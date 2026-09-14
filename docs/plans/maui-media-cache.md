@@ -38,11 +38,35 @@ No Kvasar index is needed for this version.
 
 ## Next decisions
 
-**URL projection:** keep canonical remote URLs distinct from WebView-facing routes. Apply
-projection after constructing image-proxy/resize URLs, and use app-issued opaque references
-as `LocalContentRegistry` does. Include avatars, transformed previews, thumbnails, and
-audio/video/file attachments. Native download/share consumers retain canonical URLs or open
-the cache directly. Arbitrary external content requires a versioned URL before caching.
+**URL projection:** extend `UrlMapper` with optional app-only projection, disabled by default.
+Construct the complete canonical representation URL, including image-proxy/resize options,
+before projecting it to a native cache route. Never embed a local route in a remote proxy URL.
+Use app-issued opaque references as `LocalContentRegistry` does; the native adapter resolves
+the original URL and passes it to the shared cache/fetcher pipeline. Cache identity uses the
+normalized remote URL, not the local route. Persisted messages, RPC data, and native
+download/share consumers retain canonical URLs or open the cache directly.
+
+Derive scopes from `ContentBaseUrl` and `ImageProxyBaseUrl` using URI origin/path matching,
+covering same-host content paths and local worktree hosts. Include generated-avatar GETs
+under `ApiBaseUrl + "avatars/"`, preserving query variants. Local SVG/blob avatars and
+upload previews need no remote cache.
+
+Include Klipy picker previews, recents, and posted GIFs through `GifProxyUrl`; keep preview
+and full renditions separate and stored URLs canonical. Existing limits: message detection
+requires HTTPS `static.klipy.com` ending in `.gif`; without an image proxy, picker previews
+are direct and messages are links. Legacy direct external pictures, including remaining
+DiceBear bot/admin URLs, may remain uncached. Do not add a general external-origin rule.
+
+Map backgrounds use `MapTilesBaseUrl`: styles, geographic tiles, glyphs, and sprites for
+location messages and sharing views. Their nested requests are issued by MapLibre, so
+rewriting only the initial style URL would not cover them. Defer map caching until it has
+a freshness/version policy; map-marker avatar images still follow the media policy.
+
+**Server reuse:** the shared handler/fetcher contract operates on canonical URLs without
+MAUI or local-route dependencies. Keep filesystem layout an implementation/configuration
+choice: the one-level 256-bucket scheme targets MAUI, while a future API-server cache with
+millions of entries may use deeper sharding or a different backend. Defer server/RPC
+integration and coordination between server processes.
 
 **Progressive storage:** replace the whole-entry envelope with independently authenticated
 chunks, including asset identity, position, and generation. Never persist plaintext staging
