@@ -20,11 +20,22 @@ it natively, so Safari and the iOS app never load this. Firefox has no HEVC on
 most platforms either, which is why reusing the browser's own decoder through
 WebCodecs was not an option.
 
-**EXIF orientation must be applied by the caller.** libheif applies `irot`/`imir`
-container properties but ignores EXIF `Orientation`, whereas WebKit applies it —
-even under `imageOrientation: 'none'`. Left alone, the same photo is upright from
-Safari and sideways from Chrome. `HeifDecoder.decode` applies it;
-`tests/ts/unit/fixtures/orientation{1,6}.heic` pin it.
+**EXIF orientation must be applied by the caller — but only sometimes.** Both
+libheif and WebKit apply the `irot`/`imir` container properties and stop there;
+only WebKit also reads EXIF `Orientation`, and only when the file has no
+`irot`/`imir` (it applies it even under `imageOrientation: 'none'`). So
+`HeifDecoder.decode` applies the EXIF tag exactly when the container carries no
+transform property. Measured, full-size:
+
+| file | `irot` | EXIF | WebKit | libheif |
+|---|---|---|---|---|
+| `voxt-test-portrait.heic` | yes | 6 | 4000x3000 | 4000x3000 |
+| `rot6.heic` | no | 6 | 4096x3072 | 3072x4096 |
+
+Every camera HEIC carries `irot` — angle 0 included — so applying EXIF
+unconditionally rotates a real photo twice. Left alone in either direction, the
+same photo is upright from Safari and sideways from Chrome.
+`tests/ts/unit/fixtures/orientation{1,6,6-irot}.heic` pin all three cases.
 
 Source: https://github.com/catdad-experiments/libheif-js at `1.23.2`, the
 `libheif-wasm` build (separate `.wasm`, not the base64-inlined `wasm-bundle`).
@@ -52,7 +63,14 @@ The glue instantiates the wasm **synchronously**, and its own loaders (XHR,
 `tests/ts/unit/fixtures/orientation1.heic` is a 240x160 gradient (3.5 KB)
 written by `pillow-heif` with a minimal EXIF IFD0 carrying `Orientation`;
 `orientation6.heic` is a byte-for-byte copy with that one value changed to 6.
-Full-size phone HEICs are ~4.6 MB, which is too much to keep in the repo.
+`orientation6-irot.heic` is the same gradient written with
+`image_orientation=6`, so libheif's encoder emits `irot` (angle 3) alongside
+EXIF 6 — the shape every camera HEIC has. Full-size phone HEICs are ~3.4 MB,
+which is too much to keep in the repo.
+
+The leak test pads a fixture with a `free` box rather than shipping a large
+one: the padding is copied into the wasm heap like any other source byte, so a
+retained `heif_context` is measurable from a 3.5 KB file.
 
 ## Licensing
 
