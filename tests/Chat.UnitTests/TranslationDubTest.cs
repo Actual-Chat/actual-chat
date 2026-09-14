@@ -20,7 +20,7 @@ public class TranslationDubTest
         };
 
         // act & assert
-        translation.HasValidDub.Should().BeTrue();
+        translation.HasValidDub().Should().BeTrue();
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public class TranslationDubTest
         };
 
         // act & assert
-        translation.HasValidDub.Should().BeFalse();
+        translation.HasValidDub().Should().BeFalse();
     }
 
     [Fact]
@@ -45,6 +45,6 @@ public class TranslationDubTest
         var translation = new Translation(Id) { Content = "Hello" };
 
         // act & assert
-        translation.HasValidDub.Should().BeFalse();
+        translation.HasValidDub().Should().BeFalse();
     }
 }

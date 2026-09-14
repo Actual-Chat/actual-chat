@@ -31,7 +31,7 @@ public class TranslationDubTest(
                 DubMediaId = mediaId,
                 DubContentHash = ChatEntryHashExt.GetContentHashString(translation.Content),
             })));
-        translation!.HasValidDub.Should().BeTrue();
+        translation!.HasValidDub().Should().BeTrue();
 
         // act
         translation = await commander.Call(new TranslationsBackend_Change(id, translation.Version,

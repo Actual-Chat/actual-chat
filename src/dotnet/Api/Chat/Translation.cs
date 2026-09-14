@@ -31,18 +31,6 @@ public sealed partial record Translation(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsStreaming => StreamId is not null;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public bool HasValidDub {
-        get {
-            if (DubMediaId is null)
-                return false;
-
-            var hash = new HashOutput32();
-            global::Blake3.Hasher.Hash(Content.Hash().Bytes, hash.Bytes);
-            return DubContentHash == hash.ToBlake3Base64HashString();
-        }
-    }
-
     public bool MatchesOriginal(string originalContent)
         // we ask llm to ignore text already in the target language
         => Content.IsNullOrEmpty()
