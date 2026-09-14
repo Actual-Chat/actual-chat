@@ -2807,12 +2807,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // It then lands at V itself and stays visible there (it was never spoken), while every entry
         // the test creates sits one lid past where its V + n arithmetic puts it. Wait it out here.
         var (chat, _) = await Tester.CreateAndGetChat(isPublic, title);
-        await ComputedTest.When(async ct => {
-            var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, ct);
-            // Start is the lowest entry lid, and 0 while there is none - the range of an empty chat
-            // is (0, 1), so its size can't tell an empty chat from one holding a single entry.
-            idRange.Start.Should().BePositive("V must latch past the chat's opening system entry");
-        }, TimeSpan.FromSeconds(10));
+        await AppHost.Services.WaitForOpeningEntry(chat.Id);
         return chat;
     }
 

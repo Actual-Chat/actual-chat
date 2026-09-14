@@ -68,6 +68,14 @@ public static class ChatOperations
         return (chatId, inviteId);
     }
 
+    public static Task WaitForOpeningEntry(this IServiceProvider services, ChatId chatId)
+        // A new chat's "member added" entry is written by an async event handler, so an entry created right
+        // after the chat can take a lower lid than it. Start, not size: an empty chat's range is (0, 1).
+        => ComputedTest.When(async ct => {
+            var lidRange = await services.GetRequiredService<IChatsBackend>().GetLidRange(chatId, false, ct);
+            lidRange.Start.Should().BePositive("the chat's opening system entry must be written by now");
+        }, TimeSpan.FromSeconds(10));
+
     public static Task<Chat.Chat> UpdateChat(this IWebTester tester, ChatId chatId, string title)
         => tester.Commander.Call(new Chats_Change {
             Session = tester.Session,
