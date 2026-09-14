@@ -160,20 +160,54 @@ the slot when the call ends:
 `Active` before its RPC, claiming a free slot itself when Answer on a notification beat the
 search. Hanging up releases the slot right away.
 
-Everything that shows a call reads the slot: the modal, the island, the over-lock and narrow
-full-screen views, the ringtone, the ringback. `GetIncomingCall` is the slot filtered to
-`Incoming/Ringing`.
+Everything that shows a call reads the slot. The modal, the island and the full-screen view
+read it through `CallScreensUI.GetCallView`; the ringtone through `GetIncomingCall`, the slot
+filtered to `Incoming/Ringing`; the ringback through `CallUI`.
 
 ## Presenting the ring
 
-`CallScreensUI` is a UI worker; it runs these reactive loops:
+`CallScreensUI.GetCallView` decides the one screen the call in the slot gets. It is a function
+of the call's origin and phase, the screen width, and three chat-scoped flags; the rule itself is
+the pure `DecideView`, and a flag counts only while the slot holds its chat.
+
+| Flag | Set by | Counts for |
+|---|---|---|
+| over-lock | `OnRing(showOverLockScreen: true)` | an incoming call, any phase |
+| collapsed | the modal's collapse button, dismissing the modal, collapsing the full-screen view while dialing | ringing and dialing |
+| in chat | "go to chat" in the full-screen view of an active call | active |
+
+The first matching row wins:
+
+| Call | Wide | Narrow |
+|---|---|---|
+| Incoming, over the lock screen (any phase) | full-screen view | full-screen view |
+| Ringing, collapsed | island | island |
+| Ringing | modal | modal |
+| Dialing, not yet confirmed by the server | nothing | nothing |
+| Dialing, collapsed | island | island |
+| Dialing | modal | full-screen view |
+| Active, in chat | nothing | nothing |
+| Active | nothing — the call is in the chat | full-screen view |
+
+The width is reactive: narrowing the window mid-call brings up the full-screen view, widening it
+swaps the dialing full-screen view for the modal.
+
+| Surface | What it shows |
+|---|---|
+| `CallModal` | Decline, Mute, Message and Accept for a ring; Hang up while dialing. |
+| `FullScreenCallView` | The ring over the keyguard, and dialing or the call on a narrow screen. |
+| `CollapsedCallView` | The draggable island. Collapsing a ring also mutes its ringtone. |
+
+`CallScreensUI` is a UI worker; it runs two reactive loops:
 
 - **`SyncRingtone`** plays the ringtone while the slot holds an Incoming/Ringing call the user
-  hasn't muted; muting or collapsing the ring only changes that state.
-- **`SyncIncomingCallModal`** shows `IncomingCallModal`, except when the ring is shown over
-  the lock screen or collapsed into the island.
-- **SyncCallScreens** follows the slot: an outgoing call that starts dialing gets its modal
-  or full-screen view, and a released call gets its screens closed and its audio stopped.
+  hasn't muted.
+- **`SyncCallView`** follows `GetCallView`. It opens `CallModal` when the view switches to it;
+  the modal closes itself once the view moves on. When the slot is released it tears the
+  screens down, and it is the only place that does: it clears the chat's flags, moves the app
+  back behind the lock screen if the call was shown over it, opens the chat if the call had the
+  full-screen view, and stops an active call's audio. Decline, Hang up and the other actions
+  only change the slot.
 
 `ConfirmRing` is telemetry only. The server stores it on the invite (`CallInvite.Ack`) and
 changes nothing else.
@@ -182,12 +216,6 @@ changes nothing else.
 `AndroidIncomingCallsBridge`, playing the system default ringtone. When no audio is live, the
 bridge first gives up the `InCommunication` audio mode, which would otherwise route the ring
 to the earpiece. Everywhere else it is the looping JS `IncomingCallRingtone`.
-
-| Surface | When it shows |
-|---|---|
-| `IncomingCallModal` | The default foreground ring. |
-| `FullScreenCallView` | An Android full-screen intent over the keyguard. On narrow screens it is also the full-screen call view: in a call or dialing out. |
-| `CollapsedCallView` | The draggable island, after the user collapses the modal; my own dialing call collapses into the same one. Collapsing a ring also mutes the ringtone. |
 
 **Showing over the lock screen.** On a cold start the activity is put over the keyguard
 straight away, behind a splash-colored cover, because the WebView would otherwise flash the
@@ -210,8 +238,9 @@ On the callee's client, `CallScreensUI.Accept`:
 3. Calls `AcceptCall`.
 4. On Android, dismisses the keyguard, unless the call was accepted over the lock screen.
    Then audio starts without unlocking: the activity shown over the lock counts as
-   foreground, which is what the microphone foreground service needs. A wide screen then
-   opens the chat; a narrow one shows the full-screen call view.
+   foreground, which is what the microphone foreground service needs. The chat then opens,
+   unless the call was accepted over the lock screen; on a narrow screen the full-screen call
+   view covers it.
 5. Starts listening unconditionally, then requests the microphone and starts recording.
    Listening comes first so that an unanswered OS permission prompt can't fail the connect
    check below.
