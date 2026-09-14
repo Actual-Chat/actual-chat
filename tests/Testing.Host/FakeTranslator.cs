@@ -6,21 +6,21 @@ namespace ActualChat.Testing.Host;
 /// <summary>
 /// Deterministic translator. By default it answers in the target's own script and keeps the
 /// source, so a stored translation reveals which text it was given; a test can swap the answer
-/// on its own host's instance.
+/// or make it fail on its own host's instance.
 /// </summary>
 public sealed class FakeTranslator(IServiceProvider services, string serviceKey = Constants.Translation.ServiceKey)
     : Translator(services, serviceKey)
 {
-    // Static: the retranscribe flow has to fail the keyed realtime instance it never resolves
-    public static bool MustFailRealtime { get; set; }
+    // Per instance rather than static: test hosts share the process, and a static flag set by one
+    // test collection failed the translations of another
+    public bool MustFail { get; set; }
     public Func<string, Language, string> Respond { get; set; } = Translated;
-    private bool IsRealtime { get; } = serviceKey == Constants.Translation.RealtimeServiceKey;
 
     public static string Translated(string text, Language targetLanguage)
         => $"{targetLanguage.NativeName}: {text}";
 
-    public static void Reset()
-        => MustFailRealtime = false;
+    public static FakeTranslator Realtime(IServiceProvider services)
+        => (FakeTranslator)services.GetRequiredKeyedService<Translator>(Constants.Translation.RealtimeServiceKey);
 
     public override Task<string> Translate(
         string textToTranslate,
@@ -28,7 +28,7 @@ public sealed class FakeTranslator(IServiceProvider services, string serviceKey 
         TranslationResult[] context,
         string? contextHint = null,
         CancellationToken cancellationToken = default)
-        => MustFailRealtime && IsRealtime
+        => MustFail
             ? Task.FromException<string>(StandardError.External("Realtime translation failed."))
             : Task.FromResult(Respond(textToTranslate, targetLanguage));
 

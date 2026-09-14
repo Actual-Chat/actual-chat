@@ -127,6 +127,7 @@ public partial class AudioStreamingBackend
             OpenAudioSegmentLog);
         openSegment.SetRecordedAt(recordedAt);
         RememberChatId(openSegment.StreamId, chatId);
+        RememberAuthorId(openSegment.StreamId, author.Id);
 
         // Registered in both modes: this is the chat's live-activity signal, and a JustText
         // author is just as live as a speaking one. IsTextOnly keeps voice consumers away.
@@ -138,6 +139,11 @@ public partial class AudioStreamingBackend
             SourceBeginsAt = sourceBeginsAt,
             Format = audio.Format,
             IsTextOnly = !mustStreamVoice,
+            // Empty = never dub: without a transcript there's nothing to translate, and a dubbing
+            // listener would hold this speaker's audio for the whole DubWaitTimeout on every utterance
+            Languages = !mustTranscribe ? ApiArray<Language>.Empty
+                : languages.ChatLanguage is { } chatLanguage ? new ApiArray<Language>([chatLanguage])
+                : languages.UserSettings.ListSpoken().ToApiArray(),
         };
         await LiveAudioBackend.Register(chatId, streamInfo, cancellationToken).ConfigureAwait(false);
 

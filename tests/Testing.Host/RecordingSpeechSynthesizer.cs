@@ -1,0 +1,83 @@
+using ActualChat.Audio;
+using ActualChat.Transcription;
+
+namespace ActualChat.Testing.Host;
+
+/// <summary>
+/// Records every text chunk a dub sends to the synthesizer before speaking it like
+/// <see cref="FakeSpeechSynthesizer"/> does, so a test can assert what was said.
+/// </summary>
+public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpeechSynthesizer
+{
+    private readonly object _lock = new();
+    private readonly List<(string StreamId, string Text)> _chunks = [];
+    private TaskCompletionSource _whenChangedSource = TaskCompletionSourceExt.New();
+
+    private FakeSpeechSynthesizer Inner { get; } = new(services);
+
+    public IReadOnlyList<string> GetChunks(string streamId)
+    {
+        lock (_lock)
+            return _chunks.Where(x => x.StreamId == streamId).Select(x => x.Text).ToList();
+    }
+
+    public async Task<IReadOnlyList<string>> WhenSpoken(
+        string streamId,
+        int minChunkCount,
+        CancellationToken cancellationToken)
+    {
+        while (true) {
+            Task whenChanged;
+            lock (_lock) {
+                var chunks = _chunks.Where(x => x.StreamId == streamId).Select(x => x.Text).ToList();
+                if (chunks.Count >= minChunkCount)
+                    return chunks;
+
+                whenChanged = _whenChangedSource.Task;
+            }
+            await whenChanged.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    public async Task Synthesize(
+        string streamId,
+        ChannelReader<string> text,
+        SpeechSynthesisOptions options,
+        ChannelWriter<AudioFrame> output,
+        CancellationToken cancellationToken = default)
+    {
+        var forwarded = Channel.CreateUnbounded<string>();
+        var recordTask = Record(streamId, text, forwarded.Writer, cancellationToken);
+        await Inner.Synthesize(streamId, forwarded.Reader, options, output, cancellationToken).ConfigureAwait(false);
+        await recordTask.ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private async Task Record(
+        string streamId,
+        ChannelReader<string> text,
+        ChannelWriter<string> forwarded,
+        CancellationToken cancellationToken)
+    {
+        Exception? error = null;
+        try {
+            await foreach (var chunk in text.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
+                lock (_lock) {
+                    _chunks.Add((streamId, chunk));
+                    var whenChangedSource = _whenChangedSource;
+                    _whenChangedSource = TaskCompletionSourceExt.New();
+                    whenChangedSource.TrySetResult();
+                }
+                await forwarded.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (Exception e) {
+            error = e;
+            throw;
+        }
+        finally {
+            forwarded.TryComplete(error);
+        }
+    }
+}
