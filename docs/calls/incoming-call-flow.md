@@ -187,7 +187,7 @@ to the earpiece. Everywhere else it is the looping JS `IncomingCallRingtone`.
 |---|---|
 | `IncomingCallModal` | The default foreground ring. |
 | `IncomingCallOverLockView` | An Android full-screen intent over the keyguard. On narrow screens it is also the full-screen call view: ringing, in a call, or dialing out. |
-| `CollapsedIncomingCall` | The draggable island, after the user collapses the modal. Collapsing also mutes the ringtone. |
+| `CollapsedCall` | The draggable island, after the user collapses the modal; my own dialing call collapses into the same one. Collapsing a ring also mutes the ringtone. |
 
 **Showing over the lock screen.** On a cold start the activity is put over the keyguard
 straight away, behind a splash-colored cover, because the WebView would otherwise flash the

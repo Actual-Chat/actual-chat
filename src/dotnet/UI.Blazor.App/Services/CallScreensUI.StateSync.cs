@@ -40,7 +40,7 @@ public partial class CallScreensUI
             return null;
 
         var overLockChatId = await GetOverLockChatId(cancellationToken).ConfigureAwait(false);
-        var collapsedChatId = await _collapsedIncomingChatId.Use(cancellationToken).ConfigureAwait(false);
+        var collapsedChatId = await _collapsedChatId.Use(cancellationToken).ConfigureAwait(false);
         return overLockChatId == call.ChatId || collapsedChatId == call.ChatId ? null : call;
     }
 
@@ -132,8 +132,7 @@ public partial class CallScreensUI
     {
         var chatId = call.ChatId;
         CallDebugLog?.LogInformation("CALL_TRACE: slot released #{ChatId} from {Phase}", chatId, call.Phase);
-        ClearRingFlags(chatId);
-        ClearIf(_collapsedOutgoingChatId, chatId);
+        ClearCallFlags(chatId);
         switch (call.Phase) {
         case CallPhase.Ringing:
             if (IsOverLock(chatId, call)) {
@@ -155,7 +154,7 @@ public partial class CallScreensUI
     private void ShowOutgoingCall(ChatId chatId)
     {
         // A prior call to this chat may have left it collapsed, and a fresh dial must not start in the island.
-        ClearIf(_collapsedOutgoingChatId, chatId);
+        ClearIf(_collapsedChatId, chatId);
         if (IsNarrowScreen)
             _foregroundCallChatId.Value = chatId;
         else

@@ -318,7 +318,7 @@
 .dev-desktop .call-pill { top: .5rem; }
 
 /* ── Real-class stages: reproduce the production incoming-call surfaces on the test page using the
-   SAME classes (author-modal / incoming-call-modal / collapsed-incoming-call / incoming-call-overlock),
+   SAME classes (author-modal / incoming-call-modal / collapsed-call / incoming-call-overlock),
    so editing those stylesheets is reflected here. Only positioning is scoped to the preview frame. ── */
 .tp-stage {
   position: absolute;
@@ -339,7 +339,7 @@
   box-shadow: 0 8px 32px rgb(0 0 0 / 30%);
 }
 .dev-screen .incoming-call-overlock { position: absolute; }
-.dev-screen .collapsed-incoming-call { position: absolute; left: .75rem; top: 3.5rem; }
+.dev-screen .collapsed-call { position: absolute; left: .75rem; top: 3.5rem; }
 
 /* how-to-call header hint */
 .hint-btn {

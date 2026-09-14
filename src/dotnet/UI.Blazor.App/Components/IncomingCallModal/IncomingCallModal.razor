@@ -75,7 +75,7 @@
             return ComputedModel.None;
 
         // Collapsed into the island → close the modal; the island takes over.
-        var collapsed = await CallScreensUI.CollapsedIncomingChatId.Use(cancellationToken).ConfigureAwait(false);
+        var collapsed = await CallScreensUI.CollapsedChatId.Use(cancellationToken).ConfigureAwait(false);
         if (collapsed == chatId)
             return ComputedModel.None;
 
@@ -92,7 +92,7 @@
     // already resolved it, treat the dismissal as "collapse to the island".
     public override async ValueTask DisposeAsync() {
         if (!_handled)
-            CallScreensUI.CollapseIncoming(ChatId);
+            CallScreensUI.Collapse(ChatId);
         await base.DisposeAsync().ConfigureAwait(false);
     }
 
@@ -117,10 +117,10 @@
         return CallScreensUI.DeclineAndOpenChat(chatId);
     }
 
-    // Collapse to the island: the modal auto-closes because ComputeState reads CollapsedIncomingChatId.
+    // Collapse to the island: the modal auto-closes because ComputeState reads CollapsedChatId.
     private void OnCollapseClick() {
         _handled = true;
-        CallScreensUI.CollapseIncoming(ChatId);
+        CallScreensUI.Collapse(ChatId);
     }
 
     private void OnMuteClick()

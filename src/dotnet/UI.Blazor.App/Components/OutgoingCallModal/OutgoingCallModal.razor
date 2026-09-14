@@ -56,7 +56,7 @@
         var chatId = ChatId;
 
         // Collapsed into the island → close the modal; the island takes over.
-        var collapsed = await CallScreensUI.CollapsedOutgoingChatId.Use(cancellationToken).ConfigureAwait(false);
+        var collapsed = await CallScreensUI.CollapsedChatId.Use(cancellationToken).ConfigureAwait(false);
         if (collapsed == chatId)
             return ComputedModel.None;
 
@@ -80,7 +80,7 @@
         // A tap outside (or Esc) closes via ModalChrome without touching the call, leaving it dialing
         // with no UI - so unless an explicit action already resolved this, collapse it to the island.
         if (!_handled)
-            CallScreensUI.CollapseOutgoing(ChatId);
+            CallScreensUI.Collapse(ChatId);
         await base.DisposeAsync().ConfigureAwait(false);
     }
 
@@ -91,10 +91,10 @@
         return CallUI.CancelCall(chatId, CancellationToken.None);
     }
 
-    // Collapse to the island: the modal auto-closes because ComputeState reads CollapsedOutgoingChatId.
+    // Collapse to the island: the modal auto-closes because ComputeState reads CollapsedChatId.
     private void OnCollapseClick() {
         _handled = true;
-        CallScreensUI.CollapseOutgoing(ChatId);
+        CallScreensUI.Collapse(ChatId);
     }
 
     // Nested types

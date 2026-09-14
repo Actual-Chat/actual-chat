@@ -15,13 +15,12 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     // honor them only while the slot holds that call.
     private readonly MutableState<ChatId?> _overLockRingChatId;
     private readonly MutableState<ChatId?> _foregroundCallChatId;
-    private readonly MutableState<ChatId?> _collapsedIncomingChatId;
-    private readonly MutableState<ChatId?> _collapsedOutgoingChatId;
+    // The call collapsed into the island - the slot holds one call, so one is enough for either direction.
+    private readonly MutableState<ChatId?> _collapsedChatId;
     // The ring whose ringtone the user silenced; the ring itself keeps going.
     private readonly MutableState<ChatId?> _mutedRingChatId;
 
-    public IState<ChatId?> CollapsedIncomingChatId => _collapsedIncomingChatId;
-    public IState<ChatId?> CollapsedOutgoingChatId => _collapsedOutgoingChatId;
+    public IState<ChatId?> CollapsedChatId => _collapsedChatId;
     public IState<ChatId?> MutedRingChatId => _mutedRingChatId;
 
     private IIncomingCallsBridge? Bridge { get; }
@@ -34,8 +33,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         Bridge = hub.Services.GetService<IIncomingCallsBridge>();
         _overLockRingChatId = NewChatIdState("OverLockRingChatId");
         _foregroundCallChatId = NewChatIdState("ForegroundCallChatId");
-        _collapsedIncomingChatId = NewChatIdState("CollapsedIncomingChatId");
-        _collapsedOutgoingChatId = NewChatIdState("CollapsedOutgoingChatId");
+        _collapsedChatId = NewChatIdState("CollapsedChatId");
         _mutedRingChatId = NewChatIdState("MutedRingChatId");
     }
 
@@ -125,7 +123,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
             return;
         }
 
-        ClearRingFlags(chatId);
+        ClearCallFlags(chatId);
         Bridge?.DismissCallNotification(chatId);
         try {
             await CallUI.AcceptCall(chatId, CancellationToken.None).ConfigureAwait(true);
@@ -173,28 +171,29 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     public void ToggleMuteRing(ChatId chatId)
         => _mutedRingChatId.Value = _mutedRingChatId.Value == chatId ? null : chatId;
 
-    public void CollapseIncoming(ChatId chatId)
+    public void Collapse(ChatId chatId)
     {
-        // The island rings silently; its Accept and Decline still work, and a tap on it brings the modal back.
-        _mutedRingChatId.Value = chatId;
-        _collapsedIncomingChatId.Value = chatId;
-    }
-
-    public void ExpandIncoming(ChatId chatId)
-        => ClearIf(_collapsedIncomingChatId, chatId);
-
-    public void CollapseOutgoing(ChatId chatId)
-        => _collapsedOutgoingChatId.Value = chatId;
-
-    public void ExpandOutgoing(ChatId chatId)
-    {
-        if (_collapsedOutgoingChatId.Value != chatId)
+        // A modal disposed after its call ended must not collapse whatever holds the slot next.
+        if (CallUI.GetActiveCallNonComputed() is not { } call || call.ChatId != chatId)
             return;
 
-        // Collapsing closed the modal for good, so expanding shows a new one; if dialing has ended
-        // meanwhile, that modal closes itself right away.
-        _collapsedOutgoingChatId.Value = null;
-        ShowModal(new OutgoingCallModal.Model(chatId));
+        // A collapsed ring rings silently; the island still accepts and declines it.
+        if (call.Phase == CallPhase.Ringing)
+            _mutedRingChatId.Value = chatId;
+        _collapsedChatId.Value = chatId;
+    }
+
+    public void Expand(ChatId chatId)
+    {
+        if (_collapsedChatId.Value != chatId)
+            return;
+
+        _collapsedChatId.Value = null;
+        // A ring's modal comes back on its own (see GetModalCall), but collapsing closed the outgoing
+        // modal for good, so it's shown anew.
+        if (CallUI.GetActiveCallNonComputed() is { Origin: CallOrigin.Outgoing, Phase: CallPhase.Dialing } call
+            && call.ChatId == chatId)
+            ShowModal(new OutgoingCallModal.Model(chatId));
     }
 
     public Task HangUp(ChatId chatId)
@@ -277,13 +276,13 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     private void EndRing(ChatId chatId)
     {
         CallUI.DropRing(chatId);
-        ClearRingFlags(chatId);
+        ClearCallFlags(chatId);
         Bridge?.DismissCallNotification(chatId);
     }
 
-    private void ClearRingFlags(ChatId chatId)
+    private void ClearCallFlags(ChatId chatId)
     {
-        ClearIf(_collapsedIncomingChatId, chatId);
+        ClearIf(_collapsedChatId, chatId);
         ClearIf(_mutedRingChatId, chatId);
     }
 
