@@ -74,6 +74,7 @@ COPY package-lock.json package.json .npmrc ./
 RUN cat .npmrc && npm ci
 COPY src/nodejs/ ./src/nodejs/
 COPY build.mjs tsconfig.json tailwind.config.js postcss.config.mjs postcss-watch-plugin.js postcss-tw-property.js eslint.config.mjs ./
+COPY scripts/ ./scripts/
 
 FROM scratch AS all-restore
 COPY --from=nodejs-restore /src/package.json ./
