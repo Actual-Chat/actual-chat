@@ -1478,6 +1478,7 @@
   "Call_Ended": "通話が終了しました",
   "Call_CouldntStart": "通話を開始できませんでした",
   "Call_NoMicrophoneAccess": "通話を開始できませんでした: マイクへのアクセスがありません。",
+  "Call_AlreadyInCall": "すでに通話中です",
   "Call_RecordingTurnedOffByHost": "ホストが録音をオフにしました",
   "Call_MakeHost": "ホストにする",
   "Call_Join": "参加",
@@ -1585,6 +1586,6 @@
   "ChatSettings_LeaveChatAndDelete": "チャットを退出して削除",
 
   "PlaceSettings_LeavePlaceAndDelete": "プレイスを退出して削除",
-  "Call_OutgoingTo": "Outgoing call to ",
-  "Call_Outgoing": "Outgoing call"
+  "Call_OutgoingTo": "発信: ",
+  "Call_Outgoing": "発信"
 }

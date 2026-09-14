@@ -1478,6 +1478,7 @@
   "Call_Ended": "Позив је завршен",
   "Call_CouldntStart": "Позив се није могао покренути",
   "Call_NoMicrophoneAccess": "Позив се није могао покренути: нема приступа микрофону.",
+  "Call_AlreadyInCall": "Већ сте у позиву",
   "Call_RecordingTurnedOffByHost": "Домаћин је искључио снимање",
   "Call_MakeHost": "Поставите за домаћина",
   "Call_Join": "Придружите се",
@@ -1585,6 +1586,6 @@
   "ChatSettings_LeaveChatAndDelete": "Напустите чет и обриши",
 
   "PlaceSettings_LeavePlaceAndDelete": "Напустите Место и обриши",
-  "Call_OutgoingTo": "Outgoing call to ",
-  "Call_Outgoing": "Outgoing call"
+  "Call_OutgoingTo": "Одлазни позив према ",
+  "Call_Outgoing": "Одлазни позив"
 }

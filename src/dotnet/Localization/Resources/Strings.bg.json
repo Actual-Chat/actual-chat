@@ -1478,6 +1478,7 @@
   "Call_Ended": "Обаждането приключи",
   "Call_CouldntStart": "Обаждането не можа да започне",
   "Call_NoMicrophoneAccess": "Обаждането не можа да започне: няма достъп до микрофона.",
+  "Call_AlreadyInCall": "Вече сте в разговор",
   "Call_RecordingTurnedOffByHost": "Записът е изключен от водещия",
   "Call_MakeHost": "Направете водещ",
   "Call_Join": "Присъединете се",
@@ -1585,6 +1586,6 @@
   "ChatSettings_LeaveChatAndDelete": "Напуснете чата и изтрий",
 
   "PlaceSettings_LeavePlaceAndDelete": "Напуснете Мястото и изтрий",
-  "Call_OutgoingTo": "Outgoing call to ",
-  "Call_Outgoing": "Outgoing call"
+  "Call_OutgoingTo": "Изходящо обаждане към ",
+  "Call_Outgoing": "Изходящо обаждане"
 }

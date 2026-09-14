@@ -1478,6 +1478,7 @@
   "Call_Ended": "通话已结束",
   "Call_CouldntStart": "无法发起通话",
   "Call_NoMicrophoneAccess": "无法发起通话：无法访问麦克风。",
+  "Call_AlreadyInCall": "你已在通话中",
   "Call_RecordingTurnedOffByHost": "主持人已关闭录音",
   "Call_MakeHost": "设为主持人",
   "Call_Join": "加入",
@@ -1585,6 +1586,6 @@
   "ChatSettings_LeaveChatAndDelete": "退出并删除聊天",
 
   "PlaceSettings_LeavePlaceAndDelete": "退出并删除地点",
-  "Call_OutgoingTo": "Outgoing call to ",
-  "Call_Outgoing": "Outgoing call"
+  "Call_OutgoingTo": "去电：",
+  "Call_Outgoing": "去电"
 }

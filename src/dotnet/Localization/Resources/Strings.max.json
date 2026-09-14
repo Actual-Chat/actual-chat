@@ -1081,10 +1081,11 @@
   "Common_Today": "Aujourd'hui",
   "Common_Yesterday": "Yesterday",
   "Call_IncomingFrom": "Połączenie przychodzące od ",
+  "Call_OutgoingTo": "Połączenie wychodzące do ",
   "Call_Message": "Повідомлення",
-  "Call_AppIncomingTitle": "Дојдовен повик",
-  "Call_Mute": "Без звук",
-  "Call_IsCallingYou": "ве повикува…",
+  "Call_AppIncomingTitle": "Połączenie przychodzące",
+  "Call_Mute": "Bez zvuka",
+  "Call_IsCallingYou": "sedang menelepon Anda…",
   "Call_SelectCamera": "Seleziona una fotocamera",
   "Call_NoCameras": "Није пронађена ниједна камера",
   "Call_CameraBlocked": "カメラへのアクセスがブロックされています。",
@@ -1761,6 +1762,7 @@
   "Call_Ended": "통화가 종료되었습니다",
   "Call_CouldntStart": "Anruf konnte nicht gestartet werden",
   "Call_NoMicrophoneAccess": "通話を開始できませんでした: マイクへのアクセスがありません。",
+  "Call_AlreadyInCall": "Você já está em uma chamada",
   "Call_RecordingTurnedOffByHost": "Nagrywanie wyłączone przez prowadzącego",
   "Call_MakeHost": "Ustaw jako prowadzącego",
   // "Join" in the call sense - entering a call that is already running, not
@@ -1776,6 +1778,7 @@
   "Call_DetectingLanguage": "Tôi đang phát hiện ngôn ngữ",
   "Call_Incoming": "Połączenie przychodzące",
   "Call_IncomingVideo": "Przychodzące połączenie wideo",
+  "Call_Outgoing": "Połączenie wychodzące",
   "Call_InCall": "Dalam panggilan",
   "Call_JoinVideo": "Присъединете се към видеото",
   "Call_VideoPreview": "Попередній перегляд відео",
@@ -1896,7 +1899,5 @@
   "ChatSettings_LeaveChatAndDelete": "Quitter la discussion et la supprimer",
 
   // The destructive action at the bottom of place settings.
-  "PlaceSettings_LeavePlaceAndDelete": "Напуснете Мястото и изтрий",
-  "Call_OutgoingTo": "Outgoing call to ",
-  "Call_Outgoing": "Outgoing call"
+  "PlaceSettings_LeavePlaceAndDelete": "Напуснете Мястото и изтрий"
 }

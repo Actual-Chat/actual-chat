@@ -1478,6 +1478,7 @@
   "Call_Ended": "कॉल समाप्त",
   "Call_CouldntStart": "कॉल शुरू नहीं हो सकी",
   "Call_NoMicrophoneAccess": "कॉल शुरू नहीं हो सकी: माइक्रोफ़ोन की अनुमति नहीं है।",
+  "Call_AlreadyInCall": "आप पहले से कॉल पर हैं",
   "Call_RecordingTurnedOffByHost": "होस्ट ने रिकॉर्डिंग बंद कर दी",
   "Call_MakeHost": "होस्ट बनाएँ",
   "Call_Join": "शामिल हों",
@@ -1585,6 +1586,6 @@
   "ChatSettings_LeaveChatAndDelete": "चैट छोड़ें और हटाएँ",
 
   "PlaceSettings_LeavePlaceAndDelete": "प्लेस छोड़ें और हटाएँ",
-  "Call_OutgoingTo": "Outgoing call to ",
-  "Call_Outgoing": "Outgoing call"
+  "Call_OutgoingTo": "आउटगोइंग कॉल: ",
+  "Call_Outgoing": "आउटगोइंग कॉल"
 }

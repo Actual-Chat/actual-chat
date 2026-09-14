@@ -1478,6 +1478,7 @@
   "Call_Ended": "Panggilan berakhir",
   "Call_CouldntStart": "Panggilan tidak bisa dimulai",
   "Call_NoMicrophoneAccess": "Panggilan tidak bisa dimulai: tidak ada akses mikrofon.",
+  "Call_AlreadyInCall": "Anda sudah dalam panggilan",
   "Call_RecordingTurnedOffByHost": "Perekaman dimatikan oleh tuan rumah",
   "Call_MakeHost": "Jadikan tuan rumah",
   "Call_Join": "Gabung",
@@ -1585,6 +1586,6 @@
   "ChatSettings_LeaveChatAndDelete": "Keluar dari obrolan & hapus",
 
   "PlaceSettings_LeavePlaceAndDelete": "Keluar dari Tempat & hapus",
-  "Call_OutgoingTo": "Outgoing call to ",
-  "Call_Outgoing": "Outgoing call"
+  "Call_OutgoingTo": "Panggilan keluar ke ",
+  "Call_Outgoing": "Panggilan keluar"
 }

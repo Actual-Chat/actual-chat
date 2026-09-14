@@ -1478,6 +1478,7 @@
   "Call_Ended": "Chamada encerrada",
   "Call_CouldntStart": "Não foi possível iniciar a chamada",
   "Call_NoMicrophoneAccess": "Não foi possível iniciar a chamada: sem acesso ao microfone.",
+  "Call_AlreadyInCall": "Você já está em uma chamada",
   "Call_RecordingTurnedOffByHost": "O anfitrião desativou a gravação",
   "Call_MakeHost": "Tornar anfitrião",
   "Call_Join": "Entrar",
@@ -1585,6 +1586,6 @@
   "ChatSettings_LeaveChatAndDelete": "Sair do chat e excluir",
 
   "PlaceSettings_LeavePlaceAndDelete": "Sair do Lugar e excluir",
-  "Call_OutgoingTo": "Outgoing call to ",
-  "Call_Outgoing": "Outgoing call"
+  "Call_OutgoingTo": "Chamada efetuada para ",
+  "Call_Outgoing": "Chamada efetuada"
 }
