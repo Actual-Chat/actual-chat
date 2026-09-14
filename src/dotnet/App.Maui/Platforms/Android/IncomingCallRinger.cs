@@ -53,6 +53,7 @@ public static class IncomingCallRinger
     public static void Stop()
     {
         lock (Lock) {
+            _generation++;
             // Released independently: a throwing player must not leave the vibrator buzzing forever.
             var player = _player;
             _player = null;
