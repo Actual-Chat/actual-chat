@@ -145,6 +145,26 @@ public static partial class Constants
         public static readonly TimeSpan SkipToLive = TimeSpan.MaxValue;
         public static readonly TimeSpan MaxStreamDuration = TimeSpan.FromMinutes(3);
         public static readonly TimeSpan MaxBeginsAtDrift = TimeSpan.FromSeconds(5);
+        // How long a dubbing listener's muxer holds a speaker's original before serving it undubbed
+        public static readonly TimeSpan DubWaitTimeout = TimeSpan.FromSeconds(5);
+        // Between attempts to start the translation a dub reads, while the source transcript is live
+        public static readonly TimeSpan DubTranslationRetryDelay = TimeSpan.FromMilliseconds(250);
+        // After a timed-out dub decision, how long that author's utterances skip the hold
+        public static readonly TimeSpan DubCooldown = TimeSpan.FromSeconds(30);
+        // After a synthesis failure, how long every dub is skipped - the provider is assumed down
+        public static readonly TimeSpan DubSynthesizerDownDelay = TimeSpan.FromSeconds(60);
+        // Audio already transcribed when a dub is requested beyond which the listener counts as late
+        public static readonly TimeSpan DubBacklogThreshold = TimeSpan.FromSeconds(5);
+        // How long a caller waits for a replay dub before falling back to the original; the
+        // synthesis itself keeps running past this on its own budget, see ReplayDubSynthesisTimeout
+        public static readonly TimeSpan ReplayDubTimeout = TimeSpan.FromSeconds(20);
+        // Upper bound on one entry's translation-wait + synthesis + upload + stamp, so a slow
+        // entry is eventually abandoned rather than held open until the host shuts down
+        public static readonly TimeSpan ReplayDubSynthesisTimeout = TimeSpan.FromMinutes(2);
+        // Entries whose dubs are prepared while the current one streams
+        public static readonly int ReplayDubLookahead = 2;
+        // Caps concurrent Soniox REST syntheses; shares Soniox's 3-concurrent-stream quota with live dubbing
+        public static readonly int ReplayDubMaxConcurrentSynthesis = 2;
 
         // Watchdog: cancel ProcessAudio handler if no frame arrives within this window.
         // Opus frames are 20 ms; 2 s of silence means the producer is pathologically stalled.

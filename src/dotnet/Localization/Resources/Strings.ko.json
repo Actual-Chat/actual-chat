@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5초",
   "ListeningLinger_10Seconds": "10초",
   "ListeningLinger_30Seconds": "30초",
+  "Transcription_TranslatedVoiceTopic": "번역 음성",
+  "Transcription_TranslatedVoice": "번역을 음성으로 듣기",
+  "Transcription_TranslatedVoiceCaption": "실시간 대화에서 다른 언어를 사용하는 화자는 사용자의 언어로 통역된 음성으로 대체됩니다",
   "Transcription_LanguageDetected_Format": "채팅 '{0}'에서 감지된 전사 언어는 {1}입니다.",
 
   "Sessions_CurrentSession": "현재 세션",
@@ -1514,6 +1517,9 @@
   "Call_Entry_Ended": "통화",
   "Call_Entry_NoAnswer": "응답 없음",
   "Call_Entry_TapToCallBack": "탭하여 다시 전화하기",
+
+  "LiveConversation_TranslatedVoice": "번역 음성",
+
   "Share_FailedToShareFiles": "파일을 공유하지 못했습니다",
   "Share_PrivateChatJoinLink": "비공개 채팅 참여 링크 공유",
   "Share_PrivatePlaceJoinLink": "비공개 플레이스 참여 링크 공유",

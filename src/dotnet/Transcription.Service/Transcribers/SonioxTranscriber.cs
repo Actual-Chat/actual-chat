@@ -216,7 +216,8 @@ public sealed class SonioxTranscriber : ITranscriber
                 Log.LogInformation("Soniox endpoint for #{StreamId} at {AudioMs}ms of audio",
                     audioStreamId, response.TotalAudioProcMs);
             if (response.Tokens is { Length: > 0 } tokens)
-                await output.WriteAsync(builder.Update(tokens), cancellationToken).ConfigureAwait(false);
+                foreach (var transcript in builder.Update(tokens))
+                    await output.WriteAsync(transcript, cancellationToken).ConfigureAwait(false);
 
             if (response.Finished) {
                 await output.WriteAsync(builder.Complete(), cancellationToken).ConfigureAwait(false);

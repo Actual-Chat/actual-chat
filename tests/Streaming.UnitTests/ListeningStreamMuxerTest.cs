@@ -1,3 +1,4 @@
+using ActualChat.Audio;
 using ActualChat.Live;
 using ActualChat.Streaming.Services;
 
@@ -165,6 +166,101 @@ public class ListeningStreamMuxerTest
         skipTo.Should().Be(TimeSpan.Zero);
     }
 
+    [Fact]
+    public void MustDubShouldRequireASpeakerWhoDoesNotSpeakTheListenersLanguage()
+    {
+        // arrange
+        var russianSpeaker = StreamInfo(Author1, "s", Now()) with {
+            Languages = new ApiArray<Language>([Languages.Russian]),
+        };
+        var bilingual = StreamInfo(Author1, "s", Now()) with {
+            Languages = new ApiArray<Language>([Languages.Russian, Language.Parse("en-US")]),
+        };
+        var unknown = StreamInfo(Author1, "s", Now());
+
+        // act
+        var russianForEnglish = ListeningStreamMuxer.MustDub(russianSpeaker, Languages.English);
+        var russianForRussian = ListeningStreamMuxer.MustDub(russianSpeaker, Languages.Russian);
+        var bilingualForBritish = ListeningStreamMuxer.MustDub(bilingual, Language.Parse("en-GB"));
+        var russianForNone = ListeningStreamMuxer.MustDub(russianSpeaker, null);
+        var unknownForEnglish = ListeningStreamMuxer.MustDub(unknown, Languages.English);
+
+        // assert
+        russianForEnglish.Should().BeTrue();
+        russianForRussian.Should().BeFalse();
+        bilingualForBritish.Should().BeFalse("English variants match");
+        russianForNone.Should().BeFalse("no dub language requested");
+        unknownForEnglish.Should().BeFalse(
+            "a stream from an older server carries no languages, and guessing would hold audio for nothing");
+    }
+
+    [Fact]
+    public void TryRegisterShouldNotMergeDubbedStreamsOfTheSameAuthor()
+    {
+        // arrange
+        var h = new MuxerHarness();
+        var cts1 = new CancellationTokenSource();
+        var cts2 = new CancellationTokenSource();
+        var t1 = Now();
+        var t2 = t1 + TimeSpan.FromSeconds(5);
+
+        // act
+        var isFirstRegistered = h.Register(Author1, "stream-1", t1, cts1, isDubbed: true);
+        var isSecondRegistered = h.Register(Author1, "stream-2", t2, cts2, isDubbed: true);
+
+        // assert
+        isFirstRegistered.Should().BeTrue();
+        isSecondRegistered.Should().BeTrue();
+        cts1.IsCancellationRequested.Should().BeFalse(
+            "a dub outlives its source by the translation lag plus the spoken length, so the next "
+            + "utterance must not cut it; the backend serializes dubs per author instead");
+        h.HasById("stream-1").Should().BeTrue();
+        h.HasById("stream-2").Should().BeTrue();
+        h.GetActiveStreamId(Author1).Should().BeNull("dubbed entries stay out of the per-author map");
+    }
+
+    [Fact]
+    public void TryRegisterShouldMergeAFallenBackOriginal()
+    {
+        // arrange
+        var h = new MuxerHarness();
+        var cts1 = new CancellationTokenSource();
+        var cts2 = new CancellationTokenSource();
+        var t1 = Now();
+        var t2 = t1 + TimeSpan.FromSeconds(5);
+
+        // act
+        var isFirstRegistered = h.Register(Author1, "stream-1", t1, cts1, isDubbed: true, isFallenBack: true);
+        var isSecondRegistered = h.Register(Author1, "stream-2", t2, cts2, isDubbed: true, isFallenBack: true);
+
+        // assert
+        isFirstRegistered.Should().BeTrue();
+        isSecondRegistered.Should().BeTrue();
+        cts1.IsCancellationRequested.Should().BeTrue(
+            "originals evict originals even for a dubbing listener: a dub that fell back to the source "
+            + "is an original, and a recorder reconnect must not leave two of them overlapping");
+        cts2.IsCancellationRequested.Should().BeFalse();
+        h.GetActiveStreamId(Author1).Should().Be("stream-2");
+        h.IsExcluded("stream-1").Should().BeTrue();
+    }
+
+    [Fact]
+    public void StampDubStartShouldPutTheTimelineOriginAtTheFirstFrame()
+    {
+        // arrange
+        var streamInfo = StreamInfo(Author1, "stream-1", Now() - TimeSpan.FromMinutes(1));
+        var now = Now();
+        var firstFrame = new AudioFrame { Offset = TimeSpan.FromSeconds(12) };
+
+        // act
+        var stamped = ListeningStreamMuxer.StampDubStart(streamInfo, firstFrame, now);
+
+        // assert
+        stamped.BeginsAt.Should().Be(now - TimeSpan.FromSeconds(12),
+            "a listener joining mid-dub gets a frame at a non-zero offset, and BeginsAt + Offset must be now");
+        stamped.SourceBeginsAt.Should().Be(stamped.BeginsAt);
+    }
+
     private static Moment Now() => new(DateTime.UtcNow);
 
     private static LiveAudioStreamInfo StreamInfo(AuthorId authorId, string streamId, Moment beginsAt)
@@ -230,7 +326,11 @@ public class ListeningStreamMuxerTest
                 logBackingField.SetValue(_muxer, services.GetRequiredService<ILoggerFactory>().CreateLogger<ListeningStreamMuxer>());
         }
 
-        public bool Register(AuthorId authorId, string streamId, Moment beginsAt, CancellationTokenSource cts)
+        // Mirrors ProcessStream: registered by id before GetStream, merged per author after it, and
+        // the merge is skipped only when the served stream is actually a dub (isFallenBack = false)
+        public bool Register(
+            AuthorId authorId, string streamId, Moment beginsAt, CancellationTokenSource cts,
+            bool isDubbed = false, bool isFallenBack = false)
         {
             var streamInfo = new LiveAudioStreamInfo {
                 ChatId = TestChatId,
@@ -239,7 +339,10 @@ public class ListeningStreamMuxerTest
                 BeginsAt = beginsAt,
             };
             var entry = Activator.CreateInstance(StreamEntryType, 0, streamInfo, cts)!;
-            return (bool)TryRegisterMethod.Invoke(_muxer, [entry])!;
+            StreamEntryType.GetProperty("IsDubbed")!.SetValue(entry, isDubbed);
+            _streamById.GetType().GetMethod("TryAdd")!.Invoke(_streamById, [streamId, entry]);
+            var isDub = isDubbed && !isFallenBack;
+            return (bool)TryRegisterMethod.Invoke(_muxer, [entry, isDub])!;
         }
 
         public string? GetActiveStreamId(AuthorId authorId)

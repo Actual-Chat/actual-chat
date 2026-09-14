@@ -60,12 +60,13 @@ public static class ChatEntryOperations
         Language language,
         Moment? beginsAt = null,
         string content = "",
+        string? streamId = null,
         CancellationToken cancellationToken = default)
     {
         var clocks = tester.AppServices.Clocks();
         var effectiveBeginsAt = beginsAt ?? clocks.SystemClock.Now;
         var author = await tester.GetOwnAuthor(chatId, cancellationToken).Require();
-        var streamId = StreamId.New(NodeRef.ThisNodeAlias).Value;
+        streamId ??= StreamId.New(NodeRef.ThisNodeAlias).Value;
         var textEntry = await tester.Commander.Call(new ChatsBackend_ChangeEntry(ChatEntryId.New(chatId, 0),
                 null,
                 Change.Create(new ChatEntryDiff {

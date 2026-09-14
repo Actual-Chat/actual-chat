@@ -13,4 +13,6 @@ public class TranscriptionSettings
     public string OfflineRanking { get; set; } = "soniox-offline,openai-offline";
     public Dictionary<string, string> StreamRankingOverrides { get; set; } = new();
     public Dictionary<string, string> OfflineRankingOverrides { get; set; } = new();
+    // The built-in Soniox voice used for speakers without a cloned voice
+    public string SonioxTtsVoice { get; set; } = "Adrian";
 }

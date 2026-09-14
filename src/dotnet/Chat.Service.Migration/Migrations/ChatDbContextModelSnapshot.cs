@@ -17,7 +17,7 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20260909115730_Add_Conversation_CallerId";
+    public override string LastMigrationId => "20260914133717_Add_Translation_Dub";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -1267,6 +1267,15 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                 b.Property<DateTime>("CreatedAt")
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("created_at");
+
+                b.Property<string>("DubContentHash")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("dub_content_hash");
+
+                b.Property<string>("DubMediaId")
+                    .HasColumnType("text")
+                    .HasColumnName("dub_media_id");
 
                 b.Property<string>("EntryId")
                     .HasColumnType("text")

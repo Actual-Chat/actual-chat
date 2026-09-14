@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 секунди",
   "ListeningLinger_10Seconds": "10 секунди",
   "ListeningLinger_30Seconds": "30 секунди",
+  "Transcription_TranslatedVoiceTopic": "Преведен глас",
+  "Transcription_TranslatedVoice": "Слушайте изговорения превод",
+  "Transcription_TranslatedVoiceCaption": "В живите разговори говорещите на други езици се заменят с изговорен превод на вашия език",
   "Transcription_LanguageDetected_Format": "Открит език за транскрипция в чата „{0}“ е {1}.",
 
   "Sessions_CurrentSession": "Текуща сесия",
@@ -1514,6 +1517,9 @@
   "Call_Entry_Ended": "Обаждане",
   "Call_Entry_NoAnswer": "Няма отговор",
   "Call_Entry_TapToCallBack": "Докоснете, за да презвъните",
+
+  "LiveConversation_TranslatedVoice": "Преведен глас",
+
   "Share_FailedToShareFiles": "Файловете не можаха да бъдат споделени",
   "Share_PrivateChatJoinLink": "Споделете линка за присъединяване към затворен чат",
   "Share_PrivatePlaceJoinLink": "Споделете линка за присъединяване към затворено Място",

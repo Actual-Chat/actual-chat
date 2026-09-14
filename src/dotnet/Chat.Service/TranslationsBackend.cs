@@ -4,6 +4,7 @@ using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Diagnostics;
 using ActualChat.Flows;
+using ActualChat.Hashing;
 using ActualChat.Queues;
 using ActualChat.Streaming;
 using ActualChat.Transcription;
@@ -122,6 +123,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var now = Clocks.SystemClock.Now;
 
         DbTranslation? dbTranslation;
+        MediaId? previousDubMediaId = null;
         if (change.IsCreate(out var update)) {
             // Lock is required. We can't double-check the existence of the translation because we use RepeatableRead isolation level..
             await dbContext.Translations.Lock(id, cancellationToken).ConfigureAwait(false);
@@ -148,7 +150,9 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 return null;
 
             dbTranslation.RequireVersion(expectedVersion);
-            var translation = ApplyDiff(dbTranslation.ToModel(), update);
+            var currentTranslation = dbTranslation.ToModel();
+            previousDubMediaId = currentTranslation.DubMediaId;
+            var translation = ApplyDiff(currentTranslation, update);
             dbContext.Translations.Attach(dbTranslation);
             dbTranslation.UpdateFrom(translation);
         }
@@ -169,7 +173,12 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 .Schedule(cancellationToken)
                 .ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return dbTranslation.ToModel();
+        var result = dbTranslation.ToModel();
+        if (previousDubMediaId is { } orphan && result.DubMediaId != orphan) {
+            var removeOrphan = new MediaBackend_Change(orphan, null, Change.Remove<MediaFull>());
+            await Commander.Call(removeOrphan, true, cancellationToken).ConfigureAwait(false);
+        }
+        return result;
 
         Translation ApplyDiff(Translation originalTranslation, TranslationDiff? diff) {
             // Update
@@ -177,6 +186,9 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 ModifiedAt = now,
                 Version = diff?.Version ?? VersionGenerator.NextVersion(originalTranslation.Version),
             };
+            // A dub is audio of one specific Content; a new Content orphans it
+            if (diff?.Content is { } content && content != originalTranslation.Content)
+                newTranslation = newTranslation with { DubMediaId = null, DubContentHash = HashString.None };
             // Validate
             if (!newTranslation.Content.IsNullOrEmpty() && newTranslation.SourceContentHash.IsNone)
                 throw StandardError.Constraint("SourceContentHash must be set for non-empty Content.");
@@ -521,29 +533,32 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                             var transcriptBatch = transcriptDiffBatch.Scan((t, td) => t + td, lastTranscript).ToList();
                             var transcript = transcriptBatch[^1];
                             var newStableTranscript =
-                                transcriptBatch.FirstOrDefault(t => t.IsStable) ?? stableTranscript;
-                            if (newStableTranscript != stableTranscript) {
-                                // Translate stable diff first, then the diff since stable state
-                                var stableDiff = stableTranscript - newStableTranscript;
-                                await Translate(stableDiff).ConfigureAwait(false);
-                            }
-
-                            // The diff represents the changes between the current transcript (transcript) and the stable transcript (stableTranscript).
-                            // This diff is distinct from the transcriptDiff object because transcriptDiff is derived from the unstable transcript, which may still be undergoing changes.
-                            // The purpose of this calculation is to isolate the differences that have occurred since the last stable state of the transcript.
-                            var diffSinceStable = transcript - stableTranscript;
-                            await Translate(diffSinceStable).ConfigureAwait(false);
+                                transcriptBatch.LastOrDefault(t => t.IsStable) ?? stableTranscript;
+                            // The newly stable text goes first, so it's promoted before the unstable
+                            // tail is translated against it; both diffs are relative to the stable
+                            // transcript, which Promote advances.
+                            if (!ReferenceEquals(newStableTranscript, stableTranscript))
+                                await Translate(newStableTranscript - stableTranscript).ConfigureAwait(false);
+                            if (!ReferenceEquals(transcript, newStableTranscript))
+                                await Translate(transcript - stableTranscript).ConfigureAwait(false);
                             lastTranscript = transcript;
                             continue;
 
                             async Task Translate(TranscriptDiff diff)
                             {
                                 var text = diff.TextDiff.Suffix ?? "";
-                                if (text.IsNullOrWhiteSpace())
+                                if (text.IsNullOrWhiteSpace()) {
+                                    if (diff.IsStable)
+                                        stableTranscript = newStableTranscript;
                                     return;
-
-                                if (text == lastText)
-                                    return; // No need to translate the same text (it's already been translated')
+                                }
+                                if (text == lastText) {
+                                    // The unstable tail became stable unchanged: nothing to translate,
+                                    // but the promotion must still reach the reader
+                                    if (diff.IsStable)
+                                        await Promote().ConfigureAwait(false);
+                                    return;
+                                }
 
                                 var context = new List<TranslationResult>();
                                 if (stableTranscript.Text != stableTranslatedTranscript.Text)
@@ -562,12 +577,26 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                                     translatedText = $" {translatedText}";
                                 lastTranslatedTranscript = stableTranslatedTranscript.WithSuffix(translatedText,
                                     diff.TimeMapDiff.Suffix.Scale(text.Length, translatedText.Length));
+                                if (diff.IsStable) {
+                                    await Promote().ConfigureAwait(false);
+                                    return;
+                                }
+
+                                var translatedDiff = lastTranslatedTranscript - stableTranslatedTranscript;
+                                await writer.WriteAsync(translatedDiff, cancellationToken).ConfigureAwait(false);
+                                lastText = text;
+                            }
+
+                            async Task Promote()
+                            {
+                                // Written from a transcript that carries the flag, so the diff does too:
+                                // TranscriptDiff.New copies IsStable from the transcript it's built from
+                                lastTranslatedTranscript = lastTranslatedTranscript with { IsStable = true };
                                 var translatedStableDiff = lastTranslatedTranscript - stableTranslatedTranscript;
                                 await writer.WriteAsync(translatedStableDiff, cancellationToken).ConfigureAwait(false);
-                                if (diff.IsStable)
-                                    stableTranslatedTranscript = lastTranslatedTranscript with { IsStable = true };
+                                stableTranslatedTranscript = lastTranslatedTranscript;
                                 stableTranscript = newStableTranscript;
-                                lastText = text;
+                                lastText = "";
                             }
                         }
                         var sourceContent = lastTranscript.Text;

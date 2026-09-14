@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 секунди",
   "ListeningLinger_10Seconds": "10 секунди",
   "ListeningLinger_30Seconds": "30 секунди",
+  "Transcription_TranslatedVoiceTopic": "Преведени глас",
+  "Transcription_TranslatedVoice": "Слушајте изговорени превод",
+  "Transcription_TranslatedVoiceCaption": "У живим разговорима, говорници других језика се замјењују изговореним преводом на ваш језик",
   "Transcription_LanguageDetected_Format": "Откривени језик транскрипције за чет „{0}“ је {1}.",
 
   "Sessions_CurrentSession": "Тренутна сесија",
@@ -1514,6 +1517,9 @@
   "Call_Entry_Ended": "Позив",
   "Call_Entry_NoAnswer": "Нема одговора",
   "Call_Entry_TapToCallBack": "Додирните за повратни позив",
+
+  "LiveConversation_TranslatedVoice": "Преведени глас",
+
   "Share_FailedToShareFiles": "Фајлови се нису могли поделити",
   "Share_PrivateChatJoinLink": "Поделите линк за придруживање затвореном чету",
   "Share_PrivatePlaceJoinLink": "Поделите линк за придруживање затвореном Месту",

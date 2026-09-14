@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 sekund",
   "ListeningLinger_10Seconds": "10 sekund",
   "ListeningLinger_30Seconds": "30 sekund",
+  "Transcription_TranslatedVoiceTopic": "Přeložený hlas",
+  "Transcription_TranslatedVoice": "Poslouchat mluvený překlad",
+  "Transcription_TranslatedVoiceCaption": "V živých konverzacích jsou mluvčí jiných jazyků nahrazeni mluveným překladem do vašeho jazyka",
   "Transcription_LanguageDetected_Format": "Zjištěný jazyk přepisu pro chat „{0}“ je {1}.",
 
   "Sessions_CurrentSession": "Aktuální relace",
@@ -1514,6 +1517,9 @@
   "Call_Entry_Ended": "Hovor",
   "Call_Entry_NoAnswer": "Bez odpovědi",
   "Call_Entry_TapToCallBack": "Klepněte pro zpětné volání",
+
+  "LiveConversation_TranslatedVoice": "Přeložený hlas",
+
   "Share_FailedToShareFiles": "Nepodařilo se sdílet soubory",
   "Share_PrivateChatJoinLink": "Sdílet odkaz pro připojení k uzavřenému chatu",
   "Share_PrivatePlaceJoinLink": "Sdílet odkaz pro připojení k uzavřenému Místu",

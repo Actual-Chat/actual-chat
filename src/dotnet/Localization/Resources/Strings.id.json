@@ -99,6 +99,9 @@
   "ListeningLinger_5Seconds": "5 detik",
   "ListeningLinger_10Seconds": "10 detik",
   "ListeningLinger_30Seconds": "30 detik",
+  "Transcription_TranslatedVoiceTopic": "Suara Terjemahan",
+  "Transcription_TranslatedVoice": "Dengarkan terjemahan yang diucapkan",
+  "Transcription_TranslatedVoiceCaption": "Dalam percakapan langsung, penutur bahasa lain digantikan oleh terjemahan yang diucapkan dalam bahasa Anda",
   "Transcription_LanguageDetected_Format": "Bahasa transkripsi yang terdeteksi untuk obrolan “{0}” adalah {1}.",
 
   "Sessions_CurrentSession": "Sesi saat ini",
@@ -1514,6 +1517,9 @@
   "Call_Entry_Ended": "Panggilan",
   "Call_Entry_NoAnswer": "Tidak dijawab",
   "Call_Entry_TapToCallBack": "Ketuk untuk menelepon balik",
+
+  "LiveConversation_TranslatedVoice": "Suara terjemahan",
+
   "Share_FailedToShareFiles": "Gagal membagikan file",
   "Share_PrivateChatJoinLink": "Bagikan tautan gabung obrolan tertutup",
   "Share_PrivatePlaceJoinLink": "Bagikan tautan gabung Tempat tertutup",

@@ -79,6 +79,19 @@
     <ListeningLingerSettings/>
 </Tile>
 
+<TileTopic Topic="@L.Transcription_TranslatedVoiceTopic"/>
+<Tile>
+    <TileItem Click="@OnToggleTranslatedVoice">
+        <Icon><i class="icon-headphones-fill text-2xl"></i></Icon>
+        <Content>@L.Transcription_TranslatedVoice</Content>
+        <Caption>@L.Transcription_TranslatedVoiceCaption</Caption>
+        <Right>
+            <Toggle IsChecked="@m.Languages.IsTranslatedVoiceEnabled"
+                    IsCheckedChanged="@(_ => OnToggleTranslatedVoice())"/>
+        </Right>
+    </TileItem>
+</Tile>
+
 @if (hasSensors && m.EnableIncompleteUI) {
     <TileTopic Topic="@L.Transcription_MicrophoneTopic"/>
     <Tile>
@@ -128,6 +141,9 @@
         => UserSettingsUI.UserAppSettings().Update(
             x => x with { IsFaceDownMicStopDisabled = !(x.IsFaceDownMicStopDisabled ?? false) },
             CancellationToken.None);
+
+    private Task OnToggleTranslatedVoice()
+        => LanguageUI.UpdateSettings(x => x with { IsTranslatedVoiceEnabled = !x.IsTranslatedVoiceEnabled });
 
     // Nested types
 

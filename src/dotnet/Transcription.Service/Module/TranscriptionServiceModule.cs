@@ -21,6 +21,7 @@ public sealed class TranscriptionServiceModule(IServiceProvider moduleServices)
         if (Settings.UseFakeTranscriber) {
             // Registered alone so the ranking can't route around it in tests.
             services.AddSingleton<ITranscriber, FakeTranscriber>();
+            services.AddSingleton<ISpeechSynthesizer, FakeSpeechSynthesizer>();
             return;
         }
 
@@ -31,6 +32,7 @@ public sealed class TranscriptionServiceModule(IServiceProvider moduleServices)
             services.AddSoniox();
             services.AddSingleton<ITranscriber, SonioxTranscriber>();
             services.AddSingleton<IOfflineTranscriber, SonioxOfflineTranscriber>();
+            services.AddSingleton<ISpeechSynthesizer, SonioxSpeechSynthesizer>();
             // Not in AddSoniox: the tests that hand-build a container from it must not start a sweeper.
             services.AddSingleton(_ => new SonioxSweeper.Options());
             services.AddSingleton<SonioxSweeper>()

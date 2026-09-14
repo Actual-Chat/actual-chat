@@ -31,6 +31,9 @@ public sealed partial class StreamId : StringIdentifier, IStringIdentifier<Strea
     public string LocalId { get; }
     [IgnoreDataMember]
     public Language? Language { get; }
+    // The stream a translated transcript or a dub derives from: the same id without the language
+    [IgnoreDataMember]
+    public StreamId BaseStreamId => Language == null ? this : New(NodeRef, LocalId);
 
     // Factories and constructors
 
