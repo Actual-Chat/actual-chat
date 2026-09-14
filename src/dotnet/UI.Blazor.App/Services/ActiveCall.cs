@@ -13,3 +13,14 @@ public sealed record ActiveCall(ChatId ChatId, CallOrigin Origin, CallPhase Phas
 public enum CallSessionState { None, Dialing, Connected }
 
 public readonly record struct CallFacts(IncomingCall? Ring, CallSessionState Session, bool IsInConversation);
+
+public enum CallViewKind { None, Modal, FullScreen, Collapsed }
+
+// Call stays set when Kind is None: that's how the view loop tells the slot got released.
+public sealed record CallView(ActiveCall? Call, CallViewKind Kind, bool IsOverLock)
+{
+    public static readonly CallView None = new(null, CallViewKind.None, false);
+}
+
+internal readonly record struct CallScreenFlags(
+    ChatId? CollapsedChatId, ChatId? InChatChatId, ChatId? OverLockChatId);
