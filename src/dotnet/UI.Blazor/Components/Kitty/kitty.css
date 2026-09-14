@@ -1,14 +1,19 @@
 /* Themed illustration assets from src/nodejs/images/kitties, published to /dist/images/kitties.
    The light source also serves the light-background ash theme; only theme-dark swaps to the dark sibling. */
+/* --kitty-w is the design width; sizes are tuned so the visible cat matches the retired inline SVGs.
+   Several sources are a padded square 1254 canvas, so the box is larger than the visible cat.
+   max-width keeps it inside a narrow container on mobile, aspect-ratio then drives the height. */
 .kitty {
-    @apply block;
+    @apply block max-w-full;
     width: var(--kitty-w);
     aspect-ratio: var(--kitty-ar);
     background: center / contain no-repeat;
 }
 
+/* The source is a square 1254 canvas with padding; ~280px makes the visible cat about the
+   165x257 of the retired inline SVG (its portrait bounds), so the reconnect overlay reads the same. */
 .kitty-loading-cat {
-    --kitty-w: 165px;
+    --kitty-w: 280px;
     --kitty-ar: 1 / 1;
     background-image: url("images/kitties/loading-cat.svg");
 }
@@ -17,7 +22,7 @@
 }
 
 .kitty-empty-chat {
-    --kitty-w: 187px;
+    --kitty-w: 210px;
     --kitty-ar: 1 / 1;
     background-image: url("images/kitties/empty-chat.svg");
 }
@@ -26,7 +31,7 @@
 }
 
 .kitty-empty-search-chat {
-    --kitty-w: 166px;
+    --kitty-w: 168px;
     --kitty-ar: 166 / 222;
     background-image: url("images/kitties/empty-search-chat.svg");
 }
@@ -35,7 +40,7 @@
 }
 
 .kitty-chat-not-found {
-    --kitty-w: 187px;
+    --kitty-w: 200px;
     --kitty-ar: 1 / 1;
     background-image: url("images/kitties/chat-not-found.svg");
 }
@@ -62,7 +67,7 @@
 }
 
 .kitty-error-cat {
-    --kitty-w: 241px;
+    --kitty-w: 260px;
     --kitty-ar: 1 / 1;
     background-image: url("images/kitties/error-cat.svg");
 }
@@ -71,7 +76,7 @@
 }
 
 .kitty-phone-verification-cat {
-    --kitty-w: 165px;
+    --kitty-w: 176px;
     --kitty-ar: 1 / 1;
     background-image: url("images/kitties/phone-verification-cat.svg");
 }
@@ -104,4 +109,13 @@
 }
 .theme-dark .kitty-top-overscroll-cue {
     background-image: url("images/kitties/top-overscroll-cue-dark.svg");
+}
+
+.kitty-upgrade-app-cat {
+    --kitty-w: 255px;
+    --kitty-ar: 1 / 1;
+    background-image: url("images/kitties/upgrade-app-cat.svg");
+}
+.theme-dark .kitty-upgrade-app-cat {
+    background-image: url("images/kitties/upgrade-app-cat-dark.svg");
 }

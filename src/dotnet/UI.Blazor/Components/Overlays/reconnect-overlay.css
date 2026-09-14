@@ -39,9 +39,6 @@
     width: var(--reconnect-overlay-circle-size);
     height: var(--reconnect-overlay-circle-size);
 }
-.reconnect-overlay > .c-circle > img {
-    @apply w-[55%];
-}
 .reconnect-overlay > .c-circle > .c-text {
     @apply relative p-1;
     @apply text-02;
