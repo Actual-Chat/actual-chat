@@ -37,10 +37,12 @@
     - https://github.com/dotnet/sdk/issues/27840
     So we use only some packages in its project, and some - in other projects.
   -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Maui.Essentials" Version="$(MauiVersion)" />
+  </ItemGroup>
   <!-- MAUI-specific packages -->
   <ItemGroup Condition="$(MSBuildProjectName.Contains('Maui'))">
     <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
-    <PackageVersion Include="Microsoft.Maui.Essentials" Version="$(MauiVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
     <!-- Experimental macOS AppKit backend (dotnet/maui-labs); built against MAUI 10, consumed from net11.0-macos -->
     <!-- TODO(maui-labs): drop these pins once macOS is an official MAUI target and net11.0-macos resolves the regular Microsoft.Maui.* packages -->

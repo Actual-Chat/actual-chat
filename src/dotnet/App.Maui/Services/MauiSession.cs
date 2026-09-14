@@ -186,7 +186,7 @@ public sealed class MauiSession(IServiceProvider services)
         if (!isSaved) {
             Log.LogInformation("Second attempt to store Session");
             try {
-                Storage.RemoveAll();
+                Storage.Remove(SessionStorageKey);
                 await Storage.SetAsync(SessionStorageKey, session.Id).ConfigureAwait(false);
             }
             catch (Exception e) {

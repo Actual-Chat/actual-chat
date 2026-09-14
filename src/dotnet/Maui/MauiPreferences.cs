@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using ActualLab.Generators;
 using ActualChat.UI;
 using Microsoft.Maui.Storage;
@@ -13,7 +12,6 @@ public static class MauiPreferences
 
     private const string HostOverrideKey = "app_server_instance_override";
     private const string RpcEndpointKey = "rpc_endpoint";
-    private const string DbEncryptionKeyKey = "db_encryption_key";
     private const string HostIpKeyPrefix = "host_ip_";
     private const string IsDataCollectionEnabledKey = "analytics";
     private const string ThemeKey = "Theme";
@@ -51,9 +49,6 @@ public static class MauiPreferences
         get => Get<string>(RpcEndpointKey).NullIfEmpty();
         set => Set(RpcEndpointKey, value ?? "");
     }
-
-    public static byte[] DbEncryptionKey
-        => Get(DbEncryptionKeyKey, static () => RandomNumberGenerator.GetBytes(32));
 
     public static bool? IsDataCollectionEnabled {
         get => Get<bool?>(IsDataCollectionEnabledKey);
@@ -166,5 +161,13 @@ public static class MauiPreferences
                 return;
             }
         }
+    }
+
+    // Protected/internal methods
+
+    internal static void RemoveCached(string key)
+    {
+        lock (Lock)
+            Cache.TryRemove(key, out _);
     }
 }
