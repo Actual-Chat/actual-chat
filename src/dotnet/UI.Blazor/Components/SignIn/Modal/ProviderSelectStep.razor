@@ -50,6 +50,7 @@
                 Placeholder="@L.SignIn_PhoneOrEmailPlaceholder_Format(_phoneExample ?? DefaultPhoneExample)"
                 disabled="@m.HasSentCodeRecently"
                 type="text"
+                autocapitalize="none"
             />
             @if (m.HasSentCodeRecently) {
                 <div class="c-info">
