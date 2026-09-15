@@ -78,6 +78,9 @@ public partial class MainActivity : MauiAppCompatActivity
     private ILogger Log { get; } = StaticLog.For<MainActivity>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
+    // base.OnCreate gets Bundle.Empty, so lifecycle handlers can't tell a restored activity from a new one.
+    internal bool IsRestored { get; private set; }
+
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         // Before anything that reads MauiStart: an Activity means this process shows UI even if it
@@ -108,6 +111,7 @@ public partial class MainActivity : MauiAppCompatActivity
 
         Interlocked.Exchange(ref _current, this);
         HasEverRun = true;
+        IsRestored = savedInstanceState is not null;
         // If app is sent to background with back button
         // and user brings it back to foreground by launching app icon or picking app from recents,
         // then warm start happens https://developer.android.com/topic/performance/vitals/launch-time#warm
@@ -116,8 +120,8 @@ public partial class MainActivity : MauiAppCompatActivity
         // are initialized again.
         // As a result, splash screen is getting hidden early and user sees index.html w/o any content yet.
         // TODO: to think how we can gracefully handle this partial recreation.
-        Log.LogInformation("OnCreate: isFirstTime={IsFirstTime}", _isFirstTime);
-        MauiStartupBreadcrumbs.Add($"MainActivity.OnCreate (isFirstTime: {_isFirstTime})");
+        Log.LogInformation("OnCreate: isFirstTime={IsFirstTime}, isRestored={IsRestored}", _isFirstTime, IsRestored);
+        MauiStartupBreadcrumbs.Add($"MainActivity.OnCreate (isFirstTime: {_isFirstTime}, isRestored: {IsRestored})");
         _isFirstTime = false;
 
         // ReSharper disable once ExplicitCallerInfoArgument

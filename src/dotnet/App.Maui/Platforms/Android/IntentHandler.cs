@@ -29,6 +29,13 @@ public static class IntentHandler
             return;
         }
 
+        if (activity is MainActivity { IsRestored: true }) {
+            // A restored activity gets the intent it was first created with, and that intent was
+            // handled back then - possibly by a process that has since been killed.
+            Log.LogInformation("Activity is restored; skipping its {Action} intent", intent.Action);
+            return;
+        }
+
         if (!_hasResumedOnce) {
             Log.LogDebug("Postponing activity start intent handling until resuming");
             _startIntent = intent;
