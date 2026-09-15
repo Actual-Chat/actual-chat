@@ -803,11 +803,6 @@
   "DemandInteraction_Updating": "Wird aktualisiert...",
   "DemandInteraction_Continue_Format": "Да продължим ли — {0}?",
   "Banner_ReadyToRestart_Format": "{0} jest gotowy do ponownego uruchomienia w trybie zoptymalizowanym",
-  "Banner_CallDialing": "Anda sedang memanggil…",
-  "Banner_CallAccepted": "Cuộc gọi đã được chấp nhận",
-  "Banner_CallDeclined": "Обаждането е отхвърлено",
-  "Banner_CallNoAnswer": "Nessuna risposta",
-  "Banner_CancelCall": "Отменете обаждането",
 
   // "Bubbles" are the coach-mark tooltips of the first-run walk-through: shown once, then
   // dismissed. Bubble_Counter_Format is the "3 of 7" step counter. Each is a title plus a short
@@ -1093,7 +1088,11 @@
   "Common_Today": "Aujourd'hui",
   "Common_Yesterday": "Yesterday",
   "Call_IncomingFrom": "Połączenie przychodzące od ",
+  "Call_OutgoingTo": "Połączenie wychodzące do ",
   "Call_Message": "Повідомлення",
+  "Call_AppIncomingTitle": "Połączenie przychodzące",
+  "Call_Mute": "Bez zvuka",
+  "Call_IsCallingYou": "sedang menelepon Anda…",
   "Call_SelectCamera": "Seleziona una fotocamera",
   "Call_NoCameras": "Није пронађена ниједна камера",
   "Call_CameraBlocked": "カメラへのアクセスがブロックされています。",
@@ -1774,6 +1773,8 @@
   // Call state text and the call action buttons.
   "Call_Ended": "통화가 종료되었습니다",
   "Call_CouldntStart": "Anruf konnte nicht gestartet werden",
+  "Call_NoMicrophoneAccess": "通話を開始できませんでした: マイクへのアクセスがありません。",
+  "Call_AlreadyInCall": "Você já está em uma chamada",
   "Call_RecordingTurnedOffByHost": "Nagrywanie wyłączone przez prowadzącego",
   "Call_MakeHost": "Ustaw jako prowadzącego",
   // "Join" in the call sense - entering a call that is already running, not
@@ -1789,6 +1790,7 @@
   "Call_DetectingLanguage": "Tôi đang phát hiện ngôn ngữ",
   "Call_Incoming": "Połączenie przychodzące",
   "Call_IncomingVideo": "Przychodzące połączenie wideo",
+  "Call_Outgoing": "Połączenie wychodzące",
   "Call_InCall": "Dalam panggilan",
   "Call_JoinVideo": "Присъединете се към видеото",
   "Call_VideoPreview": "Попередній перегляд відео",

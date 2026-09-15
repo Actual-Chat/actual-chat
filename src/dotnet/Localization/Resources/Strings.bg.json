@@ -664,11 +664,6 @@
   "DemandInteraction_Updating": "Обновяване...",
   "DemandInteraction_Continue_Format": "Да продължим ли — {0}?",
   "Banner_ReadyToRestart_Format": "{0} е готов за рестарт в оптимизиран режим",
-  "Banner_CallDialing": "Обаждате се…",
-  "Banner_CallAccepted": "Обаждането е прието",
-  "Banner_CallDeclined": "Обаждането е отхвърлено",
-  "Banner_CallNoAnswer": "Няма отговор",
-  "Banner_CancelCall": "Отменете обаждането",
 
   "Bubble_Counter_Format": "{0} от {1}",
   "Bubble_ChatListTabsTitle": "Чатове и контакти",
@@ -929,6 +924,9 @@
   "Common_Yesterday": "Вчера",
   "Call_IncomingFrom": "Входящо обаждане от ",
   "Call_Message": "Съобщение",
+  "Call_AppIncomingTitle": "Входящо обаждане",
+  "Call_Mute": "Без звук",
+  "Call_IsCallingYou": "ви се обажда…",
   "Call_SelectCamera": "Изберете камера",
   "Call_NoCameras": "Не са открити камери",
   "Call_CameraBlocked": "Достъпът до камерата е блокиран.",
@@ -1487,6 +1485,8 @@
   "Video_Connecting": "Свързване...",
   "Call_Ended": "Обаждането приключи",
   "Call_CouldntStart": "Обаждането не можа да започне",
+  "Call_NoMicrophoneAccess": "Обаждането не можа да започне: няма достъп до микрофона.",
+  "Call_AlreadyInCall": "Вече сте в разговор",
   "Call_RecordingTurnedOffByHost": "Записът е изключен от водещия",
   "Call_MakeHost": "Направете водещ",
   "Call_Join": "Присъединете се",
@@ -1593,5 +1593,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Управлявайте участниците от настройките на Мястото",
   "ChatSettings_LeaveChatAndDelete": "Напуснете чата и изтрий",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Напуснете Мястото и изтрий"
+  "PlaceSettings_LeavePlaceAndDelete": "Напуснете Мястото и изтрий",
+  "Call_OutgoingTo": "Изходящо обаждане към ",
+  "Call_Outgoing": "Изходящо обаждане"
 }

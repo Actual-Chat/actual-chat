@@ -664,11 +664,6 @@
   "DemandInteraction_Updating": "Оновлення...",
   "DemandInteraction_Continue_Format": "Продовжити — {0}?",
   "Banner_ReadyToRestart_Format": "{0} готовий перезапуститися в оптимізованому режимі",
-  "Banner_CallDialing": "Ви телефонуєте…",
-  "Banner_CallAccepted": "Дзвінок прийнято",
-  "Banner_CallDeclined": "Дзвінок відхилено",
-  "Banner_CallNoAnswer": "Немає відповіді",
-  "Banner_CancelCall": "Скасувати дзвінок",
 
   "Bubble_Counter_Format": "{0} з {1}",
   "Bubble_ChatListTabsTitle": "Чати та контакти",
@@ -929,6 +924,9 @@
   "Common_Yesterday": "Учора",
   "Call_IncomingFrom": "Вхідний дзвінок від ",
   "Call_Message": "Повідомлення",
+  "Call_AppIncomingTitle": "Вхідний дзвінок",
+  "Call_Mute": "Без звуку",
+  "Call_IsCallingYou": "дзвонить вам…",
   "Call_SelectCamera": "Виберіть камеру",
   "Call_NoCameras": "Камер не знайдено",
   "Call_CameraBlocked": "Доступ до камери заблоковано.",
@@ -1487,6 +1485,8 @@
   "Video_Connecting": "Підключення...",
   "Call_Ended": "Дзвінок завершено",
   "Call_CouldntStart": "Не вдалося почати дзвінок",
+  "Call_NoMicrophoneAccess": "Не вдалося почати дзвінок: немає доступу до мікрофона.",
+  "Call_AlreadyInCall": "Ви вже в дзвінку",
   "Call_RecordingTurnedOffByHost": "Ведучий вимкнув запис",
   "Call_MakeHost": "Зробити ведучим",
   "Call_Join": "Увійти",
@@ -1593,5 +1593,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Редагуйте учасників у налаштуваннях Місця",
   "ChatSettings_LeaveChatAndDelete": "Покинути й видалити чат",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Покинути й видалити Місце"
+  "PlaceSettings_LeavePlaceAndDelete": "Покинути й видалити Місце",
+  "Call_OutgoingTo": "Вихідний дзвінок: ",
+  "Call_Outgoing": "Вихідний дзвінок"
 }

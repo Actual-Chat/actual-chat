@@ -687,11 +687,6 @@ public static class LocalizedStringsLocalizerExt
         public string DemandInteraction_Continue_Format(object arg0)
             => l["DemandInteraction_Continue_Format", arg0].Value;
         public string Banner_ReadyToRestart_Format(object arg0) => l["Banner_ReadyToRestart_Format", arg0].Value;
-        public string Banner_CallDialing => l["Banner_CallDialing"].Value;
-        public string Banner_CallAccepted => l["Banner_CallAccepted"].Value;
-        public string Banner_CallDeclined => l["Banner_CallDeclined"].Value;
-        public string Banner_CallNoAnswer => l["Banner_CallNoAnswer"].Value;
-        public string Banner_CancelCall => l["Banner_CancelCall"].Value;
 
         public string Bubble_Counter_Format(object arg0, object arg1) => l["Bubble_Counter_Format", arg0, arg1].Value;
         public string Bubble_ChatListTabsTitle => l["Bubble_ChatListTabsTitle"].Value;
@@ -972,7 +967,11 @@ public static class LocalizedStringsLocalizerExt
         public string Common_Today => l["Common_Today"].Value;
         public string Common_Yesterday => l["Common_Yesterday"].Value;
         public string Call_IncomingFrom => l["Call_IncomingFrom"].Value;
+        public string Call_OutgoingTo => l["Call_OutgoingTo"].Value;
         public string Call_Message => l["Call_Message"].Value;
+        public string Call_AppIncomingTitle => l["Call_AppIncomingTitle"].Value;
+        public string Call_Mute => l["Call_Mute"].Value;
+        public string Call_IsCallingYou => l["Call_IsCallingYou"].Value;
         public string Call_SelectCamera => l["Call_SelectCamera"].Value;
         public string Call_NoCameras => l["Call_NoCameras"].Value;
         public string Call_CameraBlocked => l["Call_CameraBlocked"].Value;
@@ -1544,11 +1543,14 @@ public static class LocalizedStringsLocalizerExt
         public string Video_TurnCameraOn => l["Video_TurnCameraOn"].Value;
         public string Call_Ended => l["Call_Ended"].Value;
         public string Call_CouldntStart => l["Call_CouldntStart"].Value;
+        public string Call_NoMicrophoneAccess => l["Call_NoMicrophoneAccess"].Value;
+        public string Call_AlreadyInCall => l["Call_AlreadyInCall"].Value;
         public string Call_RecordingTurnedOffByHost => l["Call_RecordingTurnedOffByHost"].Value;
         public string Call_MakeHost => l["Call_MakeHost"].Value;
         public string Call_DetectingLanguage => l["Call_DetectingLanguage"].Value;
         public string Call_Incoming => l["Call_Incoming"].Value;
         public string Call_IncomingVideo => l["Call_IncomingVideo"].Value;
+        public string Call_Outgoing => l["Call_Outgoing"].Value;
         public string Call_InCall => l["Call_InCall"].Value;
         public string Call_JoinVideo => l["Call_JoinVideo"].Value;
         public string Call_VideoPreview => l["Call_VideoPreview"].Value;

@@ -28,7 +28,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
 
     private IDeviceTokenRetriever DeviceTokenRetriever => field ??= Hub.Services.GetRequiredService<IDeviceTokenRetriever>();
-    private IncomingCallUI IncomingCallUI => field ??= Hub.Services.GetRequiredService<IncomingCallUI>();
+    private CallScreensUI CallScreensUI => field ??= Hub.Services.GetRequiredService<CallScreensUI>();
     private ChatAudioUI ChatAudioUI => field ??= Hub.Services.GetRequiredService<ChatAudioUI>();
     private UrlMapper UrlMapper => Hub.UrlMapper;
     private IJSRuntime JS => Hub.JS;
@@ -88,7 +88,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
     }
 
     // Web counterpart of the Android FCM path: an incoming-call push (foreground onMessage or the
-    // service worker for an open background tab) registers the ring so the in-app banner appears.
+    // service worker for an open background tab) registers the ring so the in-app call modal appears.
     [JSInvokable]
     public void OnIncomingCall(string sChatId)
     {
@@ -96,7 +96,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
         if (chatId is null)
             return;
 
-        IncomingCallUI.OnRing(chatId);
+        CallScreensUI.OnRing(chatId);
     }
 
     // Web counterpart of Android's ClearForegroundCallRings: a call dismissal push (cancel, decline,
@@ -109,7 +109,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
         if (chatId is null)
             return;
 
-        IncomingCallUI.OnCallDismissed(chatId);
+        CallScreensUI.OnCallDismissed(chatId);
     }
 
     public void SetIsGranted(bool? isGranted)

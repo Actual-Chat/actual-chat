@@ -664,11 +664,6 @@
   "DemandInteraction_Updating": "Aktualizowanie...",
   "DemandInteraction_Continue_Format": "Kontynuować — {0}?",
   "Banner_ReadyToRestart_Format": "{0} jest gotowy do ponownego uruchomienia w trybie zoptymalizowanym",
-  "Banner_CallDialing": "Dzwonisz…",
-  "Banner_CallAccepted": "Połączenie odebrane",
-  "Banner_CallDeclined": "Połączenie odrzucone",
-  "Banner_CallNoAnswer": "Brak odpowiedzi",
-  "Banner_CancelCall": "Anuluj połączenie",
 
   "Bubble_Counter_Format": "{0} z {1}",
   "Bubble_ChatListTabsTitle": "Czaty i kontakty",
@@ -929,6 +924,9 @@
   "Common_Yesterday": "Wczoraj",
   "Call_IncomingFrom": "Połączenie przychodzące od ",
   "Call_Message": "Wiadomość",
+  "Call_AppIncomingTitle": "Połączenie przychodzące",
+  "Call_Mute": "Wycisz",
+  "Call_IsCallingYou": "dzwoni do Ciebie…",
   "Call_SelectCamera": "Wybierz kamerę",
   "Call_NoCameras": "Nie wykryto kamer",
   "Call_CameraBlocked": "Dostęp do kamery jest zablokowany.",
@@ -1487,6 +1485,8 @@
   "Video_Connecting": "Łączenie...",
   "Call_Ended": "Rozmowa zakończona",
   "Call_CouldntStart": "Nie udało się rozpocząć rozmowy",
+  "Call_NoMicrophoneAccess": "Nie udało się rozpocząć rozmowy: brak dostępu do mikrofonu.",
+  "Call_AlreadyInCall": "Jesteś już w trakcie rozmowy",
   "Call_RecordingTurnedOffByHost": "Nagrywanie wyłączone przez prowadzącego",
   "Call_MakeHost": "Ustaw jako prowadzącego",
   "Call_Join": "Dołącz",
@@ -1593,5 +1593,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Zmieniaj uczestników w ustawieniach Miejsca",
   "ChatSettings_LeaveChatAndDelete": "Opuść czat i usuń",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Opuść Miejsce i usuń"
+  "PlaceSettings_LeavePlaceAndDelete": "Opuść Miejsce i usuń",
+  "Call_OutgoingTo": "Połączenie wychodzące do ",
+  "Call_Outgoing": "Połączenie wychodzące"
 }

@@ -1,0 +1,30 @@
+/* ── Modal action buttons: a centered row of round buttons — Decline · Mute · Message · Accept, or Hang up ── */
+/* The second selector outweighs `body.narrow .dialog-buttons`, which would otherwise stack these
+   into a column on mobile. */
+.call-modal .dialog-buttons,
+body.narrow .call-modal .dialog-buttons {
+    @apply flex-x items-center justify-center gap-4;
+}
+.call-modal .btn-call {
+    @apply flex flex-none items-center justify-center;
+    @apply w-[3.25rem] h-[3.25rem];
+    @apply rounded-full;
+}
+/* Solid gradients stay as plain CSS (same as .btn-video-panel): the shorthand also clears the
+   default .btn-round background so the fill is exact. */
+.call-modal .btn-call.c-decline,
+.call-modal .btn-call.c-hang-up {
+    background: linear-gradient(180deg, var(--magenta-60) 0%, var(--magenta-50) 100%);
+    @apply text-white;
+}
+.call-modal .btn-call.c-accept {
+    background: linear-gradient(180deg, var(--emerald-40) 0%, var(--emerald-30) 100%);
+    @apply text-white;
+}
+.call-modal .btn-call.c-mute,
+.call-modal .btn-call.c-message {
+    /* Same neutral glass as the video-panel controls (.btn-video-panel). */
+    background: linear-gradient(180deg, var(--black-20) -20.83%, var(--black-40) 100%);
+    @apply text-white;
+    text-shadow: 0 1px 3px rgb(0 0 0 / 60%);
+}

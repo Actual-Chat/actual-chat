@@ -664,11 +664,6 @@
   "DemandInteraction_Updating": "Wird aktualisiert...",
   "DemandInteraction_Continue_Format": "{0} fortsetzen?",
   "Banner_ReadyToRestart_Format": "{0} kann jetzt im optimierten Modus neu starten",
-  "Banner_CallDialing": "Sie rufen an…",
-  "Banner_CallAccepted": "Anruf angenommen",
-  "Banner_CallDeclined": "Anruf abgelehnt",
-  "Banner_CallNoAnswer": "Keine Antwort",
-  "Banner_CancelCall": "Anruf abbrechen",
 
   "Bubble_Counter_Format": "{0} von {1}",
   "Bubble_ChatListTabsTitle": "Chats und Kontakte",
@@ -929,6 +924,9 @@
   "Common_Yesterday": "Gestern",
   "Call_IncomingFrom": "Eingehender Anruf von ",
   "Call_Message": "Nachricht",
+  "Call_AppIncomingTitle": "Eingehender Anruf",
+  "Call_Mute": "Stumm",
+  "Call_IsCallingYou": "ruft Sie an…",
   "Call_SelectCamera": "Kamera auswählen",
   "Call_NoCameras": "Keine Kameras gefunden",
   "Call_CameraBlocked": "Der Kamerazugriff ist blockiert.",
@@ -1487,6 +1485,8 @@
   "Video_Connecting": "Verbinden...",
   "Call_Ended": "Anruf beendet",
   "Call_CouldntStart": "Anruf konnte nicht gestartet werden",
+  "Call_NoMicrophoneAccess": "Anruf konnte nicht gestartet werden: kein Mikrofonzugriff.",
+  "Call_AlreadyInCall": "Sie sind bereits in einem Anruf",
   "Call_RecordingTurnedOffByHost": "Aufnahme vom Host deaktiviert",
   "Call_MakeHost": "Zum Host machen",
   "Call_Join": "Beitreten",
@@ -1593,5 +1593,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Mitglieder in den Place-Einstellungen bearbeiten",
   "ChatSettings_LeaveChatAndDelete": "Chat verlassen und löschen",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Place verlassen und löschen"
+  "PlaceSettings_LeavePlaceAndDelete": "Place verlassen und löschen",
+  "Call_OutgoingTo": "Ausgehender Anruf an ",
+  "Call_Outgoing": "Ausgehender Anruf"
 }

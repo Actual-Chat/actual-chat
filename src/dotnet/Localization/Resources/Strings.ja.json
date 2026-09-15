@@ -664,11 +664,6 @@
   "DemandInteraction_Updating": "更新中...",
   "DemandInteraction_Continue_Format": "{0} を続けますか?",
   "Banner_ReadyToRestart_Format": "{0} は最適化モードで再起動できます",
-  "Banner_CallDialing": "発信中…",
-  "Banner_CallAccepted": "通話に応答しました",
-  "Banner_CallDeclined": "通話が拒否されました",
-  "Banner_CallNoAnswer": "応答なし",
-  "Banner_CancelCall": "発信をキャンセル",
 
   "Bubble_Counter_Format": "{1} 件中 {0} 件目",
   "Bubble_ChatListTabsTitle": "チャットと連絡先",
@@ -929,6 +924,9 @@
   "Common_Yesterday": "昨日",
   "Call_IncomingFrom": "着信: ",
   "Call_Message": "メッセージ",
+  "Call_AppIncomingTitle": "着信",
+  "Call_Mute": "消音",
+  "Call_IsCallingYou": "呼び出し中…",
   "Call_SelectCamera": "カメラを選択",
   "Call_NoCameras": "カメラが見つかりません",
   "Call_CameraBlocked": "カメラへのアクセスがブロックされています。",
@@ -1487,6 +1485,8 @@
   "Video_Connecting": "接続中...",
   "Call_Ended": "通話が終了しました",
   "Call_CouldntStart": "通話を開始できませんでした",
+  "Call_NoMicrophoneAccess": "通話を開始できませんでした: マイクへのアクセスがありません。",
+  "Call_AlreadyInCall": "すでに通話中です",
   "Call_RecordingTurnedOffByHost": "ホストが録音をオフにしました",
   "Call_MakeHost": "ホストにする",
   "Call_Join": "参加",
@@ -1593,5 +1593,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "メンバーの編集にはプレイスの設定を使用します",
   "ChatSettings_LeaveChatAndDelete": "チャットを退出して削除",
 
-  "PlaceSettings_LeavePlaceAndDelete": "プレイスを退出して削除"
+  "PlaceSettings_LeavePlaceAndDelete": "プレイスを退出して削除",
+  "Call_OutgoingTo": "発信: ",
+  "Call_Outgoing": "発信"
 }

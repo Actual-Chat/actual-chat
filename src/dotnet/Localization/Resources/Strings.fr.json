@@ -664,11 +664,6 @@
   "DemandInteraction_Updating": "Mise à jour...",
   "DemandInteraction_Continue_Format": "Continuer {0} ?",
   "Banner_ReadyToRestart_Format": "{0} est prêt à redémarrer en mode optimisé",
-  "Banner_CallDialing": "Appel en cours…",
-  "Banner_CallAccepted": "Appel accepté",
-  "Banner_CallDeclined": "Appel refusé",
-  "Banner_CallNoAnswer": "Pas de réponse",
-  "Banner_CancelCall": "Annuler l'appel",
 
   "Bubble_Counter_Format": "{0} sur {1}",
   "Bubble_ChatListTabsTitle": "Discussions et contacts",
@@ -929,6 +924,9 @@
   "Common_Yesterday": "Hier",
   "Call_IncomingFrom": "Appel entrant de ",
   "Call_Message": "Message",
+  "Call_AppIncomingTitle": "Appel entrant",
+  "Call_Mute": "Silence",
+  "Call_IsCallingYou": "vous appelle…",
   "Call_SelectCamera": "Sélectionnez une caméra",
   "Call_NoCameras": "Aucune caméra détectée",
   "Call_CameraBlocked": "L'accès à la caméra est bloqué.",
@@ -1487,6 +1485,8 @@
   "Video_Connecting": "Connexion...",
   "Call_Ended": "Appel terminé",
   "Call_CouldntStart": "Impossible de démarrer l'appel",
+  "Call_NoMicrophoneAccess": "Impossible de démarrer l'appel : pas d'accès au microphone.",
+  "Call_AlreadyInCall": "Vous êtes déjà en appel",
   "Call_RecordingTurnedOffByHost": "Enregistrement désactivé par l'hôte",
   "Call_MakeHost": "Définir comme hôte",
   "Call_Join": "Rejoindre",
@@ -1593,5 +1593,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Utilisez les paramètres du Lieu pour modifier les membres",
   "ChatSettings_LeaveChatAndDelete": "Quitter la discussion et la supprimer",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Quitter le Lieu et le supprimer"
+  "PlaceSettings_LeavePlaceAndDelete": "Quitter le Lieu et le supprimer",
+  "Call_OutgoingTo": "Appel sortant vers ",
+  "Call_Outgoing": "Appel sortant"
 }

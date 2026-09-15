@@ -664,11 +664,6 @@
   "DemandInteraction_Updating": "Aggiornamento...",
   "DemandInteraction_Continue_Format": "Continuare {0}?",
   "Banner_ReadyToRestart_Format": "{0} è pronto a riavviarsi in modalità ottimizzata",
-  "Banner_CallDialing": "Stai chiamando…",
-  "Banner_CallAccepted": "Chiamata accettata",
-  "Banner_CallDeclined": "Chiamata rifiutata",
-  "Banner_CallNoAnswer": "Nessuna risposta",
-  "Banner_CancelCall": "Annulla chiamata",
 
   "Bubble_Counter_Format": "{0} di {1}",
   "Bubble_ChatListTabsTitle": "Chat e contatti",
@@ -929,6 +924,9 @@
   "Common_Yesterday": "Ieri",
   "Call_IncomingFrom": "Chiamata in arrivo da ",
   "Call_Message": "Messaggio",
+  "Call_AppIncomingTitle": "Chiamata in arrivo",
+  "Call_Mute": "Silenzia",
+  "Call_IsCallingYou": "ti sta chiamando…",
   "Call_SelectCamera": "Seleziona una fotocamera",
   "Call_NoCameras": "Nessuna fotocamera rilevata",
   "Call_CameraBlocked": "L'accesso alla fotocamera è bloccato.",
@@ -1487,6 +1485,8 @@
   "Video_Connecting": "Connessione...",
   "Call_Ended": "Chiamata terminata",
   "Call_CouldntStart": "Impossibile avviare la chiamata",
+  "Call_NoMicrophoneAccess": "Impossibile avviare la chiamata: nessun accesso al microfono.",
+  "Call_AlreadyInCall": "Sei già in una chiamata",
   "Call_RecordingTurnedOffByHost": "Registrazione disattivata dall'organizzatore",
   "Call_MakeHost": "Rendi host",
   "Call_Join": "Partecipa",
@@ -1593,5 +1593,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Usa le impostazioni del Luogo per modificare i membri",
   "ChatSettings_LeaveChatAndDelete": "Esci dalla chat ed eliminala",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Esci dal Luogo ed eliminalo"
+  "PlaceSettings_LeavePlaceAndDelete": "Esci dal Luogo ed eliminalo",
+  "Call_OutgoingTo": "Chiamata in uscita a ",
+  "Call_Outgoing": "Chiamata in uscita"
 }

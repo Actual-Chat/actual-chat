@@ -664,11 +664,6 @@
   "DemandInteraction_Updating": "Обновление...",
   "DemandInteraction_Continue_Format": "Продолжить — {0}?",
   "Banner_ReadyToRestart_Format": "{0} готов перезапуститься в оптимизированном режиме",
-  "Banner_CallDialing": "Вы звоните…",
-  "Banner_CallAccepted": "Звонок принят",
-  "Banner_CallDeclined": "Звонок отклонён",
-  "Banner_CallNoAnswer": "Нет ответа",
-  "Banner_CancelCall": "Отменить звонок",
 
   "Bubble_Counter_Format": "{0} из {1}",
   "Bubble_ChatListTabsTitle": "Чаты и контакты",
@@ -929,6 +924,9 @@
   "Common_Yesterday": "Вчера",
   "Call_IncomingFrom": "Входящий звонок от ",
   "Call_Message": "Сообщение",
+  "Call_AppIncomingTitle": "Входящий звонок",
+  "Call_Mute": "Без звука",
+  "Call_IsCallingYou": "звонит вам…",
   "Call_SelectCamera": "Выберите камеру",
   "Call_NoCameras": "Камеры не найдены",
   "Call_CameraBlocked": "Доступ к камере заблокирован.",
@@ -1487,6 +1485,8 @@
   "Video_Connecting": "Подключение...",
   "Call_Ended": "Звонок завершён",
   "Call_CouldntStart": "Не удалось начать звонок",
+  "Call_NoMicrophoneAccess": "Не удалось начать звонок: нет доступа к микрофону.",
+  "Call_AlreadyInCall": "Вы уже в звонке",
   "Call_RecordingTurnedOffByHost": "Ведущий отключил запись",
   "Call_MakeHost": "Сделать ведущим",
   "Call_Join": "Войти",
@@ -1593,5 +1593,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Редактируйте участников в настройках Места",
   "ChatSettings_LeaveChatAndDelete": "Покинуть и удалить чат",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Покинуть и удалить Место"
+  "PlaceSettings_LeavePlaceAndDelete": "Покинуть и удалить Место",
+  "Call_OutgoingTo": "Исходящий звонок: ",
+  "Call_Outgoing": "Исходящий звонок"
 }
