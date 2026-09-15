@@ -262,8 +262,9 @@ a live session:
 | Video panel menu | **...** on a video tile | `Video_*`, `Call_*`, `Diagnostics_*` |
 | Live session member list | right panel during a call | `Call_*` (largest single site, 25 keys) |
 | Join video call modal | another user starts video | `Call_*` |
-| Incoming call modal | a peer calls you | `Call_*`, `Banner_*` |
-| Outgoing call banner | you call a peer | `Banner_*` |
+| Incoming call modal | a peer calls you | `Call_*` |
+| Outgoing call modal | you call a peer, wide window | `Call_*` |
+| Full-screen call view | you call a peer or accept a call, narrow window | `Call_*` |
 | Chat activity panel | during recording | `Diagnostics_*`, `Location_*` |
 | Replay speed menu | replay sub-header &rarr; speed | `Replay_*` |
 
