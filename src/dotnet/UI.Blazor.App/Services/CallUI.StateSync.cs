@@ -164,6 +164,10 @@ public partial class CallUI
 
             foreach (var ring in input.Rings) {
                 var chatId = ring.ChatId;
+                // Dropped after the input was read (declined, dismissed, released): a stale read can't reclaim it.
+                if (!_ringingChatIds.Value.Contains(chatId))
+                    continue;
+
                 // Against the live slot, not the input's: a claim earlier in this pass has to count.
                 var outcome = DecideSearch(_activeCall.Value, chatId, _busyAckedChatIds.Contains(chatId));
                 switch (outcome) {
