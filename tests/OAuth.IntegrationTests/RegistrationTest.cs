@@ -40,13 +40,31 @@ public class RegistrationTest(OAuthCollection.AppHostFixture fixture, ITestOutpu
         doc.GetProperty("error").GetString().Should().Be(error);
     }
 
-    [Fact]
-    public async Task RegisterShouldRejectConfidentialClients()
+    [Theory]
+    [InlineData("client_secret_post")]
+    [InlineData("client_secret_basic")]
+    public async Task RegisterShouldDowngradeConfidentialClientsToPublic(string authMethod)
     {
         // act
         var (status, doc) = await Register(new {
             redirect_uris = new[] { "https://c.example/cb" },
-            token_endpoint_auth_method = "client_secret_post",
+            token_endpoint_auth_method = authMethod,
+        });
+
+        // assert
+        status.Should().Be(HttpStatusCode.Created);
+        doc.GetProperty("token_endpoint_auth_method").GetString().Should().Be("none",
+            because: "the MCP C# SDK asks for client_secret_post and uses whatever the response says");
+        doc.TryGetProperty("client_secret", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RegisterShouldRejectUnsupportedAuthMethods()
+    {
+        // act
+        var (status, doc) = await Register(new {
+            redirect_uris = new[] { "https://c.example/cb" },
+            token_endpoint_auth_method = "private_key_jwt",
         });
 
         // assert

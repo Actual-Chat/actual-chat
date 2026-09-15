@@ -21,7 +21,7 @@ public sealed class McpResourceMetadataController(IServiceProvider services) : C
         return Ok(new {
             resource = UrlMapper.ToAbsolute(Settings.Route),
             authorization_servers = new[] { UrlMapper.BaseUrl.TrimEnd('/') },
-            scopes_supported = new[] { "mcp" },
+            scopes_supported = new[] { "mcp", "offline_access" },
             bearer_methods_supported = new[] { "header" },
         });
     }

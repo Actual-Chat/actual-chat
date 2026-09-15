@@ -64,7 +64,7 @@ public sealed class McpAuthMiddleware(RequestDelegate next, IServiceProvider ser
     private Task Reject(HttpContext httpContext, string? error, string description)
     {
         var metadataUrl = UrlMapper.ToAbsolute(McpResourceMetadataController.Route + Settings.Route);
-        var header = $"Bearer realm=\"{Realm}\", resource_metadata=\"{metadataUrl}\", scope=\"mcp\"";
+        var header = $"Bearer realm=\"{Realm}\", resource_metadata=\"{metadataUrl}\", scope=\"mcp offline_access\"";
         if (error is not null)
             header += $", error=\"{error}\", error_description=\"{description}\"";
         httpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;

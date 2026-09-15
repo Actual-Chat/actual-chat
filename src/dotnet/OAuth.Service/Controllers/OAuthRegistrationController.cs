@@ -14,6 +14,14 @@ public sealed class OAuthRegistrationController(IServiceProvider services) : Con
     private IOpenIddictApplicationManager Applications { get; }
         = services.GetRequiredService<IOpenIddictApplicationManager>();
 
+    // Secret-based methods are accepted and downgraded to "none" (RFC 7591 §3.2.1): no secret is ever issued,
+    // and the MCP C# SDK asks for client_secret_post and then uses whatever the response says.
+    private static readonly string[] DowngradableAuthMethods = [
+        ClientAuthenticationMethods.None,
+        ClientAuthenticationMethods.ClientSecretPost,
+        ClientAuthenticationMethods.ClientSecretBasic,
+    ];
+
     private ILogger Log { get; } = services.LogFor<OAuthRegistrationController>();
 
     [HttpPost("/oauth/" + OAuthConstants.RegisterRoute)]
@@ -28,9 +36,10 @@ public sealed class OAuthRegistrationController(IServiceProvider services) : Con
                 "Redirect URIs must be https, or http loopback, and carry no fragment.");
 
         var authMethod = request.TokenEndpointAuthMethod;
-        if (!authMethod.IsNullOrEmpty() && authMethod != ClientAuthenticationMethods.None)
+        if (!authMethod.IsNullOrEmpty() && !DowngradableAuthMethods.Contains(authMethod))
             return Error("invalid_client_metadata",
-                "Only public clients (token_endpoint_auth_method=none) are supported.");
+                "Only public clients are supported: token_endpoint_auth_method must be none, "
+                + "client_secret_post or client_secret_basic (the latter two are registered as none).");
 
         var grantTypes = request.GrantTypes is { Length: > 0 }
             ? request.GrantTypes

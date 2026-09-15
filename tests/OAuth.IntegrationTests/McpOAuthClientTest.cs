@@ -9,10 +9,8 @@ using ModelContextProtocol.Protocol;
 namespace ActualChat.OAuth.IntegrationTests;
 
 /// <summary>
-/// Drives the official MCP SDK's OAuth client against the server end to end: discovery, consent
+/// Drives the official MCP SDK's OAuth client against the server end to end: discovery, DCR, consent
 /// (with the redirect delegate playing the browser), token exchange, tool calls, and refresh.
-/// The client is pre-registered over raw HTTP: the SDK's own DCR request asks for
-/// <c>client_secret_post</c>, which <c>/oauth/register</c> rejects.
 /// </summary>
 [Collection(nameof(OAuthCollection))]
 public class McpOAuthClientTest(OAuthCollection.AppHostFixture fixture, ITestOutputHelper @out)
@@ -21,18 +19,18 @@ public class McpOAuthClientTest(OAuthCollection.AppHostFixture fixture, ITestOut
     private static readonly Uri RedirectUri = new("http://localhost/callback");
 
     private int _consentCount;
+    private string? _registeredClientId;
 
-    [Fact(Skip = "Blocked: the SDK requests the challenge's scope=\"mcp\", so no refresh token is issued")]
-    public async Task SdkClientShouldConsentCallAndRefresh()
+    [Fact]
+    public async Task SdkClientShouldRegisterConsentCallAndRefresh()
     {
         // arrange
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(isPublicChat: true, title: "SDK chat");
-        var clientId = await RegisterClient(RedirectUri.ToString());
         var tokenCache = new RecordingTokenCache();
 
         // act
-        await using var client = await ConnectSdkClient(Tester, clientId, tokenCache);
+        await using var client = await ConnectSdkClient(Tester, tokenCache);
         var tools = await client.ListToolsAsync();
         var post = await client.CallToolAsync("post_message", new Dictionary<string, object?> {
             ["chatId"] = chatId.Value,
@@ -45,6 +43,7 @@ public class McpOAuthClientTest(OAuthCollection.AppHostFixture fixture, ITestOut
         });
 
         // assert
+        _registeredClientId.Should().NotBeNullOrEmpty(because: "the SDK must have registered itself via DCR");
         tools.Select(t => t.Name).Should().Contain("post_message");
         post.IsError.Should().NotBe(true);
         list.IsError.Should().NotBe(true,
@@ -59,16 +58,15 @@ public class McpOAuthClientTest(OAuthCollection.AppHostFixture fixture, ITestOut
             because: "refresh tokens rotate on every use");
     }
 
-    [Fact(Skip = "Blocked: the SDK requests the challenge's scope=\"mcp\", so no refresh token is issued")]
+    [Fact]
     public async Task SdkClientShouldRefreshOnInvalidTokenChallenge()
     {
         // The SDK refreshes proactively when it knows the expiry; hiding it makes the SDK present the
         // expired token, so the server's 401 challenge is what has to drive the refresh and the retry.
         // arrange
         await Tester.SignInAsUniqueAlice();
-        var clientId = await RegisterClient(RedirectUri.ToString());
         var tokenCache = new RecordingTokenCache(hidesExpiry: true);
-        await using var client = await ConnectSdkClient(Tester, clientId, tokenCache);
+        await using var client = await ConnectSdkClient(Tester, tokenCache);
         await Task.Delay(TimeSpan.FromSeconds(4));
 
         // act
@@ -91,12 +89,11 @@ public class McpOAuthClientTest(OAuthCollection.AppHostFixture fixture, ITestOut
         await using var bobTester = AppHost.NewWebClientTester(Out);
         await bobTester.SignInAsUniqueBob();
         var (bobChatId, _) = await bobTester.CreateChat(isPublicChat: false, title: "Bob private");
-        var clientId = await RegisterClient(RedirectUri.ToString());
 
         // act
-        // Both use the same client_id, as one installed app would for two accounts
-        await using var aliceClient = await ConnectSdkClient(Tester, clientId, new RecordingTokenCache());
-        await using var bobClient = await ConnectSdkClient(bobTester, clientId, new RecordingTokenCache());
+        // Bob reuses the client_id Alice's SDK registered, as one installed app would for two accounts
+        await using var aliceClient = await ConnectSdkClient(Tester, new RecordingTokenCache());
+        await using var bobClient = await ConnectSdkClient(bobTester, new RecordingTokenCache(), _registeredClientId);
         var aliceChats = DeserializeResult<McpListChatsResult>(await ListGroupChats(aliceClient));
         var bobChats = DeserializeResult<McpListChatsResult>(await ListGroupChats(bobClient));
         var bobReadsAlice = await bobClient.CallToolAsync("list_messages", new Dictionary<string, object?> {
@@ -113,7 +110,8 @@ public class McpOAuthClientTest(OAuthCollection.AppHostFixture fixture, ITestOut
 
     // Private methods
 
-    private async Task<McpClient> ConnectSdkClient(WebClientTester tester, string clientId, ITokenCache tokenCache)
+    private async Task<McpClient> ConnectSdkClient(
+        WebClientTester tester, ITokenCache tokenCache, string? clientId = null)
     {
         var transport = new HttpClientTransport(new HttpClientTransportOptions {
             Endpoint = new Uri(BaseUri, OAuthConstants.McpResourcePath),
@@ -121,6 +119,13 @@ public class McpOAuthClientTest(OAuthCollection.AppHostFixture fixture, ITestOut
                 RedirectUri = RedirectUri,
                 ClientId = clientId,
                 Scopes = ["mcp", "offline_access"],
+                DynamicClientRegistration = new DynamicClientRegistrationOptions {
+                    ClientName = "SDK Test",
+                    ResponseDelegate = (response, _) => {
+                        _registeredClientId = response.ClientId;
+                        return Task.CompletedTask;
+                    },
+                },
                 AuthorizationRedirectDelegate = (uri, _, ct) => DriveConsent(tester, uri, ct),
                 TokenCache = tokenCache,
             },
