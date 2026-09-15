@@ -3,6 +3,8 @@ namespace ActualChat.OAuth.Module;
 public sealed class OAuthSettings
 {
     // Empty/null disables the authorization server entirely.
+    // Controllers (e.g. OAuthRegistrationController) hardcode "/oauth"; a different value
+    // only works for OpenIddict's own endpoints.
     public string Route { get; set; } = "/oauth";
     // Base64 PFX used for both signing and encryption; empty = ephemeral keys (dev/test only).
     public string SigningCertificateBase64 { get; set; } = "";

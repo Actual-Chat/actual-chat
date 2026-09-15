@@ -1,3 +1,4 @@
+using System.Net;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.OAuth.IntegrationTests;
@@ -27,5 +28,23 @@ public abstract class OAuthTestBase<TFixture>(TFixture fixture, ITestOutputHelpe
         var response = await Http.GetAsync(path);
         response.EnsureSuccessStatusCode();
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+    }
+
+    protected async Task<string> RegisterClient(params string[] redirectUris)
+    {
+        var (_, doc) = await Register(new {
+            client_name = "Test Client",
+            redirect_uris = redirectUris,
+            grant_types = new[] { "authorization_code", "refresh_token" },
+            token_endpoint_auth_method = "none",
+        });
+        return doc.GetProperty("client_id").GetString()!;
+    }
+
+    protected async Task<(HttpStatusCode, JsonElement)> Register(object body)
+    {
+        var response = await Http.PostAsJsonAsync("/oauth/register", body);
+        var json = await response.Content.ReadAsStringAsync();
+        return (response.StatusCode, JsonDocument.Parse(json).RootElement);
     }
 }
