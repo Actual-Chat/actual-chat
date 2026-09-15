@@ -163,9 +163,11 @@
   "TimeZone_Updated": "Временска зона је ажурирана",
 
   "DubVoice_Title": "Глас у преводима",
+  "DubVoice_Gender": "Спол",
   "DubVoice_AnyGender": "Било који спол",
   "DubVoice_Male": "Мушки",
   "DubVoice_Female": "Женски",
+  "DubVoice_Accent": "Акценат",
   "DubVoice_AnyAccent": "Било који акценат",
   "DubVoice_Preview": "Преслушај",
   "DubVoice_Unavailable": "Гласови тренутно нису доступни",

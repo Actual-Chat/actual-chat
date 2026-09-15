@@ -214,9 +214,11 @@
   // above the collapsed "All voices" section with the gender and accent filters, and the per-voice
   // preview button.
   "DubVoice_Title": "Voice in translations",
+  "DubVoice_Gender": "Gender",
   "DubVoice_AnyGender": "Any gender",
   "DubVoice_Male": "Male",
   "DubVoice_Female": "Female",
+  "DubVoice_Accent": "Accent",
   "DubVoice_AnyAccent": "Any accent",
   "DubVoice_Preview": "Preview",
   "DubVoice_Unavailable": "Voices are unavailable right now",

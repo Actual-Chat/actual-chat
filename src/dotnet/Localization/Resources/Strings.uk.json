@@ -163,9 +163,11 @@
   "TimeZone_Updated": "Часовий пояс оновлено",
 
   "DubVoice_Title": "Голос у перекладах",
+  "DubVoice_Gender": "Стать",
   "DubVoice_AnyGender": "Будь-яка стать",
   "DubVoice_Male": "Чоловічий",
   "DubVoice_Female": "Жіночий",
+  "DubVoice_Accent": "Акцент",
   "DubVoice_AnyAccent": "Будь-який акцент",
   "DubVoice_Preview": "Прослухати",
   "DubVoice_Unavailable": "Голоси зараз недоступні",

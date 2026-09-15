@@ -163,9 +163,11 @@
   "TimeZone_Updated": "Zona waktu telah diperbarui",
 
   "DubVoice_Title": "Suara dalam terjemahan",
+  "DubVoice_Gender": "Jenis kelamin",
   "DubVoice_AnyGender": "Semua jenis kelamin",
   "DubVoice_Male": "Pria",
   "DubVoice_Female": "Wanita",
+  "DubVoice_Accent": "Aksen",
   "DubVoice_AnyAccent": "Semua aksen",
   "DubVoice_Preview": "Dengarkan",
   "DubVoice_Unavailable": "Suara sedang tidak tersedia",

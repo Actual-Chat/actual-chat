@@ -1,11 +1,9 @@
 .dub-voice-modal .dialog-body {
     @apply px-2 gap-2;
 }
-.dub-voice-modal .dub-voice-search {
-    @apply px-2;
-}
-.dub-voice-modal .c-filters {
-    @apply flex-x gap-x-2 px-2 py-1;
+/* Search box and gender/accent filters: a non-scrolling group above the voice list */
+.dub-voice-modal .dub-voice-top {
+    @apply flex-y gap-y-2;
 }
 .dub-voice-modal .c-section-title {
     @apply text-caption-1 text-03 px-2 pt-2;
@@ -21,11 +19,6 @@
 }
 .dub-voice-modal .btn-preview i.animate-spin {
     @apply text-03;
-}
-.dub-voice-modal .c-filter {
-    @apply grow min-w-0;
-    @apply bg-02 text-01 border border-separator rounded-md px-2 py-1;
-    @apply text-caption-1;
 }
 /* Narrow: fill the dialog body down to the safe area (grow + min-h-0 so it scrolls
    inside the flex column). Desktop: fixed height so filtering never shrinks the modal. */

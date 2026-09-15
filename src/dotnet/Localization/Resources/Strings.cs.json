@@ -163,9 +163,11 @@
   "TimeZone_Updated": "Časové pásmo bylo aktualizováno",
 
   "DubVoice_Title": "Hlas v překladech",
+  "DubVoice_Gender": "Pohlaví",
   "DubVoice_AnyGender": "Libovolné pohlaví",
   "DubVoice_Male": "Mužský",
   "DubVoice_Female": "Ženský",
+  "DubVoice_Accent": "Přízvuk",
   "DubVoice_AnyAccent": "Libovolný přízvuk",
   "DubVoice_Preview": "Poslechnout",
   "DubVoice_Unavailable": "Hlasy nejsou momentálně dostupné",

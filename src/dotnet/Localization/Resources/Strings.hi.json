@@ -163,9 +163,11 @@
   "TimeZone_Updated": "समय क्षेत्र अपडेट हो गया है",
 
   "DubVoice_Title": "अनुवादों में आवाज़",
+  "DubVoice_Gender": "लिंग",
   "DubVoice_AnyGender": "कोई भी लिंग",
   "DubVoice_Male": "पुरुष",
   "DubVoice_Female": "महिला",
+  "DubVoice_Accent": "लहजा",
   "DubVoice_AnyAccent": "कोई भी लहजा",
   "DubVoice_Preview": "सुनें",
   "DubVoice_Unavailable": "आवाज़ें अभी उपलब्ध नहीं हैं",

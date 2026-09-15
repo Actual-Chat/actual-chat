@@ -163,9 +163,11 @@
   "TimeZone_Updated": "时区已更新",
 
   "DubVoice_Title": "翻译中的声音",
+  "DubVoice_Gender": "性别",
   "DubVoice_AnyGender": "任意性别",
   "DubVoice_Male": "男声",
   "DubVoice_Female": "女声",
+  "DubVoice_Accent": "口音",
   "DubVoice_AnyAccent": "任意口音",
   "DubVoice_Preview": "试听",
   "DubVoice_Unavailable": "目前无法获取声音",

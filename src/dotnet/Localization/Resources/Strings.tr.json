@@ -163,9 +163,11 @@
   "TimeZone_Updated": "Saat dilimi güncellendi",
 
   "DubVoice_Title": "Çevirilerdeki ses",
+  "DubVoice_Gender": "Cinsiyet",
   "DubVoice_AnyGender": "Herhangi bir cinsiyet",
   "DubVoice_Male": "Erkek",
   "DubVoice_Female": "Kadın",
+  "DubVoice_Accent": "Aksan",
   "DubVoice_AnyAccent": "Herhangi bir aksan",
   "DubVoice_Preview": "Dinle",
   "DubVoice_Unavailable": "Sesler şu anda kullanılamıyor",

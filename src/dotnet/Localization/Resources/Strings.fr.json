@@ -163,9 +163,11 @@
   "TimeZone_Updated": "Le fuseau horaire a été mis à jour",
 
   "DubVoice_Title": "Voix dans les traductions",
+  "DubVoice_Gender": "Genre",
   "DubVoice_AnyGender": "Tout genre",
   "DubVoice_Male": "Masculine",
   "DubVoice_Female": "Féminine",
+  "DubVoice_Accent": "Accent",
   "DubVoice_AnyAccent": "Tout accent",
   "DubVoice_Preview": "Écouter",
   "DubVoice_Unavailable": "Les voix sont indisponibles pour le moment",

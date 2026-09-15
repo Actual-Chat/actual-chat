@@ -163,9 +163,11 @@
   "TimeZone_Updated": "Strefa czasowa została zaktualizowana",
 
   "DubVoice_Title": "Głos w tłumaczeniach",
+  "DubVoice_Gender": "Płeć",
   "DubVoice_AnyGender": "Dowolna płeć",
   "DubVoice_Male": "Męski",
   "DubVoice_Female": "Żeński",
+  "DubVoice_Accent": "Akcent",
   "DubVoice_AnyAccent": "Dowolny akcent",
   "DubVoice_Preview": "Odsłuchaj",
   "DubVoice_Unavailable": "Głosy są obecnie niedostępne",

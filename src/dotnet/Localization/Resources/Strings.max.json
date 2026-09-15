@@ -214,9 +214,11 @@
   // above the collapsed "All voices" section with the gender and accent filters, and the per-voice
   // preview button.
   "DubVoice_Title": "Stimme in Übersetzungen",
+  "DubVoice_Gender": "Jenis kelamin",
   "DubVoice_AnyGender": "Beliebiges Geschlecht",
   "DubVoice_Male": "Чоловічий",
   "DubVoice_Female": "Femminile",
+  "DubVoice_Accent": "アクセント",
   "DubVoice_AnyAccent": "アクセントを問わない",
   "DubVoice_Preview": "Прослушване",
   "DubVoice_Unavailable": "Las voces no están disponibles ahora mismo",

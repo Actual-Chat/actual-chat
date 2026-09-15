@@ -185,9 +185,11 @@ public static class LocalizedStringsLocalizerExt
         public string TimeZone_Question => l["TimeZone_Question"].Value;
         public string TimeZone_Updated => l["TimeZone_Updated"].Value;
         public string DubVoice_Title => l["DubVoice_Title"].Value;
+        public string DubVoice_Gender => l["DubVoice_Gender"].Value;
         public string DubVoice_AnyGender => l["DubVoice_AnyGender"].Value;
         public string DubVoice_Male => l["DubVoice_Male"].Value;
         public string DubVoice_Female => l["DubVoice_Female"].Value;
+        public string DubVoice_Accent => l["DubVoice_Accent"].Value;
         public string DubVoice_AnyAccent => l["DubVoice_AnyAccent"].Value;
         public string DubVoice_Preview => l["DubVoice_Preview"].Value;
         public string DubVoice_Unavailable => l["DubVoice_Unavailable"].Value;

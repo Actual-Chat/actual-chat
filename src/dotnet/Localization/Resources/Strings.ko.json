@@ -163,9 +163,11 @@
   "TimeZone_Updated": "시간대가 업데이트되었습니다",
 
   "DubVoice_Title": "번역 목소리",
+  "DubVoice_Gender": "성별",
   "DubVoice_AnyGender": "모든 성별",
   "DubVoice_Male": "남성",
   "DubVoice_Female": "여성",
+  "DubVoice_Accent": "억양",
   "DubVoice_AnyAccent": "모든 억양",
   "DubVoice_Preview": "미리 듣기",
   "DubVoice_Unavailable": "지금은 목소리를 사용할 수 없습니다",

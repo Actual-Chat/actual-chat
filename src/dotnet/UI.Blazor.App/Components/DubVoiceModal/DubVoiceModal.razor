@@ -6,8 +6,8 @@
     var m = State.Value;
     var searchWords = _search.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     var voices = m.Voices
-        .Where(v => _gender.IsNullOrEmpty() || v.Gender == _gender)
-        .Where(v => _accent.IsNullOrEmpty() || v.Accent == _accent)
+        .Where(v => _filters.Gender.IsNullOrEmpty() || v.Gender == _filters.Gender)
+        .Where(v => _filters.Accent.IsNullOrEmpty() || v.Accent == _filters.Accent)
         .Where(v => Matches(v, searchWords))
         .ToList();
     var accents = m.Voices.Select(v => v.Accent).Where(a => !a.IsNullOrEmpty()).Distinct().Order().ToList();
@@ -22,28 +22,65 @@
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
     <Body>
         @if (m.Voices.Count > 0) {
-            <SearchBox
-                Class="dub-voice-search"
-                Placeholder="@L.DubVoice_SearchPlaceholder"
-                ClearButton="true"
-                TextChanged="@OnSearchChanged"/>
+            <div class="dub-voice-top">
+                <SearchBox
+                    Class="dub-voice-search"
+                    Placeholder="@L.DubVoice_SearchPlaceholder"
+                    ClearButton="true"
+                    TextChanged="@OnSearchChanged"/>
+                <Form Model="@_filters">
+                    <FormBlock Class="dub-voice-filters">
+                        <FormSection
+                            For="@(() => _filters.Gender)"
+                            InputId="@_filters.GenderFormId"
+                            IsLabelInsideInput="true"
+                            Label="@L.DubVoice_Gender">
+                            <InputSelect
+                                TValue="string"
+                                Value="@_filters.Gender"
+                                ValueExpression="@(() => _filters.Gender)"
+                                ValueChanged="@OnGenderChanged">
+                                <option value="">@L.DubVoice_AnyGender</option>
+                                <option value="male">@L.DubVoice_Male</option>
+                                <option value="female">@L.DubVoice_Female</option>
+                            </InputSelect>
+                        </FormSection>
+                        <FormSection
+                            For="@(() => _filters.Accent)"
+                            InputId="@_filters.AccentFormId"
+                            IsLabelInsideInput="true"
+                            Label="@L.DubVoice_Accent">
+                            <InputSelect
+                                TValue="string"
+                                Value="@_filters.Accent"
+                                ValueExpression="@(() => _filters.Accent)"
+                                ValueChanged="@OnAccentChanged">
+                                <option value="">@L.DubVoice_AnyAccent</option>
+                                @foreach (var accent in accents) {
+                                    <option value="@accent">@Humanize(accent)</option>
+                                }
+                            </InputSelect>
+                        </FormSection>
+                    </FormBlock>
+                </Form>
+            </div>
         }
         <div class="dub-voice-list" role="listbox">
             @if (m.Voices.Count == 0 && !m.IsLoading) {
                 <div class="c-empty">@L.DubVoice_Unavailable</div>
             }
             @if (isSearching) {
-                @AllVoices((voices, accents))
+                @AllVoices(voices)
             } else if (hasSuggested) {
                 <div class="c-section-title">@L.DubVoice_Suggested</div>
                 @foreach (var voice in m.Suggested) {
                     @VoiceItem(voice)
                 }
                 <Collapsed Title="@L.DubVoice_AllVoices" TitleClass="c-section-title">
-                    @AllVoices((voices, accents))
+                    @AllVoices(voices)
                 </Collapsed>
             } else if (m.Voices.Count > 0) {
-                @AllVoices((voices, accents))
+                @AllVoices(voices)
             }
         </div>
     </Body>
@@ -54,8 +91,7 @@
     private static readonly string JSStop = $"{BlazorUIAppModule.ImportName}.DubVoicePreview.stop";
     private static readonly string JSWarmUp = $"{BlazorUIAppModule.ImportName}.DubVoicePreview.warmUp";
 
-    private string _gender = "";
-    private string _accent = "";
+    private FilterModel _filters = null!;
     private string _search = "";
     private string? _loadingVoiceId;
     private string? _playingVoiceId;
@@ -68,22 +104,9 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private RenderFragment<(List<DubVoice> Voices, List<string> Accents)> AllVoices => ctx =>
+    private RenderFragment<List<DubVoice>> AllVoices => list =>
         @<text>
-            <div class="c-filters">
-                <select class="c-filter" value="@_gender" @onchange="@OnGenderChanged">
-                    <option value="">@L.DubVoice_AnyGender</option>
-                    <option value="male">@L.DubVoice_Male</option>
-                    <option value="female">@L.DubVoice_Female</option>
-                </select>
-                <select class="c-filter" value="@_accent" @onchange="@OnAccentChanged">
-                    <option value="">@L.DubVoice_AnyAccent</option>
-                    @foreach (var accent in ctx.Accents) {
-                        <option value="@accent">@Humanize(accent)</option>
-                    }
-                </select>
-            </div>
-            @foreach (var voice in ctx.Voices) {
+            @foreach (var voice in list) {
                 @VoiceItem(voice)
             }
         </text>;
@@ -134,6 +157,9 @@
         _blazorRef?.Dispose();
         await base.DisposeAsync().ConfigureAwait(true);
     }
+
+    protected override void OnInitialized()
+        => _filters = new FilterModel(ComponentIdGenerator);
 
     protected override ComputedState<ViewModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -187,13 +213,13 @@
         StateHasChanged();
     }
 
-    private void OnGenderChanged(ChangeEventArgs e) {
-        _gender = e.Value as string ?? "";
+    private void OnGenderChanged(string value) {
+        _filters.Gender = value;
         StateHasChanged();
     }
 
-    private void OnAccentChanged(ChangeEventArgs e) {
-        _accent = e.Value as string ?? "";
+    private void OnAccentChanged(string value) {
+        _filters.Accent = value;
         StateHasChanged();
     }
 
@@ -270,5 +296,12 @@
     {
         public static readonly ViewModel Loading =
             new(ApiArray<DubVoice>.Empty, ApiArray<DubVoice>.Empty, null, null, Languages.Main, true);
+    }
+
+    public sealed class FilterModel(ComponentIdGenerator componentIdGenerator) {
+        public string GenderFormId { get; } = $"{componentIdGenerator.Next("dub-voice-filters")}-gender";
+        public string AccentFormId { get; } = $"{componentIdGenerator.Next("dub-voice-filters")}-accent";
+        public string Gender { get; set; } = "";
+        public string Accent { get; set; } = "";
     }
 }

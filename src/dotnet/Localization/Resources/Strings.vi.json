@@ -163,9 +163,11 @@
   "TimeZone_Updated": "Đã cập nhật múi giờ",
 
   "DubVoice_Title": "Giọng trong bản dịch",
+  "DubVoice_Gender": "Giới tính",
   "DubVoice_AnyGender": "Mọi giới tính",
   "DubVoice_Male": "Nam",
   "DubVoice_Female": "Nữ",
+  "DubVoice_Accent": "Giọng vùng",
   "DubVoice_AnyAccent": "Mọi giọng vùng",
   "DubVoice_Preview": "Nghe thử",
   "DubVoice_Unavailable": "Hiện không có giọng nào khả dụng",

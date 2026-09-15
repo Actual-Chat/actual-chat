@@ -163,9 +163,11 @@
   "TimeZone_Updated": "タイムゾーンが更新されました",
 
   "DubVoice_Title": "翻訳での声",
+  "DubVoice_Gender": "性別",
   "DubVoice_AnyGender": "性別を問わない",
   "DubVoice_Male": "男性",
   "DubVoice_Female": "女性",
+  "DubVoice_Accent": "アクセント",
   "DubVoice_AnyAccent": "アクセントを問わない",
   "DubVoice_Preview": "試聴",
   "DubVoice_Unavailable": "現在、声を利用できません",
