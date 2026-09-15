@@ -50,7 +50,7 @@ public sealed class OAuthModule(IServiceProvider moduleServices)
                     .SetRefreshTokenLifetime(Settings.RefreshTokenLifetime);
                 o.DisableAccessTokenEncryption();
                 o.UseReferenceRefreshTokens();
-                o.SetRefreshTokenReuseLeeway(TimeSpan.Zero);
+                o.SetRefreshTokenReuseLeeway(Settings.RefreshTokenReuseLeeway);
                 // The MCP endpoint is the only resource (registered below, once UrlMapper is resolvable),
                 // and every client gets it, so per-client rsrc: permissions would only duplicate that
                 o.IgnoreResourcePermissions();
