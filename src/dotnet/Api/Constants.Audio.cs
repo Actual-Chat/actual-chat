@@ -152,12 +152,13 @@ public static partial class Constants
         public static readonly TimeSpan DubSynthesizerDownDelay = TimeSpan.FromSeconds(60);
         // Audio already transcribed when a dub is requested beyond which the listener counts as late
         public static readonly TimeSpan DubBacklogThreshold = TimeSpan.FromSeconds(5);
-        // How long a caller waits for a replay dub before falling back to the original; the
-        // synthesis itself keeps running past this on its own budget, see ReplayDubSynthesisTimeout
+        // How long a caller waits for a replay dub to be stored or to start synthesizing before
+        // falling back to the original; the work keeps running past this, see ReplayDubSynthesisTimeout
         public static readonly TimeSpan ReplayDubTimeout = TimeSpan.FromSeconds(20);
-        // Upper bound on one entry's translation-wait + synthesis + upload + stamp, so a slow
-        // entry is eventually abandoned rather than held open until the host shuts down
-        public static readonly TimeSpan ReplayDubSynthesisTimeout = TimeSpan.FromMinutes(2);
+        // Upper bound on one entry's translation-wait + synthesis + upload + stamp, so a slow entry
+        // is eventually abandoned rather than held open until the host shuts down. Synthesis streams
+        // at roughly the pace it's spoken, so this must clear Chat.MaxEntryDuration with room to spare
+        public static readonly TimeSpan ReplayDubSynthesisTimeout = TimeSpan.FromMinutes(5);
         // Entries whose dubs are prepared while the current one streams
         public static readonly int ReplayDubLookahead = 2;
         // Caps concurrent Soniox REST syntheses; shares Soniox's 3-concurrent-stream quota with live dubbing

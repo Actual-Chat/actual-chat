@@ -21,25 +21,68 @@ public class ReplayDubsTest(
         var (chatId, _) = await Tester.CreateChat(false);
         var services = Tester.AppServices;
         var dubs = services.GetRequiredService<ReplayDubs>();
-        var translations = services.GetRequiredService<ITranslationsBackend>();
         var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
         var entry = await Tester.RecordVoiceEntry(chatId, Languages.Russian);
         var ct = CancellationToken.None;
 
         // act
         var first = await dubs.GetOrCreate(entry, Languages.English, ct);
+        var translation = await services.WhenReplayDubStored(TranslationId.New(entry.Id, Languages.English), ct);
         var second = await dubs.GetOrCreate(entry, Languages.English, ct);
 
         // assert
         first.Should().NotBeNull();
+        (first!.Stored ?? (object?)first.Live).Should().NotBeNull("the first caller gets the dub in some form");
         second.Should().NotBeNull();
-        second!.Id.Should().Be(first!.Id, "the dub is stored on the translation and reused");
-        var translation = await translations.Get(TranslationId.New(entry.Id, Languages.English), false, ct);
-        translation!.HasValidDub().Should().BeTrue();
-        translation.DubMediaId.Should().Be(first.Id);
+        second!.Live.Should().BeNull("the dub is stored by now");
+        second.Stored!.Id.Should().Be(translation.DubMediaId, "the dub is stored on the translation and reused");
         var spoken = recorder.GetChunks(
             RecordingSpeechSynthesizer.OneShotStreamId(Languages.English, translation.Content));
         spoken.Should().Equal([translation.Content], "synthesized once, from the stored translation");
+    }
+
+    [Fact(Timeout = 90_000)]
+    public async Task TheFirstRequestStreamsTheDubWhileItIsBeingStored()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var dubs = services.GetRequiredService<ReplayDubs>();
+        var translations = services.GetRequiredService<ITranslationsBackend>();
+        var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        var entry = await Tester.RecordVoiceEntry(chatId, Languages.Russian);
+        var ct = CancellationToken.None;
+        var id = TranslationId.New(entry.Id, Languages.English);
+        var gate = TaskCompletionSourceExt.New();
+        recorder.OneShotGate = _ => gate.Task;
+        try {
+            // act
+            var first = await dubs.GetOrCreate(entry, Languages.English, ct);
+
+            // assert
+            first.Should().NotBeNull();
+            first!.Stored.Should().BeNull("nothing can be stored while the synthesis is held");
+            first.Live.Should().NotBeNull("the caller gets the dub as it's being made");
+            var translation = await translations.Get(id, false, ct);
+            translation!.HasValidDub().Should().BeFalse();
+            var framesTask = first.Live!.GetFrames(ct).ToListAsync(ct).AsTask();
+            await Task.Delay(200, ct);
+            framesTask.IsCompleted.Should().BeFalse("the frames are held by the gate");
+            dubs.InFlightCount.Should().BeGreaterThanOrEqualTo(1, "the run stays in flight until the dub is stored");
+
+            gate.SetResult();
+            var frames = await framesTask.WaitAsync(TimeSpan.FromSeconds(10), ct);
+            frames.Should().NotBeEmpty("the live dub carries the synthesized frames once the gate opens");
+            translation = await services.WhenReplayDubStored(id, ct);
+            var second = await dubs.GetOrCreate(entry, Languages.English, ct);
+            second!.Live.Should().BeNull();
+            second.Stored!.Id.Should().Be(translation.DubMediaId, "a caller arriving after the store gets the media");
+        }
+        finally {
+            recorder.OneShotGate = null;
+            gate.TrySetResult();
+        }
     }
 
     [Fact(Timeout = 90_000)]
@@ -67,20 +110,23 @@ public class ReplayDubsTest(
         var commander = services.Commander();
         var entry = await Tester.RecordVoiceEntry(chatId, Languages.Russian);
         var ct = CancellationToken.None;
-        var first = await dubs.GetOrCreate(entry, Languages.English, ct);
         var id = TranslationId.New(entry.Id, Languages.English);
-        var translation = await services.GetRequiredService<ITranslationsBackend>().Get(id, false, ct);
-        var newContent = translation!.Content + " Again.";
+        await dubs.GetOrCreate(entry, Languages.English, ct);
+        var translation = await services.WhenReplayDubStored(id, ct);
+        var firstMediaId = translation.DubMediaId!;
+        var newContent = translation.Content + " Again.";
         var diff = new TranslationDiff { Content = newContent, SourceContentHash = translation.SourceContentHash };
         await commander.Call(new TranslationsBackend_Change(id, translation.Version, Change.Update(diff)));
 
         var second = await dubs.GetOrCreate(entry, Languages.English, ct);
+        translation = await services.WhenReplayDubStored(id, ct);
 
         second.Should().NotBeNull();
-        second!.Id.Should().NotBe(first!.Id, "the old dub spoke the old text");
+        second!.Stored.Should().BeNull("the old dub spoke the old text, so a new one is being made");
+        translation.DubMediaId.Should().NotBe(firstMediaId);
         var spoken = recorder.GetChunks(RecordingSpeechSynthesizer.OneShotStreamId(Languages.English, newContent));
         spoken.Should().Equal([newContent], "the new dub is synthesized from the re-translated content");
-        var oldMedia = await mediaBackend.Get(first.Id, ct);
+        var oldMedia = await mediaBackend.Get(firstMediaId, ct);
         oldMedia.Should().BeNull("the superseded dub's media must not linger once it's replaced");
     }
 

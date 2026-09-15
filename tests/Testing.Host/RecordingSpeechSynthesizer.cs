@@ -15,6 +15,10 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
 
     private FakeSpeechSynthesizer Inner { get; } = new(services);
 
+    // Test-only: while set, a one-shot synthesis holds its frames until the task returned for its
+    // text completes, so a test can observe a dub that's still being made
+    public Func<string, Task>? OneShotGate { get; set; }
+
     public IReadOnlyList<string> GetChunks(string streamId)
     {
         lock (_lock)
@@ -52,13 +56,23 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
         await recordTask.ConfigureAwait(false);
     }
 
-    public Task<AudioSource> Synthesize(
+    public async Task<AudioSource> Synthesize(
         string text,
         SpeechSynthesisOptions options,
         CancellationToken cancellationToken = default)
     {
         Record(OneShotStreamId(options.Language, text), text);
-        return Inner.Synthesize(text, options, cancellationToken);
+        var inner = await Inner.Synthesize(text, options, cancellationToken).ConfigureAwait(false);
+        if (OneShotGate is not { } gate)
+            return inner;
+
+        return new AudioSource(
+            inner.CreatedAt,
+            inner.Format,
+            GateFrames(gate.Invoke(text), inner, cancellationToken),
+            TimeSpan.Zero,
+            inner.Log,
+            cancellationToken);
     }
 
     public static string OneShotStreamId(Language language, string text)
@@ -86,6 +100,16 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
         finally {
             forwarded.TryComplete(error);
         }
+    }
+
+    private static async IAsyncEnumerable<AudioFrame> GateFrames(
+        Task gate,
+        AudioSource inner,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await foreach (var frame in inner.GetFrames(cancellationToken).ConfigureAwait(false))
+            yield return frame;
     }
 
     private void Record(string streamId, string chunk)

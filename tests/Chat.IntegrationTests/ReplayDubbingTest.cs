@@ -47,6 +47,48 @@ public class ReplayDubbingTest(
     }
 
     [Fact(Timeout = 90_000)]
+    public async Task AReplayStartedDuringTheSynthesisStreamsTheDub()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
+        var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        var entry = await Tester.RecordVoiceEntry(chatId, Languages.Russian);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var ct = cts.Token;
+        await services.UserSettingsUI(Tester.Session).UserLanguageSettings()
+            .Set(new UserLanguageSettings { Primary = Languages.English }, ct);
+        var gate = TaskCompletionSourceExt.New();
+        recorder.OneShotGate = _ => gate.Task;
+        try {
+            // act
+            var stream = await liveStreams.GetReplayStream(
+                Tester.Session, chatId, entry.BeginsAt, TimeSpan.Zero, 1.0, Languages.English, ct);
+            var itemsTask = stream.ToListAsync(ct).AsTask();
+            await Task.Delay(500, ct);
+            itemsTask.IsCompleted.Should().BeFalse("the replay waits for the dub's frames rather than giving up");
+            gate.SetResult();
+            var items = await itemsTask;
+
+            // assert
+            var start = items.OfType<MuxedAudioStreamStart>().Should().ContainSingle().Subject;
+            start.StreamInfo.DubLanguage.Should()
+                .Be(Languages.English, "the first replay streams the dub as it's made");
+            start.StreamInfo.EntryId.Should().Be(entry.Id);
+            items.OfType<MuxedAudioFrame>().Should().NotBeEmpty();
+            var translation = await services.WhenReplayDubStored(TranslationId.New(entry.Id, Languages.English), ct);
+            recorder.GetChunks(RecordingSpeechSynthesizer.OneShotStreamId(Languages.English, translation.Content))
+                .Should().Equal([translation.Content], "streamed and stored from one synthesis");
+        }
+        finally {
+            recorder.OneShotGate = null;
+            gate.TrySetResult();
+        }
+    }
+
+    [Fact(Timeout = 90_000)]
     public async Task AReplayWithoutADubLanguageIsUnchanged()
     {
         // arrange
@@ -85,9 +127,11 @@ public class ReplayDubbingTest(
         var ct = cts.Token;
         await services.UserSettingsUI(Tester.Session).UserLanguageSettings()
             .Set(new UserLanguageSettings { Primary = Languages.English }, ct);
+        await dubs.GetOrCreate(entry, Languages.English, ct);
+        await services.WhenReplayDubStored(TranslationId.New(entry.Id, Languages.English), ct);
         var dub = await dubs.GetOrCreate(entry, Languages.English, ct);
-        dub.Should().NotBeNull();
-        await blobStorages[BlobScope.AudioRecord].Delete(dub!.BlobId, ct);
+        dub!.Stored.Should().NotBeNull();
+        await blobStorages[BlobScope.AudioRecord].Delete(dub.Stored!.BlobId, ct);
 
         // act
         var stream = await liveStreams.GetReplayStream(

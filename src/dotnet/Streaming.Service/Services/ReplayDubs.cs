@@ -5,12 +5,15 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Streaming.Services;
 
+// One of the two is set: Stored once the dub exists as media, Live while it's being synthesized -
+// an AudioSource whose frames arrive as the synthesizer produces them
+public sealed record ReplayDub(ActualChat.Media.Media? Stored, AudioSource? Live);
+
 // A dub for replay is the stored translation of an entry spoken once and kept as media on that
 // translation; it's made the first time a listener needs it and reused until the translation changes
 public sealed class ReplayDubs(IServiceProvider services)
 {
-    private readonly ConcurrentDictionary<(ChatEntryId Id, Language Language), Task<ActualChat.Media.Media?>>
-        _inFlight = new();
+    private readonly ConcurrentDictionary<(ChatEntryId Id, Language Language), Task<ReplayDub?>> _inFlight = new();
     private readonly SemaphoreSlim _synthesisLimiter = new(Constants.Audio.ReplayDubMaxConcurrentSynthesis);
     private IServiceProvider Services { get; } = services;
     private IChatEntryLanguagesBackend EntryLanguages
@@ -22,18 +25,17 @@ public sealed class ReplayDubs(IServiceProvider services)
     private ICommander Commander => field ??= Services.Commander();
     private ILogger Log => field ??= Services.LogFor<ReplayDubs>();
 
-    public async Task<ActualChat.Media.Media?> GetOrCreate(
-        ChatEntry entry, Language language, CancellationToken cancellationToken)
+    public async Task<ReplayDub?> GetOrCreate(ChatEntry entry, Language language, CancellationToken cancellationToken)
     {
         var key = (entry.Id, language);
-        var source = TaskCompletionSourceExt.New<ActualChat.Media.Media?>();
-        var mediaTask = _inFlight.GetOrAdd(key, source.Task);
+        var source = TaskCompletionSourceExt.New<ReplayDub?>();
+        var dubTask = _inFlight.GetOrAdd(key, source.Task);
         // Only the winner of the race starts the work, and only after it's published in the map -
         // a synchronously-completing Run() can then never race its own removal out of the map
-        if (ReferenceEquals(mediaTask, source.Task))
+        if (ReferenceEquals(dubTask, source.Task))
             _ = Run();
         try {
-            return await mediaTask.WaitAsync(Constants.Audio.ReplayDubTimeout, cancellationToken)
+            return await dubTask.WaitAsync(Constants.Audio.ReplayDubTimeout, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (TimeoutException) {
@@ -43,29 +45,35 @@ public sealed class ReplayDubs(IServiceProvider services)
 
         async Task Run()
         {
-            ActualChat.Media.Media? result;
+            ReplayDub? result;
             // Independent of our own caller's token: a slow entry must keep synthesizing after
             // ReplayDubTimeout elapses above, bounded only by shutdown and ReplayDubSynthesisTimeout
             using var cts = Services.HostLifetime().CreateStopTokenSource();
             cts.CancelAfter(Constants.Audio.ReplayDubSynthesisTimeout);
             try {
-                result = await GetOrCreateImpl(entry, language, cts.Token).ConfigureAwait(false);
+                result = await GetOrCreateImpl(entry, language, source, cts.Token).ConfigureAwait(false);
             }
             catch (Exception e) when (e.IsCancellationOf(cts.Token)) {
-                Log.LogInformation("GetOrCreate: no {Language} dub for #{EntryId}, timed out, serving the original",
-                    language, entry.Id);
+                Log.LogInformation("GetOrCreate: {Language} dub for #{EntryId} timed out, {Outcome}",
+                    language, entry.Id, FailureOutcome());
                 result = null;
             }
             catch (Exception e) {
-                Log.LogWarning(e, "GetOrCreate: no {Language} dub for #{EntryId}, serving the original",
-                    language, entry.Id);
+                Log.LogWarning(e, "GetOrCreate: {Language} dub for #{EntryId} failed, {Outcome}",
+                    language, entry.Id, FailureOutcome());
                 result = null;
             }
-            // Only our own entry: a fresh one may already have taken the key
-            _inFlight.TryRemove(
-                new KeyValuePair<(ChatEntryId, Language), Task<ActualChat.Media.Media?>>(key, source.Task));
-            source.SetResult(result);
+            // Only our own entry, and only now: a Live result is handed out mid-way, but the entry
+            // stays until the dub is stored, so whoever finds no entry re-reads the stamped
+            // translation and gets Stored. A fresh entry may already have taken the key
+            _inFlight.TryRemove(new KeyValuePair<(ChatEntryId, Language), Task<ReplayDub?>>(key, source.Task));
+            source.TrySetResult(result);
         }
+
+        string FailureOutcome()
+            => source.Task.IsCompletedSuccessfully
+                ? "the dub streamed to its listeners won't be stored"
+                : "serving the original";
     }
 
     // Internal for tests
@@ -74,8 +82,11 @@ public sealed class ReplayDubs(IServiceProvider services)
 
     // Private methods
 
-    private async Task<ActualChat.Media.Media?> GetOrCreateImpl(
-        ChatEntry entry, Language language, CancellationToken cancellationToken)
+    private async Task<ReplayDub?> GetOrCreateImpl(
+        ChatEntry entry,
+        Language language,
+        TaskCompletionSource<ReplayDub?> liveResult,
+        CancellationToken cancellationToken)
     {
         if (entry.Audio is not { } audio || audio.BlobId.IsNullOrEmpty() || !entry.SupportsTranslation(false))
             return null;
@@ -90,7 +101,7 @@ public sealed class ReplayDubs(IServiceProvider services)
         if (translation.HasValidDub()) {
             var existing = await MediaBackend.Get(translation.DubMediaId, cancellationToken).ConfigureAwait(false);
             if (existing != null)
-                return existing;
+                return new ReplayDub(existing, null);
             // The media is gone; fall through and make it again
         }
 
@@ -105,6 +116,9 @@ public sealed class ReplayDubs(IServiceProvider services)
         try {
             synthesized = await Synthesizer.Synthesize(text, new SpeechSynthesisOptions(language), cancellationToken)
                 .ConfigureAwait(false);
+            // An AudioSource memoizes its frames, so every GetFrames replays them from the start:
+            // the waiting callers play the dub as it's spoken while the saver stores the same frames
+            liveResult.TrySetResult(new ReplayDub(null, synthesized));
             await Saver.SaveAndCreateMedia(synthesized, mediaId, blobId, cancellationToken).ConfigureAwait(false);
         }
         finally {
@@ -138,7 +152,8 @@ public sealed class ReplayDubs(IServiceProvider services)
             return null;
         }
 
-        return await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
+        var stored = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
+        return stored == null ? null : new ReplayDub(stored, null);
     }
 
     private async Task<bool> IsSpokenIn(ChatEntry entry, Language language, CancellationToken cancellationToken)
