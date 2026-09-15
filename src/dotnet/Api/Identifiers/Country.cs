@@ -15,7 +15,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<Country>))]
 [TypeConverter(typeof(StringLikeTypeConverter<Country>))]
 [ParameterComparer(typeof(ByRefParameterComparer))] // Fine for Country
-public sealed partial class Country : ObjectId, IObjectId<Country>
+public sealed partial class Country : ObjectId, IStringIdentifier<Country>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<Country>();

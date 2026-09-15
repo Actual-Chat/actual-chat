@@ -16,7 +16,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<SharedLocationId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<SharedLocationId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class SharedLocationId : ObjectId, IObjectId<SharedLocationId>
+public sealed partial class SharedLocationId : ObjectId, IStringIdentifier<SharedLocationId>
 {
     private static readonly ILruCache<string, SharedLocationId> Cache = CreateCache<SharedLocationId>(128);
     private static readonly RandomStringGenerator IdGenerator = new(10, Alphabet.AlphaNumeric);

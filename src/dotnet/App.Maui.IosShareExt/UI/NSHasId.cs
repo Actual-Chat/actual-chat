@@ -2,7 +2,7 @@ namespace ActualChat.App.Maui.IosShareExt.UI;
 
 public class NSHasId<T, TId>(T value) : NSObject
     where T : class?, IHasId<TId>?
-    where TId : ObjectId, IObjectId<TId>
+    where TId : StringIdentifier, IStringIdentifier<TId>
 {
     public T Value { get; } = value;
     public TId? Id => Value?.Id;

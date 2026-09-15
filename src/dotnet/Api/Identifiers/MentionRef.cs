@@ -17,7 +17,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<MentionRef>))]
 [TypeConverter(typeof(StringLikeTypeConverter<MentionRef>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class MentionRef : ObjectId, IObjectId<MentionRef>, IHasShardKey<string>
+public sealed partial class MentionRef : ObjectId, IStringIdentifier<MentionRef>, IHasShardKey<string>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<MentionRef>();

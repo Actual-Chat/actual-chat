@@ -8,29 +8,19 @@ namespace ActualChat;
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<TypedObjectId>))]
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<TypedObjectId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<TypedObjectId>))]
-public sealed class TypedObjectId : IObjectId<TypedObjectId>
+public sealed class TypedObjectId : StringIdentifier, IStringIdentifier<TypedObjectId>
 {
     private static readonly Lock Lock = new();
     private static readonly Dictionary<Type, string> Prefixes = new();
     private static readonly Dictionary<string, Func<string, ObjectId?>> Parsers = new();
 
-    [DataMember(Order = 0)]
-    public readonly string Value;
-    [IgnoreDataMember]
-    public readonly int HashCode;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public Symbol Id => new(Value, HashCode);
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ObjectId ObjectId { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public PartitionKey PartitionKey => ObjectId.PartitionKey;
-
-    string IHasId<string>.Id => Value;
-    string IStringLike.Value => Value;
-    int IObjectId.HashCode => HashCode;
+    public override PartitionKey PartitionKey => ObjectId.PartitionKey;
 
     public static void Register<TId>(string prefix)
-        where TId : ObjectId, IObjectId<TId>
+        where TId : ObjectId, IStringIdentifier<TId>
     {
         ArgumentException.ThrowIfNullOrEmpty(prefix);
         if (prefix.Any(c => c is not (>= 'a' and <= 'z' or >= '0' and <= '9' or '-')))
@@ -46,15 +36,8 @@ public sealed class TypedObjectId : IObjectId<TypedObjectId>
     }
 
     public TypedObjectId(ObjectId objectId)
-    {
-        ArgumentNullException.ThrowIfNull(objectId);
-        ObjectId = objectId;
-        Value = $"{GetPrefix(objectId.GetType())}:{objectId.Value}";
-        HashCode = Value.GetHashCode();
-    }
-
-    public override string ToString()
-        => Value;
+        : base(Format(objectId))
+        => ObjectId = objectId;
 
     public bool Equals(TypedObjectId? other)
         => other is not null && HashCode == other.HashCode && string.Equals(Value, other.Value);
@@ -103,6 +86,12 @@ public sealed class TypedObjectId : IObjectId<TypedObjectId>
     }
 
     // Private methods
+
+    private static string Format(ObjectId objectId)
+    {
+        ArgumentNullException.ThrowIfNull(objectId);
+        return $"{GetPrefix(objectId.GetType())}:{objectId.Value}";
+    }
 
     private static string GetPrefix(Type type)
     {

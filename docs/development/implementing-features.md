@@ -200,7 +200,7 @@ public readonly partial record struct ChatRouletteId : IStringId<ChatRouletteId>
 ```csharp
 // Roulette identifiers
 MemoryPackFormatterProvider.Register(
-    new ObjectIdMemoryPackFormatter<ChatRouletteId>());
+    new StringLikeMemoryPackFormatter<ChatRouletteId>());
 ```
 
 ---

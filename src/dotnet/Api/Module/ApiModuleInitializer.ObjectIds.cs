@@ -15,7 +15,6 @@ public static partial class ApiModuleInitializer
         TypedObjectId.Register<AliasId>("alias");
         TypedObjectId.Register<ContactId>("contact");
         TypedObjectId.Register<ConversationId>("conversation");
-        TypedObjectId.Register<ContentId>("content");
         TypedObjectId.Register<Country>("country");
         TypedObjectId.Register<Email>("email");
         TypedObjectId.Register<Emoji>("emoji");

@@ -8,7 +8,8 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 ## Core (`ActualChat.Core`)
 
 ### Identifiers
-- `ObjectId` — base for object identifiers (UserId, ChatId, etc.), with cached typed IDs and partition keys
+- `StringIdentifier` / `IStringIdentifier<T>` — shared string ID, cached hash, parsing, and partition behavior
+- `ObjectId` — domain identifier base extending `StringIdentifier` with a cached `TypedId`
 - `TypedObjectId` — type-prefixed reference retaining its original object ID
 - `PartitionKey` — 24-bit stable routing key with hexadecimal prefix and slice formatting
 - `ISymbolIdentifier<T>` / `SymbolIdentifier` — Symbol-based identifier contract and parsing helpers

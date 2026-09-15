@@ -211,7 +211,7 @@ exists. Fix as part of this work.
 - **Composite identifier pattern** — `PrincipalId` + `PrincipalKind`
   (`Api/Identifiers/PrincipalId.cs:18`, `PrincipalKind.cs`) and `AuthorId`
   (`AuthorId.cs:18`) are the template for `TranscriberId`: `ObjectId`
-  base, `IObjectId<T>` `Format`/`Parse`, the
+  base, `IStringIdentifier<T>` `Format`/`Parse`, the
   `StringLike{Json,NewtonsoftJson,MessagePack,TypeConverter}` attribute set,
   `ParameterComparer(ByValueParameterComparer)`, and `ILruCache<string, T>`
   interning.
@@ -275,7 +275,7 @@ enlists, so the id has to carry a source discriminator alongside a value.
 Format: `<source>:<value>`, following the existing `PrincipalId` /
 `PrincipalKind` pattern (`Api/Identifiers/PrincipalId.cs:18`,
 `Api/Identifiers/AuthorId.cs:18`) — a `ObjectId` with a `Kind` parsed
-out of the prefix, `IObjectId<T>` for `Format`/`Parse`, the
+out of the prefix, `IStringIdentifier<T>` for `Format`/`Parse`, the
 `StringLike{Json,MessagePack,TypeConverter}` attribute set, and the
 `ILruCache<string, T>` interning those files use.
 
@@ -288,7 +288,7 @@ u:<transcriberKeyId>
 ```csharp
 public enum TranscriberSource { Builtin = 0, User }
 
-public sealed partial class TranscriberId : ObjectId, IObjectId<TranscriberId>
+public sealed partial class TranscriberId : ObjectId, IStringIdentifier<TranscriberId>
 {
     public TranscriberSource Source { get; }
     public Symbol Key { get; }   // "soniox" — or the enlisted key's id

@@ -2,12 +2,12 @@ namespace ActualChat.App.Maui.IosShareExt.UI;
 
 public static class NSId
 {
-    public static NSId<TId> New<TId>(TId id) where TId : ObjectId, IObjectId<TId>
+    public static NSId<TId> New<TId>(TId id) where TId : StringIdentifier, IStringIdentifier<TId>
         => new(id);
 }
 
 public class NSId<TId>(TId id) : NSObject
-    where TId : ObjectId, IObjectId<TId>
+    where TId : StringIdentifier, IStringIdentifier<TId>
 {
     public TId Id { get; } = id;
 

@@ -15,7 +15,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<PeerChatId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<PeerChatId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class PeerChatId : ChatId, IObjectId<PeerChatId>
+public sealed partial class PeerChatId : ChatId, IStringIdentifier<PeerChatId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<PeerChatId>();

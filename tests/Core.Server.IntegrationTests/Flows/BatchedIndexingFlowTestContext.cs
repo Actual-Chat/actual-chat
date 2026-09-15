@@ -5,7 +5,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
 public sealed class BatchedIndexingFlowTestContext<TItem, TId> : IndexingFlowContextBase<IReadOnlyList<TItem>>
     where TItem : IHasVersion<long>, IHasId<TId>
-    where TId : ObjectId, IObjectId<TId>
+    where TId : StringIdentifier, IStringIdentifier<TId>
 {
     private TItem? _last;
 

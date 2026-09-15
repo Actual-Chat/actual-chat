@@ -10,13 +10,10 @@ public class ContentLinksBackend(IServiceProvider services) : IContentLinksBacke
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
 
-    public virtual async Task<ContentLinkInfo> GetContentInfo(ContentId contentId, CancellationToken cancellationToken)
+    public virtual async Task<ContentLinkInfo> GetContentInfo(TypedObjectId contentId, CancellationToken cancellationToken)
     {
-        var kind = contentId.Kind;
-        var id = contentId.TargetId;
-        switch (kind) {
-            case ContentKind.User: {
-                var userId = (UserId)id;
+        switch (contentId.ObjectId) {
+            case UserId userId: {
                 var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
                 if (account is null)
                     return ContentLinkInfo.RemovedOrUnknown(contentId);
@@ -27,8 +24,7 @@ public class ContentLinksBackend(IServiceProvider services) : IContentLinksBacke
                     account.Avatar.Picture,
                     account.Avatar.Bio);
             }
-            case ContentKind.Chat: {
-                var chatId = (ChatId)id;
+            case ChatId chatId: {
                 var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
                 if (chat is null)
                     return ContentLinkInfo.RemovedOrUnknown(contentId);
@@ -45,8 +41,7 @@ public class ContentLinksBackend(IServiceProvider services) : IContentLinksBacke
                     chat.Picture.ToPicture(),
                     chat.Description);
             }
-            case ContentKind.ChatEntry: {
-                var chatEntryId = (ChatEntryId)id;
+            case ChatEntryId chatEntryId: {
                 var textEntry = await ChatsBackend.GetEntry(chatEntryId, cancellationToken).ConfigureAwait(false);
                 if (textEntry is null)
                     return ContentLinkInfo.RemovedOrUnknown(contentId);
@@ -59,7 +54,7 @@ public class ContentLinksBackend(IServiceProvider services) : IContentLinksBacke
                     .ConfigureAwait(false);
 
                 var title = author?.Avatar.Name ?? "Unknown";
-                var chatInfo = await GetContentInfo(ContentId.New(chatId), cancellationToken).ConfigureAwait(false);
+                var chatInfo = await GetContentInfo(chatId.TypedId, cancellationToken).ConfigureAwait(false);
                 title += " in " + chatInfo.Title;
                 var text = await GetText(textEntry, cancellationToken).ConfigureAwait(false);
                 return new ContentLinkInfo(
@@ -68,9 +63,9 @@ public class ContentLinksBackend(IServiceProvider services) : IContentLinksBacke
                     chatInfo.Picture,
                     text);
             }
-            case ContentKind.Author: {
-                var authorId = (AuthorId)id;
-                var author = await AuthorsBackend.Get(authorId.ChatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
+            case AuthorId authorId: {
+                var author = await AuthorsBackend.Get(authorId.ChatId, authorId, RequestedAuthorKind.Full, cancellationToken)
+                    .ConfigureAwait(false);
                 if (author is null)
                     return ContentLinkInfo.RemovedOrUnknown(contentId);
 
@@ -80,8 +75,7 @@ public class ContentLinksBackend(IServiceProvider services) : IContentLinksBacke
                     author.Avatar.Picture,
                     author.Avatar.Bio);
             }
-            case ContentKind.Place: {
-                var placeId = (PlaceId)id;
+            case PlaceId placeId: {
                 var place = await PlacesBackend.Get(placeId, cancellationToken).ConfigureAwait(false);
                 if (place is null)
                     return ContentLinkInfo.RemovedOrUnknown(contentId);
@@ -93,9 +87,11 @@ public class ContentLinksBackend(IServiceProvider services) : IContentLinksBacke
                     place.Description);
             }
             default:
-                throw StandardError.NotSupported(kind.ToString(), "Invalid content id kind.");
+                throw StandardError.NotSupported(contentId.ObjectId.GetType().GetName(), "Unsupported content link type.");
         }
     }
+
+    // Private methods
 
     private async ValueTask<string> GetText(ChatEntry entry, CancellationToken cancellationToken)
     {

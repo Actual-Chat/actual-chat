@@ -153,7 +153,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `IServerSettings` - Server settings interface.
 - `IThreadSafeLruCache<TKey, TValue>` - Thread-safe LRU cache interface.
 - `LongAsStringKeyComparer` - Comparer for long keys as strings.
-- `ObjectId` (abstract class) - Base for object identifiers with cached typed IDs and partition keys.
+- `StringIdentifier` / `IStringIdentifier<T>` - Shared string ID, cached hash, parsing, and partition behavior.
+- `ObjectId` (abstract class) - Domain identifier base extending `StringIdentifier` with a cached typed ID.
 - `TypedObjectId` (sealed class) - Type-prefixed reference retaining its original object ID.
 - `PartitionKey` (readonly record struct) - 24-bit stable routing key with hexadecimal slice support.
 - `ISymbolIdentifier<T>` / `SymbolIdentifier` - Symbol-based identifier contract and parsing helpers.

@@ -72,7 +72,7 @@ public static class ShardKeyResolvers
         Register<MediaId>(static x => ForString(x.Value));
         Register<TranslationId>(static x => ForString(x.SourceId.ChatId.Value));
         Register<TranslationSourceId>(static x => ForString(x.ChatId.Value));
-        Register<ContentId>(static x => ForString(x.TargetId.Value));
+        Register<TypedObjectId>(static x => ForString(x.ObjectId.Value));
         Register<UserDeviceId>(static x => ForString(x.OwnerId.Value));
         Register<StreamId>(static x => ForString(x.Value)); // Used as a shard key in TranslationsBackend_TranslateStream
         Register<UserIdentity>(static x => ForString(x.Id));

@@ -21,7 +21,7 @@ public static class StableHash
         Register<ulong>(x => unchecked((int)x));
         Register<string?>(HashString);
         Register<Symbol>(value => HashString(value.Value));
-        Register<IObjectId?>(value => value is null ? 0 : HashString(value.Value));
+        Register<IStringIdentifier?>(value => value is null ? 0 : HashString(value.Value));
         Register<IHasId<string>?>(value => value is null ? 0 : HashString(value.Id));
         Register<IHasId<Symbol>?>(value => value is null ? 0 : HashString(value.Id.Value));
         Register<Session?>(value => value is null ? 0 : HashString(value.Id));
@@ -35,7 +35,7 @@ public static class StableHash
             .Or<ulong>(x => unchecked((int)x))
             .Or<string?>(HashString)
             .Or<Symbol>(value => HashString(value.Value))
-            .Or<IObjectId?>(value => value is null ? 0 : HashString(value.Value))
+            .Or<IStringIdentifier?>(value => value is null ? 0 : HashString(value.Value))
             .Or(type => {
                 if (!type.IsValueType)
                     return null;

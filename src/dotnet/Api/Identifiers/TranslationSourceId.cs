@@ -16,7 +16,7 @@ namespace ActualChat;
 [TypeConverter(typeof(StringLikeTypeConverter<TranslationSourceId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 
-public partial class TranslationSourceId  : ObjectId, IObjectId<TranslationSourceId>
+public partial class TranslationSourceId  : ObjectId, IStringIdentifier<TranslationSourceId>
 {
     private static readonly ILruCache<string, TranslationSourceId> Cache = CreateCache<TranslationSourceId>(256);
 

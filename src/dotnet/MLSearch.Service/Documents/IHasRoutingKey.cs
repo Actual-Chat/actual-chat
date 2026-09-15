@@ -1,7 +1,7 @@
 namespace ActualChat.MLSearch.Documents;
 
 internal interface IHasRoutingKey<in TId>
-    where TId : ObjectId
+    where TId : StringIdentifier
 {
     static virtual string GetRoutingKey(TId id) => id.Value;
 }

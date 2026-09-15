@@ -353,7 +353,7 @@ would break connections silently. Plan:
 
 ### Existing abstractions to reuse
 
-- `ObjectId` / `IObjectId<T>` + per-type LRU parse caches —
+- `ObjectId` / `IStringIdentifier<T>` + per-type LRU parse caches —
   extended, not replaced, for qualified IDs
   (`src/dotnet/Core/Identifiers/ObjectId.cs`).
 - `RandomStringGenerator` + per-type `IdGenerator` statics — ID generation,

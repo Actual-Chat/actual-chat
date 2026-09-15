@@ -3,7 +3,7 @@ using MessagePack.Formatters;
 namespace ActualChat.Hosting.Internal;
 
 // Serializes HostRole as a plain MessagePack string — same wire shape as a
-// ObjectId/SymbolIdentifier formatter, just for a type that doesn't
+// StringIdentifier/SymbolIdentifier formatter, just for a type that doesn't
 // implement ISymbolIdentifier.
 public sealed class HostRoleMessagePackFormatter : IMessagePackFormatter<HostRole>
 {

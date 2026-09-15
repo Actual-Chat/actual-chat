@@ -10,7 +10,7 @@ namespace ActualChat.UI.Blazor.App.Components;
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<ChatMessageKey>))]
 [TypeConverter(typeof(StringLikeTypeConverter<ChatMessageKey>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public partial class ChatMessageKey : ObjectId, IObjectId<ChatMessageKey>
+public partial class ChatMessageKey : StringIdentifier, IStringIdentifier<ChatMessageKey>
 {
     private static readonly Dictionary<ChatMessageKind, string> SuffixByKind = new () {
         [ChatMessageKind.DateLine] = "-date-line",

@@ -7,7 +7,7 @@ namespace ActualChat.Flows;
 // with built-in batch enumeration and quota management.
 public abstract class BatchedIndexingFlow<TItem, TId> : IndexingFlow<IndexingFlowCursor<TId>>
     where TItem : class, IHasId<TId>, IHasVersion<long>
-    where TId : ObjectId
+    where TId : StringIdentifier
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     protected virtual int BatchSize => 100;

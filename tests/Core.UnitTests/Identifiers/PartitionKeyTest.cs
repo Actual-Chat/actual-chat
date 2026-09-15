@@ -89,8 +89,8 @@ public class PartitionKeyTest(ITestOutputHelper @out) : TestBase(@out)
         userId.TypedId.PartitionKey.Should().Be(key);
         nodeRef.PartitionKey.Should().Be(key);
         ((ISymbolIdentifier)nodeRef).PartitionKey.Should().Be(key);
-        ((IObjectId)userId).PartitionKey.Should().Be(key);
-        ((IObjectId)userId.TypedId).PartitionKey.Should().Be(key);
+        ((IStringIdentifier)userId).PartitionKey.Should().Be(key);
+        ((IStringIdentifier)userId.TypedId).PartitionKey.Should().Be(key);
     }
 
     [Fact]

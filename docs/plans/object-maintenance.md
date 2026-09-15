@@ -18,10 +18,13 @@ ownership.
 
 ## Identifier foundation
 
-- Rename `StringIdentifier` and its interfaces to `ObjectId` and `IObjectId`.
+- `StringIdentifier` and `IStringIdentifier<T>` hold the shared string value,
+  cached hash, parsing, comparison, and partition behavior.
+- `ObjectId : StringIdentifier` is the base for domain IDs that have a typed pair.
   Existing concrete identifier strings, equality, and serializer formats stay stable.
-- `TypedObjectId` is a separate class implementing `IObjectId<TypedObjectId>`.
-  It exposes `Value`, `Id`, `HashCode`, and the original `ObjectId`.
+- `TypedObjectId : StringIdentifier` retains its original `ObjectId`. It is not
+  an `ObjectId` subclass. The UI-only `ChatMessageKey` also inherits directly
+  from `StringIdentifier`, without requiring a typed prefix registration.
 - `ObjectId.TypedId` lazily creates its wrapper with `field ??=`.
 - Typed values use `prefix:objectValue`, such as `u:abcdef` or `c:abcdef`.
   Prefixes and parsers are registered explicitly by the module that owns the IDs.
@@ -38,6 +41,22 @@ ownership.
   The struct does not remember a slice's length.
 - The 24-bit value is a routing key, not a unique identifier. Existing mesh routing
   for other entities is unchanged.
+
+## Content link migration
+
+Replace `ContentId` and its `ContentKind` enum with `TypedObjectId`.
+`ContentLinksBackend` dispatches on the underlying object ID type and supports
+only users, chats, chat entries, authors, and places. Other types fail explicitly.
+
+The old type appears only in backend RPC and server-side OpenGraph metadata.
+`RootServerPage` renders the title, description, and picture, and does not ship
+the identifier to clients. Therefore the replacement uses the standard
+`prefix:objectValue` format in every serializer; it needs no legacy type or API
+method variants. Backend nodes must use the updated contract together.
+
+Preserve content-link shard routing by hashing the underlying raw ID value.
+Do not substitute the typed prefix or a type-specific resolver such as an author's
+chat ID.
 
 ## Reactive maintenance reads
 
@@ -87,7 +106,7 @@ quiesce before destructive work proceeds.
   `StringLikeNewtonsoftJsonConverter<T>`, `StringLikeMessagePackFormatter<T>`,
   and `StringLikeTypeConverter<T>` for identifier serialization.
 - `GetXxHash3` from ActualLab.Core for deterministic partition hashing.
-- Existing identifier parse caches and `ObjectIdTestBase<T>` serializer tests.
+- Existing identifier parse caches and `StringIdentifierTestBase<T>` / `ObjectIdTestBase<T>` tests.
 - `ShardScheme`, `ShardKey`, mesh ownership, and the Users backend hosting role.
 - Fusion compute-method consolidation and value equality.
 - `DbServiceBase<UsersDbContext>`, operation events, `FlowHub`,
@@ -99,7 +118,7 @@ prefixes and parsers. They do not fit typed-ID registration. The existing
 
 ### Reusability of new components
 
-`ObjectId`, `TypedObjectId`, and `PartitionKey` apply beyond maintenance.
+`StringIdentifier`, `ObjectId`, `TypedObjectId`, and `PartitionKey` apply beyond maintenance.
 Put them in Core, rather than Users or Chat. Prefix registrations remain in the
 module that owns each concrete identifier.
 

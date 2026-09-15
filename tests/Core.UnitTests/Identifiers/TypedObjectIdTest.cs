@@ -1,7 +1,13 @@
 namespace ActualChat.Core.UnitTests.Identifiers;
 
-public class TypedObjectIdTest(ITestOutputHelper @out) : TestBase(@out)
+public class TypedObjectIdTest(ITestOutputHelper @out) : StringIdentifierTestBase<TypedObjectId>(@out)
 {
+    public override string[] ValidIdentifiers
+        => ["u:abcdef", "c:abcdef", "ce:abcdef:0:1", "a:abcdef:1", "p:abcdefghij", "transcriber:"];
+
+    public override string[] InvalidIdentifiers
+        => ["", "abcdef", ":abcdef", "u:", "u:!", "unknown:abcdef"];
+
     [Fact]
     public void TypedIdShouldRememberItsObjectIdAndBeCached()
     {
