@@ -14,5 +14,6 @@ public sealed class OAuthSettings
     public TimeSpan RefreshTokenLifetime { get; set; } = TimeSpan.FromDays(90);
     public TimeSpan DcrPruneAge { get; set; } = TimeSpan.FromHours(24);
     public TimeSpan CimdCacheAge { get; set; } = TimeSpan.FromHours(24);
+    // Lets a client-metadata document URL (CIMD) be plain http; never affects redirect-URI validation.
     public bool AllowInsecureClientMetadata { get; set; }
 }

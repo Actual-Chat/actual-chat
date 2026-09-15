@@ -1,5 +1,4 @@
 using ActualChat.AspNetCore;
-using ActualChat.OAuth.Module;
 using ActualChat.Resilience;
 using ActualLab.Generators;
 using Microsoft.AspNetCore.Http;
@@ -15,7 +14,6 @@ public sealed class OAuthRegistrationController(IServiceProvider services) : Con
     private IOpenIddictApplicationManager Applications { get; }
         = services.GetRequiredService<IOpenIddictApplicationManager>();
 
-    private OAuthSettings Settings { get; } = services.GetRequiredService<OAuthSettings>();
     private ILogger Log { get; } = services.LogFor<OAuthRegistrationController>();
 
     [HttpPost("/oauth/" + OAuthConstants.RegisterRoute)]
@@ -23,10 +21,9 @@ public sealed class OAuthRegistrationController(IServiceProvider services) : Con
     public async Task<ActionResult> Register(
         [FromBody] RegistrationRequest request, CancellationToken cancellationToken)
     {
-        var allowInsecure = Settings.AllowInsecureClientMetadata;
         if (request.RedirectUris is not { Length: > 0 })
             return Error("invalid_redirect_uri", "redirect_uris is required.");
-        if (request.RedirectUris.Any(u => !OAuthApplications.IsValidRedirectUri(u, allowInsecure)))
+        if (request.RedirectUris.Any(u => !OAuthApplications.IsValidRedirectUri(u)))
             return Error("invalid_redirect_uri",
                 "Redirect URIs must be https, or http loopback, and carry no fragment.");
 

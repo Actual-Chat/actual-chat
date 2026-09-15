@@ -7,14 +7,12 @@ public static class OAuthApplications
 {
     public static readonly string[] AllowedGrantTypes = [GrantTypes.AuthorizationCode, GrantTypes.RefreshToken];
 
-    public static bool IsValidRedirectUri(string value, bool allowInsecure)
+    public static bool IsValidRedirectUri(string value)
     {
         if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || !uri.Fragment.IsNullOrEmpty())
             return false;
 
-        return uri.Scheme == Uri.UriSchemeHttps
-            || IsLoopback(uri)
-            || (allowInsecure && uri.Scheme == Uri.UriSchemeHttp);
+        return uri.Scheme == Uri.UriSchemeHttps || IsLoopback(uri);
     }
 
     public static bool IsLoopback(Uri uri)

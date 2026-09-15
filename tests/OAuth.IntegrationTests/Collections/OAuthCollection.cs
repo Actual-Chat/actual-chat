@@ -9,6 +9,7 @@ public class OAuthCollection : ICollectionFixture<OAuthCollection.AppHostFixture
     public class AppHostFixture(IMessageSink messageSink)
         : ActualChat.Testing.Host.AppHostFixture("oauth", messageSink, TestAppHostOptions.Default with {
             ConfigureHost = (_, cfg) => cfg.AddInMemory<OAuthSettings>(
-                (x => x.AccessTokenLifetime, "00:00:03")),
+                (x => x.AccessTokenLifetime, "00:00:03"),
+                (x => x.AllowInsecureClientMetadata, "true")),
         });
 }
