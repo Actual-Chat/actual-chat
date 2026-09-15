@@ -577,6 +577,11 @@ public class NotificationsBackend(IServiceProvider services)
             .Get(chatId, caller, RequestedAuthorKind.Full, cancellationToken)
             .ConfigureAwait(false);
         var iconUrl = callerAuthor is null ? "" : NotificationHelper.GetIconUrl(chat, callerAuthor, UrlMapper);
+        // Headlined by the caller, as a message banner is by its author: a peer chat has no title
+        // of its own on the backend, and CallKit puts this name on the ring screen verbatim.
+        var (senderName, groupTitle) = callerAuthor is null
+            ? ("", chat.Title)
+            : NotificationHelper.GetTitleParts(chat, callerAuthor);
         var now = Clocks.CoarseSystemClock.Now;
         // Unlike a conversation notification, the ring targets the invitees themselves - and it's
         // the one path a person waits on, so nothing here resolves one invitee at a time.
@@ -586,13 +591,14 @@ public class NotificationsBackend(IServiceProvider services)
 
         var localizers = await GetLocalizers(inviteeUserIds, cancellationToken).ConfigureAwait(false);
         var textByUserId = ComposeContentByUserId(localizers, new IncomingCallNotificationContent(hasVideo));
-        var titleByUserId = ComposeTitleByUserId(localizers, chat);
+        var groupTitleByUserId = ComposeTitleByUserId(localizers, chat);
 
         foreach (var inviteeUserId in inviteeUserIds) {
-            var title = titleByUserId?[inviteeUserId] ?? chat.Title;
+            var userGroupTitle = groupTitleByUserId?[inviteeUserId] ?? groupTitle;
+            var title = NotificationHelper.GetTitle(NotificationKind.IncomingCall, senderName, userGroupTitle);
             var notification = CallNotification.New(inviteeUserId, conversationId, caller, hasVideo) with {
                 Title = title,
-                SenderName = title,
+                SenderName = senderName,
                 Text = textByUserId[inviteeUserId],
                 IconUrl = iconUrl,
                 SentAt = now,
@@ -1326,7 +1332,7 @@ public class NotificationsBackend(IServiceProvider services)
                 .SendCallRing(
                     conversationId,
                     notification.AuthorId.Require(),
-                    notification.SenderName,
+                    notification.Title,
                     notification.HasVideo,
                     voipDeviceIds,
                     cancellationToken)

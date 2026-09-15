@@ -36,6 +36,7 @@ public class CallRingPushTest(AppHostFixture fixture, ITestOutputHelper @out)
         var ring = ApnsSink.CallRings.Should()
             .ContainSingle(r => r.DeviceIds.Contains(voipDeviceId)).Subject;
         ring.Caller.Should().Be(bobAuthor.Id);
+        ring.CallerName.Should().Be($"{bobAuthor.Avatar.Name} @ Call ring - voip");
         ring.ConversationId.ChatId.Should().Be(chatId);
         ring.HasVideo.Should().BeFalse();
 
@@ -97,6 +98,32 @@ public class CallRingPushTest(AppHostFixture fixture, ITestOutputHelper @out)
         finally {
             ApnsSink.MustFailCallRings = false;
         }
+    }
+
+    [Fact]
+    public async Task PeerCallRingsWithTheCallerName()
+    {
+        // arrange: a peer chat has no title of its own, so a ring headlined by the chat had no name.
+        var alice = await Tester.SignInAsAlice();
+        var bob = await Tester.SignInAsBob();
+        var chatId = PeerChatId.New(alice.Id, bob.Id);
+        // The peer chat exists on the backend only once something has been posted to it.
+        await Tester.CreateTextEntry(chatId, "Hello peer!");
+        var bobAuthor = await Authors.EnsureJoined(Tester.Session, chatId, CancellationToken.None);
+        var voipDeviceId = await RegisterDevice(alice.Id, DeviceType.iOSVoipApp, "call-session-peer");
+        await Tester.SignIn(alice);
+        var aliceAuthor = await Authors.EnsureJoined(Tester.Session, chatId, CancellationToken.None);
+        ApnsSink.Clear();
+
+        // act
+        await Commander.Call(new NotificationsBackend_NotifyCall(
+            ConversationId.New(chatId, 1), bobAuthor.Id, [aliceAuthor.Id], false));
+
+        // assert
+        await WaitFor(() => ApnsSink.CallRings.Any(r => r.DeviceIds.Contains(voipDeviceId)), RingTimeout);
+        var ring = ApnsSink.CallRings.Should()
+            .ContainSingle(r => r.DeviceIds.Contains(voipDeviceId)).Subject;
+        ring.CallerName.Should().Be(bobAuthor.Avatar.Name);
     }
 
     [Fact]
