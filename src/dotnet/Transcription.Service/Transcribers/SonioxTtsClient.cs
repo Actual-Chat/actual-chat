@@ -22,6 +22,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
     private const string PcmFormat = "pcm_s16le";
     private const int SampleRate = 48_000;
     private const int MaxTextLength = 5000;
+    private const int ReadBufferSize = 32 * 1024;
     private static readonly JsonSerializerOptions JsonOptions = new() {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
@@ -80,24 +81,8 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         try {
             using var httpClient = HttpClientFactory.CreateClient(HttpClientName);
             httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-            foreach (var part in SplitText(text, MaxTextLength)) {
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                cts.CancelAfter(TtsChunkTimeout);
-                using var response = await httpClient.PostAsJsonAsync(RestUrl, new {
-                    model = Model,
-                    language,
-                    voice,
-                    audio_format = PcmFormat,
-                    sample_rate = SampleRate,
-                    text = part,
-                }, JsonOptions, cts.Token).ConfigureAwait(false);
-                if (!response.IsSuccessStatusCode) {
-                    var body = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
-                    throw StandardError.External($"Soniox TTS returned {(int)response.StatusCode}: {body}");
-                }
-                var bytes = await response.Content.ReadAsByteArrayAsync(cts.Token).ConfigureAwait(false);
-                await pcm.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
-            }
+            foreach (var part in SplitText(text, MaxTextLength))
+                await GeneratePart(httpClient, language, voice, part, pcm, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {
             error = e;
@@ -163,6 +148,52 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
             throw StandardError.External($"Soniox TTS chunk #{streamId} did not finish within {TtsChunkTimeout}.");
+        }
+    }
+
+    private static async Task GeneratePart(
+        HttpClient httpClient,
+        string language,
+        string voice,
+        string part,
+        ChannelWriter<byte[]> pcm,
+        CancellationToken cancellationToken)
+    {
+        // Soniox streams the PCM back at about the pace it's spoken, so TtsChunkTimeout bounds the
+        // wait for the next piece of the body rather than the whole request
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(TtsChunkTimeout);
+        try {
+            using var request = new HttpRequestMessage(HttpMethod.Post, RestUrl) {
+                Content = JsonContent.Create(new {
+                    model = Model,
+                    language,
+                    voice,
+                    audio_format = PcmFormat,
+                    sample_rate = SampleRate,
+                    text = part,
+                }, options: JsonOptions),
+            };
+            using var response = await httpClient
+                .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token)
+                .ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode) {
+                var body = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
+                throw StandardError.External($"Soniox TTS returned {(int)response.StatusCode}: {body}");
+            }
+            await using var stream = await response.Content.ReadAsStreamAsync(cts.Token).ConfigureAwait(false);
+            var buffer = new byte[ReadBufferSize];
+            while (true) {
+                var count = await stream.ReadAsync(buffer, cts.Token).ConfigureAwait(false);
+                if (count == 0)
+                    break;
+
+                cts.CancelAfter(TtsChunkTimeout);
+                await pcm.WriteAsync(buffer[..count], cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+            throw StandardError.External($"Soniox TTS sent no audio for {TtsChunkTimeout}.");
         }
     }
 

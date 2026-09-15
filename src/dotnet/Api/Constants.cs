@@ -288,8 +288,9 @@ public static partial class Constants
             // is needed to flush the tail - and padding is billed as stream time.
             public static readonly TimeSpan SilentPrefixDuration = TimeSpan.Zero;
             public static readonly TimeSpan SilentSuffixDuration = TimeSpan.Zero;
-            // TTS: connect + synthesis of one chunk must finish within this window, or the chunk
-            // is treated as an error rather than left to hang.
+            // TTS: connect + synthesis of one live chunk must finish within this window; for the
+            // streamed one-shot REST call it's how long the next piece of audio may take to arrive.
+            // Either way exceeding it is an error rather than a hang.
             public static readonly TimeSpan TtsChunkTimeout = TimeSpan.FromSeconds(30);
         }
 
