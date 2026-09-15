@@ -18,6 +18,9 @@ public sealed class OAuthModule(IServiceProvider moduleServices)
         if (!IsEnabled)
             return;
 
+        var rpcHost = services.AddRpcHost(HostInfo);
+        rpcHost.AddApi<IOAuthGrants, OAuthGrants>();
+
         var route = Settings.Route.TrimEnd('/');
         var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<OAuthDbContext>(services);
