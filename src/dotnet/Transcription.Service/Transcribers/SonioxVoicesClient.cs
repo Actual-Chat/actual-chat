@@ -1,12 +1,13 @@
 using System.Net;
 using System.Net.Http.Headers;
-using ActualChat.Module;
 
 namespace ActualChat.Transcription;
 
-// Soniox voice-cloning REST API: create/get/list/delete. The only ISonioxVoices implementation;
-// used by VoicePool (Streaming.Service) through that interface.
-public sealed class SonioxVoicesClient(IServiceProvider services) : ISonioxVoices
+/// <summary>
+/// Soniox voice-cloning REST API: create/get/list/delete. The only <see cref="ISonioxVoices"/>
+/// implementation; used by VoicePool (Streaming.Service) through that interface.
+/// </summary>
+public sealed class SonioxVoicesClient(SonioxClient sonioxClient) : ISonioxVoices
 {
     private const string BaseUrl = "https://api.soniox.com/v1/voices";
     private const string ReadyStatus = "ready";
@@ -16,12 +17,11 @@ public sealed class SonioxVoicesClient(IServiceProvider services) : ISonioxVoice
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    private CoreServerSettings CoreServerSettings { get; } = services.GetRequiredService<CoreServerSettings>();
-    private IHttpClientFactory HttpClientFactory { get; } = services.HttpClientFactory();
+    private SonioxClient Client { get; } = sonioxClient;
 
     public async Task<SonioxVoice> Create(string name, Stream wav, CancellationToken cancellationToken)
     {
-        using var httpClient = CreateHttpClient();
+        using var httpClient = Client.CreateHttpClient();
         using var content = new MultipartFormDataContent();
         using var fileContent = new StreamContent(wav);
         fileContent.Headers.ContentType = new MediaTypeHeaderValue("audio/wav");
@@ -29,7 +29,7 @@ public sealed class SonioxVoicesClient(IServiceProvider services) : ISonioxVoice
         content.Add(new StringContent(name), "name");
 
         using var response = await httpClient.PostAsync(BaseUrl, content, cancellationToken).ConfigureAwait(false);
-        await EnsureSuccess(response, "voice create", cancellationToken).ConfigureAwait(false);
+        await SonioxClient.EnsureSuccess(response, "voice create", cancellationToken).ConfigureAwait(false);
         var result = await response.Content
             .ReadFromJsonAsync<SonioxVoiceResponse>(JsonOptions, cancellationToken)
             .ConfigureAwait(false);
@@ -38,12 +38,12 @@ public sealed class SonioxVoicesClient(IServiceProvider services) : ISonioxVoice
 
     public async Task<SonioxVoice?> Get(string id, CancellationToken cancellationToken)
     {
-        using var httpClient = CreateHttpClient();
+        using var httpClient = Client.CreateHttpClient();
         using var response = await httpClient.GetAsync($"{BaseUrl}/{id}", cancellationToken).ConfigureAwait(false);
         if (response.StatusCode is HttpStatusCode.NotFound)
             return null;
 
-        await EnsureSuccess(response, "voice get", cancellationToken).ConfigureAwait(false);
+        await SonioxClient.EnsureSuccess(response, "voice get", cancellationToken).ConfigureAwait(false);
         var result = await response.Content
             .ReadFromJsonAsync<SonioxVoiceResponse>(JsonOptions, cancellationToken)
             .ConfigureAwait(false);
@@ -55,13 +55,13 @@ public sealed class SonioxVoicesClient(IServiceProvider services) : ISonioxVoice
         var voices = new List<SonioxVoice>();
         string? cursor = null;
         do {
-            using var httpClient = CreateHttpClient();
+            using var httpClient = Client.CreateHttpClient();
             var url = $"{BaseUrl}?limit={ListPageSize}";
             if (!cursor.IsNullOrEmpty())
                 url += $"&cursor={Uri.EscapeDataString(cursor)}";
 
             using var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
-            await EnsureSuccess(response, "voice list", cancellationToken).ConfigureAwait(false);
+            await SonioxClient.EnsureSuccess(response, "voice list", cancellationToken).ConfigureAwait(false);
             var page = await response.Content
                 .ReadFromJsonAsync<SonioxVoiceList>(JsonOptions, cancellationToken)
                 .ConfigureAwait(false);
@@ -75,14 +75,14 @@ public sealed class SonioxVoicesClient(IServiceProvider services) : ISonioxVoice
 
     public async Task Delete(string id, CancellationToken cancellationToken)
     {
-        using var httpClient = CreateHttpClient();
+        using var httpClient = Client.CreateHttpClient();
         using var response = await httpClient
             .DeleteAsync($"{BaseUrl}/{id}", cancellationToken)
             .ConfigureAwait(false);
         if (response.StatusCode is HttpStatusCode.NotFound)
             return;
 
-        await EnsureSuccess(response, "voice delete", cancellationToken).ConfigureAwait(false);
+        await SonioxClient.EnsureSuccess(response, "voice delete", cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
@@ -96,29 +96,5 @@ public sealed class SonioxVoicesClient(IServiceProvider services) : ISonioxVoice
         var isReady = models.Length > 0 && models.All(m => m.Status == ReadyStatus);
         var isFailed = models.Any(m => m.Status == FailedStatus);
         return new SonioxVoice(response.Id, response.Name ?? "", isReady, isFailed);
-    }
-
-    private HttpClient CreateHttpClient()
-    {
-        var apiKey = CoreServerSettings.SonioxKey;
-        if (apiKey.IsNullOrEmpty())
-            throw StandardError.Configuration("CoreSettings:SonioxKey is not set.");
-
-        // Created per call, but the factory pools the underlying handler.
-        var httpClient = HttpClientFactory.CreateClient(SonioxClient.HttpClientName);
-        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-        return httpClient;
-    }
-
-    private static async Task EnsureSuccess(
-        HttpResponseMessage response,
-        string step,
-        CancellationToken cancellationToken)
-    {
-        if (response.IsSuccessStatusCode)
-            return;
-
-        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        throw StandardError.External($"Soniox {step} failed: {(int)response.StatusCode} {body}");
     }
 }

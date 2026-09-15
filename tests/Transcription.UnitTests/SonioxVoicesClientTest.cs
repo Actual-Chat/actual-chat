@@ -86,6 +86,20 @@ public sealed class SonioxVoicesClientTest(ITestOutputHelper @out) : TestBase(@o
     }
 
     [Fact]
+    public async Task GetShouldReturnNotReadyWhenModelsIsEmpty()
+    {
+        // arrange
+        var client = NewClient(_ => Task.FromResult(Respond("""{"id": "v1", "name": "n", "models": []}""")));
+
+        // act
+        var voice = await client.Get("v1", CancellationToken.None);
+
+        // assert
+        voice!.IsReady.Should().BeFalse();
+        voice.IsFailed.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task GetShouldReturnNullOn404()
     {
         // arrange
@@ -151,7 +165,8 @@ public sealed class SonioxVoicesClientTest(ITestOutputHelper @out) : TestBase(@o
             .AddTestLogging(Out);
         services.AddHttpClient(SonioxClient.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(() => new RespondingHandler(respond));
-        return new SonioxVoicesClient(services.BuildServiceProvider());
+        var sonioxClient = new SonioxClient(services.BuildServiceProvider());
+        return new SonioxVoicesClient(sonioxClient);
     }
 
     // Nested types

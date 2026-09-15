@@ -3,9 +3,11 @@ using ActualLab.Generators;
 
 namespace ActualChat.Testing.Host;
 
-// In-memory ISonioxVoices stand-in for VoicePool tests: a created voice turns ready only once
-// ReadyAfter has elapsed (per Clocks.CpuClock), so a test can observe the Creating window; a
-// FailCreate voice never fails until it's set back to false.
+/// <summary>
+/// In-memory <see cref="ISonioxVoices"/> stand-in for VoicePool tests: a created voice turns ready
+/// only once <see cref="ReadyAfter"/> has elapsed (per Clocks.CpuClock), so a test can observe the
+/// Creating window; a <see cref="FailCreate"/> voice never fails until it's set back to false.
+/// </summary>
 public sealed class FakeSonioxVoices(IServiceProvider services) : ISonioxVoices
 {
     private readonly object _lock = new();

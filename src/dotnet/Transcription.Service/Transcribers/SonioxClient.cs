@@ -145,7 +145,9 @@ public sealed class SonioxClient(IServiceProvider services)
         await EnsureSuccess(response, $"delete of {path}", cancellationToken).ConfigureAwait(false);
     }
 
-    private HttpClient CreateHttpClient()
+    // Internal so SonioxVoicesClient - a different Soniox REST surface, same auth - can reuse it
+    // instead of duplicating it.
+    internal HttpClient CreateHttpClient()
     {
         var apiKey = CoreServerSettings.SonioxKey;
         if (apiKey.IsNullOrEmpty())
@@ -157,7 +159,8 @@ public sealed class SonioxClient(IServiceProvider services)
         return httpClient;
     }
 
-    private static async Task EnsureSuccess(
+    // Internal so SonioxVoicesClient shares the same 429 handling instead of duplicating it.
+    internal static async Task EnsureSuccess(
         HttpResponseMessage response,
         string step,
         CancellationToken cancellationToken)

@@ -3,8 +3,10 @@ using System.Text;
 
 namespace ActualChat.Transcription;
 
-// Minimal RIFF/WAVE writer for 16-bit PCM - packages a decoded voice sample for
-// SonioxVoicesClient.Create, which expects a WAV file.
+/// <summary>
+/// Minimal RIFF/WAVE writer for 16-bit PCM - packages a decoded voice sample for
+/// <see cref="SonioxVoicesClient"/>.Create, which expects a WAV file.
+/// </summary>
 public static class WavWriter
 {
     private const short BitsPerSample = 16;
