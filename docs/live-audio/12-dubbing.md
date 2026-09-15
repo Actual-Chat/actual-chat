@@ -83,7 +83,10 @@ Task Synthesize(string streamId, ChannelReader<string> text,
 Text chunks in, 20 ms Opus `AudioFrame`s (48 kHz mono) out, emitted at
 wall-clock pace with contiguous offsets from zero; a gap between chunks
 comes out as silence. `SpeechSynthesisOptions(Language, VoiceId)` — the
-voice defaults to `TranscriptionSettings.SonioxTtsVoice` (`"Adrian"`).
+voice defaults to `TranscriptionSettings.SonioxTtsVoice` (`"Adrian"`)
+when `VoiceId` is null or empty; see [Voice](#voice) for where a
+non-default one comes from. The interface also carries the two
+preview-only members `ListVoices` and `SynthesizeMp3` described there.
 
 Two implementations, both in `src/dotnet/Transcription.Service/Synthesis/`,
 registered by `TranscriptionServiceModule`: `FakeSpeechSynthesizer` when
@@ -317,7 +320,10 @@ The synthesis runs as a background task. Before calling
 `ISpeechSynthesizer.Synthesize` it awaits the previous dub of the same
 `(authorId, language)` — `ChainDub` swaps `_dubChains[$"{authorId}~{lang}"]`
 atomically, the author coming from `_authorIdByStream`, filled by
-`ProcessAudio` via `RememberAuthorId`. A dub outlives its source by the
+`ProcessAudio` via `RememberAuthorId` — and then reads the speaker's
+voice once (`GetSpeakerVoice` → `SpeakerVoices`, [Voice](#voice)); a
+lookup failure is logged and falls back to the default voice rather than
+failing the dub. A dub outlives its source by the
 translation lag plus the spoken length, so without the chain an author's
 next utterance would talk over their still-draining previous one.
 
@@ -443,6 +449,64 @@ into the muxer's constructor.
   it while it is off writes `null`, i.e. back to inheriting the user-level
   setting.
 
+## Voice
+
+Which stock voice a dub speaks in is the **speaker's** choice, not the
+listener's: a dub is one TTS stream per (utterance, language) shared by
+every listener, so there is exactly one voice per speaker to pick.
+
+- **Setting.** `UserLanguageSettings.DubVoice` (key 7, `string`, `""` =
+  the server default `TranscriptionSettings.SonioxTtsVoice`; the getter
+  coalesces the `null` an older blob reads as). The tile "My voice in
+  translations" under the Translated Voice toggle in
+  `Components/Settings/TranscriptionSettings.razor` shows the chosen id
+  or "Default" and opens `Components/DubVoiceModal/DubVoiceModal.razor`:
+  gender and accent filters, a Default entry, then the catalog (id,
+  gender and accent, the provider's description and style tokens) with a
+  play/stop button per voice. Selecting writes `LanguageUI.UpdateSettings`.
+- **Resolving it on the server.** `SpeakerVoices`
+  (`src/dotnet/Streaming.Service/Services/SpeakerVoices.cs`): author →
+  `IAuthorsBackend.Get(RequestedAuthorKind.Full)` → `UserId` →
+  `IServerKvasBackend.ForUser(userId).UserLanguageSettings()`; `null`
+  (default voice) for anonymous authors, guests and speakers who never
+  picked one. Live dubs read it once per dub start, so a change applies
+  from the speaker's next utterance; replay dubs read it per
+  `GetOrCreate` and include it in the stored hash, so a change
+  regenerates the dub (the superseded media is deleted by
+  `TranslationsBackend.OnChange` like any replaced dub).
+- **The catalog.** `ISpeechSynthesizer.ListVoices` returns
+  `ApiArray<DubVoice>` (`src/dotnet/Api/Chat/DubVoice.cs`: `Id`,
+  `Description`, `Gender`, `Age`, `Accent`, `UseCase`, `Style`), sorted
+  by gender then id. `SonioxSpeechSynthesizer` pages
+  `SonioxClient.ListSharedVoices` over `GET
+  /v1/shared-voices?model=tts-rt-v2&limit=100[&cursor=…]` (verified live:
+  the page size is `limit`, max 200, and the next page is `cursor` =
+  the previous response's `next_page_cursor`; ~200 voices, every one
+  speaks every language) and caches the list for an hour; on a fetch
+  failure the last good list (or an empty one) is served and the next
+  call retries. `FakeSpeechSynthesizer` returns three fixed voices.
+  `ITranslationsBackend.ListDubVoices` (compute method, auto-invalidated
+  hourly, retried in `ServerConstants.Backend.RetryDelay` while empty)
+  fronts it for `ITranslations.ListDubVoices(session)`, which requires an
+  active account.
+- **Previews.** `GET /api/dub-voices/{voiceId}/preview?language=xx`
+  (`src/dotnet/Chat.Service/Controllers/DubVoicesController.cs`; session
+  from the `Session` header, the `?session=` token or the cookie) answers
+  `audio/mpeg` — `ISpeechSynthesizer.SynthesizeMp3` of the localized
+  `Transcription_DubVoicePreviewText` ("Hello! This is how others will
+  hear you.") in that language and voice, via Soniox's REST TTS with
+  `audio_format: "mp3"` (`SonioxTtsClient.GenerateMp3`). The backend
+  compute method `GetDubVoicePreview` caches a preview for a day per
+  (voice, language) and returns `null` → 404 for an id that is not in
+  the catalog; a bad language is 400, no session is 400. The modal's
+  `DubVoicePreview` (`dub-voice-modal.ts`) plays it through one
+  `HTMLAudioElement` in the user's primary language, appending the
+  session token so a MAUI WebView can fetch it, stopping any previous
+  preview, and calls back `OnPreviewEnded` so the button flips back.
+- **Follow-up.** Cloning replaces the stock voice when the speaker opts
+  in: `SpeechSynthesisOptions.VoiceId` is already the hook, and
+  `SpeakerVoices` is the one place that decides which id a speaker gets.
+
 ## Replay
 
 A listener with the same "Translated voice" setting hears replayed voice
@@ -457,13 +521,17 @@ whole entry's text is already known, so it is spoken in one request.
 fields, appended as keys 7 and 8 (array-form MessagePack — never
 renumber): `DubMediaId` (`MediaId?`, `null` = not generated) and
 `DubContentHash` (`HashString`, the hash of the `Content` the audio was
-made from). `TranslationDiff` mirrors them as `Option<MediaId?>` and
-`HashString?`. `TranslationDubExt.HasValidDub()`
+made from plus the voice it was spoken in). `TranslationDiff` mirrors
+them as `Option<MediaId?>` and `HashString?`.
+`TranslationDubExt.HasValidDub(voiceId = "")`
 (`src/dotnet/Chat.Contracts/TranslationDubExt.cs`) — an extension method,
 not a property — is `true` iff `DubMediaId != null` and
-`DubContentHash` equals the hash of the *current* `Content`; a
-translation whose content changed after the dub was made reads as
-having no dub, without touching the fields.
+`DubContentHash` equals `GetDubContentHash(Content, voiceId)`: the hash
+of `Content` alone for the default voice (so dubs stored before voices
+existed stay valid), of `Content + "\n" + voiceId` otherwise. A
+translation whose content changed after the dub was made, or whose
+speaker has since picked another voice, reads as having no dub, without
+touching the fields.
 
 `DbTranslation` gets matching `dub_media_id`/`dub_content_hash` columns
 via migration `Add_Translation_Dub`
@@ -558,8 +626,10 @@ Inside, in order:
    `TranslationsBackend_Change`'s invalidation wakes this the moment the
    write lands, so it is a wait, not a poll. `null` or
    `translation.MatchesOriginal(entry.Content)` → no dub.
-3. **Reuse.** `translation.HasValidDub()` → look the media up with
-   `MediaBackend.Get`; if it is still there, return it. If the record was
+3. **Reuse.** The speaker's voice is read (`SpeakerVoices.Get(entry.ChatId,
+   entry.AuthorId)`, [Voice](#voice)); `translation.HasValidDub(voiceId)`
+   → look the media up with `MediaBackend.Get`; if it is still there,
+   return it. If the record was
    deleted, fall through and make a new one (the comment in code: *"The
    media is gone; fall through and make it again"*).
 4. **Synthesize, under the concurrency cap, and hand out `Live`.** A
@@ -569,7 +639,7 @@ Inside, in order:
    wait or the reuse lookup above — so at most that many entries synthesize
    at once, leaving headroom in Soniox's 3-concurrent-stream quota for live
    dubbing. `Synthesizer.Synthesize(translation.Content, new
-   SpeechSynthesisOptions(language), ct)` (the one-shot overload, below)
+   SpeechSynthesisOptions(language, voiceId), ct)` (the one-shot overload, below)
    returns an `AudioSource` whose frames are still arriving. The moment it
    does, the in-flight `TaskCompletionSource` is completed with
    `ReplayDub(null, Live: synthesized)`, so every waiting caller gets the
@@ -591,7 +661,8 @@ Inside, in order:
    without ever stamping the translation (the `Live` callers saw an empty
    source and fell back to the original themselves).
 5. **Stamp, or lose the race.** `TranslationsBackend_Change` updates
-   `DubMediaId`/`DubContentHash`, pinned to the `Version` read in step 2.
+   `DubMediaId`/`DubContentHash` (`GetDubContentHash(text, voiceId)`),
+   pinned to the `Version` read in step 2.
    A concurrent re-translation makes this throw
    `VersionMismatchException` (caught, treated as "lost"), or simply
    stamps a different `Translation` (its own newer dub raced in first).
@@ -797,7 +868,7 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 | `OpusFramePump.FrameLength` / `FrameByteLength` | 960 samples / 1920 bytes | One 20 ms frame at 48 kHz, 16-bit mono |
 | `DubStabilizer.MinDecisionLength` | 10 chars | Minimum text before `Decide` commits |
 | `Constants.Transcription.Soniox.StableTokenAge` | 2.5 s | A non-final token that ended this long before `total_audio_proc_ms` is promoted to stable by `SonioxTranscriptBuilder` |
-| `TranscriptionSettings.SonioxTtsVoice` | `"Adrian"` | Stock voice until cloned voices exist |
+| `TranscriptionSettings.SonioxTtsVoice` | `"Adrian"` | Stock voice for speakers who picked none (`UserLanguageSettings.DubVoice` empty) |
 
 ## Tests
 
@@ -814,14 +885,16 @@ hand-made translated diffs, no muxer),
 `tests/Chat.IntegrationTests/DubbingTranslationFlowTest.cs` (the real
 `TranslationsBackend` stream with a recording synthesizer: the spoken
 text, the entry-after-transcript ordering, the late listener, the end of
-the dub), `tests/Core.UnitTests/Identifiers/CanonicalLanguageTest.cs`,
+the dub, the speaker's voice passed to the synthesizer), `tests/Core.UnitTests/Identifiers/CanonicalLanguageTest.cs`,
 and the two Soniox spikes `tests/Transcription.IntegrationTests/SonioxTtsClientTest.cs` /
-`SonioxSpeechSynthesizerTest.cs`, which self-skip without
-`CoreSettings__SonioxKey`.
+`SonioxSpeechSynthesizerTest.cs` (the latter also lists the shared-voice
+catalog and synthesizes an MP3 preview in a non-default voice), which
+self-skip without `CoreSettings__SonioxKey`.
 
 Replay: `tests/Chat.UnitTests/TranslationDubTest.cs` and
-`tests/Chat.IntegrationTests/TranslationDubTest.cs` (`HasValidDub`, the
-dub cleared on a new `Content`, the orphaned media deleted),
+`tests/Chat.IntegrationTests/TranslationDubTest.cs` (`HasValidDub` with
+and without a voice, the default-voice hash equal to the content hash,
+the dub cleared on a new `Content`, the orphaned media deleted),
 `tests/Streaming.UnitTests/ReplayTimelineTest.cs` (`PlaysAt` stretching,
 `stretchTimeline: false` for an undubbed replay, `ScaleSkip`),
 `tests/Chat.IntegrationTests/ReplayDubsTest.cs` (`ReplayDubs` against the
@@ -829,8 +902,15 @@ real `TranslationsBackend` with `RecordingSpeechSynthesizer`: create then
 reuse as `Stored`, the first request gets `Live` while the gated
 synthesis is still held and a request after the store gets `Stored` with
 the stamped media, the listener's own language is skipped, a
-re-translation regenerates, an in-flight entry is forgotten after
-completion), `tests/Chat.IntegrationTests/ReplayDubbingTest.cs` (end to
+re-translation regenerates, the speaker's voice is used and a voice
+change regenerates, an in-flight entry is forgotten after
+completion), `tests/Chat.IntegrationTests/DubVoicesTest.cs`
+(`ITranslations.ListDubVoices` returns the fake catalog; the preview
+endpoint serves `audio/mpeg` for a known voice, 404 for an unknown one,
+400 for a bad language or no session),
+`tests/Users.UnitTests/StoredSettingsSerializationTest.cs` (a
+`UserLanguageSettings` blob written before key 7 reads back with
+`DubVoice = ""`, and the key round-trips), `tests/Chat.IntegrationTests/ReplayDubbingTest.cs` (end to
 end through `GetReplayStream`: a Russian entry replayed for an English
 listener comes back with `DubLanguage = English` and the recorded dub's
 frames; a replay started while the synthesis is gated waits and still
@@ -856,7 +936,9 @@ once and a second drop fails the run).
 - Switching to a dub mid-utterance for mixed-language speakers: the
   decision is made once per stream.
 - Cloned voices (phase 2) and the recorded-sample UI (phase 3);
-  `SpeechSynthesisOptions.VoiceId` is the hook.
+  `SpeechSynthesisOptions.VoiceId` is the hook and `SpeakerVoices` the
+  one place that would hand out a cloned id instead of the stock one
+  ([Voice](#voice)).
 - Replay-specific gaps are listed under [Replay → Out of scope /
   follow-ups](#out-of-scope--follow-ups).
 - The remaining latency lever: serving the original at once and
