@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Flows;
+namespace ActualChat.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public partial record IndexingFlowCursor<TId>(

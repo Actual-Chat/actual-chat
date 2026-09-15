@@ -6,7 +6,7 @@ public readonly struct QueueShardRef : ICanBeNone<QueueShardRef>, IEquatable<Que
     public static QueueShardRef None => default;
 
     public QueueRef QueueRef { get; }
-    public int Key { get; }
+    public ShardKey Key { get; }
 
     // Computed properties
     public ShardScheme ShardScheme => QueueRef.ShardScheme;
@@ -22,22 +22,16 @@ public readonly struct QueueShardRef : ICanBeNone<QueueShardRef>, IEquatable<Que
         return new QueueShardRef(queueRef, shardKey);
     }
 
-    public QueueShardRef(int key)
+    public QueueShardRef(ShardKey key)
         : this(QueueRef.Undefined, key) { }
-    public QueueShardRef(long key)
-        : this(QueueRef.Undefined, unchecked((int)key)) { }
-
-    public QueueShardRef(QueueRef queueRef, long key)
-        : this(queueRef, unchecked((int)key)) { }
-
     // ReSharper disable once ConvertToPrimaryConstructor
-    public QueueShardRef(QueueRef queueRef, int key)
+    public QueueShardRef(QueueRef queueRef, ShardKey key)
     {
         QueueRef = queueRef;
         Key = key;
     }
 
-    public void Deconstruct(out QueueRef queueRef, out int key)
+    public void Deconstruct(out QueueRef queueRef, out ShardKey key)
     {
         queueRef = QueueRef;
         key = Key;
@@ -46,7 +40,7 @@ public readonly struct QueueShardRef : ICanBeNone<QueueShardRef>, IEquatable<Que
     public override string ToString()
         => QueueRef.IsNone
             ? $"{nameof(QueueShardRef)}.{nameof(None)}"
-            : $"{QueueRef.Format()}[{Key.Format()} -> {TryGetShardIndex()?.Format() ?? "na"}/{ShardScheme.ShardCount}]";
+            : $"{QueueRef.Format()}[{Key} -> {TryGetShardIndex()?.Format() ?? "na"}/{ShardScheme.ShardCount}]";
 
     public string Format()
         => IsValid
@@ -60,7 +54,7 @@ public readonly struct QueueShardRef : ICanBeNone<QueueShardRef>, IEquatable<Que
 
     public QueueShardRef Normalize()
         => QueueRef.IsNone ? None
-            : new QueueShardRef(QueueRef, GetShardIndex());
+            : new QueueShardRef(QueueRef, ShardKey.New(GetShardIndex()));
 
     public QueueShardRef RequireValid()
         => IsValid ? this

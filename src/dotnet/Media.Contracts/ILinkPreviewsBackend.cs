@@ -33,8 +33,8 @@ public sealed partial record LinkPreviewsBackend_Change(
     [property: DataMember, Key(0)] Symbol Id,
     [property: DataMember, Key(1)] long? ExpectedVersion,
     [property: DataMember, Key(2)] Change<LinkPreview> Change
-) : ICommand<LinkPreview?>, IBackendCommand, IHasShardKey<Symbol>
+) : ICommand<LinkPreview?>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public Symbol ShardKey => Id;
+    public ShardKey ShardKey => ShardKey.New(Id.Value);
 }

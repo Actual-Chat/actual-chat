@@ -191,12 +191,12 @@ Strong typing is used for all identifiers:
 
 ### Sharding
 
-Backend commands implement `IHasShardKey<T>` for distributed processing:
+Backend commands implement `IHasShardKey` for distributed processing:
 
 ```csharp
-public sealed partial record ChatsBackend_Change(...) : ICommand<Chat>, IBackendCommand, IHasShardKey<ChatId>
+public sealed partial record ChatsBackend_Change(...) : ICommand<Chat>, IBackendCommand, IHasShardKey
 {
-    public ChatId ShardKey => ChatId;
+    public ShardKey ShardKey => ChatId.ShardKey;
 }
 ```
 

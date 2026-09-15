@@ -40,10 +40,11 @@ public interface ITranslationsBackend : IComputeService, IBackendService
 public sealed partial record TranslationsBackend_Change(
     [property: DataMember, Key(0)] TranslationId Id,
     [property: DataMember, Key(1)] long? ExpectedVersion,
-    [property: DataMember, Key(2)] Change<TranslationDiff> Change) : ICommand<Translation>, IBackendCommand, IHasShardKey<TranslationSourceId>
+    [property: DataMember, Key(2)] Change<TranslationDiff> Change
+) : ICommand<Translation>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public TranslationSourceId ShardKey => Id.SourceId;
+    public ShardKey ShardKey => Id.SourceId.ShardKey;
 }
 
 /// <summary>
@@ -56,10 +57,10 @@ public sealed partial record TranslationsBackend_Translate(
     [property: DataMember, Key(1)] Language TargetLanguage,
     [property: DataMember, Key(2)] bool OverwriteIfVersionMismatch,
     [property: DataMember, Key(3)] bool SkipRealtimeTranslation
-) : ICommand<Translation?>, IBackendCommand, IHasShardKey<TranslationSourceId>, IHasUuid, IHasTimeout
+) : ICommand<Translation?>, IBackendCommand, IHasShardKey, IHasUuid, IHasTimeout
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public TranslationSourceId ShardKey => SourceId;
+    public ShardKey ShardKey => SourceId.ShardKey;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public TimeSpan? Timeout => TimeSpan.FromSeconds(180);
 
@@ -74,10 +75,10 @@ public sealed partial record TranslationsBackend_Translate(
 public sealed partial record TranslationsBackend_TranslateStream(
     [property: DataMember, Key(0)] StreamId Id,
     [property: DataMember, Key(1)] Language TargetLanguage
-) : ICommand<StreamId?>, IBackendCommand, IHasShardKey<StreamId>, IHasUuid
+) : ICommand<StreamId?>, IBackendCommand, IHasShardKey, IHasUuid
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public StreamId ShardKey => Id;
+    public ShardKey ShardKey => Id.ShardKey;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public StreamId TargetStreamId { get; } = StreamId.New(Id, TargetLanguage);
 

@@ -6,7 +6,7 @@ namespace ActualChat;
 /// Base interface for string-based identifiers with hash code caching.
 /// </summary>
 // ReSharper disable once PossibleInterfaceMemberAmbiguity
-public interface IStringIdentifier : IStringLike, IHasId<string>, IHasId<Symbol>
+public interface IStringIdentifier : IStringLike, IHasId<string>, IHasId<Symbol>, IHasShardKey
 {
     int HashCode { get; }
 }
@@ -16,7 +16,7 @@ public interface IStringIdentifier : IStringLike, IHasId<string>, IHasId<Symbol>
 /// </summary>
 public interface IStringIdentifier<TSelf> : IStringIdentifier, IStringLike<TSelf>,
     IEquatable<TSelf>, IComparable<TSelf>, IEqualityOperators<TSelf, TSelf, bool>
-    where TSelf : StringIdentifier, IStringIdentifier<TSelf>
+    where TSelf : class, IStringIdentifier<TSelf>
 {
     // Parse(string?) is inherited from IStringLike<TSelf>; existing Parse(string s) implementations satisfy it at IL level.
     static abstract TSelf? ParseNullable(string? s); // Must rely on Parse(s)
@@ -38,6 +38,8 @@ public abstract class StringIdentifier(string value) : IStringIdentifier
     public readonly int HashCode = value.GetHashCode();
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember]
     public Symbol Id => new(Value, HashCode);
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public virtual ShardKey ShardKey { get; } = ShardKey.New(value);
 
     // IStringIdentifier members
     string IHasId<string>.Id => Value;

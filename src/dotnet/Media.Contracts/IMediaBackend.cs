@@ -32,10 +32,10 @@ public sealed partial record MediaBackend_Change(
     [property: DataMember, Key(0)] MediaId Id,
     [property: DataMember, Key(1)] long? ExpectedVersion,
     [property: DataMember, Key(2)] Change<MediaFull> Change
-) : ICommand<MediaFull?>, IBackendCommand, IHasShardKey<MediaId>
+) : ICommand<MediaFull?>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public MediaId ShardKey => Id;
+    public ShardKey ShardKey => Id.ShardKey;
 }
 
 /// <summary>
@@ -47,8 +47,8 @@ public sealed partial record MediaBackend_CopyChat(
     [property: DataMember, Key(0)] ChatId ChatId,
     [property: DataMember, Key(1)] string CorrelationId,
     [property: DataMember, Key(2)] MediaId[] MediaIds
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => ChatId;
+    public ShardKey ShardKey => ChatId.ShardKey;
 }

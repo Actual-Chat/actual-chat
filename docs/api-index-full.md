@@ -119,7 +119,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `NodeRef` (struct) - Reference to a mesh node.
 - `IHasNodeRef` - Interface for types with a node reference.
 - `IHasOrigin` - Interface for types with an origin.
-- `IHasShardKey` - Interface for types with a shard key.
+- `IHasShardKey` - Non-generic provider of a typed ShardKey; inherited by string and symbol identifiers.
 - `IHasDelayQuanta` - Interface for types with delay quanta.
 - `IHasDelayUntil` - Interface for types with delay until.
 - `IHasKvasKey` - Interface for types with a KVAS key.
@@ -153,8 +153,11 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `IServerSettings` - Server settings interface.
 - `IThreadSafeLruCache<TKey, TValue>` - Thread-safe LRU cache interface.
 - `LongAsStringKeyComparer` - Comparer for long keys as strings.
-- `StringIdentifier<T>` (abstract record struct) - Base for string-based identifiers.
-- `SymbolIdentifier<T>` (abstract record struct) - Base for Symbol-based identifiers.
+- `StringIdentifier` / `IStringIdentifier<T>` - Shared string ID, cached hash, parsing, and shard-key behavior.
+- `ContentId` (abstract class) - Domain identifier base extending `StringIdentifier` with a cached `ContentRef`.
+- `ContentRef` (sealed class) - Type-prefixed reference retaining its original content ID.
+- `ShardKey` (readonly record struct) - Unsigned 32-bit routing key with hexadecimal slice support.
+- `ISymbolIdentifier<T>` / `SymbolIdentifier` - Symbol-based identifier contract and parsing helpers.
 - `SystemRole` (enum) - System role types; `Anyone`/`Guest`/`User`/`AnonymousUser` have automatic membership, `Moderator`/`Owner` have an explicit author list.
 - `MetadataExt` (static class) - Extension methods for metadata.
 - `AudioFocusService` - Manages audio focus across the app.
@@ -219,7 +222,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `TranscriberExt` (static class) - Extension methods for transcibers.
 - `DeepgramTranscriber` - Deepgram speech-to-text transcriber.
 - `GoogleTranscriber` - Google speech-to-text transcriber.
-- `AliasId` (struct) - Unique identifier for an alias.
+- `AliasId` (class) - Plain string identifier for an alias.
 - `AliasInfo` (record) - Alias information.
 
 
@@ -574,16 +577,15 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ContactId` (struct) - Unique identifier for a contact.
 - `ContactKind` (enum) - Specifies the type of contact (user, group, place).
 - `ContactSubset` (enum) - Specifies which subset of contacts to query.
-- `ContentId` (struct) - Unique identifier for content.
 - `ConversationId` (struct) - Unique identifier for a conversation segment.
 - `ExplicitNotificationId` (struct) - Unique identifier for an explicit notification.
 - `ExplicitNotificationKind` (enum) - Specifies the type of explicit notification.
-- `ExternalContactId` (struct) - Unique identifier for an external contact.
+- `ExternalContactId` (class) - Plain string identifier for an external contact; routes with its owner.
 - `MediaId` (struct) - Unique identifier for a media item.
 - `MentionRef` (class) - `<prefix>:<localId>` reference to a mention target; dispatches via MentionKind to `.Target` (an `IMentionTarget`).
 - `MentionKind` (sealed class) - Registered mention prefix (`a`/`u`/`c`/`p`/`e`) with parse fn (`a` author = legacy/anonymous-only).
 - `IMentionTarget` (interface) - Marker for identifier types usable as MentionRef targets (UserId/AuthorId/ChatId/PlaceId/EmojiRef).
-- `EmojiRef` (class) - URL-encoded emoji slug or glyph reference; IMentionTarget for `e:` (`EmojiRef.FromText` encodes raw text).
+- `EmojiRef` (class) - Plain string identifier for a URL-encoded emoji slug or glyph; IMentionTarget for `e:` (`EmojiRef.FromText` encodes raw text).
 - `NotificationId` (struct) - Unique identifier for a notification.
 - `NotificationKind` (enum) - Specifies the type of notification.
 - `PlaceId` (struct) - Unique identifier for a place.
@@ -594,7 +596,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `TextEntryId` (struct) - Unique identifier for a text entry.
 - `TranslationId` (struct) - Unique identifier for a translation.
 - `TranslationSourceId` (struct) - Unique identifier for a translation source.
-- `UploadId` (struct) - Unique identifier for an upload.
+- `UploadId` (class) - Plain string identifier for an upload.
 - `UserId` (struct) - Unique identifier for a user.
 - `AccountFull` (record) - Extended account information including full details.
 - `AccountFullExt` (static class) - Extension methods for AccountFull.

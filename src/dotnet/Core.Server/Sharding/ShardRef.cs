@@ -1,7 +1,7 @@
 namespace ActualChat.Sharding;
 
 [StructLayout(LayoutKind.Auto)]
-public readonly struct ShardRef(ShardScheme scheme, int key)
+public readonly struct ShardRef(ShardScheme scheme, ShardKey key)
     : ICanBeNone<ShardRef>, IEquatable<ShardRef>
 {
     public static ShardRef None => default;
@@ -9,16 +9,16 @@ public readonly struct ShardRef(ShardScheme scheme, int key)
     private readonly ShardScheme? _scheme = scheme;
 
     public ShardScheme Scheme => _scheme ?? ShardScheme.None;
-    public int Key { get; } = key;
+    public ShardKey Key { get; } = key;
 
     // Computed properties
     public bool IsNone => _scheme == null || _scheme.IsNone;
     public bool IsValid => _scheme?.IsValid == true;
 
-    public ShardRef(int key)
+    public ShardRef(ShardKey key)
         : this(ShardScheme.Undefined, key) { }
 
-    public void Deconstruct(out ShardScheme scheme, out int key)
+    public void Deconstruct(out ShardScheme scheme, out ShardKey key)
     {
         scheme = Scheme;
         key = Key;
@@ -29,7 +29,7 @@ public readonly struct ShardRef(ShardScheme scheme, int key)
         var shardScheme = Scheme;
         return shardScheme.IsNone
             ? $"{nameof(ShardRef)}.{nameof(None)}"
-            : $"{shardScheme.Name}[{Key.Format()} -> {TryGetShardIndex()?.Format() ?? "na"}/{shardScheme.ShardCount}]";
+            : $"{shardScheme.Name}[{Key} -> {TryGetShardIndex()?.Format() ?? "na"}/{shardScheme.ShardCount}]";
     }
 
     public string Format()
@@ -45,7 +45,7 @@ public readonly struct ShardRef(ShardScheme scheme, int key)
     public ShardRef Normalize()
     {
         var shardScheme = Scheme;
-        return shardScheme.IsNone ? this : new(shardScheme, shardScheme.GetShardIndex(Key));
+        return shardScheme.IsNone ? this : new(shardScheme, ShardKey.New(shardScheme.GetShardIndex(Key)));
     }
 
     public ShardRef WithSchemeIfUndefined(ShardScheme scheme)

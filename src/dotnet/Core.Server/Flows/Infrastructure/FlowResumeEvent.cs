@@ -10,7 +10,7 @@ public sealed partial class FlowResumeEvent :
     IDelegatingCommand<long>, IBackendCommand,
     IHasDelayUntil, IHasDelayQuanta,
     ITimeoutProvider,
-    IOperationEventSource
+    IOperationEventSource, IHasShardKey
 {
     private static readonly UuidGenerator UuidGenerator = UlidUuidGenerator.Instance;
 
@@ -31,6 +31,9 @@ public sealed partial class FlowResumeEvent :
         get => MustReset ? TimeSpan.Zero : field; // MustReset overrides DelayQuanta: we can't skip such events
         private set => field = value is { } q ? q.Positive() : null;
     }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public ShardKey ShardKey => FlowId.ShardKey;
 
     [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
     private FlowResumeEvent(FlowId flowId)
