@@ -5,9 +5,15 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Streaming.Services;
 
-// One of the two is set: Stored once the dub exists as media, Live while it's being synthesized -
-// an AudioSource whose frames arrive as the synthesizer produces them
-public sealed record ReplayDub(ActualChat.Media.Media? Stored, AudioSource? Live);
+// Stored once the dub exists as media, Live while it's being synthesized - an AudioSource whose
+// frames arrive as the synthesizer produces them; neither when the caller's wait ran out before
+// the work decided anything, which - unlike a null result - says nothing about the dub itself
+public sealed record ReplayDub(ActualChat.Media.Media? Stored, AudioSource? Live)
+{
+    public static readonly ReplayDub Pending = new(null, null);
+
+    public bool IsPending => Stored == null && Live == null;
+}
 
 // A dub for replay is the stored translation of an entry spoken once and kept as media on that
 // translation; it's made the first time a listener needs it and reused until the translation changes
@@ -40,18 +46,19 @@ public sealed class ReplayDubs(IServiceProvider services)
         }
         catch (TimeoutException) {
             // The work keeps running on its own budget; a later call may still reuse its result
-            return null;
+            return ReplayDub.Pending;
         }
 
         async Task Run()
         {
             ReplayDub? result;
             // Independent of our own caller's token: a slow entry must keep synthesizing after
-            // ReplayDubTimeout elapses above, bounded only by shutdown and ReplayDubSynthesisTimeout
+            // ReplayDubTimeout elapses above, bounded only by shutdown and ReplayDubSynthesisTimeout -
+            // re-armed once the synthesis slot is taken, so a wait for the slot never eats into it
             using var cts = Services.HostLifetime().CreateStopTokenSource();
             cts.CancelAfter(Constants.Audio.ReplayDubSynthesisTimeout);
             try {
-                result = await GetOrCreateImpl(entry, language, source, cts.Token).ConfigureAwait(false);
+                result = await GetOrCreateImpl(entry, language, source, cts).ConfigureAwait(false);
             }
             catch (Exception e) when (e.IsCancellationOf(cts.Token)) {
                 Log.LogInformation("GetOrCreate: {Language} dub for #{EntryId} timed out, {Outcome}",
@@ -86,8 +93,9 @@ public sealed class ReplayDubs(IServiceProvider services)
         ChatEntry entry,
         Language language,
         TaskCompletionSource<ReplayDub?> liveResult,
-        CancellationToken cancellationToken)
+        CancellationTokenSource workCts)
     {
+        var cancellationToken = workCts.Token;
         if (entry.Audio is not { } audio || audio.BlobId.IsNullOrEmpty() || !entry.SupportsTranslation(false))
             return null;
         if (await IsSpokenIn(entry, language, cancellationToken).ConfigureAwait(false))
@@ -113,6 +121,7 @@ public sealed class ReplayDubs(IServiceProvider services)
         AudioSource synthesized;
         // Caps concurrent Soniox REST calls; held only around the TTS + upload, not the wait above
         await _synthesisLimiter.WaitAsync(cancellationToken).ConfigureAwait(false);
+        workCts.CancelAfter(Constants.Audio.ReplayDubSynthesisTimeout);
         try {
             synthesized = await Synthesizer.Synthesize(text, new SpeechSynthesisOptions(language), cancellationToken)
                 .ConfigureAwait(false);

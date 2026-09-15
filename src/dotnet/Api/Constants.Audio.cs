@@ -155,9 +155,10 @@ public static partial class Constants
         // How long a caller waits for a replay dub to be stored or to start synthesizing before
         // falling back to the original; the work keeps running past this, see ReplayDubSynthesisTimeout
         public static readonly TimeSpan ReplayDubTimeout = TimeSpan.FromSeconds(20);
-        // Upper bound on one entry's translation-wait + synthesis + upload + stamp, so a slow entry
-        // is eventually abandoned rather than held open until the host shuts down. Synthesis streams
-        // at roughly the pace it's spoken, so this must clear Chat.MaxEntryDuration with room to spare
+        // Upper bound on one entry's synthesis + upload + stamp, counted from the moment its synthesis
+        // slot is taken (the translation wait + slot wait before that get the same budget separately),
+        // so a slow entry is eventually abandoned rather than held open until the host shuts down.
+        // Synthesis streams at roughly the pace it's spoken, so this must clear Chat.MaxEntryDuration
         public static readonly TimeSpan ReplayDubSynthesisTimeout = TimeSpan.FromMinutes(5);
         // Entries whose dubs are prepared while the current one streams
         public static readonly int ReplayDubLookahead = 2;

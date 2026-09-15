@@ -32,7 +32,8 @@ public class ReplayDubsTest(
 
         // assert
         first.Should().NotBeNull();
-        (first!.Stored ?? (object?)first.Live).Should().NotBeNull("the first caller gets the dub in some form");
+        first.Should().Match<ReplayDub>(
+            x => x.Stored != null || x.Live != null, "the first caller gets the dub in some form");
         second.Should().NotBeNull();
         second!.Live.Should().BeNull("the dub is stored by now");
         second.Stored!.Id.Should().Be(translation.DubMediaId, "the dub is stored on the translation and reused");
@@ -57,25 +58,27 @@ public class ReplayDubsTest(
         var gate = TaskCompletionSourceExt.New();
         recorder.OneShotGate = _ => gate.Task;
         try {
-            // act
+            // act - the first request, with the synthesis held
             var first = await dubs.GetOrCreate(entry, Languages.English, ct);
+            var translation = await translations.Get(id, false, ct);
+            var framesTask = first!.Live!.GetFrames(ct).ToListAsync(ct).AsTask();
+            await Task.Delay(200, ct);
 
             // assert
-            first.Should().NotBeNull();
-            first!.Stored.Should().BeNull("nothing can be stored while the synthesis is held");
+            first.Stored.Should().BeNull("nothing can be stored while the synthesis is held");
             first.Live.Should().NotBeNull("the caller gets the dub as it's being made");
-            var translation = await translations.Get(id, false, ct);
             translation!.HasValidDub().Should().BeFalse();
-            var framesTask = first.Live!.GetFrames(ct).ToListAsync(ct).AsTask();
-            await Task.Delay(200, ct);
             framesTask.IsCompleted.Should().BeFalse("the frames are held by the gate");
             dubs.InFlightCount.Should().BeGreaterThanOrEqualTo(1, "the run stays in flight until the dub is stored");
 
+            // act - the gate opens, the store completes, a second request arrives
             gate.SetResult();
             var frames = await framesTask.WaitAsync(TimeSpan.FromSeconds(10), ct);
-            frames.Should().NotBeEmpty("the live dub carries the synthesized frames once the gate opens");
             translation = await services.WhenReplayDubStored(id, ct);
             var second = await dubs.GetOrCreate(entry, Languages.English, ct);
+
+            // assert
+            frames.Should().NotBeEmpty("the live dub carries the synthesized frames once the gate opens");
             second!.Live.Should().BeNull();
             second.Stored!.Id.Should().Be(translation.DubMediaId, "a caller arriving after the store gets the media");
         }

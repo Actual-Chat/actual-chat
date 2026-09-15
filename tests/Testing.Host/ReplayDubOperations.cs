@@ -4,13 +4,13 @@ namespace ActualChat.Testing.Host;
 
 public static class ReplayDubOperations
 {
-    // "Stored" here means the whole run is over: the translation carries the dub and ReplayDubs has
-    // dropped its in-flight entry, so the next GetOrCreate reads the media instead of joining the run
     public static async Task<Translation> WhenReplayDubStored(
         this IServiceProvider services,
         TranslationId id,
         CancellationToken cancellationToken)
     {
+        // "Stored" means the whole run is over: the translation carries the dub and ReplayDubs has
+        // dropped its in-flight entry, so the next GetOrCreate reads the media instead of joining the run
         var translations = services.GetRequiredService<ITranslationsBackend>();
         var dubs = services.GetRequiredService<ReplayDubs>();
         var translation = await ComputedTest.When(

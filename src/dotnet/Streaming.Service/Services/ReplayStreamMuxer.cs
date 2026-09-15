@@ -342,13 +342,19 @@ public sealed class ReplayStreamMuxer : WorkerBase
         return true;
     }
 
-    private Task<ReplayDub?> GetDub(
+    private async Task<ReplayDub?> GetDub(
         ChatEntry entry,
         Dictionary<ChatEntryId, Task<ReplayDub?>> dubTasks,
         CancellationToken cancellationToken)
-        => dubTasks.Remove(entry.Id, out var task)
-            ? task
-            : Dubs.GetOrCreate(entry, DubLanguage!, cancellationToken);
+    {
+        var dub = dubTasks.Remove(entry.Id, out var task)
+            ? await task.ConfigureAwait(false)
+            : ReplayDub.Pending;
+        // A lookahead wait that ran out decided nothing: by now the dub may well be there
+        if (dub is { IsPending: true })
+            dub = await Dubs.GetOrCreate(entry, DubLanguage!, cancellationToken).ConfigureAwait(false);
+        return dub is { IsPending: true } ? null : dub;
+    }
 
     // Rewind/position resolution (moved from client-side ChatReplayer)
 
