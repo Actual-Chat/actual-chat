@@ -213,6 +213,7 @@ public sealed class NotificationDismissModeTest(AppHostFixture fixture, ITestOut
             MessageNotification.New(userId, TestChatId, 1),
             ReplyNotification.New(userId, TestChatId, 1),
             ThreadNotification.New(userId, entryId),
+            new LegacyThreadNotification(NotificationId.New(userId, NotificationKind.Thread, TestChatId.Value)),
             MentionNotification.New(userId, entryId),
             AttentionNotification.New(userId, entryId),
             ReactionNotification.New(userId, entryId),

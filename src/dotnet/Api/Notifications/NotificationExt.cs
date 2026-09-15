@@ -8,6 +8,9 @@ public static class NotificationExt
         // attention, reaction) tag by entry and keep their own banner; chat-coalescing kinds share
         // one per chat. The send, dismissal and reconcile paths all derive the tag from here.
         => notification switch {
+            // A thread hangs off an entry a reaction or mention may already tag, and one tag means
+            // one banner - and one push per batch - so the ping takes a tag of its own.
+            ThreadNotification n => Constants.Notification.ThreadTagPrefix + n.EntryId.Value,
             ChatEntryNotification n => n.EntryId.Value,
             // A call's ring and its dismissal must collapse onto a banner of their own —
             // the chat-wide tag would make a call dismissal close the chat's message banners too.
