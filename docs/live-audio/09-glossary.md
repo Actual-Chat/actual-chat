@@ -95,7 +95,7 @@ live-audio docs.
 | `Transcribers/{TranscriberFactory,GoogleTranscriber,DeepgramTranscriber,FakeTranscriber,OpenAITranscriber}` | `Streaming.Service/Services/Transcribers/` | Transcription providers |
 | `ISpeechSynthesizer` / `SpeechSynthesisOptions` | `Transcription.Contracts/` | Text chunks → paced 20 ms Opus frames |
 | `SonioxSpeechSynthesizer`, `FakeSpeechSynthesizer`, `OpusFramePump` | `Transcription.Service/Synthesis/` | Soniox TTS + PCM → Opus pump; test double |
-| `SonioxTtsClient` | `Transcription.Service/Transcribers/` | One `tts-rt-v2` WebSocket connection per text chunk |
+| `SonioxTtsClient` | `Transcription.Service/Transcribers/` | One `tts-rt-v2` WebSocket connection and stream per utterance; idle (2.5 s) and duration (100 s) rollovers |
 | `DubStabilizer` / `DubDecision` | `Streaming.Service/Audio/` | Stable-prefix feed + dub / no-dub decision |
 | `AudioStreamingBackend.Dubbing` | `Streaming.Service/Backend/` | Lazy dub start from `GetAudio(S~lang)`, per-voice chain, expiry |
 | `PlaybackLagTracker` | `UI.Blazor.App/Services/` | EMAs of audio + video presentation lag, keyed by author |

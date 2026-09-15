@@ -50,7 +50,7 @@ flowchart LR
 
     subgraph TTS["Transcription.Service"]
         Syn["SonioxSpeechSynthesizer"]
-        Cli["SonioxTtsClient<br/>1 connection per chunk"]
+        Cli["SonioxTtsClient<br/>1 connection, 1 stream per utterance"]
         Pump["OpusFramePump<br/>20 ms, wall-clock paced"]
     end
 
@@ -92,29 +92,58 @@ tests get real pacing), otherwise `SonioxSpeechSynthesizer` — only when
 `CoreSettings:SonioxKey` is configured. With neither, `EnsureDub` sees no
 synthesizer and serves the original.
 
-### `SonioxTtsClient` — one connection per chunk
+### `SonioxTtsClient` — one connection and one stream per utterance
 
 File: `src/dotnet/Transcription.Service/Transcribers/SonioxTtsClient.cs`.
 
 `SonioxSpeechSynthesizer` composes the client and the pump with
 `TranscriberHelper.WhenPushAndRead`, the same push/read pairing the
-transcribers use. The client reads the text channel sequentially and, for
-**each** chunk, opens a fresh `wss://tts-rt.soniox.com/tts-websocket`
-connection, sends the config (`tts-rt-v2`, `pcm_s16le`, 48 000 Hz, the
-language and voice), sends the chunk as one `{ text, text_end: true }`
-message, reads responses until `terminated` (base64 PCM goes to the pump's
-channel), then closes. A `Close` frame before `terminated` or an
-`error_code` in a response is a hard error, and the whole connect + read
-runs under `Constants.Transcription.Soniox.TtsChunkTimeout` (30 s) so a
-wedged chunk becomes an error instead of a hang.
+transcribers use. One `Run` opens one `wss://tts-rt.soniox.com/tts-websocket`
+connection, lazily on the first chunk, and keeps it for the whole
+utterance; a reader task per connection demultiplexes responses (base64
+PCM goes to the pump's channel; `terminated` and `error_code` complete
+the stream they name — audio messages carry no `stream_id`, so they go to
+the one open stream). A stream is opened with the config (`tts-rt-v2`,
+`pcm_s16le`, 48 000 Hz, the language, the voice and a fresh `stream_id`)
+on the first chunk, and every further chunk is sent at once as
+`{ text, text_end: false }` — with a trailing space appended when the
+chunk doesn't end in whitespace, since chunks are transcript increments
+that may stop right before the next word and Soniox tokenizes on
+whitespace. Soniox synthesizes a sentence once it sees the text after
+it (lookahead for prosody), so one stream per utterance is what keeps
+sentence-final intonation and the ~1–1.5 s inter-fragment gaps of the
+old chunk-per-stream model out of the dub. The stream ends with
+`{ text: "", text_end: true }` (accepted, verified live) and a read
+until `terminated`, then the socket is closed normally.
 
-Why nothing stays open between chunks: `tts-rt-v2` holds synthesis until
-it sees `text_end`, answers an idle open stream with `408 Request
-timeout`, closes a connection that gets no config within ~10 s and one
-that produces no audio for ~3 min. The dub producer emits a chunk only
-every few seconds, so a long-lived stream cannot be kept fed. The
-measured cost is ~0.95 s to first audio per chunk plus ~0.1–0.3 s of
-handshake; the pump's silence fill absorbs both.
+Two things force a stream to end early, both at a chunk boundary and both
+followed by a new stream on the same connection for the next chunk:
+
+- **Idle rollover** — no new chunk for
+  `Constants.Transcription.Soniox.TtsIdleFlush` (2.5 s). Soniox kills a
+  stream after ~3–4 s without output (`408 Stream killed: output audio
+  rate below minimum`) and loses the text it hasn't synthesized, so the
+  client ends the stream first; the text held for lookahead gets spoken
+  by the `text_end`.
+- **Duration rollover** — a stream older than
+  `Constants.Transcription.Soniox.TtsStreamRollover` (100 s). Soniox caps
+  a stream at 2 min (not raisable) while an utterance runs to
+  `Chat.MaxEntryDuration` (3 min).
+
+Errors: a stream `error_code` is logged at Warning and treated as the end
+of that stream; on a 408 the chunks sent since the last audio message
+(the cheap approximation of what was never spoken) are re-sent on the
+next stream, once — a re-sent chunk is never re-sent again. A connection
+that dies under a stream is reconnected once per run (the dead stream's
+unspoken chunks move to the new one); a second loss fails the run. A
+connection Soniox closed between streams is simply replaced before the
+next stream opens. `TtsChunkTimeout` (30 s) bounds how long an open
+stream may go without any message from Soniox. Measured live: a
+connection stays open for at least 20 s with no stream on it, streams
+reuse the connection (the client caps it at 5 per connection, Soniox's
+documented limit), first audio arrives ~1.5 s after the first chunk when
+a second chunk follows within a second, and ~2.8 s (idle flush + ~0.3 s)
+for a lone chunk.
 
 ### `OpusFramePump` — PCM to paced frames
 
@@ -761,7 +790,9 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 | `Constants.Audio.ReplayDubSynthesisTimeout` | 5 min | Upper bound on synthesis + upload + stamp counted from slot acquisition (the translation wait + slot wait before that get the same budget separately), linked to host shutdown; synthesis streams at spoken pace, so it must clear `Chat.MaxEntryDuration` (3 min) |
 | `Constants.Audio.ReplayDubLookahead` | 2 | Entries the replay muxer keeps synthesizing ahead of the one currently streaming |
 | `Constants.Audio.ReplayDubMaxConcurrentSynthesis` | 2 | Caps concurrent replay-dub syntheses; shares Soniox's 3-stream quota with live dubbing |
-| `Constants.Transcription.Soniox.TtsChunkTimeout` | 30 s | Live WebSocket: connect + synthesis of one text chunk; replay's REST `Generate`: inactivity between body pieces. Exceeded = error, not hang |
+| `Constants.Transcription.Soniox.TtsChunkTimeout` | 30 s | Live WebSocket: the longest an open stream may go without any message from Soniox; replay's REST `Generate`: inactivity between body pieces. Exceeded = error, not hang |
+| `Constants.Transcription.Soniox.TtsIdleFlush` | 2.5 s | Live WebSocket: no new chunk for this long ends the stream (`text_end`) before Soniox kills it for low output and loses its unsynthesized text |
+| `Constants.Transcription.Soniox.TtsStreamRollover` | 100 s | Live WebSocket: a stream this old is ended at the next chunk and the rest goes to a new stream, under Soniox's 2 min stream cap |
 | `AudioSettings.StreamExpirationDelay` | 60 s | Store expiry; bounds the transcript wait via `_audioStreams.Has` and triggers `ForgetDubs` |
 | `OpusFramePump.FrameLength` / `FrameByteLength` | 960 samples / 1920 bytes | One 20 ms frame at 48 kHz, 16-bit mono |
 | `DubStabilizer.MinDecisionLength` | 10 chars | Minimum text before `Decide` commits |
@@ -810,7 +841,12 @@ falls back to the undubbed original with non-empty frames), and
 (`GenerateShouldWritePcmAsTheResponseArrives`: against a fake HTTP
 handler serving the body through a `Pipe`, the first PCM chunk is written
 before the body is complete and a body larger than the read buffer
-arrives as several chunks).
+arrives as several chunks; the `Run*` tests drive `Run` against a fake
+`WebSocket` with shortened `IdleFlush`/`StreamRollover`: steady chunks
+share one stream, the idle flush and the duration rollover each end the
+stream and open the next on the same connection, a 408 re-sends the
+unspoken chunks on a new stream, a dropped connection is reconnected
+once and a second drop fails the run).
 
 ## Not yet
 
@@ -823,11 +859,13 @@ arrives as several chunks).
   `SpeechSynthesisOptions.VoiceId` is the hook.
 - Replay-specific gaps are listed under [Replay → Out of scope /
   follow-ups](#out-of-scope--follow-ups).
-- Soniox connection reuse across chunks — today every chunk pays the
-  handshake. The remaining latency levers, in order of expected payoff:
-  one TTS connection per `(author, language)` instead of per chunk;
-  serving the original at once and switching to the dub once its first
-  chunk is ready, instead of holding the original for `DubWaitTimeout`.
+- The remaining latency lever: serving the original at once and
+  switching to the dub once its first chunk is ready, instead of holding
+  the original for `DubWaitTimeout`.
+- While a stream drains after `text_end` (an idle or duration rollover),
+  chunks that arrive queue for the next stream; the pump keeps playing
+  the drained audio meanwhile, so nothing starves, but the next stream's
+  first audio lands only after `terminated`.
 - Soniox in-stream translation (the STT session translating as it
   transcribes) was rejected: one target language per STT session, while
   the listeners of one speaker need N languages.
