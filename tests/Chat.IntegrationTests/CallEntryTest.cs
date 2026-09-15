@@ -77,7 +77,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         (await backend.GetState(chatId, default)).Should().BeNull();
         (await front.HasRecorder(session, chatId, default)).Should().BeFalse();
         (await front.GetAudioStreamingAuthorIds(session, chatId, default)).Should().BeEmpty();
-        (await front.GetCallStatus(session, chatId, default)).Should().Be(CallStatus.Declined);
+        (await front.GetCallStatus(session, chatId, default)).Should().Be(CallerStatus.NoAnswer);
 
         // act - the caller's own hang-up has to leave the same clean slate
         await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
@@ -138,7 +138,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         await backend.AcceptCall(chatId, alice.Id, default);
         var connected = await backend.GetState(chatId, default);
         connected.Should().NotBeNull();
-        await backend.LeaveCall(chatId, alice.Id, default);
+        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
 
         // assert
         var entries = await ReadCallEntries(tester, chatId);
@@ -175,7 +175,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         var shortCall = await backend.GetState(chatId, default);
         await tester.CreateTextEntry(chatId, "hi");
         await tester.CreateTextEntry(chatId, "hi back");
-        await backend.LeaveCall(chatId, alice.Id, default);
+        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
 
         // assert
         var shortConversation = await conversations.Get(shortCall!.ToMaterializedConversation().Id, default);
@@ -188,7 +188,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         var longCall = await backend.GetState(chatId, default);
         for (var i = 0; i < settings.MinConversationEntries; i++)
             await tester.CreateTextEntry(chatId, longLine);
-        await backend.LeaveCall(chatId, alice.Id, default);
+        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
 
         // assert
         var longConversation = await conversations.Get(longCall!.ToMaterializedConversation().Id, default);
@@ -216,7 +216,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         await backend.AcceptCall(chatId, alice.Id, default);
         var connected = await backend.GetState(chatId, default);
         connected.Should().NotBeNull();
-        await backend.LeaveCall(chatId, alice.Id, default);
+        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
 
         // assert
         var entries = await ReadCallEntries(tester, chatId);
@@ -243,9 +243,10 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         // act
         await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
         await backend.AcceptCall(chatId, alice.Id, default);
+        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, true, default);
         await backend.CancelCall(chatId, bob.Id, default);
         (await backend.GetState(chatId, default))!.Outcome.Should().Be(CallOutcome.Canceled);
-        await backend.LeaveCall(chatId, alice.Id, default);
+        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
 
         // assert
         var entries = await ReadCallEntries(tester, chatId);
@@ -405,7 +406,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         var connected = await backend.GetState(chatId, default);
         await tester.CreateTextEntry(chatId, "hi");
         await tester.CreateTextEntry(chatId, "hi back");
-        await backend.LeaveCall(chatId, alice.Id, default);
+        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
 
         var materialized = await conversations.Get(connected!.ToMaterializedConversation().Id, default);
         materialized.Should().NotBeNull();

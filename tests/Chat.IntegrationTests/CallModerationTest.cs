@@ -181,7 +181,8 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
         await Backend(Owner).SetHost(call.ChatId, call.MemberAuthorId, default);
 
         // act
-        await Backend(Owner).LeaveCall(call.ChatId, call.MemberAuthorId, default);
+        await Backend(Owner)
+            .SetParticipation(call.ChatId, call.MemberAuthorId, ParticipationKind.Record, false, default);
 
         // assert
         var state = await Backend(Owner).GetState(call.ChatId, default);
@@ -268,6 +269,10 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
         await backend.StartCall(chatId, ownerAuthor.Id, invitees, false, default);
         await backend.AcceptCall(chatId, moderatorAuthor.Id, default);
         await backend.AcceptCall(chatId, memberAuthor.Id, default);
+        // AcceptCall no longer registers the invitee's own presence - that now comes only from a real
+        // stream, so it has to be simulated here for the two to actually count as call participants.
+        await backend.SetParticipation(chatId, moderatorAuthor.Id, ParticipationKind.Record, true, default);
+        await backend.SetParticipation(chatId, memberAuthor.Id, ParticipationKind.Record, true, default);
         return new CallSetup(chatId, ownerAuthor.Id, moderatorAuthor.Id, memberAuthor.Id);
     }
 
