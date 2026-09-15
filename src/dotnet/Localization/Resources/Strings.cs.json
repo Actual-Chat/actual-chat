@@ -664,11 +664,6 @@
   "DemandInteraction_Updating": "Aktualizace...",
   "DemandInteraction_Continue_Format": "Pokračovat — {0}?",
   "Banner_ReadyToRestart_Format": "{0} je připraven k restartu v optimalizovaném režimu",
-  "Banner_CallDialing": "Voláte…",
-  "Banner_CallAccepted": "Hovor přijat",
-  "Banner_CallDeclined": "Hovor odmítnut",
-  "Banner_CallNoAnswer": "Nikdo nezvedá",
-  "Banner_CancelCall": "Zrušit hovor",
 
   "Bubble_Counter_Format": "{0} z {1}",
   "Bubble_ChatListTabsTitle": "Chaty a kontakty",
@@ -929,6 +924,9 @@
   "Common_Yesterday": "Včera",
   "Call_IncomingFrom": "Příchozí hovor od ",
   "Call_Message": "Zpráva",
+  "Call_AppIncomingTitle": "Příchozí hovor",
+  "Call_Mute": "Ztlumit",
+  "Call_IsCallingYou": "vám volá…",
   "Call_SelectCamera": "Vyberte kameru",
   "Call_NoCameras": "Nebyla nalezena žádná kamera",
   "Call_CameraBlocked": "Přístup ke kameře je zablokovaný.",
@@ -1487,6 +1485,8 @@
   "Video_Connecting": "Připojování...",
   "Call_Ended": "Hovor ukončen",
   "Call_CouldntStart": "Hovor se nepodařilo zahájit",
+  "Call_NoMicrophoneAccess": "Hovor se nepodařilo zahájit: bez přístupu k mikrofonu.",
+  "Call_AlreadyInCall": "Už jste v hovoru",
   "Call_RecordingTurnedOffByHost": "Nahrávání vypnul hostitel",
   "Call_MakeHost": "Nastavit jako hostitele",
   "Call_Join": "Připojit se",
@@ -1593,5 +1593,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Členy upravíte v nastavení Místa",
   "ChatSettings_LeaveChatAndDelete": "Opustit chat a smazat",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Opustit Místo a smazat"
+  "PlaceSettings_LeavePlaceAndDelete": "Opustit Místo a smazat",
+  "Call_OutgoingTo": "Odchozí hovor pro ",
+  "Call_Outgoing": "Odchozí hovor"
 }

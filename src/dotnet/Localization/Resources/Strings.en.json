@@ -803,11 +803,6 @@
   "DemandInteraction_Updating": "Updating...",
   "DemandInteraction_Continue_Format": "Continue {0}?",
   "Banner_ReadyToRestart_Format": "{0} is ready to restart in the optimized mode",
-  "Banner_CallDialing": "You are calling…",
-  "Banner_CallAccepted": "Call accepted",
-  "Banner_CallDeclined": "Call declined",
-  "Banner_CallNoAnswer": "No answer",
-  "Banner_CancelCall": "Cancel call",
 
   // "Bubbles" are the coach-mark tooltips of the first-run walk-through: shown once, then
   // dismissed. Bubble_Counter_Format is the "3 of 7" step counter. Each is a title plus a short
@@ -1093,7 +1088,11 @@
   "Common_Today": "Today",
   "Common_Yesterday": "Yesterday",
   "Call_IncomingFrom": "Incoming call from ",
+  "Call_OutgoingTo": "Outgoing call to ",
   "Call_Message": "Message",
+  "Call_AppIncomingTitle": "Incoming call",
+  "Call_Mute": "Mute",
+  "Call_IsCallingYou": "is calling you…",
   "Call_SelectCamera": "Select a camera",
   "Call_NoCameras": "No cameras detected",
   "Call_CameraBlocked": "Camera access is blocked.",
@@ -1774,6 +1773,8 @@
   // Call state text and the call action buttons.
   "Call_Ended": "Call ended",
   "Call_CouldntStart": "Couldn't start the call",
+  "Call_NoMicrophoneAccess": "Couldn't start the call: no microphone access.",
+  "Call_AlreadyInCall": "You're already in a call",
   "Call_RecordingTurnedOffByHost": "Recording turned off by the host",
   "Call_MakeHost": "Make host",
   // "Join" in the call sense - entering a call that is already running, not
@@ -1789,6 +1790,7 @@
   "Call_DetectingLanguage": "Detecting language",
   "Call_Incoming": "Incoming call",
   "Call_IncomingVideo": "Incoming video call",
+  "Call_Outgoing": "Outgoing call",
   "Call_InCall": "In call",
   "Call_JoinVideo": "Join the video",
   "Call_VideoPreview": "Video preview",

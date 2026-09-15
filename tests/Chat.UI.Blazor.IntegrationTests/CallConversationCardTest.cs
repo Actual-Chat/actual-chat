@@ -1,3 +1,4 @@
+using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App.Components;
@@ -38,8 +39,10 @@ public sealed class CallConversationCardTest(ChatAppHostFixture fixture, ITestOu
             chatId, bobAuthor.Id, new[] { aliceAuthor.Id }.ToApiArray(), false, CancellationToken.None);
         await liveBackend.AcceptCall(chatId, aliceAuthor.Id, CancellationToken.None);
         var connected = await liveBackend.GetState(chatId, CancellationToken.None);
-        await liveBackend.LeaveCall(chatId, aliceAuthor.Id, CancellationToken.None);
-        await liveBackend.LeaveCall(chatId, bobAuthor.Id, CancellationToken.None);
+        await liveBackend.SetParticipation(
+            chatId, aliceAuthor.Id, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.SetParticipation(
+            chatId, bobAuthor.Id, ParticipationKind.Record, false, CancellationToken.None);
 
         var conversationId = connected!.ToMaterializedConversation().Id;
         var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
@@ -85,8 +88,10 @@ public sealed class CallConversationCardTest(ChatAppHostFixture fixture, ITestOu
         await liveBackend.AcceptCall(chatId, aliceAuthor.Id, CancellationToken.None);
         var connected = await liveBackend.GetState(chatId, CancellationToken.None);
         var beforeHangup = Moment.Now;
-        await liveBackend.LeaveCall(chatId, aliceAuthor.Id, CancellationToken.None);
-        await liveBackend.LeaveCall(chatId, bobAuthor.Id, CancellationToken.None);
+        await liveBackend.SetParticipation(
+            chatId, aliceAuthor.Id, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.SetParticipation(
+            chatId, bobAuthor.Id, ParticipationKind.Record, false, CancellationToken.None);
 
         // assert
         var conversationId = connected!.ToMaterializedConversation().Id;

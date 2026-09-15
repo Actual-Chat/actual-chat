@@ -664,11 +664,6 @@
   "DemandInteraction_Updating": "Memperbarui...",
   "DemandInteraction_Continue_Format": "Lanjutkan {0}?",
   "Banner_ReadyToRestart_Format": "{0} siap dimulai ulang dalam mode teroptimasi",
-  "Banner_CallDialing": "Anda sedang memanggil…",
-  "Banner_CallAccepted": "Panggilan diterima",
-  "Banner_CallDeclined": "Panggilan ditolak",
-  "Banner_CallNoAnswer": "Tidak dijawab",
-  "Banner_CancelCall": "Batalkan panggilan",
 
   "Bubble_Counter_Format": "{0} dari {1}",
   "Bubble_ChatListTabsTitle": "Obrolan dan kontak",
@@ -929,6 +924,9 @@
   "Common_Yesterday": "Kemarin",
   "Call_IncomingFrom": "Panggilan masuk dari ",
   "Call_Message": "Pesan",
+  "Call_AppIncomingTitle": "Panggilan masuk",
+  "Call_Mute": "Bisukan",
+  "Call_IsCallingYou": "sedang menelepon Anda…",
   "Call_SelectCamera": "Pilih kamera",
   "Call_NoCameras": "Tidak ada kamera terdeteksi",
   "Call_CameraBlocked": "Akses kamera diblokir.",
@@ -1487,6 +1485,8 @@
   "Video_Connecting": "Menghubungkan...",
   "Call_Ended": "Panggilan berakhir",
   "Call_CouldntStart": "Panggilan tidak bisa dimulai",
+  "Call_NoMicrophoneAccess": "Panggilan tidak bisa dimulai: tidak ada akses mikrofon.",
+  "Call_AlreadyInCall": "Anda sudah dalam panggilan",
   "Call_RecordingTurnedOffByHost": "Perekaman dimatikan oleh tuan rumah",
   "Call_MakeHost": "Jadikan tuan rumah",
   "Call_Join": "Gabung",
@@ -1593,5 +1593,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Kelola anggota di pengaturan Tempat",
   "ChatSettings_LeaveChatAndDelete": "Keluar dari obrolan & hapus",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Keluar dari Tempat & hapus"
+  "PlaceSettings_LeavePlaceAndDelete": "Keluar dari Tempat & hapus",
+  "Call_OutgoingTo": "Panggilan keluar ke ",
+  "Call_Outgoing": "Panggilan keluar"
 }

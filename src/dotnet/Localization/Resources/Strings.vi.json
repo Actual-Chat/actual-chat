@@ -664,11 +664,6 @@
   "DemandInteraction_Updating": "Đang cập nhật...",
   "DemandInteraction_Continue_Format": "Tiếp tục {0}?",
   "Banner_ReadyToRestart_Format": "{0} đã sẵn sàng khởi động lại ở chế độ tối ưu",
-  "Banner_CallDialing": "Bạn đang gọi…",
-  "Banner_CallAccepted": "Cuộc gọi đã được chấp nhận",
-  "Banner_CallDeclined": "Cuộc gọi bị từ chối",
-  "Banner_CallNoAnswer": "Không có trả lời",
-  "Banner_CancelCall": "Hủy cuộc gọi",
 
   "Bubble_Counter_Format": "{0} trên {1}",
   "Bubble_ChatListTabsTitle": "Trò chuyện và danh bạ",
@@ -929,6 +924,9 @@
   "Common_Yesterday": "Hôm qua",
   "Call_IncomingFrom": "Cuộc gọi đến từ ",
   "Call_Message": "Tin nhắn",
+  "Call_AppIncomingTitle": "Cuộc gọi đến",
+  "Call_Mute": "Tắt tiếng",
+  "Call_IsCallingYou": "đang gọi cho bạn…",
   "Call_SelectCamera": "Chọn máy ảnh",
   "Call_NoCameras": "Không phát hiện máy ảnh",
   "Call_CameraBlocked": "Quyền truy cập máy ảnh bị chặn.",
@@ -1487,6 +1485,8 @@
   "Video_Connecting": "Đang kết nối...",
   "Call_Ended": "Cuộc gọi đã kết thúc",
   "Call_CouldntStart": "Không thể bắt đầu cuộc gọi",
+  "Call_NoMicrophoneAccess": "Không thể bắt đầu cuộc gọi: không có quyền dùng micrô.",
+  "Call_AlreadyInCall": "Bạn đang trong một cuộc gọi",
   "Call_RecordingTurnedOffByHost": "Chủ phòng đã tắt ghi âm",
   "Call_MakeHost": "Đặt làm chủ trì",
   "Call_Join": "Tham gia",
@@ -1593,5 +1593,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Dùng cài đặt Địa điểm để chỉnh sửa thành viên",
   "ChatSettings_LeaveChatAndDelete": "Rời khỏi và xóa cuộc trò chuyện",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Rời khỏi và xóa Địa điểm"
+  "PlaceSettings_LeavePlaceAndDelete": "Rời khỏi và xóa Địa điểm",
+  "Call_OutgoingTo": "Cuộc gọi đi tới ",
+  "Call_Outgoing": "Cuộc gọi đi"
 }

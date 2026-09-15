@@ -664,11 +664,6 @@
   "DemandInteraction_Updating": "Ажурирање...",
   "DemandInteraction_Continue_Format": "Наставити — {0}?",
   "Banner_ReadyToRestart_Format": "{0} је спреман за поновно покретање у оптимизираном начину",
-  "Banner_CallDialing": "Зовете…",
-  "Banner_CallAccepted": "Позив прихваћен",
-  "Banner_CallDeclined": "Позив одбијен",
-  "Banner_CallNoAnswer": "Нема одговора",
-  "Banner_CancelCall": "Откажите позив",
 
   "Bubble_Counter_Format": "{0} од {1}",
   "Bubble_ChatListTabsTitle": "Четови и контакти",
@@ -929,6 +924,9 @@
   "Common_Yesterday": "Јуче",
   "Call_IncomingFrom": "Долазни позив од ",
   "Call_Message": "Порука",
+  "Call_AppIncomingTitle": "Долазни позив",
+  "Call_Mute": "Без звука",
+  "Call_IsCallingYou": "вас зове…",
   "Call_SelectCamera": "Одаберите камеру",
   "Call_NoCameras": "Није пронађена ниједна камера",
   "Call_CameraBlocked": "Приступ камери је блокиран.",
@@ -1487,6 +1485,8 @@
   "Video_Connecting": "Повезивање...",
   "Call_Ended": "Позив је завршен",
   "Call_CouldntStart": "Позив се није могао покренути",
+  "Call_NoMicrophoneAccess": "Позив се није могао покренути: нема приступа микрофону.",
+  "Call_AlreadyInCall": "Већ сте у позиву",
   "Call_RecordingTurnedOffByHost": "Домаћин је искључио снимање",
   "Call_MakeHost": "Поставите за домаћина",
   "Call_Join": "Придружите се",
@@ -1593,5 +1593,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Чланове уређујете у поставкама Места",
   "ChatSettings_LeaveChatAndDelete": "Напустите чет и обриши",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Напустите Место и обриши"
+  "PlaceSettings_LeavePlaceAndDelete": "Напустите Место и обриши",
+  "Call_OutgoingTo": "Одлазни позив према ",
+  "Call_Outgoing": "Одлазни позив"
 }

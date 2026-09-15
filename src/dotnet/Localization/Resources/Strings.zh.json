@@ -664,11 +664,6 @@
   "DemandInteraction_Updating": "正在更新…",
   "DemandInteraction_Continue_Format": "继续 {0}？",
   "Banner_ReadyToRestart_Format": "{0} 已可在优化模式下重启",
-  "Banner_CallDialing": "正在呼叫…",
-  "Banner_CallAccepted": "通话已接听",
-  "Banner_CallDeclined": "通话已拒接",
-  "Banner_CallNoAnswer": "无人接听",
-  "Banner_CancelCall": "取消呼叫",
 
   "Bubble_Counter_Format": "第 {0} / {1} 条",
   "Bubble_ChatListTabsTitle": "聊天与联系人",
@@ -929,6 +924,9 @@
   "Common_Yesterday": "昨天",
   "Call_IncomingFrom": "来电：",
   "Call_Message": "消息",
+  "Call_AppIncomingTitle": "来电",
+  "Call_Mute": "静音",
+  "Call_IsCallingYou": "正在呼叫你…",
   "Call_SelectCamera": "选择摄像头",
   "Call_NoCameras": "未检测到摄像头",
   "Call_CameraBlocked": "摄像头访问已被阻止。",
@@ -1487,6 +1485,8 @@
   "Video_Connecting": "正在连接…",
   "Call_Ended": "通话已结束",
   "Call_CouldntStart": "无法发起通话",
+  "Call_NoMicrophoneAccess": "无法发起通话：无法访问麦克风。",
+  "Call_AlreadyInCall": "你已在通话中",
   "Call_RecordingTurnedOffByHost": "主持人已关闭录音",
   "Call_MakeHost": "设为主持人",
   "Call_Join": "加入",
@@ -1593,5 +1593,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "请在地点设置中编辑成员",
   "ChatSettings_LeaveChatAndDelete": "退出并删除聊天",
 
-  "PlaceSettings_LeavePlaceAndDelete": "退出并删除地点"
+  "PlaceSettings_LeavePlaceAndDelete": "退出并删除地点",
+  "Call_OutgoingTo": "去电：",
+  "Call_Outgoing": "去电"
 }

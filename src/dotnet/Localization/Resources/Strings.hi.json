@@ -664,11 +664,6 @@
   "DemandInteraction_Updating": "अपडेट हो रहा है...",
   "DemandInteraction_Continue_Format": "{0} जारी रखें?",
   "Banner_ReadyToRestart_Format": "{0} अनुकूलित मोड में पुनः आरंभ होने के लिए तैयार है",
-  "Banner_CallDialing": "आप कॉल कर रहे हैं…",
-  "Banner_CallAccepted": "कॉल स्वीकार की गई",
-  "Banner_CallDeclined": "कॉल अस्वीकार की गई",
-  "Banner_CallNoAnswer": "कोई उत्तर नहीं",
-  "Banner_CancelCall": "कॉल रद्द करें",
 
   "Bubble_Counter_Format": "{1} में से {0}",
   "Bubble_ChatListTabsTitle": "चैट और संपर्क",
@@ -929,6 +924,9 @@
   "Common_Yesterday": "कल",
   "Call_IncomingFrom": "इनकमिंग कॉल: ",
   "Call_Message": "संदेश",
+  "Call_AppIncomingTitle": "इनकमिंग कॉल",
+  "Call_Mute": "म्यूट",
+  "Call_IsCallingYou": "आपको कॉल कर रहे हैं…",
   "Call_SelectCamera": "कैमरा चुनें",
   "Call_NoCameras": "कोई कैमरा नहीं मिला",
   "Call_CameraBlocked": "कैमरा एक्सेस ब्लॉक है।",
@@ -1487,6 +1485,8 @@
   "Video_Connecting": "कनेक्ट हो रहा है...",
   "Call_Ended": "कॉल समाप्त",
   "Call_CouldntStart": "कॉल शुरू नहीं हो सकी",
+  "Call_NoMicrophoneAccess": "कॉल शुरू नहीं हो सकी: माइक्रोफ़ोन की अनुमति नहीं है।",
+  "Call_AlreadyInCall": "आप पहले से कॉल पर हैं",
   "Call_RecordingTurnedOffByHost": "होस्ट ने रिकॉर्डिंग बंद कर दी",
   "Call_MakeHost": "होस्ट बनाएँ",
   "Call_Join": "शामिल हों",
@@ -1593,5 +1593,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "सदस्यों को संपादित करने के लिए प्लेस सेटिंग्स का उपयोग करें",
   "ChatSettings_LeaveChatAndDelete": "चैट छोड़ें और हटाएँ",
 
-  "PlaceSettings_LeavePlaceAndDelete": "प्लेस छोड़ें और हटाएँ"
+  "PlaceSettings_LeavePlaceAndDelete": "प्लेस छोड़ें और हटाएँ",
+  "Call_OutgoingTo": "आउटगोइंग कॉल: ",
+  "Call_Outgoing": "आउटगोइंग कॉल"
 }

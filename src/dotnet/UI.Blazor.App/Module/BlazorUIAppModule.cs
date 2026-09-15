@@ -111,7 +111,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(c => new PttSessionCore(c.AppUIHub()));
         fusion.AddService<LiveSessionUI>(ServiceLifetime.Scoped);
         fusion.AddService<LiveBlockUI>(ServiceLifetime.Scoped);
-        fusion.AddService<IncomingCallUI>(ServiceLifetime.Scoped);
+        fusion.AddService<CallUI>(ServiceLifetime.Scoped);
+        fusion.AddService<CallScreensUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatActivityUI>(ServiceLifetime.Scoped);
 
         // Settings
@@ -189,7 +190,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<ScreenCastAlreadyActiveModal.Model, ScreenCastAlreadyActiveModal>()
             .Add<VideoDiagnosticsModal.Model, VideoDiagnosticsModal>()
             .Add<AudioDiagnosticsModal.Model, AudioDiagnosticsModal>()
-            .Add<IncomingCallModal.Model, IncomingCallModal>()
+            .Add<CallModal.Model, CallModal>()
             .Add<TimeZoneEditorModal.Model, TimeZoneEditorModal>()
             .Add<ApiKeyCreateModal.Model, ApiKeyCreateModal>()
             .Add<EmojiModal.Model, EmojiModal>()

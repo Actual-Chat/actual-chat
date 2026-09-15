@@ -3,7 +3,7 @@ import { DeviceInfo } from 'device-info';
 
 const { logScope, debugLog, warnLog } = getLogs('IncomingCallRingtone');
 
-// The looping web ringtone for incoming calls, driven by IncomingCallUI on every platform
+// The looping web ringtone for incoming calls, driven by CallScreensUI on every platform
 // except Android (there the native AndroidIncomingCallsBridge owns the ring). A single
 // looping HTMLAudioElement is enough: it keeps playing until stop() and needs no AudioContext.
 export class IncomingCallRingtone {

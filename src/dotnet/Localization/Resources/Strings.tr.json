@@ -664,11 +664,6 @@
   "DemandInteraction_Updating": "Güncelleniyor...",
   "DemandInteraction_Continue_Format": "{0} devam edilsin mi?",
   "Banner_ReadyToRestart_Format": "{0} optimize modda yeniden başlatılmaya hazır",
-  "Banner_CallDialing": "Arıyorsunuz…",
-  "Banner_CallAccepted": "Arama kabul edildi",
-  "Banner_CallDeclined": "Arama reddedildi",
-  "Banner_CallNoAnswer": "Yanıt yok",
-  "Banner_CancelCall": "Aramayı iptal edin",
 
   "Bubble_Counter_Format": "{0} / {1}",
   "Bubble_ChatListTabsTitle": "Sohbetler ve kişiler",
@@ -929,6 +924,9 @@
   "Common_Yesterday": "Dün",
   "Call_IncomingFrom": "Gelen arama: ",
   "Call_Message": "Mesaj",
+  "Call_AppIncomingTitle": "Gelen çağrı",
+  "Call_Mute": "Sessiz",
+  "Call_IsCallingYou": "sizi arıyor…",
   "Call_SelectCamera": "Bir kamera seçin",
   "Call_NoCameras": "Kamera bulunamadı",
   "Call_CameraBlocked": "Kamera erişimi engellendi.",
@@ -1487,6 +1485,8 @@
   "Video_Connecting": "Bağlanılıyor...",
   "Call_Ended": "Arama sona erdi",
   "Call_CouldntStart": "Arama başlatılamadı",
+  "Call_NoMicrophoneAccess": "Arama başlatılamadı: mikrofon erişimi yok.",
+  "Call_AlreadyInCall": "Zaten bir aramadasınız",
   "Call_RecordingTurnedOffByHost": "Kayıt, oturum sahibi tarafından kapatıldı",
   "Call_MakeHost": "Sunucu yapın",
   "Call_Join": "Katılın",
@@ -1593,5 +1593,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Üyeleri düzenlemek için Mekân ayarlarını kullanın",
   "ChatSettings_LeaveChatAndDelete": "Sohbetten ayrılın ve silin",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Mekândan ayrılın ve silin"
+  "PlaceSettings_LeavePlaceAndDelete": "Mekândan ayrılın ve silin",
+  "Call_OutgoingTo": "Giden arama: ",
+  "Call_Outgoing": "Giden arama"
 }

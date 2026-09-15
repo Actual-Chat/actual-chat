@@ -1,0 +1,38 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+
+<div class="c-header">
+    <ButtonRound Click="@OnCollapse" Class="author-modal-close-btn close-btn btn-sm">
+        <i class="icon-close text-2xl"></i>
+    </ButtonRound>
+
+    <div class="c-top">
+        <AuthorCircle
+            AuthorId="@Author.Id"
+            Size="SquareSize.SizeFull"
+            IsBlurred="@true"
+            IsSquare="@true" />
+    </div>
+
+    <div class="c-center">
+        <AuthorCircle
+            AuthorId="@Author.Id"
+            Size="SquareSize.Size16" />
+    </div>
+
+    <div class="c-bottom">
+        <div class="c-title">
+            <span class="call-text">@CallText</span>
+            <AuthorName AuthorId="@Author.Id" Class="text-02 text-headline-7" ShowDetailsOnClick="false"/>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter, EditorRequired] public Author Author { get; set; } = null!;
+    [Parameter, EditorRequired] public bool IsOwn { get; set; }
+    [Parameter] public EventCallback OnCollapse { get; set; }
+
+    private string CallText => IsOwn ? L.Call_OutgoingTo : L.Call_IncomingFrom;
+}

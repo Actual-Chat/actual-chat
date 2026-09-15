@@ -1,0 +1,336 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Live
+@using ActualChat.UI.Blazor.App.Module
+@using ActualLab.Diagnostics
+@inherits ComputedStateComponent<AppUIHub, FullScreenCallView.ComputedModel>
+@{
+    var m = State.Value;
+    if (m.Chat is not { } chat)
+        return;
+}
+
+<div class="full-screen-call-view @(m.Phase == CallPhase.Ringing ? "ringing" : "in-call")">
+    <div class="c-bg">
+        <ChatIcon Chat="@chat" Size="SquareSize.SizeFull"
+                  IsSquare="@true" IsBlurred="@true" ShowFullSizeAvatar="@true" HideTitle="@true"/>
+    </div>
+    <div class="c-scrim"></div>
+
+    @if (m.Phase == CallPhase.Ringing) {
+        <div class="c-topbar c-brand">
+            <i class="icon-voxt"></i>
+            <span>@L.Call_AppIncomingTitle</span>
+        </div>
+    }
+    else {
+        <div class="c-topbar c-call-bar">
+            <HeaderButton Class="btn-video-panel" Click="@OnCollapseClick">
+                <i class="icon-collapse text-lg"></i>
+            </HeaderButton>
+            <HeaderButton Class="btn-video-panel talking" Click="@OnHangUpClick">
+                <i class="icon-phone-off"></i>
+            </HeaderButton>
+        </div>
+    }
+
+    <div class="c-body">
+        <div class="c-avatar">
+            <ChatIcon Chat="@chat" Size="SquareSize.Size24" HideTitle="@true"/>
+        </div>
+        <div class="c-name">
+            <span class="c-name-text">@chat.Title</span>
+        </div>
+        <div class="c-status">@StatusText(m)</div>
+        @if (m.JoinedAt is { } joinedAt) {
+            <div class="c-timer"><LiveDuration StartedAt="@joinedAt"/></div>
+        }
+    </div>
+
+    <div class="c-footer">
+        @if (m.Phase == CallPhase.Ringing) {
+            <div class="c-ring-buttons" @ref="_ringButtons">
+                <div class="c-btn-cell">
+                    <div class="c-hints" aria-hidden="true">
+                        <svg class="c-hint-chevron" viewBox="0 0 24 14" fill="none" stroke="currentColor"
+                             stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 11 12 3l10 8"/>
+                        </svg>
+                        <svg class="c-hint-chevron" viewBox="0 0 24 14" fill="none" stroke="currentColor"
+                             stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 11 12 3l10 8"/>
+                        </svg>
+                        <svg class="c-hint-chevron" viewBox="0 0 24 14" fill="none" stroke="currentColor"
+                             stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 11 12 3l10 8"/>
+                        </svg>
+                    </div>
+                    <Button Class="btn-call c-decline" Click="@OnDeclineClick">
+                        <i class="icon-close"></i>
+                    </Button>
+                    <span class="c-btn-label">@L.Common_Decline</span>
+                </div>
+                <div class="c-btn-cell">
+                    <Button Class="btn-call c-mute" Click="@OnMuteClick">
+                        <i class="@(m.IsMuted ? "icon-bell" : "icon-bell-off")"></i>
+                    </Button>
+                    <span class="c-btn-label">@L.Call_Mute</span>
+                </div>
+                <div class="c-btn-cell">
+                    <Button Class="btn-call c-message" Click="@OnMessageClick">
+                        <i class="icon-message-ellipse"></i>
+                    </Button>
+                    <span class="c-btn-label">@L.Call_Message</span>
+                </div>
+                <div class="c-btn-cell">
+                    <div class="c-hints" aria-hidden="true">
+                        <svg class="c-hint-chevron" viewBox="0 0 24 14" fill="none" stroke="currentColor"
+                             stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 11 12 3l10 8"/>
+                        </svg>
+                        <svg class="c-hint-chevron" viewBox="0 0 24 14" fill="none" stroke="currentColor"
+                             stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 11 12 3l10 8"/>
+                        </svg>
+                        <svg class="c-hint-chevron" viewBox="0 0 24 14" fill="none" stroke="currentColor"
+                             stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 11 12 3l10 8"/>
+                        </svg>
+                    </div>
+                    <Button Class="btn-call c-accept" Click="@OnAcceptClick">
+                        <i class="icon-phone-take"></i>
+                    </Button>
+                    <span class="c-btn-label">@L.Common_Accept</span>
+                </div>
+            </div>
+        }
+        else {
+            <div class="c-toolbar">
+                @* Mobile switches the front/back camera; anywhere else (incl. a narrow desktop window)
+                   keeps screen share, which is where sharing actually makes sense. *@
+                @if (Hub.BrowserInfo.IsMobile) {
+                    <HeaderButton Class="btn-video-panel" Click="@OnSwitchCameraClick">
+                        <i class="icon-camera-switch text-lg"></i>
+                    </HeaderButton>
+                }
+                else {
+                    <HeaderButton Class="btn-video-panel" Click="@OnScreenShareClick">
+                        <i class="icon-screen-share text-lg"></i>
+                    </HeaderButton>
+                }
+                <HeaderButton Class="btn-video-panel" Click="@OnVideoClick">
+                    <i class="icon-video text-lg"></i>
+                </HeaderButton>
+                <HeaderButton
+                    Click="@(() => OnToggleRecordingClick(!m.IsRecording))"
+                    IsDisabled="@(m.Phase == CallPhase.Dialing)"
+                    Class="@("btn-video-panel btn-rec " + (m.IsRecording ? "recording" : ""))">
+                    @if (m.IsRecording) {
+                        <active-recording-svg size="8" isRecording="true"/>
+                    } else {
+                        <i class="icon-recorder-left-half left"></i>
+                        <i class="icon-recorder-right-half right"></i>
+                    }
+                </HeaderButton>
+                <HeaderButton Class="btn-video-panel c-speaker">
+                    <i class="icon-volume-up-2 text-lg"></i>
+                </HeaderButton>
+                <HeaderButton Class="btn-video-panel" Click="@OnOptionsClick">
+                    <i class="icon-options-2 text-lg"></i>
+                </HeaderButton>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private static readonly string JSCreateSwipe = $"{BlazorUIAppModule.ImportName}.IncomingCallSwipe.create";
+
+    private bool _shownOverLock;
+    private ElementReference _ringButtons;
+    private DotNetObjectReference<FullScreenCallView>? _dotNetRef;
+    private IJSObjectReference? _swipeRef;
+    private CallScreensUI CallScreensUI => Hub.CallScreensUI;
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private CameraUI CameraUI => Hub.CameraUI;
+    private ILogger Log => field ??= Hub.LogFor(GetType());
+    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
+
+    protected override void OnAfterRender(bool firstRender) {
+        // Bring the app forward over the keyguard only after the call screen is drawn. Gated on
+        // IsOverLock: the foreground screen has no cover to hide or keyguard flag to set.
+        var m = State.Value;
+        var isShowing = m.Chat is not null && m.IsOverLock;
+        if (firstRender)
+            DebugLog?.LogInformation("CALL_TRACE: FullScreenCallView first render, isShowing={IsShowing}", isShowing);
+        if (isShowing && !_shownOverLock) {
+            _shownOverLock = true;
+            DebugLog?.LogInformation("CALL_TRACE: FullScreenCallView became visible → OnOverLockScreenRendered");
+            CallScreensUI.OnOverLockScreenRendered();
+        }
+        else if (!isShowing && _shownOverLock)
+            _shownOverLock = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        // Attach the swipe-to-answer controller while the ringing buttons are on screen (it no-ops on
+        // non-touch, so the buttons keep their native click there), detach otherwise.
+        var isRinging = State.Value is { Chat: not null, Phase: CallPhase.Ringing };
+        if (isRinging && _swipeRef is null) {
+            _dotNetRef ??= DotNetObjectReference.Create(this);
+            _swipeRef = await Hub.JS
+                .InvokeAsync<IJSObjectReference>(JSCreateSwipe, _ringButtons, _dotNetRef)
+                .ConfigureAwait(true);
+        }
+        else if (!isRinging && _swipeRef is not null) {
+            await _swipeRef.DisposeAsync().ConfigureAwait(true);
+            _swipeRef = null;
+        }
+    }
+
+    [JSInvokable]
+    public Task SwipeAccept() => OnAcceptClick();
+
+    [JSInvokable]
+    public Task SwipeDecline() => OnDeclineClick();
+
+    public override async ValueTask DisposeAsync() {
+        if (_swipeRef is not null) {
+            await _swipeRef.DisposeAsync().ConfigureAwait(true);
+            _swipeRef = null;
+        }
+        _dotNetRef?.Dispose();
+        await base.DisposeAsync().ConfigureAwait(true);
+    }
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ComputedModel>.Options() {
+                InitialValue = ComputedModel.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var view = await CallScreensUI.GetCallView(cancellationToken).ConfigureAwait(false);
+        if (view is not { Kind: CallViewKind.FullScreen, Call: { } call })
+            return ComputedModel.None;
+
+        var chatId = call.ChatId;
+        var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null) {
+            DebugLog?.LogInformation(
+                "CALL_TRACE: FullScreenCallView.ComputeState #{ChatId} → None (chat not loaded)", chatId);
+            return ComputedModel.None;
+        }
+
+        DebugLog?.LogInformation(
+            "CALL_TRACE: FullScreenCallView.ComputeState #{ChatId} → {Phase}", chatId, call.Phase);
+        var m = new ComputedModel {
+            Chat = chat, Phase = call.Phase, HasVideo = call.HasVideo, IsOverLock = view.IsOverLock,
+        };
+        if (call.Phase == CallPhase.Ringing) {
+            var mutedChatId = await CallScreensUI.MutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
+            return m with { IsMuted = mutedChatId == chatId };
+        }
+
+        var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
+        // Hidden until my own join is known: Accept commits the call before my audio starts.
+        var joinedAt = call.Phase == CallPhase.Active
+            ? await GetJoinedAt(chatId, cancellationToken).ConfigureAwait(false)
+            : null;
+        return m with { IsRecording = recordingChatId == chatId, JoinedAt = joinedAt };
+    }
+
+    private async Task<Moment?> GetJoinedAt(ChatId chatId, CancellationToken cancellationToken) {
+        // The session itself can predate the call - an ambient one gets promoted - so the timer
+        // counts from my own join, not from LiveSession.StartedAt.
+        var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (live is null)
+            return null;
+
+        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (ownAuthor is null)
+            return null;
+
+        var me = live.Members.FirstOrDefault(m => m.AuthorId == ownAuthor.Id);
+        return me is null || me.JoinedAt == default ? null : me.JoinedAt;
+    }
+
+    private Task OnAcceptClick()
+        => State.Value.Chat is { } chat ? CallScreensUI.Accept(chat.Id) : Task.CompletedTask;
+
+    private Task OnDeclineClick()
+        => State.Value.Chat is { } chat ? CallScreensUI.Decline(chat.Id) : Task.CompletedTask;
+
+    private void OnMuteClick() {
+        if (State.Value.Chat is { } chat)
+            CallScreensUI.ToggleMuteRing(chat.Id);
+    }
+
+    // Over the lock screen "Message" declines the ring; opening the chat still needs a keyguard dismiss,
+    // so the chat only surfaces once the user unlocks.
+    private Task OnMessageClick()
+        => State.Value.Chat is { } chat ? CallScreensUI.DeclineAndOpenChat(chat.Id) : Task.CompletedTask;
+
+    private Task OnCollapseClick() {
+        var m = State.Value;
+        if (m.Chat is not { } chat)
+            return Task.CompletedTask;
+
+        // A dialing call collapses into the island; an active one gives way to its chat.
+        if (m.Phase == CallPhase.Active)
+            return CallScreensUI.LeaveCallScreen(chat.Id);
+
+        CallScreensUI.Collapse(chat.Id);
+        return Task.CompletedTask;
+    }
+
+    private Task OnHangUpClick()
+        => State.Value.Chat is { } chat ? CallScreensUI.HangUp(chat.Id) : Task.CompletedTask;
+
+    private void OnVideoClick() {
+        if (State.Value.Chat is { } chat)
+            ChatVideoUI.ToggleVideoCapture(chat.Id);
+    }
+
+    private Task OnSwitchCameraClick()
+        => CameraUI.SwitchCamera();
+
+    private void OnScreenShareClick() {
+        if (State.Value.Chat is { } chat)
+            ChatVideoUI.ToggleScreenCast(chat.Id);
+    }
+
+    private void OnToggleRecordingClick(bool enable) {
+        if (State.Value.Chat is { } chat)
+            _ = ChatAudioUI.SetRecordingChatId(enable ? chat.Id : null);
+    }
+
+    private void OnOptionsClick() {
+        if (State.Value.Chat is { } chat)
+            ChatVideoUI.ShowVoiceSettings(chat.Id);
+    }
+
+    private string StatusText(ComputedModel m)
+        => m.Phase switch {
+            CallPhase.Ringing => L.Call_IsCallingYou,
+            CallPhase.Dialing => L.Call_Dialing,
+            _ => L.Call_InCall,
+        };
+
+    // Nested types
+
+    public sealed record ComputedModel {
+        public static readonly ComputedModel None = new();
+        public Chat? Chat { get; init; }
+        public CallPhase Phase { get; init; }
+        public bool HasVideo { get; init; }
+        public bool IsMuted { get; init; }
+        public Moment? JoinedAt { get; init; }
+        public bool IsRecording { get; init; }
+        // False when this is the narrow-layout foreground screen rather than the real over-lock one.
+        public bool IsOverLock { get; init; }
+    }
+}

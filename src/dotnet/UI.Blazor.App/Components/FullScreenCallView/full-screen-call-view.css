@@ -1,0 +1,188 @@
+.full-screen-call-view {
+    @apply z-modal-overlay fixed inset-0;
+    @apply flex-y items-center;
+    @apply w-full h-full;
+    @apply overflow-hidden;
+    @apply bg-01;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+/* Blurred caller avatar fills the screen behind everything. */
+.full-screen-call-view .c-bg {
+    @apply absolute inset-0 z-0;
+    @apply overflow-hidden;
+}
+.full-screen-call-view .c-bg .avatar,
+.full-screen-call-view .c-bg img {
+    @apply w-full h-full;
+    object-fit: cover;
+}
+/* Darkening so white text/controls stay legible over any avatar: a light top wash for the
+   brand header + a smooth, stronger bottom scrim under the whole action area (buttons/hints/labels). */
+.full-screen-call-view .c-scrim {
+    @apply absolute inset-0 z-0;
+    background:
+        linear-gradient(to bottom, rgb(0 0 0 / 42%) 0%, rgb(0 0 0 / 0%) 16%),
+        linear-gradient(to top,
+            rgb(0 0 0 / 62%) 0%,
+            rgb(0 0 0 / 55%) 10%,
+            rgb(0 0 0 / 42%) 24%,
+            rgb(0 0 0 / 26%) 40%,
+            rgb(0 0 0 / 12%) 58%,
+            rgb(0 0 0 / 0%) 76%);
+}
+.full-screen-call-view .c-topbar,
+.full-screen-call-view .c-body,
+.full-screen-call-view .c-footer {
+    @apply relative z-10 w-full;
+}
+
+/* Top bar: brand for ringing, collapse + hang-up for in-call */
+.full-screen-call-view .c-topbar {
+    @apply flex-x items-center;
+    @apply h-14 px-4 flex-none;
+}
+.full-screen-call-view .c-brand {
+    @apply justify-center gap-2;
+    @apply text-title-1 text-white;
+}
+.full-screen-call-view .c-call-bar {
+    @apply justify-between;
+}
+
+/* Center block: avatar, caller name, status, timer */
+.full-screen-call-view .c-body {
+    @apply flex-y items-center gap-1;
+    @apply mt-auto px-8 text-center;
+}
+.full-screen-call-view .c-avatar {
+    @apply mb-3;
+}
+.full-screen-call-view .c-name {
+    @apply flex-x items-center justify-center gap-2;
+    @apply text-headline-6 text-white;
+}
+.full-screen-call-view .c-status,
+.full-screen-call-view .c-timer {
+    @apply text-base text-white opacity-70;
+}
+
+/* Footer: button rows */
+.full-screen-call-view .c-footer {
+    @apply flex-y items-center;
+    @apply mt-auto mb-8 px-6;
+}
+
+/* Ringing: 4 labelled round buttons (Decline · Mute · Message · Accept) */
+.full-screen-call-view .c-ring-buttons {
+    @apply flex-x items-end justify-center gap-6;
+}
+.full-screen-call-view .c-btn-cell {
+    @apply flex-y items-center gap-2;
+}
+/* Swipe-up hints above Decline/Accept: three chevrons pulsing upward.
+   opacity + transform:scale only (both composited); continuous, so not registered in AnimationSync.
+   The darkening behind them is the bottom scrim (.c-scrim), not a per-hint backdrop. */
+.full-screen-call-view .c-hints {
+    @apply flex-y items-center text-white;
+    gap: 1px;
+    margin-bottom: 8px;
+    /* Swipe hints only make sense where the buttons are swiped — touch devices. */
+    display: none;
+}
+body.touch-capable .full-screen-call-view .c-hints {
+    display: flex;
+}
+.full-screen-call-view .c-hint-chevron {
+    width: 22px;
+    height: 9.9px;
+    opacity: 0.34;
+    animation: call-hint-sweep 1.4s ease-in-out infinite;
+    will-change: opacity, transform;
+}
+/* Stagger so the pulse sweeps upward: the bottom chevron (last child) lights first. */
+.full-screen-call-view .c-hint-chevron:nth-child(3) { animation-delay: 0s; }
+.full-screen-call-view .c-hint-chevron:nth-child(2) { animation-delay: 0.15s; }
+.full-screen-call-view .c-hint-chevron:nth-child(1) { animation-delay: 0.3s; }
+@keyframes call-hint-sweep {
+    0%, 100% { opacity: 0.34; transform: scale(1); }
+    45% { opacity: 1; transform: scale(1.14); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .full-screen-call-view .c-hint-chevron {
+        animation: none;
+        opacity: 0.6;
+    }
+}
+.full-screen-call-view .c-btn-label {
+    @apply text-xs text-white opacity-80;
+}
+.full-screen-call-view .btn-call {
+    @apply flex items-center justify-center;
+    @apply w-14 h-14 flex-none;
+    @apply rounded-full;
+    @apply text-white text-2xl;
+}
+/* Swipe-to-answer buttons: claim the vertical gesture so the browser doesn't hijack the drag as a
+   page scroll (which cancels the pointer and snaps the button back before the threshold). */
+.full-screen-call-view .btn-call.c-decline,
+.full-screen-call-view .btn-call.c-accept {
+    touch-action: none;
+}
+/* Solid gradients as plain CSS: the shorthand also clears .btn-round's default fill. */
+.full-screen-call-view .btn-call.c-decline {
+    background: linear-gradient(180deg, var(--magenta-60) 0%, var(--magenta-50) 100%);
+}
+.full-screen-call-view .btn-call.c-accept {
+    background: linear-gradient(180deg, var(--emerald-40) 0%, var(--emerald-30) 100%);
+}
+.full-screen-call-view .btn-call.c-mute,
+.full-screen-call-view .btn-call.c-message {
+    /* Same neutral glass as the video-panel controls. */
+    background: linear-gradient(180deg, var(--black-20) -20.83%, var(--black-40) 100%);
+    text-shadow: 0 1px 3px rgb(0 0 0 / 60%);
+}
+
+/* In-call: 5-control toolbar (reuses .btn-video-panel HeaderButton styling from video-panel.css) */
+.full-screen-call-view .c-toolbar {
+    @apply flex-x items-center justify-center gap-4;
+}
+.full-screen-call-view .c-toolbar .btn-video-panel.btn-h {
+    @apply w-12 h-12;
+}
+/* Record button — styled like the video panel's full-screen footer record button. */
+.full-screen-call-view .c-toolbar > button.btn-rec {
+    background: linear-gradient(180deg, #C60077 -18.32%, #2970FF 132%);
+    background-size: 100% 180%;
+    background-position: center center;
+    background-repeat: no-repeat;
+    animation: bgShake 3s steps(30) infinite alternate;
+}
+.full-screen-call-view .c-toolbar > button.btn-rec.recording {
+    background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
+    background-size: auto;
+    animation: record-btn-on-pulse 2s steps(10) infinite;
+}
+.full-screen-call-view .c-toolbar > button.btn-rec::after {
+    @apply content-empty;
+    @apply absolute inset-0;
+    @apply pointer-events-none;
+    @apply opacity-0;
+    border-radius: inherit;
+    box-shadow: 0 0 1rem 0 var(--magenta-60);
+}
+.full-screen-call-view .c-toolbar > button.btn-rec.recording::after {
+    animation: record-btn-glow 1s steps(10) forwards;
+    animation-delay: var(--anim-phase, 0s);
+}
+.full-screen-call-view .c-toolbar > button.btn-rec i {
+    @apply text-xl leading-5;
+}
+.full-screen-call-view .c-toolbar > button.btn-rec i.left {
+    @apply -mr-0.5;
+}
+/* Dialing: nothing to record yet, so the button is disabled until the peer answers. */
+.full-screen-call-view .c-toolbar > button.btn-rec:disabled {
+    @apply opacity-40;
+    animation-play-state: paused;
+}
