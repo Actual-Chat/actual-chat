@@ -44,7 +44,7 @@ public static class NotificationHelper
                 : $"{senderName} @ {groupTitle}";
 
     public static bool IsCoalescing(NotificationKind kind)
-        => kind is NotificationKind.Message or NotificationKind.Reply or NotificationKind.Thread;
+        => kind is NotificationKind.Message or NotificationKind.Reply;
 
     public static string GetIconUrl(Chat.Chat chat, AuthorFull author, UrlMapper urlMapper)
         // Unsized, the generator draws its 80px base, which an avatar slot on a 3x screen upscales.

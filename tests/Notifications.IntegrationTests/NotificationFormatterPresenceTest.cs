@@ -84,7 +84,8 @@ public class NotificationFormatterPresenceTest(ITestOutputHelper @out) : TestBas
             MentionNotification.New(TestUserId, entryId, authorId),
             ReactionNotification.New(TestUserId, entryId, authorId),
             AttentionNotification.New(TestUserId, entryId, authorId),
-            ThreadNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
+            ThreadNotification.New(TestUserId, entryId, authorId),
+            new LegacyThreadNotification(NotificationId.New(TestUserId, NotificationKind.Thread, TestChatId.Value)),
             ConversationNotification.New(TestUserId, conversationId, 2100),
             CallNotification.New(TestUserId, conversationId, authorId, true),
         ];
