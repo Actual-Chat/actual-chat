@@ -52,7 +52,8 @@ public class ContentRefTest(ITestOutputHelper @out) : StringIdentifierTestBase<C
         // arrange
         (string Prefix, ContentId Id)[] cases = [
             ("ct", ContactId.NewAny(UserId.Parse("abcdef"), ChatId.Parse("ghijkl"))),
-            ("conv", ConversationId.New(ChatId.Parse("ghijkl"), 1)),
+            ("cnv", ConversationId.New(ChatId.Parse("ghijkl"), 1)),
+            ("loc", SharedLocationId.Parse("abcdefghij")),
         ];
 
         // act, assert

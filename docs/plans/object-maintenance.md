@@ -31,7 +31,7 @@ ownership.
 - `ContentId.ContentRef` lazily creates its wrapper with `field ??=`.
 - Typed values use `prefix:contentIdValue`, such as `u:abcdef` or `c:abcdef`.
   Prefixes and parsers are registered explicitly by the module that owns the IDs.
-  Contact and conversation prefixes are `ct` and `conv`.
+  Contact, conversation, and shared-location prefixes are `ct`, `cnv`, and `loc`.
   Chat subtypes share the chat prefix. Unknown prefixes fail parsing; unregistered
   ID types fail content-reference construction instead of acquiring unstable CLR names.
 - One non-generic `IHasShardKey` exposes `ShardKey ShardKey { get; }`.

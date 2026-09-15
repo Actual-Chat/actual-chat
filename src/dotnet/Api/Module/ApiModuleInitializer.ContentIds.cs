@@ -12,7 +12,7 @@ public static partial class ApiModuleInitializer
         ContentRef.Register<RoleId>("r");
         ContentRef.Register<MediaId>("m");
         ContentRef.Register<ContactId>("ct");
-        ContentRef.Register<ConversationId>("conv");
-        ContentRef.Register<SharedLocationId>("shared-location");
+        ContentRef.Register<ConversationId>("cnv");
+        ContentRef.Register<SharedLocationId>("loc");
     }
 }
