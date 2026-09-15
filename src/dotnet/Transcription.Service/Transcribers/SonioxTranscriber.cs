@@ -2,6 +2,7 @@ using System.Net.WebSockets;
 using System.Text;
 using ActualChat.Audio;
 using ActualChat.Module;
+using ActualLab.Diagnostics;
 using static ActualChat.Constants.Transcription.Soniox;
 
 namespace ActualChat.Transcription;
@@ -18,12 +19,14 @@ public sealed class SonioxTranscriber : ITranscriber
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
     private static readonly byte[] KeepAlivePayload = """{"type":"keepalive"}"""u8.ToArray();
+    private static bool DebugMode => Constants.DebugMode.TranscriberSoniox;
 
     private IServiceProvider Services { get; }
     private CoreServerSettings CoreServerSettings { get; }
     private MomentClockSet Clocks { get; }
     private OggOpusStreamConverter OggOpusStreamConverter { get; }
     private ILogger Log { get; }
+    private ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     public TranscriberInfo Info { get; } = new() {
         Id = TranscriberId.SonioxStream,
@@ -153,16 +156,26 @@ public sealed class SonioxTranscriber : ITranscriber
         var clock = Clocks.CpuClock;
         var startedAt = clock.Now;
         var nextChunkAt = startedAt;
+        var nextTraceAt = TimeSpan.Zero;
         await foreach (var (chunk, lastFrame) in byteFrameStream.ConfigureAwait(false)) {
             var delay = nextChunkAt - clock.Now;
             if (delay > TimeSpan.Zero)
                 await clock.Delay(delay, cancellationToken).ConfigureAwait(false);
 
+            var sendStartedAt = clock.Now;
             await sender.Send(chunk, WebSocketMessageType.Binary, cancellationToken).ConfigureAwait(false);
+            var sendDuration = clock.Now - sendStartedAt;
+            if (sendDuration > TimeSpan.FromSeconds(1))
+                DebugLog?.LogDebug("PushAudio: a {Size}B send took {Duration}", chunk.Length, sendDuration);
             if (lastFrame == null)
                 continue;
 
             var processedAudioDuration = (lastFrame.Offset + lastFrame.Duration - SilentPrefixDuration).Positive();
+            if (processedAudioDuration >= nextTraceAt) {
+                DebugLog?.LogDebug("PushAudio: {Audio} of audio pushed after {Wall}",
+                    processedAudioDuration, clock.Now - startedAt);
+                nextTraceAt = processedAudioDuration + TimeSpan.FromSeconds(2);
+            }
             if (audioSource.WhenDurationAvailable.IsCompletedSuccessfully)
                 processedAudioDuration = TimeSpanExt.Min(audioSource.Duration, processedAudioDuration);
             nextChunkAt = startedAt
@@ -170,6 +183,7 @@ public sealed class SonioxTranscriber : ITranscriber
                 - TimeSpan.FromMilliseconds(50);
         }
 
+        DebugLog?.LogDebug("PushAudio: audio ended after {Duration}", clock.Now - startedAt);
         // An empty frame is Soniox's "no more audio" signal; without it the server keeps waiting
         // and drops the connection on its 20s inactivity timeout. It must be a Text frame:
         // an empty Binary one goes unnoticed, which is exactly how that timeout used to fire.
@@ -208,6 +222,8 @@ public sealed class SonioxTranscriber : ITranscriber
             var response = JsonSerializer.Deserialize<SonioxResponse>(message.ToString(), JsonOptions);
             if (response == null)
                 continue;
+            DebugLog?.LogDebug("#{StreamId}: {AudioMs}ms, finished={Finished}, tokens: {Tokens}",
+                audioStreamId, response.TotalAudioProcMs, response.Finished, DescribeTokens(response.Tokens));
             if (response.ErrorCode is { } errorCode)
                 throw StandardError.External(
                     $"Soniox error {errorCode} for #{audioStreamId}: {response.ErrorMessage}");
@@ -230,10 +246,17 @@ public sealed class SonioxTranscriber : ITranscriber
 
         // The socket ended without a finished response, so nothing more will be finalized -
         // emit what we have, tail included, rather than leaving only unstable updates behind.
+        DebugLog?.LogDebug("#{StreamId}: socket closed without a finished response, state={State}",
+            audioStreamId, webSocket.State);
         var partial = builder.Complete(false);
         if (!partial.Text.IsNullOrEmpty())
             await output.WriteAsync(partial, cancellationToken).ConfigureAwait(false);
     }
+
+    private static string DescribeTokens(SonioxToken[]? tokens)
+        => tokens == null
+            ? "none"
+            : string.Join("", tokens.Select(x => x.IsFinal ? $"[{x.Text}]" : x.Text));
 
     // Nested types
 
