@@ -451,28 +451,47 @@ in-process singleton (not an RPC-exposed backend): it only composes
 `AudioSegmentSaver`, and the muxer that needs it always runs on the same
 node.
 
-`GetOrCreate(entry, language, cancellationToken)` dedupes concurrent
-callers for the same `(ChatEntryId, Language)` with a
-`ConcurrentDictionary<key, Task<Media?>>` plus a `TaskCompletionSource`:
-whichever caller's task is the one that lands in the map (`ReferenceEquals`
-check, safe even if the work completes synchronously) runs the work;
-every other caller just awaits the same task.
+`GetOrCreate(entry, language, cancellationToken)` returns a `ReplayDub?`
+— `record ReplayDub(Media? Stored, AudioSource? Live)`, exactly one of the
+two set — or `null` for "no dub, serve the original". `Stored` is the
+media of a dub that already exists; `Live` is a dub being synthesized
+*right now*: an `AudioSource` whose frames arrive as Soniox produces them.
+Soniox's REST TTS streams its audio back at roughly the pace it is spoken
+(28 s of speech over ~23 s), so waiting for the whole synthesis + upload
+before serving anything would leave every entry longer than the caller's
+wait undubbed on its first replay; `Live` lets the first replay play the
+dub while the same frames are being stored for the next one.
+
+The method dedupes concurrent callers for the same `(ChatEntryId, Language)`
+with a `ConcurrentDictionary<key, Task<ReplayDub?>>` plus a
+`TaskCompletionSource`: whichever caller's task is the one that lands in
+the map (`ReferenceEquals` check, safe even if the work completes
+synchronously) runs the work; every other caller just awaits the same task.
 
 The wait and the work run on two independent budgets. Every caller waits
-at most `Constants.Audio.ReplayDubTimeout` (20 s) — `mediaTask.WaitAsync
+at most `Constants.Audio.ReplayDubTimeout` (20 s) — `dubTask.WaitAsync
 (ReplayDubTimeout, cancellationToken)` — before giving up and returning
-`null`, which the muxer reads as "serve the original"; the work itself is
-not touched by that wait timing out; it keeps running on a token linked to
-the host's shutdown (`IHostApplicationLifetime`) and capped by the much
-longer `Constants.Audio.ReplayDubSynthesisTimeout` (2 min), so a slow
-entry (translation wait + Soniox REST + upload) that a caller has already
+`null`; since the task completes as soon as the synthesis has *started*,
+that wait only spans the translation wait, the reuse lookup and the time
+to acquire the synthesis slot, never the synthesis itself. The work is not
+touched by that wait timing out; it keeps running on a token linked to the
+host's shutdown (`IHostApplicationLifetime`) and capped by the much longer
+`Constants.Audio.ReplayDubSynthesisTimeout` (5 min — synthesis runs at
+about spoken pace, so this has to clear `Chat.MaxEntryDuration`, 3 min,
+with room for the upload), so a slow entry that a caller has already
 stopped waiting for still finishes, gets stored, and is reused by the
 *next* replay instead of being re-synthesized every time. A genuine
 cancellation of the caller's own `cancellationToken` still propagates as
 `OperationCanceledException`, same as before. Inside `Run()`, a
 cancellation/timeout of the work's own token is logged at Information
 (message only, no exception object); any other failure is logged at
-Warning with the exception; either way the result is `null`.
+Warning with the exception; the message says whether the original is
+served or whether a dub that was already streaming to its listeners just
+won't be stored. The in-flight map entry is removed only after the whole
+run — store, guard and stamp included — so a caller that finds no entry
+re-reads the stamped translation and gets `Stored`; a caller that joins a
+run past its `Live` hand-off gets that same `Live` source and replays it
+from the start (below).
 
 Inside, in order:
 
@@ -494,21 +513,34 @@ Inside, in order:
    `MediaBackend.Get`; if it is still there, return it. If the record was
    deleted, fall through and make a new one (the comment in code: *"The
    media is gone; fall through and make it again"*).
-4. **Synthesize, under the concurrency cap.** A process-wide `SemaphoreSlim`
-   sized `Constants.Audio.ReplayDubMaxConcurrentSynthesis` (2) is held only
-   around this step — not around the translation wait or the reuse lookup
-   above — so at most that many entries synthesize at once, leaving
-   headroom in Soniox's 3-concurrent-stream quota for live dubbing.
-   `Synthesizer.Synthesize(translation.Content, new
+4. **Synthesize, under the concurrency cap, and hand out `Live`.** A
+   process-wide `SemaphoreSlim` sized
+   `Constants.Audio.ReplayDubMaxConcurrentSynthesis` (2) is held from
+   synthesis start until the upload finishes — not around the translation
+   wait or the reuse lookup above — so at most that many entries synthesize
+   at once, leaving headroom in Soniox's 3-concurrent-stream quota for live
+   dubbing. `Synthesizer.Synthesize(translation.Content, new
    SpeechSynthesisOptions(language), ct)` (the one-shot overload, below)
-   returns a whole `AudioSource`. A fresh `MediaId.New(entry.ChatId.Value)`
+   returns an `AudioSource` whose frames are still arriving. The moment it
+   does, the in-flight `TaskCompletionSource` is completed with
+   `ReplayDub(null, Live: synthesized)`, so every waiting caller gets the
+   dub as it is spoken. No extra tee is needed: `AudioSource` (via
+   `MediaSource`) already memoizes its frames in an `AsyncMemoizer`, so
+   each `GetFrames` call — the saver's, and every caller's — is an
+   independent replay from the first frame. The memoizer is never disposed
+   explicitly: it completes when the synthesis does, and the buffered chain
+   is garbage-collected once the in-flight entry is dropped and the last
+   replayer lets go of the source, so a late replayer can never see a
+   truncated or detached stream. A fresh `MediaId.New(entry.ChatId.Value)`
    is minted *before* saving — so a losing racer's cleanup (next point)
    can never delete a blob a winner still depends on — and
    `AudioSegmentSaver.SaveAndCreateMedia(synthesized, mediaId, blobId, ct)`
-   writes the webm blob and creates the `MediaFull`. If the synthesized
-   `AudioSource.Duration` comes back zero (e.g. an empty translation), the
-   just-created media is deleted the same way as the lost-race case below
-   and `GetOrCreate` returns `null` without ever stamping the translation.
+   writes the webm blob as the frames come in and creates the `MediaFull`
+   once the duration is known. If the synthesized `AudioSource.Duration`
+   comes back zero (e.g. an empty translation), the just-created media is
+   deleted the same way as the lost-race case below and the run ends
+   without ever stamping the translation (the `Live` callers saw an empty
+   source and fell back to the original themselves).
 5. **Stamp, or lose the race.** `TranslationsBackend_Change` updates
    `DubMediaId`/`DubContentHash`, pinned to the `Version` read in step 2.
    A concurrent re-translation makes this throw
@@ -517,13 +549,14 @@ Inside, in order:
    Either way, when the stamped `DubMediaId` isn't the one just created,
    the just-created media is deleted
    (`MediaBackend_Change(mediaId, null, Change.Remove<MediaFull>())`) and
-   `GetOrCreate` returns `null` for this call — a later request picks up
-   the winner's dub through step 3. Both cleanup steps run on the same
-   long-budget work token as the rest of `GetOrCreateImpl`, so — unlike
-   with the old shared 20 s timeout — a slow stamp landing after a caller
-   gave up does not leave the media orphaned: the window between
-   `SaveAndCreateMedia` and the stamp is milliseconds against a 2-minute
-   budget, not a race the timeout can realistically land in.
+   the run ends with `null` — the callers that got `Live` already played
+   what was spoken; a later request picks up the winner's dub through
+   step 3. Both cleanup steps run on the same long-budget work token as
+   the rest of `GetOrCreateImpl`, so — unlike with the old shared 20 s
+   timeout — a slow stamp landing after a caller gave up does not leave
+   the media orphaned: the window between `SaveAndCreateMedia` and the
+   stamp is milliseconds against a 5-minute budget, not a race the
+   timeout can realistically land in.
 
 ### One-shot synthesis
 
@@ -552,9 +585,16 @@ fake uses, so tests still get real, non-zero durations without Soniox.
 `SonioxTtsClient.Generate` (`src/dotnet/Transcription.Service/Transcribers/SonioxTtsClient.cs`)
 is a REST call, not the live path's WebSocket: one `POST
 https://tts-rt.soniox.com/tts` per chunk (same model, `pcm_s16le`,
-48 000 Hz and voice as the live config), each under its own
-`Constants.Transcription.Soniox.TtsChunkTimeout` (30 s); the response
-body is raw PCM, written straight to the pcm channel. Text over 5000
+48 000 Hz and voice as the live config). The response body is raw PCM
+and Soniox streams it back at about the pace it is spoken, so the call
+is sent with `HttpCompletionOption.ResponseHeadersRead` and the body is
+read in 32 KB pieces, each written to the pcm channel as soon as it
+arrives rather than after the whole body is buffered.
+`Constants.Transcription.Soniox.TtsChunkTimeout` (30 s) is an
+*inactivity* deadline here — re-armed after every piece read — not a
+total budget: a 3-minute entry legitimately takes minutes, while 30 s
+without a single byte is an error (`StandardError.External`), same as a
+stalled live chunk. Text over 5000
 characters is split by `SplitText`, greedily, at the last sentence-ending
 punctuation (`.`, `!`, `?`, `\n`) within the limit, falling back to the
 last space and then to a hard cut — so a long entry becomes several
@@ -563,7 +603,12 @@ requests whose audio is concatenated in order.
 `tests/Testing.Host/RecordingSpeechSynthesizer.cs` records the exact text
 spoken per one-shot call, keyed by `OneShotStreamId(language, text)`, so
 `ReplayDubsTest`/`ReplayDubbingTest` can assert a dub was made from the
-translation's own content.
+translation's own content. Its test-only `OneShotGate`
+(`Func<string, Task>?`) holds a one-shot synthesis's frames until the
+returned task completes, which is how the tests observe a dub that is
+still being made. `tests/Testing.Host/ReplayDubOperations.cs`'s
+`WhenReplayDubStored` waits for the other end of that run: the
+translation stamped *and* `ReplayDubs.InFlightCount` back to zero.
 
 ### `ReplayStreamMuxer` — blob swap, timeline stretch, lookahead
 
@@ -583,12 +628,14 @@ a warning, same as live.
   a queue of `Constants.Audio.ReplayDubLookahead` (2) entries: every time
   an entry is enqueued, `Dubs.GetOrCreate` is started for it right away
   (only while `DubLanguage != null`) into a per-run
-  `Dictionary<ChatEntryId, Task<Media?>>`, so a dub is usually already
-  synthesizing by the time its entry's turn to stream comes up. `GetDub`
-  takes the pre-started task if one exists, else starts a fresh one (a
-  cold path, e.g. if lookahead was never reached for that entry). Entries
-  before the resolved start position are filtered out before lookahead
-  ever sees them, as they were before dubbing existed.
+  `Dictionary<ChatEntryId, Task<ReplayDub?>>`, so a dub is usually already
+  synthesizing by the time its entry's turn to stream comes up — and a
+  `Live` result for a lookahead entry simply buffers in its source's
+  memoizer until that turn, which is exactly the head start wanted.
+  `GetDub` takes the pre-started task if one exists, else starts a fresh
+  one (a cold path, e.g. if lookahead was never reached for that entry).
+  Entries before the resolved start position are filtered out before
+  lookahead ever sees them, as they were before dubbing existed.
 - **Timeline stretch.** A dub's spoken length rarely matches the
   source's. `ReplayTimeline.PlaysAt(timelinePlaysAt, notBefore,
   stretchTimeline)` clamps an entry's play time to no earlier than
@@ -596,23 +643,44 @@ a warning, same as live.
   duration — but only `stretchTimeline: true` when `DubLanguage != null`;
   an undubbed replay keeps concurrent speakers concurrent exactly as
   before. After each entry, `notBefore` is pinned to that entry's own
-  `playsAt` plus its played duration (the dub's, or the source's, minus
-  whatever was skipped) divided by `Speed`
-  (`notBefore = playsAt + playedDuration / Speed`).
-- **`ScaleSkip`.** Seeking into a dubbed entry (`skipTo` into the source)
+  `playsAt` plus its played duration divided by `Speed`
+  (`notBefore = playsAt + playedDuration / Speed`). For a `Stored` dub
+  (or an undubbed entry) the played duration is known up front — the
+  media's (or the source's) duration minus whatever was skipped — and
+  the entry is started as a concurrent `ProcessEntry` task, as before.
+  For a `Live` dub it cannot be: the muxer **awaits that entry's
+  `ProcessEntry` before moving to the next entry** and uses what was
+  actually streamed — `ProcessEntry` returns the last frame's end offset
+  (before any speed-up frame drops, so the same `/ Speed` applies). Soniox
+  paces at about 1×, so this holds the replay loop for roughly the dub's
+  own length, which is where it would have to wait anyway.
+- **`ScaleSkip`.** Seeking into a `Stored` dub (`skipTo` into the source)
   is rescaled to the dub's own length:
   `ReplayTimeline.ScaleSkip(skipTo, entryDuration, dubDuration) = skipTo *
   (dubDuration / entryDuration)`, zero when either the source duration or
-  the requested skip is zero or unknown.
-- **Blob swap and fallback.** `ProcessEntry` downloads `dub.BlobId` at the
-  scaled skip instead of the entry's own blob when a dub was returned, via
-  `AudioSourceDownloader.TryDownload` (`src/dotnet/Core.Server/Blobs/AudioSourceDownloader.cs`),
+  the requested skip is zero or unknown. A `Live` dub has no known length
+  to scale by, so `skipTo` is applied as-is via `AudioSource.SkipTo` —
+  assuming the dub runs at the source's pace — which means the first
+  frame comes out once the synthesis has passed `skipTo` (at about 1×,
+  that is about `skipTo` of wall-clock time after the synthesis started,
+  minus whatever lookahead already covered). The position is kept rather
+  than restarting the entry from its beginning.
+- **Audio swap and fallback.** `ProcessEntry` opens the dub via
+  `TryOpenDub` instead of the entry's own blob when a dub was returned.
+  `Stored` → `AudioSourceDownloader.TryDownload(dub.Stored.BlobId,
+  dubSkipTo)` (`src/dotnet/Core.Server/Blobs/AudioSourceDownloader.cs`),
   which returns `null` — rather than an empty, silently-playing
   `AudioSource` — when the blob is gone; `Download` (used everywhere else)
   keeps the old empty-source behavior by falling back to `TryDownload`
-  returning `null`. Either a `null` return or a download exception drops
-  `dub` and re-downloads the original blob at the original `skipTo` — the
-  entry still plays, just undubbed, for that one replay. The emitted
+  returning `null`. `Live` → `live.SkipTo(skipTo)` and a peek at its
+  first frame (`GetFrames(...).AnyAsync()` — free, since the source
+  memoizes and the next `GetFrames` replays from the start): a synthesis
+  that faults or produces nothing shows up right there. Either a `null`
+  return, no first frame, or an exception drops `dub` (logged at
+  Information) and downloads the original blob at the original `skipTo`
+  — the entry still plays, just undubbed, for that one replay. A `Live`
+  source that fails *after* its first frame is handled like any other
+  mid-stream error: Warning + end marker, no restart. The emitted
   `LiveAudioStreamInfo` picks
   up `DubLanguage` via `with { DubLanguage }` only when a dub was used;
   `StreamId`/`BeginsAt`/`SourceBeginsAt` stay the entry's own — the client
@@ -666,11 +734,11 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 | `Constants.Audio.DubCooldown` | 30 s | After a timed-out decision, how long that `(author, language)` skips the hold |
 | `Constants.Audio.DubSynthesizerDownDelay` | 60 s | After a synthesis failure, how long every dub is skipped |
 | `Constants.Audio.DubBacklogThreshold` | 5 s | Audio already transcribed when a dub is requested beyond which the listener counts as late |
-| `Constants.Audio.ReplayDubTimeout` | 20 s | How long a `ReplayDubs.GetOrCreate` caller waits before serving the original; the work keeps running past this |
-| `Constants.Audio.ReplayDubSynthesisTimeout` | 2 min | Upper bound on the work itself (wait-for-translation + synthesis + upload + stamp), linked to host shutdown |
+| `Constants.Audio.ReplayDubTimeout` | 20 s | How long a `ReplayDubs.GetOrCreate` caller waits for a stored dub or for synthesis to *start* before serving the original; the work keeps running past this |
+| `Constants.Audio.ReplayDubSynthesisTimeout` | 5 min | Upper bound on the work itself (wait-for-translation + synthesis + upload + stamp), linked to host shutdown; synthesis streams at spoken pace, so it must clear `Chat.MaxEntryDuration` (3 min) |
 | `Constants.Audio.ReplayDubLookahead` | 2 | Entries the replay muxer keeps synthesizing ahead of the one currently streaming |
 | `Constants.Audio.ReplayDubMaxConcurrentSynthesis` | 2 | Caps concurrent replay-dub syntheses; shares Soniox's 3-stream quota with live dubbing |
-| `Constants.Transcription.Soniox.TtsChunkTimeout` | 30 s | Connect + synthesis of one text chunk (live WebSocket or replay's REST `Generate`); exceeded = error, not hang |
+| `Constants.Transcription.Soniox.TtsChunkTimeout` | 30 s | Live WebSocket: connect + synthesis of one text chunk; replay's REST `Generate`: inactivity between body pieces. Exceeded = error, not hang |
 | `AudioSettings.StreamExpirationDelay` | 60 s | Store expiry; bounds the transcript wait via `_audioStreams.Has` and triggers `ForgetDubs` |
 | `OpusFramePump.FrameLength` / `FrameByteLength` | 960 samples / 1920 bytes | One 20 ms frame at 48 kHz, 16-bit mono |
 | `DubStabilizer.MinDecisionLength` | 10 chars | Minimum text before `Decide` commits |
@@ -703,13 +771,22 @@ dub cleared on a new `Content`, the orphaned media deleted),
 `stretchTimeline: false` for an undubbed replay, `ScaleSkip`),
 `tests/Chat.IntegrationTests/ReplayDubsTest.cs` (`ReplayDubs` against the
 real `TranslationsBackend` with `RecordingSpeechSynthesizer`: create then
-reuse, the listener's own language is skipped, a re-translation
-regenerates, an in-flight entry is forgotten after completion), and
-`tests/Chat.IntegrationTests/ReplayDubbingTest.cs` (end to end through
-`GetReplayStream`: a Russian entry replayed for an English listener comes
-back with `DubLanguage = English` and the recorded dub's frames; without
+reuse as `Stored`, the first request gets `Live` while the gated
+synthesis is still held and a request after the store gets `Stored` with
+the stamped media, the listener's own language is skipped, a
+re-translation regenerates, an in-flight entry is forgotten after
+completion), `tests/Chat.IntegrationTests/ReplayDubbingTest.cs` (end to
+end through `GetReplayStream`: a Russian entry replayed for an English
+listener comes back with `DubLanguage = English` and the recorded dub's
+frames; a replay started while the synthesis is gated waits and still
+carries `DubLanguage = English` with frames once the gate opens; without
 a dub language the replay is unchanged; a dub whose blob was deleted
-falls back to the undubbed original with non-empty frames).
+falls back to the undubbed original with non-empty frames), and
+`tests/Transcription.UnitTests/SonioxTtsClientTest.cs`
+(`GenerateShouldWritePcmAsTheResponseArrives`: against a fake HTTP
+handler serving the body through a `Pipe`, the first PCM chunk is written
+before the body is complete and a body larger than the read buffer
+arrives as several chunks).
 
 ## Not yet
 
