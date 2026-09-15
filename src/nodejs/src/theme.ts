@@ -54,17 +54,14 @@ export class Theme {
 
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (document?.body) {
-            const classList = document.body.classList;
             const oldClass = `theme-${this.info?.currentTheme ?? ''}`;
             const newClass = `theme-${this.currentTheme}`;
-            classList.remove(oldClass);
-            classList.add(newClass);
-            // The root canvas (<html>) shows through the iOS keyboard's rounded-corner notches, where the
-            // body background would otherwise propagate. Paint it with --post-panel so those corners match
-            // the input bar and keyboard. --post-panel is defined on body, so it's read and set here.
-            // TODO(AndreyY): check if it's possible to do this declaratively
-            const postPanel = getComputedStyle(document.body).getPropertyValue('--post-panel');
-            document.documentElement.style.backgroundColor = normalizeColor(postPanel);
+            // <html> too: it paints what the iOS keyboard's corner notches reveal, and it needs the
+            // theme's tokens for that - see ios-keyboard-backdrop.css
+            for (const classList of [document.body.classList, document.documentElement.classList]) {
+                classList.remove(oldClass);
+                classList.add(newClass);
+            }
         }
 
         this.info = createThemeInfo();

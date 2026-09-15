@@ -136,13 +136,17 @@ export class ScreenSize {
             classList.add('non-hoverable');
         }
         const isNarrow = this.size == 'Small';
-        if (isNarrow) {
-            classList.remove('wide');
-            classList.add('narrow');
-        }
-        else {
-            classList.remove('narrow');
-            classList.add('wide');
+        // <html> too: its narrow-only rules paint what the iOS keyboard's corner notches reveal - see
+        // ios-keyboard-backdrop.css
+        for (const list of [classList, document.documentElement.classList]) {
+            if (isNarrow) {
+                list.remove('wide');
+                list.add('narrow');
+            }
+            else {
+                list.remove('narrow');
+                list.add('wide');
+            }
         }
     }
 }

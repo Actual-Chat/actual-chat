@@ -5,7 +5,7 @@
     var chat = Chat;
 }
 
-<div class="writable-chat-footer">
+<div class="writable-chat-footer" data-child="chat-footer">
     @if (m is null) {
         <chat-view-footer-skeleton/>
     } else if (chat is null) {
