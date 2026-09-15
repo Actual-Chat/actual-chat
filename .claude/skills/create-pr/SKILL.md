@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: Use when work on a branch is finished and the next step is a pull request — "create a PR", "open a PR", "push and PR this", "/create-pr" — or right after a PR has been created or a draft PR marked ready for review, and the team has not been told about it yet.
+description: Use when work on a branch is finished and the next step is a pull request — "create a PR", "open a PR", "push and PR this", "/create-pr" — when a draft PR should be marked ready for review — "mark the PR ready", "undraft it", "it's ready for review" — or right after either has happened and the team has not been told about it yet.
 allowed-tools:
   - Bash
   - Read
@@ -18,7 +18,22 @@ GitHub — a PR nobody announced is a PR nobody reviews. Stopping after step 2 i
 most common way this goes wrong.
 
 The one exception is a **draft** PR: it is not ready for review, so it is not
-announced. The announcement happens later, once, when the draft is marked ready.
+announced. The announcement happens later, once, when the draft is marked ready — and
+marking it ready is itself a two-step job: `gh pr ready <n>` → announce. Doing the first
+without the second is the draft-flavoured way of stopping after step 2.
+
+## Marking a draft ready
+
+When the ask is to mark an existing draft ready rather than to open a PR, skip the
+preconditions and steps 1–3: the branch was already pushed and the PR already exists.
+
+```bash
+gh pr list --head "$(git branch --show-current)" --json number,url,isDraft
+gh pr ready <n>
+```
+
+Then run step 4 — this is the PR's one and only post. If the PR is not a draft, it was
+announced when it was created; say so and do not post again.
 
 ## Invoking this skill is the permission to push
 
@@ -156,7 +171,8 @@ their own confirmation. Never fold one into this step.
 |---|---|
 | Non-draft PR created, chat never posted | Step 4 is part of the deliverable, not a follow-up |
 | Draft announced in the chat | Drafts wait; announce once, after `gh pr ready` |
-| Draft marked ready, chat never posted | That is the moment for step 4 |
+| Draft marked ready, chat never posted | `gh pr ready` is half the job; step 4 is the other half |
+| "Mark it ready" handled as a bare `gh pr ready` | That request is this skill too — see *Marking a draft ready* |
 | Re-announcing after new commits | One post per PR; tell the user instead |
 | Announcement retells the PR body | Title + link; one extra line at most |
 | `gh pr create --fill` | Write a real Summary/Fix/Testing body |
