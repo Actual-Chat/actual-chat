@@ -752,6 +752,17 @@ Recording an explicit sample: "Record a sample" opens the user's **Notes**
 chat with a prompt card; the recording is an ordinary voice entry there,
 and its entry id is what gets stored — see [UI](#ui) below.
 
+The sample WAV lives exactly as long as the clone it was made for: it's
+written by `Build` right before `VoicePool.Create` and deleted
+(`VoicePool.DeleteSample`, `IBlobStorage.Delete`) by `Release` (opt-out,
+idle, sweep), by `Create` when the hash changed (the previous sample goes
+with the previous clone), and by `MarkFailed` (the retry after the
+cooldown rebuilds it). So a `None`/`Failed` record has no sample on disk,
+and an opt-out with no active record has nothing to delete. The one leak
+left is an attempt that ends between `Store` and the `Creating` update —
+a host dying there, or losing the version race — which leaves a sub-2 MB
+WAV under that user's `voice-sample/` folder until their next clone.
+
 ### Pool — `VoicePool`
 
 File: `src/dotnet/Streaming.Service/Services/VoicePool.cs`.
@@ -791,8 +802,8 @@ registered (no Soniox key) or the user is a guest.
    a builder *exception* → `null` and, unless the record is `Ready` (its
    clone is still good, so it's left alone), the record is marked `Failed`.
 9. Otherwise create: mark `Creating` (new hash, cleared `SonioxVoiceId`),
-   delete the previous clone if the hash changed, `ISonioxVoices.Create`
-   with the sample's WAV, store the
+   delete the previous clone and — if the hash changed — the previous
+   sample blob, `ISonioxVoices.Create` with the sample's WAV, store the
    new id on the still-`Creating` record right away (so a concurrent
    reconcile sees it as owned), poll `ISonioxVoices.Get` every 500 ms
    until ready — `IsFailed` or `Constants.Audio.VoiceCloneReadyTimeout`
@@ -802,10 +813,11 @@ registered (no Soniox key) or the user is a guest.
    already exists at Soniox, e.g. an earlier delete that failed — deletes
    the same-named orphan and retries once; any other failure marks the
    record `Failed` with `FailedUntil = now + Constants.Audio.VoiceCloneFailureCooldown`
-   (10 min) and deletes whatever this attempt itself created. A
-   `VersionMismatchException` at any step (another host or the sweeper
-   changed the record concurrently) just deletes this attempt's own clone
-   and returns `null` — whatever the winner of that race decided stands.
+   (10 min) and deletes whatever this attempt itself created, the sample
+   blob included. A `VersionMismatchException` at any step (another host
+   or the sweeper changed the record concurrently) just deletes this
+   attempt's own clone and returns `null` — whatever the winner of that
+   race decided stands.
 
 The clone's Soniox name is `NameOf(userId, hash)` =
 `voxt-<env>-<userId>-<hash8>` (`VoicePool.NamePrefix`), `<env>` being
@@ -823,8 +835,8 @@ against, not one environment's own usage.
 `Release(voice, ct)` resets the record to `None` (clears `SonioxVoiceId`
 and `FailedUntil`, keeps `SampleHash`) — record first, so a concurrent
 `Acquire` that already touched it wins the version race and keeps its
-clone — then deletes the Soniox voice. Used for opt-out and by the
-sweeper.
+clone — then deletes the Soniox voice and the sample blob. Used for
+opt-out and by the sweeper.
 
 ### Sweeper — `VoicePoolSweeper`
 
@@ -839,7 +851,11 @@ File: `src/dotnet/Streaming.Service/Services/VoicePoolSweeper.cs`, a
   references (a crash leftover, or a delete that previously failed);
   reset to `None` every `Ready` record whose voice is no longer listed
   (deleted directly at Soniox, or lost). Nothing outside the prefix is
-  ever touched.
+  ever touched. A failing `List()` (Soniox down) is caught and logged
+  inside `Reconcile`, so the releases below still run that pass; and the
+  tick counter advances *before* the sweep, so a pass that throws is
+  retried as a plain tick rather than as another reconcile — either way
+  a Soniox outage never stalls the idle/opt-out/stale releases.
 - Then, per active record, `GetReleaseReason` → `Pool.Release` for:
   a `Creating` record older than `Constants.Audio.VoiceCloneCreatingTimeout`
   (its creation never finished); a `Ready` record idle since
@@ -952,9 +968,9 @@ setting.
 ### Tests
 
 Fake-backed throughout — `tests/Testing.Host/FakeSonioxVoices.cs`
-(in-memory `ISonioxVoices`: `ReadyAfter` delays readiness, `FailCreate`
-forces a failure, `CreateCount`/`DeleteCount`, unique names like the real
-API) and `AudioRecordingOperations.OptInOwnVoice`
+(in-memory `ISonioxVoices`: `ReadyAfter` delays readiness, `FailCreate` /
+`FailList` make those calls throw, `CreateCount`/`DeleteCount`, unique
+names like the real API) and `AudioRecordingOperations.OptInOwnVoice`
 (records an explicit sample entry, opts the tester in, returns the entry):
 
 - `tests/Transcription.UnitTests/SonioxVoicesClientTest.cs` — the HTTP
@@ -971,13 +987,15 @@ API) and `AudioRecordingOperations.OptInOwnVoice`
   and another user's entry → `SampleMissing` from both `Build` and
   `Inspect` with no blob written.
 - `tests/Chat.IntegrationTests/VoicePoolTest.cs` — acquire-creates-and-
-  reuses, a changed sample replacing the clone, a full pool returning
-  `null`, a failed create cooling down, an idle sweep, the reconcile
-  (orphan delete, someone-else's-environment voice kept, a `Ready` record
-  reset when its voice is gone at Soniox), a `Ready` clone kept when the
-  changed sample can't be built, a `Ready` clone outliving its sample
-  entry, another user's entry never cloned (no Soniox call, no blob, no
-  record), opt-out, the name-collision retry.
+  reuses, a changed sample replacing the clone (old sample blob deleted,
+  new one present), a full pool returning `null`, a failed create cooling
+  down, an idle sweep, the reconcile (orphan delete, someone-else's-
+  environment voice kept, a `Ready` record reset when its voice is gone at
+  Soniox), a sweep releasing an idle clone while `List()` throws, a
+  `Ready` clone kept when the changed sample can't be built, a `Ready`
+  clone outliving its sample entry, another user's entry never cloned (no
+  Soniox call, no blob, no record), opt-out (clone and sample blob
+  deleted), the name-collision retry.
 - `tests/Chat.IntegrationTests/SpeakerVoicesTest.cs` — opted-in +
   acquirable → clone id; not opted-in → stock voice, pool never touched;
   opted-in with the quota at zero → stock voice, no record ever reaches

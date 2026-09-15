@@ -58,6 +58,7 @@ public sealed class VoicePoolTest(
         var speaker = await SignInWithSample(Tester);
         var ct = CancellationToken.None;
         var oldVoiceId = await Pool.Acquire(speaker.Account.Id, ct);
+        var oldBlobId = VoiceSampleBuilder.BlobIdOf(speaker.Account.Id, VoiceSampleBuilder.HashOf(speaker.Entry.Id));
         var newEntry = await Tester.RecordVoiceEntry(speaker.ChatId, Languages.Russian, frameCount: EntryFrameCount);
         await SetSettings(Tester, x => x with { IsOwnVoiceEnabled = true, OwnVoiceSampleEntryId = newEntry.Id });
         var createCount = Soniox.CreateCount;
@@ -75,6 +76,9 @@ public sealed class VoicePoolTest(
         record!.Status.Should().Be(UserVoiceStatus.Ready);
         record.SonioxVoiceId.Should().Be(newVoiceId);
         record.SampleHash.Should().Be(VoiceSampleBuilder.HashOf(newEntry.Id));
+        (await Blobs.Exists(oldBlobId, ct)).Should().BeFalse("the old sample goes with its clone");
+        var newBlobId = VoiceSampleBuilder.BlobIdOf(speaker.Account.Id, record.SampleHash);
+        (await Blobs.Exists(newBlobId, ct)).Should().BeTrue("the new sample stays with the new clone");
     }
 
     [Fact(Timeout = 120_000)]
@@ -260,6 +264,33 @@ public sealed class VoicePoolTest(
     }
 
     [Fact(Timeout = 120_000)]
+    public async Task SweepShouldReleaseEvenWhenSonioxListFails()
+    {
+        // arrange
+        var speaker = await SignInWithSample(Tester);
+        var ct = CancellationToken.None;
+        var voiceId = await Pool.Acquire(speaker.Account.Id, ct);
+        var record = await UserVoices.Get(speaker.Account.Id, ct);
+        var idleSince = Clocks.SystemClock.Now - Constants.Audio.VoiceCloneIdleTimeout - TimeSpan.FromMinutes(1);
+        var idleDiff = new UserVoiceDiff { LastUsedAt = idleSince };
+        await Commander.Call(
+            new UserVoicesBackend_Change(speaker.Account.Id, record!.Version, Change.Update(idleDiff)), ct);
+        Soniox.FailList = true;
+        try {
+            // act
+            await Sweeper.SweepOnce(ct, mustReconcile: true);
+        }
+        finally {
+            Soniox.FailList = false;
+        }
+
+        // assert
+        (await Soniox.Get(voiceId!, ct)).Should().BeNull("a failed reconcile doesn't hold up the idle release");
+        record = await UserVoices.Get(speaker.Account.Id, ct);
+        record!.Status.Should().Be(UserVoiceStatus.None);
+    }
+
+    [Fact(Timeout = 120_000)]
     public async Task NameCollisionShouldReplaceTheOrphan()
     {
         // arrange
@@ -303,6 +334,8 @@ public sealed class VoicePoolTest(
         var record = await UserVoices.Get(speaker.Account.Id, ct);
         record!.Status.Should().Be(UserVoiceStatus.None);
         record.SonioxVoiceId.Should().BeEmpty();
+        var blobId = VoiceSampleBuilder.BlobIdOf(speaker.Account.Id, record.SampleHash);
+        (await Blobs.Exists(blobId, ct)).Should().BeFalse("opting out deletes the sample with the clone");
     }
 
     // Private methods

@@ -6,8 +6,8 @@ namespace ActualChat.Testing.Host;
 /// <summary>
 /// In-memory <see cref="ISonioxVoices"/> stand-in for VoicePool tests: a created voice turns ready
 /// only once <see cref="ReadyAfter"/> has elapsed (per Clocks.CpuClock), so a test can observe the
-/// Creating window; a <see cref="FailCreate"/> voice never fails until it's set back to false. Names
-/// are unique, as on Soniox.
+/// Creating window; <see cref="FailCreate"/> and <see cref="FailList"/> make those calls throw until
+/// set back to false. Names are unique, as on Soniox.
 /// </summary>
 public sealed class FakeSonioxVoices(IServiceProvider services) : ISonioxVoices
 {
@@ -20,8 +20,10 @@ public sealed class FakeSonioxVoices(IServiceProvider services) : ISonioxVoices
 
     public TimeSpan ReadyAfter { get; set; } = TimeSpan.Zero;
     public bool FailCreate { get; set; }
-    // Attempts, so a failed Create counts too
-    public int CreateCount => Volatile.Read(ref _createCount);
+    public bool FailList { get; set; }
+    public int CreateCount
+        // Attempts, so a failed Create counts too
+        => Volatile.Read(ref _createCount);
     public int DeleteCount => Volatile.Read(ref _deleteCount);
 
     public Task<SonioxVoice> Create(string name, Stream wav, CancellationToken cancellationToken)
@@ -51,6 +53,9 @@ public sealed class FakeSonioxVoices(IServiceProvider services) : ISonioxVoices
 
     public Task<ApiArray<SonioxVoice>> List(CancellationToken cancellationToken)
     {
+        if (FailList)
+            throw StandardError.External("Soniox voice list failed (FailList is set).");
+
         lock (_lock)
             return Task.FromResult(_voices.Keys.Select(ToVoice).ToApiArray());
     }

@@ -99,6 +99,7 @@ public sealed class VoicePool(IServiceProvider services)
         }
 
         await DeleteSonioxVoice(voice.SonioxVoiceId, cancellationToken).ConfigureAwait(false);
+        await DeleteSample(voice.UserId, voice.SampleHash, cancellationToken).ConfigureAwait(false);
         return true;
     }
 
@@ -222,6 +223,7 @@ public sealed class VoicePool(IServiceProvider services)
         string? createdVoiceId = null;
         try {
             var oldVoiceId = voice?.SonioxVoiceId ?? "";
+            var oldSampleHash = voice?.SampleHash ?? HashString.None;
             var creatingDiff = new UserVoiceDiff {
                 Status = UserVoiceStatus.Creating,
                 SampleHash = sample.Hash,
@@ -232,8 +234,11 @@ public sealed class VoicePool(IServiceProvider services)
                 ModifiedAt = now,
             };
             voice = await Update(userId, voice, creatingDiff, cancellationToken).ConfigureAwait(false);
-            // A hash mismatch: the clone of the previous sample goes before its replacement is made
+            // A hash mismatch: the clone of the previous sample goes before its replacement is made,
+            // and so does that sample
             await DeleteSonioxVoice(oldVoiceId, cancellationToken).ConfigureAwait(false);
+            if (oldSampleHash != sample.Hash)
+                await DeleteSample(userId, oldSampleHash, cancellationToken).ConfigureAwait(false);
             var created = await CreateSonioxVoice(userId, sample, cancellationToken).ConfigureAwait(false);
             createdVoiceId = created.Id;
             // Stored right away, so the sweeper's reconcile sees it as ours while it's still cooking
@@ -279,7 +284,12 @@ public sealed class VoicePool(IServiceProvider services)
         }
         catch (VersionMismatchException) {
             Log.LogInformation("Acquire: {UserId}'s record changed under us, the failure isn't recorded", userId);
+            return;
         }
+
+        // A sample exists only next to a Creating or Ready record: the retry after the cooldown rebuilds it
+        if (voice != null)
+            await DeleteSample(userId, voice.SampleHash, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<SonioxVoice> CreateSonioxVoice(
@@ -345,6 +355,23 @@ public sealed class VoicePool(IServiceProvider services)
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             // The record no longer points at it, so the sweeper's reconcile picks it up as an orphan
             Log.LogWarning(e, "Couldn't delete Soniox voice {VoiceId}", voiceId);
+        }
+    }
+
+    private async Task DeleteSample(UserId userId, HashString sampleHash, CancellationToken cancellationToken)
+    {
+        // The speaker's recording goes with the clone made from it; a blob that's already gone is fine
+        if (sampleHash.IsNone)
+            return;
+
+        var blobId = VoiceSampleBuilder.BlobIdOf(userId, sampleHash);
+        try {
+            var blobs = Blobs[BlobScope.AudioRecord];
+            if (await blobs.Exists(blobId, cancellationToken).ConfigureAwait(false))
+                await blobs.Delete(blobId, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogWarning(e, "Couldn't delete voice sample {BlobId}", blobId);
         }
     }
 

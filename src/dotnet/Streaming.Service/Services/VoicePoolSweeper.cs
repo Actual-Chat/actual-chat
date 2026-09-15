@@ -37,8 +37,9 @@ public sealed class VoicePoolSweeper(IServiceProvider services) : WorkerBase
 
         async Task Cycle(CancellationToken ct)
         {
-            await SweepOnce(ct, mustReconcile: tickIndex % ReconcilePeriod == 0).ConfigureAwait(false);
-            tickIndex++;
+            // Counted before the sweep: a retry of a failed pass is a plain tick, not another reconcile
+            var mustReconcile = tickIndex++ % ReconcilePeriod == 0;
+            await SweepOnce(ct, mustReconcile).ConfigureAwait(false);
             await Clocks.CpuClock.Delay(Period, ct).ConfigureAwait(false);
         }
     }
@@ -70,7 +71,17 @@ public sealed class VoicePoolSweeper(IServiceProvider services) : WorkerBase
         ApiArray<UserVoice> activeVoices,
         CancellationToken cancellationToken)
     {
-        var sonioxVoices = await SonioxVoices!.List(cancellationToken).ConfigureAwait(false);
+        ApiArray<SonioxVoice> sonioxVoices;
+        try {
+            sonioxVoices = await SonioxVoices!.List(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            // The releases below mustn't wait on Soniox: an idle or opted-out clone goes now, and the
+            // next reconcile catches up with whatever this one would have found
+            Log.LogWarning(e, "Reconcile: couldn't list Soniox voices, skipping it this time");
+            return activeVoices;
+        }
+
         var sonioxVoiceIds = sonioxVoices.Select(x => x.Id).ToHashSet();
         var referencedIds = activeVoices.Select(x => x.SonioxVoiceId).Where(x => !x.IsNullOrEmpty()).ToHashSet();
         // Only this environment's names: whatever else the project holds isn't this pool's to delete
