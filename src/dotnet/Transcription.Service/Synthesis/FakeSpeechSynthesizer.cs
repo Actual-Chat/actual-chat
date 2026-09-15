@@ -17,6 +17,8 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
         new DubVoice("Nina") { Gender = "female", Age = "young", Accent = "british" },
         new DubVoice("Adrian") { Gender = "male", Age = "middle_aged", Accent = "american" },
     }.OrderBy(x => x.Gender).ThenBy(x => x.Id).ToApiArray();
+    // What DubVoiceAccents.ResolveVoice picks from Voices for a speaker who chose nothing (en-US → american)
+    public const string DefaultVoiceId = "Adrian";
 
     private MomentClockSet Clocks { get; } = services.Clocks();
     private ILogger Log { get; } = services.LogFor<FakeSpeechSynthesizer>();

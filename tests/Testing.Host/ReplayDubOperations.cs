@@ -1,4 +1,5 @@
 using ActualChat.Streaming.Services;
+using ActualChat.Transcription;
 
 namespace ActualChat.Testing.Host;
 
@@ -8,7 +9,7 @@ public static class ReplayDubOperations
         this IServiceProvider services,
         TranslationId id,
         CancellationToken cancellationToken,
-        string voiceId = "")
+        string voiceId = FakeSpeechSynthesizer.DefaultVoiceId)
     {
         // "Stored" means the whole run is over: the translation carries the dub and ReplayDubs has
         // dropped its in-flight entry, so the next GetOrCreate reads the media instead of joining the run

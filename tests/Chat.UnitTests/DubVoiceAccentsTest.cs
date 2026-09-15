@@ -132,6 +132,28 @@ public sealed class DubVoiceAccentsTest
     public void EmptyCatalogSuggestsNothing()
         => DubVoiceAccents.Suggest([], [Languages.Russian]).Should().BeEmpty();
 
+    [Fact]
+    public void NoChoiceResolvesToTheFirstSuggestion()
+    {
+        // act
+        var voiceId = DubVoiceAccents.ResolveVoice("", Catalog, [Languages.Russian]);
+
+        // assert: the first slavic suggestion, i.e. what the picker marks "Default"
+        voiceId.Should().Be("Boris");
+    }
+
+    [Fact]
+    public void ListedChoiceResolvesToItself()
+        => DubVoiceAccents.ResolveVoice("Emma", Catalog, [Languages.Russian]).Should().Be("Emma");
+
+    [Fact]
+    public void UnlistedChoiceResolvesToTheFirstSuggestion()
+        => DubVoiceAccents.ResolveVoice("Nobody", Catalog, [Languages.SpanishMX]).Should().Be("Diego");
+
+    [Fact]
+    public void EmptyCatalogResolvesToNull()
+        => DubVoiceAccents.ResolveVoice("Emma", [], [Languages.Russian]).Should().BeNull();
+
     private static DubVoice Voice(string id, string gender, string accent, string useCase)
         => new(id) { Gender = gender, Accent = accent, UseCase = [useCase] };
 }

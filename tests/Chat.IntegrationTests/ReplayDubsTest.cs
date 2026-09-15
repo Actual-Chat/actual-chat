@@ -192,8 +192,10 @@ public class ReplayDubsTest(
 
         // assert
         var streamId = RecordingSpeechSynthesizer.OneShotStreamId(Languages.English, translation.Content);
-        recorder.GetVoiceId(streamId).Should().BeNull("a stored id the provider doesn't know must never reach it");
-        translation.HasValidDub().Should().BeTrue("the dub is stored under the default voice");
+        recorder.GetVoiceId(streamId).Should().Be(FakeSpeechSynthesizer.DefaultVoiceId,
+            "a stored id the provider doesn't know must never reach it: the speaker gets the default voice");
+        translation.HasValidDub(FakeSpeechSynthesizer.DefaultVoiceId).Should().BeTrue(
+            "the dub is stored under the default voice");
     }
 
     [Fact(Timeout = 90_000)]

@@ -2,7 +2,8 @@ namespace ActualChat.Chat;
 
 /// <summary>
 /// Maps a spoken language to the <see cref="DubVoice.Accent"/> a speaker of it most likely wants,
-/// and picks the voices to suggest for a speaker's languages.
+/// picks the voices to suggest for a speaker's languages, and resolves the voice a speaker is dubbed
+/// with: the chosen one, or - when none is chosen - the first suggestion.
 /// </summary>
 public static class DubVoiceAccents
 {
@@ -57,6 +58,19 @@ public static class DubVoiceAccents
         => ByTag.GetValueOrDefault(language.Value)
             ?? ByIsoCode.GetValueOrDefault(language.IsoCode)
             ?? Default;
+
+    // The voice a speaker is dubbed with: their choice when the catalog lists it, otherwise the first
+    // suggestion for their languages; null only when the catalog is empty (the synthesizer's default)
+    public static string? ResolveVoice(
+        string chosenVoiceId,
+        IReadOnlyList<DubVoice> voices,
+        IEnumerable<Language> languages)
+    {
+        if (!chosenVoiceId.IsNullOrEmpty() && voices.Any(v => v.Id == chosenVoiceId))
+            return chosenVoiceId;
+
+        return Suggest(voices, languages).FirstOrDefault()?.Id;
+    }
 
     // Per language in order: its accent's voices, conversational ones first, genders interleaved,
     // up to MaxSuggestedPerGender of each and MaxSuggested overall; padded with Default-accent voices
