@@ -107,6 +107,31 @@ public class OpusFramePumpTest
     }
 
     [Fact]
+    public async Task AnUnpacedPumpWaitsForInputInsteadOfFillingTheGapWithSilence()
+    {
+        // arrange
+        var pcm = Channel.CreateUnbounded<byte[]>();
+        var output = Channel.CreateUnbounded<AudioFrame>();
+        using var pump = new OpusFramePump(MomentClockSet.Default.CpuClock, isPaced: false);
+        var producer = Task.Run(async () => {
+            await Task.Delay(300);
+            pcm.Writer.TryWrite(new byte[OpusFramePump.FrameByteLength * 10]);
+            await Task.Delay(300);
+            pcm.Writer.TryWrite(new byte[OpusFramePump.FrameByteLength * 10]);
+            pcm.Writer.Complete();
+        });
+
+        // act
+        await pump.Run(pcm.Reader, output.Writer, CancellationToken.None);
+        await producer;
+        var frames = await output.Reader.ReadAllAsync().ToListAsync();
+
+        // assert
+        frames.Should().HaveCount(20, "a wait for the producer is not a gap in the speech");
+        frames[^1].Offset.Should().Be(TimeSpan.FromMilliseconds(20 * 19));
+    }
+
+    [Fact]
     public async Task AnUnpacedPumpEncodesASecondOfPcmWithoutWaitingASecond()
     {
         // arrange

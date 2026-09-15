@@ -40,6 +40,30 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
     }
 
     [Fact]
+    public async Task GenerateShouldReturnPcmForAWholeText()
+    {
+        // arrange
+        var services = CreateServices();
+        if (services.GetRequiredService<CoreServerSettings>().SonioxKey.IsNullOrEmpty()) {
+            WriteLine("CoreSettings__SonioxKey is not set - skipping.");
+            return;
+        }
+
+        var client = new SonioxTtsClient(services);
+        var pcm = Channel.CreateUnbounded<byte[]>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+
+        // act
+        await client.Generate("en", "Adrian", "One", pcm.Writer, cts.Token);
+        var chunks = await pcm.Reader.ReadAllAsync().ToListAsync();
+
+        // assert
+        var totalBytes = chunks.Sum(c => (long)c.Length);
+        WriteLine($"{chunks.Count} chunks, {totalBytes / (double)BytesPerSecond:F2}s of audio");
+        totalBytes.Should().BeGreaterThan(BytesPerSecond / 10, "one word is at least a tenth of a second of speech");
+    }
+
+    [Fact]
     public async Task TtsShouldSpeakAChunkThatArrivesLate()
     {
         // arrange

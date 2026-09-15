@@ -52,8 +52,15 @@ public sealed class OpusFramePump : IDisposable
                 if (isInputCompleted && _buffer.Length == 0)
                     break;
 
-                if (!_buffer.TryTake(_pcm, mustPadTail: isInputCompleted))
+                if (!_buffer.TryTake(_pcm, mustPadTail: isInputCompleted)) {
+                    // Paced, a gap in the input is a gap in the speech; unpaced, it's just the
+                    // producer not being there yet, so the pump waits rather than speaking silence
+                    if (!IsPaced) {
+                        await pcm.WaitToReadAsync(cancellationToken).ConfigureAwait(false);
+                        continue;
+                    }
                     Array.Clear(_pcm);
+                }
                 var frame = Encode(frameIndex++);
                 if (IsPaced) {
                     var delay = startedAt + Constants.Audio.OpusFrameDuration * frameIndex - Clock.Now;
