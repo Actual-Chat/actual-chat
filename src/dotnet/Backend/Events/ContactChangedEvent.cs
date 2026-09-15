@@ -7,8 +7,8 @@ public partial record ContactChangedEvent(
     [property: DataMember] Contact Contact,
     [property: DataMember] Contact? OldContact,
     [property: DataMember] ChangeKind ChangeKind
-) : EventCommand, IHasShardKey<ContactId>
+) : EventCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ContactId ShardKey => Contact.Id;
+    public ShardKey ShardKey => Contact.Id.ShardKey;
 }

@@ -28,7 +28,7 @@ public sealed partial class AuthorId : PrincipalId, IStringIdentifier<AuthorId>,
     [IgnoreDataMember]
     public MentionKind MentionKind => MentionKind.Author;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember]
-    public override string ShardKey => ChatId.Value;
+    public override ShardKey ShardKey => ChatId.ShardKey;
 
     // Factories and constructors
 

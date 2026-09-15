@@ -1,5 +1,10 @@
 # Chat Maintenance Mode Implementation Plan
 
+> The [object maintenance design](./object-maintenance.md) supersedes the storage,
+> routing, and backend-access architecture below. Maintenance is centralized in
+> Users, with 16 mesh shards and 256 cached partitions. Trusted backend operations
+> remain available. Owner-driven import/reset behavior below is later work.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add persisted chat/Place maintenance state that owners can start and finish and that blocks ordinary chat activity for every affected member.

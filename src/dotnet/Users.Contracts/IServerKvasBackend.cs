@@ -24,8 +24,8 @@ public interface IServerKvasBackend : IComputeService, IBackendService
 public partial record ServerKvasBackend_SetMany(
     [property: DataMember(Order = 0), Key(0)] string Prefix,
     [property: DataMember(Order = 1), Key(1)] params (string Key, byte[]? Value)[] Items
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<string>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public string ShardKey => Prefix;
+    public ShardKey ShardKey => ShardKey.New(Prefix);
 }

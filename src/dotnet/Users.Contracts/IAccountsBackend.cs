@@ -68,10 +68,10 @@ public sealed partial record AccountsBackend_SignIn(
 public sealed partial record AccountsBackend_SignOut(
     [property: DataMember, Key(0)] Session Session,
     [property: DataMember, Key(1)] bool Deactivate = false
-) : ISessionCommand<Unit>, IBackendCommand, IHasShardKey<Session>
+) : ISessionCommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public Session ShardKey => Session;
+    public ShardKey ShardKey => ShardKey.New(Session.Id);
 }
 
 /// <summary>
@@ -82,10 +82,10 @@ public sealed partial record AccountsBackend_SignOut(
 public sealed partial record AccountsBackend_Update(
     [property: DataMember, Key(0)] AccountFull Account,
     [property: DataMember, Key(1)] long? ExpectedVersion
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => Account.Id;
+    public ShardKey ShardKey => Account.Id.ShardKey;
 }
 
 /// <summary>
@@ -95,8 +95,8 @@ public sealed partial record AccountsBackend_Update(
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_Delete(
     [property: DataMember, Key(0)] UserId UserId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }

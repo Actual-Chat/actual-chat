@@ -22,6 +22,9 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
 
     public const char Delimiter = ':';
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override ShardKey ShardKey => ChatId.ShardKey;
+
     public static TranslationSourceId New(ChatId chatId, TranslationIdKind kind, long refLid)
         => new (Format(chatId, kind, refLid.ToString()), chatId, kind, refLid);
 

@@ -28,6 +28,9 @@ public sealed partial class UserDeviceId : StringIdentifier, IStringIdentifier<U
     [IgnoreDataMember]
     public string DeviceId { get; }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override ShardKey ShardKey => OwnerId.ShardKey;
+
     // Factories and constructors
 
     public static UserDeviceId New(UserId ownerId, string deviceId)

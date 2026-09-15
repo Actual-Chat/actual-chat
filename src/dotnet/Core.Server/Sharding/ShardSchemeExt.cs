@@ -19,26 +19,27 @@ public static class ShardSchemeExt
         => shardScheme != null && (shardScheme.Flags & flags) == flags;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int? TryGetShardIndex(this ShardScheme? shardScheme, int shardKey)
+    public static int? TryGetShardIndex(this ShardScheme? shardScheme, ShardKey shardKey)
         => shardScheme is { IsValid: true }
-            ? shardKey.PositiveModulo(shardScheme.ShardCount)
+            ? unchecked((int)shardKey.Value).PositiveModulo(shardScheme.ShardCount)
             : null;
 
     public static int? TryGetShardIndex<T>(this ShardScheme? shardScheme, T shardKey)
     {
         var shardKeyResolver = ShardKeyResolvers.Get<T>();
-        var intShardKey = shardKeyResolver.Invoke(shardKey);
-        return shardScheme.TryGetShardIndex(intShardKey);
+        var resolvedKey = shardKeyResolver.Invoke(shardKey);
+        return shardScheme.TryGetShardIndex(resolvedKey);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int GetShardIndex(this ShardScheme? shardScheme, int shardKey)
-        => shardKey.PositiveModulo(shardScheme.RequireValid().ShardCount);
+    public static int GetShardIndex(this ShardScheme? shardScheme, ShardKey shardKey)
+        // Keep existing assignments for the current 12-shard schemes when the hash's high bit is set.
+        => unchecked((int)shardKey.Value).PositiveModulo(shardScheme.RequireValid().ShardCount);
 
     public static int GetShardIndex<T>(this ShardScheme? shardScheme, T shardKey)
     {
         var shardKeyResolver = ShardKeyResolvers.Get<T>();
-        var intShardKey = shardKeyResolver.Invoke(shardKey);
-        return shardScheme.GetShardIndex(intShardKey);
+        var resolvedKey = shardKeyResolver.Invoke(shardKey);
+        return shardScheme.GetShardIndex(resolvedKey);
     }
 }

@@ -8,8 +8,11 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 ## Core (`ActualChat.Core`)
 
 ### Identifiers
-- `StringIdentifier<T>` — base for string-based identifiers (UserId, ChatId, etc.)
-- `SymbolIdentifier<T>` — base for Symbol-based identifiers
+- `StringIdentifier` / `IStringIdentifier<T>` — shared string ID, cached hash, parsing, and shard-key behavior
+- `ContentId` — domain identifier base extending `StringIdentifier` with a cached `ContentRef`
+- `ContentRef` — type-prefixed reference retaining its original content ID
+- `ShardKey` — Unsigned 32-bit routing key with hexadecimal prefix and slice formatting
+- `ISymbolIdentifier<T>` / `SymbolIdentifier` — Symbol-based identifier contract and parsing helpers
 
 ### Async & Concurrency
 - `Debouncer<T>` — delays action execution until interval passes without new items

@@ -30,6 +30,9 @@ public sealed partial class ExplicitNotificationId : StringIdentifier, IStringId
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string SimilarityKey { get; }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override ShardKey ShardKey => UserId.ShardKey;
+
     public static ExplicitNotificationId New(UserId userId, ExplicitNotificationKind kind, string similarityKey)
         => new(Format(userId, kind, similarityKey), userId, kind, similarityKey);
 

@@ -6,8 +6,8 @@ public partial record ConversationChangedEvent(
     [property: DataMember] Chat.Conversation? OldConversation,
     [property: DataMember] ChangeKind ChangeKind,
     [property: DataMember] bool SuppressNotification
-) : EventCommand, IHasShardKey<ChatId>
+) : EventCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => Conversation.Id.ChatId;
+    public ShardKey ShardKey => Conversation.Id.ChatId.ShardKey;
 }

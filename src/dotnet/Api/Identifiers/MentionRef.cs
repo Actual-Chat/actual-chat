@@ -17,7 +17,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<MentionRef>))]
 [TypeConverter(typeof(StringLikeTypeConverter<MentionRef>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class MentionRef : StringIdentifier, IStringIdentifier<MentionRef>, IHasShardKey<string>
+public sealed partial class MentionRef : StringIdentifier, IStringIdentifier<MentionRef>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<MentionRef>();
@@ -28,7 +28,7 @@ public sealed partial class MentionRef : StringIdentifier, IStringIdentifier<Men
     [IgnoreDataMember]
     public IMentionTarget Target { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public string ShardKey => Target.ShardKey;
+    public override ShardKey ShardKey => Target.ShardKey;
 
     // Factories and constructors
 

@@ -15,7 +15,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<ConversationId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<ConversationId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class ConversationId : StringIdentifier, IStringIdentifier<ConversationId>
+public sealed partial class ConversationId : ContentId, IStringIdentifier<ConversationId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<ConversationId>();
@@ -27,6 +27,9 @@ public sealed partial class ConversationId : StringIdentifier, IStringIdentifier
     public ChatId ChatId { get; }
     [IgnoreDataMember]
     public long StartEntryLid { get; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override ShardKey ShardKey => ChatId.ShardKey;
 
     // Factories and constructors
 

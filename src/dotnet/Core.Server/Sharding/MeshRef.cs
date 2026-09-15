@@ -12,7 +12,7 @@ public readonly struct MeshRef : ICanBeNone<MeshRef>, IEquatable<MeshRef>
 {
     public static MeshRef None => default;
     public static MeshRef ThisNodeAlias => new(NodeRef.ThisNodeAlias);
-    public static MeshRef ZeroShard => new(new ShardRef(0));
+    public static MeshRef ZeroShard => new(new ShardRef(default(ShardKey)));
 
     public ShardRef ShardRef { get; }
     public NodeRef NodeRef { get; }
@@ -28,9 +28,9 @@ public readonly struct MeshRef : ICanBeNone<MeshRef>, IEquatable<MeshRef>
         => new(nodeRef);
     public static MeshRef Shard(ShardRef shardRef)
         => new(shardRef);
-    public static MeshRef Shard(ShardScheme scheme, int key)
+    public static MeshRef Shard(ShardScheme scheme, ShardKey key)
         => new(new ShardRef(scheme, key));
-    public static MeshRef Shard(int key)
+    public static MeshRef Shard(ShardKey key)
         => new(new ShardRef(key));
 
     public MeshRef(ShardRef shardRef)

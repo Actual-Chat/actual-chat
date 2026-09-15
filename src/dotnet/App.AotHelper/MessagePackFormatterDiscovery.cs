@@ -76,7 +76,7 @@ public static class MessagePackFormatterDiscovery
                 continue;
             AddFormatterType(formatterType, formatterAqns);
 
-            // Custom formatter is generic (e.g., StringIdentifierMessagePackFormatter<>)?
+            // Custom formatter is generic (e.g., ObjectIdMessagePackFormatter<>)?
             // Close it over the type itself and keep the closed generic — that's the actual
             // type ILC needs native code for.
             if (formatterType.IsGenericTypeDefinition

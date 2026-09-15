@@ -4,8 +4,8 @@ namespace ActualChat;
 public partial record UserSignedInEvent(
     [property: DataMember] UserId UserId,
     [property: DataMember] Session Session
-) : EventCommand, IHasShardKey<UserId>
+) : EventCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }
