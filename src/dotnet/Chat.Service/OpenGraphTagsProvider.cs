@@ -10,7 +10,7 @@ public class OpenGraphTagsProvider(IServiceProvider services)
         LocalUrl localUrl,
         CancellationToken cancellationToken)
     {
-        ContentId? contentId = null;
+        ContentRef? contentRef = null;
         if (localUrl.IsChat(out var chatId, out long entryLid)) {
             var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
             if (chat is not null) {
@@ -18,16 +18,17 @@ public class OpenGraphTagsProvider(IServiceProvider services)
                     var chatEntryId = ChatEntryId.New(chatId, entryLid);
                     var chatEntry = await Chats.GetEntry(session, chatEntryId, cancellationToken).ConfigureAwait(false);
                     if (chatEntry is not null)
-                        contentId = ContentId.New(chatEntryId);
+                        contentRef = chatEntryId.ContentRef;
                 }
                 else
-                    contentId = ContentId.New(chatId);
+                    contentRef = chatId.ContentRef;
             }
         }
-        if (contentId is not null)
+        if (contentRef is not null)
             return await ContentLinksBackend
-                .GetContentInfo(contentId, cancellationToken)
+                .GetContentInfo(contentRef, cancellationToken)
                 .ConfigureAwait(false);
+
         return null;
     }
 }

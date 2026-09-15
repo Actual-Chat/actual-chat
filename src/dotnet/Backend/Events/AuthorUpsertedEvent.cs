@@ -4,8 +4,8 @@ namespace ActualChat;
 public partial record AuthorUpsertedEvent(
     [property: DataMember] AuthorFull Author,
     [property: DataMember] AuthorFull? OldAuthor
-) : EventCommand, IHasShardKey<ChatId>
+) : EventCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => Author.ChatId;
+    public ShardKey ShardKey => Author.ChatId.ShardKey;
 }

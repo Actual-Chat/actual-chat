@@ -30,6 +30,9 @@ public sealed partial class TranslationId : StringIdentifier, IStringIdentifier<
 
     public TranslationIdKind Kind => SourceId.Kind;
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override ShardKey ShardKey => SourceId.ShardKey;
+
     // Factories and constructors
 
     public static TranslationId New(ChatEntryId chatEntryId, Language language)

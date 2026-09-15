@@ -30,10 +30,10 @@ public interface ISessionsBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public partial record SessionsBackend_Upsert(
     [property: DataMember, Key(0)] Session Session
-    ) : ISessionCommand<SessionInfoFull>, IBackendCommand, ISanitized, IHasShardKey<Session>
+    ) : ISessionCommand<SessionInfoFull>, IBackendCommand, ISanitized, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public Session ShardKey => Session;
+    public ShardKey ShardKey => ShardKey.New(Session.Id);
 
     [DataMember, Key(1)] public string? IPAddress { get; init; }
     [DataMember, Key(2)] public string? Description { get; init; }

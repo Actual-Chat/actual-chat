@@ -145,7 +145,7 @@ public interface IChatsBackend : IComputeService, IBackendService
 
 Backend commands:
 - Implement `ICommand<TResult>` and `IBackendCommand`
-- Implement `IHasShardKey<T>` for sharding
+- Implement `IHasShardKey` for sharding
 - Named as `{ServiceName}Backend_{Action}`
 
 ```csharp
@@ -155,10 +155,10 @@ public sealed partial record ChatsBackend_Change(
     [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(2)] Change<ChatDiff> Change,
     [property: DataMember, MemoryPackOrder(3)] UserId? OwnerId
-) : ICommand<Chat>, IBackendCommand, IHasShardKey<ChatId?>
+) : ICommand<Chat>, IBackendCommand, IHasShardKey
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId? ShardKey => ChatId;
+    public ShardKey ShardKey => ChatId?.ShardKey ?? default;
 }
 ```
 
@@ -311,7 +311,7 @@ using (Computed.Invalidate()) {
 
 ### Defining Events
 
-Events extend `EventCommand` and implement `IHasShardKey<T>`:
+Events extend `EventCommand` and implement `IHasShardKey`:
 
 ```csharp
 // File: src/dotnet/Backend/Events/ChatChangedEvent.cs
@@ -320,10 +320,10 @@ public sealed partial record ChatChangedEvent(
     [property: DataMember, MemoryPackOrder(0)] Chat Chat,
     [property: DataMember, MemoryPackOrder(1)] Chat? OldChat,
     [property: DataMember, MemoryPackOrder(2)] ChangeKind ChangeKind
-) : EventCommand, IHasShardKey<ChatId>
+) : EventCommand, IHasShardKey
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => Chat.Id;
+    public ShardKey ShardKey => Chat.Id.ShardKey;
 }
 ```
 

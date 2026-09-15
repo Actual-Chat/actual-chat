@@ -16,14 +16,13 @@ public static class MeshRefResolvers
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static MeshRef RandomShard() => MeshRef.Shard(ShardKeyResolvers.RandomShard());
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static MeshRef ForString(string? x) => MeshRef.Shard(x?.GetXxHash3() ?? 0);
 
     static MeshRefResolvers()
     {
-        // NOTE(AY):Returning MeshRef.None from MeshRefResolver means
-        // MeshRpcRef.Get(MeshRef meshRef) will fail with an exception,
+        // NOTE(AY): Returning MeshRef.None from MeshRefResolver
+        // means MeshRpcRef.Get(MeshRef meshRef) will fail with an exception,
         // so the call with such an argument will fail too.
+        Register<MeshRef>(x => x);
         Register<ThisNodeRef>(_ => MeshRef.ThisNodeAlias);
         Register<IRequiresThisNode>(_ => MeshRef.ThisNodeAlias);
         Register<ZeroShardRef>(_ => MeshRef.ZeroShard);

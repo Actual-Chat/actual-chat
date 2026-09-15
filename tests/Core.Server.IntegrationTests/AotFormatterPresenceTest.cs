@@ -61,7 +61,7 @@ public class AotFormatterPresenceTest(ITestOutputHelper @out) : TestBase(@out)
         //   (b) a formatter was registered for it via MemoryPackFormatterProvider.Register<T>().
         // Case (b) applies to string-identifier types (AliasId, UserId, ChatId, ...) which
         // declare [MemoryPackable(GenerateType.NoGenerate)] and register hand-written
-        // StringIdentifierMemoryPackFormatter<T> from ApiModuleInitializer.
+        // StringLikeMemoryPackFormatter<T> from ApiModuleInitializer.
         // Only types that opt in to MemoryPack via [MemoryPackable] are checked here —
         // the Serializable set also contains types that are MessagePack-only (e.g. marked
         // with [MessagePackFormatter] or [Union] without [MemoryPackable]).

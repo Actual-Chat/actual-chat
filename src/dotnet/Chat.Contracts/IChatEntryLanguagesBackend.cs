@@ -36,10 +36,10 @@ public interface IChatEntryLanguagesBackend : IComputeService, IBackendService
 public sealed partial record ChatEntryLanguagesBackend_Detect(
     [property: DataMember, Key(0)] ChatEntryId Id,
     [property: DataMember, Key(1)] HashString ContentHash
-) : ICommand<ChatEntryLanguage?>, IBackendCommand, IHasShardKey<ChatId>, IHasUuid
+) : ICommand<ChatEntryLanguage?>, IBackendCommand, IHasShardKey, IHasUuid
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => Id.ChatId;
+    public ShardKey ShardKey => Id.ChatId.ShardKey;
 
     string IHasUuid.Uuid => $"{Id}.{ContentHash.Hash}";
 }
@@ -53,10 +53,10 @@ public sealed partial record ChatEntryLanguagesBackend_Change(
     [property: DataMember, Key(0)] ChatEntryId Id,
     [property: DataMember, Key(1)] long? ExpectedVersion,
     [property: DataMember, Key(2)] Change<ChatEntryLanguage> Change
-) : ICommand<ChatEntryLanguage?>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<ChatEntryLanguage?>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => Id.ChatId;
+    public ShardKey ShardKey => Id.ChatId.ShardKey;
 
     public static ChatEntryLanguagesBackend_Change Upsert(ChatEntryLanguage language)
         => new (language.Id, language.Version, ActualChat.Change.Upsert(language));

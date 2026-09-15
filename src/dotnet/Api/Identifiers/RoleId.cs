@@ -15,7 +15,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<RoleId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<RoleId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class RoleId : StringIdentifier, IStringIdentifier<RoleId>
+public sealed partial class RoleId : ContentId, IStringIdentifier<RoleId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<RoleId>();
@@ -27,6 +27,9 @@ public sealed partial class RoleId : StringIdentifier, IStringIdentifier<RoleId>
     public ChatId ChatId { get; }
     [IgnoreDataMember]
     public long LocalId { get; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override ShardKey ShardKey => ChatId.ShardKey;
 
     // Factories and constructors
 

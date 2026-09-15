@@ -72,7 +72,7 @@ public class MeshWatcherTest(ITestOutputHelper @out)
         MeshRpcRef? sr2 = null;
         for (var i = 0; i < ShardScheme.FlowsBackend.ShardCount; i++) {
             if (sr2?.NodeRef != w2.ThisNode.Ref)
-                sr2 = refs1.Get(new ShardRef(ShardScheme.FlowsBackend, i)).Require();
+                sr2 = refs1.Get(new ShardRef(ShardScheme.FlowsBackend, ShardKey.New(i))).Require();
         }
         var route2 = sr2!.Route; // Captured before the dispose: Route re-mints once it's changed
         _ = w2.DisposeAsync();

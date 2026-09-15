@@ -16,7 +16,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<ChatEntryId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<ChatEntryId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class ChatEntryId : StringIdentifier, IStringIdentifier<ChatEntryId>
+public sealed partial class ChatEntryId : ContentId, IStringIdentifier<ChatEntryId>
 {
     public const string Delimiter = ":";
     private static ILogger? _log;
@@ -27,6 +27,9 @@ public sealed partial class ChatEntryId : StringIdentifier, IStringIdentifier<Ch
     public ChatId ChatId { get; }
     [IgnoreDataMember]
     public long LocalId { get; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override ShardKey ShardKey => ChatId.ShardKey;
 
     // Factories and constructors
 

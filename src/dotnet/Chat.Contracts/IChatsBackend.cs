@@ -131,7 +131,7 @@ public interface IChatsBackend : IComputeService, IBackendService
 
     Task<ChatEntry[]> ListChangedEntries(ChangedEntriesQuery query, CancellationToken cancellationToken);
 
-    // entryId routes to its ChatId's shard (ShardKeyResolvers registers ChatEntryId -> ChatId.Value).
+    // entryId routes to its ChatId's shard through ChatEntryId.ShardKey.
     [ComputeMethod(MinCacheDuration = 60)]
     Task<ChatEntryAttachment[]> GetEntryAttachments(ChatEntryId entryId, CancellationToken cancellationToken);
 
@@ -207,10 +207,12 @@ public interface IChatsBackend : IComputeService, IBackendService
 public sealed partial record ChatsBackend_CreateAttachments(
     [property: DataMember, Key(0)]
     ChatEntryAttachment[] Attachments
-) : ICommand<ChatEntryAttachment[]>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<ChatEntryAttachment[]>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => Attachments.Length > 0 ? Attachments[0].EntryId.ChatId : throw new ArgumentException("No attachments provided", nameof(Attachments));
+    public ShardKey ShardKey => Attachments.Length > 0
+        ? Attachments[0].EntryId.ShardKey
+        : throw new ArgumentException("No attachments provided", nameof(Attachments));
 }
 
 /// <summary>
@@ -221,10 +223,10 @@ public sealed partial record ChatsBackend_CreateAttachments(
 public sealed partial record ChatsBackend_RemoveAttachments(
     [property: DataMember, Key(0)]
     ChatEntryId EntryId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => EntryId.ChatId;
+    public ShardKey ShardKey => EntryId.ChatId.ShardKey;
 }
 
 // Replaces indexed visual media items for the given chat entries (delete-by-entry + insert).
@@ -234,10 +236,10 @@ public sealed partial record ChatsBackend_UpdateChatVisualMediaIndex(
     [property: DataMember, Key(0)] ChatId ChatId,
     [property: DataMember, Key(1)] ChatEntryId[] EntryIds,
     [property: DataMember, Key(2)] VisualMediaItem[] Items
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => ChatId;
+    public ShardKey ShardKey => ChatId.ShardKey;
 }
 
 // Replaces indexed file items for the given chat entries (delete-by-entry + insert).
@@ -247,10 +249,10 @@ public sealed partial record ChatsBackend_UpdateChatFileIndex(
     [property: DataMember, Key(0)] ChatId ChatId,
     [property: DataMember, Key(1)] ChatEntryId[] EntryIds,
     [property: DataMember, Key(2)] FileItem[] Items
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => ChatId;
+    public ShardKey ShardKey => ChatId.ShardKey;
 }
 
 // Replaces indexed link items for the given chat entries (delete-by-entry + insert).
@@ -260,10 +262,10 @@ public sealed partial record ChatsBackend_UpdateChatLinkIndex(
     [property: DataMember, Key(0)] ChatId ChatId,
     [property: DataMember, Key(1)] ChatEntryId[] EntryIds,
     [property: DataMember, Key(2)] LinkItem[] Items
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => ChatId;
+    public ShardKey ShardKey => ChatId.ShardKey;
 }
 
 [DataContract, MessagePackObject]
@@ -273,10 +275,10 @@ public sealed partial record ChatsBackend_Change(
     [property: DataMember, Key(1)] long? ExpectedVersion,
     [property: DataMember, Key(2)] Change<ChatDiff> Change,
     [property: DataMember, Key(3)] UserId? OwnerId = null
-) : ICommand<Chat>, IBackendCommand, IHasShardKey<ChatId?>
+) : ICommand<Chat>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId? ShardKey => ChatId;
+    public ShardKey ShardKey => ChatId?.ShardKey ?? default;
 }
 
 /// <summary>
@@ -288,10 +290,10 @@ public sealed partial record ChatsBackend_ChangeEntry(
     [property: DataMember, Key(0)] ChatEntryId ChatEntryId,
     [property: DataMember, Key(1)] long? ExpectedVersion,
     [property: DataMember, Key(2)] Change<ChatEntryDiff> Change
-) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => ChatEntryId.ChatId;
+    public ShardKey ShardKey => ChatEntryId.ChatId.ShardKey;
 }
 
 /// <summary>
@@ -301,10 +303,10 @@ public sealed partial record ChatsBackend_ChangeEntry(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_RemoveOwnChats(
     [property: DataMember, Key(0)] UserId UserId
-) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }
 
 /// <summary>
@@ -314,10 +316,10 @@ public sealed partial record ChatsBackend_RemoveOwnChats(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_RemoveOwnEntries(
     [property: DataMember, Key(0)] UserId UserId
-) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }
 
 /// <summary>
@@ -327,10 +329,10 @@ public sealed partial record ChatsBackend_RemoveOwnEntries(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_CreateNotesChat(
     [property: DataMember, Key(0)] UserId UserId
-) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }
 
 /// <summary>
@@ -342,10 +344,10 @@ public sealed partial record ChatBackend_CopyChat(
     [property: DataMember, Key(0)] ChatId ChatId,
     [property: DataMember, Key(1)] PlaceId PlaceId,
     [property: DataMember, Key(2)] string CorrelationId
-) : ICommand<ChatBackend_CopyChatResult>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<ChatBackend_CopyChatResult>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => ChatId;
+    public ShardKey ShardKey => ChatId.ShardKey;
 }
 
 /// <summary>
@@ -368,10 +370,10 @@ public sealed partial record ChatsBackend_ChangeChatCopyState(
     [property: DataMember, Key(0)] ChatId ChatId,
     [property: DataMember, Key(1)] long? ExpectedVersion,
     [property: DataMember, Key(2)] Change<ChatCopyStateDiff> Change
-) : ICommand<ChatCopyState>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<ChatCopyState>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => ChatId;
+    public ShardKey ShardKey => ChatId.ShardKey;
 }
 
 /// <summary>
@@ -383,9 +385,9 @@ public sealed partial record ChatsBackend_UpdateReadPositionsStat(
     [property: DataMember, Key(0)] ChatId ChatId,
     [property: DataMember, Key(1)] UserId UserId,
     [property: DataMember, Key(2)] long EntryLid
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => ChatId;
+    public ShardKey ShardKey => ChatId.ShardKey;
 }
 

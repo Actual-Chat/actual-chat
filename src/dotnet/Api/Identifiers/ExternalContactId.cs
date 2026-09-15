@@ -28,6 +28,9 @@ public sealed partial class ExternalContactId : StringIdentifier, IStringIdentif
     [IgnoreDataMember]
     public Symbol DeviceContactId { get; }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override ShardKey ShardKey => UserDeviceId.ShardKey;
+
     // Factories and constructors
 
     public static ExternalContactId New(UserDeviceId userDeviceId, Symbol deviceContactId)

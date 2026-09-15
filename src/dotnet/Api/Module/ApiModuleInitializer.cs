@@ -17,6 +17,7 @@ public static partial class ApiModuleInitializer
     internal static void ModuleInitializer()
     {
         CoreModuleInitializer.Load();
+        RegisterContentIds();
         AotTypes.AddSource(new ApiAotSource());
 
         // This is super important: TypeRef and some other types that were formerly using Symbol

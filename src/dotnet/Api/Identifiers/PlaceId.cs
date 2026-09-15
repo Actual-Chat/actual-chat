@@ -16,7 +16,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<PlaceId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<PlaceId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class PlaceId : StringIdentifier, IStringIdentifier<PlaceId>, IMentionTarget
+public sealed partial class PlaceId : ContentId, IStringIdentifier<PlaceId>, IMentionTarget
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<PlaceId>();
@@ -28,8 +28,6 @@ public sealed partial class PlaceId : StringIdentifier, IStringIdentifier<PlaceI
     public PlaceChatId RootChatId => field ??= PlaceChatId.Parse(PlaceChatId.Format(this, Value));
     [IgnoreDataMember]
     public MentionKind MentionKind => MentionKind.Place;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public string ShardKey => Value;
 
     // Factories and constructors
 

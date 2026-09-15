@@ -34,8 +34,8 @@ public sealed partial record RolesBackend_Change(
     [property: DataMember, Key(1)] RoleId? RoleId,
     [property: DataMember, Key(2)] long? ExpectedVersion,
     [property: DataMember, Key(3)] Change<RoleDiff> Change
-) : ICommand<Role>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<Role>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => ChatId;
+    public ShardKey ShardKey => ChatId.ShardKey;
 }

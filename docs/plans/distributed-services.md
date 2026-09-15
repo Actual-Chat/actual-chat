@@ -301,7 +301,7 @@ guaranteed the originating node was.
 | `ShardOwner.RequireShardOwnership` | `src/dotnet/Core.Server/Sharding/ShardOwner.cs` | Compute-method preamble: reroute + ownership dependency |
 | `ShardWorker` | `src/dotnet/Core.Server/Sharding/ShardWorker.cs` | Owner-only background workers |
 | `VersionedComputeMethodPrimer`, `LockingComputeMethodPrimer` | `src/dotnet/Core.Server/Priming/` | Invalidate + feed fresh value to recompute |
-| `IHasShardKey<T>`, `IDelegatingCommand`, `IHasNodeRef` | `src/dotnet/Core/Sharding/`, ActualLab | Command routing declarations |
+| `IHasShardKey`, `IDelegatingCommand`, `IHasNodeRef` | `src/dotnet/Core/Sharding/`, ActualLab | Command routing declarations |
 | `ShardKeyResolvers`, `MeshRefResolvers` | `src/dotnet/Core.Server/Sharding/` | Registering shard keys for new id types |
 | `BackendServiceAttribute(role, ServiceMode.Distributed)` | `src/dotnet/Core/Attributes/` | Per-interface migration switch |
 | `_events` + `DbEventForwarder` + `IQueues` (NATS) | `src/dotnet/Db/Internal/DbEventForwarder.cs`, `src/dotnet/Core.Server/Queues/` | Outbox, unchanged |
@@ -341,7 +341,7 @@ building blocks all exist already.
 
 1. Add `ServiceMode.Distributed` via `[BackendService]` on the backend
    interface (per-interface override, like `IUserPresencesBackend`); verify
-   the shard scheme and every command's `IHasShardKey<T>` key match the
+   the shard scheme and every command's `IHasShardKey` key match the
    compute methods' first-argument keys.
 2. Convert commands to `IDelegatingCommand`; delete the
    `Invalidation.IsActive` branch; add `AddLocalInvalidation` (or a primer)

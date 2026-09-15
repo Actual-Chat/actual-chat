@@ -9,6 +9,7 @@ public abstract class StringIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
     [Fact]
     public void ParseTest()
     {
+        // act, assert
         var parsed = ValidIdentifiers.Select(x => TIdentifier.TryParse(x)).ToArray();
         WriteLine(parsed.ToDelimitedString());
         parsed.All(id => id != null).Should().BeTrue();
@@ -21,7 +22,10 @@ public abstract class StringIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
     [Fact]
     public void EqualityTest()
     {
+        // arrange
         var identifiers = ValidIdentifiers.Select(TIdentifier.Parse).Concat([null]).ToArray();
+
+        // act, assert
         for (var i = 0; i < identifiers.Length; i++) {
             var id1 = identifiers[i];
             WriteLine($"{id1?.GetType().GetName()} '{id1}'");
@@ -36,7 +40,10 @@ public abstract class StringIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
     [Fact]
     public void SerializationTest()
     {
+        // arrange
         var identifiers = ValidIdentifiers.Select(TIdentifier.Parse).Concat([null]).ToArray();
+
+        // act, assert
         foreach (var id in identifiers) {
             id.AssertPassesThroughSerializers(Out);
 
@@ -59,7 +66,10 @@ public abstract class StringIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
     [Fact]
     public void PropertyBagSerializationTest()
     {
+        // arrange
         var identifiers = ValidIdentifiers.Select(TIdentifier.Parse).Concat([null]).ToArray();
+
+        // act, assert
         foreach (var id in identifiers) {
             var bag = new PropertyBag()
                 .KeylessSet("s")
@@ -75,7 +85,10 @@ public abstract class StringIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
     [Fact]
     public void MutablePropertyBagSerializationTest()
     {
+        // arrange
         var identifiers = ValidIdentifiers.Select(TIdentifier.Parse).Concat([null]).ToArray();
+
+        // act, assert
         foreach (var id in identifiers) {
             var bag = new MutablePropertyBag();
             bag.KeylessSet("s");

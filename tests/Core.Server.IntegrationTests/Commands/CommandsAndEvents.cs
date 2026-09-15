@@ -4,17 +4,17 @@ namespace ActualChat.Core.Server.IntegrationTests.Commands;
 
 [DataContract, MessagePackObject(true)]
 public partial record TestEvent1(
-     string? Error) : EventCommand, IHasShardKey<Unit>
+     string? Error) : EventCommand, IHasShardKey
 {
     [IgnoreDataMember, IgnoreMember]
-    public Unit ShardKey => default;
+    public ShardKey ShardKey => default;
 }
 
 [DataContract, MessagePackObject(true)]
-public partial record TestEvent2 : EventCommand, IHasShardKey<Unit>
+public partial record TestEvent2 : EventCommand, IHasShardKey
 {
     [IgnoreDataMember, IgnoreMember]
-    public Unit ShardKey => default;
+    public ShardKey ShardKey => default;
 }
 
 [DataContract, MessagePackObject(true)]
@@ -26,7 +26,7 @@ public partial record AddTestEvent1Command(
 public partial record AddBothTestEventsCommand : ICommand<Unit>;
 
 [DataContract, MessagePackObject(true)]
-public partial record AddBothTestEventsCommandWithShardKey : ICommand<Unit>, IHasShardKey<ShardKey>, IHasQueueRef
+public partial record AddBothTestEventsCommandWithShardKey : ICommand<Unit>, IHasShardKey, IHasQueueRef
 {
     [IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey { get; init; }
