@@ -49,9 +49,11 @@ public class SessionsBackend(IServiceProvider services)
         var sessionInfo = dbSession?.ToModel()
             ?? new SessionInfoFull(session) {
                 CreatedAt = now,
-                ExpiresAt = now + (session.Kind is SessionKind.ApiKey
-                    ? CoreConstants.Session.ApiKeyExpirationTime
-                    : CoreConstants.Session.SessionExpirationTime),
+                ExpiresAt = now + session.Kind switch {
+                    SessionKind.ApiKey => CoreConstants.Session.ApiKeyExpirationTime,
+                    SessionKind.OAuth => CoreConstants.Session.OAuthExpirationTime,
+                    _ => CoreConstants.Session.SessionExpirationTime,
+                },
             };
         var oldUserId = sessionInfo.UserId;
         sessionInfo = sessionInfo with {
