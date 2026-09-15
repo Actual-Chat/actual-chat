@@ -23,4 +23,5 @@ public partial record UploadSessionSnapshot
     [DataMember, Key(12)] public string MediaScope { get; set; } = "";
     [DataMember, Key(13)] public FilePath? TranscodedFilePath { get; set; }
     [DataMember, Key(14)] public bool IsUnrecoverable { get; set; }
+    [DataMember, Key(15)] public byte[]? Placeholder { get; set; }
 }

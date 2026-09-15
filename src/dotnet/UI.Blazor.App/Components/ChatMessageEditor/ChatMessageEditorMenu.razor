@@ -4,8 +4,11 @@
 @inherits Menu<AppUIHub>
 
 <div class="chat-message-editor-menu">
-    @if (HostInfo.HostKind.IsMauiApp()
-        && HostInfo.AppKind is AppKind.Android or AppKind.Ios or AppKind.MacOS) {
+    @* A phone browser's generic file picker opens the document tree, not the gallery, so these
+       two entries are worth as much on mobile web as they are in the app *@
+    @if ((HostInfo.HostKind.IsMauiApp()
+            && HostInfo.AppKind is AppKind.Android or AppKind.Ios or AppKind.MacOS)
+        || Hub.BrowserInfo.IsMobile) {
         <MenuEntry
             Icon="icon-image"
             Text="@L.Editor_ChoosePhoto"
