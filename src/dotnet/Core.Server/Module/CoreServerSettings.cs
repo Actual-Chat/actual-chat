@@ -19,4 +19,7 @@ public sealed class CoreServerSettings
     public string DeepgramKey { get; set; } = "";
     public string SonioxKey { get; set; } = "";
     public string ElevenLabsKey { get; set; } = "";
+    public string CloudflareAccountId { get; set; } = "";
+    public string CloudflareAiToken { get; set; } = "";
+    public string ImageGeneratorModel { get; set; } = "@cf/black-forest-labs/flux-2-klein-4b";
 }
