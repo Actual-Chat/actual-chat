@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using ActualChat.OAuth.Module;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
@@ -16,6 +18,7 @@ public sealed class CimdClientResolver(IServiceProvider services)
     : IOpenIddictServerHandler<ValidateAuthorizationRequestContext>
 {
     public const string HttpClientName = "OAuth.Cimd";
+    public const int MaxClientIdLength = 1024;
     public const int MaxDocumentLength = 64 * 1024;
 
     // ValidateClientIdParameter is the presence check; the existence check runs inside ValidateAuthentication,
@@ -44,11 +47,20 @@ public sealed class CimdClientResolver(IServiceProvider services)
             context.Reject(Errors.InvalidClient, "Client metadata documents must be served over https.");
             return;
         }
+        if (clientId.Length > MaxClientIdLength) {
+            context.Reject(Errors.InvalidClient, "The client_id URL is too long.");
+            return;
+        }
 
         var cancellationToken = context.CancellationToken;
         var application = await Applications.FindByClientIdAsync(clientId, cancellationToken).ConfigureAwait(false);
         if (application is not null && !await IsStale(application, cancellationToken).ConfigureAwait(false))
             return;
+
+        if (!await IsPublicHost(uri, cancellationToken).ConfigureAwait(false)) {
+            context.Reject(Errors.InvalidClient, "Client metadata documents must be served from a public host.");
+            return;
+        }
 
         var document = await Fetch(uri, cancellationToken).ConfigureAwait(false);
         if (document is null || document.ClientId != clientId) {
@@ -87,6 +99,49 @@ public sealed class CimdClientResolver(IServiceProvider services)
         return fetchedAt.GetDateTime() + Settings.CimdCacheAge < Clocks.SystemClock.Now.ToDateTime();
     }
 
+    private async Task<bool> IsPublicHost(Uri uri, CancellationToken cancellationToken)
+    {
+        // Anyone can point /oauth/authorize at any URL, so the fetch must not reach internal networks.
+        // Resolve-then-connect leaves DNS rebinding as a residual risk. Dev/test hosts serve documents
+        // from localhost, which the insecure flag admits.
+        if (Settings.AllowInsecureClientMetadata)
+            return true;
+        if (uri.Host.IsNullOrEmpty())
+            return false;
+
+        try {
+            var addresses = await Dns.GetHostAddressesAsync(uri.Host, cancellationToken).ConfigureAwait(false);
+            return addresses.Length > 0 && addresses.All(IsPublicAddress);
+        }
+        catch (SocketException e) {
+            Log.LogWarning(e, "CIMD: failed to resolve {Host}", uri.Host);
+            return false;
+        }
+    }
+
+    // It's internal to be reachable from tests
+    internal static bool IsPublicAddress(IPAddress address)
+    {
+        if (address.IsIPv4MappedToIPv6)
+            address = address.MapToIPv4();
+        if (IPAddress.IsLoopback(address) || address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any))
+            return false;
+
+        if (address.AddressFamily == AddressFamily.InterNetworkV6)
+            return !address.IsIPv6LinkLocal && !address.IsIPv6UniqueLocal && !address.IsIPv6Multicast;
+
+        var b = address.GetAddressBytes();
+        return b[0] switch {
+            10 => false,
+            127 => false,
+            169 when b[1] == 254 => false,
+            172 when b[1] is >= 16 and <= 31 => false,
+            192 when b[1] == 168 => false,
+            >= 224 => false,
+            _ => true,
+        };
+    }
+
     private async Task<ClientMetadata?> Fetch(Uri uri, CancellationToken cancellationToken)
     {
         // The named client caps the body at MaxDocumentLength, so an oversized document throws here
@@ -94,6 +149,9 @@ public sealed class CimdClientResolver(IServiceProvider services)
             using var http = HttpClientFactory.CreateClient(HttpClientName);
             using var response = await http.GetAsync(uri, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
+                return null;
+            if (!string.Equals(response.Content.Headers.ContentType?.MediaType, "application/json",
+                    StringComparison.OrdinalIgnoreCase))
                 return null;
 
             var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.OAuth.Migrations;
 
 [DbContext(typeof(OAuthDbContext))]
-[Migration("20260915121012_Initial")]
-partial class _20260915121012_Initial
+[Migration("20260915150121_Initial")]
+partial class _20260915150121_Initial
 {
     /// <inheritdoc />
     protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -132,8 +132,8 @@ partial class _20260915121012_Initial
                     .HasColumnName("application_type");
 
                 b.Property<string>("ClientId")
-                    .HasMaxLength(100)
-                    .HasColumnType("character varying(100)")
+                    .HasMaxLength(1024)
+                    .HasColumnType("character varying(1024)")
                     .HasColumnName("client_id");
 
                 b.Property<string>("ClientSecret")

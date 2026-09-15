@@ -92,6 +92,50 @@ public sealed class CimdTest(OAuthCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
+    public async Task NonJsonContentTypeShouldBeInvalidClient()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        await using var cimd = new CimdTestServer();
+        var clientId = cimd.Publish("plain", url => new {
+            client_id = url,
+            client_name = "Plain",
+            redirect_uris = new[] { RedirectUri },
+        }, contentType: "text/plain");
+
+        // act
+        var response = await SendAsUser(
+            HttpMethod.Get, AuthorizeUrl(clientId, RedirectUri, NewPkce(), null, "mcp", null));
+
+        // assert
+        response.StatusCode.Should().NotBe(HttpStatusCode.Redirect);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("invalid_client",
+            because: "a metadata document must be served as application/json");
+    }
+
+    [Theory]
+    [InlineData("127.0.0.1", false)]
+    [InlineData("10.0.0.1", false)]
+    [InlineData("172.16.0.1", false)]
+    [InlineData("192.168.1.1", false)]
+    [InlineData("169.254.169.254", false)]
+    [InlineData("0.0.0.0", false)]
+    [InlineData("224.0.0.1", false)]
+    [InlineData("::1", false)]
+    [InlineData("::", false)]
+    [InlineData("fe80::1", false)]
+    [InlineData("fc00::1", false)]
+    [InlineData("ff02::1", false)]
+    [InlineData("::ffff:10.0.0.1", false)]
+    [InlineData("8.8.8.8", true)]
+    [InlineData("172.32.0.1", true)]
+    [InlineData("2606:4700::1111", true)]
+    [InlineData("::ffff:8.8.8.8", true)]
+    public void IsPublicAddressShouldRejectInternalRanges(string address, bool isPublic)
+        => CimdClientResolver.IsPublicAddress(IPAddress.Parse(address)).Should().Be(isPublic,
+            because: "a metadata fetch must only reach public hosts");
+
+    [Fact]
     public async Task DocumentShouldBeCachedBetweenRequests()
     {
         // arrange

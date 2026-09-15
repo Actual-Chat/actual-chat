@@ -2,6 +2,7 @@ using ActualChat.Db;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Fusion.EntityFramework.Operations;
 using Microsoft.EntityFrameworkCore;
+using OpenIddict.EntityFrameworkCore.Models;
 
 namespace ActualChat.OAuth.Db;
 
@@ -20,6 +21,8 @@ public class OAuthDbContext(DbContextOptions<OAuthDbContext> options) : DbContex
     protected override void OnModelCreating(ModelBuilder model)
     {
         model.UseOpenIddict();
+        // CIMD client ids are URLs; OpenIddict's default of 100 is sized for opaque ids
+        model.Entity<OpenIddictEntityFrameworkCoreApplication>().Property(a => a.ClientId).HasMaxLength(1024);
         model.ApplyConfigurationsFromAssembly(typeof(OAuthDbContext).Assembly).UseSnakeCaseNaming();
 
         var operation = model.Entity<DbOperation>();

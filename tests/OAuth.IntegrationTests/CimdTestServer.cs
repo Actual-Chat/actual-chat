@@ -11,7 +11,7 @@ namespace ActualChat.OAuth.IntegrationTests;
 public sealed class CimdTestServer : IAsyncDisposable
 {
     private readonly HttpListener _listener = new();
-    private readonly ConcurrentDictionary<string, string> _documents = new();
+    private readonly ConcurrentDictionary<string, (string Json, string ContentType)> _documents = new();
     private readonly CancellationTokenSource _stopCts = new();
     private readonly Task _serveTask;
     private int _fetchCount;
@@ -34,12 +34,12 @@ public sealed class CimdTestServer : IAsyncDisposable
         await _serveTask.SilentAwait();
     }
 
-    public string Publish(string name, Func<string, object> document)
+    public string Publish(string name, Func<string, object> document, string contentType = "application/json")
     {
         // The builder gets the document's own URL, which a valid document must embed as client_id
         var path = $"/cimd/{name}.json";
         var url = new Uri(BaseUri, path).ToString();
-        _documents[path] = JsonSerializer.Serialize(document(url));
+        _documents[path] = (JsonSerializer.Serialize(document(url)), contentType);
         return url;
     }
 
@@ -57,9 +57,9 @@ public sealed class CimdTestServer : IAsyncDisposable
             }
 
             Interlocked.Increment(ref _fetchCount);
-            if (_documents.TryGetValue(context.Request.Url!.AbsolutePath, out var json)) {
-                context.Response.ContentType = "application/json";
-                await context.Response.OutputStream.WriteAsync(Encoding.UTF8.GetBytes(json));
+            if (_documents.TryGetValue(context.Request.Url!.AbsolutePath, out var document)) {
+                context.Response.ContentType = document.ContentType;
+                await context.Response.OutputStream.WriteAsync(Encoding.UTF8.GetBytes(document.Json));
             }
             else
                 context.Response.StatusCode = 404;

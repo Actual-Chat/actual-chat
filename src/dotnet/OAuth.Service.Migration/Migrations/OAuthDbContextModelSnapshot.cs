@@ -16,7 +16,7 @@ partial class OAuthDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20260915121012_Initial";
+    public override string LastMigrationId => "20260915150121_Initial";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -134,8 +134,8 @@ partial class OAuthDbContextModelSnapshot : ModelSnapshot
                     .HasColumnName("application_type");
 
                 b.Property<string>("ClientId")
-                    .HasMaxLength(100)
-                    .HasColumnType("character varying(100)")
+                    .HasMaxLength(1024)
+                    .HasColumnType("character varying(1024)")
                     .HasColumnName("client_id");
 
                 b.Property<string>("ClientSecret")

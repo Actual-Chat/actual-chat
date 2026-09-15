@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.OAuth.Migrations;
 
 /// <inheritdoc />
-public partial class _20260915121012_Initial : Migration
+public partial class _20260915150121_Initial : Migration
 {
     /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
@@ -52,7 +52,7 @@ public partial class _20260915121012_Initial : Migration
             {
                 id = table.Column<string>(type: "text", nullable: false),
                 application_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                client_id = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                client_id = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: true),
                 client_secret = table.Column<string>(type: "text", nullable: true),
                 client_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                 concurrency_token = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),

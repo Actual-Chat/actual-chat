@@ -17,6 +17,7 @@ public sealed class OAuthSettings
     public TimeSpan RefreshTokenReuseLeeway { get; set; } = TimeSpan.FromSeconds(30);
     public TimeSpan DcrPruneAge { get; set; } = TimeSpan.FromHours(24);
     public TimeSpan CimdCacheAge { get; set; } = TimeSpan.FromHours(24);
-    // Lets a client-metadata document URL (CIMD) be plain http; never affects redirect-URI validation.
+    // Lets a client-metadata document URL (CIMD) be plain http and skips the public-host (anti-SSRF) check on it,
+    // so a dev/test server can serve documents from localhost; never affects redirect-URI validation.
     public bool AllowInsecureClientMetadata { get; set; }
 }
