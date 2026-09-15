@@ -1395,6 +1395,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} oder email@gmail.com",
   "SignIn_Or": "oder",
   "SignIn_InvalidPhoneOrEmail": "Ungültige Telefonnummer oder E-Mail-Adresse.",
+  "SignIn_SwitchToPhoneKeypad": "Zur Telefontastatur wechseln",
+  "SignIn_SwitchToEmailKeyboard": "Zur E-Mail-Tastatur wechseln",
   "SignIn_VerifyPhoneText_Format": "Bitte bestätigen Sie Ihre Telefonnummer, um fortzufahren und für Freunde auf {0} auffindbar zu sein.",
   "SignIn_VerifyEmailText_Format": "Bitte bestätigen Sie Ihre E-Mail-Adresse, um fortzufahren und für Freunde auf {0} auffindbar zu sein.",
   "SignIn_PopupBlocked": "Der Browser hat das Anmelde-Pop-up blockiert. Bitte erlauben Sie Pop-ups für diese Website und versuchen Sie es erneut.",

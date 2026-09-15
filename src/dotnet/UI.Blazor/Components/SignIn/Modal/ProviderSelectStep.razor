@@ -37,17 +37,20 @@
             InputId="@_formModel.PhoneOrEmailFieldId"
             Class="grow"
             ShowErrors="@_showFieldErrors"
-            IsLabelInsideInput="true">
+            IsLabelInsideInput="true"
+            Right="@(_isPhoneKeyboard is null ? null : KeyboardToggle)">
             <TextBox
+                @ref="_phoneOrEmailBox"
                 Id="@_formModel.PhoneOrEmailFieldId"
                 Value="@(!_formModel.PhoneOrEmail.IsNullOrEmpty() ? _formModel.PhoneOrEmail : "")"
                 ValueExpression="@(() => _formModel.PhoneOrEmail)"
-                Autocomplete="tel email username"
+                Autocomplete="email"
+                IsPhoneOrEmail="true"
+                PhoneKeyboardChanged="@OnPhoneKeyboardChanged"
                 ValueChanged="@((string? v) => OnPhoneOrEmailChanged(v))"
                 Placeholder="@L.SignIn_PhoneOrEmailPlaceholder_Format(_phoneExample ?? DefaultPhoneExample)"
                 disabled="@m.HasSentCodeRecently"
                 type="text"
-                inputmode="text"
             />
             @if (m.HasSentCodeRecently) {
                 <div class="c-info">
@@ -97,6 +100,8 @@
     private string _signInError = "";
     private CpuTimestamp _lastSignInErrorConsumedAt;
     private volatile string? _phoneExample;
+    private TextBox _phoneOrEmailBox = null!;
+    private bool? _isPhoneKeyboard;
 
     private IPhones Phones => Hub.Phones;
     private ICaptcha Captcha => Hub.Captcha;
@@ -106,6 +111,16 @@
 
     [Parameter, EditorRequired] public TotpSignInModel TotpSignInModel { get; set; } = null!;
     [CascadingParameter] public Modal Modal { get; set; } = null!;
+
+    // The toggle keeps the input focused (mousedown is cancelled), so iOS swaps the keyboard in place.
+    private RenderFragment KeyboardToggle => @<button
+        type="button"
+        class="btn-h btn-sm"
+        aria-label="@(_isPhoneKeyboard is true ? L.SignIn_SwitchToEmailKeyboard : L.SignIn_SwitchToPhoneKeypad)"
+        @onmousedown:preventDefault="true"
+        @onclick="@(() => _phoneOrEmailBox.TogglePhoneKeyboard())">
+        <i class="@(_isPhoneKeyboard is true ? "icon-email" : "icon-phone")"></i>
+    </button>;
 
     protected override async Task OnInitializedAsync() {
         _authProviders = AccountUI.GetAuthSchemas()
@@ -203,6 +218,11 @@
 
     private async Task OnSignInWithProvider(string schema) {
         await AccountUI.SignIn(schema);
+    }
+
+    private void OnPhoneKeyboardChanged(bool isPhoneKeyboard) {
+        _isPhoneKeyboard = isPhoneKeyboard;
+        StateHasChanged();
     }
 
     private void OnPhoneOrEmailChanged(string? value) {

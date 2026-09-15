@@ -1395,6 +1395,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} или email@gmail.com",
   "SignIn_Or": "или",
   "SignIn_InvalidPhoneOrEmail": "Неверный номер телефона или адрес эл. почты.",
+  "SignIn_SwitchToPhoneKeypad": "Переключить на телефонную клавиатуру",
+  "SignIn_SwitchToEmailKeyboard": "Переключить на клавиатуру для эл. почты",
   "SignIn_VerifyPhoneText_Format": "Подтвердите свой номер телефона, чтобы продолжить и чтобы друзья могли найти вас в {0}.",
   "SignIn_VerifyEmailText_Format": "Подтвердите свою электронную почту, чтобы продолжить и чтобы друзья могли найти вас в {0}.",
   "SignIn_PopupBlocked": "Браузер заблокировал всплывающее окно входа. Разрешите всплывающие окна для этого сайта и повторите попытку.",

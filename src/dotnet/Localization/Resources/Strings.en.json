@@ -1658,6 +1658,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} or email@gmail.com",
   "SignIn_Or": "or",
   "SignIn_InvalidPhoneOrEmail": "Invalid phone number or email address.",
+  "SignIn_SwitchToPhoneKeypad": "Switch to phone keypad",
+  "SignIn_SwitchToEmailKeyboard": "Switch to email keyboard",
   "SignIn_VerifyPhoneText_Format": "Please verify your phone number to continue and make it discoverable to friends on {0}.",
   "SignIn_VerifyEmailText_Format": "Please verify your email address to continue and make it discoverable to friends on {0}.",
   "SignIn_PopupBlocked": "The browser blocked the sign-in popup. Please allow popups for this site and try again.",

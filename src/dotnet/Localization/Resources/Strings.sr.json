@@ -1395,6 +1395,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} или емаил@гмаил.цом",
   "SignIn_Or": "или",
   "SignIn_InvalidPhoneOrEmail": "Неисправан број телефона или е-маил адреса.",
+  "SignIn_SwitchToPhoneKeypad": "Пребаци на телефонску тастатуру",
+  "SignIn_SwitchToEmailKeyboard": "Пребаци на тастатуру за е-маил",
   "SignIn_VerifyPhoneText_Format": "Потврдите свој број телефона да наставите и да вас пријатељи пронађу у {0}.",
   "SignIn_VerifyEmailText_Format": "Потврдите своју емаил адресу да наставите и да вас пријатељи пронађу у {0}.",
   "SignIn_PopupBlocked": "Прегледач је блокирао искачући прозор за пријаву. Дозволите искачуће прозоре за ову страницу и покушајте поново.",
