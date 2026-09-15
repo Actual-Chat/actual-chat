@@ -223,6 +223,8 @@
             return L.Transcription_OwnVoiceStatus_Off;
         if (ownVoice.Status == UserVoiceStatus.Ready)
             return L.Transcription_OwnVoiceStatus_Ready;
+        if (ownVoice.Failure == VoiceSampleFailure.SampleMissing)
+            return L.Transcription_OwnVoiceStatus_SampleMissing;
         if (ownVoice.MissingDuration is { } missing && missing > TimeSpan.Zero) {
             // Rounded up to 5 s: the catalog's "seconds" is written for that, see Strings.en.json
             var seconds = (int)Math.Ceiling(missing.TotalSeconds / 5) * 5;
@@ -230,8 +232,10 @@
         }
         if (ownVoice.Status == UserVoiceStatus.Failed || ownVoice.Failure != VoiceSampleFailure.None)
             return L.Transcription_OwnVoiceStatus_Fallback;
+        if (ownVoice.Status == UserVoiceStatus.Creating)
+            return L.Transcription_OwnVoiceStatus_Preparing;
 
-        return L.Transcription_OwnVoiceStatus_Preparing;
+        return L.Transcription_OwnVoiceStatus_ReadyToUse;
     }
 
     private Task OnToggleTranslatedVoice()

@@ -811,13 +811,16 @@ section, above the stock-voice tile — visible only for
   `OnToggleOwnVoice` flips `IsOwnVoiceEnabled` through
   `LanguageUI.UpdateSettings`.
 - **Status line** under the caption (`FormatOwnVoiceStatus`): `Off`;
-  `Ready` (`Status == UserVoiceStatus.Ready`); "Needs about *N* more
-  seconds…" while `MissingDuration > 0` (`N` rounded up to a multiple of
-  5, so one "seconds" string works for every shipped language without a
-  plural form); "Temporarily using a standard voice" for a `Failed`
-  record or a non-`None` `VoiceSampleFailure`; otherwise "Preparing your
-  voice…" — enabled, sample fine, no clone made yet (see
-  [Follow-ups](#follow-ups) for why this wording is provisional).
+  `Ready` (`Status == UserVoiceStatus.Ready`); "Your voice sample is
+  gone — record a new one" for `Failure == VoiceSampleFailure.SampleMissing`;
+  "Needs about *N* more seconds…" while `MissingDuration > 0` (`N`
+  rounded up to a multiple of 5, so one "seconds" string works for every
+  shipped language without a plural form); "Temporarily using a standard
+  voice" for a `Failed` record or another non-`None` `VoiceSampleFailure`;
+  "Preparing your voice…" while `Status == UserVoiceStatus.Creating`;
+  otherwise "Ready to use on your next call" — enabled, sample fine, no
+  clone made yet, so nothing is prepared until the first dub asks the
+  pool.
 - **While on:** "Record a sample" / "Re-record the sample" (depending on
   `HasExplicitSample`) and, only with an explicit sample, "Remove
   sample" (`OnRemoveSampleClick`, clears `OwnVoiceSampleMediaId` — the
@@ -912,11 +915,6 @@ suite.
 - **A quota-raise request.** The 20-voice Soniox cap is shared by every
   environment; there's no in-app way to ask Soniox for more or to see
   how close the fleet is to it.
-- **"Preparing your voice…" wording.** That status covers *both* "a clone
-  will be made the moment you're first dubbed" and, indefinitely, a user
-  who opted in but is never dubbed — a "Ready to use" (or similar)
-  wording specifically for `Status == None && Failure == None` would be a
-  one-string change (`TranscriptionSettings.FormatOwnVoiceStatus`).
 - **Speculative clone acquisition.** `VoicePool.Acquire` runs inside the
   live dub's decision window today, so a speaker's *first* opted-in
   utterance can hold up to `Constants.Audio.VoiceCloneAcquireTimeout`

@@ -127,11 +127,14 @@ public static class LocalizedStringsLocalizerExt
         public string Transcription_OwnVoice => l["Transcription_OwnVoice"].Value;
         public string Transcription_OwnVoiceCaption => l["Transcription_OwnVoiceCaption"].Value;
         public string Transcription_OwnVoiceStatus_Off => l["Transcription_OwnVoiceStatus_Off"].Value;
+        public string Transcription_OwnVoiceStatus_ReadyToUse => l["Transcription_OwnVoiceStatus_ReadyToUse"].Value;
         public string Transcription_OwnVoiceStatus_Ready => l["Transcription_OwnVoiceStatus_Ready"].Value;
         public string Transcription_OwnVoiceStatus_Preparing => l["Transcription_OwnVoiceStatus_Preparing"].Value;
         public string Transcription_OwnVoiceStatus_NeedsMore_Format(object arg0)
             => l["Transcription_OwnVoiceStatus_NeedsMore_Format", arg0].Value;
         public string Transcription_OwnVoiceStatus_Fallback => l["Transcription_OwnVoiceStatus_Fallback"].Value;
+        public string Transcription_OwnVoiceStatus_SampleMissing
+            => l["Transcription_OwnVoiceStatus_SampleMissing"].Value;
         public string Transcription_OwnVoiceRecord => l["Transcription_OwnVoiceRecord"].Value;
         public string Transcription_OwnVoiceRerecord => l["Transcription_OwnVoiceRerecord"].Value;
         public string Transcription_OwnVoiceRemoveSample => l["Transcription_OwnVoiceRemoveSample"].Value;
