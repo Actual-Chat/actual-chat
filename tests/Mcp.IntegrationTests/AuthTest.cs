@@ -71,6 +71,51 @@ public class AuthTest(McpCollection.AppHostFixture fixture, ITestOutputHelper @o
         response.StatusCode.Should().Be(System.Net.HttpStatusCode.Unauthorized);
     }
 
+    [Theory]
+    [InlineData("/.well-known/oauth-protected-resource")]
+    [InlineData("/.well-known/oauth-protected-resource/api/mcp")]
+    public async Task ProtectedResourceDocumentShouldNameMcpEndpoint(string path)
+    {
+        // arrange
+        using var http = Tester.AppHost.NewHttpClient();
+
+        // act
+        var doc = JsonDocument.Parse(await http.GetStringAsync(path)).RootElement;
+
+        // assert
+        var baseUri = Tester.UrlMapper.BaseUri;
+        doc.GetProperty("resource").GetString().Should().Be(new Uri(baseUri, "/api/mcp").ToString());
+        doc.GetProperty("authorization_servers")[0].GetString().Should().Be(baseUri.ToString().TrimEnd('/'));
+        doc.GetProperty("scopes_supported").EnumerateArray().Select(x => x.GetString())
+            .Should().Equal("mcp", "offline_access");
+        doc.GetProperty("bearer_methods_supported")[0].GetString().Should().Be("header");
+    }
+
+    [Fact]
+    public async Task MissingHeaderShouldPointAtResourceMetadata()
+    {
+        // arrange/act
+        var response = await SendInitialize(authorization: null);
+
+        // assert
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.Unauthorized);
+        var header = response.Headers.WwwAuthenticate.ToString();
+        header.Should().Contain("resource_metadata=\"").And.Contain("/.well-known/oauth-protected-resource/api/mcp\"");
+        header.Should().Contain("scope=\"mcp offline_access\"",
+            because: "SDK clients request the advertised scope, and only offline_access yields a refresh token");
+        header.Should().NotContain("error=", because: "no token was presented, so this is not an invalid_token case");
+    }
+
+    [Fact]
+    public async Task MalformedTokenShouldReportInvalidToken()
+    {
+        // arrange/act
+        var response = await SendInitialize(authorization: "Bearer not-a-valid-session-id");
+
+        // assert
+        response.Headers.WwwAuthenticate.ToString().Should().Contain("error=\"invalid_token\"");
+    }
+
     private async Task<HttpResponseMessage> SendInitialize(string? authorization)
     {
         var baseUri = Tester.UrlMapper.BaseUri;
