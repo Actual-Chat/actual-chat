@@ -556,9 +556,384 @@ every listener, so there is exactly one voice per speaker to pick.
   a warm-up — the suggested voices when the modal first renders them, and
   a row on `pointerenter` — so the Fusion client cache is filled before a
   click.
-- **Follow-up.** Cloning replaces the stock voice when the speaker opts
-  in: `SpeechSynthesisOptions.VoiceId` is already the hook, and
-  `SpeakerVoices` is the one place that decides which id a speaker gets.
+- **Cloning.** When the speaker has opted in to "Use my own voice",
+  `SpeakerVoices` hands out a Soniox voice-clone id instead of resolving
+  the stock catalog at all — see
+  [Own voice (cloning)](#own-voice-cloning).
+
+## Own voice (cloning)
+
+An opted-in speaker is dubbed — live and in replay — in a clone of their
+own voice instead of a stock one. The clone is a **transient pool**: a
+Soniox voice exists only while it is being used, made on first demand and
+dropped when idle, so it never becomes something to keep in sync or clean
+up by hand. Soniox charges no extra for a clone and it speaks every
+language exactly like a stock voice, so nothing downstream of `SpeakerVoices`
+needs to know a dub is cloned rather than stock: `SonioxSpeechSynthesizer`
+passes the id straight through `SpeechSynthesisOptions.VoiceId` unchanged.
+
+Rollout: rendered only for `account.IsAdmin && Features.IsIncompleteUIEnabled`
+(`TranscriptionSettings.razor`), the same gate as other incomplete-UI
+previews; the server side (pool, sweeper, `SpeakerVoices`) is ungated. The
+gate is meant to come off once Soniox raises the 20-voice-per-organization
+quota.
+
+### Data
+
+`UserLanguageSettings` (`src/dotnet/Api/Users/UserLanguageSettings.cs`)
+carries two more keys: key 8 `IsOwnVoiceEnabled` (`bool`) — the consent —
+and key 9 `OwnVoiceSampleMediaId` (`MediaId?`) — an explicit reference
+recording; `null` means build one automatically from the speaker's past
+recordings.
+
+`UserVoice` (`src/dotnet/Api/Users/UserVoice.cs`, array-form) is the
+clone's own record: `UserId`, `Version`, `SampleHash` (`HashString` — what
+the current clone, if any, was made from), `SonioxVoiceId` (`""` when
+none), `Status` (`UserVoiceStatus`: `None | Creating | Ready | Failed`),
+`FailedUntil` (`Moment?`, a cooldown), `LastUsedAt`, `CreatedAt`,
+`ModifiedAt`. `UserVoiceDiff : RecordDiff` mirrors it for patch-based
+writes. It's stored in Users.Service's `user_voices` table (`DbUserVoice`,
+one row per user, `[ConcurrencyCheck] Version`) and exposed by
+`IUserVoicesBackend` (`src/dotnet/Users.Contracts/IUserVoicesBackend.cs`):
+`Get(userId)` (compute), `ListActive()` (plain — the sweeper's snapshot of
+every `Creating`/`Ready` record, across all users), and the command
+`OnChange(UserVoicesBackend_Change)` (`ExpectedVersion` +
+`Change<UserVoiceDiff>`, the same create/update/remove shape
+`ConversationsBackend` uses). `UserVoicesBackend`
+(`src/dotnet/Users.Service/UserVoicesBackend.cs`) implements it with
+`DiffEngine.Patch` over the DB row, `RequireVersion` on update/remove.
+
+### Sample — `VoiceSampleBuilder`
+
+File: `src/dotnet/Streaming.Service/Services/VoiceSampleBuilder.cs`.
+`Build(userId, settings, ct)` returns a `VoiceSample(HashString Hash,
+string BlobId, TimeSpan Duration)` or a `VoiceSampleFailure`
+(`src/dotnet/Api/Users/VoiceSampleFailure.cs`: `None | NotEnoughRecordings
+| SampleMissing`) — `settings.OwnVoiceSampleMediaId` decides which path:
+
+- **Explicit** (`BuildExplicit`) — download the media's blob, decode Opus
+  to PCM (`OpusToPcmDecoder`), write it as a WAV; missing media or an
+  empty blob is `SampleMissing`. No minimum duration is enforced.
+- **Auto** (`BuildAuto`) — the speaker's own recent recordings, selected
+  and hashed by `SelectEntries`/`HashOf` (`internal static`, unit-tested
+  directly): candidate entries are the last
+  `Constants.Audio.VoiceSampleWindow` (90 days) of the user's own audio
+  entries — not removed, audio stored (`!IsStreaming`, non-empty
+  `BlobId`) — across the user's `IChatUsagesBackend.GetRecencyList` for
+  both `ChatUsageListKind.PeerChatsWroteTo` and `ViewedGroupChats` (10
+  chats each, deduplicated, up to `Constants.Audio.VoiceSampleMaxChats`
+  total), each chat scanned up to
+  `Constants.Audio.VoiceSampleMaxEntriesPerChat` (500) entries via
+  `ChatsBackendExt.ListEntries`, filtered to the user's own `AuthorId`.
+  Entries shorter than `Constants.Audio.VoiceSampleMinEntryDuration`
+  (5 s) are dropped; the rest are ordered longest-first (ties broken by
+  entry id, for a deterministic selection regardless of input order) and
+  taken until the running total reaches
+  `Constants.Audio.VoiceSampleMaxDuration` (60 s — decoding trims the PCM
+  to exactly that). The total must reach
+  `Constants.Audio.VoiceSampleMinDuration` (30 s), else
+  `NotEnoughRecordings`. The hash is a Blake3/base64 hash of the selected
+  entry ids joined with `\n`, in selection order — so a hash change (and
+  a rebuild) happens only when the *selection* changes, not on every new
+  recording.
+
+Either way, the clip is written as a 16 kHz mono WAV
+(`Constants.Audio.RecordingSampleRate`, not 48 kHz — `OpusToPcmDecoder`
+decodes at the capture rate and Soniox accepts it as-is) via `WavWriter`
+(`src/dotnet/Core.Server/Audio/WavWriter.cs`) into
+`BlobScope.AudioRecord`, path `voice-sample/<userId>/<hash8>.wav`
+(`VoiceSampleBuilder.BlobIdOf`) — `<hash8>` is `ShortHashOf`, the hash's
+first 6 bytes base64-alphanumeric-encoded to 8 characters, also what
+names the Soniox voice (below). `Build` reuses the stored blob when its
+hash is unchanged (`GetStored` reads just the 44-byte WAV header via
+`WavWriter.GetPcmLength` to recover the duration, no decode); `Store`
+writes a fresh one otherwise. `OpusToPcmDecoder` and `WavWriter` live in
+`Core.Server/Audio` (not a `*.Service` project) because Streaming.Service
+needed them and no `*.Service` project may reference another one.
+
+`Inspect(userId, settings, ct)` is `Build`'s read-only twin: the same
+selection (`SelectOwnEntries`, shared with `BuildAuto`) or an explicit
+media's existence check, but no blob is read, decoded or written — just
+`(TimeSpan? Available, VoiceSampleFailure Failure)`, `Available` null for
+an explicit sample. It backs the status API below.
+
+Recording an explicit sample: "Record a sample" opens the user's **Notes**
+chat with a prompt card; the recording is an ordinary voice entry there,
+and its `MediaId` is what gets stored — see [UI](#ui) below.
+
+### Pool — `VoicePool`
+
+File: `src/dotnet/Streaming.Service/Services/VoicePool.cs`.
+`Task<string?> Acquire(UserId, CancellationToken)` returns a Soniox voice
+id or `null` (stock voice). Single-flight per user — a `TaskCompletionSource`
+map exactly like `ReplayDubs`' — with the winner running the work on a
+`HostLifetime().CreateStopTokenSource()` token (independent of the
+caller) and every caller, winner included, bounded by
+`Constants.Audio.VoiceCloneAcquireTimeout` (15 s): a caller that times out
+gets `null` for this utterance while the clone keeps being made for the
+next one. `Acquire` is a no-op `null` at once when no `ISonioxVoices` is
+registered (no Soniox key) or the user is a guest.
+
+`AcquireImpl`, in order:
+
+1. Read `UserLanguageSettings` and the `UserVoice` record.
+2. Not opted in (`IsOwnVoiceEnabled == false`) → `Release` a
+   `Ready`/`Creating` record if there is one, return `null`.
+3. `Failed` with `FailedUntil` still in the future → `null` (the cooldown).
+4. `Creating` and `ModifiedAt` younger than
+   `Constants.Audio.VoiceCloneCreatingTimeout` (2 min) → another host is
+   already on it, `null`. Older than that, it's a crash leftover: fell
+   through to step 5, and the version check on the update there makes
+   taking it over safe.
+5. `VoiceSampleBuilder.Build` for the current sample. No sample
+   (`NotEnoughRecordings`/`SampleMissing`) → `null`, and — unless the
+   existing record is `Ready` (its clone is still good, so it's left
+   alone) — the record is marked `Failed`.
+6. `Ready` and `SampleHash` unchanged → touch `LastUsedAt` (throttled to
+   once a minute) and return the id.
+7. Quota check: `ListActive().Count(other users) >= Quota` → `null`, the
+   pool is full.
+8. Otherwise create: mark `Creating` (new hash, cleared `SonioxVoiceId`),
+   delete the previous clone if the hash changed, `ISonioxVoices.Create`
+   with the sample's WAV, store the new id on the still-`Creating` record
+   right away (so a concurrent reconcile sees it as owned), poll
+   `ISonioxVoices.Get` every 500 ms until ready — `IsFailed` or
+   `Constants.Audio.VoiceCloneReadyTimeout` (30 s) both fail the attempt —
+   then mark `Ready`.
+
+   A **name collision** on create (`CreateSonioxVoice`) — the same name
+   already exists at Soniox, e.g. an earlier delete that failed — deletes
+   the same-named orphan and retries once; any other failure marks the
+   record `Failed` with `FailedUntil = now + Constants.Audio.VoiceCloneFailureCooldown`
+   (10 min) and deletes whatever this attempt itself created. A
+   `VersionMismatchException` at any step (another host or the sweeper
+   changed the record concurrently) just deletes this attempt's own clone
+   and returns `null` — whatever the winner of that race decided stands.
+
+The clone's Soniox name is `NameOf(userId, hash)` =
+`voxt-<env>-<userId>-<hash8>` (`VoicePool.NamePrefix`), `<env>` being
+`test` on a tested host, else `prod`/`dev`/`local` from
+`HostInfo.BaseUrlKind` — every environment (and every test run) shares one
+Soniox organization/project, so the prefix is what keeps one
+environment's reconcile from ever touching another's clones or a manually
+created voice. `Quota` is `StreamingSettings.SonioxVoiceQuota ??
+Constants.Audio.VoiceCloneQuota` (20) — **Soniox's 20-voice cap is per
+organization, shared by every Voxt environment**, so raising it (or the
+setting) affects all of them at once, and the number of `Ready`/`Creating`
+records across the whole fleet is what the quota check actually counts
+against, not one environment's own usage.
+
+`Release(voice, ct)` resets the record to `None` (clears `SonioxVoiceId`
+and `FailedUntil`, keeps `SampleHash`) — record first, so a concurrent
+`Acquire` that already touched it wins the version race and keeps its
+clone — then deletes the Soniox voice. Used for opt-out, a missing
+sample, and by the sweeper.
+
+### Sweeper — `VoicePoolSweeper`
+
+File: `src/dotnet/Streaming.Service/Services/VoicePoolSweeper.cs`, a
+`WorkerBase` hosted service, one-minute period
+(`AsyncChain.From(...).RetryForever(...).CycleForever()`, same shape as
+`SonioxSweeper`). Each tick, `SweepOnce`:
+
+- Every 10th tick (`ReconcilePeriod`), **`Reconcile`** first:
+  `ISonioxVoices.List()`, delete every voice whose name `Pool.IsOwnName`
+  (this host's own `voxt-<env>-` prefix) and whose id no active record
+  references (a crash leftover, or a delete that previously failed);
+  reset to `None` every `Ready` record whose voice is no longer listed
+  (deleted directly at Soniox, or lost). Nothing outside the prefix is
+  ever touched.
+- Then, per active record, `GetReleaseReason` → `Pool.Release` for:
+  a `Creating` record older than `Constants.Audio.VoiceCloneCreatingTimeout`
+  (its creation never finished); a `Ready` record idle since
+  `LastUsedAt + Constants.Audio.VoiceCloneIdleTimeout` (10 min); a `Ready`
+  record whose speaker has since opted out.
+
+`SweepOnce` no-ops when `ISonioxVoices` isn't registered (no Soniox key).
+
+### Integration — `SpeakerVoices`
+
+`SpeakerVoices.Get` (`src/dotnet/Streaming.Service/Services/SpeakerVoices.cs`,
+[Voice](#voice)) is the single place both live and replay ask for a
+speaker's voice, so this is the only place cloning had to plug in: when
+`settings.IsOwnVoiceEnabled`, it calls `VoicePool.Acquire` first and
+returns the clone id unchecked (a Soniox UUID, never something the stock
+catalog would list, so it skips `DubVoiceAccents.ResolveVoice`); a `null`
+(not opted in, pool full, no sample, a failure) falls through to the
+existing stock-voice resolution unchanged.
+
+- **Live** reads it once per dub start (`StartSynthesis`, [The dub
+  worker](#the-dub-worker--audiostreamingbackenddubbingcs)): the acquire
+  runs inside the existing per-utterance window, so a first opted-in
+  utterance can lose up to `VoiceCloneAcquireTimeout` (15 s) to a cold
+  clone before falling back to the stock voice for that one utterance —
+  see [Follow-ups](#follow-ups).
+- **Replay** reads it inside `ReplayDubs.GetOrCreate`'s existing 20 s
+  wait ([Replay → `ReplayDubs`](#replaydubs--get-or-create)); the stored
+  dub's hash already includes the voice id
+  (`TranslationDubExt.GetDubContentHash(content, voiceId)`), so a clone
+  that appears, disappears or changes regenerates the dub exactly like a
+  stock-voice change does.
+
+### Status — `IOwnVoices.GetOwnVoiceStatus`
+
+File: `src/dotnet/Api.Contracts/Streaming/IOwnVoices.cs`, implemented by
+`OwnVoices` (`src/dotnet/Streaming.Service/Services/OwnVoices.cs`),
+registered with `rpcHost.AddApi` and exposed to the client as
+`AppUIHub.OwnVoices`. `GetOwnVoiceStatus(session, ct)`
+(`[ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration
+= 10)]`) returns `OwnVoiceStatus(IsEnabled, Status, Failure,
+MissingDuration, HasExplicitSample)` (`src/dotnet/Api/Users/OwnVoiceStatus.cs`,
+`OwnVoiceStatus.Off` for a guest or an opted-out user).
+
+It follows: `Accounts.GetOwn` (guest → `Off`), the user's
+`UserLanguageSettings` (compute — off → `Off with { HasExplicitSample }`),
+the `UserVoice` record (compute, `Status`), and
+`VoiceSampleBuilder.Inspect` for `Failure`/`MissingDuration`
+(`Constants.Audio.VoiceSampleMinDuration - available`, floored at zero,
+`null` for an explicit sample). It deliberately does **not** invalidate
+when the speaker records a *new* entry in an already-listed chat:
+`Inspect`'s selection reads the chat tiles through
+`ChatsBackendExt.ListEntries` under `Computed.BeginIsolation()` (the same
+isolation the [Selection rule](#sample--voicesamplebuilder) scan always
+used), so a fresh recording only shows up once the 10 s compute cache
+expires on its own — there is no live countdown. This is a deliberate
+scope cut, not a bug: see [Follow-ups](#follow-ups).
+
+### UI
+
+`Components/Settings/TranscriptionSettings.razor`, Translated Voice
+section, above the stock-voice tile — visible only for
+`account.IsAdmin && Features.IsIncompleteUIEnabled` (`Model.OwnVoice` is
+`null` otherwise, so a non-admin makes no `GetOwnVoiceStatus` RPC at all):
+
+- **Toggle** "Use my own voice" (`icon-voice-01`) with a consent caption;
+  `OnToggleOwnVoice` flips `IsOwnVoiceEnabled` through
+  `LanguageUI.UpdateSettings`.
+- **Status line** under the caption (`FormatOwnVoiceStatus`): `Off`;
+  `Ready` (`Status == UserVoiceStatus.Ready`); "Needs about *N* more
+  seconds…" while `MissingDuration > 0` (`N` rounded up to a multiple of
+  5, so one "seconds" string works for every shipped language without a
+  plural form); "Temporarily using a standard voice" for a `Failed`
+  record or a non-`None` `VoiceSampleFailure`; otherwise "Preparing your
+  voice…" — enabled, sample fine, no clone made yet (see
+  [Follow-ups](#follow-ups) for why this wording is provisional).
+- **While on:** "Record a sample" / "Re-record the sample" (depending on
+  `HasExplicitSample`) and, only with an explicit sample, "Remove
+  sample" (`OnRemoveSampleClick`, clears `OwnVoiceSampleMediaId` — the
+  Notes entry itself stays).
+- The stock-voice tile's caption switches to
+  `Transcription_DubVoiceFallbackCaption` ("Used when your own voice
+  isn't available") while own voice is on.
+
+"Record a sample" (`OnRecordSampleClick`) calls
+`LanguageUI.ShowOwnVoiceSamplePrompt(notesChatId)` — which shows a
+`BannerUI` banner held on the scoped `LanguageUI` (so it survives the
+settings modal closing/reopening) — closes the settings modal and
+navigates to the user's Notes chat
+(`ChatListUI.NotesChat`/`Links.Chat`). `OwnVoiceSampleBanner`
+(`Components/Banners/OwnVoiceSampleBanner.razor`, registered in the
+`IBannerView` type map) is a `ComputedStateComponent` that renders a
+dismissible info `Banner` only while the chat currently open is that
+Notes chat: body = "Read this aloud…"
+(`Transcription_OwnVoiceReadAloud`) + a ~80-word localized paragraph
+(`Transcription_OwnVoicePromptText`, first-person, gender-neutral in
+every shipped language). Its state scans `Chats.ReadReverse` newest-first
+— stopping at the first entry older than the banner's `ShownAt` — for a
+finished voice entry by the user's own author
+(`Hub.Authors.GetOwn(session, chatId)`) with `Audio: { IsStreaming: false,
+MediaId: not null }`; once one exists, "Use this recording"
+(`Transcription_OwnVoiceUseRecording`) appears, stores its `MediaId` as
+`OwnVoiceSampleMediaId`, toasts `Transcription_OwnVoiceSampleSaved`, and
+dismisses the banner (`LanguageUI.DismissOwnVoiceSamplePrompt`).
+Re-recording repeats the same flow; removing (above) just clears the
+setting.
+
+### Tests
+
+Fake-backed throughout — `tests/Testing.Host/FakeSonioxVoices.cs`
+(in-memory `ISonioxVoices`: `ReadyAfter` delays readiness, `FailCreate`
+forces a failure, `CreateCount`/`DeleteCount`, unique names like the real
+API) and `AudioRecordingOperations.OptInOwnVoice` (records an explicit
+sample entry and opts the tester in):
+
+- `tests/Transcription.UnitTests/SonioxVoicesClientTest.cs` — the HTTP
+  client against a fake handler (multipart create, get/list/delete,
+  paging, per-model status → `IsReady`/`IsFailed`).
+- `tests/Streaming.UnitTests/VoiceSampleBuilderTest.cs` — `SelectEntries`/
+  `HashOf` unit-level: longest-first ordering, the 5 s/60 s/30 s bounds,
+  filters (removed, streaming, no audio, outside the 90-day window),
+  hash order-sensitivity and determinism, the 8-char short hash.
+- `tests/Chat.IntegrationTests/VoiceSampleBuilderTest.cs` — `Build`
+  against a real chat/blob stack: WAV header/length, blob reuse on an
+  unchanged hash, `NotEnoughRecordings`, an explicit sample and
+  `SampleMissing`.
+- `tests/Chat.IntegrationTests/VoicePoolTest.cs` — acquire-creates-and-
+  reuses, a changed sample replacing the clone, a full pool returning
+  `null`, a failed create cooling down, an idle sweep, the reconcile
+  (orphan delete, someone-else's-environment voice kept, a `Ready` record
+  reset when its voice is gone at Soniox), opt-out, the name-collision
+  retry.
+- `tests/Chat.IntegrationTests/SpeakerVoicesTest.cs` — opted-in +
+  acquirable → clone id; not opted-in → stock voice, pool never touched;
+  opted-in with the quota at zero → stock voice, no record ever reaches
+  `Ready`.
+- `tests/Chat.IntegrationTests/OwnVoicesTest.cs` — `GetOwnVoiceStatus`
+  end to end, including over the RPC client (MessagePack round trip):
+  off, `NotEnoughRecordings` with the right `MissingDuration`, an
+  explicit sample reaching `Ready` once acquired, back to
+  `NotEnoughRecordings` after the sample is removed.
+- `tests/Chat.IntegrationTests/ReplayDubsTest.cs` /
+  `DubbingTranslationFlowTest.cs` — an opted-in speaker's live and replay
+  dub is synthesized with the clone id
+  (`RecordingSpeechSynthesizer` records `VoiceId`); opting out
+  regenerates the dub with the stock voice.
+- `tests/Users.IntegrationTests/UserVoicesBackendTest.cs` — the backend's
+  create/get/version-mismatch/`ListActive` behavior directly.
+- `tests/Users.UnitTests/StoredSettingsSerializationTest.cs` — a
+  pre-key-8 blob deserializes with `IsOwnVoiceEnabled = false`,
+  `OwnVoiceSampleMediaId = null`; the keys round-trip.
+
+The one **live** test —
+`tests/Transcription.IntegrationTests/SonioxVoicesClientTest.cs`'s
+`CreateShouldCloneAUsableVoiceAndDeleteShouldRemoveIt` (create against the
+real API, poll to ready, synthesize with the clone, delete, confirm
+gone) — is `[Fact(Skip = "For manual runs only")]`: it burns one of the
+shared organization's 20 voice slots, so it isn't part of the automated
+suite.
+
+### Follow-ups
+
+- **Gender detection from the sample.** Nothing infers the speaker's
+  gender from their recordings today; a clone simply sounds like them.
+- **A dedicated sample recorder.** "Record a sample" reuses the Notes
+  chat and the ordinary voice-entry flow rather than a purpose-built
+  recorder UI.
+- **A quota-raise request.** The 20-voice Soniox cap is shared by every
+  environment; there's no in-app way to ask Soniox for more or to see
+  how close the fleet is to it.
+- **"Preparing your voice…" wording.** That status covers *both* "a clone
+  will be made the moment you're first dubbed" and, indefinitely, a user
+  who opted in but is never dubbed — a "Ready to use" (or similar)
+  wording specifically for `Status == None && Failure == None` would be a
+  one-string change (`TranscriptionSettings.FormatOwnVoiceStatus`).
+- **Speculative clone acquisition.** `VoicePool.Acquire` runs inside the
+  live dub's decision window today, so a speaker's *first* opted-in
+  utterance can hold up to `Constants.Audio.VoiceCloneAcquireTimeout`
+  (15 s) waiting on a cold clone before falling back to the stock voice
+  for that utterance. Acquiring speculatively — e.g. the moment a
+  speaker starts talking, ahead of the dub decision — would avoid that
+  silence for most first utterances.
+- **A live countdown of needed recordings.** The status API's
+  `MissingDuration` only updates once the 10 s compute cache expires (see
+  [Status](#status--iownvoicesgetownvoicestatus)); there's no push the
+  moment a new recording actually clears the 30 s bar.
+- **Opus output from Soniox TTS.** Both cloning and the rest of dubbing
+  still round-trip through PCM (`SonioxTtsClient` requests
+  `pcm_s16le`); requesting `audio_format: "opus"` instead would let the
+  client push Ogg/Opus packets straight into `AudioFrame`s without a
+  decode/re-encode. Scoped separately — see
+  `tmp/replay-dubbing-sdd/followups.md`.
 
 ## Replay
 
@@ -883,11 +1258,11 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 
 ### Out of scope / follow-ups
 
-- **Voice cloning.** Stock voice only, same as live — Soniox caps custom
-  voices at 20 per organization. A separate capacity note: Soniox's
-  default TTS quota is 3 concurrent streams and 100 requests/minute,
-  raisable in the Soniox console — relevant once replay dubbing adds
-  request volume of its own.
+- **TTS capacity.** Soniox's default TTS quota is 3 concurrent streams and
+  100 requests/minute, raisable in the Soniox console — relevant now that
+  replay dubbing and cloning (see
+  [Own voice (cloning)](#own-voice-cloning)) both add request volume of
+  their own.
 - **Eager generation.** A dub is made lazily, on the first replay request
   that needs it, never ahead of time off translation completion.
 - **Re-subscribing on a mid-replay toggle.** See Client above — a toggle
@@ -922,6 +1297,17 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 | `DubStabilizer.MinDecisionLength` | 10 chars | Minimum text before `Decide` commits |
 | `Constants.Transcription.Soniox.StableTokenAge` | 2.5 s | A non-final token that ended this long before `total_audio_proc_ms` is promoted to stable by `SonioxTranscriptBuilder` |
 | `TranscriptionSettings.SonioxTtsVoice` | `"Adrian"` | Stock voice for speakers who picked none (`UserLanguageSettings.DubVoice` empty) |
+| `Constants.Audio.VoiceSampleWindow` | 90 d | How far back a speaker's own recordings are considered for the auto voice sample |
+| `Constants.Audio.VoiceSampleMinEntryDuration` | 5 s | Entries shorter than this don't count toward the auto sample |
+| `Constants.Audio.VoiceSampleMinDuration` | 30 s | Minimum total speech required before an auto (or explicit) sample is usable |
+| `Constants.Audio.VoiceSampleMaxDuration` | 60 s | The sample is cut here; more speech doesn't improve the clone |
+| `Constants.Audio.VoiceSampleMaxChats` / `VoiceSampleMaxEntriesPerChat` | 10 / 500 | Bounds on the auto-sample scan: most recent chats, newest entries first |
+| `Constants.Audio.VoiceCloneQuota` | 20 | Soniox clones per organization, shared by every environment; overridable via `StreamingSettings.SonioxVoiceQuota` |
+| `Constants.Audio.VoiceCloneReadyTimeout` | 30 s | How long a fresh clone may take to turn ready before the attempt counts as failed |
+| `Constants.Audio.VoiceCloneAcquireTimeout` | 15 s | How long `VoicePool.Acquire`'s caller waits for a clone before falling back to the stock voice; the work keeps running past this |
+| `Constants.Audio.VoiceCloneIdleTimeout` | 10 min | A clone unused this long is deleted by the sweeper, freeing its quota slot |
+| `Constants.Audio.VoiceCloneFailureCooldown` | 10 min | After a failed clone attempt, how long the speaker keeps the stock voice before a retry |
+| `Constants.Audio.VoiceCloneCreatingTimeout` | 2 min | A `Creating` record untouched this long belongs to a host that died mid-clone: taken over or swept |
 
 ## Tests
 
@@ -981,6 +1367,8 @@ stream and open the next on the same connection, a 408 re-sends the
 unspoken chunks on a new stream, a dropped connection is reconnected
 once and a second drop fails the run).
 
+Cloning: see [Own voice (cloning) → Tests](#tests-1) for the full list.
+
 ## Not yet
 
 - A "translated" marker on the speaking indicator — the client ignores
@@ -988,10 +1376,8 @@ once and a second drop fails the run).
 - A "translating…" cue while the muxer holds a speaker's original.
 - Switching to a dub mid-utterance for mixed-language speakers: the
   decision is made once per stream.
-- Cloned voices (phase 2) and the recorded-sample UI (phase 3);
-  `SpeechSynthesisOptions.VoiceId` is the hook and `SpeakerVoices` the
-  one place that would hand out a cloned id instead of the stock one
-  ([Voice](#voice)).
+- Cloned voices are shipped behind the admin/incomplete-UI gate; see
+  [Own voice (cloning) → Follow-ups](#follow-ups) for what's left there.
 - Replay-specific gaps are listed under [Replay → Out of scope /
   follow-ups](#out-of-scope--follow-ups).
 - The remaining latency lever: serving the original at once and
