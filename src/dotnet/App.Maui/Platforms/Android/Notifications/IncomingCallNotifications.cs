@@ -102,7 +102,8 @@ public static class IncomingCallNotifications
 
         // Native call notification: caller avatar/name, an "Incoming call" label, and prominent
         // Answer/Decline buttons the style builds from the intents (so no manual AddAction).
-        var callStyle = NotificationCompat.CallStyle.ForIncomingCall(caller, declinePendingIntent, acceptPendingIntent)!;
+        var callStyle = NotificationCompat.CallStyle
+            .ForIncomingCall(caller, declinePendingIntent, acceptPendingIntent)!;
 
         var builder = new NotificationCompat.Builder(Context, ChannelId)
             // ReSharper disable once AccessToStaticMemberViaDerivedType
@@ -133,23 +134,26 @@ public static class IncomingCallNotifications
 
         if (intent.GetBooleanExtra(AcceptExtraKey, false)) {
             Dismiss(chatId);
+            // Blazor starting up sees the call already Active and would never stop a ring it didn't start.
+            IncomingCallRinger.Stop();
             // Accept re-verifies the ring against LiveSessionUI.Get once Blazor is up —
             // a stale tap yields a "Call ended" toast, not a phantom join.
             _ = AppServicesAccessor.DispatchToBlazor(
-                c => c.GetRequiredService<IncomingCallUI>().Accept(chatId),
-                "IncomingCallUI.Accept", whenRendered: true);
+                c => c.GetRequiredService<CallScreensUI>().Accept(chatId),
+                "CallScreensUI.Accept", whenRendered: true);
             return;
         }
 
-        // Opened from the call notification: register the ring so the in-app banner + looping ringer
+        // Opened from the call notification: register the ring so the in-app call UI + looping ringer
         // take over once the app is up. The full-screen-intent path (over the lock screen / screen
-        // off) additionally shows the full-screen call modal; a plain tap only shows the banner.
+        // off) shows the full-screen call view instead of the modal; a plain tap shows the modal.
         var overLockScreen = intent.GetBooleanExtra(FullScreenExtraKey, false);
-        DebugLog?.LogInformation("CALL_TRACE: HandleViewIntent → dispatch OnRing #{ChatId}, overLockScreen={OverLockScreen}",
+        DebugLog?.LogInformation(
+            "CALL_TRACE: HandleViewIntent → dispatch OnRing #{ChatId}, overLockScreen={OverLockScreen}",
             chatId, overLockScreen);
         _ = AppServicesAccessor.DispatchToBlazor(
-            c => c.GetRequiredService<IncomingCallUI>().OnRing(chatId, overLockScreen),
-            "IncomingCallUI.OnRing", whenRendered: true);
+            c => c.GetRequiredService<CallScreensUI>().OnRing(chatId, overLockScreen),
+            "CallScreensUI.OnRing", whenRendered: true);
     }
 
     public static ChatId? TryParseCallTag(string? tag)
@@ -169,6 +173,23 @@ public static class IncomingCallNotifications
             .Where(chatId => chatId is not null)
             .Select(chatId => chatId!)
             .ToArray();
+    }
+
+    public static bool CanPostCalls()
+    {
+        // Fails open: only a definite "disabled" may keep a call from ringing.
+        try {
+            var notificationManager = NotificationManagerCompat.From(Context)!;
+            if (!notificationManager.AreNotificationsEnabled())
+                return false;
+
+            var channel = notificationManager.GetNotificationChannel(ChannelId);
+            return channel is not null && channel.Importance != NotificationImportance.None;
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "CanPostCalls failed; assuming call notifications are shown");
+            return true;
+        }
     }
 
     // Private methods
