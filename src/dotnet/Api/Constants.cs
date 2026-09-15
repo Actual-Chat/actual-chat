@@ -362,6 +362,7 @@ public static partial class Constants
     public static class Notification
     {
         public const string CallTagPrefix = "call-";
+        public const string ThreadTagPrefix = "thread-";
 
         public static class MessageDataKeys
         {

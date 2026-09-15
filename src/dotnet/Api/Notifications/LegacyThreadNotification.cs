@@ -8,6 +8,10 @@ namespace ActualChat.Notifications;
 public sealed partial record LegacyThreadNotification(NotificationId Id, long Version = 0)
     : ChatEntryRelatedNotification(Id, Version)
 {
+    // What the kind declares now; at entry 0 neither mode can ever fire, so this only keeps a
+    // client holding the kind alone in step with the instance.
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override NotificationDismissMode DismissMode => NotificationDismissMode.OnView;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public override Moment? ExpiresAt => SentAt + Constants.Notification.ThreadLifespan;
 }

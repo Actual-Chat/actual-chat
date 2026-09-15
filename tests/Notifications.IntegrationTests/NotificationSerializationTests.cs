@@ -244,6 +244,20 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     }
 
     [Fact]
+    public void ThreadPushTagShouldNotCollideWithOtherKindsAtItsEntry()
+    {
+        // The server pushes one notification per tag and a batch, and the OS keeps one banner per
+        // tag - so a thread ping and a reaction at the same entry must not share one.
+        var entryId = ChatEntryId.New(TestChatId, 2067);
+        var threadTag = ThreadNotification.New(TestUserId, entryId).GetPushTag();
+
+        threadTag.Should().Be(Constants.Notification.ThreadTagPrefix + entryId.Value);
+        threadTag.Should().NotBe(ReactionNotification.New(TestUserId, entryId).GetPushTag());
+        threadTag.Should().NotBe(MentionNotification.New(TestUserId, entryId).GetPushTag());
+        threadTag.Should().NotBe(AttentionNotification.New(TestUserId, entryId).GetPushTag());
+    }
+
+    [Fact]
     public void PushTagShouldBePerChatForCoalescingKinds()
     {
         MessageNotification.New(TestUserId, TestChatId, 2067).GetPushTag().Should().Be(TestChatId.Value);
