@@ -1,5 +1,3 @@
-using System.Net;
-using ActualChat.Security;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
 
@@ -52,29 +50,36 @@ public class DubVoicesTest(
     }
 
     [Fact(Timeout = 60_000)]
-    public async Task PreviewShouldServeAnMp3ForAKnownVoiceOnly()
+    public async Task GetDubVoicePreviewShouldReturnAnMp3ForAKnownVoice()
     {
         // arrange
         await Tester.SignInAsUniqueAlice();
-        var secureTokens = AppHost.Services.GetRequiredService<ISecureTokens>();
-        var sessionToken = await secureTokens.CreateForSession(Tester.Session);
-        using var client = AppHost.NewHttpClient();
-        client.DefaultRequestHeaders.Add(Constants.Session.HeaderName, sessionToken.Token);
-        using var anonymousClient = AppHost.NewHttpClient();
+        var translations = Tester.AppServices.GetRequiredService<ITranslations>();
 
         // act
-        using var known = await client.GetAsync("api/dub-voices/Daniel/preview?language=en-US");
-        using var unknown = await client.GetAsync("api/dub-voices/Nobody/preview?language=en-US");
-        using var badLanguage = await client.GetAsync("api/dub-voices/Daniel/preview?language=xx");
-        using var anonymous = await anonymousClient.GetAsync("api/dub-voices/Daniel/preview?language=en-US");
+        var mp3 = await translations.GetDubVoicePreview(
+            Tester.Session, "Daniel", Languages.English, CancellationToken.None);
 
         // assert
-        known.StatusCode.Should().Be(HttpStatusCode.OK);
-        known.Content.Headers.ContentType!.MediaType.Should().Be("audio/mpeg");
-        var mp3 = await known.Content.ReadAsByteArrayAsync();
-        (mp3[0] == 0xFF && (mp3[1] & 0xE0) == 0xE0).Should().BeTrue("the fake speaks one MP3 frame of silence");
-        unknown.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        badLanguage.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        anonymous.StatusCode.Should().Be(HttpStatusCode.BadRequest, "a preview needs a signed-in user");
+        mp3.Should().NotBeNull();
+        (mp3![0] == 0xFF && (mp3[1] & 0xE0) == 0xE0).Should().BeTrue("the fake speaks one MP3 frame of silence");
     }
+
+    [Fact(Timeout = 60_000)]
+    public async Task GetDubVoicePreviewShouldReturnNullForAnUnknownVoice()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var translations = Tester.AppServices.GetRequiredService<ITranslations>();
+
+        // act
+        var mp3 = await translations.GetDubVoicePreview(
+            Tester.Session, "Nobody", Languages.English, CancellationToken.None);
+
+        // assert
+        mp3.Should().BeNull();
+    }
+
+    // There is no "bad language" case any more: Language is now the parameter type (not a raw
+    // query string), so an unparseable code is rejected at deserialization, before this method runs.
 }

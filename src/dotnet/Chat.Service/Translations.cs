@@ -58,6 +58,17 @@ public class Translations(IServiceProvider services) : ITranslations
     }
 
     // [ComputeMethod]
+    public virtual async Task<byte[]?> GetDubVoicePreview(
+        Session session,
+        string voiceId,
+        Language language,
+        CancellationToken cancellationToken)
+    {
+        await Accounts.GetOwn(session, cancellationToken).Require(AccountFull.MustBeActive).ConfigureAwait(false);
+        return await Backend.GetDubVoicePreview(voiceId, language, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
     public virtual async Task<ApiArray<DubVoice>> ListSuggestedDubVoices(
         Session session,
         CancellationToken cancellationToken)

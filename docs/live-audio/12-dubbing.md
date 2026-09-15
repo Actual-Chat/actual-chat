@@ -527,33 +527,35 @@ every listener, so there is exactly one voice per speaker to pick.
   hourly, retried in `ServerConstants.Backend.RetryDelay` while empty)
   fronts it for `ITranslations.ListDubVoices(session)`, which requires an
   active account.
-- **Previews.** `GET /api/dub-voices/{voiceId}/preview?language=xx`
-  (`src/dotnet/Chat.Service/Controllers/DubVoicesController.cs`; session
-  from the `Session` header, the `?session=` token or the cookie) answers
-  `audio/mpeg` — `ISpeechSynthesizer.SynthesizeMp3` of the localized
+- **Previews.** `ITranslations.GetDubVoicePreview(session, voiceId, language)`
+  (compute method, requires an active account like `ListDubVoices`) answers
+  the MP3 bytes — `ISpeechSynthesizer.SynthesizeMp3` of the localized
   `Transcription_DubVoicePreviewText` ("Hello! This is how others will
   hear you.") in that language and voice, via Soniox's REST TTS with
   `audio_format: "mp3"` (`SonioxTtsClient.GenerateMp3`). The backend
-  compute method `GetDubVoicePreview` caches a preview for a day per
-  (voice, language) — the catalog check runs under
+  compute method `ITranslationsBackend.GetDubVoicePreview` caches a preview
+  for a day per (voice, language) — the catalog check runs under
   `Computed.BeginIsolation()` so the hourly catalog invalidation doesn't
-  cut that to an hour — and returns `null` → 404 for an id that is not
-  in the catalog; a bad language is 400, no session is 400. The modal's
-  `DubVoicePreview` (`dub-voice-modal.ts`) plays it through one
-  `HTMLAudioElement` in the user's primary language, appending the
-  session token so a MAUI WebView can fetch it, stopping any previous
+  cut that to an hour — and returns `null` for an id that is not in the
+  catalog; there is no "bad language" case any more, since `Language` is a
+  validated RPC parameter type rather than a raw query string. There is no
+  HTTP endpoint: the preview travels over the same RPC connection as the
+  rest of the app, and Fusion caches the result on both the server and the
+  client, so a warm-up call and the click that follows it share one round
+  trip once the client cache is populated. The modal's `DubVoicePreview`
+  (`dub-voice-modal.ts`) plays the bytes through one `HTMLAudioElement` via
+  a `Blob`/`URL.createObjectURL`, revoking the object URL when playback
+  stops or ends, in the user's primary language, stopping any previous
   preview. A cache miss costs ~2 s of synthesis, so the button shows a
-  spinner from the click (rendered before the JS call — a
+  spinner from the click (rendered before the RPC call — a
   `ComputedStateComponent` doesn't re-render after an event on its own)
   until `onplaying` calls back `OnPreviewStarted`, then a stop button
   until `OnPreviewEnded` (also the answer to a load or playback failure);
   a click on the loading row is a no-op, a click on another row replaces
-  it. To make the miss rare, `warmUp` `fetch`es previews with
-  `priority: 'low'` — the suggested voices when the modal first renders
-  them, and a row on `pointerenter` — at most three in flight, each URL
-  once, the latest request first; the controller answers with
-  `Cache-Control: private, max-age=86400`, so the browser reuses the MP3
-  and the server's day-long cache serves everyone else.
+  it. To make the miss rare, `DubVoiceModal` calls `GetDubVoicePreview` as
+  a warm-up — the suggested voices when the modal first renders them, and
+  a row on `pointerenter` — so the Fusion client cache is filled before a
+  click.
 - **Follow-up.** Cloning replaces the stock voice when the speaker opts
   in: `SpeechSynthesisOptions.VoiceId` is already the hook, and
   `SpeakerVoices` is the one place that decides which id a speaker gets.
@@ -956,9 +958,9 @@ the stamped media, the listener's own language is skipped, a
 re-translation regenerates, the speaker's voice is used and a voice
 change regenerates, an id the catalog doesn't list falls back to the
 default voice, an in-flight entry is forgotten after completion), `tests/Chat.IntegrationTests/DubVoicesTest.cs`
-(`ITranslations.ListDubVoices` returns the fake catalog; the preview
-endpoint serves `audio/mpeg` for a known voice, 404 for an unknown one,
-400 for a bad language or no session),
+(`ITranslations.ListDubVoices` returns the fake catalog;
+`GetDubVoicePreview` returns MP3 bytes for a known voice and `null` for
+an unknown one),
 `tests/Users.UnitTests/StoredSettingsSerializationTest.cs` (a
 `UserLanguageSettings` blob written before key 7 reads back with
 `DubVoice = ""`, and the key round-trips), `tests/Chat.IntegrationTests/ReplayDubbingTest.cs` (end to

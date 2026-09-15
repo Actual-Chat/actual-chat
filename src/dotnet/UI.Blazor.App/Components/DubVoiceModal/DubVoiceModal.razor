@@ -88,7 +88,6 @@
 @code {
     private static readonly string JSPlay = $"{BlazorUIAppModule.ImportName}.DubVoicePreview.play";
     private static readonly string JSStop = $"{BlazorUIAppModule.ImportName}.DubVoicePreview.stop";
-    private static readonly string JSWarmUp = $"{BlazorUIAppModule.ImportName}.DubVoicePreview.warmUp";
 
     private FilterModel _filters = null!;
     private string _search = "";
@@ -96,6 +95,8 @@
     private string? _playingVoiceId;
     private bool _isSuggestedWarmedUp;
     private DotNetObjectReference<DubVoiceModal>? _blazorRef;
+    private CancellationTokenSource _disposeTokenSource = null!;
+    private CancellationToken _disposeToken;
 
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private ITranslations Translations => Hub.Translations;
@@ -151,14 +152,18 @@
     };
 
     public override async ValueTask DisposeAsync() {
+        _disposeTokenSource.CancelAndDisposeSilently();
         if (_loadingVoiceId != null || _playingVoiceId != null)
             await JS.InvokeVoidAsync(JSStop).SilentAwait(true);
         _blazorRef?.Dispose();
         await base.DisposeAsync().ConfigureAwait(true);
     }
 
-    protected override void OnInitialized()
-        => _filters = new FilterModel(ComponentIdGenerator);
+    protected override void OnInitialized() {
+        _disposeTokenSource = new();
+        _disposeToken = _disposeTokenSource.Token;
+        _filters = new FilterModel(ComponentIdGenerator);
+    }
 
     protected override ComputedState<ViewModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -182,10 +187,9 @@
         if (_isSuggestedWarmedUp || State.ValueOrDefault is not { Suggested.Count: > 0 } m)
             return;
 
-        // The first screen is the suggested voices: fill the server's preview cache before a click
+        // The first screen is the suggested voices: fill the Fusion cache before a click
         _isSuggestedWarmedUp = true;
-        var urls = m.Suggested.Select(v => GetPreviewUrl(v.Id)).ToArray();
-        await JS.InvokeVoidAsync(JSWarmUp, (object)urls).SilentAwait(true);
+        await Task.WhenAll(m.Suggested.Select(v => WarmUp(v.Id))).SilentAwait(true);
     }
 
     [JSInvokable]
@@ -233,28 +237,36 @@
             return;
         }
 
-        // Rendered before the JS call: on a cache miss the preview takes ~2 s to arrive
+        // Rendered before the RPC call: on a cache miss the preview takes ~2 s to arrive
         _loadingVoiceId = voiceId;
         _playingVoiceId = null;
         StateHasChanged();
+        var language = State.Value.PreviewLanguage;
+        var mp3 = (await Translations.GetDubVoicePreview(Session, voiceId, language, _disposeToken)
+            .ResultAwait(true)).ValueOrDefault;
+        if (_loadingVoiceId != voiceId)
+            return; // superseded by another click, or the modal is closing
+
+        if (mp3 is not { Length: > 0 }) {
+            _loadingVoiceId = null;
+            StateHasChanged();
+            return;
+        }
+
         _blazorRef ??= DotNetObjectReference.Create(this);
-        await JS.InvokeVoidAsync(JSPlay, GetPreviewUrl(voiceId), voiceId, _blazorRef);
+        await JS.InvokeVoidAsync(JSPlay, mp3, voiceId, _blazorRef);
     }
 
-    private Task WarmUp(string voiceId)
-        => JS.InvokeVoidAsync(JSWarmUp, (object)new[] { GetPreviewUrl(voiceId) }).AsTask();
+    private async Task WarmUp(string voiceId) {
+        var language = State.Value.PreviewLanguage;
+        await Translations.GetDubVoicePreview(Session, voiceId, language, _disposeToken).SilentAwait(true);
+    }
 
     private async Task OnVoiceSelected(string voiceId) {
         // The default row stores "", so the choice keeps following the suggestion as the languages change
         var chosenVoiceId = voiceId == State.Value.DefaultVoiceId ? "" : voiceId;
         await LanguageUI.UpdateSettings(x => x with { DubVoice = chosenVoiceId });
         Modal.Close();
-    }
-
-    private string GetPreviewUrl(string voiceId) {
-        var language = State.Value.PreviewLanguage.Value;
-        return UrlMapper.ToAbsolute(
-            $"/api/dub-voices/{Uri.EscapeDataString(voiceId)}/preview?language={Uri.EscapeDataString(language)}");
     }
 
     private string FormatFacets(DubVoice voice) {
