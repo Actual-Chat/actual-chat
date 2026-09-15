@@ -2,7 +2,6 @@ using ActualChat.Audio;
 using ActualChat.Chat;
 using ActualChat.Hashing;
 using ActualChat.IO;
-using ActualChat.Media;
 using ActualChat.Users;
 
 namespace ActualChat.Streaming.Services;
@@ -25,7 +24,6 @@ public sealed class VoiceSampleBuilder(IServiceProvider services)
     private IChatUsagesBackend ChatUsagesBackend => field ??= Services.GetRequiredService<IChatUsagesBackend>();
     private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
-    private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
     private AudioSourceDownloader AudioDownloader => field ??= Services.GetRequiredService<AudioSourceDownloader>();
     private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
@@ -36,10 +34,25 @@ public sealed class VoiceSampleBuilder(IServiceProvider services)
         UserLanguageSettings settings,
         CancellationToken cancellationToken)
     {
-        if (settings.OwnVoiceSampleMediaId is { } mediaId)
-            return await BuildExplicit(userId, mediaId, cancellationToken).ConfigureAwait(false);
+        if (settings.OwnVoiceSampleEntryId is { } entryId)
+            return await BuildExplicit(userId, entryId, cancellationToken).ConfigureAwait(false);
 
         return await BuildAuto(userId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<HashString?> GetHash(
+        UserId userId,
+        UserLanguageSettings settings,
+        CancellationToken cancellationToken)
+    {
+        // What Build would key the sample by, with no blob touched: null when there's no sample.
+        // The explicit hash is the entry id's alone - the ownership check is Build's, and a record
+        // can carry such a hash only through a Build that passed it
+        if (settings.OwnVoiceSampleEntryId is { } entryId)
+            return HashOf(entryId);
+
+        var (selected, available) = await SelectOwnEntries(userId, cancellationToken).ConfigureAwait(false);
+        return available < Constants.Audio.VoiceSampleMinDuration ? null : HashOf(selected.Select(x => x.Id));
     }
 
     public async Task<(TimeSpan? Available, VoiceSampleFailure Failure)> Inspect(
@@ -49,10 +62,9 @@ public sealed class VoiceSampleBuilder(IServiceProvider services)
     {
         // What Build would do without doing it: no blob is read, decoded or written. Available is
         // the auto selection's total, null with an explicit sample.
-        if (settings.OwnVoiceSampleMediaId is { } mediaId) {
-            var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
-            var isMissing = media == null || media.BlobId.IsNullOrEmpty();
-            return (null, isMissing ? VoiceSampleFailure.SampleMissing : VoiceSampleFailure.None);
+        if (settings.OwnVoiceSampleEntryId is { } entryId) {
+            var entry = await GetOwnSampleEntry(userId, entryId, cancellationToken).ConfigureAwait(false);
+            return (null, entry == null ? VoiceSampleFailure.SampleMissing : VoiceSampleFailure.None);
         }
 
         var (_, available) = await SelectOwnEntries(userId, cancellationToken).ConfigureAwait(false);
@@ -65,8 +77,8 @@ public sealed class VoiceSampleBuilder(IServiceProvider services)
     public static string BlobIdOf(UserId userId, HashString hash)
         => BlobPath.Format(BlobScope.AudioRecord, "voice-sample", userId.Value, ShortHashOf(hash) + ".wav");
 
-    // Names the blob and the Soniox voice, so it must stay file- and identifier-safe
     public static string ShortHashOf(HashString hash)
+        // Names the blob and the Soniox voice, so it must stay file- and identifier-safe
         => HashOutputExt.FromBase64(hash.Hash).AlphaNumeric(6);
 
     // Internal for tests
@@ -103,31 +115,49 @@ public sealed class VoiceSampleBuilder(IServiceProvider services)
     internal static HashString HashOf(IEnumerable<ChatEntryId> ids)
         => HashOf(string.Join('\n', ids.Select(x => x.Value)));
 
-    internal static HashString HashOf(MediaId mediaId)
-        => HashOf(mediaId.Value);
+    internal static HashString HashOf(ChatEntryId entryId)
+        => HashOf(entryId.Value);
 
     // Private methods
 
     private async Task<(VoiceSample?, VoiceSampleFailure)> BuildExplicit(
         UserId userId,
-        MediaId mediaId,
+        ChatEntryId entryId,
         CancellationToken cancellationToken)
     {
-        var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
-        if (media == null || media.BlobId.IsNullOrEmpty())
+        var entry = await GetOwnSampleEntry(userId, entryId, cancellationToken).ConfigureAwait(false);
+        if (entry == null)
             return (null, VoiceSampleFailure.SampleMissing);
 
-        var hash = HashOf(mediaId);
+        var hash = HashOf(entryId);
         var stored = await GetStored(userId, hash, cancellationToken).ConfigureAwait(false);
         if (stored != null)
             return (stored, VoiceSampleFailure.None);
 
-        var pcm = await Decode([media.BlobId], cancellationToken).ConfigureAwait(false);
+        var pcm = await Decode([entry.Audio!.BlobId], cancellationToken).ConfigureAwait(false);
         if (pcm.Length == 0)
             return (null, VoiceSampleFailure.SampleMissing);
 
         var sample = await Store(userId, hash, pcm, cancellationToken).ConfigureAwait(false);
         return (sample, VoiceSampleFailure.None);
+    }
+
+    private async Task<ChatEntry?> GetOwnSampleEntry(
+        UserId userId,
+        ChatEntryId entryId,
+        CancellationToken cancellationToken)
+    {
+        // The setting is client-writable and any member can see an entry's media id, so only an
+        // entry this user authored may be cloned - anything else is as good as missing
+        var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
+        if (entry is not { IsRemoved: false, IsContentStreaming: false, Audio: { IsStreaming: false } audio }
+            || audio.BlobId.IsNullOrEmpty())
+            return null;
+
+        var author = await AuthorsBackend
+            .Get(entry.ChatId, entry.AuthorId, RequestedAuthorKind.Default, cancellationToken)
+            .ConfigureAwait(false);
+        return author?.UserId == userId ? entry : null;
     }
 
     private async Task<(VoiceSample?, VoiceSampleFailure)> BuildAuto(UserId userId, CancellationToken cancellationToken)

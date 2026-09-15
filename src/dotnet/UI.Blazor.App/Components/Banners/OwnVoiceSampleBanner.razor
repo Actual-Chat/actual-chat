@@ -60,8 +60,7 @@
     }
 
     private async Task OnUseRecordingClick(ChatEntry recording) {
-        var mediaId = recording.Audio!.MediaId!;
-        await LanguageUI.UpdateSettings(x => x with { OwnVoiceSampleMediaId = mediaId }).ConfigureAwait(true);
+        await LanguageUI.UpdateSettings(x => x with { OwnVoiceSampleEntryId = recording.Id }).ConfigureAwait(true);
         ToastUI.Show(L.Transcription_OwnVoiceSampleSaved, "icon-checkmark-circle", ToastDismissDelay.Short);
         LanguageUI.DismissOwnVoiceSamplePrompt();
     }

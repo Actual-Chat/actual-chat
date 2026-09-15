@@ -100,7 +100,7 @@ public sealed class OwnVoicesTest(
             "the client sees the same status through the RPC client");
 
         // act - removing the sample falls back to the (insufficient) auto selection
-        await SetSettings(x => x with { OwnVoiceSampleMediaId = null });
+        await SetSettings(x => x with { OwnVoiceSampleEntryId = null });
 
         // assert
         await ComputedTest.When(async ct1 => {

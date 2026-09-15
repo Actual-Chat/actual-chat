@@ -20,7 +20,7 @@ public class OwnVoices(IServiceProvider services) : IOwnVoices
             .UserLanguageSettings()
             .Get(cancellationToken)
             .ConfigureAwait(false);
-        var hasExplicitSample = settings.OwnVoiceSampleMediaId != null;
+        var hasExplicitSample = settings.OwnVoiceSampleEntryId != null;
         if (!settings.IsOwnVoiceEnabled)
             return OwnVoiceStatus.Off with { HasExplicitSample = hasExplicitSample };
 

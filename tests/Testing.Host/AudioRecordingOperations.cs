@@ -50,24 +50,23 @@ public static class AudioRecordingOperations
         return await WaitForNextEntry(tester, chatId, lidRangeBefore.End, cancellationToken).ConfigureAwait(false);
     }
 
-    public static async Task<MediaId> OptInOwnVoice(
+    public static async Task<ChatEntry> OptInOwnVoice(
         this IWebTester tester,
         ChatId chatId,
         Language language,
         int frameCount = 600,
         CancellationToken cancellationToken = default)
     {
-        // Records a sample recording and opts the signed-in user into their own voice, so their
+        // Records a sample entry and opts the signed-in user into their own voice, so their
         // next dub is eligible for a VoicePool clone
         var entry = await tester
             .RecordVoiceEntry(chatId, language, frameCount: frameCount, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
-        var mediaId = entry.Audio!.MediaId!;
         await tester.AppServices.UserSettingsUI(tester.Session)
             .UserLanguageSettings()
-            .Update(x => x with { IsOwnVoiceEnabled = true, OwnVoiceSampleMediaId = mediaId }, cancellationToken)
+            .Update(x => x with { IsOwnVoiceEnabled = true, OwnVoiceSampleEntryId = entry.Id }, cancellationToken)
             .ConfigureAwait(false);
-        return mediaId;
+        return entry;
     }
 
     // Private methods

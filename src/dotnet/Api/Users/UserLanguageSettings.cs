@@ -37,9 +37,10 @@ public sealed partial record UserLanguageSettings : StoredSettings, IHasOrigin, 
     // Consent to clone this user's own voice for dubbing, instead of a stock voice.
     [DataMember, MemoryPackOrder(8), Key(8)]
     public bool IsOwnVoiceEnabled { get; init; }
-    // Explicit reference sample for the clone; null = build it automatically from past speech.
+    // The user's own voice entry the clone is made from; null = build the sample from past speech.
+    // An entry rather than its media: the builder checks the entry's author is this user.
     [DataMember, MemoryPackOrder(9), Key(9)]
-    public MediaId? OwnVoiceSampleMediaId { get; init; }
+    public ChatEntryId? OwnVoiceSampleEntryId { get; init; }
 
     public List<Language> ListSpoken()
     {

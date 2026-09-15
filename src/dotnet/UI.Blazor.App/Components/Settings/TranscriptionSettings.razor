@@ -246,7 +246,7 @@
 
     private Task OnRemoveSampleClick() {
         LanguageUI.DismissOwnVoiceSamplePrompt();
-        return LanguageUI.UpdateSettings(x => x with { OwnVoiceSampleMediaId = null });
+        return LanguageUI.UpdateSettings(x => x with { OwnVoiceSampleEntryId = null });
     }
 
     private void OnRecordSampleClick() {

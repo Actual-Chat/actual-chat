@@ -652,9 +652,14 @@ quota.
 
 `UserLanguageSettings` (`src/dotnet/Api/Users/UserLanguageSettings.cs`)
 carries two more keys: key 8 `IsOwnVoiceEnabled` (`bool`) — the consent —
-and key 9 `OwnVoiceSampleMediaId` (`MediaId?`) — an explicit reference
-recording; `null` means build one automatically from the speaker's past
-recordings.
+and key 9 `OwnVoiceSampleEntryId` (`ChatEntryId?`) — the user's own voice
+entry to use as the explicit reference recording; `null` means build one
+automatically from the speaker's past recordings. It's an *entry* id, not
+the entry's `MediaId`, on purpose: the setting is client-writable (kvas
+`ServerKvas_Set` is an ordinary API command) and every chat member can see
+every entry's `Audio.MediaId`, so a media id would let anyone clone anyone
+else's voice. The builder resolves the entry and requires its author to be
+this user before it reads a byte of audio (below).
 
 `UserVoice` (`src/dotnet/Api/Users/UserVoice.cs`, array-form) is the
 clone's own record: `UserId`, `Version`, `SampleHash` (`HashString` — what
@@ -679,11 +684,17 @@ File: `src/dotnet/Streaming.Service/Services/VoiceSampleBuilder.cs`.
 `Build(userId, settings, ct)` returns a `VoiceSample(HashString Hash,
 string BlobId, TimeSpan Duration)` or a `VoiceSampleFailure`
 (`src/dotnet/Api/Users/VoiceSampleFailure.cs`: `None | NotEnoughRecordings
-| SampleMissing`) — `settings.OwnVoiceSampleMediaId` decides which path:
+| SampleMissing`) — `settings.OwnVoiceSampleEntryId` decides which path:
 
-- **Explicit** (`BuildExplicit`) — download the media's blob, decode Opus
-  to PCM (`OpusToPcmDecoder`), write it as a WAV; missing media or an
-  empty blob is `SampleMissing`. No minimum duration is enforced.
+- **Explicit** (`BuildExplicit`) — `GetOwnSampleEntry` loads the entry
+  (`ChatsBackendExt.GetEntry`) and its author (`IAuthorsBackend.Get`), and
+  requires `author.UserId == userId` plus a finished recording (not
+  removed, not streaming, `Audio.BlobId` set); anything else — a missing
+  entry, a deleted one, one still being recorded, **or someone else's** —
+  is `SampleMissing`, and nothing is read. Then: download the entry's audio
+  blob, decode Opus to PCM (`OpusToPcmDecoder`), write it as a WAV; an
+  empty blob is `SampleMissing` too. No minimum duration is enforced. The
+  hash is Blake3/base64 of the entry id.
 - **Auto** (`BuildAuto`) — the speaker's own recent recordings, selected
   and hashed by `SelectEntries`/`HashOf` (`internal static`, unit-tested
   directly): candidate entries are the last
@@ -721,15 +732,25 @@ writes a fresh one otherwise. `OpusToPcmDecoder` and `WavWriter` live in
 `Core.Server/Audio` (not a `*.Service` project) because Streaming.Service
 needed them and no `*.Service` project may reference another one.
 
+`GetHash(userId, settings, ct)` is what the pool asks first: the hash
+`Build` would key the sample by — the entry id's for an explicit sample,
+the selection's for an auto one — or `null` when there's no sample
+(`NotEnoughRecordings`). No blob is touched. The explicit hash is
+deliberately the entry id's alone, with no ownership check: a `UserVoice`
+record can only carry such a hash through a `Build` that passed the
+check, so a `Ready` record whose `SampleHash` matches is proof enough —
+and a `Ready` clone keeps serving after its sample entry is deleted, for
+as long as the setting (and so the hash) is unchanged.
+
 `Inspect(userId, settings, ct)` is `Build`'s read-only twin: the same
-selection (`SelectOwnEntries`, shared with `BuildAuto`) or an explicit
-media's existence check, but no blob is read, decoded or written — just
-`(TimeSpan? Available, VoiceSampleFailure Failure)`, `Available` null for
-an explicit sample. It backs the status API below.
+selection (`SelectOwnEntries`, shared with `BuildAuto`) or the same
+explicit-entry check (`GetOwnSampleEntry`), but no blob is read, decoded
+or written — just `(TimeSpan? Available, VoiceSampleFailure Failure)`,
+`Available` null for an explicit sample. It backs the status API below.
 
 Recording an explicit sample: "Record a sample" opens the user's **Notes**
 chat with a prompt card; the recording is an ordinary voice entry there,
-and its `MediaId` is what gets stored — see [UI](#ui) below.
+and its entry id is what gets stored — see [UI](#ui) below.
 
 ### Pool — `VoicePool`
 
@@ -755,21 +776,27 @@ registered (no Soniox key) or the user is a guest.
    already on it, `null`. Older than that, it's a crash leftover: fell
    through to step 5, and the version check on the update there makes
    taking it over safe.
-5. `VoiceSampleBuilder.Build` for the current sample. No sample
-   (`NotEnoughRecordings`/`SampleMissing`) → `null`, and — unless the
-   existing record is `Ready` (its clone is still good, so it's left
-   alone) — the record is marked `Failed`.
-6. `Ready` and `SampleHash` unchanged → touch `LastUsedAt` (throttled to
-   once a minute) and return the id.
+5. `VoiceSampleBuilder.GetHash` for the current sample — no blob I/O.
+   `null` (no sample) → `null`.
+6. `Ready` and `SampleHash` equal to that hash → touch `LastUsedAt`
+   (throttled to once a minute) and return the id. This is the per-dub
+   fast path: a settings read, a record read and (for an auto sample)
+   the cached selection scan.
 7. Quota check: `ListActive().Count(other users) >= Quota` → `null`, the
-   pool is full.
-8. Otherwise create: mark `Creating` (new hash, cleared `SonioxVoiceId`),
+   pool is full. It comes before the build, so a full pool writes no
+   sample blob.
+8. `VoiceSampleBuilder.Build`. No sample (`NotEnoughRecordings` /
+   `SampleMissing` — the hash said there'd be one, but e.g. the explicit
+   entry turned out not to be this user's) → `null`, the record untouched;
+   a builder *exception* → `null` and, unless the record is `Ready` (its
+   clone is still good, so it's left alone), the record is marked `Failed`.
+9. Otherwise create: mark `Creating` (new hash, cleared `SonioxVoiceId`),
    delete the previous clone if the hash changed, `ISonioxVoices.Create`
-   with the sample's WAV, store the new id on the still-`Creating` record
-   right away (so a concurrent reconcile sees it as owned), poll
-   `ISonioxVoices.Get` every 500 ms until ready — `IsFailed` or
-   `Constants.Audio.VoiceCloneReadyTimeout` (30 s) both fail the attempt —
-   then mark `Ready`.
+   with the sample's WAV, store the
+   new id on the still-`Creating` record right away (so a concurrent
+   reconcile sees it as owned), poll `ISonioxVoices.Get` every 500 ms
+   until ready — `IsFailed` or `Constants.Audio.VoiceCloneReadyTimeout`
+   (30 s) both fail the attempt — then mark `Ready`.
 
    A **name collision** on create (`CreateSonioxVoice`) — the same name
    already exists at Soniox, e.g. an earlier delete that failed — deletes
@@ -796,8 +823,8 @@ against, not one environment's own usage.
 `Release(voice, ct)` resets the record to `None` (clears `SonioxVoiceId`
 and `FailedUntil`, keeps `SampleHash`) — record first, so a concurrent
 `Acquire` that already touched it wins the version race and keeps its
-clone — then deletes the Soniox voice. Used for opt-out, a missing
-sample, and by the sweeper.
+clone — then deletes the Soniox voice. Used for opt-out and by the
+sweeper.
 
 ### Sweeper — `VoicePoolSweeper`
 
@@ -893,7 +920,7 @@ section, above the stock-voice tile — visible only for
   pool.
 - **While on:** "Record a sample" / "Re-record the sample" (depending on
   `HasExplicitSample`) and, only with an explicit sample, "Remove
-  sample" (`OnRemoveSampleClick`, clears `OwnVoiceSampleMediaId` — the
+  sample" (`OnRemoveSampleClick`, clears `OwnVoiceSampleEntryId` — the
   Notes entry itself stays).
 - The stock-voice tile's caption switches to
   `Transcription_DubVoiceFallbackCaption` ("Used when your own voice
@@ -916,8 +943,8 @@ every shipped language). Its state scans `Chats.ReadReverse` newest-first
 finished voice entry by the user's own author
 (`Hub.Authors.GetOwn(session, chatId)`) with `Audio: { IsStreaming: false,
 MediaId: not null }`; once one exists, "Use this recording"
-(`Transcription_OwnVoiceUseRecording`) appears, stores its `MediaId` as
-`OwnVoiceSampleMediaId`, toasts `Transcription_OwnVoiceSampleSaved`, and
+(`Transcription_OwnVoiceUseRecording`) appears, stores its id as
+`OwnVoiceSampleEntryId`, toasts `Transcription_OwnVoiceSampleSaved`, and
 dismisses the banner (`LanguageUI.DismissOwnVoiceSamplePrompt`).
 Re-recording repeats the same flow; removing (above) just clears the
 setting.
@@ -927,8 +954,8 @@ setting.
 Fake-backed throughout — `tests/Testing.Host/FakeSonioxVoices.cs`
 (in-memory `ISonioxVoices`: `ReadyAfter` delays readiness, `FailCreate`
 forces a failure, `CreateCount`/`DeleteCount`, unique names like the real
-API) and `AudioRecordingOperations.OptInOwnVoice` (records an explicit
-sample entry and opts the tester in):
+API) and `AudioRecordingOperations.OptInOwnVoice`
+(records an explicit sample entry, opts the tester in, returns the entry):
 
 - `tests/Transcription.UnitTests/SonioxVoicesClientTest.cs` — the HTTP
   client against a fake handler (multipart create, get/list/delete,
@@ -939,14 +966,18 @@ sample entry and opts the tester in):
   hash order-sensitivity and determinism, the 8-char short hash.
 - `tests/Chat.IntegrationTests/VoiceSampleBuilderTest.cs` — `Build`
   against a real chat/blob stack: WAV header/length, blob reuse on an
-  unchanged hash, `NotEnoughRecordings`, an explicit sample and
-  `SampleMissing`.
+  unchanged hash, `NotEnoughRecordings`, an explicit sample (and
+  `GetHash` agreeing with it), `SampleMissing` for a nonexistent entry,
+  and another user's entry → `SampleMissing` from both `Build` and
+  `Inspect` with no blob written.
 - `tests/Chat.IntegrationTests/VoicePoolTest.cs` — acquire-creates-and-
   reuses, a changed sample replacing the clone, a full pool returning
   `null`, a failed create cooling down, an idle sweep, the reconcile
   (orphan delete, someone-else's-environment voice kept, a `Ready` record
-  reset when its voice is gone at Soniox), opt-out, the name-collision
-  retry.
+  reset when its voice is gone at Soniox), a `Ready` clone kept when the
+  changed sample can't be built, a `Ready` clone outliving its sample
+  entry, another user's entry never cloned (no Soniox call, no blob, no
+  record), opt-out, the name-collision retry.
 - `tests/Chat.IntegrationTests/SpeakerVoicesTest.cs` — opted-in +
   acquirable → clone id; not opted-in → stock voice, pool never touched;
   opted-in with the quota at zero → stock voice, no record ever reaches
@@ -965,7 +996,7 @@ sample entry and opts the tester in):
   create/get/version-mismatch/`ListActive` behavior directly.
 - `tests/Users.UnitTests/StoredSettingsSerializationTest.cs` — a
   pre-key-8 blob deserializes with `IsOwnVoiceEnabled = false`,
-  `OwnVoiceSampleMediaId = null`; the keys round-trip.
+  `OwnVoiceSampleEntryId = null`; the keys round-trip.
 
 The one **live** test —
 `tests/Transcription.IntegrationTests/SonioxVoicesClientTest.cs`'s
@@ -1436,8 +1467,8 @@ falls back to the undubbed original with non-empty frames), and
 (`GenerateShouldWriteFramesAsTheResponseArrives`: against a fake HTTP
 handler serving an Ogg/Opus body through a `Pipe`, the first frame is
 written before the body is complete and a body larger than the read
-buffer arrives as several chunks; `GenerateShouldFailOnATruncatedResponse`;
-the `Run*` tests drive `Run` against a fake `WebSocket` with shortened `IdleFlush`/`StreamRollover`: steady chunks
+buffer arrives as several chunks; `GenerateShouldFailOnATruncatedResponse`; the `Run*` tests drive `Run` against a fake
+`WebSocket` with shortened `IdleFlush`/`StreamRollover`: steady chunks
 share one stream, the idle flush and the duration rollover each end the
 stream and open the next on the same connection, a 408 re-sends the
 unspoken chunks on a new stream, a dropped connection is reconnected

@@ -1,3 +1,4 @@
+using ActualChat.Blobs;
 using ActualChat.Media;
 using ActualChat.Streaming.Module;
 using ActualChat.Streaming.Services;
@@ -20,6 +21,8 @@ public sealed class VoicePoolTest(
     private FakeSonioxVoices Soniox => field ??= AppHost.Services.GetRequiredService<FakeSonioxVoices>();
     private IUserVoicesBackend UserVoices => field ??= AppHost.Services.GetRequiredService<IUserVoicesBackend>();
     private StreamingSettings Settings => field ??= AppHost.Services.GetRequiredService<StreamingSettings>();
+    private IBlobStorage Blobs =>
+        field ??= AppHost.Services.GetRequiredService<IBlobStorages>()[BlobScope.AudioRecord];
 
     [Fact(Timeout = 120_000)]
     public async Task AcquireShouldCreateACloneOnceAndReuseIt()
@@ -41,7 +44,7 @@ public sealed class VoicePoolTest(
         record.Should().NotBeNull();
         record!.Status.Should().Be(UserVoiceStatus.Ready);
         record.SonioxVoiceId.Should().Be(voiceId);
-        record.SampleHash.Should().Be(VoiceSampleBuilder.HashOf(speaker.MediaId), "the record is keyed by the sample");
+        record.SampleHash.Should().Be(VoiceSampleBuilder.HashOf(speaker.Entry.Id), "the record is keyed by the sample");
         var voice = await Soniox.Get(voiceId!, ct);
         voice.Should().NotBeNull("the clone exists at Soniox");
         voice!.Name.Should().Be(Pool.NameOf(speaker.Account.Id, record.SampleHash));
@@ -56,8 +59,7 @@ public sealed class VoicePoolTest(
         var ct = CancellationToken.None;
         var oldVoiceId = await Pool.Acquire(speaker.Account.Id, ct);
         var newEntry = await Tester.RecordVoiceEntry(speaker.ChatId, Languages.Russian, frameCount: EntryFrameCount);
-        var newMediaId = newEntry.Audio!.MediaId!;
-        await SetSettings(Tester, x => x with { IsOwnVoiceEnabled = true, OwnVoiceSampleMediaId = newMediaId });
+        await SetSettings(Tester, x => x with { IsOwnVoiceEnabled = true, OwnVoiceSampleEntryId = newEntry.Id });
         var createCount = Soniox.CreateCount;
 
         // act
@@ -72,7 +74,7 @@ public sealed class VoicePoolTest(
         var record = await UserVoices.Get(speaker.Account.Id, ct);
         record!.Status.Should().Be(UserVoiceStatus.Ready);
         record.SonioxVoiceId.Should().Be(newVoiceId);
-        record.SampleHash.Should().Be(VoiceSampleBuilder.HashOf(newMediaId));
+        record.SampleHash.Should().Be(VoiceSampleBuilder.HashOf(newEntry.Id));
     }
 
     [Fact(Timeout = 120_000)]
@@ -155,7 +157,7 @@ public sealed class VoicePoolTest(
         record = await UserVoices.Get(speaker.Account.Id, ct);
         record!.Status.Should().Be(UserVoiceStatus.None);
         record.SonioxVoiceId.Should().BeEmpty();
-        record.SampleHash.Should().Be(VoiceSampleBuilder.HashOf(speaker.MediaId), "the sample is still valid");
+        record.SampleHash.Should().Be(VoiceSampleBuilder.HashOf(speaker.Entry.Id), "the sample is still valid");
     }
 
     [Fact(Timeout = 120_000)]
@@ -198,8 +200,8 @@ public sealed class VoicePoolTest(
         var voiceId = await Pool.Acquire(speaker.Account.Id, ct);
         var record = await UserVoices.Get(speaker.Account.Id, ct);
         var createCount = Soniox.CreateCount;
-        // The explicit sample's media disappears: the builder can't produce a sample any more
-        await Commander.Call(new MediaBackend_Change(speaker.MediaId, null, Change.Remove<MediaFull>()), ct);
+        var othersEntry = await RecordSomeoneElsesEntry();
+        await SetSettings(Tester, x => x with { OwnVoiceSampleEntryId = othersEntry.Id });
 
         // act
         var afterFailure = await Pool.Acquire(speaker.Account.Id, ct);
@@ -216,12 +218,54 @@ public sealed class VoicePoolTest(
     }
 
     [Fact(Timeout = 120_000)]
+    public async Task AReadyCloneShouldOutliveItsSampleEntry()
+    {
+        // arrange
+        var speaker = await SignInWithSample(Tester);
+        var ct = CancellationToken.None;
+        var voiceId = await Pool.Acquire(speaker.Account.Id, ct);
+        var createCount = Soniox.CreateCount;
+        var mediaId = speaker.Entry.Audio!.MediaId!;
+        await Commander.Call(new MediaBackend_Change(mediaId, null, Change.Remove<MediaFull>()), ct);
+
+        // act
+        var again = await Pool.Acquire(speaker.Account.Id, ct);
+
+        // assert
+        voiceId.Should().NotBeNullOrEmpty();
+        again.Should().Be(voiceId, "the clone is keyed by the sample's hash, which hasn't changed");
+        Soniox.CreateCount.Should().Be(createCount, "nothing is rebuilt while the hash matches");
+    }
+
+    [Fact(Timeout = 120_000)]
+    public async Task SomeoneElsesEntryShouldNeverBeCloned()
+    {
+        // arrange - the setting is client-writable and entry media ids are visible to every member
+        var account = await Tester.SignInAsUniqueAlice();
+        var othersEntry = await RecordSomeoneElsesEntry();
+        await SetSettings(Tester, x => x with { IsOwnVoiceEnabled = true, OwnVoiceSampleEntryId = othersEntry.Id });
+        var ct = CancellationToken.None;
+        var createCount = Soniox.CreateCount;
+        var blobId = VoiceSampleBuilder.BlobIdOf(account.Id, VoiceSampleBuilder.HashOf(othersEntry.Id));
+
+        // act
+        var voiceId = await Pool.Acquire(account.Id, ct);
+
+        // assert
+        voiceId.Should().BeNull("another user's recording is no sample of this one's voice");
+        Soniox.CreateCount.Should().Be(createCount, "nothing reaches Soniox");
+        (await Blobs.Exists(blobId, ct)).Should().BeFalse("no sample blob is written");
+        var record = await UserVoices.Get(account.Id, ct);
+        (record?.Status ?? UserVoiceStatus.None).Should().Be(UserVoiceStatus.None, "a missing sample isn't a failure");
+    }
+
+    [Fact(Timeout = 120_000)]
     public async Task NameCollisionShouldReplaceTheOrphan()
     {
         // arrange
         var speaker = await SignInWithSample(Tester);
         var ct = CancellationToken.None;
-        var name = Pool.NameOf(speaker.Account.Id, VoiceSampleBuilder.HashOf(speaker.MediaId));
+        var name = Pool.NameOf(speaker.Account.Id, VoiceSampleBuilder.HashOf(speaker.Entry.Id));
         var orphan = await Soniox.Create(name, Stream.Null, ct);
         var createCount = Soniox.CreateCount;
 
@@ -267,9 +311,17 @@ public sealed class VoicePoolTest(
     {
         var account = await tester.SignInAsUniqueAlice();
         var (chatId, _) = await tester.CreateChat(false);
-        var mediaId = await tester.OptInOwnVoice(chatId, Languages.Russian, EntryFrameCount);
+        var entry = await tester.OptInOwnVoice(chatId, Languages.Russian, EntryFrameCount);
 
-        return new Speaker(account, chatId, mediaId);
+        return new Speaker(account, chatId, entry);
+    }
+
+    private async Task<ChatEntry> RecordSomeoneElsesEntry()
+    {
+        await using var otherTester = AppHost.NewWebClientTester(Out);
+        await otherTester.SignInAsUniqueBob();
+        var (chatId, _) = await otherTester.CreateChat(false);
+        return await otherTester.RecordVoiceEntry(chatId, Languages.Russian, frameCount: EntryFrameCount);
     }
 
     private Task SetSettings(WebClientTester tester, Func<UserLanguageSettings, UserLanguageSettings> update)
@@ -279,5 +331,5 @@ public sealed class VoicePoolTest(
 
     // Nested types
 
-    private sealed record Speaker(AccountFull Account, ChatId ChatId, MediaId MediaId);
+    private sealed record Speaker(AccountFull Account, ChatId ChatId, ChatEntry Entry);
 }

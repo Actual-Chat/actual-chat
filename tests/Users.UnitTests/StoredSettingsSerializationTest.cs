@@ -297,7 +297,7 @@ public partial class StoredSettingsSerializationTest
     public void LegacyUserLanguageSettingsDeserializesWithDefaultOwnVoiceSettings()
     {
         // arrange
-        // Legacy carries neither key 8 (IsOwnVoiceEnabled) nor key 9 (OwnVoiceSampleMediaId).
+        // Legacy carries neither key 8 (IsOwnVoiceEnabled) nor key 9 (OwnVoiceSampleEntryId).
         var legacy = new LegacyUserLanguageSettings {
             Origin = "mp-own-voice-test",
             Primary = Languages.Russian.Value,
@@ -310,7 +310,7 @@ public partial class StoredSettingsSerializationTest
 
         // assert
         result!.IsOwnVoiceEnabled.Should().BeFalse();
-        result.OwnVoiceSampleMediaId.Should().BeNull();
+        result.OwnVoiceSampleEntryId.Should().BeNull();
     }
 
     [Fact]
@@ -321,7 +321,7 @@ public partial class StoredSettingsSerializationTest
             Origin = "round-trip",
             Primary = Languages.German,
             IsOwnVoiceEnabled = true,
-            OwnVoiceSampleMediaId = MediaId.New("voice-sample", "abc123"),
+            OwnVoiceSampleEntryId = ChatEntryId.New(ChatId.Parse("the-actual-one"), 42),
         };
 
         // act
@@ -332,7 +332,7 @@ public partial class StoredSettingsSerializationTest
         // assert
         result.Should().Be(settings);
         result.IsOwnVoiceEnabled.Should().BeTrue();
-        result.OwnVoiceSampleMediaId.Should().Be(settings.OwnVoiceSampleMediaId);
+        result.OwnVoiceSampleEntryId.Should().Be(settings.OwnVoiceSampleEntryId);
     }
 
     // --- Concrete type round-trip ---

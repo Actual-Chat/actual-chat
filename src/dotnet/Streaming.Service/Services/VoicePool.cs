@@ -140,10 +140,14 @@ public sealed class VoicePool(IServiceProvider services)
             return null;
         }
 
-        var sample = await BuildSample(userId, voice, settings, cancellationToken).ConfigureAwait(false);
-        if (sample == null)
+        // The hash alone decides whether the clone at hand is the right one: the common Ready path
+        // then costs no blob read, and nothing is built for a full pool either
+        var hash = await SampleBuilder.GetHash(userId, settings, cancellationToken).ConfigureAwait(false);
+        if (hash is not { } sampleHash) {
+            Log.LogInformation("Acquire: no voice sample for {UserId}", userId);
             return null;
-        if (voice is { Status: UserVoiceStatus.Ready } && voice.SampleHash == sample.Hash)
+        }
+        if (voice is { Status: UserVoiceStatus.Ready } && voice.SampleHash == sampleHash)
             return await Touch(voice, now, cancellationToken).ConfigureAwait(false);
 
         var activeVoices = await UserVoicesBackend.ListActive(cancellationToken).ConfigureAwait(false);
@@ -154,6 +158,10 @@ public sealed class VoicePool(IServiceProvider services)
             return null;
         }
 
+        var sample = await BuildSample(userId, voice, settings, cancellationToken).ConfigureAwait(false);
+        if (sample == null)
+            return null;
+
         return await Create(userId, voice, sample, cancellationToken).ConfigureAwait(false);
     }
 
@@ -163,9 +171,8 @@ public sealed class VoicePool(IServiceProvider services)
         UserLanguageSettings settings,
         CancellationToken cancellationToken)
     {
-        // The builder is the one place that knows the current sample's hash; an unchanged sample
-        // costs it a blob header read, not a rebuild. A sample that can't be built right now says
-        // nothing about a clone made from an earlier one, so a Ready record is left as it is
+        // A sample that can't be built right now says nothing about a clone made from an earlier
+        // one, so a Ready record is left as it is
         try {
             var (sample, failure) = await SampleBuilder
                 .Build(userId, settings, cancellationToken)

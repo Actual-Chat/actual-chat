@@ -86,22 +86,47 @@ public class VoiceSampleBuilderTest(
         var account = await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false);
         var entry = await Tester.RecordVoiceEntry(chatId, Languages.English, frameCount: EntryFrameCount);
-        var mediaId = entry.Audio!.MediaId!;
-        var settings = new UserLanguageSettings { OwnVoiceSampleMediaId = mediaId };
+        var settings = new UserLanguageSettings { OwnVoiceSampleEntryId = entry.Id };
         var ct = CancellationToken.None;
 
         // act
         var (sample, failure) = await Builder.Build(account.Id, settings, ct);
         var (missing, missingFailure) = await Builder.Build(account.Id,
-            settings with { OwnVoiceSampleMediaId = MediaId.New(chatId.Value) }, ct);
+            settings with { OwnVoiceSampleEntryId = ChatEntryId.New(chatId, entry.LocalId + 1000) }, ct);
 
         // assert
         failure.Should().Be(VoiceSampleFailure.None);
-        sample!.Hash.Should().Be(VoiceSampleBuilder.HashOf(mediaId), "an explicit sample is keyed by its media id");
+        sample!.Hash.Should().Be(VoiceSampleBuilder.HashOf(entry.Id), "an explicit sample is keyed by its entry id");
+        (await Builder.GetHash(account.Id, settings, ct)).Should().Be(sample.Hash);
         sample.Duration.Should().BeCloseTo(TimeSpan.FromSeconds(12), TimeSpan.FromSeconds(1));
         (await Blobs.Exists(sample.BlobId, ct)).Should().BeTrue();
         missing.Should().BeNull();
-        missingFailure.Should().Be(VoiceSampleFailure.SampleMissing, "the media doesn't exist");
+        missingFailure.Should().Be(VoiceSampleFailure.SampleMissing, "the entry doesn't exist");
+    }
+
+    [Fact(Timeout = 120_000)]
+    public async Task SomeoneElsesEntryShouldBeAMissingSample()
+    {
+        // arrange - the setting is client-writable, so an entry id must be checked against its author
+        var account = await Tester.SignInAsUniqueAlice();
+        await using var otherTester = AppHost.NewWebClientTester(Out);
+        await otherTester.SignInAsUniqueBob();
+        var (chatId, _) = await otherTester.CreateChat(false);
+        var othersEntry = await otherTester.RecordVoiceEntry(chatId, Languages.English, frameCount: EntryFrameCount);
+        var settings = new UserLanguageSettings { OwnVoiceSampleEntryId = othersEntry.Id };
+        var ct = CancellationToken.None;
+
+        // act
+        var (sample, failure) = await Builder.Build(account.Id, settings, ct);
+        var (available, inspectFailure) = await Builder.Inspect(account.Id, settings, ct);
+
+        // assert
+        sample.Should().BeNull();
+        failure.Should().Be(VoiceSampleFailure.SampleMissing, "another user's entry is no sample of this voice");
+        var blobId = VoiceSampleBuilder.BlobIdOf(account.Id, VoiceSampleBuilder.HashOf(othersEntry.Id));
+        (await Blobs.Exists(blobId, ct)).Should().BeFalse("nothing of someone else's recording is copied");
+        available.Should().BeNull();
+        inspectFailure.Should().Be(VoiceSampleFailure.SampleMissing, "the status says the same");
     }
 
     // Private methods
