@@ -1,0 +1,20 @@
+/* The iOS 26 keyboard has rounded top corners, and their notches reveal the root canvas (<html>):
+   with interactive-widget=resizes-content the page ends at the keyboard's top edge, so nothing
+   else paints there. Each narrow layout that can host the keyboard paints the canvas with the
+   color at its bottom corners. The state is read on html itself - it carries the narrow class,
+   the theme class and the presence attributes next to body for exactly this - and the rules are
+   ordered by stacking, so a later one covers the layouts above it. With no rule matching, body's
+   background propagates to the canvas as usual. */
+
+/* A chat: the post panel spans the whole bottom */
+html.narrow[data-has-chat-footer] {
+    background: var(--post-panel);
+}
+/* The chat list over it: the navbar column on the left, the content swap's list on the right */
+html.narrow[data-has-left-panel-open] {
+    background: linear-gradient(to right, var(--background-04) 50%, var(--background-02) 50%);
+}
+/* A modal: full-height and bottom-sheet frames paint their surface over everything below */
+html.narrow[data-has-modal] {
+    background: var(--modal-background);
+}
