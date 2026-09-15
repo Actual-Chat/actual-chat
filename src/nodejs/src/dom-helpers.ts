@@ -32,6 +32,35 @@ export function getOrInheritAttribute(target: unknown, attributeName: string): [
     return [null, null];
 }
 
+/**
+ * The nearest ancestor of the live selection carrying `data-<dataName>`, and the selected
+ * text clamped to it and whitespace-normalized. `[null, '']` when nothing is selected, the
+ * selection has no such ancestor (e.g. it spans several owners), or the clamped text is empty.
+ */
+export function getSelectionOwner(dataName: string): [HTMLElement | SVGElement | null, string] {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0)
+        return [null, ''];
+
+    const range = selection.getRangeAt(0);
+    let node: Node | null = range.commonAncestorContainer;
+    if (node.nodeType !== Node.ELEMENT_NODE)
+        node = node.parentElement;
+    const [owner] = getOrInheritData(node, dataName);
+    if (!owner)
+        return [null, ''];
+
+    const clamped = range.cloneRange();
+    const bounds = document.createRange();
+    bounds.selectNodeContents(owner);
+    if (clamped.compareBoundaryPoints(Range.START_TO_START, bounds) < 0)
+        clamped.setStart(bounds.startContainer, bounds.startOffset);
+    if (clamped.compareBoundaryPoints(Range.END_TO_END, bounds) > 0)
+        clamped.setEnd(bounds.endContainer, bounds.endOffset);
+    const text = clamped.toString().replace(/\s+/g, ' ').trim();
+    return text.length > 0 ? [owner, text] : [null, ''];
+}
+
 export function setOrRemoveAttribute(element: Element, name: string, value: string | undefined) {
     if (value === undefined)
         element.removeAttribute(name);
