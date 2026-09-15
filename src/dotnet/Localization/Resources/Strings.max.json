@@ -1131,7 +1131,7 @@
   "Location_ShareForDuration": "Споделяйте местоположението ми за…",
   "Location_ShareForDurationCaption": "Обновляется в реальном времени по мере движения",
   "Location_ChoosePlaceOnMap": "Chọn một địa điểm trên bản đồ",
-  "Location_ChoosePlaceCaption": "Herhangi bir nokta - bulunduğunuz yer olmak zorunda değil",
+  "Location_ChoosePlaceCaption": "Bất kỳ điểm nào — không nhất thiết là nơi bạn đang đứng",
   "Location_ShareForMinutes": "for {0} minutes",
   "Location_ShareForHours": "for {0} hours",
   "Location_ShareUntilTurnedOff": "Bis zum Ausschalten",
@@ -1145,6 +1145,10 @@
   "Location_MapTypeHybrid": "ハイブリッド",
 
   // Empty states of the right panel's Media, Files and Links tabs.
+  "MapPanel_ShareFromThisDevice": "Compartir desde este dispositivo",
+  "Location_SharingFromAnotherDeviceCaption": "Anda sedang berbagi dari perangkat lain — perangkat ini akan mengambil alih",
+  "Location_SharingMovedToAnotherDevice": "Споделянето на местоположението се премести на друго устройство",
+  "Location_SharingStoppedFromAnotherDevice": "Споделянето на местоположението беше спряно от друго устройство",
   "Content_NoFiles": "ファイルはまだありません",
   "Content_NoLinks": "リンクはまだありません",
   "Content_NoMedia": "メディアはまだありません",
