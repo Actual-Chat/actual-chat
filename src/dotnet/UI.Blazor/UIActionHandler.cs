@@ -40,11 +40,11 @@ public class UIActionHandler<TArg>(Func<TArg, Task> taskFactory, Action stateHas
 
     public async Task Execute(TArg arg)
     {
-        try {
-            if (IsBusy)
-                return;
+        if (IsBusy)
+            return;
 
-            IsBusy = true;
+        IsBusy = true;
+        try {
             var task = taskFactory.Invoke(arg);
             if (!task.IsCompleted)
                 stateHasChanged();
