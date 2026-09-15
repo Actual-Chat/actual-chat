@@ -1,18 +1,24 @@
+using ActualChat.Mcp.Controllers;
+using ActualChat.Mcp.Module;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Net.Http.Headers;
 
 namespace ActualChat.Mcp.Auth;
 
-public sealed class McpAuthMiddleware(RequestDelegate next, ISessionsBackend sessionsBackend)
+public sealed class McpAuthMiddleware(RequestDelegate next, IServiceProvider services)
 {
     private const string BearerPrefix = "Bearer ";
     private const string Realm = "Voxt";
+
+    private ISessionsBackend SessionsBackend { get; } = services.GetRequiredService<ISessionsBackend>();
+    private UrlMapper UrlMapper { get; } = services.UrlMapper();
+    private McpSettings Settings { get; } = services.GetRequiredService<McpSettings>();
 
     public async Task Invoke(HttpContext httpContext)
     {
         var session = TryGetSession(httpContext);
         if (session is null) {
-            await Reject(httpContext, "invalid_request", "Missing or malformed Authorization: Bearer header.").ConfigureAwait(false);
+            await Reject(httpContext, null, "Missing or malformed Authorization: Bearer header.").ConfigureAwait(false);
             return;
         }
         if (session.Kind != SessionKind.ApiKey) {
@@ -20,7 +26,7 @@ public sealed class McpAuthMiddleware(RequestDelegate next, ISessionsBackend ses
             return;
         }
 
-        var info = await sessionsBackend.Get(session, httpContext.RequestAborted).ConfigureAwait(false);
+        var info = await SessionsBackend.Get(session, httpContext.RequestAborted).ConfigureAwait(false);
         if (info is null || !info.IsActive || info.UserId is not { IsGuest: false }) {
             await Reject(httpContext, "invalid_token", "API key is inactive, expired, or not linked to a user.").ConfigureAwait(false);
             return;
@@ -43,11 +49,14 @@ public sealed class McpAuthMiddleware(RequestDelegate next, ISessionsBackend ses
         return SessionExt.NewValidOrNull(token);
     }
 
-    private static Task Reject(HttpContext httpContext, string error, string description)
+    private Task Reject(HttpContext httpContext, string? error, string description)
     {
+        var metadataUrl = UrlMapper.ToAbsolute(McpResourceMetadataController.Route + Settings.Route);
+        var header = $"Bearer realm=\"{Realm}\", resource_metadata=\"{metadataUrl}\", scope=\"mcp\"";
+        if (error is not null)
+            header += $", error=\"{error}\", error_description=\"{description}\"";
         httpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
-        httpContext.Response.Headers[HeaderNames.WWWAuthenticate] =
-            $"Bearer realm=\"{Realm}\", error=\"{error}\", error_description=\"{description}\"";
+        httpContext.Response.Headers[HeaderNames.WWWAuthenticate] = header;
         return httpContext.Response.WriteAsync(description);
     }
 }
