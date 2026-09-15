@@ -5,14 +5,11 @@
 @{
     var m = State.Value;
     var searchWords = _search.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-    var voices = m.Voices
-        .Where(v => _filters.Gender.IsNullOrEmpty() || v.Gender == _filters.Gender)
-        .Where(v => _filters.Accent.IsNullOrEmpty() || v.Accent == _filters.Accent)
-        .Where(v => Matches(v, searchWords))
-        .ToList();
+    var voices = m.Voices.Where(PassesFilters).Where(v => Matches(v, searchWords)).ToList();
+    var suggested = m.Suggested.Where(PassesFilters).ToList();
     var accents = m.Voices.Select(v => v.Accent).Where(a => !a.IsNullOrEmpty()).Distinct().Order().ToList();
     var isSearching = searchWords.Length > 0;
-    var hasSuggested = m.Suggested.Count > 0;
+    var hasSuggested = suggested.Count > 0;
 }
 
 <DialogFrame
@@ -75,7 +72,7 @@
                 @AllVoices(voices)
             } else if (hasSuggested) {
                 <div class="c-section-title">@L.DubVoice_Suggested</div>
-                @foreach (var voice in m.Suggested) {
+                @foreach (var voice in suggested) {
                     @VoiceItem(voice)
                 }
                 <Collapsed Title="@L.DubVoice_AllVoices" TitleClass="c-section-title">
@@ -271,6 +268,10 @@
     }
 
     // Every search word must occur in some facet: "female calm" narrows to calm female voices
+    private bool PassesFilters(DubVoice voice)
+        => (_filters.Gender.IsNullOrEmpty() || voice.Gender == _filters.Gender)
+            && (_filters.Accent.IsNullOrEmpty() || voice.Accent == _filters.Accent);
+
     private static bool Matches(DubVoice voice, string[] searchWords)
         => searchWords.All(word =>
             voice.Id.Contains(word, StringComparison.OrdinalIgnoreCase)
