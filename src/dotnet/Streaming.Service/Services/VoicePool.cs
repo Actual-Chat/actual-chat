@@ -98,8 +98,10 @@ public sealed class VoicePool(IServiceProvider services)
             return false;
         }
 
-        await DeleteSonioxVoice(voice.SonioxVoiceId, cancellationToken).ConfigureAwait(false);
+        // The sample goes before the voice: an Acquire elsewhere that found the sample a moment ago
+        // rebuilds it when its read comes up empty, and the Soniox call shouldn't widen that window
         await DeleteSample(voice.UserId, voice.SampleHash, cancellationToken).ConfigureAwait(false);
+        await DeleteSonioxVoice(voice.SonioxVoiceId, cancellationToken).ConfigureAwait(false);
         return true;
     }
 
@@ -163,7 +165,7 @@ public sealed class VoicePool(IServiceProvider services)
         if (sample == null)
             return null;
 
-        return await Create(userId, voice, sample, cancellationToken).ConfigureAwait(false);
+        return await Create(userId, voice, sample, settings, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<VoiceSample?> BuildSample(
@@ -217,6 +219,7 @@ public sealed class VoicePool(IServiceProvider services)
         UserId userId,
         UserVoice? voice,
         VoiceSample sample,
+        UserLanguageSettings settings,
         CancellationToken cancellationToken)
     {
         var now = Clocks.SystemClock.Now;
@@ -239,7 +242,7 @@ public sealed class VoicePool(IServiceProvider services)
             await DeleteSonioxVoice(oldVoiceId, cancellationToken).ConfigureAwait(false);
             if (oldSampleHash != sample.Hash)
                 await DeleteSample(userId, oldSampleHash, cancellationToken).ConfigureAwait(false);
-            var created = await CreateSonioxVoice(userId, sample, cancellationToken).ConfigureAwait(false);
+            var created = await CreateSonioxVoice(userId, sample, settings, cancellationToken).ConfigureAwait(false);
             createdVoiceId = created.Id;
             // Stored right away, so the sweeper's reconcile sees it as ours while it's still cooking
             var createdDiff = new UserVoiceDiff { SonioxVoiceId = created.Id, ModifiedAt = Clocks.SystemClock.Now };
@@ -295,13 +298,36 @@ public sealed class VoicePool(IServiceProvider services)
     private async Task<SonioxVoice> CreateSonioxVoice(
         UserId userId,
         VoiceSample sample,
+        UserLanguageSettings settings,
         CancellationToken cancellationToken)
     {
         var name = NameOf(userId, sample.Hash);
         try {
-            return await CreateNamed(name).ConfigureAwait(false);
+            return await CreateSonioxVoice(name, sample.BlobId, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+        catch (NotFoundException<VoiceSample> e) {
+            // A Release on another host deleted the sample after the builder found it, along with the
+            // record it went with - so it's rebuilt here rather than counted as a failed clone
+            Log.LogInformation(e, "Acquire: {UserId}'s voice sample vanished while being cloned, rebuilding it",
+                userId);
+            var (rebuilt, failure) = await SampleBuilder
+                .Build(userId, settings, cancellationToken)
+                .ConfigureAwait(false);
+            if (rebuilt == null)
+                throw StandardError.NotFound<VoiceSample>($"The voice sample can't be rebuilt: {failure}.");
+            if (rebuilt.Hash != sample.Hash)
+                throw StandardError.NotFound<VoiceSample>("The voice sample changed while being cloned.");
+
+            return await CreateSonioxVoice(name, rebuilt.BlobId, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<SonioxVoice> CreateSonioxVoice(string name, string blobId, CancellationToken cancellationToken)
+    {
+        try {
+            return await CreateNamed().ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not NotFoundException<VoiceSample> && !e.IsCancellationOf(cancellationToken)) {
             // Names are unique per project, so a leftover of an earlier attempt - a delete that failed,
             // a host that died - rejects every retry until it's gone; the reconcile would get to it
             // eventually, but the speaker is waiting now
@@ -313,16 +339,16 @@ public sealed class VoicePool(IServiceProvider services)
             Log.LogWarning(e, "Acquire: Soniox voice '{Name}' already exists as {VoiceId}, replacing it",
                 name, sameNamed.Id);
             await SonioxVoices.Delete(sameNamed.Id, cancellationToken).ConfigureAwait(false);
-            return await CreateNamed(name).ConfigureAwait(false);
+            return await CreateNamed().ConfigureAwait(false);
         }
 
-        async Task<SonioxVoice> CreateNamed(string voiceName)
+        async Task<SonioxVoice> CreateNamed()
         {
             // Opened per attempt: the client reads the stream, so a retry can't reuse it
-            var wav = await Blobs[BlobScope.AudioRecord].Read(sample.BlobId, cancellationToken).ConfigureAwait(false)
-                ?? throw StandardError.NotFound<VoiceSample>($"The voice sample blob '{sample.BlobId}' is missing.");
+            var wav = await Blobs[BlobScope.AudioRecord].Read(blobId, cancellationToken).ConfigureAwait(false)
+                ?? throw StandardError.NotFound<VoiceSample>($"The voice sample blob '{blobId}' is missing.");
             await using var _ = wav.ConfigureAwait(false);
-            return await SonioxVoices!.Create(voiceName, wav, cancellationToken).ConfigureAwait(false);
+            return await SonioxVoices!.Create(name, wav, cancellationToken).ConfigureAwait(false);
         }
     }
 

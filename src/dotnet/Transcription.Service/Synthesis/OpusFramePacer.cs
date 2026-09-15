@@ -9,7 +9,9 @@ namespace ActualChat.Transcription;
 /// </summary>
 public sealed class OpusFramePacer(MomentClock clock)
 {
-    private static readonly Lazy<byte[]> SilencePacketLazy = new(EncodeSilence);
+    private static readonly LazySlim<byte[]> SilencePacketLazy = new(EncodeSilence);
+
+    private MomentClock Clock { get; } = clock;
 
     public static byte[] SilencePacket => SilencePacketLazy.Value;
 
@@ -20,7 +22,7 @@ public sealed class OpusFramePacer(MomentClock clock)
     {
         Exception? error = null;
         try {
-            var startedAt = clock.Now;
+            var startedAt = Clock.Now;
             var frameIndex = 0;
             while (true) {
                 var isInputCompleted = input.Completion.IsCompleted;
@@ -34,9 +36,9 @@ public sealed class OpusFramePacer(MomentClock clock)
                     Data = frame?.Data ?? SilencePacket,
                     Offset = Constants.Audio.OpusFrameDuration * frameIndex++,
                 };
-                var delay = startedAt + Constants.Audio.OpusFrameDuration * frameIndex - clock.Now;
+                var delay = startedAt + Constants.Audio.OpusFrameDuration * frameIndex - Clock.Now;
                 if (delay > TimeSpan.Zero)
-                    await clock.Delay(delay, cancellationToken).ConfigureAwait(false);
+                    await Clock.Delay(delay, cancellationToken).ConfigureAwait(false);
                 await output.WriteAsync(pacedFrame, cancellationToken).ConfigureAwait(false);
             }
             await input.Completion.ConfigureAwait(false);

@@ -1059,12 +1059,6 @@ suite.
   `MissingDuration` only updates once the 10 s compute cache expires (see
   [Status](#status--iownvoicesgetownvoicestatus)); there's no push the
   moment a new recording actually clears the 30 s bar.
-- **Opus output from Soniox TTS.** Both cloning and the rest of dubbing
-  still round-trip through PCM (`SonioxTtsClient` requests
-  `pcm_s16le`); requesting `audio_format: "opus"` instead would let the
-  client push Ogg/Opus packets straight into `AudioFrame`s without a
-  decode/re-encode. Scoped separately — see
-  `tmp/replay-dubbing-sdd/followups.md`.
 
 ## Replay
 

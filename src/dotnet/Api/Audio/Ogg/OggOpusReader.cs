@@ -13,6 +13,8 @@ public sealed class OggOpusReader
     private const int ChecksumOffset = 22;
     private const int SegmentCountOffset = 26;
     private const int MaxLacingValue = 255;
+    // RFC 6716 section 3.2.1: 48 frames of at most 1275 bytes each
+    private const int MaxPacketLength = 48 * 1275;
     private const int HeaderPacketCount = 2;
     private static readonly byte[] CapturePattern = "OggS"u8.ToArray();
     private static readonly long[] FrameDurationTicks = [25_000, 50_000, 100_000, 200_000, 400_000, 600_000];
@@ -125,14 +127,17 @@ public sealed class OggOpusReader
 
         var headerType = (OggHeaderTypeFlag)page[5];
         var granulePosition = BinaryPrimitives.ReadUInt64LittleEndian(page[6..]);
+        var isContinued = (headerType & OggHeaderTypeFlag.Continued) != 0;
         if ((headerType & OggHeaderTypeFlag.BeginOfStream) != 0) {
+            if (_packetLength > 0)
+                throw StandardError.Format("Ogg page begins a new stream, but the previous packet was left open.");
+
             // A new logical stream (a concatenated response part): its headers come again, frames go on
             _packetIndex = 0;
-            _packetLength = 0;
         }
-        else if ((headerType & OggHeaderTypeFlag.Continued) == 0 && _packetLength > 0)
+        else if (!isContinued && _packetLength > 0)
             throw StandardError.Format("Ogg page continues no packet, but the previous one was left open.");
-        else if ((headerType & OggHeaderTypeFlag.Continued) != 0 && _packetLength == 0)
+        else if (isContinued && _packetLength == 0)
             throw StandardError.Format("Ogg page continues a packet that never started.");
 
         var body = page[headerSize..];
@@ -169,6 +174,8 @@ public sealed class OggOpusReader
 
     private void AppendToPacket(ReadOnlySpan<byte> data)
     {
+        if (_packetLength + data.Length > MaxPacketLength)
+            throw StandardError.Format($"Ogg packet is longer than {MaxPacketLength} bytes, the Opus maximum.");
         if (_packetLength + data.Length > _packet.Length)
             Array.Resize(ref _packet, Math.Max(_packet.Length * 2, _packetLength + data.Length));
         data.CopyTo(_packet.AsSpan(_packetLength));

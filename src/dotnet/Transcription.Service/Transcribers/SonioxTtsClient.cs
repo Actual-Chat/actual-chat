@@ -11,13 +11,11 @@ using static ActualChat.Constants.Transcription.Soniox;
 namespace ActualChat.Transcription;
 
 /// <summary>
-/// One utterance over Soniox's <c>tts-rt</c> WebSocket API: text chunks in, 20 ms Opus frames out (Soniox
-/// sends Ogg/Opus; every stream is parsed by its own <see cref="OggOpusReader"/>, frame offsets run
-/// contiguously across streams). The whole run shares one connection and, as far as Soniox allows, one
-/// stream, so sentences keep their prosody across chunks. A stream is ended early only when the text goes
-/// idle (Soniox kills a stream that produces nothing for a few seconds and loses its unsynthesized text)
-/// or when it nears Soniox's 2-minute stream cap; the next chunk then opens a new stream on the same
-/// connection.
+/// One utterance over Soniox's <c>tts-rt</c> WebSocket API: text chunks in, 20 ms Opus frames out. The whole
+/// run shares one connection and, as far as Soniox allows, one stream, so sentences keep their prosody across
+/// chunks. A stream is ended early only when the text goes idle (Soniox kills a stream that produces nothing
+/// for a few seconds and loses its unsynthesized text) or when it nears Soniox's 2-minute stream cap; the
+/// next chunk then opens a new stream on the same connection.
 /// </summary>
 public sealed class SonioxTtsClient(IServiceProvider services)
 {
@@ -51,8 +49,8 @@ public sealed class SonioxTtsClient(IServiceProvider services)
     private IHttpClientFactory HttpClientFactory => field ??= Services.HttpClientFactory();
     private MomentClockSet Clocks { get; } = services.Clocks();
     private ILogger Log { get; } = services.LogFor<SonioxTtsClient>();
-
     private Moment Now => Clocks.CpuClock.Now;
+
     public int StreamCount { get; private set; }
 
     // Test hooks
@@ -290,8 +288,11 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         var stream = _stream!;
         var response = await stream.WhenTerminated.ConfigureAwait(false);
         _stream = null;
-        if (stream.Reader.HasPendingData)
-            Log.LogWarning("Soniox TTS stream #{StreamId} ended in the middle of an Ogg page", stream.Id);
+        if (stream.Reader.HasPendingData) {
+            // Expected of a killed stream: it stops mid-page; a stream that terminated cleanly shouldn't
+            var level = response.ErrorCode == null ? LogLevel.Warning : LogLevel.Debug;
+            Log.Log(level, "Soniox TTS stream #{StreamId} ended in the middle of an Ogg page", stream.Id);
+        }
         if (response.ErrorCode is not { } errorCode)
             return;
 
@@ -419,6 +420,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         ChannelWriter<AudioFrame> output,
         CancellationToken cancellationToken)
     {
+        // Every stream's reader starts its offsets from zero; the output's run on across streams
         reader.Append(chunk.Span);
         while (reader.TryRead(out var frame))
             await output.WriteAsync(new AudioFrame {

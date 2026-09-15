@@ -9,7 +9,8 @@ namespace ActualChat.Testing.Audio;
 public static class OggOpusTestStream
 {
     // A CELT fullband 20 ms single-frame TOC (what Soniox sends) followed by a payload long enough
-    // on every other frame to need 255-lacing, so packets straddle lacing values and page boundaries
+    // on every other frame to need 255-lacing, so packets span several lacing values; the writer
+    // never continues a packet onto the next page
     public const byte Toc20Ms = 0b11111_0_00;
 
     public static byte[] Write(int frameCount, int preSkip = 0)

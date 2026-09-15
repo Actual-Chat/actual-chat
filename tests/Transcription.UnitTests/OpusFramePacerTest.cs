@@ -39,16 +39,16 @@ public class OpusFramePacerTest
         var output = Channel.CreateUnbounded<AudioFrame>();
         var runTask = pacer.Run(input.Reader, output.Writer, CancellationToken.None);
 
-        // act
-        await Task.Delay(200);
+        // act: the real frame goes in only once the gap before it has produced enough silence
+        while (output.Reader.Count < 5)
+            await Task.Delay(20);
         input.Writer.TryWrite(OggOpusTestStream.Frames(1)[0]);
         input.Writer.Complete();
         await runTask;
         var result = await output.Reader.ReadAllAsync().ToListAsync();
 
         // assert
-        result.Count.Should().BeGreaterThanOrEqualTo(6,
-            "200ms of waiting is 10 silence frames minus scheduling slack, plus the real one");
+        result.Count.Should().BeGreaterThanOrEqualTo(6, "at least 5 silence frames, plus the real one");
         for (var i = 0; i < result.Count; i++) {
             result[i].Offset.Should().Be(Constants.Audio.OpusFrameDuration * i);
             var expected = i < result.Count - 1 ? OpusFramePacer.SilencePacket : OggOpusTestStream.Packet(0);

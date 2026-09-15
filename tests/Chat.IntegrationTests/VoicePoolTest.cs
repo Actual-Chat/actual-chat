@@ -104,6 +104,8 @@ public sealed class VoicePoolTest(
             var record = await UserVoices.Get(second.Account.Id, ct);
             (record?.Status ?? UserVoiceStatus.None).Should().Be(UserVoiceStatus.None,
                 "a full pool isn't a failure of this speaker's clone");
+            var blobId = VoiceSampleBuilder.BlobIdOf(second.Account.Id, VoiceSampleBuilder.HashOf(second.Entry.Id));
+            (await Blobs.Exists(blobId, ct)).Should().BeFalse("nothing is built for a full pool");
         }
         finally {
             Settings.SonioxVoiceQuota = null;
@@ -117,6 +119,7 @@ public sealed class VoicePoolTest(
         var speaker = await SignInWithSample(Tester);
         var ct = CancellationToken.None;
         var createCount = Soniox.CreateCount;
+        var blobId = VoiceSampleBuilder.BlobIdOf(speaker.Account.Id, VoiceSampleBuilder.HashOf(speaker.Entry.Id));
         Soniox.FailCreate = true;
         try {
             // act
@@ -134,6 +137,8 @@ public sealed class VoicePoolTest(
             record.FailedUntil.Should().NotBeNull();
             record.FailedUntil!.Value.Should().BeGreaterThan(Clocks.SystemClock.Now,
                 "the cool-down is still running");
+            (await Blobs.Exists(blobId, ct)).Should().BeFalse(
+                "the failed attempt's sample is deleted, the retry after the cool-down rebuilds it");
         }
         finally {
             Soniox.FailCreate = false;
@@ -161,7 +166,10 @@ public sealed class VoicePoolTest(
         record = await UserVoices.Get(speaker.Account.Id, ct);
         record!.Status.Should().Be(UserVoiceStatus.None);
         record.SonioxVoiceId.Should().BeEmpty();
-        record.SampleHash.Should().Be(VoiceSampleBuilder.HashOf(speaker.Entry.Id), "the sample is still valid");
+        record.SampleHash.Should().Be(VoiceSampleBuilder.HashOf(speaker.Entry.Id),
+            "the hash stays on the record, only the WAV goes with the clone");
+        var blobId = VoiceSampleBuilder.BlobIdOf(speaker.Account.Id, record.SampleHash);
+        (await Blobs.Exists(blobId, ct)).Should().BeFalse("the sample is deleted with the idle clone");
     }
 
     [Fact(Timeout = 120_000)]
@@ -311,6 +319,41 @@ public sealed class VoicePoolTest(
         var record = await UserVoices.Get(speaker.Account.Id, ct);
         record!.Status.Should().Be(UserVoiceStatus.Ready);
         record.SonioxVoiceId.Should().Be(voiceId);
+    }
+
+    [Fact(Timeout = 120_000)]
+    public async Task VanishedSampleShouldBeRebuiltNotFailed()
+    {
+        // arrange: a same-named leftover rejects the first create, and the sample is deleted under it -
+        // as a Release on another host does between the builder finding the WAV and the clone reading it
+        var speaker = await SignInWithSample(Tester);
+        var ct = CancellationToken.None;
+        var hash = VoiceSampleBuilder.HashOf(speaker.Entry.Id);
+        var blobId = VoiceSampleBuilder.BlobIdOf(speaker.Account.Id, hash);
+        var orphan = await Soniox.Create(Pool.NameOf(speaker.Account.Id, hash), Stream.Null, ct);
+        var createCount = Soniox.CreateCount;
+        var deleteTask = (Task?)null;
+        Soniox.OnCreate = _ => deleteTask ??= Blobs.Delete(blobId, ct);
+        try {
+            // act
+            var voiceId = await Pool.Acquire(speaker.Account.Id, ct);
+
+            // assert
+            voiceId.Should().NotBeNullOrEmpty("a sample that vanished mid-clone is rebuilt, not a failure");
+            voiceId.Should().NotBe(orphan.Id);
+            Soniox.CreateCount.Should().Be(createCount + 2, "the rejected attempt and the one after the rebuild");
+            deleteTask.Should().NotBeNull("the sample was deleted under the first attempt");
+            deleteTask!.IsCompletedSuccessfully.Should().BeTrue();
+            (await Blobs.Exists(blobId, ct)).Should().BeTrue("the sample is rebuilt under the same hash");
+            var record = await UserVoices.Get(speaker.Account.Id, ct);
+            record!.Status.Should().Be(UserVoiceStatus.Ready);
+            record.SonioxVoiceId.Should().Be(voiceId);
+            record.SampleHash.Should().Be(hash);
+            record.FailedUntil.Should().BeNull("no cool-down is set for a missing blob");
+        }
+        finally {
+            Soniox.OnCreate = null;
+        }
     }
 
     [Fact(Timeout = 120_000)]

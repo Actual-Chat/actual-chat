@@ -61,6 +61,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
 
         // assert
         requestBody.Should().Contain("\"audio_format\":\"opus\"");
+        requestBody.Should().Contain("\"bitrate\":32000", "Opus is requested at the bitrate every other stream uses");
         first.Data.ToArray().Should().Equal(OggOpusTestStream.Packet(0),
             "the first frame is written before the body is complete");
         first.Offset.Should().Be(TimeSpan.Zero);

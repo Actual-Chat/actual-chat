@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using ActualChat.Audio;
 using ActualChat.Audio.Ogg;
 using ActualChat.Testing.Audio;
@@ -125,7 +126,8 @@ public class OggOpusReaderTest(ILogger log)
         var byteStream = GetAudioFilePath((FilePath)FixtureName).ReadByteStream(1024);
 
         // act
-        var audio = await AudioSource.ReadFromByteStream(byteStream, MomentClockSet.Default, Log, CancellationToken.None);
+        var audio = await AudioSource
+            .ReadFromByteStream(byteStream, MomentClockSet.Default, Log, CancellationToken.None);
         var frames = await audio.GetFrames(CancellationToken.None).ToListAsync();
 
         // assert
@@ -213,6 +215,91 @@ public class OggOpusReaderTest(ILogger log)
             frames[i].Offset.Should().Be(Constants.Audio.OpusFrameDuration * i);
     }
 
+    [Fact]
+    public void ReaderShouldJoinAPacketContinuedOnTheNextPage()
+    {
+        // arrange: the writer never splits a packet, so a 600-byte one is laid out by hand as 510 + 90
+        var packet = NewPacket(600);
+        var bytes = OggOpusTestStream.WriteHeaders(new OggOpusWriter.State())
+            .Concat(NewPage(default, [255, 255], packet[..510]))
+            .Concat(NewPage(OggHeaderTypeFlag.Continued | OggHeaderTypeFlag.EndOfStream, [90], packet[510..]))
+            .ToArray();
+        var reader = new OggOpusReader();
+
+        // act
+        reader.Append(bytes);
+        var frames = ReadAll(reader);
+
+        // assert
+        frames.Should().HaveCount(1, "the two pages carry one packet");
+        frames[0].Data.ToArray().Should().Equal(packet);
+        reader.IsEndOfStream.Should().BeTrue();
+        reader.HasPendingData.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ReaderShouldRejectAContinuedPageWithNoOpenPacket()
+    {
+        // arrange
+        var bytes = OggOpusTestStream.WriteHeaders(new OggOpusWriter.State())
+            .Concat(NewPage(OggHeaderTypeFlag.Continued, [90], NewPacket(90)))
+            .ToArray();
+        var reader = new OggOpusReader();
+
+        // act
+        var act = () => {
+            reader.Append(bytes);
+            ReadAll(reader);
+        };
+
+        // assert
+        act.Should().Throw<Exception>().WithMessage("*never started*");
+    }
+
+    [Fact]
+    public void ReaderShouldRejectANewStreamThatLeavesAPacketOpen()
+    {
+        // arrange: the first stream's last page ends in a 255 lacing value, then the next stream begins
+        var bytes = OggOpusTestStream.WriteHeaders(new OggOpusWriter.State())
+            .Concat(NewPage(default, [255, 255], NewPacket(510)))
+            .Concat(OggOpusTestStream.WriteHeaders(new OggOpusWriter.State()))
+            .ToArray();
+        var reader = new OggOpusReader();
+
+        // act
+        var act = () => {
+            reader.Append(bytes);
+            ReadAll(reader);
+        };
+
+        // assert
+        act.Should().Throw<Exception>().WithMessage("*left open*");
+    }
+
+    [Fact]
+    public void ReaderShouldRejectAPacketLongerThanOpusAllows()
+    {
+        // arrange: pages of 100 full segments each, every one continued into the next, never completing
+        var segmentTable = Enumerable.Repeat((byte)255, 100).ToArray();
+        var pageBody = NewPacket(100 * 255);
+        var bytes = OggOpusTestStream.WriteHeaders(new OggOpusWriter.State())
+            .Concat(NewPage(default, segmentTable, pageBody))
+            .Concat(NewPage(OggHeaderTypeFlag.Continued, segmentTable, pageBody))
+            .Concat(NewPage(OggHeaderTypeFlag.Continued, segmentTable, pageBody))
+            .ToArray();
+        var reader = new OggOpusReader();
+
+        // act
+        var act = () => {
+            reader.Append(bytes);
+            ReadAll(reader);
+        };
+
+        // assert
+        act.Should().Throw<Exception>().WithMessage("*Opus maximum*",
+            "three such pages exceed the 61 200-byte cap, so the packet is rejected instead of buffered");
+    }
+
     // Private methods
 
     private static List<AudioFrame> ReadAll(OggOpusReader reader)
@@ -229,6 +316,29 @@ public class OggOpusReaderTest(ILogger log)
             await Task.Yield();
             yield return bytes[i..Math.Min(bytes.Length, i + chunkSize)];
         }
+    }
+
+    private static byte[] NewPacket(int length)
+    {
+        var packet = new byte[length];
+        packet[0] = OggOpusTestStream.Toc20Ms;
+        for (var i = 1; i < length; i++)
+            packet[i] = (byte)i;
+
+        return packet;
+    }
+
+    private static byte[] NewPage(OggHeaderTypeFlag headerType, byte[] segmentTable, byte[] body)
+    {
+        // Laid out by hand, as OggOpusWriter never continues a packet onto the next page
+        var page = new byte[27 + segmentTable.Length + body.Length];
+        "OggS"u8.CopyTo(page);
+        page[5] = (byte)headerType;
+        page[26] = (byte)segmentTable.Length;
+        segmentTable.CopyTo(page, 27);
+        body.CopyTo(page, 27 + segmentTable.Length);
+        BinaryPrimitives.WriteUInt32LittleEndian(page.AsSpan(22), OggCRC32.Get(0, page));
+        return page;
     }
 
     private static byte[] ReadFixture()

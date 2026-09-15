@@ -24,7 +24,7 @@ public sealed class OggOpusStreamConverter(
         IAsyncEnumerable<byte[]> byteStream,
         CancellationToken cancellationToken = default)
     {
-        var headerSource = AsyncTaskMethodBuilderExt.New<OpusHead>();
+        var headerSource = TaskCompletionSourceExt.New<OpusHead>();
         var headerTask = headerSource.Task;
         var target = Channel.CreateBounded<AudioFrame>(
             new BoundedChannelOptions(Constants.Queues.OpusStreamConverterQueueSize) {

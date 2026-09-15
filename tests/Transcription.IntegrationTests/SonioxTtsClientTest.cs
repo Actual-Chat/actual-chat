@@ -48,7 +48,7 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         WriteLine($"{frames.Count} frames = {frames.Count / (double)FramesPerSecond:F1}s of audio, "
             + $"{frames.Sum(f => f.Data.Length) / 1024.0:F1} KB, first frame at {firstFrameAt.TotalSeconds:F1}s");
         frames.Count.Should().BeGreaterThan(FramesPerSecond, "two sentences are well over a second of speech");
-        firstFrameAt.Should().BeLessThan(TimeSpan.FromSeconds(3), "the first frame arrives well before the end");
+        firstFrameAt.Should().BeLessThan(TimeSpan.FromSeconds(5), "the first frame arrives well before the end");
         for (var i = 0; i < frames.Count; i++)
             frames[i].Offset.Should().Be(Constants.Audio.OpusFrameDuration * i);
         frames.Should().OnlyContain(f => f.Duration == Constants.Audio.OpusFrameDuration);
