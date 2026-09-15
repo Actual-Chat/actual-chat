@@ -6,16 +6,17 @@ using Application = Android.App.Application;
 
 namespace ActualChat.App.Maui;
 
-// The single ring melody/vibration source, driven by IncomingCallUI via AndroidIncomingCallsBridge
-// in every case (foreground and over the lock screen). Uses a looping MediaPlayer rather than
-// Ringtone: Ringtone.Play() is unreliable on the first invocation (occasionally silent), while a
-// prepared MediaPlayer plays deterministically.
+// The single ring melody/vibration source, driven by CallScreensUI via AndroidIncomingCallsBridge
+// once Blazor is up, and started natively together with a shown call notification. Uses a looping
+// MediaPlayer rather than Ringtone: Ringtone.Play() is unreliable on the first invocation
+// (occasionally silent), while a prepared MediaPlayer plays deterministically.
 public static class IncomingCallRinger
 {
     private static readonly Lock Lock = new();
     private static MediaPlayer? _player;
     private static Vibrator? _vibrator;
     private static ILogger? _log;
+    private static int _generation;
 
     private static ILogger Log => _log ??= StaticLog.For(typeof(IncomingCallRinger));
     private static Context Context => Application.Context;
@@ -27,9 +28,11 @@ public static class IncomingCallRinger
         }
     }
 
-    public static void Start()
+    public static void Start(TimeSpan? autoStopAfter = null)
     {
+        int generation;
         lock (Lock) {
+            generation = ++_generation;
             try {
                 // DND is deliberately not consulted: an incoming call is the user's own contact
                 // reaching them, not a background alert.
@@ -43,11 +46,14 @@ public static class IncomingCallRinger
                 Log.LogWarning(e, "Start failed");
             }
         }
+        if (autoStopAfter is { } delay)
+            _ = StopAfter(delay, generation);
     }
 
     public static void Stop()
     {
         lock (Lock) {
+            _generation++;
             // Released independently: a throwing player must not leave the vibrator buzzing forever.
             var player = _player;
             _player = null;
@@ -69,6 +75,16 @@ public static class IncomingCallRinger
     }
 
     // Private methods
+
+    private static async Task StopAfter(TimeSpan delay, int generation)
+    {
+        // Only the start that armed this may be stopped by it: any later Start or Stop moved the generation on.
+        await Task.Delay(delay).ConfigureAwait(false);
+        lock (Lock) {
+            if (_generation == generation)
+                Stop();
+        }
+    }
 
     private static void StartRingtone()
     {

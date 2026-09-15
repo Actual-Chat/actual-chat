@@ -87,11 +87,21 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
         var data = new NotificationData(message.MessageId ?? "", dataRaw);
 
         if (data.DismissedTags.Count > 0) {
+            // Read before cancelling: afterwards nothing tells which call notification was on screen.
+            ChatId[] shownCallChatIds;
+            try {
+                shownCallChatIds = IncomingCallNotifications.ListActiveCallChatIds();
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Couldn't list the shown call notifications; dismissing without stopping the ring");
+                shownCallChatIds = [];
+            }
             var notificationManager = NotificationManagerCompat.From(this)!;
             foreach (var tag in data.DismissedTags)
                 notificationManager.Cancel(tag, 0);
             ClearAttentionRequests(data.DismissedTags);
             ClearForegroundCallRings(data.DismissedTags);
+            StopRingForDismissedCalls(data.DismissedTags, shownCallChatIds);
 
             return;
         }
@@ -152,7 +162,8 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
                 if (cReadEntryLid is { ConsistencyState: not ConsistencyState.Computing }
                     && cReadEntryLid.IsValue(out var readEntryLid)
                     && readEntryLid >= entryLid) {
-                    Log.LogDebug("OnMessageReceived: already read on this device #{ChatId} @ {EntryLid}", chatId, entryLid);
+                    Log.LogDebug("OnMessageReceived: already read on this device #{ChatId} @ {EntryLid}",
+                        chatId, entryLid);
                     return true;
                 }
             }
@@ -182,8 +193,8 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
 
     private static void ClearForegroundCallRings(IReadOnlyList<string> dismissedTags)
     {
-        // A foreground ring lives in the in-app banner/ringer, not a system notification, so a
-        // cancel/decline/timeout dismissal must reach IncomingCallUI directly — the reactive
+        // A foreground ring lives in the in-app call UI/ringer, not a system notification, so a
+        // cancel/decline/timeout dismissal must reach CallScreensUI directly — the reactive
         // live-session computed (NoCache) would otherwise clear the ring only on its slow self-heal.
         if (!(AndroidUtils.IsAppForeground() ?? false) || !TryGetScopedServices(out _))
             return;
@@ -197,36 +208,83 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
                 continue;
 
             _ = DispatchToBlazor(
-                c => c.GetRequiredService<IncomingCallUI>().OnCallDismissed(chatId),
-                "IncomingCallUI.OnCallDismissed");
+                c => c.GetRequiredService<CallScreensUI>().OnCallDismissed(chatId),
+                "CallScreensUI.OnCallDismissed");
         }
+    }
+
+    private static void StopRingForDismissedCalls(IReadOnlyList<string> dismissedTags, ChatId[] shownCallChatIds)
+    {
+        // The ringtone that started with a shown call notification goes with it. A ring Blazor drives is stopped
+        // by CallScreensUI too; a double stop is harmless.
+        var isShownCallDismissed = dismissedTags
+            .Select(IncomingCallNotifications.TryParseCallTag)
+            .Any(chatId => chatId is not null && shownCallChatIds.Contains(chatId));
+        if (isShownCallDismissed)
+            IncomingCallRinger.Stop();
     }
 
     private static void HandleIncomingCall(NotificationData data)
     {
         var chatId = data.ChatId;
         if (chatId is null) {
-            Log.LogWarning("Can't handle incoming-call push. Invalid ChatId. Ref messageId: '{MessageId}'", data.MessageId);
+            Log.LogWarning("Can't handle incoming-call push. Invalid ChatId. Ref messageId: '{MessageId}'",
+                data.MessageId);
             return;
         }
 
-        // The system notification (silent channel) is always shown; its full-screen intent surfaces
-        // the Blazor app over the lock screen / in the background. Whenever the Blazor scope is alive
-        // we also register the ring so the in-app banner + ringer run.
-        DebugLog?.LogInformation("CALL_TRACE: HandleIncomingCall push #{ChatId}, scopeAlive={ScopeAlive}",
-            chatId, TryGetScopedServices(out _));
-        IncomingCallNotifications.Show(data);
-        if (TryGetScopedServices(out _))
+        var scopeAlive = TryGetScopedServices(out var scopedServices);
+        var isForeground = AndroidUtils.IsAppForeground();
+        DebugLog?.LogInformation(
+            "CALL_TRACE: HandleIncomingCall push #{ChatId}, scopeAlive={ScopeAlive}, foreground={Foreground}",
+            chatId, scopeAlive, isForeground);
+        // Foreground + unlocked: the in-app call UI and ringer own the ring, so the system CallStyle
+        // notification would only stack a heads-up banner over them. Show it just when the app is
+        // backgrounded, killed, or locked - where its full-screen intent is the only way to reach the user.
+        if (scopeAlive && isForeground == true) {
             _ = DispatchToBlazor(
-                c => c.GetRequiredService<IncomingCallUI>().OnRing(chatId),
-                "IncomingCallUI.OnRing");
+                c => c.GetRequiredService<CallScreensUI>().OnRing(chatId),
+                "CallScreensUI.OnRing");
+            return;
+        }
+
+        // One call at a time: a ring behind another chat's call shows nothing here and doesn't ring. Busy
+        // is the Blazor side's to send once it sees the ring - native does nothing for it at all.
+        if (!IsAnotherCallHeld(chatId, scopedServices)) {
+            // The channel is silent, so the ringtone starts with the notification, or it's a missed call - but
+            // not while notifications are blocked: nothing was posted to answer or silence it.
+            IncomingCallNotifications.Show(data);
+            if (IncomingCallNotifications.CanPostCalls())
+                IncomingCallRinger.Start(Constants.Call.RingTimeout);
+        }
+        if (scopeAlive)
+            _ = DispatchToBlazor(
+                c => c.GetRequiredService<CallScreensUI>().OnRing(chatId),
+                "CallScreensUI.OnRing");
+    }
+
+    private static bool IsAnotherCallHeld(ChatId chatId, IServiceProvider? scopedServices)
+    {
+        // Fail-open like ShouldSuppressForDevice: a check that throws must never hide a call.
+        try {
+            if (IncomingCallNotifications.ListActiveCallChatIds().Any(id => id != chatId))
+                return true;
+
+            var callChatId = scopedServices?.GetRequiredService<CallUI>().GetCallChatIdNonComputed();
+            return callChatId is not null && callChatId != chatId;
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "IsAnotherCallHeld failed for chat #{ChatId}; showing the call", chatId);
+            return false;
+        }
     }
 
     private static bool ShowGetAttentionNotification(NotificationData data, long messageSentTime)
     {
         var chatId = data.ChatId;
         if (chatId is null) {
-            Log.LogWarning("Can't show get-attention notification. Invalid ChatId. Ref messageId: '{MessageId}'", data.MessageId);
+            Log.LogWarning("Can't show get-attention notification. Invalid ChatId. Ref messageId: '{MessageId}'",
+                data.MessageId);
             return false;
         }
 
@@ -234,14 +292,16 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
         // Names the chat, which for a peer chat is the other party - it carries no group title.
         var title = data.GroupTitle ?? data.SenderName ?? "";
 
-        var request = new ChatAttentionRequest(chatId, data.LastEntryLocalId, sentTime, title, data.Body ?? "", data.ImageUrl ?? "");
+        var request = new ChatAttentionRequest(
+            chatId, data.LastEntryLocalId, sentTime, title, data.Body ?? "", data.ImageUrl ?? "");
         ChatAttentionService.Instance.Ask(request);
         return true;
     }
 
     private void ShowChatMessageNotification(NotificationData data)
     {
-        Log.LogDebug("-> ShowChatMessageNotification, text: '{Text}', silent: {Silent}", data.Body!.ToPrivate(), data.Silent);
+        Log.LogDebug("-> ShowChatMessageNotification, text: '{Text}', silent: {Silent}",
+            data.Body!.ToPrivate(), data.Silent);
         NotificationHelper.ShowChatNotification(
             data.ChatId, data.Tag!, data.Title!, data.Body!, data.ImageUrl, data.Link,
             data.Silent, data.Messages, data.SenderName, data.GroupTitle);
