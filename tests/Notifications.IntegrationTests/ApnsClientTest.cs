@@ -98,6 +98,105 @@ public class ApnsClientTest(ITestOutputHelper @out) : TestBase(@out)
         handler.Requests.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task SendCallRingSendsCorrectRequest()
+    {
+        // arrange
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var keyPath = Path.Combine(Path.GetTempPath(), $"apns-test-{Guid.NewGuid():N}.p8");
+        await File.WriteAllTextAsync(keyPath, key.ExportPkcs8PrivateKeyPem());
+        try {
+            var settings = new NotificationsSettings {
+                ApplePushKeyId = "KEY123",
+                ApplePushTeamId = "TEAM456",
+                ApplePushBundleId = "chat.actual.app",
+                ApplePushPrivateKeyPath = keyPath,
+            };
+            var handler = new RecordingHandler();
+            var client = new ApnsClient(
+                settings, new FakeHttpClientFactory(handler), null!, NullLogger<ApnsClient>.Instance);
+            var chatId = ChatId.Parse("testchatid1234567890");
+            var conversationId = ConversationId.New(chatId, 42);
+            var caller = AuthorId.New(chatId, 7);
+
+            // act
+            var sentDeviceIds = await client.SendCallRing(
+                conversationId, caller, "Alice", true, [new Symbol("aabbccdd")], CancellationToken.None);
+
+            // assert
+            sentDeviceIds.Should().BeEquivalentTo([new Symbol("aabbccdd")]);
+            var request = handler.Requests.Should().ContainSingle().Subject;
+            request.RequestUri!.AbsolutePath.Should().Be("/3/device/aabbccdd");
+            request.Headers.GetValues("apns-push-type").Single().Should().Be("voip");
+            request.Headers.GetValues("apns-topic").Single().Should().Be("chat.actual.app.voip");
+            request.Headers.GetValues("apns-priority").Single().Should().Be("10");
+            request.Headers.GetValues("authorization").Single().Should().StartWith("bearer ");
+            var body = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(handler.Bodies.Single())!;
+            body["kind"].GetString().Should().Be("IncomingCall");
+            body["conversationId"].GetString().Should().Be(conversationId.Value);
+            body["chatId"].GetString().Should().Be(chatId.Value);
+            body["authorId"].GetString().Should().Be(caller.Value);
+            body["callerName"].GetString().Should().Be("Alice");
+            body["hasVideo"].GetBoolean().Should().BeTrue();
+            body.Should().NotContainKey("callId");
+        }
+        finally {
+            File.Delete(keyPath);
+        }
+    }
+
+    [Fact]
+    public async Task ARejectedRingIsNotReportedAsSent()
+    {
+        // arrange
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var keyPath = Path.Combine(Path.GetTempPath(), $"apns-test-{Guid.NewGuid():N}.p8");
+        await File.WriteAllTextAsync(keyPath, key.ExportPkcs8PrivateKeyPem());
+        try {
+            var settings = new NotificationsSettings {
+                ApplePushKeyId = "KEY123",
+                ApplePushTeamId = "TEAM456",
+                ApplePushBundleId = "chat.actual.app",
+                ApplePushPrivateKeyPath = keyPath,
+            };
+            var handler = new RecordingHandler { StatusCode = HttpStatusCode.InternalServerError };
+            var client = new ApnsClient(
+                settings, new FakeHttpClientFactory(handler), null!, NullLogger<ApnsClient>.Instance);
+            var chatId = ChatId.Parse("testchatid1234567890");
+
+            // act
+            var sentDeviceIds = await client.SendCallRing(
+                ConversationId.New(chatId, 42), AuthorId.New(chatId, 7),
+                "Alice", false, [new Symbol("aabbccdd")], CancellationToken.None);
+
+            // assert
+            handler.Requests.Should().ContainSingle();
+            sentDeviceIds.Should().BeEmpty("a rejected ring must leave the FCM banner unsuppressed");
+        }
+        finally {
+            File.Delete(keyPath);
+        }
+    }
+
+    [Fact]
+    public async Task UnconfiguredClientSkipsCallRings()
+    {
+        // arrange
+        var handler = new RecordingHandler();
+        var client = new ApnsClient(
+            new NotificationsSettings(), new FakeHttpClientFactory(handler), null!, NullLogger<ApnsClient>.Instance);
+        var chatId = ChatId.Parse("testchatid1234567890");
+
+        // act
+        var sentDeviceIds = await client.SendCallRing(
+            ConversationId.New(chatId, 42), AuthorId.New(chatId, 7),
+            "Alice", false, [new Symbol("x")], CancellationToken.None);
+
+        // assert
+        handler.Requests.Should().BeEmpty();
+        sentDeviceIds.Should().BeEmpty();
+    }
+
     // Private methods
 
     private static string FromBase64Url(string s)
@@ -115,13 +214,14 @@ public class ApnsClientTest(ITestOutputHelper @out) : TestBase(@out)
     {
         public List<HttpRequestMessage> Requests { get; } = new();
         public List<string> Bodies { get; } = new();
+        public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Add(request);
             Bodies.Add(await request.Content!.ReadAsStringAsync(cancellationToken).ConfigureAwait(false));
-            return new HttpResponseMessage(HttpStatusCode.OK);
+            return new HttpResponseMessage(StatusCode) { Content = new StringContent("") };
         }
     }
 

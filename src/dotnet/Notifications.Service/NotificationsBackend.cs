@@ -22,6 +22,7 @@ public class NotificationsBackend(IServiceProvider services)
     : ShardedDbServiceBase<NotificationDbContext>(services), INotificationsBackend
 {
     private const int WakePendingCapacity = 10_000;
+    private static readonly IReadOnlySet<Symbol> NoDeviceIds = new HashSet<Symbol>();
 
     // Per-user soft-update buffers, owned by this shard. Entries are lost on restart by design
     // (see docs/plans/notif-api.md); a committed hard update always re-reads from the DB.
@@ -296,6 +297,8 @@ public class NotificationsBackend(IServiceProvider services)
             var mustInvalidate = context.Operation.Items.KeylessGet(false);
             if (mustInvalidate && device != null)
                 _ = ListDevices(UserId.Parse(device.UserId), default);
+            if (context.Operation.Items.KeylessGet<UserId>() is { } previousUserId)
+                _ = ListDevices(previousUserId, default);
             return;
         }
 
@@ -329,22 +332,34 @@ public class NotificationsBackend(IServiceProvider services)
                 + "SessionHash={SessionHash}, AccessedAt={AccessedAt}",
                 dbDevice.UserId, dbDevice.Id, dbDevice.Type, dbDevice.SessionHash, dbDevice.AccessedAt);
             dbDevice.AccessedAt = Clocks.SystemClock.Now;
-            if (dbDevice.Type == DeviceType.WebBrowser && deviceType != DeviceType.WebBrowser)
-                dbDevice.Type = deviceType; // Now MAUI app reports device type properly, lets update it.
-            if (dbDevice.SessionHash.IsNullOrEmpty() && !sessionHash.IsEmpty)
+            // A PushKit / PTT token is per installation and survives reinstalls, so its row follows
+            // the registration even from an older type or account. An FCM token stays put.
+            var isDirectPushToken = !deviceType.IsFcm();
+            if (dbDevice.Type != deviceType && (dbDevice.Type == DeviceType.WebBrowser || isDirectPushToken)) {
+                dbDevice.Type = deviceType;
+                isChanged = true;
+            }
+            if (!sessionHash.IsEmpty && dbDevice.SessionHash != sessionHash.Value) {
+                // Refreshed on every re-registration: the hash changes on re-sign-in, and a stale
+                // one breaks the VoIP/FCM join that keeps a ringing iPhone from also buzzing.
+                // An empty incoming hash still never blanks a known one.
                 dbDevice.SessionHash = sessionHash;
+                isChanged = true;
+            }
             if (dbDevice.IsPttEnabled != isPttEnabled) {
                 // ListDevices must invalidate, or SendPttWake keeps serving the stale flag.
                 dbDevice.IsPttEnabled = isPttEnabled;
                 isChanged = true;
             }
             if (UserId.TryParse(dbDevice.UserId, out var existingUserId) && existingUserId != userId) {
-                if (existingUserId.IsGuest) {
+                if (existingUserId.IsGuest || isDirectPushToken) {
                     dbDevice.UserId = userId.Value;
+                    isChanged = true;
+                    if (!existingUserId.IsGuest)
+                        context.Operation.Items.KeylessSet(existingUserId);
                     DebugLog?.LogDebug(
-                        "Guest UserId for Device '{DeviceId}' has been updated: "
-                        + "'{OldUserId}'->'{NewUserId}'",
-                        existingUserId, existingUserId, userId);
+                        "UserId for Device '{DeviceId}' has been updated: '{OldUserId}'->'{NewUserId}'",
+                        deviceId, existingUserId, userId);
                 }
                 else
                     Log.LogWarning("User {UserId} is trying to register device for {ExistingUserId}. Skipped",
@@ -562,6 +577,11 @@ public class NotificationsBackend(IServiceProvider services)
             .Get(chatId, caller, RequestedAuthorKind.Full, cancellationToken)
             .ConfigureAwait(false);
         var iconUrl = callerAuthor is null ? "" : NotificationHelper.GetIconUrl(chat, callerAuthor, UrlMapper);
+        // Headlined by the caller, as a message banner is by its author: a peer chat has no title
+        // of its own on the backend, and CallKit puts this name on the ring screen verbatim.
+        var (senderName, groupTitle) = callerAuthor is null
+            ? ("", chat.Title)
+            : NotificationHelper.GetTitleParts(chat, callerAuthor);
         var now = Clocks.CoarseSystemClock.Now;
         // Unlike a conversation notification, the ring targets the invitees themselves - and it's
         // the one path a person waits on, so nothing here resolves one invitee at a time.
@@ -571,13 +591,14 @@ public class NotificationsBackend(IServiceProvider services)
 
         var localizers = await GetLocalizers(inviteeUserIds, cancellationToken).ConfigureAwait(false);
         var textByUserId = ComposeContentByUserId(localizers, new IncomingCallNotificationContent(hasVideo));
-        var titleByUserId = ComposeTitleByUserId(localizers, chat);
+        var groupTitleByUserId = ComposeTitleByUserId(localizers, chat);
 
         foreach (var inviteeUserId in inviteeUserIds) {
-            var title = titleByUserId?[inviteeUserId] ?? chat.Title;
+            var userGroupTitle = groupTitleByUserId?[inviteeUserId] ?? groupTitle;
+            var title = NotificationHelper.GetTitle(NotificationKind.IncomingCall, senderName, userGroupTitle);
             var notification = CallNotification.New(inviteeUserId, conversationId, caller, hasVideo) with {
                 Title = title,
-                SenderName = title,
+                SenderName = senderName,
                 Text = textByUserId[inviteeUserId],
                 IconUrl = iconUrl,
                 SentAt = now,
@@ -841,6 +862,30 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
+    // Protected/internal methods
+
+    internal static IReadOnlyList<Device> SelectVoipCallDevices(IReadOnlyList<Device> devices)
+        => devices.Where(d => d.DeviceType == DeviceType.iOSVoipApp).ToList();
+
+    internal static IReadOnlyList<Device> SelectFcmCallDevices(
+        IReadOnlyList<Device> devices, IReadOnlySet<Symbol> ringDeviceIds)
+    {
+        // A phone that rings through CallKit must not also raise a banner, and the two are
+        // separate rows - SessionHash is what says they're one installation. An empty hash
+        // (legacy rows) matches nothing, so it can't silence an unrelated device.
+        // Only a ring APNs actually accepted suppresses: an unconfigured, failed or rejected one
+        // would otherwise leave that iPhone with neither a CallKit ring nor a banner.
+        var voipSessionHashes = devices
+            .Where(d => d.DeviceType == DeviceType.iOSVoipApp
+                && !d.SessionHash.IsEmpty
+                && ringDeviceIds.Contains(d.DeviceId))
+            .Select(d => d.SessionHash)
+            .ToHashSet();
+        return devices
+            .Where(d => d.DeviceType.IsFcm() && !voipSessionHashes.Contains(d.SessionHash))
+            .ToList();
+    }
+
     // Private methods
 
     private async Task SendChatMessageNotification(
@@ -969,7 +1014,13 @@ public class NotificationsBackend(IServiceProvider services)
         notification = items;
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
         var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
-        devices = devices.Where(d => d.DeviceType != DeviceType.iOSPttApp).ToList();
+        if (notification is CallNotification call) {
+            var ringDeviceIds = await SendCallRing(call, devices, cancellationToken).ConfigureAwait(false);
+            devices = SelectFcmCallDevices(devices, ringDeviceIds);
+        }
+        else
+            devices = devices.Where(d => d.DeviceType.IsFcm()).ToList();
+
         if (devices.Count == 0) {
             DebugLog?.LogDebug("No recipient devices found for notification #{NotificationId}",
                 notification.Id);
@@ -1028,7 +1079,7 @@ public class NotificationsBackend(IServiceProvider services)
             var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken)
                 .ConfigureAwait(false);
             var deviceIds = devices
-                .Where(d => d.DeviceType != DeviceType.iOSPttApp)
+                .Where(d => d.DeviceType.IsFcm())
                 .Select(d => d.DeviceId)
                 .ToList();
             DebugLog?.LogDebug("OnConverge: sending. UserId={UserId}, Pending#={Count}, DeviceIds#={DeviceIdCount}",
@@ -1264,6 +1315,33 @@ public class NotificationsBackend(IServiceProvider services)
         return await kvas.ChatUserSettings(chatId)
             .Get(x => x.NotificationMode, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    private async Task<IReadOnlySet<Symbol>> SendCallRing(
+        CallNotification notification, IReadOnlyList<Device> devices, CancellationToken cancellationToken)
+    {
+        // A ring that never went out must not cost the recipient their banner too, so anything
+        // the APNs client throws - a missing key file included - is "nothing delivered".
+        var voipDeviceIds = SelectVoipCallDevices(devices).Select(d => d.DeviceId).ToList();
+        if (voipDeviceIds.Count == 0)
+            return NoDeviceIds;
+
+        var conversationId = ConversationId.Parse(notification.SimilarityKey);
+        try {
+            return await ApnsClient
+                .SendCallRing(
+                    conversationId,
+                    notification.AuthorId.Require(),
+                    notification.Title,
+                    notification.HasVideo,
+                    voipDeviceIds,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogError(e, "Call ring failed for conversation '{ConversationId}'", conversationId);
+            return NoDeviceIds;
+        }
     }
 
     private async Task SendPttWake(

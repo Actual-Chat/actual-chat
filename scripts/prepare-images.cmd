@@ -22,6 +22,7 @@
     for %%N in (message-ellipse) do (
         call :rasterize %iconDir%\%%N.svg %%N || exit /b 1
     )
+    call :rasterize src\nodejs\images\voxt-icon-white.svg call-icon || exit /b 1
     exit /b 0
 
     :rasterize
@@ -70,3 +71,5 @@ node scripts/generate-ios-cat-pngs.mjs
 for name in $iconNames; do
     rasterize "$iconDir/${name}.svg" "$name"
 done
+# The CallKit template icon: white on transparent, which is exactly what the system masks.
+rasterize "src/nodejs/images/voxt-icon-white.svg" "call-icon"
