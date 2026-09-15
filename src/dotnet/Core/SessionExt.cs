@@ -27,7 +27,7 @@ public static class SessionExt
             return false;
 
         var id = sessionId.AsSpan();
-        if (id[0] == CoreConstants.Session.ApiKeyPrefix)
+        if (id[0] is CoreConstants.Session.ApiKeyPrefix or CoreConstants.Session.OAuthPrefix)
             id = id[1..];
         return Alphabet.AlphaNumericDash.IsMatch(id);
     }
@@ -35,12 +35,17 @@ public static class SessionExt
     public static Session NewApiKey()
         => new (CoreConstants.Session.ApiKeyPrefix + ApiKeyGenerator.Next());
 
+    public static Session NewOAuth()
+        => new (CoreConstants.Session.OAuthPrefix + ApiKeyGenerator.Next());
+
     extension(Session session)
     {
         public SessionKind Kind
-            => session.Id.StartsWith(CoreConstants.Session.ApiKeyPrefix)
-                ? SessionKind.ApiKey
-                : SessionKind.Session;
+            => session.Id[0] switch {
+                CoreConstants.Session.ApiKeyPrefix => SessionKind.ApiKey,
+                CoreConstants.Session.OAuthPrefix => SessionKind.OAuth,
+                _ => SessionKind.Session,
+            };
 
         public string IdPrefix
             => session.Id.Length >= CoreConstants.Session.IdPrefixLength

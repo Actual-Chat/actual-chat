@@ -480,7 +480,7 @@ public partial class Chats(IServiceProvider services) : IChats
 
         // Null rather than false for a regular session: an entry an API key wrote or rewrote
         // stays marked after the author edits it by hand.
-        var isViaApi = session.Kind is SessionKind.ApiKey ? true : (bool?)null;
+        var isViaApi = session.Kind is SessionKind.ApiKey or SessionKind.OAuth ? true : (bool?)null;
         ChatEntry textEntry;
         if (localId is { } vLocalId) {
             // Update
