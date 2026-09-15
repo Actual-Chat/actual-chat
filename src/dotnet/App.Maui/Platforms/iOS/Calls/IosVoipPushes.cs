@@ -1,4 +1,5 @@
 using ActualChat.App.Maui.Services;
+using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Diagnostics;
 using CoreFoundation;
@@ -18,6 +19,7 @@ public class IosVoipPushes : PKPushRegistryDelegate
     public static IosVoipPushes Instance { get; } = new();
 
     private readonly PKPushRegistry _registry = new(DispatchQueue.MainQueue);
+    private string _token = "";
     private ILogger Log => field ??= StaticLog.For<IosVoipPushes>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.IosCalls);
 
@@ -25,6 +27,17 @@ public class IosVoipPushes : PKPushRegistryDelegate
     {
         _registry.Delegate = this;
         _registry.DesiredPushTypes = new NSSet<NSString>(PKPushType.Voip);
+    }
+
+    // Once per scope: a sign-out removes the token's row on the server along with the FCM one,
+    // but PushKit re-delivers the credentials only on launch, so the next sign-in must re-register
+    // the token it already has.
+    public Task RegisterToken(IServiceProvider scopedServices, CancellationToken cancellationToken)
+    {
+        var token = Volatile.Read(ref _token);
+        return token.IsNullOrEmpty()
+            ? Task.CompletedTask
+            : RegisterToken(scopedServices, token, cancellationToken);
     }
 
     public override void DidUpdatePushCredentials(
@@ -37,21 +50,9 @@ public class IosVoipPushes : PKPushRegistryDelegate
         }
 
         Log.LogInformation("DidUpdatePushCredentials: token received, length={Length}", token.Length);
-        _ = DispatchToBlazor(async c => {
-                // The token arrives before sign-in on a fresh install, and registering it
-                // against a guest account silently binds it to nobody.
-                var accountUI = c.GetRequiredService<AccountUI>();
-                await accountUI.WhenReady.ConfigureAwait(false);
-                await accountUI.OwnAccount.Computed
-                    .When(x => !x.IsGuest, CancellationToken.None)
-                    .ConfigureAwait(false);
-
-                DebugLog?.LogInformation("DidUpdatePushCredentials: registering the VoIP token");
-                var mauiNotifications = c.GetRequiredService<MauiNotifications>();
-                await mauiNotifications
-                    .RefreshNotificationToken(token, DeviceType.iOSVoipApp)
-                    .ConfigureAwait(false);
-            },
+        Volatile.Write(ref _token, token);
+        _ = DispatchToBlazor(
+            c => RegisterToken(c, token, c.AppUIHub().StopToken),
             "DidUpdatePushCredentials");
     }
 
@@ -68,5 +69,25 @@ public class IosVoipPushes : PKPushRegistryDelegate
         // Reporting is not optional and cannot be deferred to a scope that may not exist:
         // a push that returns without one costs the app its VoIP delivery.
         IosCalls.Instance.ReportIncomingCall(conversationId, callerName, hasVideo, completion);
+    }
+
+    // Private methods
+
+    private async Task RegisterToken(
+        IServiceProvider scopedServices, string token, CancellationToken cancellationToken)
+    {
+        // Registering before sign-in would bind the token to nobody. A launch registers twice,
+        // from here and from the bridge, which the server treats as one refresh.
+        var accountUI = scopedServices.GetRequiredService<AccountUI>();
+        await accountUI.WhenReady.ConfigureAwait(false);
+        await accountUI.OwnAccount.Computed
+            .When(x => !x.IsGuest, cancellationToken)
+            .ConfigureAwait(false);
+
+        DebugLog?.LogInformation("RegisterToken: registering the VoIP token");
+        var mauiNotifications = scopedServices.GetRequiredService<MauiNotifications>();
+        await mauiNotifications
+            .RefreshNotificationToken(token, DeviceType.iOSVoipApp, cancellationToken)
+            .ConfigureAwait(false);
     }
 }

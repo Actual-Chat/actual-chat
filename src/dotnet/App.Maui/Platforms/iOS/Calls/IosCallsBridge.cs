@@ -33,6 +33,11 @@ public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDispo
         // call is skipped by EndRingingCalls, so nothing else would ever take it down.
         foreach (var chatId in IosCalls.Instance.ListCallsNeedingWatch())
             StartCallEndWatch(chatId);
+        _ = BackgroundTask.Run(
+            () => IosVoipPushes.Instance.RegisterToken(Hub.Services, _stopToken),
+            Log,
+            "VoIP token registration failed",
+            _stopToken);
     }
 
     public void Dispose()
