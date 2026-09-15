@@ -30,10 +30,10 @@ public interface IInvitesBackend : IComputeService, IBackendService
 public sealed partial record InvitesBackend_Revoke(
     [property: DataMember, Key(0)] Session Session,
     [property: DataMember, Key(1)] string InviteId
-) : ISessionCommand<Unit>, IHasShardKey<string>
+) : ISessionCommand<Unit>, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public string ShardKey => InviteId;
+    public ShardKey ShardKey => ShardKey.New(InviteId);
 }
 
 /// <summary>
@@ -44,10 +44,10 @@ public sealed partial record InvitesBackend_Revoke(
 public sealed partial record InvitesBackend_Use(
     [property: DataMember, Key(0)] Session Session,
     [property: DataMember, Key(1)] string InviteId
-) : ISessionCommand<Invite>, IHasShardKey<string>
+) : ISessionCommand<Invite>, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public string ShardKey => InviteId;
+    public ShardKey ShardKey => ShardKey.New(InviteId);
 }
 
 /// <summary>
@@ -57,8 +57,8 @@ public sealed partial record InvitesBackend_Use(
 // ReSharper disable once InconsistentNaming
 public sealed partial record InvitesBackend_Generate(
     [property: DataMember, Key(0)] Invite Invite
-) : ICommand<Invite>, IBackendCommand, IHasShardKey<Unit>
+) : ICommand<Invite>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public Unit ShardKey => default;
+    public ShardKey ShardKey => default;
 }

@@ -6,8 +6,8 @@ public partial record ChatEntryChangedEvent(
     [property: DataMember] AuthorFull Author,
     [property: DataMember] ChangeKind ChangeKind,
     [property: DataMember] ChatEntry? OldEntry
-) : EventCommand, IHasShardKey<ChatId>
+) : EventCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => Entry.ChatId;
+    public ShardKey ShardKey => Entry.ChatId.ShardKey;
 }

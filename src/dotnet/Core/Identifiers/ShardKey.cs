@@ -1,23 +1,87 @@
 namespace ActualChat;
 
-// GenerateType.VersionTolerant is not applicable to unmanaged structs (MEMPACK041)
-
-/// <summary>
-/// A shard key for RPC methods addressing a specific shard: the call is routed
-/// to shard index <c>Value mod ShardCount</c> of the target service's shard scheme.
-/// </summary>
 [StructLayout(LayoutKind.Auto)]
 [DataContract, MessagePackObject]
 [MessagePackFormatter(typeof(Serialization.Internal.ShardKeyMessagePackFormatter))]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
 public readonly partial record struct ShardKey(
-    [property: DataMember(Order = 0), Key(0)] int Value)
+    [property: DataMember(Order = 0), Key(0)] uint Value
+    ) : IStringLike<ShardKey>, IComparable<ShardKey>
 {
-    public static ShardKey New(int value) => new(value);
+    public const int MaxDigitCount = 8;
 
-    public override string ToString() => Value.Format();
+    private static readonly string[] HexFormats = ["", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8"];
+    private static readonly string[] OneDigitStrings = Enumerable.Range(0, 16)
+        .Select(x => x.ToString(HexFormats[1])).ToArray();
+    private static readonly string[] TwoDigitStrings = Enumerable.Range(0, 256)
+        .Select(x => x.ToString(HexFormats[2])).ToArray();
 
-    // Conversion
+    string IStringLike.Value => ToString();
 
-    public static implicit operator int(ShardKey shardKey) => shardKey.Value;
+    public static ShardKey New(uint value) => new(value);
+    public static ShardKey New(int value) => new(unchecked((uint)value));
+    public static ShardKey New(string? value) => value is null ? default : New(value.GetXxHash3());
+    public static ShardKey New(Symbol value) => New(value.Value.GetXxHash3());
+
+    public uint GetValue(int digitCount)
+    {
+        if (digitCount <= 0)
+            return 0;
+        digitCount = Math.Min(MaxDigitCount, digitCount);
+
+        var shift = (MaxDigitCount - digitCount) << 2;
+        var mask = uint.MaxValue >> shift;
+        return Value & mask;
+    }
+
+    public override string ToString()
+        => Value.ToString(HexFormats[MaxDigitCount]);
+
+    public string ToString(int digitCount)
+    {
+        digitCount = Math.Clamp(digitCount, 0, MaxDigitCount);
+        var value = GetValue(digitCount);
+        return digitCount switch {
+            0 => "",
+            1 => OneDigitStrings[value],
+            2 => TwoDigitStrings[value],
+            _ => value.ToString(HexFormats[digitCount]),
+        };
+    }
+
+    public int CompareTo(ShardKey other)
+        => Value.CompareTo(other.Value);
+
+    public static ShardKey Parse(string? s)
+        => TryParse(s, out var result) ? result : throw StandardError.Format<ShardKey>(s);
+
+    public static ShardKey Parse(string? s, int startIndex)
+        => TryParse(s, startIndex, out var result) ? result : throw StandardError.Format<ShardKey>(s);
+
+    public static bool TryParse(string? s, out ShardKey result)
+        => TryParse(s, MaxDigitCount - (s?.Length ?? 0), out result);
+
+    public static bool TryParse(string? s, int startIndex, out ShardKey result)
+    {
+        result = default;
+        if (s.IsNullOrEmpty() || startIndex is < 0 or >= MaxDigitCount || s.Length > MaxDigitCount - startIndex)
+            return false;
+
+        var value = 0u;
+        foreach (var c in s) {
+            var digit = c switch {
+                >= '0' and <= '9' => c - '0',
+                >= 'a' and <= 'f' => c - 'a' + 10,
+                >= 'A' and <= 'F' => c - 'A' + 10,
+                _ => -1,
+            };
+            if (digit < 0)
+                return false;
+
+            value = (value << 4) | (uint)digit;
+        }
+
+        result = new ShardKey(value << ((MaxDigitCount - startIndex - s.Length) * 4));
+        return true;
+    }
 }

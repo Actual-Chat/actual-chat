@@ -1,7 +1,31 @@
 namespace ActualChat.Core.Server.UnitTests.Sharding;
 
-public class MeshRefResolversTest(ITestOutputHelper @out) : TestBase(@out)
+public sealed class MeshRefResolversTest(ITestOutputHelper @out) : TestBase(@out)
 {
+    [Fact]
+    public void MeshRefsShouldResolveToThemselves()
+    {
+        // arrange
+        MeshRef[] refs = [
+            MeshRef.None,
+            MeshRef.ThisNodeAlias,
+            MeshRef.ZeroShard,
+            MeshRef.Node(NodeRef.Parse("abcdef")),
+            MeshRef.Shard(new ShardKey(0x80000000)),
+            MeshRef.Shard(ShardScheme.ChatBackend, new ShardKey(uint.MaxValue)),
+        ];
+        var resolver = MeshRefResolvers.Get<MeshRef>();
+        var runtimeResolver = (MeshRefResolver<MeshRef>)MeshRefResolvers.Get(typeof(MeshRef));
+        var untypedResolver = MeshRefResolvers.GetUntyped(typeof(MeshRef));
+
+        // act, assert
+        foreach (var meshRef in refs) {
+            resolver(meshRef).Should().Be(meshRef);
+            runtimeResolver(meshRef).Should().Be(meshRef);
+            untypedResolver(meshRef).Should().Be(meshRef);
+        }
+    }
+
     [Fact]
     public void BasicTest()
     {
@@ -10,27 +34,27 @@ public class MeshRefResolversTest(ITestOutputHelper @out) : TestBase(@out)
         var placeId = PlaceId.New();
 
         var r0 = MeshRefResolvers.Get<MeshRefResolversTest>();
-        r0.Invoke(this).Should().Be(MeshRef.Shard(GetHashCode()));
+        r0.Invoke(this).Should().Be(MeshRef.Shard(ShardKey.New(GetHashCode())));
         var r0u = MeshRefResolvers.GetUntyped(typeof(MeshRefResolversTest));
-        r0u.Invoke(this).Should().Be(MeshRef.Shard(GetHashCode()));
+        r0u.Invoke(this).Should().Be(MeshRef.Shard(ShardKey.New(GetHashCode())));
 
         var r1 = MeshRefResolvers.Get<ShardKey>();
-        r1.Invoke(ShardKey.New(0)).Should().Be(MeshRef.Shard(0));
-        r1.Invoke(ShardKey.New(10)).Should().Be(MeshRef.Shard(10));
+        r1.Invoke(ShardKey.New(0)).Should().Be(MeshRef.Shard(ShardKey.New(0)));
+        r1.Invoke(ShardKey.New(10)).Should().Be(MeshRef.Shard(ShardKey.New(10)));
 
         var r1u = MeshRefResolvers.GetUntyped(typeof(ShardKey));
-        r1u.Invoke(ShardKey.New(0)).Should().Be(MeshRef.Shard(0));
-        r1u.Invoke(ShardKey.New(10)).Should().Be(MeshRef.Shard(10));
+        r1u.Invoke(ShardKey.New(0)).Should().Be(MeshRef.Shard(ShardKey.New(0)));
+        r1u.Invoke(ShardKey.New(10)).Should().Be(MeshRef.Shard(ShardKey.New(10)));
 
         var r2 = MeshRefResolvers.Get<ShardKey?>();
-        r2.Invoke(ShardKey.New(0)).Should().Be(MeshRef.Shard(0));
-        r2.Invoke(ShardKey.New(10)).Should().Be(MeshRef.Shard(10));
-        r2.Invoke(null).Should().Be(MeshRef.Shard(0));
+        r2.Invoke(ShardKey.New(0)).Should().Be(MeshRef.Shard(ShardKey.New(0)));
+        r2.Invoke(ShardKey.New(10)).Should().Be(MeshRef.Shard(ShardKey.New(10)));
+        r2.Invoke(null).Should().Be(MeshRef.Shard(ShardKey.New(0)));
 
         var r2u = MeshRefResolvers.GetUntyped(typeof(ShardKey?));
-        r2u.Invoke(ShardKey.New(0)).Should().Be(MeshRef.Shard(0));
-        r2u.Invoke(ShardKey.New(10)).Should().Be(MeshRef.Shard(10));
-        r2u.Invoke(null).Should().Be(MeshRef.Shard(0));
+        r2u.Invoke(ShardKey.New(0)).Should().Be(MeshRef.Shard(ShardKey.New(0)));
+        r2u.Invoke(ShardKey.New(10)).Should().Be(MeshRef.Shard(ShardKey.New(10)));
+        r2u.Invoke(null).Should().Be(MeshRef.Shard(ShardKey.New(0)));
 
         var r3 = MeshRefResolvers.Get<NodeRef>();
         r3.Invoke(nodeA).Should().Be(MeshRef.Node(nodeA));
@@ -41,11 +65,11 @@ public class MeshRefResolversTest(ITestOutputHelper @out) : TestBase(@out)
         r3n.Invoke(null).Should().Be(MeshRef.None);
 
         var r4 = MeshRefResolvers.Get<PlaceId>();
-        r4.Invoke(placeId).ShardRef.Key.Should().Be(placeId.Value.GetXxHash3());
+        r4.Invoke(placeId).ShardRef.Key.Should().Be(placeId.ShardKey);
 
         var r5 = MeshRefResolvers.Get<TestShardCommand>();
-        r5.Invoke(new TestShardCommand(10)).Should().Be(MeshRef.Shard(10));
-        r5.Invoke(null!).Should().Be(MeshRef.Shard(0));
+        r5.Invoke(new TestShardCommand(10)).Should().Be(MeshRef.Shard(ShardKey.New(10)));
+        r5.Invoke(null!).Should().Be(MeshRef.Shard(ShardKey.New(0)));
 
         var r6 = MeshRefResolvers.Get<TestNodeCommand>();
         r6.Invoke(new TestNodeCommand(nodeA)).Should().Be(MeshRef.Node(nodeA));
@@ -54,8 +78,8 @@ public class MeshRefResolversTest(ITestOutputHelper @out) : TestBase(@out)
 
     public sealed record TestNodeCommand(NodeRef NodeRef) : IHasNodeRef;
 
-    public sealed record TestShardCommand(int Value) : IHasShardKey<ShardKey>
+    public sealed record TestShardCommand(int Value) : IHasShardKey
     {
-        ShardKey IHasShardKey<ShardKey>.ShardKey => ShardKey.New(Value);
+        ShardKey IHasShardKey.ShardKey => ShardKey.New(Value);
     }
 }

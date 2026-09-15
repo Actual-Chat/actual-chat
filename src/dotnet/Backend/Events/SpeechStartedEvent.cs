@@ -9,8 +9,8 @@ public partial record SpeechStartedEvent(
     [property: DataMember] ChatId ChatId,
     [property: DataMember] AuthorId AuthorId,
     [property: DataMember] Moment StartedAt
-) : EventCommand, IHasShardKey<ChatId>
+) : EventCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => ChatId;
+    public ShardKey ShardKey => ChatId.ShardKey;
 }

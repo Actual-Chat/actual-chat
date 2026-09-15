@@ -23,8 +23,8 @@ public interface IReactionsBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public sealed partial record ReactionsBackend_React(
     [property: DataMember, Key(0)] Reaction Reaction
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatEntryId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatEntryId ShardKey => Reaction.EntryId;
+    public ShardKey ShardKey => Reaction.EntryId.ShardKey;
 }

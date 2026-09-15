@@ -7,8 +7,8 @@ public partial record ReactionChangedEvent(
     [property: DataMember] AuthorFull Author,
     [property: DataMember] AuthorFull ReactionAuthor,
     [property: DataMember] ChangeKind ChangeKind
-) : EventCommand, IHasShardKey<ChatId>
+) : EventCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => Entry.ChatId;
+    public ShardKey ShardKey => Entry.ChatId.ShardKey;
 }

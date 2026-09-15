@@ -24,10 +24,10 @@ public sealed partial record ExternalContactHashesBackend_Change(
     [property: DataMember, Key(0)] UserDeviceId Id,
     [property: DataMember, Key(1)] long? ExpectedVersion,
     [property: DataMember, Key(2)] Change<ExternalContactsHash> Change
-) : ICommand<ExternalContactsHash?>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<ExternalContactsHash?>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => Id.OwnerId;
+    public ShardKey ShardKey => Id.OwnerId.ShardKey;
 }
 
 /// <summary>
@@ -37,8 +37,8 @@ public sealed partial record ExternalContactHashesBackend_Change(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContactHashesBackend_RemoveAccount(
     [property: DataMember, Key(0)] UserId UserId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }

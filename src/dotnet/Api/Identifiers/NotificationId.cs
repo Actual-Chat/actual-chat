@@ -28,6 +28,9 @@ public sealed partial class NotificationId : StringIdentifier, IStringIdentifier
     [IgnoreDataMember]
     public string SimilarityKey { get; }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override ShardKey ShardKey => UserId.ShardKey;
+
     // Factories and constructors
 
     public static NotificationId New(UserId userId, NotificationKind kind, string similarityKey)

@@ -15,15 +15,13 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<PrincipalId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<PrincipalId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public partial class PrincipalId : StringIdentifier, IStringIdentifier<PrincipalId>, IHasShardKey<string>
+public partial class PrincipalId : ContentId, IStringIdentifier<PrincipalId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<PrincipalId>();
 
     [IgnoreDataMember]
     public PrincipalKind Kind { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember]
-    public virtual string ShardKey => Value;
 
     protected PrincipalId(string value, PrincipalKind kind) : base(value)
         => Kind = kind;

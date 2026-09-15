@@ -24,8 +24,8 @@ public interface IGrabStatusesBackend : IComputeService, IBackendService
 public sealed partial record GrabStatusesBackend_Change(
     [property: DataMember, Key(0)] Symbol Id,
     [property: DataMember, Key(1)] bool IsSuccessful
-) : ICommand<GrabStatus>, IBackendCommand, IHasShardKey<Symbol>
+) : ICommand<GrabStatus>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public Symbol ShardKey => Id;
+    public ShardKey ShardKey => ShardKey.New(Id.Value);
 }

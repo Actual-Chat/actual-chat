@@ -84,10 +84,10 @@ public sealed partial record ContactsBackend_Change(
     [property: DataMember, Key(0)] ContactId Id,
     [property: DataMember, Key(1)] long? ExpectedVersion,
     [property: DataMember, Key(2)] Change<Contact> Change
-) : ICommand<Contact?>, IBackendCommand, IHasShardKey<ContactId>
+) : ICommand<Contact?>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ContactId ShardKey => Id;
+    public ShardKey ShardKey => Id.ShardKey;
 }
 
 /// <summary>
@@ -97,10 +97,10 @@ public sealed partial record ContactsBackend_Change(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_Touch(
     [property: DataMember, Key(0)] ContactId Id
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ContactId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ContactId ShardKey => Id;
+    public ShardKey ShardKey => Id.ShardKey;
 }
 
 /// <summary>
@@ -111,10 +111,10 @@ public sealed partial record ContactsBackend_Touch(
 public sealed partial record ContactsBackend_SetIsBlocked(
     [property: DataMember, Key(0)] ContactId Id,
     [property: DataMember, Key(1)] bool IsBlocked
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ContactId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ContactId ShardKey => Id;
+    public ShardKey ShardKey => Id.ShardKey;
 }
 
 /// <summary>
@@ -124,10 +124,10 @@ public sealed partial record ContactsBackend_SetIsBlocked(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_RemoveAccount(
     [property: DataMember, Key(0)] UserId UserId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }
 
 /// <summary>
@@ -137,10 +137,10 @@ public sealed partial record ContactsBackend_RemoveAccount(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_RemoveChatContacts(
     [property: DataMember, Key(0)] ChatId ChatId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => ChatId;
+    public ShardKey ShardKey => ChatId.ShardKey;
 }
 
 /// <summary>
@@ -150,10 +150,10 @@ public sealed partial record ContactsBackend_RemoveChatContacts(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_Greet(
     [property: DataMember, Key(0)] UserId UserId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }
 
 /// <summary>
@@ -165,10 +165,10 @@ public sealed partial record ContactsBackend_ChangePlaceMembership(
     [property: DataMember, Key(0)] PlaceId PlaceId,
     [property: DataMember, Key(1)] UserId OwnerId,
     [property: DataMember, Key(2)] bool HasLeft
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<PlaceId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public PlaceId ShardKey => PlaceId;
+    public ShardKey ShardKey => PlaceId.ShardKey;
 }
 
 /// <summary>
@@ -178,10 +178,10 @@ public sealed partial record ContactsBackend_ChangePlaceMembership(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_PublishCopiedChat(
     [property: DataMember, Key(0)] PlaceChatId ChatId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => ChatId;
+    public ShardKey ShardKey => ChatId.ShardKey;
 }
 
 /// <summary>
@@ -191,10 +191,10 @@ public sealed partial record ContactsBackend_PublishCopiedChat(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_ReviewExternalContactName(
     [property: DataMember, Key(0)] ContactId Id
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ContactId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ContactId ShardKey => Id;
+    public ShardKey ShardKey => Id.ShardKey;
 }
 
 /// <summary>
@@ -206,8 +206,8 @@ public sealed partial record ContactsBackend_ChangeThreadContact(
     [property: DataMember, Key(0)] ContactId Id,
     [property: DataMember, Key(1)] long? ExpectedVersion,
     [property: DataMember, Key(2)] Change<ThreadContact> Change
-) : ICommand<ThreadContact?>, IBackendCommand, IHasShardKey<ContactId>
+) : ICommand<ThreadContact?>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ContactId ShardKey => Id;
+    public ShardKey ShardKey => Id.ShardKey;
 }

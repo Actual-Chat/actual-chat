@@ -38,7 +38,7 @@ Non-goals (for now):
 ## Current State (research summary)
 
 **Identifiers** (`src/dotnet/Api/Identifiers/`, base in
-`src/dotnet/Core/Identifiers/StringIdentifier.cs`):
+`src/dotnet/Core/Identifiers/ContentId.cs`):
 - All IDs are flat strings over `Alphabet.AlphaNumeric` (A–Z a–z 0–9 only).
   Separators in composite IDs: `-` (ChatId kind prefixes `p-`/`s-`, thread
   suffixes, PeerChatId user pair), `:` (AuthorId/ChatEntryId local id), `~`
@@ -164,7 +164,7 @@ and URL-unreserved, so:
     first; either order is unambiguous).
   - Guest UserId: `acme01.~a1b2c3d4` — guest check moves from `Value[0]` to
     `LocalValue[0]`.
-- `StringIdentifier` gains `InstanceId Instance` and `string LocalValue`
+- `ContentId` gains `InstanceId Instance` and `string LocalValue`
   (both computed at parse time, cached like `HashCode` is today).
 - Generators: server holds its `InstanceId` in config
   (`CoreServerSettings.InstanceId`, empty in cloud); every `IdGenerator` call
@@ -353,9 +353,9 @@ would break connections silently. Plan:
 
 ### Existing abstractions to reuse
 
-- `StringIdentifier` / `IStringIdentifier<T>` + per-type LRU parse caches —
+- `ContentId` / `IStringIdentifier<T>` + per-type LRU parse caches —
   extended, not replaced, for qualified IDs
-  (`src/dotnet/Core/Identifiers/StringIdentifier.cs`).
+  (`src/dotnet/Core/Identifiers/ContentId.cs`).
 - `RandomStringGenerator` + per-type `IdGenerator` statics — ID generation,
   gains the instance-prefix helper.
 - `ShardKeyResolvers` / `IHasShardKey` — unchanged; hashes the full value.
