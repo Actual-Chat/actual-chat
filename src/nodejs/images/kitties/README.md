@@ -184,3 +184,15 @@ references to the old filename separately.
 Checks verify generated output and remapping behavior; visual review is still needed for
 palette quality, geometry, seams and animation. The eight-color limit and compact path
 geometry are authoring constraints, not enforced by the generation command.
+
+## Maintenance and app-review artwork
+
+`chat-maintenance.svg` comes from `ActualChat-Marketing/design/illustrations/chat-maintenance/chat-maintenance-focused.svg` (commit `8f140ae`).
+The six `app-review-*.svg` sources come from `ActualChat-Marketing/design/app-review/*-light.svg` (commit `c9deda5`).
+
+These imports retain the marketing artwork's detailed traced palettes and opaque backgrounds.
+Their palettes exceed the eight-color guideline above to preserve the supplied artwork.
+Background rules target `theme-background` and map it to the app's dark background, `#28282e`.
+Review cats use the existing gray/lavender dark palette with interpolated shading; maintenance retains its blue/purple colors with softer highlights.
+The maintenance source includes a body underlay derived from its existing outline paths, preserving white body regions that originally relied on the white canvas.
+Regenerate their dark siblings with the same commands as the other kitties.
