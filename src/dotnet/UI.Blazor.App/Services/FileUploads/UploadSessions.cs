@@ -6,30 +6,40 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 {
     private readonly Task _cleanupTask;
     private readonly IUploadSessionRepo _repo;
-    private readonly UploadOperations _uploadOperations;
+    private readonly IUploadOperations _uploadOperations;
     private readonly ConcurrentDictionary<string, SessionRef> _sessions = new ();
     private readonly Func<UploadSessionSnapshot, bool, CancellationToken, Task> _storage;
 
     private UploadSessionsState UploadSessionsState => Hub.UploadSessionsState;
 
-    public UploadSessions(AppUIHub hub) :base(hub)
+    public UploadSessions(AppUIHub hub) : this(hub, new UploadOperations(hub))
+    {
+    }
+
+    // A test-only seam: production always goes through the ctor above,
+    // which builds the real UploadOperations
+    internal UploadSessions(AppUIHub hub, IUploadOperations uploadOperations) : base(hub)
     {
         _repo = hub.Services.GetRequiredService<IUploadSessionRepo>();
-        _uploadOperations = new UploadOperations(hub);
+        _uploadOperations = uploadOperations;
         _cleanupTask = BackgroundTask.Run(Cleanup);
         _storage = CreateStorage();
     }
 
-    public async Task<string> CreateSession(IFileProvider fileProvider, MetadataBag metadata, string mediaScope)
+    public async Task<string> CreateSession(
+        IFileProvider fileProvider,
+        MetadataBag metadata,
+        string mediaScope,
+        byte[]? placeholder = null)
     {
-        if (fileProvider == null)
+        if (fileProvider is null)
             throw new ArgumentNullException(nameof(fileProvider));
 
         fileProvider.Initialize(Hub.Services);
         await fileProvider.PrepareForSaving().ConfigureAwait(false);
 
         var now = _uploadOperations.Now();
-        var snapshot = UploadSession.NewUploadSnapshot(fileProvider, metadata, now, mediaScope);
+        var snapshot = UploadSession.NewUploadSnapshot(fileProvider, metadata, now, mediaScope, placeholder);
         var session = NewSession(snapshot);
         // Register in memory before persisting, so cleanup never reclaims it before the caller references it.
         _sessions[session.SessionId] = new SessionRef(session);
@@ -68,18 +78,33 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         return await session.WhenMediaReserved.ConfigureAwait(false);
     }
 
-    public void AddReference(string sessionId)
+    public void AddReference(string sessionId, bool isMediaBound = false)
     {
+        // isMediaBound marks the session's reserved media as belonging to a posted message. It's
+        // sticky, not per-release: reference counting means an unrelated release can be the last one
         if (!_sessions.TryGetValue(sessionId, out var sessionRef))
             throw new InvalidOperationException($"Session {sessionId} not found");
 
         Interlocked.Increment(ref sessionRef.ReferenceCount);
+        if (isMediaBound)
+            Volatile.Write(ref sessionRef.IsMediaBound, true);
     }
 
-    public void ReleaseReference(string sessionId, bool cancel = true)
+    public void ClearMediaBound(string sessionId)
     {
-        if (!_sessions.TryGetValue(sessionId, out var sessionRef))
-            throw new InvalidOperationException($"Session {sessionId} not found");
+        // The entry that was going to reference this media was removed or never created, so what's
+        // left is an orphan again - and no later release could work that out on its own
+        if (_sessions.TryGetValue(sessionId, out var sessionRef))
+            Volatile.Write(ref sessionRef.IsMediaBound, false);
+    }
+
+    public void ReleaseReference(string sessionId, bool cancel = true, bool mustKeepFile = false)
+    {
+        // A cleanup racing this call may have released and deleted the session already
+        if (!_sessions.TryGetValue(sessionId, out var sessionRef)) {
+            Log.LogDebug("Session '{SessionId}' is already released", sessionId);
+            return;
+        }
 
         var newCount = Interlocked.Decrement(ref sessionRef.ReferenceCount);
         if (newCount != 0)
@@ -88,7 +113,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         if (!cancel)
             return;
 
-        ReleaseSessionInternal(sessionRef.Session);
+        ReleaseSessionInternal(sessionRef.Session, mustKeepFile, Volatile.Read(ref sessionRef.IsMediaBound));
     }
 
     public async Task DeleteStaleSession(string sessionId)
@@ -97,7 +122,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             throw StandardError.Constraint($"Session {sessionId} is active");
 
         if (sessionRef is not null) {
-            ReleaseSessionInternal(sessionRef.Session);
+            ReleaseSessionInternal(sessionRef.Session, isMediaBound: Volatile.Read(ref sessionRef.IsMediaBound));
             return;
         }
 
@@ -107,13 +132,18 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
         var fileProvider = snapshot.FileProvider;
         fileProvider.Initialize(Hub.Services);
+        // A completed session's reserved media is bound to a posted message, not an orphan - keep it
+        var reservedMediaId = snapshot.CurrentState == UploadSessionState.Completed ? null : snapshot.ReservedMediaId;
         await DeleteSessionResources(
             sessionId,
             fileProvider,
             snapshot.TranscodedFilePath,
-            snapshot.UploadId).ConfigureAwait(false);
+            snapshot.UploadId,
+            reservedMediaId).ConfigureAwait(false);
         Log.LogDebug("Deleted stale session '{SessionId}' ('{FileName}')", sessionId, fileProvider.Metadata.FileName);
     }
+
+    // Private methods
 
     private UploadSession NewSession(UploadSessionSnapshot snapshot)
     {
@@ -130,26 +160,33 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             UICommander.ShowError(error);
     }
 
-    private void ReleaseSessionInternal(UploadSession session)
+    private void ReleaseSessionInternal(UploadSession session, bool mustKeepFile = false, bool isMediaBound = false)
     {
-        Log.LogDebug("Releasing reference for session '{SessionId}' ('{FileName}')", session.SessionId, session.FileProvider.Metadata.FileName);
+        Log.LogDebug("Releasing reference for session '{SessionId}' ('{FileName}')",
+            session.SessionId,
+            session.FileProvider.Metadata.FileName);
         var completed = session.Cancel();
-        _ = BackgroundTask.Run( async () => {
+        _ = BackgroundTask.Run(async () => {
             await completed.WaitAsync(TimeSpan.FromSeconds(30)).SilentAwait(false);
-            await DeleteSessionInternal(session).ConfigureAwait(false);
+            await DeleteSessionInternal(session, mustKeepFile, isMediaBound).ConfigureAwait(false);
         });
     }
 
-    private async Task DeleteSessionInternal(UploadSession session)
+    private async Task DeleteSessionInternal(UploadSession session, bool mustKeepFile, bool isMediaBound)
     {
         var sessionId = session.SessionId;
         _sessions.TryRemove(sessionId, out _);
         var fileProvider = session.FileProvider;
+        // "Completed" isn't the same predicate as "bound to a posted message": a preset change after
+        // the upload finished discards the session too, and that media really is an orphan
+        var reservedMediaId = isMediaBound ? null : session.MediaId;
         await DeleteSessionResources(
             sessionId,
             fileProvider,
             session.TranscodedFilePath,
-            session.UploadId).ConfigureAwait(false);
+            session.UploadId,
+            reservedMediaId,
+            mustKeepFile).ConfigureAwait(false);
         Log.LogDebug("Deleted session '{SessionId}' ('{FileName}')", sessionId, fileProvider.Metadata.FileName);
     }
 
@@ -196,11 +233,28 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     private bool CheckIfActive(string sessionId)
         => _sessions.ContainsKey(sessionId);
 
-    private async Task DeleteSessionResources(string sessionId, IFileProvider fileProvider, string? transcodedFilePath, UploadId? uploadId)
+    private async Task DeleteSessionResources(
+        string sessionId,
+        IFileProvider fileProvider,
+        string? transcodedFilePath,
+        UploadId? uploadId,
+        MediaId? reservedMediaId = null,
+        bool mustKeepFile = false)
     {
         if (uploadId is not null)
             await _uploadOperations.RemoveUpload(uploadId, CancellationToken.None).ConfigureAwait(false);
-        await fileProvider.ClearForRemoving().ConfigureAwait(false);
+        if (reservedMediaId is { } mediaId) {
+            // The session is being thrown away either way, so a failure here must not block the rest of the cleanup
+            try {
+                await _uploadOperations.RemoveMedia(mediaId, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception e) {
+                Log.LogError(e,
+                    "Failed to remove reserved media '{MediaId}' for session '{SessionId}'", mediaId, sessionId);
+            }
+        }
+        if (!mustKeepFile)
+            await fileProvider.ClearForRemoving().ConfigureAwait(false);
         DeleteFile(transcodedFilePath);
         await _repo.Delete(sessionId).ConfigureAwait(false);
         UploadSessionsState.Remove(sessionId);
@@ -215,9 +269,12 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     }
 
     // Nested types
-    private class SessionRef(UploadSession session)
+
+    private sealed class SessionRef(UploadSession session)
     {
-        public UploadSession Session { get; } = session;
         public long ReferenceCount;
+        // Set once the reserved media belongs to a posted message, so no release may remove it
+        public bool IsMediaBound;
+        public UploadSession Session { get; } = session;
     }
 }
