@@ -190,9 +190,14 @@ public class OAuthGrants(IServiceProvider services) : DbServiceBase<OAuthDbConte
         await foreach (var token in authorizationTokens.ConfigureAwait(false))
             await tokens.TryRevokeAsync(token, cancellationToken).ConfigureAwait(false);
         var sessionId = await GetSessionId(scopedServices, authorization, cancellationToken).ConfigureAwait(false);
-        if (sessionId is not null)
-            await Commander
-                .Call(new AccountsBackend_SignOut(new Session(sessionId), Deactivate: true), true, cancellationToken)
+        if (sessionId is null)
+            return;
+
+        // Signing out a session whose row is already gone would upsert a junk expired row
+        var session = new Session(sessionId);
+        var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
+        if (sessionInfo is not null)
+            await Commander.Call(new AccountsBackend_SignOut(session, Deactivate: true), true, cancellationToken)
                 .ConfigureAwait(false);
     }
 

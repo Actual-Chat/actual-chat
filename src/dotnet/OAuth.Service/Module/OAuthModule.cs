@@ -63,14 +63,18 @@ public sealed class OAuthModule(IServiceProvider moduleServices)
                     aspNetCore.DisableTransportSecurityRequirement();
                 o.AddEventHandler(ServerMetadataExtender.Descriptor);
                 o.AddEventHandler(CimdClientResolver.Descriptor);
+                o.AddEventHandler(RevocationSessionHandler.Descriptor);
             })
             .AddValidation(o => {
                 o.UseLocalServer();
                 o.UseAspNetCore();
             });
         services.AddSingleton<OAuthBearerAuthenticator>();
+        services.AddSingleton<OAuthPruner>()
+            .AddHostedService(c => c.GetRequiredService<OAuthPruner>());
         services.AddSingleton(c => new ServerMetadataExtender(c));
         services.AddScoped(c => new CimdClientResolver(c));
+        services.AddScoped(c => new RevocationSessionHandler(c));
         services.AddHttpClient(CimdClientResolver.HttpClientName, c => {
                 c.Timeout = TimeSpan.FromSeconds(5);
                 c.MaxResponseContentBufferSize = CimdClientResolver.MaxDocumentLength;
