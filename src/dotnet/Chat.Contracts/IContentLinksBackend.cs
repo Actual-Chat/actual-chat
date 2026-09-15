@@ -8,5 +8,5 @@ namespace ActualChat.Chat;
 public interface IContentLinksBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<ContentLinkInfo> GetContentInfo(TypedObjectId contentId, CancellationToken cancellationToken);
+    Task<ContentLinkInfo> GetContentInfo(ContentRef contentRef, CancellationToken cancellationToken);
 }

@@ -5,11 +5,11 @@ namespace ActualChat;
 /// </summary>
 [DataContract, MessagePackObject]
 public partial record ContentLinkInfo(
-    [property: DataMember, Key(0)] TypedObjectId Id,
+    [property: DataMember, Key(0)] ContentRef Id,
     [property: DataMember, Key(1)] string Title,
     [property: DataMember, Key(2)] Picture? Picture,
     [property: DataMember, Key(3)] string Description)
 {
-    public static ContentLinkInfo RemovedOrUnknown(TypedObjectId id)
+    public static ContentLinkInfo RemovedOrUnknown(ContentRef id)
         => new (id, "Removed or Unknown", null, "");
 }

@@ -8,9 +8,9 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 ## Core (`ActualChat.Core`)
 
 ### Identifiers
-- `StringIdentifier` / `IStringIdentifier<T>` — shared string ID, cached hash, parsing, and partition behavior
-- `ObjectId` — domain identifier base extending `StringIdentifier` with a cached `TypedId`
-- `TypedObjectId` — type-prefixed reference retaining its original object ID
+- `StringIdentifier` / `IStringIdentifier<T>` — shared string ID, cached hash, parsing, and shard-key behavior
+- `ContentId` — domain identifier base extending `StringIdentifier` with a cached `ContentRef`
+- `ContentRef` — type-prefixed reference retaining its original content ID
 - `ShardKey` — Unsigned 32-bit routing key with hexadecimal prefix and slice formatting
 - `ISymbolIdentifier<T>` / `SymbolIdentifier` — Symbol-based identifier contract and parsing helpers
 

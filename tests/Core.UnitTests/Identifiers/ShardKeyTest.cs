@@ -103,11 +103,11 @@ public class ShardKeyTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         key.Should().Be(ShardKey.New("abcdef"));
         key.Value.Should().Be(unchecked((uint)"abcdef".GetXxHash3()));
-        userId.TypedId.ShardKey.Should().Be(key);
+        userId.ContentRef.ShardKey.Should().Be(key);
         nodeRef.ShardKey.Should().Be(key);
         ((ISymbolIdentifier)nodeRef).ShardKey.Should().Be(key);
         ((IStringIdentifier)userId).ShardKey.Should().Be(key);
-        ((IStringIdentifier)userId.TypedId).ShardKey.Should().Be(key);
+        ((IStringIdentifier)userId.ContentRef).ShardKey.Should().Be(key);
     }
 
     [Fact]

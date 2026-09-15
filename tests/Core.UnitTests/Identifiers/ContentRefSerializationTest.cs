@@ -2,7 +2,7 @@ using ActualChat.Serialization.Internal;
 
 namespace ActualChat.Core.UnitTests.Identifiers;
 
-public class TypedObjectIdSerializationTest(ITestOutputHelper @out) : TestBase(@out)
+public class ContentRefSerializationTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Theory]
     [InlineData("u:abcdef")]
@@ -10,10 +10,10 @@ public class TypedObjectIdSerializationTest(ITestOutputHelper @out) : TestBase(@
     [InlineData("ce:abcdef:0:1")]
     [InlineData("a:abcdef:1")]
     [InlineData("p:abcdefghij")]
-    public void TypedIdsShouldSerializeAsTheirValue(string value)
+    public void ContentRefsShouldSerializeAsTheirValue(string value)
     {
         // arrange
-        var id = TypedObjectId.Parse(value);
+        var id = ContentRef.Parse(value);
         var options = MessagePackByteSerializer.DefaultOptions;
         var expected = MessagePackSerializer.Serialize(value, options);
 
@@ -22,7 +22,7 @@ public class TypedObjectIdSerializationTest(ITestOutputHelper @out) : TestBase(@
 
         // assert
         bytes.Should().Equal(expected);
-        MessagePackSerializer.Deserialize<TypedObjectId>(expected, options).Should().Be(id);
+        MessagePackSerializer.Deserialize<ContentRef>(expected, options).Should().Be(id);
         MessagePackSerializer.Serialize(id, new MessagePackSerializerOptions(AppMessagePackKeylessResolver.Instance))
             .Should().Equal(expected);
         id.AssertPassesThroughSerializers(Out);
@@ -34,8 +34,8 @@ public class TypedObjectIdSerializationTest(ITestOutputHelper @out) : TestBase(@
     public void JsonDictionaryKeysShouldUseTypedValues(string value)
     {
         // arrange
-        var id = TypedObjectId.Parse(value);
-        var items = new Dictionary<TypedObjectId, int> { [id] = 1 };
+        var id = ContentRef.Parse(value);
+        var items = new Dictionary<ContentRef, int> { [id] = 1 };
         var expected = "{\"" + value + "\":1}";
 
         // act
@@ -50,10 +50,10 @@ public class TypedObjectIdSerializationTest(ITestOutputHelper @out) : TestBase(@
     }
 
     [Fact]
-    public void ContentLinkInfoShouldSerializeWithItsTypedObjectId()
+    public void ContentLinkInfoShouldSerializeWithItsContentRef()
     {
         // arrange
-        var id = ChatId.Parse("abcdef").TypedId;
+        var id = ChatId.Parse("abcdef").ContentRef;
         var info = new ContentLinkInfo(id, "Title", null, "Description");
 
         // act
@@ -61,7 +61,7 @@ public class TypedObjectIdSerializationTest(ITestOutputHelper @out) : TestBase(@
 
         // assert
         copy.Should().Be(info);
-        copy.Id.ObjectId.Should().Be(id.ObjectId);
+        copy.Id.ContentId.Should().Be(id.ContentId);
         copy.Id.Value.Should().Be("c:abcdef");
     }
 }

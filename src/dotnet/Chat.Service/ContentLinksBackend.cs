@@ -1,4 +1,3 @@
-
 namespace ActualChat.Chat;
 
 public class ContentLinksBackend(IServiceProvider services) : IContentLinksBackend
@@ -10,16 +9,16 @@ public class ContentLinksBackend(IServiceProvider services) : IContentLinksBacke
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
 
-    public virtual async Task<ContentLinkInfo> GetContentInfo(TypedObjectId contentId, CancellationToken cancellationToken)
+    public virtual async Task<ContentLinkInfo> GetContentInfo(ContentRef contentRef, CancellationToken cancellationToken)
     {
-        switch (contentId.ObjectId) {
+        switch (contentRef.ContentId) {
             case UserId userId: {
                 var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
                 if (account is null)
-                    return ContentLinkInfo.RemovedOrUnknown(contentId);
+                    return ContentLinkInfo.RemovedOrUnknown(contentRef);
 
                 return new ContentLinkInfo(
-                    contentId,
+                    contentRef,
                     account.Avatar.Name,
                     account.Avatar.Picture,
                     account.Avatar.Bio);
@@ -27,7 +26,7 @@ public class ContentLinksBackend(IServiceProvider services) : IContentLinksBacke
             case ChatId chatId: {
                 var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
                 if (chat is null)
-                    return ContentLinkInfo.RemovedOrUnknown(contentId);
+                    return ContentLinkInfo.RemovedOrUnknown(contentRef);
 
                 var title = chat.Title;
                 if (chatId is PlaceChatId placeChatId) {
@@ -35,8 +34,9 @@ public class ContentLinksBackend(IServiceProvider services) : IContentLinksBacke
                     if (place is not null)
                         title += ", " + place.Title;
                 }
+
                 return new ContentLinkInfo(
-                    contentId,
+                    contentRef,
                     title,
                     chat.Picture.ToPicture(),
                     chat.Description);
@@ -44,7 +44,7 @@ public class ContentLinksBackend(IServiceProvider services) : IContentLinksBacke
             case ChatEntryId chatEntryId: {
                 var textEntry = await ChatsBackend.GetEntry(chatEntryId, cancellationToken).ConfigureAwait(false);
                 if (textEntry is null)
-                    return ContentLinkInfo.RemovedOrUnknown(contentId);
+                    return ContentLinkInfo.RemovedOrUnknown(contentRef);
 
                 var chatId = textEntry.AuthorId.ChatId;
                 var author = await AuthorsBackend.Get(chatId,
@@ -54,11 +54,11 @@ public class ContentLinksBackend(IServiceProvider services) : IContentLinksBacke
                     .ConfigureAwait(false);
 
                 var title = author?.Avatar.Name ?? "Unknown";
-                var chatInfo = await GetContentInfo(chatId.TypedId, cancellationToken).ConfigureAwait(false);
+                var chatInfo = await GetContentInfo(chatId.ContentRef, cancellationToken).ConfigureAwait(false);
                 title += " in " + chatInfo.Title;
                 var text = await GetText(textEntry, cancellationToken).ConfigureAwait(false);
                 return new ContentLinkInfo(
-                    contentId,
+                    contentRef,
                     title,
                     chatInfo.Picture,
                     text);
@@ -67,10 +67,10 @@ public class ContentLinksBackend(IServiceProvider services) : IContentLinksBacke
                 var author = await AuthorsBackend.Get(authorId.ChatId, authorId, RequestedAuthorKind.Full, cancellationToken)
                     .ConfigureAwait(false);
                 if (author is null)
-                    return ContentLinkInfo.RemovedOrUnknown(contentId);
+                    return ContentLinkInfo.RemovedOrUnknown(contentRef);
 
                 return new ContentLinkInfo(
-                    contentId,
+                    contentRef,
                     author.Avatar.Name,
                     author.Avatar.Picture,
                     author.Avatar.Bio);
@@ -78,16 +78,17 @@ public class ContentLinksBackend(IServiceProvider services) : IContentLinksBacke
             case PlaceId placeId: {
                 var place = await PlacesBackend.Get(placeId, cancellationToken).ConfigureAwait(false);
                 if (place is null)
-                    return ContentLinkInfo.RemovedOrUnknown(contentId);
+                    return ContentLinkInfo.RemovedOrUnknown(contentRef);
 
                 return new ContentLinkInfo(
-                    contentId,
+                    contentRef,
                     place.Title,
                     place.Picture.ToPicture(),
                     place.Description);
             }
             default:
-                throw StandardError.NotSupported(contentId.ObjectId.GetType().GetName(), "Unsupported content link type.");
+                throw StandardError.NotSupported(
+                    contentRef.ContentId.GetType().GetName(), "Unsupported content link type.");
         }
     }
 

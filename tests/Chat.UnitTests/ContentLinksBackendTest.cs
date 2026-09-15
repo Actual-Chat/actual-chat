@@ -14,12 +14,12 @@ public class ContentLinksBackendTest
     public async Task MissingObjectsShouldProduceRemovedMetadata(string value)
     {
         // arrange
-        var id = TypedObjectId.Parse(value);
+        var id = ContentRef.Parse(value);
         var accounts = new Mock<IAccountsBackend>(MockBehavior.Strict);
         var chats = new Mock<IChatsBackend>(MockBehavior.Strict);
         var authors = new Mock<IAuthorsBackend>(MockBehavior.Strict);
         var places = new Mock<IPlacesBackend>(MockBehavior.Strict);
-        switch (id.ObjectId) {
+        switch (id.ContentId) {
             case UserId userId:
                 accounts.Setup(x => x.Get(userId, CancellationToken.None)).ReturnsAsync((AccountFull?)null);
                 break;
@@ -63,7 +63,7 @@ public class ContentLinksBackendTest
             Mock.Of<IAuthorsBackend>(MockBehavior.Strict),
             Mock.Of<IPlacesBackend>(MockBehavior.Strict));
         var backend = new ContentLinksBackend(services);
-        var id = RoleId.New(ChatId.Parse("abcdef"), 1).TypedId;
+        var id = RoleId.New(ChatId.Parse("abcdef"), 1).ContentRef;
 
         // act
         var action = () => backend.GetContentInfo(id, CancellationToken.None);

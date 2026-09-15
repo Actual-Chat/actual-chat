@@ -210,7 +210,7 @@ exists. Fix as part of this work.
   This is the summary the prefix should carry — no new summarizer.
 - **Composite identifier pattern** — `PrincipalId` + `PrincipalKind`
   (`Api/Identifiers/PrincipalId.cs:18`, `PrincipalKind.cs`) and `AuthorId`
-  (`AuthorId.cs:18`) are the template for `TranscriberId`: `ObjectId`
+  (`AuthorId.cs:18`) are the template for `TranscriberId`: `StringIdentifier`
   base, `IStringIdentifier<T>` `Format`/`Parse`, the
   `StringLike{Json,NewtonsoftJson,MessagePack,TypeConverter}` attribute set,
   `ParameterComparer(ByValueParameterComparer)`, and `ILruCache<string, T>`
@@ -242,7 +242,7 @@ exists. Fix as part of this work.
   an actual backend to declare.
 - **ActualLab / Fusion** — `RetryDelaySeq` for the ejection backoff schedule,
   `BackgroundTask.Run`, `Memoize`, `ApiArray<T>` / `ApiSet<T>` for serializable
-  collections, `ObjectId` base for the new id type, `StreamStore<T>`,
+  collections, `StringIdentifier` base for the new id type, `StreamStore<T>`,
   `ConfigurationExt.Settings<T>` binding with `__` env overrides.
 - **Test harness** — `TranscriberTestBase.GetAudio(...)`
   (`tests/Transcription.IntegrationTests/TranscriberTestBase.cs:10-36`) and the
@@ -274,7 +274,7 @@ enlists, so the id has to carry a source discriminator alongside a value.
 
 Format: `<source>:<value>`, following the existing `PrincipalId` /
 `PrincipalKind` pattern (`Api/Identifiers/PrincipalId.cs:18`,
-`Api/Identifiers/AuthorId.cs:18`) — a `ObjectId` with a `Kind` parsed
+`Api/Identifiers/AuthorId.cs:18`) — a `StringIdentifier` with a `Kind` parsed
 out of the prefix, `IStringIdentifier<T>` for `Format`/`Parse`, the
 `StringLike{Json,MessagePack,TypeConverter}` attribute set, and the
 `ILruCache<string, T>` interning those files use.
@@ -288,7 +288,7 @@ u:<transcriberKeyId>
 ```csharp
 public enum TranscriberSource { Builtin = 0, User }
 
-public sealed partial class TranscriberId : ObjectId, IStringIdentifier<TranscriberId>
+public sealed partial class TranscriberId : StringIdentifier, IStringIdentifier<TranscriberId>
 {
     public TranscriberSource Source { get; }
     public Symbol Key { get; }   // "soniox" — or the enlisted key's id

@@ -1,10 +1,10 @@
-# Object identifiers and maintenance partitions
+# Content identifiers and maintenance partitions
 
 ## Decisions
 
 Object maintenance is centralized in a persisted Users service. Maintenance mode is
 an enum with `None` meaning normal operation. Active rows identify objects with a
-`TypedObjectId`; the full typed value is the database key, so hash collisions do
+`ContentRef`; the full typed value is the database key, so hash collisions do
 not conflate objects.
 
 Maintenance initially has 16 mesh shards and 256 independently cached data
@@ -20,27 +20,27 @@ ownership.
 
 - `StringIdentifier` and `IStringIdentifier<T>` hold the shared string value,
   cached hash, parsing, comparison, and shard-key behavior.
-- `ObjectId : StringIdentifier` is the base for domain IDs that have a typed pair.
+- `ContentId : StringIdentifier` is the base for domain IDs that have a typed pair.
   Existing concrete identifier strings, equality, and serializer formats stay stable.
-- `TypedObjectId : StringIdentifier` retains its original `ObjectId`. It is not
-  an `ObjectId` subclass. The UI-only `ChatMessageKey` also inherits directly
+- `ContentRef : StringIdentifier` retains its original `ContentId`. It is not
+  a `ContentId` subclass. The UI-only `ChatMessageKey` also inherits directly
   from `StringIdentifier`, without requiring a typed prefix registration.
   Country, email, emoji, interest, language, mention references, notification IDs,
-  phone, stream/transcriber IDs, translation/source IDs, and user-device IDs also
-  remain plain string identifiers.
-- `ObjectId.TypedId` lazily creates its wrapper with `field ??=`.
-- Typed values use `prefix:objectValue`, such as `u:abcdef` or `c:abcdef`.
+  phone, stream/transcriber IDs, translation/source IDs, user-device IDs, emoji
+  references, aliases, external-contact IDs, and upload IDs remain plain string identifiers.
+- `ContentId.ContentRef` lazily creates its wrapper with `field ??=`.
+- Typed values use `prefix:contentIdValue`, such as `u:abcdef` or `c:abcdef`.
   Prefixes and parsers are registered explicitly by the module that owns the IDs.
-  Alias, contact, and conversation prefixes are `~`, `ct`, and `conv`.
+  Contact and conversation prefixes are `ct` and `conv`.
   Chat subtypes share the chat prefix. Unknown prefixes fail parsing; unregistered
-  ID types fail typed-wrapper construction instead of acquiring unstable CLR names.
+  ID types fail content-reference construction instead of acquiring unstable CLR names.
 - One non-generic `IHasShardKey` exposes `ShardKey ShardKey { get; }`.
   String and symbol identifiers implement it by default; individual IDs own any
   routing rule based on a parent chat, owner, or other part of the identifier.
 - `ShardKey` stores a full unsigned 32-bit integer without masking. Its standard
   string is eight lowercase hex digits. String hashing uses the shared xxHash3
   helper. Cache hex format strings and all one- and two-digit result strings.
-- `TypedObjectId.ShardKey` delegates to `ObjectId.ShardKey`, including the
+- `ContentRef.ShardKey` delegates to `ContentId.ShardKey`, including the
   underlying ID's custom routing rule.
 - Resolvers return `ShardKey` and prefer `IHasShardKey` before registered base
   resolvers. Reject registrations for any type whose inheritance implements that
@@ -58,19 +58,21 @@ ownership.
 
 ## Content link migration
 
-Replace `ContentId` and its `ContentKind` enum with `TypedObjectId`.
-`ContentLinksBackend` dispatches on the underlying object ID type and supports
+Replace the old numeric-tagged content identifier and its `ContentKind` enum with
+`ContentRef`. The `ContentId` name now denotes the abstract base for IDs that
+have a content reference.
+`ContentLinksBackend` dispatches on the underlying content ID type and supports
 only users, chats, chat entries, authors, and places. Other types fail explicitly.
 
 The old type appears only in backend RPC and server-side OpenGraph metadata.
 `RootServerPage` renders the title, description, and picture, and does not ship
 the identifier to clients. Therefore the replacement uses the standard
-`prefix:objectValue` format in every serializer; it needs no legacy type or API
+`prefix:contentIdValue` format in every serializer; it needs no legacy type or API
 method variants. Backend nodes must use the updated contract together.
 
 Content links now follow the underlying identifier's routing rule. Author and
 entry links therefore route by their chat, consistently with other uses of those
-IDs. Do not register a separate typed-ID routing override.
+IDs. Do not register a separate content-reference routing override.
 
 ## Reactive maintenance reads
 
@@ -120,19 +122,19 @@ quiesce before destructive work proceeds.
   `StringLikeNewtonsoftJsonConverter<T>`, `StringLikeMessagePackFormatter<T>`,
   and `StringLikeTypeConverter<T>` for identifier serialization.
 - `GetXxHash3` from ActualLab.Core for deterministic hashing and `PositiveModulo` for existing mesh assignments.
-- Existing identifier parse caches and `StringIdentifierTestBase<T>` / `ObjectIdTestBase<T>` tests.
+- Existing identifier parse caches and `StringIdentifierTestBase<T>` / `ContentIdTestBase<T>` tests.
 - `ShardScheme`, `ShardRef`, `QueueShardRef`, `GenericInstanceCache`, mesh ownership, and the Users backend hosting role.
 - Fusion compute-method consolidation and value equality.
 - `DbServiceBase<UsersDbContext>`, operation events, `FlowHub`,
   `IFlowBackend`, and `ChatsBackend_Change` for persistence and durable work.
 
 `TypeMap` and `TypeMapper` map CLR implementation types, not stable textual
-prefixes and parsers. They do not fit typed-ID registration. The existing
+prefixes and parsers. They do not fit content-reference registration. The existing
 `MentionKind` prefix/parser approach informs the explicit registration design.
 
 ### Reusability of new components
 
-`StringIdentifier`, `ObjectId`, `TypedObjectId`, and `ShardKey` apply beyond maintenance.
+`StringIdentifier`, `ContentId`, `ContentRef`, and `ShardKey` apply beyond maintenance.
 Put them in Core, rather than Users or Chat. Prefix registrations remain in the
 module that owns each concrete identifier.
 

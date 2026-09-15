@@ -15,7 +15,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<EmojiRef>))]
 [TypeConverter(typeof(StringLikeTypeConverter<EmojiRef>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class EmojiRef : ObjectId, IStringIdentifier<EmojiRef>, IMentionTarget
+public sealed partial class EmojiRef : StringIdentifier, IStringIdentifier<EmojiRef>, IMentionTarget
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<EmojiRef>();

@@ -119,7 +119,7 @@ public class SearchTranscriptionSerializationTest(ITestOutputHelper @out) : Test
     [Fact]
     public void ContentLinkInfo_Basic()
     {
-        var id = ChatId.Parse("the-actual-one").TypedId;
+        var id = ChatId.Parse("the-actual-one").ContentRef;
         var info = new ContentLinkInfo(id, "Example", null, "A description");
         info.AssertPassesThroughSerializers();
     }

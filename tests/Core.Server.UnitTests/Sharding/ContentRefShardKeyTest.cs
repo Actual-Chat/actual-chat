@@ -1,6 +1,6 @@
 namespace ActualChat.Core.Server.UnitTests.Sharding;
 
-public class TypedObjectIdShardKeyTest
+public class ContentRefShardKeyTest
 {
     [Theory]
     [InlineData("u:abcdef")]
@@ -8,17 +8,17 @@ public class TypedObjectIdShardKeyTest
     [InlineData("ce:abcdef:0:1")]
     [InlineData("a:abcdef:1")]
     [InlineData("p:abcdefghij")]
-    public void TypedIdsShouldUseTheirUnderlyingObjectRouting(string value)
+    public void ContentRefsShouldUseTheirUnderlyingObjectRouting(string value)
     {
         // arrange
-        var id = TypedObjectId.Parse(value);
-        var resolver = ShardKeyResolvers.Get<TypedObjectId>();
+        var id = ContentRef.Parse(value);
+        var resolver = ShardKeyResolvers.Get<ContentRef>();
 
         // act
         var shardKey = resolver(id);
 
         // assert
-        shardKey.Should().Be(id.ObjectId.ShardKey);
+        shardKey.Should().Be(id.ContentId.ShardKey);
         resolver(null!).Should().Be(default);
     }
 }

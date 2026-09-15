@@ -1,6 +1,6 @@
 namespace ActualChat.Core.UnitTests.Identifiers;
 
-public class PlaceIdIdTest(ITestOutputHelper @out) : ObjectIdTestBase<PlaceId>(@out)
+public class PlaceIdIdTest(ITestOutputHelper @out) : ContentIdTestBase<PlaceId>(@out)
 {
     public override string[] ValidIdentifiers => new[] { "12345abcde", "whateveritis" }
         .Concat(Constants.Place.SystemPlaceIdValues)

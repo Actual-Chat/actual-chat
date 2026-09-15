@@ -15,7 +15,7 @@ Recently added, larger efforts — in progress or next up.
 
 ### Object maintenance and identifier foundations
 
-[Object maintenance](./object-maintenance.md) — shared object IDs and 32-bit shard
+[Object maintenance](./object-maintenance.md) — shared content IDs and 32-bit shard
 keys, followed by centralized maintenance in Users with 16 mesh shards, 256 cached
 partitions, and per-object invalidation consolidation. This is the current architecture
 for maintenance and the removal of chats with anonymous mode enabled.
