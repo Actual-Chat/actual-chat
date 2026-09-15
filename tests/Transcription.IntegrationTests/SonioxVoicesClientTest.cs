@@ -14,7 +14,8 @@ public sealed class SonioxVoicesClientTest(ITestOutputHelper @out, ILogger<Sonio
     private static readonly TimeSpan ReadyTimeout = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan PollPeriod = TimeSpan.FromMilliseconds(500);
 
-    [Fact(Timeout = 120_000)]
+    // Creates a real voice against the org's 20-voice quota with the shared dev key.
+    [Fact(Timeout = 120_000, Skip = "For manual runs only")]
     public async Task CreateShouldCloneAUsableVoiceAndDeleteShouldRemoveIt()
     {
         // arrange
