@@ -114,7 +114,11 @@
                 @if (attachment.IsSupportedImage()) {
                     var previewUrl = GetPreviewUrl(attachment);
                     <swiper-slide @key="@attachment.Id.Value">
-                        <image-skeleton src="@previewUrl" class="image-cover"/>
+                        <image-skeleton
+                            initial-state="skeleton"
+                            src="@previewUrl"
+                            placeholderSrc="@ImagePlaceholder.ToDataUrl(attachment.Media.Placeholder)"
+                            class="image-cover"/>
                     </swiper-slide>
                 } else if (attachment.IsSupportedVideo()) {
                     <swiper-slide @key="@attachment.Id.Value">

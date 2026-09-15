@@ -8,11 +8,13 @@ public class ImageUploadProcessor(IServiceProvider services) : IUploadProcessor
     private RasterImageNormalizer RasterImageNormalizer => field ??= services.GetRequiredService<RasterImageNormalizer>();
 
     public bool Supports(string contentType, MediaKind mediaKind)
-        // GIF is passed through to preserve animation. Icon media kinds are handled by IconUploadProcessor.
+        // GIF is passed through to preserve animation. Icons go to IconUploadProcessor,
+        // chat attachments to AttachmentImageUploadProcessor.
         => MediaTypeExt.IsImage(contentType)
             && !MediaTypeExt.IsGif(contentType)
             && !MediaTypeExt.IsSvg(contentType)
-            && !mediaKind.IsChatIcon;
+            && !mediaKind.IsChatIcon
+            && mediaKind != MediaKind.ChatEntryAttachment;
 
     public async Task<ProcessedFile> Process(UploadedFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
     {

@@ -1,0 +1,115 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Events
+@using ActualLab.Generators
+@inherits ComponentBase<AppUIHub>
+@implements IDisposable
+
+<OnUIEvent TEvent="ImageQualityPresetSelectedEvent" Handler="@OnPresetSelectedEvent"/>
+
+@if (Attachments.HasReEncodableImages) {
+    <div class="mqs-wrapper">
+        <button class="mqs-chip"
+                data-menu="@(MenuRef.New<ImageQualityMenu>(_selectorId).ToString())"
+                data-menu-trigger="@MenuTrigger.Primary">
+            <span class="mqs-chip-label">@GetLabel(Attachments.ImageQuality)</span>
+            <i class="icon-chevron-up text-lg"></i>
+        </button>
+    </div>
+}
+
+@code {
+    private static readonly ImageQualityPreset[] Presets = [
+        ImageQualityPreset.OriginalWithExif,
+        ImageQualityPreset.Original,
+        ImageQualityPreset.Mpx50,
+        ImageQualityPreset.Mpx12,
+        ImageQualityPreset.Mpx3,
+    ];
+
+    private readonly string _selectorId = RandomStringGenerator.Default.Next();
+
+    [Parameter, EditorRequired] public AttachmentList Attachments { get; set; } = null!;
+    [Parameter] public EventCallback<ImageQualityPreset> OnPresetChanged { get; set; }
+
+    public void Dispose() {
+        Attachments.Changed -= OnAttachmentsChanged;
+        ImageQualityMenu.MenuModels.Remove(_selectorId);
+    }
+
+    protected override void OnParametersSet() {
+        Attachments.Changed -= OnAttachmentsChanged;
+        Attachments.Changed += OnAttachmentsChanged;
+        RegisterMenuModel();
+    }
+
+    // Private methods
+
+    private void OnAttachmentsChanged(object? sender, EventArgs e) {
+        RegisterMenuModel();
+        StateHasChanged();
+    }
+
+    private void RegisterMenuModel() {
+        var items = Attachments.Items.ToList();
+        var images = items.Where(a => a.IsReEncodable).ToList();
+        var otherFilesLength = items.Where(a => !a.IsReEncodable).Sum(a => a.Length);
+        var isSentAsFile = ImageQualityMenuModel.IsSentAsFile(images);
+        var isMobile = Hub.BrowserInfo.IsMobile;
+        var options = Presets
+            .Select(p => new ImageQualityMenu.OptionModel(
+                p,
+                GetLabel(p),
+                GetSpec(p, images, isSentAsFile, isMobile),
+                FormatTotal(images, otherFilesLength, p, isMobile)))
+            .ToArray();
+        var scopeText = otherFilesLength > 0 ? L.Editor_QualityAppliesToPhotos(images.Count, images.Count) : null;
+        ImageQualityMenu.MenuModels.Register(
+            _selectorId, new ImageQualityMenu.Model(Attachments.ImageQuality, options, scopeText));
+    }
+
+    private async Task OnPresetSelectedEvent(
+        ImageQualityPresetSelectedEvent @event,
+        CancellationToken cancellationToken) {
+        if (@event.SelectorId != _selectorId)
+            return;
+
+        await OnPresetChanged.InvokeAsync(@event.Preset);
+    }
+
+    private string GetLabel(ImageQualityPreset preset)
+        => preset switch {
+            ImageQualityPreset.OriginalWithExif => L.Editor_QualityOriginalWithExif,
+            ImageQualityPreset.Original => L.Editor_QualityOriginal,
+            ImageQualityPreset.Mpx50 => L.Editor_QualityUpTo50Mpx,
+            ImageQualityPreset.Mpx12 => L.Editor_QualityUpTo12Mpx,
+            _ => L.Editor_QualityUpTo3Mpx,
+        };
+
+    private string GetSpec(ImageQualityPreset preset, List<Attachment> images, bool isSentAsFile, bool isMobile)
+        // The source (not the current output) decides every branch below, so a HEIC/AVIF preview
+        // conversion or a mid-flight reprocess never changes what a row says
+        => preset switch {
+            ImageQualityPreset.OriginalWithExif => isSentAsFile
+                ? L.Editor_QualityOriginalAsFile
+                : L.Editor_QualityKeepsMetadata,
+            ImageQualityPreset.Original => isSentAsFile ? L.Editor_QualityOriginalAsFile : L.Editor_QualityFullSize,
+            // The device already passed the source through unchanged at this preset, or it will
+            _ => ImageQualityMenuModel.IsDeclinedAt(images, preset, isMobile)
+                ? (isSentAsFile ? L.Editor_QualityOriginalAsFile : L.Editor_QualityFullSize)
+                : "",
+        };
+
+    private static string FormatTotal(
+        List<Attachment> images,
+        long otherFilesLength,
+        ImageQualityPreset preset,
+        bool isMobile) {
+        var total = ImageQualityMenuModel.GetTotal(images, otherFilesLength, preset, isMobile);
+        if (total is null)
+            return "—";
+
+        return total.Value.IsExact
+            ? FileSizeFormatter.Format(total.Value.Bytes)
+            : ImageSizeEstimator.Format(total.Value.Bytes);
+    }
+}

@@ -14,8 +14,16 @@ public sealed partial record MediaFull : Media
     public MediaFull(MediaId id) : base(id) { }
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
-    public MediaFull(MediaId id, string blobId, long version, MediaKind kind, MetadataBag metadata, UserId? userId, MediaId? thumbnailId)
-        : base(id, blobId, version, kind, metadata)
+    public MediaFull(
+        MediaId id,
+        string blobId,
+        long version,
+        MediaKind kind,
+        MetadataBag metadata,
+        byte[]? placeholder,
+        UserId? userId,
+        MediaId? thumbnailId)
+        : base(id, blobId, version, kind, metadata, placeholder)
     {
         UserId = userId;
         ThumbnailId = thumbnailId;

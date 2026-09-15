@@ -15,7 +15,8 @@
         @<AttachmentListView
              @key="AttachmentListKey"
              AttachmentListHolder="@_attachmentListHolder"
-             OnAddClick="@(() => OnAttachClick(""))"/>;
+             OnAddClick="@(() => OnAttachClick(""))"
+             OnImageQualityChanged="@OnImageQualityChanged"/>;
 }
 
 <OnUIEvent TEvent="@FocusChatMessageEditorEvent" Handler="OnFocusChatMessageEditorEvent" />
@@ -140,7 +141,7 @@
     protected override void OnInitialized() {
         _attachmentListHolder = new AttachmentListHolder(Hub, Chat.Id.Value);
         _attachmentListHolder.Changed += OnAttachmentListChanged;
-        FileAttachments =  new FileAttachments(Hub, Chat.Id);
+        FileAttachments = new FileAttachments(Hub);
         AttachmentFilePicker = Hub.Services.GetService<IAttachmentFilePicker>();
         PanelsUI.Right.IsVisible.Updated += OnRightPanelVisibilityChanged;
     }
@@ -176,7 +177,7 @@
 
         if (JSRef != null!) {
             // Only when rendered
-            await _attachmentListHolder.Attachments.Clear();
+            await _attachmentListHolder.Reset(chatId.Value);
             await UpdateChatId();
         }
     }
@@ -208,8 +209,15 @@
         => FileAttachments.TryAddWebFileAttachments(_attachmentListHolder.Attachments, fileInfos);
 
     [JSInvokable]
-    public Task OnTypingChanged(TypingActivityKind kind, double ttlMs)
-        => Hub.TypingUI.SetTyping(Chat.Id, kind, TimeSpan.FromMilliseconds(ttlMs), CancellationToken.None);
+    public Task OnTypingChanged(TypingActivityKind kind, double ttlMs) {
+        // Typing is the first of the three commit triggers, and this runs per keystroke burst,
+        // so the already-committed case must cost nothing more than the flag check
+        var attachments = _attachmentListHolder.Attachments;
+        if (kind != TypingActivityKind.None && !attachments.IsCommitted)
+            FileAttachments.CommitDraft(attachments);
+
+        return Hub.TypingUI.SetTyping(Chat.Id, kind, TimeSpan.FromMilliseconds(ttlMs), CancellationToken.None);
+    }
 
     // Private methods
 
@@ -219,6 +227,11 @@
 
         text ??= await MarkupEditorRef.GetText();
         text = text.Trim();
+
+        // Send is the last of the three commit triggers: it starts whatever an uncommitted draft
+        // still holds, then waits for that and for anything an earlier trigger already started
+        FileAttachments.CommitDraft(_attachmentListHolder.Attachments);
+        await FileAttachments.WhenReadyToPost(_attachmentListHolder.Attachments);
 
         var attachmentListSnapshot = _attachmentListHolder.PopSnapshot();
         if (text.IsNullOrEmpty() && attachmentListSnapshot.Attachments.Count == 0) {
@@ -373,6 +386,9 @@
 
     private Task OnAttachFilesPicked(AttachFileInfo[] fileInfos)
         => FileAttachments.TryAddFileAttachments(_attachmentListHolder.Attachments, fileInfos);
+
+    private Task OnImageQualityChanged(ImageQualityPreset preset)
+        => FileAttachments.SetImageQuality(_attachmentListHolder.Attachments, preset);
 
     // UIEventHub event handlers
 

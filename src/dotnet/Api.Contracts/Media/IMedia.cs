@@ -39,6 +39,7 @@ public sealed partial record Media_ReserveMedia : ApiCommand<MediaId>
     [DataMember(Order = 2), Key(2)] public required string Scope { get; init; }
     [DataMember(Order = 3), Key(3)] public MetadataBag Metadata { get; init; } = MetadataBag.Empty;
     [DataMember(Order = 4), Key(4)] public MediaKind Kind { get; init; }
+    [DataMember(Order = 5), Key(5)] public byte[]? Placeholder { get; init; }
 }
 
 [DataContract, MessagePackObject]

@@ -67,7 +67,12 @@ public class MediaService(IServiceProvider services) : IMedia
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
 
         var mediaId = MediaId.New(scope);
-        var media = new MediaFull(mediaId) { UserId = account.Id, Kind = command.Kind, Metadata = command.Metadata };
+        var media = new MediaFull(mediaId) {
+            UserId = account.Id,
+            Kind = command.Kind,
+            Metadata = command.Metadata,
+            Placeholder = command.Placeholder,
+        };
         var mediaChange = new Change<MediaFull> { Create = media };
 
         await Commander.Call(new MediaBackend_Change(mediaId, null, mediaChange), cancellationToken)

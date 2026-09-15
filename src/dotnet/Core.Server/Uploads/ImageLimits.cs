@@ -24,10 +24,10 @@ public static class ImageLimits
         MaxFrames = MaxFrameCount + 1,
     };
 
-    public static ImageInfo RequireWithinLimits(this ImageInfo imageInfo)
+    public static ImageInfo RequireWithinLimits(this ImageInfo imageInfo, long maxPixelCount = MaxPixelCount)
     {
         var pixelCount = (long)imageInfo.Width * imageInfo.Height;
-        if (pixelCount > MaxPixelCount)
+        if (pixelCount > maxPixelCount)
             throw StandardError.Constraint($"Image is too big: {imageInfo.Width}x{imageInfo.Height}.");
 
         var frameCount = imageInfo.FrameMetadataCollection.Count;

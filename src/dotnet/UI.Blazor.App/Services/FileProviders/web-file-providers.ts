@@ -6,11 +6,19 @@ import { v4 as uuidv4 } from 'uuid';
 import { NullableJSObjectReference } from 'UI.Blazor/JSRuntime/nullable-js-object-reference';
 import { AttachmentWebFilePickerRegistry } from '../../Components/ChatMessageEditor/attachment-web-file-picker';
 import type { IUploadStreamSource } from '../../../UI.Blazor/Services/FileUploads/web-uploads';
+import { ImageProcessor } from 'image-processing/image-processor';
+import type { ImageProcessRequest } from 'image-processing/image-processing-contracts';
+import { getMainOutput, getProcessedImageInfo, ProcessedImageInfo } from './image-processing-interop';
 
 const { errorLog } = getLogs('WebFileProvider');
 
 interface CreateWebFileProviderResult {
     previewUrl: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fileProvider : any;
+}
+
+interface ProcessedWebImage extends ProcessedImageInfo {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     fileProvider : any;
 }
@@ -147,6 +155,21 @@ export class WebFileProvider implements IUploadStreamSource {
         if (!this.userConsentGranted)
             throw new Error('User consent not granted yet');
         return this.resolvedFile!;
+    }
+
+    /** Processes this file and wraps the result in a new, in-memory provider with no file
+     *  handle: an upload of a processed image can't resume from the original file after reload. */
+    public async processImage(request: ImageProcessRequest): Promise<ProcessedWebImage>
+    {
+        const result = await ImageProcessor.process(this.getBlob(), request);
+        const main = getMainOutput(result);
+        if (main.isSource)
+            return { ...getProcessedImageInfo(result), fileProvider: null };
+
+        // No preview URL: the attachment keeps showing the source's preview, so creating one
+        // here would only leak an object URL until the provider is disposed
+        const provider = new WebFileProvider('', null, main.blob, null);
+        return { ...getProcessedImageInfo(result), fileProvider: DotNet.createJSObjectReference(provider) };
     }
 
     public async clearForRemoving() : Promise<void>

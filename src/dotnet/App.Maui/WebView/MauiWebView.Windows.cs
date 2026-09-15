@@ -38,6 +38,7 @@ public partial class MauiWebView
         var contentSchemeUriFilter = ContentResolver.UriContentScheme + "*";
         coreWebView2.AddWebResourceRequestedFilter(contentSchemeUriFilter, CoreWebView2WebResourceContext.Image);
         coreWebView2.AddWebResourceRequestedFilter(contentSchemeUriFilter, CoreWebView2WebResourceContext.Media);
+        coreWebView2.AddWebResourceRequestedFilter(contentSchemeUriFilter, CoreWebView2WebResourceContext.Fetch);
         coreWebView2.WebResourceRequested += CoreWebView2OnWebResourceRequested;
     }
 
@@ -170,7 +171,19 @@ public partial class MauiWebView
         return request.Task;
     }
 
-    private partial void OnInitializing(object? sender, BlazorWebViewInitializingEventArgs eventArgs) { }
+    private partial void OnInitializing(object? sender, BlazorWebViewInitializingEventArgs eventArgs)
+    {
+        // Without a registration WebView2 refuses fetch() from https://0.0.0.1 to content:// URLs.
+        // TreatAsSecure is projected as int (not bool) in this SDK's WinRT wrapper: 1 = true.
+        var registration = new CoreWebView2CustomSchemeRegistration(ContentResolver.UriContentScheme) {
+            TreatAsSecure = 1,
+            HasAuthorityComponent = true,
+        };
+        registration.AllowedOrigins.Add($"https://{MauiSettings.LocalHost}");
+        eventArgs.EnvironmentOptions ??= new CoreWebView2EnvironmentOptions();
+        eventArgs.EnvironmentOptions.CustomSchemeRegistrations.Add(registration);
+    }
+
     private partial void OnInitialized(object? sender, BlazorWebViewInitializedEventArgs eventArgs)
     {
         var webView = eventArgs.WebView;
@@ -233,6 +246,7 @@ public partial class MauiWebView
             => new Dictionary<string, string> {
                 { "Content-Type", contentType },
                 { "Cache-Control", "no-cache, max-age=0, must-revalidate, no-store" },
+                { "Access-Control-Allow-Origin", "*" },
             };
 
         public static string GetHeaderString(IDictionary<string, string> headers)

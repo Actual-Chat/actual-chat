@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.IO;
 
@@ -17,8 +18,16 @@ public class WindowsFileProviderImpl(FilePath filePath) : IMauiFileProviderImpl
         => Task.CompletedTask;
 
     public Task ClearBeforeRemoving()
-        => Task.CompletedTask;
+    {
+        // A picked file is the user's own; only files this app wrote may be deleted
+        if (MauiProcessedImageStore.Contains(filePath))
+            filePath.DeleteSilently();
+        return Task.CompletedTask;
+    }
 
     public Task<Stream?> OpenRead()
         => Task.FromResult<Stream?>(FileInfo.Exists ? FileInfo.OpenRead() : null);
+
+    public Task<string> GetContentUrl(ImageQualityBudget decodeBudget, CancellationToken cancellationToken)
+        => Task.FromResult(ContentResolver.GetFileUri(filePath));
 }

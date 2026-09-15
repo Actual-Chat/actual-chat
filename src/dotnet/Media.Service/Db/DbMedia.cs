@@ -23,6 +23,7 @@ public class DbMedia : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string ThumbnailId { get; set; } = "";
     public MediaKind Kind { get; set; }
     public string MetadataJson { get; set; } = "";
+    public byte[]? Placeholder { get; set; }
 
     public MediaFull ToModel()
         => new (MediaId.Parse(Id)) {
@@ -32,6 +33,7 @@ public class DbMedia : IHasId<string>, IHasVersion<long>, IRequirementTarget
             UserId = ActualChat.UserId.ParseNullable(UserId),
             ThumbnailId = MediaId.ParseNullable(ThumbnailId),
             Metadata = MetadataBagJson.FromJson(MetadataJson),
+            Placeholder = Placeholder,
         };
 
     public void UpdateFrom(MediaFull model)
@@ -50,6 +52,7 @@ public class DbMedia : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Kind = model.Kind;
         ThumbnailId = model.ThumbnailId?.Value ?? "";
         MetadataJson = model.Metadata.ToJson();
+        Placeholder = model.Placeholder;
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbMedia>

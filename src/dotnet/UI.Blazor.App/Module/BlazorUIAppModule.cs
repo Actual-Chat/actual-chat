@@ -325,6 +325,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped<IUploadSessionRepo>(c => new UploadSessionRepo(c));
         services.AddScoped<UploadSessions>(c => new UploadSessions(c.AppUIHub()));
         services.AddScoped(c => new AttachmentsController(c.AppUIHub()));
+        services.AddScoped(c => new ImageAttachmentProcessor(c));
         fusion.AddService<AttachmentsState>(ServiceLifetime.Scoped);
         fusion.AddService<UploadSessionsState>(ServiceLifetime.Scoped);
         services.AddScoped(c => new IncomingShareAfterSendMessageHandler(c.AppUIHub()));
