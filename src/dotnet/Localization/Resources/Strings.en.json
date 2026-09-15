@@ -1493,6 +1493,19 @@
   "ChatInvite_Processing": "Processing invite, please wait..",
   "ChatInvite_Failed_Format": "Failed to join chat: {0}",
 
+  // The OAuth consent page: an external app (an MCP client) asks for access to the account.
+  "OAuthConsent_Title": "Connect an app",
+  "OAuthConsent_Heading_Format": "{0} wants to access your Voxt account",
+  "OAuthConsent_RedirectHost_Format": "You'll be sent back to {0}",
+  "OAuthConsent_Loopback": "This app runs on your computer",
+  "OAuthConsent_Scope_Mcp": "Read and post in your chats",
+  "OAuthConsent_Scope_OfflineAccess": "Stay connected without asking again",
+  "OAuthConsent_SignedInAs_Format": "Signed in as {0}",
+  "OAuthConsent_Approve": "Allow",
+  "OAuthConsent_Deny": "Deny",
+  "OAuthConsent_UnknownClient": "This app isn't registered with Voxt. Check the link you followed.",
+  "OAuthConsent_Error_Format": "The request couldn't be processed: {0}",
+
   // The empty state of any "pick some contacts" list.
   "MemberSelector_NoContacts": "You don't have any contacts yet. Share your own account with your friends to see them here.",
 
@@ -1655,6 +1668,7 @@
   "SignIn_SignInWith_Format": "Sign in with {0}",
   "SignIn_SignInTo_Format": "Sign in to {0}",
   "SignIn_ToUseChatInvite": "Sign in to use this chat invite",
+  "SignIn_ToAuthorizeApp": "Sign in to connect this app",
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} or email@gmail.com",
   "SignIn_Or": "or",
   "SignIn_InvalidPhoneOrEmail": "Invalid phone number or email address.",

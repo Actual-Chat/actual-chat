@@ -1308,6 +1308,18 @@ public static class LocalizedStringsLocalizerExt
         public string ChatInvite_Title => l["ChatInvite_Title"].Value;
         public string ChatInvite_Processing => l["ChatInvite_Processing"].Value;
         public string ChatInvite_Failed_Format(object arg0) => l["ChatInvite_Failed_Format", arg0].Value;
+        public string OAuthConsent_Title => l["OAuthConsent_Title"].Value;
+        public string OAuthConsent_Heading_Format(object arg0) => l["OAuthConsent_Heading_Format", arg0].Value;
+        public string OAuthConsent_RedirectHost_Format(object arg0)
+            => l["OAuthConsent_RedirectHost_Format", arg0].Value;
+        public string OAuthConsent_Loopback => l["OAuthConsent_Loopback"].Value;
+        public string OAuthConsent_Scope_Mcp => l["OAuthConsent_Scope_Mcp"].Value;
+        public string OAuthConsent_Scope_OfflineAccess => l["OAuthConsent_Scope_OfflineAccess"].Value;
+        public string OAuthConsent_SignedInAs_Format(object arg0) => l["OAuthConsent_SignedInAs_Format", arg0].Value;
+        public string OAuthConsent_Approve => l["OAuthConsent_Approve"].Value;
+        public string OAuthConsent_Deny => l["OAuthConsent_Deny"].Value;
+        public string OAuthConsent_UnknownClient => l["OAuthConsent_UnknownClient"].Value;
+        public string OAuthConsent_Error_Format(object arg0) => l["OAuthConsent_Error_Format", arg0].Value;
         public string MemberSelector_NoContacts => l["MemberSelector_NoContacts"].Value;
 
         public string Shortcuts_Title => l["Shortcuts_Title"].Value;
@@ -1446,6 +1458,7 @@ public static class LocalizedStringsLocalizerExt
         public string SignIn_SignInWith_Format(object arg0) => l["SignIn_SignInWith_Format", arg0].Value;
         public string SignIn_SignInTo_Format(object arg0) => l["SignIn_SignInTo_Format", arg0].Value;
         public string SignIn_ToUseChatInvite => l["SignIn_ToUseChatInvite"].Value;
+        public string SignIn_ToAuthorizeApp => l["SignIn_ToAuthorizeApp"].Value;
         public string SignIn_PhoneOrEmailPlaceholder_Format(object arg0)
             => l["SignIn_PhoneOrEmailPlaceholder_Format", arg0].Value;
         public string SignIn_Or => l["SignIn_Or"].Value;

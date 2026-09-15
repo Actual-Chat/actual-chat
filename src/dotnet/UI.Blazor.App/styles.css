@@ -110,6 +110,7 @@
 @import './Components/delete-account.css';
 
 @import './Pages/user-page.css';
+@import './Pages/oauth-consent-page.css';
 @import './Pages/emojis-test-page.css';
 @import './Pages/Test/date-time-test-page.css';
 @import './Pages/Test/banner-stack-test-page.css';

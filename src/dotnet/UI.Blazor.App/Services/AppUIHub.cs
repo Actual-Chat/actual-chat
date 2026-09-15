@@ -3,6 +3,7 @@ using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.MediaPlayback;
 using ActualChat.Notifications;
+using ActualChat.OAuth;
 using ActualChat.Streaming;
 using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor.App.Services.Gestures;
@@ -36,6 +37,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public IChatTypingActivities ChatTypingActivities => field ??= Services.GetRequiredService<IChatTypingActivities>();
     public IMedia Media => field ??= Services.GetRequiredService<IMedia>();
     public IGifs Gifs => field ??= Services.GetRequiredService<IGifs>();
+    public IOAuthGrants OAuthGrants => field ??= Services.GetRequiredService<IOAuthGrants>();
     public VideoTranscoder VideoTranscoder => field ??= Services.GetRequiredService<VideoTranscoder>();
 
     public ChatUI ChatUI => field ??= Services.GetRequiredService<ChatUI>();
