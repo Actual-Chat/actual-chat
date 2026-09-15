@@ -34,6 +34,12 @@ public sealed partial record UserLanguageSettings : StoredSettings, IHasOrigin, 
     // Absent in blobs written before this key, which MessagePack reads as null - hence the coalesce.
     [DataMember, MemoryPackOrder(7), Key(7)]
     public string DubVoice { get => field ?? ""; init; } = "";
+    // Consent to clone this user's own voice for dubbing, instead of a stock voice.
+    [DataMember, MemoryPackOrder(8), Key(8)]
+    public bool IsOwnVoiceEnabled { get; init; }
+    // Explicit reference sample for the clone; null = build it automatically from past speech.
+    [DataMember, MemoryPackOrder(9), Key(9)]
+    public MediaId? OwnVoiceSampleMediaId { get; init; }
 
     public List<Language> ListSpoken()
     {

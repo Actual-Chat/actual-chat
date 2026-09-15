@@ -293,6 +293,48 @@ public partial class StoredSettingsSerializationTest
         result.DubVoice.Should().Be("Daniel");
     }
 
+    [Fact]
+    public void LegacyUserLanguageSettingsDeserializesWithDefaultOwnVoiceSettings()
+    {
+        // arrange
+        // Legacy carries neither key 8 (IsOwnVoiceEnabled) nor key 9 (OwnVoiceSampleMediaId).
+        var legacy = new LegacyUserLanguageSettings {
+            Origin = "mp-own-voice-test",
+            Primary = Languages.Russian.Value,
+        };
+
+        // act
+        using var buffer = MessagePackSerializer.Write(legacy);
+        var bytes = buffer.WrittenMemory.ToArray();
+        var result = (UserLanguageSettings?)MessagePackSerializer.Read(bytes, typeof(UserLanguageSettings), out _);
+
+        // assert
+        result!.IsOwnVoiceEnabled.Should().BeFalse();
+        result.OwnVoiceSampleMediaId.Should().BeNull();
+    }
+
+    [Fact]
+    public void UserLanguageSettingsOwnVoiceRoundTrip()
+    {
+        // arrange
+        var settings = new UserLanguageSettings {
+            Origin = "round-trip",
+            Primary = Languages.German,
+            IsOwnVoiceEnabled = true,
+            OwnVoiceSampleMediaId = MediaId.New("voice-sample", "abc123"),
+        };
+
+        // act
+        using var buffer = KvasSerializer.Default.Write(settings);
+        var bytes = buffer.WrittenMemory;
+        var result = KvasSerializer.Default.Read<UserLanguageSettings>(ref bytes);
+
+        // assert
+        result.Should().Be(settings);
+        result.IsOwnVoiceEnabled.Should().BeTrue();
+        result.OwnVoiceSampleMediaId.Should().Be(settings.OwnVoiceSampleMediaId);
+    }
+
     // --- Concrete type round-trip ---
 
     [Fact]
