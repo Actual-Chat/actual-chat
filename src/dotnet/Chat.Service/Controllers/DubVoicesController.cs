@@ -28,6 +28,7 @@ public sealed class DubVoicesController(IServiceProvider services) : ControllerB
         catch (Exception e) {
             return BadRequest(e.Message);
         }
+
         if (Language.TryParse(language) is not { } previewLanguage)
             return BadRequest($"Invalid language: '{language}'");
 

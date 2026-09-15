@@ -150,6 +150,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
             Log.LogError(e, "Soniox TTS MP3 generation failed");
             throw;
         }
+
         mp3.Writer.TryComplete();
         using var buffer = new MemoryStream();
         while (mp3.Reader.TryRead(out var piece))
