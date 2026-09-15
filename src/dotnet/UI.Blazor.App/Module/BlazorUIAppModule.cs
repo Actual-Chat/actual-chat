@@ -202,6 +202,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         // IBannerViews
         services.AddTypeMap<IBannerView>(map => map
             .Add<SwitchToWasmBanner.Model, SwitchToWasmBanner>()
+            .Add<OwnVoiceSampleBanner.Model, OwnVoiceSampleBanner>()
         );
 
         services.ConfigureUIEvents(

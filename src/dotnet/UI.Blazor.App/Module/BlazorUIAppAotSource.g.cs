@@ -321,6 +321,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OwnAvatarAddTile>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OwnAvatarEditorModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OwnAvatarList>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OwnVoiceSampleBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PageHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PeerContactEditorModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PermissionGuideModal>();
@@ -1104,6 +1105,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.OwnAvatarAddTile), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.OwnAvatarEditorModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.OwnAvatarList), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.OwnVoiceSampleBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PageHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PeerContactEditorModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PermissionGuideModal), AotTypeKind.Component),

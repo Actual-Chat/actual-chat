@@ -90,10 +90,45 @@
                     IsCheckedChanged="@(_ => OnToggleTranslatedVoice())"/>
         </Right>
     </TileItem>
+    @if (m.OwnVoice is { } ownVoice) {
+        <TileItem Click="@OnToggleOwnVoice">
+            <Icon><i class="icon-voice-01 text-2xl"></i></Icon>
+            <Content>@L.Transcription_OwnVoice</Content>
+            <Caption>
+                @L.Transcription_OwnVoiceCaption
+                <div class="own-voice-status">@FormatOwnVoiceStatus(ownVoice)</div>
+            </Caption>
+            <Right>
+                <Toggle IsChecked="@ownVoice.IsEnabled"
+                        IsCheckedChanged="@(_ => OnToggleOwnVoice())"/>
+            </Right>
+        </TileItem>
+        @if (ownVoice.IsEnabled) {
+            <TileItem Click="@OnRecordSampleClick">
+                <Icon><i class="icon-mic-2 text-2xl"></i></Icon>
+                <Content>
+                    @(ownVoice.HasExplicitSample ? L.Transcription_OwnVoiceRerecord : L.Transcription_OwnVoiceRecord)
+                </Content>
+                <Right>
+                    <i class="icon-chevron-right text-xl text-03"></i>
+                </Right>
+            </TileItem>
+            @if (ownVoice.HasExplicitSample) {
+                <TileItem Click="@OnRemoveSampleClick">
+                    <Icon><i class="icon-trash03 text-2xl"></i></Icon>
+                    <Content>@L.Transcription_OwnVoiceRemoveSample</Content>
+                </TileItem>
+            }
+        }
+    }
     <TileItem Click="@OnDubVoiceClick">
         <Icon><i class="icon-mic text-2xl"></i></Icon>
         <Content>@L.Transcription_DubVoice</Content>
-        <Caption>@L.Transcription_DubVoiceCaption</Caption>
+        <Caption>
+            @(m.OwnVoice is { IsEnabled: true }
+                ? L.Transcription_DubVoiceFallbackCaption
+                : L.Transcription_DubVoiceCaption)
+        </Caption>
         <Right>
             <span class="text-03">@FormatDubVoice(m)</span>
             <i class="icon-chevron-right text-xl text-03"></i>
@@ -127,6 +162,9 @@
 
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private GestureUI GestureUI => Hub.GestureUI;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+
+    [CascadingParameter] public Modal? Modal { get; set; }
 
     protected override void OnInitialized()
         => _formModel = new FormModel(ComponentIdGenerator);
@@ -138,7 +176,17 @@
             .Get(x => !(x.IsFaceDownMicStopDisabled ?? false), cancellationToken)
             .ConfigureAwait(false);
         var defaultDubVoiceId = await GetDefaultDubVoiceId(cancellationToken).ConfigureAwait(false);
-        return new(languages, enableIncompleteUI, isFaceDownMicStopEnabled, defaultDubVoiceId);
+        var ownVoice = await GetOwnVoice(enableIncompleteUI, cancellationToken).ConfigureAwait(false);
+        return new(languages, enableIncompleteUI, isFaceDownMicStopEnabled, defaultDubVoiceId, ownVoice);
+    }
+
+    private async Task<OwnVoiceStatus?> GetOwnVoice(bool enableIncompleteUI, CancellationToken cancellationToken) {
+        // An admin preview until Soniox raises the voice quota; null hides the whole tile group
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        if (!(account.IsAdmin && enableIncompleteUI))
+            return null;
+
+        return await Hub.OwnVoices.GetOwnVoiceStatus(Session, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<string?> GetDefaultDubVoiceId(CancellationToken cancellationToken) {
@@ -170,8 +218,40 @@
             x => x with { IsFaceDownMicStopDisabled = !(x.IsFaceDownMicStopDisabled ?? false) },
             CancellationToken.None);
 
+    private string FormatOwnVoiceStatus(OwnVoiceStatus ownVoice) {
+        if (!ownVoice.IsEnabled)
+            return L.Transcription_OwnVoiceStatus_Off;
+        if (ownVoice.Status == UserVoiceStatus.Ready)
+            return L.Transcription_OwnVoiceStatus_Ready;
+        if (ownVoice.MissingDuration is { } missing && missing > TimeSpan.Zero) {
+            // Rounded up to 5 s: the catalog's "seconds" is written for that, see Strings.en.json
+            var seconds = (int)Math.Ceiling(missing.TotalSeconds / 5) * 5;
+            return L.Transcription_OwnVoiceStatus_NeedsMore_Format(seconds);
+        }
+        if (ownVoice.Status == UserVoiceStatus.Failed || ownVoice.Failure != VoiceSampleFailure.None)
+            return L.Transcription_OwnVoiceStatus_Fallback;
+
+        return L.Transcription_OwnVoiceStatus_Preparing;
+    }
+
     private Task OnToggleTranslatedVoice()
         => LanguageUI.UpdateSettings(x => x with { IsTranslatedVoiceEnabled = !x.IsTranslatedVoiceEnabled });
+
+    private Task OnToggleOwnVoice()
+        => LanguageUI.UpdateSettings(x => x with { IsOwnVoiceEnabled = !x.IsOwnVoiceEnabled });
+
+    private Task OnRemoveSampleClick()
+        => LanguageUI.UpdateSettings(x => x with { OwnVoiceSampleMediaId = null });
+
+    private void OnRecordSampleClick() {
+        // The sample is an ordinary voice message in Notes, prompted by a banner there
+        if (ChatListUI.NotesChat.Value is not { } notes)
+            return;
+
+        Hub.BannerUI.Show(new OwnVoiceSampleBanner.Model(notes.Id, Clocks.ServerClock.Now));
+        Modal?.Close();
+        _ = History.NavigateTo(Links.Chat(notes.Id));
+    }
 
     private void OnDubVoiceClick()
         => ModalUI.Show(new DubVoiceModal.Model());
@@ -200,5 +280,6 @@
         UserLanguageSettings Languages,
         bool EnableIncompleteUI,
         bool IsFaceDownMicStopEnabled,
-        string? DefaultDubVoiceId);
+        string? DefaultDubVoiceId,
+        OwnVoiceStatus? OwnVoice);
 }

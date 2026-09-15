@@ -124,6 +124,22 @@ public static class LocalizedStringsLocalizerExt
         public string Transcription_DubVoiceCaption => l["Transcription_DubVoiceCaption"].Value;
         public string Transcription_DubVoiceDefault => l["Transcription_DubVoiceDefault"].Value;
         public string Transcription_DubVoicePreviewText => l["Transcription_DubVoicePreviewText"].Value;
+        public string Transcription_OwnVoice => l["Transcription_OwnVoice"].Value;
+        public string Transcription_OwnVoiceCaption => l["Transcription_OwnVoiceCaption"].Value;
+        public string Transcription_OwnVoiceStatus_Off => l["Transcription_OwnVoiceStatus_Off"].Value;
+        public string Transcription_OwnVoiceStatus_Ready => l["Transcription_OwnVoiceStatus_Ready"].Value;
+        public string Transcription_OwnVoiceStatus_Preparing => l["Transcription_OwnVoiceStatus_Preparing"].Value;
+        public string Transcription_OwnVoiceStatus_NeedsMore_Format(object arg0)
+            => l["Transcription_OwnVoiceStatus_NeedsMore_Format", arg0].Value;
+        public string Transcription_OwnVoiceStatus_Fallback => l["Transcription_OwnVoiceStatus_Fallback"].Value;
+        public string Transcription_OwnVoiceRecord => l["Transcription_OwnVoiceRecord"].Value;
+        public string Transcription_OwnVoiceRerecord => l["Transcription_OwnVoiceRerecord"].Value;
+        public string Transcription_OwnVoiceRemoveSample => l["Transcription_OwnVoiceRemoveSample"].Value;
+        public string Transcription_OwnVoiceReadAloud => l["Transcription_OwnVoiceReadAloud"].Value;
+        public string Transcription_OwnVoicePromptText => l["Transcription_OwnVoicePromptText"].Value;
+        public string Transcription_OwnVoiceUseRecording => l["Transcription_OwnVoiceUseRecording"].Value;
+        public string Transcription_OwnVoiceSampleSaved => l["Transcription_OwnVoiceSampleSaved"].Value;
+        public string Transcription_DubVoiceFallbackCaption => l["Transcription_DubVoiceFallbackCaption"].Value;
         public string Transcription_MicrophoneTopic => l["Transcription_MicrophoneTopic"].Value;
         public string Transcription_FaceDownStop => l["Transcription_FaceDownStop"].Value;
         public string Transcription_FaceDownStopCaption => l["Transcription_FaceDownStopCaption"].Value;

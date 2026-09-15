@@ -92,3 +92,15 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
 .outgoing-call-banner .banner-buttons .btn-h.btn-close-call i {
     @apply text-02;
 }
+
+/* ── Own-voice sample banner (the prompt card the user reads aloud in Notes) ── */
+
+.own-voice-sample-banner {
+    @apply flex-y gap-y-1;
+}
+.own-voice-sample-banner .c-title {
+    @apply text-caption-1;
+}
+.own-voice-sample-banner .c-prompt {
+    @apply text-caption-4 text-02;
+}

@@ -143,6 +143,25 @@
   "Transcription_DubVoiceCaption": "The voice others hear when your speech is translated",
   "Transcription_DubVoiceDefault": "Default",
   "Transcription_DubVoicePreviewText": "Hello! This is how others will hear you.",
+  // "Use my own voice" - voice cloning for dubbing (admin preview). {0} in _NeedsMore_Format is
+  // rounded up to a multiple of 5, so the two-form "seconds" is safe in every language.
+  // _PromptText is what the user reads aloud to record a voice sample: natural first-person prose,
+  // about 30 seconds spoken, with nothing that marks the speaker's gender.
+  "Transcription_OwnVoice": "Use my own voice",
+  "Transcription_OwnVoiceCaption": "Others hear your translated speech in a clone of your voice, made from your recordings. Turn off to delete it.",
+  "Transcription_OwnVoiceStatus_Off": "Off",
+  "Transcription_OwnVoiceStatus_Ready": "Ready",
+  "Transcription_OwnVoiceStatus_Preparing": "Preparing your voice…",
+  "Transcription_OwnVoiceStatus_NeedsMore_Format": "Needs about {0} more seconds of your recordings",
+  "Transcription_OwnVoiceStatus_Fallback": "Temporarily using a standard voice",
+  "Transcription_OwnVoiceRecord": "Record a sample",
+  "Transcription_OwnVoiceRerecord": "Re-record the sample",
+  "Transcription_OwnVoiceRemoveSample": "Remove sample",
+  "Transcription_OwnVoiceReadAloud": "Read this aloud in your usual voice to record a sample:",
+  "Transcription_OwnVoicePromptText": "Hi, this is my voice. I'm recording a short sample so the app can learn how I sound and use it whenever my words are translated for someone else. I'll speak the way I usually do: not too fast, not too slow, with the pauses I would normally make. Some sentences are short. Others go on a little longer, rise and fall, and end on a calmer note. That should be enough for a good match, so I'll stop here.",
+  "Transcription_OwnVoiceUseRecording": "Use this recording",
+  "Transcription_OwnVoiceSampleSaved": "Voice sample saved",
+  "Transcription_DubVoiceFallbackCaption": "Used when your own voice isn't available",
   "Transcription_LanguageDetected_Format": "Detected transcription language for chat '{0}' is {1}.",
 
   // Settings > Sessions - the signed-in devices and the sign-out actions.
