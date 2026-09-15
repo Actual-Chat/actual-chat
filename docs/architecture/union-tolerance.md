@@ -144,5 +144,5 @@ than a reflection pass over the hierarchy.
   conventions a union member must follow.
 - [Command idempotency](./command-idempotency.md) — the other half of the rollout story: how
   a client-generated `Uuid` and a version-gated deserializer keep old clients working.
-- [Call entries](../call-entries.md) — the first feature to take a tag in the system range,
+- [Call entries](../calls/call-entries.md) — the first feature to take a tag in the system range,
   and a worked example of what declaring one costs.

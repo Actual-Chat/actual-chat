@@ -68,7 +68,7 @@ author and uses the stored name only when it cannot, which is what keeps a renam
 old entries from showing a stale name.
 
 Union tags: `101` on `ChatEntry`, `3` on `SystemEntry`. 101 sits in the system range
-100..199 deliberately — see [Forward-compatible unions](./architecture/union-tolerance.md).
+100..199 deliberately — see [Forward-compatible unions](../architecture/union-tolerance.md).
 
 ### On disk
 
@@ -143,7 +143,7 @@ had. Bare **Call** is left for the outcome no arm matches: a row from a newer se
 
 ## Compatibility
 
-Covered by [Forward-compatible unions](./architecture/union-tolerance.md). In short: a peer
+Covered by [Forward-compatible unions](../architecture/union-tolerance.md). In short: a peer
 at 2.20+ degrades an unknown entry to a placeholder; a peer at or below `2.19.9999` is
 served by filtering twins and never receives one; a server rolled back past the release
 reads the row as the same placeholder rather than throwing.
