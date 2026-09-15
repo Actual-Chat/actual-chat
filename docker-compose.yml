@@ -35,13 +35,22 @@ services:
     # To log every SQL statement, append: "-c", "log_statement=all", "-c", "log_statement_sample_rate=0.1"
     entrypoint: ["docker-entrypoint.sh", "-c", "shared_buffers=256MB", "-c", "max_connections=1000", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "pg_stat_statements.track=all"]
     logging: *default-logging
+  # imagor replaced willnorris/imageproxy, which cannot decode HEIC and passed such files through
+  # unchanged. Its Docker image builds libheif in unconditionally, so HEIC needs no extra flag.
   imageproxy:
-    image: willnorris/imageproxy:latest
-    platform: linux/amd64
+    image: shumc/imagor:latest
     expose:
       - 8080
     environment:
-      - IMAGEPROXY_CACHE=memory:100:24h
+      - PORT=8080
+      - IMAGOR_UNSAFE=1
+      - IMAGOR_CACHE_HEADER_TTL=24h
+      # imagor keeps the input format unless told otherwise, so a HEIC comes back as image/heif
+      # and stays unviewable. AUTO_WEBP re-encodes it for any client sending Accept: image/webp,
+      # which covers every current browser - but NOT curl, link unfurlers or older clients, which
+      # still get image/heif. A HEIC source also needs an explicit filters:format(jpeg) from the
+      # URL builder to be viewable everywhere; measured 2026-09-14.
+      - IMAGOR_AUTO_WEBP=1
       - SSL_CERT_DIR=/usr/local/share/ca-certificates/
     volumes:
       - ./.config/local.voxt.ai/ssl/local.voxt.ai.crt:/usr/local/share/ca-certificates/local.voxt.ai.crt
