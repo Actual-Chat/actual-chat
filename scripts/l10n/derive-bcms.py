@@ -125,6 +125,8 @@ EKAVIAN = [
     ("prije", "pre"), ("Prije", "Pre"),
     ("dijel", "del"), ("Dijel", "Del"),
     ("podijel", "podel"), ("Podijel", "Podel"),
+    ("premješt", "premešt"), ("Premješt", "Premešt"),
+    ("zamijen", "zamen"), ("Zamijen", "Zamen"),
     ("nedjelj", "nedelj"), ("Nedjelj", "Nedelj"), ("ponedjeljak", "ponedeljak"),
     ("srijed", "sred"), ("|sri|", "|sre|"),
     ("rješ", "reš"), ("Rješ", "Reš"), ("riješ", "reš"), ("Riješ", "Reš"),

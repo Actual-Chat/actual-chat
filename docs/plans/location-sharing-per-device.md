@@ -39,8 +39,9 @@ The change, in five parts:
    the stop button resolves the author's live share and removes it by id.
 5. **Server: make an old client's Stop work.** An old device stops by the id it
    holds, which the takeover froze — so its Stop button quietly stops nothing.
-   The RPC handshake tells the server that caller is old, and for those callers
-   a `Remove` of an already-frozen share is read as "stop my live share here".
+   A `Remove` of an already-frozen own share is read as "stop my live share
+   here", for every caller: a new client only ever sends one when the user
+   pressed Stop in that chat.
 
 There is no setting to turn any of this on or off: takeover is the rule, and
 both old and new clients are supported under it.
@@ -270,6 +271,26 @@ protected virtual async Task<ApiArray<SharedLocationId>> ListStoppedShares(Cance
 is pushed to the subscriber and the chain reacts within a round trip. One
 subscription per active share — negligible.
 
+**It must read `Get(myId)`, never `ListLive(chatId)`.** Collapsing the loop into a
+single `ListLive` read and testing for absence looks like a strict improvement —
+one call instead of one per share — and is the opposite:
+
+- **`ListLive` invalidates on every sharer's position fix.** Every successful
+  change, routine `Update`s included, ends with
+  `_ = ListLive(invLocation.ChatId, default)`. In a chat with *N* sharers that's
+  *N* invalidations per `UpdatePeriod`, forever, to answer a question whose answer
+  changes at most once. `Get(myId)` invalidates only when *my* row changes, and is
+  **terminal**: `SharedLocationsBackend.Get` re-arms its expiry invalidation only
+  `if (sharedLocation.IsLive(now) && !sharedLocation.IsUnlimited)`, so the
+  subscription goes quiet exactly when the work is done.
+- **Absence from `ListLive` is ambiguous** — taken over, or read failed, or the
+  author left. A non-null share with `IsLive == false` is a *definite* server
+  answer, which is what fail-open requires.
+
+`ListLive` being already subscribed while a map is on screen doesn't make it free:
+that subscription belongs to `MapPanel`/`LocationMapModal` and dies with the
+component, while A must keep working backgrounded with no map rendered.
+
 **B. Report result (pull).** `Report` already calls `SharedLocations_Change`
 every `UpdatePeriod` and throws its result away. It stops doing that:
 
@@ -349,57 +370,38 @@ That is the worst of the old-client problems, because it is an explicit user
 intent failing quietly rather than a cost the user can see. It is also the only
 one that can be closed from the server.
 
-**The server can tell an old caller from a new one.** The RPC handshake carries
-the caller's API version set (`RpcPeer.Versions`, built from
-`handshake.RemoteApiVersionSet`), and `RpcInboundContext.Current` exposes the
-peer as an `AsyncLocal`, so the version is readable inside the handler:
+**The rule.** A `Remove` whose target share is **already frozen and owned by
+the caller's author** is re-read as *"stop my live share in this chat"*: the
+API layer looks the author's live share up and forwards the `Remove` with that
+id. Live targets and other authors keep exact by-id semantics, and a frozen
+share with nothing live to retarget to is returned as is.
 
-```csharp
-private static bool IsLegacyCaller()
-{
-    // No inbound RPC context = an in-process caller (tests, backend, server-side code),
-    // which gets the exact by-id semantics rather than the compatibility rule.
-    var peer = RpcInboundContext.Current?.Peer;
-    return peer is not null && peer.Versions[RpcDefaults.ApiScope] <= LastVersionWithoutRemoteStop;
-}
-```
+**It applies to every caller**, not only old ones. The first cut version-gated
+it on the RPC handshake, and the gate was dropped for two reasons:
 
-**The rule.** For a legacy caller, a `Remove` whose target share is **already
-frozen and owned by that caller's author** is re-read as *"stop my live share in
-this chat"*. Every other case is untouched: new callers, live targets, and other
-authors keep exact by-id semantics.
+- **It cannot be read where it's needed.** `Commander.Run` executes the
+  outermost command under `ExecutionContext.SuppressFlow`, so
+  `RpcInboundContext.Current` is null inside every command handler — every
+  existing reader of it in the codebase sits in a plain RPC method. Carrying
+  the version onto the command took an RPC inbound middleware plus a slot on
+  `ApiCommand`: shared infrastructure for one consumer.
+- **A new client never sends this by accident.** Every path that emits a
+  `Remove` for an id that may have frozen meanwhile — `StopSharing` from the
+  header, map panel or activity panel, a message's stop button, the Android
+  notification's Stop, and `StartSharing` stopping this device's previous
+  share — is the user pressing Stop in that chat, or about to take the share
+  over anyway. Stopping their live share on the other device is what they asked
+  for, so there is no surprise for the gate to prevent.
 
-**Why it is version-gated rather than universal.** A new client can legitimately
-send a `Remove` for a share that froze between render and tap; silently stopping
-a *different* row would be a surprise it has no way to predict. An old client
-cannot be surprised — once its id is frozen, it has no by-id expectation left to
-violate, and the alternative is the no-op above.
-
-**Why the version is read rather than routed with `[LegacyName]`.**
-`[LegacyName(wireName, maxVersion)]` is the idiomatic tool for this and is
-already used twice here — `GetNews`/`GetFullNews` at `"2.12.9999"`,
-`GetListeningStream`/`LegacyGetListeningStream` at `"2.15.9999"` — but it works
-by routing one wire name to two *different* methods. A command handler is bound
-to its command type, so two `[CommandHandler]` methods taking
-`SharedLocations_Change` would be ambiguous to CommandR. Reading the peer
-version keeps one handler and one command type. `[LegacyName]` stays the right
-answer for non-command RPC methods; this is the exception, and worth
-remembering as one.
-
-**Where it goes**: `SharedLocations.OnChange`, the API layer — that is where the
-client's inbound context lives. `ISharedLocationsBackend` is untouched: it still
+**Where it goes**: `SharedLocations.OnChange`, the API layer, where
+`chatRules.Author` is at hand. `ISharedLocationsBackend` is untouched: it still
 receives a `Remove` with a concrete id, just the live one. Finding that id costs
-one `Backend.ListLive(chatId)` filtered to `chatRules.Author`, and only on this
-path — a legacy `Remove` naming a frozen share — so the ordinary stop is
-unchanged.
-
-`LastVersionWithoutRemoteStop` is pinned to the last release shipped without
-mechanisms A/B/C, in the `X.Y.9999` form the existing shims use (`ApiConstants.Version`
-is the assembly `X.Y`). It must be pinned deliberately at implementation time,
-not read from "current".
+one `Backend.Get(id)` on every `Remove` and one `Backend.ListLive(chatId)` only
+when the target turns out frozen — so the ordinary stop pays a cached read.
 
 **What this does and does not fix.** It closes the Stop problem for every old
-client, with no app update, no migration and no contract change. It does nothing
+client, with no app update, no migration, no contract change and nothing
+version-specific to keep pinned. It does nothing
 for the *tracking* problem: knowing the caller is old creates no channel to a
 *different* device's report loop, which is the device that keeps GPS on.
 
@@ -449,6 +451,30 @@ restart of sharing today.
 Re-pointing the existing entry at the new share would keep the chat tidier but
 rewrites a message posted from another device at another time. Deferred.
 
+**Opening a superseded entry's map must not show its author twice.**
+`LocationUI.ListParticipants(chatId, locationId)` — the overload only
+`LocationMapModal` uses — appends the opened share to the live set when that share
+isn't itself live, so you still see a stopped pin next to whoever is sharing now.
+After a takeover the opened share is frozen and its author *is* in the live set
+under a new id, so the id-based test missed it and the author got two markers and
+two participant rows. Matching by author instead:
+
+```csharp
+// Matched by author, not id: a share taken over by another device is a different row,
+// and keeping both would put two markers on one person.
+return liveLocations.Any(x => x.AuthorId == location.AuthorId)
+    ? liveLocations
+    : [location, ..liveLocations];
+```
+
+Reachable today (stop sharing, start again, open the old entry's map), so this is
+a latent bug the takeover promotes from rare to routine, not one it introduces.
+`MapPanel` and `ShareLocationModal` pass no `locationId` and were never affected.
+The deliberate behavior change: a taken-over entry's map now centers on the
+author's *current* position rather than where that share froze — which is what
+tapping a person's live-location message should show. **Landed ahead of the
+takeover.**
+
 ## Reuse
 
 ### Existing abstractions to reuse
@@ -456,12 +482,8 @@ rewrites a message posted from another device at another time. Deferred.
 - `LiveLocationReporter` + `ActiveShare` + `StateFactory.NewKvasStored` over
   `LocalSettings` — the device-local share list; the new drop paths funnel into
   the same `_shares` mutation `StopSharing` and `DropExpiredShares` already use.
-- `RpcInboundContext.Current.Peer.Versions[RpcDefaults.ApiScope]` — the caller's
-  API version, already carried by every RPC handshake. §5 reads it; no new
-  plumbing, no handshake change, nothing added to the wire.
-- `[LegacyName(wireName, maxVersion)]` — the idiomatic sibling of that read, used
-  by `IChats.GetNews`/`GetFullNews` and `ILiveAudioStreams.GetListeningStream`.
-  §5 explains why a command handler reads the version instead.
+- `Backend.Get` / `Backend.ListLive` — the two reads §5's retarget is made of;
+  no version plumbing, no handshake read, nothing added to the wire.
 - `SharedLocationsBackend.Get` — §2's early-out reads through the existing
   compute method, so repeated stale pushes are served from the Fusion cache.
 - `AsyncChain` / `RetryForever` / `FuncWorker` in `OnRun` — mechanism A is a
@@ -507,15 +529,20 @@ one.
 
 ## Changes by file
 
+All landed. `LocationUI.ListParticipants` (§7) and `CountChatLiveShares` went
+in ahead of the rest.
+
 | File | Change |
 |---|---|
-| `src/dotnet/Chat.Service/SharedLocations.cs` | legacy-caller detection; a legacy `Remove` of a frozen own share retargets to the author's live one |
-| `src/dotnet/Chat.Service/SharedLocationsBackend.cs` | `GetOwnLiveShare` → `StopOwnLiveShares` (takeover); early-out for frozen shares + `RequireOwnedBy`; affected-set invalidation; `CountLiveShares` excludes the acting author, whose freeze isn't visible to SQL yet (**done**) |
-| `src/dotnet/UI.Blazor.App/Services/Location/LiveLocationReporter.cs` | `GetActiveShare`; `ListStoppedShares` + watch chain; startup sweep in `ReportLoop`; `Report` inspects its result; `DropShare` + takeover toast; `StopSharing(chatId, locationId)` |
-| `src/dotnet/UI.Blazor.App/Services/Location/LocationUI.cs` | `IsOwnDeviceLive`; `GetTrackingError` gated on it; `StopSharing` resolves the author's live share; by-id overload |
+| `src/dotnet/Chat.Service/SharedLocations.cs` | a `Remove` of a frozen own share retargets to the author's live one |
+| `src/dotnet/Chat.Service/SharedLocationsBackend.cs` | `GetOwnLiveShare` → `StopOwnLiveShares` (takeover); frozen-share early-out through `Get` + `RequireOwnedBy`; affected-set invalidation; `CountChatLiveShares` excludes the acting author |
+| `src/dotnet/UI.Blazor.App/Services/Location/LiveLocationReporter.cs` | `GetActiveShare`; `ListStoppedShares` + `WatchStoppedShares` chain (A); `Report` inspects its result (B); `SweepStoppedShares` before `Tracker.Start` (C); `DropStoppedShares` + toast; `StopSharing(chatId, locationId)` |
+| `src/dotnet/UI.Blazor.App/Services/Location/LocationUI.cs` | `IsOwnDeviceLive`; `GetTrackingError` gated on it; `GetOwnLive` inlines the former `GetLive`; `StopSharing` resolves the author's live share; by-id overload; `ListParticipants` matches by author (§7) |
 | `.../ChatView/Items/LocationMessageView/LocationMessageView.razor` | stop by `Entry.LocationId` |
-| `.../VisualActivityPanel/MapPanel.razor` | "Share from this device" when the author is live elsewhere |
-| `.../ShareLocationModal/ShareLocationModal.razor` | same hint in the live-share tile's caption |
+| `.../VisualActivityPanel/MapPanel.razor` + `visual-activity-panel.css` | "Share from this device" beside the stop button when the author is live elsewhere |
+| `.../ShareLocationModal/ShareLocationModal.razor` | live-share tile caption says sharing runs on another device and this one takes over |
+| `src/dotnet/Localization/Resources/*` + `scripts/l10n/derive-bcms.py` | four keys (`MapPanel_ShareFromThisDevice`, `Location_SharingFromAnotherDeviceCaption`, `Location_SharingMovedToAnotherDevice`, `Location_SharingStoppedFromAnotherDevice`) in all 19 hand-written catalogs, derived ones regenerated; two ekavian reflexes (`premješt`, `zamijen`) the derive script lacked |
+| `tests/Chat.IntegrationTests/SharedLocationsTest.cs` | see below |
 
 No contract, model or DB changes — so no migration, and old clients keep talking
 to the server with the messages they already send.
@@ -538,12 +565,12 @@ to the server with the messages they already send.
   open a hole.
 - **new** `AnyDeviceCanStopTheAuthorsLiveShare` — a second session of the same
   user removes the share by id and `ListLive` empties.
-- **new** `LegacyStopOfAFrozenShareStopsTheLiveOne` — with a simulated legacy
-  caller, `Remove` of a taken-over id empties `ListLive`. The regression it
-  guards is silent, so it needs a test rather than a manual check.
-- **new** `StopOfAFrozenShareIsANoOpForCurrentClients` — the same call from a
-  current caller leaves the live share alone, pinning that §5 is scoped to old
-  clients and cannot surprise a new one.
+- **new** `StopOfAFrozenOwnShareStopsTheLiveOne` — `Remove` of a taken-over id
+  empties `ListLive`. The regression it guards is silent, so it needs a test
+  rather than a manual check.
+- **new** `StopOfAFrozenShareWithNothingLiveIsANoOp` — a second stop of an
+  ordinarily stopped share returns it untouched, so the retarget never invents
+  a target.
 - **Not covered**: the `CountLiveShares` exclusion. Reaching
   `MaxSharingAuthorsPerChat` needs 100 sharing authors, and a cheaper test
   would pass with or without the fix — so it's left to review rather than
@@ -554,6 +581,8 @@ to the server with the messages they already send.
 The multi-device tests sign a second tester in as Alice with an explicit shared
 identity: `SignInAsAlice()` with no argument mints a fresh Ulid identity per
 call, so the default gives two *users*, not one user's two devices.
+
+All 15 tests in the class pass, as does `AppLocalizationTest`.
 
 **`tests/ts/e2e`** — a two-context, same-user test is the real acceptance check,
 since it exercises mechanism A end to end: context A shares, context B shares,
@@ -614,10 +643,11 @@ nothing, and its own stop button and notification Stop action still work.
 - **Ignored-push traffic.** A stuck device sends one command per 30s forever.
   §2 makes each one cheap, but they still cost a round trip and a resolver read,
   and they shouldn't be logged at anything above debug.
-- **§5 depends on a correctly pinned version constant.** Set
-  `LastVersionWithoutRemoteStop` too high and current clients get the
-  compatibility semantics; too low and old clients keep the silent no-op. The
-  two tests above pin both sides.
+- **§5 retargets for new clients too.** A `Remove` sent for an id that froze
+  between render and tap stops the author's live share on the other device.
+  Every such path is the user pressing Stop in that chat, so this is the
+  intended outcome rather than a surprise — but it is a rule to remember when a
+  new caller of `Remove` is added.
 - **Toast noise.** A user deliberately moving sharing between devices gets a
   toast on the old one every time. That's the point, and it's one short toast.
 - **Frozen-row garbage.** Every takeover leaves a stopped row behind. They're

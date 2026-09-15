@@ -6,13 +6,17 @@ namespace ActualChat.Chat.IntegrationTests;
 public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
+    // Explicit, so a second tester can sign in as the same user: a blank identity mints a fresh one per call.
+    private readonly string _aliceIdentity = $"alice-{Ulid.NewUlid()}";
+
     private WebClientTester Alice => field ??= fixture.AppHost.NewWebClientTester(Out);
     private WebClientTester Bob => field ??= fixture.AppHost.NewWebClientTester(Out);
+    private WebClientTester? _aliceOtherDevice;
 
     protected override async Task InitializeAsync()
     {
         await base.InitializeAsync();
-        await Alice.SignInAsAlice();
+        await Alice.SignInAsAlice(_aliceIdentity);
         await Bob.SignInAsBob();
     }
 
@@ -20,6 +24,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
     {
         await Alice.DisposeSilentlyAsync();
         await Bob.DisposeSilentlyAsync();
+        await _aliceOtherDevice.DisposeSilentlyAsync();
         await base.DisposeAsync();
     }
 
@@ -182,32 +187,151 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
     }
 
     [Fact]
-    public async Task NewLiveShareReturnsExistingWhenAlreadySharing()
+    public async Task NewLiveShareTakesOverTheRunningOne()
     {
         // arrange
         var sharedLocations = Alice.AppServices.GetRequiredService<ISharedLocations>();
         var session = Alice.Session;
-        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Idempotent" });
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Takeover" });
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var ct = cts.Token;
 
         var cList = await Computed.Capture(() => sharedLocations.ListLive(session, chatId, ct), ct);
         var hour = TimeSpan.FromHours(1);
         var firstPoint = new GeoPoint(10, 20);
+        var secondPoint = new GeoPoint(30, 40);
 
-        // act - start a first live share
+        // act - start a first live share, then a second one as another device would
         var first = await Alice.ReportLocation(chatId, firstPoint, hour, cancellationToken: ct);
         await cList.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
+        var second = await Alice.ReportLocation(chatId, secondPoint, hour, cancellationToken: ct);
 
-        // act - the same author starts a second live share while the first is still live
+        // assert - the newest share wins: a new row, and the only live one
+        second.Id.Should().NotBe(first.Id, "a takeover mints a new row rather than reusing the old one");
+        second.Point.Should().Be(secondPoint);
+        await cList.When(x => x.Count == 1 && x[0].Id == second.Id, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
+
+        // assert - the first is frozen at its last point
+        var frozen = await sharedLocations.Get(session, chatId, first.Id, ct);
+        frozen.Should().NotBeNull();
+        frozen.Point.Should().Be(firstPoint);
+        frozen.IsLive(Clocks.SystemClock.Now).Should().BeFalse();
+        frozen.Version.Should().BeGreaterThan(first.Version);
+    }
+
+    [Fact]
+    public async Task TakenOverShareIgnoresFurtherUpdates()
+    {
+        // arrange - a takeover, leaving the first share frozen
+        var sharedLocations = Alice.AppServices.GetRequiredService<ISharedLocations>();
+        var session = Alice.Session;
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Stale device" });
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        var hour = TimeSpan.FromHours(1);
+        var first = await Alice.ReportLocation(chatId, new GeoPoint(10, 20), hour, cancellationToken: ct);
+        var secondPoint = new GeoPoint(30, 40);
+        var second = await Alice.ReportLocation(chatId, secondPoint, hour, cancellationToken: ct);
+        var frozen = await sharedLocations.Get(session, chatId, first.Id, ct);
+
+        // act - the losing device keeps reporting into the id it holds, as an un-updated app does forever
+        var result = await Alice.ReportLocation(chatId, new GeoPoint(50, 60), id: first.Id, cancellationToken: ct);
+
+        // assert - answered with the frozen share; nothing moved, nothing bumped, the live one untouched
+        result.Should().Be(frozen, "a push into a frozen share is turned away with that share");
+        (await sharedLocations.Get(session, chatId, first.Id, ct)).Should().Be(frozen);
+        var live = (await sharedLocations.ListLive(session, chatId, ct)).Single();
+        live.Id.Should().Be(second.Id);
+        live.Point.Should().Be(secondPoint);
+    }
+
+    [Fact]
+    public async Task FrozenShareUpdateStillChecksOwnership()
+    {
+        // arrange - Alice's share, stopped
+        var (chatId, inviteId) = await Alice.CreateChat(x => x with { Title = "Frozen ownership" });
+        await Bob.JoinChat(chatId, inviteId);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        var location = await Alice
+            .ReportLocation(chatId, new GeoPoint(10, 20), TimeSpan.FromHours(1), cancellationToken: ct);
+        await Alice.StopSharingLocation(chatId, location.Id, ct);
+
+        // act
+        var updateError = await Record.ExceptionAsync(
+            () => Bob.ReportLocation(chatId, new GeoPoint(30, 40), id: location.Id, cancellationToken: ct));
+        var stopError = await Record.ExceptionAsync(() => Bob.StopSharingLocation(chatId, location.Id, ct));
+
+        // assert - the frozen-share early-out is no way to touch someone else's share
+        updateError.Should().BeOfType<UnauthorizedAccessException>();
+        stopError.Should().BeOfType<UnauthorizedAccessException>();
+    }
+
+    [Fact]
+    public async Task AnyDeviceCanStopTheAuthorsLiveShare()
+    {
+        // arrange - Alice shares from one device and holds a second one
+        var sharedLocations = Alice.AppServices.GetRequiredService<ISharedLocations>();
+        var session = Alice.Session;
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Stop from anywhere" });
+        var otherDevice = await SignInAliceOtherDevice();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        var cList = await Computed.Capture(() => sharedLocations.ListLive(session, chatId, ct), ct);
+        var location = await Alice
+            .ReportLocation(chatId, new GeoPoint(10, 20), TimeSpan.FromHours(1), cancellationToken: ct);
+        await cList.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
+
+        // act - the other device stops the share it never started
+        await otherDevice.StopSharingLocation(chatId, location.Id, ct);
+
+        // assert
+        await cList.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
+        var stopped = await sharedLocations.Get(session, chatId, location.Id, ct);
+        stopped!.IsLive(Clocks.SystemClock.Now).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task StopOfAFrozenOwnShareStopsTheLiveOne()
+    {
+        // arrange - a takeover, so the id the losing device holds is frozen
+        var sharedLocations = Alice.AppServices.GetRequiredService<ISharedLocations>();
+        var session = Alice.Session;
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Stop by a frozen id" });
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        var cList = await Computed.Capture(() => sharedLocations.ListLive(session, chatId, ct), ct);
+        var hour = TimeSpan.FromHours(1);
+        var first = await Alice.ReportLocation(chatId, new GeoPoint(10, 20), hour, cancellationToken: ct);
         var second = await Alice.ReportLocation(chatId, new GeoPoint(30, 40), hour, cancellationToken: ct);
+        await cList.When(x => x.Count == 1 && x[0].Id == second.Id, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
 
-        // assert - one live share per author: the running one is returned, no second is created
-        second.Id.Should().Be(first.Id);
-        second.Point.Should().Be(firstPoint);
-        var live = await sharedLocations.ListLive(session, chatId, ct);
-        live.Count.Should().Be(1);
-        live.Single().Id.Should().Be(first.Id);
+        // act - the losing device stops by the id it holds, as an old app does
+        await Alice.StopSharingLocation(chatId, first.Id, ct);
+
+        // assert - read as "stop my live share here"
+        await cList.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
+    }
+
+    [Fact]
+    public async Task StopOfAFrozenShareWithNothingLiveIsANoOp()
+    {
+        // arrange - a share stopped the ordinary way
+        var sharedLocations = Alice.AppServices.GetRequiredService<ISharedLocations>();
+        var session = Alice.Session;
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Stop twice" });
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        var location = await Alice
+            .ReportLocation(chatId, new GeoPoint(10, 20), TimeSpan.FromHours(1), cancellationToken: ct);
+        await Alice.StopSharingLocation(chatId, location.Id, ct);
+        var frozen = await sharedLocations.Get(session, chatId, location.Id, ct);
+
+        // act
+        await Alice.StopSharingLocation(chatId, location.Id, ct);
+
+        // assert - nothing to retarget to, so the frozen share is left exactly as it was
+        (await sharedLocations.Get(session, chatId, location.Id, ct)).Should().Be(frozen);
     }
 
     [Fact]
@@ -277,5 +401,14 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
             .Awaiting(() => Bob.ReportLocation(chatId, new GeoPoint(1, 2)))
             .Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*join the chat*");
+    }
+
+    // Private methods
+
+    private async Task<WebClientTester> SignInAliceOtherDevice()
+    {
+        _aliceOtherDevice = fixture.AppHost.NewWebClientTester(Out);
+        await _aliceOtherDevice.SignInAsAlice(_aliceIdentity);
+        return _aliceOtherDevice;
     }
 }
