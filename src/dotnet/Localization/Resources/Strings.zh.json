@@ -169,6 +169,8 @@
   "DubVoice_AnyAccent": "任意口音",
   "DubVoice_Preview": "试听",
   "DubVoice_Unavailable": "目前无法获取声音",
+  "DubVoice_Suggested": "推荐",
+  "DubVoice_AllVoices": "所有声音",
 
   "NativeApp_AutoStart": "登录时自动启动",
   "NativeApp_AutoStartEnabledByPolicy": "自动启动已由组策略或设备策略启用。",

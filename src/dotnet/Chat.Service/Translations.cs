@@ -5,11 +5,12 @@ namespace ActualChat.Chat;
 /// </summary>
 public class Translations(IServiceProvider services) : ITranslations
 {
-    private ITranslationsBackend Backend => field ??= services.GetRequiredService<ITranslationsBackend>();
-    private IChats Chats => field ??= services.GetRequiredService<IChats>();
-    private IAccounts Accounts => field ??= services.GetRequiredService<IAccounts>();
+    private IServiceProvider Services { get; } = services;
+    private ITranslationsBackend Backend => field ??= Services.GetRequiredService<ITranslationsBackend>();
+    private IChats Chats => field ??= Services.GetRequiredService<IChats>();
+    private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     private IChatEntryLanguagesBackend ChatEntryLanguagesBackend
-        => field ??= services.GetRequiredService<IChatEntryLanguagesBackend>();
+        => field ??= Services.GetRequiredService<IChatEntryLanguagesBackend>();
 
     // [ComputeMethod]
     public virtual async Task<Translation?> Get(
@@ -54,5 +55,21 @@ public class Translations(IServiceProvider services) : ITranslations
     {
         await Accounts.GetOwn(session, cancellationToken).Require(AccountFull.MustBeActive).ConfigureAwait(false);
         return await Backend.ListDubVoices(cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<DubVoice>> ListSuggestedDubVoices(
+        Session session,
+        CancellationToken cancellationToken)
+    {
+        var voices = await ListDubVoices(session, cancellationToken).ConfigureAwait(false);
+        if (voices.Count == 0)
+            return voices;
+
+        var settings = await Services.UserSettingsUI(session)
+            .UserLanguageSettings()
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
+        return DubVoiceAccents.Suggest(voices, settings.ListSpoken()).ToApiArray();
     }
 }

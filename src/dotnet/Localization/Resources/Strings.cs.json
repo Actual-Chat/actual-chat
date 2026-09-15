@@ -169,6 +169,8 @@
   "DubVoice_AnyAccent": "Libovolný přízvuk",
   "DubVoice_Preview": "Poslechnout",
   "DubVoice_Unavailable": "Hlasy nejsou momentálně dostupné",
+  "DubVoice_Suggested": "Doporučené",
+  "DubVoice_AllVoices": "Všechny hlasy",
 
   "NativeApp_AutoStart": "Spouštět po přihlášení",
   "NativeApp_AutoStartEnabledByPolicy": "Automatické spouštění je zapnuto zásadami skupiny nebo počítače.",

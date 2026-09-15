@@ -169,6 +169,8 @@
   "DubVoice_AnyAccent": "모든 억양",
   "DubVoice_Preview": "미리 듣기",
   "DubVoice_Unavailable": "지금은 목소리를 사용할 수 없습니다",
+  "DubVoice_Suggested": "추천",
+  "DubVoice_AllVoices": "모든 목소리",
 
   "NativeApp_AutoStart": "로그인 시 자동 시작",
   "NativeApp_AutoStartEnabledByPolicy": "자동 시작이 그룹/기기 정책에 의해 켜져 있습니다.",

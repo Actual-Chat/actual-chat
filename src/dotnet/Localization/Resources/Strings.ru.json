@@ -169,6 +169,8 @@
   "DubVoice_AnyAccent": "Любой акцент",
   "DubVoice_Preview": "Прослушать",
   "DubVoice_Unavailable": "Голоса сейчас недоступны",
+  "DubVoice_Suggested": "Рекомендуемые",
+  "DubVoice_AllVoices": "Все голоса",
 
   "NativeApp_AutoStart": "Автозапуск при входе в систему",
   "NativeApp_AutoStartEnabledByPolicy": "Автозапуск включён групповой политикой или политикой устройства.",

@@ -190,6 +190,8 @@ public static class LocalizedStringsLocalizerExt
         public string DubVoice_AnyAccent => l["DubVoice_AnyAccent"].Value;
         public string DubVoice_Preview => l["DubVoice_Preview"].Value;
         public string DubVoice_Unavailable => l["DubVoice_Unavailable"].Value;
+        public string DubVoice_Suggested => l["DubVoice_Suggested"].Value;
+        public string DubVoice_AllVoices => l["DubVoice_AllVoices"].Value;
 
         public string NativeApp_AutoStart => l["NativeApp_AutoStart"].Value;
         public string NativeApp_AutoStartEnabledByPolicy => l["NativeApp_AutoStartEnabledByPolicy"].Value;

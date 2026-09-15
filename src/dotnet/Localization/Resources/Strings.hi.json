@@ -169,6 +169,8 @@
   "DubVoice_AnyAccent": "कोई भी लहजा",
   "DubVoice_Preview": "सुनें",
   "DubVoice_Unavailable": "आवाज़ें अभी उपलब्ध नहीं हैं",
+  "DubVoice_Suggested": "सुझाई गई",
+  "DubVoice_AllVoices": "सभी आवाज़ें",
 
   "NativeApp_AutoStart": "लॉग-ऑन पर स्वतः प्रारंभ",
   "NativeApp_AutoStartEnabledByPolicy": "ऑटो-स्टार्ट ग्रुप/मशीन पॉलिसी द्वारा चालू किया गया है।",

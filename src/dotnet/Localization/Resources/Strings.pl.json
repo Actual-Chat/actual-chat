@@ -169,6 +169,8 @@
   "DubVoice_AnyAccent": "Dowolny akcent",
   "DubVoice_Preview": "Odsłuchaj",
   "DubVoice_Unavailable": "Głosy są obecnie niedostępne",
+  "DubVoice_Suggested": "Sugerowane",
+  "DubVoice_AllVoices": "Wszystkie głosy",
 
   "NativeApp_AutoStart": "Uruchamiaj po zalogowaniu",
   "NativeApp_AutoStartEnabledByPolicy": "Autostart jest włączony przez zasady grupy lub komputera.",

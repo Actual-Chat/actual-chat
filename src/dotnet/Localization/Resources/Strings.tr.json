@@ -169,6 +169,8 @@
   "DubVoice_AnyAccent": "Herhangi bir aksan",
   "DubVoice_Preview": "Dinle",
   "DubVoice_Unavailable": "Sesler şu anda kullanılamıyor",
+  "DubVoice_Suggested": "Önerilen",
+  "DubVoice_AllVoices": "Tüm sesler",
 
   "NativeApp_AutoStart": "Oturum açıldığında otomatik başlat",
   "NativeApp_AutoStartEnabledByPolicy": "Otomatik başlatma grup/makine ilkesiyle etkinleştirildi.",

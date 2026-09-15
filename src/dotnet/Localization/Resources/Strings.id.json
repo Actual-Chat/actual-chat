@@ -169,6 +169,8 @@
   "DubVoice_AnyAccent": "Semua aksen",
   "DubVoice_Preview": "Dengarkan",
   "DubVoice_Unavailable": "Suara sedang tidak tersedia",
+  "DubVoice_Suggested": "Disarankan",
+  "DubVoice_AllVoices": "Semua suara",
 
   "NativeApp_AutoStart": "Jalankan otomatis saat masuk",
   "NativeApp_AutoStartEnabledByPolicy": "Jalan otomatis diaktifkan oleh kebijakan grup atau perangkat.",

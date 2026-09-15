@@ -169,6 +169,8 @@
   "DubVoice_AnyAccent": "Всякакъв акцент",
   "DubVoice_Preview": "Прослушване",
   "DubVoice_Unavailable": "Гласовете в момента не са достъпни",
+  "DubVoice_Suggested": "Предложени",
+  "DubVoice_AllVoices": "Всички гласове",
 
   "NativeApp_AutoStart": "Стартиране при влизане в системата",
   "NativeApp_AutoStartEnabledByPolicy": "Автоматичното стартиране е включено от групова или машинна политика.",

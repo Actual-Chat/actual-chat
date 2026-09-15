@@ -169,6 +169,8 @@
   "DubVoice_AnyAccent": "Qualquer sotaque",
   "DubVoice_Preview": "Ouvir",
   "DubVoice_Unavailable": "As vozes não estão disponíveis no momento",
+  "DubVoice_Suggested": "Sugeridas",
+  "DubVoice_AllVoices": "Todas as vozes",
 
   "NativeApp_AutoStart": "Iniciar automaticamente ao fazer login",
   "NativeApp_AutoStartEnabledByPolicy": "A inicialização automática está ativada por política de grupo ou do dispositivo.",

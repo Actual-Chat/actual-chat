@@ -208,8 +208,9 @@
   "TimeZone_Question": "What is your time zone?",
   "TimeZone_Updated": "Time zone has been updated",
 
-  // The voice picker for "My voice in translations" (Settings > Transcription): the gender and
-  // accent filters, the "Default" entry, and the per-voice preview button.
+  // The voice picker for "My voice in translations" (Settings > Transcription): the "Suggested"
+  // section (voices matching the user's spoken languages) above the collapsed "All voices" section
+  // with the gender and accent filters, the "Default" entry, and the per-voice preview button.
   "DubVoice_Title": "Voice in translations",
   "DubVoice_DefaultCaption": "The standard voice",
   "DubVoice_AnyGender": "Any gender",
@@ -218,6 +219,8 @@
   "DubVoice_AnyAccent": "Any accent",
   "DubVoice_Preview": "Preview",
   "DubVoice_Unavailable": "Voices are unavailable right now",
+  "DubVoice_Suggested": "Suggested",
+  "DubVoice_AllVoices": "All voices",
 
   // Settings > Application on the Windows desktop app: the "start when I log on" toggle and
   // the three reasons it can be unavailable. "Task Manager" and "Startup" name Windows' own

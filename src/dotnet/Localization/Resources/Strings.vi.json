@@ -169,6 +169,8 @@
   "DubVoice_AnyAccent": "Mọi giọng vùng",
   "DubVoice_Preview": "Nghe thử",
   "DubVoice_Unavailable": "Hiện không có giọng nào khả dụng",
+  "DubVoice_Suggested": "Gợi ý",
+  "DubVoice_AllVoices": "Tất cả giọng",
 
   "NativeApp_AutoStart": "Tự khởi động khi đăng nhập",
   "NativeApp_AutoStartEnabledByPolicy": "Tự động khởi động đã được bật bởi chính sách nhóm hoặc thiết bị.",

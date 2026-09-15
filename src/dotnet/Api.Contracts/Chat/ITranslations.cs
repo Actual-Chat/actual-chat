@@ -25,4 +25,7 @@ public interface ITranslations : IComputeService
 
     [ComputeMethod(MinCacheDuration = 600), RemoteComputeMethod(MinCacheDuration = 3600)]
     Task<ApiArray<DubVoice>> ListDubVoices(Session session, CancellationToken cancellationToken);
+    // The catalog's voices matching the accents of the languages the user speaks (DubVoiceAccents.Suggest)
+    [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(MinCacheDuration = 60)]
+    Task<ApiArray<DubVoice>> ListSuggestedDubVoices(Session session, CancellationToken cancellationToken);
 }

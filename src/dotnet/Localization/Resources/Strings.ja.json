@@ -169,6 +169,8 @@
   "DubVoice_AnyAccent": "アクセントを問わない",
   "DubVoice_Preview": "試聴",
   "DubVoice_Unavailable": "現在、声を利用できません",
+  "DubVoice_Suggested": "おすすめ",
+  "DubVoice_AllVoices": "すべての声",
 
   "NativeApp_AutoStart": "ログオン時に自動起動",
   "NativeApp_AutoStartEnabledByPolicy": "自動起動はグループ/デバイスのポリシーによって有効になっています。",

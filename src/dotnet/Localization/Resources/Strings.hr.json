@@ -169,6 +169,8 @@
   "DubVoice_AnyAccent": "Bilo koji akcenat",
   "DubVoice_Preview": "Preslušaj",
   "DubVoice_Unavailable": "Glasovi trenutno nisu dostupni",
+  "DubVoice_Suggested": "Predloženi",
+  "DubVoice_AllVoices": "Svi glasovi",
 
   "NativeApp_AutoStart": "Pokretanje pri prijavi na sustav",
   "NativeApp_AutoStartEnabledByPolicy": "Automatsko pokretanje je uključeno pravilima grupe ili računaloa.",

@@ -28,6 +28,30 @@ public class DubVoicesTest(
     }
 
     [Fact(Timeout = 60_000)]
+    public async Task ListSuggestedDubVoicesShouldFollowTheSpokenLanguages()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var translations = Tester.AppServices.GetRequiredService<ITranslations>();
+        var languageSettings = Tester.AppServices.UserSettingsUI(Tester.Session).UserLanguageSettings();
+        var ct = CancellationToken.None;
+
+        // act - the default (en-US) speaker gets the american voice
+        var suggested = await translations.ListSuggestedDubVoices(Tester.Session, ct);
+
+        // assert
+        suggested.Select(x => x.Id).Should().Equal("Adrian");
+
+        // act - a British speaker gets the british voices, then the american one as padding
+        await languageSettings.Update(x => x with { Primary = Languages.EnglishUK }, ct);
+        var computed = await Computed.Capture(() => translations.ListSuggestedDubVoices(Tester.Session, ct));
+        computed = await computed.When(x => x.Count > 1, ct).WaitAsync(TimeSpan.FromSeconds(10), ct);
+
+        // assert
+        computed.Value.Select(x => x.Id).Should().Equal("Daniel", "Nina", "Adrian");
+    }
+
+    [Fact(Timeout = 60_000)]
     public async Task PreviewShouldServeAnMp3ForAKnownVoiceOnly()
     {
         // arrange
