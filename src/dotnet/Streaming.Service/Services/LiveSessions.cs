@@ -94,21 +94,29 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     }
 
     // [ComputeMethod]
-    public virtual async Task<CallStatus> GetCallStatus(
+    public virtual async Task<CallerStatus?> GetCallStatus(
         Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
         var callState = await Backend.GetCallState(chatId, cancellationToken).ConfigureAwait(false);
         // Only the caller sees the status of their outgoing call.
-        return callState is not null && callState.CallerId == chat.Rules.Author?.Id
-            ? callState.Status
-            : CallStatus.None;
+        if (callState is null || callState.CallerId != chat.Rules.Author?.Id)
+            return null;
+        return callState.Status switch {
+            CallStatus.Connecting => CallerStatus.Dialing,
+            CallStatus.Declined => CallerStatus.NoAnswer,
+            CallStatus.Active => CallerStatus.Active,
+            CallStatus.Canceled => CallerStatus.Canceled,
+            CallStatus.NoAnswer => CallerStatus.NoAnswer,
+            CallStatus.Ended => CallerStatus.Ended,
+            _ => CallerStatus.Dialing,   // Dialing (None can't reach here - callState is null then)
+        };
     }
 
     public async Task DismissCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        if (await GetCallStatus(session, chatId, cancellationToken).ConfigureAwait(false) != CallStatus.None)
+        if (await GetCallStatus(session, chatId, cancellationToken).ConfigureAwait(false) is not null)
             await Backend.DismissCallStatus(chatId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -242,17 +250,23 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
             await Backend.DeclineCall(chatId, authorId, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task ConfirmRing(Session session, ChatId chatId, RingAck ack, CancellationToken cancellationToken)
+    {
+        if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
+            await Backend.ConfirmRing(chatId, authorId, ack, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task CancelCall(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
             await Backend.CancelCall(chatId, authorId, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task LeaveCall(Session session, ChatId chatId, CancellationToken cancellationToken)
-    {
-        if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
-            await Backend.LeaveCall(chatId, authorId, cancellationToken).ConfigureAwait(false);
-    }
+    public Task LeaveCall(Session session, ChatId chatId, CancellationToken cancellationToken)
+        // Hanging up now goes through the same SetParticipation path as any other presence change -
+        // see ChatAudioUI.SetRecordingChatId / SetListeningState and LiveSessionUI.RunParticipationSync.
+        => throw StandardError.NotSupported<ILiveSessions>(
+            $"{nameof(LeaveCall)} is obsolete and no longer available.");
 
     // Protected methods
 
