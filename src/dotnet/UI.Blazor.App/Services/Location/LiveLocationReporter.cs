@@ -13,6 +13,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
 {
     private static readonly TimeSpan TroubleshooterDelay = TimeSpan.FromSeconds(7.5);
+    private static readonly TimeSpan StoppedSharesSweepTimeout = TimeSpan.FromSeconds(5);
     // CancellationTokenSource.CancelAfter rejects delays over ~49.7 days
     private static readonly TimeSpan MaxReportLoopTimeout = TimeSpan.FromDays(49);
 
@@ -22,6 +23,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
     private ILocationTracker Tracker => field ??= Hub.Services.GetRequiredService<ILocationTracker>();
     private LocationPermissionHandler LocationPermission
         => field ??= Hub.Services.GetRequiredService<LocationPermissionHandler>();
+    private ISharedLocations SharedLocations => Hub.SharedLocations;
     private Moment ServerNow => Clocks.ServerClock.Now;
 
     public LiveLocationReporter(AppUIHub hub) : base(hub)
@@ -40,6 +42,18 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         return shares.Select(x => x.ChatId).Distinct().ToImmutableArray();
     }
 
+    [ComputeMethod]
+    public virtual async Task<ActiveShare?> GetActiveShare(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // ReSharper disable once InconsistentlySynchronizedField
+        var shares = await _shares.Use(cancellationToken).ConfigureAwait(false);
+        var now = ServerNow;
+        var share = shares.FirstOrDefault(x => x.ChatId == chatId && x.ExpiresAt > now);
+        if (share is not null && share.ExpiresAt != Moment.MaxValue)
+            Computed.GetCurrent().Invalidate(share.ExpiresAt - now);
+        return share;
+    }
+
     public void StartSharing(ChatId chatId, TimeSpan duration)
     {
         // The replaced shares' server rows must be stopped too — dropping them from _shares
@@ -53,16 +67,18 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         _ = StopServerShares(replaced, StopToken);
     }
 
-    public async Task StopSharing(ChatId chatId, CancellationToken cancellationToken)
+    public async Task StopSharing(ChatId chatId, SharedLocationId? locationId, CancellationToken cancellationToken)
     {
-        // Start/stop is device-local: only the device that started a share can stop it,
-        // using the SharedLocationId it persisted in _shares.
+        // This device's shares in the chat are stopped either way; locationId names the author's live share
+        // when another device owns it, which _shares knows nothing about.
         ActiveShare[] stopped;
         lock (_lock) {
             stopped = _shares.Value.Where(x => x.ChatId == chatId).ToArray();
             _shares.Value = _shares.Value.Where(x => x.ChatId != chatId).ToArray();
         }
         await StopServerShares(stopped, cancellationToken).ConfigureAwait(false);
+        if (locationId is { } id && stopped.All(x => x.LocationId != id))
+            await StopServerShare(chatId, id, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task StopAllSharing(CancellationToken cancellationToken)
@@ -81,6 +97,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         return (
             from chain in new[] {
                 AsyncChain.From(DispatchShares),
+                AsyncChain.From(WatchStoppedShares),
                 AsyncChain.From(TroubleshootTracking),
             }
             select chain
@@ -102,23 +119,48 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         return await Tracker.Error.Use(cancellationToken).ConfigureAwait(false) is GeoTrackingError.PermissionDenied;
     }
 
+    [ComputeMethod]
+    protected virtual async Task<ImmutableArray<SharedLocationId>> ListStoppedShares(
+        CancellationToken cancellationToken)
+    {
+        // Reads Get(myId) rather than ListLive(chatId): the latter invalidates on every sharer's fix, forever,
+        // while Get goes quiet once the share is frozen - and a share missing from ListLive is ambiguous,
+        // whereas a share that reads back as not live is a definite server answer.
+        // ReSharper disable once InconsistentlySynchronizedField
+        var shares = await _shares.Use(cancellationToken).ConfigureAwait(false);
+        var now = ServerNow;
+        var result = ImmutableArray<SharedLocationId>.Empty;
+        foreach (var share in shares) {
+            if (share.LocationId is not { } id || share.ExpiresAt <= now)
+                continue;
+
+            // A null read is "I don't know" - offline, or not cached yet - and must not stop a live share.
+            var location = await SharedLocations.Get(Session, share.ChatId, id, cancellationToken)
+                .ConfigureAwait(false);
+            if (location is not null && !location.IsLive(now))
+                result = result.Add(id);
+        }
+        return result;
+    }
+
     // Private methods
 
     private async Task StopServerShares(ActiveShare[] shares, CancellationToken cancellationToken)
     {
-        foreach (var share in shares) {
-            if (share.LocationId is not { } locationId)
-                continue;
+        foreach (var share in shares)
+            if (share.LocationId is { } locationId)
+                await StopServerShare(share.ChatId, locationId, cancellationToken).ConfigureAwait(false);
+    }
 
-            var change = Change.Remove<SharedLocationDiff>();
-            var stop = new SharedLocations_Change {
-                Session = Session,
-                ChatId = share.ChatId,
-                Id = locationId,
-                Change = change,
-            };
-            await Commander.Call(stop, cancellationToken).ConfigureAwait(false);
-        }
+    private Task StopServerShare(ChatId chatId, SharedLocationId locationId, CancellationToken cancellationToken)
+    {
+        var stop = new SharedLocations_Change {
+            Session = Session,
+            ChatId = chatId,
+            Id = locationId,
+            Change = Change.Remove<SharedLocationDiff>(),
+        };
+        return Commander.Call(stop, cancellationToken);
     }
 
     private async Task DispatchShares(CancellationToken cancellationToken)
@@ -143,6 +185,16 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         finally {
             await worker.DisposeSilentlyAsync().ConfigureAwait(false);
         }
+    }
+
+    private async Task WatchStoppedShares(CancellationToken cancellationToken)
+    {
+        var cStopped = await Computed
+            .Capture(() => ListStoppedShares(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        await foreach (var (stoppedIds, _) in cStopped.Changes(cancellationToken).ConfigureAwait(false))
+            if (!stoppedIds.IsDefaultOrEmpty)
+                DropStoppedShares(stoppedIds);
     }
 
     private async Task TroubleshootTracking(CancellationToken cancellationToken)
@@ -195,6 +247,10 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
 
     private async Task ReportLoop(ActiveShare[] activeShares, CancellationToken cancellationToken)
     {
+        activeShares = await SweepStoppedShares(activeShares, cancellationToken).ConfigureAwait(false);
+        if (activeShares.Length == 0)
+            return;
+
         try {
             // Post entries upfront so their visibility doesn't wait for the first live fix;
             // on failure ReportForChats picks the pending shares up with retries.
@@ -238,6 +294,27 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         }
     }
 
+    private async Task<ActiveShare[]> SweepStoppedShares(
+        ActiveShare[] activeShares,
+        CancellationToken cancellationToken)
+    {
+        // A device relaunching into a share taken over while it was away must not spin GPS and the
+        // foreground service up for it. Fail-open: no answer within the timeout keeps the share.
+        try {
+            using var cts = cancellationToken.CreateLinkedTokenSource(StoppedSharesSweepTimeout);
+            var stoppedIds = await ListStoppedShares(cts.Token).ConfigureAwait(false);
+            if (stoppedIds.IsDefaultOrEmpty)
+                return activeShares;
+
+            DropStoppedShares(stoppedIds);
+            return activeShares.Where(x => x.LocationId is not { } id || !stoppedIds.Contains(id)).ToArray();
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogWarning(e, "Failed to check shares against the server on start");
+            return activeShares;
+        }
+    }
+
     // Some trackers can't self-heal: on a fatal failure (permission denied, or Windows where MAUI
     // shuts the session down) they tear themselves down and report an error instead of recovering.
     // Starting again picks tracking back up once the user resolves the cause; Start returns right
@@ -265,8 +342,8 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
             return;
 
         var diff = new SharedLocationDiff { Point = point, LiveDuration = share.Duration };
-        var change = Change.Upsert(diff, locationId);
-        await Commander.Call(
+        var change = Change.Update(diff);
+        var location = await Commander.Call(
                 new SharedLocations_Change {
                     Session = Session,
                     ChatId = share.ChatId,
@@ -275,6 +352,19 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
                 },
                 cancellationToken)
             .ConfigureAwait(false);
+        // A push into a frozen share is answered with that share - the fallback for a device that missed
+        // the takeover's invalidation.
+        if (location is not null && !location.IsLive(ServerNow))
+            DropStoppedShares([locationId]);
+    }
+
+    private void DropStoppedShares(ImmutableArray<SharedLocationId> stoppedIds)
+    {
+        lock (_lock) {
+            var kept = _shares.Value.Where(x => x.LocationId is not { } id || !stoppedIds.Contains(id)).ToArray();
+            if (kept.Length != _shares.Value.Length)
+                _shares.Value = kept;
+        }
     }
 
     private async Task<ActiveShare[]> InitializeShares(ActiveShare[] activeShares, CancellationToken cancellationToken)

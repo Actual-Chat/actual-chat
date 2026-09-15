@@ -1196,6 +1196,8 @@
   "Location_MapTypeMap": "Bản đồ",
   "Location_MapTypeSatellite": "Vệ tinh",
   "Location_MapTypeHybrid": "Kết hợp",
+  "MapPanel_ShareFromThisDevice": "Chia sẻ từ thiết bị này",
+  "Location_SharingFromAnotherDeviceCaption": "Bạn đang chia sẻ từ thiết bị khác — thiết bị này sẽ thay thế",
   "Content_NoFiles": "Chưa có tệp nào",
   "Content_NoLinks": "Chưa có liên kết nào",
   "Content_NoMedia": "Chưa có phương tiện nào",

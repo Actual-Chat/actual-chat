@@ -1196,6 +1196,8 @@
   "Location_MapTypeMap": "Mapa",
   "Location_MapTypeSatellite": "Satélite",
   "Location_MapTypeHybrid": "Híbrido",
+  "MapPanel_ShareFromThisDevice": "Compartilhar deste dispositivo",
+  "Location_SharingFromAnotherDeviceCaption": "Você está compartilhando de outro dispositivo — este vai assumir",
   "Content_NoFiles": "Ainda não há arquivos",
   "Content_NoLinks": "Ainda não há links",
   "Content_NoMedia": "Ainda não há mídia",

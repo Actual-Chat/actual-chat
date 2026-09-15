@@ -31,7 +31,9 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
     }
 
     // [CommandHandler]
-    public virtual async Task<SharedLocation?> OnChange(SharedLocations_Change command, CancellationToken cancellationToken)
+    public virtual async Task<SharedLocation?> OnChange(
+        SharedLocations_Change command,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return null; // It just spawns other commands, so nothing to do here

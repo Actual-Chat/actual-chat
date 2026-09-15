@@ -82,7 +82,11 @@
                     <Icon><marker-pin-live-svg></marker-pin-live-svg></Icon>
                     <Content>
                         <div class="c-text">@L.Location_ShareForDuration</div>
-                        <div class="c-caption">@L.Location_ShareForDurationCaption</div>
+                        <div class="c-caption">
+                            @(m.IsSharingElsewhere
+                                ? L.Location_SharingFromAnotherDeviceCaption
+                                : L.Location_ShareForDurationCaption)
+                        </div>
                     </Content>
                 </ButtonTile>
                 <ButtonTile Class="c-pick-place" Click="@OnPickPlace">
@@ -187,6 +191,8 @@
         var isPermissionGranted = await LocationUI.IsPermissionGranted(cancellationToken).ConfigureAwait(false);
         var isLocating = ownMarker is null && await LocationUI.IsRefreshing(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        var isSharingElsewhere = ModalModel.IsSharing
+            && !await LocationUI.IsOwnDeviceLive(ModalModel.ChatId, cancellationToken).ConfigureAwait(false);
         var fallbackCenter = ownMarker is null
             ? await GetLastSharedPoint(cancellationToken).ConfigureAwait(false)
             : null;
@@ -201,6 +207,7 @@
             IsPicking = isPicking,
             PickedPoint = pickedPoint,
             FallbackCenter = fallbackCenter,
+            IsSharingElsewhere = isSharingElsewhere,
         };
     }
 
@@ -328,6 +335,7 @@
         public bool IsPicking { get; init; }
         public GeoPoint? PickedPoint { get; init; }
         public GeoPoint? FallbackCenter { get; init; }
+        public bool IsSharingElsewhere { get; init; }
         public IReadOnlyList<MapMarker> Markers => OwnMarker is { } marker ? [marker] : [];
         public GeoPoint MapCenter => OwnMarker?.Point ?? FallbackCenter ?? WorldCenter;
         public double MapZoom => OwnMarker is null && FallbackCenter is null ? WorldZoom : 15;
