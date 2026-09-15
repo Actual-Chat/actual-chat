@@ -19,6 +19,7 @@ public sealed class CimdClientResolver(IServiceProvider services)
 {
     public const string HttpClientName = "OAuth.Cimd";
     public const int MaxClientIdLength = 1024;
+    private const int MaxHostLength = 255;
     public const int MaxDocumentLength = 64 * 1024;
 
     // ValidateClientIdParameter is the presence check; the existence check runs inside ValidateAuthentication,
@@ -106,14 +107,14 @@ public sealed class CimdClientResolver(IServiceProvider services)
         // from localhost, which the insecure flag admits.
         if (Settings.AllowInsecureClientMetadata)
             return true;
-        if (uri.Host.IsNullOrEmpty())
+        if (uri.Host.IsNullOrEmpty() || uri.Host.Length > MaxHostLength)
             return false;
 
         try {
             var addresses = await Dns.GetHostAddressesAsync(uri.Host, cancellationToken).ConfigureAwait(false);
             return addresses.Length > 0 && addresses.All(IsPublicAddress);
         }
-        catch (SocketException e) {
+        catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "CIMD: failed to resolve {Host}", uri.Host);
             return false;
         }
