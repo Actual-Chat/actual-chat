@@ -327,13 +327,17 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
                 upload.ContentType,
                 upload.Length!.Value,
                 blobPath,
-                () => UploadsStorage.GetDataFile(upload.Id, cancellationToken));
+                () => UploadsStorage.GetDataFile(upload.Id, cancellationToken)) {
+                KeepMetadata = upload.KeepMetadata,
+            };
         }
         return new UploadedStreamFile(
             upload.FileName,
             upload.ContentType,
             upload.Length!.Value,
-            () => UploadsStorage.GetDataFile(upload.Id, cancellationToken));
+            () => UploadsStorage.GetDataFile(upload.Id, cancellationToken)) {
+            KeepMetadata = upload.KeepMetadata,
+        };
     }
 
     private ThrottledProgress<double> CreateMediaConvertingProgressTracker(MediaId mediaId)

@@ -17,6 +17,7 @@
     var mediaW = attachment.Media.Width;
     var mediaH = attachment.Media.Height;
     var hasDims = mediaW > 0 && mediaH > 0;
+    var placeholderUrl = ImagePlaceholder.ToDataUrl(attachment.Media.Placeholder);
     var ratioStyle = hasDims
         ? $"aspect-ratio: {((float)mediaW / mediaH).ToString(CultureInfo.InvariantCulture)}"
         : null;
@@ -39,6 +40,7 @@
                 initial-state="skeleton"
                 src="@url"
                 thumbnailSrc="@previewUrl"
+                placeholderSrc="@placeholderUrl"
                 width="@(hasDims ? mediaW : 0)"
                 height="@(hasDims ? mediaH : 0)"
             />

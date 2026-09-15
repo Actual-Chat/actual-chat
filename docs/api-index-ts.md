@@ -293,6 +293,13 @@ See also: [C# Full API Index](api-index-full.md), [Condensed API Index](api-inde
 - `creationOptionsFromJson` (function) - WebAuthn L3 JSON to `PublicKeyCredentialCreationOptions`, using native `parseCreationOptionsFromJSON` when available (`webauthn-json.ts`).
 - `requestOptionsFromJson` (function) - WebAuthn L3 JSON to `PublicKeyCredentialRequestOptions`, using native `parseRequestOptionsFromJSON` when available (`webauthn-json.ts`).
 - `credentialToJson` (function) - `PublicKeyCredential` to WebAuthn L3 JSON, using native `toJSON()` when available (`webauthn-json.ts`).
+- `ImageProcessor` (class) - Resizes, re-encodes (jpegli WASM) or strips metadata of images in a worker.
+- `JpegliEncoder` (class) - jpegli WebAssembly JPEG encoder.
+- `stripImageMetadata` (function) - Lossless JPEG/PNG/WebP metadata removal.
+- `sniffImageFormat` (function) - Detects an image format from its bytes.
+- `fitWithinBudget` (function) - Fits an image to a pixel budget and a long-side cap.
+- `encodePlaceholder` (function) - Encodes a 64px blurred placeholder into its container.
+- `needsPreviewConversion` (function) - True for formats a Chromium WebView cannot paint.
 
 
 ## Worklets (`src/nodejs/src/worklets`)
@@ -479,6 +486,11 @@ See also: [C# Full API Index](api-index-full.md), [Condensed API Index](api-inde
 - `SearchPanel` (class) - Chat search functionality.
 - `SelectionHost` (class) - Selection state management.
 - `SubHeader` (class) - Sub-header display.
+
+
+## UI Blazor.App — File Providers (`src/dotnet/UI.Blazor.App/Services/FileProviders`)
+
+- `ImageProcessingInterop` (class) - Blazor entry point to `ImageProcessor` for local content URLs.
 
 
 ## UI Blazor.App — Video Panel (`src/dotnet/UI.Blazor.App/Components/VideoPanel`)

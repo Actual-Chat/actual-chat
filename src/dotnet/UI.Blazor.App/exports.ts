@@ -84,5 +84,6 @@ export * from './Services/web-rtc-aec';
 export * from './Services/observe-directive-lit';
 export * from './Services/FileProviders/file-handle-storage';
 export * from './Services/FileProviders/file-handle-permissions';
+export * from './Services/FileProviders/image-processing-interop';
 export * from './Services/FileProviders/web-file-providers';
 export * from './Services/Video/codec-support'

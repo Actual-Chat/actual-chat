@@ -96,6 +96,9 @@ public partial class WebFileProvider : IFileProvider
     public Task WhenFileStreamReady()
         => DemandWebFileProviderInternal().WhenFileStreamReady();
 
+    public ValueTask<ProcessedWebImage> ProcessImage(ImageProcessRequest request, CancellationToken cancellationToken)
+        => DemandWebFileProviderInternal().ProcessImage(request, cancellationToken);
+
     public UploadSource GetUploadSource()
     {
         var @internal = DemandWebFileProviderInternal();
@@ -121,6 +124,7 @@ public interface IWebFileProviderInternal : IAsyncDisposable
     ValueTask<string> SaveFileHandleToDb();
     Task<bool> WhenUserConsentGranted();
     Task WhenFileStreamReady();
+    ValueTask<ProcessedWebImage> ProcessImage(ImageProcessRequest request, CancellationToken cancellationToken);
     Task ClearForRemoving();
     WebUploadStreamSource GetUploadStreamSource();
 }
@@ -179,6 +183,22 @@ public class WebFileProviderInternal : IWebFileProviderInternal
         await TaskExt.NeverEnding(_cancellationToken).ConfigureAwait(false);
     }
 
+    public async ValueTask<ProcessedWebImage> ProcessImage(
+        ImageProcessRequest request,
+        CancellationToken cancellationToken)
+    {
+        // The worker has no per-job cancellation, so cancellationToken isn't passed to JS: the job
+        // completes anyway, and abandoning its result would leak the processed blob for good
+        var image = await _jsRef
+            .InvokeAsync<ProcessedWebImage>("processImage", CancellationToken.None, request)
+            .ConfigureAwait(false);
+        if (!cancellationToken.IsCancellationRequested)
+            return image;
+
+        await image.FileProvider.DisposeSilentlyAsync().ConfigureAwait(false);
+        throw new OperationCanceledException(cancellationToken);
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
@@ -208,6 +228,9 @@ public class NoFileAccessWebFileProviderInternal(IJSRuntime jsRuntime, string fi
         => throw new NotSupportedException();
 
     public Task WhenFileStreamReady()
+        => throw new NotSupportedException();
+
+    public ValueTask<ProcessedWebImage> ProcessImage(ImageProcessRequest request, CancellationToken cancellationToken)
         => throw new NotSupportedException();
 
     public ValueTask DisposeAsync()

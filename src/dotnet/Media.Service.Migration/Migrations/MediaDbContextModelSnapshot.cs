@@ -169,6 +169,10 @@ partial class MediaDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("text")
                     .HasColumnName("metadata_json");
 
+                b.Property<byte[]>("Placeholder")
+                    .HasColumnType("bytea")
+                    .HasColumnName("placeholder");
+
                 b.Property<string>("Scope")
                     .IsRequired()
                     .HasColumnType("text")

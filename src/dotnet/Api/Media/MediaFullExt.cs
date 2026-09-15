@@ -7,5 +7,6 @@ public static class MediaFullExt
             BlobId = media.BlobId,
             Kind = media.Kind,
             Metadata = media.Metadata,
+            Placeholder = media.Placeholder,
         };
 }

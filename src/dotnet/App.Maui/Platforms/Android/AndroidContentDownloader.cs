@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.IO;
@@ -61,13 +62,15 @@ public sealed class AndroidContentDownloader(IServiceProvider services)
         return fileInfos.ToArray();
     }
 
-    public static void DeleteCachedShareFile(string uri)
+    public static void DeleteCachedFile(string uri)
     {
         if (!uri.StartsWith(System.Uri.UriSchemeFile))
             return;
+
         try {
             var path = (FilePath)new System.Uri(uri).LocalPath;
-            if (path.IsSubPathOf(IncomingShareCacheDir) && File.Exists(path))
+            var isCachedFile = path.IsSubPathOf(IncomingShareCacheDir) || MauiProcessedImageStore.Contains(path);
+            if (isCachedFile && File.Exists(path))
                 File.Delete(path);
         }
         catch {

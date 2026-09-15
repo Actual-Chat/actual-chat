@@ -2,9 +2,11 @@ using System.Buffers.Binary;
 using ActualChat.Uploads;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Bmp;
+using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Formats.Webp;
+using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace ActualChat.Testing;
@@ -42,6 +44,18 @@ public static class TestImages
         return ms.ToArray();
     }
 
+    public static byte[] CreateJpegWithExif(int width, int height, ushort orientation)
+    {
+        using var image = new Image<Rgba32>(width, height);
+        var exif = new ExifProfile();
+        exif.SetValue(ExifTag.Orientation, orientation);
+        exif.SetValue(ExifTag.Software, "GPSSECRET");
+        image.Metadata.ExifProfile = exif;
+        using var ms = new MemoryStream();
+        image.Save(ms, new JpegEncoder());
+        return ms.ToArray();
+    }
+
     public static byte[] CreateWebp(int width, int height)
     {
         using var image = new Image<Rgba32>(width, height);
@@ -65,6 +79,16 @@ public static class TestImages
             image.Frames.AddFrame(image.Frames.RootFrame);
         using var ms = new MemoryStream();
         image.Save(ms, new WebpEncoder());
+        return ms.ToArray();
+    }
+
+    public static byte[] CreateAnimatedGif(int width, int height, int frameCount)
+    {
+        using var image = new Image<Rgba32>(width, height);
+        for (var i = 1; i < frameCount; i++)
+            image.Frames.AddFrame(image.Frames.RootFrame);
+        using var ms = new MemoryStream();
+        image.Save(ms, new GifEncoder());
         return ms.ToArray();
     }
 
