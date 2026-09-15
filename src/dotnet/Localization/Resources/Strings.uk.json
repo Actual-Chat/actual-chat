@@ -1395,6 +1395,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} або email@gmail.com",
   "SignIn_Or": "або",
   "SignIn_InvalidPhoneOrEmail": "Невірний номер телефону або адреса ел. пошти.",
+  "SignIn_SwitchToPhoneKeypad": "Перемкнути на телефонну клавіатуру",
+  "SignIn_SwitchToEmailKeyboard": "Перемкнути на клавіатуру для ел. пошти",
   "SignIn_VerifyPhoneText_Format": "Підтвердьте свій номер телефону, щоб продовжити й щоб друзі могли знайти вас у {0}.",
   "SignIn_VerifyEmailText_Format": "Підтвердьте свою електронну пошту, щоб продовжити й щоб друзі могли знайти вас у {0}.",
   "SignIn_PopupBlocked": "Браузер заблокував спливаюче вікно входу. Дозвольте спливаючі вікна для цього сайту та повторіть спробу.",

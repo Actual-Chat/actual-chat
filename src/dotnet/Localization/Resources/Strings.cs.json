@@ -1395,6 +1395,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} nebo email@gmail.com",
   "SignIn_Or": "nebo",
   "SignIn_InvalidPhoneOrEmail": "Neplatné telefonní číslo nebo e-mailová adresa.",
+  "SignIn_SwitchToPhoneKeypad": "Přepnout na telefonní klávesnici",
+  "SignIn_SwitchToEmailKeyboard": "Přepnout na klávesnici pro e-mail",
   "SignIn_VerifyPhoneText_Format": "Ověřte své telefonní číslo, abyste mohli pokračovat a aby vás přátelé našli v {0}.",
   "SignIn_VerifyEmailText_Format": "Ověřte svou e-mailovou adresu, abyste mohli pokračovat a aby vás přátelé našli v {0}.",
   "SignIn_PopupBlocked": "Prohlížeč zablokoval vyskakovací okno přihlášení. Povolte vyskakovací okna pro tento web a zkuste to znovu.",

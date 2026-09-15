@@ -1450,6 +1450,8 @@ public static class LocalizedStringsLocalizerExt
             => l["SignIn_PhoneOrEmailPlaceholder_Format", arg0].Value;
         public string SignIn_Or => l["SignIn_Or"].Value;
         public string SignIn_InvalidPhoneOrEmail => l["SignIn_InvalidPhoneOrEmail"].Value;
+        public string SignIn_SwitchToPhoneKeypad => l["SignIn_SwitchToPhoneKeypad"].Value;
+        public string SignIn_SwitchToEmailKeyboard => l["SignIn_SwitchToEmailKeyboard"].Value;
         public string SignIn_VerifyPhoneText_Format(object arg0) => l["SignIn_VerifyPhoneText_Format", arg0].Value;
         public string SignIn_VerifyEmailText_Format(object arg0) => l["SignIn_VerifyEmailText_Format", arg0].Value;
         public string SignIn_PopupBlocked => l["SignIn_PopupBlocked"].Value;

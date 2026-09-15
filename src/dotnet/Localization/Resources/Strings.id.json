@@ -1395,6 +1395,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} atau email@gmail.com",
   "SignIn_Or": "atau",
   "SignIn_InvalidPhoneOrEmail": "Nomor telepon atau alamat email tidak valid.",
+  "SignIn_SwitchToPhoneKeypad": "Beralih ke papan tombol telepon",
+  "SignIn_SwitchToEmailKeyboard": "Beralih ke keyboard email",
   "SignIn_VerifyPhoneText_Format": "Verifikasi nomor telepon Anda untuk melanjutkan dan agar teman bisa menemukan Anda di {0}.",
   "SignIn_VerifyEmailText_Format": "Verifikasi alamat email Anda untuk melanjutkan dan agar teman bisa menemukan Anda di {0}.",
   "SignIn_PopupBlocked": "Browser memblokir pop-up masuk. Izinkan pop-up untuk situs ini, lalu coba lagi.",

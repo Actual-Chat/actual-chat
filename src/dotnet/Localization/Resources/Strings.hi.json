@@ -1395,6 +1395,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} या email@gmail.com",
   "SignIn_Or": "या",
   "SignIn_InvalidPhoneOrEmail": "फ़ोन नंबर या ईमेल पता अमान्य है।",
+  "SignIn_SwitchToPhoneKeypad": "फ़ोन कीपैड पर जाएँ",
+  "SignIn_SwitchToEmailKeyboard": "ईमेल कीबोर्ड पर जाएँ",
   "SignIn_VerifyPhoneText_Format": "जारी रखने के लिए कृपया अपना फ़ोन नंबर सत्यापित करें, ताकि आपके दोस्त {0} पर आपको ढूँढ सकें।",
   "SignIn_VerifyEmailText_Format": "जारी रखने के लिए कृपया अपना ईमेल पता सत्यापित करें, ताकि आपके दोस्त {0} पर आपको ढूँढ सकें।",
   "SignIn_PopupBlocked": "ब्राउज़र ने साइन-इन पॉपअप को ब्लॉक कर दिया। कृपया इस साइट के लिए पॉपअप की अनुमति दें और फिर से कोशिश करें।",
