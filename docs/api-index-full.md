@@ -4,6 +4,16 @@ This document lists notable public types in ActualChat .NET projects.
 See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-ts.md).
 
 
+## ActualChat.ContentCaching
+
+- `IContentHandler` — Composable content request handler returning an owned HTTP response or null for native fallback.
+- `ContentRequest` (record) — Representation URL, method, and headers.
+- `LoggingContentHandler` — Logging decorator with synchronous native pass-through when no downstream is supplied.
+- `HttpContentHandler` — Streaming HTTP fetcher using a supplied HttpClient.
+- `FileSystemContentHandler` — Progressive AES-GCM filesystem cache with hash buckets, shared downloads, and byte ranges.
+- `FileSystemContentHandler.Options` (record) — Cache directory, root encryption key, download buffer size, and cache URL normalization.
+
+
 ## ActualChat.Core
 
 - `Alphabet` - Defines character sets for string generation (alphanumeric, base64, etc.).
