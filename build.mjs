@@ -45,6 +45,14 @@ async function copyAssets() {
         recursive: true,
         filter: (src) => path.extname(src) !== '.md' && path.basename(src) !== 'build',
     });
+    // libheif WASM decoder: fetched at runtime by image-processing/heif-decoder.ts, never
+    // bundled - only a browser that cannot decode HEIC itself downloads it. Keeping the wasm a
+    // separate file is also what the LGPL substitution route relies on; see
+    // src/nodejs/libheif/README.md.
+    await fs.promises.cp('./src/nodejs/libheif', `${outputPath}/libheif`, {
+        recursive: true,
+        filter: (src) => path.extname(src) !== '.md',
+    });
     await fs.promises.cp('./resources/sounds/converted', `${outputPath}/sounds`, {
         recursive: true,
         filter: (src) => {
