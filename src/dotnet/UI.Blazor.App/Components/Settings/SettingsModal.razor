@@ -73,9 +73,9 @@
         Content = @<DocumentsPage/>,
     });
     if (showMyAccount)
-        tabs.Add(new(SettingsTabId.ApiKeys, L.Settings_ApiKeys) {
+        tabs.Add(new(SettingsTabId.ApiKeys, L.Settings_ApiAndApps) {
             IconClass = "icon-key",
-            Content = @<ApiKeySettings/>,
+            Content = @<ApiAndAppsSettings/>,
         });
     tabs.Add(new(SettingsTabId.DevTools, L.Settings_DeveloperTools) {
         IconClass = "icon-eye",

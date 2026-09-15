@@ -245,6 +245,9 @@ body.hoverable .sessions-tile-item .sign-out-btn:hover,
 .api-key-tile .c-deactivate {
     @apply absolute right-0 top-0;
 }
+.api-key-tile .c-empty {
+    @apply text-sm text-03;
+}
 
 /* ── API Key Create Modal ── */
 
