@@ -284,6 +284,9 @@ public static partial class Constants
             // only trade how often the tail stops being rewritten.
             public static readonly int MaxEndpointDelayMs = 2000; // 500...3000, default = 2000
             public static readonly double EndpointSensitivity = 0.0; // -1.0...1.0, default = 0.0
+            // A non-final token this far behind the processed audio counts as final: dubbing and
+            // translation start seconds earlier, at the cost of a rare late correction being lost.
+            public static readonly TimeSpan StableTokenAge = TimeSpan.FromSeconds(2.5);
             // The end-of-audio frame makes the server finalize everything, so no silent padding
             // is needed to flush the tail - and padding is billed as stream time.
             public static readonly TimeSpan SilentPrefixDuration = TimeSpan.Zero;

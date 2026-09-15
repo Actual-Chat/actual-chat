@@ -202,6 +202,7 @@ public sealed class SonioxTranscriber : ITranscriber
         var buffer = new ArraySegment<byte>(new byte[16 * 1024]);
         var message = new StringBuilder();
         var hasFinished = false;
+        var audioProcMs = 0L;
         while (!hasFinished && webSocket.State == WebSocketState.Open) {
             message.Clear();
             WebSocketReceiveResult result;
@@ -231,8 +232,9 @@ public sealed class SonioxTranscriber : ITranscriber
             if (response.Tokens?.Any(x => x.Text == EndpointToken) == true)
                 Log.LogInformation("Soniox endpoint for #{StreamId} at {AudioMs}ms of audio",
                     audioStreamId, response.TotalAudioProcMs);
+            audioProcMs = response.TotalAudioProcMs ?? audioProcMs;
             if (response.Tokens is { Length: > 0 } tokens)
-                foreach (var transcript in builder.Update(tokens))
+                foreach (var transcript in builder.Update(tokens, audioProcMs))
                     await output.WriteAsync(transcript, cancellationToken).ConfigureAwait(false);
 
             if (response.Finished) {

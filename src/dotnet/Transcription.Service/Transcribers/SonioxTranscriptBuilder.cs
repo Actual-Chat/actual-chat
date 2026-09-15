@@ -13,20 +13,30 @@ namespace ActualChat.Transcription;
 // Finals never change, so a message that brings new ones yields a stable finals-only transcript
 // first; the tail, if any, follows in an unstable one. Stability is what the realtime translation
 // and the dub build on, and Soniox hands it out phrase by phrase - not only at the end of the stream.
+//
+// Soniox finalizes 3-5s behind the speech, though, and practically never revises a tail token
+// that's more than ~1s old - so the leading tail tokens older than StableTokenAge (relative to
+// the message's processed-audio position) are promoted to finals as well. Once promoted, a span
+// is settled: the tail re-sent by the next messages and the eventual finals for it are ignored,
+// and a late revision of a promoted word is lost - offline re-transcription fixes the stored text.
 
 public sealed class SonioxTranscriptBuilder
 {
     private const string EndpointToken = "<end>";
+    private static readonly long StableTokenAgeMs =
+        (long)Constants.Transcription.Soniox.StableTokenAge.TotalMilliseconds;
     private readonly StringBuilder _finalText = new();
     private readonly List<Language> _languages = [];
     private LinearMap _finalMap = LinearMap.Zero;
     private float _finalEndTime;
+    private long _promotedEndMs;
     private string _tailText = "";
     private LinearMap _tailMap = LinearMap.Zero;
     private float _tailEndTime;
 
-    public IReadOnlyList<Transcript> Update(IReadOnlyList<SonioxToken> tokens)
+    public IReadOnlyList<Transcript> Update(IReadOnlyList<SonioxToken> tokens, long audioProcMs)
     {
+        var stableEndMs = audioProcMs - StableTokenAgeMs;
         var tail = new StringBuilder();
         var map = _finalMap;
         var tailStartOffset = _finalText.Length;
@@ -35,9 +45,11 @@ public sealed class SonioxTranscriptBuilder
         foreach (var token in tokens) {
             if (token.Text.IsNullOrEmpty() || token.Text == EndpointToken)
                 continue;
+            if (token.StartMs < _promotedEndMs)
+                continue;
 
             AddLanguage(token.Language);
-            if (token.IsFinal) {
+            if (token.IsFinal || (tail.Length == 0 && token.EndMs <= stableEndMs)) {
                 hasNewFinals = true;
                 // A final token can only arrive while the tail is still empty for this message:
                 // Soniox emits finals before the non-final tail it supersedes.
@@ -45,6 +57,8 @@ public sealed class SonioxTranscriptBuilder
                 _finalText.Append(token.Text);
                 _finalMap = AppendToken(_finalMap, startOffset, _finalText.Length, token);
                 _finalEndTime = ToSeconds(token.EndMs);
+                if (!token.IsFinal)
+                    _promotedEndMs = token.EndMs;
                 map = _finalMap;
                 tailStartOffset = _finalText.Length;
                 endTime = _finalEndTime;

@@ -143,7 +143,7 @@ public static partial class Constants
         public static readonly TimeSpan MaxStreamDuration = TimeSpan.FromMinutes(3);
         public static readonly TimeSpan MaxBeginsAtDrift = TimeSpan.FromSeconds(5);
         // How long a dubbing listener's muxer holds a speaker's original before serving it undubbed
-        public static readonly TimeSpan DubWaitTimeout = TimeSpan.FromSeconds(5);
+        public static readonly TimeSpan DubWaitTimeout = TimeSpan.FromSeconds(10);
         // Between attempts to start the translation a dub reads, while the source transcript is live
         public static readonly TimeSpan DubTranslationRetryDelay = TimeSpan.FromMilliseconds(250);
         // After a timed-out dub decision, how long that author's utterances skip the hold

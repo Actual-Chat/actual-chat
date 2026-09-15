@@ -40,7 +40,7 @@ flowchart LR
 
     subgraph Owner["Owner node of S (AudioStreamingBackend)"]
         GA["GetAudio S~lang"]
-        ED["EnsureDub<br/>DubWaitTimeout 5 s"]
+        ED["EnsureDub<br/>DubWaitTimeout 10 s"]
         RD["RunDub worker"]
         TS[("_transcriptStreams<br/>S, S~lang")]
         Stab["DubStabilizer<br/>Decide + Next"]
@@ -144,7 +144,7 @@ When the requested id carries a language and `_audioStreams` has no such
 stream, `GetAudio` calls `EnsureDub` before the normal lookup. `EnsureDub`
 adds a `DubEntry` (a `FuncWorker` running `RunDub` + a `WhenDecided` task)
 to `_dubs` once per dub id, starts it, and waits for the decision with
-`Constants.Audio.DubWaitTimeout` (5 s). `true` means the dub stream is
+`Constants.Audio.DubWaitTimeout` (10 s). `true` means the dub stream is
 published and the lookup proceeds; `false` (decided "no dub", failed, or
 timed out — logged as a warning) makes `GetAudio` return `null`, which is
 the muxer's cue to serve the original. The worker itself keeps running
@@ -232,14 +232,27 @@ that, no translated diff on the wire was ever stable and a dub had
 nothing it could speak.
 
 Where the stability comes from: Soniox streams `is_final` tokens
-progressively (a few seconds behind the tail, and immediately at every
-pause with endpoint detection on), and `SonioxTranscriptBuilder.Update`
-turns each message that brings new finals into a stable finals-only
-transcript followed, if there is a tail, by the unstable finals+tail one
+progressively (3–5 s behind the tail, and immediately at every pause with
+endpoint detection on), and `SonioxTranscriptBuilder.Update` turns each
+message that brings new finals into a stable finals-only transcript
+followed, if there is a tail, by the unstable finals+tail one
 (`src/dotnet/Transcription.Service/Transcribers/SonioxTranscriptBuilder.cs`).
+Waiting for `is_final` alone put the first dubbed chunk 6–9 s behind the
+speaker, past the muxer's hold, so the builder also **promotes by age**:
+the leading non-final tokens that ended more than
+`Constants.Transcription.Soniox.StableTokenAge` (2.5 s) before the
+message's `total_audio_proc_ms` are appended to the finals as if they were
+final — Soniox practically never revises a tail token older than ~1 s. A
+promoted span is settled: the tail Soniox re-sends on every message and
+the eventual `is_final` tokens for that span are dropped (any token
+starting before the promoted end), so nothing is appended twice, and a
+late revision of a promoted word is lost — offline re-transcription
+fixes the stored text afterwards. A token straddling the age boundary
+stays in the tail. This applies everywhere the transcript goes (captions,
+stored text, translation, dub), not only to the dub.
 The throttle passes stable transcripts through untouched, the translator
 promotes per increment, and the dub speaks per increment — one TTS request
-per finalized phrase. Deepgram and Google mark their final results stable
+per stable phrase. Deepgram and Google mark their final results stable
 the same way. Manual `finalize` is not used: endpoints give the phrase
 granularity and forcing finals early degrades accuracy.
 
@@ -348,7 +361,7 @@ into the muxer's constructor.
   for `S~lang` (the id carries the owner's `NodeRef`, so the request
   reaches the owner node's `GetAudio` locally or through
   `RemoteAudioStreamCache` exactly like `S`). `null` — no synthesizer,
-  `NoDub`, a cool-down, or the 5 s wait ran out — falls back to `S`, and
+  `NoDub`, a cool-down, or the 10 s wait ran out — falls back to `S`, and
   so does a request that throws (the source is remembered in
   `_undubbedStreamIds`). A successful dub returns the **source's** info
   `with { DubLanguage }`; nothing else in the start item changes.
@@ -739,7 +752,7 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 
 | Constant | Value | Role |
 |---|---|---|
-| `Constants.Audio.DubWaitTimeout` | 5 s | How long `EnsureDub` (and so the muxer) waits for a decision before serving the original |
+| `Constants.Audio.DubWaitTimeout` | 10 s | How long `EnsureDub` (and so the muxer) waits for a decision before serving the original; sized so the first stable chunk (age promotion + translation + first TTS audio) usually lands inside it |
 | `Constants.Audio.DubTranslationRetryDelay` | 250 ms | Between attempts to start the translation while the source transcript is live |
 | `Constants.Audio.DubCooldown` | 30 s | After a timed-out decision, how long that `(author, language)` skips the hold |
 | `Constants.Audio.DubSynthesizerDownDelay` | 60 s | After a synthesis failure, how long every dub is skipped |
@@ -752,6 +765,7 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 | `AudioSettings.StreamExpirationDelay` | 60 s | Store expiry; bounds the transcript wait via `_audioStreams.Has` and triggers `ForgetDubs` |
 | `OpusFramePump.FrameLength` / `FrameByteLength` | 960 samples / 1920 bytes | One 20 ms frame at 48 kHz, 16-bit mono |
 | `DubStabilizer.MinDecisionLength` | 10 chars | Minimum text before `Decide` commits |
+| `Constants.Transcription.Soniox.StableTokenAge` | 2.5 s | A non-final token that ended this long before `total_audio_proc_ms` is promoted to stable by `SonioxTranscriptBuilder` |
 | `TranscriptionSettings.SonioxTtsVoice` | `"Adrian"` | Stock voice until cloned voices exist |
 
 ## Tests
@@ -810,6 +824,12 @@ arrives as several chunks).
 - Replay-specific gaps are listed under [Replay → Out of scope /
   follow-ups](#out-of-scope--follow-ups).
 - Soniox connection reuse across chunks — today every chunk pays the
-  handshake.
+  handshake. The remaining latency levers, in order of expected payoff:
+  one TTS connection per `(author, language)` instead of per chunk;
+  serving the original at once and switching to the dub once its first
+  chunk is ready, instead of holding the original for `DubWaitTimeout`.
+- Soniox in-stream translation (the STT session translating as it
+  transcribes) was rejected: one target language per STT session, while
+  the listeners of one speaker need N languages.
 - Client-side catch-up: the dub plays at natural pace and is never cut;
   a receiver-side speed-up to shrink the lag is a later lever.

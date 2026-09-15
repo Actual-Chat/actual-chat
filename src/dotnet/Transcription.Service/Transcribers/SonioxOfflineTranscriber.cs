@@ -124,7 +124,7 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
         var builder = new SonioxTranscriptBuilder();
         foreach (var token in tokens)
             token.IsFinal = true;
-        builder.Update(tokens);
+        builder.Update(tokens, tokens[^1].EndMs);
         return builder.Complete();
     }
 
