@@ -71,13 +71,11 @@
     [Parameter] public bool ClearButton { get; set; }
     [Parameter] public string? Prefix  { get; set; }
     [Parameter] public Action<ElementReference>? InputRefCreated { get; set; }
-    [Parameter] public bool IsPhoneOrEmail { get; set; }
-    [Parameter] public EventCallback<bool> PhoneKeyboardChanged { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             _blazorRef = DotNetObjectReference.Create(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, _blazorRef, IsPhoneOrEmail);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, _blazorRef);
             if (Autofocus)
                 await Focus();
         }
@@ -96,16 +94,9 @@
         _blazorRef = null;
     }
 
-    public ValueTask TogglePhoneKeyboard()
-        => JSRef.InvokeVoidAsync("togglePhoneKeyboard");
-
     [JSInvokable]
     public void OnDebouncedChange(string value)
         => CurrentValueAsString = value;
-
-    [JSInvokable]
-    public Task OnPhoneKeyboardChanged(bool isPhoneKeyboard)
-        => PhoneKeyboardChanged.InvokeAsync(isPhoneKeyboard);
 
     private async Task Focus()
         => await JSRef.InvokeVoidAsync("focus", Ref);
