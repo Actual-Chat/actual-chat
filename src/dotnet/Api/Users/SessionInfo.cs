@@ -18,7 +18,12 @@ public partial record SessionInfo(
     [DataMember(Order = 12), Key(12)] public bool IsCurrent { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreMember]
-    public SessionKind Kind => IdPrefix.StartsWith(CoreConstants.Session.ApiKeyPrefix)
-        ? SessionKind.ApiKey
-        : SessionKind.Session;
+    public SessionKind Kind
+        => IdPrefix.IsNullOrEmpty()
+            ? SessionKind.Session
+            : IdPrefix[0] switch {
+                CoreConstants.Session.ApiKeyPrefix => SessionKind.ApiKey,
+                CoreConstants.Session.OAuthPrefix => SessionKind.OAuth,
+                _ => SessionKind.Session,
+            };
 }
