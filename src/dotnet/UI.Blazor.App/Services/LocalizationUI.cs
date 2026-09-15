@@ -1,6 +1,7 @@
 using ActualChat.Concurrency;
 using ActualChat.Localization;
 using ActualChat.UI.Blazor.Services;
+using ActualLab.Rpc;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -61,6 +62,12 @@ public class LocalizationUI : UIServiceBase<AppUIHub>, IUITextLocalizer, IComput
             return localized;
         if (language == Languages.Max)
             return message;
+
+        // Offline, this throws at once if the next reconnect is due past a command's connect timeout,
+        // like the failed command did, so callers show English instead of waiting out their own timeout.
+        if (Hub.ConnectivityUI.Peer is { } peer)
+            await peer.WhenConnectedOrReroute(RpcCallTimeouts.Default.Command.ConnectTimeout, cancellationToken)
+                .ConfigureAwait(false);
 
         var item = _localizations.Enqueue(new Key(language, message));
         return await item.ResultTask.WaitAsync(cancellationToken).ConfigureAwait(false);
