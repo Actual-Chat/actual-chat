@@ -72,7 +72,7 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
             Notification notification = kind switch {
                 NotificationKind.Message => MessageNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
                 NotificationKind.Reply => ReplyNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
-                NotificationKind.Thread => ThreadNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
+                NotificationKind.Thread => ThreadNotification.New(TestUserId, entryId, authorId),
                 NotificationKind.Invitation => InvitationNotification.New(TestUserId, TestChatId, authorId),
                 NotificationKind.Mention => MentionNotification.New(TestUserId, entryId, authorId),
                 NotificationKind.Reaction => ReactionNotification.New(TestUserId, entryId, authorId),
@@ -99,7 +99,7 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
         Notification[] notifications = [
             MessageNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
             ReplyNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
-            ThreadNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
+            ThreadNotification.New(TestUserId, entryId, authorId),
             InvitationNotification.New(TestUserId, TestChatId, authorId),
             MentionNotification.New(TestUserId, entryId, authorId),
             ReactionNotification.New(TestUserId, entryId, authorId),
@@ -218,11 +218,50 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     }
 
     [Fact]
+    public void StoredThreadNotificationShouldDeserializeAsLegacyAndExpire()
+    {
+        // arrange
+        // The shape every thread-created row stored before 2026.09 has: union tag 7, keyed per
+        // parent chat, anchored at entry 0 - so nothing but "Dismiss all" ever retired it.
+        var sentAt = Moment.Now - Constants.Notification.ThreadLifespan - TimeSpan.FromMinutes(1);
+        Notification stored = new LegacyThreadNotification(
+            NotificationId.New(TestUserId, NotificationKind.Thread, TestChatId.Value)) with {
+            Version = 1,
+            Title = "Alex Yakunin",
+            Text = "Thread 'Firefox & h264 codec' has been created",
+            SentAt = sentAt,
+        };
+
+        // act
+        var deserialized = AssertMessagePackRoundtrip(stored);
+
+        // assert
+        var legacy = deserialized.Should().BeOfType<LegacyThreadNotification>().Subject;
+        legacy.EntryLid.Should().Be(0);
+        legacy.ChatId.Should().Be(TestChatId);
+        legacy.ExpiresAt.Should().Be(sentAt + Constants.Notification.ThreadLifespan,
+            "the expiry is what drains the rows no read position can ever clear");
+    }
+
+    [Fact]
+    public void ThreadPushTagShouldNotCollideWithOtherKindsAtItsEntry()
+    {
+        // The server pushes one notification per tag and a batch, and the OS keeps one banner per
+        // tag - so a thread ping and a reaction at the same entry must not share one.
+        var entryId = ChatEntryId.New(TestChatId, 2067);
+        var threadTag = ThreadNotification.New(TestUserId, entryId).GetPushTag();
+
+        threadTag.Should().Be(Constants.Notification.ThreadTagPrefix + entryId.Value);
+        threadTag.Should().NotBe(ReactionNotification.New(TestUserId, entryId).GetPushTag());
+        threadTag.Should().NotBe(MentionNotification.New(TestUserId, entryId).GetPushTag());
+        threadTag.Should().NotBe(AttentionNotification.New(TestUserId, entryId).GetPushTag());
+    }
+
+    [Fact]
     public void PushTagShouldBePerChatForCoalescingKinds()
     {
         MessageNotification.New(TestUserId, TestChatId, 2067).GetPushTag().Should().Be(TestChatId.Value);
         ReplyNotification.New(TestUserId, TestChatId, 2067).GetPushTag().Should().Be(TestChatId.Value);
-        ThreadNotification.New(TestUserId, TestChatId, 2067).GetPushTag().Should().Be(TestChatId.Value);
 
         var conversationId = ConversationId.New(TestChatId, 2067);
         ConversationNotification.New(TestUserId, conversationId, 2100).GetPushTag().Should().Be(TestChatId.Value);

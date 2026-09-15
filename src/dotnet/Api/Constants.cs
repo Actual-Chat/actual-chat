@@ -362,6 +362,7 @@ public static partial class Constants
     public static class Notification
     {
         public const string CallTagPrefix = "call-";
+        public const string ThreadTagPrefix = "thread-";
 
         public static class MessageDataKeys
         {
@@ -462,6 +463,10 @@ public static partial class Constants
         // message, or the one before "alert everyone"), so it clears on view too; this is the
         // backstop for a chat the user never reopens.
         public static readonly TimeSpan AttentionLifespan = TimeSpan.FromDays(1);
+        // A thread-created ping anchors at the entry the thread hangs off, which the recipient has
+        // typically read already, so it clears on view too; this is the backstop for a chat the
+        // user never reopens.
+        public static readonly TimeSpan ThreadLifespan = TimeSpan.FromDays(1);
         // A dismissal older than the push's own TimeToLive can't be delivered any more, so
         // retrying it forever only grows the blob.
         public static readonly TimeSpan PendingDismissalTtl = TimeSpan.FromDays(1);

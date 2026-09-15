@@ -171,6 +171,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.CallNotification>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.ConversationNotification>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.InvitationNotification>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Notifications.LegacyThreadNotification>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.MentionNotification>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.MessageNotification>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.Notification>();
@@ -909,6 +910,9 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.InvitationNotification>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.InvitationNotification>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.InvitationNotification>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.LegacyThreadNotification>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.LegacyThreadNotification>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.LegacyThreadNotification>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.MentionNotification>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.MentionNotification>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.MentionNotification>>>>();
@@ -1866,6 +1870,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+CallNotificationFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+ConversationNotificationFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+InvitationNotificationFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+LegacyThreadNotificationFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+MentionNotificationFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+MessageNotificationFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+NotificationActionFormatter, ActualChat.Api");
@@ -2092,6 +2097,7 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Notifications.CallNotification), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notifications.ConversationNotification), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notifications.InvitationNotification), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Notifications.LegacyThreadNotification), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notifications.MentionNotification), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notifications.MessageNotification), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notifications.Notification), AotTypeKind.Serializable),
