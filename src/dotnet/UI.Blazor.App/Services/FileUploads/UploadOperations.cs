@@ -4,7 +4,26 @@ using ActualChat.UI.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class UploadOperations(AppUIHub hub)
+public interface IUploadOperations
+{
+    VideoTranscoder VideoTranscoder { get; }
+    Moment Now();
+    Task<MediaId> ReserveMediaId(UploadSessionSnapshot snapshot, CancellationToken cancellationToken = default);
+    Task UploadData(
+        UploadSource source,
+        UploadSessionSnapshotAccessor snapshotAccessor,
+        IProgress<double>? progress = null,
+        CancellationToken cancellationToken = default);
+    Task StartServerProcessing(UploadSessionSnapshot snapshot, CancellationToken cancellationToken = default);
+    Task<MediaRef> WaitForProcessingCompletion(
+        UploadSessionSnapshot snapshot,
+        IProgress<double>? progress = null,
+        CancellationToken cancellationToken = default);
+    Task RemoveUpload(UploadId uploadId, CancellationToken cancellationToken);
+    Task RemoveMedia(MediaId mediaId, CancellationToken cancellationToken);
+}
+
+public sealed class UploadOperations(AppUIHub hub) : IUploadOperations
 {
     private static readonly TimeSpan MonitorServerProcessingTimeout = TimeSpan.FromMinutes(15);
 
@@ -12,25 +31,19 @@ public class UploadOperations(AppUIHub hub)
     private readonly FileUploader _uploader
         = hub.Services.GetRequiredService<FileUploader>();
 
-    public Session Session => hub.Session;
-    public ICommander Commander => hub.Commander;
-    public Moment Now() => hub.Clocks.SystemClock.Now;
-    public IMedia Media => hub.Media;
-    public VideoTranscoder VideoTranscoder => field ??= hub.VideoTranscoder;
-    private ILogger Log => field ??= hub.LogFor(GetType());
+    private AppUIHub Hub { get; } = hub;
+    public Session Session => Hub.Session;
+    public ICommander Commander => Hub.Commander;
+    public Moment Now() => Hub.Clocks.SystemClock.Now;
+    public IMedia Media => Hub.Media;
+    public VideoTranscoder VideoTranscoder => field ??= Hub.VideoTranscoder;
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     public async Task<MediaId> ReserveMediaId(
         UploadSessionSnapshot snapshot,
         CancellationToken cancellationToken = default)
     {
-        var sessionMetadata = snapshot.Metadata;
-        var fileMetadata = snapshot.FileProvider.Metadata;
-        var metadata = sessionMetadata
-            .Set(nameof(ActualChat.Media.Media.FileName), fileMetadata.FileName)
-            .Set(nameof(ActualChat.Media.Media.ContentType), fileMetadata.FileType)
-            .Set(nameof(ActualChat.Media.Media.Length), fileMetadata.Length);
-        var mediaScope = snapshot.MediaScope.NullIfEmpty() ?? MediaId.NewScope();
-        var command = new Media_ReserveMedia { Session = Session, Scope = mediaScope, Metadata = metadata };
+        var command = CreateReserveMediaCommand(Session, snapshot);
         var mediaId = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         return mediaId;
     }
@@ -48,7 +61,7 @@ public class UploadOperations(AppUIHub hub)
         if (source.Metadata.Length <= 0)
             throw StandardError.Upload.FileEmpty();
 
-        await GetOrRegisterUpload(source, snapshotAccessor, cancellationToken).ConfigureAwait(false); // Ensure upload id is registered
+        await GetOrRegisterUpload(source, snapshotAccessor, cancellationToken).ConfigureAwait(false);
         progress ??= new Progress<double>(_ => { });
         var uploadOperation = new FileUploadOperation(StartUpload);
         _uploadQueue.Enqueue(uploadOperation);
@@ -58,7 +71,8 @@ public class UploadOperations(AppUIHub hub)
         async Task StartUpload()
         {
             try {
-                var uploadId = await GetOrRegisterUpload(source, snapshotAccessor, cancellationToken).ConfigureAwait(false);
+                var uploadId = await GetOrRegisterUpload(source, snapshotAccessor, cancellationToken)
+                    .ConfigureAwait(false);
                 await _uploader.Upload(source.StreamSource, uploadId, progress, cancellationToken).ConfigureAwait(false);
             }
             catch (UploadNotFoundException) {
@@ -99,6 +113,7 @@ public class UploadOperations(AppUIHub hub)
                     Log.LogWarning(error, "Error getting status for media {MediaId}", mediaId);
                     continue;
                 }
+
                 if (status == null)
                     throw new InvalidOperationException("Media not found");
 
@@ -112,6 +127,7 @@ public class UploadOperations(AppUIHub hub)
 
                     return content;
                 }
+
                 if (status.Stage is MediaProcessingStage.ServerProcessing)
                     progress?.Report(status.StageProgress);
             }
@@ -132,6 +148,36 @@ public class UploadOperations(AppUIHub hub)
             UploadId = uploadId,
         }, cancellationToken).ConfigureAwait(false);
 
+    public async Task RemoveMedia(MediaId mediaId, CancellationToken cancellationToken)
+        => await Commander.Call(new Media_RemoveMedia {
+            Session = Session,
+            MediaId = mediaId,
+        }, cancellationToken).ConfigureAwait(false);
+
+    // Protected/internal methods
+
+    // It's internal to be accessible from tests, which have no AppUIHub to build a UploadOperations on
+    internal static Media_ReserveMedia CreateReserveMediaCommand(Session session, UploadSessionSnapshot snapshot)
+    {
+        // Kind is load-bearing: without it the server routes every attachment to the legacy
+        // 1920px image processor instead of AttachmentImageUploadProcessor, and says nothing
+        var sessionMetadata = snapshot.Metadata;
+        var fileMetadata = snapshot.FileProvider.Metadata;
+        var metadata = sessionMetadata
+            .Set(nameof(ActualChat.Media.Media.FileName), fileMetadata.FileName)
+            .Set(nameof(ActualChat.Media.Media.ContentType), fileMetadata.FileType)
+            .Set(nameof(ActualChat.Media.Media.Length), fileMetadata.Length);
+        return new Media_ReserveMedia {
+            Session = session,
+            Scope = snapshot.MediaScope.NullIfEmpty() ?? MediaId.NewScope(),
+            Metadata = metadata,
+            Kind = MediaKind.ChatEntryAttachment,
+            Placeholder = snapshot.Placeholder,
+        };
+    }
+
+    // Private methods
+
     private async Task<UploadId> GetOrRegisterUpload(
         UploadSource source,
         UploadSessionSnapshotAccessor snapshotAccessor,
@@ -142,17 +188,23 @@ public class UploadOperations(AppUIHub hub)
         if (uploadId is not null)
             return uploadId;
 
-        uploadId = await RegisterUploadId(source.Metadata, cancellationToken).ConfigureAwait(false);
+        uploadId = await RegisterUploadId(source.Metadata, snapshot.Metadata, cancellationToken).ConfigureAwait(false);
         await snapshotAccessor.Update(s => s with { UploadId = uploadId }, cancellationToken).ConfigureAwait(false);
         return uploadId;
     }
 
-    private async Task<UploadId> RegisterUploadId(UploadSourceMetadata sourceMetadata, CancellationToken cancellationToken)
+    private async Task<UploadId> RegisterUploadId(
+        UploadSourceMetadata sourceMetadata,
+        MetadataBag sessionMetadata,
+        CancellationToken cancellationToken)
     {
         var length = sourceMetadata.Length;
         var metadata = new MetadataBag()
             .Set(nameof(ActualChat.Media.Media.FileName), sourceMetadata.FileName.Value)
             .Set(nameof(ActualChat.Media.Media.ContentType), sourceMetadata.ContentType);
+        // The server decides whether to strip metadata from the upload itself, not from the reserved media
+        if (sessionMetadata[nameof(ActualChat.Media.Upload.KeepMetadata)] is true)
+            metadata = metadata.Set(nameof(ActualChat.Media.Upload.KeepMetadata), true);
         return await Commander.Call(new Uploads_Create {
             Session = Session,
             Length = length,
