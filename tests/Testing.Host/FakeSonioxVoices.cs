@@ -12,14 +12,20 @@ public sealed class FakeSonioxVoices(IServiceProvider services) : ISonioxVoices
 {
     private readonly object _lock = new();
     private readonly Dictionary<string, Entry> _voices = new();
+    private int _createCount;
+    private int _deleteCount;
 
     private MomentClockSet Clocks { get; } = services.Clocks();
 
     public TimeSpan ReadyAfter { get; set; } = TimeSpan.Zero;
     public bool FailCreate { get; set; }
+    // Attempts, so a failed Create counts too
+    public int CreateCount => Volatile.Read(ref _createCount);
+    public int DeleteCount => Volatile.Read(ref _deleteCount);
 
     public Task<SonioxVoice> Create(string name, Stream wav, CancellationToken cancellationToken)
     {
+        Interlocked.Increment(ref _createCount);
         if (FailCreate)
             throw StandardError.External("Soniox voice create failed (FailCreate is set).");
 
@@ -46,6 +52,7 @@ public sealed class FakeSonioxVoices(IServiceProvider services) : ISonioxVoices
 
     public Task Delete(string id, CancellationToken cancellationToken)
     {
+        Interlocked.Increment(ref _deleteCount);
         lock (_lock)
             _voices.Remove(id);
         return Task.CompletedTask;
