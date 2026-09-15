@@ -105,6 +105,7 @@
   "Transcription_DubVoice": "Мој глас у преводима",
   "Transcription_DubVoiceCaption": "Глас којим други чују превод вашег говора",
   "Transcription_DubVoiceDefault": "Задано",
+  "Transcription_DubVoiceDefault_Format": "{0} (задано)",
   "Transcription_DubVoicePreviewText": "Здраво! Овако ће вас други чути.",
   "Transcription_LanguageDetected_Format": "Откривени језик транскрипције за чет „{0}“ је {1}.",
 
@@ -162,7 +163,6 @@
   "TimeZone_Updated": "Временска зона је ажурирана",
 
   "DubVoice_Title": "Глас у преводима",
-  "DubVoice_DefaultCaption": "Стандардни глас",
   "DubVoice_AnyGender": "Било који спол",
   "DubVoice_Male": "Мушки",
   "DubVoice_Female": "Женски",
@@ -171,6 +171,7 @@
   "DubVoice_Unavailable": "Гласови тренутно нису доступни",
   "DubVoice_Suggested": "Предложени",
   "DubVoice_AllVoices": "Сви гласови",
+  "DubVoice_SearchPlaceholder": "Претражи гласове",
 
   "NativeApp_AutoStart": "Покретање при пријави на систем",
   "NativeApp_AutoStartEnabledByPolicy": "Аутоматско покретање је укључено правилима групе или рачунара.",

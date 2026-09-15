@@ -105,6 +105,7 @@
   "Transcription_DubVoice": "Mój głos w tłumaczeniach",
   "Transcription_DubVoiceCaption": "Głos, którym inni słyszą tłumaczenie Twojej wypowiedzi",
   "Transcription_DubVoiceDefault": "Domyślny",
+  "Transcription_DubVoiceDefault_Format": "{0} (domyślny)",
   "Transcription_DubVoicePreviewText": "Cześć! Tak będą Cię słyszeć inni.",
   "Transcription_LanguageDetected_Format": "Wykryty język transkrypcji dla czatu „{0}” to {1}.",
 
@@ -162,7 +163,6 @@
   "TimeZone_Updated": "Strefa czasowa została zaktualizowana",
 
   "DubVoice_Title": "Głos w tłumaczeniach",
-  "DubVoice_DefaultCaption": "Standardowy głos",
   "DubVoice_AnyGender": "Dowolna płeć",
   "DubVoice_Male": "Męski",
   "DubVoice_Female": "Żeński",
@@ -171,6 +171,7 @@
   "DubVoice_Unavailable": "Głosy są obecnie niedostępne",
   "DubVoice_Suggested": "Sugerowane",
   "DubVoice_AllVoices": "Wszystkie głosy",
+  "DubVoice_SearchPlaceholder": "Szukaj głosów",
 
   "NativeApp_AutoStart": "Uruchamiaj po zalogowaniu",
   "NativeApp_AutoStartEnabledByPolicy": "Autostart jest włączony przez zasady grupy lub komputera.",

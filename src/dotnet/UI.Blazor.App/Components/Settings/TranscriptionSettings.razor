@@ -95,9 +95,7 @@
         <Content>@L.Transcription_DubVoice</Content>
         <Caption>@L.Transcription_DubVoiceCaption</Caption>
         <Right>
-            <span class="text-03">
-                @(m.Languages.DubVoice.IsNullOrEmpty() ? L.Transcription_DubVoiceDefault : m.Languages.DubVoice)
-            </span>
+            <span class="text-03">@FormatDubVoice(m)</span>
             <i class="icon-chevron-right text-xl text-03"></i>
         </Right>
     </TileItem>
@@ -139,7 +137,28 @@
         var isFaceDownMicStopEnabled = await UserSettingsUI.UserAppSettings()
             .Get(x => !(x.IsFaceDownMicStopDisabled ?? false), cancellationToken)
             .ConfigureAwait(false);
-        return new(languages, enableIncompleteUI, isFaceDownMicStopEnabled);
+        var defaultDubVoiceId = await GetDefaultDubVoiceId(cancellationToken).ConfigureAwait(false);
+        return new(languages, enableIncompleteUI, isFaceDownMicStopEnabled, defaultDubVoiceId);
+    }
+
+    private async Task<string?> GetDefaultDubVoiceId(CancellationToken cancellationToken) {
+        // Guests can't list voices; the tile then reads "Default" and the modal explains
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        if (!account.IsActive())
+            return null;
+
+        var suggested = await Hub.Translations.ListSuggestedDubVoices(Session, cancellationToken)
+            .ConfigureAwait(false);
+        return suggested.Count > 0 ? suggested[0].Id : null;
+    }
+
+    private string FormatDubVoice(Model m) {
+        if (!m.Languages.DubVoice.IsNullOrEmpty())
+            return m.Languages.DubVoice;
+
+        return m.DefaultDubVoiceId is { } defaultVoiceId
+            ? L.Transcription_DubVoiceDefault_Format(defaultVoiceId)
+            : L.Transcription_DubVoiceDefault;
     }
 
     private async Task OnLanguageChanged(int index, string languageId) {
@@ -182,5 +201,6 @@
     public sealed record Model(
         UserLanguageSettings Languages,
         bool EnableIncompleteUI,
-        bool IsFaceDownMicStopEnabled);
+        bool IsFaceDownMicStopEnabled,
+        string? DefaultDubVoiceId);
 }

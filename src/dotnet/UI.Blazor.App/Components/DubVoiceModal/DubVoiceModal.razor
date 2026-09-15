@@ -4,12 +4,14 @@
 @implements IModalView<DubVoiceModal.Model>
 @{
     var m = State.Value;
+    var searchWords = _search.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     var voices = m.Voices
         .Where(v => _gender.IsNullOrEmpty() || v.Gender == _gender)
         .Where(v => _accent.IsNullOrEmpty() || v.Accent == _accent)
+        .Where(v => Matches(v, searchWords))
         .ToList();
     var accents = m.Voices.Select(v => v.Accent).Where(a => !a.IsNullOrEmpty()).Distinct().Order().ToList();
-    var isDefault = m.SelectedVoiceId.IsNullOrEmpty();
+    var isSearching = searchWords.Length > 0;
     var hasSuggested = m.Suggested.Count > 0;
 }
 
@@ -19,27 +21,24 @@
     HasCloseButton="true"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
     <Body>
+        @if (m.Voices.Count > 0) {
+            <SearchBox
+                Class="dub-voice-search"
+                Placeholder="@L.DubVoice_SearchPlaceholder"
+                ClearButton="true"
+                TextChanged="@OnSearchChanged"/>
+        }
         <div class="dub-voice-list" role="listbox">
-            @if (hasSuggested) {
-                <div class="c-section-title">@L.DubVoice_Suggested</div>
-            }
-            <div class="dub-voice-item @(isDefault ? "selected" : "")"
-                 role="option"
-                 tabindex="0"
-                 aria-selected="@(isDefault ? "true" : "false")"
-                 @onclick="@(() => OnVoiceSelected(""))">
-                <div class="c-info">
-                    <div class="c-name">@L.Transcription_DubVoiceDefault</div>
-                    <div class="c-meta">@L.DubVoice_DefaultCaption</div>
-                </div>
-            </div>
             @if (m.Voices.Count == 0 && !m.IsLoading) {
                 <div class="c-empty">@L.DubVoice_Unavailable</div>
             }
-            @foreach (var voice in m.Suggested) {
-                @VoiceItem(voice)
-            }
-            @if (hasSuggested) {
+            @if (isSearching) {
+                @AllVoices((voices, accents))
+            } else if (hasSuggested) {
+                <div class="c-section-title">@L.DubVoice_Suggested</div>
+                @foreach (var voice in m.Suggested) {
+                    @VoiceItem(voice)
+                }
                 <Collapsed Title="@L.DubVoice_AllVoices" TitleClass="c-section-title">
                     @AllVoices((voices, accents))
                 </Collapsed>
@@ -57,6 +56,7 @@
 
     private string _gender = "";
     private string _accent = "";
+    private string _search = "";
     private string? _loadingVoiceId;
     private string? _playingVoiceId;
     private bool _isSuggestedWarmedUp;
@@ -89,7 +89,9 @@
         </text>;
 
     private RenderFragment<DubVoice> VoiceItem => voice => {
-        var isSelected = voice.Id == State.Value.SelectedVoiceId;
+        var m = State.Value;
+        var isSelected = voice.Id == m.EffectiveVoiceId;
+        var isDefault = voice.Id == m.DefaultVoiceId;
         var isLoading = voice.Id == _loadingVoiceId;
         var isPlaying = voice.Id == _playingVoiceId;
         var icon = isLoading ? "icon-refresh animate-spin" : isPlaying ? "icon-stop-fill" : "icon-play-fill";
@@ -104,6 +106,9 @@
                     <div class="c-name">
                         <span>@voice.Id</span>
                         <span class="c-facets">@FormatFacets(voice)</span>
+                        @if (isDefault) {
+                            <span class="c-default-chip">@L.Transcription_DubVoiceDefault</span>
+                        }
                     </div>
                     @if (!voice.Description.IsNullOrEmpty()) {
                         <div class="c-meta">@voice.Description</div>
@@ -141,7 +146,10 @@
         var settings = await LanguageUI.Settings.Use(LanguageUI.WhenReady, cancellationToken).ConfigureAwait(false);
         var voices = await Translations.ListDubVoices(Session, cancellationToken).ConfigureAwait(false);
         var suggested = await Translations.ListSuggestedDubVoices(Session, cancellationToken).ConfigureAwait(false);
-        return new(voices, suggested, settings.DubVoice, settings.Primary);
+        var defaultVoiceId = suggested.Count > 0 ? suggested[0].Id : null;
+        var chosenVoiceId = settings.DubVoice;
+        var effectiveVoiceId = voices.Any(v => v.Id == chosenVoiceId) ? chosenVoiceId : defaultVoiceId;
+        return new(voices, suggested, defaultVoiceId, effectiveVoiceId, settings.Primary);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -171,6 +179,11 @@
             _loadingVoiceId = null;
         if (_playingVoiceId == voiceId)
             _playingVoiceId = null;
+        StateHasChanged();
+    }
+
+    private void OnSearchChanged(string text) {
+        _search = text;
         StateHasChanged();
     }
 
@@ -207,7 +220,9 @@
         => JS.InvokeVoidAsync(JSWarmUp, (object)new[] { GetPreviewUrl(voiceId) }).AsTask();
 
     private async Task OnVoiceSelected(string voiceId) {
-        await LanguageUI.UpdateSettings(x => x with { DubVoice = voiceId });
+        // The default row stores "", so the choice keeps following the suggestion as the languages change
+        var chosenVoiceId = voiceId == State.Value.DefaultVoiceId ? "" : voiceId;
+        await LanguageUI.UpdateSettings(x => x with { DubVoice = chosenVoiceId });
         Modal.Close();
     }
 
@@ -227,6 +242,16 @@
         return string.Join(", ", facets);
     }
 
+    // Every search word must occur in some facet: "female calm" narrows to calm female voices
+    private static bool Matches(DubVoice voice, string[] searchWords)
+        => searchWords.All(word =>
+            voice.Id.Contains(word, StringComparison.OrdinalIgnoreCase)
+            || voice.Description.Contains(word, StringComparison.OrdinalIgnoreCase)
+            || voice.Gender.Contains(word, StringComparison.OrdinalIgnoreCase)
+            || Humanize(voice.Accent).Contains(word, StringComparison.OrdinalIgnoreCase)
+            || voice.UseCase.Any(x => Humanize(x).Contains(word, StringComparison.OrdinalIgnoreCase))
+            || voice.Style.Any(x => Humanize(x).Contains(word, StringComparison.OrdinalIgnoreCase)));
+
     // Soniox's facet tokens ("middle_aged", "latin_american") are provider data, not catalog text
     private static string Humanize(string token)
         => token.IsNullOrEmpty() ? "" : char.ToUpper(token[0]) + token[1..].Replace('_', ' ');
@@ -238,11 +263,12 @@
     public sealed record ViewModel(
         ApiArray<DubVoice> Voices,
         ApiArray<DubVoice> Suggested,
-        string SelectedVoiceId,
+        string? DefaultVoiceId,
+        string? EffectiveVoiceId,
         Language PreviewLanguage,
         bool IsLoading = false)
     {
         public static readonly ViewModel Loading =
-            new(ApiArray<DubVoice>.Empty, ApiArray<DubVoice>.Empty, "", Languages.Main, true);
+            new(ApiArray<DubVoice>.Empty, ApiArray<DubVoice>.Empty, null, null, Languages.Main, true);
     }
 }

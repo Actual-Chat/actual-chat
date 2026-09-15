@@ -105,6 +105,7 @@
   "Transcription_DubVoice": "翻訳での自分の声",
   "Transcription_DubVoiceCaption": "あなたの発言が翻訳されたときに他の人が聞く声",
   "Transcription_DubVoiceDefault": "デフォルト",
+  "Transcription_DubVoiceDefault_Format": "{0}（デフォルト）",
   "Transcription_DubVoicePreviewText": "こんにちは！他の人にはこのように聞こえます。",
   "Transcription_LanguageDetected_Format": "チャット「{0}」で検出された文字起こしの言語は {1} です。",
 
@@ -162,7 +163,6 @@
   "TimeZone_Updated": "タイムゾーンが更新されました",
 
   "DubVoice_Title": "翻訳での声",
-  "DubVoice_DefaultCaption": "標準の声",
   "DubVoice_AnyGender": "性別を問わない",
   "DubVoice_Male": "男性",
   "DubVoice_Female": "女性",
@@ -171,6 +171,7 @@
   "DubVoice_Unavailable": "現在、声を利用できません",
   "DubVoice_Suggested": "おすすめ",
   "DubVoice_AllVoices": "すべての声",
+  "DubVoice_SearchPlaceholder": "声を検索",
 
   "NativeApp_AutoStart": "ログオン時に自動起動",
   "NativeApp_AutoStartEnabledByPolicy": "自動起動はグループ/デバイスのポリシーによって有効になっています。",

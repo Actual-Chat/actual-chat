@@ -455,19 +455,28 @@ Which stock voice a dub speaks in is the **speaker's** choice, not the
 listener's: a dub is one TTS stream per (utterance, language) shared by
 every listener, so there is exactly one voice per speaker to pick.
 
-- **Setting.** `UserLanguageSettings.DubVoice` (key 7, `string`, `""` =
-  the server default `TranscriptionSettings.SonioxTtsVoice`; the getter
-  coalesces the `null` an older blob reads as). The tile "My voice in
-  translations" under the Translated Voice toggle in
-  `Components/Settings/TranscriptionSettings.razor` shows the chosen id
-  or "Default" and opens `Components/DubVoiceModal/DubVoiceModal.razor`:
-  a **Suggested** section (the Default entry, then
-  `ITranslations.ListSuggestedDubVoices`), and below it the collapsed
-  **All voices** section (`Collapsed`) with gender and accent filters
-  over the whole catalog. A row shows id, gender and accent, the
-  provider's description and style tokens, and a preview button; the
-  chosen voice is selected wherever it appears. Selecting writes
-  `LanguageUI.UpdateSettings`.
+- **Setting.** `UserLanguageSettings.DubVoice` (key 7, `string`; the
+  getter coalesces the `null` an older blob reads as). `""` means *the
+  default*, and the default is the first voice suggested for the
+  speaker's languages (below) — not a fixed id, so it follows a language
+  change; `TranscriptionSettings.SonioxTtsVoice` is reached only when the
+  catalog is empty. The tile "My voice in translations" under the
+  Translated Voice toggle in `Components/Settings/TranscriptionSettings.razor`
+  shows the chosen id, or the resolved default as "Adrian (default)"
+  (`Transcription_DubVoiceDefault_Format`; plain "Default" when there is
+  no catalog), and opens `Components/DubVoiceModal/DubVoiceModal.razor`:
+  a `SearchBox` (free text over id, description, gender, accent, use
+  case and style, case-insensitive; every word must match some facet, so
+  "female calm" narrows rather than widens; while a query is typed the
+  sections give way to the filtered catalog), a **Suggested** section
+  (`ITranslations.ListSuggestedDubVoices`, the first row carrying a
+  "Default" chip), and below it the collapsed **All voices** section
+  (`Collapsed`) with gender and accent filters over the whole catalog. A
+  row shows id, gender and accent, the provider's description and style
+  tokens, and a preview button; the effective voice — the chosen one, or
+  the default when nothing is chosen — is selected wherever it appears.
+  Selecting the default row stores `""`, any other row stores its id
+  (`LanguageUI.UpdateSettings`).
 - **Suggestions.** `DubVoiceAccents` (`src/dotnet/Api/Chat/`) maps a
   spoken language to a catalog accent — the regional tag first (`es-MX`,
   `es-US` → `latin_american`; `pt-BR` → `brazilian`; `en-IN` → `indian`;
@@ -482,18 +491,23 @@ every listener, so there is exactly one voice per speaker to pick.
   alone yield fewer than 4, `american` voices pad it by the same rule.
   `Translations.ListSuggestedDubVoices(session)` (compute method,
   `MinCacheDuration` 60 s) applies it to `ListDubVoices` and the user's
-  settings, so a language change re-suggests. `DubVoiceAccentsTest`
-  (`tests/Chat.UnitTests`) pins the rule on a hand-made catalog.
+  settings, so a language change re-suggests — and, since the default
+  voice is the first suggestion, re-voices a speaker who never picked one.
+  `DubVoiceAccentsTest` (`tests/Chat.UnitTests`) pins both rules on a
+  hand-made catalog; `FakeSpeechSynthesizer.DefaultVoiceId` ("Adrian") is
+  what they resolve to for a test user.
 - **Resolving it on the server.** `SpeakerVoices`
   (`src/dotnet/Streaming.Service/Services/SpeakerVoices.cs`): author →
   `IAuthorsBackend.Get(RequestedAuthorKind.Full)` → `UserId` →
   `IServerKvasBackend.ForUser(userId).UserLanguageSettings()`, then
-  checked against `ITranslationsBackend.ListDubVoices` — the setting is
+  `DubVoiceAccents.ResolveVoice(settings.DubVoice, catalog,
+  settings.ListSpoken())`: the chosen id when
+  `ITranslationsBackend.ListDubVoices` lists it — the setting is
   client-written and an id Soniox rejects would otherwise arm the live
-  path's synthesizer-down cooldown for every dub on the node; `null`
-  (default voice) for anonymous authors, guests, speakers who never
-  picked one, an id the catalog doesn't list, and any lookup failure
-  (logged at Information). Live dubs read it once per dub start, so a change applies
+  path's synthesizer-down cooldown for every dub on the node (an unlisted
+  id is logged at Information) — otherwise the first suggestion for the
+  speaker's languages; `null` (the synthesizer's default) for anonymous
+  authors, guests, an empty catalog, and any lookup failure. Live dubs read it once per dub start, so a change applies
   from the speaker's next utterance; replay dubs read it per
   `GetOrCreate` and include it in the stored hash, so a change
   regenerates the dub (the superseded media is deleted by

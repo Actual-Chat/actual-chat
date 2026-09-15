@@ -105,6 +105,7 @@
   "Transcription_DubVoice": "Giọng của tôi trong bản dịch",
   "Transcription_DubVoiceCaption": "Giọng mà người khác nghe khi lời bạn nói được dịch",
   "Transcription_DubVoiceDefault": "Mặc định",
+  "Transcription_DubVoiceDefault_Format": "{0} (mặc định)",
   "Transcription_DubVoicePreviewText": "Xin chào! Người khác sẽ nghe bạn như thế này.",
   "Transcription_LanguageDetected_Format": "Ngôn ngữ phiên âm được phát hiện cho cuộc trò chuyện \"{0}\" là {1}.",
 
@@ -162,7 +163,6 @@
   "TimeZone_Updated": "Đã cập nhật múi giờ",
 
   "DubVoice_Title": "Giọng trong bản dịch",
-  "DubVoice_DefaultCaption": "Giọng chuẩn",
   "DubVoice_AnyGender": "Mọi giới tính",
   "DubVoice_Male": "Nam",
   "DubVoice_Female": "Nữ",
@@ -171,6 +171,7 @@
   "DubVoice_Unavailable": "Hiện không có giọng nào khả dụng",
   "DubVoice_Suggested": "Gợi ý",
   "DubVoice_AllVoices": "Tất cả giọng",
+  "DubVoice_SearchPlaceholder": "Tìm giọng",
 
   "NativeApp_AutoStart": "Tự khởi động khi đăng nhập",
   "NativeApp_AutoStartEnabledByPolicy": "Tự động khởi động đã được bật bởi chính sách nhóm hoặc thiết bị.",

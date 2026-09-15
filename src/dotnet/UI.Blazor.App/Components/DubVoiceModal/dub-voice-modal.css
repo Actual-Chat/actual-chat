@@ -1,6 +1,9 @@
 .dub-voice-modal .dialog-body {
     @apply px-2 gap-2;
 }
+.dub-voice-modal .dub-voice-search {
+    @apply px-2;
+}
 .dub-voice-modal .c-filters {
     @apply flex-x gap-x-2 px-2 py-1;
 }
@@ -43,6 +46,11 @@
 .dub-voice-modal .dub-voice-item .c-name {
     @apply flex items-baseline gap-x-2;
     @apply text-headline-1 text-01;
+}
+.dub-voice-modal .dub-voice-item .c-default-chip {
+    @apply inline-flex items-center h-5 px-2;
+    @apply rounded-full border border-primary;
+    @apply text-caption-4 text-primary whitespace-nowrap;
 }
 .dub-voice-modal .dub-voice-item .c-facets {
     @apply text-caption-6 text-03;

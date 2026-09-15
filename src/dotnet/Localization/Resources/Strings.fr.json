@@ -105,6 +105,7 @@
   "Transcription_DubVoice": "Ma voix dans les traductions",
   "Transcription_DubVoiceCaption": "La voix avec laquelle les autres entendent la traduction de vos paroles",
   "Transcription_DubVoiceDefault": "Par défaut",
+  "Transcription_DubVoiceDefault_Format": "{0} (par défaut)",
   "Transcription_DubVoicePreviewText": "Bonjour ! Voici comment les autres vous entendront.",
   "Transcription_LanguageDetected_Format": "La langue de transcription détectée pour la discussion « {0} » est {1}.",
 
@@ -162,7 +163,6 @@
   "TimeZone_Updated": "Le fuseau horaire a été mis à jour",
 
   "DubVoice_Title": "Voix dans les traductions",
-  "DubVoice_DefaultCaption": "La voix standard",
   "DubVoice_AnyGender": "Tout genre",
   "DubVoice_Male": "Masculine",
   "DubVoice_Female": "Féminine",
@@ -171,6 +171,7 @@
   "DubVoice_Unavailable": "Les voix sont indisponibles pour le moment",
   "DubVoice_Suggested": "Suggérées",
   "DubVoice_AllVoices": "Toutes les voix",
+  "DubVoice_SearchPlaceholder": "Rechercher des voix",
 
   "NativeApp_AutoStart": "Démarrer automatiquement à la connexion",
   "NativeApp_AutoStartEnabledByPolicy": "Le démarrage automatique est activé par une stratégie de groupe ou de l'appareil.",

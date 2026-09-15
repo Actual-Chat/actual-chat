@@ -105,6 +105,7 @@
   "Transcription_DubVoice": "Moj glas u prijevodima",
   "Transcription_DubVoiceCaption": "Glas kojim drugi čuju prijevod vašeg govora",
   "Transcription_DubVoiceDefault": "Zadano",
+  "Transcription_DubVoiceDefault_Format": "{0} (zadano)",
   "Transcription_DubVoicePreviewText": "Zdravo! Ovako će vas drugi čuti.",
   "Transcription_LanguageDetected_Format": "Otkriveni jezik transkripcije za chat „{0}“ je {1}.",
 
@@ -162,7 +163,6 @@
   "TimeZone_Updated": "Vremenska zona je ažurirana",
 
   "DubVoice_Title": "Glas u prijevodima",
-  "DubVoice_DefaultCaption": "Standardni glas",
   "DubVoice_AnyGender": "Bilo koji spol",
   "DubVoice_Male": "Muški",
   "DubVoice_Female": "Ženski",
@@ -171,6 +171,7 @@
   "DubVoice_Unavailable": "Glasovi trenutno nisu dostupni",
   "DubVoice_Suggested": "Predloženi",
   "DubVoice_AllVoices": "Svi glasovi",
+  "DubVoice_SearchPlaceholder": "Pretraži glasove",
 
   "NativeApp_AutoStart": "Pokretanje pri prijavi na sustav",
   "NativeApp_AutoStartEnabledByPolicy": "Automatsko pokretanje je uključeno pravilima grupe ili računaloa.",

@@ -105,6 +105,7 @@
   "Transcription_DubVoice": "Mi voz en las traducciones",
   "Transcription_DubVoiceCaption": "La voz con la que los demás oyen la traducción de lo que dices",
   "Transcription_DubVoiceDefault": "Predeterminada",
+  "Transcription_DubVoiceDefault_Format": "{0} (predeterminada)",
   "Transcription_DubVoicePreviewText": "¡Hola! Así es como te oirán los demás.",
   "Transcription_LanguageDetected_Format": "El idioma de transcripción detectado para el chat «{0}» es {1}.",
 
@@ -162,7 +163,6 @@
   "TimeZone_Updated": "La zona horaria ha sido actualizada",
 
   "DubVoice_Title": "Voz en las traducciones",
-  "DubVoice_DefaultCaption": "La voz estándar",
   "DubVoice_AnyGender": "Cualquier género",
   "DubVoice_Male": "Masculina",
   "DubVoice_Female": "Femenina",
@@ -171,6 +171,7 @@
   "DubVoice_Unavailable": "Las voces no están disponibles ahora mismo",
   "DubVoice_Suggested": "Sugeridas",
   "DubVoice_AllVoices": "Todas las voces",
+  "DubVoice_SearchPlaceholder": "Buscar voces",
 
   "NativeApp_AutoStart": "Iniciar automáticamente al iniciar sesión",
   "NativeApp_AutoStartEnabledByPolicy": "El inicio automático está habilitado por una directiva de grupo o del equipo.",

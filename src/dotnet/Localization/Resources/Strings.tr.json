@@ -105,6 +105,7 @@
   "Transcription_DubVoice": "Çevirilerdeki sesim",
   "Transcription_DubVoiceCaption": "Konuşmanız çevrildiğinde başkalarının duyduğu ses",
   "Transcription_DubVoiceDefault": "Varsayılan",
+  "Transcription_DubVoiceDefault_Format": "{0} (varsayılan)",
   "Transcription_DubVoicePreviewText": "Merhaba! Başkaları sizi böyle duyacak.",
   "Transcription_LanguageDetected_Format": "'{0}' sohbeti için algılanan deşifre dili: {1}.",
 
@@ -162,7 +163,6 @@
   "TimeZone_Updated": "Saat dilimi güncellendi",
 
   "DubVoice_Title": "Çevirilerdeki ses",
-  "DubVoice_DefaultCaption": "Standart ses",
   "DubVoice_AnyGender": "Herhangi bir cinsiyet",
   "DubVoice_Male": "Erkek",
   "DubVoice_Female": "Kadın",
@@ -171,6 +171,7 @@
   "DubVoice_Unavailable": "Sesler şu anda kullanılamıyor",
   "DubVoice_Suggested": "Önerilen",
   "DubVoice_AllVoices": "Tüm sesler",
+  "DubVoice_SearchPlaceholder": "Ses ara",
 
   "NativeApp_AutoStart": "Oturum açıldığında otomatik başlat",
   "NativeApp_AutoStartEnabledByPolicy": "Otomatik başlatma grup/makine ilkesiyle etkinleştirildi.",

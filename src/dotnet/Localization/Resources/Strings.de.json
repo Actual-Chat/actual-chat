@@ -105,6 +105,7 @@
   "Transcription_DubVoice": "Meine Stimme in Übersetzungen",
   "Transcription_DubVoiceCaption": "Die Stimme, mit der andere die Übersetzung Ihrer Sprache hören",
   "Transcription_DubVoiceDefault": "Standard",
+  "Transcription_DubVoiceDefault_Format": "{0} (Standard)",
   "Transcription_DubVoicePreviewText": "Hallo! So werden andere Sie hören.",
   "Transcription_LanguageDetected_Format": "Erkannte Transkriptionssprache für den Chat „{0}“: {1}.",
 
@@ -162,7 +163,6 @@
   "TimeZone_Updated": "Zeitzone wurde aktualisiert",
 
   "DubVoice_Title": "Stimme in Übersetzungen",
-  "DubVoice_DefaultCaption": "Die Standardstimme",
   "DubVoice_AnyGender": "Beliebiges Geschlecht",
   "DubVoice_Male": "Männlich",
   "DubVoice_Female": "Weiblich",
@@ -171,6 +171,7 @@
   "DubVoice_Unavailable": "Stimmen sind derzeit nicht verfügbar",
   "DubVoice_Suggested": "Vorgeschlagen",
   "DubVoice_AllVoices": "Alle Stimmen",
+  "DubVoice_SearchPlaceholder": "Stimmen suchen",
 
   "NativeApp_AutoStart": "Automatisch bei Anmeldung starten",
   "NativeApp_AutoStartEnabledByPolicy": "Der Autostart ist durch eine Gruppen- oder Geräterichtlinie aktiviert.",

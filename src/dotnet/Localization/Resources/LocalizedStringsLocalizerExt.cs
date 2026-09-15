@@ -123,6 +123,8 @@ public static class LocalizedStringsLocalizerExt
         public string Transcription_DubVoice => l["Transcription_DubVoice"].Value;
         public string Transcription_DubVoiceCaption => l["Transcription_DubVoiceCaption"].Value;
         public string Transcription_DubVoiceDefault => l["Transcription_DubVoiceDefault"].Value;
+        public string Transcription_DubVoiceDefault_Format(object arg0)
+            => l["Transcription_DubVoiceDefault_Format", arg0].Value;
         public string Transcription_DubVoicePreviewText => l["Transcription_DubVoicePreviewText"].Value;
         public string Transcription_MicrophoneTopic => l["Transcription_MicrophoneTopic"].Value;
         public string Transcription_FaceDownStop => l["Transcription_FaceDownStop"].Value;
@@ -183,7 +185,6 @@ public static class LocalizedStringsLocalizerExt
         public string TimeZone_Question => l["TimeZone_Question"].Value;
         public string TimeZone_Updated => l["TimeZone_Updated"].Value;
         public string DubVoice_Title => l["DubVoice_Title"].Value;
-        public string DubVoice_DefaultCaption => l["DubVoice_DefaultCaption"].Value;
         public string DubVoice_AnyGender => l["DubVoice_AnyGender"].Value;
         public string DubVoice_Male => l["DubVoice_Male"].Value;
         public string DubVoice_Female => l["DubVoice_Female"].Value;
@@ -192,6 +193,7 @@ public static class LocalizedStringsLocalizerExt
         public string DubVoice_Unavailable => l["DubVoice_Unavailable"].Value;
         public string DubVoice_Suggested => l["DubVoice_Suggested"].Value;
         public string DubVoice_AllVoices => l["DubVoice_AllVoices"].Value;
+        public string DubVoice_SearchPlaceholder => l["DubVoice_SearchPlaceholder"].Value;
 
         public string NativeApp_AutoStart => l["NativeApp_AutoStart"].Value;
         public string NativeApp_AutoStartEnabledByPolicy => l["NativeApp_AutoStartEnabledByPolicy"].Value;

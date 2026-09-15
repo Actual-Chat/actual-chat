@@ -105,6 +105,7 @@
   "Transcription_DubVoice": "我在翻译中的声音",
   "Transcription_DubVoiceCaption": "您的话被翻译后，其他人听到的声音",
   "Transcription_DubVoiceDefault": "默认",
+  "Transcription_DubVoiceDefault_Format": "{0}（默认）",
   "Transcription_DubVoicePreviewText": "你好！其他人会这样听到你。",
   "Transcription_LanguageDetected_Format": "聊天“{0}”检测到的转录语言为 {1}。",
 
@@ -162,7 +163,6 @@
   "TimeZone_Updated": "时区已更新",
 
   "DubVoice_Title": "翻译中的声音",
-  "DubVoice_DefaultCaption": "标准声音",
   "DubVoice_AnyGender": "任意性别",
   "DubVoice_Male": "男声",
   "DubVoice_Female": "女声",
@@ -171,6 +171,7 @@
   "DubVoice_Unavailable": "目前无法获取声音",
   "DubVoice_Suggested": "推荐",
   "DubVoice_AllVoices": "所有声音",
+  "DubVoice_SearchPlaceholder": "搜索声音",
 
   "NativeApp_AutoStart": "登录时自动启动",
   "NativeApp_AutoStartEnabledByPolicy": "自动启动已由组策略或设备策略启用。",
