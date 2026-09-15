@@ -6,6 +6,7 @@ using ActualLab.Diagnostics;
 using AVFoundation;
 using CallKit;
 using Foundation;
+using Intents;
 
 namespace ActualChat.App.Maui;
 
@@ -35,6 +36,7 @@ public class IosCalls : CXProviderDelegate
     private IosCalls()
     {
         var config = new CXProviderConfiguration {
+            IconTemplateImageData = LoadIconTemplate(),
             SupportsVideo = true,
             MaximumCallsPerCallGroup = 1,
             // Generic, not PhoneNumber/EmailAddress: a chat identity is neither, and the
@@ -78,9 +80,11 @@ public class IosCalls : CXProviderDelegate
         });
         // The ring itself is CallKit's from here; IncomingCallUI still needs to know so its
         // reactive state can end it.
-        _ = DispatchToBlazor(
-            c => c.GetRequiredService<IncomingCallUI>().OnRing(conversationId.ChatId),
-            "ReportIncomingCall");
+        _ = DispatchToBlazor(c => {
+            c.GetRequiredService<IncomingCallUI>().OnRing(conversationId.ChatId);
+            c.GetRequiredService<IosCallIntents>()
+                .Donate(conversationId.ChatId, hasVideo, INInteractionDirection.Incoming);
+        }, "ReportIncomingCall");
     }
 
     // The in-app UI answered this chat's call; mirror that into CallKit. Returns whether CallKit
@@ -394,6 +398,15 @@ public class IosCalls : CXProviderDelegate
             call.ClearLocalAction();
             EndCall(callId, CXCallEndedReason.Failed);
         });
+    }
+
+    private NSData? LoadIconTemplate()
+    {
+        var path = NSBundle.MainBundle.PathForResource("call-icon", "png");
+        var data = path is null ? null : NSData.FromFile(path);
+        if (data is null)
+            Log.LogWarning("call-icon.png is missing from the bundle, the system call UI shows no app icon");
+        return data;
     }
 
     private static void ReleaseAudioSession()

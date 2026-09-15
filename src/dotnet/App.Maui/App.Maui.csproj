@@ -775,6 +775,8 @@
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <Folder Include="Platforms\iOS\Resources\" />
     <BundleResource Include="..\..\..\resources\sounds\converted\attention_ringtone.caf" Link="%(Filename)%(Extension)" />
+    <!-- CallKit takes the template icon as raw PNG data, so one scale is enough and no image set -->
+    <BundleResource Include="..\..\..\resources\images\converted\call-icon@3x.png" Link="call-icon.png" />
     <!-- Remove metadata.json from Content to prevent default SDK behavior -->
     <Content Remove="Platforms\iOS\Resources\vad_batched_fp16.mlmodelc\metadata.json" />
     <!-- Includes all files in the .mlmodelc recursively as BundleResources.

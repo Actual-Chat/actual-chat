@@ -1,6 +1,7 @@
 using ActualChat.Live;
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Diagnostics;
+using Intents;
 
 namespace ActualChat.App.Maui;
 
@@ -18,6 +19,7 @@ public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDispo
     private readonly ConcurrentDictionary<ChatId, Unit> _watchedChatIds = new();
     private AppUIHub Hub { get; }
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private IosCallIntents CallIntents => field ??= Hub.Services.GetRequiredService<IosCallIntents>();
     private ILogger Log => field ??= StaticLog.For<IosCallsBridge>();
 
     public bool OwnsRinging => true;
@@ -96,6 +98,7 @@ public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDispo
         _ = BackgroundTask.Run(
             () => SetOutgoingCallName(chatId, _stopToken),
             Log, $"Couldn't resolve the callee name for chat #{chatId}", _stopToken);
+        CallIntents.Donate(chatId, hasVideo, INInteractionDirection.Outgoing);
     }
 
     public void OnOutgoingCallStatusChanged(ChatId chatId, CallStatus status)
