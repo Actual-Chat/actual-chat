@@ -48,6 +48,7 @@ public static class LocalizedStringsLocalizerExt
         public string Settings_Permissions => l["Settings_Permissions"].Value;
         public string Settings_Sessions => l["Settings_Sessions"].Value;
         public string Settings_ApiKeys => l["Settings_ApiKeys"].Value;
+        public string Settings_ApiAndApps => l["Settings_ApiAndApps"].Value;
         public string Settings_Documents => l["Settings_Documents"].Value;
         public string Settings_DeveloperTools => l["Settings_DeveloperTools"].Value;
         public string Settings_LogViewer => l["Settings_LogViewer"].Value;
@@ -144,6 +145,16 @@ public static class LocalizedStringsLocalizerExt
         public string ApiKeys_DeactivateAll => l["ApiKeys_DeactivateAll"].Value;
         public string ApiKeys_DeactivateAllConfirm => l["ApiKeys_DeactivateAllConfirm"].Value;
         public string ApiKeys_DeactivateAllTitle => l["ApiKeys_DeactivateAllTitle"].Value;
+        public string ConnectedApps_Title => l["ConnectedApps_Title"].Value;
+        public string ConnectedApps_Empty => l["ConnectedApps_Empty"].Value;
+        public string ConnectedApps_Connected_Format(object arg0)
+            => l["ConnectedApps_Connected_Format", arg0].Value;
+        public string ConnectedApps_LastUsed_Format(object arg0)
+            => l["ConnectedApps_LastUsed_Format", arg0].Value;
+        public string ConnectedApps_Revoke => l["ConnectedApps_Revoke"].Value;
+        public string ConnectedApps_RevokeConfirm_Format(object arg0)
+            => l["ConnectedApps_RevokeConfirm_Format", arg0].Value;
+        public string ConnectedApps_RevokeTitle => l["ConnectedApps_RevokeTitle"].Value;
 
         public string DevTools_Host => l["DevTools_Host"].Value;
         public string DevTools_EarlyAccess => l["DevTools_EarlyAccess"].Value;

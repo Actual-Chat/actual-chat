@@ -1,0 +1,68 @@
+@using ActualChat.OAuth
+@inherits ComputedStateComponent<AppUIHub, ConnectedAppsSettings.Model>
+@{
+    var m = State.Value;
+}
+
+<TileTopic Topic="@L.ConnectedApps_Title"/>
+
+@if (m.Grants.Count == 0) {
+    <Tile Class="api-key-tile"><TileItem IsHoverable="false"><Content><span class="c-empty">@L.ConnectedApps_Empty</span></Content></TileItem></Tile>
+} else {
+    <Tile Class="api-key-tile">
+        @foreach (var grant in m.Grants) {
+            <TileItem IsHoverable="false">
+                <Content>
+                    <div class="c-key-info">
+                        <span class="c-key-name">@grant.ClientName</span>
+                    </div>
+                    <div class="c-deactivate">
+                        <ButtonRound Class="btn-sm btn-danger" Tooltip="@L.ConnectedApps_Revoke" Click="@(() => OnRevokeClick(grant))">
+                            <i class="icon-trash03 text-xl"></i>
+                        </ButtonRound>
+                    </div>
+                </Content>
+                <Caption>
+                    <span class="c-key-expires">@L.ConnectedApps_Connected_Format(FormatDate(grant.CreatedAt)) · @L.ConnectedApps_LastUsed_Format(FormatDate(grant.LastUsedAt))</span>
+                </Caption>
+            </TileItem>
+            @if (grant != m.Grants[^1]) {
+                <Divider />
+            }
+        }
+    </Tile>
+}
+
+@code {
+    private IOAuthGrants OAuthGrants => Hub.OAuthGrants;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = new Model(), Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+        => new() { Grants = await OAuthGrants.List(Session, cancellationToken).ConfigureAwait(false) };
+
+    private string FormatDate(Moment moment)
+        => DateTimeConverter.ToLocalTime(moment.ToDateTime()).ToString("g", DateFormatter);
+
+    private async Task OnRevokeClick(OAuthGrant grant) {
+        var confirmed = false;
+        var model = new ConfirmModal.Model(false, L.ConnectedApps_RevokeConfirm_Format(grant.ClientName), () => { confirmed = true; }) {
+            Title = L.ConnectedApps_RevokeTitle,
+            ConfirmButtonText = L.Common_Yes,
+        };
+        var modalRef = await ModalUI.Show(model).ConfigureAwait(false);
+        await modalRef.WhenClosed.ConfigureAwait(false);
+        if (!confirmed)
+            return;
+
+        await UICommander.Run(new OAuthGrants_Revoke { Session = Session, AuthorizationId = grant.Id }).ConfigureAwait(false);
+    }
+
+    // Nested types
+
+    public sealed record Model
+    {
+        public ApiArray<OAuthGrant> Grants { get; init; } = [];
+    }
+}
