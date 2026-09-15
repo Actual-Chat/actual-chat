@@ -105,7 +105,6 @@
   "Transcription_DubVoice": "Giọng của tôi trong bản dịch",
   "Transcription_DubVoiceCaption": "Giọng mà người khác nghe khi lời bạn nói được dịch",
   "Transcription_DubVoiceDefault": "Mặc định",
-  "Transcription_DubVoiceDefault_Format": "{0} (mặc định)",
   "Transcription_DubVoicePreviewText": "Xin chào! Người khác sẽ nghe bạn như thế này.",
   "Transcription_LanguageDetected_Format": "Ngôn ngữ phiên âm được phát hiện cho cuộc trò chuyện \"{0}\" là {1}.",
 

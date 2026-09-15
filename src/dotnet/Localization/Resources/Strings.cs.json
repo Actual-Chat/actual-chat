@@ -105,7 +105,6 @@
   "Transcription_DubVoice": "Můj hlas v překladech",
   "Transcription_DubVoiceCaption": "Hlas, kterým ostatní slyší překlad vaší řeči",
   "Transcription_DubVoiceDefault": "Výchozí",
-  "Transcription_DubVoiceDefault_Format": "{0} (výchozí)",
   "Transcription_DubVoicePreviewText": "Ahoj! Takto vás uslyší ostatní.",
   "Transcription_LanguageDetected_Format": "Zjištěný jazyk přepisu pro chat „{0}“ je {1}.",
 

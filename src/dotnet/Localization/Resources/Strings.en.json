@@ -142,7 +142,6 @@
   "Transcription_DubVoice": "My voice in translations",
   "Transcription_DubVoiceCaption": "The voice others hear when your speech is translated",
   "Transcription_DubVoiceDefault": "Default",
-  "Transcription_DubVoiceDefault_Format": "{0} (default)",
   "Transcription_DubVoicePreviewText": "Hello! This is how others will hear you.",
   "Transcription_LanguageDetected_Format": "Detected transcription language for chat '{0}' is {1}.",
 

@@ -123,8 +123,6 @@ public static class LocalizedStringsLocalizerExt
         public string Transcription_DubVoice => l["Transcription_DubVoice"].Value;
         public string Transcription_DubVoiceCaption => l["Transcription_DubVoiceCaption"].Value;
         public string Transcription_DubVoiceDefault => l["Transcription_DubVoiceDefault"].Value;
-        public string Transcription_DubVoiceDefault_Format(object arg0)
-            => l["Transcription_DubVoiceDefault_Format", arg0].Value;
         public string Transcription_DubVoicePreviewText => l["Transcription_DubVoicePreviewText"].Value;
         public string Transcription_MicrophoneTopic => l["Transcription_MicrophoneTopic"].Value;
         public string Transcription_FaceDownStop => l["Transcription_FaceDownStop"].Value;

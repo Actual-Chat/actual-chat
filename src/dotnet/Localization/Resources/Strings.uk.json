@@ -105,7 +105,6 @@
   "Transcription_DubVoice": "Мій голос у перекладах",
   "Transcription_DubVoiceCaption": "Голос, яким інші чують переклад вашої мови",
   "Transcription_DubVoiceDefault": "За замовчуванням",
-  "Transcription_DubVoiceDefault_Format": "{0} (за замовчуванням)",
   "Transcription_DubVoicePreviewText": "Привіт! Ось так вас чутимуть інші.",
   "Transcription_LanguageDetected_Format": "Визначена мова розшифровки для чату «{0}» — {1}.",
 

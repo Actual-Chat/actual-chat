@@ -105,7 +105,6 @@
   "Transcription_DubVoice": "Моят глас в преводите",
   "Transcription_DubVoiceCaption": "Гласът, с който другите чуват превода на речта ви",
   "Transcription_DubVoiceDefault": "По подразбиране",
-  "Transcription_DubVoiceDefault_Format": "{0} (по подразбиране)",
   "Transcription_DubVoicePreviewText": "Здравейте! Ето как ще ви чуват другите.",
   "Transcription_LanguageDetected_Format": "Открит език за транскрипция в чата „{0}“ е {1}.",
 

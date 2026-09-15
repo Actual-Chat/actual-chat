@@ -105,7 +105,6 @@
   "Transcription_DubVoice": "번역에서 나의 목소리",
   "Transcription_DubVoiceCaption": "내 말이 번역될 때 다른 사람들이 듣는 목소리",
   "Transcription_DubVoiceDefault": "기본",
-  "Transcription_DubVoiceDefault_Format": "{0} (기본)",
   "Transcription_DubVoicePreviewText": "안녕하세요! 다른 사람들에게는 이렇게 들립니다.",
   "Transcription_LanguageDetected_Format": "채팅 '{0}'에서 감지된 전사 언어는 {1}입니다.",
 

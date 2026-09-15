@@ -105,7 +105,6 @@
   "Transcription_DubVoice": "Мој глас у преводима",
   "Transcription_DubVoiceCaption": "Глас којим други чују превод вашег говора",
   "Transcription_DubVoiceDefault": "Задано",
-  "Transcription_DubVoiceDefault_Format": "{0} (задано)",
   "Transcription_DubVoicePreviewText": "Здраво! Овако ће вас други чути.",
   "Transcription_LanguageDetected_Format": "Откривени језик транскрипције за чет „{0}“ је {1}.",
 

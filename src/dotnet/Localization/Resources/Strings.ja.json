@@ -105,7 +105,6 @@
   "Transcription_DubVoice": "翻訳での自分の声",
   "Transcription_DubVoiceCaption": "あなたの発言が翻訳されたときに他の人が聞く声",
   "Transcription_DubVoiceDefault": "デフォルト",
-  "Transcription_DubVoiceDefault_Format": "{0}（デフォルト）",
   "Transcription_DubVoicePreviewText": "こんにちは！他の人にはこのように聞こえます。",
   "Transcription_LanguageDetected_Format": "チャット「{0}」で検出された文字起こしの言語は {1} です。",
 

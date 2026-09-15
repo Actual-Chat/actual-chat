@@ -105,7 +105,6 @@
   "Transcription_DubVoice": "Mój głos w tłumaczeniach",
   "Transcription_DubVoiceCaption": "Głos, którym inni słyszą tłumaczenie Twojej wypowiedzi",
   "Transcription_DubVoiceDefault": "Domyślny",
-  "Transcription_DubVoiceDefault_Format": "{0} (domyślny)",
   "Transcription_DubVoicePreviewText": "Cześć! Tak będą Cię słyszeć inni.",
   "Transcription_LanguageDetected_Format": "Wykryty język transkrypcji dla czatu „{0}” to {1}.",
 

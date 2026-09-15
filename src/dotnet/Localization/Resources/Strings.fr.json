@@ -105,7 +105,6 @@
   "Transcription_DubVoice": "Ma voix dans les traductions",
   "Transcription_DubVoiceCaption": "La voix avec laquelle les autres entendent la traduction de vos paroles",
   "Transcription_DubVoiceDefault": "Par défaut",
-  "Transcription_DubVoiceDefault_Format": "{0} (par défaut)",
   "Transcription_DubVoicePreviewText": "Bonjour ! Voici comment les autres vous entendront.",
   "Transcription_LanguageDetected_Format": "La langue de transcription détectée pour la discussion « {0} » est {1}.",
 

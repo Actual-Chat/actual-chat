@@ -156,9 +156,7 @@
         if (!m.Languages.DubVoice.IsNullOrEmpty())
             return m.Languages.DubVoice;
 
-        return m.DefaultDubVoiceId is { } defaultVoiceId
-            ? L.Transcription_DubVoiceDefault_Format(defaultVoiceId)
-            : L.Transcription_DubVoiceDefault;
+        return m.DefaultDubVoiceId ?? L.Transcription_DubVoiceDefault;
     }
 
     private async Task OnLanguageChanged(int index, string languageId) {

@@ -105,7 +105,6 @@
   "Transcription_DubVoice": "我在翻译中的声音",
   "Transcription_DubVoiceCaption": "您的话被翻译后，其他人听到的声音",
   "Transcription_DubVoiceDefault": "默认",
-  "Transcription_DubVoiceDefault_Format": "{0}（默认）",
   "Transcription_DubVoicePreviewText": "你好！其他人会这样听到你。",
   "Transcription_LanguageDetected_Format": "聊天“{0}”检测到的转录语言为 {1}。",
 

@@ -105,7 +105,6 @@
   "Transcription_DubVoice": "Meine Stimme in Übersetzungen",
   "Transcription_DubVoiceCaption": "Die Stimme, mit der andere die Übersetzung Ihrer Sprache hören",
   "Transcription_DubVoiceDefault": "Standard",
-  "Transcription_DubVoiceDefault_Format": "{0} (Standard)",
   "Transcription_DubVoicePreviewText": "Hallo! So werden andere Sie hören.",
   "Transcription_LanguageDetected_Format": "Erkannte Transkriptionssprache für den Chat „{0}“: {1}.",
 

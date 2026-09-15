@@ -105,7 +105,6 @@
   "Transcription_DubVoice": "A minha voz nas traduções",
   "Transcription_DubVoiceCaption": "A voz com que os outros ouvem a tradução da sua fala",
   "Transcription_DubVoiceDefault": "Padrão",
-  "Transcription_DubVoiceDefault_Format": "{0} (padrão)",
   "Transcription_DubVoicePreviewText": "Olá! É assim que os outros vão ouvir você.",
   "Transcription_LanguageDetected_Format": "O idioma de transcrição detectado para o chat \"{0}\" é {1}.",
 

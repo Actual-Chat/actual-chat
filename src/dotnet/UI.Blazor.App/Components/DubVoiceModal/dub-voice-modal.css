@@ -5,6 +5,13 @@
 .dub-voice-modal .dub-voice-top {
     @apply flex-y gap-y-2;
 }
+/* The two filters share a row and span the search box's width rather than sitting in an inset card */
+.dub-voice-modal .dub-voice-filters {
+    @apply flex-x gap-x-2 p-0;
+}
+.dub-voice-modal .dub-voice-filters > section {
+    @apply grow basis-0 min-w-0;
+}
 .dub-voice-modal .c-section-title {
     @apply text-caption-1 text-03 px-2 pt-2;
 }

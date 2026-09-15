@@ -105,7 +105,6 @@
   "Transcription_DubVoice": "Çevirilerdeki sesim",
   "Transcription_DubVoiceCaption": "Konuşmanız çevrildiğinde başkalarının duyduğu ses",
   "Transcription_DubVoiceDefault": "Varsayılan",
-  "Transcription_DubVoiceDefault_Format": "{0} (varsayılan)",
   "Transcription_DubVoicePreviewText": "Merhaba! Başkaları sizi böyle duyacak.",
   "Transcription_LanguageDetected_Format": "'{0}' sohbeti için algılanan deşifre dili: {1}.",
 

@@ -105,7 +105,6 @@
   "Transcription_DubVoice": "Moj glas u prijevodima",
   "Transcription_DubVoiceCaption": "Glas kojim drugi čuju prijevod vašeg govora",
   "Transcription_DubVoiceDefault": "Zadano",
-  "Transcription_DubVoiceDefault_Format": "{0} (zadano)",
   "Transcription_DubVoicePreviewText": "Zdravo! Ovako će vas drugi čuti.",
   "Transcription_LanguageDetected_Format": "Otkriveni jezik transkripcije za chat „{0}“ je {1}.",
 

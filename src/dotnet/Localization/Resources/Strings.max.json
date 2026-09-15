@@ -142,7 +142,6 @@
   "Transcription_DubVoice": "Meine Stimme in Übersetzungen",
   "Transcription_DubVoiceCaption": "La voix avec laquelle les autres entendent la traduction de vos paroles",
   "Transcription_DubVoiceDefault": "За замовчуванням",
-  "Transcription_DubVoiceDefault_Format": "{0} (за замовчуванням)",
   "Transcription_DubVoicePreviewText": "Halo! Seperti inilah orang lain akan mendengar Anda.",
   "Transcription_LanguageDetected_Format": "La langue de transcription détectée pour la discussion « {0} » est {1}.",
 
