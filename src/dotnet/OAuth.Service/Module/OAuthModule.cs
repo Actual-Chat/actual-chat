@@ -68,6 +68,7 @@ public sealed class OAuthModule(IServiceProvider moduleServices)
                 o.UseLocalServer();
                 o.UseAspNetCore();
             });
+        services.AddSingleton<OAuthBearerAuthenticator>();
         services.AddSingleton(c => new ServerMetadataExtender(c));
         services.AddScoped(c => new CimdClientResolver(c));
         services.AddHttpClient(CimdClientResolver.HttpClientName, c => {

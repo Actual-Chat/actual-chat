@@ -1,5 +1,6 @@
 using ActualChat.Mcp.Controllers;
 using ActualChat.Mcp.Module;
+using ActualChat.OAuth;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Net.Http.Headers;
 
@@ -13,22 +14,34 @@ public sealed class McpAuthMiddleware(RequestDelegate next, IServiceProvider ser
     private ISessionsBackend SessionsBackend { get; } = services.GetRequiredService<ISessionsBackend>();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
     private McpSettings Settings { get; } = services.GetRequiredService<McpSettings>();
+    private OAuthBearerAuthenticator? BearerAuthenticator { get; } = services.GetService<OAuthBearerAuthenticator>();
 
     public async Task Invoke(HttpContext httpContext)
     {
-        var session = TryGetSession(httpContext);
-        if (session is null) {
+        var token = TryGetBearer(httpContext);
+        if (token is null) {
             await Reject(httpContext, null, "Missing or malformed Authorization: Bearer header.").ConfigureAwait(false);
             return;
         }
-        if (session.Kind != SessionKind.ApiKey) {
-            await Reject(httpContext, "invalid_token", "Token is not an API key.").ConfigureAwait(false);
-            return;
-        }
 
-        var info = await SessionsBackend.Get(session, httpContext.RequestAborted).ConfigureAwait(false);
-        if (info is null || !info.IsActive || info.UserId is not { IsGuest: false }) {
-            await Reject(httpContext, "invalid_token", "API key is inactive, expired, or not linked to a user.").ConfigureAwait(false);
+        Session? session;
+        if (token.StartsWith(CoreConstants.Session.ApiKeyPrefix)) {
+            session = SessionExt.NewValidOrNull(token);
+            if (session is not null) {
+                var info = await SessionsBackend.Get(session, httpContext.RequestAborted).ConfigureAwait(false);
+                if (info is null || !info.IsActive || info.UserId is not { IsGuest: false })
+                    session = null;
+            }
+        }
+        else
+            session = BearerAuthenticator is null
+                ? null
+                : await BearerAuthenticator.TryGetSession(httpContext, Settings.Route, httpContext.RequestAborted)
+                    .ConfigureAwait(false);
+
+        if (session is null) {
+            await Reject(httpContext, "invalid_token", "The token is invalid, expired, or revoked.")
+                .ConfigureAwait(false);
             return;
         }
 
@@ -38,15 +51,14 @@ public sealed class McpAuthMiddleware(RequestDelegate next, IServiceProvider ser
 
     // Private methods
 
-    private static Session? TryGetSession(HttpContext httpContext)
+    private static string? TryGetBearer(HttpContext httpContext)
     {
         if (!httpContext.Request.Headers.TryGetValue(HeaderNames.Authorization, out var values))
             return null;
         var header = values.ToString();
         if (header.IsNullOrEmpty() || !header.StartsWith(BearerPrefix, StringComparison.OrdinalIgnoreCase))
             return null;
-        var token = header[BearerPrefix.Length..].Trim();
-        return SessionExt.NewValidOrNull(token);
+        return header[BearerPrefix.Length..].Trim();
     }
 
     private Task Reject(HttpContext httpContext, string? error, string description)

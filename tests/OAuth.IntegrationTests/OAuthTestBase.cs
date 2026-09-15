@@ -1,9 +1,11 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using ActualChat.Testing.Host;
 using Microsoft.AspNetCore.WebUtilities;
+using ModelContextProtocol.Client;
 
 namespace ActualChat.OAuth.IntegrationTests;
 
@@ -149,6 +151,30 @@ public abstract class OAuthTestBase<TFixture>(TFixture fixture, ITestOutputHelpe
 
     protected static JwtSecurityToken ReadJwt(string token)
         => new JwtSecurityTokenHandler().ReadJwtToken(token);
+
+    protected async Task<McpClient> CreateMcpClient(string token, CancellationToken cancellationToken = default)
+    {
+        var endpoint = new Uri(BaseUri, "/api/mcp");
+        var transport = new HttpClientTransport(new HttpClientTransportOptions {
+            Endpoint = endpoint,
+            AdditionalHeaders = new Dictionary<string, string> { ["Authorization"] = $"Bearer {token}" },
+        });
+        return await McpClient.CreateAsync(transport, cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    protected async Task<HttpResponseMessage> SendInitialize(string? authorization)
+    {
+        using var http = Tester.AppHost.NewHttpClient();
+        var request = new HttpRequestMessage(HttpMethod.Post, new Uri(BaseUri, "/api/mcp"));
+        request.Content = new StringContent(
+            """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}""");
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+        if (authorization is not null)
+            request.Headers.TryAddWithoutValidation("Authorization", authorization);
+        return await http.SendAsync(request).ConfigureAwait(false);
+    }
 
     // Nested types
 

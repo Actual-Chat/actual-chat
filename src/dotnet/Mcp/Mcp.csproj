@@ -9,6 +9,7 @@
     <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
     <ProjectReference Include="..\Contacts.Contracts\Contacts.Contracts.csproj" />
     <ProjectReference Include="..\Core.Server\Core.Server.csproj" />
+    <ProjectReference Include="..\OAuth.Service\OAuth.Service.csproj" />
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
   </ItemGroup>
 
