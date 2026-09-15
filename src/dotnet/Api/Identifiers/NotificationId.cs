@@ -15,7 +15,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<NotificationId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<NotificationId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class NotificationId : ObjectId, IStringIdentifier<NotificationId>
+public sealed partial class NotificationId : StringIdentifier, IStringIdentifier<NotificationId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<NotificationId>();
@@ -27,6 +27,9 @@ public sealed partial class NotificationId : ObjectId, IStringIdentifier<Notific
     public NotificationKind Kind { get; }
     [IgnoreDataMember]
     public string SimilarityKey { get; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override ShardKey ShardKey => UserId.ShardKey;
 
     // Factories and constructors
 

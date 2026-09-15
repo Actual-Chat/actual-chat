@@ -8,7 +8,7 @@ public class TypedObjectIdShardKeyTest
     [InlineData("ce:abcdef:0:1")]
     [InlineData("a:abcdef:1")]
     [InlineData("p:abcdefghij")]
-    public void TypedIdsShouldRouteByTheirUntypedValue(string value)
+    public void TypedIdsShouldUseTheirUnderlyingObjectRouting(string value)
     {
         // arrange
         var id = TypedObjectId.Parse(value);
@@ -18,7 +18,7 @@ public class TypedObjectIdShardKeyTest
         var shardKey = resolver(id);
 
         // assert
-        shardKey.Should().Be(ShardKeyResolvers.ForString(id.ObjectId.Value));
-        resolver(null!).Should().Be(0);
+        shardKey.Should().Be(id.ObjectId.ShardKey);
+        resolver(null!).Should().Be(default);
     }
 }

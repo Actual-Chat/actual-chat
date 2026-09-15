@@ -33,7 +33,6 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Mathematics.LinearMapDiff>();
         CodeKeeper.KeepSerializable<global::ActualChat.Media.Size2D>();
         CodeKeeper.KeepSerializable<global::ActualChat.NodeRef>();
-        CodeKeeper.KeepSerializable<global::ActualChat.PartitionKey>();
         CodeKeeper.KeepSerializable<global::ActualChat.Search.SearchMatch>();
         CodeKeeper.KeepSerializable<global::ActualChat.Search.SearchMatchPart>();
         CodeKeeper.KeepSerializable<global::ActualChat.Security.DecryptedSecureToken>();
@@ -107,9 +106,6 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.NodeRef>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.NodeRef>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.NodeRef>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.PartitionKey>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.PartitionKey>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.PartitionKey>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Search.SearchMatch>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Search.SearchMatch>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Search.SearchMatch>>>>();
@@ -220,7 +216,6 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.Keep("ActualChat.Hosting.Internal.HostRoleMessagePackFormatter, ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.Hashing.HashString, ActualChat.Core]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.NodeRef, ActualChat.Core]], ActualChat.Core");
-        CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.PartitionKey, ActualChat.Core]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.TypedObjectId, ActualChat.Core]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Kvas.Internal.ServerKvas_MigrateGuestKeysMessagePackFormatter, ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Kvas.Internal.ServerKvas_SetManyMessagePackFormatter, ActualChat.Core");
@@ -303,7 +298,6 @@ internal partial class CoreAotSource : IAotSource
             (typeof(global::ActualChat.Mathematics.LinearMapDiff), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Media.Size2D), AotTypeKind.Serializable),
             (typeof(global::ActualChat.NodeRef), AotTypeKind.Serializable),
-            (typeof(global::ActualChat.PartitionKey), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Search.SearchMatch), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Search.SearchMatchPart), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Security.DecryptedSecureToken), AotTypeKind.Serializable),

@@ -6,10 +6,9 @@ namespace ActualChat;
 /// Base interface for string-based identifiers with hash code caching.
 /// </summary>
 // ReSharper disable once PossibleInterfaceMemberAmbiguity
-public interface IStringIdentifier : IStringLike, IHasId<string>, IHasId<Symbol>
+public interface IStringIdentifier : IStringLike, IHasId<string>, IHasId<Symbol>, IHasShardKey
 {
     int HashCode { get; }
-    PartitionKey PartitionKey { get; }
 }
 
 /// <summary>
@@ -40,7 +39,7 @@ public abstract class StringIdentifier(string value) : IStringIdentifier
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember]
     public Symbol Id => new(Value, HashCode);
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public virtual PartitionKey PartitionKey { get; } = PartitionKey.New(value);
+    public virtual ShardKey ShardKey { get; } = ShardKey.New(value);
 
     // IStringIdentifier members
     string IHasId<string>.Id => Value;

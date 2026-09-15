@@ -17,13 +17,13 @@ public sealed class TypedObjectId : StringIdentifier, IStringIdentifier<TypedObj
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ObjectId ObjectId { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public override PartitionKey PartitionKey => ObjectId.PartitionKey;
+    public override ShardKey ShardKey => ObjectId.ShardKey;
 
     public static void Register<TId>(string prefix)
         where TId : ObjectId, IStringIdentifier<TId>
     {
         ArgumentException.ThrowIfNullOrEmpty(prefix);
-        if (prefix.Any(c => c is not (>= 'a' and <= 'z' or >= '0' and <= '9' or '-')))
+        if (prefix.Any(c => c is not (>= 'a' and <= 'z' or >= '0' and <= '9' or '-' or '~')))
             throw new ArgumentOutOfRangeException(nameof(prefix));
 
         lock (Lock) {

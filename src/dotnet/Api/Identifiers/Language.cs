@@ -16,7 +16,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<Language>))]
 [TypeConverter(typeof(StringLikeTypeConverter<Language>))]
 [ParameterComparer(typeof(ByRefParameterComparer))] // Fine for Language
-public sealed partial class Language : ObjectId, IStringIdentifier<Language>
+public sealed partial class Language : StringIdentifier, IStringIdentifier<Language>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<Language>();

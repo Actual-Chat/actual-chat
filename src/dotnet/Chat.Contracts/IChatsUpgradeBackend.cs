@@ -23,10 +23,10 @@ public interface IChatsUpgradeBackend : ICommandService, IBackendService
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsUpgradeBackend_CreateDefaultChat(
-) : ICommand<Chat>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<Chat>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => Constants.Chat.DefaultChatId;
+    public ShardKey ShardKey => Constants.Chat.DefaultChatId.ShardKey;
 }
 
 /// <summary>
@@ -35,10 +35,10 @@ public sealed partial record ChatsUpgradeBackend_CreateDefaultChat(
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsUpgradeBackend_CreateAnnouncementsChat(
-) : ICommand<Chat>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<Chat>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => Constants.Chat.AnnouncementsChatId;
+    public ShardKey ShardKey => Constants.Chat.AnnouncementsChatId.ShardKey;
 }
 
 /// <summary>
@@ -47,10 +47,10 @@ public sealed partial record ChatsUpgradeBackend_CreateAnnouncementsChat(
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsUpgradeBackend_CreateFeedbackTemplateChat(
-) : ICommand<Chat>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<Chat>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => Constants.Chat.FeedbackTemplateChatId;
+    public ShardKey ShardKey => Constants.Chat.FeedbackTemplateChatId.ShardKey;
 }
 
 /// <summary>
@@ -60,8 +60,8 @@ public sealed partial record ChatsUpgradeBackend_CreateFeedbackTemplateChat(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsUpgradeBackend_UpgradeChat(
     [property: DataMember, Key(0)] ChatId ChatId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => ChatId;
+    public ShardKey ShardKey => ChatId.ShardKey;
 }

@@ -21,13 +21,13 @@ public interface IEmailsBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public sealed partial record EmailsBackend_SendDigest(
     [property: DataMember, Key(0)] UserId UserId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>, IHasTimeout
+) : ICommand<Unit>, IBackendCommand, IHasShardKey, IHasTimeout
 {
     [property: DataMember, Key(1)]
     public bool IsDiagnosticsEnabled { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 
     TimeSpan? IHasTimeout.Timeout => TimeSpan.FromMinutes(5);
 }

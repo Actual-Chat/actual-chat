@@ -119,7 +119,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `NodeRef` (struct) - Reference to a mesh node.
 - `IHasNodeRef` - Interface for types with a node reference.
 - `IHasOrigin` - Interface for types with an origin.
-- `IHasShardKey` - Interface for types with a shard key.
+- `IHasShardKey` - Non-generic provider of a typed ShardKey; inherited by string and symbol identifiers.
 - `IHasDelayQuanta` - Interface for types with delay quanta.
 - `IHasDelayUntil` - Interface for types with delay until.
 - `IHasKvasKey` - Interface for types with a KVAS key.
@@ -156,7 +156,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `StringIdentifier` / `IStringIdentifier<T>` - Shared string ID, cached hash, parsing, and partition behavior.
 - `ObjectId` (abstract class) - Domain identifier base extending `StringIdentifier` with a cached typed ID.
 - `TypedObjectId` (sealed class) - Type-prefixed reference retaining its original object ID.
-- `PartitionKey` (readonly record struct) - 24-bit stable routing key with hexadecimal slice support.
+- `ShardKey` (readonly record struct) - Unsigned 32-bit routing key with hexadecimal slice support.
 - `ISymbolIdentifier<T>` / `SymbolIdentifier` - Symbol-based identifier contract and parsing helpers.
 - `SystemRole` (enum) - System role types; `Anyone`/`Guest`/`User`/`AnonymousUser` have automatic membership, `Moderator`/`Owner` have an explicit author list.
 - `MetadataExt` (static class) - Extension methods for metadata.

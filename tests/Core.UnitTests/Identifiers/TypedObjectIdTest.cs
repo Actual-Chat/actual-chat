@@ -3,7 +3,7 @@ namespace ActualChat.Core.UnitTests.Identifiers;
 public class TypedObjectIdTest(ITestOutputHelper @out) : StringIdentifierTestBase<TypedObjectId>(@out)
 {
     public override string[] ValidIdentifiers
-        => ["u:abcdef", "c:abcdef", "ce:abcdef:0:1", "a:abcdef:1", "p:abcdefghij", "transcriber:"];
+        => ["u:abcdef", "c:abcdef", "ce:abcdef:0:1", "a:abcdef:1", "p:abcdefghij"];
 
     public override string[] InvalidIdentifiers
         => ["", "abcdef", ":abcdef", "u:", "u:!", "unknown:abcdef"];
@@ -46,6 +46,25 @@ public class TypedObjectIdTest(ITestOutputHelper @out) : StringIdentifierTestBas
         (userId.TypedId == chatId.TypedId).Should().BeFalse();
     }
 
+    [Fact]
+    public void ReviewedPrefixesShouldRoundTrip()
+    {
+        // arrange
+        (string Prefix, ObjectId Id)[] cases = [
+            ("~", AliasId.Parse("my-alias")),
+            ("ct", ContactId.NewAny(UserId.Parse("abcdef"), ChatId.Parse("ghijkl"))),
+            ("conv", ConversationId.New(ChatId.Parse("ghijkl"), 1)),
+        ];
+
+        // act, assert
+        foreach (var (prefix, id) in cases) {
+            var typedId = id.TypedId;
+            typedId.Value.Should().Be($"{prefix}:{id.Value}");
+            TypedObjectId.Parse(typedId.Value).ObjectId.Should().Be(id);
+            typedId.AssertPassesThroughSerializers(Out);
+        }
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]
@@ -54,6 +73,8 @@ public class TypedObjectIdTest(ITestOutputHelper @out) : StringIdentifierTestBas
     [InlineData("u:")]
     [InlineData("u:!")]
     [InlineData("unknown:abcdef")]
+    [InlineData("language:en")]
+    [InlineData("transcriber:")]
     public void InvalidTypedIdsShouldBeRejected(string? value)
     {
         // act
@@ -63,20 +84,5 @@ public class TypedObjectIdTest(ITestOutputHelper @out) : StringIdentifierTestBas
         success.Should().BeFalse();
         id.Should().BeNull();
         FluentActions.Invoking(() => TypedObjectId.Parse(value)).Should().Throw<FormatException>();
-    }
-
-    [Fact]
-    public void EmptyObjectIdsShouldRoundTripWhenTheirTypeAllowsThem()
-    {
-        // arrange
-        var id = TranscriberId.None.TypedId;
-
-        // act
-        var parsed = TypedObjectId.Parse(id.Value);
-
-        // assert
-        id.Value.Should().Be("transcriber:");
-        parsed.ObjectId.Should().BeSameAs(TranscriberId.None);
-        id.AssertPassesThroughSerializers(Out);
     }
 }

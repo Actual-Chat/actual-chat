@@ -28,10 +28,12 @@ public interface IExternalContactsBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContactsBackend_BulkChange(
     [property: DataMember, Key(0)] ExternalContactChange[] Changes
-) : ICommand<Result<ExternalContactFull?>[]>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Result<ExternalContactFull?>[]>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => Changes.Length > 0 ? Changes[0].Id.UserDeviceId.OwnerId : throw new ArgumentException("No changes provided", nameof(Changes));
+    public ShardKey ShardKey => Changes.Length > 0
+        ? Changes[0].Id.ShardKey
+        : throw new ArgumentException("No changes provided", nameof(Changes));
 }
 
 /// <summary>
@@ -41,10 +43,10 @@ public sealed partial record ExternalContactsBackend_BulkChange(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContactsBackend_Touch(
     [property: DataMember, Key(0)] ExternalContactId Id
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => Id.UserDeviceId.OwnerId;
+    public ShardKey ShardKey => Id.UserDeviceId.OwnerId.ShardKey;
 }
 
 /// <summary>
@@ -54,8 +56,8 @@ public sealed partial record ExternalContactsBackend_Touch(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContactsBackend_RemoveAccount(
     [property: DataMember, Key(0)] UserId UserId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }

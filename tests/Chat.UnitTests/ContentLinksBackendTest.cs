@@ -63,7 +63,7 @@ public class ContentLinksBackendTest
             Mock.Of<IAuthorsBackend>(MockBehavior.Strict),
             Mock.Of<IPlacesBackend>(MockBehavior.Strict));
         var backend = new ContentLinksBackend(services);
-        var id = Language.Parse("en").TypedId;
+        var id = RoleId.New(ChatId.Parse("abcdef"), 1).TypedId;
 
         // act
         var action = () => backend.GetContentInfo(id, CancellationToken.None);

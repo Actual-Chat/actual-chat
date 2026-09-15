@@ -34,7 +34,7 @@ public readonly partial struct HashString : ISymbolIdentifier<HashString>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string Value => Id.Value;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public PartitionKey PartitionKey => PartitionKey.New(Value);
+    public ShardKey ShardKey => ShardKey.New(Value);
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsNone => Id.IsEmpty;
 

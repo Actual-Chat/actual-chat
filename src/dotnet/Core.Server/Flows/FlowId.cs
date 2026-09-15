@@ -34,7 +34,7 @@ public readonly partial struct FlowId : ISymbolIdentifier<FlowId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string Value => Id.Value;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public PartitionKey PartitionKey => PartitionKey.New(Value);
+    public ShardKey ShardKey => ShardKey.New(Arguments);
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsNone => Id.IsEmpty;
 

@@ -51,10 +51,10 @@ public sealed partial record AuthorsBackend_Upsert(
     [property: DataMember, Key(3)] long? ExpectedVersion,
     [property: DataMember, Key(4)] AuthorDiff Diff,
     [property: DataMember, Key(5)] bool DoNotNotify = false
-) : ICommand<AuthorFull>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<AuthorFull>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => ChatId;
+    public ShardKey ShardKey => ChatId.ShardKey;
 }
 
 /// <summary>
@@ -66,15 +66,10 @@ public sealed partial record AuthorsBackend_Remove(
     [property: DataMember, Key(0)] ChatId? ByChatId,
     [property: DataMember, Key(1)] AuthorId? ByAuthorId,
     [property: DataMember, Key(2)] UserId? ByUserId
-) : ICommand<AuthorFull>, IBackendCommand, IHasShardKey<PrincipalId?>
+) : ICommand<AuthorFull>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public PrincipalId? ShardKey => (ByChatId is not null, ByAuthorId is not null, ByUserId is not null) switch {
-        (true, _, _) => AuthorId.New(ByChatId!, 1),
-        (_, true, _) => ByAuthorId,
-        (_, _, true) => ByUserId,
-        _ => null,
-    };
+    public ShardKey ShardKey => ByChatId?.ShardKey ?? ByAuthorId?.ShardKey ?? ByUserId?.ShardKey ?? default;
 }
 
 /// <summary>
@@ -87,10 +82,10 @@ public sealed partial record AuthorsBackend_CopyChat(
     [property: DataMember, Key(1)] ChatId NewChatId,
     [property: DataMember, Key(2)] (RoleId, RoleId)[] RolesMap,
     [property: DataMember, Key(3)] string CorrelationId
-) : ICommand<bool>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<bool>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => OldChatId;
+    public ShardKey ShardKey => OldChatId.ShardKey;
 }
 
 // ReSharper disable once InconsistentNaming

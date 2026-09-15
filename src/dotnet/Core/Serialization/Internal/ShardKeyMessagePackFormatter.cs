@@ -4,8 +4,6 @@ namespace ActualChat.Serialization.Internal;
 
 // Core disables the MessagePack source generator (see Core.csproj), so this hand-written
 // formatter is the only one ShardKey gets on non-dynamic (AOT) resolver chains.
-// It deliberately drops the [Key(0)] array-of-1 layout DynamicObjectResolver used to emit
-// (0x91 <int>) in favor of a bare integer, which makes ShardKey wire-compatible with int.
 
 /// <summary>
 /// Writes <see cref="ShardKey"/> as a bare MessagePack integer.
@@ -16,5 +14,5 @@ public sealed class ShardKeyMessagePackFormatter : IMessagePackFormatter<ShardKe
         => writer.Write(value.Value);
 
     public ShardKey Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
-        => reader.TryReadNil() ? default : new ShardKey(reader.ReadInt32());
+        => reader.TryReadNil() ? default : new ShardKey(reader.ReadUInt32());
 }

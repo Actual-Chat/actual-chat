@@ -28,6 +28,9 @@ public sealed partial class RoleId : ObjectId, IStringIdentifier<RoleId>
     [IgnoreDataMember]
     public long LocalId { get; }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override ShardKey ShardKey => ChatId.ShardKey;
+
     // Factories and constructors
 
     public static RoleId New(ChatId chatId, long localId)

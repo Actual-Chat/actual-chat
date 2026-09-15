@@ -172,7 +172,7 @@ public class ShardMigrationComputedTest(ITestOutputHelper @out)
 
         var rpcRefs = h1.Services.GetRequiredService<MeshRpcRefs>();
         for (var shard = 0; shard < shardCount; shard++) {
-            var rpcRef = rpcRefs.Get(MeshRef.Shard(shardScheme, shard));
+            var rpcRef = rpcRefs.Get(MeshRef.Shard(shardScheme, ShardKey.New(shard)));
             WriteLine($"After wave 1: shard {shard.Format()}: route={rpcRef.Route}, "
                 + $"hasLocalExecutionAwaiter={rpcRef.Route.LocalExecutionAwaiter is not null}");
         }

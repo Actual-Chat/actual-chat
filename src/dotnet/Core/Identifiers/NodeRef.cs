@@ -30,7 +30,7 @@ public readonly partial struct NodeRef : ISymbolIdentifier<NodeRef>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string Value => Id.Value;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public PartitionKey PartitionKey => PartitionKey.New(Value);
+    public ShardKey ShardKey => ShardKey.New(Value);
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsNone => Id.IsEmpty;
 

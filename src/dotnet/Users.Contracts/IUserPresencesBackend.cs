@@ -25,8 +25,8 @@ public sealed partial record UserPresencesBackend_CheckIn(
     [property: DataMember, Key(0)] UserId UserId,
     [property: DataMember, Key(1)] Moment At,
     [property: DataMember, Key(2)] bool IsActive
-) : IDelegatingCommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : IDelegatingCommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }

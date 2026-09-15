@@ -28,6 +28,9 @@ public sealed partial class ConversationId : ObjectId, IStringIdentifier<Convers
     [IgnoreDataMember]
     public long StartEntryLid { get; }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override ShardKey ShardKey => ChatId.ShardKey;
+
     // Factories and constructors
 
     public static ConversationId New(ChatId chatId, long startEntryLid)

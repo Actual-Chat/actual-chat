@@ -17,7 +17,7 @@ public static class MeshRefResolvers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static MeshRef RandomShard() => MeshRef.Shard(ShardKeyResolvers.RandomShard());
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static MeshRef ForString(string? x) => MeshRef.Shard(x?.GetXxHash3() ?? 0);
+    public static MeshRef ForString(string? x) => MeshRef.Shard(ShardKey.New(x));
 
     static MeshRefResolvers()
     {

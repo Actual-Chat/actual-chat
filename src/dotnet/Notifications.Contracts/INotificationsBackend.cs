@@ -79,10 +79,10 @@ public interface INotificationsBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_Notify(
     [property: DataMember, Key(0)] Notification Notification
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => Notification.UserId;
+    public ShardKey ShardKey => Notification.UserId.ShardKey;
 }
 
 // Drains a user's in-memory soft-update buffer and applies one coalesced hard update.
@@ -90,10 +90,10 @@ public sealed partial record NotificationsBackend_Notify(
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_Process(
     [property: DataMember, Key(0)] UserId UserId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }
 
 // Dismisses a single notification (the user handled it) and pushes a silent badge update.
@@ -101,10 +101,10 @@ public sealed partial record NotificationsBackend_Process(
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_Dismiss(
     [property: DataMember, Key(0)] NotificationId NotificationId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => NotificationId.UserId;
+    public ShardKey ShardKey => NotificationId.UserId.ShardKey;
 }
 
 // Dismisses every active notification for a user (bulk "mark all read") and pushes a silent
@@ -113,10 +113,10 @@ public sealed partial record NotificationsBackend_Dismiss(
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_DismissAll(
     [property: DataMember, Key(0)] UserId UserId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }
 
 // Delivers a notification to the user's devices. Enqueued (not called in-process) so NATS
@@ -127,10 +127,10 @@ public sealed partial record NotificationsBackend_DismissAll(
 public sealed partial record NotificationsBackend_Push(
     [property: DataMember, Key(0)] Notification Notification,
     [property: DataMember, Key(1)] bool IsSilent = false
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => Notification.UserId;
+    public ShardKey ShardKey => Notification.UserId.ShardKey;
 }
 
 // Pushes a silent dismissal to the user's devices: closes the given banners (tags fully gone) and
@@ -143,10 +143,10 @@ public sealed partial record NotificationsBackend_Push(
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_Converge(
     [property: DataMember, Key(0)] UserId UserId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }
 
 // Clears entries from UserNotificationInfo.PendingDismissals once their dismissal has actually
@@ -157,10 +157,10 @@ public sealed partial record NotificationsBackend_Converge(
 public sealed partial record NotificationsBackend_ClearDismissals(
     [property: DataMember, Key(0)] UserId UserId,
     [property: DataMember, Key(1)] ApiArray<NotificationId> Ids
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }
 
 /// <summary>
@@ -170,10 +170,10 @@ public sealed partial record NotificationsBackend_ClearDismissals(
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_UpsertExplicitNotification(
     [property: DataMember, Key(0)] ExplicitNotification Notification
-) : ICommand<bool>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<bool>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => Notification.UserId;
+    public ShardKey ShardKey => Notification.UserId.ShardKey;
 }
 
 /// <summary>
@@ -189,10 +189,10 @@ public sealed partial record NotificationsBackend_RegisterDevice(
     // Defaults to false: PTT is per-device opt-in, and a command from a client
     // predating the flag must not enroll that device.
     [property: DataMember, Key(4)] bool IsPttEnabled = false
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }
 
 /// <summary>
@@ -202,10 +202,10 @@ public sealed partial record NotificationsBackend_RegisterDevice(
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_RemoveDevices(
     [property: DataMember, Key(0)] Symbol[] DeviceIds
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<Symbol> // Review
+) : ICommand<Unit>, IBackendCommand, IHasShardKey // Review
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public Symbol ShardKey => DeviceIds.FirstOrDefault();
+    public ShardKey ShardKey => ShardKey.New((DeviceIds.FirstOrDefault()).Value);
 }
 
 /// <summary>
@@ -215,10 +215,10 @@ public sealed partial record NotificationsBackend_RemoveDevices(
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_RemoveAccount(
     [property: DataMember, Key(0)] UserId UserId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }
 
 /// <summary>
@@ -230,10 +230,10 @@ public sealed partial record NotificationsBackend_NotifyMembers(
     [property: DataMember, Key(0)] UserId UserId,
     [property: DataMember, Key(1)] ChatId ChatId,
     [property: DataMember, Key(2)] long LastEntryId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }
 
 /// <summary>
@@ -260,10 +260,10 @@ public sealed partial record NotificationsBackend_NotifyConversation(
     [property: DataMember, Key(2)] string Text,
     [property: DataMember, Key(3)] long EndEntryLid,
     [property: DataMember, Key(4)] IReadOnlyList<AuthorId> AuthorIds
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => ConversationId.ChatId;
+    public ShardKey ShardKey => ConversationId.ChatId.ShardKey;
 }
 
 /// <summary>
@@ -276,10 +276,10 @@ public sealed partial record NotificationsBackend_NotifyCall(
     [property: DataMember, Key(1)] AuthorId Caller,
     [property: DataMember, Key(2)] IReadOnlyList<AuthorId> Invitees,
     [property: DataMember, Key(3)] bool HasVideo
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => ConversationId.ChatId;
+    public ShardKey ShardKey => ConversationId.ChatId.ShardKey;
 }
 
 /// <summary>
@@ -290,10 +290,10 @@ public sealed partial record NotificationsBackend_NotifyCall(
 public sealed partial record NotificationsBackend_CancelCall(
     [property: DataMember, Key(0)] ConversationId ConversationId,
     [property: DataMember, Key(1)] IReadOnlyList<AuthorId> Invitees
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ShardKey => ConversationId.ChatId;
+    public ShardKey ShardKey => ConversationId.ChatId.ShardKey;
 }
 
 /// <summary>
@@ -305,8 +305,8 @@ public sealed partial record NotificationsBackend_NotifyMentionedMembers(
     [property: DataMember, Key(0)] UserId UserId,
     [property: DataMember, Key(1)] ChatEntryId ChatEntryId,
     [property: DataMember, Key(2)] UserId[] UserIds
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public UserId ShardKey => UserId;
+    public ShardKey ShardKey => UserId.ShardKey;
 }

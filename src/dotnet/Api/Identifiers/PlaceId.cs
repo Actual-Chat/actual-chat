@@ -28,8 +28,6 @@ public sealed partial class PlaceId : ObjectId, IStringIdentifier<PlaceId>, IMen
     public PlaceChatId RootChatId => field ??= PlaceChatId.Parse(PlaceChatId.Format(this, Value));
     [IgnoreDataMember]
     public MentionKind MentionKind => MentionKind.Place;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public string ShardKey => Value;
 
     // Factories and constructors
 

@@ -15,7 +15,7 @@ public abstract class ObjectIdTestBase<TIdentifier>(ITestOutputHelper @out)
             var typedId = id.TypedId;
             typedId.ObjectId.Should().BeSameAs(id);
             TypedObjectId.Parse(typedId.Value).ObjectId.Should().Be(id);
-            typedId.PartitionKey.Should().Be(id.PartitionKey);
+            typedId.ShardKey.Should().Be(id.ShardKey);
             typedId.AssertPassesThroughSerializers(Out);
         }
     }

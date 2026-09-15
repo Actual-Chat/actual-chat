@@ -8,7 +8,7 @@ an enum with `None` meaning normal operation. Active rows identify objects with 
 not conflate objects.
 
 Maintenance initially has 16 mesh shards and 256 independently cached data
-partitions. The first hex digit of an object's `PartitionKey` selects its mesh
+partitions. The first hex digit of an object's `ShardKey` selects its mesh
 shard. The first two digits select its data partition. Each mesh shard therefore
 owns 16 data partitions; a physical node can own multiple mesh shards.
 
@@ -19,27 +19,41 @@ ownership.
 ## Identifier foundation
 
 - `StringIdentifier` and `IStringIdentifier<T>` hold the shared string value,
-  cached hash, parsing, comparison, and partition behavior.
+  cached hash, parsing, comparison, and shard-key behavior.
 - `ObjectId : StringIdentifier` is the base for domain IDs that have a typed pair.
   Existing concrete identifier strings, equality, and serializer formats stay stable.
 - `TypedObjectId : StringIdentifier` retains its original `ObjectId`. It is not
   an `ObjectId` subclass. The UI-only `ChatMessageKey` also inherits directly
   from `StringIdentifier`, without requiring a typed prefix registration.
+  Country, email, emoji, interest, language, mention references, notification IDs,
+  phone, stream/transcriber IDs, translation/source IDs, and user-device IDs also
+  remain plain string identifiers.
 - `ObjectId.TypedId` lazily creates its wrapper with `field ??=`.
 - Typed values use `prefix:objectValue`, such as `u:abcdef` or `c:abcdef`.
   Prefixes and parsers are registered explicitly by the module that owns the IDs.
+  Alias, contact, and conversation prefixes are `~`, `ct`, and `conv`.
   Chat subtypes share the chat prefix. Unknown prefixes fail parsing; unregistered
   ID types fail typed-wrapper construction instead of acquiring unstable CLR names.
-- `PartitionKey` stores one integer, masked to 24 bits. Its standard string is
-  six lowercase hex digits. Object and symbol IDs derive it from the existing
-  stable xxHash3 helper applied to their untyped value.
-- `TypedObjectId.PartitionKey` delegates to `ObjectId.PartitionKey`; adding a type
-  prefix must not change the partition.
+- One non-generic `IHasShardKey` exposes `ShardKey ShardKey { get; }`.
+  String and symbol identifiers implement it by default; individual IDs own any
+  routing rule based on a parent chat, owner, or other part of the identifier.
+- `ShardKey` stores a full unsigned 32-bit integer without masking. Its standard
+  string is eight lowercase hex digits. String hashing uses the shared xxHash3
+  helper. Cache hex format strings and all one- and two-digit result strings.
+- `TypedObjectId.ShardKey` delegates to `ObjectId.ShardKey`, including the
+  underlying ID's custom routing rule.
+- Resolvers return `ShardKey` and prefer `IHasShardKey` before registered base
+  resolvers. Reject registrations for any type whose inheritance implements that
+  interface, including nullable wrappers of value-type providers. Built-in
+  external types such as `Session` retain explicit registrations.
+- Mesh and queue references carry `ShardKey`. At shard selection, retain the
+  existing signed positive-modulo interpretation so the current 12-shard schemes
+  keep their assignments even when a hash's high bit is set.
 - Formatting accepts a prefix length, start/length, or `Range`. Parsing accepts
-  one to six hex digits and an optional digit offset. Omitted digits are zero:
-  `Parse("ab")` is `ab0000`; `Parse("cd", 2)` is `00cd00`.
+  one to eight hex digits and an optional digit offset. Omitted digits are zero:
+  `Parse("ab")` is `ab000000`; `Parse("cd", 2)` is `00cd0000`.
   The struct does not remember a slice's length.
-- The 24-bit value is a routing key, not a unique identifier. Existing mesh routing
+- The 32-bit value is a routing key, not a unique identifier. Existing mesh routing
   for other entities is unchanged.
 
 ## Content link migration
@@ -54,9 +68,9 @@ the identifier to clients. Therefore the replacement uses the standard
 `prefix:objectValue` format in every serializer; it needs no legacy type or API
 method variants. Backend nodes must use the updated contract together.
 
-Preserve content-link shard routing by hashing the underlying raw ID value.
-Do not substitute the typed prefix or a type-specific resolver such as an author's
-chat ID.
+Content links now follow the underlying identifier's routing rule. Author and
+entry links therefore route by their chat, consistently with other uses of those
+IDs. Do not register a separate typed-ID routing override.
 
 ## Reactive maintenance reads
 
@@ -74,9 +88,9 @@ Keep the consolidated projection server-local or protected, with a distributed
 entry point delegating to it. The status result must have value equality and must
 not include a partition-wide version that changes for unrelated objects.
 
-Use the existing `ShardKey` wrapper with the numeric first hex digit when routing
+Use `ShardKey` with the numeric first hex digit when routing
 partition reads and writes. Do not hash a prefix string again or route a left-aligned
-24-bit prefix through modulo directly; both would break the intended grouping.
+32-bit prefix through modulo directly; both would break the intended grouping.
 
 ## Maintenance lifecycle
 
@@ -105,9 +119,9 @@ quiesce before destructive work proceeds.
 - `IStringLike<T>` and `StringLikeJsonConverter<T>`,
   `StringLikeNewtonsoftJsonConverter<T>`, `StringLikeMessagePackFormatter<T>`,
   and `StringLikeTypeConverter<T>` for identifier serialization.
-- `GetXxHash3` from ActualLab.Core for deterministic partition hashing.
+- `GetXxHash3` from ActualLab.Core for deterministic hashing and `PositiveModulo` for existing mesh assignments.
 - Existing identifier parse caches and `StringIdentifierTestBase<T>` / `ObjectIdTestBase<T>` tests.
-- `ShardScheme`, `ShardKey`, mesh ownership, and the Users backend hosting role.
+- `ShardScheme`, `ShardRef`, `QueueShardRef`, `GenericInstanceCache`, mesh ownership, and the Users backend hosting role.
 - Fusion compute-method consolidation and value equality.
 - `DbServiceBase<UsersDbContext>`, operation events, `FlowHub`,
   `IFlowBackend`, and `ChatsBackend_Change` for persistence and durable work.
@@ -118,7 +132,7 @@ prefixes and parsers. They do not fit typed-ID registration. The existing
 
 ### Reusability of new components
 
-`StringIdentifier`, `ObjectId`, `TypedObjectId`, and `PartitionKey` apply beyond maintenance.
+`StringIdentifier`, `ObjectId`, `TypedObjectId`, and `ShardKey` apply beyond maintenance.
 Put them in Core, rather than Users or Chat. Prefix registrations remain in the
 module that owns each concrete identifier.
 

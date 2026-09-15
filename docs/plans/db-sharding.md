@@ -192,7 +192,7 @@ proposals.
 
 4. **`AppDbShardResolver<TDbContext>`** (`Db`) — subclass of Fusion's
    `DbShardResolver<TDbContext>`: resolves typed ids (`ChatId`, `UserId`, ...) and
-   `IHasShardKey<T>` commands to a logical shard via the scheme's hash + catalog
+   `IHasShardKey` commands to a logical shard via the scheme's hash + catalog
    overrides. Reuses the same key normalization as
    `ShardKeyResolvers` so mesh routing and DB sharding always agree on "the key".
 
@@ -462,7 +462,7 @@ From ActualChat: `ShardKeyResolvers` (key normalization/hash), `ShardScheme` /
 `ShardMap` / `MeshRef` / `ShardOwner` (mesh side, for wiring event processing to
 ownership), `ShardedDbServiceBase<T>`, `DbModule` / `DbSettings` / `DbInfo` /
 `DbInitializer` (extended, not replaced), `DbShardLocalIdGenerator` (unchanged),
-`IHasShardKey<T>` on commands.
+`IHasShardKey` on commands.
 
 From `ActualLab.Core`: `ShardMap<TNode>` / Maglev — available if logical→physical
 placement ever becomes dynamic; for now a static config map is deliberately simpler.

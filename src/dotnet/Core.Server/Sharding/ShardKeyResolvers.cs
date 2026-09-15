@@ -1,10 +1,8 @@
-using ActualChat.Flows;
-using ActualChat.Flows.Infrastructure;
 using ActualLab.Caching;
 
 namespace ActualChat.Sharding;
 
-public delegate int ShardKeyResolver<in T>(T source);
+public delegate ShardKey ShardKeyResolver<in T>(T source);
 
 public static class ShardKeyResolverExt
 {
@@ -19,18 +17,15 @@ public static class ShardKeyResolvers
 
     private static readonly ConcurrentDictionary<Type, Delegate> Registered = new();
 
-    // Set at host startup, before the first resolution (resolvers are cached per type).
-    // Production keeps the warning + hash-based fallback; everywhere else it's better to fail fast:
-    // for reference types without a stable hash the fallback routes the same entity
-    // to different shards on different nodes.
+    // Set before the first resolution: resolvers are cached per type.
+    // Production retains the warning + hash fallback; other hosts fail on missing stable routing.
     public static bool MustThrowOnNotFound { get; set; }
 
-    public static ShardKeyResolver<T> NewHashBased<T>() => static x => x?.GetHashCode() ?? 0;
+    public static ShardKeyResolver<T> NewHashBased<T>() => static x => ShardKey.New(x?.GetHashCode() ?? 0);
     public static ShardKeyResolver<T?> NewNullable<T>(ShardKeyResolver<T> nonNullableResolver)
         where T : struct
-        => source => source is { } v
-            ? nonNullableResolver.Invoke(v)
-            : 0;
+        => source => source is { } v ? nonNullableResolver.Invoke(v) : default;
+
     public static ShardKeyResolver<T> NewNotFound<T>()
     {
         if (MustThrowOnNotFound)
@@ -44,62 +39,38 @@ public static class ShardKeyResolvers
         };
     }
 
-    // These properties can be set!
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int RandomShard() => Random.Shared.Next();
+    public static ShardKey RandomShard() => ShardKey.New(Random.Shared.Next());
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int ForString(string? x) => x?.GetXxHash3() ?? 0;
+    public static ShardKey ForString(string? x) => ShardKey.New(x);
 
     static ShardKeyResolvers()
     {
-        // Value types
-        Register<Unit>(static _ => 0);
-        Register<ShardKey>(static x => x.Value);
-        Register<Symbol>(static x => ForString(x.Value));
-        Register<ChatId>(static x => ForString(x.Value));
-        Register<PeerChatId>(static x => ForString(x.Value));
-        Register<PlaceId>(static x => ForString(x.Value));
-        Register<PlaceChatId>(static x => ForString(x.Value));
-        Register<ChatEntryId>(static x => ForString(x.ChatId.Value));
-        Register<AuthorId>(static x => ForString(x.ChatId.Value));
-        Register<RoleId>(static x => ForString(x.ChatId.Value));
-        Register<MentionRef>(static x => ForString(x.Target.ShardKey));
-        Register<UserId>(static x => ForString(x.Value));
-        Register<PrincipalId>(static x => ForString(x.ShardKey));
-        Register<ContactId>(static x => ForString(x.OwnerId.Value));
-        Register<NotificationId>(static x => ForString(x.UserId.Value));
-        Register<MediaId>(static x => ForString(x.Value));
-        Register<TranslationId>(static x => ForString(x.SourceId.ChatId.Value));
-        Register<TranslationSourceId>(static x => ForString(x.ChatId.Value));
-        Register<TypedObjectId>(static x => ForString(x.ObjectId.Value));
-        Register<UserDeviceId>(static x => ForString(x.OwnerId.Value));
-        Register<StreamId>(static x => ForString(x.Value)); // Used as a shard key in TranslationsBackend_TranslateStream
-        Register<UserIdentity>(static x => ForString(x.Id));
-        Register<FlowId>(static x => ForString(x.Arguments));
-        Register<UploadId>(static x => ForString(x.Value));
-        Register<ExplicitNotificationId>(static x => ForString(x.UserId.Value));
-        Register<AliasId>(static x => ForString(x.Value));
-        Register<ConversationId>(static x => ForString(x.ChatId.Value));
-        Register<ExternalContactId>(static x => ForString(x.UserDeviceId.OwnerId.Value));
-
-        // Classes
-        Register<string>(ForString); // TODO(AY): String shard keys are likely a mistake -> remove this in future
-        Register<Session>(x => ForString(x.Id));
-        Register<ISessionCommand>(x => ForString(x.Session.Id));
-        Register<FlowResumeEvent>(static x => ForString(x.FlowId.Arguments));
+        Register<Unit>(static _ => default);
+        Register<int>(static x => ShardKey.New(x));
+        Register<uint>(static x => new ShardKey(x));
+        Register<Symbol>(static x => ShardKey.New(x.Value));
+        Register<UserIdentity>(static x => ShardKey.New(x.Id));
+        Register<string>(ShardKey.New);
+        Register<Session>(static x => ShardKey.New(x.Id));
+        Register<ISessionCommand>(static x => ShardKey.New(x.Session.Id));
     }
 
     public static void Register<T>(ShardKeyResolver<T> resolver)
     {
-        if (Registered.TryAdd(typeof(T), (ShardKeyResolver<T>)NullableResolver))
+        var type = typeof(T);
+        var underlyingType = Nullable.GetUnderlyingType(type) ?? type;
+        if (typeof(IHasShardKey).IsAssignableFrom(underlyingType))
+            throw StandardError.Constraint(
+                $"'{type.GetName()}' implements IHasShardKey and must define its own shard key.");
+
+        if (Registered.TryAdd(type, (ShardKeyResolver<T>)NullableResolver))
             return;
 
-        throw StandardError.Internal(
-            $"ShardKeyResolver for type {typeof(T).GetName()} is already registered.");
+        throw StandardError.Internal($"ShardKeyResolver for type {type.GetName()} is already registered.");
 
-        int NullableResolver(T x)
-            => x is not null ? resolver(x) : 0;
+        ShardKey NullableResolver(T x)
+            => x is not null ? resolver(x) : default;
     }
 
     public static ShardKeyResolver<object?> GetUntyped(
@@ -120,35 +91,21 @@ public static class ShardKeyResolvers
     {
         public override ShardKeyResolver<T> Generate()
         {
-            if (Registered.TryGetValue(typeof(T), out var result))
+            var type = typeof(T);
+            if (typeof(IHasShardKey).IsAssignableFrom(type))
+                return (ShardKeyResolver<T>)GenericInstanceCache.Get(typeof(HasShardKeyFactory<>), type)!;
+
+            if (Registered.TryGetValue(type, out var result))
                 return (ShardKeyResolver<T>)result;
 
-            var type = typeof(T);
-            if (type.IsValueType) {
-                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)) {
-                    var baseType = type.GetGenericArguments()[0];
+            if (Nullable.GetUnderlyingType(type) is { } underlyingType)
+                return (ShardKeyResolver<T>)GenericInstanceCache.Get(typeof(NullableFactory<>), underlyingType)!;
+
+            if (!type.IsValueType)
+                foreach (var baseType in type.GetAllBaseTypes(false, true))
                     if (Registered.TryGetValue(baseType, out result))
-                        return (ShardKeyResolver<T>)GenericInstanceCache
-                            .Get(typeof(NullableFactory<>), baseType)!;
-                }
-                return NotFound(type);
-            }
+                        return (ShardKeyResolver<T>)result;
 
-            foreach (var baseType in type.GetAllBaseTypes(false, true)) {
-                if (Registered.TryGetValue(baseType, out result))
-                    return (ShardKeyResolver<T>)result;
-
-                if (baseType is { IsInterface: true, IsGenericType: true } && baseType.GetGenericTypeDefinition() == typeof(IHasShardKey<>)) {
-                    var shardKeyType = baseType.GetGenericArguments()[0];
-                    return (ShardKeyResolver<T>)GenericInstanceCache
-                        .Get(typeof(HasShardKeyFactory<,>), type, shardKeyType)!;
-                }
-            }
-            return NotFound(type);
-        }
-
-        private static ShardKeyResolver<T> NotFound(Type type)
-        {
             Log.LogError("ShardKeyResolvers: shard key type: {Type}, requester: {Requester}",
                 type.GetName(), "GenericInstanceFactory");
             return NewNotFound<T>();
@@ -159,28 +116,15 @@ public static class ShardKeyResolvers
         where T : struct
     {
         public override ShardKeyResolver<T?> Generate()
-        {
-            if (!Registered.TryGetValue(typeof(T), out var baseResolver))
-                return NewNotFound<T?>();
-
-            return NewNullable((ShardKeyResolver<T>)baseResolver);
-        }
+            => NewNullable(Get<T>());
     }
 
-    private sealed class HasShardKeyFactory<T, TShardKey>
+    private sealed class HasShardKeyFactory<T>
         : GenericInstanceFactory, IGenericInstanceFactory<ShardKeyResolver<T>>
-        where T : IHasShardKey<TShardKey>
+        where T : IHasShardKey
     {
         public override ShardKeyResolver<T> Generate()
-        {
-            var resolver = Get<TShardKey>();
-            if (typeof(T).IsValueType)
-                return x => resolver.Invoke(x.ShardKey);
-
-            return x => ReferenceEquals(x, null)
-                ? 0
-                : resolver.Invoke(x.ShardKey);
-        }
+            => static x => x is null ? default : x.ShardKey;
     }
 
     private sealed class UntypedFactory<T>

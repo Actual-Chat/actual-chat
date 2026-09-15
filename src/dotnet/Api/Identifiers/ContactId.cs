@@ -28,6 +28,9 @@ public sealed partial class ContactId : ObjectId, IStringIdentifier<ContactId>
     [IgnoreDataMember]
     public ContactKind Kind { get; }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override ShardKey ShardKey => OwnerId.ShardKey;
+
     // Factories and constructors
 
     public static ContactId NewAny(UserId ownerId, ChatId chatId)

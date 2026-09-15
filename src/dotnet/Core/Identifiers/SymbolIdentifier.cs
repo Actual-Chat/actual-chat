@@ -5,9 +5,9 @@ namespace ActualChat;
 /// <summary>
 /// Base interface for Symbol-based identifiers.
 /// </summary>
-public interface ISymbolIdentifier : IStringLike, IHasId<Symbol>, ICanBeNone
+public interface ISymbolIdentifier : IStringLike, IHasId<Symbol>, ICanBeNone, IHasShardKey
 {
-    PartitionKey PartitionKey => PartitionKey.New(Value);
+    ShardKey IHasShardKey.ShardKey => ShardKey.New(Value);
 }
 
 /// <summary>

@@ -16,11 +16,14 @@ namespace ActualChat;
 [TypeConverter(typeof(StringLikeTypeConverter<TranslationSourceId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 
-public partial class TranslationSourceId  : ObjectId, IStringIdentifier<TranslationSourceId>
+public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<TranslationSourceId>
 {
     private static readonly ILruCache<string, TranslationSourceId> Cache = CreateCache<TranslationSourceId>(256);
 
     public const char Delimiter = ':';
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override ShardKey ShardKey => ChatId.ShardKey;
 
     public static TranslationSourceId New(ChatId chatId, TranslationIdKind kind, long refLid)
         => new (Format(chatId, kind, refLid.ToString()), chatId, kind, refLid);

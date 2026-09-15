@@ -20,8 +20,8 @@ public sealed partial record SessionTemporalsBackend_Set(
     [property: DataMember, Key(0)] Session Session,
     [property: DataMember, Key(1)] string Key,
     [property: DataMember, Key(2)] string? Value
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<Session>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public Session ShardKey => Session;
+    public ShardKey ShardKey => ShardKey.New(Session.Id);
 }

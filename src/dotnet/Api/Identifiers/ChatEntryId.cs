@@ -28,6 +28,9 @@ public sealed partial class ChatEntryId : ObjectId, IStringIdentifier<ChatEntryI
     [IgnoreDataMember]
     public long LocalId { get; }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override ShardKey ShardKey => ChatId.ShardKey;
+
     // Factories and constructors
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -15,7 +15,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<ExplicitNotificationId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<ExplicitNotificationId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class ExplicitNotificationId : ObjectId, IStringIdentifier<ExplicitNotificationId>
+public sealed partial class ExplicitNotificationId : StringIdentifier, IStringIdentifier<ExplicitNotificationId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<ExplicitNotificationId>();
@@ -29,6 +29,9 @@ public sealed partial class ExplicitNotificationId : ObjectId, IStringIdentifier
     public ExplicitNotificationKind Kind { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string SimilarityKey { get; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override ShardKey ShardKey => UserId.ShardKey;
 
     public static ExplicitNotificationId New(UserId userId, ExplicitNotificationKind kind, string similarityKey)
         => new(Format(userId, kind, similarityKey), userId, kind, similarityKey);

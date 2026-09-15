@@ -15,7 +15,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<TranslationId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<TranslationId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class TranslationId : ObjectId, IStringIdentifier<TranslationId>
+public sealed partial class TranslationId : StringIdentifier, IStringIdentifier<TranslationId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<TranslationId>();
@@ -29,6 +29,9 @@ public sealed partial class TranslationId : ObjectId, IStringIdentifier<Translat
     public Language Language { get; }
 
     public TranslationIdKind Kind => SourceId.Kind;
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public override ShardKey ShardKey => SourceId.ShardKey;
 
     // Factories and constructors
 

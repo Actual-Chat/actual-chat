@@ -17,8 +17,8 @@ public sealed partial record MediaProgressBackend_Change(
     [property: DataMember, Key(0)] MediaId Id,
     [property: DataMember, Key(1)] long? ExpectedVersion,
     [property: DataMember, Key(2)] Change<MediaProgress> Change
-) : ICommand<MediaProgress?>, IBackendCommand, IHasShardKey<MediaId>
+) : ICommand<MediaProgress?>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public MediaId ShardKey => Id;
+    public ShardKey ShardKey => Id.ShardKey;
 }
