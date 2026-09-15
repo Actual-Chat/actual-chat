@@ -5,6 +5,7 @@ using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Notifications;
+using ActualChat.OAuth;
 using ActualChat.Search;
 using ActualChat.Security;
 using ActualChat.Streaming;
@@ -55,6 +56,9 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
 
         // Invite
         fusion.AddClient<IInvites>();
+
+        // OAuth
+        fusion.AddClient<IOAuthGrants>();
 
         // Media
         fusion.AddClient<IMediaLinkPreviews>();

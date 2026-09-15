@@ -58,6 +58,7 @@
     <ProjectReference Include="..\Contacts.Service.Migration\Contacts.Service.Migration.csproj" />
     <ProjectReference Include="..\Notifications.Service.Migration\Notifications.Service.Migration.csproj" />
     <ProjectReference Include="..\Invite.Service.Migration\Invite.Service.Migration.csproj" />
+    <ProjectReference Include="..\OAuth.Service.Migration\OAuth.Service.Migration.csproj" />
     <ProjectReference Include="..\Users.Service.Migration\Users.Service.Migration.csproj" />
     <ProjectReference Include="..\Media.Service.Migration\Media.Service.Migration.csproj" />
     <ProjectReference Include="..\MLSearch.Service.Migration\MLSearch.Service.Migration.csproj" />
@@ -65,6 +66,7 @@
     <ProjectReference Include="..\Streaming.Service\Streaming.Service.csproj" />
     <ProjectReference Include="..\Transcription.Service\Transcription.Service.csproj" />
     <ProjectReference Include="..\Mcp\Mcp.csproj" />
+    <ProjectReference Include="..\OAuth.Service\OAuth.Service.csproj" />
     <!-- But don't reference their clients! -->
     <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
     <ProjectReference Include="..\App.Wasm\App.Wasm.csproj" ReferenceOutputAssembly="false" />

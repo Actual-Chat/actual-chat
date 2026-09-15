@@ -181,6 +181,8 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.ReplyNotification>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.ThreadNotification>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notifications.UserNotificationInfo>();
+        CodeKeeper.KeepSerializable<global::ActualChat.OAuth.OAuthClientInfo>();
+        CodeKeeper.KeepSerializable<global::ActualChat.OAuth.OAuthGrant>();
         CodeKeeper.KeepSerializable<global::ActualChat.PeerChatId>();
         CodeKeeper.KeepSerializable<global::ActualChat.Phone>();
         CodeKeeper.KeepSerializable<global::ActualChat.Picture>();
@@ -960,6 +962,12 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.UserNotificationInfo>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.UserNotificationInfo>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Notifications.UserNotificationInfo>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.OAuth.OAuthClientInfo>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.OAuth.OAuthClientInfo>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.OAuth.OAuthClientInfo>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.OAuth.OAuthGrant>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.OAuth.OAuthGrant>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.OAuth.OAuthGrant>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.PeerChatId>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.PeerChatId>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.PeerChatId>>>>();
@@ -1884,6 +1892,8 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+ReplyNotificationFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+ThreadNotificationFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Notifications+UserNotificationInfoFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+OAuth+OAuthClientInfoFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+OAuth+OAuthGrantFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+PictureFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Search+ContactSearchQueryFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Search+EntrySearchQueryFormatter, ActualChat.Api");
@@ -2109,6 +2119,8 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Notifications.ReplyNotification), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notifications.ThreadNotification), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notifications.UserNotificationInfo), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.OAuth.OAuthClientInfo), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.OAuth.OAuthGrant), AotTypeKind.Serializable),
             (typeof(global::ActualChat.PeerChatId), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Phone), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Picture), AotTypeKind.Serializable),

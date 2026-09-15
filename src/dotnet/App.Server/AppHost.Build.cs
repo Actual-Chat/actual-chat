@@ -12,6 +12,7 @@ using ActualChat.Media.Module;
 using ActualChat.MLSearch.Module;
 using ActualChat.Module;
 using ActualChat.Notifications.Module;
+using ActualChat.OAuth.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Streaming.Module;
 using ActualChat.Transcription.Module;
@@ -183,6 +184,7 @@ public partial class AppHost
                 new ContactsServiceModule(moduleServices),
                 new InviteServiceModule(moduleServices),
                 new UsersServiceModule(moduleServices),
+                new OAuthModule(moduleServices),
                 new ChatServiceModule(moduleServices),
                 new NotificationServiceModule(moduleServices),
                 new MLSearchServiceModule(moduleServices),
