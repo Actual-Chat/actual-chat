@@ -6,6 +6,7 @@ using ActualLab.Diagnostics;
 using AVFoundation;
 using CallKit;
 using Foundation;
+using Intents;
 using UIKit;
 
 namespace ActualChat.App.Maui;
@@ -79,9 +80,11 @@ public sealed class IosCalls : CXProviderDelegate
         });
         // The ring itself is CallKit's from here; CallScreensUI still needs to know so its
         // reactive state can end it.
-        _ = DispatchToBlazor(
-            c => c.GetRequiredService<CallScreensUI>().OnRing(conversationId.ChatId),
-            "ReportIncomingCall");
+        _ = DispatchToBlazor(c => {
+            c.GetRequiredService<CallScreensUI>().OnRing(conversationId.ChatId);
+            c.GetRequiredService<IosCallIntents>()
+                .Donate(conversationId.ChatId, hasVideo, INInteractionDirection.Incoming);
+        }, "ReportIncomingCall");
     }
 
     public bool AnswerCall(ChatId chatId)
