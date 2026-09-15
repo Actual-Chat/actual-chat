@@ -1537,12 +1537,13 @@
 
   "Share_FailedToShareCount": "Neuspješno dijeljenje {0} datoteke|Neuspješno dijeljenje {0} datoteke|Neuspješno dijeljenje {0} datoteka",
 
-  "FileSaver_SavedToGallery": "{0} datoteka sačuvan u galeriju|{0} datoteke sačuvana u galeriju|{0} datoteka sačuvano u galeriju",
-  "FileSaver_SavedToMusic": "{0} datoteka sačuvan u Music|{0} datoteke sačuvana u Music|{0} datoteka sačuvano u Music",
-  "FileSaver_SavedToDownloads": "{0} datoteka sačuvan u Downloads|{0} datoteke sačuvana u Downloads|{0} datoteka sačuvano u Downloads",
+  "FileSaver_DownloadingToGallery": "Preuzima se {0} datoteka u galeriju…|Preuzimaju se {0} datoteke u galeriju…|Preuzima se {0} datoteka u galeriju…",
+  "FileSaver_DownloadingToMusic": "Preuzima se {0} datoteka u Music…|Preuzimaju se {0} datoteke u Music…|Preuzima se {0} datoteka u Music…",
+  "FileSaver_DownloadingToDownloads": "Preuzima se {0} datoteka u Downloads…|Preuzimaju se {0} datoteke u Downloads…|Preuzima se {0} datoteka u Downloads…",
+  "FileSaver_Downloading": "Preuzima se {0} datoteka…|Preuzimaju se {0} datoteke…|Preuzima se {0} datoteka…",
+  "FileSaver_AlreadyDownloading": "Datoteka se već preuzima|Datoteke se već preuzimaju",
   "FileSaver_SavedToLibrary": "{0} datoteka sačuvan u biblioteku|{0} datoteke sačuvana u biblioteku|{0} datoteka sačuvano u biblioteku",
   "FileSaver_Saved": "{0} datoteka sačuvan|{0} datoteke sačuvana|{0} datoteka sačuvano",
-  "FileSaver_PartiallySaved": "Sačuvano {0} od {1} datoteka",
   "FileSaver_SaveFailed": "Datoteka nije sačuvan|Datoteke nisu sačuvani",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their

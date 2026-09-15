@@ -1537,12 +1537,13 @@
 
   "Share_FailedToShareCount": "Gagal membagikan {0} file",
 
-  "FileSaver_SavedToGallery": "{0} file disimpan ke galeri",
-  "FileSaver_SavedToMusic": "{0} file disimpan ke Music",
-  "FileSaver_SavedToDownloads": "{0} file disimpan ke Downloads",
+  "FileSaver_DownloadingToGallery": "Mengunduh {0} file ke galeri…",
+  "FileSaver_DownloadingToMusic": "Mengunduh {0} file ke Music…",
+  "FileSaver_DownloadingToDownloads": "Mengunduh {0} file ke Downloads…",
+  "FileSaver_Downloading": "Mengunduh {0} file…",
+  "FileSaver_AlreadyDownloading": "File sedang diunduh",
   "FileSaver_SavedToLibrary": "{0} file disimpan ke pustaka",
   "FileSaver_Saved": "{0} file disimpan",
-  "FileSaver_PartiallySaved": "{0} dari {1} file disimpan",
   "FileSaver_SaveFailed": "File gagal disimpan",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
