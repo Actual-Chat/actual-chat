@@ -104,15 +104,19 @@
             </Right>
         </TileItem>
         @if (ownVoice.IsEnabled) {
-            <TileItem Click="@OnRecordSampleClick">
-                <Icon><i class="icon-mic-2 text-2xl"></i></Icon>
-                <Content>
-                    @(ownVoice.HasExplicitSample ? L.Transcription_OwnVoiceRerecord : L.Transcription_OwnVoiceRecord)
-                </Content>
-                <Right>
-                    <i class="icon-chevron-right text-xl text-03"></i>
-                </Right>
-            </TileItem>
+            @if (m.NotesChatId is { } notesChatId) {
+                <TileItem Click="@(() => OnRecordSampleClick(notesChatId))">
+                    <Icon><i class="icon-mic-2 text-2xl"></i></Icon>
+                    <Content>
+                        @(ownVoice.HasExplicitSample
+                            ? L.Transcription_OwnVoiceRerecord
+                            : L.Transcription_OwnVoiceRecord)
+                    </Content>
+                    <Right>
+                        <i class="icon-chevron-right text-xl text-03"></i>
+                    </Right>
+                </TileItem>
+            }
             @if (ownVoice.HasExplicitSample) {
                 <TileItem Click="@OnRemoveSampleClick">
                     <Icon><i class="icon-trash03 text-2xl"></i></Icon>
@@ -177,7 +181,11 @@
             .ConfigureAwait(false);
         var defaultDubVoiceId = await GetDefaultDubVoiceId(cancellationToken).ConfigureAwait(false);
         var ownVoice = await GetOwnVoice(enableIncompleteUI, cancellationToken).ConfigureAwait(false);
-        return new(languages, enableIncompleteUI, isFaceDownMicStopEnabled, defaultDubVoiceId, ownVoice);
+        // The sample is recorded in Notes; without that chat there's nowhere to record it, so no row
+        var notesChatId = ownVoice is { IsEnabled: true }
+            ? (await ChatListUI.NotesChat.Use(cancellationToken).ConfigureAwait(false))?.Id
+            : null;
+        return new(languages, enableIncompleteUI, isFaceDownMicStopEnabled, defaultDubVoiceId, ownVoice, notesChatId);
     }
 
     private async Task<OwnVoiceStatus?> GetOwnVoice(bool enableIncompleteUI, CancellationToken cancellationToken) {
@@ -249,14 +257,11 @@
         return LanguageUI.UpdateSettings(x => x with { OwnVoiceSampleEntryId = null });
     }
 
-    private void OnRecordSampleClick() {
+    private void OnRecordSampleClick(ChatId notesChatId) {
         // The sample is an ordinary voice message in Notes, prompted by a banner there
-        if (ChatListUI.NotesChat.Value is not { } notes)
-            return;
-
-        LanguageUI.ShowOwnVoiceSamplePrompt(notes.Id);
+        LanguageUI.ShowOwnVoiceSamplePrompt(notesChatId);
         Modal?.Close();
-        _ = History.NavigateTo(Links.Chat(notes.Id));
+        _ = History.NavigateTo(Links.Chat(notesChatId));
     }
 
     private void OnDubVoiceClick()
@@ -287,5 +292,6 @@
         bool EnableIncompleteUI,
         bool IsFaceDownMicStopEnabled,
         string? DefaultDubVoiceId,
-        OwnVoiceStatus? OwnVoice);
+        OwnVoiceStatus? OwnVoice,
+        ChatId? NotesChatId);
 }

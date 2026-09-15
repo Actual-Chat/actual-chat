@@ -819,18 +819,29 @@ registered (no Soniox key) or the user is a guest.
    attempt's own clone and returns `null` — whatever the winner of that
    race decided stands.
 
+   The per-utterance outcomes that aren't errors — the cooldown, "being
+   made elsewhere", no sample, a full pool — are logged at `Debug`; a
+   successful clone and every failure are `Information`/`Warning`.
+
 The clone's Soniox name is `NameOf(userId, hash)` =
 `voxt-<env>-<userId>-<hash8>` (`VoicePool.NamePrefix`), `<env>` being
-`test` on a tested host, else `prod`/`dev`/`local` from
+`test` on a tested host, else `prod`/`dev`/`local`/`unknown` from
 `HostInfo.BaseUrlKind` — every environment (and every test run) shares one
 Soniox organization/project, so the prefix is what keeps one
 environment's reconcile from ever touching another's clones or a manually
 created voice. `Quota` is `StreamingSettings.SonioxVoiceQuota ??
-Constants.Audio.VoiceCloneQuota` (20) — **Soniox's 20-voice cap is per
-organization, shared by every Voxt environment**, so raising it (or the
-setting) affects all of them at once, and the number of `Ready`/`Creating`
-records across the whole fleet is what the quota check actually counts
-against, not one environment's own usage.
+Constants.Audio.VoiceCloneQuota` (20). **Soniox's 20-voice cap is per
+organization, shared by every Voxt environment, but the quota check only
+counts this environment's own `Ready`/`Creating` records** — `ListActive`
+reads one environment's `user_voices` table, and nothing counts the
+fleet. That's why the cap is partitioned by configuration rather than
+left at 20 everywhere: `src/dotnet/App.Server/appsettings.json` sets 12
+(read by every deployment; production layers nothing over it),
+`appsettings.Staging.json` sets 4 (the dev deployment runs with
+`ASPNETCORE_ENVIRONMENT=Staging`), `appsettings.Development.json` sets 1
+(local runs, `launchSettings`/`b server run`) — 12 + 4 + 1 leaves 3 slots
+for test runs and manual voices. Test hosts drop `appsettings.*` and
+default to the constant, overriding it per test where it matters.
 
 `Release(voice, ct)` resets the record to `None` (clears `SonioxVoiceId`
 and `FailedUntil`, keeps `SampleHash`) — record first, so a concurrent
@@ -935,9 +946,12 @@ section, above the stock-voice tile — visible only for
   clone made yet, so nothing is prepared until the first dub asks the
   pool.
 - **While on:** "Record a sample" / "Re-record the sample" (depending on
-  `HasExplicitSample`) and, only with an explicit sample, "Remove
-  sample" (`OnRemoveSampleClick`, clears `OwnVoiceSampleEntryId` — the
-  Notes entry itself stays).
+  `HasExplicitSample`) — rendered only when the user has a Notes chat
+  (`Model.NotesChatId`, from `ChatListUI.NotesChat`; the account-creation
+  event creates one for every user, and there's no client API to create
+  it later, so without one the row is simply absent) — and, only with an
+  explicit sample, "Remove sample" (`OnRemoveSampleClick`, clears
+  `OwnVoiceSampleEntryId` — the Notes entry itself stays).
 - The stock-voice tile's caption switches to
   `Transcription_DubVoiceFallbackCaption` ("Used when your own voice
   isn't available") while own voice is on.
@@ -1032,8 +1046,8 @@ suite.
   chat and the ordinary voice-entry flow rather than a purpose-built
   recorder UI.
 - **A quota-raise request.** The 20-voice Soniox cap is shared by every
-  environment; there's no in-app way to ask Soniox for more or to see
-  how close the fleet is to it.
+  environment and only partitioned by configuration; there's no in-app
+  way to ask Soniox for more or to see how close the fleet is to it.
 - **Speculative clone acquisition.** `VoicePool.Acquire` runs inside the
   live dub's decision window today, so a speaker's *first* opted-in
   utterance can hold up to `Constants.Audio.VoiceCloneAcquireTimeout`
@@ -1420,7 +1434,7 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 | `Constants.Audio.VoiceSampleMinDuration` | 30 s | Minimum total speech required before an auto (or explicit) sample is usable |
 | `Constants.Audio.VoiceSampleMaxDuration` | 60 s | The sample is cut here; more speech doesn't improve the clone |
 | `Constants.Audio.VoiceSampleMaxChats` / `VoiceSampleMaxEntriesPerChat` | 10 / 500 | Bounds on the auto-sample scan: most recent chats, newest entries first |
-| `Constants.Audio.VoiceCloneQuota` | 20 | Soniox clones per organization, shared by every environment; overridable via `StreamingSettings.SonioxVoiceQuota` |
+| `Constants.Audio.VoiceCloneQuota` | 20 | Soniox clones per organization, shared by every environment; each environment's pool caps its own count at `StreamingSettings.SonioxVoiceQuota` (12 prod / 4 dev / 1 local via `appsettings*.json`), falling back to this |
 | `Constants.Audio.VoiceCloneReadyTimeout` | 30 s | How long a fresh clone may take to turn ready before the attempt counts as failed |
 | `Constants.Audio.VoiceCloneAcquireTimeout` | 15 s | How long `VoicePool.Acquire`'s caller waits for a clone before falling back to the stock voice; the work keeps running past this |
 | `Constants.Audio.VoiceCloneIdleTimeout` | 10 min | A clone unused this long is deleted by the sweeper, freeing its quota slot |

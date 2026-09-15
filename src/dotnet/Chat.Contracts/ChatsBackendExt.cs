@@ -138,7 +138,6 @@ public static class ChatsBackendExt
         CancellationToken cancellationToken = default)
         => ListEntries(chatsBackend, chatId, minBeginsAt, int.MaxValue, cancellationToken);
 
-    // maxCount keeps the newest entries: the walk is newest-first, so it stops once it has that many
     public static async Task<IReadOnlyList<ChatEntry>> ListEntries(
         this IChatsBackend chatsBackend,
         ChatId chatId,
@@ -146,6 +145,7 @@ public static class ChatsBackendExt
         int maxCount,
         CancellationToken cancellationToken = default)
     {
+        // maxCount keeps the newest entries: the walk is newest-first, so it stops once it has that many.
         // We don't want callers of this method to be dependent on whatever it fetches
         using var _ = Computed.BeginIsolation();
 

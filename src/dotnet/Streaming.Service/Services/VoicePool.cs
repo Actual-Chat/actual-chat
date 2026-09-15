@@ -129,7 +129,7 @@ public sealed class VoicePool(IServiceProvider services)
             return null;
         }
         if (voice is { Status: UserVoiceStatus.Failed, FailedUntil: { } failedUntil } && failedUntil > now) {
-            Log.LogInformation("Acquire: {UserId}'s clone failed recently, no retry before {FailedUntil}",
+            Log.LogDebug("Acquire: {UserId}'s clone failed recently, no retry before {FailedUntil}",
                 userId, failedUntil);
             return null;
         }
@@ -137,7 +137,7 @@ public sealed class VoicePool(IServiceProvider services)
             && voice.ModifiedAt + Constants.Audio.VoiceCloneCreatingTimeout > now) {
             // Another host is on it - this host's own attempts never overlap; an older one is a
             // crash leftover, and the version check below makes taking it over safe
-            Log.LogInformation("Acquire: {UserId}'s clone is being made elsewhere", userId);
+            Log.LogDebug("Acquire: {UserId}'s clone is being made elsewhere", userId);
             return null;
         }
 
@@ -145,7 +145,7 @@ public sealed class VoicePool(IServiceProvider services)
         // then costs no blob read, and nothing is built for a full pool either
         var hash = await SampleBuilder.GetHash(userId, settings, cancellationToken).ConfigureAwait(false);
         if (hash is not { } sampleHash) {
-            Log.LogInformation("Acquire: no voice sample for {UserId}", userId);
+            Log.LogDebug("Acquire: no voice sample for {UserId}", userId);
             return null;
         }
         if (voice is { Status: UserVoiceStatus.Ready } && voice.SampleHash == sampleHash)
@@ -154,7 +154,7 @@ public sealed class VoicePool(IServiceProvider services)
         var activeVoices = await UserVoicesBackend.ListActive(cancellationToken).ConfigureAwait(false);
         var activeCount = activeVoices.Count(x => x.UserId != userId);
         if (activeCount >= Quota) {
-            Log.LogInformation("Acquire: the pool is full ({Count}/{Quota}), {UserId} keeps the stock voice",
+            Log.LogDebug("Acquire: the pool is full ({Count}/{Quota}), {UserId} keeps the stock voice",
                 activeCount, Quota, userId);
             return null;
         }
@@ -181,7 +181,7 @@ public sealed class VoicePool(IServiceProvider services)
             if (sample != null)
                 return sample;
 
-            Log.LogInformation("Acquire: no voice sample for {UserId} ({Failure})", userId, failure);
+            Log.LogDebug("Acquire: no voice sample for {UserId} ({Failure})", userId, failure);
             return null;
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
@@ -400,7 +400,8 @@ public sealed class VoicePool(IServiceProvider services)
         return hostInfo.BaseUrlKind switch {
             BaseUrlKind.Production => "prod",
             BaseUrlKind.Development => "dev",
-            _ => "local",
+            BaseUrlKind.Local => "local",
+            _ => "unknown",
         };
     }
 }

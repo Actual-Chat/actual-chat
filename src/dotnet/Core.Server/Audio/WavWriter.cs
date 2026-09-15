@@ -13,7 +13,7 @@ public static class WavWriter
     private const short BitsPerSample = 16;
     private const short FormatPcm = 1;
 
-    public static void Write(Stream stream, ReadOnlySpan<byte> pcm, int sampleRate = 48_000, short channels = 1)
+    public static void Write(Stream stream, ReadOnlySpan<byte> pcm, int sampleRate, short channels = 1)
     {
         var blockAlign = (short)(channels * (BitsPerSample / 8));
         var byteRate = sampleRate * blockAlign;
@@ -35,9 +35,9 @@ public static class WavWriter
         stream.Write(pcm);
     }
 
-    // The PCM byte count of a header this writer produced, or -1 for anything else
     public static int GetPcmLength(ReadOnlySpan<byte> header)
     {
+        // The PCM byte count of a header this writer produced, or -1 for anything else
         if (header.Length < HeaderLength || !IsAscii(header[..4], "RIFF") || !IsAscii(header[36..40], "data"))
             return -1;
 
