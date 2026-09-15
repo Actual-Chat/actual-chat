@@ -324,7 +324,7 @@ body.hoverable .btn.btn-outline.btn-cancel:hover:not(:active)::after {
 }
 .btn.btn-tile > .btn-content > .c-content > .c-text {
     @apply flex justify-start;
-    @apply text-headline-1 leading-4;
+    @apply text-headline-1;
 }
 .btn.btn-tile > .btn-content > .c-content > .c-caption {
     @apply text-start;

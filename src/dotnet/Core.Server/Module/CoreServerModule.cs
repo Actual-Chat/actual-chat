@@ -45,6 +45,7 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         services.AddSingleton<RasterImageNormalizer>();
         services.AddSingleton<SvgRasterizer>();
         services.AddSingleton<IUploadProcessor, IconUploadProcessor>();
+        services.AddSingleton<IUploadProcessor, AttachmentImageUploadProcessor>();
         services.AddSingleton<IUploadProcessor, ImageUploadProcessor>();
 
         // Blob storages

@@ -155,6 +155,17 @@ ordinary restart. The purge is scoped to the WASM app deliberately: it is the
 only output the browser can be poisoned by, and wiping all of `artifacts/`
 turns a ~1 minute recovery into a very long one.
 
+**Nothing browser-side fixes this — only a restart does.** A cache-bypassing
+reload, clearing site data, unregistering the service worker, a fresh tab, even
+a fresh Chrome profile all fail the same way, because the mismatch is in the
+build outputs the server is *serving*, not in the copy the browser kept. So the
+moment a page reload-loops on stale WASM, stop reloading and trigger the hard
+restart above (`h`, or `touch tmp/server-loop-hard-restart`); an agent that
+keeps retrying from inside the tab only burns its budget. Switching the session
+to render mode `'s'` afterwards keeps it from recurring — see the tip below.
+Hit on 2026-09-12: a browser subagent driving an image-upload test stalled in
+exactly this loop, and the hard restart plus `'s'` was what recovered it.
+
 ::: tip Prefer render mode `'s'` and you will rarely need this
 The stale-assembly trap only exists in WASM. `await debugUI.setRenderMode('s')`
 once at the start of a session makes reloads cheap (no runtime download, no

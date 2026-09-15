@@ -39,6 +39,12 @@ async function copyAssets() {
         recursive: true,
         filter: (src) => path.extname(src) !== '.md',
     });
+    // jpegli WASM encoder: fetched at runtime by image-processing/jpegli-encoder.ts,
+    // never bundled. See src/nodejs/jpegli/README.md.
+    await fs.promises.cp('./src/nodejs/jpegli', `${outputPath}/jpegli`, {
+        recursive: true,
+        filter: (src) => path.extname(src) !== '.md' && path.basename(src) !== 'build',
+    });
     await fs.promises.cp('./resources/sounds/converted', `${outputPath}/sounds`, {
         recursive: true,
         filter: (src) => {
@@ -60,6 +66,7 @@ const options = {
         { out: 'opusEncoderWorker', in: './src/dotnet/UI.Blazor.App/Components/AudioRecorder/workers/opus-encoder-worker-bootstrap.ts' },
         { out: 'vadWorker', in: './src/dotnet/UI.Blazor.App/Components/AudioRecorder/workers/audio-vad-worker-bootstrap.ts' },
         { out: 'onDeviceAwakeWorker', in: './src/nodejs/src/on-device-awake-worker-bootstrap.ts' },
+        { out: 'imageProcessorWorker', in: './src/nodejs/src/image-processing/image-processor-worker-bootstrap.ts' },
         { out: 'warmUpWorklet', in: './src/nodejs/src/worklets/warm-up-worklet-processor.ts' },
         { out: 'feederWorklet', in: './src/dotnet/UI.Blazor.App/Components/AudioPlayer/worklets/feeder-audio-worklet-processor.ts' },
         { out: 'opusEncoderWorklet', in: './src/dotnet/UI.Blazor.App/Components/AudioRecorder/worklets/opus-encoder-worklet-processor.ts' },

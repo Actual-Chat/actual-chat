@@ -10,13 +10,26 @@ public class AttachmentListHolder : UIServiceBase<AppUIHub>
 
     public AttachmentList Attachments => _attachments;
 
-    public string MediaScope { get; }
+    public string MediaScope { get; private set; }
 
     public AttachmentListHolder(AppUIHub hub, string mediaScope) : base(hub)
     {
         MediaScope = mediaScope;
         _attachments = CreateAttachmentList();
         SubscribeToListEvents(_attachments);
+    }
+
+    public async Task Reset(string mediaScope) {
+        // A new chat is a new draft, so the fresh list starts uncommitted; the scope has to come
+        // along because a list carries it into every upload session it creates.
+        Dispatcher.AssertAccess();
+        MediaScope = mediaScope;
+        UnsubscribeFromListEvents(_attachments);
+        var discarded = _attachments;
+        _attachments = CreateAttachmentList();
+        SubscribeToListEvents(_attachments);
+        RaiseChanged();
+        await discarded.Clear().ConfigureAwait(false);
     }
 
     public ResetIntent PopSnapshot() {

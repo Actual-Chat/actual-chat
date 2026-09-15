@@ -328,6 +328,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `IMediaProcessor` - Media processor.
 - `IMediaSaver` - Media saver.
 - `IUploadProcessor` - Upload processor.
+- `AttachmentImageUploadProcessor` - Stores a client-prepared attachment image as-is, reading its size and stripping metadata.
+- `ImageMetadataStripper` (static class) - Lossless EXIF/XMP/IPTC/text metadata removal from JPEG, PNG and WebP.
 - `ProcessedFile` (record) - Processed file.
 - `UploadedFile` (record) - Uploaded file.
 - `UploadedStreamFile` - Uploaded stream file.
@@ -1042,6 +1044,11 @@ Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 - `ChatUI` - Chat selection, read positions, and chat state.
 - `ChatView` - Main chat view component.
 - `EditMembersUI` - Member editing utilities.
+- `ImageAttachmentProcessor` - Runs an attachment image through the JS image processor (resize, jpegli, metadata strip).
+- `ImageProcessRequest` (record) - What the JS image processor is asked to produce.
+- `ImageQualityPreset` (enum) - Attachment image quality preset: 4K, 1080p, Original, Original with EXIF.
+- `IProcessedImageStore` - Stores a processed attachment image as a local file; implemented by the MAUI host.
+- `ProcessedImage` (record) - What the JS image processor returns for one output.
 - `LanguageUI` - Spoken and UI language settings; syncs the UI language to the device cache.
 - `LocalizationUI` - The UI language the app renders in, pulled once at startup; also localizes server-composed text at runtime.
 - `LiveStreamUI` - Live streaming management.
@@ -1120,6 +1127,7 @@ Blazor components for building MJML email templates. Each MJML element has a cor
 
 ## ActualChat.App.Maui
 
+- `AndroidHeifDecoder` (static class) - Decodes HEIC/HEIF photos natively, since Android WebView can't.
 - `Bars` - Platform status bar information.
 - `CustomBlazorWebViewHandler` - Custom Blazor WebView handler.
 - `FirebaseAnalyticsExt` (static class) - Firebase Analytics integration.
@@ -1136,6 +1144,7 @@ Blazor components for building MJML email templates. Each MJML element has a cor
 - `MauiLoadingUI` (static class) - Loading milestone tracking.
 - `MauiMicrophonePermissionHandler` - Microphone permission handling.
 - `MauiNotifications` - Push notification registration.
+- `MauiProcessedImageStore` - Saves a processed attachment image into the cache directory.
 - `MauiReloadUI` - WebView reload.
 - `MauiShare` - Platform share dialogs.
 - `MauiSystemSettingsUI` - Platform system settings.

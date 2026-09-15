@@ -184,6 +184,16 @@ public static partial class Constants
         public const int FileSizeLimit = 500 * 1024 * 1024;
         public const int AvatarPictureFileSizeLimit = 50 * 1024 * 1024;
         public const int FileCountLimit = 10;
+        // The client re-encodes within a pixel budget; these are the outer bounds a stored image may have
+        public const int MaxImageSize = 12288;
+        public const long MaxImagePixelCount = 96_000_000;
+        // Above this target size a phone declines the encode and passes the source through: jpegli
+        // needs ~8.8 bytes of wasm heap per pixel, and running out kills the app rather than throwing.
+        // Measured 2026-09-13 at 32 and 51 MP, both comfortable: iPhone 13 Pro / iOS Safari 26.6.1
+        // took 374 and 545 ms, a Galaxy on Chrome 152 took 415 and 654 ms, wasm heap 287 and 453 MB,
+        // and neither clamped the canvas. This sits just above the largest preset budget, so no
+        // preset declines on a phone today; the guard is what a future larger budget would meet.
+        public const int MaxMobileEncodePixelCount = 50 * 1024 * 1024;
 
         /// <summary>HTML accept attribute value for avatar picture file inputs.</summary>
         public static readonly string AvatarPictureAccept = string.Join(',',

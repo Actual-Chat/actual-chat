@@ -43,4 +43,10 @@ public sealed class AppleFileProviderImpl(IServiceProvider services, FilePath fi
         await WhenFileStreamReady().ConfigureAwait(false);
         return File.OpenRead(filePath);
     }
+
+    public async Task<string> GetContentUrl(ImageQualityBudget decodeBudget, CancellationToken cancellationToken)
+    {
+        await WhenFileStreamReady().WaitAsync(cancellationToken).ConfigureAwait(false);
+        return ContentResolver.GetFileUri(filePath);
+    }
 }

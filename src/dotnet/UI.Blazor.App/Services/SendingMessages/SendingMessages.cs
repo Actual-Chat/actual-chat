@@ -68,7 +68,10 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 if (attachment.FileProvider is not { } fileProvider)
                     throw new InvalidOperationException($"Can't initialize upload for attachment '{attachment.Id}'. No file provider assigned.");
 
-                uploadSessionId = await UploadSessions.CreateSession(fileProvider, attachment.GetMetadataForUploadSession(), mediaScope).ConfigureAwait(false);
+                uploadSessionId = await UploadSessions
+                    .CreateSession(
+                        fileProvider, attachment.GetMetadataForUploadSession(), mediaScope, attachment.Placeholder)
+                    .ConfigureAwait(false);
             }
             var attachEntry = new UploadFileRequestEntry(uploadSessionId, attachment.FileName, attachment.FileType, attachment.Length, attachment.Width, attachment.Height, attachment.Id);
             uploadEntries.Add(attachEntry);
@@ -245,7 +248,9 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                     UploadSessionId = uploadSessionId,
                 };
                 attachment.Cleanups.Add(new AttachmentCleanup(AttachmentCleanupKind.PersistedPostMessageRequest, CleanupRequest));
-                UploadSessions.AddReference(uploadSessionId);
+                // The stored post request references this session from here on, so its reserved
+                // media must survive whichever reference happens to be released last
+                UploadSessions.AddReference(uploadSessionId, isMediaBound: true);
                 attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
                 if (sourceAttachmentId is not null)
                     AttachmentsState.Unregister(sourceAttachmentId.Value);
@@ -315,6 +320,14 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         }, TaskScheduler.Default);
     }
 
+    private void UnbindMedia(IEnumerable<Attachment> attachments)
+    {
+        // No entry references the reserved media now, and the release that collects it can come
+        // much later, from the editor - this is the last place that knows what happened
+        foreach (var attachment in attachments)
+            UploadSessions.ClearMediaBound(attachment.UploadSessionId);
+    }
+
     private async Task CleanupAttachments(string postRequestUuid, IEnumerable<Attachment> attachments)
     {
         foreach (var attachment in attachments) {
@@ -345,6 +358,10 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             var cancellationToken1 = cancellationTokenSource.Token;
             var sendingMessage = CreateAndRegisterSendingMessage(request, () => {
                 discardSendRequest = true;
+                // Here rather than only in the cleanup below: this runs before resultSource
+                // completes, so it beats the editor's own release to the flag
+                if (request.AttachmentUploads is not null)
+                    UnbindMedia(request.AttachmentUploads.Attachments.Items);
                 cancellationTokenSource.Cancel();
             });
             if (request.NewChatEntryLocalId.HasValue)
@@ -396,9 +413,16 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
         if (discardSendRequest || !resultSource.Task.IsCanceled) {
             await DiscardStoredPostRequest(request.Uuid, cancellationToken).ConfigureAwait(false);
-            if (request.AttachmentUploads is not null)
+            if (request.AttachmentUploads is not null) {
+                var postedEntry = resultSource.Task.IsCompletedSuccessfully
+                    ? resultSource.Task.GetAwaiter().GetResult()
+                    : null;
+                if (discardSendRequest || postedEntry is null)
+                    UnbindMedia(request.AttachmentUploads.Attachments.Items);
+
                 await CleanupAttachments(request.Uuid, request.AttachmentUploads.Attachments.Items)
                     .ConfigureAwait(false);
+            }
             if (discardSendRequest && ChatEntryId is not null)
                 await RemoveChatEntry(ChatEntryId, cancellationToken).ConfigureAwait(false);
         }

@@ -148,7 +148,7 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `RecentMentions` / `RecentGifs` — per-user `StoredSettings` (MessagePack-only) tracking recently picked mentions (recency+frequency score) and GIFs (MRU); surfaced via `RecentMentionsUI` / `RecentGifsUI` synced-state services
 
 ### Media
-- `Media` (record) — media metadata (content type, size, dimensions)
+- `Media` (record) — media metadata (content type, size, dimensions) plus the inline `Placeholder` bytes
 - `Picture` (record) — picture with multiple sizes
 - `LinkPreview` (record) — preview of linked content
 
@@ -241,6 +241,8 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 
 ### Media Processing
 - `IUploadProcessor` — processes uploaded files
+- `AttachmentImageUploadProcessor` — stores a client-prepared attachment image as-is: reads its size and strips metadata
+- `ImageMetadataStripper` — lossless EXIF/XMP/IPTC/text metadata removal from JPEG, PNG and WebP
 - `IMediaProcessor` — processes media content
 - `IContentSaver` — saves content to blob storage
 
@@ -293,6 +295,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `ThemeUI` — theme (light/dark) management
 - `ReconnectUI` — RPC connection state monitoring
 - `AppUpdateUI` — whether this client is behind its store, and the tap that updates it
+- `ImagePlaceholder` — rebuilds a stored media placeholder into a data URL for `image-skeleton`
 
 ### Components
 - `VirtualList<T>` — abstract base of the two virtualized lists (data source, JS bridge, visibility)
@@ -331,6 +334,12 @@ Resolving *which* language a given user reads is `UserLocalizers`
 ### Message Sending
 - `SendingMessages` — manages message sending with retry logic
 - `AttachmentsController` — attachment management
+- `ImageAttachmentProcessor` — runs an attachment image through the JS image processor (resize, jpegli, metadata strip)
+- `ImageQualityPreset` — the quality presets the attachment editor offers (Up to 50mpx / 12K, Up to 12mpx / 6K, Up to 3mpx / 3K, Original, Original with EXIF)
+- `ImageProcessRequest` / `ProcessedImage` — what the JS image processor is asked for and what it returns
+- `IProcessedImageStore` — stores a processed attachment image as a local file; implemented by the MAUI host
+- `ImageQualityBudget` — a preset's pixel budget and long-side cap
+- `ImageSizeEstimator` — predicts an upload's size from the source's bytes and dimensions
 
 ### Components
 - `ChatView` — main chat view component
@@ -423,6 +432,8 @@ Standalone iOS share-extension app:
 - `MauiShare` — platform share dialogs
 - `MauiNotifications` — push notification registration
 - `MauiLoadingUI` — loading milestone tracking
+- `MauiProcessedImageStore` — saves a processed attachment image into the cache directory
+- `AndroidHeifDecoder` — decodes HEIC/HEIF photos natively, since Android WebView can't
 
 ### Permissions
 - `MauiMicrophonePermissionHandler` — microphone permission
