@@ -102,6 +102,10 @@
   "Transcription_TranslatedVoiceTopic": "Przetłumaczony głos",
   "Transcription_TranslatedVoice": "Słuchaj tłumaczeń mówionych",
   "Transcription_TranslatedVoiceCaption": "W rozmowach na żywo osoby mówiące innymi językami są zastępowane mówionym tłumaczeniem na Twój język",
+  "Transcription_DubVoice": "Mój głos w tłumaczeniach",
+  "Transcription_DubVoiceCaption": "Głos, którym inni słyszą tłumaczenie Twojej wypowiedzi",
+  "Transcription_DubVoiceDefault": "Domyślny",
+  "Transcription_DubVoicePreviewText": "Cześć! Tak będą Cię słyszeć inni.",
   "Transcription_LanguageDetected_Format": "Wykryty język transkrypcji dla czatu „{0}” to {1}.",
 
   "Sessions_CurrentSession": "Bieżąca sesja",
@@ -156,6 +160,15 @@
   "TimeZone_SelectTitle": "Wybierz strefę czasową",
   "TimeZone_Question": "Jaka jest Twoja strefa czasowa?",
   "TimeZone_Updated": "Strefa czasowa została zaktualizowana",
+
+  "DubVoice_Title": "Głos w tłumaczeniach",
+  "DubVoice_DefaultCaption": "Standardowy głos",
+  "DubVoice_AnyGender": "Dowolna płeć",
+  "DubVoice_Male": "Męski",
+  "DubVoice_Female": "Żeński",
+  "DubVoice_AnyAccent": "Dowolny akcent",
+  "DubVoice_Preview": "Odsłuchaj",
+  "DubVoice_Unavailable": "Głosy są obecnie niedostępne",
 
   "NativeApp_AutoStart": "Uruchamiaj po zalogowaniu",
   "NativeApp_AutoStartEnabledByPolicy": "Autostart jest włączony przez zasady grupy lub komputera.",

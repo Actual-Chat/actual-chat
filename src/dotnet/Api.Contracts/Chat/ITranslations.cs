@@ -22,4 +22,7 @@ public interface ITranslations : IComputeService
         Language language,
         UITextKind kind,
         CancellationToken cancellationToken);
+
+    [ComputeMethod(MinCacheDuration = 600), RemoteComputeMethod(MinCacheDuration = 3600)]
+    Task<ApiArray<DubVoice>> ListDubVoices(Session session, CancellationToken cancellationToken);
 }

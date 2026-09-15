@@ -139,6 +139,10 @@
   "Transcription_TranslatedVoiceTopic": "Translated Voice",
   "Transcription_TranslatedVoice": "Hear translations spoken",
   "Transcription_TranslatedVoiceCaption": "In live conversations, speakers of other languages are replaced by a spoken translation in your language",
+  "Transcription_DubVoice": "My voice in translations",
+  "Transcription_DubVoiceCaption": "The voice others hear when your speech is translated",
+  "Transcription_DubVoiceDefault": "Default",
+  "Transcription_DubVoicePreviewText": "Hello! This is how others will hear you.",
   "Transcription_LanguageDetected_Format": "Detected transcription language for chat '{0}' is {1}.",
 
   // Settings > Sessions - the signed-in devices and the sign-out actions.
@@ -203,6 +207,17 @@
   "TimeZone_SelectTitle": "Select time zone",
   "TimeZone_Question": "What is your time zone?",
   "TimeZone_Updated": "Time zone has been updated",
+
+  // The voice picker for "My voice in translations" (Settings > Transcription): the gender and
+  // accent filters, the "Default" entry, and the per-voice preview button.
+  "DubVoice_Title": "Voice in translations",
+  "DubVoice_DefaultCaption": "The standard voice",
+  "DubVoice_AnyGender": "Any gender",
+  "DubVoice_Male": "Male",
+  "DubVoice_Female": "Female",
+  "DubVoice_AnyAccent": "Any accent",
+  "DubVoice_Preview": "Preview",
+  "DubVoice_Unavailable": "Voices are unavailable right now",
 
   // Settings > Application on the Windows desktop app: the "start when I log on" toggle and
   // the three reasons it can be unavailable. "Task Manager" and "Startup" name Windows' own

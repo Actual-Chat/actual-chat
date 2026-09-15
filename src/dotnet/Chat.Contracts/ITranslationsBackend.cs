@@ -17,6 +17,11 @@ public interface ITranslationsBackend : IComputeService, IBackendService
         Language language,
         UITextKind kind,
         CancellationToken cancellationToken);
+    [ComputeMethod(MinCacheDuration = 3600, AutoInvalidationDelay = 3600)]
+    Task<ApiArray<DubVoice>> ListDubVoices(CancellationToken cancellationToken);
+    // MP3 of a short localized sentence in the given voice; null when the voice is unknown
+    [ComputeMethod(MinCacheDuration = 86400, AutoInvalidationDelay = 86400)]
+    Task<byte[]?> GetDubVoicePreview(string voiceId, Language language, CancellationToken cancellationToken);
 
     // Non-compute methods
 

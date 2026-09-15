@@ -102,6 +102,10 @@
   "Transcription_TranslatedVoiceTopic": "Přeložený hlas",
   "Transcription_TranslatedVoice": "Poslouchat mluvený překlad",
   "Transcription_TranslatedVoiceCaption": "V živých konverzacích jsou mluvčí jiných jazyků nahrazeni mluveným překladem do vašeho jazyka",
+  "Transcription_DubVoice": "Můj hlas v překladech",
+  "Transcription_DubVoiceCaption": "Hlas, kterým ostatní slyší překlad vaší řeči",
+  "Transcription_DubVoiceDefault": "Výchozí",
+  "Transcription_DubVoicePreviewText": "Ahoj! Takto vás uslyší ostatní.",
   "Transcription_LanguageDetected_Format": "Zjištěný jazyk přepisu pro chat „{0}“ je {1}.",
 
   "Sessions_CurrentSession": "Aktuální relace",
@@ -156,6 +160,15 @@
   "TimeZone_SelectTitle": "Vyberte časové pásmo",
   "TimeZone_Question": "Jaké je vaše časové pásmo?",
   "TimeZone_Updated": "Časové pásmo bylo aktualizováno",
+
+  "DubVoice_Title": "Hlas v překladech",
+  "DubVoice_DefaultCaption": "Standardní hlas",
+  "DubVoice_AnyGender": "Libovolné pohlaví",
+  "DubVoice_Male": "Mužský",
+  "DubVoice_Female": "Ženský",
+  "DubVoice_AnyAccent": "Libovolný přízvuk",
+  "DubVoice_Preview": "Poslechnout",
+  "DubVoice_Unavailable": "Hlasy nejsou momentálně dostupné",
 
   "NativeApp_AutoStart": "Spouštět po přihlášení",
   "NativeApp_AutoStartEnabledByPolicy": "Automatické spouštění je zapnuto zásadami skupiny nebo počítače.",

@@ -102,6 +102,10 @@
   "Transcription_TranslatedVoiceTopic": "Suara Terjemahan",
   "Transcription_TranslatedVoice": "Dengarkan terjemahan yang diucapkan",
   "Transcription_TranslatedVoiceCaption": "Dalam percakapan langsung, penutur bahasa lain digantikan oleh terjemahan yang diucapkan dalam bahasa Anda",
+  "Transcription_DubVoice": "Suara saya dalam terjemahan",
+  "Transcription_DubVoiceCaption": "Suara yang didengar orang lain saat ucapan Anda diterjemahkan",
+  "Transcription_DubVoiceDefault": "Bawaan",
+  "Transcription_DubVoicePreviewText": "Halo! Seperti inilah orang lain akan mendengar Anda.",
   "Transcription_LanguageDetected_Format": "Bahasa transkripsi yang terdeteksi untuk obrolan “{0}” adalah {1}.",
 
   "Sessions_CurrentSession": "Sesi saat ini",
@@ -156,6 +160,15 @@
   "TimeZone_SelectTitle": "Pilih zona waktu",
   "TimeZone_Question": "Apa zona waktu Anda?",
   "TimeZone_Updated": "Zona waktu telah diperbarui",
+
+  "DubVoice_Title": "Suara dalam terjemahan",
+  "DubVoice_DefaultCaption": "Suara standar",
+  "DubVoice_AnyGender": "Semua jenis kelamin",
+  "DubVoice_Male": "Pria",
+  "DubVoice_Female": "Wanita",
+  "DubVoice_AnyAccent": "Semua aksen",
+  "DubVoice_Preview": "Dengarkan",
+  "DubVoice_Unavailable": "Suara sedang tidak tersedia",
 
   "NativeApp_AutoStart": "Jalankan otomatis saat masuk",
   "NativeApp_AutoStartEnabledByPolicy": "Jalan otomatis diaktifkan oleh kebijakan grup atau perangkat.",

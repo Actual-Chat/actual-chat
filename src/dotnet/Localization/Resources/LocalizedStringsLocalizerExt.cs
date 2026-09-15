@@ -120,6 +120,10 @@ public static class LocalizedStringsLocalizerExt
         public string Transcription_TranslatedVoiceTopic => l["Transcription_TranslatedVoiceTopic"].Value;
         public string Transcription_TranslatedVoice => l["Transcription_TranslatedVoice"].Value;
         public string Transcription_TranslatedVoiceCaption => l["Transcription_TranslatedVoiceCaption"].Value;
+        public string Transcription_DubVoice => l["Transcription_DubVoice"].Value;
+        public string Transcription_DubVoiceCaption => l["Transcription_DubVoiceCaption"].Value;
+        public string Transcription_DubVoiceDefault => l["Transcription_DubVoiceDefault"].Value;
+        public string Transcription_DubVoicePreviewText => l["Transcription_DubVoicePreviewText"].Value;
         public string Transcription_MicrophoneTopic => l["Transcription_MicrophoneTopic"].Value;
         public string Transcription_FaceDownStop => l["Transcription_FaceDownStop"].Value;
         public string Transcription_FaceDownStopCaption => l["Transcription_FaceDownStopCaption"].Value;
@@ -178,6 +182,14 @@ public static class LocalizedStringsLocalizerExt
         public string TimeZone_SelectTitle => l["TimeZone_SelectTitle"].Value;
         public string TimeZone_Question => l["TimeZone_Question"].Value;
         public string TimeZone_Updated => l["TimeZone_Updated"].Value;
+        public string DubVoice_Title => l["DubVoice_Title"].Value;
+        public string DubVoice_DefaultCaption => l["DubVoice_DefaultCaption"].Value;
+        public string DubVoice_AnyGender => l["DubVoice_AnyGender"].Value;
+        public string DubVoice_Male => l["DubVoice_Male"].Value;
+        public string DubVoice_Female => l["DubVoice_Female"].Value;
+        public string DubVoice_AnyAccent => l["DubVoice_AnyAccent"].Value;
+        public string DubVoice_Preview => l["DubVoice_Preview"].Value;
+        public string DubVoice_Unavailable => l["DubVoice_Unavailable"].Value;
 
         public string NativeApp_AutoStart => l["NativeApp_AutoStart"].Value;
         public string NativeApp_AutoStartEnabledByPolicy => l["NativeApp_AutoStartEnabledByPolicy"].Value;

@@ -7,6 +7,7 @@ public class Translations(IServiceProvider services) : ITranslations
 {
     private ITranslationsBackend Backend => field ??= services.GetRequiredService<ITranslationsBackend>();
     private IChats Chats => field ??= services.GetRequiredService<IChats>();
+    private IAccounts Accounts => field ??= services.GetRequiredService<IAccounts>();
     private IChatEntryLanguagesBackend ChatEntryLanguagesBackend
         => field ??= services.GetRequiredService<IChatEntryLanguagesBackend>();
 
@@ -46,5 +47,12 @@ public class Translations(IServiceProvider services) : ITranslations
             return null;
 
         return await Backend.GetTranslatedUIText(text, language, kind, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<DubVoice>> ListDubVoices(Session session, CancellationToken cancellationToken)
+    {
+        await Accounts.GetOwn(session, cancellationToken).Require(AccountFull.MustBeActive).ConfigureAwait(false);
+        return await Backend.ListDubVoices(cancellationToken).ConfigureAwait(false);
     }
 }

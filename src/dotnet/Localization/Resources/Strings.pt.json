@@ -102,6 +102,10 @@
   "Transcription_TranslatedVoiceTopic": "Voz traduzida",
   "Transcription_TranslatedVoice": "Ouvir traduções faladas",
   "Transcription_TranslatedVoiceCaption": "Em conversas ao vivo, quem fala outros idiomas é substituído por uma tradução falada no seu idioma",
+  "Transcription_DubVoice": "A minha voz nas traduções",
+  "Transcription_DubVoiceCaption": "A voz com que os outros ouvem a tradução da sua fala",
+  "Transcription_DubVoiceDefault": "Padrão",
+  "Transcription_DubVoicePreviewText": "Olá! É assim que os outros vão ouvir você.",
   "Transcription_LanguageDetected_Format": "O idioma de transcrição detectado para o chat \"{0}\" é {1}.",
 
   "Sessions_CurrentSession": "Sessão atual",
@@ -156,6 +160,15 @@
   "TimeZone_SelectTitle": "Selecionar fuso horário",
   "TimeZone_Question": "Qual é o seu fuso horário?",
   "TimeZone_Updated": "O fuso horário foi atualizado",
+
+  "DubVoice_Title": "Voz nas traduções",
+  "DubVoice_DefaultCaption": "A voz padrão",
+  "DubVoice_AnyGender": "Qualquer gênero",
+  "DubVoice_Male": "Masculina",
+  "DubVoice_Female": "Feminina",
+  "DubVoice_AnyAccent": "Qualquer sotaque",
+  "DubVoice_Preview": "Ouvir",
+  "DubVoice_Unavailable": "As vozes não estão disponíveis no momento",
 
   "NativeApp_AutoStart": "Iniciar automaticamente ao fazer login",
   "NativeApp_AutoStartEnabledByPolicy": "A inicialização automática está ativada por política de grupo ou do dispositivo.",

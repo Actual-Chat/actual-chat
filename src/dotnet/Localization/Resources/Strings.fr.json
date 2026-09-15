@@ -102,6 +102,10 @@
   "Transcription_TranslatedVoiceTopic": "Voix traduite",
   "Transcription_TranslatedVoice": "Écouter les traductions parlées",
   "Transcription_TranslatedVoiceCaption": "Dans les conversations en direct, les personnes parlant d'autres langues sont remplacées par une traduction parlée dans votre langue",
+  "Transcription_DubVoice": "Ma voix dans les traductions",
+  "Transcription_DubVoiceCaption": "La voix avec laquelle les autres entendent la traduction de vos paroles",
+  "Transcription_DubVoiceDefault": "Par défaut",
+  "Transcription_DubVoicePreviewText": "Bonjour ! Voici comment les autres vous entendront.",
   "Transcription_LanguageDetected_Format": "La langue de transcription détectée pour la discussion « {0} » est {1}.",
 
   "Sessions_CurrentSession": "Session actuelle",
@@ -156,6 +160,15 @@
   "TimeZone_SelectTitle": "Sélectionner le fuseau horaire",
   "TimeZone_Question": "Quel est votre fuseau horaire ?",
   "TimeZone_Updated": "Le fuseau horaire a été mis à jour",
+
+  "DubVoice_Title": "Voix dans les traductions",
+  "DubVoice_DefaultCaption": "La voix standard",
+  "DubVoice_AnyGender": "Tout genre",
+  "DubVoice_Male": "Masculine",
+  "DubVoice_Female": "Féminine",
+  "DubVoice_AnyAccent": "Tout accent",
+  "DubVoice_Preview": "Écouter",
+  "DubVoice_Unavailable": "Les voix sont indisponibles pour le moment",
 
   "NativeApp_AutoStart": "Démarrer automatiquement à la connexion",
   "NativeApp_AutoStartEnabledByPolicy": "Le démarrage automatique est activé par une stratégie de groupe ou de l'appareil.",

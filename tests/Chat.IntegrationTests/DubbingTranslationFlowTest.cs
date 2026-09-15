@@ -88,6 +88,54 @@ public class DubbingTranslationFlowTest(
         }
     }
 
+    [Fact(Timeout = 90_000)]
+    public async Task DubShouldSpeakInTheSpeakersVoice()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        var sourceId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
+        var dubId = StreamId.New(sourceId, Languages.English);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var ct = cts.Token;
+        await services.UserSettingsUI(Tester.Session).UserLanguageSettings()
+            .Update(x => x with { DubVoice = "Daniel" }, ct);
+        var source = Channel.CreateUnbounded<TranscriptDiff>();
+        var pushSourceTask = BackgroundTask.Run(
+            () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
+            ct);
+        var last = Transcript.Empty;
+        Push(Unstable(SourceSteps[0]));
+        await backend.WhenTranscriptPublished(sourceId, ct);
+        var entry = await Tester.CreateStreamingEntry(
+            chatId, Languages.Russian, streamId: sourceId.Value, cancellationToken: ct);
+        // ProcessAudio fills the author map for a real recording; a pushed transcript has to do it here
+        var streamingBackend = (AudioStreamingBackend)backend;
+        streamingBackend.RememberChatId(sourceId, chatId);
+        streamingBackend.RememberAuthorId(sourceId, entry.ChatEntrySlim.AuthorId);
+
+        // act
+        var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+        Push(Stable(SourceText));
+        var chunks = await recorder.WhenSpoken(dubId.Value, 1, ct);
+        source.Writer.Complete();
+        await pushSourceTask.SilentAwait(false);
+
+        // assert
+        stream.Should().NotBeNull();
+        chunks.Should().HaveCount(1);
+        recorder.GetVoiceId(dubId.Value).Should().Be("Daniel", "the live dub is spoken in the speaker's voice");
+        return;
+
+        void Push(Transcript transcript) {
+            source.Writer.TryWrite(transcript - last);
+            last = transcript;
+        }
+    }
+
     // Private methods
 
     private async Task AssertDubSpeaksTheTranslation(

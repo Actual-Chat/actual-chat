@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.Streaming.Services;
 using ActualChat.Transcription;
 
 namespace ActualChat.Streaming;
@@ -12,6 +13,7 @@ public partial class AudioStreamingBackend
     private long _synthesizerDownUntilTicks;
 
     private ISpeechSynthesizer? SpeechSynthesizer => field ??= Services.GetService<ISpeechSynthesizer>();
+    private SpeakerVoices SpeakerVoices => field ??= Services.GetRequiredService<SpeakerVoices>();
 
     // Private methods
 
@@ -177,7 +179,8 @@ public partial class AudioStreamingBackend
                 // One voice must not overlap itself: the author's previous dub in this language
                 // may still be draining after its source ended.
                 await previousDubTask.SilentAwait(false);
-                var options = new SpeechSynthesisOptions(language);
+                var voiceId = await GetSpeakerVoice(dubStreamId, cancellationToken).ConfigureAwait(false);
+                var options = new SpeechSynthesisOptions(language, voiceId);
                 await SpeechSynthesizer!
                     .Synthesize(dubStreamId.Value, text, options, frames.Writer, cancellationToken)
                     .ConfigureAwait(false);
@@ -222,6 +225,23 @@ public partial class AudioStreamingBackend
             return whenDone;
         });
         return previousDubTask;
+    }
+
+    private async Task<string?> GetSpeakerVoice(StreamId dubStreamId, CancellationToken cancellationToken)
+    {
+        // Read once per dub: a voice change applies from the speaker's next utterance
+        var baseStreamId = dubStreamId.BaseStreamId;
+        if (!_authorIdByStream.TryGetValue(baseStreamId, out var authorId)
+            || !_chatIdByStream.TryGetValue(baseStreamId, out var chatId))
+            return null;
+
+        try {
+            return await SpeakerVoices.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogWarning(e, "Dub #{StreamId}: failed to read the speaker's voice, using the default", dubStreamId);
+            return null;
+        }
     }
 
     private bool IsCoolingDown(StreamId dubStreamId)

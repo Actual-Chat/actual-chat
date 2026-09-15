@@ -102,6 +102,10 @@
   "Transcription_TranslatedVoiceTopic": "अनूदित आवाज़",
   "Transcription_TranslatedVoice": "अनुवाद सुनें",
   "Transcription_TranslatedVoiceCaption": "लाइव बातचीत में, अन्य भाषाएँ बोलने वालों की जगह आपकी भाषा में बोला गया अनुवाद सुनाया जाता है",
+  "Transcription_DubVoice": "अनुवादों में मेरी आवाज़",
+  "Transcription_DubVoiceCaption": "वह आवाज़ जिसमें दूसरे आपकी बात का अनुवाद सुनते हैं",
+  "Transcription_DubVoiceDefault": "डिफ़ॉल्ट",
+  "Transcription_DubVoicePreviewText": "नमस्ते! दूसरे आपको ऐसे सुनेंगे।",
   "Transcription_LanguageDetected_Format": "चैट '{0}' के लिए पहचानी गई ट्रांसक्रिप्शन भाषा {1} है।",
 
   "Sessions_CurrentSession": "वर्तमान सत्र",
@@ -156,6 +160,15 @@
   "TimeZone_SelectTitle": "समय क्षेत्र चुनें",
   "TimeZone_Question": "आपका समय क्षेत्र क्या है?",
   "TimeZone_Updated": "समय क्षेत्र अपडेट हो गया है",
+
+  "DubVoice_Title": "अनुवादों में आवाज़",
+  "DubVoice_DefaultCaption": "मानक आवाज़",
+  "DubVoice_AnyGender": "कोई भी लिंग",
+  "DubVoice_Male": "पुरुष",
+  "DubVoice_Female": "महिला",
+  "DubVoice_AnyAccent": "कोई भी लहजा",
+  "DubVoice_Preview": "सुनें",
+  "DubVoice_Unavailable": "आवाज़ें अभी उपलब्ध नहीं हैं",
 
   "NativeApp_AutoStart": "लॉग-ऑन पर स्वतः प्रारंभ",
   "NativeApp_AutoStartEnabledByPolicy": "ऑटो-स्टार्ट ग्रुप/मशीन पॉलिसी द्वारा चालू किया गया है।",

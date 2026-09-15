@@ -102,6 +102,10 @@
   "Transcription_TranslatedVoiceTopic": "Преведен глас",
   "Transcription_TranslatedVoice": "Слушайте изговорения превод",
   "Transcription_TranslatedVoiceCaption": "В живите разговори говорещите на други езици се заменят с изговорен превод на вашия език",
+  "Transcription_DubVoice": "Моят глас в преводите",
+  "Transcription_DubVoiceCaption": "Гласът, с който другите чуват превода на речта ви",
+  "Transcription_DubVoiceDefault": "По подразбиране",
+  "Transcription_DubVoicePreviewText": "Здравейте! Ето как ще ви чуват другите.",
   "Transcription_LanguageDetected_Format": "Открит език за транскрипция в чата „{0}“ е {1}.",
 
   "Sessions_CurrentSession": "Текуща сесия",
@@ -156,6 +160,15 @@
   "TimeZone_SelectTitle": "Изберете часова зона",
   "TimeZone_Question": "Каква е вашата часова зона?",
   "TimeZone_Updated": "Часовата зона е обновена",
+
+  "DubVoice_Title": "Глас в преводите",
+  "DubVoice_DefaultCaption": "Стандартният глас",
+  "DubVoice_AnyGender": "Всякакъв пол",
+  "DubVoice_Male": "Мъжки",
+  "DubVoice_Female": "Женски",
+  "DubVoice_AnyAccent": "Всякакъв акцент",
+  "DubVoice_Preview": "Прослушване",
+  "DubVoice_Unavailable": "Гласовете в момента не са достъпни",
 
   "NativeApp_AutoStart": "Стартиране при влизане в системата",
   "NativeApp_AutoStartEnabledByPolicy": "Автоматичното стартиране е включено от групова или машинна политика.",

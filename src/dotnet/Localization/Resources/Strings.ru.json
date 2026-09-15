@@ -102,6 +102,10 @@
   "Transcription_TranslatedVoiceTopic": "Переведённый голос",
   "Transcription_TranslatedVoice": "Слушать перевод голосом",
   "Transcription_TranslatedVoiceCaption": "В живых разговорах речь на других языках заменяется озвученным переводом на ваш язык",
+  "Transcription_DubVoice": "Мой голос в переводах",
+  "Transcription_DubVoiceCaption": "Голос, которым другие слышат перевод вашей речи",
+  "Transcription_DubVoiceDefault": "По умолчанию",
+  "Transcription_DubVoicePreviewText": "Привет! Вот так вас будут слышать другие.",
   "Transcription_LanguageDetected_Format": "Определённый язык расшифровки для чата «{0}» — {1}.",
 
   "Sessions_CurrentSession": "Текущая сессия",
@@ -156,6 +160,15 @@
   "TimeZone_SelectTitle": "Выбрать часовой пояс",
   "TimeZone_Question": "Какой у вас часовой пояс?",
   "TimeZone_Updated": "Часовой пояс обновлён",
+
+  "DubVoice_Title": "Голос в переводах",
+  "DubVoice_DefaultCaption": "Стандартный голос",
+  "DubVoice_AnyGender": "Любой пол",
+  "DubVoice_Male": "Мужской",
+  "DubVoice_Female": "Женский",
+  "DubVoice_AnyAccent": "Любой акцент",
+  "DubVoice_Preview": "Прослушать",
+  "DubVoice_Unavailable": "Голоса сейчас недоступны",
 
   "NativeApp_AutoStart": "Автозапуск при входе в систему",
   "NativeApp_AutoStartEnabledByPolicy": "Автозапуск включён групповой политикой или политикой устройства.",

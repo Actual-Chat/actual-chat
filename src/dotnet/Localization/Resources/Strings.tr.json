@@ -102,6 +102,10 @@
   "Transcription_TranslatedVoiceTopic": "Çevrilmiş Ses",
   "Transcription_TranslatedVoice": "Çevirileri sesli dinle",
   "Transcription_TranslatedVoiceCaption": "Canlı görüşmelerde, diğer dilleri konuşan kişilerin sesi, dilinize sesli çeviriyle değiştirilir",
+  "Transcription_DubVoice": "Çevirilerdeki sesim",
+  "Transcription_DubVoiceCaption": "Konuşmanız çevrildiğinde başkalarının duyduğu ses",
+  "Transcription_DubVoiceDefault": "Varsayılan",
+  "Transcription_DubVoicePreviewText": "Merhaba! Başkaları sizi böyle duyacak.",
   "Transcription_LanguageDetected_Format": "'{0}' sohbeti için algılanan deşifre dili: {1}.",
 
   "Sessions_CurrentSession": "Mevcut Oturum",
@@ -156,6 +160,15 @@
   "TimeZone_SelectTitle": "Saat dilimi seçin",
   "TimeZone_Question": "Saat diliminiz nedir?",
   "TimeZone_Updated": "Saat dilimi güncellendi",
+
+  "DubVoice_Title": "Çevirilerdeki ses",
+  "DubVoice_DefaultCaption": "Standart ses",
+  "DubVoice_AnyGender": "Herhangi bir cinsiyet",
+  "DubVoice_Male": "Erkek",
+  "DubVoice_Female": "Kadın",
+  "DubVoice_AnyAccent": "Herhangi bir aksan",
+  "DubVoice_Preview": "Dinle",
+  "DubVoice_Unavailable": "Sesler şu anda kullanılamıyor",
 
   "NativeApp_AutoStart": "Oturum açıldığında otomatik başlat",
   "NativeApp_AutoStartEnabledByPolicy": "Otomatik başlatma grup/makine ilkesiyle etkinleştirildi.",

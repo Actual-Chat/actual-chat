@@ -27,6 +27,7 @@ public sealed class ReplayDubs(IServiceProvider services)
     private ITranslationsBackend Translations => field ??= Services.GetRequiredService<ITranslationsBackend>();
     private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
     private ISpeechSynthesizer Synthesizer => field ??= Services.GetRequiredService<ISpeechSynthesizer>();
+    private SpeakerVoices SpeakerVoices => field ??= Services.GetRequiredService<SpeakerVoices>();
     private AudioSegmentSaver Saver => field ??= Services.GetRequiredService<AudioSegmentSaver>();
     private ICommander Commander => field ??= Services.Commander();
     private ILogger Log => field ??= Services.LogFor<ReplayDubs>();
@@ -106,7 +107,8 @@ public sealed class ReplayDubs(IServiceProvider services)
         if (translation == null || translation.MatchesOriginal(entry.Content))
             return null;
 
-        if (translation.HasValidDub()) {
+        var voiceId = await SpeakerVoices.Get(entry.ChatId, entry.AuthorId, cancellationToken).ConfigureAwait(false);
+        if (translation.HasValidDub(voiceId ?? "")) {
             var existing = await MediaBackend.Get(translation.DubMediaId, cancellationToken).ConfigureAwait(false);
             if (existing != null)
                 return new ReplayDub(existing, null);
@@ -123,8 +125,8 @@ public sealed class ReplayDubs(IServiceProvider services)
         await _synthesisLimiter.WaitAsync(cancellationToken).ConfigureAwait(false);
         workCts.CancelAfter(Constants.Audio.ReplayDubSynthesisTimeout);
         try {
-            synthesized = await Synthesizer.Synthesize(text, new SpeechSynthesisOptions(language), cancellationToken)
-                .ConfigureAwait(false);
+            var options = new SpeechSynthesisOptions(language, voiceId);
+            synthesized = await Synthesizer.Synthesize(text, options, cancellationToken).ConfigureAwait(false);
             // An AudioSource memoizes its frames, so every GetFrames replays them from the start:
             // the waiting callers play the dub as it's spoken while the saver stores the same frames
             liveResult.TrySetResult(new ReplayDub(null, synthesized));
@@ -145,7 +147,7 @@ public sealed class ReplayDubs(IServiceProvider services)
         try {
             var diff = new TranslationDiff {
                 DubMediaId = mediaId,
-                DubContentHash = ChatEntryHashExt.GetContentHashString(text),
+                DubContentHash = TranslationDubExt.GetDubContentHash(text, voiceId ?? ""),
             };
             var translateChange = new TranslationsBackend_Change(id, translation.Version, Change.Update(diff));
             stamped = await Commander.Call(translateChange, true, cancellationToken).ConfigureAwait(false);

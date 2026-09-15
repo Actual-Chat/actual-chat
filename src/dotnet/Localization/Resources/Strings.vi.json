@@ -102,6 +102,10 @@
   "Transcription_TranslatedVoiceTopic": "Giọng nói đã dịch",
   "Transcription_TranslatedVoice": "Nghe bản dịch bằng giọng nói",
   "Transcription_TranslatedVoiceCaption": "Trong các cuộc trò chuyện trực tiếp, người nói ngôn ngữ khác sẽ được thay bằng bản dịch được đọc bằng ngôn ngữ của bạn",
+  "Transcription_DubVoice": "Giọng của tôi trong bản dịch",
+  "Transcription_DubVoiceCaption": "Giọng mà người khác nghe khi lời bạn nói được dịch",
+  "Transcription_DubVoiceDefault": "Mặc định",
+  "Transcription_DubVoicePreviewText": "Xin chào! Người khác sẽ nghe bạn như thế này.",
   "Transcription_LanguageDetected_Format": "Ngôn ngữ phiên âm được phát hiện cho cuộc trò chuyện \"{0}\" là {1}.",
 
   "Sessions_CurrentSession": "Phiên hiện tại",
@@ -156,6 +160,15 @@
   "TimeZone_SelectTitle": "Chọn múi giờ",
   "TimeZone_Question": "Múi giờ của bạn là gì?",
   "TimeZone_Updated": "Đã cập nhật múi giờ",
+
+  "DubVoice_Title": "Giọng trong bản dịch",
+  "DubVoice_DefaultCaption": "Giọng chuẩn",
+  "DubVoice_AnyGender": "Mọi giới tính",
+  "DubVoice_Male": "Nam",
+  "DubVoice_Female": "Nữ",
+  "DubVoice_AnyAccent": "Mọi giọng vùng",
+  "DubVoice_Preview": "Nghe thử",
+  "DubVoice_Unavailable": "Hiện không có giọng nào khả dụng",
 
   "NativeApp_AutoStart": "Tự khởi động khi đăng nhập",
   "NativeApp_AutoStartEnabledByPolicy": "Tự động khởi động đã được bật bởi chính sách nhóm hoặc thiết bị.",

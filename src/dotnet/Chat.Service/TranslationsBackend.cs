@@ -5,6 +5,7 @@ using ActualChat.Db;
 using ActualChat.Diagnostics;
 using ActualChat.Flows;
 using ActualChat.Hashing;
+using ActualChat.Localization;
 using ActualChat.Queues;
 using ActualChat.Streaming;
 using ActualChat.Transcription;
@@ -39,6 +40,8 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
     private IHostApplicationLifetime HostLifetime => field ??= Services.HostLifetime();
     private FlowHub FlowHub => field ??= Services.FlowHub();
+    // Absent when no TTS provider is configured (no key, and not the fake): then there are no voices
+    private ISpeechSynthesizer? SpeechSynthesizer => field ??= Services.GetService<ISpeechSynthesizer>();
 
     private static bool DebugMode => Constants.DebugMode.TranslationBackend;
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -90,6 +93,38 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     }
 
     // Not a [ComputeMethod]!
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<DubVoice>> ListDubVoices(CancellationToken cancellationToken)
+    {
+        if (SpeechSynthesizer is not { } synthesizer)
+            return ApiArray<DubVoice>.Empty;
+
+        var voices = await synthesizer.ListVoices(cancellationToken).ConfigureAwait(false);
+        if (voices.Count == 0)
+            // Nothing cached yet: a provider failure is retried well before the hour is up
+            Computed.GetCurrent().Invalidate(ServerConstants.Backend.RetryDelay);
+        return voices;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<byte[]?> GetDubVoicePreview(
+        string voiceId,
+        Language language,
+        CancellationToken cancellationToken)
+    {
+        if (SpeechSynthesizer is not { } synthesizer)
+            return null;
+
+        var voices = await ListDubVoices(cancellationToken).ConfigureAwait(false);
+        if (!voices.Any(x => x.Id == voiceId))
+            return null;
+
+        var text = LanguageStringLocalizer.Get(language).Transcription_DubVoicePreviewText;
+        return await synthesizer
+            .SynthesizeMp3(text, new SpeechSynthesisOptions(language, voiceId), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     public virtual async Task<ApiArray<Translation>> ListHanging(ThisNodeRef nodeRef, int limit, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);

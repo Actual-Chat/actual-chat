@@ -134,6 +134,44 @@ public class ReplayDubsTest(
     }
 
     [Fact(Timeout = 90_000)]
+    public async Task TheSpeakersVoiceIsUsedAndAVoiceChangeRegeneratesTheDub()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var dubs = services.GetRequiredService<ReplayDubs>();
+        var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        // A longer recording than the other tests', so its text can't collide with theirs in the recorder
+        var entry = await Tester.RecordVoiceEntry(chatId, Languages.Russian, frameCount: 300);
+        var ct = CancellationToken.None;
+        var id = TranslationId.New(entry.Id, Languages.English);
+        var languageSettings = services.UserSettingsUI(Tester.Session).UserLanguageSettings();
+        await languageSettings.Update(x => x with { DubVoice = "Daniel" }, ct);
+
+        // act - the speaker picked Daniel
+        await dubs.GetOrCreate(entry, Languages.English, ct);
+        var translation = await services.WhenReplayDubStored(id, ct, "Daniel");
+        var firstMediaId = translation.DubMediaId!;
+        var streamId = RecordingSpeechSynthesizer.OneShotStreamId(Languages.English, translation.Content);
+
+        // assert
+        recorder.GetVoiceId(streamId).Should().Be("Daniel", "the dub is spoken in the speaker's voice");
+        translation.HasValidDub().Should().BeFalse("the stored hash names the voice, not just the content");
+
+        // act - the speaker switches to Nina
+        await languageSettings.Update(x => x with { DubVoice = "Nina" }, ct);
+        var second = await dubs.GetOrCreate(entry, Languages.English, ct);
+        translation = await services.WhenReplayDubStored(id, ct, "Nina");
+
+        // assert
+        second.Should().NotBeNull();
+        second!.Stored.Should().BeNull("Daniel's dub can't serve a speaker who now sounds like Nina");
+        translation.DubMediaId.Should().NotBe(firstMediaId, "a voice change regenerates the dub");
+        recorder.GetVoiceId(streamId).Should().Be("Nina");
+    }
+
+    [Fact(Timeout = 90_000)]
     public async Task InFlightEntryIsForgottenAfterCompletion()
     {
         await Tester.SignInAsUniqueAlice();

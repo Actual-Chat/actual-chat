@@ -139,6 +139,10 @@
   "Transcription_TranslatedVoiceTopic": "Переведённый голос",
   "Transcription_TranslatedVoice": "Dengarkan terjemahan yang diucapkan",
   "Transcription_TranslatedVoiceCaption": "Dans les conversations en direct, les personnes parlant d'autres langues sont remplacées par une traduction parlée dans votre langue",
+  "Transcription_DubVoice": "Meine Stimme in Übersetzungen",
+  "Transcription_DubVoiceCaption": "La voix avec laquelle les autres entendent la traduction de vos paroles",
+  "Transcription_DubVoiceDefault": "За замовчуванням",
+  "Transcription_DubVoicePreviewText": "Halo! Seperti inilah orang lain akan mendengar Anda.",
   "Transcription_LanguageDetected_Format": "La langue de transcription détectée pour la discussion « {0} » est {1}.",
 
   // Settings > Sessions - the signed-in devices and the sign-out actions.
@@ -203,6 +207,17 @@
   "TimeZone_SelectTitle": "Sélectionner le fuseau horaire",
   "TimeZone_Question": "タイムゾーンはどちらですか?",
   "TimeZone_Updated": "Strefa czasowa została zaktualizowana",
+
+  // The voice picker for "My voice in translations" (Settings > Transcription): the gender and
+  // accent filters, the "Default" entry, and the per-voice preview button.
+  "DubVoice_Title": "Stimme in Übersetzungen",
+  "DubVoice_DefaultCaption": "Стандартный голос",
+  "DubVoice_AnyGender": "Beliebiges Geschlecht",
+  "DubVoice_Male": "Чоловічий",
+  "DubVoice_Female": "Femminile",
+  "DubVoice_AnyAccent": "アクセントを問わない",
+  "DubVoice_Preview": "Прослушване",
+  "DubVoice_Unavailable": "Las voces no están disponibles ahora mismo",
 
   // Settings > Application on the Windows desktop app: the "start when I log on" toggle and
   // the three reasons it can be unavailable. "Task Manager" and "Startup" name Windows' own
