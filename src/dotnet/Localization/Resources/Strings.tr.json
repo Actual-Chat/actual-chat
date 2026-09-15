@@ -1395,6 +1395,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} veya email@gmail.com",
   "SignIn_Or": "veya",
   "SignIn_InvalidPhoneOrEmail": "Telefon numarası veya e-posta adresi geçersiz.",
+  "SignIn_SwitchToPhoneKeypad": "Telefon tuş takımına geç",
+  "SignIn_SwitchToEmailKeyboard": "E-posta klavyesine geç",
   "SignIn_VerifyPhoneText_Format": "Devam etmek ve arkadaşlarınızın sizi {0} uygulamasında bulabilmesi için lütfen telefon numaranızı doğrulayın.",
   "SignIn_VerifyEmailText_Format": "Devam etmek ve arkadaşlarınızın sizi {0} uygulamasında bulabilmesi için lütfen e-posta adresinizi doğrulayın.",
   "SignIn_PopupBlocked": "Tarayıcı giriş açılır penceresini engelledi. Lütfen bu site için açılır pencerelere izin verin ve yeniden deneyin.",

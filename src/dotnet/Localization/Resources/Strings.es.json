@@ -1395,6 +1395,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} o email@gmail.com",
   "SignIn_Or": "o",
   "SignIn_InvalidPhoneOrEmail": "Número de teléfono o dirección de correo no válidos.",
+  "SignIn_SwitchToPhoneKeypad": "Cambiar al teclado telefónico",
+  "SignIn_SwitchToEmailKeyboard": "Cambiar al teclado de correo",
   "SignIn_VerifyPhoneText_Format": "Verifica tu número de teléfono para continuar y que tus amigos puedan encontrarte en {0}.",
   "SignIn_VerifyEmailText_Format": "Verifica tu correo electrónico para continuar y que tus amigos puedan encontrarte en {0}.",
   "SignIn_PopupBlocked": "El navegador bloqueó la ventana emergente de inicio de sesión. Permite las ventanas emergentes para este sitio e inténtalo de nuevo.",

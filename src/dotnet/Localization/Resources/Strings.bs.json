@@ -1395,6 +1395,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} ili email@gmail.com",
   "SignIn_Or": "ili",
   "SignIn_InvalidPhoneOrEmail": "Neispravan broj telefona ili e-mail adresa.",
+  "SignIn_SwitchToPhoneKeypad": "Prebaci na telefonsku tastaturu",
+  "SignIn_SwitchToEmailKeyboard": "Prebaci na tastaturu za e-mail",
   "SignIn_VerifyPhoneText_Format": "Potvrdite svoj broj telefona da nastavite i da vas prijatelji pronađu u {0}.",
   "SignIn_VerifyEmailText_Format": "Potvrdite svoju email adresu da nastavite i da vas prijatelji pronađu u {0}.",
   "SignIn_PopupBlocked": "Preglednik je blokirao iskačući prozor za prijavu. Dozvolite iskačuće prozore za ovu stranicu i pokušajte ponovo.",

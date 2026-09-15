@@ -1658,6 +1658,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} または email@gmail.com",
   "SignIn_Or": "oppure",
   "SignIn_InvalidPhoneOrEmail": "電話番号またはメールアドレスが正しくありません。",
+  "SignIn_SwitchToPhoneKeypad": "Превключване към телефонна клавиатура",
+  "SignIn_SwitchToEmailKeyboard": "Переключить на клавиатуру для эл. почты",
   "SignIn_VerifyPhoneText_Format": "Devam etmek ve arkadaşlarınızın sizi {0} uygulamasında bulabilmesi için lütfen telefon numaranızı doğrulayın.",
   "SignIn_VerifyEmailText_Format": "続けるにはメールアドレスを確認してください。{0} で友だちがあなたを見つけられるようになります。",
   "SignIn_PopupBlocked": "El navegador bloqueó la ventana emergente de inicio de sesión. Permite las ventanas emergentes para este sitio e inténtalo de nuevo.",

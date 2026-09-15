@@ -1395,6 +1395,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} または email@gmail.com",
   "SignIn_Or": "または",
   "SignIn_InvalidPhoneOrEmail": "電話番号またはメールアドレスが正しくありません。",
+  "SignIn_SwitchToPhoneKeypad": "電話番号キーパッドに切り替え",
+  "SignIn_SwitchToEmailKeyboard": "メール用キーボードに切り替え",
   "SignIn_VerifyPhoneText_Format": "続けるには電話番号を確認してください。{0} で友だちがあなたを見つけられるようになります。",
   "SignIn_VerifyEmailText_Format": "続けるにはメールアドレスを確認してください。{0} で友だちがあなたを見つけられるようになります。",
   "SignIn_PopupBlocked": "ブラウザがサインインのポップアップをブロックしました。このサイトのポップアップを許可して、もう一度お試しください。",

@@ -49,6 +49,7 @@ export * from './Components/Modal/modal-host';
 export * from './Components/PicUpload/pic-upload';
 export * from './Components/QrCode/qr-code.lit';
 export * from './Components/Share/share';
+export * from './Components/SignIn/Modal/phone-or-email-keyboard';
 export * from './Components/SideNav/side-nav';
 export * from './Components/Skeleton';
 export * from './Components/TabPanel/tab-panel';

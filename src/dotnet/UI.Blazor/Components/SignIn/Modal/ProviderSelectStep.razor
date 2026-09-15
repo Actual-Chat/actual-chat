@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.UI.Blazor.Module
 @using ActualChat.Users
 @inherits Step<UIHub, ProviderSelectStep.Model>;
 @{
@@ -37,17 +38,18 @@
             InputId="@_formModel.PhoneOrEmailFieldId"
             Class="grow"
             ShowErrors="@_showFieldErrors"
-            IsLabelInsideInput="true">
+            IsLabelInsideInput="true"
+            Right="@(_isPhoneKeyboard is null ? null : KeyboardToggle)">
             <TextBox
                 Id="@_formModel.PhoneOrEmailFieldId"
                 Value="@(!_formModel.PhoneOrEmail.IsNullOrEmpty() ? _formModel.PhoneOrEmail : "")"
                 ValueExpression="@(() => _formModel.PhoneOrEmail)"
-                Autocomplete="tel email username"
+                Autocomplete="email"
+                InputRefCreated="@OnInputRefCreated"
                 ValueChanged="@((string? v) => OnPhoneOrEmailChanged(v))"
                 Placeholder="@L.SignIn_PhoneOrEmailPlaceholder_Format(_phoneExample ?? DefaultPhoneExample)"
                 disabled="@m.HasSentCodeRecently"
                 type="text"
-                inputmode="text"
             />
             @if (m.HasSentCodeRecently) {
                 <div class="c-info">
@@ -88,6 +90,7 @@
     // ReSharper disable once InconsistentNaming
     private const string SessionTemporals_SignInErrorKey = Constants.SessionTemporals.SignInErrorKey;
     private const string DefaultPhoneExample = "+1(555)555-5555";
+    private static readonly string JSKeyboardCreateMethod = $"{BlazorUICoreModule.ImportName}.PhoneOrEmailKeyboard.create";
 
     private ValidationState _validationState = ValidationState.None;
     private StepModel _formModel = null!;
@@ -97,6 +100,10 @@
     private string _signInError = "";
     private CpuTimestamp _lastSignInErrorConsumedAt;
     private volatile string? _phoneExample;
+    private ElementReference? _inputRef;
+    private IJSObjectReference? _keyboardRef;
+    private DotNetObjectReference<ProviderSelectStep>? _blazorRef;
+    private bool? _isPhoneKeyboard;
 
     private IPhones Phones => Hub.Phones;
     private ICaptcha Captcha => Hub.Captcha;
@@ -106,6 +113,16 @@
 
     [Parameter, EditorRequired] public TotpSignInModel TotpSignInModel { get; set; } = null!;
     [CascadingParameter] public Modal Modal { get; set; } = null!;
+
+    // The toggle keeps the input focused (mousedown is cancelled), so iOS swaps the keyboard in place.
+    private RenderFragment KeyboardToggle => @<button
+        type="button"
+        class="btn-h btn-sm"
+        aria-label="@(_isPhoneKeyboard is true ? L.SignIn_SwitchToEmailKeyboard : L.SignIn_SwitchToPhoneKeypad)"
+        @onmousedown:preventDefault="true"
+        @onclick="@OnKeyboardToggleClick">
+        <i class="@(_isPhoneKeyboard is true ? "icon-email" : "icon-phone")"></i>
+    </button>;
 
     protected override async Task OnInitializedAsync() {
         _authProviders = AccountUI.GetAuthSchemas()
@@ -135,6 +152,29 @@
                 this.NotifyStateHasChanged();
             }
         }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_inputRef is not { } inputRef || _keyboardRef is not null)
+            return;
+
+        _blazorRef = DotNetObjectReference.Create(this);
+        _keyboardRef = await JS.InvokeAsync<IJSObjectReference>(JSKeyboardCreateMethod, inputRef, _blazorRef);
+    }
+
+    public override async ValueTask DisposeAsync() {
+        var keyboardRef = _keyboardRef;
+        _keyboardRef = null;
+        await keyboardRef.DisposeSilentlyAsync("dispose");
+        _blazorRef?.Dispose();
+        _blazorRef = null;
+        await base.DisposeAsync();
+    }
+
+    [JSInvokable]
+    public void OnPhoneKeyboardChanged(bool isPhoneKeyboard) {
+        _isPhoneKeyboard = isPhoneKeyboard;
+        StateHasChanged();
     }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
@@ -203,6 +243,14 @@
 
     private async Task OnSignInWithProvider(string schema) {
         await AccountUI.SignIn(schema);
+    }
+
+    private Task OnKeyboardToggleClick()
+        => _keyboardRef?.InvokeVoidAsync("toggle").AsTask() ?? Task.CompletedTask;
+
+    private void OnInputRefCreated(ElementReference inputRef) {
+        _inputRef = inputRef;
+        StateHasChanged();
     }
 
     private void OnPhoneOrEmailChanged(string? value) {
