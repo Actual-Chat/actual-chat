@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Streaming;
+using ActualChat.Transcription;
 using ActualLab.Rpc;
 
 namespace ActualChat.Testing.Host;
@@ -40,7 +41,7 @@ public static class AudioRecordingOperations
         var lidRangeBefore = await services.GetRequiredService<IChatsBackend>()
             .GetLidRange(chatId, true, cancellationToken).ConfigureAwait(false);
 
-        var frames = GenerateAudioFrames(frameCount);
+        var frames = GenerateAudioFrames(frameCount, services);
         await backend.ProcessAudio(audioRecord, 0,
                 new RpcStream<AudioFrame>(frames),
                 cancellationToken)
@@ -51,19 +52,30 @@ public static class AudioRecordingOperations
 
     // Private methods
 
-    private static async IAsyncEnumerable<AudioFrame> GenerateAudioFrames(int frameCount)
+    private static async IAsyncEnumerable<AudioFrame> GenerateAudioFrames(int frameCount, IServiceProvider services)
     {
-        var offset = TimeSpan.Zero;
-        for (var i = 0; i < frameCount; i++) {
-            var data = new byte[100];
-            Array.Fill(data, (byte)(i % 256));
-            yield return new AudioFrame {
-                Data = data,
-                Offset = offset,
-                Duration = DefaultFrameDuration,
-            };
-            offset += DefaultFrameDuration;
+        // Real Opus frames of a quiet tone, so whatever decodes the stored recording gets the
+        // audio it expects - a voice sample, for one - rather than packets libopus rejects
+        var log = services.LogFor(typeof(AudioRecordingOperations));
+        var audio = SpeechSynthesizerExt.ToAudioSource(ProduceTone, services.Clocks(), log, CancellationToken.None);
+        await foreach (var frame in audio.GetFrames(CancellationToken.None).ConfigureAwait(false)) {
+            yield return frame with { Duration = DefaultFrameDuration };
             await Task.Delay(5).ConfigureAwait(false);
+        }
+        yield break;
+
+        async Task ProduceTone(ChannelWriter<byte[]> pcm, CancellationToken cancellationToken)
+        {
+            var pcmFrame = new byte[OpusFramePump.FrameByteLength];
+            for (var i = 0; i < frameCount; i++) {
+                for (var j = 0; j < OpusFramePump.FrameLength; j++) {
+                    var time = (double)(i * OpusFramePump.FrameLength + j) / OpusFramePump.SampleRate;
+                    var sample = (short)(2000 * Math.Sin(2 * Math.PI * 440 * time));
+                    BitConverter.TryWriteBytes(pcmFrame.AsSpan(j * sizeof(short)), sample);
+                }
+                await pcm.WriteAsync(pcmFrame.ToArray(), cancellationToken).ConfigureAwait(false);
+            }
+            pcm.Complete();
         }
     }
 

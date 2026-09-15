@@ -1,10 +1,10 @@
 using OpusSharp.Core;
 
-namespace ActualChat.Transcription;
+namespace ActualChat.Audio;
 
-// Every other transcriber takes Opus, so the pipeline never decodes it server-side. ElevenLabs
-// realtime accepts PCM and mu-law only, hence this one - it decodes the 20ms frames a recording
-// already carries, at the rate they were captured, so nothing is resampled.
+// The pipeline carries Opus end to end, so PCM is only ever needed at its edges: ElevenLabs
+// realtime accepts PCM and mu-law only, and a voice-cloning sample is a WAV. This decodes the 20ms
+// frames a recording already carries, at the rate they were captured, so nothing is resampled.
 
 public sealed class OpusToPcmDecoder : IDisposable
 {

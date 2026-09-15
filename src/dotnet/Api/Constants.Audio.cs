@@ -164,6 +164,17 @@ public static partial class Constants
         public static readonly int ReplayDubLookahead = 2;
         // Caps concurrent Soniox REST syntheses; shares Soniox's 3-concurrent-stream quota with live dubbing
         public static readonly int ReplayDubMaxConcurrentSynthesis = 2;
+        // How far back a speaker's own recordings are considered for the auto voice sample
+        public static readonly TimeSpan VoiceSampleWindow = TimeSpan.FromDays(90);
+        // Recordings shorter than this are too little continuous speech to help a voice clone
+        public static readonly TimeSpan VoiceSampleMinEntryDuration = TimeSpan.FromSeconds(5);
+        // Below this much speech in total no auto sample is built - the clone would be poor
+        public static readonly TimeSpan VoiceSampleMinDuration = TimeSpan.FromSeconds(30);
+        // The sample is cut here; Soniox takes up to 2 min, and more speech doesn't improve the clone
+        public static readonly TimeSpan VoiceSampleMaxDuration = TimeSpan.FromSeconds(60);
+        // Bounds on the scan behind the auto sample: most recent chats first, newest entries first
+        public static readonly int VoiceSampleMaxChats = 10;
+        public static readonly int VoiceSampleMaxEntriesPerChat = 500;
 
         // Watchdog: cancel ProcessAudio handler if no frame arrives within this window.
         // Opus frames are 20 ms; 2 s of silence means the producer is pathologically stalled.

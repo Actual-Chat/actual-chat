@@ -1,3 +1,4 @@
+using ActualChat.Audio;
 using ActualChat.Module;
 using ActualChat.Transcription.Module;
 using ActualLab.Generators;

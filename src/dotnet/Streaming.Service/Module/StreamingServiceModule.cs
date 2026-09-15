@@ -41,6 +41,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<AudioSegmentSaver>();
         services.AddSingleton<ReplayDubs>();
         services.AddSingleton<SpeakerVoices>();
+        services.AddSingleton<VoiceSampleBuilder>();
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();

@@ -1,14 +1,15 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace ActualChat.Transcription;
+namespace ActualChat.Audio;
 
 /// <summary>
 /// Minimal RIFF/WAVE writer for 16-bit PCM - packages a decoded voice sample for
-/// <see cref="SonioxVoicesClient"/>.Create, which expects a WAV file.
+/// Soniox's voice-cloning endpoint, which expects a WAV file.
 /// </summary>
 public static class WavWriter
 {
+    public const int HeaderLength = 44;
     private const short BitsPerSample = 16;
     private const short FormatPcm = 1;
 
@@ -16,7 +17,7 @@ public static class WavWriter
     {
         var blockAlign = (short)(channels * (BitsPerSample / 8));
         var byteRate = sampleRate * blockAlign;
-        Span<byte> header = stackalloc byte[44];
+        Span<byte> header = stackalloc byte[HeaderLength];
         WriteAscii(header[..4], "RIFF");
         BinaryPrimitives.WriteInt32LittleEndian(header[4..8], 36 + pcm.Length);
         WriteAscii(header[8..12], "WAVE");
@@ -34,6 +35,18 @@ public static class WavWriter
         stream.Write(pcm);
     }
 
+    // The PCM byte count of a header this writer produced, or -1 for anything else
+    public static int GetPcmLength(ReadOnlySpan<byte> header)
+    {
+        if (header.Length < HeaderLength || !IsAscii(header[..4], "RIFF") || !IsAscii(header[36..40], "data"))
+            return -1;
+
+        return BinaryPrimitives.ReadInt32LittleEndian(header[40..44]);
+    }
+
     private static void WriteAscii(Span<byte> destination, string ascii)
         => Encoding.ASCII.GetBytes(ascii, destination);
+
+    private static bool IsAscii(ReadOnlySpan<byte> source, string ascii)
+        => Encoding.ASCII.GetString(source) == ascii;
 }
