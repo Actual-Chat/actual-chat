@@ -4,34 +4,28 @@ namespace ActualChat.Transcription;
 
 public static class SpeechSynthesizerExt
 {
-    // One-shot synthesis shares this tail: a PCM producer feeds an unpaced pump, and the frames
-    // it emits become an AudioSource whose duration is known once the producer is done
+    private static readonly UnboundedChannelOptions ChannelOptions = new() { SingleReader = true, SingleWriter = true };
+
+    // One-shot synthesis shares this tail: a frame producer runs in the background, and the frames it
+    // emits become an AudioSource whose duration is known once the producer is done
     public static AudioSource ToAudioSource(
-        Func<ChannelWriter<byte[]>, CancellationToken, Task> producePcm,
+        Func<ChannelWriter<AudioFrame>, CancellationToken, Task> produceFrames,
         MomentClockSet clocks,
         ILogger log,
         CancellationToken cancellationToken)
     {
-        var channelOptions = new UnboundedChannelOptions { SingleReader = true, SingleWriter = true };
-        var pcm = Channel.CreateUnbounded<byte[]>(channelOptions);
-        var output = Channel.CreateUnbounded<AudioFrame>(channelOptions);
+        var output = Channel.CreateUnbounded<AudioFrame>(ChannelOptions);
         _ = BackgroundTask.Run(async () => {
             Exception? error = null;
             try {
-                using var pump = new OpusFramePump(clocks.CpuClock, isPaced: false);
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                await TranscriberHelper.WhenPushAndRead(
-                        producePcm.Invoke(pcm.Writer, cts.Token),
-                        pump.Run(pcm.Reader, output.Writer, cts.Token),
-                        cts)
-                    .ConfigureAwait(false);
+                await produceFrames.Invoke(output.Writer, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) {
                 error = e;
                 throw;
             }
             finally {
-                // A backstop for a failure the pump's own Run never saw (e.g. before it started);
+                // A backstop for a failure the producer's own completion never saw (e.g. before it started);
                 // when it did see it, this is a harmless repeat of the TryComplete it already did.
                 output.Writer.TryComplete(error);
             }
@@ -44,4 +38,25 @@ public static class SpeechSynthesizerExt
             log,
             cancellationToken);
     }
+
+    // A PCM producer feeds an unpaced pump, whose frames become the AudioSource
+    public static AudioSource ToAudioSource(
+        Func<ChannelWriter<byte[]>, CancellationToken, Task> producePcm,
+        MomentClockSet clocks,
+        ILogger log,
+        CancellationToken cancellationToken)
+        => ToAudioSource(
+            async (output, ct) => {
+                var pcm = Channel.CreateUnbounded<byte[]>(ChannelOptions);
+                using var pump = new OpusFramePump(clocks.CpuClock, isPaced: false);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                await TranscriberHelper.WhenPushAndRead(
+                        producePcm.Invoke(pcm.Writer, cts.Token),
+                        pump.Run(pcm.Reader, output, cts.Token),
+                        cts)
+                    .ConfigureAwait(false);
+            },
+            clocks,
+            log,
+            cancellationToken);
 }

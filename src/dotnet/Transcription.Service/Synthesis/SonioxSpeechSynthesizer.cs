@@ -28,16 +28,16 @@ public sealed class SonioxSpeechSynthesizer(IServiceProvider services) : ISpeech
         ChannelWriter<AudioFrame> output,
         CancellationToken cancellationToken = default)
     {
-        var pcm = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions {
+        var frames = Channel.CreateUnbounded<AudioFrame>(new UnboundedChannelOptions {
             SingleReader = true,
             SingleWriter = true,
         });
-        using var pump = new OpusFramePump(Clocks.CpuClock);
+        var pacer = new OpusFramePacer(Clocks.CpuClock);
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var client = new SonioxTtsClient(Services);
         await TranscriberHelper.WhenPushAndRead(
-                client.Run(streamId, options.Language.ToSoniox(), GetVoice(options), text, pcm.Writer, cts.Token),
-                pump.Run(pcm.Reader, output, cts.Token),
+                client.Run(streamId, options.Language.ToSoniox(), GetVoice(options), text, frames.Writer, cts.Token),
+                pacer.Run(frames.Reader, output, cts.Token),
                 cts)
             .ConfigureAwait(false);
     }
@@ -47,8 +47,8 @@ public sealed class SonioxSpeechSynthesizer(IServiceProvider services) : ISpeech
         SpeechSynthesisOptions options,
         CancellationToken cancellationToken = default)
         => Task.FromResult(SpeechSynthesizerExt.ToAudioSource(
-            (pcm, ct) => new SonioxTtsClient(Services).Generate(
-                options.Language.ToSoniox(), GetVoice(options), text, pcm, ct),
+            (ChannelWriter<AudioFrame> output, CancellationToken ct) => new SonioxTtsClient(Services).Generate(
+                options.Language.ToSoniox(), GetVoice(options), text, output, ct),
             Clocks, Log, cancellationToken));
 
     public Task<byte[]> SynthesizeMp3(

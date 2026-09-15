@@ -23,14 +23,20 @@ public sealed class OpusFramePump : IDisposable
     private MomentClock Clock { get; }
     private bool IsPaced { get; }
 
+    public static OpusEncoder NewEncoder()
+    {
+        var encoder = new OpusEncoder(SampleRate, Constants.Audio.Channels, OpusPredefinedValues.OPUS_APPLICATION_VOIP);
+        encoder.SetBitRate(Constants.Audio.Bitrate);
+        encoder.SetVbr(true);
+        encoder.SetSignal(OpusPredefinedValues.OPUS_SIGNAL_VOICE);
+        return encoder;
+    }
+
     public OpusFramePump(MomentClock clock, bool isPaced = true)
     {
         Clock = clock;
         IsPaced = isPaced;
-        _encoder = new OpusEncoder(SampleRate, Constants.Audio.Channels, OpusPredefinedValues.OPUS_APPLICATION_VOIP);
-        _encoder.SetBitRate(Constants.Audio.Bitrate);
-        _encoder.SetVbr(true);
-        _encoder.SetSignal(OpusPredefinedValues.OPUS_SIGNAL_VOICE);
+        _encoder = NewEncoder();
     }
 
     public void Dispose()

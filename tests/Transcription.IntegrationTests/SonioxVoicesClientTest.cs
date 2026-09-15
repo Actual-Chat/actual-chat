@@ -45,14 +45,12 @@ public sealed class SonioxVoicesClientTest(ITestOutputHelper @out, ILogger<Sonio
             var listed = await voices.List(CancellationToken.None);
             listed.Should().Contain(v => v.Id == created.Id);
 
-            var pcm = Channel.CreateUnbounded<byte[]>();
+            var output = Channel.CreateUnbounded<AudioFrame>();
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            await new SonioxTtsClient(services).Generate("en", created.Id, "Hello", pcm.Writer, cts.Token);
-            var byteCount = 0;
-            await foreach (var chunk in pcm.Reader.ReadAllAsync(cts.Token))
-                byteCount += chunk.Length;
-            var seconds = byteCount / (double)(Constants.Audio.PlaybackSampleRate * sizeof(short));
-            WriteLine($"Synthesized {byteCount} bytes = {seconds:F2}s with the clone");
+            await new SonioxTtsClient(services).Generate("en", created.Id, "Hello", output.Writer, cts.Token);
+            var frameCount = await output.Reader.ReadAllAsync(cts.Token).CountAsync(cts.Token);
+            var seconds = frameCount * Constants.Audio.OpusFrameDurationMs / 1000.0;
+            WriteLine($"Synthesized {frameCount} frames = {seconds:F2}s with the clone");
             seconds.Should().BeGreaterThan(0.1, "the clone must speak an audible amount of audio");
         }
         finally {

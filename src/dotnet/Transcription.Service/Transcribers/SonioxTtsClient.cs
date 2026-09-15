@@ -3,17 +3,21 @@ using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text;
+using ActualChat.Audio;
+using ActualChat.Audio.Ogg;
 using ActualChat.Module;
 using static ActualChat.Constants.Transcription.Soniox;
 
 namespace ActualChat.Transcription;
 
 /// <summary>
-/// One utterance over Soniox's <c>tts-rt</c> WebSocket API: text chunks in, 48 kHz PCM out. The whole
-/// run shares one connection and, as far as Soniox allows, one stream, so sentences keep their prosody
-/// across chunks. A stream is ended early only when the text goes idle (Soniox kills a stream that
-/// produces nothing for a few seconds and loses its unsynthesized text) or when it nears Soniox's
-/// 2-minute stream cap; the next chunk then opens a new stream on the same connection.
+/// One utterance over Soniox's <c>tts-rt</c> WebSocket API: text chunks in, 20 ms Opus frames out (Soniox
+/// sends Ogg/Opus; every stream is parsed by its own <see cref="OggOpusReader"/>, frame offsets run
+/// contiguously across streams). The whole run shares one connection and, as far as Soniox allows, one
+/// stream, so sentences keep their prosody across chunks. A stream is ended early only when the text goes
+/// idle (Soniox kills a stream that produces nothing for a few seconds and loses its unsynthesized text)
+/// or when it nears Soniox's 2-minute stream cap; the next chunk then opens a new stream on the same
+/// connection.
 /// </summary>
 public sealed class SonioxTtsClient(IServiceProvider services)
 {
@@ -21,9 +25,11 @@ public sealed class SonioxTtsClient(IServiceProvider services)
     private const string Url = "wss://tts-rt.soniox.com/tts-websocket";
     private const string RestUrl = "https://tts-rt.soniox.com/tts";
     private const string Model = "tts-rt-v2";
-    private const string PcmFormat = "pcm_s16le";
+    private const string OpusFormat = "opus";
     private const string Mp3Format = "mp3";
     private const int SampleRate = 48_000;
+    // What every other Opus stream here is encoded at; Soniox's default is ~80 kbps
+    private const int OpusBitrate = Constants.Audio.Bitrate;
     private const int MaxTextLength = 5000;
     private const int ReadBufferSize = 32 * 1024;
     private const int MaxStreamsPerConnection = 5;
@@ -33,19 +39,20 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
+    private readonly List<string> _chunksToResend = new();
     private RunArgs? _run;
     private Connection? _connection;
     private TtsStream? _stream;
     private Task<string?>? _readTask;
-    private readonly List<string> _chunksToResend = new();
+    private int _frameCount;
 
     private IServiceProvider Services { get; } = services;
     private CoreServerSettings CoreServerSettings { get; } = services.GetRequiredService<CoreServerSettings>();
     private IHttpClientFactory HttpClientFactory => field ??= Services.HttpClientFactory();
     private MomentClockSet Clocks { get; } = services.Clocks();
     private ILogger Log { get; } = services.LogFor<SonioxTtsClient>();
-    private Moment Now => Clocks.CpuClock.Now;
 
+    private Moment Now => Clocks.CpuClock.Now;
     public int StreamCount { get; private set; }
 
     // Test hooks
@@ -58,14 +65,14 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         string language,
         string voice,
         ChannelReader<string> text,
-        ChannelWriter<byte[]> pcm,
+        ChannelWriter<AudioFrame> output,
         CancellationToken cancellationToken)
     {
         var apiKey = CoreServerSettings.SonioxKey;
         if (apiKey.IsNullOrEmpty())
             throw StandardError.Configuration("CoreSettings:SonioxKey is not set.");
 
-        _run = new RunArgs(sessionId, apiKey, language, voice, pcm);
+        _run = new RunArgs(sessionId, apiKey, language, voice, output);
         Exception? error = null;
         try {
             var hasReconnected = false;
@@ -91,7 +98,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         }
         finally {
             await CloseConnection().ConfigureAwait(false);
-            pcm.TryComplete(error);
+            output.TryComplete(error);
         }
     }
 
@@ -99,7 +106,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         string language,
         string voice,
         string text,
-        ChannelWriter<byte[]> pcm,
+        ChannelWriter<AudioFrame> output,
         CancellationToken cancellationToken)
     {
         var apiKey = CoreServerSettings.SonioxKey;
@@ -110,9 +117,21 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         try {
             using var httpClient = HttpClientFactory.CreateClient(HttpClientName);
             httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-            foreach (var part in SplitText(text, MaxTextLength))
-                await GeneratePart(httpClient, language, voice, part, PcmFormat, pcm, cancellationToken)
+            foreach (var part in SplitText(text, MaxTextLength)) {
+                // Every part is a complete Ogg/Opus stream of its own
+                var reader = new OggOpusReader();
+                await GeneratePart(
+                        httpClient,
+                        language,
+                        voice,
+                        part,
+                        OpusFormat,
+                        chunk => WriteFrames(reader, chunk, output, cancellationToken),
+                        cancellationToken)
                     .ConfigureAwait(false);
+                if (reader.HasPendingData)
+                    throw StandardError.Format("Soniox TTS response ended in the middle of an Ogg page.");
+            }
         }
         catch (Exception e) {
             error = e;
@@ -121,7 +140,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
             throw;
         }
         finally {
-            pcm.TryComplete(error);
+            output.TryComplete(error);
         }
     }
 
@@ -141,9 +160,19 @@ public sealed class SonioxTtsClient(IServiceProvider services)
 
         using var httpClient = HttpClientFactory.CreateClient(HttpClientName);
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-        var mp3 = Channel.CreateUnbounded<byte[]>();
+        using var mp3 = new MemoryStream();
         try {
-            await GeneratePart(httpClient, language, voice, text, Mp3Format, mp3.Writer, cancellationToken)
+            await GeneratePart(
+                    httpClient,
+                    language,
+                    voice,
+                    text,
+                    Mp3Format,
+                    chunk => {
+                        mp3.Write(chunk.Span);
+                        return default;
+                    },
+                    cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
@@ -151,11 +180,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
             throw;
         }
 
-        mp3.Writer.TryComplete();
-        using var buffer = new MemoryStream();
-        while (mp3.Reader.TryRead(out var piece))
-            buffer.Write(piece);
-        return buffer.ToArray();
+        return mp3.ToArray();
     }
 
     // Protected/internal methods
@@ -236,8 +261,9 @@ public sealed class SonioxTtsClient(IServiceProvider services)
             model = Model,
             language = run.Language,
             voice = run.Voice,
-            audio_format = PcmFormat,
+            audio_format = OpusFormat,
             sample_rate = SampleRate,
+            bitrate = OpusBitrate,
             stream_id = stream.Id,
         }, cancellationToken).ConfigureAwait(false);
         while (_chunksToResend.Count > 0) {
@@ -264,6 +290,8 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         var stream = _stream!;
         var response = await stream.WhenTerminated.ConfigureAwait(false);
         _stream = null;
+        if (stream.Reader.HasPendingData)
+            Log.LogWarning("Soniox TTS stream #{StreamId} ended in the middle of an Ogg page", stream.Id);
         if (response.ErrorCode is not { } errorCode)
             return;
 
@@ -312,7 +340,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
 
     private async Task ReadMessages(Connection connection, CancellationToken cancellationToken)
     {
-        var pcm = _run!.Pcm;
+        var output = _run!.Output;
         var buffer = new ArraySegment<byte>(new byte[2 * ReadBufferSize]);
         try {
             while (true) {
@@ -331,7 +359,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                 // Only terminated and error messages carry a stream_id; audio comes without one
                 var stream = connection.Stream;
                 var isForStream = stream != null
-                    && (response.StreamId == null || StringComparer.Ordinal.Equals(response.StreamId, stream.Id));
+                    && (response.StreamId == null || response.StreamId == stream.Id);
                 if (!isForStream) {
                     if (response.ErrorCode is { } errorCode)
                         Log.LogWarning("Soniox TTS error {ErrorCode} ({ErrorType}) for #{StreamId}: {ErrorMessage}",
@@ -348,7 +376,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                 if (!response.Audio.IsNullOrEmpty()) {
                     stream.OnAudioReceived();
                     var audio = Convert.FromBase64String(response.Audio);
-                    await pcm.WriteAsync(audio, cancellationToken).ConfigureAwait(false);
+                    await WriteFrames(stream.Reader, audio, output, cancellationToken).ConfigureAwait(false);
                 }
                 if (response.Terminated)
                     stream.Terminate(response);
@@ -385,13 +413,28 @@ public sealed class SonioxTtsClient(IServiceProvider services)
             throw StandardError.External($"Soniox TTS sent nothing for #{stream.Id} within {TtsChunkTimeout}.");
     }
 
+    private async ValueTask WriteFrames(
+        OggOpusReader reader,
+        ReadOnlyMemory<byte> chunk,
+        ChannelWriter<AudioFrame> output,
+        CancellationToken cancellationToken)
+    {
+        reader.Append(chunk.Span);
+        while (reader.TryRead(out var frame))
+            await output.WriteAsync(new AudioFrame {
+                    Data = frame.Data,
+                    Offset = Constants.Audio.OpusFrameDuration * _frameCount++,
+                }, cancellationToken)
+                .ConfigureAwait(false);
+    }
+
     private static async Task GeneratePart(
         HttpClient httpClient,
         string language,
         string voice,
         string part,
         string audioFormat,
-        ChannelWriter<byte[]> audio,
+        Func<ReadOnlyMemory<byte>, ValueTask> onChunk,
         CancellationToken cancellationToken)
     {
         // Soniox streams the audio back at about the pace it's spoken, so TtsChunkTimeout bounds the
@@ -406,6 +449,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                     voice,
                     audio_format = audioFormat,
                     sample_rate = SampleRate,
+                    bitrate = audioFormat == OpusFormat ? OpusBitrate : (int?)null,
                     text = part,
                 }, options: JsonOptions),
             };
@@ -424,7 +468,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                     break;
 
                 cts.CancelAfter(TtsChunkTimeout);
-                await audio.WriteAsync(buffer[..count], cancellationToken).ConfigureAwait(false);
+                await onChunk.Invoke(buffer.AsMemory(0, count)).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
@@ -482,7 +526,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         string ApiKey,
         string Language,
         string Voice,
-        ChannelWriter<byte[]> Pcm);
+        ChannelWriter<AudioFrame> Output);
 
     private sealed class Connection(WebSocket webSocket)
     {
@@ -508,6 +552,8 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         public string Id { get; } = id;
         public Moment StartedAt { get; } = startedAt;
         public Moment LastMessageAt { get; set; } = startedAt;
+        // Every Soniox stream is an Ogg/Opus stream of its own, headers included
+        public OggOpusReader Reader { get; } = new();
         // The result is the message that ended the stream (an error or terminated);
         // the task faults when the connection died under the stream.
         public Task<SonioxTtsResponse> WhenTerminated => _whenTerminatedSource.Task;

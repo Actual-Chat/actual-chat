@@ -2,7 +2,10 @@ using System.IO.Pipelines;
 using System.Net;
 using System.Net.WebSockets;
 using System.Text;
+using ActualChat.Audio;
+using ActualChat.Audio.Ogg;
 using ActualChat.Module;
+using ActualChat.Testing.Audio;
 
 namespace ActualChat.Transcription.UnitTests;
 
@@ -28,30 +31,67 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact(Timeout = 15_000)]
-    public async Task GenerateShouldWritePcmAsTheResponseArrives()
+    public async Task GenerateShouldWriteFramesAsTheResponseArrives()
+    {
+        // arrange
+        var body = new Pipe();
+        var requestBody = "";
+        var client = NewClient(r => {
+            requestBody = r.Content!.ReadAsStringAsync().Result;
+            return new HttpResponseMessage(HttpStatusCode.OK) {
+                Content = new StreamContent(body.Reader.AsStream()),
+            };
+        });
+        var output = Channel.CreateUnbounded<AudioFrame>();
+        var ct = CancellationToken.None;
+        var state = new OggOpusWriter.State { SerialNumber = 1 };
+
+        // act
+        var generateTask = client.Generate("en", "Adrian", "Hello", output.Writer, ct);
+        await body.Writer.WriteAsync(OggOpusTestStream.WriteHeaders(state), ct);
+        await body.Writer.WriteAsync(OggOpusTestStream.WritePage(state, OggOpusTestStream.Frames(1), true), ct);
+        var first = await output.Reader.ReadAsync(ct).AsTask().WaitAsync(TimeSpan.FromSeconds(5), ct);
+        var rest = Enumerable.Range(0, 10)
+            .SelectMany(i => OggOpusTestStream.WritePage(state, OggOpusTestStream.Frames(50, 1 + 50 * i), i < 9))
+            .ToArray();
+        await body.Writer.WriteAsync(rest, ct);
+        await body.Writer.CompleteAsync();
+        await generateTask;
+        var frames = await output.Reader.ReadAllAsync(ct).ToListAsync(ct);
+
+        // assert
+        requestBody.Should().Contain("\"audio_format\":\"opus\"");
+        first.Data.ToArray().Should().Equal(OggOpusTestStream.Packet(0),
+            "the first frame is written before the body is complete");
+        first.Offset.Should().Be(TimeSpan.Zero);
+        rest.Length.Should().BeGreaterThan(32 * 1024, "a body larger than the read buffer arrives in several chunks");
+        frames.Should().HaveCount(500);
+        frames[^1].Offset.Should().Be(Constants.Audio.OpusFrameDuration * 500);
+        frames[^1].Data.ToArray().Should().Equal(OggOpusTestStream.Packet(500));
+    }
+
+    [Fact(Timeout = 15_000)]
+    public async Task GenerateShouldFailOnATruncatedResponse()
     {
         // arrange
         var body = new Pipe();
         var client = NewClient(_ => new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StreamContent(body.Reader.AsStream()),
         });
-        var pcm = Channel.CreateUnbounded<byte[]>();
+        var output = Channel.CreateUnbounded<AudioFrame>();
         var ct = CancellationToken.None;
+        var bytes = OggOpusTestStream.Write(10);
 
         // act
-        var generateTask = client.Generate("en", "Adrian", "Hello", pcm.Writer, ct);
-        await body.Writer.WriteAsync(new byte[1920], ct);
-        var first = await pcm.Reader.ReadAsync(ct).AsTask().WaitAsync(TimeSpan.FromSeconds(5), ct);
-        var rest = new byte[100_000];
-        await body.Writer.WriteAsync(rest, ct);
+        var generateTask = client.Generate("en", "Adrian", "Hello", output.Writer, ct);
+        await body.Writer.WriteAsync(bytes[..^100], ct);
         await body.Writer.CompleteAsync();
-        await generateTask;
-        var chunks = await pcm.Reader.ReadAllAsync(ct).ToListAsync(ct);
 
         // assert
-        first.Should().NotBeEmpty("the first PCM bytes are written before the body is complete");
-        chunks.Count.Should().BeGreaterThan(1, "a body larger than the read buffer arrives in several chunks");
-        (first.Length + chunks.Sum(x => x.Length)).Should().Be(1920 + rest.Length);
+        await FluentActions.Awaiting(() => generateTask).Should().ThrowAsync<Exception>()
+            .WithMessage("*middle of an Ogg page*");
+        await FluentActions.Awaiting(() => output.Reader.ReadAllAsync(ct).ToListAsync(ct).AsTask())
+            .Should().ThrowAsync<Exception>("the output carries the failure");
     }
 
     [Fact(Timeout = 15_000)]
@@ -61,24 +101,26 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var soniox = new FakeSoniox();
         var client = NewClient(soniox, idleFlush: Long, streamRollover: Long);
         var text = Channel.CreateUnbounded<string>();
-        var pcm = Channel.CreateUnbounded<byte[]>();
+        var output = Channel.CreateUnbounded<AudioFrame>();
 
         // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, CancellationToken.None);
+        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, CancellationToken.None);
         foreach (var chunk in new[] { "One", " two", " three." }) {
             text.Writer.TryWrite(chunk);
             await Task.Delay(20);
         }
         text.Writer.Complete();
         await runTask;
-        var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
+        var audio = await output.Reader.ReadAllAsync().ToListAsync();
 
         // assert
         client.StreamCount.Should().Be(1);
         soniox.ConnectionCount.Should().Be(1);
         soniox.Sent.Select(x => x.Summary).Should().Equal(
             "config s-1", "text s-1 'One '", "text s-1 ' two '", "text s-1 ' three. '", "end s-1");
-        audio.Should().HaveCount(3, "the fake speaks every chunk it's fed");
+        audio.Should().HaveCount(3, "the fake speaks one frame per chunk it's fed");
+        audio.Select(f => f.Offset).Should().Equal(
+            TimeSpan.Zero, Constants.Audio.OpusFrameDuration, Constants.Audio.OpusFrameDuration * 2);
     }
 
     [Fact(Timeout = 15_000)]
@@ -88,10 +130,10 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var soniox = new FakeSoniox();
         var client = NewClient(soniox, idleFlush: Short, streamRollover: Long);
         var text = Channel.CreateUnbounded<string>();
-        var pcm = Channel.CreateUnbounded<byte[]>();
+        var output = Channel.CreateUnbounded<AudioFrame>();
 
         // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, CancellationToken.None);
+        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, CancellationToken.None);
         text.Writer.TryWrite("First. ");
         await Task.Delay(Short * 4);
         text.Writer.TryWrite("Second. ");
@@ -112,10 +154,10 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var soniox = new FakeSoniox();
         var client = NewClient(soniox, idleFlush: Long, streamRollover: Short);
         var text = Channel.CreateUnbounded<string>();
-        var pcm = Channel.CreateUnbounded<byte[]>();
+        var output = Channel.CreateUnbounded<AudioFrame>();
 
         // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, CancellationToken.None);
+        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, CancellationToken.None);
         text.Writer.TryWrite("Old. ");
         await Task.Delay(Short * 2);
         text.Writer.TryWrite("New. ");
@@ -136,23 +178,24 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var soniox = new FakeSoniox { KillAfterTextCount = 2 };
         var client = NewClient(soniox, idleFlush: Short, streamRollover: Long);
         var text = Channel.CreateUnbounded<string>();
-        var pcm = Channel.CreateUnbounded<byte[]>();
+        var output = Channel.CreateUnbounded<AudioFrame>();
 
         // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, CancellationToken.None);
+        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, CancellationToken.None);
         text.Writer.TryWrite("Spoken. ");
         await Task.Delay(Short / 3);
         text.Writer.TryWrite("Lost. ");
         await Task.Delay(Short * 4);
         text.Writer.Complete();
         await runTask;
-        var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
+        var audio = await output.Reader.ReadAllAsync().ToListAsync();
 
         // assert
         client.StreamCount.Should().Be(2, "the killed stream is replaced right away");
         soniox.Sent.Select(x => x.Summary).Should().Equal(
             "config s-1", "text s-1 'Spoken. '", "text s-1 'Lost. '", "config s-2", "text s-2 'Lost. '", "end s-2");
         audio.Should().HaveCount(2, "the chunk the killed stream never spoke is spoken by the next one");
+        audio[1].Offset.Should().Be(Constants.Audio.OpusFrameDuration, "offsets run on across streams");
     }
 
     [Fact(Timeout = 15_000)]
@@ -162,16 +205,16 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var soniox = new FakeSoniox { DropAfterTextCount = 1 };
         var client = NewClient(soniox, idleFlush: Long, streamRollover: Long);
         var text = Channel.CreateUnbounded<string>();
-        var pcm = Channel.CreateUnbounded<byte[]>();
+        var output = Channel.CreateUnbounded<AudioFrame>();
 
         // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, CancellationToken.None);
+        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, CancellationToken.None);
         text.Writer.TryWrite("Dropped. ");
         await Task.Delay(Short * 2);
         text.Writer.TryWrite("Late. ");
         text.Writer.Complete();
         await runTask;
-        var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
+        var audio = await output.Reader.ReadAllAsync().ToListAsync();
 
         // assert
         soniox.ConnectionCount.Should().Be(2);
@@ -189,16 +232,16 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var soniox = new FakeSoniox { DropAfterTextCount = 1, DropEveryConnection = true };
         var client = NewClient(soniox, idleFlush: Short, streamRollover: Long);
         var text = Channel.CreateUnbounded<string>();
-        var pcm = Channel.CreateUnbounded<byte[]>();
+        var output = Channel.CreateUnbounded<AudioFrame>();
 
         // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, CancellationToken.None);
+        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, CancellationToken.None);
         text.Writer.TryWrite("Doomed. ");
 
         // assert
         await FluentActions.Awaiting(() => runTask).Should().ThrowAsync<WebSocketException>();
         soniox.ConnectionCount.Should().Be(2, "one reconnect, then the run fails");
-        await FluentActions.Awaiting(() => pcm.Reader.ReadAllAsync().ToListAsync().AsTask())
+        await FluentActions.Awaiting(() => output.Reader.ReadAllAsync().ToListAsync().AsTask())
             .Should().ThrowAsync<WebSocketException>();
     }
 
@@ -238,12 +281,11 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
 
     private sealed record SentMessage(string Summary);
 
-    // A Soniox stand-in that speaks one audio message per text and can kill a stream (408) or drop
-    // the connection after a given number of texts on the first connection.
+    // A Soniox stand-in that speaks one Ogg/Opus page with one frame per text (the stream's headers
+    // ride along with its first one) and can kill a stream (408) or drop the connection after a given
+    // number of texts on the first connection.
     private sealed class FakeSoniox
     {
-        private static readonly string Audio = Convert.ToBase64String(new byte[1920]);
-
         public int KillAfterTextCount { get; init; }
         public int DropAfterTextCount { get; init; }
         public bool DropEveryConnection { get; init; }
@@ -261,12 +303,18 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         private async Task Serve(FakeWebSocket webSocket, bool mayFail)
         {
             var textCount = 0;
+            var ogg = new OggOpusWriter.State();
+            byte[]? oggHeaders = null;
+            var frameIndex = 0;
             await foreach (var json in webSocket.Sent.Reader.ReadAllAsync()) {
                 var message = JsonDocument.Parse(json).RootElement;
                 var streamId = message.GetProperty("stream_id").GetString();
                 if (message.TryGetProperty("api_key", out _)) {
+                    message.GetProperty("audio_format").GetString().Should().Be("opus");
                     lock (Sent)
                         Sent.Add(new SentMessage($"config {streamId}"));
+                    ogg = new OggOpusWriter.State { SerialNumber = (uint)ConnectionCount };
+                    oggHeaders = OggOpusTestStream.WriteHeaders(ogg);
                     continue;
                 }
 
@@ -285,7 +333,11 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
                             $$"""{"stream_id":"{{streamId}}","error_code":408,"error_message":"Stream killed"}""");
                         continue;
                     }
-                    webSocket.Incoming.Writer.TryWrite($$"""{"stream_id":"{{streamId}}","audio":"{{Audio}}"}""");
+                    var page = OggOpusTestStream.WritePage(ogg, OggOpusTestStream.Frames(1, frameIndex++), true);
+                    var audio = oggHeaders == null ? page : oggHeaders.Concat(page).ToArray();
+                    oggHeaders = null;
+                    webSocket.Incoming.Writer.TryWrite(
+                        $$"""{"stream_id":"{{streamId}}","audio":"{{Convert.ToBase64String(audio)}}"}""");
                 }
                 if (isEnd)
                     webSocket.Incoming.Writer.TryWrite($$"""{"stream_id":"{{streamId}}","terminated":true}""");
