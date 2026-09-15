@@ -1196,6 +1196,8 @@
   "Location_MapTypeMap": "지도",
   "Location_MapTypeSatellite": "위성",
   "Location_MapTypeHybrid": "하이브리드",
+  "MapPanel_ShareFromThisDevice": "이 기기에서 공유",
+  "Location_SharingFromAnotherDeviceCaption": "지금 다른 기기에서 공유 중 — 이 기기가 이어받습니다",
   "Content_NoFiles": "아직 파일이 없습니다",
   "Content_NoLinks": "아직 링크가 없습니다",
   "Content_NoMedia": "아직 미디어가 없습니다",

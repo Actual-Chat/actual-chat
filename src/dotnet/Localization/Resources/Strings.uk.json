@@ -1196,6 +1196,8 @@
   "Location_MapTypeMap": "Карта",
   "Location_MapTypeSatellite": "Супутник",
   "Location_MapTypeHybrid": "Гібрид",
+  "MapPanel_ShareFromThisDevice": "Показувати з цього пристрою",
+  "Location_SharingFromAnotherDeviceCaption": "Зараз ви ділитеся з іншого пристрою — цей його замінить",
   "Content_NoFiles": "Файлів поки немає",
   "Content_NoLinks": "Посилань поки немає",
   "Content_NoMedia": "Медіа поки немає",

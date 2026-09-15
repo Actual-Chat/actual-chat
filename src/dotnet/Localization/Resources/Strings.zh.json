@@ -1196,6 +1196,8 @@
   "Location_MapTypeMap": "地图",
   "Location_MapTypeSatellite": "卫星",
   "Location_MapTypeHybrid": "混合",
+  "MapPanel_ShareFromThisDevice": "从此设备分享",
+  "Location_SharingFromAnotherDeviceCaption": "你正在从另一台设备分享 — 此设备将接替",
   "Content_NoFiles": "暂无文件",
   "Content_NoLinks": "暂无链接",
   "Content_NoMedia": "暂无媒体",

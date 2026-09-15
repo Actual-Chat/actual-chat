@@ -1196,6 +1196,8 @@
   "Location_MapTypeMap": "地図",
   "Location_MapTypeSatellite": "航空写真",
   "Location_MapTypeHybrid": "ハイブリッド",
+  "MapPanel_ShareFromThisDevice": "このデバイスから共有",
+  "Location_SharingFromAnotherDeviceCaption": "現在別のデバイスから共有中 — このデバイスが引き継ぎます",
   "Content_NoFiles": "ファイルはまだありません",
   "Content_NoLinks": "リンクはまだありません",
   "Content_NoMedia": "メディアはまだありません",

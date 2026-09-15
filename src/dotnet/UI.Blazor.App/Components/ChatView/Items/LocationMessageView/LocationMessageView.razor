@@ -120,7 +120,7 @@
         => LocationUI.ShowLocationMapModal(Entry.ChatId, Entry.LocationId);
 
     private Task OnStopSharing()
-        => LocationUI.StopSharing(Entry.ChatId, CancellationToken.None);
+        => LocationUI.StopSharing(Entry.ChatId, Entry.LocationId, CancellationToken.None);
 
     private Task OnShareBack()
         => LocationUI.ShowShareLocationModal(Entry.ChatId);

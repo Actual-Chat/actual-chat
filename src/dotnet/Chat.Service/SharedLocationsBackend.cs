@@ -58,15 +58,30 @@ public class SharedLocationsBackend(IServiceProvider services)
         var chatId = authorId.ChatId;
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
-            // The created id is minted below, so read the affected share back from the operation.
-            if (context.Operation.Items.KeylessGet<SharedLocation>() is { } invLocation) {
+            // The created id is minted below and a takeover freezes rows this command never named,
+            // so the affected set is read back from the operation.
+            var invLocations = context.Operation.Items.KeylessGet<ApiArray<SharedLocation>>();
+            foreach (var invLocation in invLocations)
                 _ = Get(invLocation.Id, default);
-                _ = ListLive(invLocation.ChatId, default);
-            }
+            if (!invLocations.IsEmpty)
+                _ = ListLive(chatId, default);
             return null!;
         }
 
         change.RequireValid();
+        var isCreate = change.IsCreate(out var createDiff);
+        if (!isCreate && id is { } existingId) {
+            // A device that lost its share to a takeover keeps pushing into the frozen row - once per
+            // UpdatePeriod, indefinitely - so it's turned away before the operation and the author lock
+            // are paid for. Read through Get so those pushes hit the cache rather than the DB.
+            var existing = await Get(existingId, cancellationToken).ConfigureAwait(false);
+            if (existing is not null) {
+                RequireOwnedBy(existing, authorId);
+                if (!existing.IsLive(Clocks.SystemClock.Now))
+                    return existing;
+            }
+        }
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -81,20 +96,19 @@ public class SharedLocationsBackend(IServiceProvider services)
                 .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
                 .ConfigureAwait(false);
         var sharedLocation = dbSharedLocation?.ToModel();
-        if (sharedLocation is not null
-            && (sharedLocation.AuthorId != authorId || sharedLocation.ChatId != chatId))
-            throw StandardError.Unauthorized("You can change only your own shared locations in this chat.");
+        if (sharedLocation is not null)
+            RequireOwnedBy(sharedLocation, authorId);
 
-        if (change.IsCreate(out var createDiff)) {
+        var affected = ApiArray<SharedLocation>.Empty;
+        if (isCreate) {
             // The front-end OnChange restricts the duration to the menu options; backend callers are trusted
             var duration = createDiff.LiveDuration ?? TimeSpan.Zero;
             if (duration > TimeSpan.Zero) {
-                // One live share per author: hand back the running one instead of starting a second.
-                var live = await GetOwnLiveShare(dbContext, authorId, now, cancellationToken).ConfigureAwait(false);
-                if (live is not null)
-                    return live;
-
-                var liveCount = await CountLiveShares(dbContext, chatId, now, cancellationToken).ConfigureAwait(false);
+                // The newest share wins: whatever this author had live in this chat is frozen right here,
+                // so the device that owned it can't keep reporting into a row it no longer owns.
+                affected = await StopOwnLiveShares(dbContext, authorId, now, cancellationToken).ConfigureAwait(false);
+                var liveCount = await CountChatLiveShares(dbContext, authorId, now, cancellationToken)
+                    .ConfigureAwait(false);
                 if (liveCount >= Constants.Location.MaxSharingAuthorsPerChat)
                     throw StandardError.Constraint(
                         $"This chat already has the maximum of {Constants.Location.MaxSharingAuthorsPerChat} "
@@ -137,13 +151,19 @@ public class SharedLocationsBackend(IServiceProvider services)
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(sharedLocation);
+        context.Operation.Items.KeylessSet(affected.With(sharedLocation));
         return sharedLocation;
     }
 
     // Private methods
 
-    private static async Task<SharedLocation?> GetOwnLiveShare(
+    private static void RequireOwnedBy(SharedLocation sharedLocation, AuthorId authorId)
+    {
+        if (sharedLocation.AuthorId != authorId)
+            throw StandardError.Unauthorized("You can change only your own shared locations in this chat.");
+    }
+
+    private async Task<ApiArray<SharedLocation>> StopOwnLiveShares(
         ChatDbContext dbContext,
         AuthorId authorId,
         Moment now,
@@ -154,20 +174,37 @@ public class SharedLocationsBackend(IServiceProvider services)
             .Where(x => x.AuthorId == authorId.Value && x.StoppedAt == null)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        // StoppedAt == null still includes expired shares, so the IsLive check stays.
-        return dbShares.Select(x => x.ToModel()).FirstOrDefault(x => x.IsLive(now));
+        var stopped = ApiArray<SharedLocation>.Empty;
+        foreach (var dbShare in dbShares) {
+            // StoppedAt == null still includes expired shares, which are frozen already.
+            var share = dbShare.ToModel();
+            if (!share.IsLive(now))
+                continue;
+
+            share = share with {
+                StoppedAt = now,
+                Version = VersionGenerator.NextVersion(share.Version),
+            };
+            dbShare.UpdateFrom(share);
+            stopped = stopped.With(share);
+        }
+        return stopped;
     }
 
-    private static Task<int> CountLiveShares(
+    private static Task<int> CountChatLiveShares(
         ChatDbContext dbContext,
-        ChatId chatId,
+        AuthorId authorId,
         Moment now,
         CancellationToken cancellationToken)
     {
+        var chatId = authorId.ChatId;
         var nowUtc = now.ToDateTime();
         return dbContext.SharedLocations
             .CountAsync(
-                x => x.ChatId == chatId.Value && x.StoppedAt == null && x.CreatedAt + x.Duration > nowUtc,
+                x => x.ChatId == chatId.Value
+                    && x.AuthorId != authorId.Value
+                    && x.StoppedAt == null
+                    && x.CreatedAt + x.Duration > nowUtc,
                 cancellationToken);
     }
 }
