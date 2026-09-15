@@ -62,12 +62,19 @@ public sealed class OAuthModule(IServiceProvider moduleServices)
                 if (HostInfo.IsDevelopmentInstance || HostInfo.IsTested)
                     aspNetCore.DisableTransportSecurityRequirement();
                 o.AddEventHandler(ServerMetadataExtender.Descriptor);
+                o.AddEventHandler(CimdClientResolver.Descriptor);
             })
             .AddValidation(o => {
                 o.UseLocalServer();
                 o.UseAspNetCore();
             });
         services.AddSingleton(c => new ServerMetadataExtender(c));
+        services.AddScoped(c => new CimdClientResolver(c));
+        services.AddHttpClient(CimdClientResolver.HttpClientName, c => {
+                c.Timeout = TimeSpan.FromSeconds(5);
+                c.MaxResponseContentBufferSize = CimdClientResolver.MaxDocumentLength;
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
         services.AddOptions<OpenIddictServerOptions>().Configure<UrlMapper>((o, urlMapper)
             => o.Resources.Add(new Uri(urlMapper.ToAbsolute(OAuthConstants.McpResourcePath))));
     }
