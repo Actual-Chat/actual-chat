@@ -16,7 +16,7 @@ public class StableHashTest(ITestOutputHelper @out) : TestBase(@out)
         resolver.Get<string>().Should().NotBeNull();
         resolver.Get<Symbol>().Should().NotBeNull();
         resolver.Get<Session>().Should().NotBeNull();
-        resolver.Get<UserId>().Should().NotBeNull(); // IStringIdentifier
+        resolver.Get<UserId>().Should().NotBeNull(); // IObjectId
         resolver.Get<FlowId>().Should().NotBeNull(); // ISymbolIdentifier
         resolver.Get<FlowId?>().Should().NotBeNull(); // ISymbolIdentifier?
 

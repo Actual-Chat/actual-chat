@@ -1,6 +1,6 @@
 namespace ActualChat.Core.UnitTests.Identifiers;
 
-public class TranscriberIdTest(ITestOutputHelper @out) : StringIdentifierTestBase<TranscriberId>(@out)
+public class TranscriberIdTest(ITestOutputHelper @out) : ObjectIdTestBase<TranscriberId>(@out)
 {
     public override string[] ValidIdentifiers => [
         "soniox-stream",

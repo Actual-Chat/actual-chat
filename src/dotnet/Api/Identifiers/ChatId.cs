@@ -16,7 +16,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<ChatId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<ChatId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasShardKey<string>, IMentionTarget
+public partial class ChatId : ObjectId, IObjectId<ChatId>, IHasShardKey<string>, IMentionTarget
 {
     public const char ThreadIdSeparator = '-';
 

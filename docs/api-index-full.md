@@ -153,8 +153,10 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `IServerSettings` - Server settings interface.
 - `IThreadSafeLruCache<TKey, TValue>` - Thread-safe LRU cache interface.
 - `LongAsStringKeyComparer` - Comparer for long keys as strings.
-- `StringIdentifier<T>` (abstract record struct) - Base for string-based identifiers.
-- `SymbolIdentifier<T>` (abstract record struct) - Base for Symbol-based identifiers.
+- `ObjectId` (abstract class) - Base for object identifiers with cached typed IDs and partition keys.
+- `TypedObjectId` (sealed class) - Type-prefixed reference retaining its original object ID.
+- `PartitionKey` (readonly record struct) - 24-bit stable routing key with hexadecimal slice support.
+- `ISymbolIdentifier<T>` / `SymbolIdentifier` - Symbol-based identifier contract and parsing helpers.
 - `SystemRole` (enum) - System role types; `Anyone`/`Guest`/`User`/`AnonymousUser` have automatic membership, `Moderator`/`Owner` have an explicit author list.
 - `MetadataExt` (static class) - Extension methods for metadata.
 - `AudioFocusService` - Manages audio focus across the app.

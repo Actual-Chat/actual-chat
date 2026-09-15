@@ -16,7 +16,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<ChatEntryId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<ChatEntryId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class ChatEntryId : StringIdentifier, IStringIdentifier<ChatEntryId>
+public sealed partial class ChatEntryId : ObjectId, IObjectId<ChatEntryId>
 {
     public const string Delimiter = ":";
     private static ILogger? _log;

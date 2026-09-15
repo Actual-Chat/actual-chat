@@ -16,7 +16,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<UploadId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<UploadId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class UploadId : StringIdentifier, IStringIdentifier<UploadId>
+public sealed partial class UploadId : ObjectId, IObjectId<UploadId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<UploadId>();

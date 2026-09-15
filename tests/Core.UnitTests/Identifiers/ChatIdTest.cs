@@ -1,6 +1,6 @@
 namespace ActualChat.Core.UnitTests.Identifiers;
 
-public class ChatIdTest(ITestOutputHelper @out) : StringIdentifierTestBase<ChatId>(@out)
+public class ChatIdTest(ITestOutputHelper @out) : ObjectIdTestBase<ChatId>(@out)
 {
     public override string[] ValidIdentifiers => new[] {
             "1234abcd",

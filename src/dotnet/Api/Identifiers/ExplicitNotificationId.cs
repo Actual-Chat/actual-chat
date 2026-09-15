@@ -15,7 +15,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<ExplicitNotificationId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<ExplicitNotificationId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class ExplicitNotificationId : StringIdentifier, IStringIdentifier<ExplicitNotificationId>
+public sealed partial class ExplicitNotificationId : ObjectId, IObjectId<ExplicitNotificationId>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<ExplicitNotificationId>();

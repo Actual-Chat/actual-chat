@@ -19,7 +19,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<TranscriberId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<TranscriberId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class TranscriberId : StringIdentifier, IStringIdentifier<TranscriberId>
+public sealed partial class TranscriberId : ObjectId, IObjectId<TranscriberId>
 {
     public static readonly TranscriberId None = new("", TranscriberSource.Builtin, "");
     public static readonly TranscriberId GoogleStream = NewBuiltin("google-stream");

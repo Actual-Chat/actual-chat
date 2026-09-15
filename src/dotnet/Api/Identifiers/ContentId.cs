@@ -15,7 +15,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<ContentId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<ContentId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public partial class ContentId : StringIdentifier, IStringIdentifier<ContentId>
+public partial class ContentId : ObjectId, IObjectId<ContentId>
 {
     public const string Delimiter = ":";
     private static ILogger? _log;
@@ -23,16 +23,16 @@ public partial class ContentId : StringIdentifier, IStringIdentifier<ContentId>
     private static readonly ILruCache<string, ContentId> Cache = CreateCache<ContentId>(256);
 
     [IgnoreDataMember] public ContentKind Kind { get; }
-    [IgnoreDataMember] public StringIdentifier TargetId { get; }
+    [IgnoreDataMember] public ObjectId TargetId { get; }
 
-    private ContentId(string value, ContentKind kind, StringIdentifier targetId)
+    private ContentId(string value, ContentKind kind, ObjectId targetId)
      : base(value)
     {
         Kind = kind;
         TargetId = targetId;
     }
 
-    public static ContentId New(StringIdentifier id)
+    public static ContentId New(ObjectId id)
     {
         var kind = GetKind(id);
         if (kind is null)
@@ -40,10 +40,10 @@ public partial class ContentId : StringIdentifier, IStringIdentifier<ContentId>
         return new ContentId(Format(kind.Value, id), kind.Value, id);
     }
 
-    public static bool IsValid(StringIdentifier id)
+    public static bool IsValid(ObjectId id)
         => GetKind(id) is not null;
 
-    private static ContentKind? GetKind(StringIdentifier id)
+    private static ContentKind? GetKind(ObjectId id)
     {
         if (id is ChatId)
             return ContentKind.Chat;
@@ -77,7 +77,7 @@ public partial class ContentId : StringIdentifier, IStringIdentifier<ContentId>
 
     // Format & Parse
 
-    public static string Format(ContentKind kind, StringIdentifier targetId)
+    public static string Format(ContentKind kind, ObjectId targetId)
         => $"{(int)kind}{Delimiter}{targetId.Value}";
 
     public static ContentId Parse(string? s)

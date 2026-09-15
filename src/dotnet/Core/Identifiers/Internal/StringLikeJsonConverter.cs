@@ -1,7 +1,7 @@
 namespace ActualChat.Internal;
 
 // Generic System.Text.Json converter for any IStringLike<T>: writes the .Value string,
-// parses via T.Parse. Replaces the StringIdentifier/SymbolIdentifier pair of converters.
+// parses via T.Parse. Replaces the ObjectId/SymbolIdentifier pair of converters.
 public class StringLikeJsonConverter<T> : JsonConverter<T>
     where T : IStringLike<T>
 {

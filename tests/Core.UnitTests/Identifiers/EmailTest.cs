@@ -1,6 +1,6 @@
 namespace ActualChat.Core.UnitTests.Identifiers;
 
-public class EmailTest(ITestOutputHelper @out) : StringIdentifierTestBase<Email>(@out)
+public class EmailTest(ITestOutputHelper @out) : ObjectIdTestBase<Email>(@out)
 {
     public override string[] ValidIdentifiers { get; } = [
         "test@example.com",

@@ -15,7 +15,7 @@ internal sealed class IndexedDocuments(
         IReadOnlyCollection<TKey>? deletedDocumentIds,
         CancellationToken cancellationToken = default)
         where TDocument : class, IHasId<TKey>, IHasRoutingKey<TKey>
-        where TKey : StringIdentifier, IStringIdentifier<TKey>
+        where TKey : ObjectId, IObjectId<TKey>
     {
         var updatedCount = updatedDocuments?.Count ?? 0;
         var deletedCount = deletedDocumentIds?.Count ?? 0;
@@ -43,7 +43,7 @@ internal sealed class IndexedDocuments(
         CancellationToken cancellationToken = default)
         where TPartialDocument : class, IHasId<TKey>
         where TDocument : class, TPartialDocument
-        where TKey : StringIdentifier
+        where TKey : ObjectId
     {
         var updatedCount = updatedDocuments?.Count ?? 0;
         if (updatedCount == 0)
@@ -65,7 +65,7 @@ internal sealed class IndexedDocuments(
         IReadOnlyCollection<TKey>? deletedDocumentIds,
         CancellationToken cancellationToken = default)
         where TDocument : class, IHasId<TKey>, IHasRoutingKey<TKey>
-        where TKey : StringIdentifier, IStringIdentifier<TKey>
+        where TKey : ObjectId, IObjectId<TKey>
         => Save(indexNameProvider(openSearchNames), updatedDocuments, deletedDocumentIds, cancellationToken);
 
     public  Task UpsertPartially<TDocument, TPartialDocument, TKey>(
@@ -74,6 +74,6 @@ internal sealed class IndexedDocuments(
         CancellationToken cancellationToken = default)
         where TDocument : class, TPartialDocument
         where TPartialDocument : class, IHasId<TKey>
-        where TKey : StringIdentifier
+        where TKey : ObjectId
         => UpsertPartially<TDocument, TPartialDocument, TKey>(indexNameProvider(openSearchNames), updatedDocuments, cancellationToken);
 }

@@ -83,6 +83,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.Internal.FocusTrap>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.InviteList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.IsolateRerender>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.Kitty>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.Label>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.LeftLine>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.LeftPanelSkeleton>();
@@ -201,6 +202,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.FeaturesTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.InfoToastTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.LandingBackgroundTestPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.ModalsTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.QrCodeTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.ReconnectOverlayTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.RenderSlotTestPage.RenderSlotTestPage>();
@@ -615,6 +617,7 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.Internal.FocusTrap), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.InviteList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.IsolateRerender), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.Kitty), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.Label), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.LeftLine), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.LeftPanelSkeleton), AotTypeKind.Component),
@@ -733,6 +736,7 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Pages.FeaturesTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.InfoToastTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.LandingBackgroundTestPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Pages.ModalsTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.QrCodeTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.ReconnectOverlayTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.RenderSlotTestPage.RenderSlotTestPage), AotTypeKind.Component),

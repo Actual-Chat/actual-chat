@@ -1,11 +1,13 @@
 namespace ActualChat;
 
+#pragma warning disable CA1000, CA2252
+
 /// <summary>
 /// Base interface for Symbol-based identifiers.
 /// </summary>
-#pragma warning disable CA1000, CA2252
 public interface ISymbolIdentifier : IStringLike, IHasId<Symbol>, ICanBeNone
 {
+    PartitionKey PartitionKey => PartitionKey.New(Value);
 }
 
 /// <summary>

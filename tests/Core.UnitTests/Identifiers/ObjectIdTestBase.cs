@@ -1,7 +1,7 @@
 namespace ActualChat.Core.UnitTests.Identifiers;
 
-public abstract class StringIdentifierTestBase<TIdentifier>(ITestOutputHelper @out) : TestBase(@out)
-    where TIdentifier : StringIdentifier, IStringIdentifier<TIdentifier>
+public abstract class ObjectIdTestBase<TIdentifier>(ITestOutputHelper @out) : TestBase(@out)
+    where TIdentifier : ObjectId, IObjectId<TIdentifier>
 {
     public abstract string[] ValidIdentifiers { get; }
     public abstract string[] InvalidIdentifiers { get; }
@@ -85,6 +85,22 @@ public abstract class StringIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
             bag.KeylessGet<string>().Should().Be("s");
             bag.Get<TIdentifier>("x").Should().Be(id);
             bag.KeylessGet<TIdentifier>().Should().Be(id);
+        }
+    }
+
+    [Fact]
+    public void TypedIdsShouldRoundTripAndKeepTheirPartition()
+    {
+        // arrange
+        var identifiers = ValidIdentifiers.Select(TIdentifier.Parse).ToArray();
+
+        // act, assert
+        foreach (var id in identifiers) {
+            var typedId = id.TypedId;
+            typedId.ObjectId.Should().BeSameAs(id);
+            TypedObjectId.Parse(typedId.Value).ObjectId.Should().Be(id);
+            typedId.PartitionKey.Should().Be(id.PartitionKey);
+            typedId.AssertPassesThroughSerializers(Out);
         }
     }
 }

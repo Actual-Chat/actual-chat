@@ -7,7 +7,7 @@ namespace ActualChat.Flows;
 public abstract class IndexingMasterFlow<TIndexingFlow, TItem, TId> : BatchedIndexingFlow<TItem, TId>
     where TIndexingFlow : Flow
     where TItem : class, IHasId<TId>, IHasVersion<long>
-    where TId : StringIdentifier
+    where TId : ObjectId
 {
     protected override async Task ProcessBatch(IReadOnlyList<TItem> batch, CancellationToken cancellationToken)
     {

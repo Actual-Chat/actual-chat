@@ -6,17 +6,18 @@ namespace ActualChat;
 /// Base interface for string-based identifiers with hash code caching.
 /// </summary>
 // ReSharper disable once PossibleInterfaceMemberAmbiguity
-public interface IStringIdentifier : IStringLike, IHasId<string>, IHasId<Symbol>
+public interface IObjectId : IStringLike, IHasId<string>, IHasId<Symbol>
 {
     int HashCode { get; }
+    PartitionKey PartitionKey { get; }
 }
 
 /// <summary>
 /// Generic interface for string-based identifiers with parsing support.
 /// </summary>
-public interface IStringIdentifier<TSelf> : IStringIdentifier, IStringLike<TSelf>,
+public interface IObjectId<TSelf> : IObjectId, IStringLike<TSelf>,
     IEquatable<TSelf>, IComparable<TSelf>, IEqualityOperators<TSelf, TSelf, bool>
-    where TSelf : StringIdentifier, IStringIdentifier<TSelf>
+    where TSelf : class, IObjectId<TSelf>
 {
     // Parse(string?) is inherited from IStringLike<TSelf>; existing Parse(string s) implementations satisfy it at IL level.
     static abstract TSelf? ParseNullable(string? s); // Must rely on Parse(s)
@@ -30,7 +31,7 @@ public interface IStringIdentifier<TSelf> : IStringIdentifier, IStringLike<TSelf
 /// <summary>
 /// Base class for string-based identifiers with cached hash code.
 /// </summary>
-public abstract class StringIdentifier(string value) : IStringIdentifier
+public abstract class ObjectId(string value) : IObjectId
 {
     [DataMember(Order = 0)]
     public readonly string Value = value;
@@ -38,11 +39,15 @@ public abstract class StringIdentifier(string value) : IStringIdentifier
     public readonly int HashCode = value.GetHashCode();
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember]
     public Symbol Id => new(Value, HashCode);
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public PartitionKey PartitionKey { get; } = PartitionKey.New(value);
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public TypedObjectId TypedId => field ??= new TypedObjectId(this);
 
-    // IStringIdentifier members
+    // IObjectId members
     string IHasId<string>.Id => Value;
     string IStringLike.Value => Value;
-    int IStringIdentifier.HashCode => HashCode;
+    int IObjectId.HashCode => HashCode;
 
     public override string ToString()
         => Value;
