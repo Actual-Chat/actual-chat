@@ -87,6 +87,7 @@ public partial class AudioStreamingBackend
             // Measured when the dub is requested: a listener who joins mid-utterance finds seconds of
             // audio already transcribed, and must not hear that backlog read out before the live text
             var isLate = Fold(sourceMemoizer).TimeRange.End > Constants.Audio.DubBacklogThreshold.TotalSeconds;
+            var startedAt = CpuTimestamp.Now;
             var stabilizer = new DubStabilizer();
             var decision = DubDecision.Undecided;
             var translated = Transcript.Empty;
@@ -106,6 +107,10 @@ public partial class AudioStreamingBackend
                         return;
                     }
                     if (decision == DubDecision.Dub) {
+                        Log.LogInformation(
+                            "RunDub: #{StreamId} - dubbing, decided {Elapsed:F1}s after the request "
+                            + "at {SourceEnd:F1}s of speech",
+                            dubStreamId, startedAt.Elapsed.TotalSeconds, Fold(sourceMemoizer).TimeRange.End);
                         if (isLate)
                             stabilizer.Skip(translated);
                         synthesizeTask = StartSynthesis(dubStreamId, text.Reader, decidedSource, cancellationToken);
@@ -116,6 +121,9 @@ public partial class AudioStreamingBackend
 
                 if (stabilizer.Next(translated) is { } chunk) {
                     spokenChunkCount++;
+                    Log.LogInformation(
+                        "RunDub: #{StreamId} - speaking chunk #{Index} ({Length} chars) at {SourceEnd:F1}s of speech",
+                        dubStreamId, spokenChunkCount, chunk.Length, Fold(sourceMemoizer).TimeRange.End);
                     await text.Writer.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
                 }
             }
