@@ -722,8 +722,11 @@ public class NotificationsBackend(IServiceProvider services)
         if (creator is null)
             return;
 
+        // Anchored at the parent-chat entry the thread hangs off: that's what the recipient sees the
+        // thread on, so seeing it is what clears the ping (ThreadNotification is OnView).
+        var startEntryId = ChatEntryId.New(parentChatId, threadChatId.ThreadId);
         await EnqueueMessageRelatedNotifications(
-                parentChatId, null, creator, new ThreadCreatedNotificationContent(chat.Title),
+                parentChatId, startEntryId, creator, new ThreadCreatedNotificationContent(chat.Title),
                 NotificationKind.Thread, similarityKey, "", userIds, cancellationToken)
             .ConfigureAwait(false);
     }
@@ -1406,7 +1409,7 @@ public class NotificationsBackend(IServiceProvider services)
             ChatNotification notification = kind switch {
                 NotificationKind.Message => MessageNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
                 NotificationKind.Reply => ReplyNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
-                NotificationKind.Thread => ThreadNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
+                NotificationKind.Thread => ThreadNotification.New(otherUserId, fullEntryId, changeAuthor.Id),
                 NotificationKind.Invitation => InvitationNotification.New(otherUserId, chatId, changeAuthor.Id),
                 NotificationKind.Mention => MentionNotification.New(otherUserId, fullEntryId, changeAuthor.Id),
                 NotificationKind.Reaction => ReactionNotification.New(otherUserId, fullEntryId, changeAuthor.Id) with {

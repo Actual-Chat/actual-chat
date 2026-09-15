@@ -19,9 +19,10 @@ public static class NotificationExt
         // What Notification.DismissMode says, for a caller holding only a kind - a push payload on
         // a client. NotificationDismissModeTest asserts the two agree for every kind.
         => kind switch {
-            NotificationKind.Message or NotificationKind.Reply or NotificationKind.Thread
-                or NotificationKind.Mention or NotificationKind.Conversation => NotificationDismissMode.OnRead,
-            NotificationKind.Reaction or NotificationKind.Attention => NotificationDismissMode.OnView,
+            NotificationKind.Message or NotificationKind.Reply or NotificationKind.Mention
+                or NotificationKind.Conversation => NotificationDismissMode.OnRead,
+            NotificationKind.Reaction or NotificationKind.Attention or NotificationKind.Thread
+                => NotificationDismissMode.OnView,
             _ => NotificationDismissMode.Explicit,
         };
 
