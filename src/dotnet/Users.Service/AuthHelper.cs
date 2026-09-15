@@ -104,7 +104,7 @@ public sealed class AuthHelper
         ClaimsPrincipal principal,
         CancellationToken cancellationToken)
     {
-        if (session.Kind is SessionKind.ApiKey)
+        if (session.Kind is SessionKind.ApiKey or SessionKind.OAuth)
             throw StandardError.Unavailable("Cannot use API key session here.");
 
         var authSchema = principal.Identity?.AuthenticationType ?? "";
@@ -133,7 +133,7 @@ public sealed class AuthHelper
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        if (session.Kind is SessionKind.ApiKey)
+        if (session.Kind is SessionKind.ApiKey or SessionKind.OAuth)
             throw StandardError.Unavailable("Cannot use API key session here.");
 
         var httpUser = httpContext.User;

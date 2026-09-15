@@ -22,12 +22,14 @@ public static partial class CoreConstants
     public static class Session
     {
         public const char ApiKeyPrefix = '!';
+        public const char OAuthPrefix = '@';
         public const int IdPrefixLength = 8;
         public const int MinIdLength = 20;
         public const int MaxIdLength = 64;
         public static readonly TimeSpan SessionExpirationTime = TimeSpan.FromDays(90);
         public static readonly TimeSpan ApiKeyExpirationTime = TimeSpan.FromDays(365);
         public static readonly TimeSpan MaxApiKeyExpirationTime = TimeSpan.FromDays(365 * 3);
+        public static readonly TimeSpan OAuthExpirationTime = TimeSpan.FromDays(90);
     }
 
     public static class AsyncMemoizer
