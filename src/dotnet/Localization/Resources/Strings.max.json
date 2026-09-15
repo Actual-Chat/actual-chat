@@ -59,6 +59,7 @@
   "Settings_Permissions": "Berechtigungen",
   "Settings_Sessions": "Phiên làm việc",
   "Settings_ApiKeys": "API Anahtarları",
+  "Settings_ApiAndApps": "API ve uygulamalar",
   "Settings_Documents": "ドキュメント",
   "Settings_DeveloperTools": "Инструменти за разработчици",
   "Settings_LogViewer": "Visionneuse de journaux",
@@ -162,6 +163,15 @@
   "ApiKeys_DeactivateAll": "Tüm API anahtarlarını devre dışı bırakın",
   "ApiKeys_DeactivateAllConfirm": "Spowoduje to dezaktywację wszystkich Twoich kluczy API. Kontynuować?",
   "ApiKeys_DeactivateAllTitle": "Tüm API anahtarları devre dışı bırakılsın mı?",
+
+  // Connected apps (Settings → API & apps)
+  "ConnectedApps_Title": "Подключённые приложения",
+  "ConnectedApps_Empty": "Здесь появятся приложения, которым вы предоставите доступ через OAuth (Claude, Cursor и др.).",
+  "ConnectedApps_Connected_Format": "कनेक्ट किया गया: {0}",
+  "ConnectedApps_LastUsed_Format": "Последнее использование: {0}",
+  "ConnectedApps_Revoke": "Thu hồi quyền truy cập",
+  "ConnectedApps_RevokeConfirm_Format": "{0} によるあなたのアカウントへのアクセスを取り消しますか？このアプリは再度許可を求める必要があります。",
+  "ConnectedApps_RevokeTitle": "Thu hồi quyền truy cập",
 
   // Settings > Developer tools. These toggles are localized, but the diagnostics panels they
   // open are deliberately left in English - see docs/i18n.md.

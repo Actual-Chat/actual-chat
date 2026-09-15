@@ -59,6 +59,7 @@
   "Settings_Permissions": "Permissions",
   "Settings_Sessions": "Sessions",
   "Settings_ApiKeys": "API Keys",
+  "Settings_ApiAndApps": "API & apps",
   "Settings_Documents": "Documents",
   "Settings_DeveloperTools": "Developer tools",
   "Settings_LogViewer": "Log Viewer",
@@ -162,6 +163,15 @@
   "ApiKeys_DeactivateAll": "Deactivate all API keys",
   "ApiKeys_DeactivateAllConfirm": "This will deactivate all your API keys. Continue?",
   "ApiKeys_DeactivateAllTitle": "Deactivate all API keys?",
+
+  // Connected apps (Settings → API & apps)
+  "ConnectedApps_Title": "Connected apps",
+  "ConnectedApps_Empty": "Apps you authorize via OAuth (Claude, Cursor, …) appear here.",
+  "ConnectedApps_Connected_Format": "Connected {0}",
+  "ConnectedApps_LastUsed_Format": "Last used {0}",
+  "ConnectedApps_Revoke": "Revoke access",
+  "ConnectedApps_RevokeConfirm_Format": "Revoke {0}'s access to your account? The app will have to ask again.",
+  "ConnectedApps_RevokeTitle": "Revoke access",
 
   // Settings > Developer tools. These toggles are localized, but the diagnostics panels they
   // open are deliberately left in English - see docs/i18n.md.
