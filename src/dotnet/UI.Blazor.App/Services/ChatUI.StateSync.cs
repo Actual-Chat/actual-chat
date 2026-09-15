@@ -25,7 +25,7 @@ public partial class ChatUI
         // All logic here can be delayed to let other code run
         await Task.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
         var baseChains = new[] {
-            AsyncChain.From(InvalidateSelectedChatDependencies),
+            AsyncChain.From(ProcessSelectedChatChanges),
             AsyncChain.From(NavigateToFixedSelectedChat),
             AsyncChain.From(ResetHighlightedEntry),
             AsyncChain.From(PushKeepAwakeState),
@@ -43,8 +43,13 @@ public partial class ChatUI
             .ConfigureAwait(false);
     }
 
-    private async Task InvalidateSelectedChatDependencies(CancellationToken cancellationToken)
+    private async Task ProcessSelectedChatChanges(CancellationToken cancellationToken)
     {
+        // The stored chat lands through the state's read, not SelectChatInternal, so it's invalidated
+        // here once; the switches themselves are invalidated there, as this loop coalesces them.
+        await WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+        InvalidateIsSelected(null, _selectedChatId.ValueOrDefault);
+
         var oldChatId = (ChatId?)null;
         var changes = SelectedChatId.Computed.ChangesUntyped(cancellationToken);
         await foreach (var c in changes.ConfigureAwait(false)) {
@@ -53,16 +58,7 @@ public partial class ChatUI
             if (newChatId == oldChatId)
                 continue;
 
-            DebugLog?.LogDebug("InvalidateSelectedChatDependencies: *");
-            using (Invalidation.Begin()) {
-                if (oldChatId is not null) {
-                    _ = IsSelected(oldChatId);
-                    _ = IsSelected(oldChatId.GetThreadOutermostParentOrSelf());
-                }
-                _ = IsSelected(newChatId);
-                _ = IsSelected(newChatId.GetThreadOutermostParentOrSelf());
-            }
-
+            DebugLog?.LogDebug("ProcessSelectedChatChanges: *");
             SelectionUI.Clear();
             _ = ChatEditorUI.RestoreRelatedEntry(newChatId).ConfigureAwait(false);
             _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);

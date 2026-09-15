@@ -723,7 +723,8 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     {
         var selectedChatId = _selectedChatId;
         lock (Lock) {
-            if (selectedChatId.Value == chatId)
+            var oldChatId = selectedChatId.Value;
+            if (oldChatId == chatId)
                 return false;
 
             if (chatId is not null) {
@@ -735,8 +736,25 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                     _pendingSelectedChatIds.Add(chatId);
             }
             ClearAutoExpansionState();
-            selectedChatId.Value = chatId; // "Resumes" InvalidateSelectedChatDependencies, which does the rest
+            selectedChatId.Value = chatId; // "Resumes" ProcessSelectedChatChanges, which does the rest
+            // Inline rather than in that chain: it starts late and skips values set within one tick,
+            // and a chat skipped that way kept its cached IsSelected and stayed highlighted.
+            InvalidateIsSelected(oldChatId, chatId);
             return true;
+        }
+    }
+
+    private void InvalidateIsSelected(ChatId? oldChatId, ChatId? newChatId)
+    {
+        using (Invalidation.Begin()) {
+            if (oldChatId is not null) {
+                _ = IsSelected(oldChatId);
+                _ = IsSelected(oldChatId.GetThreadOutermostParentOrSelf());
+            }
+            if (newChatId is not null) {
+                _ = IsSelected(newChatId);
+                _ = IsSelected(newChatId.GetThreadOutermostParentOrSelf());
+            }
         }
     }
 
