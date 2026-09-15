@@ -131,10 +131,19 @@ public static class ChatsBackendExt
         return tiles.SelectMany(t => t.Entries).ToList();
     }
 
+    public static Task<IReadOnlyList<ChatEntry>> ListEntries(
+        this IChatsBackend chatsBackend,
+        ChatId chatId,
+        Moment minBeginsAt,
+        CancellationToken cancellationToken = default)
+        => ListEntries(chatsBackend, chatId, minBeginsAt, int.MaxValue, cancellationToken);
+
+    // maxCount keeps the newest entries: the walk is newest-first, so it stops once it has that many
     public static async Task<IReadOnlyList<ChatEntry>> ListEntries(
         this IChatsBackend chatsBackend,
         ChatId chatId,
         Moment minBeginsAt,
+        int maxCount,
         CancellationToken cancellationToken = default)
     {
         // We don't want callers of this method to be dependent on whatever it fetches
@@ -165,12 +174,14 @@ public static class ChatsBackendExt
                     result.Add(entry);
             }
 
-            if (tile.BeginsAtRange.End <= cutoff)
+            if (tile.BeginsAtRange.End <= cutoff || result.Count >= maxCount)
                 break;
         }
 
         // We visit tiles high→low and walk each tile's entries high→low, so `result` is
         // already in strictly descending LocalId order — just reverse instead of sorting.
+        if (result.Count > maxCount)
+            result.RemoveRange(maxCount, result.Count - maxCount);
         result.Reverse();
         return result.ToArray();
     }

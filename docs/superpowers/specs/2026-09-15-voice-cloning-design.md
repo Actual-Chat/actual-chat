@@ -33,7 +33,7 @@ as `voice: <uuid>` and speaks every language. Quota: 20 voices per organization.
   `LastUsedAt`, `CreatedAt`, `ModifiedAt`, `Version`. Exposed as `UserVoice` (array-form record)
   through `IUserVoicesBackend` (Users.Contracts): `Get(UserId)`, `OnChange` command.
 - Blob: the reference clip lives in `BlobScope.AudioRecord` as `voice-sample/<userId>/<hash>.wav`
-  (WAV 48 kHz mono PCM, ≤ 60 s) — rebuilt when the hash changes, deleted with the record.
+  (WAV 16 kHz mono PCM - `Constants.Audio.RecordingSampleRate` - ≤ 60 s) — rebuilt when the hash changes, deleted with the record.
 
 ## Sample
 

@@ -27,7 +27,6 @@ public sealed class VoiceSampleBuilder(IServiceProvider services)
     private const int BytesPerSecond = SampleRate * Constants.Audio.Channels * sizeof(short);
     private static readonly int MaxPcmLength = PcmLengthOf(Constants.Audio.VoiceSampleMaxDuration);
     private static readonly int MinPcmLength = PcmLengthOf(Constants.Audio.VoiceSampleMinDuration);
-    private static readonly TileLayer<long> EntryIdTiles = Constants.Chat.EntryIdTiles;
 
     private IServiceProvider Services { get; } = services;
     private IChatUsagesBackend ChatUsagesBackend => field ??= Services.GetRequiredService<IChatUsagesBackend>();
@@ -69,7 +68,7 @@ public sealed class VoiceSampleBuilder(IServiceProvider services)
                 && !audio.BlobId.IsNullOrEmpty()
                 && AudioDurationOf(x) >= Constants.Audio.VoiceSampleMinEntryDuration)
             .OrderByDescending(AudioDurationOf)
-            .ThenBy(x => x.Id.Value);
+            .ThenBy(x => x.Id.Value, StringComparer.Ordinal);
         var selected = new List<ChatEntry>();
         var total = TimeSpan.Zero;
         foreach (var entry in candidates) {
@@ -154,10 +153,10 @@ public sealed class VoiceSampleBuilder(IServiceProvider services)
             if (author == null)
                 continue;
 
-            var recentEntries = ReadRecentEntries(chatId, windowStart, cancellationToken);
-            await foreach (var entry in recentEntries.ConfigureAwait(false))
-                if (entry.AuthorId == author.Id && entry.HasAudio)
-                    entries.Add(entry);
+            var recentEntries = await ChatsBackend
+                .ListEntries(chatId, windowStart, Constants.Audio.VoiceSampleMaxEntriesPerChat, cancellationToken)
+                .ConfigureAwait(false);
+            entries.AddRange(recentEntries.Where(x => x.AuthorId == author.Id && x.HasAudio));
         }
         return entries;
     }
@@ -172,39 +171,10 @@ public sealed class VoiceSampleBuilder(IServiceProvider services)
         var groupChatIds = await ChatUsagesBackend
             .GetRecencyList(userId, ChatUsageListKind.ViewedGroupChats, cancellationToken)
             .ConfigureAwait(false);
-        return peerChatIds.Take(Constants.Audio.VoiceSampleMaxChats)
-            .Concat(groupChatIds.Take(Constants.Audio.VoiceSampleMaxChats))
+        return peerChatIds.Concat(groupChatIds)
             .Distinct()
+            .Take(Constants.Audio.VoiceSampleMaxChats)
             .ToArray();
-    }
-
-    private async IAsyncEnumerable<ChatEntry> ReadRecentEntries(
-        ChatId chatId,
-        Moment windowStart,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        var lidRange = await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
-        if (lidRange.IsEmptyOrNegative)
-            yield break;
-
-        var entryCount = 0;
-        for (var idTile = EntryIdTiles.GetTile(lidRange.End - 1); idTile.End > lidRange.Start; idTile = idTile.Prev()) {
-            var tile = await ChatsBackend
-                .GetTileNonComputed(chatId, idTile.Range, false, cancellationToken)
-                .ConfigureAwait(false);
-            if (tile.IsEmpty)
-                continue;
-            // Lids grow with time, so once a whole tile predates the window, everything below does too
-            if (tile.BeginsAtRange.End <= windowStart)
-                yield break;
-
-            foreach (var entry in tile.Entries)
-                yield return entry;
-
-            entryCount += tile.Entries.Length;
-            if (entryCount >= Constants.Audio.VoiceSampleMaxEntriesPerChat)
-                yield break;
-        }
     }
 
     private async Task<VoiceSample?> GetStored(UserId userId, HashString hash, CancellationToken cancellationToken)
