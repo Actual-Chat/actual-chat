@@ -13,6 +13,25 @@ candidate tasks. A plan is removed from here once its work ships.
 
 Recently added, larger efforts — in progress or next up.
 
+### AI image suggestions
+
+[AI image suggestions](./ai-image-suggestions.md) — a chat created without a
+picture keeps its generated letter avatar forever, because setting a real one is
+a deliberate act nobody performs. Offer one instead: an owner opening such a chat
+gets a banner with an image already generated for that chat, plus Upload and
+Regenerate (which shows the image description and lets it be edited). Three
+layers, each reusable on its own: a provider-agnostic `IImageGenerator` in
+`Core.Server/AI` backed by Cloudflare Workers AI and FLUX.2 klein-4B at ~$0.0003
+an image; a suggestion store in `Media.Service` keyed by an opaque string,
+holding one pending image and a `DismissedUntil` moment per key; and a
+deliberately non-generic client API so every target's permission check is
+unavoidable. Place pictures, backgrounds and custom emoji reuse the bottom two.
+Two things it defers: the internal chat description the prompt should really be
+written from, which may be an aggregation of existing conversation summaries
+rather than a new summarizer, and Cloudflare's undocumented, non-disableable
+NSFW prompt filter, which false-positives on innocuous text and wants
+prototyping before the feature is committed to.
+
 ### App updates — the "Update Voxt" banner
 
 [App updates](./app-updates.md) — turn the "Install Voxt" banner into an
