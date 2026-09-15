@@ -92,7 +92,6 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         return translated.NullIfEmpty();
     }
 
-    // Not a [ComputeMethod]!
     // [ComputeMethod]
     public virtual async Task<ApiArray<DubVoice>> ListDubVoices(CancellationToken cancellationToken)
     {
@@ -115,7 +114,10 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (SpeechSynthesizer is not { } synthesizer)
             return null;
 
-        var voices = await ListDubVoices(cancellationToken).ConfigureAwait(false);
+        // Isolated: a dependency on the hourly catalog would cut this day-long cache to an hour
+        ApiArray<DubVoice> voices;
+        using (Computed.BeginIsolation())
+            voices = await ListDubVoices(cancellationToken).ConfigureAwait(false);
         if (!voices.Any(x => x.Id == voiceId))
             return null;
 
@@ -125,6 +127,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             .ConfigureAwait(false);
     }
 
+    // Not a [ComputeMethod]!
     public virtual async Task<ApiArray<Translation>> ListHanging(ThisNodeRef nodeRef, int limit, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);

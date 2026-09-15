@@ -467,9 +467,13 @@ every listener, so there is exactly one voice per speaker to pick.
 - **Resolving it on the server.** `SpeakerVoices`
   (`src/dotnet/Streaming.Service/Services/SpeakerVoices.cs`): author →
   `IAuthorsBackend.Get(RequestedAuthorKind.Full)` → `UserId` →
-  `IServerKvasBackend.ForUser(userId).UserLanguageSettings()`; `null`
-  (default voice) for anonymous authors, guests and speakers who never
-  picked one. Live dubs read it once per dub start, so a change applies
+  `IServerKvasBackend.ForUser(userId).UserLanguageSettings()`, then
+  checked against `ITranslationsBackend.ListDubVoices` — the setting is
+  client-written and an id Soniox rejects would otherwise arm the live
+  path's synthesizer-down cooldown for every dub on the node; `null`
+  (default voice) for anonymous authors, guests, speakers who never
+  picked one, an id the catalog doesn't list, and any lookup failure
+  (logged at Information). Live dubs read it once per dub start, so a change applies
   from the speaker's next utterance; replay dubs read it per
   `GetOrCreate` and include it in the stored hash, so a change
   regenerates the dub (the superseded media is deleted by
@@ -497,8 +501,10 @@ every listener, so there is exactly one voice per speaker to pick.
   hear you.") in that language and voice, via Soniox's REST TTS with
   `audio_format: "mp3"` (`SonioxTtsClient.GenerateMp3`). The backend
   compute method `GetDubVoicePreview` caches a preview for a day per
-  (voice, language) and returns `null` → 404 for an id that is not in
-  the catalog; a bad language is 400, no session is 400. The modal's
+  (voice, language) — the catalog check runs under
+  `Computed.BeginIsolation()` so the hourly catalog invalidation doesn't
+  cut that to an hour — and returns `null` → 404 for an id that is not
+  in the catalog; a bad language is 400, no session is 400. The modal's
   `DubVoicePreview` (`dub-voice-modal.ts`) plays it through one
   `HTMLAudioElement` in the user's primary language, appending the
   session token so a MAUI WebView can fetch it, stopping any previous
@@ -903,8 +909,8 @@ reuse as `Stored`, the first request gets `Live` while the gated
 synthesis is still held and a request after the store gets `Stored` with
 the stamped media, the listener's own language is skipped, a
 re-translation regenerates, the speaker's voice is used and a voice
-change regenerates, an in-flight entry is forgotten after
-completion), `tests/Chat.IntegrationTests/DubVoicesTest.cs`
+change regenerates, an id the catalog doesn't list falls back to the
+default voice, an in-flight entry is forgotten after completion), `tests/Chat.IntegrationTests/DubVoicesTest.cs`
 (`ITranslations.ListDubVoices` returns the fake catalog; the preview
 endpoint serves `audio/mpeg` for a known voice, 404 for an unknown one,
 400 for a bad language or no session),

@@ -227,21 +227,15 @@ public partial class AudioStreamingBackend
         return previousDubTask;
     }
 
-    private async Task<string?> GetSpeakerVoice(StreamId dubStreamId, CancellationToken cancellationToken)
+    private Task<string?> GetSpeakerVoice(StreamId dubStreamId, CancellationToken cancellationToken)
     {
         // Read once per dub: a voice change applies from the speaker's next utterance
         var baseStreamId = dubStreamId.BaseStreamId;
         if (!_authorIdByStream.TryGetValue(baseStreamId, out var authorId)
             || !_chatIdByStream.TryGetValue(baseStreamId, out var chatId))
-            return null;
+            return Task.FromResult<string?>(null);
 
-        try {
-            return await SpeakerVoices.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-            Log.LogWarning(e, "Dub #{StreamId}: failed to read the speaker's voice, using the default", dubStreamId);
-            return null;
-        }
+        return SpeakerVoices.Get(chatId, authorId, cancellationToken);
     }
 
     private bool IsCoolingDown(StreamId dubStreamId)

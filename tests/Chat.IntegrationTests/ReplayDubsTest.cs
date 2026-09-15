@@ -172,6 +172,31 @@ public class ReplayDubsTest(
     }
 
     [Fact(Timeout = 90_000)]
+    public async Task AVoiceTheCatalogDoesNotListFallsBackToTheDefault()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var dubs = services.GetRequiredService<ReplayDubs>();
+        var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        var entry = await Tester.RecordVoiceEntry(chatId, Languages.Russian, frameCount: 400);
+        var ct = CancellationToken.None;
+        var id = TranslationId.New(entry.Id, Languages.English);
+        await services.UserSettingsUI(Tester.Session).UserLanguageSettings()
+            .Update(x => x with { DubVoice = "Nobody" }, ct);
+
+        // act
+        await dubs.GetOrCreate(entry, Languages.English, ct);
+        var translation = await services.WhenReplayDubStored(id, ct);
+
+        // assert
+        var streamId = RecordingSpeechSynthesizer.OneShotStreamId(Languages.English, translation.Content);
+        recorder.GetVoiceId(streamId).Should().BeNull("a stored id the provider doesn't know must never reach it");
+        translation.HasValidDub().Should().BeTrue("the dub is stored under the default voice");
+    }
+
+    [Fact(Timeout = 90_000)]
     public async Task InFlightEntryIsForgottenAfterCompletion()
     {
         await Tester.SignInAsUniqueAlice();

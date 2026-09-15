@@ -2,7 +2,6 @@
 @using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, DubVoiceModal.ViewModel>
 @implements IModalView<DubVoiceModal.Model>
-@implements IAsyncDisposable
 @{
     var m = State.Value;
     var voices = m.Voices
@@ -97,10 +96,11 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    public async ValueTask DisposeAsync() {
+    public override async ValueTask DisposeAsync() {
         if (_playingVoiceId != null)
-            await JS.InvokeVoidAsync(JSStop).SilentAwait(false);
+            await JS.InvokeVoidAsync(JSStop).SilentAwait(true);
         _blazorRef?.Dispose();
+        await base.DisposeAsync().ConfigureAwait(true);
     }
 
     protected override ComputedState<ViewModel>.Options GetStateOptions()

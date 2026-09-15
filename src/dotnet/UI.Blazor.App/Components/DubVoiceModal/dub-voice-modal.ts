@@ -38,6 +38,8 @@ export class DubVoicePreview {
 
         this.audio = null;
         this.blazorRef = null;
+        audio.onended = null;
+        audio.onerror = null;
         try {
             audio.pause();
             audio.src = '';
