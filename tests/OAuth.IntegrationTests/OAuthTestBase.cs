@@ -6,6 +6,7 @@ using System.Text;
 using ActualChat.Testing.Host;
 using Microsoft.AspNetCore.WebUtilities;
 using ModelContextProtocol.Client;
+using ModelContextProtocol.Protocol;
 
 namespace ActualChat.OAuth.IntegrationTests;
 
@@ -100,9 +101,12 @@ public abstract class OAuthTestBase<TFixture>(TFixture fixture, ITestOutputHelpe
     }
 
     protected Task<HttpResponseMessage> SendAsUser(HttpMethod method, string url)
+        => SendAs(Tester.Session, method, url);
+
+    protected Task<HttpResponseMessage> SendAs(Session session, HttpMethod method, string url)
     {
         var request = new HttpRequestMessage(method, url);
-        request.Headers.Add("Cookie", $"{Constants.Session.CookieName}={Tester.Session.Id}");
+        request.Headers.Add("Cookie", $"{Constants.Session.CookieName}={session.Id}");
         return Http.SendAsync(request);
     }
 
@@ -174,6 +178,24 @@ public abstract class OAuthTestBase<TFixture>(TFixture fixture, ITestOutputHelpe
         if (authorization is not null)
             request.Headers.TryAddWithoutValidation("Authorization", authorization);
         return await http.SendAsync(request).ConfigureAwait(false);
+    }
+
+    protected static T DeserializeResult<T>(CallToolResult result)
+    {
+        if (result.IsError == true)
+            throw new InvalidOperationException(
+                "Tool returned an error: "
+                + string.Join("\n", result.Content.OfType<TextContentBlock>().Select(b => b.Text)));
+
+        var json = result.StructuredContent
+            ?? throw new InvalidOperationException("Tool result has no structured content.");
+        var options = SystemJsonSerializer.Default.Options;
+        if (json.ValueKind == JsonValueKind.Object && json.TryGetProperty("result", out var inner))
+            return inner.Deserialize<T>(options)
+                ?? throw new InvalidOperationException("Tool result could not be deserialized.");
+
+        return json.Deserialize<T>(options)
+            ?? throw new InvalidOperationException("Tool result could not be deserialized.");
     }
 
     // Nested types
