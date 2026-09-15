@@ -13,8 +13,10 @@ public static class UITextLocalizerExt
                 return await localizer.Get(message, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (e is not OperationCanceledException) {
-                localizer.Services.LogFor(localizer.GetType().NonProxyType())
-                    .LogError(e, "Failed to localize: {Message}", message);
+                // Offline, Get fails fast with a TimeoutException, and Fusion retries it every second
+                if (e is not TimeoutException)
+                    localizer.Services.LogFor(localizer.GetType().NonProxyType())
+                        .LogError(e, "Failed to localize: {Message}", message);
                 return message;
             }
         }
