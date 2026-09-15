@@ -34,6 +34,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public ILiveVideoStreams LiveVideoStreams => field ??= Services.GetRequiredService<ILiveVideoStreams>();
     public ILiveSessions LiveSessions => field ??= Services.GetRequiredService<ILiveSessions>();
     public IChatTypingActivities ChatTypingActivities => field ??= Services.GetRequiredService<IChatTypingActivities>();
+    public IOwnVoices OwnVoices => field ??= Services.GetRequiredService<IOwnVoices>();
     public IMedia Media => field ??= Services.GetRequiredService<IMedia>();
     public IGifs Gifs => field ??= Services.GetRequiredService<IGifs>();
     public VideoTranscoder VideoTranscoder => field ??= Services.GetRequiredService<VideoTranscoder>();

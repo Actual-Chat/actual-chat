@@ -9,13 +9,6 @@ namespace ActualChat.Streaming.Services;
 
 public sealed record VoiceSample(HashString Hash, string BlobId, TimeSpan Duration);
 
-public enum VoiceSampleFailure
-{
-    None = 0,
-    NotEnoughRecordings,
-    SampleMissing,
-}
-
 /// <summary>
 /// Builds the reference clip a voice clone is made from: the explicit sample when the user recorded
 /// one, otherwise the longest of their recent recordings joined into one WAV. The clip is keyed by
@@ -47,6 +40,26 @@ public sealed class VoiceSampleBuilder(IServiceProvider services)
             return await BuildExplicit(userId, mediaId, cancellationToken).ConfigureAwait(false);
 
         return await BuildAuto(userId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<(TimeSpan? Available, VoiceSampleFailure Failure)> Inspect(
+        UserId userId,
+        UserLanguageSettings settings,
+        CancellationToken cancellationToken)
+    {
+        // What Build would do without doing it: no blob is read, decoded or written. Available is
+        // the auto selection's total, null with an explicit sample.
+        if (settings.OwnVoiceSampleMediaId is { } mediaId) {
+            var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
+            var isMissing = media == null || media.BlobId.IsNullOrEmpty();
+            return (null, isMissing ? VoiceSampleFailure.SampleMissing : VoiceSampleFailure.None);
+        }
+
+        var (_, available) = await SelectOwnEntries(userId, cancellationToken).ConfigureAwait(false);
+        var failure = available < Constants.Audio.VoiceSampleMinDuration
+            ? VoiceSampleFailure.NotEnoughRecordings
+            : VoiceSampleFailure.None;
+        return (available, failure);
     }
 
     public static string BlobIdOf(UserId userId, HashString hash)
@@ -119,9 +132,8 @@ public sealed class VoiceSampleBuilder(IServiceProvider services)
 
     private async Task<(VoiceSample?, VoiceSampleFailure)> BuildAuto(UserId userId, CancellationToken cancellationToken)
     {
-        var entries = await ListOwnEntries(userId, cancellationToken).ConfigureAwait(false);
-        var selected = SelectEntries(entries, Clocks.SystemClock.Now);
-        if (TotalDuration(selected) < Constants.Audio.VoiceSampleMinDuration)
+        var (selected, available) = await SelectOwnEntries(userId, cancellationToken).ConfigureAwait(false);
+        if (available < Constants.Audio.VoiceSampleMinDuration)
             return (null, VoiceSampleFailure.NotEnoughRecordings);
 
         var hash = HashOf(selected.Select(x => x.Id));
@@ -140,6 +152,15 @@ public sealed class VoiceSampleBuilder(IServiceProvider services)
 
         var sample = await Store(userId, hash, pcm, cancellationToken).ConfigureAwait(false);
         return (sample, VoiceSampleFailure.None);
+    }
+
+    private async Task<(IReadOnlyList<ChatEntry> Selected, TimeSpan Available)> SelectOwnEntries(
+        UserId userId,
+        CancellationToken cancellationToken)
+    {
+        var entries = await ListOwnEntries(userId, cancellationToken).ConfigureAwait(false);
+        var selected = SelectEntries(entries, Clocks.SystemClock.Now);
+        return (selected, TotalDuration(selected));
     }
 
     private async Task<List<ChatEntry>> ListOwnEntries(UserId userId, CancellationToken cancellationToken)
