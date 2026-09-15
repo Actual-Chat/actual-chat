@@ -240,15 +240,17 @@
     private Task OnToggleOwnVoice()
         => LanguageUI.UpdateSettings(x => x with { IsOwnVoiceEnabled = !x.IsOwnVoiceEnabled });
 
-    private Task OnRemoveSampleClick()
-        => LanguageUI.UpdateSettings(x => x with { OwnVoiceSampleMediaId = null });
+    private Task OnRemoveSampleClick() {
+        LanguageUI.DismissOwnVoiceSamplePrompt();
+        return LanguageUI.UpdateSettings(x => x with { OwnVoiceSampleMediaId = null });
+    }
 
     private void OnRecordSampleClick() {
         // The sample is an ordinary voice message in Notes, prompted by a banner there
         if (ChatListUI.NotesChat.Value is not { } notes)
             return;
 
-        Hub.BannerUI.Show(new OwnVoiceSampleBanner.Model(notes.Id, Clocks.ServerClock.Now));
+        LanguageUI.ShowOwnVoiceSamplePrompt(notes.Id);
         Modal?.Close();
         _ = History.NavigateTo(Links.Chat(notes.Id));
     }

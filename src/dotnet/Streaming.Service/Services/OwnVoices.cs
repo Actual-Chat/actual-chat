@@ -25,6 +25,9 @@ public class OwnVoices(IServiceProvider services) : IOwnVoices
             return OwnVoiceStatus.Off with { HasExplicitSample = hasExplicitSample };
 
         var voice = await UserVoicesBackend.Get(account.Id, cancellationToken).ConfigureAwait(false);
+        // The status follows the settings, the UserVoice record and the recency lists; the tile reads
+        // behind Inspect are isolated by design (ChatsBackendExt.ListEntries), so a new recording in
+        // an already-listed chat shows up only after the cache expires - no live countdown
         var (available, failure) = await SampleBuilder
             .Inspect(account.Id, settings, cancellationToken)
             .ConfigureAwait(false);

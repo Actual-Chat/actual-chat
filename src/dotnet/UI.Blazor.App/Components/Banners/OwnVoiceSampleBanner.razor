@@ -29,7 +29,6 @@
 @code {
     private LanguageUI LanguageUI => Hub.LanguageUI;
 
-    [CascadingParameter] public BannerDef BannerDef { get; set; } = null!;
     [CascadingParameter] public ChatContext? ChatContext { get; set; }
     [Parameter] public Model BannerModel { get; set; } = null!;
 
@@ -46,10 +45,15 @@
         if (ChatContext?.Chat.Id != chatId)
             return ComputedModel.Hidden;
 
+        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (ownAuthor == null)
+            return ComputedModel.Hidden;
+
         // Entries come newest first; anything older than the card can't be the reading of it
         var recording = await Hub.Chats.ReadReverse(Session, chatId, cancellationToken)
             .TakeWhile(x => x.BeginsAt >= BannerModel.ShownAt)
-            .FirstOrDefaultAsync(x => x is { IsRemoved: false, Audio: { IsStreaming: false, MediaId: not null } },
+            .FirstOrDefaultAsync(x => x.AuthorId == ownAuthor.Id
+                && x is { IsRemoved: false, Audio: { IsStreaming: false, MediaId: not null } },
                 cancellationToken)
             .ConfigureAwait(false);
         return new ComputedModel(true, recording);
@@ -59,7 +63,7 @@
         var mediaId = recording.Audio!.MediaId!;
         await LanguageUI.UpdateSettings(x => x with { OwnVoiceSampleMediaId = mediaId }).ConfigureAwait(true);
         ToastUI.Show(L.Transcription_OwnVoiceSampleSaved, "icon-checkmark-circle", ToastDismissDelay.Short);
-        BannerDef.Dismiss();
+        LanguageUI.DismissOwnVoiceSamplePrompt();
     }
 
     // Nested types
