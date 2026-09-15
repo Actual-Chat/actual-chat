@@ -1537,12 +1537,13 @@
 
   "Share_FailedToShareCount": "Impossibile condividere {0} file",
 
-  "FileSaver_SavedToGallery": "{0} file salvato nella galleria|{0} file salvati nella galleria",
-  "FileSaver_SavedToMusic": "{0} file salvato in Music|{0} file salvati in Music",
-  "FileSaver_SavedToDownloads": "{0} file salvato in Downloads|{0} file salvati in Downloads",
+  "FileSaver_DownloadingToGallery": "Download di {0} file nella galleria…|Download di {0} file nella galleria…",
+  "FileSaver_DownloadingToMusic": "Download di {0} file in Music…|Download di {0} file in Music…",
+  "FileSaver_DownloadingToDownloads": "Download di {0} file in Downloads…|Download di {0} file in Downloads…",
+  "FileSaver_Downloading": "Download di {0} file…|Download di {0} file…",
+  "FileSaver_AlreadyDownloading": "Il file è già in download|I file sono già in download",
   "FileSaver_SavedToLibrary": "{0} file salvato nella libreria|{0} file salvati nella libreria",
   "FileSaver_Saved": "{0} file salvato|{0} file salvati",
-  "FileSaver_PartiallySaved": "{0} di {1} file salvati",
   "FileSaver_SaveFailed": "Impossibile salvare il file|Impossibile salvare i file",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their

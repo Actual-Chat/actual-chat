@@ -1537,12 +1537,13 @@
 
   "Share_FailedToShareCount": "Không thể chia sẻ {0} tệp",
 
-  "FileSaver_SavedToGallery": "Đã lưu {0} tệp vào thư viện ảnh",
-  "FileSaver_SavedToMusic": "Đã lưu {0} tệp vào Music",
-  "FileSaver_SavedToDownloads": "Đã lưu {0} tệp vào Downloads",
+  "FileSaver_DownloadingToGallery": "Đang tải xuống {0} tệp vào thư viện ảnh…",
+  "FileSaver_DownloadingToMusic": "Đang tải xuống {0} tệp vào Music…",
+  "FileSaver_DownloadingToDownloads": "Đang tải xuống {0} tệp vào Downloads…",
+  "FileSaver_Downloading": "Đang tải xuống {0} tệp…",
+  "FileSaver_AlreadyDownloading": "Tệp đang được tải xuống",
   "FileSaver_SavedToLibrary": "Đã lưu {0} tệp vào thư viện",
   "FileSaver_Saved": "Đã lưu {0} tệp",
-  "FileSaver_PartiallySaved": "Đã lưu {0} trong {1} tệp",
   "FileSaver_SaveFailed": "Không thể lưu tệp",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their

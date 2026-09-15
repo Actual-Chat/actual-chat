@@ -1537,12 +1537,13 @@
 
   "Share_FailedToShareCount": "Nie udało się udostępnić {0} pliku|Nie udało się udostępnić {0} plików|Nie udało się udostępnić {0} plików",
 
-  "FileSaver_SavedToGallery": "Zapisano {0} plik w galerii|Zapisano {0} pliki w galerii|Zapisano {0} plików w galerii",
-  "FileSaver_SavedToMusic": "Zapisano {0} plik w Music|Zapisano {0} pliki w Music|Zapisano {0} plików w Music",
-  "FileSaver_SavedToDownloads": "Zapisano {0} plik w Downloads|Zapisano {0} pliki w Downloads|Zapisano {0} plików w Downloads",
+  "FileSaver_DownloadingToGallery": "Pobieranie {0} pliku do galerii…|Pobieranie {0} plików do galerii…|Pobieranie {0} plików do galerii…",
+  "FileSaver_DownloadingToMusic": "Pobieranie {0} pliku do Music…|Pobieranie {0} plików do Music…|Pobieranie {0} plików do Music…",
+  "FileSaver_DownloadingToDownloads": "Pobieranie {0} pliku do Downloads…|Pobieranie {0} plików do Downloads…|Pobieranie {0} plików do Downloads…",
+  "FileSaver_Downloading": "Pobieranie {0} pliku…|Pobieranie {0} plików…|Pobieranie {0} plików…",
+  "FileSaver_AlreadyDownloading": "Plik jest już pobierany|Pliki są już pobierane",
   "FileSaver_SavedToLibrary": "Zapisano {0} plik w bibliotece|Zapisano {0} pliki w bibliotece|Zapisano {0} plików w bibliotece",
   "FileSaver_Saved": "Zapisano {0} plik|Zapisano {0} pliki|Zapisano {0} plików",
-  "FileSaver_PartiallySaved": "Zapisano {0} z {1} plików",
   "FileSaver_SaveFailed": "Nie udało się zapisać pliku|Nie udało się zapisać plików",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their

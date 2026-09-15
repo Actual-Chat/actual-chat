@@ -1537,12 +1537,13 @@
 
   "Share_FailedToShareCount": "파일 {0}개를 공유하지 못했습니다",
 
-  "FileSaver_SavedToGallery": "{0}개 파일을 갤러리에 저장했습니다",
-  "FileSaver_SavedToMusic": "{0}개 파일을 Music에 저장했습니다",
-  "FileSaver_SavedToDownloads": "{0}개 파일을 Downloads에 저장했습니다",
+  "FileSaver_DownloadingToGallery": "{0}개 파일을 갤러리에 다운로드하는 중…",
+  "FileSaver_DownloadingToMusic": "{0}개 파일을 Music에 다운로드하는 중…",
+  "FileSaver_DownloadingToDownloads": "{0}개 파일을 Downloads에 다운로드하는 중…",
+  "FileSaver_Downloading": "{0}개 파일을 다운로드하는 중…",
+  "FileSaver_AlreadyDownloading": "파일을 이미 다운로드하는 중입니다",
   "FileSaver_SavedToLibrary": "{0}개 파일을 라이브러리에 저장했습니다",
   "FileSaver_Saved": "{0}개 파일을 저장했습니다",
-  "FileSaver_PartiallySaved": "{1}개 중 {0}개를 저장했습니다",
   "FileSaver_SaveFailed": "파일을 저장하지 못했습니다",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their

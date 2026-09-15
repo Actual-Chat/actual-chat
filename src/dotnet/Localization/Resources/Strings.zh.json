@@ -1537,12 +1537,13 @@
 
   "Share_FailedToShareCount": "有 {0} 个文件分享失败",
 
-  "FileSaver_SavedToGallery": "已将 {0} 个文件保存到相册",
-  "FileSaver_SavedToMusic": "已将 {0} 个文件保存到 Music",
-  "FileSaver_SavedToDownloads": "已将 {0} 个文件保存到 Downloads",
+  "FileSaver_DownloadingToGallery": "正在将 {0} 个文件下载到相册…",
+  "FileSaver_DownloadingToMusic": "正在将 {0} 个文件下载到 Music…",
+  "FileSaver_DownloadingToDownloads": "正在将 {0} 个文件下载到 Downloads…",
+  "FileSaver_Downloading": "正在下载 {0} 个文件…",
+  "FileSaver_AlreadyDownloading": "文件已在下载中",
   "FileSaver_SavedToLibrary": "已将 {0} 个文件保存到图库",
   "FileSaver_Saved": "已保存 {0} 个文件",
-  "FileSaver_PartiallySaved": "已保存 {1} 个文件中的 {0} 个",
   "FileSaver_SaveFailed": "无法保存文件",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
