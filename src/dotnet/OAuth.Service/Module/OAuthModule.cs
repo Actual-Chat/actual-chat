@@ -4,6 +4,8 @@ using ActualChat.OAuth.Db;
 using ActualChat.OAuth.Handlers;
 using ActualChat.Redis.Module;
 using Microsoft.EntityFrameworkCore;
+using OpenIddict.EntityFrameworkCore.Models;
+using OpenIddict.Server;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace ActualChat.OAuth.Module;
@@ -31,7 +33,11 @@ public sealed class OAuthModule(IServiceProvider moduleServices)
         services.AddScoped(c => c.GetRequiredService<IDbContextFactory<OAuthDbContext>>().CreateDbContext());
 
         services.AddOpenIddict()
-            .AddCore(o => o.UseEntityFrameworkCore().UseDbContext<OAuthDbContext>())
+            .AddCore(o => {
+                o.UseEntityFrameworkCore().UseDbContext<OAuthDbContext>();
+                o.ReplaceApplicationManager<
+                    OpenIddictEntityFrameworkCoreApplication, LoopbackAwareApplicationManager>();
+            })
             .AddServer(o => {
                 o.SetAuthorizationEndpointUris($"{route}/{OAuthConstants.AuthorizeRoute}")
                     .SetTokenEndpointUris($"{route}/{OAuthConstants.TokenRoute}")
@@ -44,6 +50,10 @@ public sealed class OAuthModule(IServiceProvider moduleServices)
                     .SetRefreshTokenLifetime(Settings.RefreshTokenLifetime);
                 o.DisableAccessTokenEncryption();
                 o.UseReferenceRefreshTokens();
+                o.SetRefreshTokenReuseLeeway(TimeSpan.Zero);
+                // The MCP endpoint is the only resource (registered below, once UrlMapper is resolvable),
+                // and every client gets it, so per-client rsrc: permissions would only duplicate that
+                o.IgnoreResourcePermissions();
                 AddCredentials(o);
                 var aspNetCore = o.UseAspNetCore()
                     .EnableAuthorizationEndpointPassthrough()
@@ -58,6 +68,8 @@ public sealed class OAuthModule(IServiceProvider moduleServices)
                 o.UseAspNetCore();
             });
         services.AddSingleton(c => new ServerMetadataExtender(c));
+        services.AddOptions<OpenIddictServerOptions>().Configure<UrlMapper>((o, urlMapper)
+            => o.Resources.Add(new Uri(urlMapper.ToAbsolute(OAuthConstants.McpResourcePath))));
     }
 
     // Private methods
