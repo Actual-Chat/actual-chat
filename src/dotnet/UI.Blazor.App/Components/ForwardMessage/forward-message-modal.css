@@ -11,8 +11,8 @@
 .forward-message-modal .modal-header {
     @apply mx-4 p-0;
 }
-.forward-message-modal .dialog-buttons {
-    @apply pt-4;
+.forward-message-modal .dialog-footer {
+    @apply pt-2;
 }
 .forward-message-modal .form-block {
     @apply p-0;

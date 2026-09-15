@@ -188,20 +188,23 @@ public static partial class MauiProgram
             MauiSettings.BaseUrl);
     }
 
-    private static Task<BlazorWebViewApp> BuildBlazorViewAppInternal(MauiApp app)
+    private static async Task<BlazorWebViewApp> BuildBlazorViewAppInternal(MauiApp app)
     {
         using var _1 = Tracer.MethodRegion();
 
         _ = MauiSession.Start();
+        var encryptionKeys = MauiEncryptionKeys.Default;
+        await encryptionKeys.WhenReady.ConfigureAwait(false);
         BlazorWebViewApp blazorViewApp;
         // ReSharper disable once ExplicitCallerInfoArgument
         using (Tracer.Region("RunBlazorViewAppBuilder")) {
             var blazorViewAppBuilder = BlazorWebViewApp.CreateBuilder();
+            blazorViewAppBuilder.Services.AddSingleton(encryptionKeys);
             ConfigureBlazorApp(blazorViewAppBuilder);
             InjectMauiAppServices(blazorViewAppBuilder, app);
             blazorViewApp = blazorViewAppBuilder.Build();
         }
-        return Task.FromResult(blazorViewApp);
+        return blazorViewApp;
     }
 
     private static void SetupBlazorViewAppPostBuildRoutine()

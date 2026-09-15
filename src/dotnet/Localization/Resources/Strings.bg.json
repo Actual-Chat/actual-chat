@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "Поздравете ",
   "ChatView_SayHiTo_Suffix": "!",
   "ChatView_ForwardedFrom": "Препратено от",
+  "ChatView_SentViaApi": "Изпратено чрез API, например от AI агент",
   "ChatView_MessageDeleted": "Съобщението беше изтрито.",
   "ChatView_SendingAttachments": "Изпращане на прикачени файлове…",
   "ChatView_ShowDetails": "Покажете подробностите",
@@ -307,7 +308,11 @@
   "ConversationMenu_CopySummaryLink": "Копирайте линка към обобщението",
 
   "ThreadMenu_GoToThread": "Към нишката",
-  "ThreadMenu_CopyThread": "Копирайте нишката",
+  "ThreadMenu_CopyThread": "Копирайте заглавието и връзката",
+  "ThreadMenu_Mute": "Заглуши",
+  "ThreadMenu_Unmute": "Премахни заглушаването",
+  "ThreadMenu_GoToStartMessage": "Към началното съобщение",
+  "ThreadMenu_CopyThreadLink": "Копирайте линка към нишката",
 
   "LocationMessage_Live": "Местоположение на живо",
   "LocationMessage_Static": "Местоположение",
@@ -659,11 +664,6 @@
   "DemandInteraction_Updating": "Обновяване...",
   "DemandInteraction_Continue_Format": "Да продължим ли — {0}?",
   "Banner_ReadyToRestart_Format": "{0} е готов за рестарт в оптимизиран режим",
-  "Banner_CallDialing": "Обаждате се…",
-  "Banner_CallAccepted": "Обаждането е прието",
-  "Banner_CallDeclined": "Обаждането е отхвърлено",
-  "Banner_CallNoAnswer": "Няма отговор",
-  "Banner_CancelCall": "Отменете обаждането",
 
   "Bubble_Counter_Format": "{0} от {1}",
   "Bubble_ChatListTabsTitle": "Чатове и контакти",
@@ -924,6 +924,9 @@
   "Common_Yesterday": "Вчера",
   "Call_IncomingFrom": "Входящо обаждане от ",
   "Call_Message": "Съобщение",
+  "Call_AppIncomingTitle": "Входящо обаждане",
+  "Call_Mute": "Без звук",
+  "Call_IsCallingYou": "ви се обажда…",
   "Call_SelectCamera": "Изберете камера",
   "Call_NoCameras": "Не са открити камери",
   "Call_CameraBlocked": "Достъпът до камерата е блокиран.",
@@ -1390,6 +1393,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} или email@gmail.com",
   "SignIn_Or": "или",
   "SignIn_InvalidPhoneOrEmail": "Невалиден телефонен номер или имейл адрес.",
+  "SignIn_SwitchToPhoneKeypad": "Превключване към телефонна клавиатура",
+  "SignIn_SwitchToEmailKeyboard": "Превключване към клавиатура за имейл",
   "SignIn_VerifyPhoneText_Format": "Потвърдете телефонния си номер, за да продължите и приятелите ви да ви откриват в {0}.",
   "SignIn_VerifyEmailText_Format": "Потвърдете имейл адреса си, за да продължите и приятелите ви да ви откриват в {0}.",
   "SignIn_PopupBlocked": "Браузърът блокира изскачащия прозорец за вход. Разрешете изскачащите прозорци за този сайт и опитайте отново.",
@@ -1480,6 +1485,8 @@
   "Video_Connecting": "Свързване...",
   "Call_Ended": "Обаждането приключи",
   "Call_CouldntStart": "Обаждането не можа да започне",
+  "Call_NoMicrophoneAccess": "Обаждането не можа да започне: няма достъп до микрофона.",
+  "Call_AlreadyInCall": "Вече сте в разговор",
   "Call_RecordingTurnedOffByHost": "Записът е изключен от водещия",
   "Call_MakeHost": "Направете водещ",
   "Call_Join": "Присъединете се",
@@ -1530,12 +1537,13 @@
 
   "Share_FailedToShareCount": "Неуспешно споделяне на {0} файл|Неуспешно споделяне на {0} файла",
 
-  "FileSaver_SavedToGallery": "{0} файл е запазен в галерията|{0} файла са запазени в галерията",
-  "FileSaver_SavedToMusic": "{0} файл е запазен в Music|{0} файла са запазени в Music",
-  "FileSaver_SavedToDownloads": "{0} файл е запазен в Downloads|{0} файла са запазени в Downloads",
+  "FileSaver_DownloadingToGallery": "Изтегля се {0} файл в галерията…|Изтеглят се {0} файла в галерията…",
+  "FileSaver_DownloadingToMusic": "Изтегля се {0} файл в Music…|Изтеглят се {0} файла в Music…",
+  "FileSaver_DownloadingToDownloads": "Изтегля се {0} файл в Downloads…|Изтеглят се {0} файла в Downloads…",
+  "FileSaver_Downloading": "Изтегля се {0} файл…|Изтеглят се {0} файла…",
+  "FileSaver_AlreadyDownloading": "Файлът вече се изтегля|Файловете вече се изтеглят",
   "FileSaver_SavedToLibrary": "{0} файл е запазен в библиотеката|{0} файла са запазени в библиотеката",
   "FileSaver_Saved": "{0} файл е запазен|{0} файла са запазени",
-  "FileSaver_PartiallySaved": "Запазени са {0} от {1} файла",
   "FileSaver_SaveFailed": "Файлът не беше запазен|Файловете не бяха запазени",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
@@ -1586,5 +1594,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Управлявайте участниците от настройките на Мястото",
   "ChatSettings_LeaveChatAndDelete": "Напуснете чата и изтрий",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Напуснете Мястото и изтрий"
+  "PlaceSettings_LeavePlaceAndDelete": "Напуснете Мястото и изтрий",
+  "Call_OutgoingTo": "Изходящо обаждане към ",
+  "Call_Outgoing": "Изходящо обаждане"
 }

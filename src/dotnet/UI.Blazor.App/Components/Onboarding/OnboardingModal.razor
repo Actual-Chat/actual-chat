@@ -43,12 +43,6 @@
             @* <CreateChatsStep/> *@ @* Disabled *@
         </Steps>
         <Header>
-            @if (stepper.CanMoveBack) {
-                <HeaderButton Click="@(_ => stepper.MoveBack())" Class="btn-header-back">
-                    <i class="icon-arrow-left text-2xl"></i>
-                </HeaderButton>
-                <div class="text-headline-7 text-02">@L.Common_Back</div>
-            }
             <div class="grow"></div>
             @if (ModalModel.CanBeClosed) {
                 <HeaderButton Click="() => Modal.Close()">
@@ -84,6 +78,11 @@
                         }
                     }
                     @if (!isTutorial) {
+                        @if (stepper.CanMoveBack) {
+                            <ButtonSquare Class="btn-back btn-sm btn-cancel" Click="@(_ => stepper.MoveBack())">
+                                <i class="icon-arrow-left text-2xl"></i>
+                            </ButtonSquare>
+                        }
                         <Button
                             Class="btn-primary"
                             Click="@(() => OnNext(stepper))">

@@ -562,6 +562,12 @@ path `/robokitty-post` uses.
 4. **`--all` mode:** call `post_message` **once per user block**, in the
    same order the inline render would use. Each block is a standalone
    message — don't bundle multiple users into one message.
+   **Post every author, including ones already posted earlier in this
+   session.** Alex deletes an earlier single-user message so that the full
+   `--all` set appears together in Standup, ordered by LOC; skipping an
+   author because "it's already there" leaves his report out of order
+   (happened 2026-09-10). If a duplicate really seems likely, read the
+   Standup tail with `list_messages` or ask — never silently skip.
 5. After each successful post, print a one-line confirmation to the
    current conversation: `Posted <user> → Standup (LID: <id>).`
 6. On any failure, surface the MCP error verbatim and **stop** — do not

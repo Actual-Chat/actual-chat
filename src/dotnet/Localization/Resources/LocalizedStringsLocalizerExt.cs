@@ -247,6 +247,7 @@ public static class LocalizedStringsLocalizerExt
         public string ChatView_SayHiTo_Prefix => l["ChatView_SayHiTo_Prefix"].Value;
         public string ChatView_SayHiTo_Suffix => l["ChatView_SayHiTo_Suffix"].Value;
         public string ChatView_ForwardedFrom => l["ChatView_ForwardedFrom"].Value;
+        public string ChatView_SentViaApi => l["ChatView_SentViaApi"].Value;
         public string ChatView_MessageDeleted => l["ChatView_MessageDeleted"].Value;
         public string ChatView_SendingAttachments => l["ChatView_SendingAttachments"].Value;
         public string ChatView_ShowDetails => l["ChatView_ShowDetails"].Value;
@@ -329,6 +330,10 @@ public static class LocalizedStringsLocalizerExt
 
         public string ThreadMenu_GoToThread => l["ThreadMenu_GoToThread"].Value;
         public string ThreadMenu_CopyThread => l["ThreadMenu_CopyThread"].Value;
+        public string ThreadMenu_Mute => l["ThreadMenu_Mute"].Value;
+        public string ThreadMenu_Unmute => l["ThreadMenu_Unmute"].Value;
+        public string ThreadMenu_GoToStartMessage => l["ThreadMenu_GoToStartMessage"].Value;
+        public string ThreadMenu_CopyThreadLink => l["ThreadMenu_CopyThreadLink"].Value;
 
         public string LocationMessage_Live => l["LocationMessage_Live"].Value;
         public string LocationMessage_Static => l["LocationMessage_Static"].Value;
@@ -682,11 +687,6 @@ public static class LocalizedStringsLocalizerExt
         public string DemandInteraction_Continue_Format(object arg0)
             => l["DemandInteraction_Continue_Format", arg0].Value;
         public string Banner_ReadyToRestart_Format(object arg0) => l["Banner_ReadyToRestart_Format", arg0].Value;
-        public string Banner_CallDialing => l["Banner_CallDialing"].Value;
-        public string Banner_CallAccepted => l["Banner_CallAccepted"].Value;
-        public string Banner_CallDeclined => l["Banner_CallDeclined"].Value;
-        public string Banner_CallNoAnswer => l["Banner_CallNoAnswer"].Value;
-        public string Banner_CancelCall => l["Banner_CancelCall"].Value;
 
         public string Bubble_Counter_Format(object arg0, object arg1) => l["Bubble_Counter_Format", arg0, arg1].Value;
         public string Bubble_ChatListTabsTitle => l["Bubble_ChatListTabsTitle"].Value;
@@ -967,7 +967,11 @@ public static class LocalizedStringsLocalizerExt
         public string Common_Today => l["Common_Today"].Value;
         public string Common_Yesterday => l["Common_Yesterday"].Value;
         public string Call_IncomingFrom => l["Call_IncomingFrom"].Value;
+        public string Call_OutgoingTo => l["Call_OutgoingTo"].Value;
         public string Call_Message => l["Call_Message"].Value;
+        public string Call_AppIncomingTitle => l["Call_AppIncomingTitle"].Value;
+        public string Call_Mute => l["Call_Mute"].Value;
+        public string Call_IsCallingYou => l["Call_IsCallingYou"].Value;
         public string Call_SelectCamera => l["Call_SelectCamera"].Value;
         public string Call_NoCameras => l["Call_NoCameras"].Value;
         public string Call_CameraBlocked => l["Call_CameraBlocked"].Value;
@@ -1445,6 +1449,8 @@ public static class LocalizedStringsLocalizerExt
             => l["SignIn_PhoneOrEmailPlaceholder_Format", arg0].Value;
         public string SignIn_Or => l["SignIn_Or"].Value;
         public string SignIn_InvalidPhoneOrEmail => l["SignIn_InvalidPhoneOrEmail"].Value;
+        public string SignIn_SwitchToPhoneKeypad => l["SignIn_SwitchToPhoneKeypad"].Value;
+        public string SignIn_SwitchToEmailKeyboard => l["SignIn_SwitchToEmailKeyboard"].Value;
         public string SignIn_VerifyPhoneText_Format(object arg0) => l["SignIn_VerifyPhoneText_Format", arg0].Value;
         public string SignIn_VerifyEmailText_Format(object arg0) => l["SignIn_VerifyEmailText_Format", arg0].Value;
         public string SignIn_PopupBlocked => l["SignIn_PopupBlocked"].Value;
@@ -1537,11 +1543,14 @@ public static class LocalizedStringsLocalizerExt
         public string Video_TurnCameraOn => l["Video_TurnCameraOn"].Value;
         public string Call_Ended => l["Call_Ended"].Value;
         public string Call_CouldntStart => l["Call_CouldntStart"].Value;
+        public string Call_NoMicrophoneAccess => l["Call_NoMicrophoneAccess"].Value;
+        public string Call_AlreadyInCall => l["Call_AlreadyInCall"].Value;
         public string Call_RecordingTurnedOffByHost => l["Call_RecordingTurnedOffByHost"].Value;
         public string Call_MakeHost => l["Call_MakeHost"].Value;
         public string Call_DetectingLanguage => l["Call_DetectingLanguage"].Value;
         public string Call_Incoming => l["Call_Incoming"].Value;
         public string Call_IncomingVideo => l["Call_IncomingVideo"].Value;
+        public string Call_Outgoing => l["Call_Outgoing"].Value;
         public string Call_InCall => l["Call_InCall"].Value;
         public string Call_JoinVideo => l["Call_JoinVideo"].Value;
         public string Call_VideoPreview => l["Call_VideoPreview"].Value;
@@ -1590,18 +1599,20 @@ public static class LocalizedStringsLocalizerExt
 
         public string Share_FailedToShareCount(long count, object arg0)
             => l.Plural("Share_FailedToShareCount", count, arg0);
-        public string FileSaver_SavedToGallery(long count, object arg0)
-            => l.Plural("FileSaver_SavedToGallery", count, arg0);
-        public string FileSaver_SavedToMusic(long count, object arg0)
-            => l.Plural("FileSaver_SavedToMusic", count, arg0);
-        public string FileSaver_SavedToDownloads(long count, object arg0)
-            => l.Plural("FileSaver_SavedToDownloads", count, arg0);
+        public string FileSaver_DownloadingToGallery(long count, object arg0)
+            => l.Plural("FileSaver_DownloadingToGallery", count, arg0);
+        public string FileSaver_DownloadingToMusic(long count, object arg0)
+            => l.Plural("FileSaver_DownloadingToMusic", count, arg0);
+        public string FileSaver_DownloadingToDownloads(long count, object arg0)
+            => l.Plural("FileSaver_DownloadingToDownloads", count, arg0);
+        public string FileSaver_Downloading(long count, object arg0)
+            => l.Plural("FileSaver_Downloading", count, arg0);
+        public string FileSaver_AlreadyDownloading(long count)
+            => l.Plural("FileSaver_AlreadyDownloading", count);
         public string FileSaver_SavedToLibrary(long count, object arg0)
             => l.Plural("FileSaver_SavedToLibrary", count, arg0);
         public string FileSaver_Saved(long count, object arg0)
             => l.Plural("FileSaver_Saved", count, arg0);
-        public string FileSaver_PartiallySaved(long count, object arg0, object arg1)
-            => l.Plural("FileSaver_PartiallySaved", count, arg0, arg1);
         public string FileSaver_SaveFailed(long count)
             => l.Plural("FileSaver_SaveFailed", count);
 

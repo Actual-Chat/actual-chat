@@ -1,4 +1,5 @@
 import { customElement, property } from 'lit/decorators.js';
+import { escapeHtml } from 'strings';
 
 import { getRandomColor, getUnit, hashCode } from './avatar-utils';
 import { GeneratedAvatar } from './generated-avatar.lit';
@@ -37,7 +38,8 @@ export class MarbleAvatar extends GeneratedAvatar {
             ? ''
             : `<feGaussianBlur stdDeviation='7' result='effect1_foregroundBlur' />`;
 
-        const displayTitle = !title ? '' : title[0].toUpperCase();
+        // The title lands in SVG markup, where a bare '&' or '<' makes the image fail to load.
+        const displayTitle = !title ? '' : escapeHtml(title[0].toUpperCase());
 
         return `<svg viewBox='0 0 ${SIZE} ${SIZE}' fill='none' xmlns='http://www.w3.org/2000/svg' width='${SIZE}' height='${SIZE}'>` +
             `<mask id='m' maskUnits='userSpaceOnUse' x='0' y='0' width='${SIZE}' height='${SIZE}'>` +

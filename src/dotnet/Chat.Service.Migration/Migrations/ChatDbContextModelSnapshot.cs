@@ -17,7 +17,7 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20260909115730_Add_Conversation_CallerId";
+    public override string LastMigrationId => "20260911163120_Add_ChatEntry_IsViaApi";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -420,6 +420,10 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                 b.Property<bool>("IsThreadStartEntry")
                     .HasColumnType("boolean")
                     .HasColumnName("is_thread_start_entry");
+
+                b.Property<bool>("IsViaApi")
+                    .HasColumnType("boolean")
+                    .HasColumnName("is_via_api");
 
                 b.Property<int>("Kind")
                     .HasColumnType("integer")

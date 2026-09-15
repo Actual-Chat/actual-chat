@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "Sapa ",
   "ChatView_SayHiTo_Suffix": "!",
   "ChatView_ForwardedFrom": "Diteruskan dari",
+  "ChatView_SentViaApi": "Dikirim melalui API, misalnya oleh agen AI",
   "ChatView_MessageDeleted": "Pesan telah dihapus.",
   "ChatView_SendingAttachments": "Mengirim lampiran…",
   "ChatView_ShowDetails": "Tampilkan detail",
@@ -307,7 +308,11 @@
   "ConversationMenu_CopySummaryLink": "Salin tautan ringkasan",
 
   "ThreadMenu_GoToThread": "Buka utas",
-  "ThreadMenu_CopyThread": "Salin utas",
+  "ThreadMenu_CopyThread": "Salin judul dan tautan",
+  "ThreadMenu_Mute": "Bisukan",
+  "ThreadMenu_Unmute": "Bunyikan",
+  "ThreadMenu_GoToStartMessage": "Buka pesan awal",
+  "ThreadMenu_CopyThreadLink": "Salin tautan utas",
 
   "LocationMessage_Live": "Lokasi langsung",
   "LocationMessage_Static": "Lokasi",
@@ -659,11 +664,6 @@
   "DemandInteraction_Updating": "Memperbarui...",
   "DemandInteraction_Continue_Format": "Lanjutkan {0}?",
   "Banner_ReadyToRestart_Format": "{0} siap dimulai ulang dalam mode teroptimasi",
-  "Banner_CallDialing": "Anda sedang memanggil…",
-  "Banner_CallAccepted": "Panggilan diterima",
-  "Banner_CallDeclined": "Panggilan ditolak",
-  "Banner_CallNoAnswer": "Tidak dijawab",
-  "Banner_CancelCall": "Batalkan panggilan",
 
   "Bubble_Counter_Format": "{0} dari {1}",
   "Bubble_ChatListTabsTitle": "Obrolan dan kontak",
@@ -924,6 +924,9 @@
   "Common_Yesterday": "Kemarin",
   "Call_IncomingFrom": "Panggilan masuk dari ",
   "Call_Message": "Pesan",
+  "Call_AppIncomingTitle": "Panggilan masuk",
+  "Call_Mute": "Bisukan",
+  "Call_IsCallingYou": "sedang menelepon Anda…",
   "Call_SelectCamera": "Pilih kamera",
   "Call_NoCameras": "Tidak ada kamera terdeteksi",
   "Call_CameraBlocked": "Akses kamera diblokir.",
@@ -1390,6 +1393,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} atau email@gmail.com",
   "SignIn_Or": "atau",
   "SignIn_InvalidPhoneOrEmail": "Nomor telepon atau alamat email tidak valid.",
+  "SignIn_SwitchToPhoneKeypad": "Beralih ke papan tombol telepon",
+  "SignIn_SwitchToEmailKeyboard": "Beralih ke keyboard email",
   "SignIn_VerifyPhoneText_Format": "Verifikasi nomor telepon Anda untuk melanjutkan dan agar teman bisa menemukan Anda di {0}.",
   "SignIn_VerifyEmailText_Format": "Verifikasi alamat email Anda untuk melanjutkan dan agar teman bisa menemukan Anda di {0}.",
   "SignIn_PopupBlocked": "Browser memblokir pop-up masuk. Izinkan pop-up untuk situs ini, lalu coba lagi.",
@@ -1480,6 +1485,8 @@
   "Video_Connecting": "Menghubungkan...",
   "Call_Ended": "Panggilan berakhir",
   "Call_CouldntStart": "Panggilan tidak bisa dimulai",
+  "Call_NoMicrophoneAccess": "Panggilan tidak bisa dimulai: tidak ada akses mikrofon.",
+  "Call_AlreadyInCall": "Anda sudah dalam panggilan",
   "Call_RecordingTurnedOffByHost": "Perekaman dimatikan oleh tuan rumah",
   "Call_MakeHost": "Jadikan tuan rumah",
   "Call_Join": "Gabung",
@@ -1530,12 +1537,13 @@
 
   "Share_FailedToShareCount": "Gagal membagikan {0} file",
 
-  "FileSaver_SavedToGallery": "{0} file disimpan ke galeri",
-  "FileSaver_SavedToMusic": "{0} file disimpan ke Music",
-  "FileSaver_SavedToDownloads": "{0} file disimpan ke Downloads",
+  "FileSaver_DownloadingToGallery": "Mengunduh {0} file ke galeri…",
+  "FileSaver_DownloadingToMusic": "Mengunduh {0} file ke Music…",
+  "FileSaver_DownloadingToDownloads": "Mengunduh {0} file ke Downloads…",
+  "FileSaver_Downloading": "Mengunduh {0} file…",
+  "FileSaver_AlreadyDownloading": "File sedang diunduh",
   "FileSaver_SavedToLibrary": "{0} file disimpan ke pustaka",
   "FileSaver_Saved": "{0} file disimpan",
-  "FileSaver_PartiallySaved": "{0} dari {1} file disimpan",
   "FileSaver_SaveFailed": "File gagal disimpan",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
@@ -1586,5 +1594,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Kelola anggota di pengaturan Tempat",
   "ChatSettings_LeaveChatAndDelete": "Keluar dari obrolan & hapus",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Keluar dari Tempat & hapus"
+  "PlaceSettings_LeavePlaceAndDelete": "Keluar dari Tempat & hapus",
+  "Call_OutgoingTo": "Panggilan keluar ke ",
+  "Call_Outgoing": "Panggilan keluar"
 }

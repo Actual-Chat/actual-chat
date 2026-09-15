@@ -17,9 +17,13 @@ newest build known to be published for that kind, or `null` for *unknown* — wh
 is also the answer on every non-production instance, for `AppKind.Unknown`, during
 the web grace period, and until the first probe lands.
 
-`AppUpdateInfo.Version` is the build version (`X.Y.Z`) a client compares itself
-against; `StoreVersion` is whatever the store displays (`2.17`, `2.17.246`,
-`2.17.246.0`) and is **never** comparable.
+`AppUpdateInfo.VersionString` is the build version a client compares itself
+against, and `Version` is that parsed. Everything crossing the API is normalized
+to `X.Y.Z` — `ParseBuildVersion` accepts `vX.Y.Z`, `X.Y.Z+sha` and `X.Y.Z.0`, and
+only one of those forms should ever reach a client. `Version` is computed on
+read rather than cached in a field, because the record is the output of a
+consolidating compute method and a record's `Equals` compares every instance
+field; `AppUpdateInfoTest` pins that.
 
 There is no region dimension. Both stores publish to every storefront at once —
 a staged rollout is a percentage of users, not a set of countries — Voxt is
@@ -36,48 +40,137 @@ which strips the nbgv `-alpha`/`+sha` tail and normalizes to three components.
 
 ## Detection
 
-One Redis record per app kind under `AppUpdates:` in `RedisDb<UsersDbContext>`,
-no TTL, no DB and no backend. Let `S` be the server's own build version
-(`ApiConstants.BuildVersion`). `AppUpdates.GetLatestUpdateInfo`:
+One Redis record per app kind — `AppUpdates.CachedUpdateInfo`, under the
+`AppUpdates` key prefix of `RedisDb<UsersDbContext>`, no TTL, no DB and no
+backend. It holds three things:
+
+- `Info` — the **announced** build. This is what clients are told, always.
+- `PendingInfo` — a build detected in the store that is still waiting out
+  `AnnounceDelay`. `ProbeCached` promotes it into `Info` when it comes due.
+- `NextCheckAt` — when the store is due to be asked again. Shared, so every node
+  re-reads at the same moment rather than drifting on its own timer.
+
+Splitting announced from pending this way keeps the read path free of the
+announce window: `GetLatestUpdateInfo` returns `Info` and nothing else. (It used
+to be the other way round — `Info` was the newest detection and `PreviousInfo`
+was what clients got while it waited — which cost a branch in the read path and a
+preservation dance on every write.)
+
+A deserialization failure reads as "nothing cached" rather than faulting the
+computed, so a record written in an older shape is simply overwritten by the next
+check; that's why the `[Key]` ordinals could be renumbered when the shape changed.
+
+Let `S` be the server's own build version (`ApiConstants.BuildVersion`).
+`AppUpdates.GetLatestUpdateInfo`:
 
 1. An `Overrides` entry for the kind wins — that's the QA hook (below).
 2. Feature disabled, or the kind has no store id → `null`.
 3. `Wasm` → see [Web](#web).
-4. Record's `Info` was detected less than `AnnounceDelay` ago → it's pending:
-   arm a re-read for the moment it comes due and return `PreviousInfo`, the
-   release `Info` replaced. Clients behind that one keep their banner; nobody
-   hears about the new one yet. Nothing needs probing while a detection is
-   pending, so this returns here.
-5. Record's `Info` is on `S`'s **train** (`Info.Version.Train >= S.Train`) → the
-   release is settled: return it and arm nothing. A published release is assumed
-   to stay published, so this value is cached until the process is replaced by
-   the next deploy.
-6. Otherwise the store hasn't reached this train: ask the prober to work on the
-   kind, arm a re-read in `RecheckPeriod`, and return `Info`. A client older
-   than that release still gets a correct banner while the newer build is in
-   review.
+4. `Info.Version >= S` → the release is settled: return it and arm nothing. The
+   store already serves everything this server has, so it cannot publish
+   anything this server doesn't know about until the next deploy — which
+   replaces this process, and with it this cached value.
+5. The kind isn't `Android`, Play has a store id, and Play's own record is behind
+   `S` → return `Info` and arm nothing, but **read Play's record on the way**,
+   which makes this computed a dependent of it. Play publishes before the other
+   stores, so until it has the build there is nothing worth asking Apple or
+   Microsoft; the next change to Play's record wakes this one up.
+6. Otherwise the store is behind this server: start a background check and
+   return `Info`. A client older than that release still gets a correct banner
+   while a newer build is in review.
 
-The comparison in step 5 is on `X.Y`, not `X.Y.Z`, because the stores publish
-**one build per train** while the server keeps deploying on top of it. `S` is
-`2.19.200` and the App Store serves `2.19.147`: that train is as published as it
-is ever going to get, so there is nothing left to probe for. Comparing full build
-versions would instead leave the kind unsettled for the rest of the train and
-probe every 30 minutes to learn nothing.
+Step 4 compares **full build versions**, not trains. Comparing `X.Y` instead —
+"the stores publish one build per train" — is what broke Windows on 2026-09-12:
+`2.20.109` and `2.20.130` were both live in the Microsoft Store, because a
+hotfix ships on the train that is already out there. The record latched onto
+`2.20.109`, detected the day before, and clients on `2.20.109` compared
+themselves against themselves, so no banner appeared.
 
-A server deploy inside a pending hour resolves itself: once the hour is out,
-step 5 sees `Info.Version.Train < S.Train` and step 6 resumes probing, and the
-next detection moves the pending release into `PreviousInfo` where it belongs.
+Settling on `>= S` is safe because **the deploy precedes the store promotion**:
+a release reaches prod before `/promote-release` pushes it to the stores, so `S`
+is at or ahead of what any store serves. Should the store somehow get ahead, the
+record still moves forward (the check compares against the record, not `S`) and
+only then settles. And because `S` changes only by a deploy, which restarts the
+process, a settled kind can never stay settled across a release.
 
-`AppUpdateProber` is an `ActivatedWorkerBase` singleton on the API hosts. Per due
-entry it re-reads the record (another node may have settled it), takes a
-`SET AppUpdates:probe:{kind} 1 NX PX MinProbeInterval` throttle — a
-throttle, not a lock, because probes are idempotent — probes, and either writes
-the record and drops the entry or backs off along `ProbeDelays`. A publish also
-invalidates this node's own computed, so its clients flip at once; other nodes
-learn on their next `RecheckPeriod` re-read.
+### The check
 
-Volume: three store kinds, so the steady state between a deploy and the last
-store publish is at most three requests per 30 minutes cluster-wide.
+There is no worker and no queue. Step 6 starts `ProbeCached` with
+`BackgroundTask.Run`, and **invalidating the computed it was started from is how
+the check reports back**. `ProbeCached` returns the cached record either way —
+the one another node has just written, or the one this call produced — and the
+caller compares its `Info.Version` with what the computation returned:
+
+- Newer → invalidate at once, so this node's clients see the banner immediately.
+- Otherwise → invalidate at the record's `NextCheckAt`. That re-runs the method,
+  which starts the next check. The loop ends when step 4 settles the kind — which
+  is also what keeps it from running forever against a store that never catches
+  up.
+- The probe threw → invalidate after a fresh `GetRecheckPeriod()`. It's measured
+  *after* the failure rather than before the check, because the lock wait plus
+  the probe can outlast a whole period, and a moment already in the past re-arms
+  with no delay at all.
+
+The comparison is by version rather than by identity: a check that found nothing
+still returns a freshly deserialized record holding exactly what the computation
+already returned, so reference equality would fire on every empty round.
+
+Such a round recomputes to the value the method already returned, and
+`[ComputeMethod(ConsolidationDelay = 0)]` on `IAppUpdates.GetLatestUpdateInfo`
+is what keeps those off the wire: consolidation recomputes on the invalidation
+and drops it when the output is unchanged, so a client hears only about real
+updates rather than once per recheck. That's also why `AppUpdateInfo.Version`
+isn't a cached field — see [The contract](#the-contract).
+
+Consolidation also makes invalidation **asynchronous** — an invalidated value
+is replaced only once the recompute has finished and differed. Tests therefore
+can't read right after `Invalidate()`, and `ComputedTest.When` can't be used to
+wait for a side effect or for a value that ends up unchanged; `AppUpdatesTest`
+polls instead (`WhenPolled`).
+
+Every node runs this loop, so the cluster is kept to one store hit per period by
+an **`IMeshLocks` lock per app kind** (`StoreLocks`, prefix `AppUpdates`) plus
+`NextCheckAt` in the record. `ProbeCached` is double-checked locking:
+
+1. Read the record. If `now < NextCheckAt`, someone checked recently — return it
+   without taking the lock at all.
+2. Take the lock. A node that loses the race waits rather than skipping its turn.
+3. Read again. If `now < NextCheckAt`, the winner checked while this one waited —
+   return its record, and with it the `NextCheckAt` everyone aligns on.
+4. Otherwise probe, write the record with a fresh `NextCheckAt`, release.
+
+Reading the record *inside* the lock is what makes the "is it newer" comparison
+and the pending/announced bookkeeping correct: they have to be against what is
+actually stored, not against what the computation happened to see before the
+probe. A check that finds nothing still rewrites the record — that's what carries
+`NextCheckAt` forward.
+
+The announce window lives here too. A detection goes into `PendingInfo`, compared
+against `(PendingInfo ?? Info).Version` so a second detection inside the window
+supersedes the first; once `DetectedAt + AnnounceDelay` has passed it is promoted
+into `Info` and cleared. While one is pending, `NextCheckAt` is pulled in to the
+announce moment if the recheck period would land after it — otherwise a 30-minute
+period could delay the announcement by half an hour.
+
+One consequence of the probe contract: an app the store doesn't list **throws**,
+so `ProbeCached` never reaches the write that would carry `NextCheckAt` forward.
+Each node then re-probes once per recheck period instead of one probe
+cluster-wide — the lock's dedupe depends on that write. Acceptable at three kinds
+and a 3–30 min period, but it's the one case where the guarantee doesn't hold.
+
+`GetRecheckPeriod` widens with how long the wait has already lasted, measured
+from node start (i.e. from the deploy that opened the gap): `RecheckPeriods` is
+3 min on the first day, 10 min on the second, 30 min from the third on. A store
+usually publishes within hours of the deploy, so the early minutes are worth
+polling closely; a wait that has already lasted days is unlikely to end this
+minute. Volume: at most three store kinds waiting at once, one request each per
+period cluster-wide, and the Play gate means the other two are usually not
+checked at all.
+
+The Play gate is a heuristic, and it fails in one direction: a build promoted to
+the App Store or the Microsoft Store but *not* to Play is never noticed. That
+hasn't happened — releases go to all three — and a deliberate single-store
+release can be announced with `Overrides`.
 
 ### Per store
 
@@ -87,11 +180,13 @@ store publish is at most three requests per 30 minutes cluster-wide.
 | Android | `play.google.com/store/apps/details?id=…&gl=US` | the `[[["X.Y.Z"]]]` data block |
 | Windows | `displaycatalog.mp.microsoft.com/v7.0/products?bigIds=…&market=US` | max over `Packages[].PackageFullName` |
 
-Each probe is HTTP plus a static parser, so `StoreProbeTest` runs it on
-fixtures captured from the live stores. An app the storefront doesn't list reads
-as `null`; **anything unexpected throws**, so the prober logs and retries rather
-than reporting "not published". The Play regex requires exactly one match — every
-other `X.Y.Z` on that page is review metadata.
+`AppStoreProbes.Get(appKind)` returns a `StoreProbe` delegate — one `Fetch` plus
+one static parser, picked out of two dictionaries keyed by `AppKind` (the URL
+format and the parser), so the three stores differ only by those two entries.
+`StoreProbeTest` runs each parser on fixtures captured from the live stores.
+**Anything unexpected throws**, including an app the storefront doesn't list, so
+the check logs and retries rather than reporting "not published". The Play regex
+requires exactly one match — every other `X.Y.Z` on that page is review metadata.
 
 Every probe URL carries a `_=<guid>` cache buster, because the App Store lookup is
 served by Akamai with `Cache-Control: max-age=86070`. Without it a pod reads
@@ -104,25 +199,24 @@ does. Play sends `no-store` and DisplayCatalog only `s-maxage=600`, so the
 parameter is redundant there, but all three stores ignore it and a probe that
 can't read a stale copy is one less thing to reason about.
 
-Two store families:
+All three stores show a full build version, so detection is one comparison:
+**published iff the parsed store version is newer than the one the record already
+holds**. `S` doesn't enter into *detection* — only into whether probing continues
+— because what the store serves is exactly what a client can install, whether or
+not the server has moved past it. Requiring `P >= S` (the original rule) meant a
+release was recorded only during the window where the store had caught up with
+the running server build, so any deploy on top of the release the stores got — a
+hotfix, or simply the next train — dropped it for good: `S = 2.19.148` against an
+App Store serving `2.19.147` reads as "nothing published", and every client on
+`2.18.x` is told about `2.18.x`, i.e. nothing. Comparing against the record
+instead makes the detection independent of the deploy cadence.
 
-- **Full-version stores** (Play, Microsoft, and the App Store under the policy
-  below): published iff the parsed store version `P` is newer than the one the
-  record already holds. `S` doesn't enter into it — what the store serves is
-  exactly what a client can install, whether or not the server has moved past it.
-  Requiring `P >= S` (the original rule) meant a release was recorded only during
-  the window where the store had caught up with the running server build, so any
-  deploy on top of the release the stores got — a hotfix, or simply the next
-  train — dropped it for good: `S = 2.19.148` against an App Store serving
-  `2.19.147` reads as "nothing published", and every client on `2.18.x` is told
-  about `2.18.x`, i.e. nothing. Comparing against the record instead makes the
-  detection independent of the deploy cadence.
-- **Train-only** (an App Store record showing `2.17`): the store version can't be
-  compared with `S`, so the rule is change detection on the server's train. With
-  no prior record, store a baseline and announce nothing — `2.17` could be
-  `2.17.100`. From then on, when `(version, currentVersionReleaseDate)` differs
-  from the baseline *and* the store's train is `>= S`'s train, record
-  `Info.Version = S`.
+A version with only two parts (`2.17`, what the App Store showed before v2.19)
+names a train, not a build, so `AppStoreProbeResult` reads it as the **last** of
+that train: `2.17.9999`. That direction is deliberate — `2.17.0` would be the
+lowest, hiding a real update from anyone already on `2.17.x`, whereas `2.17.9999`
+at worst offers a banner to someone already on the store's newest build of a
+train that predates v2.19. Anything that doesn't parse at all still throws.
 
 `MacOS` reuses the iOS probe: Mac Catalyst is a universal purchase on the iOS App
 ID, so the lookup API can't tell the two apart. A Mac user would therefore see
@@ -158,10 +252,8 @@ state.
 |---|---|---|
 | `IsEnabled` | unset = production instances only | the dev app isn't in any store |
 | `AppleStoreId`, `GoogleStoreId`, `MicrosoftStoreId` | prod ids | probe targets; empty disables that kind |
-| `RecheckPeriod` | 2 min | compute-method re-read while unsettled |
+| `RecheckPeriods` | 3 / 10 / 30 min | re-read and probe cadence by day of the wait, last entry repeating |
 | `AnnounceDelay` | 1 hour | how long a detected release is held back before clients hear about it |
-| `ProbeDelayMin` / `ProbeDelayMax` | 60 s / 1800 s | per-entry backoff |
-| `MinProbeInterval` | 50 s | cluster dedupe window |
 | `WasmGracePeriod` | 10 min | web rolling-deploy grace |
 | `Overrides` | empty | `{ "Android": "2.99.0" }` makes the service report that version for the kind |
 
@@ -178,10 +270,7 @@ release.
 App Store versions are published under the **full nbgv build version**
 (`2.19.40`), not a `X.Y` train — `.github/fastlane/Fastfile`'s
 `ensure_app_store_version` defaults to `build_version`. That is what keeps the
-lookup API's `version` directly comparable and the train-only path unused for
-anything published from now on. The `apple-version` workflow input still
-overrides it, but only for a deliberate exception.
-
-The train-only path stays implemented because the record published before this
-change shows `2.17`, and a two-part version takes that path whatever the setting
-says.
+lookup API's `version` directly comparable, and detection depends on it: the
+`apple-version` workflow input can still override it, but a two-part value there
+would read as `X.Y.9999` and offer every client on that train a banner, however
+recent their build.

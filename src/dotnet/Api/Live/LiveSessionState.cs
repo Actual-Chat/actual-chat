@@ -73,9 +73,9 @@ public sealed partial record LiveSessionState
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ConversationId RingConversationId => ConversationId.New(ChatId, StartEntryLid);
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public bool IsCall => Kind is LiveSessionKind.Call or LiveSessionKind.Dialing;
+    public bool IsCall => Kind == LiveSessionKind.Call;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public bool IsDialing => Kind == LiveSessionKind.Dialing;
+    public bool IsDialing => Kind == LiveSessionKind.Call && SessionStartedAt is null;
 
     public Conversation ToConversation()
         => new(ConversationId, Version) {

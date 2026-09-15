@@ -45,6 +45,71 @@ public class McpMessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutp
     }
 
     [Fact]
+    public async Task PostMessageShouldMarkEntryAsSentViaApi()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
+        var typed = await Tester.CreateTextEntry(chatId, "typed by hand");
+        var client = await CreateClient();
+
+        // act
+        var result = await client.CallToolAsync("post_message", new Dictionary<string, object?> {
+            ["chatId"] = chatId.Value,
+            ["text"] = "posted by an agent",
+        });
+        var lid = DeserializeResult<long>(result);
+
+        // assert
+        var posted = await Tester.Chats.GetEntry(Tester.Session, ChatEntryId.New(chatId, lid));
+        posted!.IsViaApi.Should().BeTrue();
+        typed.IsViaApi.Should().BeFalse("the entry came from a regular session");
+    }
+
+    [Fact]
+    public async Task EditMessageShouldMarkTypedEntryAsSentViaApi()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
+        var typed = await Tester.CreateTextEntry(chatId, "typed by hand");
+        var client = await CreateClient();
+
+        // act
+        var result = await client.CallToolAsync("edit_message", new Dictionary<string, object?> {
+            ["chatId"] = chatId.Value,
+            ["entryId"] = typed.LocalId,
+            ["text"] = "rewritten by an agent",
+        });
+
+        // assert
+        result.IsError.Should().NotBe(true);
+        var entry = await Tester.Chats.GetEntry(Tester.Session, typed.Id);
+        entry!.IsViaApi.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task HandEditShouldKeepSentViaApiMark()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
+        var client = await CreateClient();
+        var result = await client.CallToolAsync("post_message", new Dictionary<string, object?> {
+            ["chatId"] = chatId.Value,
+            ["text"] = "posted by an agent",
+        });
+        var entryId = ChatEntryId.New(chatId, DeserializeResult<long>(result));
+
+        // act
+        var edited = await Tester.UpdateTextEntry(entryId, "touched up by hand");
+
+        // assert
+        edited.Content.Should().Be("touched up by hand");
+        edited.IsViaApi.Should().BeTrue("a hand edit must not hide that an agent wrote the text");
+    }
+
+    [Fact]
     public async Task RemoveMessage_SoftRemovesEntry()
     {
         await Tester.SignInAsUniqueAlice();

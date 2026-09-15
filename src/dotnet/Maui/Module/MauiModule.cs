@@ -24,9 +24,9 @@ public sealed class MauiModule(IServiceProvider moduleServices)
         KvasarStoreSupport.DeleteLegacyStoreFiles(ModuleServices, appCacheDir & "CCC");
 
         // RemoteComputedCache
-        services.AddSingleton(_ => new KvasarRemoteComputedCache.Options() {
+        services.AddSingleton(c => new KvasarRemoteComputedCache.Options() {
             BasePath = appCacheDir & "ccc",
-            EncryptionKey = MauiPreferences.DbEncryptionKey,
+            EncryptionKey = c.GetRequiredService<MauiEncryptionKeys>().DbEncryptionKey,
         });
         services.AddSingleton(c => {
             var options = c.GetRequiredService<KvasarRemoteComputedCache.Options>();
@@ -40,7 +40,7 @@ public sealed class MauiModule(IServiceProvider moduleServices)
         services.AddSingleton(_ => new LocalSettings.Options() {
             StoreFactory = c => new KvasarKvas(new KvasarKvas.Options() {
                 BasePath = appDataDir & "LocalSettings",
-                EncryptionKey = MauiPreferences.DbEncryptionKey,
+                EncryptionKey = c.GetRequiredService<MauiEncryptionKeys>().DbEncryptionKey,
                 Version = "1.0",
                 PageSize = 16 * 1024,
                 PageCacheBytes = 256 * 1024,

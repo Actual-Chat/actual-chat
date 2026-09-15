@@ -128,6 +128,14 @@
                             @if (message.Flags.HasFlag(ChatMessageFlags.Audio)) {
                                 <i class="chat-message-kind-icon icon-voice-to-text-message"></i>
                             }
+                            @if (entry.IsViaApi) {
+                                var viaApiColorClass = m.Colorize
+                                    ? AuthorColors.GetColorClass(entry.AuthorId, m.IsOwnMessage)
+                                    : "";
+                                <i class="chat-message-kind-icon via-api icon-robot @viaApiColorClass"
+                                   data-tooltip="@L.ChatView_SentViaApi"
+                                   data-tooltip-position="@(FloatingPosition.Top.ToPositionString())"></i>
+                            }
                             <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
                         </div>
                     }

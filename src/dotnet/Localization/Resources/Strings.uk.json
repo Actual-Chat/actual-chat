@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "",
   "ChatView_SayHiTo_Suffix": " чекає на ваше привітання!",
   "ChatView_ForwardedFrom": "Переслано з",
+  "ChatView_SentViaApi": "Надіслано через API, наприклад ШІ-\u2060агентом",
   "ChatView_MessageDeleted": "Повідомлення видалено.",
   "ChatView_SendingAttachments": "Надсилання вкладень…",
   "ChatView_ShowDetails": "Показати деталі",
@@ -307,7 +308,11 @@
   "ConversationMenu_CopySummaryLink": "Копіювати посилання на стислий виклад",
 
   "ThreadMenu_GoToThread": "Перейти до треду",
-  "ThreadMenu_CopyThread": "Копіювати тред",
+  "ThreadMenu_CopyThread": "Копіювати назву та посилання",
+  "ThreadMenu_Mute": "Вимкнути сповіщення",
+  "ThreadMenu_Unmute": "Увімкнути сповіщення",
+  "ThreadMenu_GoToStartMessage": "Перейти до вихідного повідомлення",
+  "ThreadMenu_CopyThreadLink": "Копіювати посилання на тред",
 
   "LocationMessage_Live": "Трансляція геопозиції",
   "LocationMessage_Static": "Геопозиція",
@@ -659,11 +664,6 @@
   "DemandInteraction_Updating": "Оновлення...",
   "DemandInteraction_Continue_Format": "Продовжити — {0}?",
   "Banner_ReadyToRestart_Format": "{0} готовий перезапуститися в оптимізованому режимі",
-  "Banner_CallDialing": "Ви телефонуєте…",
-  "Banner_CallAccepted": "Дзвінок прийнято",
-  "Banner_CallDeclined": "Дзвінок відхилено",
-  "Banner_CallNoAnswer": "Немає відповіді",
-  "Banner_CancelCall": "Скасувати дзвінок",
 
   "Bubble_Counter_Format": "{0} з {1}",
   "Bubble_ChatListTabsTitle": "Чати та контакти",
@@ -924,6 +924,9 @@
   "Common_Yesterday": "Учора",
   "Call_IncomingFrom": "Вхідний дзвінок від ",
   "Call_Message": "Повідомлення",
+  "Call_AppIncomingTitle": "Вхідний дзвінок",
+  "Call_Mute": "Без звуку",
+  "Call_IsCallingYou": "дзвонить вам…",
   "Call_SelectCamera": "Виберіть камеру",
   "Call_NoCameras": "Камер не знайдено",
   "Call_CameraBlocked": "Доступ до камери заблоковано.",
@@ -1390,6 +1393,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} або email@gmail.com",
   "SignIn_Or": "або",
   "SignIn_InvalidPhoneOrEmail": "Невірний номер телефону або адреса ел. пошти.",
+  "SignIn_SwitchToPhoneKeypad": "Перемкнути на телефонну клавіатуру",
+  "SignIn_SwitchToEmailKeyboard": "Перемкнути на клавіатуру для ел. пошти",
   "SignIn_VerifyPhoneText_Format": "Підтвердьте свій номер телефону, щоб продовжити й щоб друзі могли знайти вас у {0}.",
   "SignIn_VerifyEmailText_Format": "Підтвердьте свою електронну пошту, щоб продовжити й щоб друзі могли знайти вас у {0}.",
   "SignIn_PopupBlocked": "Браузер заблокував спливаюче вікно входу. Дозвольте спливаючі вікна для цього сайту та повторіть спробу.",
@@ -1480,6 +1485,8 @@
   "Video_Connecting": "Підключення...",
   "Call_Ended": "Дзвінок завершено",
   "Call_CouldntStart": "Не вдалося почати дзвінок",
+  "Call_NoMicrophoneAccess": "Не вдалося почати дзвінок: немає доступу до мікрофона.",
+  "Call_AlreadyInCall": "Ви вже в дзвінку",
   "Call_RecordingTurnedOffByHost": "Ведучий вимкнув запис",
   "Call_MakeHost": "Зробити ведучим",
   "Call_Join": "Увійти",
@@ -1530,12 +1537,13 @@
 
   "Share_FailedToShareCount": "Не вдалося поділитися {0} файлом|Не вдалося поділитися {0} файлами",
 
-  "FileSaver_SavedToGallery": "{0} файл збережено в галерею|{0} файли збережено в галерею|{0} файлів збережено в галерею",
-  "FileSaver_SavedToMusic": "{0} файл збережено в Music|{0} файли збережено в Music|{0} файлів збережено в Music",
-  "FileSaver_SavedToDownloads": "{0} файл збережено в Downloads|{0} файли збережено в Downloads|{0} файлів збережено в Downloads",
+  "FileSaver_DownloadingToGallery": "Завантажується {0} файл в галерею…|Завантажуються {0} файли в галерею…|Завантажуються {0} файлів в галерею…",
+  "FileSaver_DownloadingToMusic": "Завантажується {0} файл в Music…|Завантажуються {0} файли в Music…|Завантажуються {0} файлів в Music…",
+  "FileSaver_DownloadingToDownloads": "Завантажується {0} файл в Downloads…|Завантажуються {0} файли в Downloads…|Завантажуються {0} файлів в Downloads…",
+  "FileSaver_Downloading": "Завантажується {0} файл…|Завантажуються {0} файли…|Завантажуються {0} файлів…",
+  "FileSaver_AlreadyDownloading": "Файл уже завантажується|Файли вже завантажуються",
   "FileSaver_SavedToLibrary": "{0} файл збережено до медіатеки|{0} файли збережено до медіатеки|{0} файлів збережено до медіатеки",
   "FileSaver_Saved": "{0} файл збережено|{0} файли збережено|{0} файлів збережено",
-  "FileSaver_PartiallySaved": "Збережено {0} файл із {1}|Збережено {0} файли із {1}|Збережено {0} файлів із {1}",
   "FileSaver_SaveFailed": "Не вдалося зберегти файл|Не вдалося зберегти файли",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
@@ -1586,5 +1594,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Редагуйте учасників у налаштуваннях Місця",
   "ChatSettings_LeaveChatAndDelete": "Покинути й видалити чат",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Покинути й видалити Місце"
+  "PlaceSettings_LeavePlaceAndDelete": "Покинути й видалити Місце",
+  "Call_OutgoingTo": "Вихідний дзвінок: ",
+  "Call_Outgoing": "Вихідний дзвінок"
 }

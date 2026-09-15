@@ -13,6 +13,18 @@ candidate tasks. A plan is removed from here once its work ships.
 
 Recently added, larger efforts — in progress or next up.
 
+### Chat migration and external streaming
+
+[Chat migration and external streaming](./chat-migration-and-streaming.md) — the product foundation
+for repeatable video scenarios and real history migrations: persisted maintenance mode for a group
+chat or complete Place, stable import-compatible history snapshots, owner-driven resumable history
+reset, per-member consent for attributed imports, sequential server-assigned message batches and media, plus externally supplied live
+transcripts with optional audio. Split into implementation plans for
+[maintenance](./chat-maintenance-mode.md), [history reset](./chat-history-reset.md),
+[history export](./chat-history-export.md),
+[consented import](./consented-chat-import.md), and
+[external transcript streaming](./external-transcript-streaming.md).
+
 ### App updates — the "Update Voxt" banner
 
 [App updates](./app-updates.md) — turn the "Install Voxt" banner into an

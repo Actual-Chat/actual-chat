@@ -1152,6 +1152,7 @@ Cross-MAUI-app shared utilities (used by App.Maui and IosShareExt).
 - `MauiModule` - DI module for MAUI shared services.
 - `MauiSettings` - MAUI application settings.
 - `MauiPreferences` - MAUI preferences storage.
+- `MauiEncryptionKeys` - Lazy secure database/cache key initialization and legacy preferences migration.
 - `MauiDiagnostics` - MAUI diagnostics utilities.
 - `MauiHostNameRemapper` - Remaps hostnames for MAUI environments.
 - `MauiBackgroundState` - MAUI app background/foreground state tracking.
@@ -1164,7 +1165,7 @@ Cross-MAUI-app shared utilities (used by App.Maui and IosShareExt).
 - `AndroidFirebaseCrashlyticsSink` - Firebase Crashlytics Serilog sink.
 - `LoggerConfigurationXamarinExtensions` (static class) - Xamarin logger configuration extensions.
 - `IosIncomingShareSuggestions` - iOS incoming share suggestions.
-- `IosSharedSecureStorage` - iOS secure storage implementation.
+- `AppleSharedSecureStorage` - Apple keychain storage with shared-session and per-app service scopes.
 - `IosVideoTranscoder` - iOS video transcoding.
 - `OSLogLogger`, `OSLogLoggerProvider`, `AppleUnifiedLogSink` - iOS unified logging.
 - `LoadInPlaceResultExt`, `AVAssetImageGeneratorExt`, `AVAssetTrackExt`, `CGSizeExt`, `CMTimeExt`, `NSErrorExt`, `NSItemProviderExt` (static classes) - iOS framework extensions.

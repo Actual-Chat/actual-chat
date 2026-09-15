@@ -3,34 +3,41 @@ namespace ActualChat.Pooling;
 /// <summary>
 /// A pool of shared resources keyed by an identifier, with reference counting.
 /// </summary>
-public partial class SharedResourcePool<TKey, TResource>(
-    Func<TKey, CancellationToken, Task<TResource>> resourceFactory,
-    Func<TKey, TResource, ValueTask>? resourceDisposer = null) : IAsyncDisposable
+public partial class SharedResourcePool<TKey, TResource> : IAsyncDisposable
     where TKey : notnull
     where TResource : class
 {
     private readonly ConcurrentDictionary<TKey, Lease> _leases = new ();
     private readonly CancellationTokenSource _disposeTokenSource = new();
     private volatile int _isDisposed;
-    private ILogger? _log;
 
-    private Func<TKey, CancellationToken, Task<TResource>> ResourceFactory { get; } = resourceFactory;
-    private Func<TKey, TResource, ValueTask> ResourceDisposer { get; } = resourceDisposer ?? DefaultResourceDisposer;
+    private Func<TKey, CancellationToken, Task<TResource>> ResourceFactory { get; }
+    private Func<TKey, TResource, ValueTask> ResourceDisposer { get; }
 
     public TimeSpan ResourceDisposeDelay { get; init; } = TimeSpan.FromSeconds(10);
-    public CancellationToken DisposeToken => _disposeTokenSource.Token;
+    // Cached: Token of a disposed CTS throws, and DisposeToken is read after DisposeAsync too
+    public CancellationToken DisposeToken { get; }
     public bool IsDisposed => _isDisposed != 0;
 
     public ILogger Log {
-        get => _log ??= StaticLog.For(GetType());
-        init => _log = value;
+        get => field ??= StaticLog.For(GetType());
+        init;
+    }
+
+    public SharedResourcePool(
+        Func<TKey, CancellationToken, Task<TResource>> resourceFactory,
+        Func<TKey, TResource, ValueTask>? resourceDisposer = null)
+    {
+        ResourceFactory = resourceFactory;
+        ResourceDisposer = resourceDisposer ?? DefaultResourceDisposer;
+        DisposeToken = _disposeTokenSource.Token;
     }
 
     public async ValueTask<Lease> Rent(TKey key, CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(IsDisposed, this);
-
         while (true) {
+            // Checked on every iteration: a Rent waiting for an ending lease can outlive the pool
+            ObjectDisposedException.ThrowIf(IsDisposed, this);
             var lease = _leases.GetOrAdd(key, static (key1, self) => new Lease(self, key1), this);
             lease.Initialize(cancellationToken);
             var endRentTask = await lease.BeginRent(cancellationToken).ConfigureAwait(false);

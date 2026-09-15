@@ -27,6 +27,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<ILiveSessionsBackend, LiveSessionsBackend>();
         rpcHost.AddBackend<IChatTypingActivitiesBackend, ChatTypingActivitiesBackend>();
         services.AddSingleton<LiveStreamAccess>();
+        services.AddSingleton<PeerParticipations>();
         services.AddSingleton<RemoteVideoStreamCache>();
         services.AddSingleton<RemoteAudioStreamCache>();
         services.TryAddSingleton<AudioSettings>(); // AudioSettings are not configured now

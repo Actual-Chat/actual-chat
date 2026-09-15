@@ -63,8 +63,11 @@ Each AotSource has two parts:
 ### App.AotHelper
 
 Console app that:
-- **Generate mode** (`-g [project-root]`): discovers Blazor components (`ComponentBase` descendants), `IComputeService` API interfaces, and serializable types (marked with `[MessagePackObject]`, `[MessagePackFormatter]` or `[Union]`) across all ActualChat assemblies. Outputs `XxxAotSource.g.cs` files into each target project. Run via `run-aot-type-generator.cmd` at the project root.
+- **Generate mode** (`-g [project-root]`): discovers Blazor components (`ComponentBase` descendants), `IComputeService` API interfaces, and serializable types (marked with `[MessagePackObject]`, `[MessagePackFormatter]` or `[Union]`) across all ActualChat assemblies. Outputs `XxxAotSource.g.cs` files into each target project.
+- **Mibc mode** (`-m [path]`): emits a static `.mibc` profile from the CodeKeeper type set plus what ActualLab's proxy keepers and the async machinery construct reflectively. Its output, `src/dotnet/App.Maui/_Profiling/aothelper.mibc`, is fed to crossgen2 by iOS / Mac Catalyst Release builds — see [The three profiles iOS Release feeds crossgen2](./ios-specific.md#the-three-profiles-ios-release-feeds-crossgen2).
 - **Test mode** (no args): validates all registered types can be loaded, instantiated, and reflected upon. Uses `IAotTester` implementations (`ComponentTester`, `ApiTester`, `SerializableTester`).
+
+`update-aot-helpers.cmd` at the project root runs generate mode, then mibc mode. Re-run it and commit the result whenever you add or remove a Blazor component, a compute-service API or a serializable type: a type missing from `XxxAotSource.g.cs` may be trimmed out of the WASM and MAUI AOT builds.
 
 The App.AotHelper project itself is configured for Native AOT publishing (`PublishAot=true` in Release) to serve as a smoke test.
 
@@ -206,7 +209,8 @@ iOS keeps `UseInterpreter=true` for this reason — the macios SDK gates `Dynami
 | `src/dotnet/App.AotHelper/MessagePackFormatterDiscovery.cs` | Walks serializable type graphs to emit MessagePack formatter AQN keeps |
 | `src/dotnet/App.AotHelper/StjConverterDiscovery.cs` | Walks JS-interop type graphs to emit STJ internal converter AQN keeps |
 | `src/dotnet/App.AotHelper/Testers/` | IAotTester implementations |
-| `run-aot-type-generator.cmd` | Builds + runs `App.AotHelper -g` |
+| `src/dotnet/App.AotHelper/MibcGenerator.cs` | Emits `aothelper.mibc` (`App.AotHelper -m`) |
+| `update-aot-helpers.cmd` | Builds + runs `App.AotHelper -g`, then `-m src/dotnet/App.Maui/_Profiling/aothelper.mibc` |
 | `src/dotnet/Core/Aot/AotTypes.cs` | Central registry of IAotSource instances |
 | `src/dotnet/Core/Aot/AotJsonContexts.cs` | Registry of JsonSerializerContext instances |
 | `src/dotnet/Core/Aot/IAotSource.cs` | Interface for type sources |

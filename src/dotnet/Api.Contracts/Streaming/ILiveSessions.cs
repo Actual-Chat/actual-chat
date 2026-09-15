@@ -45,7 +45,7 @@ public interface ILiveSessions : IComputeService
     // isn't pushed to the caller. Zero delay - this is a ring/accept path.
     [ComputeMethod(ConsolidationDelay = 0)]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
-    Task<CallStatus> GetCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<CallerStatus?> GetCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     Task SetParticipation(
         Session session,
@@ -71,6 +71,8 @@ public interface ILiveSessions : IComputeService
     // Callee methods
     Task AcceptCall(Session session, ChatId chatId, CancellationToken cancellationToken);
     Task DeclineCall(Session session, ChatId chatId, CancellationToken cancellationToken);
-    // Either party hangs up an answered call
+    Task ConfirmRing(Session session, ChatId chatId, RingAck ack, CancellationToken cancellationToken);
+    // Obsolete: hanging up now goes through SetParticipation (see ChatAudioUI/LiveSessionUI). Kept as a
+    // throwing stub rather than removed, in case a stale client build still calls it.
     Task LeaveCall(Session session, ChatId chatId, CancellationToken cancellationToken);
 }

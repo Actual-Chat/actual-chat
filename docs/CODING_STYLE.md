@@ -25,6 +25,32 @@ This document describes the coding conventions used in Voxt (formerly Actual Cha
   - etc.
 - When in Doubt, examine existing code in the same area and match its style.
 
+## SRP needs weight behind it
+
+Single responsibility is a real principle, but it justifies a *separate type*
+only when the responsibility being isolated has some weight. Extracting a
+50-line service that nothing else will ever call is a net loss: it adds a DI
+registration, a constructor dependency, a file, and a name the reader has to
+resolve, and it buys nothing — the logic still has exactly one caller.
+
+Two `Get`/`Set` methods over a Redis key are not a responsibility. They're four
+lines of the class that uses them.
+
+Extract when at least one of these holds:
+
+- **More than one caller**, actual or clearly imminent — not "someone might".
+- **Substance**: enough logic that reading it inline would crowd out the thing
+  the class is actually about. A parser, a state machine, a protocol, a
+  non-trivial algorithm. A pass-through to another API is not substance.
+- **A seam you need**: the thing has to be swapped in tests or by
+  configuration, and an interface with two implementations is the honest way
+  to say so.
+
+Otherwise keep it as private members of the one class that needs it, ordered
+per [Member Ordering](#member-ordering). Wait for the second caller — that is
+the moment the abstraction's shape becomes knowable, and it's cheap to extract
+then. Guessing it earlier usually produces the wrong shape *and* the extra file.
+
 ## Regular comments, docstrings, XML documentation comments
 
 This section applies to **C# and TypeScript** equally. Claude has a strong
@@ -268,10 +294,12 @@ var action = () => {
 
 ### Blank Lines
 
-More restrictive than default:
-- **0 blank lines** inside namespaces (default allows 1)
-- **0 blank lines** inside types (default allows 1)
-- **0 blank lines** around single-line properties, fields, and methods
+These restate the ReSharper settings in `.editorconfig`, where every number is a minimum:
+- No blank line right after the opening `{` or before the closing `}` of a type or namespace
+- A multi-line member is separated from its neighbours by **1 blank line**. A member is
+  multi-line when it spans several lines — e.g. a method whose `=>` body is on the next line
+- Between adjacent single-line members (fields, properties, one-line methods) a blank line
+  is optional; one blank line may separate groups of them
 - Keep maximum **1 blank line** in code (default allows more)
 - See [Control-Flow Statements](#control-flow-statements) for the blank lines
   around `return`, `break`, `continue`, etc.
@@ -381,6 +409,12 @@ protected override async Task OnRun(CancellationToken cancellationToken)
 - **Braces for single statements** are not required,
   typically they're used only if the statement is prefixed with a comment,
   or when it significantly improves the readability.
+- **`=> field ??= ...;` in a `record`**: the generated `Equals` compares every
+  field and the copy constructor copies them, so an instance that's been read
+  differs from one that hasn't, and `with` carries a stale value. Either drop
+  the cache (`=> Compute();`, see `AppUpdateInfo`), or add a copy constructor
+  resetting it to `null!` plus properly overridden equality — consider a
+  reference-based one (see `AppStoreProbeResult`).
 
 ### Shared Fields and Memory Ordering
 
@@ -434,6 +468,16 @@ Members within a class should be ordered as follows:
     Use `// Private methods` comment to separate this section.
 12. All other nested types.
     Use `// Nested types` comment to separate this section.
+
+**Within a section, order methods dependant-first**: a method comes before the
+ones it calls, so the file reads top-down from the entry point into the details.
+A private helper called only by one method sits right after it; a helper shared
+by several goes after the last of them. Ordering the section by the order the
+public methods above it use the helpers is the usual result.
+
+**Keep the DI-injected properties together** at the top of the property block,
+whether they're constructor-assigned or `=> field ??= Services.GetRequiredService<T>()`.
+Plain state (a captured `StartedAt`, a counter) goes after them, not interleaved.
 
 For typical RPC API (interface):
 1. Read methods go first.
@@ -1146,3 +1190,35 @@ if (Api._isDotNetRpcConnected === value)
 
 Api._isDotNetRpcConnected = value;
 ```
+
+### Single-caller helpers are nested and named `impl`
+
+A helper with exactly one caller is nested inside that caller's body rather than
+declared at module scope, and it is named simply `impl` — the `xxx` prefix is
+redundant once it is scoped to its only caller.
+
+A separate top-level `fooImpl` makes the reader follow an indirection to find the
+body. Nesting keeps the implementation directly under the function it serves, with
+closure state and parameters visible at one level.
+
+```ts
+export function foo(opts: FooOptions): OperatorAsyncFunction<TIn, TOut> {
+    const { thing } = opts;
+    return source => {
+        return from(impl());
+
+        async function* impl(): AsyncIterable<TOut> {
+            for await (const item of source) // source, thing: closure-captured
+                yield transform(item, thing);
+        }
+    };
+}
+```
+
+`impl` takes no parameters when it wraps an async iterable — closure capture of
+the source, the options and any factory-built collaborators is just as clear, and
+threading them through a parameter list buys nothing. Parameter lists are for
+top-level functions with more than one caller.
+
+A helper with multiple callers, or one that exists as a test seam, stays a
+top-level function with a descriptive name.

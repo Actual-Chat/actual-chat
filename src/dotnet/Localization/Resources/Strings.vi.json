@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "Chào ",
   "ChatView_SayHiTo_Suffix": " đi nào!",
   "ChatView_ForwardedFrom": "Chuyển tiếp từ",
+  "ChatView_SentViaApi": "Được gửi qua API, ví dụ bởi một tác tử AI",
   "ChatView_MessageDeleted": "Tin nhắn đã bị xóa.",
   "ChatView_SendingAttachments": "Đang gửi tệp đính kèm…",
   "ChatView_ShowDetails": "Hiện chi tiết",
@@ -307,7 +308,11 @@
   "ConversationMenu_CopySummaryLink": "Sao chép liên kết bản tóm tắt",
 
   "ThreadMenu_GoToThread": "Đến chủ đề",
-  "ThreadMenu_CopyThread": "Sao chép chủ đề",
+  "ThreadMenu_CopyThread": "Sao chép tiêu đề và liên kết",
+  "ThreadMenu_Mute": "Tắt tiếng",
+  "ThreadMenu_Unmute": "Bật tiếng",
+  "ThreadMenu_GoToStartMessage": "Đến tin nhắn gốc",
+  "ThreadMenu_CopyThreadLink": "Sao chép liên kết chủ đề",
 
   "LocationMessage_Live": "Vị trí trực tiếp",
   "LocationMessage_Static": "Vị trí",
@@ -659,11 +664,6 @@
   "DemandInteraction_Updating": "Đang cập nhật...",
   "DemandInteraction_Continue_Format": "Tiếp tục {0}?",
   "Banner_ReadyToRestart_Format": "{0} đã sẵn sàng khởi động lại ở chế độ tối ưu",
-  "Banner_CallDialing": "Bạn đang gọi…",
-  "Banner_CallAccepted": "Cuộc gọi đã được chấp nhận",
-  "Banner_CallDeclined": "Cuộc gọi bị từ chối",
-  "Banner_CallNoAnswer": "Không có trả lời",
-  "Banner_CancelCall": "Hủy cuộc gọi",
 
   "Bubble_Counter_Format": "{0} trên {1}",
   "Bubble_ChatListTabsTitle": "Trò chuyện và danh bạ",
@@ -924,6 +924,9 @@
   "Common_Yesterday": "Hôm qua",
   "Call_IncomingFrom": "Cuộc gọi đến từ ",
   "Call_Message": "Tin nhắn",
+  "Call_AppIncomingTitle": "Cuộc gọi đến",
+  "Call_Mute": "Tắt tiếng",
+  "Call_IsCallingYou": "đang gọi cho bạn…",
   "Call_SelectCamera": "Chọn máy ảnh",
   "Call_NoCameras": "Không phát hiện máy ảnh",
   "Call_CameraBlocked": "Quyền truy cập máy ảnh bị chặn.",
@@ -1390,6 +1393,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} hoặc email@gmail.com",
   "SignIn_Or": "hoặc",
   "SignIn_InvalidPhoneOrEmail": "Số điện thoại hoặc địa chỉ email không hợp lệ.",
+  "SignIn_SwitchToPhoneKeypad": "Chuyển sang bàn phím điện thoại",
+  "SignIn_SwitchToEmailKeyboard": "Chuyển sang bàn phím email",
   "SignIn_VerifyPhoneText_Format": "Vui lòng xác minh số điện thoại của bạn để tiếp tục và để bạn bè có thể tìm thấy bạn trên {0}.",
   "SignIn_VerifyEmailText_Format": "Vui lòng xác minh địa chỉ email của bạn để tiếp tục và để bạn bè có thể tìm thấy bạn trên {0}.",
   "SignIn_PopupBlocked": "Trình duyệt đã chặn cửa sổ bật lên đăng nhập. Hãy cho phép cửa sổ bật lên cho trang web này rồi thử lại.",
@@ -1480,6 +1485,8 @@
   "Video_Connecting": "Đang kết nối...",
   "Call_Ended": "Cuộc gọi đã kết thúc",
   "Call_CouldntStart": "Không thể bắt đầu cuộc gọi",
+  "Call_NoMicrophoneAccess": "Không thể bắt đầu cuộc gọi: không có quyền dùng micrô.",
+  "Call_AlreadyInCall": "Bạn đang trong một cuộc gọi",
   "Call_RecordingTurnedOffByHost": "Chủ phòng đã tắt ghi âm",
   "Call_MakeHost": "Đặt làm chủ trì",
   "Call_Join": "Tham gia",
@@ -1530,12 +1537,13 @@
 
   "Share_FailedToShareCount": "Không thể chia sẻ {0} tệp",
 
-  "FileSaver_SavedToGallery": "Đã lưu {0} tệp vào thư viện ảnh",
-  "FileSaver_SavedToMusic": "Đã lưu {0} tệp vào Music",
-  "FileSaver_SavedToDownloads": "Đã lưu {0} tệp vào Downloads",
+  "FileSaver_DownloadingToGallery": "Đang tải xuống {0} tệp vào thư viện ảnh…",
+  "FileSaver_DownloadingToMusic": "Đang tải xuống {0} tệp vào Music…",
+  "FileSaver_DownloadingToDownloads": "Đang tải xuống {0} tệp vào Downloads…",
+  "FileSaver_Downloading": "Đang tải xuống {0} tệp…",
+  "FileSaver_AlreadyDownloading": "Tệp đang được tải xuống",
   "FileSaver_SavedToLibrary": "Đã lưu {0} tệp vào thư viện",
   "FileSaver_Saved": "Đã lưu {0} tệp",
-  "FileSaver_PartiallySaved": "Đã lưu {0} trong {1} tệp",
   "FileSaver_SaveFailed": "Không thể lưu tệp",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
@@ -1586,5 +1594,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Dùng cài đặt Địa điểm để chỉnh sửa thành viên",
   "ChatSettings_LeaveChatAndDelete": "Rời khỏi và xóa cuộc trò chuyện",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Rời khỏi và xóa Địa điểm"
+  "PlaceSettings_LeavePlaceAndDelete": "Rời khỏi và xóa Địa điểm",
+  "Call_OutgoingTo": "Cuộc gọi đi tới ",
+  "Call_Outgoing": "Cuộc gọi đi"
 }

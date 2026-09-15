@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "Поздравите ",
   "ChatView_SayHiTo_Suffix": "!",
   "ChatView_ForwardedFrom": "Прослеђено од",
+  "ChatView_SentViaApi": "Послано путем API-⁠ја, нпр. од AI агента",
   "ChatView_MessageDeleted": "Порука је обрисана.",
   "ChatView_SendingAttachments": "Слање прилога…",
   "ChatView_ShowDetails": "Прикажите детаље",
@@ -307,7 +308,11 @@
   "ConversationMenu_CopySummaryLink": "Копирајте линк сажетка",
 
   "ThreadMenu_GoToThread": "Идите на нит",
-  "ThreadMenu_CopyThread": "Копирајте нит",
+  "ThreadMenu_CopyThread": "Копирајте наслов и линк",
+  "ThreadMenu_Mute": "Утишај",
+  "ThreadMenu_Unmute": "Укини утишавање",
+  "ThreadMenu_GoToStartMessage": "Идите на почетну поруку",
+  "ThreadMenu_CopyThreadLink": "Копирајте линк нити",
 
   "LocationMessage_Live": "Локација уживо",
   "LocationMessage_Static": "Локација",
@@ -659,11 +664,6 @@
   "DemandInteraction_Updating": "Ажурирање...",
   "DemandInteraction_Continue_Format": "Наставити — {0}?",
   "Banner_ReadyToRestart_Format": "{0} је спреман за поновно покретање у оптимизираном начину",
-  "Banner_CallDialing": "Зовете…",
-  "Banner_CallAccepted": "Позив прихваћен",
-  "Banner_CallDeclined": "Позив одбијен",
-  "Banner_CallNoAnswer": "Нема одговора",
-  "Banner_CancelCall": "Откажите позив",
 
   "Bubble_Counter_Format": "{0} од {1}",
   "Bubble_ChatListTabsTitle": "Четови и контакти",
@@ -924,6 +924,9 @@
   "Common_Yesterday": "Јуче",
   "Call_IncomingFrom": "Долазни позив од ",
   "Call_Message": "Порука",
+  "Call_AppIncomingTitle": "Долазни позив",
+  "Call_Mute": "Без звука",
+  "Call_IsCallingYou": "вас зове…",
   "Call_SelectCamera": "Одаберите камеру",
   "Call_NoCameras": "Није пронађена ниједна камера",
   "Call_CameraBlocked": "Приступ камери је блокиран.",
@@ -1390,6 +1393,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} или емаил@гмаил.цом",
   "SignIn_Or": "или",
   "SignIn_InvalidPhoneOrEmail": "Неисправан број телефона или е-маил адреса.",
+  "SignIn_SwitchToPhoneKeypad": "Пребаци на телефонску тастатуру",
+  "SignIn_SwitchToEmailKeyboard": "Пребаци на тастатуру за е-маил",
   "SignIn_VerifyPhoneText_Format": "Потврдите свој број телефона да наставите и да вас пријатељи пронађу у {0}.",
   "SignIn_VerifyEmailText_Format": "Потврдите своју емаил адресу да наставите и да вас пријатељи пронађу у {0}.",
   "SignIn_PopupBlocked": "Прегледач је блокирао искачући прозор за пријаву. Дозволите искачуће прозоре за ову страницу и покушајте поново.",
@@ -1480,6 +1485,8 @@
   "Video_Connecting": "Повезивање...",
   "Call_Ended": "Позив је завршен",
   "Call_CouldntStart": "Позив се није могао покренути",
+  "Call_NoMicrophoneAccess": "Позив се није могао покренути: нема приступа микрофону.",
+  "Call_AlreadyInCall": "Већ сте у позиву",
   "Call_RecordingTurnedOffByHost": "Домаћин је искључио снимање",
   "Call_MakeHost": "Поставите за домаћина",
   "Call_Join": "Придружите се",
@@ -1530,12 +1537,13 @@
 
   "Share_FailedToShareCount": "Неуспешно дељење {0} фајла|Неуспешно дељење {0} фајла|Неуспешно дељење {0} фајлова",
 
-  "FileSaver_SavedToGallery": "{0} фајл сачуван у галерију|{0} фајла сачувана у галерију|{0} фајлова сачувано у галерију",
-  "FileSaver_SavedToMusic": "{0} фајл сачуван у Мусиц|{0} фајла сачувана у Мусиц|{0} фајлова сачувано у Мусиц",
-  "FileSaver_SavedToDownloads": "{0} фајл сачуван у Доwнлоадс|{0} фајла сачувана у Доwнлоадс|{0} фајлова сачувано у Доwнлоадс",
+  "FileSaver_DownloadingToGallery": "Преузима се {0} фајл у галерију…|Преузимају се {0} фајла у галерију…|Преузима се {0} фајлова у галерију…",
+  "FileSaver_DownloadingToMusic": "Преузима се {0} фајл у Мусиц…|Преузимају се {0} фајла у Мусиц…|Преузима се {0} фајлова у Мусиц…",
+  "FileSaver_DownloadingToDownloads": "Преузима се {0} фајл у Доwнлоадс…|Преузимају се {0} фајла у Доwнлоадс…|Преузима се {0} фајлова у Доwнлоадс…",
+  "FileSaver_Downloading": "Преузима се {0} фајл…|Преузимају се {0} фајла…|Преузима се {0} фајлова…",
+  "FileSaver_AlreadyDownloading": "Фајл се већ преузима|Фајлови се већ преузимају",
   "FileSaver_SavedToLibrary": "{0} фајл сачуван у библиотеку|{0} фајла сачувана у библиотеку|{0} фајлова сачувано у библиотеку",
   "FileSaver_Saved": "{0} фајл сачуван|{0} фајла сачувана|{0} фајлова сачувано",
-  "FileSaver_PartiallySaved": "Сачувано {0} од {1} фајлова",
   "FileSaver_SaveFailed": "Фајл није сачуван|Фајлови нису сачувани",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
@@ -1586,5 +1594,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Чланове уређујете у поставкама Места",
   "ChatSettings_LeaveChatAndDelete": "Напустите чет и обриши",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Напустите Место и обриши"
+  "PlaceSettings_LeavePlaceAndDelete": "Напустите Место и обриши",
+  "Call_OutgoingTo": "Одлазни позив према ",
+  "Call_Outgoing": "Одлазни позив"
 }

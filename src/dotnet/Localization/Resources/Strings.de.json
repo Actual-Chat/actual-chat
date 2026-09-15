@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "Sagen Sie ",
   "ChatView_SayHiTo_Suffix": " Hallo!",
   "ChatView_ForwardedFrom": "Weitergeleitet von",
+  "ChatView_SentViaApi": "Über die API gesendet, z. B. von einem KI-\u2060Agenten",
   "ChatView_MessageDeleted": "Die Nachricht wurde gelöscht.",
   "ChatView_SendingAttachments": "Anhänge werden gesendet …",
   "ChatView_ShowDetails": "Details anzeigen",
@@ -307,7 +308,11 @@
   "ConversationMenu_CopySummaryLink": "Link zur Zusammenfassung kopieren",
 
   "ThreadMenu_GoToThread": "Zum Thread",
-  "ThreadMenu_CopyThread": "Thread kopieren",
+  "ThreadMenu_CopyThread": "Titel und Link kopieren",
+  "ThreadMenu_Mute": "Stummschalten",
+  "ThreadMenu_Unmute": "Stummschaltung aufheben",
+  "ThreadMenu_GoToStartMessage": "Zur Startnachricht springen",
+  "ThreadMenu_CopyThreadLink": "Thread-Link kopieren",
 
   "LocationMessage_Live": "Live-Standort",
   "LocationMessage_Static": "Standort",
@@ -659,11 +664,6 @@
   "DemandInteraction_Updating": "Wird aktualisiert...",
   "DemandInteraction_Continue_Format": "{0} fortsetzen?",
   "Banner_ReadyToRestart_Format": "{0} kann jetzt im optimierten Modus neu starten",
-  "Banner_CallDialing": "Sie rufen an…",
-  "Banner_CallAccepted": "Anruf angenommen",
-  "Banner_CallDeclined": "Anruf abgelehnt",
-  "Banner_CallNoAnswer": "Keine Antwort",
-  "Banner_CancelCall": "Anruf abbrechen",
 
   "Bubble_Counter_Format": "{0} von {1}",
   "Bubble_ChatListTabsTitle": "Chats und Kontakte",
@@ -924,6 +924,9 @@
   "Common_Yesterday": "Gestern",
   "Call_IncomingFrom": "Eingehender Anruf von ",
   "Call_Message": "Nachricht",
+  "Call_AppIncomingTitle": "Eingehender Anruf",
+  "Call_Mute": "Stumm",
+  "Call_IsCallingYou": "ruft Sie an…",
   "Call_SelectCamera": "Kamera auswählen",
   "Call_NoCameras": "Keine Kameras gefunden",
   "Call_CameraBlocked": "Der Kamerazugriff ist blockiert.",
@@ -1390,6 +1393,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} oder email@gmail.com",
   "SignIn_Or": "oder",
   "SignIn_InvalidPhoneOrEmail": "Ungültige Telefonnummer oder E-Mail-Adresse.",
+  "SignIn_SwitchToPhoneKeypad": "Zur Telefontastatur wechseln",
+  "SignIn_SwitchToEmailKeyboard": "Zur E-Mail-Tastatur wechseln",
   "SignIn_VerifyPhoneText_Format": "Bitte bestätigen Sie Ihre Telefonnummer, um fortzufahren und für Freunde auf {0} auffindbar zu sein.",
   "SignIn_VerifyEmailText_Format": "Bitte bestätigen Sie Ihre E-Mail-Adresse, um fortzufahren und für Freunde auf {0} auffindbar zu sein.",
   "SignIn_PopupBlocked": "Der Browser hat das Anmelde-Pop-up blockiert. Bitte erlauben Sie Pop-ups für diese Website und versuchen Sie es erneut.",
@@ -1480,6 +1485,8 @@
   "Video_Connecting": "Verbinden...",
   "Call_Ended": "Anruf beendet",
   "Call_CouldntStart": "Anruf konnte nicht gestartet werden",
+  "Call_NoMicrophoneAccess": "Anruf konnte nicht gestartet werden: kein Mikrofonzugriff.",
+  "Call_AlreadyInCall": "Sie sind bereits in einem Anruf",
   "Call_RecordingTurnedOffByHost": "Aufnahme vom Host deaktiviert",
   "Call_MakeHost": "Zum Host machen",
   "Call_Join": "Beitreten",
@@ -1530,12 +1537,13 @@
 
   "Share_FailedToShareCount": "{0} Datei konnte nicht geteilt werden|{0} Dateien konnten nicht geteilt werden",
 
-  "FileSaver_SavedToGallery": "{0} Datei in der Galerie gespeichert|{0} Dateien in der Galerie gespeichert",
-  "FileSaver_SavedToMusic": "{0} Datei in Music gespeichert|{0} Dateien in Music gespeichert",
-  "FileSaver_SavedToDownloads": "{0} Datei in Downloads gespeichert|{0} Dateien in Downloads gespeichert",
+  "FileSaver_DownloadingToGallery": "{0} Datei wird in die Galerie heruntergeladen…|{0} Dateien werden in die Galerie heruntergeladen…",
+  "FileSaver_DownloadingToMusic": "{0} Datei wird in Music heruntergeladen…|{0} Dateien werden in Music heruntergeladen…",
+  "FileSaver_DownloadingToDownloads": "{0} Datei wird in Downloads heruntergeladen…|{0} Dateien werden in Downloads heruntergeladen…",
+  "FileSaver_Downloading": "{0} Datei wird heruntergeladen…|{0} Dateien werden heruntergeladen…",
+  "FileSaver_AlreadyDownloading": "Die Datei wird bereits heruntergeladen|Die Dateien werden bereits heruntergeladen",
   "FileSaver_SavedToLibrary": "{0} Datei in der Mediathek gespeichert|{0} Dateien in der Mediathek gespeichert",
   "FileSaver_Saved": "{0} Datei gespeichert|{0} Dateien gespeichert",
-  "FileSaver_PartiallySaved": "{0} von {1} Dateien gespeichert",
   "FileSaver_SaveFailed": "Datei konnte nicht gespeichert werden|Dateien konnten nicht gespeichert werden",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
@@ -1586,5 +1594,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Mitglieder in den Place-Einstellungen bearbeiten",
   "ChatSettings_LeaveChatAndDelete": "Chat verlassen und löschen",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Place verlassen und löschen"
+  "PlaceSettings_LeavePlaceAndDelete": "Place verlassen und löschen",
+  "Call_OutgoingTo": "Ausgehender Anruf an ",
+  "Call_Outgoing": "Ausgehender Anruf"
 }

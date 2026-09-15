@@ -9,17 +9,13 @@
         <HeaderButton Click="BackClick" Class="btn-header-back">
             <i class="icon-arrow-left"></i>
         </HeaderButton>
-    } else {
-        <HeaderButton Click="CloseClick">
-            <i class="icon-close"></i>
-        </HeaderButton>
     }
     <div class="modal-title">
         @Title
     </div>
-    @if (SubmitClick.HasDelegate || SubmitButtonType != ButtonType.Button) {
-        <HeaderButton Class="btn-submit unhovered" Type="SubmitButtonType" IsDisabled="@(!CanSubmit)" Click="SubmitClick">
-            <span>@SubmitButtonText</span>
+    @if (!isInnerStep) {
+        <HeaderButton Click="CloseClick">
+            <i class="icon-close"></i>
         </HeaderButton>
     }
 </div>

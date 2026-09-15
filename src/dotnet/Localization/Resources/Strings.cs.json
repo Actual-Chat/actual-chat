@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "Pozdravte ",
   "ChatView_SayHiTo_Suffix": "!",
   "ChatView_ForwardedFrom": "Přeposláno od",
+  "ChatView_SentViaApi": "Odesláno přes API, např. agentem AI",
   "ChatView_MessageDeleted": "Zpráva byla smazána.",
   "ChatView_SendingAttachments": "Odesílání příloh…",
   "ChatView_ShowDetails": "Zobrazit podrobnosti",
@@ -307,7 +308,11 @@
   "ConversationMenu_CopySummaryLink": "Kopírovat odkaz na shrnutí",
 
   "ThreadMenu_GoToThread": "Přejít na vlákno",
-  "ThreadMenu_CopyThread": "Kopírovat vlákno",
+  "ThreadMenu_CopyThread": "Kopírovat název a odkaz",
+  "ThreadMenu_Mute": "Ztlumit",
+  "ThreadMenu_Unmute": "Zrušit ztlumení",
+  "ThreadMenu_GoToStartMessage": "Přejít na úvodní zprávu",
+  "ThreadMenu_CopyThreadLink": "Kopírovat odkaz na vlákno",
 
   "LocationMessage_Live": "Poloha živě",
   "LocationMessage_Static": "Poloha",
@@ -659,11 +664,6 @@
   "DemandInteraction_Updating": "Aktualizace...",
   "DemandInteraction_Continue_Format": "Pokračovat — {0}?",
   "Banner_ReadyToRestart_Format": "{0} je připraven k restartu v optimalizovaném režimu",
-  "Banner_CallDialing": "Voláte…",
-  "Banner_CallAccepted": "Hovor přijat",
-  "Banner_CallDeclined": "Hovor odmítnut",
-  "Banner_CallNoAnswer": "Nikdo nezvedá",
-  "Banner_CancelCall": "Zrušit hovor",
 
   "Bubble_Counter_Format": "{0} z {1}",
   "Bubble_ChatListTabsTitle": "Chaty a kontakty",
@@ -924,6 +924,9 @@
   "Common_Yesterday": "Včera",
   "Call_IncomingFrom": "Příchozí hovor od ",
   "Call_Message": "Zpráva",
+  "Call_AppIncomingTitle": "Příchozí hovor",
+  "Call_Mute": "Ztlumit",
+  "Call_IsCallingYou": "vám volá…",
   "Call_SelectCamera": "Vyberte kameru",
   "Call_NoCameras": "Nebyla nalezena žádná kamera",
   "Call_CameraBlocked": "Přístup ke kameře je zablokovaný.",
@@ -1390,6 +1393,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} nebo email@gmail.com",
   "SignIn_Or": "nebo",
   "SignIn_InvalidPhoneOrEmail": "Neplatné telefonní číslo nebo e-mailová adresa.",
+  "SignIn_SwitchToPhoneKeypad": "Přepnout na telefonní klávesnici",
+  "SignIn_SwitchToEmailKeyboard": "Přepnout na klávesnici pro e-mail",
   "SignIn_VerifyPhoneText_Format": "Ověřte své telefonní číslo, abyste mohli pokračovat a aby vás přátelé našli v {0}.",
   "SignIn_VerifyEmailText_Format": "Ověřte svou e-mailovou adresu, abyste mohli pokračovat a aby vás přátelé našli v {0}.",
   "SignIn_PopupBlocked": "Prohlížeč zablokoval vyskakovací okno přihlášení. Povolte vyskakovací okna pro tento web a zkuste to znovu.",
@@ -1480,6 +1485,8 @@
   "Video_Connecting": "Připojování...",
   "Call_Ended": "Hovor ukončen",
   "Call_CouldntStart": "Hovor se nepodařilo zahájit",
+  "Call_NoMicrophoneAccess": "Hovor se nepodařilo zahájit: bez přístupu k mikrofonu.",
+  "Call_AlreadyInCall": "Už jste v hovoru",
   "Call_RecordingTurnedOffByHost": "Nahrávání vypnul hostitel",
   "Call_MakeHost": "Nastavit jako hostitele",
   "Call_Join": "Připojit se",
@@ -1530,12 +1537,13 @@
 
   "Share_FailedToShareCount": "Nepodařilo se sdílet {0} soubor|Nepodařilo se sdílet {0} soubory|Nepodařilo se sdílet {0} souborů",
 
-  "FileSaver_SavedToGallery": "{0} soubor uložen do galerie|{0} soubory uloženy do galerie|{0} souborů uloženo do galerie",
-  "FileSaver_SavedToMusic": "{0} soubor uložen do Music|{0} soubory uloženy do Music|{0} souborů uloženo do Music",
-  "FileSaver_SavedToDownloads": "{0} soubor uložen do Downloads|{0} soubory uloženy do Downloads|{0} souborů uloženo do Downloads",
+  "FileSaver_DownloadingToGallery": "Stahuje se {0} soubor do galerie…|Stahují se {0} soubory do galerie…|Stahuje se {0} souborů do galerie…",
+  "FileSaver_DownloadingToMusic": "Stahuje se {0} soubor do Music…|Stahují se {0} soubory do Music…|Stahuje se {0} souborů do Music…",
+  "FileSaver_DownloadingToDownloads": "Stahuje se {0} soubor do Downloads…|Stahují se {0} soubory do Downloads…|Stahuje se {0} souborů do Downloads…",
+  "FileSaver_Downloading": "Stahuje se {0} soubor…|Stahují se {0} soubory…|Stahuje se {0} souborů…",
+  "FileSaver_AlreadyDownloading": "Soubor se už stahuje|Soubory se už stahují",
   "FileSaver_SavedToLibrary": "{0} soubor uložen do knihovny|{0} soubory uloženy do knihovny|{0} souborů uloženo do knihovny",
   "FileSaver_Saved": "{0} soubor uložen|{0} soubory uloženy|{0} souborů uloženo",
-  "FileSaver_PartiallySaved": "Uloženo {0} z {1} souborů",
   "FileSaver_SaveFailed": "Soubor se nepodařilo uložit|Soubory se nepodařilo uložit",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
@@ -1586,5 +1594,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Členy upravíte v nastavení Místa",
   "ChatSettings_LeaveChatAndDelete": "Opustit chat a smazat",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Opustit Místo a smazat"
+  "PlaceSettings_LeavePlaceAndDelete": "Opustit Místo a smazat",
+  "Call_OutgoingTo": "Odchozí hovor pro ",
+  "Call_Outgoing": "Odchozí hovor"
 }

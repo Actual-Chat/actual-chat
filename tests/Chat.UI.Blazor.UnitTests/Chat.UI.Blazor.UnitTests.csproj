@@ -2,11 +2,17 @@
 
   <ItemGroup>
     <PackageReference Include="bunit" />
+    <PackageReference Include="Microsoft.Maui.Essentials" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\dotnet\UI.Blazor.App\UI.Blazor.App.csproj" />
     <ProjectReference Include="..\Testing\Testing.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\dotnet\Maui\MauiEncryptionKeys.cs" Link="Maui\MauiEncryptionKeys.cs" />
+    <Compile Include="..\..\src\dotnet\Maui\MauiPreferences.cs" Link="Maui\MauiPreferences.cs" />
   </ItemGroup>
 
 </Project>

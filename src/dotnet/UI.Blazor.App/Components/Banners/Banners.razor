@@ -7,12 +7,6 @@
 
 @* Urgent, actionable banners stay full-size above the stack *@
 <ReconnectBanner/>
-<IncomingCallBanner/>
-@if (chat is not null) {
-    <NoComponent @key="Chat">
-        <OutgoingCallBanner/>
-    </NoComponent>
-}
 @foreach (var banner in m.Banners.Take(MaxCount)) {
     @banner.View
 }

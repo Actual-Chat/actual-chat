@@ -96,6 +96,9 @@ When adding new pages, update `.vitepress/config.mts` to include them in the sid
 - Keep paragraphs concise
 - Use tables for structured data
 - Use code blocks with language hints (```csharp, ```typescript, etc.)
+- **Never reference another section by a bare identifier** — no "(see PartR-CO)".
+  Always a markdown link carrying that section's actual title, so the reader knows
+  what they are being sent to without following it.
 
 ## Running the Docs Site Locally
 
@@ -105,7 +108,8 @@ npm install
 npm run docs:dev
 ```
 
-The site will be available at `http://localhost:5174`.
+The site will be available at `http://localhost:7770`, and - when the local nginx
+container is running - at `https://docs.local.voxt.ai`.
 
 ## Building for Production
 

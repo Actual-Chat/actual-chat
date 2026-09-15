@@ -134,11 +134,15 @@ public partial class SharedResourcePool<TKey, TResource>
                 throw;
             }
             catch (Exception e) {
+                // Rent must not retry: a factory that keeps failing would make it loop forever.
+                // So the failure goes to the caller, and the lease leaves the pool as on cancellation.
                 Pool.Log.LogError(e, nameof(Pool.ResourceFactory) + " failed");
                 lock (_lock) {
                     _renterCount = 0;
-                    return _endRentTask ??= EndRent();
+                    _endRentTask = Task.CompletedTask;
                 }
+                Pool._leases.TryRemove(Key, this);
+                throw;
             }
         }
 

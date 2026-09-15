@@ -20,7 +20,7 @@ public partial record LocalAppSettings : StoredSettings, IHasKvasKey<LocalAppSet
     public ApiMap<string, bool> CameraMirrorOverrides {
         get => field ??= new ApiMap<string, bool>();
         init;
-    } = new ApiMap<string, bool>();
+    } = new();
 
     // MemoryPackOrder(4) reserved (was IsVideoDiagnosticsEnabled) — do not reuse.
     [DataMember, MemoryPackOrder(5), Key(5)] public GeoTrackingAccuracy? LocationAccuracy { get; init; }
@@ -35,6 +35,11 @@ public partial record LocalAppSettings : StoredSettings, IHasKvasKey<LocalAppSet
     public bool IsBackgroundBlurEnabledOrDefault => IsBackgroundBlurEnabled ?? false;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public GeoTrackingAccuracy LocationAccuracyOrDefault => LocationAccuracy ?? GeoTrackingAccuracy.Balanced;
+
+    // This record relies on referential equality: CameraMirrorOverrides is a `field ??=` cache,
+    // so the generated Equals would call two identical instances different once one is read
+    public virtual bool Equals(LocalAppSettings? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
 public static class LocalAppSettingsExt

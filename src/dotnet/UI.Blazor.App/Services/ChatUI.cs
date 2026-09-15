@@ -681,6 +681,20 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         return result;
     }
 
+    internal static List<ConversationId> GetChangedExpansions(
+        ChatId chatId,
+        IImmutableSet<ConversationId> overrides,
+        IImmutableSet<ConversationId> autoExpanded,
+        IImmutableSet<ConversationId> lastOverrides,
+        IImmutableSet<ConversationId> lastAutoExpanded)
+        // Both sets span every chat, while the snapshots are per chat: a change made in another chat must not
+        // count here, or that conversation's lid widens this chat's load window by thousands of entries.
+        => overrides.SymmetricExcept(lastOverrides)
+            .Union(autoExpanded.SymmetricExcept(lastAutoExpanded))
+            .Where(c => c.ChatId == chatId)
+            .OrderBy(c => c.StartEntryLid)
+            .ToList();
+
     // Private methods
 
     private async Task<ChatViewItemVisibility> ComputeItemVisibility(CancellationToken cancellationToken)
@@ -709,7 +723,8 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     {
         var selectedChatId = _selectedChatId;
         lock (Lock) {
-            if (selectedChatId.Value == chatId)
+            var oldChatId = selectedChatId.Value;
+            if (oldChatId == chatId)
                 return false;
 
             if (chatId is not null) {
@@ -721,8 +736,25 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                     _pendingSelectedChatIds.Add(chatId);
             }
             ClearAutoExpansionState();
-            selectedChatId.Value = chatId; // "Resumes" InvalidateSelectedChatDependencies, which does the rest
+            selectedChatId.Value = chatId; // "Resumes" ProcessSelectedChatChanges, which does the rest
+            // Inline rather than in that chain: it starts late and skips values set within one tick,
+            // and a chat skipped that way kept its cached IsSelected and stayed highlighted.
+            InvalidateIsSelected(oldChatId, chatId);
             return true;
+        }
+    }
+
+    private void InvalidateIsSelected(ChatId? oldChatId, ChatId? newChatId)
+    {
+        using (Invalidation.Begin()) {
+            if (oldChatId is not null) {
+                _ = IsSelected(oldChatId);
+                _ = IsSelected(oldChatId.GetThreadOutermostParentOrSelf());
+            }
+            if (newChatId is not null) {
+                _ = IsSelected(newChatId);
+                _ = IsSelected(newChatId.GetThreadOutermostParentOrSelf());
+            }
         }
     }
 

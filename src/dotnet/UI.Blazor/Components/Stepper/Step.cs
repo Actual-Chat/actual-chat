@@ -8,6 +8,7 @@ public abstract class Step<THub, TModel>
     where TModel : class
 {
     public virtual bool CanSkip => false;
+    public virtual bool CanReturnTo => true;
     public virtual bool IsCompleted => false;
     public virtual string SkipTitle => L.Common_Skip;
     public virtual string NextTitle => L.Common_Next;

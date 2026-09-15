@@ -1,0 +1,163 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@implements IModalView<CallModal.Model>
+@inherits ComputedStateComponent<AppUIHub, CallModal.ComputedModel?>
+@{
+    var m = State.Value;
+    if (m is null)
+        return;
+
+    if (m.Author is not { } author) {
+        // The call left the modal - it ended, collapsed into the island, got answered or moved to the
+        // full-screen view. This is a resolved close, so it must NOT re-collapse from Dispose.
+        if (!_isAutoClosed) {
+            _isAutoClosed = true;
+            _handled = true;
+            Modal.Close();
+        }
+        return;
+    }
+}
+
+<DialogFrame
+    Title="@Title(m)"
+    Class="author-modal modal-sm call-modal"
+    HasCloseButton="false">
+    <Body>
+    <CallModalHeader
+        Author="author"
+        IsOwn="@(!m.IsIncoming)"
+        OnCollapse="@OnCollapseClick"/>
+    </Body>
+    <Buttons>
+        @if (m.IsIncoming) {
+            <ButtonRound Class="btn-call c-decline" Tooltip="@L.Common_Decline" Click="@OnDeclineClick">
+                <i class="icon-close text-2xl"></i>
+            </ButtonRound>
+            <ButtonRound Class="btn-call c-mute" Click="@OnMuteClick">
+                <i class="@(m.IsMuted ? "icon-bell" : "icon-bell-off") text-2xl"></i>
+            </ButtonRound>
+            <ButtonRound Class="btn-call c-message" Tooltip="@L.Call_Message" Click="@OnMessageClick">
+                <i class="icon-message-ellipse text-2xl"></i>
+            </ButtonRound>
+            <ButtonRound Class="btn-call c-accept" Tooltip="@L.Common_Accept" Click="@OnAcceptClick">
+                <i class="icon-phone-take text-2xl"></i>
+            </ButtonRound>
+        } else {
+            <ButtonRound Class="btn-call c-hang-up" Tooltip="@L.Call_HangUp" Click="@OnHangUpClick">
+                <i class="icon-phone-off text-2xl"></i>
+            </ButtonRound>
+        }
+    </Buttons>
+</DialogFrame>
+
+@code {
+    private bool _isAutoClosed;
+    // True once the close was resolved by an explicit action or the view moving on. A close with this
+    // still false means the user dismissed the modal (tap outside / Esc), which collapses the call.
+    private bool _handled;
+
+    private IAuthors Authors => Hub.Authors;
+    private CallScreensUI CallScreensUI => Hub.CallScreensUI;
+
+    private ChatId ChatId => ModalModel.ChatId;  // Shortcut
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override async Task<ComputedModel?> ComputeState(CancellationToken cancellationToken) {
+        var chatId = ChatId;
+        var view = await CallScreensUI.GetCallView(cancellationToken).ConfigureAwait(false);
+        if (view is not { Kind: CallViewKind.Modal, Call: { } call } || call.ChatId != chatId)
+            return ComputedModel.None;
+
+        var peerId = await CallScreensUI.GetCallPeerId(cancellationToken).ConfigureAwait(false);
+        if (peerId is null)
+            return ComputedModel.None;
+
+        var author = await Authors.Get(Session, chatId, peerId, cancellationToken).ConfigureAwait(false);
+        if (author is null)
+            return ComputedModel.None;
+
+        var mutedChatId = await CallScreensUI.MutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
+        return new() {
+            Author = author,
+            IsIncoming = call.Origin == CallOrigin.Incoming,
+            HasVideo = call.HasVideo,
+            IsMuted = mutedChatId == chatId,
+        };
+    }
+
+    public override async ValueTask DisposeAsync() {
+        // A tap outside (or Esc) closes the modal without touching the call; unless an explicit action
+        // already resolved it, the call collapses into the island rather than losing its UI.
+        if (!_handled)
+            CallScreensUI.Collapse(ChatId);
+        await base.DisposeAsync().ConfigureAwait(false);
+    }
+
+    private async Task OnAcceptClick() {
+        // Unlike the other actions it leaves the close to the view moving off Modal, so the chat doesn't flash
+        // before the full-screen view. A throw hands the ring back to the user, dismissal included.
+        if (_handled)
+            return;
+
+        _handled = true;
+        try {
+            await CallScreensUI.Accept(ChatId).ConfigureAwait(true);
+        }
+        catch {
+            _handled = false;
+            throw;
+        }
+    }
+
+    private Task OnDeclineClick() {
+        _handled = true;
+        var chatId = ChatId;
+        Modal.Close();
+        return CallScreensUI.Decline(chatId);
+    }
+
+    private Task OnMessageClick() {
+        _handled = true;
+        var chatId = ChatId;
+        Modal.Close();
+        return CallScreensUI.DeclineAndOpenChat(chatId);
+    }
+
+    private Task OnHangUpClick() {
+        _handled = true;
+        var chatId = ChatId;
+        Modal.Close();
+        return CallScreensUI.HangUp(chatId);
+    }
+
+    private void OnCollapseClick() {
+        // The modal closes on its own: the view turns Collapsed.
+        _handled = true;
+        CallScreensUI.Collapse(ChatId);
+    }
+
+    private void OnMuteClick()
+        => CallScreensUI.ToggleMuteRing(ChatId);
+
+    private string Title(ComputedModel m)
+        => m switch {
+            { IsIncoming: false } => L.Call_Outgoing,
+            { HasVideo: true } => L.Call_IncomingVideo,
+            _ => L.Call_Incoming,
+        };
+
+    // Nested types
+
+    public sealed record ComputedModel {
+        public static readonly ComputedModel None = new();
+
+        public Author? Author { get; init; }
+        public bool IsIncoming { get; init; }
+        public bool HasVideo { get; init; }
+        public bool IsMuted { get; init; }
+    }
+
+    public sealed record Model(ChatId ChatId);
+}

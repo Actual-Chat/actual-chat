@@ -609,8 +609,11 @@ export class ScrollController {
         const delta = wheelDeltaPx(event, this.element.clientHeight);
         // Handed back as soon as the gesture is plainly leaving the edge behind: one uncancelled event
         // returns the rest of it to the compositor, which scrolls it better than this can. Until then it
-        // is kept, because there is no second chance to claim it.
-        if (Math.abs(delta) >= MinExcursionPx && this.limitDistance >= this.ownWheelDistance) {
+        // is kept, because there is no second chance to claim it - and where a returned gesture cannot
+        // be stopped at a limit either (see mustOwnWholeWheelGesture), it is never returned at all.
+        if (!mustOwnWholeWheelGesture()
+            && Math.abs(delta) >= MinExcursionPx
+            && this.limitDistance >= this.ownWheelDistance) {
             this.isWheelOwned = false;
             return;
         }
@@ -627,7 +630,7 @@ export class ScrollController {
             && event.cancelable
             && isPreciseWheel(event)
             && canOwnWheelGestures()
-            && this.limitDistance < this.ownWheelDistance;
+            && (mustOwnWholeWheelGesture() || this.limitDistance < this.ownWheelDistance);
     }
 
     private get ownWheelDistance(): number {
@@ -1198,6 +1201,22 @@ let wheelOwnEnabled: boolean | null = null;
 function canOwnWheelGestures(): boolean {
     wheelOwnEnabled ??= new URLSearchParams(location.search).get('vlwheel') !== '0';
     return wheelOwnEnabled;
+}
+
+// Desktop WebKit scrolls a wheel gesture off the main thread and offers no way to stop it: a gesture
+// handed back to the compositor and then reversed - a flick up and a flick back, one trackpad motion -
+// reaches the limit uncancelable, and the per-event write back is a step out and home every frame
+// (measured at 438px). There every precise gesture is driven from its first event to its last, whatever
+// its distance from a limit. Overridable as ?vlwheelall=0|1.
+let wheelOwnWholeEnabled: boolean | null = null;
+
+function mustOwnWholeWheelGesture(): boolean {
+    if (wheelOwnWholeEnabled === null) {
+        const value = new URLSearchParams(location.search).get('vlwheelall');
+        wheelOwnWholeEnabled = value === null ? DeviceInfo.isWebKit && !DeviceInfo.isIos : value === '1';
+    }
+
+    return wheelOwnWholeEnabled;
 }
 
 function canTakeOverMomentum(): boolean {

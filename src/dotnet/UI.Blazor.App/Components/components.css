@@ -57,9 +57,6 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
 .author-settings-modal .dialog-body {
     @apply m-4;
 }
-.author-settings-modal .dialog-buttons {
-    @apply m-0;
-}
 
 .navbar-pages {
     @apply gap-y-1;
@@ -196,10 +193,6 @@ body.narrow .layout-header.collapsed:has(.chat-activity-panel:not(.listening)) .
 }
 .chat-header-control-panel .translation-btn.on .c-hill {
     @apply bg-primary;
-}
-.chat-header-control-panel .btn-start-call,
-body.hoverable .chat-header-control-panel .btn-start-call:hover {
-    @apply text-pal-green-40;
 }
 .chat-header-control-panel .btn-start-call:disabled,
 body.hoverable .chat-header-control-panel .btn-start-call:disabled:hover {

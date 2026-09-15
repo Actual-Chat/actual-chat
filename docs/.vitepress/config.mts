@@ -84,6 +84,15 @@ export default withMermaid(defineConfig({
     /\.\.\/scripts\//,
   ],
   appearance: 'dark',
+  // The site is also served at https://docs.local.voxt.ai by the local nginx container,
+  // which proxies to this dev server on the host - hence host: true (the default localhost
+  // bind is unreachable from the container) and the allowedHosts entries for its Host header.
+  vite: {
+    server: {
+      host: true,
+      allowedHosts: ["docs.local.voxt.ai", "docs.local.actual.chat"],
+    },
+  },
   themeConfig: {
     search: {
       provider: "local",
@@ -106,7 +115,14 @@ export default withMermaid(defineConfig({
               { text: "Server Clock Sync", link: "/architecture/server-clock-sync" },
               { text: "Offline Render Path", link: "/architecture/offline-render-path" },
               { text: "Notifications", link: "/notifications" },
-              { text: "Call entries", link: "/call-entries" },
+            ],
+          },
+          {
+            text: "Calls",
+            collapsed: true,
+            items: [
+              { text: "Incoming call flow", link: "/calls/incoming-call-flow" },
+              { text: "Call entries", link: "/calls/call-entries" },
             ],
           },
           {

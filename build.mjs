@@ -3,6 +3,7 @@ import path from 'path';
 import postcssPlugin from '@chialab/esbuild-plugin-postcss';
 import * as fs from 'node:fs';
 import readline from 'node:readline';
+import { generateSvgVariants } from './scripts/generate-svg-variants.mjs';
 
 console.time('build');
 const isProduction = process.argv.slice(2).includes('--production');
@@ -14,6 +15,7 @@ const outputPath = path.normalize(path.resolve(import.meta.dirname, './src/dotne
 const mauiOutputPath = path.normalize(path.resolve(import.meta.dirname, './src/dotnet/App.Maui/wwwroot/dist'));
 
 async function copyAssets() {
+    await generateSvgVariants();
     await fs.promises.mkdir(`${outputPath}/config`, { recursive: true });
     if (fs.existsSync('./firebase.config.json'))
         // only for local-dev build

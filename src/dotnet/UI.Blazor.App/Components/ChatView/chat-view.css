@@ -93,6 +93,13 @@ body.hoverable .audio-recording-message.message-wrapper:hover .avatar-badge {
        not on rows that don't. Zero leading keeps the glyph off the line's own measurements. */
     @apply leading-[0];
 }
+.c-author-meta > .chat-message-kind-icon.via-api {
+    /* The robot glyph has less room under it than the voice glyph the 2.75px above was tuned for,
+       so it takes a smaller offset to land on the same baseline. */
+    @apply top-[2.25px];
+    /* The author name's own hue, faded: the mark is a note on the name, not a badge competing with it. */
+    color: color-mix(in srgb, var(--author-color, var(--author-name)) 60%, transparent);
+}
 
 .chat-message .avatar-name.skeleton {
     @apply flex gap-x-1;

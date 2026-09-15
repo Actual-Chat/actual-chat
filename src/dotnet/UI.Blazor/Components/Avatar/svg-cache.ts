@@ -1,3 +1,7 @@
+import { getLogs } from 'logging';
+
+const { warnLog } = getLogs('SvgCache');
+
 type CacheListener = (url: string) => void;
 
 const BITMAP_THRESHOLD = 144;
@@ -12,7 +16,8 @@ export class SvgCache {
     }
 
     static add(cacheKey: string, svgString: string, pixelSize: number): void {
-        if (this.cache.has(cacheKey) || this.pending.has(cacheKey)) return;
+        if (this.cache.has(cacheKey) || this.pending.has(cacheKey))
+            return;
 
         const promise =
             pixelSize <= BITMAP_THRESHOLD
@@ -20,15 +25,22 @@ export class SvgCache {
                 : SvgCache.renderToSvgBlob(svgString);
 
         this.pending.set(cacheKey, promise);
-        void promise.then(url => {
-            this.cache.set(cacheKey, url);
-            this.pending.delete(cacheKey);
-            SvgCache.notifyListeners(cacheKey, url);
-        });
+        void promise.then(
+            url => {
+                this.cache.set(cacheKey, url);
+                this.pending.delete(cacheKey);
+                SvgCache.notifyListeners(cacheKey, url);
+            },
+            (error: unknown) => {
+                // Otherwise the key stays pending forever, and every later add() for it is a no-op.
+                this.pending.delete(cacheKey);
+                warnLog?.log(`add: failed to rasterize '${cacheKey}'`, error);
+            });
     }
 
     static clear(): void {
-        for (const url of this.cache.values()) URL.revokeObjectURL(url);
+        for (const url of this.cache.values())
+            URL.revokeObjectURL(url);
         this.cache.clear();
         this.pending.clear();
         this.listeners.clear();
@@ -43,7 +55,8 @@ export class SvgCache {
         set.add(listener);
         return () => {
             set.delete(listener);
-            if (set.size === 0) this.listeners.delete(cacheKey);
+            if (set.size === 0)
+                this.listeners.delete(cacheKey);
         };
     }
 
@@ -51,10 +64,12 @@ export class SvgCache {
 
     private static notifyListeners(cacheKey: string, url: string): void {
         const set = this.listeners.get(cacheKey);
-        if (!set) return;
+        if (!set)
+            return;
 
         this.listeners.delete(cacheKey);
-        for (const listener of set) listener(url);
+        for (const listener of set)
+            listener(url);
     }
 
     private static renderToSvgBlob(svgString: string): Promise<string> {
@@ -75,8 +90,10 @@ export class SvgCache {
                 const ctx = canvas.getContext('2d')!;
                 ctx.drawImage(img, 0, 0, pixelSize, pixelSize);
                 canvas.toBlob(pngBlob => {
-                    if (pngBlob) resolve(URL.createObjectURL(pngBlob));
-                    else reject(new Error('canvas.toBlob failed'));
+                    if (pngBlob)
+                        resolve(URL.createObjectURL(pngBlob));
+                    else
+                        reject(new Error('canvas.toBlob failed'));
                 }, 'image/png');
             };
             img.onerror = () => {

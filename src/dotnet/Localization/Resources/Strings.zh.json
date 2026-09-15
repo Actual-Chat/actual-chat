@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "跟 ",
   "ChatView_SayHiTo_Suffix": " 打个招呼吧!",
   "ChatView_ForwardedFrom": "转发自",
+  "ChatView_SentViaApi": "通过 API 发送，例如由 AI 智能体发送",
   "ChatView_MessageDeleted": "该消息已删除。",
   "ChatView_SendingAttachments": "正在发送附件…",
   "ChatView_ShowDetails": "显示详情",
@@ -307,7 +308,11 @@
   "ConversationMenu_CopySummaryLink": "复制摘要链接",
 
   "ThreadMenu_GoToThread": "前往话题",
-  "ThreadMenu_CopyThread": "复制话题",
+  "ThreadMenu_CopyThread": "复制标题和链接",
+  "ThreadMenu_Mute": "静音",
+  "ThreadMenu_Unmute": "取消静音",
+  "ThreadMenu_GoToStartMessage": "跳转到起始消息",
+  "ThreadMenu_CopyThreadLink": "复制话题链接",
 
   "LocationMessage_Live": "实时位置",
   "LocationMessage_Static": "位置",
@@ -659,11 +664,6 @@
   "DemandInteraction_Updating": "正在更新…",
   "DemandInteraction_Continue_Format": "继续 {0}？",
   "Banner_ReadyToRestart_Format": "{0} 已可在优化模式下重启",
-  "Banner_CallDialing": "正在呼叫…",
-  "Banner_CallAccepted": "通话已接听",
-  "Banner_CallDeclined": "通话已拒接",
-  "Banner_CallNoAnswer": "无人接听",
-  "Banner_CancelCall": "取消呼叫",
 
   "Bubble_Counter_Format": "第 {0} / {1} 条",
   "Bubble_ChatListTabsTitle": "聊天与联系人",
@@ -924,6 +924,9 @@
   "Common_Yesterday": "昨天",
   "Call_IncomingFrom": "来电：",
   "Call_Message": "消息",
+  "Call_AppIncomingTitle": "来电",
+  "Call_Mute": "静音",
+  "Call_IsCallingYou": "正在呼叫你…",
   "Call_SelectCamera": "选择摄像头",
   "Call_NoCameras": "未检测到摄像头",
   "Call_CameraBlocked": "摄像头访问已被阻止。",
@@ -1390,6 +1393,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} 或 email@gmail.com",
   "SignIn_Or": "或",
   "SignIn_InvalidPhoneOrEmail": "手机号码或电子邮箱地址无效。",
+  "SignIn_SwitchToPhoneKeypad": "切换到电话键盘",
+  "SignIn_SwitchToEmailKeyboard": "切换到邮箱键盘",
   "SignIn_VerifyPhoneText_Format": "请验证你的手机号以继续，这样好友就能在 {0} 上找到你。",
   "SignIn_VerifyEmailText_Format": "请验证你的邮箱地址以继续，这样好友就能在 {0} 上找到你。",
   "SignIn_PopupBlocked": "浏览器拦截了登录弹窗。请允许此网站的弹窗，然后重试。",
@@ -1480,6 +1485,8 @@
   "Video_Connecting": "正在连接…",
   "Call_Ended": "通话已结束",
   "Call_CouldntStart": "无法发起通话",
+  "Call_NoMicrophoneAccess": "无法发起通话：无法访问麦克风。",
+  "Call_AlreadyInCall": "你已在通话中",
   "Call_RecordingTurnedOffByHost": "主持人已关闭录音",
   "Call_MakeHost": "设为主持人",
   "Call_Join": "加入",
@@ -1530,12 +1537,13 @@
 
   "Share_FailedToShareCount": "有 {0} 个文件分享失败",
 
-  "FileSaver_SavedToGallery": "已将 {0} 个文件保存到相册",
-  "FileSaver_SavedToMusic": "已将 {0} 个文件保存到 Music",
-  "FileSaver_SavedToDownloads": "已将 {0} 个文件保存到 Downloads",
+  "FileSaver_DownloadingToGallery": "正在将 {0} 个文件下载到相册…",
+  "FileSaver_DownloadingToMusic": "正在将 {0} 个文件下载到 Music…",
+  "FileSaver_DownloadingToDownloads": "正在将 {0} 个文件下载到 Downloads…",
+  "FileSaver_Downloading": "正在下载 {0} 个文件…",
+  "FileSaver_AlreadyDownloading": "文件已在下载中",
   "FileSaver_SavedToLibrary": "已将 {0} 个文件保存到图库",
   "FileSaver_Saved": "已保存 {0} 个文件",
-  "FileSaver_PartiallySaved": "已保存 {1} 个文件中的 {0} 个",
   "FileSaver_SaveFailed": "无法保存文件",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
@@ -1586,5 +1594,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "请在地点设置中编辑成员",
   "ChatSettings_LeaveChatAndDelete": "退出并删除聊天",
 
-  "PlaceSettings_LeavePlaceAndDelete": "退出并删除地点"
+  "PlaceSettings_LeavePlaceAndDelete": "退出并删除地点",
+  "Call_OutgoingTo": "去电：",
+  "Call_Outgoing": "去电"
 }

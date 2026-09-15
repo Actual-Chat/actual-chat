@@ -3,6 +3,7 @@
 @import './keyframes.css';
 @import './scrollbars.css';
 @import './main.css';
+@import './ios-keyboard-backdrop.css';
 
 @import '../../dotnet/UI.Blazor/styles.css';
 @import '../../dotnet/UI.Blazor.App/styles.css';

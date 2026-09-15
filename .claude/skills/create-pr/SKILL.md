@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: Use when work on a branch is finished and the next step is a pull request — "create a PR", "open a PR", "push and PR this", "/create-pr" — or right after a PR has been created and the team has not been told about it yet.
+description: Use when work on a branch is finished and the next step is a pull request — "create a PR", "open a PR", "push and PR this", "/create-pr" — when a draft PR should be marked ready for review — "mark the PR ready", "undraft it", "it's ready for review" — or right after either has happened and the team has not been told about it yet.
 allowed-tools:
   - Bash
   - Read
@@ -17,6 +17,24 @@ it in the Review Requests chat.** The team picks review work out of that chat, n
 GitHub — a PR nobody announced is a PR nobody reviews. Stopping after step 2 is the
 most common way this goes wrong.
 
+The one exception is a **draft** PR: it is not ready for review, so it is not
+announced. The announcement happens later, once, when the draft is marked ready — and
+marking it ready is itself a two-step job: `gh pr ready <n>` → announce. Doing the first
+without the second is the draft-flavoured way of stopping after step 2.
+
+## Marking a draft ready
+
+When the ask is to mark an existing draft ready rather than to open a PR, skip the
+preconditions and steps 1–3: the branch was already pushed and the PR already exists.
+
+```bash
+gh pr list --head "$(git branch --show-current)" --json number,url,isDraft
+gh pr ready <n>
+```
+
+Then run step 4 — this is the PR's one and only post. If the PR is not a draft, it was
+announced when it was created; say so and do not post again.
+
 ## Invoking this skill is the permission to push
 
 The standing rule everywhere else is: never `git push` unless the user asked in that
@@ -31,7 +49,7 @@ to `/prepare-merge`.
 | On a feature branch, not `dev`/`master`/`release/*` | `git branch --show-current` | Stop. Ask what to branch. |
 | Working tree clean | `git status --short` | Commit or stash first — never PR a dirty tree. |
 | Branch has commits over the base | `git log --oneline origin/dev..HEAD` | Nothing to PR. Stop. |
-| No PR already open for it | `gh pr list --head "$(git branch --show-current)" --json url,state` | One exists → do **not** open a second, and do **not** re-announce it. Use `pr list`, not `pr view` — `pr view` errors on a branch with no upstream. |
+| No PR already open for it | `gh pr list --head "$(git branch --show-current)" --json url,state,isDraft` | One exists → do **not** open a second, and do **not** re-announce it. The exception: a draft the user wants ready now → `gh pr ready <n>`, then step 4 (it was never announced). Use `pr list`, not `pr view` — `pr view` errors on a branch with no upstream. |
 | Build/tests actually run | — | You may still PR, but the Testing section must say plainly what was not run. |
 | Branch is linked to its issue | `git config --get "branch.$(git branch --show-current).issue"` | Empty → ask once, via `AskUserQuestion`: run `/track-issue` now, or open the PR without an issue. Never invent a number from the branch name. |
 
@@ -73,6 +91,8 @@ pass a multi-KB body inline:
 gh pr create --base dev --title "type(scope): summary" --body-file tmp/pr-body.md --assignee @me
 ```
 
+- **Draft only when the user asked for one** — add `--draft`. It decides step 4, so
+  check the result with `gh pr view <n> --json isDraft` rather than assuming.
 - **Always assign the PR to its author** (`--assignee @me`). Verify afterwards with
   `gh pr view <n> --json assignees`: `gh pr edit --add-assignee` can fail silently on a
   GraphQL deprecation error, in which case fall back to the REST call
@@ -103,30 +123,38 @@ gh pr create --base dev --title "type(scope): summary" --body-file tmp/pr-body.m
 - Say plainly what was *not* verified. "Android device-verified; iOS compiles, device
   test still owed" is the useful sentence.
 
-## 4. Announce in Review Requests — every time
+## 4. Announce in Review Requests — every non-draft PR
 
-Post once, via `mcp__voxt-robokitty__post_message`, to the **Review Requests** chat of
+**Draft PR → skip this step.** Tell the user the draft is open and unannounced, and
+that it gets announced when it is marked ready. When that happens — `gh pr ready <n>`,
+in this session or a later one — run this step then, as the PR's one and only post.
+
+Otherwise post once, via `mcp__voxt-robokitty__post_message`, to the **Review Requests** chat of
 the Voxt place: `s-pmMsV1UVKG-gz3ymbh6n3`. If the RoboKitty MCP is not wired up in your
 setup, stop and tell the user the PR is open but unannounced — do not treat the PR as
 done.
 
-The message posts under **your own account**, so write it in your voice:
+The announcement is the title and the link, nothing more:
 
 ```
-PR #4378 — feat(ptt): make gestures reply-only and widen the stop surface
-https://github.com/Actual-Chat/actual-chat/pull/4378
-
-Narrows where PTT gestures can OPEN the mic and widens where they can CLOSE it.
-Opening the app no longer arms flip/shake — only voice does; face-down and pocket
-now both require the proximity sensor covered, which kills the mid-air false stop.
-
-Tests 811 unit + 105 integration green; verified on device (CPH2747).
+PR #4494 — fix(threads): notifications, Threads-tab unread badge, mention picker and back button
+https://github.com/Actual-Chat/actual-chat/pull/4494
 ```
 
-Title line, URL, blank line, then a few lines of what changed, what specifically needs
-a reviewer's eyes (security-relevant commits, subtle invariants), and the test status.
-Voxt renders GitHub-flavored Markdown — use real markup, but relative links resolve to
-nothing, so link absolute or just name the file.
+A reviewer decides from the title whether to open the PR; everything else lives in its
+body. Add **at most one short line** under the URL, and only when a reviewer would
+otherwise miss something that matters before merge — a changed contract, an open
+question for the team, the one path the fix targets that nobody has run:
+
+```
+PR #4495 — fix(pooling): stop SharedResourcePool.Rent from retrying a failed factory forever
+https://github.com/Actual-Chat/actual-chat/pull/4495
+Callers now get the factory error instead of a silent retry.
+```
+
+No mechanism, no file list, no test counts — that is the PR's Summary/Fix/Testing, and
+restating it in chat is exactly what the team asked to stop: a long post gets skimmed,
+and its first sentence can read as a change nobody agreed to.
 
 **One post per PR, ever.** No "added a second commit", no revised summaries, no
 re-posting after a push. The chat is a review queue, not a changelog — a follow-up post
@@ -141,8 +169,12 @@ their own confirmation. Never fold one into this step.
 
 | Mistake | Fix |
 |---|---|
-| PR created, chat never posted | Step 4 is part of the deliverable, not a follow-up |
+| Non-draft PR created, chat never posted | Step 4 is part of the deliverable, not a follow-up |
+| Draft announced in the chat | Drafts wait; announce once, after `gh pr ready` |
+| Draft marked ready, chat never posted | `gh pr ready` is half the job; step 4 is the other half |
+| "Mark it ready" handled as a bare `gh pr ready` | That request is this skill too — see *Marking a draft ready* |
 | Re-announcing after new commits | One post per PR; tell the user instead |
+| Announcement retells the PR body | Title + link; one extra line at most |
 | `gh pr create --fill` | Write a real Summary/Fix/Testing body |
 | PR left unassigned | `--assignee @me`, then verify with `gh pr view --json assignees` |
 | Body file in the repo root | Put it in `tmp/` |

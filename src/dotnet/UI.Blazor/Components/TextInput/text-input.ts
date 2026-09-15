@@ -1,6 +1,7 @@
 import { Disposable } from 'disposable';
+import { DocumentEvents } from 'event-handling';
 import { PresenceTracker } from 'presence-tracker';
-import { fromEvent, Subject, takeUntil, debounceTime, switchMap } from 'rxjs';
+import { fromEvent, merge, Subject, takeUntil, debounceTime, switchMap } from 'rxjs';
 
 interface TextInputOptions {
     text: string;
@@ -56,10 +57,19 @@ export class TextInput implements Disposable {
         const closeOnBlurSelector = this.options.closeOnBlurSelector;
         if (closeOnBlurSelector) {
             const boundary = this.element.closest(closeOnBlurSelector);
+            // WebKit on macOS blurs the input on a button's mousedown without focusing the button, so the
+            // focusout carries no relatedTarget there; the element under the pressed pointer stands in for it.
+            let pressedTarget: Node | null = null;
+            DocumentEvents.capturedPassive.pointerDown$
+                .pipe(takeUntil(this.disposed$))
+                .subscribe((e: PointerEvent) => pressedTarget = e.target as Node | null);
+            merge(DocumentEvents.capturedPassive.pointerUp$, DocumentEvents.capturedPassive.pointerCancel$)
+                .pipe(takeUntil(this.disposed$))
+                .subscribe(() => pressedTarget = null);
             fromEvent(this.element, 'focusout')
                 .pipe(takeUntil(this.disposed$))
                 .subscribe((e: FocusEvent) => {
-                    const related = e.relatedTarget as Node | null;
+                    const related = (e.relatedTarget ?? pressedTarget) as Node | null;
                     if (boundary && related && boundary.contains(related))
                         return;
 

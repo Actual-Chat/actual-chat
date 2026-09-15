@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "",
   "ChatView_SayHiTo_Suffix": "님에게 인사해 보세요!",
   "ChatView_ForwardedFrom": "전달한 곳:",
+  "ChatView_SentViaApi": "API를 통해 전송됨(예: AI 에이전트)",
   "ChatView_MessageDeleted": "메시지가 삭제되었습니다.",
   "ChatView_SendingAttachments": "첨부 파일 전송 중…",
   "ChatView_ShowDetails": "세부 정보 보기",
@@ -307,7 +308,11 @@
   "ConversationMenu_CopySummaryLink": "요약 링크 복사",
 
   "ThreadMenu_GoToThread": "스레드로 이동",
-  "ThreadMenu_CopyThread": "스레드 복사",
+  "ThreadMenu_CopyThread": "제목과 링크 복사",
+  "ThreadMenu_Mute": "음소거",
+  "ThreadMenu_Unmute": "음소거 해제",
+  "ThreadMenu_GoToStartMessage": "시작 메시지로 이동",
+  "ThreadMenu_CopyThreadLink": "스레드 링크 복사",
 
   "LocationMessage_Live": "실시간 위치",
   "LocationMessage_Static": "위치",
@@ -659,11 +664,6 @@
   "DemandInteraction_Updating": "업데이트 중...",
   "DemandInteraction_Continue_Format": "{0}을(를) 계속할까요?",
   "Banner_ReadyToRestart_Format": "{0}을(를) 최적화 모드로 다시 시작할 수 있습니다",
-  "Banner_CallDialing": "전화 거는 중…",
-  "Banner_CallAccepted": "통화 수락됨",
-  "Banner_CallDeclined": "통화 거절됨",
-  "Banner_CallNoAnswer": "응답 없음",
-  "Banner_CancelCall": "통화 취소",
 
   "Bubble_Counter_Format": "{1}개 중 {0}번째",
   "Bubble_ChatListTabsTitle": "채팅과 연락처",
@@ -924,6 +924,9 @@
   "Common_Yesterday": "어제",
   "Call_IncomingFrom": "수신 전화: ",
   "Call_Message": "메시지",
+  "Call_AppIncomingTitle": "수신 전화",
+  "Call_Mute": "음소거",
+  "Call_IsCallingYou": "전화를 걸고 있습니다…",
   "Call_SelectCamera": "카메라 선택",
   "Call_NoCameras": "카메라를 찾을 수 없습니다",
   "Call_CameraBlocked": "카메라 접근이 차단되었습니다.",
@@ -1390,6 +1393,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} 또는 email@gmail.com",
   "SignIn_Or": "또는",
   "SignIn_InvalidPhoneOrEmail": "전화번호 또는 이메일 주소가 올바르지 않습니다.",
+  "SignIn_SwitchToPhoneKeypad": "전화 키패드로 전환",
+  "SignIn_SwitchToEmailKeyboard": "이메일 키보드로 전환",
   "SignIn_VerifyPhoneText_Format": "계속하려면 전화번호를 인증해 주세요. {0}에서 친구들이 회원님을 찾을 수 있습니다.",
   "SignIn_VerifyEmailText_Format": "계속하려면 이메일 주소를 인증해 주세요. {0}에서 친구들이 회원님을 찾을 수 있습니다.",
   "SignIn_PopupBlocked": "브라우저가 로그인 팝업을 차단했습니다. 이 사이트의 팝업을 허용한 뒤 다시 시도하세요.",
@@ -1480,6 +1485,8 @@
   "Video_Connecting": "연결 중...",
   "Call_Ended": "통화가 종료되었습니다",
   "Call_CouldntStart": "통화를 시작하지 못했습니다",
+  "Call_NoMicrophoneAccess": "통화를 시작하지 못했습니다: 마이크 접근 권한이 없습니다.",
+  "Call_AlreadyInCall": "이미 통화 중입니다",
   "Call_RecordingTurnedOffByHost": "호스트가 녹음을 껐습니다",
   "Call_MakeHost": "호스트로 지정",
   "Call_Join": "참여",
@@ -1530,12 +1537,13 @@
 
   "Share_FailedToShareCount": "파일 {0}개를 공유하지 못했습니다",
 
-  "FileSaver_SavedToGallery": "{0}개 파일을 갤러리에 저장했습니다",
-  "FileSaver_SavedToMusic": "{0}개 파일을 Music에 저장했습니다",
-  "FileSaver_SavedToDownloads": "{0}개 파일을 Downloads에 저장했습니다",
+  "FileSaver_DownloadingToGallery": "{0}개 파일을 갤러리에 다운로드하는 중…",
+  "FileSaver_DownloadingToMusic": "{0}개 파일을 Music에 다운로드하는 중…",
+  "FileSaver_DownloadingToDownloads": "{0}개 파일을 Downloads에 다운로드하는 중…",
+  "FileSaver_Downloading": "{0}개 파일을 다운로드하는 중…",
+  "FileSaver_AlreadyDownloading": "파일을 이미 다운로드하는 중입니다",
   "FileSaver_SavedToLibrary": "{0}개 파일을 라이브러리에 저장했습니다",
   "FileSaver_Saved": "{0}개 파일을 저장했습니다",
-  "FileSaver_PartiallySaved": "{1}개 중 {0}개를 저장했습니다",
   "FileSaver_SaveFailed": "파일을 저장하지 못했습니다",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
@@ -1586,5 +1594,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "멤버를 수정하려면 플레이스 설정을 사용하세요",
   "ChatSettings_LeaveChatAndDelete": "채팅 나가기 및 삭제",
 
-  "PlaceSettings_LeavePlaceAndDelete": "플레이스 나가기 및 삭제"
+  "PlaceSettings_LeavePlaceAndDelete": "플레이스 나가기 및 삭제",
+  "Call_OutgoingTo": "발신 전화: ",
+  "Call_Outgoing": "발신 전화"
 }

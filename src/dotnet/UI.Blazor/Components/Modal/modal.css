@@ -230,19 +230,25 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply flex-1 flex-y items-stretch;
     @apply overflow-y-auto custom-scrollbar;
 }
-.dialog-body:has(.form-block.with-contact-list) + .dialog-buttons {
-    @apply pt-2;
-}
 
+/* The footer owns the modal's bottom inset (incl. safe area); the frame yields it.
+   See docs/ui/spacing.md — the region at an edge owns that edge's inset. */
+.modal-frame:has(.dialog-footer) {
+    padding-bottom: 0;
+}
 .dialog-footer {
-    @apply flex-y items-stretch;
+    @apply flex-y items-stretch gap-y-2;
     @apply px-4;
     @apply overflow-hidden;
+    padding-bottom: calc(1rem + var(--safe-area-bottom));
+}
+/* Floating sheet already sits above the home indicator via its bottom offset. */
+body.narrow .modal-frame.modal-sm .dialog-footer {
+    padding-bottom: 1rem;
 }
 
 .dialog-buttons {
     @apply flex-none flex-x gap-x-4;
-    @apply px-4;
     @apply overflow-hidden;
 }
 .wide-dialog-buttons .dialog-buttons {

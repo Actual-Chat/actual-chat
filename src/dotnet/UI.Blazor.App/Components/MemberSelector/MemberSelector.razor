@@ -53,15 +53,11 @@
                 continue;
 
             var account = contact.Account;
-            <div @key="@userId" class="c-contact" @onclick="() => Remove(contact)">
-                <div class="c-remove">
-                    <i class="icon-close c-close"></i>
-                </div>
-                <AccountCircle UserId="@userId" Size="@SquareSize.Size5"/>
-                <div class="c-name">
-                    @account.Avatar.Name
-                </div>
-            </div>
+            <SelectedBadge @key="@userId" Name="@account.Avatar.Name" OnRemove="() => Remove(contact)">
+                <Icon>
+                    <AccountCircle UserId="@userId" Size="@SquareSize.Size5"/>
+                </Icon>
+            </SelectedBadge>
         }
     </div>
 </div>

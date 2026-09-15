@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "",
   "ChatView_SayHiTo_Suffix": " kişisine merhaba deyin!",
   "ChatView_ForwardedFrom": "Şuradan iletildi:",
+  "ChatView_SentViaApi": "API üzerinden gönderildi, örneğin bir yapay zekâ ajanı tarafından",
   "ChatView_MessageDeleted": "Mesaj silindi.",
   "ChatView_SendingAttachments": "Ekler gönderiliyor…",
   "ChatView_ShowDetails": "Ayrıntıları gösterin",
@@ -307,7 +308,11 @@
   "ConversationMenu_CopySummaryLink": "Özet bağlantısını kopyalayın",
 
   "ThreadMenu_GoToThread": "Konuya gidin",
-  "ThreadMenu_CopyThread": "Konuyu kopyalayın",
+  "ThreadMenu_CopyThread": "Başlığı ve bağlantıyı kopyalayın",
+  "ThreadMenu_Mute": "Sessize al",
+  "ThreadMenu_Unmute": "Sessizden çıkar",
+  "ThreadMenu_GoToStartMessage": "Başlangıç mesajına gidin",
+  "ThreadMenu_CopyThreadLink": "Konu bağlantısını kopyalayın",
 
   "LocationMessage_Live": "Canlı konum",
   "LocationMessage_Static": "Konum",
@@ -659,11 +664,6 @@
   "DemandInteraction_Updating": "Güncelleniyor...",
   "DemandInteraction_Continue_Format": "{0} devam edilsin mi?",
   "Banner_ReadyToRestart_Format": "{0} optimize modda yeniden başlatılmaya hazır",
-  "Banner_CallDialing": "Arıyorsunuz…",
-  "Banner_CallAccepted": "Arama kabul edildi",
-  "Banner_CallDeclined": "Arama reddedildi",
-  "Banner_CallNoAnswer": "Yanıt yok",
-  "Banner_CancelCall": "Aramayı iptal edin",
 
   "Bubble_Counter_Format": "{0} / {1}",
   "Bubble_ChatListTabsTitle": "Sohbetler ve kişiler",
@@ -924,6 +924,9 @@
   "Common_Yesterday": "Dün",
   "Call_IncomingFrom": "Gelen arama: ",
   "Call_Message": "Mesaj",
+  "Call_AppIncomingTitle": "Gelen çağrı",
+  "Call_Mute": "Sessiz",
+  "Call_IsCallingYou": "sizi arıyor…",
   "Call_SelectCamera": "Bir kamera seçin",
   "Call_NoCameras": "Kamera bulunamadı",
   "Call_CameraBlocked": "Kamera erişimi engellendi.",
@@ -1390,6 +1393,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} veya email@gmail.com",
   "SignIn_Or": "veya",
   "SignIn_InvalidPhoneOrEmail": "Telefon numarası veya e-posta adresi geçersiz.",
+  "SignIn_SwitchToPhoneKeypad": "Telefon tuş takımına geç",
+  "SignIn_SwitchToEmailKeyboard": "E-posta klavyesine geç",
   "SignIn_VerifyPhoneText_Format": "Devam etmek ve arkadaşlarınızın sizi {0} uygulamasında bulabilmesi için lütfen telefon numaranızı doğrulayın.",
   "SignIn_VerifyEmailText_Format": "Devam etmek ve arkadaşlarınızın sizi {0} uygulamasında bulabilmesi için lütfen e-posta adresinizi doğrulayın.",
   "SignIn_PopupBlocked": "Tarayıcı giriş açılır penceresini engelledi. Lütfen bu site için açılır pencerelere izin verin ve yeniden deneyin.",
@@ -1480,6 +1485,8 @@
   "Video_Connecting": "Bağlanılıyor...",
   "Call_Ended": "Arama sona erdi",
   "Call_CouldntStart": "Arama başlatılamadı",
+  "Call_NoMicrophoneAccess": "Arama başlatılamadı: mikrofon erişimi yok.",
+  "Call_AlreadyInCall": "Zaten bir aramadasınız",
   "Call_RecordingTurnedOffByHost": "Kayıt, oturum sahibi tarafından kapatıldı",
   "Call_MakeHost": "Sunucu yapın",
   "Call_Join": "Katılın",
@@ -1530,12 +1537,13 @@
 
   "Share_FailedToShareCount": "{0} dosya paylaşılamadı",
 
-  "FileSaver_SavedToGallery": "{0} dosya galeriye kaydedildi",
-  "FileSaver_SavedToMusic": "{0} dosya Music klasörüne kaydedildi",
-  "FileSaver_SavedToDownloads": "{0} dosya Downloads klasörüne kaydedildi",
+  "FileSaver_DownloadingToGallery": "{0} dosya galeriye indiriliyor…",
+  "FileSaver_DownloadingToMusic": "{0} dosya Music klasörüne indiriliyor…",
+  "FileSaver_DownloadingToDownloads": "{0} dosya Downloads klasörüne indiriliyor…",
+  "FileSaver_Downloading": "{0} dosya indiriliyor…",
+  "FileSaver_AlreadyDownloading": "Dosya zaten indiriliyor",
   "FileSaver_SavedToLibrary": "{0} dosya kitaplığa kaydedildi",
   "FileSaver_Saved": "{0} dosya kaydedildi",
-  "FileSaver_PartiallySaved": "{1} dosyadan {0} tanesi kaydedildi",
   "FileSaver_SaveFailed": "Dosya kaydedilemedi",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
@@ -1586,5 +1594,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Üyeleri düzenlemek için Mekân ayarlarını kullanın",
   "ChatSettings_LeaveChatAndDelete": "Sohbetten ayrılın ve silin",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Mekândan ayrılın ve silin"
+  "PlaceSettings_LeavePlaceAndDelete": "Mekândan ayrılın ve silin",
+  "Call_OutgoingTo": "Giden arama: ",
+  "Call_Outgoing": "Giden arama"
 }

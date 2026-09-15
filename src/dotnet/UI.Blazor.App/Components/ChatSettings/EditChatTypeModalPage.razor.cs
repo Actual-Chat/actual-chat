@@ -40,7 +40,7 @@ public partial class EditChatTypeModalPage
             throw StandardError.NotSupported("Peer chat is not supported.");
 
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton(L.Common_Save, OnSubmit);
-        Context.Buttons = [DialogButtonInfo.CreateCancelButton(L), _submitButtonInfo];
+        Context.Buttons = [_submitButtonInfo];
         _setAliasCopySource = c => {
             _aliasTextBoxRef = c;
             StateHasChanged();

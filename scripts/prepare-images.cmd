@@ -12,16 +12,23 @@
         exit /b 1
     )
 
-    set inDir=src\nodejs\images
+    set iconDir=src\nodejs\icons
     set outDir=resources\images\converted
     if not exist "%outDir%" mkdir "%outDir%"
 
-    for %%N in (error-cat-dark error-cat-light share-cat-dark share-cat-light) do (
-        echo Converting %%N.svg
-        rsvg-convert -o %outDir%\%%N.png %inDir%\%%N.svg || exit /b 1
-        rsvg-convert -z 2 -o %outDir%\%%N@2x.png %inDir%\%%N.svg || exit /b 1
-        rsvg-convert -z 3 -o %outDir%\%%N@3x.png %inDir%\%%N.svg || exit /b 1
+    rem error-cat + share-cat come from the themed kitties (padded square canvas, needs cropping) -
+    rem see generate-ios-cat-pngs.mjs. rsvg still handles the plain icon glyphs below.
+    node scripts\generate-ios-cat-pngs.mjs || exit /b 1
+    for %%N in (message-ellipse) do (
+        call :rasterize %iconDir%\%%N.svg %%N || exit /b 1
     )
+    exit /b 0
+
+    :rasterize
+    echo Converting %1
+    rsvg-convert -o %outDir%\%2.png %1 || exit /b 1
+    rsvg-convert -z 2 -o %outDir%\%2@2x.png %1 || exit /b 1
+    rsvg-convert -z 3 -o %outDir%\%2@3x.png %1 || exit /b 1
     exit /b 0
 BATCH
 
@@ -39,19 +46,27 @@ EOF
     exit 1
 fi
 
-# Only the SVGs the iOS app extension bundles as PNGs - UIKit can't render SVG, unlike the
-# web, which is served every other file under $inDir as-is. A new name also needs an .imageset
-# - Contents.json plus an ImageAsset link - in every project that renders it.
-# @2x/@3x come from the SVG's own size, so each image keeps its dimensions.
-names="error-cat-dark error-cat-light share-cat-dark share-cat-light"
+# The iOS app extension bundles these as PNGs - UIKit can't render SVG, unlike the web, which is
+# served every file under $inDir as-is. A new name also needs an .imageset - Contents.json plus an
+# ImageAsset link - in every project that renders it.
+# error-cat + share-cat come from the themed kitties (a padded square canvas that needs cropping),
+# handled by generate-ios-cat-pngs.mjs. rsvg here only rasterizes the plain icon-font glyphs
+# ($iconDir); @2x/@3x come from the SVG's own size, so each image keeps its dimensions.
+iconNames="message-ellipse"
 
-inDir="src/nodejs/images"
+iconDir="src/nodejs/icons"
 outDir="resources/images/converted"
 mkdir -p "$outDir"
 
-for name in $names; do
-    echo "Converting ${name}.svg"
-    rsvg-convert      -o "$outDir/${name}.png"    "$inDir/${name}.svg"
-    rsvg-convert -z 2 -o "$outDir/${name}@2x.png" "$inDir/${name}.svg"
-    rsvg-convert -z 3 -o "$outDir/${name}@3x.png" "$inDir/${name}.svg"
+rasterize() {
+    echo "Converting $1"
+    rsvg-convert      -o "$outDir/$2.png"    "$1"
+    rsvg-convert -z 2 -o "$outDir/$2@2x.png" "$1"
+    rsvg-convert -z 3 -o "$outDir/$2@3x.png" "$1"
+}
+
+node scripts/generate-ios-cat-pngs.mjs
+
+for name in $iconNames; do
+    rasterize "$iconDir/${name}.svg" "$name"
 done

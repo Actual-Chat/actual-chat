@@ -7,7 +7,7 @@
         call npm install
     )
 
-    echo Starting documentation server...
+    echo Starting documentation server at http://localhost:7770 (https://docs.local.voxt.ai via nginx)
     echo Press Ctrl+C to stop.
     echo.
     call npm run docs:dev -- --open
@@ -23,7 +23,7 @@ if [ ! -d "node_modules" ]; then
     npm install
 fi
 
-echo "Starting documentation server..."
+echo "Starting documentation server at http://localhost:7770 (https://docs.local.voxt.ai via nginx)"
 echo "Press Ctrl+C to stop."
 echo
 npm run docs:dev -- --open

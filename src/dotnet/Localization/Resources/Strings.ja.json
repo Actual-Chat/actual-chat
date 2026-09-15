@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "",
   "ChatView_SayHiTo_Suffix": " さんに挨拶しましょう!",
   "ChatView_ForwardedFrom": "転送元:",
+  "ChatView_SentViaApi": "API 経由で送信されました（AI エージェントなど）",
   "ChatView_MessageDeleted": "このメッセージは削除されました。",
   "ChatView_SendingAttachments": "添付ファイルを送信中…",
   "ChatView_ShowDetails": "詳細を表示",
@@ -307,7 +308,11 @@
   "ConversationMenu_CopySummaryLink": "要約のリンクをコピー",
 
   "ThreadMenu_GoToThread": "スレッドへ移動",
-  "ThreadMenu_CopyThread": "スレッドをコピー",
+  "ThreadMenu_CopyThread": "タイトルとリンクをコピー",
+  "ThreadMenu_Mute": "ミュート",
+  "ThreadMenu_Unmute": "ミュート解除",
+  "ThreadMenu_GoToStartMessage": "最初のメッセージに移動",
+  "ThreadMenu_CopyThreadLink": "スレッドのリンクをコピー",
 
   "LocationMessage_Live": "リアルタイムの位置情報",
   "LocationMessage_Static": "位置情報",
@@ -659,11 +664,6 @@
   "DemandInteraction_Updating": "更新中...",
   "DemandInteraction_Continue_Format": "{0} を続けますか?",
   "Banner_ReadyToRestart_Format": "{0} は最適化モードで再起動できます",
-  "Banner_CallDialing": "発信中…",
-  "Banner_CallAccepted": "通話に応答しました",
-  "Banner_CallDeclined": "通話が拒否されました",
-  "Banner_CallNoAnswer": "応答なし",
-  "Banner_CancelCall": "発信をキャンセル",
 
   "Bubble_Counter_Format": "{1} 件中 {0} 件目",
   "Bubble_ChatListTabsTitle": "チャットと連絡先",
@@ -924,6 +924,9 @@
   "Common_Yesterday": "昨日",
   "Call_IncomingFrom": "着信: ",
   "Call_Message": "メッセージ",
+  "Call_AppIncomingTitle": "着信",
+  "Call_Mute": "消音",
+  "Call_IsCallingYou": "呼び出し中…",
   "Call_SelectCamera": "カメラを選択",
   "Call_NoCameras": "カメラが見つかりません",
   "Call_CameraBlocked": "カメラへのアクセスがブロックされています。",
@@ -1390,6 +1393,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} または email@gmail.com",
   "SignIn_Or": "または",
   "SignIn_InvalidPhoneOrEmail": "電話番号またはメールアドレスが正しくありません。",
+  "SignIn_SwitchToPhoneKeypad": "電話番号キーパッドに切り替え",
+  "SignIn_SwitchToEmailKeyboard": "メール用キーボードに切り替え",
   "SignIn_VerifyPhoneText_Format": "続けるには電話番号を確認してください。{0} で友だちがあなたを見つけられるようになります。",
   "SignIn_VerifyEmailText_Format": "続けるにはメールアドレスを確認してください。{0} で友だちがあなたを見つけられるようになります。",
   "SignIn_PopupBlocked": "ブラウザがサインインのポップアップをブロックしました。このサイトのポップアップを許可して、もう一度お試しください。",
@@ -1480,6 +1485,8 @@
   "Video_Connecting": "接続中...",
   "Call_Ended": "通話が終了しました",
   "Call_CouldntStart": "通話を開始できませんでした",
+  "Call_NoMicrophoneAccess": "通話を開始できませんでした: マイクへのアクセスがありません。",
+  "Call_AlreadyInCall": "すでに通話中です",
   "Call_RecordingTurnedOffByHost": "ホストが録音をオフにしました",
   "Call_MakeHost": "ホストにする",
   "Call_Join": "参加",
@@ -1530,12 +1537,13 @@
 
   "Share_FailedToShareCount": "{0} 件のファイルを共有できませんでした",
 
-  "FileSaver_SavedToGallery": "{0} 件のファイルをギャラリーに保存しました",
-  "FileSaver_SavedToMusic": "{0} 件のファイルを Music に保存しました",
-  "FileSaver_SavedToDownloads": "{0} 件のファイルを Downloads に保存しました",
+  "FileSaver_DownloadingToGallery": "{0} 件のファイルをギャラリーにダウンロードしています…",
+  "FileSaver_DownloadingToMusic": "{0} 件のファイルを Music にダウンロードしています…",
+  "FileSaver_DownloadingToDownloads": "{0} 件のファイルを Downloads にダウンロードしています…",
+  "FileSaver_Downloading": "{0} 件のファイルをダウンロードしています…",
+  "FileSaver_AlreadyDownloading": "ファイルはすでにダウンロード中です",
   "FileSaver_SavedToLibrary": "{0} 件のファイルをライブラリに保存しました",
   "FileSaver_Saved": "{0} 件のファイルを保存しました",
-  "FileSaver_PartiallySaved": "{1} 件中 {0} 件を保存しました",
   "FileSaver_SaveFailed": "ファイルを保存できませんでした",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
@@ -1586,5 +1594,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "メンバーの編集にはプレイスの設定を使用します",
   "ChatSettings_LeaveChatAndDelete": "チャットを退出して削除",
 
-  "PlaceSettings_LeavePlaceAndDelete": "プレイスを退出して削除"
+  "PlaceSettings_LeavePlaceAndDelete": "プレイスを退出して削除",
+  "Call_OutgoingTo": "発信: ",
+  "Call_Outgoing": "発信"
 }

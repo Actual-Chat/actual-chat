@@ -151,8 +151,12 @@ public sealed class ShareExtensionApplication : IHasServices, IAsyncDisposable
             AppKind.Ios,
             MauiSettings.BaseUrl);
 
+        var encryptionKeys = MauiEncryptionKeys.Default;
+        // iOS keychain operations complete synchronously; bootstrap runs inside UIKit.LoadView.
+        encryptionKeys.WhenReady.GetAwaiter().GetResult();
         // ReSharper disable once VariableHidesOuterVariable
         var services = new ServiceCollection();
+        services.AddSingleton(encryptionKeys);
         services.AddSingleton<IConfiguration>(cfg);
         services.AddLogging(logging => {
             logging.ClearProviders();

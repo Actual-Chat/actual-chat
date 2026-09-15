@@ -140,7 +140,10 @@ function Configure-LocalEnvHosts {
     Write-Host "Updating hosts file and .env LOCAL_IP..."
     $baseHostnames = @(
         'local.voxt.ai', 'media.local.voxt.ai', 'cdn.local.voxt.ai', 'maps.local.voxt.ai',
-        'local.actual.chat', 'media.local.actual.chat', 'cdn.local.actual.chat', 'maps.local.actual.chat'
+        'local.actual.chat', 'media.local.actual.chat', 'cdn.local.actual.chat', 'maps.local.actual.chat',
+        # VitePress sites proxied by the same nginx container (docs/ and ActualChat-Marketing).
+        'docs.local.voxt.ai', 'marketing.local.voxt.ai',
+        'docs.local.actual.chat', 'marketing.local.actual.chat'
     )
     # Also refresh any dynamically-created subdomains already in the hosts file
     # (e.g. per-worktree domains) — they all resolve to this same machine.

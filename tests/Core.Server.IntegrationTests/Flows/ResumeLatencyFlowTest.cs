@@ -23,6 +23,7 @@ public sealed class ResumeLatencyFlowTest(ResumeLatencyFlowFixture fixture, ITes
     // Resumes are staged 1s ahead: one miss is a busy runner, several are a regression
     private static readonly TimeSpan MaxTypicalDelay = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan StallDelay = TimeSpan.FromSeconds(10);
+
     [Fact]
     public async Task ResumeDelaysShouldStayWithinBudget()
     {

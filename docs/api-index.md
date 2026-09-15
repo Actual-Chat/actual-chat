@@ -350,6 +350,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `IEmbeddingsCalculator` — text embeddings
 - `IEntryGroupExtractor`, `EntryGroupBuilder` — group entries for ML
 - `RateLimitedChatCompletionService` — rate-limited LLM calls
+- `OpenAIModels` — per-model OpenAI request capabilities (lowest `reasoning_effort` a model accepts)
 - `OpenAITranscriber` — OpenAI-based ASR
 - `TokenEstimator` — token-count estimator
 
@@ -396,6 +397,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 ## MAUI Shared (`ActualChat.Maui`)
 
 - `MauiModule`, `MauiSettings`, `MauiPreferences`, `MauiDiagnostics`, `MauiHostNameRemapper`, `MauiBackgroundState`
+- `MauiEncryptionKeys` — secure database/cache keys; await lazy `WhenReady` before reading `DbEncryptionKey`
 - `AppStrings` — the `IStringLocalizer` for code with no Blazor circuit (native dialogs, local notifications, the share extension); language from `MauiPreferences.UILanguage`
 - `KvasarStoreSupport` — Kvasar store suspend handling + legacy SQLite cleanup
 - Platform-specific extensions for Android (`Android*`) and iOS (`Ios*`, `OSLog*`, `*Ext` for AVFoundation/UIKit)

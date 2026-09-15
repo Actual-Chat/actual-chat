@@ -206,6 +206,128 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
     }
 
     [Fact(Timeout = 60_000)]
+    public async Task GetListeningStreamShouldTrackListenerPresence()
+    {
+        // arrange
+        var appHost = AppHost;
+        var services = appHost.Services;
+        var commander = services.Commander();
+        var session = Session.New();
+        await appHost.SignIn(session, new AccountFull("Bobby"));
+
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "GetListeningStreamPresenceTest",
+                    Kind = ChatKind.Group,
+                },
+            },
+        });
+        chat.Require();
+
+        var liveAudioStreams = services.GetRequiredService<ILiveAudioStreams>();
+        var liveSessionsBackend = services.GetRequiredService<ILiveSessionsBackend>();
+        var authors = services.GetRequiredService<IAuthors>();
+        var author = await authors.GetOwn(session, chat.Id, default);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+
+        // act - open the listening stream and start consuming it
+        var stream = await liveAudioStreams.GetListeningStream(session, chat.Id, default, cts.Token);
+        var consumeTask = BackgroundTask.Run(async () => {
+            await foreach (var _ in stream.WithCancellation(cts.Token)) { }
+        }, cts.Token);
+
+        // assert - presence is registered while the stream is open
+        await ComputedTest.When(async ct =>
+            (await liveSessionsBackend.ListParticipants(chat.Id, ct)).Should().Contain(author!.Id));
+
+        // act - the caller stops consuming (cancellation unwinds the async iterator's finally block)
+        await cts.CancelAsync();
+        await consumeTask.SilentAwait(false);
+
+        // assert - presence goes with it, not with the 90s ParticipantStaleness backstop
+        await ComputedTest.When(async ct =>
+            (await liveSessionsBackend.ListParticipants(chat.Id, ct)).Should().NotContain(author!.Id));
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task AmbientSessionShouldLatchAcrossSequentialUtterances()
+    {
+        // arrange - two distinct authors in the same group chat, both on JustVoice
+        var appHost = AppHost;
+        var services = appHost.Services;
+        var commander = services.Commander();
+        var session1 = Session.New();
+        await appHost.SignIn(session1, new AccountFull("Alice"));
+        var session2 = Session.New();
+        await appHost.SignIn(session2, new AccountFull("Bob"));
+
+        var chat = await commander.Call(new Chats_Change {
+            Session = session1,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "AmbientLatchTest",
+                    Kind = ChatKind.Group,
+                    IsPublic = true, // so Bob can join and latch the session
+                },
+            },
+        });
+        chat.Require();
+        await commander.Call(new Authors_Join { Session = session2, ChatId = chat.Id });
+
+        await services.UserSettingsUI(session1)
+            .ChatUserSettings(chat.Id)
+            .Set(new ChatUserSettings { VoiceMode = VoiceMode.JustVoice }, CancellationToken.None);
+        await services.UserSettingsUI(session2)
+            .ChatUserSettings(chat.Id)
+            .Set(new ChatUserSettings { VoiceMode = VoiceMode.JustVoice }, CancellationToken.None);
+
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var liveSessionsBackend = services.GetRequiredService<ILiveSessionsBackend>();
+        var authors = services.GetRequiredService<IAuthors>();
+        var author1 = await authors.GetOwn(session1, chat.Id, default);
+        var author2 = await authors.GetOwn(session2, chat.Id, default);
+
+        // act - Alice's VAD-delimited utterance runs to completion (GetFrames ends after ~500ms)
+        // BEFORE Bob's utterance ever starts - this is the shape of the real ambient conversation:
+        // each speaker's speech is segmented into its own ProcessAudio call by client-side VAD.
+        var record1 = new AudioRecord(
+            StreamId.New(services.MeshWatcher().ThisNode.Ref),
+            session1,
+            chat.Id,
+            SystemClock.Instance.Now.EpochOffset.TotalSeconds,
+            null);
+        await backend.ProcessAudio(record1, 0, new RpcStream<AudioFrame>(GetFrames()), CancellationToken.None);
+
+        // act - only now does Bob's utterance start
+        var record2 = new AudioRecord(
+            StreamId.New(services.MeshWatcher().ThisNode.Ref),
+            session2,
+            chat.Id,
+            SystemClock.Instance.Now.EpochOffset.TotalSeconds,
+            null);
+        await backend.ProcessAudio(record2, 0, new RpcStream<AudioFrame>(GetFrames()), CancellationToken.None);
+
+        // assert - Alice's utterance ending must not have torn the session down before Bob's utterance
+        // could join it: the session must still exist, with both authors present and latched.
+        await ComputedTest.When(async ct => {
+            var live = await liveSessionsBackend.GetState(chat.Id, ct);
+            live.Should().NotBeNull("Alice's stream ending must not tear down the session before Bob joins it");
+            live!.AuthorIds.Should().Contain(author1!.Id);
+            live.AuthorIds.Should().Contain(author2!.Id);
+            live.SessionStartedAt.Should().NotBeNull("two distinct authors must latch the session");
+        });
+        var liveSession = await liveSessionsBackend.Get(chat.Id, default);
+        liveSession.Should().NotBeNull();
+        liveSession!.StartedAt.Should().NotBe(default);
+    }
+
+    [Fact(Timeout = 60_000)]
     public async Task SkipToLiveSkipsWhatTheProducerAlreadyProduced()
     {
         // arrange

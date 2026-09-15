@@ -224,6 +224,7 @@
   "ChatView_SayHiTo_Prefix": "Saluta ",
   "ChatView_SayHiTo_Suffix": "!",
   "ChatView_ForwardedFrom": "Inoltrato da",
+  "ChatView_SentViaApi": "Inviato tramite API, ad esempio da un agente di IA",
   "ChatView_MessageDeleted": "Il messaggio è stato eliminato.",
   "ChatView_SendingAttachments": "Invio degli allegati…",
   "ChatView_ShowDetails": "Mostra i dettagli",
@@ -307,7 +308,11 @@
   "ConversationMenu_CopySummaryLink": "Copia il link al riepilogo",
 
   "ThreadMenu_GoToThread": "Vai al thread",
-  "ThreadMenu_CopyThread": "Copia il thread",
+  "ThreadMenu_CopyThread": "Copia titolo e link",
+  "ThreadMenu_Mute": "Silenzia",
+  "ThreadMenu_Unmute": "Riattiva",
+  "ThreadMenu_GoToStartMessage": "Vai al messaggio iniziale",
+  "ThreadMenu_CopyThreadLink": "Copia il link al thread",
 
   "LocationMessage_Live": "Posizione in tempo reale",
   "LocationMessage_Static": "Posizione",
@@ -659,11 +664,6 @@
   "DemandInteraction_Updating": "Aggiornamento...",
   "DemandInteraction_Continue_Format": "Continuare {0}?",
   "Banner_ReadyToRestart_Format": "{0} è pronto a riavviarsi in modalità ottimizzata",
-  "Banner_CallDialing": "Stai chiamando…",
-  "Banner_CallAccepted": "Chiamata accettata",
-  "Banner_CallDeclined": "Chiamata rifiutata",
-  "Banner_CallNoAnswer": "Nessuna risposta",
-  "Banner_CancelCall": "Annulla chiamata",
 
   "Bubble_Counter_Format": "{0} di {1}",
   "Bubble_ChatListTabsTitle": "Chat e contatti",
@@ -924,6 +924,9 @@
   "Common_Yesterday": "Ieri",
   "Call_IncomingFrom": "Chiamata in arrivo da ",
   "Call_Message": "Messaggio",
+  "Call_AppIncomingTitle": "Chiamata in arrivo",
+  "Call_Mute": "Silenzia",
+  "Call_IsCallingYou": "ti sta chiamando…",
   "Call_SelectCamera": "Seleziona una fotocamera",
   "Call_NoCameras": "Nessuna fotocamera rilevata",
   "Call_CameraBlocked": "L'accesso alla fotocamera è bloccato.",
@@ -1390,6 +1393,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} o email@gmail.com",
   "SignIn_Or": "oppure",
   "SignIn_InvalidPhoneOrEmail": "Numero di telefono o indirizzo email non valido.",
+  "SignIn_SwitchToPhoneKeypad": "Passa al tastierino telefonico",
+  "SignIn_SwitchToEmailKeyboard": "Passa alla tastiera per e-mail",
   "SignIn_VerifyPhoneText_Format": "Verifica il tuo numero di telefono per continuare e farti trovare dai tuoi amici su {0}.",
   "SignIn_VerifyEmailText_Format": "Verifica il tuo indirizzo email per continuare e farti trovare dai tuoi amici su {0}.",
   "SignIn_PopupBlocked": "Il browser ha bloccato il popup di accesso. Consenti i popup per questo sito e riprova.",
@@ -1480,6 +1485,8 @@
   "Video_Connecting": "Connessione...",
   "Call_Ended": "Chiamata terminata",
   "Call_CouldntStart": "Impossibile avviare la chiamata",
+  "Call_NoMicrophoneAccess": "Impossibile avviare la chiamata: nessun accesso al microfono.",
+  "Call_AlreadyInCall": "Sei già in una chiamata",
   "Call_RecordingTurnedOffByHost": "Registrazione disattivata dall'organizzatore",
   "Call_MakeHost": "Rendi host",
   "Call_Join": "Partecipa",
@@ -1530,12 +1537,13 @@
 
   "Share_FailedToShareCount": "Impossibile condividere {0} file",
 
-  "FileSaver_SavedToGallery": "{0} file salvato nella galleria|{0} file salvati nella galleria",
-  "FileSaver_SavedToMusic": "{0} file salvato in Music|{0} file salvati in Music",
-  "FileSaver_SavedToDownloads": "{0} file salvato in Downloads|{0} file salvati in Downloads",
+  "FileSaver_DownloadingToGallery": "Download di {0} file nella galleria…|Download di {0} file nella galleria…",
+  "FileSaver_DownloadingToMusic": "Download di {0} file in Music…|Download di {0} file in Music…",
+  "FileSaver_DownloadingToDownloads": "Download di {0} file in Downloads…|Download di {0} file in Downloads…",
+  "FileSaver_Downloading": "Download di {0} file…|Download di {0} file…",
+  "FileSaver_AlreadyDownloading": "Il file è già in download|I file sono già in download",
   "FileSaver_SavedToLibrary": "{0} file salvato nella libreria|{0} file salvati nella libreria",
   "FileSaver_Saved": "{0} file salvato|{0} file salvati",
-  "FileSaver_PartiallySaved": "{0} di {1} file salvati",
   "FileSaver_SaveFailed": "Impossibile salvare il file|Impossibile salvare i file",
 
   // Date/time data, not prose: the name lists are '|'-separated and must keep their
@@ -1586,5 +1594,7 @@
   "ChatSettings_UsePlaceSettingsForMembers": "Usa le impostazioni del Luogo per modificare i membri",
   "ChatSettings_LeaveChatAndDelete": "Esci dalla chat ed eliminala",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Esci dal Luogo ed eliminalo"
+  "PlaceSettings_LeavePlaceAndDelete": "Esci dal Luogo ed eliminalo",
+  "Call_OutgoingTo": "Chiamata in uscita a ",
+  "Call_Outgoing": "Chiamata in uscita"
 }

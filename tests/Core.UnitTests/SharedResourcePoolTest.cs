@@ -1,5 +1,6 @@
 using ActualChat.Pooling;
 using ActualLab.Time.Testing;
+using Xunit.Sdk;
 
 namespace ActualChat.Core.UnitTests;
 
@@ -280,6 +281,121 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
         await rent.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    [Theory(Timeout = TestTimeoutMs)]
+    [InlineData(typeof(InvalidOperationException))]
+    [InlineData(typeof(ObjectDisposedException))]
+    public async Task RentShouldPropagateFactoryFailure(Type errorType)
+    {
+        // arrange
+        var error = (Exception)Activator.CreateInstance(errorType, "Factory failed")!;
+        var factoryCallCount = 0;
+        var pool = new SharedResourcePool<int, Resource>(
+            (_, _) => Interlocked.Increment(ref factoryCallCount) == 1
+                ? Task.FromException<Resource>(error)
+                : Task.FromResult(new Resource())) {
+            ResourceDisposeDelay = TimeSpan.Zero,
+        };
+
+        // act
+        var rent = () => pool.Rent(10).AsTask().WaitAsync(WaitTimeout);
+
+        // assert
+        (await rent.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(error);
+        factoryCallCount.Should().Be(1, "a failed factory must not be retried behind the caller's back");
+        using var lease = await pool.Rent(10);
+        factoryCallCount.Should().Be(2, "the lease with a failed factory must not stay in the pool");
+    }
+
+    [Fact(Timeout = TestTimeoutMs)]
+    public async Task RentShouldCreateResourceOnlyAfterPreviousOneIsDisposed()
+    {
+        // arrange
+        var disposerStarted = TaskCompletionSourceExt.New();
+        var disposerGate = TaskCompletionSourceExt.New();
+        var disposeCount = 0;
+        var factoryCallCount = 0;
+        var pool = new SharedResourcePool<int, Resource>(
+            (_, _) => {
+                Interlocked.Increment(ref factoryCallCount);
+                return Task.FromResult(new Resource());
+            },
+            async (_, resource) => {
+                if (Interlocked.Increment(ref disposeCount) == 1) {
+                    disposerStarted.TrySetResult();
+                    await disposerGate.Task.ConfigureAwait(false);
+                }
+                resource.Dispose();
+            }) {
+            ResourceDisposeDelay = TimeSpan.Zero,
+        };
+        var oldLease = await pool.Rent(10);
+        var oldResource = oldLease.Resource;
+        oldLease.Dispose();
+        await disposerStarted.Task.WaitAsync(WaitTimeout);
+
+        // act
+        var rentTask = pool.Rent(10).AsTask();
+        await Task.Delay(100);
+        var factoryCallCountBeforeDisposal = factoryCallCount;
+        disposerGate.TrySetResult();
+        using var lease = await rentTask.WaitAsync(WaitTimeout);
+
+        // assert
+        factoryCallCountBeforeDisposal.Should().Be(1, "the old resource was still being disposed");
+        factoryCallCount.Should().Be(2);
+        oldResource.WhenDisposed.IsCompleted.Should().BeTrue();
+        lease.Resource.Should().NotBeSameAs(oldResource);
+    }
+
+    [Fact(Timeout = TestTimeoutMs)]
+    public async Task RentShouldThrowWhenPoolIsDisposed()
+    {
+        // arrange
+        var pool = new SharedResourcePool<int, Resource>(ResourceFactory);
+        await pool.DisposeAsync();
+
+        // act
+        var rent = () => pool.Rent(10).AsTask();
+
+        // assert
+        await rent.Should().ThrowAsync<ObjectDisposedException>();
+    }
+
+    [Fact(Timeout = TestTimeoutMs)]
+    public async Task RentShouldThrowWhenPoolIsDisposedWhileItWaits()
+    {
+        // arrange
+        var disposerStarted = TaskCompletionSourceExt.New();
+        var disposerGate = TaskCompletionSourceExt.New();
+        var disposeCount = 0;
+        var pool = new SharedResourcePool<int, Resource>(
+            ResourceFactory,
+            async (_, resource) => {
+                if (Interlocked.Increment(ref disposeCount) == 1) {
+                    disposerStarted.TrySetResult();
+                    await disposerGate.Task.ConfigureAwait(false);
+                }
+                resource.Dispose();
+            }) {
+            ResourceDisposeDelay = TimeSpan.Zero,
+            Log = new RetryLoopGuardLogger(),
+        };
+        var lease = await pool.Rent(10);
+        lease.Dispose();
+        await disposerStarted.Task.WaitAsync(WaitTimeout);
+        var rentTask = pool.Rent(10).AsTask();
+        rentTask.IsCompleted.Should().BeFalse("the rent must wait for the lease that is being ended");
+
+        // act
+        var disposeTask = pool.DisposeAsync().AsTask();
+        disposerGate.TrySetResult();
+        await disposeTask.WaitAsync(WaitTimeout);
+
+        // assert
+        var rent = () => rentTask.WaitAsync(WaitTimeout);
+        await rent.Should().ThrowAsync<ObjectDisposedException>();
+    }
+
     // Private methods
 
     private Task<Resource> ResourceFactory(int _, CancellationToken cancellationToken)
@@ -294,5 +410,30 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
 
         public void Dispose()
             => _whenDisposed.TrySetResult();
+    }
+
+    // A retry loop never yields, so no timeout can stop it - failing the logging call turns it into a test failure
+    private sealed class RetryLoopGuardLogger : ILogger
+    {
+        private const int MaxErrorCount = 100;
+        private int _errorCount;
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+            => null;
+
+        public bool IsEnabled(LogLevel logLevel)
+            => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel >= LogLevel.Error && Interlocked.Increment(ref _errorCount) > MaxErrorCount)
+                throw new XunitException($"Rent kept retrying: over {MaxErrorCount} errors were logged");
+        }
     }
 }

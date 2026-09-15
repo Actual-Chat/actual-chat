@@ -3,9 +3,10 @@
 
 @{
     var narrowViewSettings = NarrowViewSettings;
-    var narrowViewShouldHideButtons = narrowViewSettings.ShouldHideButtons
-        ?? narrowViewSettings.ShouldUseInteractiveHeader;
+    var narrowViewShouldHideButtons = narrowViewSettings.ShouldHideButtons ?? false;
     var showButtons = ScreenSize.IsWide() || !narrowViewShouldHideButtons;
+    var hasFooterContent = Footer != null && Footer != RenderFragments.Null;
+    var hasButtons = Buttons != null && showButtons && Buttons != RenderFragments.Null;
     var positionClass = narrowViewSettings.Position == DialogFramePosition.Bottom
         ? "narrow-view__modal__position-bottom"
         : "narrow-view__modal__position-stretch";
@@ -26,14 +27,16 @@
             @Body
         </div>
 
-        @if (Footer != null && Footer != RenderFragments.Null) {
+        @if (hasFooterContent || hasButtons) {
             <div class="dialog-footer">
-                @Footer
-            </div>
-        }
-        @if (Buttons != null && showButtons && Buttons != RenderFragments.Null) {
-            <div class="dialog-buttons @ButtonsClass">
-                @Buttons
+                @if (hasFooterContent) {
+                    @Footer
+                }
+                @if (hasButtons) {
+                    <div class="dialog-buttons @ButtonsClass">
+                        @Buttons
+                    </div>
+                }
             </div>
         }
     </ChildContent>

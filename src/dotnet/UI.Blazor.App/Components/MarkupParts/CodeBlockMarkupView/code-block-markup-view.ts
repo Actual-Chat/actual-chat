@@ -27,6 +27,7 @@ import markdown from 'highlight.js/lib/languages/markdown';
 import diff from 'highlight.js/lib/languages/diff';
 import plaintext from 'highlight.js/lib/languages/plaintext';
 import { getLogs } from 'logging';
+import { escapeHtml } from 'strings';
 import { Theme, ThemeInfo } from 'theme';
 
 const { errorLog } = getLogs('CodeBlockMarkupView');
@@ -79,14 +80,6 @@ function looksLikeTable(code: string): boolean {
         return false;
     const pipeLines = lines.filter(l => l.trimStart().startsWith('|'));
     return pipeLines.length >= lines.length / 2;
-}
-
-function escapeHtml(text: string): string {
-    return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
 }
 
 function highlightTableCells(code: string): string {

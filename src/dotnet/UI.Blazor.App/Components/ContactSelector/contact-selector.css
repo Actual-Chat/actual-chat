@@ -43,46 +43,47 @@ body.hoverable .contact-selector-list-item:hover,
 }
 .contact-selector-badges > .c-contact {
     @apply relative;
-    @apply flex-x items-center;
-    @apply min-w-16 max-w-[48%] h-6;
-    @apply px-0.5;
-    @apply rounded-lg border-none;
+    @apply flex-x items-center gap-x-1;
+    @apply min-w-16 max-w-[calc(50%-0.125rem)] h-6;
+    @apply px-1;
+    @apply rounded-lg;
     @apply overflow-hidden;
-    @apply bg-highlighted;
+    @apply border border-transparent;
+    @apply bg-contact-selector-badge;
+    @apply transition-colors;
 }
 .contact-selector-badges > .c-contact,
 .contact-selector-badges > .c-contact * {
     @apply cursor-pointer;
 }
-.contact-selector-badges > .c-contact > .c-remove {
-    @apply absolute inset-0 z-10;
-    @apply hidden items-center justify-start gap-x-2;
-    @apply rounded-lg;
-    @apply bg-transparent;
-    @apply text-white;
-    background: linear-gradient(to right, var(--toggle-circle) 5%, transparent);
-    outline: 1px solid var(--magenta-90);
-    outline-offset: -1px;
-}
-.contact-selector-badges > .c-contact > .c-remove > i {
-    @apply flex items-center justify-center;
-    @apply w-4 h-4;
-    @apply ml-1;
-    @apply rounded-md;
-    @apply bg-pal-magenta-60;
-    @apply text-base leading-4;
-}
 .contact-selector-badges > .c-contact > .c-name {
-    @apply px-1;
+    @apply grow min-w-0;
+    @apply px-0.5;
     @apply truncate;
     @apply text-caption-6 text-01;
 }
-body.hoverable .contact-selector-badges > .c-contact:hover {
-    outline: 1px solid var(--magenta-90);
-    outline-offset: -1px;
+.contact-selector-badges > .c-contact > .c-close {
+    @apply flex-none flex items-center justify-center;
+    @apply w-4 self-stretch;
+    @apply ml-auto;
+    @apply text-base leading-none text-03;
 }
-body.hoverable .contact-selector-badges > .c-contact:hover .c-remove {
-    @apply flex;
+body.hoverable .contact-selector-badges > .c-contact:hover {
+    @apply bg-contact-selector-badge-hover;
+    @apply border-banner-error;
+}
+body.hoverable .contact-selector-badges > .c-contact:active,
+.touch-capable .contact-selector-badges > .c-contact:active {
+    @apply bg-contact-selector-badge-active;
+    @apply border-banner-error;
+}
+body.hoverable .contact-selector-badges > .c-contact:hover .c-name,
+body.hoverable .contact-selector-badges > .c-contact:hover .c-close,
+body.hoverable .contact-selector-badges > .c-contact:active .c-name,
+body.hoverable .contact-selector-badges > .c-contact:active .c-close,
+.touch-capable .contact-selector-badges > .c-contact:active .c-name,
+.touch-capable .contact-selector-badges > .c-contact:active .c-close {
+    @apply text-banner-error;
 }
 
 /* Place picker */

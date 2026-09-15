@@ -289,6 +289,9 @@
   "ChatView_SayHiTo_Prefix": "Dites bonjour à ",
   "ChatView_SayHiTo_Suffix": " чекає на ваше привітання!",
   "ChatView_ForwardedFrom": "Weitergeleitet von",
+  // Tooltip on the robot icon beside the time of a message an app or an AI agent posted
+  // through the author's API key rather than the author typing it.
+  "ChatView_SentViaApi": "API üzerinden gönderildi, örneğin bir yapay zekâ ajanı tarafından",
   "ChatView_MessageDeleted": "このメッセージは削除されました。",
   "ChatView_SendingAttachments": "Изпращане на прикачени файлове…",
   "ChatView_ShowDetails": "Покажете подробностите",
@@ -386,9 +389,13 @@
   "ConversationMenu_CopySummary": "Zusammenfassung kopieren",
   "ConversationMenu_CopySummaryLink": "Копіювати посилання на стислий виклад",
 
-  // The context menu of a thread card in the transcript.
+  // The context menu of a thread: its card in the transcript and its row in a thread list.
   "ThreadMenu_GoToThread": "Перейти до треду",
-  "ThreadMenu_CopyThread": "Копирайте нишката",
+  "ThreadMenu_CopyThread": "Копирайте заглавието и връзката",
+  "ThreadMenu_Mute": "Отключить уведомления",
+  "ThreadMenu_Unmute": "Stummschaltung aufheben",
+  "ThreadMenu_GoToStartMessage": "Перейти до вихідного повідомлення",
+  "ThreadMenu_CopyThreadLink": "Копирайте линка към нишката",
 
   // A location posted into a chat. LocationMessage_Place is the plain geographic word for a pin
   // on a map - NOT the product term Place, which docs/i18n.md rules on separately.
@@ -796,11 +803,6 @@
   "DemandInteraction_Updating": "Wird aktualisiert...",
   "DemandInteraction_Continue_Format": "Да продължим ли — {0}?",
   "Banner_ReadyToRestart_Format": "{0} jest gotowy do ponownego uruchomienia w trybie zoptymalizowanym",
-  "Banner_CallDialing": "Anda sedang memanggil…",
-  "Banner_CallAccepted": "Cuộc gọi đã được chấp nhận",
-  "Banner_CallDeclined": "Обаждането е отхвърлено",
-  "Banner_CallNoAnswer": "Nessuna risposta",
-  "Banner_CancelCall": "Отменете обаждането",
 
   // "Bubbles" are the coach-mark tooltips of the first-run walk-through: shown once, then
   // dismissed. Bubble_Counter_Format is the "3 of 7" step counter. Each is a title plus a short
@@ -1086,7 +1088,11 @@
   "Common_Today": "Aujourd'hui",
   "Common_Yesterday": "Yesterday",
   "Call_IncomingFrom": "Połączenie przychodzące od ",
+  "Call_OutgoingTo": "Połączenie wychodzące do ",
   "Call_Message": "Повідомлення",
+  "Call_AppIncomingTitle": "Połączenie przychodzące",
+  "Call_Mute": "Bez zvuka",
+  "Call_IsCallingYou": "sedang menelepon Anda…",
   "Call_SelectCamera": "Seleziona una fotocamera",
   "Call_NoCameras": "Није пронађена ниједна камера",
   "Call_CameraBlocked": "カメラへのアクセスがブロックされています。",
@@ -1651,6 +1657,8 @@
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} または email@gmail.com",
   "SignIn_Or": "oppure",
   "SignIn_InvalidPhoneOrEmail": "電話番号またはメールアドレスが正しくありません。",
+  "SignIn_SwitchToPhoneKeypad": "Превключване към телефонна клавиатура",
+  "SignIn_SwitchToEmailKeyboard": "Переключить на клавиатуру для эл. почты",
   "SignIn_VerifyPhoneText_Format": "Devam etmek ve arkadaşlarınızın sizi {0} uygulamasında bulabilmesi için lütfen telefon numaranızı doğrulayın.",
   "SignIn_VerifyEmailText_Format": "続けるにはメールアドレスを確認してください。{0} で友だちがあなたを見つけられるようになります。",
   "SignIn_PopupBlocked": "El navegador bloqueó la ventana emergente de inicio de sesión. Permite las ventanas emergentes para este sitio e inténtalo de nuevo.",
@@ -1765,6 +1773,8 @@
   // Call state text and the call action buttons.
   "Call_Ended": "통화가 종료되었습니다",
   "Call_CouldntStart": "Anruf konnte nicht gestartet werden",
+  "Call_NoMicrophoneAccess": "通話を開始できませんでした: マイクへのアクセスがありません。",
+  "Call_AlreadyInCall": "Você já está em uma chamada",
   "Call_RecordingTurnedOffByHost": "Nagrywanie wyłączone przez prowadzącego",
   "Call_MakeHost": "Ustaw jako prowadzącego",
   // "Join" in the call sense - entering a call that is already running, not
@@ -1780,6 +1790,7 @@
   "Call_DetectingLanguage": "Tôi đang phát hiện ngôn ngữ",
   "Call_Incoming": "Połączenie przychodzące",
   "Call_IncomingVideo": "Przychodzące połączenie wideo",
+  "Call_Outgoing": "Połączenie wychodzące",
   "Call_InCall": "Dalam panggilan",
   "Call_JoinVideo": "Присъединете се към видеото",
   "Call_VideoPreview": "Попередній перегляд відео",
@@ -1828,15 +1839,17 @@
   // The plural counterpart of Share_FailedToShareFiles above.
   "Share_FailedToShareCount": "{0} 件のファイルを共有できませんでした",
 
-  // Toasts the native file savers show after a Download / Save action. The group is
-  // reported as one outcome, so every key counts files; the place is baked into the
-  // phrase rather than spliced in, since it has to inflect.
-  "FileSaver_SavedToGallery": "{0} 件のファイルをギャラリーに保存しました",
-  "FileSaver_SavedToMusic": "{0} 件のファイルを Music に保存しました",
-  "FileSaver_SavedToDownloads": "{0} 件のファイルを Downloads に保存しました",
+  // Toasts the native file savers show for a Download / Save action: Android's when the
+  // system download starts, the others once the files are saved. The group is reported
+  // as one outcome, so every key counts files; the place is baked into the phrase rather
+  // than spliced in, since it has to inflect.
+  "FileSaver_DownloadingToGallery": "{0} 件のファイルをギャラリーにダウンロードしています…",
+  "FileSaver_DownloadingToMusic": "{0} 件のファイルを Music にダウンロードしています…",
+  "FileSaver_DownloadingToDownloads": "{0} 件のファイルを Downloads にダウンロードしています…",
+  "FileSaver_Downloading": "{0} 件のファイルをダウンロードしています…",
+  "FileSaver_AlreadyDownloading": "Les fichiers sont déjà en cours de téléchargement",
   "FileSaver_SavedToLibrary": "{0} 件のファイルをライブラリに保存しました",
   "FileSaver_Saved": "{0} 件のファイルを保存しました",
-  "FileSaver_PartiallySaved": "{1} dosyadan {0} tanesi kaydedildi",
   "FileSaver_SaveFailed": "Dateien konnten nicht gespeichert werden",
 
   // Everything that renders a date, a time or a duration: the transcript's day separators, the
