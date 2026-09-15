@@ -90,6 +90,17 @@
                     IsCheckedChanged="@(_ => OnToggleTranslatedVoice())"/>
         </Right>
     </TileItem>
+    <TileItem Click="@OnDubVoiceClick">
+        <Icon><i class="icon-mic text-2xl"></i></Icon>
+        <Content>@L.Transcription_DubVoice</Content>
+        <Caption>@L.Transcription_DubVoiceCaption</Caption>
+        <Right>
+            <span class="text-03">
+                @(m.Languages.DubVoice.IsNullOrEmpty() ? L.Transcription_DubVoiceDefault : m.Languages.DubVoice)
+            </span>
+            <i class="icon-chevron-right text-xl text-03"></i>
+        </Right>
+    </TileItem>
 </Tile>
 
 @if (hasSensors && m.EnableIncompleteUI) {
@@ -144,6 +155,9 @@
 
     private Task OnToggleTranslatedVoice()
         => LanguageUI.UpdateSettings(x => x with { IsTranslatedVoiceEnabled = !x.IsTranslatedVoiceEnabled });
+
+    private void OnDubVoiceClick()
+        => ModalUI.Show(new DubVoiceModal.Model());
 
     // Nested types
 

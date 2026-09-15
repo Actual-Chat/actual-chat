@@ -201,6 +201,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.FeaturesTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.InfoToastTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.LandingBackgroundTestPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.ModalsTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.QrCodeTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.ReconnectOverlayTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.RenderSlotTestPage.RenderSlotTestPage>();
@@ -264,6 +265,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.ConversationHeaderView+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.ConversationLiveState, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.ConversationMenu+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
+        CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.DubVoiceModal+ViewModel, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.EditChatMemberModel, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.EditChatMembersModalPage+ComputedModel, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.EditChatTypeModalPage+ComputedModel, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
@@ -733,6 +735,7 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Pages.FeaturesTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.InfoToastTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.LandingBackgroundTestPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Pages.ModalsTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.QrCodeTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.ReconnectOverlayTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.RenderSlotTestPage.RenderSlotTestPage), AotTypeKind.Component),

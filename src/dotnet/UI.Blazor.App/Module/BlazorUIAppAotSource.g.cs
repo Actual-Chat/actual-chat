@@ -169,6 +169,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Discover.TopContainer>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Discover.TopPlaceItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Discover.TopPlaces>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.DubVoiceModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.EditChatMemberMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.EditChatMembersModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.EditChatTypeModalPage>();
@@ -383,6 +384,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SearchInput>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SearchPanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SearchResultGroupHeader>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SelectedBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SelectionHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SelectionHost>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SendingMessageMenuContent>();
@@ -950,6 +952,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.Discover.TopContainer), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Discover.TopPlaceItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Discover.TopPlaces), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.DubVoiceModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.EditChatMemberMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.EditChatMembersModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.EditChatTypeModalPage), AotTypeKind.Component),
@@ -1164,6 +1167,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.SearchInput), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SearchPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SearchResultGroupHeader), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.SelectedBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SelectionHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SelectionHost), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SendingMessageMenuContent), AotTypeKind.Component),

@@ -100,6 +100,7 @@ export type LogScope =
     | 'SoundsPlayer'
     | 'IncomingCallRingtone'
     | 'OutgoingCallRingback'
+    | 'DubVoicePreview'
     // Location
     | 'LocationTracker'
     // Audio recording
@@ -220,6 +221,7 @@ const defaults: Record<LogScope, LogLevel> = {
     SoundsPlayer: LogLevel.Warn,
     IncomingCallRingtone: LogLevel.Warn,
     OutgoingCallRingback: LogLevel.Warn,
+    DubVoicePreview: LogLevel.Warn,
     // Location
     LocationTracker: LogLevel.Warn,
     // Audio recording
