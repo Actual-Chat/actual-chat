@@ -267,8 +267,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     {
         // A ring the slot never held (e.g. declined before the search claimed it) has no release to clear
         // its flags, so they go here.
-        var isHeld = CallUI.GetCallChatIdNonComputed() == chatId;
-        CallUI.DropRing(chatId);
+        var isHeld = CallUI.DropRing(chatId);
         Bridge?.DismissCallNotification(chatId);
         if (!isHeld)
             ClearCallFlags(chatId);

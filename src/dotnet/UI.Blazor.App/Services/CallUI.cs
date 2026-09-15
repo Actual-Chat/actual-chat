@@ -215,15 +215,19 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
     }
 
-    public void DropRing(ChatId chatId)
+    public bool DropRing(ChatId chatId)
     {
-        // The slot goes with the ring only while that ring is what holds it: the dismissal push our own
-        // accept triggers must not end the call it just started.
+        // Reports whether the slot held the chat, in any phase. The slot goes only while the ring itself holds
+        // it: the dismissal push our own accept triggers must not end the call it just started.
         lock (_lock) {
             RemoveCandidate(chatId);
             _busyAckedChatIds.Remove(chatId);
-            if (_activeCall.Value is { Phase: CallPhase.Ringing } call && call.ChatId == chatId)
+            if (_activeCall.Value is not { } call || call.ChatId != chatId)
+                return false;
+
+            if (call.Phase == CallPhase.Ringing)
                 ReleaseUnsafe();
+            return true;
         }
     }
 
