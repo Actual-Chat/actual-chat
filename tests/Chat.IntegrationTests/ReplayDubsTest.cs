@@ -172,6 +172,48 @@ public class ReplayDubsTest(
     }
 
     [Fact(Timeout = 90_000)]
+    public async Task AnOptedInSpeakerIsDubbedWithTheirCloneAndOptingOutRegeneratesTheDub()
+    {
+        // arrange
+        var account = await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var dubs = services.GetRequiredService<ReplayDubs>();
+        var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        var pool = services.GetRequiredService<VoicePool>();
+        var ct = CancellationToken.None;
+        // A longer recording than the other tests', so its text can't collide with theirs in the recorder
+        var entry = await Tester.RecordVoiceEntry(chatId, Languages.Russian, frameCount: 500);
+        await Tester.OptInOwnVoice(chatId, Languages.Russian);
+        var id = TranslationId.New(entry.Id, Languages.English);
+
+        // act - the speaker is opted in
+        var first = await dubs.GetOrCreate(entry, Languages.English, ct);
+        var cloneVoiceId = await pool.Acquire(account.Id, ct);
+        var translation = await services.WhenReplayDubStored(id, ct, cloneVoiceId!);
+        var streamId = RecordingSpeechSynthesizer.OneShotStreamId(Languages.English, translation.Content);
+
+        // assert
+        first.Should().NotBeNull();
+        cloneVoiceId.Should().NotBeNullOrEmpty("an opted-in speaker with a sample gets a clone");
+        recorder.GetVoiceId(streamId).Should().Be(cloneVoiceId, "the dub is spoken in the speaker's cloned voice");
+        var firstMediaId = translation.DubMediaId!;
+
+        // act - the speaker opts out
+        await services.UserSettingsUI(Tester.Session).UserLanguageSettings()
+            .Update(x => x with { IsOwnVoiceEnabled = false }, ct);
+        var second = await dubs.GetOrCreate(entry, Languages.English, ct);
+        translation = await services.WhenReplayDubStored(id, ct);
+
+        // assert
+        second.Should().NotBeNull();
+        second!.Stored.Should().BeNull("the cloned dub can't serve a speaker who opted out");
+        translation.DubMediaId.Should().NotBe(firstMediaId, "opting out regenerates the dub");
+        recorder.GetVoiceId(RecordingSpeechSynthesizer.OneShotStreamId(Languages.English, translation.Content))
+            .Should().Be(FakeSpeechSynthesizer.DefaultVoiceId, "the stock voice replaces the clone");
+    }
+
+    [Fact(Timeout = 90_000)]
     public async Task AVoiceTheCatalogDoesNotListFallsBackToTheDefault()
     {
         // arrange

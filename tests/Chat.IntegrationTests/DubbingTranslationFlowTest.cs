@@ -2,6 +2,7 @@ using System.Numerics;
 using ActualChat.Chat.Module;
 using ActualChat.Module;
 using ActualChat.Streaming;
+using ActualChat.Streaming.Services;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
 using ActualChat.Transcription.Module;
@@ -128,6 +129,57 @@ public class DubbingTranslationFlowTest(
         stream.Should().NotBeNull();
         chunks.Should().HaveCount(1);
         recorder.GetVoiceId(dubId.Value).Should().Be("Daniel", "the live dub is spoken in the speaker's voice");
+        return;
+
+        void Push(Transcript transcript) {
+            source.Writer.TryWrite(transcript - last);
+            last = transcript;
+        }
+    }
+
+    [Fact(Timeout = 90_000)]
+    public async Task DubShouldSpeakInTheSpeakersClonedVoice()
+    {
+        // arrange
+        var account = await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        var pool = services.GetRequiredService<VoicePool>();
+        var sourceId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
+        var dubId = StreamId.New(sourceId, Languages.English);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var ct = cts.Token;
+        await Tester.OptInOwnVoice(chatId, Languages.Russian);
+        var source = Channel.CreateUnbounded<TranscriptDiff>();
+        var pushSourceTask = BackgroundTask.Run(
+            () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
+            ct);
+        var last = Transcript.Empty;
+        Push(Unstable(SourceSteps[0]));
+        await backend.WhenTranscriptPublished(sourceId, ct);
+        var entry = await Tester.CreateStreamingEntry(
+            chatId, Languages.Russian, streamId: sourceId.Value, cancellationToken: ct);
+        // ProcessAudio fills the author map for a real recording; a pushed transcript has to do it here
+        var streamingBackend = (AudioStreamingBackend)backend;
+        streamingBackend.RememberChatId(sourceId, chatId);
+        streamingBackend.RememberAuthorId(sourceId, entry.ChatEntrySlim.AuthorId);
+
+        // act
+        var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+        Push(Stable(SourceText));
+        var chunks = await recorder.WhenSpoken(dubId.Value, 1, ct);
+        source.Writer.Complete();
+        await pushSourceTask.SilentAwait(false);
+        var cloneVoiceId = await pool.Acquire(account.Id, ct);
+
+        // assert
+        stream.Should().NotBeNull();
+        chunks.Should().HaveCount(1);
+        cloneVoiceId.Should().NotBeNullOrEmpty("an opted-in speaker with a sample gets a clone");
+        recorder.GetVoiceId(dubId.Value).Should().Be(cloneVoiceId,
+            "the live dub is spoken in the speaker's cloned voice");
         return;
 
         void Push(Transcript transcript) {

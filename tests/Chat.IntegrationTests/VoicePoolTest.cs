@@ -267,10 +267,7 @@ public sealed class VoicePoolTest(
     {
         var account = await tester.SignInAsUniqueAlice();
         var (chatId, _) = await tester.CreateChat(false);
-        // RecordVoiceEntry replaces the language settings, so the opt-in goes after it
-        var entry = await tester.RecordVoiceEntry(chatId, Languages.Russian, frameCount: EntryFrameCount);
-        var mediaId = entry.Audio!.MediaId!;
-        await SetSettings(tester, x => x with { IsOwnVoiceEnabled = true, OwnVoiceSampleMediaId = mediaId });
+        var mediaId = await tester.OptInOwnVoice(chatId, Languages.Russian, EntryFrameCount);
 
         return new Speaker(account, chatId, mediaId);
     }
