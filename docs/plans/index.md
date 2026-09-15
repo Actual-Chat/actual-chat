@@ -153,6 +153,16 @@ account.
 - [NAudio replacement](./naudio-replacement.md) — Windows audio capture fails
   under NativeAOT (`InvalidProgramException` in NAudio's WASAPI COM path);
   replace it with an AOT-safe capture path.
+- [On-device video transcoding](./on-device-video-transcoding.md) — **researched,
+  parked.** Shrink video attachments on the client before upload, the way the image
+  pipeline already does for photos: H.264 into MP4 with the original AAC track copied,
+  via WebCodecs + mediabunny in a worker; Apple stays on the existing native
+  `AppleVideoTranscoder`; the server keeps re-encoding as the universal fallback, so the
+  client path is purely opportunistic. AV1/VP9 were ruled out on two measurements — no
+  hardware encode on any phone tested, and AAC cannot be muxed into WebM at all. Worth
+  1.6–4× faster sends on real uplinks and 3–8.4× fewer bytes. Three engineer-weeks for
+  the first version, gated on one probe that decides whether 10-bit HDR (the default
+  output of both iPhone 12+ and recent Samsungs) needs a tone-mapping shader.
 
 ### Chat and UI
 
