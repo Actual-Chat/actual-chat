@@ -1,6 +1,8 @@
+using ActualChat.Db;
 using ActualChat.OAuth.Db;
 using ActualChat.OAuth.Module;
 using ActualLab.Fusion.EntityFramework;
+using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -91,8 +93,19 @@ public class OAuthGrants(IServiceProvider services) : DbServiceBase<OAuthDbConte
         var clientName = await applications.GetDisplayNameAsync(application, cancellationToken).ConfigureAwait(false)
             ?? command.ClientId;
 
-        var existing = await FindAuthorization(account.Id, applicationId, scopes, cancellationToken)
+        // Concurrent consents for the same (user, client) are serialized on a DB advisory lock held for
+        // the rest of this call: without it two of them see no existing grant and both create one.
+        // The lock lives in its own transaction (released on dispose); the writes go through OpenIddict.
+        var lockDbContext = await DbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
+        await using var _1 = lockDbContext.ConfigureAwait(false);
+        var lockTransaction = await lockDbContext.Database.BeginTransactionAsync(cancellationToken)
             .ConfigureAwait(false);
+        await using var _2 = lockTransaction.ConfigureAwait(false);
+        await lockDbContext.Lock(DbLockKey.New(GetType(), account.Id, applicationId), cancellationToken)
+            .ConfigureAwait(false);
+
+        var existing = await FindAuthorization(
+            scope.ServiceProvider, account.Id, applicationId, scopes, cancellationToken).ConfigureAwait(false);
         if (existing is not null) {
             // A grant whose backing session expired is dead for good (nothing can issue tokens for it),
             // so it's replaced rather than reused.
@@ -126,7 +139,16 @@ public class OAuthGrants(IServiceProvider services) : DbServiceBase<OAuthDbConte
             Description = $"{clientName} (OAuth)",
             ExpiresAt = Clocks.SystemClock.Now + Settings.RefreshTokenLifetime,
         }, true, cancellationToken).ConfigureAwait(false);
-        return (await authorizations.GetIdAsync(authorization, cancellationToken).ConfigureAwait(false))!;
+
+        var authorizationId = (await authorizations.GetIdAsync(authorization, cancellationToken)
+            .ConfigureAwait(false))!;
+        var survivorId = await Converge(scope.ServiceProvider, account.Id, applicationId, scopes, cancellationToken)
+            .ConfigureAwait(false)
+            ?? authorizationId;
+        if (survivorId != authorizationId)
+            await Commander.Call(new AccountsBackend_SignOut(backingSession, Deactivate: true), true, cancellationToken)
+                .ConfigureAwait(false);
+        return survivorId;
     }
 
     // [CommandHandler]
@@ -150,12 +172,10 @@ public class OAuthGrants(IServiceProvider services) : DbServiceBase<OAuthDbConte
     public async Task<object?> FindAuthorization(
         UserId userId, string applicationId, IReadOnlyCollection<string> scopes, CancellationToken cancellationToken)
     {
+        // The result is detached from its scope: read it (GetSessionId, GetIdAsync), but re-load it by id
+        // in your own scope before mutating it — an entity attached across scopes fails to update.
         using var scope = Services.CreateScope();
-        var authorizations = scope.ServiceProvider.GetRequiredService<IOpenIddictAuthorizationManager>();
-        return await authorizations
-            .FindAsync(userId.Value, applicationId, Statuses.Valid, AuthorizationTypes.Permanent,
-                scopes.ToImmutableArray(), cancellationToken)
-            .FirstOrDefaultAsync(cancellationToken)
+        return await FindAuthorization(scope.ServiceProvider, userId, applicationId, scopes, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -246,4 +266,47 @@ public class OAuthGrants(IServiceProvider services) : DbServiceBase<OAuthDbConte
         }
         return result.OrderByDescending(g => g.CreatedAt).ToApiArray();
     }
+
+    // Private methods
+
+    private static async Task<object?> FindAuthorization(
+        IServiceProvider scopedServices, UserId userId, string applicationId,
+        IReadOnlyCollection<string> scopes, CancellationToken cancellationToken)
+    {
+        var authorizations = scopedServices.GetRequiredService<IOpenIddictAuthorizationManager>();
+        var matches = FindAuthorizations(authorizations, userId, applicationId, scopes, cancellationToken);
+        return await matches.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<string?> Converge(
+        IServiceProvider scopedServices, UserId userId, string applicationId,
+        IReadOnlyCollection<string> scopes, CancellationToken cancellationToken)
+    {
+        // Keeps the oldest Valid permanent authorization for (user, client, scopes) and revokes the rest,
+        // so duplicates created before the advisory lock existed (or through any other path) collapse
+        // into one grant. Returns the survivor's id, or null when no valid grant is left.
+        var authorizations = scopedServices.GetRequiredService<IOpenIddictAuthorizationManager>();
+        var candidates = new List<(DateTimeOffset CreatedAt, string Id, object Authorization)>();
+        var matches = FindAuthorizations(authorizations, userId, applicationId, scopes, cancellationToken);
+        await foreach (var authorization in matches.ConfigureAwait(false)) {
+            var id = (await authorizations.GetIdAsync(authorization, cancellationToken).ConfigureAwait(false))!;
+            var createdAt = await authorizations.GetCreationDateAsync(authorization, cancellationToken)
+                .ConfigureAwait(false);
+            candidates.Add((createdAt ?? DateTimeOffset.MaxValue, id, authorization));
+        }
+        if (candidates.Count == 0)
+            return null;
+
+        var survivor = candidates.OrderBy(c => c.CreatedAt).ThenBy(c => c.Id).First();
+        foreach (var candidate in candidates.Where(c => c.Id != survivor.Id))
+            await Revoke(scopedServices, candidate.Authorization, cancellationToken).ConfigureAwait(false);
+        return survivor.Id;
+    }
+
+    private static IAsyncEnumerable<object> FindAuthorizations(
+        IOpenIddictAuthorizationManager authorizations, UserId userId, string applicationId,
+        IReadOnlyCollection<string> scopes, CancellationToken cancellationToken)
+        => authorizations.FindAsync(
+            userId.Value, applicationId, Statuses.Valid, AuthorizationTypes.Permanent,
+            scopes.ToImmutableArray(), cancellationToken);
 }

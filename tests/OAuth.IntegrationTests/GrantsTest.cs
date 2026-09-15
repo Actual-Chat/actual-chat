@@ -64,6 +64,31 @@ public sealed class GrantsTest(OAuthCollection.AppHostFixture fixture, ITestOutp
     }
 
     [Fact]
+    public async Task ConcurrentApprovesShouldConvergeToOneGrant()
+    {
+        // arrange
+        var alice = await Tester.SignInAsUniqueAlice();
+        var clientId = await RegisterClient("https://c.example/cb");
+
+        // act
+        var ids = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => Approve(clientId, "mcp")));
+
+        // assert
+        ids.Distinct().Should().ContainSingle(because: "every concurrent consent must land on the same grant");
+        var oauthSessions = await ListOAuthSessions(alice.Id);
+        var activeSessions = new List<Session>();
+        foreach (var session in oauthSessions)
+            if ((await SessionsBackend.Get(session, default))?.IsActive == true)
+                activeSessions.Add(session);
+        activeSessions.Should().ContainSingle(because: "losing consents must give up their backing sessions");
+        await ComputedTest.When(async ct => {
+            var grants = await Grants.List(Tester.Session, ct);
+            grants.Where(g => g.ClientId == clientId).Should().ContainSingle(because: "duplicates are revoked")
+                .Which.Id.Should().Be(ids[0]);
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public async Task ApproveShouldReplaceGrantWhoseSessionIsDead()
     {
         // arrange
