@@ -4,6 +4,7 @@ public enum SessionKind
 {
     Session = 0,
     ApiKey,
+    OAuth,
 }
 
 public static class SessionKindExt
@@ -12,6 +13,7 @@ public static class SessionKindExt
         => kind switch {
             SessionKind.Session => "Session",
             SessionKind.ApiKey => "API Key",
+            SessionKind.OAuth => "OAuth",
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
 }

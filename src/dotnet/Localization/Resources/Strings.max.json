@@ -59,6 +59,7 @@
   "Settings_Permissions": "Berechtigungen",
   "Settings_Sessions": "Phiên làm việc",
   "Settings_ApiKeys": "API Anahtarları",
+  "Settings_ApiAndApps": "API ve uygulamalar",
   "Settings_Documents": "ドキュメント",
   "Settings_DeveloperTools": "Инструменти за разработчици",
   "Settings_LogViewer": "Visionneuse de journaux",
@@ -162,6 +163,15 @@
   "ApiKeys_DeactivateAll": "Tüm API anahtarlarını devre dışı bırakın",
   "ApiKeys_DeactivateAllConfirm": "Spowoduje to dezaktywację wszystkich Twoich kluczy API. Kontynuować?",
   "ApiKeys_DeactivateAllTitle": "Tüm API anahtarları devre dışı bırakılsın mı?",
+
+  // Connected apps (Settings → API & apps)
+  "ConnectedApps_Title": "Подключённые приложения",
+  "ConnectedApps_Empty": "Здесь появятся приложения, которым вы предоставите доступ через OAuth (Claude, Cursor и др.).",
+  "ConnectedApps_Connected_Format": "कनेक्ट किया गया: {0}",
+  "ConnectedApps_LastUsed_Format": "Последнее использование: {0}",
+  "ConnectedApps_Revoke": "Thu hồi quyền truy cập",
+  "ConnectedApps_RevokeConfirm_Format": "{0} によるあなたのアカウントへのアクセスを取り消しますか？このアプリは再度許可を求める必要があります。",
+  "ConnectedApps_RevokeTitle": "Thu hồi quyền truy cập",
 
   // Settings > Developer tools. These toggles are localized, but the diagnostics panels they
   // open are deliberately left in English - see docs/i18n.md.
@@ -1492,6 +1502,19 @@
   "ChatInvite_Processing": "초대를 처리하는 중입니다. 잠시만 기다려 주세요…",
   "ChatInvite_Failed_Format": "Неуспешно присъединяване към чата: {0}",
 
+  // The OAuth consent page: an external app (an MCP client) asks for access to the account.
+  "OAuthConsent_Title": "Подключение приложения",
+  "OAuthConsent_Heading_Format": "{0} があなたの Voxt アカウントへのアクセスを求めています",
+  "OAuthConsent_RedirectHost_Format": "{0} adresine geri yönlendirileceksiniz",
+  "OAuthConsent_Loopback": "このアプリはお使いのコンピューターで動作しています",
+  "OAuthConsent_Scope_Mcp": "Читання та надсилання повідомлень у ваших чатах",
+  "OAuthConsent_Scope_OfflineAccess": "Оставаться подключённым без повторных запросов",
+  "OAuthConsent_SignedInAs_Format": "Đã đăng nhập với tư cách {0}",
+  "OAuthConsent_Approve": "Разрешете",
+  "OAuthConsent_Deny": "अस्वीकार करें",
+  "OAuthConsent_UnknownClient": "Это приложение не зарегистрировано в Voxt. Проверьте ссылку, по которой вы перешли.",
+  "OAuthConsent_Error_Format": "Die Anfrage konnte nicht verarbeitet werden: {0}",
+
   // The empty state of any "pick some contacts" list.
   "MemberSelector_NoContacts": "У вас поки немає контактів. Поділіться своїм обліковим записом із друзями, щоб побачити їх тут.",
 
@@ -1654,6 +1677,7 @@
   "SignIn_SignInWith_Format": "Пријавите се путем {0}",
   "SignIn_SignInTo_Format": "{0} uygulamasına giriş yapın",
   "SignIn_ToUseChatInvite": "Пријавите се да бисте искористили ову позивницу за чет",
+  "SignIn_ToAuthorizeApp": "このアプリを接続するにはサインインしてください",
   "SignIn_PhoneOrEmailPlaceholder_Format": "{0} または email@gmail.com",
   "SignIn_Or": "oppure",
   "SignIn_InvalidPhoneOrEmail": "電話番号またはメールアドレスが正しくありません。",

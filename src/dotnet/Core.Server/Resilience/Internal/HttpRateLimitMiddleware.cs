@@ -23,9 +23,10 @@ public sealed class HttpRateLimitMiddleware(RequestDelegate next, IServiceProvid
             return;
         }
 
-        var rateLimitClass = HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method)
-            ? RateLimitClass.HttpRead
-            : RateLimitClass.Command;
+        var rateLimitClass = action.MethodInfo?.GetCustomAttribute<RateLimitClassAttribute>()?.RateLimitClass
+            ?? (HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method)
+                ? RateLimitClass.HttpRead
+                : RateLimitClass.Command);
         var cancellationToken = context.RequestAborted;
         var identities = new RateLimitIdentity[RateLimitIdentityResolver.MaxIdentityCount];
         var identityCount = await IdentityResolver
