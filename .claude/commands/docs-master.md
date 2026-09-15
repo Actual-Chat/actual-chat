@@ -108,7 +108,8 @@ npm install
 npm run docs:dev
 ```
 
-The site will be available at `http://localhost:5174`.
+The site will be available at `http://localhost:7770`, and - when the local nginx
+container is running - at `https://docs.local.voxt.ai`.
 
 ## Building for Production
 
