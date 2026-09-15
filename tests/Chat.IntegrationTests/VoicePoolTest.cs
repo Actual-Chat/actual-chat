@@ -44,7 +44,7 @@ public sealed class VoicePoolTest(
         record.SampleHash.Should().Be(VoiceSampleBuilder.HashOf(speaker.MediaId), "the record is keyed by the sample");
         var voice = await Soniox.Get(voiceId!, ct);
         voice.Should().NotBeNull("the clone exists at Soniox");
-        voice!.Name.Should().Be(VoicePool.NameOf(speaker.Account.Id, record.SampleHash));
+        voice!.Name.Should().Be(Pool.NameOf(speaker.Account.Id, record.SampleHash));
         Pool.InFlightCount.Should().Be(0, "nothing stays in flight once the result is handed out");
     }
 
@@ -165,7 +165,8 @@ public sealed class VoicePoolTest(
         var speaker = await SignInWithSample(Tester);
         var ct = CancellationToken.None;
         var voiceId = await Pool.Acquire(speaker.Account.Id, ct);
-        var orphan = await Soniox.Create("voxt-orphan-abc", Stream.Null, ct);
+        var orphan = await Soniox.Create(Pool.NamePrefix + "orphan-abc", Stream.Null, ct);
+        var otherEnv = await Soniox.Create("voxt-prod-orphan-abc", Stream.Null, ct);
         var foreign = await Soniox.Create("someone-elses-voice", Stream.Null, ct);
         await Soniox.Delete(voiceId!, ct);
         try {
@@ -173,15 +174,68 @@ public sealed class VoicePoolTest(
             await Sweeper.SweepOnce(ct);
 
             // assert
-            (await Soniox.Get(orphan.Id, ct)).Should().BeNull("a voxt-* voice no record points at is a leftover");
+            Pool.NamePrefix.Should().Be("voxt-test-", "a test host names its clones after its environment");
+            (await Soniox.Get(orphan.Id, ct)).Should().BeNull(
+                "a voice under our prefix that no record points at is a leftover");
+            (await Soniox.Get(otherEnv.Id, ct)).Should().NotBeNull("another environment's clones are its own business");
             (await Soniox.Get(foreign.Id, ct)).Should().NotBeNull("only voxt-* voices are ours to delete");
             var record = await UserVoices.Get(speaker.Account.Id, ct);
             record!.Status.Should().Be(UserVoiceStatus.None, "the record's clone is gone at Soniox");
             record.SonioxVoiceId.Should().BeEmpty();
         }
         finally {
+            await Soniox.Delete(otherEnv.Id, ct);
             await Soniox.Delete(foreign.Id, ct);
         }
+    }
+
+    [Fact(Timeout = 120_000)]
+    public async Task FailedSampleShouldKeepAReadyClone()
+    {
+        // arrange
+        var speaker = await SignInWithSample(Tester);
+        var ct = CancellationToken.None;
+        var voiceId = await Pool.Acquire(speaker.Account.Id, ct);
+        var record = await UserVoices.Get(speaker.Account.Id, ct);
+        var createCount = Soniox.CreateCount;
+        // The explicit sample's media disappears: the builder can't produce a sample any more
+        await Commander.Call(new MediaBackend_Change(speaker.MediaId, null, Change.Remove<MediaFull>()), ct);
+
+        // act
+        var afterFailure = await Pool.Acquire(speaker.Account.Id, ct);
+        var again = await Pool.Acquire(speaker.Account.Id, ct);
+
+        // assert
+        voiceId.Should().NotBeNullOrEmpty();
+        afterFailure.Should().BeNull("no sample means no clone this utterance");
+        again.Should().BeNull();
+        Soniox.CreateCount.Should().Be(createCount);
+        (await Soniox.Get(voiceId!, ct)).Should().NotBeNull("the clone made from the earlier sample is kept");
+        var current = await UserVoices.Get(speaker.Account.Id, ct);
+        current.Should().BeEquivalentTo(record, "a sample failure leaves a Ready record untouched");
+    }
+
+    [Fact(Timeout = 120_000)]
+    public async Task NameCollisionShouldReplaceTheOrphan()
+    {
+        // arrange
+        var speaker = await SignInWithSample(Tester);
+        var ct = CancellationToken.None;
+        var name = Pool.NameOf(speaker.Account.Id, VoiceSampleBuilder.HashOf(speaker.MediaId));
+        var orphan = await Soniox.Create(name, Stream.Null, ct);
+        var createCount = Soniox.CreateCount;
+
+        // act
+        var voiceId = await Pool.Acquire(speaker.Account.Id, ct);
+
+        // assert
+        voiceId.Should().NotBeNullOrEmpty("a same-named leftover is replaced, not a reason to fail");
+        voiceId.Should().NotBe(orphan.Id);
+        (await Soniox.Get(orphan.Id, ct)).Should().BeNull("the orphan is deleted before the retry");
+        Soniox.CreateCount.Should().Be(createCount + 2, "the rejected attempt and the retry");
+        var record = await UserVoices.Get(speaker.Account.Id, ct);
+        record!.Status.Should().Be(UserVoiceStatus.Ready);
+        record.SonioxVoiceId.Should().Be(voiceId);
     }
 
     [Fact(Timeout = 120_000)]

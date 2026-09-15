@@ -6,11 +6,13 @@ namespace ActualChat.Streaming.Services;
 /// <summary>
 /// The <see cref="VoicePool"/>'s release: every minute it drops the clones nobody dubbed with for
 /// <see cref="Constants.Audio.VoiceCloneIdleTimeout"/>, those of speakers who opted out, and stale
-/// Creating records; on deployed hosts its first pass also reconciles them with what Soniox holds.
+/// Creating records; every 10th pass also reconciles them with what Soniox holds under this host's prefix.
 /// </summary>
 public sealed class VoicePoolSweeper(IServiceProvider services) : WorkerBase
 {
     private static readonly TimeSpan Period = TimeSpan.FromMinutes(1);
+    // Every 10th sweep: a List() is cheap, and a delete that failed shouldn't wait for a deployment
+    private const int ReconcilePeriod = 10;
     private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(TimeSpan.FromSeconds(5), Period);
 
     private IServiceProvider Services { get; } = services;
@@ -26,10 +28,7 @@ public sealed class VoicePoolSweeper(IServiceProvider services) : WorkerBase
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
-        // The reconcile deletes every voxt-* voice this host's DB doesn't know, so it must run only
-        // where the DB is the deployment's own: a local server or a test host holding the dev key
-        // would otherwise wipe the clones the dev pods are dubbing with
-        var mustReconcile = Services.HostInfo().BaseUrlKind is BaseUrlKind.Production or BaseUrlKind.Development;
+        var tickIndex = 0;
         return AsyncChain.From(Cycle)
             .Log(LogLevel.Debug, Log)
             .RetryForever(RetryDelays, Clocks.CpuClock, Log)
@@ -38,8 +37,8 @@ public sealed class VoicePoolSweeper(IServiceProvider services) : WorkerBase
 
         async Task Cycle(CancellationToken ct)
         {
-            await SweepOnce(ct, mustReconcile).ConfigureAwait(false);
-            mustReconcile = false;
+            await SweepOnce(ct, mustReconcile: tickIndex % ReconcilePeriod == 0).ConfigureAwait(false);
+            tickIndex++;
             await Clocks.CpuClock.Delay(Period, ct).ConfigureAwait(false);
         }
     }
@@ -74,8 +73,8 @@ public sealed class VoicePoolSweeper(IServiceProvider services) : WorkerBase
         var sonioxVoices = await SonioxVoices!.List(cancellationToken).ConfigureAwait(false);
         var sonioxVoiceIds = sonioxVoices.Select(x => x.Id).ToHashSet();
         var referencedIds = activeVoices.Select(x => x.SonioxVoiceId).Where(x => !x.IsNullOrEmpty()).ToHashSet();
-        // Only our own names: whatever else the organization holds isn't the pool's to delete
-        var orphans = sonioxVoices.Where(x => VoicePool.IsOwnName(x.Name) && !referencedIds.Contains(x.Id)).ToList();
+        // Only this environment's names: whatever else the project holds isn't this pool's to delete
+        var orphans = sonioxVoices.Where(x => Pool.IsOwnName(x.Name) && !referencedIds.Contains(x.Id)).ToList();
         foreach (var orphan in orphans) {
             Log.LogInformation("Reconcile: deleting orphaned Soniox voice {VoiceId} ({Name})", orphan.Id, orphan.Name);
             await SonioxVoices.Delete(orphan.Id, cancellationToken).ConfigureAwait(false);

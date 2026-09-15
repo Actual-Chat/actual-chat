@@ -13,7 +13,6 @@ namespace ActualChat.Streaming.Services;
 /// </summary>
 public sealed class VoicePool(IServiceProvider services)
 {
-    public const string NamePrefix = "voxt-";
     private static readonly TimeSpan ReadyPollDelay = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan TouchPeriod = TimeSpan.FromMinutes(1);
 
@@ -31,6 +30,9 @@ public sealed class VoicePool(IServiceProvider services)
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILogger Log => field ??= Services.LogFor(GetType());
 
+    // Every environment shares the Soniox project, so the names carry which one a voice belongs to
+    // and the reconcile never touches another environment's clones
+    public string NamePrefix { get; } = $"voxt-{EnvironmentOf(services.HostInfo())}-";
     public int Quota => Settings.SonioxVoiceQuota ?? Constants.Audio.VoiceCloneQuota;
 
     public async Task<string?> Acquire(UserId userId, CancellationToken cancellationToken)
@@ -56,20 +58,25 @@ public sealed class VoicePool(IServiceProvider services)
 
         async Task Run()
         {
-            string? result;
-            // Independent of our own caller's token: a clone is worth finishing after the dub that asked
-            // for it gave up, and a half-made one holds a quota slot until the sweeper gets to it
-            using var cts = Services.HostLifetime().CreateStopTokenSource();
+            string? result = null;
             try {
-                result = await AcquireImpl(userId, cts.Token).ConfigureAwait(false);
-            }
-            catch (Exception e) {
-                if (!e.IsCancellationOf(cts.Token))
+                // Independent of our own caller's token: a clone is worth finishing after the dub that
+                // asked for it gave up, and a half-made one holds a quota slot until the sweeper gets to it
+                using var cts = Services.HostLifetime().CreateStopTokenSource();
+                try {
+                    result = await AcquireImpl(userId, cts.Token).ConfigureAwait(false);
+                }
+                catch (Exception e) when (!e.IsCancellationOf(cts.Token)) {
                     Log.LogWarning(e, "Acquire: failed for {UserId}, using the stock voice", userId);
-                result = null;
+                }
             }
-            _inFlight.TryRemove(new KeyValuePair<UserId, Task<string?>>(userId, source.Task));
-            source.TrySetResult(result);
+            catch {
+                // Cancelled by the host stop, or the token source itself couldn't be made
+            }
+            finally {
+                _inFlight.TryRemove(new KeyValuePair<UserId, Task<string?>>(userId, source.Task));
+                source.TrySetResult(result);
+            }
         }
     }
 
@@ -90,17 +97,18 @@ public sealed class VoicePool(IServiceProvider services)
             Log.LogInformation("Release: {UserId}'s record changed under us, leaving it alone", voice.UserId);
             return false;
         }
+
         await DeleteSonioxVoice(voice.SonioxVoiceId, cancellationToken).ConfigureAwait(false);
         return true;
     }
 
-    public static string NameOf(UserId userId, HashString sampleHash)
+    public string NameOf(UserId userId, HashString sampleHash)
         => $"{NamePrefix}{userId.Value}-{VoiceSampleBuilder.ShortHashOf(sampleHash)}";
 
-    public static bool IsOwnName(string name)
+    public bool IsOwnName(string name)
         => name.StartsWith(NamePrefix);
 
-    // Internal for tests
+    // Protected/internal methods
 
     internal int InFlightCount => _inFlight.Count;
 
@@ -132,32 +140,80 @@ public sealed class VoicePool(IServiceProvider services)
             return null;
         }
 
-        string? createdVoiceId = null;
+        var sample = await BuildSample(userId, voice, settings, cancellationToken).ConfigureAwait(false);
+        if (sample == null)
+            return null;
+        if (voice is { Status: UserVoiceStatus.Ready } && voice.SampleHash == sample.Hash)
+            return await Touch(voice, now, cancellationToken).ConfigureAwait(false);
+
+        var activeVoices = await UserVoicesBackend.ListActive(cancellationToken).ConfigureAwait(false);
+        var activeCount = activeVoices.Count(x => x.UserId != userId);
+        if (activeCount >= Quota) {
+            Log.LogInformation("Acquire: the pool is full ({Count}/{Quota}), {UserId} keeps the stock voice",
+                activeCount, Quota, userId);
+            return null;
+        }
+
+        return await Create(userId, voice, sample, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<VoiceSample?> BuildSample(
+        UserId userId,
+        UserVoice? voice,
+        UserLanguageSettings settings,
+        CancellationToken cancellationToken)
+    {
+        // The builder is the one place that knows the current sample's hash; an unchanged sample
+        // costs it a blob header read, not a rebuild. A sample that can't be built right now says
+        // nothing about a clone made from an earlier one, so a Ready record is left as it is
         try {
-            // The builder is the one place that knows the current sample's hash; an unchanged sample
-            // costs it a blob header read, not a rebuild
             var (sample, failure) = await SampleBuilder
                 .Build(userId, settings, cancellationToken)
                 .ConfigureAwait(false);
-            if (sample == null) {
-                Log.LogInformation("Acquire: no voice sample for {UserId} ({Failure})", userId, failure);
-                if (voice is { Status: UserVoiceStatus.Ready or UserVoiceStatus.Creating })
-                    await Release(voice, cancellationToken).ConfigureAwait(false);
-                return null;
-            }
-            if (voice is { Status: UserVoiceStatus.Ready } && voice.SampleHash == sample.Hash) {
-                await Touch(voice, now, cancellationToken).ConfigureAwait(false);
-                return voice.SonioxVoiceId;
-            }
+            if (sample != null)
+                return sample;
 
-            var activeVoices = await UserVoicesBackend.ListActive(cancellationToken).ConfigureAwait(false);
-            var activeCount = activeVoices.Count(x => x.UserId != userId);
-            if (activeCount >= Quota) {
-                Log.LogInformation("Acquire: the pool is full ({Count}/{Quota}), {UserId} keeps the stock voice",
-                    activeCount, Quota, userId);
-                return null;
-            }
+            Log.LogInformation("Acquire: no voice sample for {UserId} ({Failure})", userId, failure);
+            return null;
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogWarning(e, "Acquire: couldn't build {UserId}'s voice sample, using the stock voice", userId);
+            if (voice is not { Status: UserVoiceStatus.Ready })
+                await MarkFailed(userId, voice, cancellationToken).ConfigureAwait(false);
+            return null;
+        }
+    }
 
+    private async Task<string?> Touch(UserVoice voice, Moment now, CancellationToken cancellationToken)
+    {
+        // Once a minute is precise enough for a 10-minute idle timeout and spares a write per utterance
+        if (voice.LastUsedAt + TouchPeriod > now)
+            return voice.SonioxVoiceId;
+
+        try {
+            var diff = new UserVoiceDiff { LastUsedAt = now, ModifiedAt = now };
+            voice = await Update(voice.UserId, voice, diff, cancellationToken).ConfigureAwait(false);
+        }
+        catch (VersionMismatchException) {
+            // A sweep may have just released the clone; only a record that's still Ready has one
+            var current = await UserVoicesBackend.Get(voice.UserId, cancellationToken).ConfigureAwait(false);
+            if (current is not { Status: UserVoiceStatus.Ready } || current.SampleHash != voice.SampleHash)
+                return null;
+
+            voice = current;
+        }
+        return voice.SonioxVoiceId;
+    }
+
+    private async Task<string?> Create(
+        UserId userId,
+        UserVoice? voice,
+        VoiceSample sample,
+        CancellationToken cancellationToken)
+    {
+        var now = Clocks.SystemClock.Now;
+        string? createdVoiceId = null;
+        try {
             var oldVoiceId = voice?.SonioxVoiceId ?? "";
             var creatingDiff = new UserVoiceDiff {
                 Status = UserVoiceStatus.Creating,
@@ -190,44 +246,32 @@ public sealed class VoicePool(IServiceProvider services)
             return null;
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-            var cooldown = Constants.Audio.VoiceCloneFailureCooldown;
             Log.LogWarning(e, "Acquire: couldn't clone {UserId}'s voice, using the stock voice for {Cooldown}",
-                userId, cooldown);
+                userId, Constants.Audio.VoiceCloneFailureCooldown);
+            // Only this attempt's voice is ours to delete here; a record that never reached Creating
+            // still points at a live clone, which a failed attempt at a new one mustn't cost the speaker
             await DeleteSonioxVoice(createdVoiceId, cancellationToken).ConfigureAwait(false);
-            now = Clocks.SystemClock.Now;
-            var failedDiff = new UserVoiceDiff {
-                Status = UserVoiceStatus.Failed,
-                SonioxVoiceId = "",
-                FailedUntil = Option.Some<Moment?>(now + cooldown),
-                CreatedAt = voice == null ? now : null,
-                ModifiedAt = now,
-            };
-            // A Ready record whose sample failed to build still points at the previous clone
-            var staleVoiceId = voice?.SonioxVoiceId;
-            try {
-                await Update(userId, voice, failedDiff, cancellationToken).ConfigureAwait(false);
-                if (staleVoiceId != createdVoiceId)
-                    await DeleteSonioxVoice(staleVoiceId, cancellationToken).ConfigureAwait(false);
-            }
-            catch (VersionMismatchException) {
-                Log.LogInformation("Acquire: {UserId}'s record changed under us, the failure isn't recorded", userId);
-            }
+            if (voice is { Status: UserVoiceStatus.Creating })
+                await MarkFailed(userId, voice, cancellationToken).ConfigureAwait(false);
             return null;
         }
     }
 
-    private async Task Touch(UserVoice voice, Moment now, CancellationToken cancellationToken)
+    private async Task MarkFailed(UserId userId, UserVoice? voice, CancellationToken cancellationToken)
     {
-        // Once a minute is precise enough for a 10-minute idle timeout and spares a write per utterance
-        if (voice.LastUsedAt + TouchPeriod > now)
-            return;
-
+        var now = Clocks.SystemClock.Now;
+        var diff = new UserVoiceDiff {
+            Status = UserVoiceStatus.Failed,
+            SonioxVoiceId = "",
+            FailedUntil = Option.Some<Moment?>(now + Constants.Audio.VoiceCloneFailureCooldown),
+            CreatedAt = voice == null ? now : null,
+            ModifiedAt = now,
+        };
         try {
-            var diff = new UserVoiceDiff { LastUsedAt = now, ModifiedAt = now };
-            await Update(voice.UserId, voice, diff, cancellationToken).ConfigureAwait(false);
+            await Update(userId, voice, diff, cancellationToken).ConfigureAwait(false);
         }
         catch (VersionMismatchException) {
-            // Someone else touched or reset it in between; the next utterance re-reads the record
+            Log.LogInformation("Acquire: {UserId}'s record changed under us, the failure isn't recorded", userId);
         }
     }
 
@@ -236,10 +280,33 @@ public sealed class VoicePool(IServiceProvider services)
         VoiceSample sample,
         CancellationToken cancellationToken)
     {
-        var wav = await Blobs[BlobScope.AudioRecord].Read(sample.BlobId, cancellationToken).ConfigureAwait(false)
-            ?? throw StandardError.NotFound<VoiceSample>($"The voice sample blob '{sample.BlobId}' is missing.");
-        await using var _ = wav.ConfigureAwait(false);
-        return await SonioxVoices!.Create(NameOf(userId, sample.Hash), wav, cancellationToken).ConfigureAwait(false);
+        var name = NameOf(userId, sample.Hash);
+        try {
+            return await CreateNamed(name).ConfigureAwait(false);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            // Names are unique per project, so a leftover of an earlier attempt - a delete that failed,
+            // a host that died - rejects every retry until it's gone; the reconcile would get to it
+            // eventually, but the speaker is waiting now
+            var sonioxVoices = await SonioxVoices!.List(cancellationToken).ConfigureAwait(false);
+            var sameNamed = sonioxVoices.FirstOrDefault(x => x.Name == name);
+            if (sameNamed == null)
+                throw;
+
+            Log.LogWarning(e, "Acquire: Soniox voice '{Name}' already exists as {VoiceId}, replacing it",
+                name, sameNamed.Id);
+            await SonioxVoices.Delete(sameNamed.Id, cancellationToken).ConfigureAwait(false);
+            return await CreateNamed(name).ConfigureAwait(false);
+        }
+
+        async Task<SonioxVoice> CreateNamed(string voiceName)
+        {
+            // Opened per attempt: the client reads the stream, so a retry can't reuse it
+            var wav = await Blobs[BlobScope.AudioRecord].Read(sample.BlobId, cancellationToken).ConfigureAwait(false)
+                ?? throw StandardError.NotFound<VoiceSample>($"The voice sample blob '{sample.BlobId}' is missing.");
+            await using var _ = wav.ConfigureAwait(false);
+            return await SonioxVoices!.Create(voiceName, wav, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private async Task<SonioxVoice> WaitUntilReady(SonioxVoice voice, CancellationToken cancellationToken)
@@ -289,5 +356,17 @@ public sealed class VoicePool(IServiceProvider services)
             throw new VersionMismatchException($"User voice record for {userId} was created concurrently.");
 
         return result;
+    }
+
+    private static string EnvironmentOf(HostInfo hostInfo)
+    {
+        if (hostInfo.IsTested)
+            return "test";
+
+        return hostInfo.BaseUrlKind switch {
+            BaseUrlKind.Production => "prod",
+            BaseUrlKind.Development => "dev",
+            _ => "local",
+        };
     }
 }

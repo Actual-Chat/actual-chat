@@ -175,7 +175,7 @@ public static partial class Constants
         // Bounds on the scan behind the auto sample: most recent chats first, newest entries first
         public static readonly int VoiceSampleMaxChats = 10;
         public static readonly int VoiceSampleMaxEntriesPerChat = 500;
-        // Soniox's clones-per-organization cap; the pool never holds more Ready|Creating records
+        // Soniox allows this many clones per organization, so the pool never holds more Ready|Creating records
         public static readonly int VoiceCloneQuota = 20;
         // How long a fresh clone may take to turn ready before the attempt counts as failed
         public static readonly TimeSpan VoiceCloneReadyTimeout = TimeSpan.FromSeconds(30);

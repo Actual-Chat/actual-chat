@@ -6,7 +6,8 @@ namespace ActualChat.Testing.Host;
 /// <summary>
 /// In-memory <see cref="ISonioxVoices"/> stand-in for VoicePool tests: a created voice turns ready
 /// only once <see cref="ReadyAfter"/> has elapsed (per Clocks.CpuClock), so a test can observe the
-/// Creating window; a <see cref="FailCreate"/> voice never fails until it's set back to false.
+/// Creating window; a <see cref="FailCreate"/> voice never fails until it's set back to false. Names
+/// are unique, as on Soniox.
 /// </summary>
 public sealed class FakeSonioxVoices(IServiceProvider services) : ISonioxVoices
 {
@@ -32,6 +33,10 @@ public sealed class FakeSonioxVoices(IServiceProvider services) : ISonioxVoices
         var id = RandomStringGenerator.Default.Next();
         SonioxVoice voice;
         lock (_lock) {
+            // Names are unique per Soniox project, and the real API rejects a duplicate
+            if (_voices.Values.Any(x => x.Name == name))
+                throw StandardError.External($"Soniox voice named '{name}' already exists.");
+
             _voices[id] = new Entry(name, Clocks.CpuClock.Now + ReadyAfter);
             voice = ToVoice(id);
         }

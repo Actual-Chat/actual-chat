@@ -57,8 +57,10 @@ as `voice: <uuid>` and speaks every language. Quota: 20 voices per organization.
      minute), return `SonioxVoiceId`.
   2. `Failed` and `FailedUntil` in the future → `null`.
   3. Otherwise, if the number of `Ready | Creating` records < `Constants.Audio.VoiceCloneQuota`
-     (20, configurable via `TranscriptionSettings.SonioxVoiceQuota`): mark `Creating`, build the
-     sample if missing, `POST /v1/voices` with `name = "voxt-<userId>-<hash8>"`, poll
+     (20, configurable via `StreamingSettings.SonioxVoiceQuota`): mark `Creating`, build the
+     sample if missing, `POST /v1/voices` with `name = "voxt-<env>-<userId>-<hash8>"` (`<env>` =
+     `prod` / `dev` / `local` from `HostInfo.BaseUrlKind`, `test` on test hosts - each environment
+     shares the Soniox project but only ever touches its own prefix), poll
      `GET /v1/voices/{id}` every 500 ms until ready or `VoiceCloneReadyTimeout` (30 s), store
      `Ready`, return the id. Any failure → `Failed`, `FailedUntil = now + VoiceCloneFailureCooldown`
      (10 min), delete the Soniox voice if it was created, return `null`.
@@ -68,8 +70,10 @@ as `voice: <uuid>` and speaks every language. Quota: 20 voices per organization.
   clone next time.
 - `Release` is implicit: `VoicePoolSweeper` (hosted service, every minute) deletes Soniox voices
   whose `LastUsedAt` is older than `VoiceCloneIdleTimeout` (10 min) and resets the record to
-  `None`; at startup it reconciles with `GET /v1/voices`: voices named `voxt-*` with no
-  `Ready` record are deleted (crash leftovers), records whose voice is gone are reset.
+  `None`; every 10th sweep it reconciles with `GET /v1/voices`: voices under this host's own
+  `voxt-<env>-` prefix with no `Ready | Creating` record are deleted (crash leftovers, failed deletes),
+  records whose voice is gone are reset. A create that fails on a name collision (names are unique
+  per project) deletes the same-named orphan and retries once.
 - Opt-out (`IsOwnVoiceEnabled` → false) or a sample change (hash mismatch) → the next `Acquire`
   deletes the old Soniox voice and starts over; the sweeper also drops clones of opted-out users.
 
