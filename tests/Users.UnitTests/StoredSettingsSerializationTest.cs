@@ -51,6 +51,19 @@ public partial class StoredSettingsSerializationTest
         [Key(3)] public int ListeningMode { get; init; }
     }
 
+    // UserLanguageSettings as written before DubVoice (key 7) existed
+    [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+    public sealed partial record LegacyUserLanguageSettings
+    {
+        [DataMember, MemoryPackOrder(0), Key(0)] public string Primary { get; init; } = "en-US";
+        [DataMember, MemoryPackOrder(1), Key(1)] public string? Secondary { get; init; }
+        [DataMember, MemoryPackOrder(2), Key(2)] public string Origin { get; init; } = "";
+        [DataMember, MemoryPackOrder(3), Key(3)] public string? Tertiary { get; init; }
+        [DataMember, MemoryPackOrder(4), Key(4)] public string? UILanguage { get; init; }
+        [DataMember, MemoryPackOrder(5), Key(5)] public string? DetectedUILanguage { get; init; }
+        [DataMember, MemoryPackOrder(6), Key(6)] public bool IsTranslatedVoiceEnabled { get; init; }
+    }
+
     // --- Legacy → New compatibility ---
 
     [Fact]
@@ -235,6 +248,49 @@ public partial class StoredSettingsSerializationTest
         // assert
         // Old clients ReadInt32() this slot; without the write-only stub it's nil and this throws.
         result!.ListeningMode.Should().Be(0);
+    }
+
+    [Fact]
+    public void LegacyUserLanguageSettingsDeserializesWithEmptyDubVoice()
+    {
+        // arrange
+        var legacy = new LegacyUserLanguageSettings {
+            Origin = "mp-language-test",
+            Primary = Languages.Russian.Value,
+            IsTranslatedVoiceEnabled = true,
+        };
+
+        // act
+        using var buffer = MessagePackSerializer.Write(legacy);
+        var bytes = buffer.WrittenMemory.ToArray();
+        var result = (UserLanguageSettings?)MessagePackSerializer.Read(bytes, typeof(UserLanguageSettings), out _);
+
+        // assert
+        result!.Origin.Should().Be(legacy.Origin);
+        result.Primary.Should().Be(Languages.Russian);
+        result.IsTranslatedVoiceEnabled.Should().BeTrue();
+        // The absent key reads as null; the property must hide that
+        result.DubVoice.Should().Be("");
+    }
+
+    [Fact]
+    public void UserLanguageSettingsDubVoiceRoundTrip()
+    {
+        // arrange
+        var settings = new UserLanguageSettings {
+            Origin = "round-trip",
+            Primary = Languages.German,
+            DubVoice = "Daniel",
+        };
+
+        // act
+        using var buffer = KvasSerializer.Default.Write(settings);
+        var bytes = buffer.WrittenMemory;
+        var result = KvasSerializer.Default.Read<UserLanguageSettings>(ref bytes);
+
+        // assert
+        result.Should().Be(settings);
+        result.DubVoice.Should().Be("Daniel");
     }
 
     // --- Concrete type round-trip ---

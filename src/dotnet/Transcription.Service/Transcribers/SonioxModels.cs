@@ -78,6 +78,23 @@ public sealed class SonioxFileList
     [JsonPropertyName("next_page_cursor")] public string? NextPageCursor { get; set; }
 }
 
+public sealed class SonioxSharedVoice
+{
+    [JsonPropertyName("id")] public string Id { get; set; } = "";
+    [JsonPropertyName("description")] public string? Description { get; set; }
+    [JsonPropertyName("gender")] public string? Gender { get; set; }
+    [JsonPropertyName("age")] public string? Age { get; set; }
+    [JsonPropertyName("accent")] public string? Accent { get; set; }
+    [JsonPropertyName("use_case")] public string[]? UseCase { get; set; }
+    [JsonPropertyName("style")] public string[]? Style { get; set; }
+}
+
+public sealed class SonioxSharedVoiceList
+{
+    [JsonPropertyName("voices")] public SonioxSharedVoice[]? Voices { get; set; }
+    [JsonPropertyName("next_page_cursor")] public string? NextPageCursor { get; set; }
+}
+
 public sealed class SonioxTtsResponse
 {
     [JsonPropertyName("stream_id")] public string? StreamId { get; set; }

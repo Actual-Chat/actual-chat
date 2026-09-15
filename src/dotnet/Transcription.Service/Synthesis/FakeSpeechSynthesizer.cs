@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.Chat;
 
 namespace ActualChat.Transcription;
 
@@ -7,6 +8,16 @@ namespace ActualChat.Transcription;
 /// </summary>
 public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSynthesizer
 {
+    // One 24 kHz mono MPEG-2 Layer III frame of silence (ffmpeg anullsrc), so a preview "plays"
+    private static readonly byte[] SilentMp3 = Convert.FromBase64String(
+        "//NExAAAAANIAAAAAExBTUUzLjEwMSAoYmV0YSAzKVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"
+        + "VVVVVVVVVVVVVVVVVVVVTEFNRTMu");
+    public static readonly ApiArray<DubVoice> Voices = new[] {
+        new DubVoice("Daniel") { Gender = "male", Age = "middle_aged", Accent = "british" },
+        new DubVoice("Nina") { Gender = "female", Age = "young", Accent = "british" },
+        new DubVoice("Adrian") { Gender = "male", Age = "middle_aged", Accent = "american" },
+    }.OrderBy(x => x.Gender).ThenBy(x => x.Id).ToApiArray();
+
     private MomentClockSet Clocks { get; } = services.Clocks();
     private ILogger Log { get; } = services.LogFor<FakeSpeechSynthesizer>();
 
@@ -33,6 +44,15 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
         CancellationToken cancellationToken = default)
         => Task.FromResult(SpeechSynthesizerExt.ToAudioSource(
             (pcm, ct) => PushOne(text, pcm, ct), Clocks, Log, cancellationToken));
+
+    public Task<byte[]> SynthesizeMp3(
+        string text,
+        SpeechSynthesisOptions options,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult(SilentMp3);
+
+    public Task<ApiArray<DubVoice>> ListVoices(CancellationToken cancellationToken = default)
+        => Task.FromResult(Voices);
 
     // Private methods
 

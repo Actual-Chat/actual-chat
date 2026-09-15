@@ -22,6 +22,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
     private const string RestUrl = "https://tts-rt.soniox.com/tts";
     private const string Model = "tts-rt-v2";
     private const string PcmFormat = "pcm_s16le";
+    private const string Mp3Format = "mp3";
     private const int SampleRate = 48_000;
     private const int MaxTextLength = 5000;
     private const int ReadBufferSize = 32 * 1024;
@@ -110,7 +111,8 @@ public sealed class SonioxTtsClient(IServiceProvider services)
             using var httpClient = HttpClientFactory.CreateClient(HttpClientName);
             httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
             foreach (var part in SplitText(text, MaxTextLength))
-                await GeneratePart(httpClient, language, voice, part, pcm, cancellationToken).ConfigureAwait(false);
+                await GeneratePart(httpClient, language, voice, part, PcmFormat, pcm, cancellationToken)
+                    .ConfigureAwait(false);
         }
         catch (Exception e) {
             error = e;
@@ -121,6 +123,38 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         finally {
             pcm.TryComplete(error);
         }
+    }
+
+    public async Task<byte[]> GenerateMp3(
+        string language,
+        string voice,
+        string text,
+        CancellationToken cancellationToken)
+    {
+        var apiKey = CoreServerSettings.SonioxKey;
+        if (apiKey.IsNullOrEmpty())
+            throw StandardError.Configuration("CoreSettings:SonioxKey is not set.");
+
+        // One request: a preview sentence is far below MaxTextLength, and MP3 parts can't be concatenated
+        if (text.Length > MaxTextLength)
+            throw new ArgumentOutOfRangeException(nameof(text), $"Text is longer than {MaxTextLength} characters.");
+
+        using var httpClient = HttpClientFactory.CreateClient(HttpClientName);
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        var mp3 = Channel.CreateUnbounded<byte[]>();
+        try {
+            await GeneratePart(httpClient, language, voice, text, Mp3Format, mp3.Writer, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogError(e, "Soniox TTS MP3 generation failed");
+            throw;
+        }
+        mp3.Writer.TryComplete();
+        using var buffer = new MemoryStream();
+        while (mp3.Reader.TryRead(out var piece))
+            buffer.Write(piece);
+        return buffer.ToArray();
     }
 
     // Protected/internal methods
@@ -355,10 +389,11 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         string language,
         string voice,
         string part,
-        ChannelWriter<byte[]> pcm,
+        string audioFormat,
+        ChannelWriter<byte[]> audio,
         CancellationToken cancellationToken)
     {
-        // Soniox streams the PCM back at about the pace it's spoken, so TtsChunkTimeout bounds the
+        // Soniox streams the audio back at about the pace it's spoken, so TtsChunkTimeout bounds the
         // wait for the next piece of the body rather than the whole request
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(TtsChunkTimeout);
@@ -368,7 +403,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                     model = Model,
                     language,
                     voice,
-                    audio_format = PcmFormat,
+                    audio_format = audioFormat,
                     sample_rate = SampleRate,
                     text = part,
                 }, options: JsonOptions),
@@ -388,7 +423,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                     break;
 
                 cts.CancelAfter(TtsChunkTimeout);
-                await pcm.WriteAsync(buffer[..count], cancellationToken).ConfigureAwait(false);
+                await audio.WriteAsync(buffer[..count], cancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {

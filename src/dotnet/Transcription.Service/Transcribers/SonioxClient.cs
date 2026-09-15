@@ -86,10 +86,19 @@ public sealed class SonioxClient(IServiceProvider services)
         CancellationToken cancellationToken)
         // Both lists are scoped to the key's project, while the caps Soniox enforces are
         // organization-wide - so they list what we can clean, not everything that counts against them.
-        => ListPage<SonioxTranscriptionList>("transcriptions", cursor, maxCount, cancellationToken);
+        => ListPage<SonioxTranscriptionList>("transcriptions", "", cursor, maxCount, cancellationToken);
 
     public Task<SonioxFileList> ListFiles(string? cursor, int maxCount, CancellationToken cancellationToken)
-        => ListPage<SonioxFileList>("files", cursor, maxCount, cancellationToken);
+        => ListPage<SonioxFileList>("files", "", cursor, maxCount, cancellationToken);
+
+    public Task<SonioxSharedVoiceList> ListSharedVoices(
+        string ttsModel,
+        string? cursor,
+        int maxCount,
+        CancellationToken cancellationToken)
+        // Verified live: the page is "limit" (100 default, 200 max) and the next one is "cursor"
+        => ListPage<SonioxSharedVoiceList>(
+            "shared-voices", $"model={Uri.EscapeDataString(ttsModel)}&", cursor, maxCount, cancellationToken);
 
     public Task DeleteTranscription(string transcriptionId, CancellationToken cancellationToken)
         => Delete($"transcriptions/{transcriptionId}", cancellationToken);
@@ -101,6 +110,7 @@ public sealed class SonioxClient(IServiceProvider services)
 
     private async Task<T> ListPage<T>(
         string path,
+        string queryPrefix,
         string? cursor,
         int maxCount,
         CancellationToken cancellationToken)
@@ -108,7 +118,7 @@ public sealed class SonioxClient(IServiceProvider services)
         // The parameter is "limit": an unknown one is ignored rather than rejected, which silently
         // pins the page size to Soniox's own default.
         using var httpClient = CreateHttpClient();
-        var url = $"{BaseUrl}/{path}?limit={maxCount}";
+        var url = $"{BaseUrl}/{path}?{queryPrefix}limit={maxCount}";
         if (!cursor.IsNullOrEmpty())
             url += $"&cursor={Uri.EscapeDataString(cursor)}";
 

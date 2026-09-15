@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.Chat;
 using ActualChat.Transcription;
 
 namespace ActualChat.Testing.Host;
@@ -11,6 +12,7 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
 {
     private readonly object _lock = new();
     private readonly List<(string StreamId, string Text)> _chunks = [];
+    private readonly ConcurrentDictionary<string, string?> _voiceIds = new();
     private TaskCompletionSource _whenChangedSource = TaskCompletionSourceExt.New();
 
     private FakeSpeechSynthesizer Inner { get; } = new(services);
@@ -18,6 +20,10 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
     // Test-only: while set, a one-shot synthesis holds its frames until the task returned for its
     // text completes, so a test can observe a dub that's still being made
     public Func<string, Task>? OneShotGate { get; set; }
+
+    // The VoiceId the synthesis of streamId was asked for; null = the synthesizer's default
+    public string? GetVoiceId(string streamId)
+        => _voiceIds.GetValueOrDefault(streamId);
 
     public IReadOnlyList<string> GetChunks(string streamId)
     {
@@ -50,6 +56,7 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
         ChannelWriter<AudioFrame> output,
         CancellationToken cancellationToken = default)
     {
+        _voiceIds[streamId] = options.VoiceId;
         var forwarded = Channel.CreateUnbounded<string>();
         var recordTask = ForwardAndRecord(streamId, text, forwarded.Writer, cancellationToken);
         await Inner.Synthesize(streamId, forwarded.Reader, options, output, cancellationToken).ConfigureAwait(false);
@@ -61,7 +68,9 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
         SpeechSynthesisOptions options,
         CancellationToken cancellationToken = default)
     {
-        Record(OneShotStreamId(options.Language, text), text);
+        var streamId = OneShotStreamId(options.Language, text);
+        _voiceIds[streamId] = options.VoiceId;
+        Record(streamId, text);
         var inner = await Inner.Synthesize(text, options, cancellationToken).ConfigureAwait(false);
         if (OneShotGate is not { } gate)
             return inner;
@@ -74,6 +83,15 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
             inner.Log,
             cancellationToken);
     }
+
+    public Task<byte[]> SynthesizeMp3(
+        string text,
+        SpeechSynthesisOptions options,
+        CancellationToken cancellationToken = default)
+        => Inner.SynthesizeMp3(text, options, cancellationToken);
+
+    public Task<ApiArray<DubVoice>> ListVoices(CancellationToken cancellationToken = default)
+        => Inner.ListVoices(cancellationToken);
 
     public static string OneShotStreamId(Language language, string text)
         => $"{language.Value}:{text.GetHashCode()}";

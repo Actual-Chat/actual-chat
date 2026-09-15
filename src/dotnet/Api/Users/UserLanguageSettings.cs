@@ -30,6 +30,10 @@ public sealed partial record UserLanguageSettings : StoredSettings, IHasOrigin, 
     // Listener side of voice dubbing: other-language speakers in live sessions are heard dubbed
     [DataMember, MemoryPackOrder(6), Key(6)]
     public bool IsTranslatedVoiceEnabled { get; init; }
+    // Speaker side: the stock voice others hear this user dubbed with; "" = the server default.
+    // Absent in blobs written before this key, which MessagePack reads as null - hence the coalesce.
+    [DataMember, MemoryPackOrder(7), Key(7)]
+    public string DubVoice { get => field ?? ""; init; } = "";
 
     public List<Language> ListSpoken()
     {

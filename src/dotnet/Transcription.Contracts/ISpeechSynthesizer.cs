@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.Chat;
 
 namespace ActualChat.Transcription;
 
@@ -22,4 +23,13 @@ public interface ISpeechSynthesizer
         string text,
         SpeechSynthesisOptions options,
         CancellationToken cancellationToken = default);
+
+    // MP3 is what a browser plays straight from a URL; used for voice previews only
+    Task<byte[]> SynthesizeMp3(
+        string text,
+        SpeechSynthesisOptions options,
+        CancellationToken cancellationToken = default);
+
+    // The stock voices a speaker can pick from, sorted by gender then id; empty when unknown
+    Task<ApiArray<DubVoice>> ListVoices(CancellationToken cancellationToken = default);
 }

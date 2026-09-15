@@ -133,6 +133,8 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Secondary = Languages.Russian,
             Tertiary = Languages.German,
             Origin = "https://actual.chat",
+            IsTranslatedVoiceEnabled = true,
+            DubVoice = "Nina",
         };
         settings.AssertPassesThroughSerializers();
     }
