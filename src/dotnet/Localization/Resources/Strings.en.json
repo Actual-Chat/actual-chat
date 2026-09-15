@@ -1379,6 +1379,10 @@
   "Location_MapTypeHybrid": "Hybrid",
 
   // Empty states of the right panel's Media, Files and Links tabs.
+  "MapPanel_ShareFromThisDevice": "Share from this device",
+  "Location_SharingFromAnotherDeviceCaption": "Sharing from another device now — this one takes over",
+  "Location_SharingMovedToAnotherDevice": "Location sharing moved to another device",
+  "Location_SharingStoppedFromAnotherDevice": "Location sharing was stopped from another device",
   "Content_NoFiles": "No files yet",
   "Content_NoLinks": "No links yet",
   "Content_NoMedia": "No media yet",

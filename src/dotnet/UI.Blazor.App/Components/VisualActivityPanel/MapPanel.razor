@@ -36,6 +36,9 @@
                          Tooltip="@L.MapPanel_StopSharing" TooltipPosition="FloatingPosition.Top">
                 <marker-pin-off-svg></marker-pin-off-svg>
             </ButtonRound>
+            @if (!m.IsOwnDeviceSharing) {
+                <Button Class="btn-share-location beside-stop" Click="@OnShare">@L.MapPanel_ShareFromThisDevice</Button>
+            }
         } else {
             <Button Class="btn-share-location" Click="@OnShare">@L.MapPanel_ShareYourLocation</Button>
         }
@@ -98,6 +101,8 @@
         var countdown = ownLive is null
             ? null
             : await LocationUI.GetCountdown(chatId, ownLive.Id, cancellationToken).ConfigureAwait(false);
+        var isOwnDeviceSharing = ownLive is not null
+            && await LocationUI.IsOwnDeviceLive(chatId, cancellationToken).ConfigureAwait(false);
         var center = ownLive?.Point ?? participants[0].Location.Point;
 
         // The "1.2 km away" chip makes sense only for a single remote sharer
@@ -106,7 +111,7 @@
         var distance = remoteSharers.Count == 1 && ownPoint is { } point
             ? point.DistanceTo(remoteSharers[0].Location.Point)
             : (double?)null;
-        return new Model(markers, center, countdown, ownLive is not null, distance, isMenuOpen);
+        return new Model(markers, center, countdown, ownLive is not null, isOwnDeviceSharing, distance, isMenuOpen);
     }
 
     // Private methods
@@ -147,6 +152,7 @@
         GeoPoint Center,
         DurationCountdown? Countdown,
         bool IsOwnSharing,
+        bool IsOwnDeviceSharing,
         double? Distance = null,
         bool IsMenuOpen = false);
 }

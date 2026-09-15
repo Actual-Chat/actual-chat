@@ -76,7 +76,9 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
 
             var liveLocations = await SharedLocations.ListLive(Session, chatId, cancellationToken)
                 .ConfigureAwait(false);
-            return liveLocations.Any(x => x.Id == locationId)
+            // Matched by author, not id: a share taken over by another device is a different row,
+            // and keeping both would put two markers on one person.
+            return liveLocations.Any(x => x.AuthorId == location.AuthorId)
                 ? liveLocations
                 : [location, ..liveLocations];
         }
@@ -134,21 +136,18 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     [ComputeMethod]
     public virtual async Task<SharedLocation?> GetOwnLive(ChatId chatId, CancellationToken cancellationToken)
     {
+        // Author-level: the share may be owned by another of this user's devices.
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return ownAuthor is null
-            ? null
-            : await GetLive(ownAuthor.Id, cancellationToken).ConfigureAwait(false);
+        if (ownAuthor is null)
+            return null;
+
+        var locations = await SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return locations.FirstOrDefault(x => x.AuthorId == ownAuthor.Id);
     }
 
     [ComputeMethod]
-    public virtual async Task<SharedLocation?> GetLive(
-        AuthorId authorId,
-        CancellationToken cancellationToken)
-    {
-        var locations = await SharedLocations.ListLive(Session, authorId.ChatId, cancellationToken)
-            .ConfigureAwait(false);
-        return locations.FirstOrDefault(x => x.AuthorId == authorId);
-    }
+    public virtual async Task<bool> IsOwnDeviceLive(ChatId chatId, CancellationToken cancellationToken)
+        => await Reporter.GetActiveShare(chatId, cancellationToken).ConfigureAwait(false) is not null;
 
     [ComputeMethod(ConsolidationDelay = 0.25)]
     public virtual async Task<MapMarker?> GetOwnMarker(ChatId chatId, CancellationToken cancellationToken)
@@ -223,7 +222,8 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         if (ownAuthor is null)
             return null;
 
-        if (!await IsOwnLive(chatId, cancellationToken).ConfigureAwait(false))
+        // The tracker is this device's, so it says nothing about a share another device runs.
+        if (!await IsOwnDeviceLive(chatId, cancellationToken).ConfigureAwait(false))
             return null;
 
         return await Tracker.Error.Use(cancellationToken).ConfigureAwait(false);
@@ -271,8 +271,15 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     public void StartSharing(ChatId chatId, TimeSpan duration)
         => Reporter.StartSharing(chatId, duration);
 
-    public Task StopSharing(ChatId chatId, CancellationToken cancellationToken)
-        => Reporter.StopSharing(chatId, cancellationToken);
+    public async Task StopSharing(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // The reporter knows only this device's shares, and the author's live one may run elsewhere.
+        var ownLive = await GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
+        await StopSharing(chatId, ownLive?.Id, cancellationToken).ConfigureAwait(false);
+    }
+
+    public Task StopSharing(ChatId chatId, SharedLocationId? locationId, CancellationToken cancellationToken)
+        => Reporter.StopSharing(chatId, locationId, cancellationToken);
 
     public async Task SendCurrentLocation(ChatId chatId, CancellationToken cancellationToken)
     {
