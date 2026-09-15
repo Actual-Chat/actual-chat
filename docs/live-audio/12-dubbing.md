@@ -461,9 +461,29 @@ every listener, so there is exactly one voice per speaker to pick.
   translations" under the Translated Voice toggle in
   `Components/Settings/TranscriptionSettings.razor` shows the chosen id
   or "Default" and opens `Components/DubVoiceModal/DubVoiceModal.razor`:
-  gender and accent filters, a Default entry, then the catalog (id,
-  gender and accent, the provider's description and style tokens) with a
-  play/stop button per voice. Selecting writes `LanguageUI.UpdateSettings`.
+  a **Suggested** section (the Default entry, then
+  `ITranslations.ListSuggestedDubVoices`), and below it the collapsed
+  **All voices** section (`Collapsed`) with gender and accent filters
+  over the whole catalog. A row shows id, gender and accent, the
+  provider's description and style tokens, and a preview button; the
+  chosen voice is selected wherever it appears. Selecting writes
+  `LanguageUI.UpdateSettings`.
+- **Suggestions.** `DubVoiceAccents` (`src/dotnet/Api/Chat/`) maps a
+  spoken language to a catalog accent — the regional tag first (`es-MX`,
+  `es-US` → `latin_american`; `pt-BR` → `brazilian`; `en-IN` → `indian`;
+  `en-GB` → `british`), then the ISO code (`ru uk pl cs bg hr sr bs cnr`
+  → `slavic`, `es` → `spanish`, `pt` → `portuguese`, `hi mr pa ta ur` →
+  `indian`, `ja`, `ko`, `zh`, `fr`, `de`, `it`, `id ms th vi tl fil` →
+  `southeast_asian`), anything else → `american`. `Suggest` walks the
+  user's `UserLanguageSettings.ListSpoken()` (primary, secondary,
+  tertiary): for each accent it takes that accent's voices, conversational
+  `use_case` first, interleaving male and female in catalog order, up to
+  4 per gender and 8 in total, never repeating a voice; if the languages
+  alone yield fewer than 4, `american` voices pad it by the same rule.
+  `Translations.ListSuggestedDubVoices(session)` (compute method,
+  `MinCacheDuration` 60 s) applies it to `ListDubVoices` and the user's
+  settings, so a language change re-suggests. `DubVoiceAccentsTest`
+  (`tests/Chat.UnitTests`) pins the rule on a hand-made catalog.
 - **Resolving it on the server.** `SpeakerVoices`
   (`src/dotnet/Streaming.Service/Services/SpeakerVoices.cs`): author →
   `IAuthorsBackend.Get(RequestedAuthorKind.Full)` → `UserId` →
@@ -508,7 +528,18 @@ every listener, so there is exactly one voice per speaker to pick.
   `DubVoicePreview` (`dub-voice-modal.ts`) plays it through one
   `HTMLAudioElement` in the user's primary language, appending the
   session token so a MAUI WebView can fetch it, stopping any previous
-  preview, and calls back `OnPreviewEnded` so the button flips back.
+  preview. A cache miss costs ~2 s of synthesis, so the button shows a
+  spinner from the click (rendered before the JS call — a
+  `ComputedStateComponent` doesn't re-render after an event on its own)
+  until `onplaying` calls back `OnPreviewStarted`, then a stop button
+  until `OnPreviewEnded` (also the answer to a load or playback failure);
+  a click on the loading row is a no-op, a click on another row replaces
+  it. To make the miss rare, `warmUp` `fetch`es previews with
+  `priority: 'low'` — the suggested voices when the modal first renders
+  them, and a row on `pointerenter` — at most three in flight, each URL
+  once, the latest request first; the controller answers with
+  `Cache-Control: private, max-age=86400`, so the browser reuses the MP3
+  and the server's day-long cache serves everyone else.
 - **Follow-up.** Cloning replaces the stock voice when the speaker opts
   in: `SpeechSynthesisOptions.VoiceId` is already the hook, and
   `SpeakerVoices` is the one place that decides which id a speaker gets.

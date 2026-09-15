@@ -2,7 +2,22 @@
     @apply px-2 gap-2;
 }
 .dub-voice-modal .c-filters {
-    @apply flex-x gap-x-2 px-2;
+    @apply flex-x gap-x-2 px-2 py-1;
+}
+.dub-voice-modal .c-section-title {
+    @apply text-caption-1 text-03 px-2 pt-2;
+}
+.dub-voice-modal details.main-collapsed {
+    @apply flex-y gap-y-1;
+}
+.dub-voice-modal details.main-collapsed > summary.c-summary {
+    @apply px-2 py-1 cursor-pointer;
+}
+.dub-voice-modal details.main-collapsed > summary.c-summary > .c-section-title {
+    @apply px-0 pt-0;
+}
+.dub-voice-modal .btn-preview i.animate-spin {
+    @apply text-03;
 }
 .dub-voice-modal .c-filter {
     @apply grow min-w-0;
