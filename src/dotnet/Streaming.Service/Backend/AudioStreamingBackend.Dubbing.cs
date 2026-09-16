@@ -63,6 +63,10 @@ public partial class AudioStreamingBackend
     {
         var sourceStreamId = dubStreamId.BaseStreamId;
         var language = dubStreamId.Language!;
+        var latencyTrace = _recordedAtByStream.TryGetValue(sourceStreamId, out var recordedAt)
+            ? new DubLatencyTrace(dubStreamId, recordedAt, Clocks.ServerClock)
+            : null;
+        latencyTrace?.OnRequested();
         var text = Channel.CreateUnbounded<string>(new UnboundedChannelOptions {
             SingleReader = true,
             SingleWriter = true,
@@ -102,8 +106,11 @@ public partial class AudioStreamingBackend
             var diffs = ReadTranslation(translatedMemoizer, sourceMemoizer, IsTranslationComplete, cancellationToken);
             await foreach (var diff in diffs.ConfigureAwait(false)) {
                 translated += diff;
+                latencyTrace?.OnTranslated(translated);
                 if (decision == DubDecision.Undecided) {
                     decision = DubStabilizer.Decide(Fold(sourceMemoizer), translated, language);
+                    if (decision != DubDecision.Undecided)
+                        latencyTrace?.OnDecided();
                     if (decision == DubDecision.NoDub) {
                         Log.LogInformation("RunDub: #{StreamId} - already in {Language}", dubStreamId, language);
                         return;
@@ -115,7 +122,8 @@ public partial class AudioStreamingBackend
                             dubStreamId, startedAt.Elapsed.TotalSeconds, Fold(sourceMemoizer).TimeRange.End);
                         if (isLate)
                             stabilizer.Skip(translated);
-                        synthesizeTask = StartSynthesis(dubStreamId, text.Reader, decidedSource, cancellationToken);
+                        synthesizeTask = StartSynthesis(
+                            dubStreamId, text.Reader, decidedSource, latencyTrace, cancellationToken);
                     }
                 }
                 if (decision != DubDecision.Dub)
@@ -127,6 +135,7 @@ public partial class AudioStreamingBackend
                         "RunDub: #{StreamId} - speaking chunk #{Index} ({Length} chars) at {SourceEnd:F1}s of speech",
                         dubStreamId, spokenChunkCount, chunk.Length, Fold(sourceMemoizer).TimeRange.End);
                     await text.Writer.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
+                    latencyTrace?.OnSpoken(translated);
                 }
             }
             if (decision == DubDecision.Undecided)
@@ -148,6 +157,7 @@ public partial class AudioStreamingBackend
             text.Writer.TryComplete(error);
             if (synthesizeTask != null)
                 await synthesizeTask.SilentAwait(false);
+            latencyTrace?.Report(Log);
         }
     }
 
@@ -155,6 +165,7 @@ public partial class AudioStreamingBackend
         StreamId dubStreamId,
         ChannelReader<string> text,
         TaskCompletionSource<bool> decidedSource,
+        DubLatencyTrace? latencyTrace,
         CancellationToken cancellationToken)
     {
         var language = dubStreamId.Language!;
@@ -180,7 +191,7 @@ public partial class AudioStreamingBackend
                 // may still be draining after its source ended.
                 await previousDubTask.SilentAwait(false);
                 var voiceId = await GetSpeakerVoice(dubStreamId, cancellationToken).ConfigureAwait(false);
-                var options = new SpeechSynthesisOptions(language, voiceId);
+                var options = new SpeechSynthesisOptions(language, voiceId) { Listener = latencyTrace };
                 await SpeechSynthesizer!
                     .Synthesize(dubStreamId.Value, text, options, frames.Writer, cancellationToken)
                     .ConfigureAwait(false);

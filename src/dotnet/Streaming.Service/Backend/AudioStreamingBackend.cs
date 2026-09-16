@@ -25,6 +25,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     private readonly ConcurrentDictionary<StreamId, StreamId> _translatingStreams = new();
     private readonly ConcurrentDictionary<StreamId, ChatId> _chatIdByStream = new();
     private readonly ConcurrentDictionary<StreamId, AuthorId> _authorIdByStream = new();
+    private readonly ConcurrentDictionary<StreamId, Moment> _recordedAtByStream = new();
 
     private ILogger Log => field ??= Services.LogFor(GetType());
     private ILogger OpenAudioSegmentLog => field ??= Services.LogFor<OpenAudioSegment>();
@@ -185,6 +186,9 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     internal void RememberAuthorId(StreamId streamId, AuthorId authorId)
         => _authorIdByStream[streamId.BaseStreamId] = authorId;
 
+    internal void RememberRecordedAt(StreamId streamId, Moment recordedAt)
+        => _recordedAtByStream[streamId.BaseStreamId] = recordedAt;
+
     internal static IAsyncEnumerable<AudioFrame> SkipTo(
         IAsyncEnumerable<AudioFrame> stream,
         TimeSpan skipTo,
@@ -289,6 +293,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         if (!_audioStreams.Has(baseStreamId) && !_transcriptStreams.Has(baseStreamId)) {
             _chatIdByStream.TryRemove(baseStreamId, out _);
             _authorIdByStream.TryRemove(baseStreamId, out _);
+            _recordedAtByStream.TryRemove(baseStreamId, out _);
         }
     }
 
