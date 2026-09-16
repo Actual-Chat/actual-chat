@@ -270,7 +270,10 @@ skips the wait.
 1. **Wait for the source transcript.** The source transcript is published
    on the first STT result, which can trail the audio by more than the
    store's `ShareWaitDelay`, so `WaitForSourceTranscript` keeps re-asking
-   `_transcriptStreams` for as long as `_audioStreams.Has(S)`. A miss is
+   `_transcriptStreams` for as long as the source audio is still running.
+   The wait for the source transcript ends when the source audio has ended
+   without one (a short or silent utterance): the dub decides "no dub" at
+   once instead of holding the listener for `DubWaitTimeout`. A miss is
    not a decision: the worker removes its own entry from `_dubs` so the
    next `GetAudio` retries instead of inheriting it.
 2. **Start or join the translation** with `GetOrStartTranslation(S~lang)`

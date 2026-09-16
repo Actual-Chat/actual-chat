@@ -89,6 +89,28 @@ public class DubbingTranslationFlowTest(
         }
     }
 
+    [Fact(Timeout = 60_000)]
+    public async Task SourceWithoutTranscriptShouldFallBackAtOnce()
+    {
+        // arrange - a short utterance whose audio ends before any transcript is published
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        var sourceId = await Tester.RecordVoiceOnlyUtterance(chatId, Languages.Russian, cancellationToken: ct);
+        var dubId = StreamId.New(sourceId, Languages.English);
+
+        // act
+        var startedAt = CpuTimestamp.Now;
+        var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+
+        // assert - the original, well inside DubWaitTimeout
+        stream.Should().BeNull("there is nothing to dub");
+        startedAt.Elapsed.Should().BeLessThan(Constants.Audio.DubWaitTimeout / 2);
+    }
+
     [Fact(Timeout = 90_000)]
     public async Task DubShouldSpeakInTheSpeakersVoice()
     {
