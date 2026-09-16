@@ -81,6 +81,7 @@ public partial class AudioStreamingBackend
                 ForgetDub(dubStreamId, decidedSource.Task);
                 return;
             }
+            latencyTrace?.OnSourceReady(Fold(sourceMemoizer).TimeRange.End);
 
             var translatedMemoizer = await WaitForTranslation(dubStreamId, sourceMemoizer, cancellationToken)
                 .ConfigureAwait(false);
@@ -110,7 +111,7 @@ public partial class AudioStreamingBackend
                 if (decision == DubDecision.Undecided) {
                     decision = DubStabilizer.Decide(Fold(sourceMemoizer), translated, language);
                     if (decision != DubDecision.Undecided)
-                        latencyTrace?.OnDecided();
+                        latencyTrace?.OnDecided(decision == DubDecision.Dub);
                     if (decision == DubDecision.NoDub) {
                         Log.LogInformation("RunDub: #{StreamId} - already in {Language}", dubStreamId, language);
                         return;

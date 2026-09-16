@@ -426,13 +426,16 @@ is a separate, independently stored `Media`, made on demand; see
 
 ### Latency trace
 
-Every live utterance ends with two `Information` lines that say how far
-behind the speech each stage ran, so the next optimization can be aimed
-at the biggest number rather than guessed:
+A live utterance can end with up to two `Information` lines that say how
+far behind the speech each stage ran, so the next optimization can be
+aimed at the biggest number rather than guessed. The transcript line only
+appears once a transcript carries non-empty text; the dub line only once
+a dub was actually started — a `NoDub` decision still records
+`streaming.dub.decision_delay`, but logs nothing:
 
 ```
 Transcript latency #S: first text +1.1s at 0.6s of speech; text lag p50 0.9s max 1.4s (n=42); stable lag p50 3.2s max 5.1s (n=9)
-Dub latency #S~en: decided +0.4s; translated lag p50 3.9s max 4.6s (n=8); spoken lag p50 4.1s max 4.8s (n=5); tts first audio p50 1.6s max 1.6s (n=1); first word 5.8s behind speech
+Dub latency #S~en: decided +0.4s; requested at 0.6s of speech; translated lag p50 3.9s max 4.6s (n=8); spoken lag p50 4.1s max 4.8s (n=5); tts opened +0.3s after the first chunk; tts first audio p50 1.6s max 1.6s (n=1); first word 5.8s behind speech
 ```
 
 A *lag* is `ServerClock.Now − (recordedAt + TimeRange.End)`: the text's
@@ -445,19 +448,29 @@ that stream by its delta; `ProcessAudio` logs that delta per stream
 (`ProcessAudio: … delta=…ms`) for correlation. `TranscriptLatencyTrace`
 (`src/dotnet/Streaming.Service/Audio/TranscriptLatencyTrace.cs`) observes
 the transcript pipeline in `ProcessAudio` before it is memoized, so every
-lag is stamped on arrival rather than at stream end — `text` is
-every unstable transcript, `stable` every `IsStable` one (Soniox finals
-or the `StableTokenAge` promotion). `DubLatencyTrace`
-(`.../DubLatencyTrace.cs`) sits in `RunDub`: `translated` is every
-stable translated diff, `spoken` every chunk handed to the TTS channel,
-`tts first audio` is first-text-sent → first-audio per TTS stream
-(reported by the client through `ISpeechSynthesisListener` on
-`SpeechSynthesisOptions.Listener`; a rollover adds a second sample),
-and `first word` is the first stream's first audio behind the speech the
-first chunk covered — the number a listener feels. The same values go to
-the `App` meter as `streaming.transcript.lag{kind}`,
-`streaming.dub.lag{stage}`, `streaming.dub.tts_first_audio` and
-`streaming.dub.decision_delay` (seconds).
+lag is stamped on arrival rather than at stream end — `text` is every
+unstable transcript, `stable` every `IsStable` one (Soniox finals or the
+`StableTokenAge` promotion); both are read after the 0.2 s
+`Constants.Transcription.ThrottlePeriod` pacing, so every `text` lag
+already carries up to that much of it. `DubLatencyTrace`
+(`.../DubLatencyTrace.cs`) sits in `RunDub`: `requested at` is the
+source's speech position when the dub was requested, `translated` is
+every stable translated diff, `spoken` every chunk handed to the TTS
+channel, `tts opened` is the wait from that first spoken chunk to the
+first text actually sent on a TTS stream — `StartSynthesis` drains the
+speaker's previous dub, resolves the voice and opens the WebSocket before
+sending anything, and that wait is otherwise invisible — `tts first
+audio` is first-text-sent → first-audio per TTS stream (reported by the
+client through `ISpeechSynthesisListener` on
+`SpeechSynthesisOptions.Listener`); a stream Soniox kills before any
+audio folds its open time into the replacement stream's sample instead of
+being lost, so a resend still produces one `tts first audio` reading that
+covers the whole outage. `first word` is the first stream's first audio
+behind the speech the first chunk covered — the number a listener feels.
+The same values go to the `App` meter as `streaming.transcript.lag{kind}`,
+`streaming.dub.lag{stage}`, `streaming.dub.tts_open_delay`,
+`streaming.dub.tts_first_audio` and `streaming.dub.decision_delay`
+(seconds).
 
 Not traced yet: the fan-out leg (dub frame published on the owner node →
 served by `ListeningStreamMuxer` on the API pod) and the client leg

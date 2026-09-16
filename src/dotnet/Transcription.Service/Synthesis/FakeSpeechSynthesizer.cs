@@ -58,7 +58,7 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
 
     // Private methods
 
-    private async Task Push(
+    private static async Task Push(
         ChannelReader<string> text,
         ChannelWriter<byte[]> pcm,
         ISpeechSynthesisListener? listener,

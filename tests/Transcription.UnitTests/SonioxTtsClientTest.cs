@@ -176,13 +176,14 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task RunShouldResendUnspokenChunksAfterSonioxKillsTheStream()
     {
         // arrange
+        var listener = new RecordingListener();
         var soniox = new FakeSoniox { KillAfterTextCount = 2 };
         var client = NewClient(soniox, idleFlush: Short, streamRollover: Long);
         var text = Channel.CreateUnbounded<string>();
         var output = Channel.CreateUnbounded<AudioFrame>();
 
         // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, null, CancellationToken.None);
+        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, listener, CancellationToken.None);
         text.Writer.TryWrite("Spoken. ");
         await Task.Delay(Short / 3);
         text.Writer.TryWrite("Lost. ");
@@ -197,6 +198,8 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
             "config s-1", "text s-1 'Spoken. '", "text s-1 'Lost. '", "config s-2", "text s-2 'Lost. '", "end s-2");
         audio.Should().HaveCount(2, "the chunk the killed stream never spoke is spoken by the next one");
         audio[1].Offset.Should().Be(Constants.Audio.OpusFrameDuration, "offsets run on across streams");
+        listener.StreamsOpened.Should().Be(2, "the replacement stream opens too");
+        listener.AudioStarts.Should().Be(2, "'Spoken.' answers before the kill, 'Lost.' after the resend");
     }
 
     [Fact(Timeout = 15_000)]

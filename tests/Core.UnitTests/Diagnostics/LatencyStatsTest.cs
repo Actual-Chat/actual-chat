@@ -9,6 +9,7 @@ public class LatencyStatsTest
     {
         var stats = new LatencyStats();
 
+        // assert
         stats.Count.Should().Be(0);
         stats.First.Should().BeNull();
         stats.Max.Should().BeNull();
@@ -19,10 +20,14 @@ public class LatencyStatsTest
     [Fact]
     public void StatsShouldTrackFirstMaxAndMedian()
     {
+        // arrange
         var stats = new LatencyStats();
+
+        // act
         foreach (var seconds in new[] { 0.9, 1.4, 0.7, 1.1 })
             stats.Add(TimeSpan.FromSeconds(seconds));
 
+        // assert
         stats.Count.Should().Be(4);
         stats.First.Should().Be(TimeSpan.FromSeconds(0.9));
         stats.Max.Should().Be(TimeSpan.FromSeconds(1.4));
@@ -34,9 +39,13 @@ public class LatencyStatsTest
     [Fact]
     public void SingleValueShouldBeItsOwnMedian()
     {
+        // arrange
         var stats = new LatencyStats();
+
+        // act
         stats.Add(TimeSpan.FromSeconds(1.6));
 
+        // assert
         stats.ToString().Should().Be("p50 1.6s max 1.6s (n=1)");
     }
 }

@@ -19,12 +19,13 @@ public class DubLatencyTraceTest
 
         // act
         At(clock, 3.0); trace.OnRequested();
-        At(clock, 3.4); trace.OnDecided();
+        At(clock, 3.2); trace.OnSourceReady(4.9f);
+        At(clock, 3.4); trace.OnDecided(true);
         At(clock, 5.0); trace.OnTranslated(Unstable("Hola", 1.0f)); // ignored: not stable
         At(clock, 5.9); trace.OnTranslated(Stable("Hola mundo", 2.0f)); // 3.9 s behind
         At(clock, 5.9); trace.OnSpoken(Stable("Hola mundo", 2.0f)); // 3.9 s behind
-        At(clock, 5.9); listener.OnStreamOpened();
-        At(clock, 7.5); listener.OnAudioStarted(); // tts 1.6 s; first word 7.5 - 2.0 = 5.5 s
+        At(clock, 6.4); listener.OnStreamOpened(); // tts opened 0.5 s after the first spoken chunk
+        At(clock, 7.5); listener.OnAudioStarted(); // tts 1.1 s; first word 7.5 - 2.0 = 5.5 s
         At(clock, 9.0); trace.OnTranslated(Stable("Hola mundo otra vez", 4.4f)); // 4.6 s behind
         At(clock, 9.0); trace.OnSpoken(Stable("Hola mundo otra vez", 4.4f));
         At(clock, 12.0); listener.OnStreamOpened(); // a rollover: second stream
@@ -32,17 +33,39 @@ public class DubLatencyTraceTest
 
         // assert
         trace.DecisionDelay.Should().Be(TimeSpan.FromSeconds(0.4));
+        trace.TtsOpenDelay.Should().Be(TimeSpan.FromSeconds(0.5));
         trace.Translated.Count.Should().Be(2);
         trace.Translated.First.Should().BeCloseTo(TimeSpan.FromSeconds(3.9), TimeSpan.FromMilliseconds(10));
         trace.Translated.Max.Should().BeCloseTo(TimeSpan.FromSeconds(4.6), TimeSpan.FromMilliseconds(10));
         trace.Spoken.Count.Should().Be(2);
         trace.TtsFirstAudio.Count.Should().Be(2);
-        trace.TtsFirstAudio.First.Should().Be(TimeSpan.FromSeconds(1.6));
+        trace.TtsFirstAudio.First.Should().Be(TimeSpan.FromSeconds(1.1));
         trace.FirstWordLag.Should().BeCloseTo(TimeSpan.FromSeconds(5.5), TimeSpan.FromMilliseconds(10));
         trace.ToString().Should().Be(
-            "Dub latency #node01-abc~en: decided +0.4s; translated lag p50 4.6s max 4.6s (n=2); "
-            + "spoken lag p50 4.6s max 4.6s (n=2); tts first audio p50 1.6s max 1.6s (n=2); "
+            "Dub latency #node01-abc~en: decided +0.4s; requested at 4.9s of speech; "
+            + "translated lag p50 4.6s max 4.6s (n=2); spoken lag p50 4.6s max 4.6s (n=2); "
+            + "tts opened +0.5s after the first chunk; tts first audio p50 1.2s max 1.2s (n=2); "
             + "first word 5.5s behind speech");
+    }
+
+    [Fact]
+    public void KilledStreamShouldFoldIntoItsReplacementsFirstAudioSample()
+    {
+        // arrange
+        using var clock = new TestClock(multiplier: 0).SetTo(RecordedAt);
+        var trace = new DubLatencyTrace(DubStreamId, RecordedAt, clock);
+        ISpeechSynthesisListener listener = trace;
+
+        // act
+        At(clock, 5.9); trace.OnSpoken(Stable("Hola", 1.0f));
+        At(clock, 5.9); listener.OnStreamOpened();
+        At(clock, 8.0); listener.OnStreamOpened(); // re-open after a kill, no audio in between
+        At(clock, 9.0); listener.OnAudioStarted();
+
+        // assert
+        trace.TtsOpenDelay.Should().Be(TimeSpan.Zero);
+        trace.TtsFirstAudio.Count.Should().Be(1);
+        trace.TtsFirstAudio.First.Should().Be(TimeSpan.FromSeconds(3.1));
     }
 
     [Fact]

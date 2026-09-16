@@ -7,6 +7,7 @@ public static class StreamingMeters
     // How far behind the speech each live pipeline stage runs, per utterance (seconds)
     public static readonly Histogram<double> TranscriptLag;
     public static readonly Histogram<double> DubLag;
+    public static readonly Histogram<double> DubTtsOpenDelay;
     public static readonly Histogram<double> DubTtsFirstAudio;
     public static readonly Histogram<double> DubDecisionDelay;
 
@@ -35,6 +36,9 @@ public static class StreamingMeters
         DubLag = m.CreateHistogram<double>(
             "streaming.dub.lag", "s",
             "Seconds a live dub stage runs behind the speech (stage=translated|spoken|first_word)");
+        DubTtsOpenDelay = m.CreateHistogram<double>(
+            "streaming.dub.tts_open_delay", "s",
+            "Seconds from the first chunk handed to TTS to the first text sent on a TTS stream");
         DubTtsFirstAudio = m.CreateHistogram<double>(
             "streaming.dub.tts_first_audio", "s",
             "Seconds from the first text sent on a TTS stream to its first audio");
