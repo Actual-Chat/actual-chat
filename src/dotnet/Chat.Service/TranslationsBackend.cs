@@ -21,7 +21,6 @@ namespace ActualChat.Chat;
 public class TranslationsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), ITranslationsBackend
 {
     private static readonly TimeSpan TranslateThrottleDelay = TimeSpan.FromMilliseconds(500);
-    private static readonly TimeSpan EntryFinalizationTimeout = Constants.Transcription.RetranscriptionTimeout + TimeSpan.FromSeconds(5);
     private readonly ConcurrentDictionary<StreamId, FuncWorker> _activePublishers = new();
 
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
@@ -734,14 +733,14 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                     var entry = t.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);
                     return entry is null || !entry.IsContentStreaming;
                 }, cancellationToken)
-                .WaitAsync(EntryFinalizationTimeout, cancellationToken)
+                .WaitAsync(Constants.Transcription.EntryFinalizationTimeout, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (TimeoutException) {
             // Don't propagate: re-translation is best-effort and would be dropped anyway if not finalized.
             Log.LogWarning(
                 "WhenEntryFinalized: entry #{EntryId} didn't finalize within {Timeout}",
-                entryId, EntryFinalizationTimeout);
+                entryId, Constants.Transcription.EntryFinalizationTimeout);
         }
     }
 }

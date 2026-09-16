@@ -1,5 +1,7 @@
+using ActualChat.Chat.Flows;
 using ActualChat.Chat.Module;
 using ActualChat.Live;
+using ActualChat.Queues;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
 
@@ -9,6 +11,8 @@ namespace ActualChat.Chat.IntegrationTests;
 public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
+    private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(15);
+
     [Fact]
     public async Task CanceledRingShouldWriteOneCanceledEntry()
     {
@@ -384,7 +388,121 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
             "the walk must give up at its bound rather than scanning the whole chat");
     }
 
-    // Private methods
+    [Fact]
+    public async Task ALateTranscriptShouldJoinTheCallConversation()
+    {
+        // A transcript's entry is created on its first non-empty result, so the last utterance of a
+        // call routinely lands after the close already fixed the conversation's range.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
+
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+        var connected = await backend.GetState(chatId, default);
+        await tester.CreateTextEntry(chatId, "hi");
+        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
+
+        var conversationId = connected!.ToMaterializedConversation().Id;
+        var materialized = await conversations.Get(conversationId, default);
+        materialized.Should().NotBeNull();
+        var callEntry = (await ReadCallEntries(tester, chatId)).Single();
+
+        // act - the transcript of a phrase spoken during the call arrives once the call is over
+        var late = await tester.CreateStreamingEntry(chatId, Languages.English, beginsAt: materialized!.StartsAt);
+        late = await tester.FinalizeStreamingEntry(late, "one last thing");
+        await RunCallTailFlow(tester, conversationId);
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var grown = await conversations.Get(conversationId, ct);
+            grown.Should().NotBeNull();
+            grown!.EntryLidRange.Contains(late.ChatEntrySlim.LocalId).Should()
+                .BeTrue("a phrase spoken during the call belongs to its conversation");
+            grown.EntryLidRange.Contains(callEntry.LocalId).Should()
+                .BeTrue("growing the range must not drop the entry the card stands in for");
+            grown.MessageCount.Should().Be(2);
+        }, WaitTimeout);
+    }
+
+    [Fact]
+    public async Task AMessageWrittenAfterTheCallShouldStayOutsideIt()
+    {
+        // The test of belonging is when the speech started, and a message written after the hang-up
+        // begins after the call ended - otherwise the card would keep swallowing the chat's tail.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
+
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+        var connected = await backend.GetState(chatId, default);
+        await tester.CreateTextEntry(chatId, "hi");
+        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
+
+        var conversationId = connected!.ToMaterializedConversation().Id;
+        var backdated = await BackdateCallEnd(tester, conversationId);
+
+        // act
+        var afterCall = await tester.CreateTextEntry(chatId, "forgot to say");
+        await RunCallTailFlow(tester, conversationId);
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var refreshed = await conversations.Get(conversationId, ct);
+            refreshed.Should().NotBeNull();
+            refreshed!.EndEntryLid.Should().Be(backdated.EndEntryLid);
+            refreshed.EntryLidRange.Contains(afterCall.LocalId).Should().BeFalse();
+        }, WaitTimeout);
+    }
+
+    [Fact]
+    public async Task ACallSizedOverStreamingTranscriptsShouldBeResizedOnceTheySettle()
+    {
+        // Finalization waits out the offline refine pass, so at the close the entries' content is
+        // often still empty - and a call sized from empty text reads as an unexpandable short one.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
+        var settings = tester.AppServices.GetRequiredService<ChatSettings>().Summarization;
+        var longLine = string.Join(' ', Enumerable.Repeat("word", 1 + settings.MinConversationWords / 10));
+
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+        var connected = await backend.GetState(chatId, default);
+        var streaming = new List<StreamingEntry>();
+        for (var i = 0; i < settings.MinConversationEntries; i++)
+            streaming.Add(await tester.CreateStreamingEntry(chatId, Languages.English));
+        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
+
+        var conversationId = connected!.ToMaterializedConversation().Id;
+        var materialized = await BackdateCallEnd(tester, conversationId);
+        materialized.IsExpandedByDefault.Should()
+            .BeTrue("with no text yet the call measures as a short one");
+
+        // act
+        foreach (var entry in streaming)
+            await tester.FinalizeStreamingEntry(entry, longLine);
+        await RunCallTailFlow(tester, conversationId);
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var resized = await conversations.Get(conversationId, ct);
+            resized.Should().NotBeNull();
+            resized!.MessageCount.Should().Be(settings.MinConversationEntries);
+            resized.IsExpandedByDefault.Should()
+                .BeFalse("once the transcripts are in, the call is a long one");
+        }, WaitTimeout);
+    }
 
     [Fact]
     public async Task ResummarizingACallShouldLeaveTheCardsOwnShapeAlone()
@@ -425,6 +543,29 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         refreshed.EndsAt.Should().Be(materialized.EndsAt);
         refreshed.MessageCount.Should().Be(2, "the CallEntry closing the range is not one of the messages");
         refreshed.AuthorIds.Should().NotContain(Constants.User.Walle.GetWalleAuthorId(chatId));
+    }
+
+    // Private methods
+
+    private async Task RunCallTailFlow(IWebTester tester, ConversationId conversationId)
+    {
+        // Immediate (no-delay) resume - the close schedules this flow a few seconds out.
+        await FlowHub.NewResumeEvent<CallTailFlow>(conversationId.Value)
+            .WithDelayQuanta(TimeSpan.Zero)
+            .Schedule();
+        await tester.AppServices.Queues().WhenProcessing();
+    }
+
+    private static async Task<Conversation> BackdateCallEnd(IWebTester tester, ConversationId conversationId)
+    {
+        // The flow only takes its settling pass once the transcripts have had their time to finalize,
+        // which is measured from the call's end - so a test that needs that pass moves the end back.
+        var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
+        var conversation = await conversations.Get(conversationId, default).Require();
+        var backdated = conversation with {
+            EndsAt = conversation.EndsAt - Constants.Transcription.EntryFinalizationTimeout - TimeSpan.FromMinutes(1),
+        };
+        return await tester.AppServices.Commander().Call(new ConversationBackend_Materialize(backdated));
     }
 
     private static async Task<(ChatId ChatId, AuthorFull Bob, AuthorFull Alice)> NewPeerChat(IWebTester tester)
