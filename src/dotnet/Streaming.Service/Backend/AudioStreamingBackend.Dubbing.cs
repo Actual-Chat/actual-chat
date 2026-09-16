@@ -216,8 +216,8 @@ public partial class AudioStreamingBackend
         }
         finally {
             text.Writer.TryComplete(error);
-            // A no-dub decision leaves the wait running; the translation itself, once started, is
-            // the caption readers' and runs on its own worker
+            // Cancelling this local wait doesn't stop the shared translation, which keeps serving
+            // the caption readers from its own worker
             await translationCts.CancelAsync().ConfigureAwait(false);
             if (translationTask != null)
                 await translationTask.SilentAwait(false);
@@ -271,9 +271,8 @@ public partial class AudioStreamingBackend
         var diffs = sourceMemoizer.Replay(cancellationToken);
         await foreach (var diff in diffs.ConfigureAwait(false)) {
             source = TranscriptFolder(source, diff);
-            var decision = DubStabilizer.Decide(source, Transcript.Empty, language);
-            if (decision != DubDecision.Undecided || source.Text.Length >= DubStabilizer.MinDecisionLength)
-                return decision;
+            if (source.Text.Length >= DubStabilizer.MinDecisionLength)
+                return DubStabilizer.Decide(source, Transcript.Empty, language);
         }
 
         return DubDecision.Undecided;

@@ -86,11 +86,12 @@ Task Synthesize(string streamId, ChannelReader<string> text,
 
 Text chunks in, 48 kHz mono s16le PCM out — byte chunks of any size, as
 the provider delivers them, no pacing; `pcm` is completed (with the error
-on failure) once `text` completes. The caller encodes and paces: today
-`StartSynthesis` feeds the PCM through an `OpusFramePump`, so the
-published `S~lang` stream is still 20 ms Opus `AudioFrame`s at wall-clock
-pace with contiguous offsets from zero and silence in the gaps; the
-voice-over mix takes the PCM instead. `SpeechSynthesisOptions(Language, VoiceId)` — the
+on failure) once `text` completes. The caller encodes and paces:
+`StartSynthesis` passes `VoiceOverMix.DubPcm` as `pcm`, and the mix sums
+the PCM onto the original, paces the tail after the original ends and
+encodes once (the one-shot replay path goes through
+`SpeechSynthesizerExt.ToAudioSource` and an `OpusFramePump` instead).
+`SpeechSynthesisOptions(Language, VoiceId)` — the
 voice defaults to `TranscriptionSettings.SonioxTtsVoice` (`"Adrian"`)
 when `VoiceId` is null or empty; see [Voice](#voice) for where a
 non-default one comes from. The interface also carries the two
@@ -195,23 +196,22 @@ stream advances at real time regardless of how bursty Soniox's output is. Once t
 partial tail frame is zero-padded and the loop ends. PCM arrives as byte
 chunks that need not be sample-aligned: a lone trailing byte waits for
 the next chunk to pair up with, unless it is the last byte of the stream.
-The pump serves every PCM producer: the streaming
-`ISpeechSynthesizer.Synthesize` (Soniox or the fake — `StartSynthesis`
-pairs it with a paced pump via `TaskExt.WhenPushAndRead`, the same
-push/read pairing the transcribers use), plus the PCM overload of
-`SpeechSynthesizerExt.ToAudioSource` (unpaced).
+The pump serves the PCM overload of `SpeechSynthesizerExt.ToAudioSource`
+(the one-shot replay synthesis, unpaced); the live dub no longer goes
+through it — `VoiceOverMix` takes the streaming synthesizer's PCM
+directly and uses only the pump's `NewEncoder()` for its own encode.
 
 ### TTS transport: PCM live, Opus on replay
 
 The live WebSocket path takes PCM: `SonioxTtsClient.Run` asks Soniox for
 `audio_format: "pcm_s16le"` at 48 000 Hz, and every base64 `audio`
 message goes straight to the caller's PCM channel — one Opus encode per
-dub on the server (the `OpusFramePump` in `StartSynthesis`), ~96 KB/s
-per dub from Soniox. The reason is the first frame: Soniox emits Opus as Ogg pages of
+dubbed stream on the server (the mix's, of the original plus the dub),
+~96 KB/s per dub from Soniox. The reason is the first frame: Soniox emits Opus as Ogg pages of
 one second of audio each, so the first frame of every stream landed ~1 s
 later than PCM's ~256 ms chunks do (measured live, two sentences: first
 frame 0.7 s after `Run` started and 0.3 s after the first text was sent,
-against 2.5 s with Opus). The upcoming voice-over mixer needs PCM anyway
+against 2.5 s with Opus). The voice-over mixer needs PCM anyway
 (decoded original + TTS PCM → one encode), so the bandwidth is spent
 either way.
 
@@ -1910,7 +1910,7 @@ tick-driven tests run on the real clock: a frozen `TestClock` can't
 - Replay-specific gaps are listed under [Replay → Out of scope /
   follow-ups](#out-of-scope--follow-ups).
 - While a stream drains after `text_end` (an idle or duration rollover),
-  chunks that arrive queue for the next stream; the pump keeps playing
+  chunks that arrive queue for the next stream; the mix keeps playing
   the drained audio meanwhile, so nothing starves, but the next stream's
   first audio lands only after `terminated`.
 - Soniox in-stream translation (the STT session translating as it
@@ -1918,3 +1918,23 @@ tick-driven tests run on the real clock: a frozen `TestClock` can't
   the listeners of one speaker need N languages.
 - Client-side catch-up: the dub plays at natural pace and is never cut;
   a receiver-side speed-up to shrink the lag is a later lever.
+- The per-voice chain is released when the previous *mix* ends, not when
+  its dub has drained: a long original with a backlog utterance behind it
+  (a reconnect) delays the author's next dub until the original ends. A
+  "dub drained" signal from `VoiceOverMix` would release it earlier.
+- A `NoDub` utterance is still transcoded: its `S~lang` stream is the
+  original decoded, mixed with nothing and encoded again, where serving
+  `S` itself would do.
+- Replay is still substitution: a replayed dub replaces the original's
+  audio instead of playing over it; the voice-over is live-only.
+- The duck level is fixed server-side (`VoiceOverDuckGain`); a listener
+  can't choose how much of the original they hear under the dub.
+- The translator's latency grows with the utterance length: every
+  increment re-translates the whole unstable tail since the last stable
+  text, with the stable text sent along as context, so each request grows
+  until the next final and the later chunks of a long utterance wait
+  longer than the first.
+- The language decision's residual risk (see `DubStabilizer`):
+  code-switched speech is dubbed because one foreign tag anywhere in the
+  settled text makes `Decide` say `Dub`, and a language that only ever
+  appeared on the retractable tail is not counted at all.

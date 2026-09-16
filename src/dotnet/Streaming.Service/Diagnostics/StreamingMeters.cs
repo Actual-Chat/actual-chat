@@ -35,7 +35,7 @@ public static class StreamingMeters
             "Seconds a live transcript runs behind the speech (kind=text|stable)");
         DubLag = m.CreateHistogram<double>(
             "streaming.dub.lag", "s",
-            "Seconds a live dub stage runs behind the speech (stage=translated|spoken|first_word)");
+            "Seconds a live dub stage runs behind the speech (stage=translated|spoken|first_word|mixed)");
         DubTtsOpenDelay = m.CreateHistogram<double>(
             "streaming.dub.tts_open_delay", "s",
             "Seconds from the first chunk handed to TTS to the first text sent on a TTS stream");

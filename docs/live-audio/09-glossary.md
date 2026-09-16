@@ -95,7 +95,10 @@ live-audio docs.
 | `Transcribers/{TranscriberFactory,GoogleTranscriber,DeepgramTranscriber,FakeTranscriber,OpenAITranscriber}` | `Streaming.Service/Services/Transcribers/` | Transcription providers |
 | `ISpeechSynthesizer` / `SpeechSynthesisOptions` | `Transcription.Contracts/` | Text chunks → 48 kHz s16le PCM (the caller encodes and paces) |
 | `SonioxSpeechSynthesizer`, `FakeSpeechSynthesizer` | `Transcription.Service/Synthesis/` | Soniox TTS; test double |
-| `OpusFramePump` | `Core.Server/Audio/` | PCM → paced 20 ms Opus frames (shared by the dub worker and the TTS one-shots) |
+| `OpusFramePump` | `Core.Server/Audio/` | PCM → paced 20 ms Opus frames (the TTS one-shots; the live dub uses only its `NewEncoder()`) |
+| `VoiceOverMixer` | `Core.Server/Audio/` | Sums the dub PCM onto the original frame by frame, ducking the original with a ramp and a hold |
+| `VoiceOverMix` | `Streaming.Service/Audio/` | The `S~lang` stream: decodes the original, mixes the dub over it, encodes once; clocked by the original, ticks the tail |
+| `DubActivity` | `Streaming.Service/Audio/` | Per-(author, language) "a dub is speaking" signal, so the next utterance's mix starts ducked |
 | `SonioxTtsClient` | `Transcription.Service/Transcribers/` | One `tts-rt-v2` WebSocket connection and stream per utterance; idle (2.5 s) and duration (100 s) rollovers |
 | `DubStabilizer` / `DubDecision` | `Streaming.Service/Audio/` | Stable-prefix feed + dub / no-dub decision |
 | `AudioStreamingBackend.Dubbing` | `Streaming.Service/Backend/` | Lazy dub start from `GetAudio(S~lang)`, per-voice chain, expiry |

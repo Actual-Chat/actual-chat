@@ -592,7 +592,6 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         // the task faults when the connection died under the stream.
         public Task<SonioxTtsResponse> WhenTerminated => _whenTerminatedSource.Task;
         public bool HasText { get; private set; }
-        public bool HasAudio { get; private set; }
         public bool HasFrames { get; private set; }
 
         public void OnChunkSent(string chunk, bool isResent, Moment now)
@@ -607,7 +606,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         public bool TrySignalFirstFrame(int pcmByteCount)
         {
             // True once per stream, on the chunk that completes its first 20 ms frame: a shorter first
-            // chunk encodes to nothing yet, so this - not HasAudio - is when Soniox actually starts speaking
+            // chunk encodes to nothing yet, so this is when Soniox actually starts speaking
             if (HasFrames)
                 return false;
 
@@ -619,18 +618,17 @@ public sealed class SonioxTtsClient(IServiceProvider services)
             return true;
         }
 
-        // Soniox synthesizes a sentence only once it sees the text after it, so the chunks sent
-        // since the last audio are the closest cheap guess at what a killed stream never spoke
         public void OnAudioReceived()
         {
-            HasAudio = true;
+            // Soniox synthesizes a sentence only once it sees the text after it, so the chunks sent
+            // since the last audio are the closest cheap guess at what a killed stream never spoke
             lock (_unspokenChunks)
                 _unspokenChunks.Clear();
         }
 
-        // A chunk is resent at most once, so a stream that keeps dying can't loop
         public List<string> TakeUnspokenChunks()
         {
+            // A chunk is resent at most once, so a stream that keeps dying can't loop
             lock (_unspokenChunks) {
                 var chunks = _unspokenChunks.Where(x => !x.IsResent).Select(x => x.Chunk).ToList();
                 _unspokenChunks.Clear();
