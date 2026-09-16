@@ -11,17 +11,19 @@
         Class="edit-settings-modal edit-avatar-modal"
         Title="@_form.Title"
         HasCloseButton="true"
-        NarrowViewSettings="@DialogFrameNarrowViewSettings.ForFormSubmitButton()"
+        HeaderMode="HeaderMode.Custom"
+        NarrowViewSettings="@DialogFrameNarrowViewSettings.Default"
         ButtonsClass="full-width">
+        <Header>
+            <div class="own-avatar-edit-header">
+                <AvatarPicFormBlock
+                    Title="@_form.Title"
+                    Picture="@_form.Picture"
+                    ImagePicked="@OnImagePicked"
+                    CloseRequested="@(() => Modal.Close())" />
+            </div>
+        </Header>
         <Body>
-        <FormBlock Class="own-avatar-edit-header">
-            <AvatarPicFormBlock
-                Title="@_form.Title"
-                Picture="@_form.Picture"
-                ImagePicked="@OnImagePicked"
-                CloseRequested="@(() => Modal.Close())" />
-        </FormBlock>
-
         <FormBlock>
             <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="@L.Form_Name" IsLabelInsideInput="true">
                 <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId" ClearButton="true"/>

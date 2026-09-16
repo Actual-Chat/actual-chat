@@ -20,7 +20,7 @@
     @apply flex-x items-center gap-x-1;
     @apply min-h-12 max-h-12;
     @apply px-2;
-    @apply rounded-md;
+    @apply rounded-lg;
 }
 body.hoverable .c-contact-list > .c-item:hover {
     @apply bg-hover;
@@ -36,10 +36,4 @@ body.hoverable .c-contact-list > .c-item:hover {
 }
 body.hoverable .c-contact-list > .c-item:hover > .avatar-name {
     @apply text-01;
-}
-
-.modal-frame .share-block {
-    @apply gap-y-2;
-    @apply py-0;
-    @apply border-none;
 }

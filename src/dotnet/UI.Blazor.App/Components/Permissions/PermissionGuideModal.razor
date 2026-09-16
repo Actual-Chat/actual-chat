@@ -14,7 +14,7 @@
     BodyClass="no-scrollbar"
     Title="@(permission?.Title ?? "")"
     HasCloseButton="true"
-    NarrowViewSettings="@DialogFrameNarrowViewSettings.ForSubmitButton(OnPrimaryClick, primaryTitle)">
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
     <Body>
     <FormBlock>
         @if (permission is { } p) {

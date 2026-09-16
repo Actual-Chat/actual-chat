@@ -5,9 +5,6 @@
     @apply flex-y;
     @apply gap-y-2;
 }
-.new-chat-modal .dialog-footer {
-    @apply pt-2;
-}
 .new-chat-modal .tile-item {
     @apply hover:bg-inherit;
 }

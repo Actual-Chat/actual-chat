@@ -15,72 +15,13 @@
     Context.ContextItems.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
     var canEditMembers = m.Place.Rules.CanEditMembers();
     var isOwner = m.IsOwner;
+    Context.Header = RenderHero;
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
     @{
         _submitButtonInfo.CanExecute = _formRef?.IsValid ?? false;
     }
-    <FormBlock Class="chat-settings-header place">
-        <DataAnnotationsValidator/>
-
-        <div class="c-top">
-            @if (_form.Background != null) {
-                <Pic
-                    Picture="@_form.Background"
-                    ImageSkeletonClass="image-cover"
-                    Size="@SquareSize.SizeFull"
-                    IsSquare="true"
-                    AvatarKind="@AvatarKind.Marble"
-                    AvatarKey="@PlaceId.Value"
-                    ShowFullSizeImage="true"/>
-            } else {
-                <Pic
-                    Picture="@_form.Picture"
-                    ImageSkeletonClass="image-cover"
-                    Size="@SquareSize.SizeFull"
-                    IsSquare="true"
-                    IsBlurred="true"
-                    AvatarKind="@AvatarKind.Marble"
-                    AvatarKey="@PlaceId.Value"/>
-            }
-            <ButtonRound
-                Click="@(() => Context.Close())"
-                Class="btn-sm right-panel-close-btn close-btn">
-                <i class="icon-close text-2xl"></i>
-            </ButtonRound>
-        </div>
-        <div class="c-center">
-            <Pic
-                Title="@_form.Title"
-                Picture="@_form.Picture"
-                Size="@SquareSize.Size16"
-                IsSquare="true"
-                AvatarKind="@AvatarKind.Marble"
-                AvatarKey="@PlaceId.Value"/>
-
-            <div class="c-buttons">
-                <ButtonRound Class="btn-modal btn-sm" Click="@(() => _avatarPicker!.Pick())">
-                    <i class="icon-person-add-2 text-2xl"></i>
-                </ButtonRound>
-                <ImageCropPicker @ref="_avatarPicker"
-                    Scope="@_form!.ImageScope"
-                    IsSquare="true"
-                    OnCropped="@OnImagePicked" />
-
-                <ButtonRound Class="btn-modal btn-sm" Click="@(() => _wallpaperPicker!.Pick())">
-                    <i class="icon-image text-2xl"></i>
-                </ButtonRound>
-                <ImageCropPicker @ref="_wallpaperPicker"
-                    Scope="@_form!.ImageScope"
-                    IsSquare="true"
-                    ViewportAspectRatio="2.5f"
-                    HasBlur="true"
-                    OnCropped="@OnBackgroundPicked" />
-            </div>
-        </div>
-    </FormBlock>
-
     <FormBlock>
         <DataAnnotationsValidator/>
 
@@ -159,6 +100,66 @@
 
     private PlaceId PlaceId { get; set; } = null!;
 
+    private RenderFragment RenderHero => @<div class="chat-settings-header place">
+        <div class="c-top">
+            @if (_form!.Background != null) {
+                <Pic
+                    Picture="@_form.Background"
+                    ImageSkeletonClass="image-cover"
+                    Size="@SquareSize.SizeFull"
+                    IsSquare="true"
+                    AvatarKind="@AvatarKind.Marble"
+                    AvatarKey="@PlaceId.Value"
+                    ShowFullSizeImage="true"/>
+            } else {
+                <Pic
+                    Picture="@_form.Picture"
+                    ImageSkeletonClass="image-cover"
+                    Size="@SquareSize.SizeFull"
+                    IsSquare="true"
+                    IsBlurred="true"
+                    AvatarKind="@AvatarKind.Marble"
+                    AvatarKey="@PlaceId.Value"/>
+            }
+            @if (!Context.IsInnerStep) {
+                <ButtonRound
+                    Click="@(() => Context.Close())"
+                    Class="btn-sm right-panel-close-btn close-btn">
+                    <i class="icon-close text-2xl"></i>
+                </ButtonRound>
+            }
+        </div>
+        <div class="c-center">
+            <Pic
+                Title="@_form!.Title"
+                Picture="@_form.Picture"
+                Size="@SquareSize.Size16"
+                IsSquare="true"
+                AvatarKind="@AvatarKind.Marble"
+                AvatarKey="@PlaceId.Value"/>
+
+            <div class="c-buttons">
+                <ButtonRound Class="btn-modal btn-sm" Click="@(() => _avatarPicker!.Pick())">
+                    <i class="icon-person-add-2 text-2xl"></i>
+                </ButtonRound>
+                <ImageCropPicker @ref="_avatarPicker"
+                    Scope="@_form!.ImageScope"
+                    IsSquare="true"
+                    OnCropped="@OnImagePicked" />
+
+                <ButtonRound Class="btn-modal btn-sm" Click="@(() => _wallpaperPicker!.Pick())">
+                    <i class="icon-image text-2xl"></i>
+                </ButtonRound>
+                <ImageCropPicker @ref="_wallpaperPicker"
+                    Scope="@_form!.ImageScope"
+                    IsSquare="true"
+                    ViewportAspectRatio="2.5f"
+                    HasBlur="true"
+                    OnCropped="@OnBackgroundPicked" />
+            </div>
+        </div>
+    </div>;
+
     protected override void OnInitialized() {
         PlaceId = Context.GetModel<PlaceId>();
         Context.Title = L.Place_SettingsTitle;
@@ -206,10 +207,12 @@
 
     private void OnImagePicked(MediaRef mediaRef) {
         _form!.Picture = new (mediaRef);
+        Context.Refresh();
     }
 
     private void OnBackgroundPicked(MediaRef mediaRef) {
         _form!.Background = new(mediaRef);
+        Context.Refresh();
     }
 
     private void OnManagePlaceTypeClick()

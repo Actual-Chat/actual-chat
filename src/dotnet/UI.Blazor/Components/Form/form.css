@@ -146,9 +146,12 @@ form .form-section {
 .label-inside-input select {
     @apply h-8 min-h-8;
 }
+/* A <select> has no right-side affordance (clear/copy/error), so it reclaims the pr-8 reserve the
+   .c-left keeps for one - otherwise the native chevron sits ~2rem in from the field edge.
+   +2.25rem = the 2rem reserve + the 0.25rem the -ml-1 shifts it left. */
 .form-section-content > .c-left > select,
 .label-inside-input select {
-    width: calc(100% + 0.5rem);
+    width: calc(100% + 2.25rem);
     @apply -ml-1;
 }
 
@@ -259,11 +262,6 @@ form .form-section {
     @apply text-caption-1 text-01;
 }
 
-/* separator between form blocks */
-.form-block:not(:first-of-type) {
-    @apply border-separator border-t;
-}
-
 .form-block section {
     @apply mt-0; /* reset top margin on FormSection */
 }
@@ -334,13 +332,9 @@ form .form-section {
     @apply p-0;
     @apply overflow-hidden;
 }
-.form-block.with-contact-list > div:not(.contact-selector-badges) {
-    @apply px-2;
-}
 .form-block.with-contact-list > .contact-selector-list,
 .form-block.with-contact-list > .c-contact-list {
     @apply w-full;
-    @apply px-2;
 }
 
 /* The field label sits small at the top of the box - no float animation - on the same

@@ -12,10 +12,9 @@
 <Tile Class="your-account-tile">
     <TileItem Class="first-tile-item" Click="@(() => OnEditClick(AccountField.Name))">
         <Icon>
-            <AvatarBadge
+            <AvatarCard
                 Avatar="@account.Avatar"
-                Size="@SquareSize.Size9"
-                NameClass="hidden" />
+                Size="@SquareSize.Size9" />
         </Icon>
         <Content>
             @account.Name

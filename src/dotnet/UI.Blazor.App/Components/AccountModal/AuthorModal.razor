@@ -40,12 +40,14 @@
     }
 }
 
-<DialogFrame Title="@title" Class="@cls" HasCloseButton="true">
+<DialogFrame Title="@title" Class="@cls" HasCloseButton="true" HeaderMode="HeaderMode.Custom">
+    <Header>
+        <AuthorModalHeader
+            Author="author"
+            IsOwn="m.IsOwnAuthor"
+            OnEditClick="@onEditClick"/>
+    </Header>
     <Body>
-    <AuthorModalHeader
-        Author="author"
-        IsOwn="m.IsOwnAuthor"
-        OnEditClick="@onEditClick"/>
     <FormBlock>
         <AuthorModalContent
             Author="@author"

@@ -2,27 +2,17 @@
     @apply px-0;
     @apply gap-y-0;
 }
-.share-incoming-modal .no-padding-header-decorator {
-    @apply mx-0;
-}
 .share-incoming-modal .dialog-body {
     @apply overflow-y-hidden;
 }
 .share-incoming-modal .form-block {
-    @apply py-0;
     @apply overflow-y-hidden;
-}
-.share-incoming-modal .dialog-footer {
-    @apply pt-2;
 }
 .narrow .share-incoming-modal .contact-selector-list {
     @apply pb-0;
 }
 .share-incoming-modal .embedded-message-editor {
     @apply border-b-0;
-}
-.share-incoming-modal .form-block.with-contact-list .search-box {
-    @apply px-4;
 }
 
 .share-incoming-modal .dialog-buttons {

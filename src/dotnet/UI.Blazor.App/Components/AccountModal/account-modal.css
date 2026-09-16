@@ -1,11 +1,4 @@
-﻿.author-modal .form-block {
-    @apply py-0;
-}
-.author-modal .modal-header {
-    @apply hidden;
-}
-
-/*Author modal header*/
+﻿/*Author modal header*/
 .author-modal .c-header {
     @apply relative;
     @apply flex-y;
@@ -65,10 +58,6 @@
 }
 .author-modal-close-btn.btn.btn-round {
     @apply absolute top-2 right-4 z-10;
-}
-
-.author-modal .form-block {
-    @apply border-none;
 }
 
 .author-modal .header-tile-item .tile-item-body-content {

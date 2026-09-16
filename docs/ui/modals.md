@@ -53,13 +53,21 @@ width strings.
 
 ## Header — HeaderMode
 
-`enum HeaderMode { Standard, Custom, None }`.
+`enum HeaderMode { Default, Custom, None }` — a `[Parameter]` on `DialogFrame`,
+paired with a `Header` render fragment for the `Custom` case.
 
 | Mode | What | Notes |
 |---|---|---|
-| **Standard** | Back arrow (inner steps) · title · close (×) | The default `DialogHeader`. Back appears for wizard/dive-in inner steps (`ModalStepRef`). |
-| **Custom** | A slim sticky bar (back · title · close) **plus** a decorative hero at the top of the body (wallpaper + avatar + actions, as in edit-chat / edit-place) | A **supported mode**, not the current "hide `.modal-header` + absolute overlay" hack. The **hero scrolls with the body** (it is the first thing in the scroll area); the **slim bar stays sticky** and owns the top safe area — the collapsing-header pattern (Telegram profile / iOS large title). A full native auto-collapse is avoided: it is complex and buggy inside sheets (iOS 17). |
+| **Default** | Back arrow (inner steps) · title · close (×) | The standard `DialogHeader`. Back appears for wizard/dive-in inner steps (`ModalStepRef`). |
+| **Custom** | The modal supplies its own header content (a decorative hero: wallpaper + avatar + actions, as in edit-chat / edit-place / own-avatar) via the `Header` fragment | Rendered in the **fixed header region** (`ModalFrame` renders `@Header` above the scrolling `.dialog-body`), so the hero **does not scroll** and its close (×) is always reachable. Because the hero sits outside the padded body, `BodyVariant` inset applies only to content — no bleed hacks. |
 | **None** | No header at all | Emoji / GIF / media pickers. |
+
+**Implementation status (2026-09-15).** `HeaderMode` + `Header` slot exist;
+`DialogInteractiveHeader` and the submit-in-header plumbing are removed;
+**OwnAvatar** uses `Custom` (fixed hero). **ChatSettings / PlaceSettings** are a
+temporary exception — still hero-in-body (they are dive-in; hoisting the hero
+into `DiveInModalPageContext.Header` needs care around render reactivity) and
+will move to `Custom` in a follow-up.
 
 ## Body — BodyVariant
 
@@ -82,9 +90,11 @@ padding their own way.
 - The footer **owns the bottom inset including the safe area** (or the body does
   when there is no footer) — [spacing.md](./spacing.md).
 - **No submit-in-header.** The `DialogInteractiveHeader` /
-  `ForSubmitButton` / `ForFormSubmitButton` system is removed; the primary action
-  is always a footer button. The ~6 modals that used it (Forward, the guides,
-  OwnAccount / OwnAvatar editors, Premium) move their submit to the footer.
+  `ForSubmitButton` / `ForFormSubmitButton` system has been removed; the primary
+  action is always a footer button. The modals that used it (Forward, the guides,
+  OwnAccount / OwnAvatar editors, Premium, NewChat / NewPlace) now keep their
+  submit in the footer. `DialogFrameNarrowViewSettings` is reduced to
+  `Position` + `ShouldHideButtons`.
 
 ## Keyboard on mobile
 
