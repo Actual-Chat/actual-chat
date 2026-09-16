@@ -571,7 +571,7 @@ granularity and forcing finals early degrades accuracy.
 
 | Condition | Result |
 |---|---|
-| Source transcript carries `Languages` and ≥ 10 chars of text | `NoDub` if any of them matches `target` by ISO code, else `Dub` |
+| Source transcript carries `Languages` and ≥ 10 chars of text | `NoDub` if **all** of them match `target` by ISO code, else `Dub` |
 | Otherwise, translated transcript not yet stable | `Undecided` |
 | Normalized translated text < 10 chars | `Undecided` |
 | Normalized source text starts with normalized translated text | `NoDub` |
@@ -584,14 +584,26 @@ source languages come from the transcriber, and are the languages it
 *heard*: Soniox tags tokens only with `enable_language_identification`
 on, so both Soniox transcribers send it unconditionally — the chat
 language goes out as a `language_hints` nudge, not as a stamp — and
-`SonioxTranscriptBuilder` collects the tags. A Russian message in an
-English chat is therefore `[ru]`: translated for the readers, dubbed for
-the English listeners, `NoDub` for a Russian one; and the entry's stored
-`ChatEntryLanguage` reflects the speech. Google stamps its `LanguageCode`;
-Deepgram in configured mode stamps nothing. They ride on the diffs:
-`TranscriptDiff.Languages` (null = unchanged) is what lets the folded
-source transcript carry them — a text diff alone never did, and the first
-row was dead on the real path.
+`SonioxTranscriptBuilder` collects the tags — from settled tokens only:
+finals and the tail tokens promoted by age, the same branch that appends
+to the final text. The non-final tail is re-sent and retracted with
+every message, so a tag on it was never a language heard for certain,
+and one wrong tag decides the dub for the whole utterance. A Russian
+message in an English chat is therefore `[ru]`: translated for the
+readers, dubbed for the English listeners, `NoDub` for a Russian one;
+and the entry's stored `ChatEntryLanguage` reflects the speech. Google
+stamps its `LanguageCode`; Deepgram in configured mode stamps nothing.
+They ride on the diffs: `TranscriptDiff.Languages` (null = unchanged) is
+what lets the folded source transcript carry them — a text diff alone
+never did, and the first row was dead on the real path.
+
+The rule is `NoDub` only when *every* language heard is the target: a
+needless dub is the cheaper error (the listener hears a voice-over of
+what they understood anyway), a wrong `NoDub` loses the utterance for
+them. The residual risk runs the other way — code-switched speech (a
+Russian sentence with an English word in it) is dubbed for the English
+listener, and since the entry's languages come from final tokens only, a
+tag that only ever appeared on the retractable tail is not counted.
 
 The last two rows are the verbatim-translation heuristic, the fallback
 for a source that names no language: the translator hands the source

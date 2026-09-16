@@ -162,6 +162,23 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
+    public void LanguagesShouldComeFromSettledTokensOnly()
+    {
+        // arrange
+        var builder = new SonioxTranscriptBuilder();
+
+        // act - a tail token tagged "en" is retracted by the next message, whose final is tagged "ru"
+        var withTail = builder
+            .Update([Token("Привет", 0, 500, true, "ru"), Token(" wor", 500, 700, false, "en")], 700)[^1];
+        var settled = builder.Update([Token(" мир", 500, 1000, true, "ru")], 1000)[^1];
+
+        // assert
+        withTail.Languages.Should().Equal([Languages.Russian], "a retractable tail tag is not a language heard");
+        settled.Languages.Should().Equal([Languages.Russian]);
+        settled.Text.Should().Be("Привет мир");
+    }
+
+    [Fact]
     public void EndpointMarkersShouldNeverReachTheTranscript()
     {
         // arrange - enable_endpoint_detection emits "<end>" once per finalized segment

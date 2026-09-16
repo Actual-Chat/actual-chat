@@ -200,6 +200,18 @@ public class DubStabilizerTest
     }
 
     [Fact]
+    public void DecideShouldDubASourceThatMixesTheTargetWithAnotherLanguage()
+    {
+        // act - a Russian utterance with an English word in it, for an English listener
+        var decision = DubStabilizer
+            .Decide(Stable("Привет, how are you дела?", Languages.Russian, Languages.English),
+                Unstable(""), Languages.English);
+
+        // assert
+        decision.Should().Be(DubDecision.Dub, "a needless dub is cheaper than losing the utterance to a wrong NoDub");
+    }
+
+    [Fact]
     public void DecideShouldWaitForEnoughTextBeforeTrustingTheLanguage()
     {
         // act

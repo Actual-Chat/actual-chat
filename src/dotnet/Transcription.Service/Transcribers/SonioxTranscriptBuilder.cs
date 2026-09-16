@@ -48,9 +48,11 @@ public sealed class SonioxTranscriptBuilder
             if (token.StartMs < _promotedEndMs)
                 continue;
 
-            AddLanguage(token.Language);
             if (token.IsFinal || (tail.Length == 0 && token.EndMs <= stableEndMs)) {
                 hasNewFinals = true;
+                // The languages come from settled tokens only: a tail token's tag is retracted with
+                // the tail, and a wrong one would decide the dub for the whole utterance
+                AddLanguage(token.Language);
                 // A final token can only arrive while the tail is still empty for this message:
                 // Soniox emits finals before the non-final tail it supersedes.
                 var startOffset = _finalText.Length;

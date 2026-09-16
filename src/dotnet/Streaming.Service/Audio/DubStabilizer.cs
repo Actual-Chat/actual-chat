@@ -61,8 +61,10 @@ public sealed partial class DubStabilizer
 
     public static DubDecision Decide(Transcript source, Transcript translated, Language targetLanguage)
     {
+        // NoDub only when every language heard is the target: a needless dub is the cheaper error, a
+        // wrong NoDub loses the utterance for the listener
         if (source.Languages.Length > 0 && source.Text.Length >= MinDecisionLength)
-            return source.Languages.Any(x => x.IsoCode == targetLanguage.IsoCode)
+            return source.Languages.All(x => x.IsoCode == targetLanguage.IsoCode)
                 ? DubDecision.NoDub
                 : DubDecision.Dub;
         if (!translated.IsStable)
