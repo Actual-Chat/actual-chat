@@ -10,9 +10,10 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
     : TranscriberTestBase(@out, log)
 {
     private const int FramesPerSecond = 1000 / Constants.Audio.OpusFrameDurationMs;
+    private const int BytesPerSecond = OpusFramePump.SampleRate * sizeof(short);
 
     [Fact]
-    public async Task TtsShouldReturnOpusFramesForStreamedText()
+    public async Task TtsShouldReturnPcmForStreamedText()
     {
         // arrange
         var services = CreateServices();
@@ -23,7 +24,8 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
 
         var client = new SonioxTtsClient(services);
         var text = Channel.CreateUnbounded<string>();
-        var output = Channel.CreateUnbounded<AudioFrame>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
+        var listener = new SpeakStartListener();
         text.Writer.TryWrite("Hello there, this is a test of the dubbing pipeline.");
         text.Writer.TryWrite(" And here is one more sentence.");
         text.Writer.Complete();
@@ -31,27 +33,31 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         var startedAt = CpuTimestamp.Now;
         var firstFrameAt = TimeSpan.Zero;
         var readTask = Task.Run(async () => {
-            var frames = new List<AudioFrame>();
-            await foreach (var frame in output.Reader.ReadAllAsync(cts.Token)) {
-                if (frames.Count == 0)
+            var chunks = new List<byte[]>();
+            var byteCount = 0L;
+            await foreach (var chunk in pcm.Reader.ReadAllAsync(cts.Token)) {
+                byteCount += chunk.Length;
+                if (firstFrameAt == TimeSpan.Zero && byteCount >= OpusFramePump.FrameByteLength)
                     firstFrameAt = startedAt.Elapsed;
-                frames.Add(frame);
+                chunks.Add(chunk);
             }
-            return frames;
+            return chunks;
         }, cts.Token);
 
         // act
-        await client.Run("test", "en", "Adrian", text.Reader, output.Writer, null, cts.Token);
-        var frames = await readTask;
+        await client.Run("test", "en", "Adrian", text.Reader, pcm.Writer, listener, cts.Token);
+        var chunks = await readTask;
 
         // assert
-        WriteLine($"{frames.Count} frames = {frames.Count / (double)FramesPerSecond:F1}s of audio, "
-            + $"{frames.Sum(f => f.Data.Length) / 1024.0:F1} KB, first frame at {firstFrameAt.TotalSeconds:F1}s");
-        frames.Count.Should().BeGreaterThan(FramesPerSecond, "two sentences are well over a second of speech");
-        firstFrameAt.Should().BeLessThan(TimeSpan.FromSeconds(5), "the first frame arrives well before the end");
-        for (var i = 0; i < frames.Count; i++)
-            frames[i].Offset.Should().Be(Constants.Audio.OpusFrameDuration * i);
-        frames.Should().OnlyContain(f => f.Duration == Constants.Audio.OpusFrameDuration);
+        var totalBytes = chunks.Sum(c => (long)c.Length);
+        var firstAudioAfterOpen = listener.AudioStartedAt - listener.StreamOpenedAt;
+        WriteLine($"{chunks.Count} chunks = {totalBytes / (double)BytesPerSecond:F1}s of audio, "
+            + $"{totalBytes / 1024.0:F1} KB, first frame at {firstFrameAt.TotalSeconds:F2}s "
+            + $"({firstAudioAfterOpen.TotalSeconds:F2}s after the first text was sent)");
+        totalBytes.Should().BeGreaterThan(BytesPerSecond, "two sentences are well over a second of speech");
+        firstFrameAt.Should().BeLessThan(TimeSpan.FromSeconds(2),
+            "PCM comes in 256 ms chunks, not the 1 s Ogg pages Opus came in (measured 2.48 s)");
+        chunks.Should().OnlyContain(c => c.Length % sizeof(short) == 0, "s16le chunks are sample-aligned");
         client.StreamCount.Should().Be(1, "chunks of one utterance share a stream");
     }
 
@@ -67,35 +73,35 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
 
         var client = new SonioxTtsClient(services);
         var text = Channel.CreateUnbounded<string>();
-        var output = Channel.CreateUnbounded<AudioFrame>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var startedAt = CpuTimestamp.Now;
         var firstAudioAt = TimeSpan.Zero;
         var readTask = Task.Run(async () => {
-            var frameCount = 0;
-            await foreach (var _ in output.Reader.ReadAllAsync(cts.Token)) {
-                if (frameCount == 0)
+            var totalBytes = 0L;
+            await foreach (var chunk in pcm.Reader.ReadAllAsync(cts.Token)) {
+                if (totalBytes == 0)
                     firstAudioAt = startedAt.Elapsed;
-                frameCount++;
+                totalBytes += chunk.Length;
             }
-            return frameCount;
+            return totalBytes;
         }, cts.Token);
 
         // act
-        var runTask = client.Run("test", "en", "Adrian", text.Reader, output.Writer, null, cts.Token);
+        var runTask = client.Run("test", "en", "Adrian", text.Reader, pcm.Writer, null, cts.Token);
         for (var i = 1; i <= 7; i++) {
             text.Writer.TryWrite($"Chunk number {i} of a steady stream keeps the stream alive and speaking, ");
             await Task.Delay(TimeSpan.FromSeconds(1), cts.Token);
         }
         text.Writer.Complete();
         await runTask;
-        var frameCount = await readTask;
+        var totalBytes = await readTask;
 
         // assert
-        WriteLine($"{client.StreamCount} streams, {frameCount / (double)FramesPerSecond:F1}s of audio, "
+        WriteLine($"{client.StreamCount} streams, {totalBytes / (double)BytesPerSecond:F1}s of audio, "
             + $"first audio at {firstAudioAt.TotalSeconds:F1}s, done at {startedAt.Elapsed.TotalSeconds:F1}s");
         client.StreamCount.Should().Be(1, "chunks arriving every second never let the stream go idle");
-        frameCount.Should().BeGreaterThan(5 * FramesPerSecond, "seven phrases are well over five seconds of speech");
+        totalBytes.Should().BeGreaterThan(5 * BytesPerSecond, "seven phrases are well over five seconds of speech");
     }
 
     [Fact]
@@ -135,24 +141,23 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
 
         var client = new SonioxTtsClient(services);
         var text = Channel.CreateUnbounded<string>();
-        var output = Channel.CreateUnbounded<AudioFrame>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(40));
 
         // act
-        var runTask = client.Run("test", "en", "Adrian", text.Reader, output.Writer, null, cts.Token);
+        var runTask = client.Run("test", "en", "Adrian", text.Reader, pcm.Writer, null, cts.Token);
         text.Writer.TryWrite("This chunk is spoken first.");
         await Task.Delay(TimeSpan.FromSeconds(12), cts.Token);
         text.Writer.TryWrite("This chunk arrives well after the first stream was ended as idle.");
         text.Writer.Complete();
         await runTask;
-        var frames = await output.Reader.ReadAllAsync().ToListAsync();
+        var chunks = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
-        WriteLine($"{client.StreamCount} streams, {frames.Count / (double)FramesPerSecond:F1}s of audio");
-        frames.Count.Should().BeGreaterThan(3 * FramesPerSecond, "both chunks should be spoken");
+        var totalBytes = chunks.Sum(c => (long)c.Length);
+        WriteLine($"{client.StreamCount} streams, {totalBytes / (double)BytesPerSecond:F1}s of audio");
+        totalBytes.Should().BeGreaterThan(3 * BytesPerSecond, "both chunks should be spoken");
         client.StreamCount.Should().Be(2, "the idle flush ends the first stream, so the late chunk opens another");
-        for (var i = 0; i < frames.Count; i++)
-            frames[i].Offset.Should().Be(Constants.Audio.OpusFrameDuration * i, "offsets run on across streams");
     }
 
     [Fact]
@@ -167,16 +172,16 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
 
         var client = new SonioxTtsClient(services);
         var text = Channel.CreateUnbounded<string>();
-        var output = Channel.CreateUnbounded<AudioFrame>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
         text.Writer.Complete();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
 
         // act
-        await client.Run("test", "en", "Adrian", text.Reader, output.Writer, null, cts.Token);
-        var frames = await output.Reader.ReadAllAsync().ToListAsync();
+        await client.Run("test", "en", "Adrian", text.Reader, pcm.Writer, null, cts.Token);
+        var chunks = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
-        frames.Should().BeEmpty("no text was ever sent, so no stream should have opened");
+        chunks.Should().BeEmpty("no text was ever sent, so no stream should have opened");
         client.StreamCount.Should().Be(0);
     }
 
@@ -198,12 +203,12 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
 
         var client = new SonioxTtsClient(services) { IdleFlush = TimeSpan.FromSeconds(6) };
         var textChannel = Channel.CreateUnbounded<string>();
-        var output = Channel.CreateUnbounded<AudioFrame>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
         var listener = new SpeakStartListener();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(40));
 
         // act
-        var runTask = client.Run("test", "en", "Adrian", textChannel.Reader, output.Writer, listener, cts.Token);
+        var runTask = client.Run("test", "en", "Adrian", textChannel.Reader, pcm.Writer, listener, cts.Token);
         var chunks = text.Split('|');
         for (var i = 0; i < chunks.Length; i++) {
             textChannel.Writer.TryWrite(chunks[i]);
@@ -219,12 +224,13 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
             textChannel.Writer.Complete();
         }
         await runTask;
-        var frames = await output.Reader.ReadAllAsync().ToListAsync();
+        var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
         var firstAudioAt = listener.AudioStartedAt - listener.StreamOpenedAt;
-        WriteLine($"{name}: first audio {firstAudioAt.TotalSeconds:F2}s, {frames.Count} frames");
-        frames.Count.Should().BeGreaterThan(0);
+        var totalBytes = audio.Sum(c => (long)c.Length);
+        WriteLine($"{name}: first audio {firstAudioAt.TotalSeconds:F2}s, {totalBytes / (double)BytesPerSecond:F1}s");
+        audio.Should().NotBeEmpty();
     }
 
     private IServiceProvider CreateServices()

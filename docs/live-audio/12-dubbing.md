@@ -50,8 +50,8 @@ flowchart LR
 
     subgraph TTS["Transcription.Service"]
         Syn["SonioxSpeechSynthesizer"]
-        Cli["SonioxTtsClient<br/>1 connection, 1 stream per utterance<br/>OggOpusReader per stream"]
-        Pacer["OpusFramePacer<br/>20 ms, wall-clock paced"]
+        Cli["SonioxTtsClient<br/>1 connection, 1 stream per utterance"]
+        Pump["OpusFramePump<br/>PCM to 20 ms Opus, wall-clock paced"]
     end
 
     Soniox[("Soniox tts-rt-v2<br/>WebSocket")]
@@ -64,8 +64,8 @@ flowchart LR
     Stab -- "stable text chunks" --> SS
     SS -- "Synthesize" --> Syn
     Syn --> Cli <--> Soniox
-    Cli -- "20 ms Opus frames" --> Pacer
-    Pacer -- "AudioFrame" --> SS
+    Cli -- "48 kHz PCM" --> Pump
+    Pump -- "AudioFrame" --> SS
     SS -- "Publish(S~lang)" --> AS
     AS -- "RpcStream<AudioFrame>" --> Mux
 ```
@@ -99,16 +99,16 @@ synthesizer and serves the original.
 
 File: `src/dotnet/Transcription.Service/Transcribers/SonioxTtsClient.cs`.
 
-`SonioxSpeechSynthesizer` composes the client and the pacer with
+`SonioxSpeechSynthesizer` composes the client and the pump with
 `TranscriberHelper.WhenPushAndRead`, the same push/read pairing the
 transcribers use. One `Run` opens one `wss://tts-rt.soniox.com/tts-websocket`
 connection, lazily on the first chunk, and keeps it for the whole
 utterance; a reader task per connection demultiplexes responses (base64
-Ogg/Opus goes through the stream's `OggOpusReader` and out as frames,
-see [TTS transport: Opus](#tts-transport-opus); `terminated` and
+PCM goes to the pump's channel as it comes, see
+[TTS transport](#tts-transport-pcm-live-opus-on-replay); `terminated` and
 `error_code` complete the stream they name — audio messages carry no
 `stream_id`, so they go to the one open stream). A stream is opened with
-the config (`tts-rt-v2`, `opus`, 48 000 Hz, 32 kbps, the language, the
+the config (`tts-rt-v2`, `pcm_s16le`, 48 000 Hz, the language, the
 voice and a fresh `stream_id`) on the first chunk, and every further chunk is sent at once as
 `{ text, text_end: false }` — with a trailing space appended when the
 chunk doesn't end in whitespace, since chunks are transcript increments
@@ -145,9 +145,9 @@ next stream opens. `TtsChunkTimeout` (30 s) bounds how long an open
 stream may go without any message from Soniox. Measured live: a
 connection stays open for at least 20 s with no stream on it, streams
 reuse the connection (the client caps it at 5 per connection, Soniox's
-documented limit), first audio arrives ~1.5 s after the first chunk when
-a second chunk follows within a second, and ~2.8 s (idle flush + ~0.3 s)
-for a lone chunk.
+documented limit), first audio arrives ~0.3–0.7 s after the first chunk
+when a second chunk follows at once (PCM; it was 2.5 s with Opus), and
+~2.8 s (idle flush + ~0.3 s) for a lone chunk.
 
 ### `OpusFramePump` — PCM to paced frames
 
@@ -164,40 +164,34 @@ stream advances at real time regardless of how bursty Soniox's output is. Once t
 partial tail frame is zero-padded and the loop ends. PCM arrives as byte
 chunks that need not be sample-aligned: a lone trailing byte waits for
 the next chunk to pair up with, unless it is the last byte of the stream.
-Since Soniox delivers Opus, the pump only serves PCM producers:
-`FakeSpeechSynthesizer` and the PCM overload of
-`SpeechSynthesizerExt.ToAudioSource`.
+The pump serves every PCM producer: `SonioxTtsClient.Run` (the live
+path, paced) and `FakeSpeechSynthesizer`, plus the PCM overload of
+`SpeechSynthesizerExt.ToAudioSource` (unpaced).
 
-### `OpusFramePacer` — frames to paced frames
+### TTS transport: PCM live, Opus on replay
 
-File: `src/dotnet/Transcription.Service/Synthesis/OpusFramePacer.cs`.
+The live WebSocket path takes PCM: `SonioxTtsClient.Run` asks Soniox for
+`audio_format: "pcm_s16le"` at 48 000 Hz, and every base64 `audio`
+message goes straight to the `OpusFramePump` the synthesizer pairs it
+with — one Opus encode per dub on the server, ~96 KB/s per dub from
+Soniox. The reason is the first frame: Soniox emits Opus as Ogg pages of
+one second of audio each, so the first frame of every stream landed ~1 s
+later than PCM's ~256 ms chunks do (measured live, two sentences: first
+frame 0.7 s after `Run` started and 0.3 s after the first text was sent,
+against 2.5 s with Opus). The upcoming voice-over mixer needs PCM anyway
+(decoded original + TTS PCM → one encode), so the bandwidth is spent
+either way.
 
-The pump's pacing loop for frames that are already encoded: it takes
-one input frame per 20 ms slot — or, when none is queued at the start of
-the slot, a pre-encoded silence packet (`OpusFramePacer.SilencePacket`,
-one zero frame through the pump's encoder settings, made once) — and
-writes it as frame `i` (offset `20 ms × i`, input offsets are ignored)
-no earlier than the end of its slot. Once the input completes, the loop
-drains what is queued and ends; a producer fault is carried to the
-output the same way the pump does it. `SonioxSpeechSynthesizer.Synthesize`
-(streaming) pairs it with `SonioxTtsClient.Run`, so the contract above
-holds unchanged: contiguous offsets from zero at wall-clock pace, gaps
-as silence.
-
-### TTS transport: Opus
-
-`SonioxTtsClient` asks Soniox for `audio_format: "opus"` on both the
-WebSocket and the REST path (`bitrate: 32000` =
-`Constants.Audio.Bitrate`, what every other Opus stream here uses;
-Soniox's default is ~80 kbps), so the dub never round-trips through PCM:
-~4 KB/s on the wire instead of 96 KB/s, and no encoder on the server.
-What comes back is an Ogg/Opus container — `OggS` pages, `OpusHead`
-(`PreSkip` = 312) and `OpusTags` on the first two pages, then one Opus
-packet per 20 ms frame (TOC config 31 = CELT fullband 20 ms, code 0),
-one page per second of audio (50 packets), `EndOfStream` on the last
-page. Measured live: the WebSocket `audio` messages are page-aligned —
-the first one is the two header pages, every further one is one or more
-whole pages — but the reader assumes nothing about that.
+The REST path (`Generate`, replay dubs) keeps Opus: `audio_format:
+"opus"` with `bitrate: 32000` = `Constants.Audio.Bitrate`, what every
+other Opus stream here uses (Soniox's default is ~80 kbps), so a replay
+dub never round-trips through PCM — ~4 KB/s on the wire instead of
+96 KB/s, and no encoder on the server; the first-frame delay doesn't
+matter there, nothing plays while it's made. What comes back is an
+Ogg/Opus container — `OggS` pages, `OpusHead` (`PreSkip` = 312) and
+`OpusTags` on the first two pages, then one Opus packet per 20 ms frame
+(TOC config 31 = CELT fullband 20 ms, code 0), one page per second of
+audio (50 packets), `EndOfStream` on the last page.
 
 `OggOpusReader` (`src/dotnet/Api/Audio/Ogg/OggOpusReader.cs`, next to
 the writer) is the incremental parser: `Append` any byte chunk, `TryRead`
@@ -220,19 +214,11 @@ backs `OggOpusStreamConverter.FromByteStream` (format
 required), and `AudioSource.ReadFromByteStream` now sniffs `OggS` next
 to WebM and `A_OPUS_S`.
 
-In the client every Soniox stream gets its own reader (`TtsStream.Reader`)
-— each stream is a complete Ogg stream with its own headers, and a
-stream Soniox killed may end mid-page, which must not poison the next
-one — while frame offsets come from one run-wide counter, so they stay
-contiguous across streams and REST parts. `Generate` checks that each
-part's reader holds no partial page at the end of the body and fails
-the one-shot otherwise.
-
-The cost: Soniox emits Opus one 1-second page at a time, whereas PCM
-came in 256 ms chunks, so the first frame of a stream arrives ~1 s later
-than it used to (measured 1.5–2.2 s after the first chunk vs ~0.5 s for
-PCM; the pacer re-times everything after that, so only the start of each
-utterance moves). No documented option changes the page size.
+In `Generate` every REST part gets its own reader — each part is a
+complete Ogg stream with its own headers — while frame offsets come from
+one counter, so they stay contiguous across parts. `Generate` checks
+that each part's reader holds no partial page at the end of the body and
+fails the one-shot otherwise.
 
 ## The dub worker — `AudioStreamingBackend.Dubbing.cs`
 
@@ -466,12 +452,12 @@ channel, `tts opened` is the wait from that first spoken chunk to the
 first text actually sent on a TTS stream — `StartSynthesis` drains the
 speaker's previous dub, resolves the voice and opens the WebSocket before
 sending anything, and that wait is otherwise invisible — `tts first
-audio` is first-text-sent → first-decoded-frame per TTS stream (reported
-by the client through `ISpeechSynthesisListener` on
-`SpeechSynthesisOptions.Listener`; `OnAudioStarted` fires on the first
-`AudioFrame` a stream's `OggOpusReader` actually yields, not on Soniox's
-first `audio` message — that message can be only the Ogg headers, which
-decode to no frame). A stream Soniox kills before any
+audio` is first-text-sent → first-frame per TTS stream (reported by the
+client through `ISpeechSynthesisListener` on
+`SpeechSynthesisOptions.Listener`; `OnAudioStarted` fires on the PCM
+chunk that completes a stream's first 20 ms frame — 1920 bytes,
+`OpusFramePump.FrameByteLength` — not on Soniox's first `audio` message,
+which may be shorter than a frame and encode to nothing yet). A stream Soniox kills before any
 audio folds its open time into the replacement stream's sample instead of
 being lost, so a resend still produces one `tts first audio` reading that
 covers the whole outage. `first word` is the first stream's first audio
@@ -1489,7 +1475,7 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 | `Constants.Transcription.Soniox.TtsStreamRollover` | 100 s | Live WebSocket: a stream this old is ended at the next chunk and the rest goes to a new stream, under Soniox's 2 min stream cap |
 | `AudioSettings.StreamExpirationDelay` | 60 s | Store expiry; bounds the transcript wait via `_audioStreams.Has` and triggers `ForgetDubs` |
 | `OpusFramePump.FrameLength` / `FrameByteLength` | 960 samples / 1920 bytes | One 20 ms frame at 48 kHz, 16-bit mono |
-| `Constants.Audio.Bitrate` | 32 kbps | Also the `bitrate` `SonioxTtsClient` requests for its Opus output |
+| `Constants.Audio.Bitrate` | 32 kbps | Also the `bitrate` `SonioxTtsClient.Generate` requests for its Opus output (the live path takes PCM and encodes here) |
 | `DubStabilizer.MinDecisionLength` | 10 chars | Minimum text before `Decide` commits |
 | `Constants.Transcription.Soniox.StableTokenAge` | 2.5 s | A non-final token that ended this long before `total_audio_proc_ms` is promoted to stable by `SonioxTranscriptBuilder` |
 | `TranscriptionSettings.SonioxTtsVoice` | `"Adrian"` | Stock voice for speakers who picked none (`UserLanguageSettings.DubVoice` empty) |
@@ -1508,13 +1494,14 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 ## Tests
 
 `tests/Transcription.UnitTests/OpusFramePumpTest.cs`,
-`tests/Transcription.UnitTests/OpusFramePacerTest.cs`,
 `tests/Streaming.UnitTests/OggOpusReaderTest.cs` (the captured Soniox
 fixture `data/soniox-tts-sample.opus`, arbitrary chunking, the writer
 round-trip, CRC and packet-duration rejection, the converter and the
 `AudioSource` sniff), `tests/Transcription.UnitTests/SonioxTtsClientTest.cs`
-(a fake Soniox speaking Ogg/Opus over a fake WebSocket and a piped REST
-body; `tests/Testing/Audio/OggOpusTestStream.cs` builds the pages),
+(a fake Soniox speaking PCM over a fake WebSocket and Ogg/Opus through a
+piped REST body; `tests/Testing/Audio/OggOpusTestStream.cs` builds the
+pages; a first `audio` message shorter than a frame doesn't fire
+`OnAudioStarted`, the one completing the frame does),
 `tests/Transcription.UnitTests/TranscriptDiffTest.cs` (languages and
 stability through a diff), `tests/Streaming.UnitTests/DubStabilizerTest.cs`,
 `tests/Streaming.UnitTests/ListeningStreamMuxerTest.cs` (`MustDub`, the

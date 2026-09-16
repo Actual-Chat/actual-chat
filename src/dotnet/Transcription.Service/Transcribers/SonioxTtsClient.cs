@@ -11,11 +11,12 @@ using static ActualChat.Constants.Transcription.Soniox;
 namespace ActualChat.Transcription;
 
 /// <summary>
-/// One utterance over Soniox's <c>tts-rt</c> WebSocket API: text chunks in, 20 ms Opus frames out. The whole
-/// run shares one connection and, as far as Soniox allows, one stream, so sentences keep their prosody across
-/// chunks. A stream is ended early only when the text goes idle (Soniox kills a stream that produces nothing
-/// for a few seconds and loses its unsynthesized text) or when it nears Soniox's 2-minute stream cap; the
-/// next chunk then opens a new stream on the same connection.
+/// One utterance over Soniox's <c>tts-rt</c> WebSocket API: text chunks in, 48 kHz PCM out (the REST
+/// <see cref="Generate"/> yields 20 ms Opus frames instead). The whole run shares one connection and, as far
+/// as Soniox allows, one stream, so sentences keep their prosody across chunks. A stream is ended early only
+/// when the text goes idle (Soniox kills a stream that produces nothing for a few seconds and loses its
+/// unsynthesized text) or when it nears Soniox's 2-minute stream cap; the next chunk then opens a new stream
+/// on the same connection.
 /// </summary>
 public sealed class SonioxTtsClient(IServiceProvider services)
 {
@@ -23,6 +24,9 @@ public sealed class SonioxTtsClient(IServiceProvider services)
     private const string Url = "wss://tts-rt.soniox.com/tts-websocket";
     private const string RestUrl = "https://tts-rt.soniox.com/tts";
     private const string Model = "tts-rt-v2";
+    // Live streams take PCM: Soniox pages its Opus per second of audio, which puts the first frame of every
+    // stream ~1 s later than PCM's 256 ms chunks, and the voice-over mixer needs PCM anyway
+    private const string PcmFormat = "pcm_s16le";
     private const string OpusFormat = "opus";
     private const string Mp3Format = "mp3";
     private const int SampleRate = 48_000;
@@ -63,7 +67,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         string language,
         string voice,
         ChannelReader<string> text,
-        ChannelWriter<AudioFrame> output,
+        ChannelWriter<byte[]> pcm,
         ISpeechSynthesisListener? listener,
         CancellationToken cancellationToken)
     {
@@ -71,7 +75,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         if (apiKey.IsNullOrEmpty())
             throw StandardError.Configuration("CoreSettings:SonioxKey is not set.");
 
-        _run = new RunArgs(sessionId, apiKey, language, voice, output, listener);
+        _run = new RunArgs(sessionId, apiKey, language, voice, pcm, listener);
         Exception? error = null;
         try {
             var hasReconnected = false;
@@ -97,7 +101,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         }
         finally {
             await CloseConnection().ConfigureAwait(false);
-            output.TryComplete(error);
+            pcm.TryComplete(error);
         }
     }
 
@@ -260,9 +264,8 @@ public sealed class SonioxTtsClient(IServiceProvider services)
             model = Model,
             language = run.Language,
             voice = run.Voice,
-            audio_format = OpusFormat,
+            audio_format = PcmFormat,
             sample_rate = SampleRate,
-            bitrate = OpusBitrate,
             stream_id = stream.Id,
         }, cancellationToken).ConfigureAwait(false);
         while (_chunksToResend.Count > 0) {
@@ -289,11 +292,6 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         var stream = _stream!;
         var response = await stream.WhenTerminated.ConfigureAwait(false);
         _stream = null;
-        if (stream.Reader.HasPendingData) {
-            // Expected of a killed stream: it stops mid-page; a stream that terminated cleanly shouldn't
-            var level = response.ErrorCode == null ? LogLevel.Warning : LogLevel.Debug;
-            Log.Log(level, "Soniox TTS stream #{StreamId} ended in the middle of an Ogg page", stream.Id);
-        }
         if (response.ErrorCode is not { } errorCode)
             return;
 
@@ -342,7 +340,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
 
     private async Task ReadMessages(Connection connection, CancellationToken cancellationToken)
     {
-        var output = _run!.Output;
+        var run = _run!;
         var buffer = new ArraySegment<byte>(new byte[2 * ReadBufferSize]);
         try {
             while (true) {
@@ -378,11 +376,9 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                 if (!response.Audio.IsNullOrEmpty()) {
                     stream.OnAudioReceived();
                     var audio = Convert.FromBase64String(response.Audio);
-                    await WriteFrames(stream.Reader, audio, output, cancellationToken, () => {
-                            if (stream.TrySignalFirstFrame())
-                                _run!.Listener?.OnAudioStarted();
-                        })
-                        .ConfigureAwait(false);
+                    if (stream.TrySignalFirstFrame(audio.Length))
+                        run.Listener?.OnAudioStarted();
+                    await run.Pcm.WriteAsync(audio, cancellationToken).ConfigureAwait(false);
                 }
                 if (response.Terminated)
                     stream.Terminate(response);
@@ -426,19 +422,16 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         OggOpusReader reader,
         ReadOnlyMemory<byte> chunk,
         ChannelWriter<AudioFrame> output,
-        CancellationToken cancellationToken,
-        Action? onFrameWritten = null)
+        CancellationToken cancellationToken)
     {
-        // Every stream's reader starts its offsets from zero; the output's run on across streams
+        // Every part's reader starts its offsets from zero; the output's run on across parts
         reader.Append(chunk.Span);
-        while (reader.TryRead(out var frame)) {
+        while (reader.TryRead(out var frame))
             await output.WriteAsync(new AudioFrame {
                     Data = frame.Data,
                     Offset = Constants.Audio.OpusFrameDuration * _frameCount++,
                 }, cancellationToken)
                 .ConfigureAwait(false);
-            onFrameWritten?.Invoke();
-        }
     }
 
     private static async Task GeneratePart(
@@ -539,7 +532,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         string ApiKey,
         string Language,
         string Voice,
-        ChannelWriter<AudioFrame> Output,
+        ChannelWriter<byte[]> Pcm,
         ISpeechSynthesisListener? Listener);
 
     private sealed class Connection(WebSocket webSocket)
@@ -562,12 +555,11 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         private readonly TaskCompletionSource<SonioxTtsResponse> _whenTerminatedSource
             = TaskCompletionSourceExt.New<SonioxTtsResponse>();
         private readonly List<(string Chunk, bool IsResent)> _unspokenChunks = new();
+        private int _pcmByteCount;
 
         public string Id { get; } = id;
         public Moment StartedAt { get; } = startedAt;
         public Moment LastMessageAt { get; set; } = startedAt;
-        // Every Soniox stream is an Ogg/Opus stream of its own, headers included
-        public OggOpusReader Reader { get; } = new();
         // The result is the message that ended the stream (an error or terminated);
         // the task faults when the connection died under the stream.
         public Task<SonioxTtsResponse> WhenTerminated => _whenTerminatedSource.Task;
@@ -582,12 +574,17 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                 _unspokenChunks.Add((chunk, isResent));
         }
 
-        public bool TrySignalFirstFrame()
+        public bool TrySignalFirstFrame(int pcmByteCount)
         {
-            // True only the first time it's called for this stream, e.g. an Ogg header message
-            // carries no decoded frame, so this - not HasAudio - is when Soniox actually starts speaking
+            // True once per stream, on the chunk that completes its first 20 ms frame: a shorter first
+            // chunk encodes to nothing yet, so this - not HasAudio - is when Soniox actually starts speaking
             if (HasFrames)
                 return false;
+
+            _pcmByteCount += pcmByteCount;
+            if (_pcmByteCount < OpusFramePump.FrameByteLength)
+                return false;
+
             HasFrames = true;
             return true;
         }

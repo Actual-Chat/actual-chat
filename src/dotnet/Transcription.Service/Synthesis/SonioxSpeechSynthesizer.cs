@@ -28,17 +28,17 @@ public sealed class SonioxSpeechSynthesizer(IServiceProvider services) : ISpeech
         ChannelWriter<AudioFrame> output,
         CancellationToken cancellationToken = default)
     {
-        var frames = Channel.CreateUnbounded<AudioFrame>(new UnboundedChannelOptions {
+        var pcm = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions {
             SingleReader = true,
             SingleWriter = true,
         });
-        var pacer = new OpusFramePacer(Clocks.CpuClock);
+        using var pump = new OpusFramePump(Clocks.CpuClock);
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var client = new SonioxTtsClient(Services);
         await TranscriberHelper.WhenPushAndRead(
-                client.Run(streamId, options.Language.ToSoniox(), GetVoice(options), text, frames.Writer,
+                client.Run(streamId, options.Language.ToSoniox(), GetVoice(options), text, pcm.Writer,
                     options.Listener, cts.Token),
-                pacer.Run(frames.Reader, output, cts.Token),
+                pump.Run(pcm.Reader, output, cts.Token),
                 cts)
             .ConfigureAwait(false);
     }
