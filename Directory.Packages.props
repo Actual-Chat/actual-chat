@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>14.4.11</ActualLabFusionVersion>
+    <ActualLabFusionVersion>14.4.16</ActualLabFusionVersion>
     <!-- .NET 11 is not GA yet: every Microsoft.* package below shares this build number -->
     <DotNetVersion>11.0.0-rc.1.26425.128</DotNetVersion>
     <AspNetCoreVersion>$(DotNetVersion)</AspNetCoreVersion>

@@ -17,10 +17,10 @@ public interface IUIActionHandler<in TParameter>
 public static class UIActionHandler
 {
     public static IUIActionHandler<TArg> Create<TArg>(ComponentBase component, Func<TArg, Task> taskFactory)
-        => new UIActionHandler<TArg>(taskFactory, component.NotifyStateHasChanged);
+        => new UIActionHandler<TArg>(taskFactory, () => component.NotifyStateHasChanged());
 
     public static IUIActionHandler Create(ComponentBase component, Func<Task> taskFactory)
-        => new UIActionHandlerVoid(taskFactory, component.NotifyStateHasChanged);
+        => new UIActionHandlerVoid(taskFactory, () => component.NotifyStateHasChanged());
 }
 
 public class UIActionHandlerVoid(Func<Task> taskFactory, Action stateHasChanged) : IUIActionHandler
