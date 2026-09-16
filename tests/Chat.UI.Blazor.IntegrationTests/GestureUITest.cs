@@ -122,6 +122,43 @@ public sealed class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper 
     }
 
     [Fact]
+    public async Task OwnVoiceShouldNotArmHush()
+    {
+        // arrange
+        await ArmPttChat();
+        var chatId = (await Hub.ChatAudioUI.GetPttChatIds(CancellationToken.None)).Single();
+        GestureUI.Start();
+        await TestExt.When(
+            () => GestureUI.RecognizerOptions.IsFlipToTalkEnabled.Should().BeTrue(),
+            WaitTimeout.Debuggable());
+        GestureUI.IsHushArmed.Should().BeFalse("nobody has spoken yet");
+
+        // act: an own utterance ends - the reply window opens, the hush window must not
+        await Hub.ChatAudioUI.SetRecordingChatId(chatId);
+        await TestExt.When(
+            () => GestureUI.RecognizerOptions.IsMicOpen.Should().BeTrue(),
+            WaitTimeout.Debuggable());
+        await Hub.ChatAudioUI.SetRecordingChatId(null);
+        await TestExt.When(
+            () => GestureUI.RecognizerOptions.IsMicOpen.Should().BeFalse(),
+            WaitTimeout.Debuggable());
+
+        // assert: the own-voice stamp lands on VoiceActivityUI's own chain and wakes the loop,
+        // so the settle delay covers the iteration that would have armed hush from it
+        await Task.Delay(SettleDelay.Debuggable());
+        GestureUI.IsHushArmed.Should().BeFalse("a face-down after your own utterance must not mute the chat");
+        GestureUI.RecognizerOptions.IsHushEnabled.Should().BeFalse();
+
+        // act: the other side speaks
+        Hub.VoiceActivityUI.NoteIncomingVoice(chatId, Hub.Clocks.ServerClock.Now);
+
+        // assert
+        await TestExt.When(
+            () => GestureUI.IsHushArmed.Should().BeTrue("an incoming utterance opens the hush window"),
+            WaitTimeout.Debuggable());
+    }
+
+    [Fact]
     public async Task TheLoopShouldRunWhenTheFeedReportsAnAccelerometer()
     {
         // arrange

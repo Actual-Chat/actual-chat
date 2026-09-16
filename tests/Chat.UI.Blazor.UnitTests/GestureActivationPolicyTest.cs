@@ -225,13 +225,13 @@ public class GestureActivationPolicyTest
     {
         // act + assert
         GestureActivationPolicy
-            .ShouldSenseHush(true, false, hasArmedChats: true, hasLiveIncoming: true, hasAnswerWindow: false)
+            .ShouldSenseHush(true, false, hasArmedChats: true, hasLiveIncoming: true, hasIncomingAnswerWindow: false)
             .Should().BeTrue();
         GestureActivationPolicy
-            .ShouldSenseHush(true, false, hasArmedChats: true, hasLiveIncoming: false, hasAnswerWindow: true)
+            .ShouldSenseHush(true, false, hasArmedChats: true, hasLiveIncoming: false, hasIncomingAnswerWindow: true)
             .Should().BeTrue();
         GestureActivationPolicy
-            .ShouldSenseHush(true, false, hasArmedChats: true, hasLiveIncoming: false, hasAnswerWindow: false)
+            .ShouldSenseHush(true, false, hasArmedChats: true, hasLiveIncoming: false, hasIncomingAnswerWindow: false)
             .Should().BeFalse();
     }
 

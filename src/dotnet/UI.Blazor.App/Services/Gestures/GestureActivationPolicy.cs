@@ -86,11 +86,11 @@ public static class GestureActivationPolicy
         bool isPracticeMode,
         bool hasArmedChats,
         bool hasLiveIncoming,
-        bool hasAnswerWindow)
+        bool hasIncomingAnswerWindow)
         // Practice never hushes: the detectors it rehearses are the stop-gesture ones, and a live
         // hush from the settings page would silently mute every chat. The window half keeps the
         // gesture available for the seconds after the utterance, while the user is still reacting.
-        => isHushGestureEnabled && !isPracticeMode && hasArmedChats && (hasLiveIncoming || hasAnswerWindow);
+        => isHushGestureEnabled && !isPracticeMode && hasArmedChats && (hasLiveIncoming || hasIncomingAnswerWindow);
 
     public static GestureRoute Route(
         GestureKind kind,

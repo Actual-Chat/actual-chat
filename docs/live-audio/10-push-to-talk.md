@@ -71,17 +71,20 @@ set or extended, and `ChatAudioUI.UndoHush` puts exactly those back
 that shorter mute back, not a clearing) and resumes listening on the chats it
 re-armed, as `UnmutePtt` does for the badge and the notification. Sensing is
 gated by `GestureActivationPolicy.ShouldSenseHush(isHushGestureEnabled,
-isPracticeMode, hasArmedChats, hasLiveIncoming, hasAnswerWindow)`: outside
-practice mode, the four substantive inputs are the user's toggle
+isPracticeMode, hasArmedChats, hasLiveIncoming, hasIncomingAnswerWindow)`:
+outside practice mode, the four substantive inputs are the user's toggle
 (`IsHushGestureEnabled`, default on), at least one armed chat, and either live
 incoming voice or a playing listening/replay player for any armed chat
-(`ChatAudioUI.IsAnyPlaying`), or an open answer window, so the
-accelerometer/proximity feed only runs while a hush could plausibly do
-something. `GestureActivationPolicy.Route` sends a face-down or double-pat
-(`DoublePat`) fire to `Hush` only when hush is armed, the mic is closed and no
-stop gesture claimed it first — an outgoing mic/camera/screencast always wins
-as `StopReply`, and with the mic open and stop sensing off nothing fires at
-all; a pocketing (`Pocket`) alone never hushes, only the pat does. Face-down is
+(`ChatAudioUI.IsAnyPlaying`), or an answer window dated from *incoming* voice
+only (`VoiceActivityUI.SnapshotLastIncomingVoiceAt`, not the merged snapshot
+the reply triggers use — your own utterance opens the reply window but never
+the hush one, so putting the phone face down after talking doesn't mute the
+chat), so the accelerometer/proximity feed only runs while a hush could
+plausibly do something. `GestureActivationPolicy.Route` sends a face-down or
+double-pat (`DoublePat`) fire to `Hush` only when hush is armed, the mic is
+closed and no stop gesture claimed it first — an outgoing mic/camera/screencast
+always wins as `StopReply`, and with the mic open and stop sensing off nothing
+fires at all; a pocketing (`Pocket`) alone never hushes, only the pat does. Face-down is
 entry-only while hush is the sole reason sensing is on:
 `GestureRecognizer.Process` requires `FaceDownDetector.HasEntered`, so a phone
 already lying face down when the window opens doesn't hush; with a stop
