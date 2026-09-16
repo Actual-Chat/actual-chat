@@ -357,10 +357,15 @@ utterance rather than a failed TTS stream each.
 ### `RunDub`
 
 0. **Publish the mix.** Before anything else the worker fetches the
-   original's memoizer from `_audioStreams` (`waitForShare: true`, so a
-   request that lands between `ProcessAudio`'s registry `Register` and its
-   `Publish` waits the store's `ShareWaitDelay` for it; `null` after that
-   means the source has no audio, and the mix is dub-only on the tick),
+   original's memoizer from `_audioStreams` (`WaitForOriginal`:
+   `ProcessAudio` registers the recording — and remembers its
+   `recordedAt` — before the DB work that precedes its `Publish`, so a
+   request that lands in between re-asks the store, one `ShareWaitDelay`
+   share wait at a time, for as long as `_recordedAtByStream` knows the
+   source, up to `MaxOriginalWaitPasses` (5) waits — 10 s — in total, and
+   logs a warning if it gives up; a source that was never registered
+   gets the single share wait. `null` after that bounded wait means the
+   source has no audio, and the mix is dub-only on the tick),
    takes the author's `DubActivity` for the language from `_dubActivities`
    (keyed like the dub chain, `{authorId}~{lang}`; a source with no author
    gets a private one), builds the `VoiceOverMix` with the latency trace's
@@ -745,7 +750,8 @@ into the muxer's constructor.
   this, so a broken mix cannot exclude a speaker.
 - **Header held, timestamps re-stamped.** The mix's first frame is the
   header, published a share wait before any audio at most (it used to be
-  seconds, when the stream was the dub alone). `ProcessStream` holds it, and
+  seconds, when the stream was the dub alone); with no original at all
+  it sits until the first TTS audio, as before. `ProcessStream` holds it, and
   when the first data frame arrives stamps `BeginsAt = SourceBeginsAt =
   ServerClock.Now − frame.Offset` on the start info (`StampDubStart`),
   emits `MuxedAudioStreamStart`, then the held header, then the frame. So
@@ -1719,7 +1725,7 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 | `Constants.Transcription.Soniox.TtsChunkTimeout` | 30 s | Live WebSocket: the longest an open stream may go without any message from Soniox; replay's REST `Generate`: inactivity between body pieces. Exceeded = error, not hang |
 | `Constants.Transcription.Soniox.TtsIdleFlush` | 2.5 s | Live WebSocket: no new chunk for this long ends the stream (`text_end`) before Soniox kills it for low output and loses its unsynthesized text; a safety net now that chunks are clause-complete — the stream normally ends with the translation |
 | `Constants.Transcription.Soniox.TtsStreamRollover` | 100 s | Live WebSocket: a stream this old is ended at the next chunk and the rest goes to a new stream, under Soniox's 2 min stream cap |
-| `AudioSettings.StreamExpirationDelay` | 60 s | Store expiry; bounds the transcript wait via `_audioStreams.Has` and triggers `ForgetDubs` |
+| `AudioSettings.StreamExpirationDelay` | 60 s | Store expiry; the transcript-store placeholder a transcript-less source leaves behind expires with it and triggers `ForgetDubs` (the transcript wait itself is bounded by the original's `WhenRunning`) |
 | `OpusFramePump.FrameLength` / `FrameByteLength` | 960 samples / 1920 bytes | One 20 ms frame at 48 kHz, 16-bit mono |
 | `Constants.Audio.Bitrate` | 32 kbps | Also the `bitrate` `SonioxTtsClient.Generate` requests for its Opus output (the live path takes PCM and encodes here) |
 | `DubStabilizer.MinDecisionLength` | 10 chars | Minimum text before `Decide` commits |

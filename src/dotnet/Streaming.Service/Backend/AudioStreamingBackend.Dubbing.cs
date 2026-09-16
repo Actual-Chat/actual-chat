@@ -6,6 +6,9 @@ namespace ActualChat.Streaming;
 
 public partial class AudioStreamingBackend
 {
+    // How many of the store's share waits a registered source's audio may trail its registration by
+    private const int MaxOriginalWaitPasses = 5;
+
     private readonly ConcurrentDictionary<StreamId, DubEntry> _dubs = new();
     private readonly ConcurrentDictionary<string, Task> _dubChains = new();
     private readonly ConcurrentDictionary<string, DubActivity> _dubActivities = new();
@@ -53,19 +56,20 @@ public partial class AudioStreamingBackend
         CancellationToken cancellationToken)
     {
         var sourceStreamId = dubStreamId.BaseStreamId;
-        var language = dubStreamId.Language!;
-        var latencyTrace = _recordedAtByStream.TryGetValue(sourceStreamId, out var recordedAt)
-            ? new DubLatencyTrace(dubStreamId, recordedAt, Clocks.ServerClock)
-            : null;
-        latencyTrace?.OnRequested();
-
         // The mix goes out first: the listener hears the original from its first frame, and
         // everything below only decides whether a dub gets summed onto it
+        Language language;
+        DubLatencyTrace? latencyTrace;
         AsyncMemoizer<AudioFrame>? original;
         VoiceOverMix mix;
         Task mixTask;
         try {
-            original = await _audioStreams.GetMemoizer(sourceStreamId, true, cancellationToken).ConfigureAwait(false);
+            language = dubStreamId.Language!;
+            latencyTrace = _recordedAtByStream.TryGetValue(sourceStreamId, out var recordedAt)
+                ? new DubLatencyTrace(dubStreamId, recordedAt, Clocks.ServerClock)
+                : null;
+            latencyTrace?.OnRequested();
+            original = await WaitForOriginal(sourceStreamId, cancellationToken).ConfigureAwait(false);
             var activity = GetDubChainKey(dubStreamId) is { } chainKey
                 ? _dubActivities.GetOrAdd(chainKey, static _ => new DubActivity())
                 : new DubActivity();
@@ -219,6 +223,35 @@ public partial class AudioStreamingBackend
             await mixTask.SilentAwait(false);
             latencyTrace?.Report(Log);
         }
+    }
+
+    private async Task<AsyncMemoizer<AudioFrame>?> WaitForOriginal(
+        StreamId sourceStreamId,
+        CancellationToken cancellationToken)
+    {
+        // ProcessAudio registers a recording (and remembers its recordedAt) before its DB work and
+        // the audio publish that follows, so a registered source is re-asked for a bounded while;
+        // a source that was never registered gets the store's single share wait.
+        var startedAt = CpuTimestamp.Now;
+        var maxWait = _audioStreams.ShareWaitDelay * MaxOriginalWaitPasses;
+        var isRegistered = false;
+        while (true) {
+            var original = await _audioStreams
+                .GetMemoizer(sourceStreamId, true, cancellationToken)
+                .ConfigureAwait(false);
+            if (original != null)
+                return original;
+
+            isRegistered = _recordedAtByStream.ContainsKey(sourceStreamId);
+            if (!isRegistered || startedAt.Elapsed >= maxWait)
+                break;
+        }
+
+        if (isRegistered)
+            Log.LogWarning(
+                "RunDub: #{StreamId} - no audio for a registered source after {Elapsed:F1}s, mixing dub-only",
+                sourceStreamId, startedAt.Elapsed.TotalSeconds);
+        return null;
     }
 
     private static async Task<DubDecision> DecideOnSource(

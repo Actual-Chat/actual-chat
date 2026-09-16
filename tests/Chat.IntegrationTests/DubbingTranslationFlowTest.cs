@@ -142,28 +142,6 @@ public class DubbingTranslationFlowTest(
     }
 
     [Fact(Timeout = 60_000)]
-    public async Task SourceWithoutTranscriptShouldBeServedAtOnce()
-    {
-        // arrange - a short utterance whose audio ends before any transcript is published
-        await Tester.SignInAsUniqueAlice();
-        var (chatId, _) = await Tester.CreateChat(false);
-        var services = Tester.AppServices;
-        var backend = services.GetRequiredService<IAudioStreamingBackend>();
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var ct = cts.Token;
-        var sourceId = await Tester.RecordVoiceOnlyUtterance(chatId, Languages.Russian, cancellationToken: ct);
-        var dubId = StreamId.New(sourceId, Languages.English);
-
-        // act
-        var startedAt = CpuTimestamp.Now;
-        var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
-
-        // assert - the mix is published before anything is known about the transcript
-        stream.Should().NotBeNull("the mix carries the original whatever the decision turns out to be");
-        startedAt.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(2));
-    }
-
-    [Fact(Timeout = 60_000)]
     public async Task ListenerShouldHearTheOriginalBeforeAnyDecision()
     {
         // arrange - real audio, no transcript yet
@@ -190,7 +168,7 @@ public class DubbingTranslationFlowTest(
     }
 
     [Fact(Timeout = 90_000)]
-    public async Task DubShouldBeMixedOverTheOriginalAndOutliveIt()
+    public async Task DubTailShouldBeDrainedAfterTheSourceEnds()
     {
         // arrange - a transcript-only source (no audio): the mix is dub-only on the tick
         await Tester.SignInAsUniqueAlice();
@@ -248,11 +226,14 @@ public class DubbingTranslationFlowTest(
 
         // act
         var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+        var drainStartedAt = CpuTimestamp.Now;
         var frames = await stream!.ToListAsync(ct);
 
         // assert - the mix is the original alone and ends with it
         frames.Count(x => x.Offset >= TimeSpan.Zero).Should().Be(150, "every original frame, nothing after");
         recorder.GetChunks(dubId.Value).Should().BeEmpty("nothing was synthesized");
+        drainStartedAt.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(2),
+            "NoDub ends the mix at once, while a transcript miss would take two share waits");
     }
 
     [Fact(Timeout = 90_000)]
@@ -322,19 +303,20 @@ public class DubbingTranslationFlowTest(
         source.Writer.TryWrite(Unstable(SourceSteps[0]) - Transcript.Empty);
         await backend.WhenTranscriptPublished(sourceId, ct);
 
-        // act
+        // act - drained while the source is still open: only a source-language decision ends the
+        // mix here, a translation-based one would wait for the source to end
         var requestedAt = CpuTimestamp.Now;
         var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
         var servedIn = requestedAt.Elapsed;
+        var frames = await stream!.ToListAsync(ct);
         source.Writer.Complete();
         await pushSourceTask.SilentAwait(false);
-        var frames = await stream!.ToListAsync(ct);
 
         // assert - the mix ends with the (absent) original: a header and nothing else. Two of the
         // seconds are the share wait for the audio a transcript-only source never has
         servedIn.Should().BeLessThan(TimeSpan.FromSeconds(3), "the mix is served before any decision");
         frames.Select(x => x.Offset).Should().Equal([TimeSpan.FromMilliseconds(-1)],
-            "the mix ends once the source does");
+            "the source language alone decides, before any translation");
         recorder.GetChunks(dubId.Value).Should().BeEmpty("the source is already in the listener's language");
     }
 

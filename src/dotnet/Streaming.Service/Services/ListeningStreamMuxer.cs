@@ -362,7 +362,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
                 if (dub != null)
                     return (dub, streamInfo with { DubLanguage = DubLanguage });
 
-                // Null only when the owner node has no synthesizer
+                // In practice null only when the owner node has no synthesizer
                 Log.LogDebug("GetStream: no {Language} dub for #{StreamId}, serving the original",
                     DubLanguage, streamInfo.StreamId);
             }
