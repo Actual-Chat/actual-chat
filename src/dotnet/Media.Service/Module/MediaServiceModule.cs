@@ -33,7 +33,7 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         // GIFs
         rpcHost.AddApi<IGifs, Gifs>();
         services.AddSingleton<EgressGuard>();
-        AddEgressHttpClient(services, Gifs.HttpClientName);
+        services.AddEgressHttpClient(Gifs.HttpClientName);
 
         if (isBackendClient)
             return;
@@ -41,11 +41,11 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         // The services below are used only when this module operates in non-client mode
 
         // Internal services
-        AddEgressHttpClient(services, Crawler.HttpClientName)
+        services.AddEgressHttpClient(Crawler.HttpClientName)
             .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.ParseAdd(Crawler.DefaultUserAgent));
-        AddEgressHttpClient(services, RobotsFiles.HttpClientName)
+        services.AddEgressHttpClient(RobotsFiles.HttpClientName)
             .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.ParseAdd(Crawler.DefaultUserAgent));
-        AddEgressHttpClient(services, ImageGrabber.HttpClientName)
+        services.AddEgressHttpClient(ImageGrabber.HttpClientName)
             .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.ParseAdd(Crawler.DefaultUserAgent));
         services.AddSingleton<Crawler>();
         services.AddSingleton<RobotsFiles>();
@@ -76,14 +76,18 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         // Uploads
         services.AddSingleton<UploadsStorage>();
     }
+}
 
-    // Private methods
-
-    private static IHttpClientBuilder AddEgressHttpClient(IServiceCollection services, string name)
+public static class MediaServiceCollectionExt
+{
+    public static IHttpClientBuilder AddEgressHttpClient(
+        this IServiceCollection services, string name, long? maxResponseContentLength = null)
         => services.AddHttpClient(name)
             .ConfigurePrimaryHttpMessageHandler(c => {
                 var guard = c.GetRequiredService<EgressGuard>();
                 var options = new EgressHttpHandler.Options(guard.IsAllowedUri, guard.IsAllowedAddress);
+                if (maxResponseContentLength is { } max)
+                    options = options with { MaxResponseContentLength = max };
                 return new EgressHttpHandler(options);
             });
 }
