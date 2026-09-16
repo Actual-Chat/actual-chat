@@ -16,7 +16,7 @@ public enum DubDecision
 /// </summary>
 public sealed partial class DubStabilizer
 {
-    private const int MinDecisionLength = 10;
+    public const int MinDecisionLength = 10;
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex WhitespaceRegexFactory();

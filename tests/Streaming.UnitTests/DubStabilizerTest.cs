@@ -120,6 +120,19 @@ public class DubStabilizerTest
     }
 
     [Fact]
+    public void DecideShouldAnswerOnTheSourceAloneWhenItNamesALanguage()
+    {
+        // act - the source-only form RunDub asks before any translated text exists
+        var tagged = DubStabilizer
+            .Decide(Unstable("Привет, как дела", Languages.Russian), Transcript.Empty, Languages.English);
+        var untagged = DubStabilizer.Decide(Unstable("Привет, как дела"), Transcript.Empty, Languages.English);
+
+        // assert
+        tagged.Should().Be(DubDecision.Dub, "an unstable source is enough once it names a language");
+        untagged.Should().Be(DubDecision.Undecided, "with no language the translated text has to tell");
+    }
+
+    [Fact]
     public void DecideShouldStayUndecidedWhileTheTranslationIsUnstableOrShort()
     {
         DubStabilizer.Decide(Unstable("Привет, как дела"), Unstable("Hello, how are you"), Languages.English)

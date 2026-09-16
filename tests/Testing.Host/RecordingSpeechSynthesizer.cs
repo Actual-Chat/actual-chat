@@ -49,6 +49,21 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
         }
     }
 
+    // Completes once the streaming synthesis of streamId has been asked for, spoken text or not
+    public async Task WhenStarted(string streamId, CancellationToken cancellationToken)
+    {
+        while (true) {
+            Task whenChanged;
+            lock (_lock) {
+                if (_voiceIds.ContainsKey(streamId))
+                    return;
+
+                whenChanged = _whenChangedSource.Task;
+            }
+            await whenChanged.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     public async Task Synthesize(
         string streamId,
         ChannelReader<string> text,
@@ -56,7 +71,10 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
         ChannelWriter<AudioFrame> output,
         CancellationToken cancellationToken = default)
     {
-        _voiceIds[streamId] = options.VoiceId;
+        lock (_lock) {
+            _voiceIds[streamId] = options.VoiceId;
+            NotifyChanged();
+        }
         var forwarded = Channel.CreateUnbounded<string>();
         var recordTask = ForwardAndRecord(streamId, text, forwarded.Writer, cancellationToken);
         await Inner.Synthesize(streamId, forwarded.Reader, options, output, cancellationToken).ConfigureAwait(false);
@@ -134,9 +152,15 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
     {
         lock (_lock) {
             _chunks.Add((streamId, chunk));
-            var whenChangedSource = _whenChangedSource;
-            _whenChangedSource = TaskCompletionSourceExt.New();
-            whenChangedSource.TrySetResult();
+            NotifyChanged();
         }
+    }
+
+    private void NotifyChanged()
+    {
+        // Under _lock
+        var whenChangedSource = _whenChangedSource;
+        _whenChangedSource = TaskCompletionSourceExt.New();
+        whenChangedSource.TrySetResult();
     }
 }

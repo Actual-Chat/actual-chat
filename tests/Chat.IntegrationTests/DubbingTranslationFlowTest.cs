@@ -111,6 +111,83 @@ public class DubbingTranslationFlowTest(
         startedAt.Elapsed.Should().BeLessThan(Constants.Audio.DubWaitTimeout / 2);
     }
 
+    [Fact(Timeout = 90_000)]
+    public async Task DubShouldBeDecidedOnTheSourceLanguageBeforeAnyTranslation()
+    {
+        // arrange - no entry yet, so nothing is translated while the source is unstable
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        var sourceId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
+        var dubId = StreamId.New(sourceId, Languages.English);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var ct = cts.Token;
+        var source = Channel.CreateUnbounded<TranscriptDiff>();
+        var pushSourceTask = BackgroundTask.Run(
+            () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
+            ct);
+        var last = Transcript.Empty;
+        Push(Unstable(SourceSteps[0]));
+        await backend.WhenTranscriptPublished(sourceId, ct);
+
+        // act
+        var requestedAt = CpuTimestamp.Now;
+        var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+        var decidedIn = requestedAt.Elapsed;
+        await recorder.WhenStarted(dubId.Value, ct);
+        var chunksBeforeTranslation = recorder.GetChunks(dubId.Value);
+        await Tester.CreateStreamingEntry(chatId, Languages.Russian, streamId: sourceId.Value, cancellationToken: ct);
+        Push(Stable(SourceText));
+        var chunks = await recorder.WhenSpoken(dubId.Value, 1, ct);
+        source.Writer.Complete();
+        await pushSourceTask.SilentAwait(false);
+
+        // assert
+        stream.Should().NotBeNull("a Russian source of 10+ chars decides the dub for an English listener");
+        decidedIn.Should().BeLessThan(Constants.Audio.DubWaitTimeout / 2, "the decision waits for no translation");
+        chunksBeforeTranslation.Should().BeEmpty("the synthesizer is opened before there is anything to say");
+        chunks.Should().Equal([FakeTranslator.Translated(SourceText, Languages.English)]);
+        return;
+
+        void Push(Transcript transcript) {
+            source.Writer.TryWrite(transcript - last);
+            last = transcript;
+        }
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task SourceInTheListenersLanguageShouldNotBeDubbedBeforeAnyTranslation()
+    {
+        // arrange - no entry, no translation: the source language alone answers
+        await Tester.SignInAsUniqueAlice();
+        await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var sourceId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
+        var dubId = StreamId.New(sourceId, Languages.Russian);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        var source = Channel.CreateUnbounded<TranscriptDiff>();
+        var pushSourceTask = BackgroundTask.Run(
+            () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
+            ct);
+        source.Writer.TryWrite(Unstable(SourceSteps[0]) - Transcript.Empty);
+        await backend.WhenTranscriptPublished(sourceId, ct);
+
+        // act
+        var requestedAt = CpuTimestamp.Now;
+        var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+        var decidedIn = requestedAt.Elapsed;
+        source.Writer.Complete();
+        await pushSourceTask.SilentAwait(false);
+
+        // assert
+        stream.Should().BeNull("the source is already in the listener's language");
+        decidedIn.Should().BeLessThan(Constants.Audio.DubWaitTimeout / 2, "the decision waits for no translation");
+    }
+
     [Fact(Timeout = 60_000)]
     public async Task LateTranscriptAfterAudioEndShouldStillBeDubbed()
     {
@@ -291,12 +368,19 @@ public class DubbingTranslationFlowTest(
             await createEntryTask;
         var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
         await createEntryTask;
+        var captions = await backend.GetTranscript(dubId, ct);
+        if (backlogSeconds > 0) {
+            // The dub is decided on the source, before the translation has read it; what a late
+            // listener skips is the translation's first transcript, which must not cover the rest
+            await captions!.FirstAsync(ct);
+        }
         foreach (var step in SourceSteps.Skip(1))
             Push(Unstable(step));
         Push(Stable(SourceText));
 
         // assert
         stream.Should().NotBeNull("a Russian speaker is dubbed for an English listener");
+        captions.Should().NotBeNull("the caption reader must get the same translated stream");
         var chunks = await recorder.WhenSpoken(dubId.Value, 1, ct);
         var translation = FakeTranslator.Translated(SourceText, Languages.English);
         var expectedChunk = backlogSeconds > 0
@@ -305,8 +389,6 @@ public class DubbingTranslationFlowTest(
         chunks.Should().Equal([expectedChunk], backlogSeconds > 0
             ? "a listener who joined seconds into the utterance hears only what was said after that"
             : "only the stable translation is spoken, and once");
-        var captions = await backend.GetTranscript(dubId, ct);
-        captions.Should().NotBeNull("the caption reader must get the same translated stream");
 
         source.Writer.Complete();
         await pushSourceTask.SilentAwait(false);

@@ -71,6 +71,8 @@ public partial class AudioStreamingBackend
             SingleReader = true,
             SingleWriter = true,
         });
+        using var translationCts = cancellationToken.CreateLinkedTokenSource();
+        Task<AsyncMemoizer<TranscriptDiff>?>? translationTask = null;
         Task? synthesizeTask = null;
         Exception? error = null;
         try {
@@ -83,22 +85,48 @@ public partial class AudioStreamingBackend
             }
             latencyTrace?.OnSourceReady(Fold(sourceMemoizer).TimeRange.End);
 
-            var translatedMemoizer = await WaitForTranslation(dubStreamId, sourceMemoizer, cancellationToken)
-                .ConfigureAwait(false);
-            if (translatedMemoizer == null) {
-                Log.LogWarning("RunDub: #{StreamId} - no translation to dub", dubStreamId);
-                ForgetDub(dubStreamId, decidedSource.Task);
-                return;
-            }
-
             // Measured when the dub is requested: a listener who joins mid-utterance finds seconds of
             // audio already transcribed, and must not hear that backlog read out before the live text
             var isLate = Fold(sourceMemoizer).TimeRange.End > Constants.Audio.DubBacklogThreshold.TotalSeconds;
             var startedAt = CpuTimestamp.Now;
             var stabilizer = new DubStabilizer();
-            var decision = DubDecision.Undecided;
-            var translated = Transcript.Empty;
             var spokenChunkCount = 0;
+            bool ApplyDecision(DubDecision decision) {
+                latencyTrace?.OnDecided(decision == DubDecision.Dub);
+                if (decision == DubDecision.NoDub) {
+                    Log.LogInformation("RunDub: #{StreamId} - already in {Language}", dubStreamId, language);
+                    return false;
+                }
+
+                Log.LogInformation(
+                    "RunDub: #{StreamId} - dubbing, decided {Elapsed:F1}s after the request "
+                    + "at {SourceEnd:F1}s of speech",
+                    dubStreamId, startedAt.Elapsed.TotalSeconds, Fold(sourceMemoizer).TimeRange.End);
+                synthesizeTask = StartSynthesis(
+                    dubStreamId, text.Reader, decidedSource, latencyTrace, cancellationToken);
+                return true;
+            }
+
+            // The translation is needed only for a dub, but it's shared with the caption readers
+            // anyway, and the source usually decides while it's still being started
+            translationTask = WaitForTranslation(dubStreamId, sourceMemoizer, translationCts.Token);
+            var decision = await DecideOnSource(sourceMemoizer, language, cancellationToken).ConfigureAwait(false);
+            if (decision != DubDecision.Undecided && !ApplyDecision(decision))
+                return;
+
+            var translatedMemoizer = await translationTask.ConfigureAwait(false);
+            if (translatedMemoizer == null) {
+                Log.LogWarning("RunDub: #{StreamId} - no translation to dub", dubStreamId);
+                // A dub already has the synthesis open on the text channel: the error ends it without speech
+                if (decision == DubDecision.Dub)
+                    error = StandardError.External($"Dub #{dubStreamId} has no translation to speak.");
+                else
+                    ForgetDub(dubStreamId, decidedSource.Task);
+                return;
+            }
+
+            var translated = Transcript.Empty;
+            var mustSkipBacklog = isLate;
             bool IsTranslationComplete()
                 // The translator scales each increment's time map from the source's, so a translated
                 // transcript that reaches the source's end has nothing left to translate
@@ -109,27 +137,19 @@ public partial class AudioStreamingBackend
                 translated += diff;
                 latencyTrace?.OnTranslated(translated);
                 if (decision == DubDecision.Undecided) {
+                    // The source named no language, so the translated text has to tell
                     decision = DubStabilizer.Decide(Fold(sourceMemoizer), translated, language);
-                    if (decision != DubDecision.Undecided)
-                        latencyTrace?.OnDecided(decision == DubDecision.Dub);
-                    if (decision == DubDecision.NoDub) {
-                        Log.LogInformation("RunDub: #{StreamId} - already in {Language}", dubStreamId, language);
+                    if (decision == DubDecision.Undecided)
+                        continue;
+                    if (!ApplyDecision(decision))
                         return;
-                    }
-                    if (decision == DubDecision.Dub) {
-                        Log.LogInformation(
-                            "RunDub: #{StreamId} - dubbing, decided {Elapsed:F1}s after the request "
-                            + "at {SourceEnd:F1}s of speech",
-                            dubStreamId, startedAt.Elapsed.TotalSeconds, Fold(sourceMemoizer).TimeRange.End);
-                        if (isLate)
-                            stabilizer.Skip(translated);
-                        synthesizeTask = StartSynthesis(
-                            dubStreamId, text.Reader, decidedSource, latencyTrace, cancellationToken);
-                    }
                 }
-                if (decision != DubDecision.Dub)
-                    continue;
 
+                if (mustSkipBacklog) {
+                    // The first translated transcript is the backlog whatever decided the dub
+                    stabilizer.Skip(translated);
+                    mustSkipBacklog = false;
+                }
                 if (stabilizer.Next(translated) is { } chunk) {
                     spokenChunkCount++;
                     Log.LogInformation(
@@ -156,10 +176,34 @@ public partial class AudioStreamingBackend
         finally {
             decidedSource.TrySetResult(false);
             text.Writer.TryComplete(error);
+            // A no-dub decision leaves the wait running; the translation itself, once started, is
+            // the caption readers' and runs on its own worker
+            await translationCts.CancelAsync().ConfigureAwait(false);
+            if (translationTask != null)
+                await translationTask.SilentAwait(false);
             if (synthesizeTask != null)
                 await synthesizeTask.SilentAwait(false);
             latencyTrace?.Report(Log);
         }
+    }
+
+    private static async Task<DubDecision> DecideOnSource(
+        AsyncMemoizer<TranscriptDiff> sourceMemoizer,
+        Language language,
+        CancellationToken cancellationToken)
+    {
+        // Undecided as soon as the source has enough text but no language - a transcriber that tags
+        // none would otherwise hold the dub until the source ends; the translated text decides then
+        var source = Transcript.Empty;
+        var diffs = sourceMemoizer.Replay(cancellationToken);
+        await foreach (var diff in diffs.ConfigureAwait(false)) {
+            source = TranscriptFolder(source, diff);
+            var decision = DubStabilizer.Decide(source, Transcript.Empty, language);
+            if (decision != DubDecision.Undecided || source.Text.Length >= DubStabilizer.MinDecisionLength)
+                return decision;
+        }
+
+        return DubDecision.Undecided;
     }
 
     private Task StartSynthesis(

@@ -276,20 +276,40 @@ skips the wait.
    retries every `Constants.Audio.DubTranslationRetryDelay` (250 ms) for as
    long as the source transcript is live. A latch that outlived the miss
    used to make every later caller — the caption reader included — wait
-   for a stream nobody published.
-3. **Decide, then feed.** For every translated diff, the worker folds the
-   running `Transcript` and, while undecided, calls
-   `DubStabilizer.Decide(Fold(source), translated, language)`. `NoDub`
-   ends the worker (logged "already in {Language}"); `Dub` calls
-   `StartSynthesis`. Once dubbing, each `DubStabilizer.Next(translated)`
-   chunk is written to the text channel. A stream that ends `Undecided`
-   is logged "too short to decide" and not dubbed.
+   for a stream nobody published. The wait runs as a task: the worker
+   does not block on it, because the source alone usually decides first.
+3. **Decide on the source.** Concurrently with that wait, `DecideOnSource`
+   replays the source transcript and calls
+   `DubStabilizer.Decide(source, Transcript.Empty, language)` after each
+   diff — the source-only form, which answers as soon as the source
+   carries a language (configured or detected) and ≥ 10 chars of text,
+   stable or not. `NoDub` ends the worker (logged "already in
+   {Language}"), the translation wait cancelled; `Dub` calls
+   `StartSynthesis` at once, so the TTS connect overlaps the translator's
+   first output. Measured before this: `decided +3.2 … 7.7 s` after the
+   request, because the decision sat inside the translated loop and, with
+   a configured chat language, needed 10 chars of *stable* translated
+   text. A source that reaches 10 chars with no language at all (a
+   transcriber that tags none) leaves the decision `Undecided` right
+   away rather than holding the dub until the source ends, and step 4
+   decides it. If the translation then turns out to be missing after a
+   `Dub`, the text channel is completed with an error so `StartSynthesis`
+   ends "without speech" and the muxer falls back to the original.
+4. **Feed.** The worker awaits the translation and folds every translated
+   diff into the running `Transcript`. While still undecided it calls
+   `DubStabilizer.Decide(Fold(source), translated, language)` — the
+   translated-text heuristic — with the same `NoDub`/`Dub` handling as
+   step 3. Once dubbing, each `DubStabilizer.Next(translated)` chunk is
+   written to the text channel. A stream that ends `Undecided` is logged
+   "too short to decide" and not dubbed.
    **Late listener.** If, when the dub was requested, the source
    transcript already covered more than `Constants.Audio.DubBacklogThreshold`
-   (5 s) of audio, the listener joined mid-utterance: at the moment the
-   decision becomes `Dub` the translation present so far is handed to
-   `DubStabilizer.Skip`, so only what is said after that point is spoken
-   rather than the whole backlog read out first.
+   (5 s) of audio, the listener joined mid-utterance: the first translated
+   transcript the dub sees — the translation of everything said so far —
+   is handed to `DubStabilizer.Skip`, so only what is said after that
+   point is spoken rather than the whole backlog read out first. This is
+   the first transcript whichever step decided the dub; `isLate` itself
+   is measured at the request, before either.
    **End.** The translated stream stays open until the entry is finalized,
    which waits for the re-transcription; the dub reads it only until the
    source transcript has ended *and* the whole of it is translated
@@ -301,8 +321,9 @@ skips the wait.
    actually ended, since the source can grow after the translation last
    caught up with it. Nothing more is spoken after that, and the author's
    next dub is chained behind this one.
-4. `finally`: the decision defaults to `false`, the text channel is
-   completed (with the error, if any), and the synthesis task is awaited.
+5. `finally`: the decision defaults to `false`, the text channel is
+   completed (with the error, if any), the translation wait is cancelled
+   and awaited, and the synthesis task is awaited.
 
 ### `DubStabilizer`
 
@@ -355,18 +376,27 @@ granularity and forcing finals early degrades accuracy.
 | Condition | Result |
 |---|---|
 | Source transcript carries `Languages` and ≥ 10 chars of text | `NoDub` if any of them matches `target` by ISO code, else `Dub` |
-
-The detected languages ride on the diffs: `TranscriptDiff.Languages`
-(null = unchanged) is what lets the folded source transcript carry them —
-a text diff alone never did, and the first row was dead on the real path.
 | Otherwise, translated transcript not yet stable | `Undecided` |
 | Normalized translated text < 10 chars | `Undecided` |
 | Normalized source text starts with normalized translated text | `NoDub` |
 | Else | `Dub` |
 
-The last two rows are the verbatim-translation heuristic: the translator
-hands the source back unchanged when nothing needs translating.
-"Normalized" = whitespace collapsed, trimmed, lower-cased.
+The first row is the one that decides in practice, and `RunDub` asks it
+on the source alone (`translated = Transcript.Empty`, which falls through
+the other rows as `Undecided`) before any translated text exists. The
+source languages come from the transcriber: a configured chat language
+is seeded into every Soniox transcript by `SonioxTranscriptBuilder`
+(Soniox tags tokens only when language identification is on, i.e. in
+detect mode, where the tags are what the transcript carries), and Google
+stamps its `LanguageCode` the same way. They ride on the diffs:
+`TranscriptDiff.Languages` (null = unchanged) is what lets the folded
+source transcript carry them — a text diff alone never did, and the first
+row was dead on the real path.
+
+The last two rows are the verbatim-translation heuristic, the fallback
+for a source that names no language: the translator hands the source
+back unchanged when nothing needs translating. "Normalized" = whitespace
+collapsed, trimmed, lower-cased.
 
 ### `StartSynthesis` and the per-voice chain
 
@@ -1530,7 +1560,10 @@ piped REST body; `tests/Testing/Audio/OggOpusTestStream.cs` builds the
 pages; a first `audio` message shorter than a frame doesn't fire
 `OnAudioStarted`, the one completing the frame does),
 `tests/Transcription.UnitTests/TranscriptDiffTest.cs` (languages and
-stability through a diff), `tests/Streaming.UnitTests/DubStabilizerTest.cs`,
+stability through a diff),
+`tests/Transcription.UnitTests/SonioxTranscriptBuilderTest.cs` (the
+configured language on the first transcript, detect mode carrying only
+the tags), `tests/Streaming.UnitTests/DubStabilizerTest.cs`,
 `tests/Streaming.UnitTests/ListeningStreamMuxerTest.cs` (`MustDub`, the
 re-stamp, the fallback and the merge exemption),
 `tests/Streaming.UnitTests/ListeningStreamMuxerRelayTest.cs` (a real
@@ -1541,7 +1574,8 @@ hand-made translated diffs, no muxer),
 `tests/Chat.IntegrationTests/DubbingTranslationFlowTest.cs` (the real
 `TranslationsBackend` stream with a recording synthesizer: the spoken
 text, the entry-after-transcript ordering, the late listener, the end of
-the dub, the speaker's voice passed to the synthesizer), `tests/Core.UnitTests/Identifiers/CanonicalLanguageTest.cs`,
+the dub, the speaker's voice passed to the synthesizer, the source-only
+`Dub`/`NoDub` decision before any translation exists), `tests/Core.UnitTests/Identifiers/CanonicalLanguageTest.cs`,
 and the two Soniox spikes `tests/Transcription.IntegrationTests/SonioxTtsClientTest.cs` /
 `SonioxSpeechSynthesizerTest.cs` (the latter also lists the shared-voice
 catalog and synthesizes an MP3 preview in a non-default voice), which
