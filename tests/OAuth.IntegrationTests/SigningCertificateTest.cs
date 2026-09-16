@@ -41,6 +41,27 @@ public sealed class SigningCertificateTest
     }
 
     [Fact]
+    public void LoadCertificateShouldThrowOnMissingPemFiles()
+    {
+        // arrange
+        var dir = Directory.CreateTempSubdirectory();
+        var settings = new OAuthSettings {
+            SigningCertificatePath = Path.Combine(dir.FullName, "tls.crt"),
+            SigningKeyPath = Path.Combine(dir.FullName, "tls.key"),
+        };
+        try {
+            // act
+            var load = () => OAuthModule.LoadCertificate(settings);
+
+            // assert
+            load.Should().Throw<Exception>();
+        }
+        finally {
+            dir.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
     public void LoadCertificateShouldLoadFromBase64Pkcs12()
     {
         // arrange
