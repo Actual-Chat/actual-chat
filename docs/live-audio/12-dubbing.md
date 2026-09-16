@@ -241,6 +241,24 @@ one counter, so they stay contiguous across parts. `Generate` checks
 that each part's reader holds no partial page at the end of the body and
 fails the one-shot otherwise.
 
+### `VoiceOverMixer` — ducking the original under the dub
+
+File: `src/dotnet/Core.Server/Audio/VoiceOverMixer.cs`. Pure; a building
+block for a future voice-over mode that plays the dub *over* the
+original rather than substituting for it — not wired into the pipeline
+yet.
+
+Frame by frame (`FrameLength` = `Constants.Audio.PcmFrameLength`, 960
+samples at 48 kHz), `Mix` sums the buffered dub PCM onto the original
+and ducks the original's gain while the dub speaks: `VoiceOverDuckGain`
+(0.25) is the original's gain floor, reached and left by a linear ramp
+over `VoiceOverDuckRamp` (50 ms) so the level change isn't audible as a
+click. `IsDubSpeaking` — and so the duck — stays true for
+`VoiceOverDuckHold` (1 s) after the last buffered dub sample, so a gap
+between TTS chunks doesn't pump the original up and down; a caller can
+also force the duck via `isDubSpeakingElsewhere`, for a dub whose speech
+this mixer instance doesn't itself receive as PCM.
+
 ## The dub worker — `AudioStreamingBackend.Dubbing.cs`
 
 File: `src/dotnet/Streaming.Service/Backend/AudioStreamingBackend.Dubbing.cs`
@@ -1590,6 +1608,9 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 | `Constants.Audio.ReplayDubSynthesisTimeout` | 5 min | Upper bound on synthesis + upload + stamp counted from slot acquisition (the translation wait + slot wait before that get the same budget separately), linked to host shutdown; synthesis streams at spoken pace, so it must clear `Chat.MaxEntryDuration` (3 min) |
 | `Constants.Audio.ReplayDubLookahead` | 2 | Entries the replay muxer keeps synthesizing ahead of the one currently streaming |
 | `Constants.Audio.ReplayDubMaxConcurrentSynthesis` | 2 | Caps concurrent replay-dub syntheses; shares Soniox's 3-stream quota with live dubbing |
+| `Constants.Audio.VoiceOverDuckGain` | 0.25 | `VoiceOverMixer`: the original's gain floor while the dub speaks |
+| `Constants.Audio.VoiceOverDuckHold` | 1 s | `VoiceOverMixer`: how long the duck outlives the last buffered dub audio, so gaps between TTS chunks don't pump the original |
+| `Constants.Audio.VoiceOverDuckRamp` | 50 ms | `VoiceOverMixer`: how long each gain transition (duck / release) takes |
 | `Constants.Transcription.Soniox.TtsChunkTimeout` | 30 s | Live WebSocket: the longest an open stream may go without any message from Soniox; replay's REST `Generate`: inactivity between body pieces. Exceeded = error, not hang |
 | `Constants.Transcription.Soniox.TtsIdleFlush` | 2.5 s | Live WebSocket: no new chunk for this long ends the stream (`text_end`) before Soniox kills it for low output and loses its unsynthesized text; a safety net now that chunks are clause-complete — the stream normally ends with the translation |
 | `Constants.Transcription.Soniox.TtsStreamRollover` | 100 s | Live WebSocket: a stream this old is ended at the next chunk and the rest goes to a new stream, under Soniox's 2 min stream cap |

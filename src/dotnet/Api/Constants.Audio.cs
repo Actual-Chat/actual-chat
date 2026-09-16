@@ -152,6 +152,11 @@ public static partial class Constants
         public static readonly TimeSpan DubSynthesizerDownDelay = TimeSpan.FromSeconds(60);
         // Audio already transcribed when a dub is requested beyond which the listener counts as late
         public static readonly TimeSpan DubBacklogThreshold = TimeSpan.FromSeconds(5);
+        // Voice-over: the original's gain while the dub speaks, how long the duck outlives the last
+        // dub audio (gaps between TTS chunks), and how long each gain transition takes
+        public static readonly float VoiceOverDuckGain = 0.25f;
+        public static readonly TimeSpan VoiceOverDuckHold = TimeSpan.FromSeconds(1);
+        public static readonly TimeSpan VoiceOverDuckRamp = TimeSpan.FromMilliseconds(50);
         // How long a caller waits for a replay dub to be stored or to start synthesizing before
         // falling back to the original; the work keeps running past this, see ReplayDubSynthesisTimeout
         public static readonly TimeSpan ReplayDubTimeout = TimeSpan.FromSeconds(20);
