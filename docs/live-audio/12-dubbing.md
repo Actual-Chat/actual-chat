@@ -443,8 +443,9 @@ from another node. Every lag uses the source's raw client-reported
 `recordedAt` as-is, so a source whose clock is skewed shifts every lag of
 that stream by its delta; `ProcessAudio` logs that delta per stream
 (`ProcessAudio: … delta=…ms`) for correlation. `TranscriptLatencyTrace`
-(`src/dotnet/Streaming.Service/Audio/TranscriptLatencyTrace.cs`) sits in
-the transcription loop of `ProcessAudio` for every stream — `text` is
+(`src/dotnet/Streaming.Service/Audio/TranscriptLatencyTrace.cs`) observes
+the transcript pipeline in `ProcessAudio` before it is memoized, so every
+lag is stamped on arrival rather than at stream end — `text` is
 every unstable transcript, `stable` every `IsStable` one (Soniox finals
 or the `StableTokenAge` promotion). `DubLatencyTrace`
 (`.../DubLatencyTrace.cs`) sits in `RunDub`: `translated` is every

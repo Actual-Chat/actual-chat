@@ -394,6 +394,27 @@ public partial class AudioStreamingBackend
         }
     }
 
+    // It's internal to be accessible from tests
+    internal static async IAsyncEnumerable<Transcript> WithLatencyTrace(
+        IAsyncEnumerable<Transcript> source,
+        TranscriptLatencyTrace latencyTrace,
+        ILogger log,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        // Stamps latency here, before the memoizer's buffer: the memoizer pumps its source
+        // exactly once no matter how many Replay() consumers read from it, so this still
+        // fires once per transcript, at arrival time rather than at stream drain time.
+        try {
+            await foreach (var transcript in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                latencyTrace.OnTranscript(transcript);
+                yield return transcript;
+            }
+        }
+        finally {
+            latencyTrace.Report(log);
+        }
+    }
+
     private async Task<AudioSegmentLanguage> GetTranscriptionLanguage(
         AudioRecord record,
         CancellationToken cancellationToken)
@@ -517,18 +538,19 @@ public partial class AudioStreamingBackend
                 catch (ObjectDisposedException) { }
             },
             CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-        using var transcripts = transcriber
+        var latencyTrace = new TranscriptLatencyTrace(
+            audioSegment.StreamId.Value, audioSegment.Source.CreatedAt, Clocks.ServerClock);
+        IAsyncEnumerable<Transcript> tracedTranscripts = transcriber
             .Transcribe(audioSegment.StreamId.Value, audioSegment.Source, transcriptionOptions, deadlineCts.Token)
-            .ThrottleTranscript(Constants.Transcription.ThrottlePeriod, Clocks.CpuClock, cancellationToken)
-            .Memoize(CancellationToken.None);
+            .ThrottleTranscript(Constants.Transcription.ThrottlePeriod, Clocks.CpuClock, cancellationToken);
+        tracedTranscripts = WithLatencyTrace(tracedTranscripts, latencyTrace, Log, cancellationToken);
+        using var transcripts = tracedTranscripts.Memoize(CancellationToken.None);
         cancellationToken = CancellationToken.None; // Past this point only deadlineCts cancels the transcriber
 
         var transcriptStreamId = audioSegment.StreamId;
         var chatId = audioSegment.Record.ChatId;
         var authorId = audioSegment.Author.Id;
         var repliedEntryId = audioSegment.Record.RepliedEntryId;
-        var latencyTrace = new TranscriptLatencyTrace(
-            transcriptStreamId.Value, audioSegment.Source.CreatedAt, Clocks.ServerClock);
 
         AsyncMemoizer<TranscriptDiff>? transcriptDiffStream = null;
         Transcript? lastTranscript = null;
@@ -537,7 +559,6 @@ public partial class AudioStreamingBackend
         Language? detectedLanguage = null;
         try {
             await foreach (var transcript in transcripts.Replay(cancellationToken).ConfigureAwait(false)) {
-                latencyTrace.OnTranscript(transcript);
                 lastTranscript = transcript;
                 if (transcriptionOptions.DetectLanguage && detectedLanguage is null)
                     detectedLanguage = TryApplyDetectedLanguage(transcript);
@@ -589,7 +610,6 @@ public partial class AudioStreamingBackend
                 audioSegment.StreamId);
         }
         finally {
-            latencyTrace.Report(Log);
             if (lastTranscript != null && textEntry != null) {
                 // The entry may have been removed by the user or already finalized by
                 // StreamingEntryFixupFlow while we were running. Both are legitimate races

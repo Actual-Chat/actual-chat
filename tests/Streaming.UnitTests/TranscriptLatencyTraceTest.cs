@@ -54,6 +54,42 @@ public class TranscriptLatencyTraceTest
         trace.FirstTextDelay.Should().BeNull();
     }
 
+    [Fact]
+    public async Task WithLatencyTraceShouldStampLagsOnArrivalNotAtStreamEnd()
+    {
+        // arrange
+        using var clock = new TestClock(multiplier: 0).SetTo(RecordedAt);
+        var trace = new TranscriptLatencyTrace("s1", RecordedAt, clock);
+        var logger = new Mock<ILogger>(MockBehavior.Loose);
+        var channel = Channel.CreateUnbounded<Transcript>();
+        var traced = AudioStreamingBackend.WithLatencyTrace(
+            channel.Reader.ReadAllAsync(), trace, logger.Object, CancellationToken.None);
+
+        // act: each write is stamped as soon as it's pulled through, not when the channel completes
+        await using var enumerator = traced.GetAsyncEnumerator();
+        clock.SetTo(RecordedAt + TimeSpan.FromSeconds(1.5));
+        await channel.Writer.WriteAsync(Unstable("Hello", 0.6f));
+        (await enumerator.MoveNextAsync()).Should().BeTrue();
+
+        clock.SetTo(RecordedAt + TimeSpan.FromSeconds(10));
+        await channel.Writer.WriteAsync(Stable("Hello", 0.8f));
+        (await enumerator.MoveNextAsync()).Should().BeTrue();
+
+        channel.Writer.Complete();
+        (await enumerator.MoveNextAsync()).Should().BeFalse();
+
+        // assert
+        trace.Text.First.Should().BeCloseTo(TimeSpan.FromSeconds(0.9), TimeSpan.FromMilliseconds(10));
+        trace.Stable.First.Should().BeCloseTo(TimeSpan.FromSeconds(9.2), TimeSpan.FromMilliseconds(10));
+        logger.Verify(x => x.Log(
+                It.IsAny<LogLevel>(),
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception?>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once());
+    }
+
     private static Transcript Unstable(string text, float endSeconds)
         => new(text, new LinearMap(Vector2.Zero, new Vector2(text.Length, endSeconds)), []);
 
