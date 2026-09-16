@@ -180,6 +180,53 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         client.StreamCount.Should().Be(0);
     }
 
+    [Theory(Skip = "Diagnostic, for manual runs only")]
+    [InlineData("fragment", "Hello there my dear", 0)]
+    [InlineData("sentence", "Hello there my dear friend.", 0)]
+    [InlineData("two-chunks", "Hello there my dear|friend, how are you", 2500)]
+    [InlineData("ended", "Hello there my dear", -1)]
+    [InlineData("long-fragment", "Hello there my dear friend how are you doing today and what is new", 0)]
+    [InlineData("comma", "Hello there my dear friend,", 0)]
+    public async Task TtsShouldRevealWhenSonioxStartsSpeaking(string name, string text, int gapMs)
+    {
+        // arrange
+        var services = CreateServices();
+        if (services.GetRequiredService<CoreServerSettings>().SonioxKey.IsNullOrEmpty()) {
+            WriteLine("CoreSettings__SonioxKey is not set - skipping.");
+            return;
+        }
+
+        var client = new SonioxTtsClient(services) { IdleFlush = TimeSpan.FromSeconds(6) };
+        var textChannel = Channel.CreateUnbounded<string>();
+        var output = Channel.CreateUnbounded<AudioFrame>();
+        var listener = new SpeakStartListener();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(40));
+
+        // act
+        var runTask = client.Run("test", "en", "Adrian", textChannel.Reader, output.Writer, listener, cts.Token);
+        var chunks = text.Split('|');
+        for (var i = 0; i < chunks.Length; i++) {
+            textChannel.Writer.TryWrite(chunks[i]);
+            if (gapMs == -1)
+                break;
+            if (i < chunks.Length - 1)
+                await Task.Delay(gapMs, cts.Token);
+        }
+        if (gapMs == -1)
+            textChannel.Writer.Complete();
+        else {
+            await Task.Delay(TimeSpan.FromSeconds(6), cts.Token);
+            textChannel.Writer.Complete();
+        }
+        await runTask;
+        var frames = await output.Reader.ReadAllAsync().ToListAsync();
+
+        // assert
+        var firstAudioAt = listener.AudioStartedAt - listener.StreamOpenedAt;
+        WriteLine($"{name}: first audio {firstAudioAt.TotalSeconds:F2}s, {frames.Count} frames");
+        frames.Count.Should().BeGreaterThan(0);
+    }
+
     private IServiceProvider CreateServices()
     {
         IConfiguration configuration = new ConfigurationManager {
@@ -192,5 +239,16 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
             .AddSoniox()
             .AddTestLogging(Out)
             .BuildServiceProvider();
+    }
+
+    // Nested types
+
+    private sealed class SpeakStartListener : ISpeechSynthesisListener
+    {
+        public CpuTimestamp StreamOpenedAt { get; private set; }
+        public CpuTimestamp AudioStartedAt { get; private set; }
+
+        public void OnStreamOpened() => StreamOpenedAt = CpuTimestamp.Now;
+        public void OnAudioStarted() => AudioStartedAt = CpuTimestamp.Now;
     }
 }
