@@ -16,21 +16,21 @@ public sealed class ShardKeyTest(ITestOutputHelper @out) : TestBase(@out)
         key.ToString().Should().Be(expected);
         key.Value.Should().Be(value);
         ShardKey.Parse(expected).Should().Be(key);
-        ShardKey.Parse(expected.ToUpperInvariant()).Should().Be(key);
+        ShardKey.Parse(expected.ToUpper()).Should().Be(key);
         key.GetValue(8).Should().Be(value);
         key.AssertPassesThroughSerializers(Out);
     }
 
     [Theory]
-    [InlineData(1, 0x2u, "2")]
-    [InlineData(2, 0x12u, "12")]
-    [InlineData(3, 0xf12u, "f12")]
-    [InlineData(4, 0xef12u, "ef12")]
-    [InlineData(5, 0xdef12u, "def12")]
-    [InlineData(6, 0xcdef12u, "cdef12")]
-    [InlineData(7, 0xbcdef12u, "bcdef12")]
+    [InlineData(1, 0xau, "a")]
+    [InlineData(2, 0xabu, "ab")]
+    [InlineData(3, 0xabcu, "abc")]
+    [InlineData(4, 0xabcdu, "abcd")]
+    [InlineData(5, 0xabcdeu, "abcde")]
+    [InlineData(6, 0xabcdefu, "abcdef")]
+    [InlineData(7, 0xabcdef1u, "abcdef1")]
     [InlineData(8, 0xabcdef12u, "abcdef12")]
-    public void DigitCountsShouldSelectTrailingDigits(int digitCount, uint expectedValue, string expectedText)
+    public void DigitCountsShouldSelectLeadingDigits(int digitCount, uint expectedValue, string expectedText)
     {
         // arrange
         var key = new ShardKey(0xabcdef12);
@@ -38,8 +38,9 @@ public sealed class ShardKeyTest(ITestOutputHelper @out) : TestBase(@out)
         // act, assert
         key.GetValue(digitCount).Should().Be(expectedValue);
         key.ToString(digitCount).Should().Be(expectedText);
+        key.ToString(digitCount).Should().Be(key.ToString()[..digitCount]);
         var parsed = ShardKey.Parse(key.ToString(digitCount));
-        parsed.Value.Should().Be(expectedValue);
+        parsed.Value.Should().Be(expectedValue << ((8 - digitCount) * 4));
         parsed.ToString(digitCount).Should().Be(expectedText);
         ShardKey.TryParse(expectedText, out var triedKey).Should().BeTrue();
         triedKey.Should().Be(parsed);
@@ -67,8 +68,8 @@ public sealed class ShardKeyTest(ITestOutputHelper @out) : TestBase(@out)
     {
         // act, assert
         for (var value = 0u; value < 256; value++) {
-            var key = new ShardKey(value);
-            var otherKey = new ShardKey(value | 0xffffff00);
+            var key = new ShardKey(value << 24);
+            var otherKey = new ShardKey((value << 24) | 0x00ffffff);
             key.ToString(1).Should().BeSameAs(otherKey.ToString(1));
             key.ToString(2).Should().BeSameAs(otherKey.ToString(2));
             key.ToString(2).Should().Be(value.ToString("x2"));
@@ -78,11 +79,11 @@ public sealed class ShardKeyTest(ITestOutputHelper @out) : TestBase(@out)
     [Theory]
     [InlineData("0", 0u)]
     [InlineData("00", 0u)]
-    [InlineData("01", 1u)]
-    [InlineData("12", 0x12u)]
-    [InlineData("AbC", 0xabcu)]
-    [InlineData("abcdef1", 0xabcdef1u)]
-    public void ShortHexTextShouldParseAsLowOrderDigits(string text, uint expectedValue)
+    [InlineData("01", 0x01000000u)]
+    [InlineData("12", 0x12000000u)]
+    [InlineData("AbC", 0xabc00000u)]
+    [InlineData("abcdef1", 0xabcdef10u)]
+    public void ShortHexTextShouldParseAsHighOrderDigits(string text, uint expectedValue)
     {
         // act
         var key = ShardKey.Parse(text);
@@ -92,7 +93,7 @@ public sealed class ShardKeyTest(ITestOutputHelper @out) : TestBase(@out)
         key.Value.Should().Be(expectedValue);
         isParsed.Should().BeTrue();
         triedKey.Should().Be(key);
-        key.ToString(text.Length).Should().Be(text.ToLowerInvariant());
+        key.ToString(text.Length).Should().Be(text.ToLower());
     }
 
     [Theory]
@@ -112,22 +113,10 @@ public sealed class ShardKeyTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         isParsed.Should().BeFalse();
         key.Should().Be(default);
+        ShardKey.TryParse(value.AsSpan(), out var spanKey).Should().BeFalse();
+        spanKey.Should().Be(default);
+        FluentActions.Invoking(() => ShardKey.Parse(value.AsSpan())).Should().Throw<FormatException>();
         FluentActions.Invoking(() => ShardKey.Parse(value)).Should().Throw<FormatException>();
-    }
-
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(7)]
-    [InlineData(8)]
-    public void InvalidParseOffsetsShouldBeRejected(int startIndex)
-    {
-        // act
-        var isParsed = ShardKey.TryParse("ab", startIndex, out var key);
-
-        // assert
-        isParsed.Should().BeFalse();
-        key.Should().Be(default);
-        FluentActions.Invoking(() => ShardKey.Parse("ab", startIndex)).Should().Throw<FormatException>();
     }
 
     [Fact]
@@ -163,7 +152,7 @@ public sealed class ShardKeyTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public void HexTextShouldParseAtItsOriginalOffset()
+    public void SpanSlicesShouldParseAsLeadingDigits()
     {
         // arrange
         const string value = "abcdef12";
@@ -171,9 +160,11 @@ public sealed class ShardKeyTest(ITestOutputHelper @out) : TestBase(@out)
         // act, assert
         for (var start = 0; start < 8; start++)
             for (var length = 1; length <= 8 - start; length++) {
-                var slice = value.Substring(start, length);
-                var parsed = ShardKey.Parse(slice, start);
-                parsed.ToString().Should().Be(slice.PadLeft(start + length, '0').PadRight(8, '0'));
+                var slice = value.AsSpan(start, length);
+                var parsed = ShardKey.Parse(slice);
+                parsed.ToString().Should().Be(slice.ToString().PadRight(8, '0'));
+                ShardKey.TryParse(slice, out var triedKey).Should().BeTrue();
+                triedKey.Should().Be(parsed);
             }
     }
 }

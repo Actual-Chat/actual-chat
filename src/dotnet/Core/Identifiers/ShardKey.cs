@@ -27,11 +27,11 @@ public readonly partial record struct ShardKey(
     {
         if (digitCount <= 0)
             return 0;
+
         digitCount = Math.Min(MaxDigitCount, digitCount);
 
         var shift = (MaxDigitCount - digitCount) << 2;
-        var mask = uint.MaxValue >> shift;
-        return Value & mask;
+        return Value >> shift;
     }
 
     public override string ToString()
@@ -55,16 +55,16 @@ public readonly partial record struct ShardKey(
     public static ShardKey Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ShardKey>(s);
 
-    public static ShardKey Parse(string? s, int startIndex)
-        => TryParse(s, startIndex, out var result) ? result : throw StandardError.Format<ShardKey>(s);
+    public static ShardKey Parse(ReadOnlySpan<char> s)
+        => TryParse(s, out var result) ? result : throw StandardError.Format<ShardKey>(s.ToString());
 
     public static bool TryParse(string? s, out ShardKey result)
-        => TryParse(s, MaxDigitCount - (s?.Length ?? 0), out result);
+        => TryParse(s.AsSpan(), out result);
 
-    public static bool TryParse(string? s, int startIndex, out ShardKey result)
+    public static bool TryParse(ReadOnlySpan<char> s, out ShardKey result)
     {
         result = default;
-        if (s.IsNullOrEmpty() || startIndex is < 0 or >= MaxDigitCount || s.Length > MaxDigitCount - startIndex)
+        if (s.Length is < 1 or > MaxDigitCount)
             return false;
 
         var value = 0u;
@@ -81,7 +81,7 @@ public readonly partial record struct ShardKey(
             value = (value << 4) | (uint)digit;
         }
 
-        result = new ShardKey(value << ((MaxDigitCount - startIndex - s.Length) * 4));
+        result = new ShardKey(value << ((MaxDigitCount - s.Length) * 4));
         return true;
     }
 }

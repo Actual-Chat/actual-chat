@@ -49,10 +49,12 @@ ownership.
 - Mesh and queue references carry `ShardKey`. At shard selection, retain the
   existing signed positive-modulo interpretation so the current 12-shard schemes
   keep their assignments even when a hash's high bit is set.
-- Formatting accepts a prefix length, start/length, or `Range`. Parsing accepts
-  one to eight hex digits and an optional digit offset. Omitted digits are zero:
-  `Parse("ab")` is `ab000000`; `Parse("cd", 2)` is `00cd0000`.
-  The struct does not remember a slice's length.
+- Formatting and numeric extraction accept a digit count and take the highest
+  digits first. Increasing the count extends the existing prefix with a suffix.
+  Parsing accepts a string or character span containing one to eight hex digits,
+  with no offset or digit-count parameters. Omitted low digits are zero:
+  `Parse("ab")` is `ab000000`. Slice the input span before parsing when needed.
+  The struct does not remember a prefix's length.
 - The 32-bit value is a routing key, not a unique identifier. Existing mesh routing
   for other entities is unchanged.
 
