@@ -314,7 +314,7 @@ public sealed class McpChatTools(IServiceProvider services)
         return place is null ? null : new McpPlaceInfo(place.Id.Value, place.IsPublic, place.Title);
     }
 
-    private static T[] Page<T>(IReadOnlyList<T> items, string? afterId, int limit, Func<T, string> idSelector)
+    internal static T[] Page<T>(IReadOnlyList<T> items, string? afterId, int limit, Func<T, string> idSelector)
     {
         limit = Math.Clamp(limit, 1, MaxLimit);
         var startIndex = 0;
