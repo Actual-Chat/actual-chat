@@ -43,10 +43,13 @@ public sealed class ChatListeningPlayer : ChatPlayer
         Operation = $"listening in \"{chat.Title}\"";
         var state = new PlayState(startAt);
 
+        var ownAuthor = await Authors.GetOwn(Session, ChatId, cancellationToken).ConfigureAwait(false);
         var streamProcessor = new ListeningStreamProcessor(
             Hub.Services, Session, ChatId,
             ChatAudioUI.GetListeningCatchUp(ChatId),
-            cancellationToken.CreateLinkedTokenSource());
+            cancellationToken.CreateLinkedTokenSource()) {
+            OwnAuthorId = ownAuthor?.Id,
+        };
         await using var _ = streamProcessor.ConfigureAwait(false);
 
         streamProcessor.StreamStarted +=

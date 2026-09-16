@@ -114,11 +114,14 @@ backlog. The processor breaks the `ResilientStream`, which reconnects at the liv
 edge, at most once per `ListeningReanchorMinPeriod` (20 s).
 
 The threshold sits above `MaxBeginsAtDrift` (5 s) on purpose: a source's tolerated
-clock skew must never look like a stall. A catch-up connection (PTT wake,
-`catchUpFrom` set) is exempt - it replays from t=0 by design - and only the live
-connection that follows it is judged. When the lag is upstream (a slow source),
-re-anchoring cannot help; the rate limit bounds what it costs, which is a restart
-of every in-flight track.
+clock skew must never look like a stall. Three kinds of frame are never judged:
+the catch-up targets of a PTT wake (`IsCatchUpTarget`, the same predicate
+`ListeningStreamMuxer.GetSkipTo` uses to replay a stream from t=0), the listener's
+own utterances (muxed back but never played, so their lag only measures the
+uplink), and anything before `ServerClock.WhenReady` (until the first sync `Now`
+is the device clock). When the lag is upstream (a slow source), re-anchoring
+cannot help; the rate limit bounds what it costs, which is a restart of every
+in-flight track.
 
 Seen in the wild on 2026-09-16: a thermally throttled Android receiver ran ~0.5 s
 per wall-clock second behind for four minutes and then stayed 30-60 s late for

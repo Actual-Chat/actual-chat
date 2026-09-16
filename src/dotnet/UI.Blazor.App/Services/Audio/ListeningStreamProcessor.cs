@@ -23,6 +23,9 @@ public sealed class ListeningStreamProcessor : WorkerBase
     public Session Session { get; }
     public ChatId ChatId { get; }
     public Moment CatchUpFrom { get; }
+    // The listener's own utterances are muxed back but never played, so their arrival lag says
+    // nothing a re-anchor could fix - only how slow the uplink is.
+    public AuthorId? OwnAuthorId { get; init; }
 
     public event Action<LiveAudioStreamInfo, TimeSpan, IAsyncEnumerable<AudioFrame>>? StreamStarted;
 
@@ -88,7 +91,7 @@ public sealed class ListeningStreamProcessor : WorkerBase
 
     private async IAsyncEnumerable<MuxedAudioStreamItem> WithArrivalLagWatchdog(
         ResilientStream<MuxedAudioStreamItem> source,
-        MomentClock serverClock,
+        ServerClock serverClock,
         Moment catchUpFrom,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -96,24 +99,29 @@ public sealed class ListeningStreamProcessor : WorkerBase
         // newest one arrives is the receive path's own backlog, measured before any player buffer.
         // Nothing downstream ever skips or speeds up, so a backlog that built up here would
         // otherwise stay for the rest of the session; breaking the stream re-subscribes at the
-        // live edge. A catch-up connection replays from t=0 on purpose, so only live ones are
-        // judged - and the Provider decides which kind the next connection is from
-        // _isCatchUpConsumed, so a Reset re-reads it rather than assuming the anchor is spent.
-        var isCatchUpConnection = catchUpFrom != default;
+        // live edge. Streams the server replays from t=0 (the catch-up targets of a wake, see
+        // ListeningStreamMuxer.GetSkipTo) are behind on purpose and aren't judged; the Provider
+        // decides from _isCatchUpConsumed whether the next connection still carries the anchor,
+        // so a Reset re-reads it rather than assuming the anchor is spent.
+        var connectionCatchUpFrom = catchUpFrom;
         var beginsAtByStreamIndex = new Dictionary<int, Moment>();
         await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             switch (item) {
             case MuxedAudioStreamReset:
                 beginsAtByStreamIndex.Clear();
-                isCatchUpConnection = catchUpFrom != default && !Volatile.Read(ref _isCatchUpConsumed);
+                connectionCatchUpFrom = Volatile.Read(ref _isCatchUpConsumed) ? default : catchUpFrom;
                 break;
             case MuxedAudioStreamStart start:
-                beginsAtByStreamIndex[start.StreamIndex] = start.StreamInfo.BeginsAt;
+                var info = start.StreamInfo;
+                if (info.AuthorId != OwnAuthorId && !info.IsCatchUpTarget(connectionCatchUpFrom))
+                    beginsAtByStreamIndex[start.StreamIndex] = info.BeginsAt;
                 break;
             case MuxedAudioStreamEnd end:
                 beginsAtByStreamIndex.Remove(end.StreamIndex);
                 break;
-            case MuxedAudioFrame frame when !isCatchUpConnection
+            // Until the first sync ServerClock.Now is the device clock, and a device clock a few
+            // seconds ahead would make every frame look late.
+            case MuxedAudioFrame frame when serverClock.WhenReady.IsCompleted
                 && frame.Offset >= TimeSpan.Zero
                 && beginsAtByStreamIndex.TryGetValue(frame.StreamIndex, out var beginsAt):
                 var lag = serverClock.Now - (beginsAt + frame.Offset);

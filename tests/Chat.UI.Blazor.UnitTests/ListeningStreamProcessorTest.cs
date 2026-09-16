@@ -10,6 +10,7 @@ public sealed class ListeningStreamProcessorTest(ITestOutputHelper @out) : TestB
     private static readonly TimeSpan ReconnectWaitTimeout = TimeSpan.FromSeconds(10);
     private static readonly ChatId TestChatId = ChatId.Parse("aaaaaaaaaaaaaaaaaaaa");
     private static readonly Session TestSession = Session.New();
+    private static readonly AuthorId TestAuthorId = AuthorId.New(TestChatId, 1);
 
     [Fact]
     public async Task CatchUpAnchorShouldReachTheFirstConnectionOnly()
@@ -82,12 +83,12 @@ public sealed class ListeningStreamProcessorTest(ITestOutputHelper @out) : TestB
     }
 
     [Fact]
-    public async Task CatchUpConnectionShouldTolerateTheReplayLag()
+    public async Task CatchUpTargetShouldTolerateTheReplayLag()
     {
         // arrange
-        var anchor = Moment.Now - TimeSpan.FromSeconds(5);
-        var lag = Constants.Audio.ListeningMaxArrivalLag + TimeSpan.FromSeconds(1);
-        var (services, catchUpFroms) = CreateServices(ct => HangingStream(Moment.Now - lag, ct));
+        var anchor = Moment.Now - TimeSpan.FromSeconds(30);
+        var beginsAt = anchor + TimeSpan.FromSeconds(1); // a target: began at or after the anchor
+        var (services, catchUpFroms) = CreateServices(ct => HangingStream(beginsAt, ct));
         var processor = new ListeningStreamProcessor(services, TestSession, TestChatId, anchor);
 
         // act
@@ -101,11 +102,73 @@ public sealed class ListeningStreamProcessorTest(ITestOutputHelper @out) : TestB
             "the server serves catch-up targets from t=0 on purpose, so their lag is not a stall");
     }
 
+    [Fact]
+    public async Task NonTargetStreamOnACatchUpConnectionShouldStillBeJudged()
+    {
+        // arrange
+        var anchor = Moment.Now - TimeSpan.FromSeconds(30);
+        var beginsAt = anchor - TimeSpan.FromSeconds(10); // pre-existing: served from the live edge
+        var (services, catchUpFroms) = CreateServices(ct => HangingStream(beginsAt, ct));
+        var processor = new ListeningStreamProcessor(services, TestSession, TestChatId, anchor);
+
+        // act
+        _ = processor.Run();
+        await WaitForConnections(catchUpFroms, 2);
+        await processor.DisposeAsync();
+
+        // assert
+        catchUpFroms.Take(2).Should().Equal([anchor, default],
+            "a wake's first connection can last the whole session, so its live streams need the watchdog too");
+    }
+
+    [Fact]
+    public async Task OwnStreamShouldNeverTriggerAResubscribe()
+    {
+        // arrange
+        var lag = Constants.Audio.ListeningMaxArrivalLag + TimeSpan.FromSeconds(1);
+        var (services, catchUpFroms) = CreateServices(ct => HangingStream(Moment.Now - lag, ct));
+        var processor = new ListeningStreamProcessor(services, TestSession, TestChatId) {
+            OwnAuthorId = TestAuthorId,
+        };
+
+        // act
+        _ = processor.Run();
+        await WaitForConnections(catchUpFroms, 1);
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        await processor.DisposeAsync();
+
+        // assert
+        catchUpFroms.Should().HaveCount(1, "own frames echo back late when the uplink is slow, not the downlink");
+    }
+
+    [Fact]
+    public async Task UnsyncedServerClockShouldNotTriggerAResubscribe()
+    {
+        // arrange
+        var lag = Constants.Audio.ListeningMaxArrivalLag + TimeSpan.FromSeconds(1);
+        var (services, catchUpFroms) = CreateServices(ct => HangingStream(Moment.Now - lag, ct), isClockReady: false);
+        var processor = new ListeningStreamProcessor(services, TestSession, TestChatId);
+
+        // act
+        _ = processor.Run();
+        await WaitForConnections(catchUpFroms, 1);
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        await processor.DisposeAsync();
+
+        // assert
+        catchUpFroms.Should().HaveCount(1, "before the first sync ServerClock.Now is the device clock");
+    }
+
     // Private methods
 
     private (IServiceProvider Services, List<Moment> CatchUpFroms) CreateServices(
-        Func<CancellationToken, IAsyncEnumerable<MuxedAudioStreamItem>>? streamFactory = null)
+        Func<CancellationToken, IAsyncEnumerable<MuxedAudioStreamItem>>? streamFactory = null,
+        bool isClockReady = true)
     {
+        // A fresh ServerClock reads the base clock until its first sync; the watchdog waits for that.
+        var clocks = new MomentClockSet(MomentClockSet.Default.SystemClock);
+        if (isClockReady)
+            clocks.ServerClock.Offset = TimeSpan.Zero;
         // An ending stream is a transient drop to an infinite ResilientStream: it reconnects
         streamFactory ??= _ => AsyncEnumerable.Empty<MuxedAudioStreamItem>();
         var catchUpFroms = new List<Moment>();
@@ -120,6 +183,7 @@ public sealed class ListeningStreamProcessorTest(ITestOutputHelper @out) : TestB
             });
         var services = new ServiceCollection()
             .AddTestLogging(Out)
+            .AddSingleton(clocks)
             .AddSingleton(liveStreams.Object)
             .BuildServiceProvider();
         return (services, catchUpFroms);
@@ -135,7 +199,7 @@ public sealed class ListeningStreamProcessorTest(ITestOutputHelper @out) : TestB
             StreamIndex = 1,
             StreamInfo = new LiveAudioStreamInfo {
                 ChatId = TestChatId,
-                AuthorId = AuthorId.New(TestChatId, 1),
+                AuthorId = TestAuthorId,
                 StreamId = "s1",
                 BeginsAt = beginsAt,
             },
