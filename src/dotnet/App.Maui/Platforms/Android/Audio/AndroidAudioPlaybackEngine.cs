@@ -21,6 +21,7 @@ internal sealed class AndroidAudioPlaybackEngine(
     private const long LagReportIntervalMs = 500;
     private const int PositionReportPeriodMs = 200;
     private const int MinDrainPollMs = 20;
+    private static readonly TimeSpan DrainStallTimeout = TimeSpan.FromSeconds(1);
 
     private readonly DurationTargetingFrameBuffer<AudioFrame> _frames = new(
         static frame => frame.Offset,
@@ -464,12 +465,30 @@ internal sealed class AndroidAudioPlaybackEngine(
 
     private async Task WhenPlaybackDrained(CancellationToken cancellationToken)
     {
+        // A STREAM-mode track that underruns on its tail goes disabled: the head freezes short of
+        // what was written and only another write would restart it. Waiting for the head to reach
+        // the end then never returns, so a head that stops moving is treated as drained.
         var sampleRate = Constants.Audio.PlaybackSampleRate;
-        while (CanContinuePlaying(out _)) {
+        var lastPlayedSampleCount = -1;
+        var stalledAt = CpuTimestamp.Now;
+        while (CanContinuePlaying(out var audioTrack)) {
             // Cross-thread read of the count DecodeAndFeed accumulates via Interlocked.Add.
-            var remaining = Volatile.Read(ref _fedSampleCount) - GetPlayedSampleCount();
+            var fedSampleCount = Volatile.Read(ref _fedSampleCount);
+            var playedSampleCount = GetPlayedSampleCount();
+            var remaining = fedSampleCount - playedSampleCount;
             if (remaining <= 0)
                 return;
+
+            if (playedSampleCount != lastPlayedSampleCount || audioTrack.PlayState == PlayState.Paused) {
+                lastPlayedSampleCount = playedSampleCount;
+                stalledAt = CpuTimestamp.Now;
+            }
+            else if (stalledAt.Elapsed >= DrainStallTimeout) {
+                Log.LogWarning(
+                    "Playback head stalled at {Played}/{Fed} samples for {Elapsed}: id={Id}, ending the track",
+                    playedSampleCount, fedSampleCount, stalledAt.Elapsed.ToShortString(), info.TrackId);
+                return;
+            }
 
             var delayMs = (int)Math.Clamp(remaining * 1000L / sampleRate, MinDrainPollMs, PositionReportPeriodMs);
             await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
