@@ -26,4 +26,7 @@ public sealed class AudioSettings
     // Must outlive entry finalization, which runs after the stream ends:
     // blob save + refine retranscription (RetranscriptionTimeout) + invalidation propagation
     public TimeSpan StreamExpirationDelay { get; init; } = TimeSpan.FromSeconds(60);
+    // A translated transcript costs an LLM call per batch of diffs, so once its last reader has been
+    // gone this long it's dropped and its translator stops; the next reader starts it over.
+    public TimeSpan TranslatedTranscriptIdleTimeout { get; init; } = TimeSpan.FromSeconds(3);
 }

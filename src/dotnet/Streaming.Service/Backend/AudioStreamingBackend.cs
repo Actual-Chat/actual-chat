@@ -23,6 +23,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     private readonly StreamStore<AudioFrame> _audioStreams;
     private readonly StreamStore<TranscriptDiff> _transcriptStreams;
     private readonly ConcurrentDictionary<StreamId, StreamId> _translatingStreams = new();
+    private readonly Dictionary<StreamId, int> _translationReaderCounts = new();
     private readonly ConcurrentDictionary<StreamId, ChatId> _chatIdByStream = new();
 
     private ILogger Log => field ??= Services.LogFor(GetType());
@@ -69,6 +70,8 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             ExpirationDelay = AudioSettings.StreamExpirationDelay,
             OnStreamExpire = id => {
                 _translatingStreams.Remove(id, out _);
+                lock (_translationReaderCounts)
+                    _translationReaderCounts.Remove(id);
                 ForgetChatIdIfUnused(id);
             },
             Log = services.LogFor($"{typeFullName}.TranscriptStreams"),
@@ -109,32 +112,25 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("GetTranscript: #{StreamId}", streamId);
-        var stream = await _transcriptStreams.Get(streamId, false, cancellationToken).ConfigureAwait(false);
-        if (stream != null)
-            return StandardRpcStream.NewTranscriptDelivery(stream);
-
-        var language = streamId.Language;
-        if (language == null)
-            return null;
-
-        var originalStreamId = StreamId.New(streamId.NodeRef, streamId.LocalId);
-        if (!_translatingStreams.TryAdd(streamId, originalStreamId)) {
-            stream = await _transcriptStreams.Get(streamId, true, cancellationToken).ConfigureAwait(false);
-            return StandardRpcStream.NewTranscriptDelivery(stream!); // Already translating
+        if (streamId.Language == null) {
+            var stream = await _transcriptStreams.Get(streamId, false, cancellationToken).ConfigureAwait(false);
+            return stream == null ? null : StandardRpcStream.NewTranscriptDelivery(stream);
         }
 
-        DebugLog?.LogDebug("GetTranscript: #{StreamId} - Translate stream", streamId);
-
-        var cmd = new TranslationsBackend_TranslateStream(originalStreamId, language);
-        // Use ApplicationStopping as GetTranscript might be canceled, but we still want to wait
-        // for the translated stream to be created.
-        await Commander.Call(cmd, HostLifetime.StopToken()).ConfigureAwait(false);
-        stream = await _transcriptStreams.Get(streamId, true, cancellationToken).ConfigureAwait(false);
-
-        DebugLog?.LogDebug("GetTranscript: #{StreamId} - Return stream", streamId);
-        return stream == null
+        // Counted before the lookup: a reader that isn't counted yet can't have found a stream
+        // StopIdleTranslation is about to drop.
+        AddTranslationReader(streamId);
+        IAsyncEnumerable<TranscriptDiff>? translatedStream = null;
+        try {
+            translatedStream = await GetTranslatedTranscript(streamId, cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            if (translatedStream == null)
+                RemoveTranslationReader(streamId);
+        }
+        return translatedStream == null
             ? null
-            : StandardRpcStream.NewTranscriptDelivery(stream);
+            : StandardRpcStream.NewTranscriptDelivery(CountReader(streamId, translatedStream, cancellationToken));
     }
 
     // [ComputeMethod]
@@ -226,6 +222,86 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     }
 
     // Private methods
+
+    private async Task<IAsyncEnumerable<TranscriptDiff>?> GetTranslatedTranscript(
+        StreamId streamId,
+        CancellationToken cancellationToken)
+    {
+        var stream = await _transcriptStreams.Get(streamId, false, cancellationToken).ConfigureAwait(false);
+        if (stream != null)
+            return stream;
+
+        var originalStreamId = StreamId.New(streamId.NodeRef, streamId.LocalId);
+        if (!_translatingStreams.TryAdd(streamId, originalStreamId)) // Already translating
+            return await _transcriptStreams.Get(streamId, true, cancellationToken).ConfigureAwait(false);
+
+        DebugLog?.LogDebug("GetTranscript: #{StreamId} - Translate stream", streamId);
+
+        var cmd = new TranslationsBackend_TranslateStream(originalStreamId, streamId.Language!);
+        // Use ApplicationStopping as GetTranscript might be canceled, but we still want to wait
+        // for the translated stream to be created.
+        await Commander.Call(cmd, HostLifetime.StopToken()).ConfigureAwait(false);
+        stream = await _transcriptStreams.Get(streamId, true, cancellationToken).ConfigureAwait(false);
+
+        DebugLog?.LogDebug("GetTranscript: #{StreamId} - Return stream", streamId);
+        return stream;
+    }
+
+    private async IAsyncEnumerable<TranscriptDiff> CountReader(
+        StreamId streamId,
+        IAsyncEnumerable<TranscriptDiff> stream,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        try {
+            await foreach (var diff in stream.WithCancellation(cancellationToken).ConfigureAwait(false))
+                yield return diff;
+        }
+        finally {
+            RemoveTranslationReader(streamId);
+        }
+    }
+
+    private void AddTranslationReader(StreamId streamId)
+    {
+        lock (_translationReaderCounts)
+            _translationReaderCounts[streamId] = _translationReaderCounts.GetValueOrDefault(streamId) + 1;
+    }
+
+    private void RemoveTranslationReader(StreamId streamId)
+    {
+        lock (_translationReaderCounts) {
+            var count = _translationReaderCounts.GetValueOrDefault(streamId) - 1;
+            if (count > 0) {
+                _translationReaderCounts[streamId] = count;
+                return;
+            }
+
+            _translationReaderCounts.Remove(streamId);
+        }
+        _ = BackgroundTask.Run(() => StopIdleTranslation(streamId), Log, $"{nameof(StopIdleTranslation)} failed");
+    }
+
+    private async Task StopIdleTranslation(StreamId streamId)
+    {
+        // A translated transcript costs an LLM call per batch of diffs, so unlike its source it
+        // isn't kept running for nobody: dropping the stream ends the push feeding it, which stops
+        // the translator, and the next reader starts it over - see TranslationsBackend.
+        var idleTimeout = AudioSettings.TranslatedTranscriptIdleTimeout;
+        await Clocks.CpuClock.Delay(idleTimeout, CancellationToken.None).ConfigureAwait(false);
+        var memoizer = await _transcriptStreams
+            .GetMemoizer(streamId, false, CancellationToken.None)
+            .ConfigureAwait(false);
+        if (memoizer == null || memoizer.IsCompleted)
+            return;
+
+        lock (_translationReaderCounts) {
+            if (_translationReaderCounts.ContainsKey(streamId) || !_transcriptStreams.TryRemove(streamId))
+                return;
+        }
+
+        Log.LogInformation("Translation #{StreamId} stopped: no readers for {IdleTimeout}s",
+            streamId, idleTimeout.TotalSeconds);
+    }
 
     private static async IAsyncEnumerable<AudioFrame> WithHeader(
         AsyncMemoizer<AudioFrame> memoizer,

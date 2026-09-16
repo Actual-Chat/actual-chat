@@ -436,6 +436,12 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             sourceId = TranslationSourceId.New(ChatEntryId.Parse(chatEntrySid));
         }
 
+        // The streaming node asks only while it has no translated stream, so a worker still here
+        // is one whose push was just dropped. Its producer removes the translation record on the
+        // way out, and that has to land before the record is created again below.
+        if (_activePublishers.TryRemove(translatedStreamId, out var stoppingWorker))
+            await stoppingWorker.Stop().ConfigureAwait(false);
+
         var translationId = TranslationId.New(sourceId, targetLanguage);
         var newTranslationVersion = VersionGenerator.NextVersion();
         var cmd = new TranslationsBackend_Change(translationId,
@@ -448,8 +454,14 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var translation = await Commander
             .Call(cmd, cancellationToken)
             .ConfigureAwait(false);
-        if (translation.Version != newTranslationVersion)
-            return translatedStreamId; // Already being translated
+        if (translation.Version != newTranslationVersion) {
+            if (translation.StreamId != translatedStreamId)
+                return translatedStreamId; // Already translated
+
+            // Still streaming, yet no worker is left for it: the one that started it went down with
+            // its node. Picking it up here beats waiting for TranslationCleanupFlow to drop it.
+            newTranslationVersion = translation.Version;
+        }
 
  #pragma warning disable CA2016 // Pass cancellationToken
         var stopTokenSource = HostLifetime.CreateStopTokenSource();
@@ -460,22 +472,21 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         // translation as final and ended the client's stream normally, with nothing logged.
         var transcriptStream = transcript.Memoize(stopToken);
 
-        var worker = _activePublishers.GetOrAdd(translatedStreamId,
-            static (_, state) => {
-                return FuncWorker.New(
-                    static (arg, ct) => arg.self.TranslateTranscriptStream(
-                        arg.transcriptStream,
-                        arg.translatedStreamId,
-                        arg.translationId,
-                        arg.newTranslationVersion,
-                        ct),
-                    state,
-                    state.stopTokenSource);
-            },
-            (self: this, transcriptStream, translatedStreamId, translationId, newTranslationVersion, stopTokenSource));
+        var worker = FuncWorker.New(
+            static (arg, ct) => arg.self.TranslateTranscriptStream(
+                arg.transcriptStream,
+                arg.translatedStreamId,
+                arg.translationId,
+                arg.newTranslationVersion,
+                ct),
+            (self: this, transcriptStream, translatedStreamId, translationId, newTranslationVersion),
+            stopTokenSource);
+        _activePublishers[translatedStreamId] = worker;
 
         DebugLog?.LogDebug("StartTranscriptStreamTranslation: #{StreamId} -> {Language}", streamId, targetLanguage);
-        worker.Start();
+        _ = worker.Run().ContinueWith(
+            _ => _activePublishers.TryRemove(KeyValuePair.Create(translatedStreamId, worker)),
+            TaskScheduler.Default);
         return translatedStreamId;
     }
 
@@ -494,11 +505,17 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             SingleWriter = true,
             AllowSynchronousContinuations = true,
         });
+        // The push outlives the producer, except when the streaming node drops the translated
+        // stream for having no readers (AudioStreamingBackend.StopIdleTranslation): then the
+        // producer must stop with it, or it would keep translating into a channel nobody reads.
+        var producerCts = cancellationToken.CreateLinkedTokenSource();
+        var producerToken = producerCts.Token;
+        var producerTask = Task.CompletedTask;
         using var activity = CoreServerInstruments.ActivitySource.StartActivity(GetType(), activityKind: ActivityKind.Client);
         try {
             var reader = channel.Reader;
             var writer = channel.Writer;
-            _ = BackgroundTask.Run(async () => {
+            producerTask = BackgroundTask.Run(async () => {
                     Exception? error = null;
                     var lastText = "";
                     var lastTranscript = Transcript.Empty;
@@ -507,10 +524,10 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                     var stableTranslatedTranscript = Transcript.Empty;
                     try {
                         // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
-                        await foreach (var transcriptDiffBatch in originalStream.Replay(cancellationToken)
+                        await foreach (var transcriptDiffBatch in originalStream.Replay(producerToken)
                                            .Buffer(TranslateThrottleDelay,
                                                Clocks.CpuClock,
-                                               cancellationToken: cancellationToken)
+                                               cancellationToken: producerToken)
                                            .ConfigureAwait(false)) {
                             if (transcriptDiffBatch.Count == 0)
                                 continue; // Skip empty batches
@@ -553,7 +570,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                                         text,
                                         language,
                                         context.ToArray(),
-                                        cancellationToken: cancellationToken)
+                                        cancellationToken: producerToken)
                                     .ConfigureAwait(false);
                                 if (string.Equals(translatedText, Constants.Translation.NoTranslationNeededText, StringComparison.OrdinalIgnoreCase))
                                     translatedText = text; // No translation needed, use original content
@@ -563,7 +580,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                                 lastTranslatedTranscript = stableTranslatedTranscript.WithSuffix(translatedText,
                                     diff.TimeMapDiff.Suffix.Scale(text.Length, translatedText.Length));
                                 var translatedStableDiff = lastTranslatedTranscript - stableTranslatedTranscript;
-                                await writer.WriteAsync(translatedStableDiff, cancellationToken).ConfigureAwait(false);
+                                await writer.WriteAsync(translatedStableDiff, producerToken).ConfigureAwait(false);
                                 if (diff.IsStable)
                                     stableTranslatedTranscript = lastTranslatedTranscript with { IsStable = true };
                                 stableTranscript = newStableTranscript;
@@ -579,28 +596,42 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                                 Content = content,
                                 SourceContentHash = ChatEntryHashExt.GetContentHashString(sourceContent),
                             }));
-                        await Commander.Call(finalizeRealtime, true, cancellationToken).ConfigureAwait(false);
+                        await Commander.Call(finalizeRealtime, true, producerToken).ConfigureAwait(false);
                     }
                     catch (Exception ex) {
                         error = ex;
                     }
                     finally {
                         try {
-                            // The realtime transcript stream ends well before re-transcription
-                            // finalizes the entry, so the entry is still content-streaming here.
-                            // Re-translating now would be dropped by NeedsTranslation, leaving the
-                            // realtime translation in place. Wait for the entry to finalize before
-                            // enqueueing the re-translation of the full finalized transcript.
-                            var sourceId = translationId.SourceId;
-                            var targetLanguage = translationId.Language;
-                            if (sourceId.Kind is TranslationIdKind.ChatEntry)
-                                await WhenEntryFinalized(sourceId.GetChatEntryId(), cancellationToken).ConfigureAwait(false);
-                            // StreamId will be cleaned up by this command
-                            var cmd = new TranslationsBackend_Translate(
-                                sourceId, targetLanguage,
-                                OverwriteIfVersionMismatch: true,
-                                SkipRealtimeTranslation: true);
-                            await Queues.Enqueue(cmd, cancellationToken).ConfigureAwait(false);
+                            if (producerToken.IsCancellationRequested) {
+                                // Stopped for having no readers. Nothing is kept of it: a returning
+                                // reader starts the translation over, and once the entry is
+                                // finalized it's translated on demand like any other. When it's the
+                                // host that stops, the record is left to TranslationCleanupFlow.
+                                var drop = new TranslationsBackend_Change(translationId,
+                                    newTranslationVersion,
+                                    Change.Remove<TranslationDiff>());
+                                if (!cancellationToken.IsCancellationRequested)
+                                    await Commander.Call(drop, true, cancellationToken).ConfigureAwait(false);
+                            }
+                            else {
+                                // The realtime transcript stream ends well before re-transcription
+                                // finalizes the entry, so the entry is still content-streaming here.
+                                // Re-translating now would be dropped by NeedsTranslation, leaving the
+                                // realtime translation in place. Wait for the entry to finalize before
+                                // enqueueing the re-translation of the full finalized transcript.
+                                var sourceId = translationId.SourceId;
+                                var targetLanguage = translationId.Language;
+                                if (sourceId.Kind is TranslationIdKind.ChatEntry)
+                                    await WhenEntryFinalized(sourceId.GetChatEntryId(), producerToken)
+                                        .ConfigureAwait(false);
+                                // StreamId will be cleaned up by this command
+                                var cmd = new TranslationsBackend_Translate(
+                                    sourceId, targetLanguage,
+                                    OverwriteIfVersionMismatch: true,
+                                    SkipRealtimeTranslation: true);
+                                await Queues.Enqueue(cmd, producerToken).ConfigureAwait(false);
+                            }
                         }
                         catch (Exception ex2) {
                             if (error == null)
@@ -609,7 +640,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                                 Log.LogError(ex2, "Error while finalizing translation #{StreamId}", translatedStreamId);
                         }
                         finally {
-                            if (error != null)
+                            if (error != null && !error.IsCancellationOf(producerToken))
                                 Log.LogError(error,
                                     "Error while translating transcript #{StreamId}",
                                     translatedStreamId);
@@ -617,7 +648,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                         }
                     }
                 },
-                cancellationToken);
+                producerToken);
 
             DebugLog?.LogDebug("TranslateTranscriptStream: #{StreamId} - Publishing stream", translatedStreamId);
 
@@ -634,8 +665,9 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             throw;
         }
         finally {
-            if (_activePublishers.Remove(translatedStreamId, out var currentWorker))
-                await currentWorker.DisposeSilentlyAsync().ConfigureAwait(false);
+            producerCts.Cancel();
+            await producerTask.SilentAwait(false);
+            producerCts.Dispose();
         }
     }
 
