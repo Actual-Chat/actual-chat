@@ -19,7 +19,7 @@ public static class McpModelExt
         return new McpChatMessage(
             entry.LocalId,
             entry.Version,
-            (long)(entry.BeginsAt - Moment.EpochStart).TotalMilliseconds,
+            entry.BeginsAt.ToMcpMillis(),
             entry.AuthorId.Value,
             authorName,
             entry.IsSystemEntry,
@@ -55,6 +55,55 @@ public static class McpModelExt
             previewUrl,
             thumbnailUrl);
     }
+
+    public static McpChatDetails ToMcpDetails(this Chat.Chat chat, int memberCount, UrlMapper urlMapper)
+        => new(
+            chat.Id.Value,
+            chat.Kind.ToString(),
+            chat.Title,
+            chat.Description,
+            chat.IsPublic,
+            chat.Id is PlaceChatId placeChatId ? placeChatId.PlaceId.Value : null,
+            chat.Picture.ToMcpPictureUrl(urlMapper),
+            memberCount,
+            chat.Rules.Permissions.ToFlagNames());
+
+    public static async Task<McpMember[]> ToMcpMembers(
+        this IEnumerable<AuthorId> authorIds,
+        Func<AuthorId, Task<Author?>> getAuthor,
+        Func<AuthorId, Task<Account?>> getAccount,
+        IReadOnlySet<AuthorId> ownerIds)
+    {
+        var ids = authorIds.ToArray();
+        var authors = await Task.WhenAll(ids.Select(getAuthor)).ConfigureAwait(false);
+        var accounts = await Task.WhenAll(ids.Select(getAccount)).ConfigureAwait(false);
+        var members = new List<McpMember>(ids.Length);
+        for (var i = 0; i < ids.Length; i++) {
+            if (authors[i] is not { HasLeft: false } author)
+                continue;
+
+            var isOwner = ownerIds.Contains(author.Id);
+            members.Add(new McpMember(author.Id.Value, accounts[i]?.Id.Value, author.Avatar.Name, isOwner));
+        }
+        return members.ToArray();
+    }
+
+    public static McpInviteLink ToMcpModel(this Invite.Invite invite, UrlMapper urlMapper)
+        => new(
+            invite.Id.Value,
+            urlMapper.ToAbsolute(Links.Invite(InviteLinkFormat.PrivateChat, invite.Id.Value)),
+            invite.Remaining,
+            invite.ExpiresOn.ToMcpMillis());
+
+    public static long ToMcpMillis(this Moment moment)
+        => (long)(moment - Moment.EpochStart).TotalMilliseconds;
+
+    public static string[] ToFlagNames<TEnum>(this TEnum flags)
+        where TEnum : struct, Enum
+        => Enum.GetValues<TEnum>()
+            .Where(f => Convert.ToInt64(f) != 0 && flags.HasFlag(f))
+            .Select(f => f.ToString())
+            .ToArray();
 
     public static McpAvatar ToMcpModel(this AvatarFull avatar, Symbol defaultAvatarId, UrlMapper urlMapper)
         => new(avatar.Id.Value, avatar.Name, avatar.Bio, avatar.ToMcpPictureUrl(urlMapper), avatar.Id == defaultAvatarId);
