@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.Testing.Audio;
 using ActualLab.Time.Testing;
 using OpusSharp.Core;
 
@@ -35,7 +36,7 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         frames.Should().HaveCount(4);
         frames.Select(x => x.Offset).Should().Equal(offsets, "the original's offsets pass through verbatim");
-        Rms(frames, 1..).Should().BeGreaterThan(2000, "the original passes at full gain");
+        AudioFrameRms.Of(frames, 1..).Should().BeGreaterThan(2000, "the original passes at full gain");
     }
 
     [Fact(Timeout = 20_000)]
@@ -55,8 +56,8 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         frames.Should().HaveCount(10);
         frames.Select(x => x.Offset).Should().Equal(Enumerable.Range(0, 10).Select(i => FrameDuration * i));
-        Rms(frames, 1..).Should().BeGreaterThan(2000, "RMS is what proves the 48 kHz decode: a 16 kHz decode "
-            + "would fill only a third of each frame");
+        AudioFrameRms.Of(frames, 1..).Should().BeGreaterThan(2000,
+            "RMS is what proves the 48 kHz decode: a 16 kHz decode would fill only a third of each frame");
     }
 
     [Fact(Timeout = 20_000)]
@@ -78,9 +79,9 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
         frames.Select(x => x.Offset).Should().Equal(Enumerable.Range(0, 10).Select(i => FrameDuration * i));
         frames[5].Offset.Should().Be(frames[4].Offset + FrameDuration, "the tail continues the last original offset");
         // Opus' first frame after the encoder starts is quieter (lookahead), so frame 1 is the reference
-        Rms(frames, 1..2).Should().BeGreaterThan(Rms(frames, 4..5) * 1.5,
+        AudioFrameRms.Of(frames, 1..2).Should().BeGreaterThan(AudioFrameRms.Of(frames, 4..5) * 1.5,
             "the original is ducked once the dub has ramped in");
-        Rms(frames, 5..).Should().BeInRange(200, 600, "the tail is the dub alone, at full gain");
+        AudioFrameRms.Of(frames, 5..).Should().BeInRange(200, 600, "the tail is the dub alone, at full gain");
     }
 
     [Fact(Timeout = 20_000)]
@@ -171,7 +172,7 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         frames.Should().HaveCount(3);
         frames.Select(x => x.Offset).Should().Equal(Enumerable.Range(0, 3).Select(i => FrameDuration * i));
-        Rms(frames, 1..).Should().BeGreaterThan(4000, "the dub passes at full gain");
+        AudioFrameRms.Of(frames, 1..).Should().BeGreaterThan(4000, "the dub passes at full gain");
     }
 
     [Fact(Timeout = 20_000)]
@@ -228,7 +229,7 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
 
         // assert - after the 50 ms ramp (frames 0-2) the original sits at a quarter
         isDucked.Should().BeTrue();
-        Rms(frames, 4..).Should().BeLessThan(1500, "the original is held at the duck gain");
+        AudioFrameRms.Of(frames, 4..).Should().BeLessThan(1500, "the original is held at the duck gain");
     }
 
     [Fact(Timeout = 20_000)]
@@ -350,26 +351,5 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
         // Opus is a voice codec: it high-passes a constant away, so the levels are asserted on tones
         for (var i = 0; i < samples.Length; i++)
             samples[i] = (short)(amplitude * Math.Sin(2 * Math.PI * hz * (firstSampleIndex + i) / sampleRate));
-    }
-
-    private static double Rms(List<AudioFrame> frames, System.Range range)
-    {
-        // Every frame is decoded in order - a decoder with no history under-delivers on its first
-        // frame - and only the ones in range count
-        var (offset, length) = range.GetOffsetAndLength(frames.Count);
-        using var decoder = new OpusToPcmDecoder(Constants.Audio.PlaybackSampleRate);
-        double sum = 0;
-        var count = 0;
-        for (var i = 0; i < frames.Count; i++) {
-            var samples = MemoryMarshal.Cast<byte, short>(decoder.Decode(frames[i].Data.Span));
-            if (i < offset || i >= offset + length)
-                continue;
-
-            foreach (var s in samples) {
-                sum += (double)s * s;
-                count++;
-            }
-        }
-        return count == 0 ? 0 : Math.Sqrt(sum / count);
     }
 }

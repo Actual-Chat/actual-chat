@@ -189,6 +189,10 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     internal void RememberRecordedAt(StreamId streamId, Moment recordedAt)
         => _recordedAtByStream[streamId.BaseStreamId] = recordedAt;
 
+    // internal for tests: a synthesis failure one test provokes must not skip the next test's dubs
+    internal void ForgetSynthesizerFailure()
+        => Volatile.Write(ref _synthesizerDownUntilTicks, 0);
+
     internal static IAsyncEnumerable<AudioFrame> SkipTo(
         IAsyncEnumerable<AudioFrame> stream,
         TimeSpan skipTo,

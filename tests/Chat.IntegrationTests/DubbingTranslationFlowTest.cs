@@ -3,6 +3,7 @@ using ActualChat.Chat.Module;
 using ActualChat.Module;
 using ActualChat.Streaming;
 using ActualChat.Streaming.Services;
+using ActualChat.Testing.Audio;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
 using ActualChat.Transcription.Module;
@@ -461,6 +462,147 @@ public class DubbingTranslationFlowTest(
             source.Writer.TryWrite(transcript - last);
             last = transcript;
         }
+    }
+
+    [Fact(Timeout = 90_000)]
+    public async Task NextUtteranceShouldStartDuckedWhileThePreviousDubSpeaks()
+    {
+        // arrange - utterance 1 is a transcript with a long dub (the fake speaks one frame per four
+        // characters), still draining when utterance 2, real audio by the same author, is mixed
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        var first = StreamId.New(services.MeshWatcher().ThisNode.Ref);
+        var firstDub = StreamId.New(first, Languages.English);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var ct = cts.Token;
+        var longText = string.Join(" ", Enumerable.Repeat("Привет, как у тебя дела?", 60));
+        var source = Channel.CreateUnbounded<TranscriptDiff>();
+        var pushSourceTask = BackgroundTask.Run(
+            () => backend.PushTranscript(first, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
+            ct);
+        var last = Transcript.Empty;
+        Push(Unstable(SourceSteps[0]));
+        await backend.WhenTranscriptPublished(first, ct);
+        var entry = await Tester.CreateStreamingEntry(
+            chatId, Languages.Russian, streamId: first.Value, cancellationToken: ct);
+        // The activity is the author's: a pushed transcript has to name one, as ProcessAudio does for a recording
+        var streamingBackend = (AudioStreamingBackend)backend;
+        streamingBackend.RememberChatId(first, chatId);
+        streamingBackend.RememberAuthorId(first, entry.ChatEntrySlim.AuthorId);
+        var firstStream = await backend.GetAudio(firstDub, TimeSpan.Zero, ct);
+        Push(Stable(longText));
+        source.Writer.Complete();
+        await pushSourceTask.SilentAwait(false);
+        await recorder.WhenSpoken(firstDub.Value, 1, ct);
+
+        // act - utterance 2 is requested while dub 1 speaks
+        var second = await Tester.RecordVoiceOnlyUtterance(
+            chatId, Languages.Russian, frameCount: 50, cancellationToken: ct);
+        var secondDub = StreamId.New(second, Languages.English);
+        var secondStream = await backend.GetAudio(secondDub, TimeSpan.Zero, ct);
+        var secondFrames = await secondStream!.ToListAsync(ct);
+        var firstFrames = await firstStream!.ToListAsync(ct);
+
+        // assert - both were served; the second's original came through ducked, quieter than the same
+        // recording served plain
+        firstFrames.Count(x => x.Offset >= TimeSpan.Zero).Should().BeGreaterThan(300, "the long dub was drained");
+        var mixed = secondFrames.Where(x => x.Offset >= TimeSpan.Zero).ToList();
+        mixed.Should().HaveCount(50, "every original frame is mixed through");
+        var plain = await backend.GetAudio(second, TimeSpan.Zero, ct);
+        var plainFrames = (await plain!.ToListAsync(ct)).Where(x => x.Offset >= TimeSpan.Zero).ToList();
+        AudioFrameRms.Of(mixed).Should().BeLessThan(AudioFrameRms.Of(plainFrames) * 0.6,
+            "the next utterance of the author starts ducked while their previous dub is still speaking");
+        return;
+
+        void Push(Transcript transcript) {
+            source.Writer.TryWrite(transcript - last);
+            last = transcript;
+        }
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task SynthesisFailureShouldLeaveTheOriginalPlaying()
+    {
+        // arrange - real audio with a Russian transcript the test keeps live (a recording's own
+        // transcript is dropped once its transcription ends), so the dub is decided and synthesized
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        var sourceId = await Tester.RecordVoiceOnlyUtterance(
+            chatId, Languages.Russian, frameCount: 150, cancellationToken: ct);
+        var dubId = StreamId.New(sourceId, Languages.English);
+        var source = Channel.CreateUnbounded<TranscriptDiff>();
+        var pushSourceTask = BackgroundTask.Run(
+            () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
+            ct);
+        var last = Transcript.Empty;
+        Push(Unstable(SourceSteps[0]));
+        await backend.WhenTranscriptPublished(sourceId, ct);
+        await Tester.CreateStreamingEntry(chatId, Languages.Russian, streamId: sourceId.Value, cancellationToken: ct);
+        recorder.FailWith = streamId => streamId == dubId.Value ? StandardError.External("TTS is down.") : null;
+        try {
+            // act
+            var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+            await recorder.WhenStarted(dubId.Value, ct);
+            Push(Stable(SourceText));
+            source.Writer.Complete();
+            await pushSourceTask.SilentAwait(false);
+            var frames = await stream!.ToListAsync(ct);
+            var again = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+
+            // assert - the mix ended cleanly with the whole original, and the backend serves on
+            frames.Count(x => x.Offset >= TimeSpan.Zero).Should().Be(150,
+                "the original plays on when its dub's synthesis fails");
+            recorder.GetChunks(dubId.Value).Should().BeEmpty("the synthesis failed before it was given any text");
+            if (again != null)
+                (await again.ToListAsync(ct)).Should().HaveCount(frames.Count, "the finished mix is served as is");
+        }
+        finally {
+            recorder.FailWith = null;
+            ((AudioStreamingBackend)backend).ForgetSynthesizerFailure();
+        }
+        return;
+
+        void Push(Transcript transcript) {
+            source.Writer.TryWrite(transcript - last);
+            last = transcript;
+        }
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task ShortUtteranceFollowedAtOnceShouldBeHeardInFull()
+    {
+        // arrange - 0.6 s of real audio with the same author's next utterance right behind it
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        var first = await Tester.RecordVoiceOnlyUtterance(
+            chatId, Languages.Russian, frameCount: 30, cancellationToken: ct);
+        var firstDub = StreamId.New(first, Languages.English);
+
+        // act
+        var firstStream = await backend.GetAudio(firstDub, TimeSpan.Zero, ct);
+        var second = await Tester.RecordVoiceOnlyUtterance(
+            chatId, Languages.Russian, frameCount: 30, cancellationToken: ct);
+        var secondDub = StreamId.New(second, Languages.English);
+        var secondStream = await backend.GetAudio(secondDub, TimeSpan.Zero, ct);
+        var firstFrames = await firstStream!.ToListAsync(ct);
+        var secondFrames = await secondStream!.ToListAsync(ct);
+
+        // assert
+        firstFrames.Count(x => x.Offset >= TimeSpan.Zero).Should().Be(30,
+            "every frame of the short utterance is played, none is swallowed by the next one");
+        secondFrames.Count(x => x.Offset >= TimeSpan.Zero).Should().Be(30, "the next one is heard in full as well");
     }
 
     // Private methods

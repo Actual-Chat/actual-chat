@@ -20,6 +20,9 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
     // Test-only: while set, a one-shot synthesis holds its frames until the task returned for its
     // text completes, so a test can observe a dub that's still being made
     public Func<string, Task>? OneShotGate { get; set; }
+    // Test-only: the exception a streaming synthesis of streamId fails with before writing any PCM,
+    // null = it speaks as usual
+    public Func<string, Exception?>? FailWith { get; set; }
 
     // The VoiceId the synthesis of streamId was asked for; null = the synthesizer's default
     public string? GetVoiceId(string streamId)
@@ -86,6 +89,11 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
             _voiceIds[streamId] = options.VoiceId;
             NotifyChanged();
         }
+        if (FailWith?.Invoke(streamId) is { } error) {
+            pcm.TryComplete(error);
+            throw error;
+        }
+
         var forwarded = Channel.CreateUnbounded<string>();
         var recordTask = ForwardAndRecord(streamId, text, forwarded.Writer, cancellationToken);
         await Inner.Synthesize(streamId, forwarded.Reader, options, pcm, cancellationToken).ConfigureAwait(false);
