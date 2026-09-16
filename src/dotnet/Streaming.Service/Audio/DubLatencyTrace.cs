@@ -9,7 +9,9 @@ namespace ActualChat.Streaming;
 /// now - (recordedAt + TimeRange.End) of the text, the TTS open delay is first spoken chunk to
 /// first text sent, the TTS interval is first text to first audio per stream (a stream killed
 /// before audio folds into its replacement's sample), and the first word is the first stream's
-/// first audio behind the first chunk's speech. The line ends with the voice the dub spoke with.
+/// first audio behind the first chunk's speech, the mixed delay is the request to the mix's first
+/// frame, and ducked is where in the speech the original first went under the dub. The line ends
+/// with the voice the dub spoke with.
 /// </summary>
 public sealed class DubLatencyTrace(StreamId dubStreamId, Moment recordedAt, MomentClock clock)
     : ISpeechSynthesisListener
@@ -21,6 +23,7 @@ public sealed class DubLatencyTrace(StreamId dubStreamId, Moment recordedAt, Mom
     // the TTS threads before any audio can come back.
     private Moment? _firstSpokenAt;
     private float? _firstSpokenSourceEnd;
+    private Moment? _duckedAt;
     private bool _isDub;
     private string? _voiceId;
 
@@ -28,11 +31,18 @@ public sealed class DubLatencyTrace(StreamId dubStreamId, Moment recordedAt, Mom
     public LatencyStats Spoken { get; } = new();
     public LatencyStats TtsFirstAudio { get; } = new();
     public TimeSpan? DecisionDelay { get; private set; }
+    public TimeSpan? MixDelay { get; private set; }
     public TimeSpan? TtsOpenDelay { get; private set; }
     public TimeSpan? FirstWordLag { get; private set; }
 
     public void OnRequested()
         => _requestedAt = clock.Now;
+
+    public void OnMixed()
+        => MixDelay ??= clock.Now - _requestedAt;
+
+    public void OnDucked()
+        => _duckedAt ??= clock.Now;
 
     public void OnSourceReady(float sourceEnd)
         => _requestedSourceEnd ??= sourceEnd;
@@ -100,6 +110,8 @@ public sealed class DubLatencyTrace(StreamId dubStreamId, Moment recordedAt, Mom
             StreamingMeters.DubTtsOpenDelay.Record(openDelay.TotalSeconds);
         if (FirstWordLag is { } firstWord)
             StreamingMeters.DubLag.Record(firstWord.TotalSeconds, Stage("first_word"));
+        if (MixDelay is { } mixDelay)
+            StreamingMeters.DubLag.Record(mixDelay.TotalSeconds, Stage("mixed"));
     }
 
     public override string ToString()
@@ -107,10 +119,13 @@ public sealed class DubLatencyTrace(StreamId dubStreamId, Moment recordedAt, Mom
         var requestedAt = _requestedSourceEnd is { } sourceEnd ? $"{sourceEnd:F1}s of speech" : "-";
         var ttsOpened = TtsOpenDelay is { } openDelay ? $"+{openDelay.TotalSeconds:F1}s after the first chunk" : "-";
         var firstWord = FirstWordLag is { } lag ? $"{lag.TotalSeconds:F1}s behind speech" : "-";
+        var mixed = MixDelay is { } mixDelay ? $"+{mixDelay.TotalSeconds:F1}s" : "-";
+        var ducked = _duckedAt is { } duckedAt ? $"at {(duckedAt - recordedAt).TotalSeconds:F1}s of speech" : "-";
         var voice = _voiceId.NullIfEmpty() ?? "stock";
         return $"Dub latency #{dubStreamId}: decided +{DecisionDelay?.TotalSeconds ?? 0:F1}s; "
             + $"requested at {requestedAt}; translated lag {Translated}; spoken lag {Spoken}; "
-            + $"tts opened {ttsOpened}; tts first audio {TtsFirstAudio}; first word {firstWord}; voice {voice}";
+            + $"tts opened {ttsOpened}; tts first audio {TtsFirstAudio}; first word {firstWord}; "
+            + $"mixed {mixed}; ducked {ducked}; voice {voice}";
     }
 
     // Private methods

@@ -39,6 +39,21 @@ public static class AudioRecordingOperations
         return OpenAudioSegment.GetStreamId(audioRecord, 0);
     }
 
+    public static async Task<StreamId> RecordTranscribedUtterance(
+        this IWebTester tester,
+        ChatId chatId,
+        Language language,
+        int frameCount = 150,
+        CancellationToken cancellationToken = default)
+    {
+        // TextAndVoice: the audio fans out and the (fake) transcriber tags its transcript with the
+        // recording's language, so a dub decision can be made on the source alone
+        var audioRecord = await RecordVoice(
+                tester, chatId, language, VoiceMode.TextAndVoice, frameCount, cancellationToken)
+            .ConfigureAwait(false);
+        return OpenAudioSegment.GetStreamId(audioRecord, 0);
+    }
+
     public static async Task<ChatEntry> OptInOwnVoice(
         this IWebTester tester,
         ChatId chatId,

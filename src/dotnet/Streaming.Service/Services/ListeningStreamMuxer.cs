@@ -23,7 +23,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
     // Restarted after failing mid-relay: marked preexisting so GetSkipTo serves them live rather
     // than replaying the utterance.
     private readonly ConcurrentDictionary<string, byte> _resumedStreamIds = new();
-    // Sources whose dub failed: served as originals from then on, so a TTS outage never mutes a speaker
+    // Sources whose mix faulted: served as originals from then on, so a broken mix never mutes a speaker
     private readonly ConcurrentDictionary<string, byte> _undubbedStreamIds = new();
     private TaskCompletionSource _whenRetryNeededSource = TaskCompletionSourceExt.New();
     private int _nextStreamIndex;
@@ -265,9 +265,10 @@ public sealed class ListeningStreamMuxer : WorkerBase
             await EmitEndSafe().ConfigureAwait(false);
 
             if (isDub && (mustResume || mustRetry)) {
-                // The dub track died; the retry serves the original - from the live edge if the
-                // listener already heard the dub start - and the source's own retry counters stay
-                // untouched: a failing dub must never exclude the speaker.
+                // The mix faulted (a synthesis failure doesn't: the mix keeps the original); the retry
+                // serves the original - from the live edge if the listener already heard the mix start -
+                // and the source's own retry counters stay untouched: a failing dub must never exclude
+                // the speaker.
                 Log.LogWarning("ProcessStream: {Language} dub of #{StreamId} failed, serving the original",
                     DubLanguage, streamId);
                 _undubbedStreamIds.TryAdd(streamId, 0);
@@ -361,11 +362,12 @@ public sealed class ListeningStreamMuxer : WorkerBase
                 if (dub != null)
                     return (dub, streamInfo with { DubLanguage = DubLanguage });
 
+                // Null only when the owner node has no synthesizer
                 Log.LogDebug("GetStream: no {Language} dub for #{StreamId}, serving the original",
                     DubLanguage, streamInfo.StreamId);
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-                Log.LogWarning(e, "GetStream: {Language} dub of #{StreamId} failed, serving the original",
+                Log.LogWarning(e, "GetStream: {Language} mix of #{StreamId} failed, serving the original",
                     DubLanguage, streamInfo.StreamId);
                 _undubbedStreamIds.TryAdd(streamInfo.StreamId, 0);
             }

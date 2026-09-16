@@ -8,8 +8,8 @@ public partial class AudioStreamingBackend
 {
     private readonly ConcurrentDictionary<StreamId, DubEntry> _dubs = new();
     private readonly ConcurrentDictionary<string, Task> _dubChains = new();
-    private readonly ConcurrentDictionary<string, Moment> _dubCooldowns = new();
-    // Written by the synthesis task, read by every EnsureDub
+    private readonly ConcurrentDictionary<string, DubActivity> _dubActivities = new();
+    // Written by the synthesis task, read by every RunDub
     private long _synthesizerDownUntilTicks;
 
     private ISpeechSynthesizer? SpeechSynthesizer => field ??= Services.GetService<ISpeechSynthesizer>();
@@ -19,9 +19,9 @@ public partial class AudioStreamingBackend
 
     private async Task<bool> EnsureDub(StreamId dubStreamId, CancellationToken cancellationToken)
     {
-        // Starts the dub of dubStreamId's base stream into dubStreamId.Language unless it's running
-        // or decided already. True means the dub stream is published; false means serve the original.
-        if (SpeechSynthesizer == null || IsCoolingDown(dubStreamId))
+        // Publishes the S~lang mix of dubStreamId's base stream unless it's running already; whether a
+        // dub goes into it is decided later by the worker. False only means "no synthesizer here".
+        if (SpeechSynthesizer == null)
             return false;
 
         var candidate = NewDub(dubStreamId);
@@ -30,35 +30,26 @@ public partial class AudioStreamingBackend
             entry.Worker.Start();
         else
             _ = candidate.Worker.DisposeSilentlyAsync();
-        try {
-            return await entry.WhenDecided
-                .WaitAsync(Constants.Audio.DubWaitTimeout, cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (TimeoutException) {
-            Log.LogWarning("EnsureDub: #{StreamId} - no decision in {Timeout}s, serving the original",
-                dubStreamId, Constants.Audio.DubWaitTimeout.TotalSeconds);
-            StartCooldown(dubStreamId);
-            return false;
-        }
+        await entry.WhenPublished.WaitAsync(cancellationToken).ConfigureAwait(false);
+        return true;
     }
 
     private DubEntry NewDub(StreamId dubStreamId)
     {
-        var decidedSource = TaskCompletionSourceExt.New<bool>();
+        var whenPublishedSource = TaskCompletionSourceExt.New();
 #pragma warning disable CA2016 // Pass cancellationToken
         var stopTokenSource = HostLifetime.CreateStopTokenSource();
 #pragma warning restore CA2016
         var worker = FuncWorker.New(
-            static (arg, ct) => arg.self.RunDub(arg.dubStreamId, arg.decidedSource, ct),
-            (self: this, dubStreamId, decidedSource),
+            static (arg, ct) => arg.self.RunDub(arg.dubStreamId, arg.whenPublishedSource, ct),
+            (self: this, dubStreamId, whenPublishedSource),
             stopTokenSource);
-        return new DubEntry(worker, decidedSource.Task);
+        return new DubEntry(worker, whenPublishedSource.Task);
     }
 
     private async Task RunDub(
         StreamId dubStreamId,
-        TaskCompletionSource<bool> decidedSource,
+        TaskCompletionSource whenPublishedSource,
         CancellationToken cancellationToken)
     {
         var sourceStreamId = dubStreamId.BaseStreamId;
@@ -67,6 +58,33 @@ public partial class AudioStreamingBackend
             ? new DubLatencyTrace(dubStreamId, recordedAt, Clocks.ServerClock)
             : null;
         latencyTrace?.OnRequested();
+
+        // The mix goes out first: the listener hears the original from its first frame, and
+        // everything below only decides whether a dub gets summed onto it
+        AsyncMemoizer<AudioFrame>? original;
+        VoiceOverMix mix;
+        Task mixTask;
+        try {
+            original = await _audioStreams.GetMemoizer(sourceStreamId, true, cancellationToken).ConfigureAwait(false);
+            var activity = GetDubChainKey(dubStreamId) is { } chainKey
+                ? _dubActivities.GetOrAdd(chainKey, static _ => new DubActivity())
+                : new DubActivity();
+            mix = new VoiceOverMix(original, activity, Clocks, Log);
+            if (latencyTrace != null) {
+                mix.Mixed += latencyTrace.OnMixed;
+                mix.Ducked += latencyTrace.OnDucked;
+            }
+            mixTask = PublishMix(dubStreamId, mix, cancellationToken);
+            whenPublishedSource.TrySetResult();
+        }
+        catch (Exception e) {
+            // The waiter in EnsureDub gets the failure too, or it would never return
+            whenPublishedSource.TrySetException(e);
+            if (!e.IsCancellationOf(cancellationToken))
+                Log.LogError(e, "RunDub: #{StreamId} failed to publish the mix", dubStreamId);
+            return;
+        }
+
         var text = Channel.CreateUnbounded<string>(new UnboundedChannelOptions {
             SingleReader = true,
             SingleWriter = true,
@@ -76,13 +94,13 @@ public partial class AudioStreamingBackend
         Task? synthesizeTask = null;
         Exception? error = null;
         try {
-            var sourceMemoizer = await WaitForSourceTranscript(sourceStreamId, cancellationToken).ConfigureAwait(false);
+            var sourceMemoizer = await WaitForSourceTranscript(sourceStreamId, original, cancellationToken)
+                .ConfigureAwait(false);
             if (sourceMemoizer == null) {
                 Log.LogWarning("RunDub: #{StreamId} - no transcript to dub", dubStreamId);
-                // A miss isn't a decision: drop the entry so the next GetAudio retries instead of inheriting it
-                ForgetDub(dubStreamId, decidedSource.Task);
                 return;
             }
+
             latencyTrace?.OnSourceReady(Fold(sourceMemoizer).TimeRange.End);
 
             // Measured when the dub is requested: a listener who joins mid-utterance finds seconds of
@@ -92,9 +110,17 @@ public partial class AudioStreamingBackend
             var stabilizer = new DubStabilizer();
             var spokenChunkCount = 0;
             bool ApplyDecision(DubDecision decision) {
-                latencyTrace?.OnDecided(decision == DubDecision.Dub);
+                var downUntil = new Moment(Volatile.Read(ref _synthesizerDownUntilTicks));
+                var isSynthesizerDown = downUntil > Clocks.CpuClock.Now;
+                latencyTrace?.OnDecided(decision == DubDecision.Dub && !isSynthesizerDown);
                 if (decision == DubDecision.NoDub) {
                     Log.LogInformation("RunDub: #{StreamId} - already in {Language}", dubStreamId, language);
+                    return false;
+                }
+
+                if (isSynthesizerDown) {
+                    Log.LogInformation("RunDub: #{StreamId} - skipped, synthesizer down until {DownUntil}",
+                        dubStreamId, downUntil);
                     return false;
                 }
 
@@ -103,7 +129,7 @@ public partial class AudioStreamingBackend
                     + "at {SourceEnd:F1}s of speech",
                     dubStreamId, startedAt.Elapsed.TotalSeconds, Fold(sourceMemoizer).TimeRange.End);
                 synthesizeTask = StartSynthesis(
-                    dubStreamId, text.Reader, decidedSource, latencyTrace, cancellationToken);
+                    dubStreamId, text.Reader, mix, mixTask, latencyTrace, cancellationToken);
                 return true;
             }
 
@@ -120,8 +146,6 @@ public partial class AudioStreamingBackend
                 // A dub already has the synthesis open on the text channel: the error ends it without speech
                 if (decision == DubDecision.Dub)
                     error = StandardError.External($"Dub #{dubStreamId} has no translation to speak.");
-                else
-                    ForgetDub(dubStreamId, decidedSource.Task);
                 return;
             }
 
@@ -168,8 +192,9 @@ public partial class AudioStreamingBackend
             if (decision == DubDecision.Undecided)
                 Log.LogInformation("RunDub: #{StreamId} - too short to decide, not dubbed", dubStreamId);
             else if (decision == DubDecision.Dub && spokenChunkCount == 0 && !isLate) {
-                // The language decided "dub" but the translation never became stable: a clean end here
-                // would leave the listener with a header-only track and no fallback to the original
+                // The language decided "dub" but the translation never became stable: the text channel's
+                // error is what tells the synthesis this apart from a provider failure; the mix keeps the
+                // original either way
                 error = StandardError.External($"Dub #{dubStreamId} got no stable text to speak.");
                 Log.LogWarning("RunDub: #{StreamId} - no stable text to speak, failing the dub", dubStreamId);
             }
@@ -180,7 +205,6 @@ public partial class AudioStreamingBackend
                 Log.LogError(e, "RunDub: #{StreamId} failed", dubStreamId);
         }
         finally {
-            decidedSource.TrySetResult(false);
             text.Writer.TryComplete(error);
             // A no-dub decision leaves the wait running; the translation itself, once started, is
             // the caption readers' and runs on its own worker
@@ -189,6 +213,10 @@ public partial class AudioStreamingBackend
                 await translationTask.SilentAwait(false);
             if (synthesizeTask != null)
                 await synthesizeTask.SilentAwait(false);
+            // The mix ends only once DubPcm is complete: the synthesis completes it on its way out,
+            // and every path that never started one completes it here
+            mix.DubPcm.TryComplete();
+            await mixTask.SilentAwait(false);
             latencyTrace?.Report(Log);
         }
     }
@@ -212,14 +240,9 @@ public partial class AudioStreamingBackend
         return DubDecision.Undecided;
     }
 
-    private Task StartSynthesis(
-        StreamId dubStreamId,
-        ChannelReader<string> text,
-        TaskCompletionSource<bool> decidedSource,
-        DubLatencyTrace? latencyTrace,
-        CancellationToken cancellationToken)
+    private Task PublishMix(StreamId dubStreamId, VoiceOverMix mix, CancellationToken cancellationToken)
     {
-        var language = dubStreamId.Language!;
+        // Header-first: the muxer's GetStream(S~lang) succeeds on the publish, before any frame exists
         var frames = Channel.CreateUnbounded<AudioFrame>(new UnboundedChannelOptions {
             SingleReader = true,
             SingleWriter = true,
@@ -234,47 +257,55 @@ public partial class AudioStreamingBackend
             throw StandardError.Internal($"Dub stream #{dubStreamId} is already published.");
         }
 
-        decidedSource.TrySetResult(true);
+        return BackgroundTask.Run(
+            () => mix.Run(frames.Writer, cancellationToken),
+            Log, $"Dub #{dubStreamId} mix failed");
+    }
+
+    private Task StartSynthesis(
+        StreamId dubStreamId,
+        ChannelReader<string> text,
+        VoiceOverMix mix,
+        Task mixTask,
+        DubLatencyTrace? latencyTrace,
+        CancellationToken cancellationToken)
+    {
+        var language = dubStreamId.Language!;
         var previousDubTask = ChainDub(dubStreamId, out var whenDoneSource, out var chainKey);
         return BackgroundTask.Run(async () => {
             try {
                 // One voice must not overlap itself: the author's previous dub in this language
-                // may still be draining after its source ended.
+                // may still be draining in its mix after its source ended.
                 await previousDubTask.SilentAwait(false);
                 var voiceId = await GetSpeakerVoice(dubStreamId, cancellationToken).ConfigureAwait(false);
                 latencyTrace?.OnVoice(voiceId);
                 var options = new SpeechSynthesisOptions(language, voiceId) { Listener = latencyTrace };
-                var pcm = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions {
-                    SingleReader = true,
-                    SingleWriter = true,
-                });
-                using var pump = new OpusFramePump(Clocks.CpuClock);
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                await TaskExt.WhenPushAndRead(
-                        SpeechSynthesizer!.Synthesize(dubStreamId.Value, text, options, pcm.Writer, cts.Token),
-                        pump.Run(pcm.Reader, frames.Writer, cts.Token),
-                        cts)
+                await SpeechSynthesizer!
+                    .Synthesize(dubStreamId.Value, text, options, mix.DubPcm, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (Exception e) {
-                frames.Writer.TryComplete(e);
+                mix.DubPcm.TryComplete(e);
                 if (e.IsCancellationOf(cancellationToken))
                     throw;
                 if (text.Completion.IsFaulted) {
                     // The failure came in through the text channel (translation, nothing to speak):
-                    // the muxer still falls back, but the provider is fine
+                    // the mix carries on with the original alone, and the provider is fine
                     Log.LogInformation("Dub #{StreamId} ended without speech: {Error}", dubStreamId, e.Message);
                     return;
                 }
 
-                // The muxer falls back to the original on the erroring stream; later utterances skip
-                // the hold and the failure instead of paying both again while the provider is down.
+                // The mix carries on with the original alone; later utterances skip the synthesis
+                // instead of paying the failure again while the provider is down.
                 var downUntil = Clocks.CpuClock.Now + Constants.Audio.DubSynthesizerDownDelay;
                 Volatile.Write(ref _synthesizerDownUntilTicks, downUntil.EpochOffsetTicks);
                 Log.LogWarning(e, "Dub #{StreamId} failed, no dubs until {DownUntil}", dubStreamId, downUntil);
             }
             finally {
-                frames.Writer.TryComplete();
+                // The synthesizer is well ahead of the listener: the chain is released once the mix
+                // has played the dub out, not once the PCM is written
+                mix.DubPcm.TryComplete();
+                await mixTask.SilentAwait(false);
                 whenDoneSource.TrySetResult();
                 if (chainKey != null)
                     _dubChains.TryRemove(new KeyValuePair<string, Task>(chainKey, whenDoneSource.Task));
@@ -309,36 +340,6 @@ public partial class AudioStreamingBackend
         return SpeakerVoices.Get(chatId, authorId, cancellationToken);
     }
 
-    private bool IsCoolingDown(StreamId dubStreamId)
-    {
-        var now = Clocks.CpuClock.Now;
-        if (new Moment(Volatile.Read(ref _synthesizerDownUntilTicks)) > now)
-            return true;
-
-        return GetDubChainKey(dubStreamId) is { } key
-            && _dubCooldowns.TryGetValue(key, out var until)
-            && until > now;
-    }
-
-    private void StartCooldown(StreamId dubStreamId)
-    {
-        // After a timed-out decision the next utterances of this author are served undubbed at
-        // once rather than each paying the hold; logged once per cool-down.
-        if (GetDubChainKey(dubStreamId) is not { } key)
-            return;
-
-        var now = Clocks.CpuClock.Now;
-        if (_dubCooldowns.TryGetValue(key, out var current) && current > now)
-            return;
-
-        foreach (var (expiredKey, expiredUntil) in _dubCooldowns)
-            if (expiredUntil <= now)
-                _dubCooldowns.TryRemove(new KeyValuePair<string, Moment>(expiredKey, expiredUntil));
-        var until = now + Constants.Audio.DubCooldown;
-        _dubCooldowns[key] = until;
-        Log.LogWarning("StartCooldown: {Key} - serving the original without a hold until {Until}", key, until);
-    }
-
     private string? GetDubChainKey(StreamId dubStreamId)
         => _authorIdByStream.TryGetValue(dubStreamId.BaseStreamId, out var authorId)
             ? $"{authorId}~{dubStreamId.Language}"
@@ -346,11 +347,13 @@ public partial class AudioStreamingBackend
 
     private async Task<AsyncMemoizer<TranscriptDiff>?> WaitForSourceTranscript(
         StreamId sourceStreamId,
+        AsyncMemoizer<AudioFrame>? audio,
         CancellationToken cancellationToken)
     {
         // The source transcript is published on the first non-empty STT result, which can trail
         // the audio by more than ShareWaitDelay - so wait as long as the audio is running, plus
         // one more ShareWaitDelay pass after it ends, since STT itself can trail behind that too.
+        // No audio at all (the mix's share wait already missed it) counts as ended.
         var isAudioEnded = false;
         while (true) {
             var memoizer = await _transcriptStreams
@@ -359,12 +362,7 @@ public partial class AudioStreamingBackend
             if (memoizer != null || isAudioEnded)
                 return memoizer;
 
-            // A null share here means either the audio finished or its entry isn't published yet
-            // (ProcessAudio does DB work before Publish) - only Has() tells those two apart.
-            var audio = await _audioStreams.GetMemoizer(sourceStreamId, false, cancellationToken).ConfigureAwait(false);
-            isAudioEnded = audio != null
-                ? audio.WhenRunning is not { IsCompleted: false }
-                : !_audioStreams.Has(sourceStreamId);
+            isAudioEnded = audio?.WhenRunning is not { IsCompleted: false };
         }
     }
 
@@ -425,21 +423,22 @@ public partial class AudioStreamingBackend
         }
     }
 
-    private void ForgetDub(StreamId dubStreamId, Task<bool> whenDecided)
-    {
-        // Only this worker's own entry: a fresh one may already have taken the key
-        if (_dubs.TryGetValue(dubStreamId, out var entry) && entry.WhenDecided == whenDecided)
-            _dubs.TryRemove(new KeyValuePair<StreamId, DubEntry>(dubStreamId, entry));
-    }
-
     private void ForgetDubs(StreamId streamId)
     {
         // Only the entries: the transcript expires 60 s after it completes, while its dub can still
         // be draining, so the worker ends on its own (WorkerBase disposes its CTS then)
         var baseStreamId = streamId.BaseStreamId;
-        foreach (var dubStreamId in _dubs.Keys)
-            if (dubStreamId.BaseStreamId == baseStreamId)
-                _dubs.TryRemove(dubStreamId, out _);
+        foreach (var dubStreamId in _dubs.Keys) {
+            if (dubStreamId.BaseStreamId != baseStreamId)
+                continue;
+
+            _dubs.TryRemove(dubStreamId, out _);
+            // The activity is the author's, not the stream's: it goes with their last dub in the language
+            if (GetDubChainKey(dubStreamId) is { } chainKey
+                && !_dubChains.ContainsKey(chainKey)
+                && !_dubs.Keys.Any(x => GetDubChainKey(x) == chainKey))
+                _dubActivities.TryRemove(chainKey, out _);
+        }
     }
 
     private static Transcript Fold(AsyncMemoizer<TranscriptDiff> memoizer)
@@ -452,5 +451,5 @@ public partial class AudioStreamingBackend
 
     // Nested types
 
-    private sealed record DubEntry(FuncWorker Worker, Task<bool> WhenDecided);
+    private sealed record DubEntry(FuncWorker Worker, Task WhenPublished);
 }

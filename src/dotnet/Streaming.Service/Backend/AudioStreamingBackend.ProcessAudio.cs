@@ -141,7 +141,7 @@ public partial class AudioStreamingBackend
             Format = audio.Format,
             IsTextOnly = !mustStreamVoice,
             // Empty = never dub: without a transcript there's nothing to translate, and a dubbing
-            // listener would hold this speaker's audio for the whole DubWaitTimeout on every utterance
+            // listener would get every utterance of this speaker transcoded for nothing
             Languages = !mustTranscribe ? ApiArray<Language>.Empty
                 : languages.ChatLanguage is { } chatLanguage ? new ApiArray<Language>([chatLanguage])
                 : languages.UserSettings.ListSpoken().ToApiArray(),

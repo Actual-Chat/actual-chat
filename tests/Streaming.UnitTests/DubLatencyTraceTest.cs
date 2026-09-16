@@ -19,6 +19,7 @@ public class DubLatencyTraceTest
 
         // act
         At(clock, 3.0); trace.OnRequested();
+        At(clock, 3.1); trace.OnMixed(); // the mix's first frame, 0.1 s after the request
         At(clock, 3.2); trace.OnSourceReady(4.9f);
         At(clock, 3.4); trace.OnDecided(true);
         At(clock, 5.0); trace.OnTranslated(Unstable("Hola", 1.0f)); // ignored: not stable
@@ -26,13 +27,16 @@ public class DubLatencyTraceTest
         At(clock, 5.9); trace.OnSpoken(Stable("Hola mundo", 2.0f)); // 3.9 s behind
         At(clock, 6.4); listener.OnStreamOpened(); // tts opened 0.5 s after the first spoken chunk
         At(clock, 7.5); listener.OnAudioStarted(); // tts 1.1 s; first word 7.5 - 2.0 = 5.5 s
+        At(clock, 7.6); trace.OnDucked(); // the original goes under the dub 7.6 s into the speech
         At(clock, 9.0); trace.OnTranslated(Stable("Hola mundo otra vez", 4.4f)); // 4.6 s behind
         At(clock, 9.0); trace.OnSpoken(Stable("Hola mundo otra vez", 4.4f));
         At(clock, 12.0); listener.OnStreamOpened(); // a rollover: second stream
         At(clock, 13.2); listener.OnAudioStarted(); // 1.2 s, first word unchanged
+        At(clock, 13.3); trace.OnDucked(); // a later duck doesn't move the first
 
         // assert
         trace.DecisionDelay.Should().Be(TimeSpan.FromSeconds(0.4));
+        trace.MixDelay.Should().BeCloseTo(TimeSpan.FromSeconds(0.1), TimeSpan.FromMilliseconds(10));
         trace.TtsOpenDelay.Should().Be(TimeSpan.FromSeconds(0.5));
         trace.Translated.Count.Should().Be(2);
         trace.Translated.First.Should().BeCloseTo(TimeSpan.FromSeconds(3.9), TimeSpan.FromMilliseconds(10));
@@ -45,7 +49,39 @@ public class DubLatencyTraceTest
             "Dub latency #node01-abc~en: decided +0.4s; requested at 4.9s of speech; "
             + "translated lag p50 4.6s max 4.6s (n=2); spoken lag p50 4.6s max 4.6s (n=2); "
             + "tts opened +0.5s after the first chunk; tts first audio p50 1.2s max 1.2s (n=2); "
-            + "first word 5.5s behind speech; voice stock");
+            + "first word 5.5s behind speech; mixed +0.1s; ducked at 7.6s of speech; voice stock");
+    }
+
+    [Fact]
+    public void MixThatNeverDucksShouldSaySo()
+    {
+        // arrange
+        using var clock = new TestClock(multiplier: 0).SetTo(RecordedAt);
+        var trace = new DubLatencyTrace(DubStreamId, RecordedAt, clock);
+
+        // act - a NoDub mix: the original alone, never ducked
+        At(clock, 3.0); trace.OnRequested();
+        At(clock, 3.0); trace.OnMixed();
+        At(clock, 3.4); trace.OnDecided(false);
+
+        // assert
+        trace.MixDelay.Should().Be(TimeSpan.Zero);
+        trace.ToString().Should().Contain("; mixed +0.0s; ducked -; ");
+    }
+
+    [Fact]
+    public void LineBeforeAnyMixShouldShowBothAsMissing()
+    {
+        // arrange
+        using var clock = new TestClock(multiplier: 0).SetTo(RecordedAt);
+        var trace = new DubLatencyTrace(DubStreamId, RecordedAt, clock);
+
+        // act
+        trace.OnRequested();
+
+        // assert
+        trace.MixDelay.Should().BeNull();
+        trace.ToString().Should().Contain("; mixed -; ducked -; ");
     }
 
     [Theory]

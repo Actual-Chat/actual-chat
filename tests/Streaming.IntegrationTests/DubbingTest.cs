@@ -53,7 +53,7 @@ public class DubbingTest(DubbingCollection.AppHostFixture fixture, ITestOutputHe
     }
 
     [Fact(Timeout = 60_000)]
-    public async Task GetAudioShouldReturnNullWhenTheSourceIsAlreadyInTheTargetLanguage()
+    public async Task GetAudioShouldServeTheOriginalAloneWhenTheSourceIsAlreadyInTheTargetLanguage()
     {
         // arrange
         var services = AppHost.Services;
@@ -77,18 +77,19 @@ public class DubbingTest(DubbingCollection.AppHostFixture fixture, ITestOutputHe
 
         // act
         var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
-
-        // assert
-        stream.Should().BeNull("an English speaker isn't dubbed into English");
-
         source.Writer.Complete();
         translated.Writer.Complete();
         await pushSourceTask.SilentAwait(false);
         await pushTranslatedTask.SilentAwait(false);
+        var frames = await stream!.ToListAsync(ct);
+
+        // assert - the mix is served regardless and ends with the (absent) original: header only
+        frames.Select(f => f.Offset).Should().Equal([TimeSpan.FromMilliseconds(-1)],
+            "an English speaker isn't dubbed into English, so nothing is summed onto the original");
     }
 
     [Fact(Timeout = 60_000)]
-    public async Task GetAudioShouldRetryAfterANoTranscriptMiss()
+    public async Task GetAudioShouldEndTheMixWithTheOriginalAfterANoTranscriptMiss()
     {
         // arrange
         var services = AppHost.Services;
@@ -98,47 +99,19 @@ public class DubbingTest(DubbingCollection.AppHostFixture fixture, ITestOutputHe
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(50));
         var ct = cts.Token;
 
-        // act - nothing is pushed yet, so the dub worker misses the source transcript
-        var missedStream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
-
-        // assert
-        missedStream.Should().BeNull("there is no transcript to dub yet");
-
-        // arrange
-        var source = Channel.CreateUnbounded<TranscriptDiff>();
-        var translated = Channel.CreateUnbounded<TranscriptDiff>();
-        var pushSourceTask = BackgroundTask.Run(
-            () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
-            ct);
-        var pushTranslatedTask = BackgroundTask.Run(
-            () => backend.PushTranscript(dubId, new RpcStream<TranscriptDiff>(translated.Reader.ReadAllAsync(ct)), ct),
-            ct);
-        source.Writer.TryWrite(Stable("Hello there, how are you doing today?") - Transcript.Empty);
-        translated.Writer.TryWrite(Stable("Привет, как у тебя сегодня дела?") - Transcript.Empty);
-        await backend.WhenTranscriptPublished(dubId, ct);
-
-        // act
+        // act - nothing is pushed at all, so the dub worker misses the source transcript
+        var startedAt = CpuTimestamp.Now;
         var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+        var frames = await stream!.ToListAsync(ct);
 
-        // assert
-        stream.Should().NotBeNull("a miss must not be remembered as a decision");
-        var frames = new List<AudioFrame>();
-        await foreach (var frame in stream!.WithCancellation(ct)) {
-            frames.Add(frame);
-            if (frames.Count >= 3)
-                break;
-        }
-        frames[0].Offset.Should().Be(TimeSpan.FromMilliseconds(-1), "the first frame is the stream header");
-        frames.Skip(1).Select(f => f.Offset).Should().Equal(TimeSpan.Zero, Constants.Audio.OpusFrameDuration);
-
-        source.Writer.Complete();
-        translated.Writer.Complete();
-        await pushSourceTask.SilentAwait(false);
-        await pushTranslatedTask.SilentAwait(false);
+        // assert - the audio share wait, the transcript wait and its one grace pass, then the end
+        frames.Select(f => f.Offset).Should().Equal([TimeSpan.FromMilliseconds(-1)],
+            "with no transcript nothing is dubbed, and with no audio the mix is the header alone");
+        startedAt.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(10), "a miss ends the mix, it doesn't hold it");
     }
 
     [Fact(Timeout = 60_000)]
-    public async Task ADubThatNeverGetsStableTextShouldFailInsteadOfEndingSilent()
+    public async Task ADubThatNeverGetsStableTextShouldEndWithTheOriginal()
     {
         // arrange
         var services = AppHost.Services;
@@ -170,13 +143,11 @@ public class DubbingTest(DubbingCollection.AppHostFixture fixture, ITestOutputHe
 
         // assert
         stream.Should().NotBeNull("the language branch decided to dub");
-        var drain = async () => {
-            await foreach (var _ in stream!.WithCancellation(ct)) { }
-        };
-        await drain.Should().ThrowAsync<Exception>(
-            "a dub with nothing to say must end as a failure so the muxer falls back to the original");
+        var frames = await stream!.ToListAsync(ct);
+        frames.Select(f => f.Offset).Should().Equal([TimeSpan.FromMilliseconds(-1)],
+            "a dub with nothing to say ends the mix cleanly with the original - here, the header alone");
 
-        // A silent translation is not a synthesizer outage: the next dub must still be served
+        // A silent translation is not a synthesizer outage: the next dub must still be spoken
         var sourceId2 = StreamId.New(services.MeshWatcher().ThisNode.Ref);
         var dubId2 = StreamId.New(sourceId2, Languages.Russian);
         var source2 = Channel.CreateUnbounded<TranscriptDiff>();
@@ -191,12 +162,13 @@ public class DubbingTest(DubbingCollection.AppHostFixture fixture, ITestOutputHe
         translated2.Writer.TryWrite(Stable("Привет, как у тебя сегодня дела?") - Transcript.Empty);
         await backend.WhenTranscriptPublished(dubId2, ct);
         var stream2 = await backend.GetAudio(dubId2, TimeSpan.Zero, ct);
-        stream2.Should().NotBeNull("only a synthesizer failure trips the provider-down cool-down");
-
         source2.Writer.Complete();
         translated2.Writer.Complete();
         await pushSource2Task.SilentAwait(false);
         await pushTranslated2Task.SilentAwait(false);
+        var frames2 = await stream2!.ToListAsync(ct);
+        frames2.Count(f => f.Offset >= TimeSpan.Zero).Should().BeGreaterThan(0,
+            "only a synthesizer failure trips the provider-down cool-down");
     }
 
     // Private methods
