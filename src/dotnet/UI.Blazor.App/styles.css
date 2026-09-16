@@ -109,10 +109,10 @@
 
 @import './Components/own-avatar.css';
 @import './Components/peer-contact-editor-modal.css';
+@import './Components/OAuthConsentModal/oauth-consent-modal.css';
 @import './Components/delete-account.css';
 
 @import './Pages/user-page.css';
-@import './Pages/oauth-consent-page.css';
 @import './Pages/emojis-test-page.css';
 @import './Pages/Test/date-time-test-page.css';
 @import './Pages/Test/banner-stack-test-page.css';

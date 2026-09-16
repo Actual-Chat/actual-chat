@@ -2,104 +2,74 @@
 @using ActualChat.OAuth
 @inherits ComponentBase<AppUIHub>
 
-<MainHeader>@L.OAuthConsent_Title</MainHeader>
-
-@if (_signInRequested) {
-    return;
-}
-
-<div class="oauth-consent-page">
-    @if (!_error.IsNullOrEmpty()) {
-        <Tile><TileItem IsHoverable="false"><Content>@L.OAuthConsent_Error_Format(_error)</Content></TileItem></Tile>
-    } else if (_client is null) {
-        <Tile><TileItem IsHoverable="false"><Content>@L.OAuthConsent_UnknownClient</Content></TileItem></Tile>
-    } else {
-        <Tile>
-            <TileItem IsHoverable="false">
-                <Content>
-                    <div class="c-heading">@L.OAuthConsent_Heading_Format(_client.ClientName)</div>
-                    <div class="c-redirect">
-                        @L.OAuthConsent_RedirectHost_Format(string.Join(", ", _client.RedirectHosts))
-                    </div>
-                    @if (_client.IsLoopback) {
-                        <div class="c-loopback">@L.OAuthConsent_Loopback</div>
-                    }
-                </Content>
-            </TileItem>
-        </Tile>
-        <TileTopic Topic="@L.OAuthConsent_SignedInAs_Format(_account?.Avatar.Name ?? "")"/>
-        <Tile>
-            @foreach (var scope in _scopes) {
-                <TileItem IsHoverable="false"><Content>@ScopeText(scope)</Content></TileItem>
-            }
-        </Tile>
-        <div class="c-buttons">
-            <Button Class="btn-primary" Click="@OnApprove" IsDisabled="@_isBusy">@L.OAuthConsent_Approve</Button>
-            <Button Class="btn-outline" Click="@OnDeny" IsDisabled="@_isBusy">@L.OAuthConsent_Deny</Button>
-        </div>
-    }
+<div class="flex-x h-full">
+    <ChatPanelSkeleton/>
+    <RightPanelSkeleton/>
 </div>
 
 @code {
     private const string AuthorizePath = "/oauth/authorize";
     private const string DenyParameter = "voxt_deny";
 
-    private bool _signInRequested;
-    private bool _isBusy;
-    private string? _error;
-    private AccountFull? _account;
-    private OAuthClientInfo? _client;
-    private string[] _scopes = [];
+    private bool _isDecided;
     private string _authorizeQuery = "";
 
     private IOAuthGrants OAuthGrants => Hub.OAuthGrants;
 
-    protected override async Task OnParametersSetAsync() {
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
         var uri = new Uri(Nav.Uri);
         _authorizeQuery = WithoutDenyParameter(uri.Query);
         var query = uri.GetQueryCollection();
-        if (query["error"] is { } error) {
-            _error = query["error_description"] ?? error;
-            return;
-        }
+        var error = query["error"] is { } errorCode ? query["error_description"] ?? errorCode : null;
 
-        _account = await AccountUI.OwnAccount.Use();
-        if (_account.IsGuest || !_account.IsActive()) {
-            _signInRequested = true;
+        var account = await AccountUI.OwnAccount.Use();
+        if (error is null && (account.IsGuest || !account.IsActive())) {
             _ = AccountUI.RequestSignInFromHomePage(L.SignIn_ToAuthorizeApp, History.LocalUrl);
             return;
         }
 
         var clientId = query["client_id"] ?? "";
-        _scopes = (query["scope"] ?? "mcp").Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        _client = clientId.IsNullOrEmpty() ? null : await OAuthGrants.GetClient(Session, clientId, default);
+        var scopes = (query["scope"] ?? "mcp").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var client = error is null && !clientId.IsNullOrEmpty()
+            ? await OAuthGrants.GetClient(Session, clientId, default)
+            : null;
+        var model = new OAuthConsentModal.Model(
+            client, account, scopes, error,
+            () => Approve(client!, scopes),
+            Deny);
+        var modalRef = await ModalUI.Show(model);
+        await modalRef.WhenClosed;
+        if (_isDecided)
+            return;
+
+        // Dismissing the dialog is a decision too: the app that opened it is waiting for a callback.
+        // With nothing to answer (error or unknown client), just leave.
+        if (client is null)
+            _ = History.NavigateTo(Links.Chats, false, false, true);
+        else
+            await Deny();
     }
 
-    private string ScopeText(string scope)
-        => scope switch {
-            "mcp" => L.OAuthConsent_Scope_Mcp,
-            "offline_access" => L.OAuthConsent_Scope_OfflineAccess,
-            _ => scope,
-        };
-
-    private async Task OnApprove() {
-        _isBusy = true;
+    private async Task<bool> Approve(OAuthClientInfo client, string[] scopes) {
         var command = new OAuthGrants_Approve {
             Session = Session,
-            ClientId = _client!.ClientId,
-            Scopes = _scopes.ToApiArray(),
+            ClientId = client.ClientId,
+            Scopes = scopes.ToApiArray(),
         };
         var (_, error) = await UICommander.Run(command);
-        if (error is not null) {
-            _isBusy = false;
-            return;
-        }
+        if (error is not null)
+            return false;
 
+        _isDecided = true;
         await History.ForceReload("OAuth consent approved", AuthorizePath + _authorizeQuery);
+        return true;
     }
 
-    private Task OnDeny() {
-        _isBusy = true;
+    private Task Deny() {
+        _isDecided = true;
         var separator = _authorizeQuery.IsNullOrEmpty() ? "?" : "&";
         var url = AuthorizePath + _authorizeQuery + separator + DenyParameter + "=1";
         return History.ForceReload("OAuth consent denied", url).AsTask();

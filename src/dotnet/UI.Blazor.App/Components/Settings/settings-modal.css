@@ -249,6 +249,38 @@ body.hoverable .sessions-tile-item .sign-out-btn:hover,
     @apply text-sm text-03;
 }
 
+/* ── Connected apps ── */
+
+.connected-apps-tile .tile-item {
+    @apply relative;
+}
+.connected-apps-tile .tile-item-body-content,
+.connected-apps-tile .tile-item-body-caption {
+    @apply max-h-none;
+    @apply pr-12;
+}
+.connected-apps-tile .c-app-name {
+    @apply truncate;
+    @apply font-medium;
+}
+.connected-apps-tile .c-revoke {
+    @apply absolute right-0 top-0;
+}
+.connected-apps-tile .c-facts {
+    @apply grid gap-x-3 gap-y-0.5;
+    grid-template-columns: max-content minmax(0, 1fr);
+    @apply text-xs font-normal;
+}
+.connected-apps-tile .c-facts > dt {
+    @apply text-03;
+}
+.connected-apps-tile .c-facts > dd {
+    @apply text-02;
+}
+.connected-apps-tile .c-empty {
+    @apply text-sm text-03;
+}
+
 /* ── API Key Create Modal ── */
 
 .api-key-modal .form-block .c-title {

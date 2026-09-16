@@ -1,0 +1,87 @@
+@using ActualChat.OAuth
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<OAuthConsentModal.Model>
+@{
+    var m = ModalModel;
+    var errorText = !m.Error.IsNullOrEmpty()
+        ? L.OAuthConsent_Error_Format(m.Error)
+        : m.Client is null ? L.OAuthConsent_UnknownClient : null;
+}
+
+<DialogFrame Title="@L.OAuthConsent_Title" Class="oauth-consent-modal modal-sm">
+    <Body>
+    @if (errorText is not null) {
+        <FormBlock>
+            <p>@errorText</p>
+        </FormBlock>
+    } else {
+        var client = m.Client!;
+        <FormBlock>
+            <div class="c-heading">@L.OAuthConsent_Heading_Format(client.ClientName)</div>
+            <div class="c-note">@L.OAuthConsent_RedirectHost_Format(string.Join(", ", client.RedirectHosts))</div>
+            @if (client.IsLoopback) {
+                <div class="c-note">@L.OAuthConsent_Loopback</div>
+            }
+        </FormBlock>
+        <FormBlock>
+            <div class="c-account">
+                <AvatarCircle Avatar="@m.Account.Avatar" Size="@SquareSize.Size9" IsBlurred="@false"/>
+                <div class="c-name">
+                    <div class="c-label">@L.OAuthConsent_SignedInAs</div>
+                    <div class="c-title">@m.Account.Avatar.Name</div>
+                </div>
+            </div>
+        </FormBlock>
+        <FormBlock>
+            @foreach (var scope in m.Scopes) {
+                <div class="c-scope">
+                    <i class="icon-checkmark-simple"></i>
+                    <span>@L.OAuthScopeText(scope)</span>
+                </div>
+            }
+        </FormBlock>
+    }
+    </Body>
+    <Buttons>
+        @if (errorText is not null) {
+            <Button Class="btn-modal" Click="@(_ => Modal.Close())">@L.Common_Close</Button>
+        } else {
+            <Button Class="btn-modal" Click="@OnDeny" IsDisabled="@_isBusy">@L.OAuthConsent_Deny</Button>
+            <Button Class="btn-modal btn-primary" Click="@OnApprove" IsDisabled="@_isBusy" IsAutofocused="true">
+                @L.OAuthConsent_Approve
+            </Button>
+        }
+    </Buttons>
+</DialogFrame>
+
+@code {
+    private bool _isBusy;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private async Task OnApprove() {
+        _isBusy = true;
+        var isApproved = await ModalModel.Approve();
+        if (!isApproved)
+            _isBusy = false;
+    }
+
+    private Task OnDeny() {
+        _isBusy = true;
+        return ModalModel.Deny();
+    }
+
+    // Nested types
+
+    // Approve and Deny navigate away on success; Approve returns false when the grant failed
+    // and the dialog must stay open.
+    public sealed record Model(
+        OAuthClientInfo? Client,
+        AccountFull Account,
+        string[] Scopes,
+        string? Error,
+        Func<Task<bool>> Approve,
+        Func<Task> Deny);
+}

@@ -1,0 +1,27 @@
+.oauth-consent-modal .c-heading {
+    @apply text-headline-7 text-02;
+}
+.oauth-consent-modal .c-note {
+    @apply text-caption-4 text-03;
+}
+
+.oauth-consent-modal .c-account {
+    @apply flex-x items-center gap-x-3;
+}
+.oauth-consent-modal .c-account .c-name {
+    @apply flex-y min-w-0;
+}
+.oauth-consent-modal .c-account .c-label {
+    @apply text-caption-6 text-03;
+}
+.oauth-consent-modal .c-account .c-title {
+    @apply text-headline-1 text-02 truncate;
+}
+
+.oauth-consent-modal .c-scope {
+    @apply flex-x items-center gap-x-2;
+    @apply text-02;
+}
+.oauth-consent-modal .c-scope > i {
+    @apply text-xl text-primary;
+}
