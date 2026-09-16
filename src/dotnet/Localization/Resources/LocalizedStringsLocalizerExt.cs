@@ -148,7 +148,6 @@ public static class LocalizedStringsLocalizerExt
         public string Passkeys_Added_Format(object arg0) => l["Passkeys_Added_Format", arg0].Value;
         public string Passkeys_LastUsed_Format(object arg0) => l["Passkeys_LastUsed_Format", arg0].Value;
         public string Passkeys_NeverUsed => l["Passkeys_NeverUsed"].Value;
-        public string Passkeys_Rename => l["Passkeys_Rename"].Value;
         public string Passkeys_RenameTitle => l["Passkeys_RenameTitle"].Value;
         public string Passkeys_Name => l["Passkeys_Name"].Value;
         public string Passkeys_Delete => l["Passkeys_Delete"].Value;

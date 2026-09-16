@@ -119,7 +119,7 @@ session that signs in as someone else mid-ceremony is refused.
    (protocol ctap2, transport internal, resident key + user verification on).
 3. Sign in with a code → Settings → Account shows the Passkeys row ("Not set up"
    + badge) → Passkeys tab → **Add a passkey** → the authenticator prompt →
-   one passkey named "Passkey", marked synced. Rename it.
+   one passkey named "Passkey", marked synced. Click the row to rename it.
 4. Sign out → **Sign in with a passkey** → signed in on the same account.
 5. Delete the passkey → the badge returns; the sign-in button now shows
    "isn't linked to an account" after the prompt.

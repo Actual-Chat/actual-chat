@@ -126,7 +126,6 @@
   "Passkeys_Added_Format": "追加日: {0}",
   "Passkeys_LastUsed_Format": "最終使用日: {0}",
   "Passkeys_NeverUsed": "未使用",
-  "Passkeys_Rename": "名前を変更",
   "Passkeys_RenameTitle": "パスキーの名前を変更",
   "Passkeys_Name": "名前",
   "Passkeys_Delete": "削除",

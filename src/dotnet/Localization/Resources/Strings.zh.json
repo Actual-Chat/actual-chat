@@ -126,7 +126,6 @@
   "Passkeys_Added_Format": "添加于 {0}",
   "Passkeys_LastUsed_Format": "上次使用：{0}",
   "Passkeys_NeverUsed": "从未使用",
-  "Passkeys_Rename": "重命名",
   "Passkeys_RenameTitle": "重命名通行密钥",
   "Passkeys_Name": "名称",
   "Passkeys_Delete": "删除",
