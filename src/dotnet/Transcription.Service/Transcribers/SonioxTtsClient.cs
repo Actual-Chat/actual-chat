@@ -11,12 +11,11 @@ using static ActualChat.Constants.Transcription.Soniox;
 namespace ActualChat.Transcription;
 
 /// <summary>
-/// One utterance over Soniox's <c>tts-rt</c> WebSocket API: text chunks in, 48 kHz PCM out (the REST
-/// <see cref="Generate"/> yields 20 ms Opus frames instead). The whole run shares one connection and, as far
-/// as Soniox allows, one stream, so sentences keep their prosody across chunks. A stream is ended early only
-/// when the text goes idle (Soniox kills a stream that produces nothing for a few seconds and loses its
-/// unsynthesized text) or when it nears Soniox's 2-minute stream cap; the next chunk then opens a new stream
-/// on the same connection.
+/// One utterance over Soniox's <c>tts-rt</c> WebSocket API: text chunks in, 48 kHz PCM out. The whole run
+/// shares one connection and, as far as Soniox allows, one stream, so sentences keep their prosody across
+/// chunks. A stream is ended early only when the text goes idle (Soniox kills a stream that produces nothing
+/// for a few seconds and loses its unsynthesized text) or when it nears Soniox's 2-minute stream cap; the
+/// next chunk then opens a new stream on the same connection.
 /// </summary>
 public sealed class SonioxTtsClient(IServiceProvider services)
 {
