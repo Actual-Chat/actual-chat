@@ -497,7 +497,14 @@ into the muxer's constructor.
   level, the toggle under "Translated voice" in
   `Components/Settings/TranscriptionSettings.razor`) and
   `ChatUserSettings.IsTranslatedVoiceEnabled` (per chat, `bool?`, `null`
-  = follow the user-level setting).
+  = follow the user-level setting). The whole Translated Voice section —
+  the toggle, the own-voice tiles and the stock-voice picker — is
+  rendered only when `Features.IsIncompleteUIEnabled`
+  (`Model.ShowTranslatedVoice`; the voice catalog and own-voice status
+  RPCs are skipped otherwise), so until the Soniox TTS quota is settled
+  nobody else can turn dubbing on; the own-voice tiles additionally need
+  `account.IsAdmin`. The server side is ungated: a flag that is already
+  on keeps working.
 - **`TranslationUI.GetDubLanguage(chatId)`**
   (`Services/TranslationUI/TranslationUI.cs`, compute method): `null`
   unless translation is enabled for the chat and the effective flag —
@@ -642,11 +649,12 @@ language exactly like a stock voice, so nothing downstream of `SpeakerVoices`
 needs to know a dub is cloned rather than stock: `SonioxSpeechSynthesizer`
 passes the id straight through `SpeechSynthesisOptions.VoiceId` unchanged.
 
-Rollout: rendered only for `account.IsAdmin && Features.IsIncompleteUIEnabled`
-(`TranscriptionSettings.razor`), the same gate as other incomplete-UI
-previews; the server side (pool, sweeper, `SpeakerVoices`) is ungated. The
-gate is meant to come off once Soniox raises the 20-voice-per-organization
-quota.
+Rollout: the Translated Voice section is an incomplete-UI preview and the
+own-voice tiles inside it are admin-only on top of that
+(`account.IsAdmin && Features.IsIncompleteUIEnabled` in
+`TranscriptionSettings.razor`, see [Client](#client--requesting-a-dub-language));
+the server side (pool, sweeper, `SpeakerVoices`) is ungated. The admin gate
+is meant to come off once Soniox raises the 20-voice-per-organization quota.
 
 ### Data
 
@@ -927,7 +935,7 @@ scope cut, not a bug: see [Follow-ups](#follow-ups).
 ### UI
 
 `Components/Settings/TranscriptionSettings.razor`, Translated Voice
-section, above the stock-voice tile — visible only for
+section, above the stock-voice tile — the section is visible only for
 `account.IsAdmin && Features.IsIncompleteUIEnabled` (`Model.OwnVoice` is
 `null` otherwise, so a non-admin makes no `GetOwnVoiceStatus` RPC at all):
 

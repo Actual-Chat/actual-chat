@@ -79,66 +79,68 @@
     <ListeningLingerSettings/>
 </Tile>
 
-<TileTopic Topic="@L.Transcription_TranslatedVoiceTopic"/>
-<Tile>
-    <TileItem Click="@OnToggleTranslatedVoice">
-        <Icon><i class="icon-headphones-fill text-2xl"></i></Icon>
-        <Content>@L.Transcription_TranslatedVoice</Content>
-        <Caption>@L.Transcription_TranslatedVoiceCaption</Caption>
-        <Right>
-            <Toggle IsChecked="@m.Languages.IsTranslatedVoiceEnabled"
-                    IsCheckedChanged="@(_ => OnToggleTranslatedVoice())"/>
-        </Right>
-    </TileItem>
-    @if (m.OwnVoice is { } ownVoice) {
-        <TileItem Click="@OnToggleOwnVoice">
-            <Icon><i class="icon-voice-01 text-2xl"></i></Icon>
-            <Content>@L.Transcription_OwnVoice</Content>
-            <Caption>
-                @L.Transcription_OwnVoiceCaption
-                <div class="own-voice-status">@FormatOwnVoiceStatus(ownVoice)</div>
-            </Caption>
+@if (m.ShowTranslatedVoice) {
+    <TileTopic Topic="@L.Transcription_TranslatedVoiceTopic"/>
+    <Tile>
+        <TileItem Click="@OnToggleTranslatedVoice">
+            <Icon><i class="icon-headphones-fill text-2xl"></i></Icon>
+            <Content>@L.Transcription_TranslatedVoice</Content>
+            <Caption>@L.Transcription_TranslatedVoiceCaption</Caption>
             <Right>
-                <Toggle IsChecked="@ownVoice.IsEnabled"
-                        IsCheckedChanged="@(_ => OnToggleOwnVoice())"/>
+                <Toggle IsChecked="@m.Languages.IsTranslatedVoiceEnabled"
+                        IsCheckedChanged="@(_ => OnToggleTranslatedVoice())"/>
             </Right>
         </TileItem>
-        @if (ownVoice.IsEnabled) {
-            @if (m.NotesChatId is { } notesChatId) {
-                <TileItem Click="@(() => OnRecordSampleClick(notesChatId))">
-                    <Icon><i class="icon-mic-2 text-2xl"></i></Icon>
-                    <Content>
-                        @(ownVoice.HasExplicitSample
-                            ? L.Transcription_OwnVoiceRerecord
-                            : L.Transcription_OwnVoiceRecord)
-                    </Content>
-                    <Right>
-                        <i class="icon-chevron-right text-xl text-03"></i>
-                    </Right>
-                </TileItem>
-            }
-            @if (ownVoice.HasExplicitSample) {
-                <TileItem Click="@OnRemoveSampleClick">
-                    <Icon><i class="icon-trash03 text-2xl"></i></Icon>
-                    <Content>@L.Transcription_OwnVoiceRemoveSample</Content>
-                </TileItem>
+        @if (m.OwnVoice is { } ownVoice) {
+            <TileItem Click="@OnToggleOwnVoice">
+                <Icon><i class="icon-voice-01 text-2xl"></i></Icon>
+                <Content>@L.Transcription_OwnVoice</Content>
+                <Caption>
+                    @L.Transcription_OwnVoiceCaption
+                    <div class="own-voice-status">@FormatOwnVoiceStatus(ownVoice)</div>
+                </Caption>
+                <Right>
+                    <Toggle IsChecked="@ownVoice.IsEnabled"
+                            IsCheckedChanged="@(_ => OnToggleOwnVoice())"/>
+                </Right>
+            </TileItem>
+            @if (ownVoice.IsEnabled) {
+                @if (m.NotesChatId is { } notesChatId) {
+                    <TileItem Click="@(() => OnRecordSampleClick(notesChatId))">
+                        <Icon><i class="icon-mic-2 text-2xl"></i></Icon>
+                        <Content>
+                            @(ownVoice.HasExplicitSample
+                                ? L.Transcription_OwnVoiceRerecord
+                                : L.Transcription_OwnVoiceRecord)
+                        </Content>
+                        <Right>
+                            <i class="icon-chevron-right text-xl text-03"></i>
+                        </Right>
+                    </TileItem>
+                }
+                @if (ownVoice.HasExplicitSample) {
+                    <TileItem Click="@OnRemoveSampleClick">
+                        <Icon><i class="icon-trash03 text-2xl"></i></Icon>
+                        <Content>@L.Transcription_OwnVoiceRemoveSample</Content>
+                    </TileItem>
+                }
             }
         }
-    }
-    <TileItem Click="@OnDubVoiceClick">
-        <Icon><i class="icon-mic text-2xl"></i></Icon>
-        <Content>@L.Transcription_DubVoice</Content>
-        <Caption>
-            @(m.OwnVoice is { IsEnabled: true }
-                ? L.Transcription_DubVoiceFallbackCaption
-                : L.Transcription_DubVoiceCaption)
-        </Caption>
-        <Right>
-            <span class="text-03">@FormatDubVoice(m)</span>
-            <i class="icon-chevron-right text-xl text-03"></i>
-        </Right>
-    </TileItem>
-</Tile>
+        <TileItem Click="@OnDubVoiceClick">
+            <Icon><i class="icon-mic text-2xl"></i></Icon>
+            <Content>@L.Transcription_DubVoice</Content>
+            <Caption>
+                @(m.OwnVoice is { IsEnabled: true }
+                    ? L.Transcription_DubVoiceFallbackCaption
+                    : L.Transcription_DubVoiceCaption)
+            </Caption>
+            <Right>
+                <span class="text-03">@FormatDubVoice(m)</span>
+                <i class="icon-chevron-right text-xl text-03"></i>
+            </Right>
+        </TileItem>
+    </Tile>
+}
 
 @if (hasSensors && m.EnableIncompleteUI) {
     <TileTopic Topic="@L.Transcription_MicrophoneTopic"/>
@@ -179,19 +181,26 @@
         var isFaceDownMicStopEnabled = await UserSettingsUI.UserAppSettings()
             .Get(x => !(x.IsFaceDownMicStopDisabled ?? false), cancellationToken)
             .ConfigureAwait(false);
-        var defaultDubVoiceId = await GetDefaultDubVoiceId(cancellationToken).ConfigureAwait(false);
-        var ownVoice = await GetOwnVoice(enableIncompleteUI, cancellationToken).ConfigureAwait(false);
+        // Dubbing is an incomplete-UI preview until the Soniox TTS quota is settled, and own-voice
+        // cloning an admin-only one on top of that (20 voices per organization)
+        var showTranslatedVoice = enableIncompleteUI;
+        var defaultDubVoiceId = showTranslatedVoice
+            ? await GetDefaultDubVoiceId(cancellationToken).ConfigureAwait(false)
+            : null;
+        var ownVoice = showTranslatedVoice
+            ? await GetOwnVoice(cancellationToken).ConfigureAwait(false)
+            : null;
         // The sample is recorded in Notes; without that chat there's nowhere to record it, so no row
         var notesChatId = ownVoice is { IsEnabled: true }
             ? (await ChatListUI.NotesChat.Use(cancellationToken).ConfigureAwait(false))?.Id
             : null;
-        return new(languages, enableIncompleteUI, isFaceDownMicStopEnabled, defaultDubVoiceId, ownVoice, notesChatId);
+        return new(languages, enableIncompleteUI, showTranslatedVoice, isFaceDownMicStopEnabled,
+            defaultDubVoiceId, ownVoice, notesChatId);
     }
 
-    private async Task<OwnVoiceStatus?> GetOwnVoice(bool enableIncompleteUI, CancellationToken cancellationToken) {
-        // An admin preview until Soniox raises the voice quota; null hides the whole tile group
+    private async Task<OwnVoiceStatus?> GetOwnVoice(CancellationToken cancellationToken) {
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        if (!(account.IsAdmin && enableIncompleteUI))
+        if (!account.IsAdmin)
             return null;
 
         return await Hub.OwnVoices.GetOwnVoiceStatus(Session, cancellationToken).ConfigureAwait(false);
@@ -290,6 +299,7 @@
     public sealed record Model(
         UserLanguageSettings Languages,
         bool EnableIncompleteUI,
+        bool ShowTranslatedVoice,
         bool IsFaceDownMicStopEnabled,
         string? DefaultDubVoiceId,
         OwnVoiceStatus? OwnVoice,
