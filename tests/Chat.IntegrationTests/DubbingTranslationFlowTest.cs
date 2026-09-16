@@ -212,9 +212,10 @@ public class DubbingTranslationFlowTest(
     }
 
     [Fact(Timeout = 60_000)]
-    public async Task NoDubShouldEndTheMixWithTheOriginal()
+    public async Task SourceInTheListenersLanguageShouldBeServedAsTheOriginalOnly()
     {
-        // arrange - a transcribed source in the listener's language: decided NoDub on the source
+        // arrange - real audio with an English transcript the test keeps open (a recording's own
+        // transcript is dropped once its transcription ends), so the source language decides NoDub
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false);
         var services = Tester.AppServices;
@@ -222,18 +223,29 @@ public class DubbingTranslationFlowTest(
         var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var ct = cts.Token;
-        var sourceId = await Tester.RecordTranscribedUtterance(chatId, Languages.English, cancellationToken: ct);
+        var sourceId = await Tester.RecordVoiceOnlyUtterance(
+            chatId, Languages.English, frameCount: 150, cancellationToken: ct);
         var dubId = StreamId.New(sourceId, Languages.English);
+        var source = Channel.CreateUnbounded<TranscriptDiff>();
+        var pushSourceTask = BackgroundTask.Run(
+            () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
+            ct);
+        source.Writer.TryWrite(Unstable("Hi, how are you today?", language: Languages.English) - Transcript.Empty);
+        await backend.WhenTranscriptPublished(sourceId, ct);
 
-        // act
+        // act - drained while the source is still open: only a source-language decision ends the
+        // mix here, a translation-based one would wait for the source to end
         var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
         var drainStartedAt = CpuTimestamp.Now;
         var frames = await stream!.ToListAsync(ct);
+        var drainedIn = drainStartedAt.Elapsed;
+        source.Writer.Complete();
+        await pushSourceTask.SilentAwait(false);
 
         // assert - the mix is the original alone and ends with it
         frames.Count(x => x.Offset >= TimeSpan.Zero).Should().Be(150, "every original frame, nothing after");
         recorder.GetChunks(dubId.Value).Should().BeEmpty("nothing was synthesized");
-        drainStartedAt.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(2),
+        drainedIn.Should().BeLessThan(TimeSpan.FromSeconds(2),
             "NoDub ends the mix at once, while a transcript miss would take two share waits");
     }
 
@@ -579,7 +591,11 @@ public class DubbingTranslationFlowTest(
     [Fact(Timeout = 60_000)]
     public async Task ShortUtteranceFollowedAtOnceShouldBeHeardInFull()
     {
-        // arrange - 0.6 s of real audio with the same author's next utterance right behind it
+        // arrange - 0.6 s of real audio with the same author's next utterance right behind it. This
+        // goes through the backend's GetAudio, so it proves only that two back-to-back pass-through
+        // mixes of one author lose no frames there: voice-only sources never reach the dub chain, and
+        // the muxer's per-author "latest wins" (the original bug) is guarded by
+        // ListeningStreamMuxerTest.TryRegisterShouldNotMergeDubbedStreamsOfTheSameAuthor
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false);
         var services = Tester.AppServices;
@@ -678,12 +694,13 @@ public class DubbingTranslationFlowTest(
         }
     }
 
-    private static Transcript Unstable(string text, float endTime = 0)
+    private static Transcript Unstable(string text, float endTime = 0, Language? language = null)
     {
         // ~10 chars per second of speech unless the test asks for a specific backlog
         if (endTime <= 0)
             endTime = text.Length * 0.1f;
-        return new Transcript(text, LinearMap.Zero.Append(new Vector2(text.Length, endTime)), [Languages.Russian]);
+        var timeMap = LinearMap.Zero.Append(new Vector2(text.Length, endTime));
+        return new Transcript(text, timeMap, [language ?? Languages.Russian]);
     }
 
     private static Transcript Stable(string text)
