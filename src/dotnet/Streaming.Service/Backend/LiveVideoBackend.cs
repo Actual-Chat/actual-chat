@@ -160,17 +160,21 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     public virtual async Task RegisterMember(ChatId chatId, string sessionId, ApiArray<string> supportedDecoderCodecs, bool isAdmin, CancellationToken cancellationToken)
     {
         var memberInfo = new VideoStreamMemberInfo(supportedDecoderCodecs, SystemClock.Now, isAdmin);
-        await _members.Set(chatId.Value, sessionId, memberInfo).ConfigureAwait(false);
+        var isAdded = await _members.Set(chatId.Value, sessionId, memberInfo).ConfigureAwait(false);
         var allMembers = await SafeGetAll(_members, chatId).ConfigureAwait(false);
         var (activeMembers, staleKeys) = FilterStaleMembers(chatId, allMembers);
 
         Log.LogDebug("RegisterVideoStreamMember({ChatId}): session={SessionId}, codecs=[{Codecs}], active={Active}, stale={Stale}",
             chatId, sessionId, string.Join(", ", supportedDecoderCodecs), activeMembers.Count, staleKeys?.Count ?? 0);
 
+        // Most calls are heartbeats from members already registered with the same codecs;
+        // invalidating on those makes every recording client re-read an identical list.
         var chatState = GetChatState(chatId);
-        chatState.RecomputeCodecs(activeMembers);
-        InvalidateGetVideoStreamMemberCount(chatId);
-        InvalidateGetSupportedDecoderCodecs(chatId);
+        var isCodecListChanged = chatState.RecomputeCodecs(activeMembers);
+        if (isAdded || staleKeys is { Count: > 0 })
+            InvalidateGetVideoStreamMemberCount(chatId);
+        if (isCodecListChanged)
+            InvalidateGetSupportedDecoderCodecs(chatId);
     }
 
     public virtual async Task UnregisterMember(ChatId chatId, string sessionId, CancellationToken cancellationToken)
@@ -180,9 +184,10 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
             var allMembers = await SafeGetAll(_members, chatId).ConfigureAwait(false);
             var (activeMembers, _) = FilterStaleMembers(chatId, allMembers);
             var chatState = GetChatState(chatId);
-            chatState.RecomputeCodecs(activeMembers);
+            var isCodecListChanged = chatState.RecomputeCodecs(activeMembers);
             InvalidateGetVideoStreamMemberCount(chatId);
-            InvalidateGetSupportedDecoderCodecs(chatId);
+            if (isCodecListChanged)
+                InvalidateGetSupportedDecoderCodecs(chatId);
         }
     }
 

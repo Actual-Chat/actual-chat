@@ -74,6 +74,42 @@ public class VideoCodecNegotiationTest(ChatAppHostFixture fixture, ITestOutputHe
         codecs.Should().NotContain("av1"); // alice did not advertise it
     }
 
+    // Every member re-registers on a heartbeat; with several clients that is an
+    // invalidation every couple of seconds, each one an RPC result and a JS interop
+    // call on every recording client, for a list that did not change.
+    [Fact]
+    public async Task HeartbeatShouldNotInvalidateAnUnchangedCodecList()
+    {
+        var (chatId, backend, bob, alice) = await Setup();
+        await backend.RegisterMember(chatId, bob, Everything, false, CancellationToken.None);
+        await backend.RegisterMember(chatId, alice, Everything, false, CancellationToken.None);
+        var codecs = await Computed.Capture(() => backend.GetSupportedCodecs(chatId, CancellationToken.None));
+        var memberCount = await Computed.Capture(
+            () => backend.GetVideoStreamMemberCount(chatId, CancellationToken.None));
+
+        await backend.RegisterMember(chatId, bob, Everything, false, CancellationToken.None);
+        await backend.RegisterMember(chatId, alice, Everything, false, CancellationToken.None);
+
+        codecs.IsConsistent().Should().BeTrue("re-registering the same codecs changes nothing");
+        memberCount.IsConsistent().Should().BeTrue("re-registering an existing member changes nothing");
+    }
+
+    [Fact]
+    public async Task ChangedCapabilitiesShouldStillInvalidateTheCodecList()
+    {
+        var (chatId, backend, bob, alice) = await Setup();
+        await backend.RegisterMember(chatId, bob, Everything, false, CancellationToken.None);
+        await backend.RegisterMember(chatId, alice, Everything, false, CancellationToken.None);
+        var codecs = await Computed.Capture(() => backend.GetSupportedCodecs(chatId, CancellationToken.None));
+
+        await backend.RegisterMember(
+            chatId, alice, new ApiArray<string>(["vp9", "h264"]), false, CancellationToken.None);
+
+        codecs.IsConsistent().Should().BeFalse("alice can no longer decode av1/hevc");
+        var updated = await backend.GetSupportedCodecs(chatId, CancellationToken.None);
+        updated.Should().NotContain("av1");
+    }
+
     private async Task<(ChatId ChatId, ILiveVideoBackend Backend, string Bob, string Alice)> Setup()
     {
         await using var bob = AppHost.NewWebClientTester(Out);

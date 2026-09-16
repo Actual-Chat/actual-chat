@@ -67,7 +67,10 @@ has dropped out of the mesh.
 `GetSupportedCodecs(chatId)` (also `[ComputeMethod]`) recomputes the
 intersection across all members via `ChatState.RecomputeCodecs(activeMembers)`
 on every call, then returns the cached result. Senders use it to pick the
-best mutually-supported codec.
+best mutually-supported codec. `RegisterMember` invalidates it only when
+`RecomputeCodecs` reports a change - a heartbeat that re-registers the same
+codecs used to invalidate it every time, costing every recording client an RPC
+result and a JS interop call per heartbeat per member.
 
 Hysteresis (`ChatState.cs`):
 
