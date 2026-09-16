@@ -24,6 +24,7 @@ public class ReplayDubbingTest(
         var services = Tester.AppServices;
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
         var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        recorder.Clear();
         var entry = await Tester.RecordVoiceEntry(chatId, Languages.Russian);
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var ct = cts.Token;
@@ -55,6 +56,7 @@ public class ReplayDubbingTest(
         var services = Tester.AppServices;
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
         var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        recorder.Clear();
         var entry = await Tester.RecordVoiceEntry(chatId, Languages.Russian);
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var ct = cts.Token;

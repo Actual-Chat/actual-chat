@@ -22,6 +22,7 @@ public class ReplayDubsTest(
         var services = Tester.AppServices;
         var dubs = services.GetRequiredService<ReplayDubs>();
         var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        recorder.Clear();
         var entry = await Tester.RecordVoiceEntry(chatId, Languages.Russian);
         var ct = CancellationToken.None;
 
@@ -52,6 +53,7 @@ public class ReplayDubsTest(
         var dubs = services.GetRequiredService<ReplayDubs>();
         var translations = services.GetRequiredService<ITranslationsBackend>();
         var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        recorder.Clear();
         var entry = await Tester.RecordVoiceEntry(chatId, Languages.Russian);
         var ct = CancellationToken.None;
         var id = TranslationId.New(entry.Id, Languages.English);
@@ -110,6 +112,7 @@ public class ReplayDubsTest(
         var dubs = services.GetRequiredService<ReplayDubs>();
         var mediaBackend = services.GetRequiredService<IMediaBackend>();
         var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        recorder.Clear();
         var commander = services.Commander();
         var entry = await Tester.RecordVoiceEntry(chatId, Languages.Russian);
         var ct = CancellationToken.None;
@@ -142,6 +145,7 @@ public class ReplayDubsTest(
         var services = Tester.AppServices;
         var dubs = services.GetRequiredService<ReplayDubs>();
         var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        recorder.Clear();
         // A longer recording than the other tests', so its text can't collide with theirs in the recorder
         var entry = await Tester.RecordVoiceEntry(chatId, Languages.Russian, frameCount: 300);
         var ct = CancellationToken.None;
@@ -180,6 +184,7 @@ public class ReplayDubsTest(
         var services = Tester.AppServices;
         var dubs = services.GetRequiredService<ReplayDubs>();
         var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        recorder.Clear();
         var pool = services.GetRequiredService<VoicePool>();
         var ct = CancellationToken.None;
         // A longer recording than the other tests', so its text can't collide with theirs in the recorder
@@ -224,6 +229,7 @@ public class ReplayDubsTest(
         var services = Tester.AppServices;
         var dubs = services.GetRequiredService<ReplayDubs>();
         var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        recorder.Clear();
         var entry = await Tester.RecordVoiceEntry(chatId, Languages.Russian, frameCount: 400);
         var ct = CancellationToken.None;
         var id = TranslationId.New(entry.Id, Languages.English);

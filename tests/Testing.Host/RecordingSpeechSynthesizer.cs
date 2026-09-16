@@ -31,6 +31,17 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
             return _chunks.Where(x => x.StreamId == streamId).Select(x => x.Text).ToList();
     }
 
+    public void Clear()
+    {
+        // The recorder outlives the test: a one-shot's id is language + text, and FakeTranscriber
+        // picks one of a few templates per stream, so two tests of the same collection can speak
+        // the same text. A test that counts one-shots forgets what came before it.
+        lock (_lock) {
+            _chunks.Clear();
+            _voiceIds.Clear();
+        }
+    }
+
     public async Task<IReadOnlyList<string>> WhenSpoken(
         string streamId,
         int minChunkCount,
