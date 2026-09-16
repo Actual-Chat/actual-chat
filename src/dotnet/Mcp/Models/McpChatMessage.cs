@@ -11,4 +11,5 @@ public sealed record McpChatMessage(
     bool IsTranscribed,
     bool IsRemoved,
     string Text,
-    McpAttachment[] Attachments);
+    McpAttachment[] Attachments,
+    long? RepliedToId);

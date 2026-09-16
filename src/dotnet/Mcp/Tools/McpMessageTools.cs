@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using ActualChat.Mcp.Auth;
+using ActualChat.Notifications;
 using ModelContextProtocol.Server;
 
 namespace ActualChat.Mcp.Tools;
@@ -12,6 +13,7 @@ public sealed class McpMessageTools(IServiceProvider services)
 
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
+    private IReactions Reactions { get; } = services.GetRequiredService<IReactions>();
     private UrlMapper UrlMapper { get; } = services.GetRequiredService<UrlMapper>();
     private ICommander Commander { get; } = services.Commander();
     private McpSessionAccessor SessionAccessor { get; } = services.GetRequiredService<McpSessionAccessor>();
@@ -19,14 +21,27 @@ public sealed class McpMessageTools(IServiceProvider services)
     private Session Session => SessionAccessor.Session;
 
     [McpServerTool(Name = "post_message", UseStructuredContent = true)]
-    [Description("Post a new text message to a chat. Returns the new entry's local id (LID).")]
+    [Description("Post a new text message to a chat, optionally as a reply and/or with uploaded attachments. " +
+        "Returns the new entry's local id (LID).")]
     public async Task<long> PostMessage(
         [Description("The chat id (e.g. group, peer, or place chat id).")] string chatId,
         [Description("The message text.")] string text,
-        CancellationToken cancellationToken)
+        [Description("LID of the message this one replies to.")] long? replyToId = null,
+        [Description("Media ids from finish_upload to attach, in order.")] string[]? attachmentMediaIds = null,
+        CancellationToken cancellationToken = default)
     {
         var parsedChatId = ChatId.Parse(chatId);
-        var command = new Chats_UpsertEntry { Session = Session, ChatId = parsedChatId, LocalId = null, Text = text };
+        var attachments = (attachmentMediaIds ?? [])
+            .Select((id, index) => new ChatEntryAttachment { MediaId = MediaId.Parse(id), Index = index })
+            .ToArray();
+        var command = new Chats_UpsertEntry {
+            Session = Session,
+            ChatId = parsedChatId,
+            LocalId = null,
+            Text = text,
+            RepliedEntryLid = replyToId is null ? default : replyToId,
+            Attachments = attachments,
+        };
         var entry = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         return entry.LocalId;
     }
@@ -118,18 +133,129 @@ public sealed class McpMessageTools(IServiceProvider services)
             tile = tile.Next();
         }
 
-        var distinctAuthorIds = collected.Select(e => e.AuthorId).Distinct().ToArray();
-        var authorById = new Dictionary<AuthorId, Author?>(distinctAuthorIds.Length);
-        var fetched = await Task.WhenAll(distinctAuthorIds.Select(id =>
-            Authors.Get(Session, parsedChatId, id, cancellationToken)))
-            .ConfigureAwait(false);
-        for (var i = 0; i < distinctAuthorIds.Length; i++)
-            authorById[distinctAuthorIds[i]] = fetched[i];
-
-        var messages = collected.Select(e => e.ToMcpModel(authorById, UrlMapper)).ToArray();
+        var messages = await ToMcpMessages(parsedChatId, collected, cancellationToken).ConfigureAwait(false);
         var rangeOut = messages.Length == 0
             ? new McpIdRange<long>(startLid, startLid - 1)
             : new McpIdRange<long>(messages[0].Id, messages[^1].Id);
         return new McpListMessagesResult(rangeOut, fullRange, messages);
+    }
+
+    [McpServerTool(Name = "pin_message", UseStructuredContent = true)]
+    [Description("Pins a message in the chat.")]
+    public Task PinMessage(
+        [Description("The chat id.")] string chatId,
+        [Description("The message local id (LID).")] long entryId,
+        CancellationToken cancellationToken)
+        => SetPinned(chatId, entryId, true, cancellationToken);
+
+    [McpServerTool(Name = "unpin_message", UseStructuredContent = true)]
+    [Description("Unpins a message in the chat.")]
+    public Task UnpinMessage(
+        [Description("The chat id.")] string chatId,
+        [Description("The message local id (LID).")] long entryId,
+        CancellationToken cancellationToken)
+        => SetPinned(chatId, entryId, false, cancellationToken);
+
+    [McpServerTool(Name = "list_pinned_messages", UseStructuredContent = true)]
+    [Description("Lists the chat's pinned messages.")]
+    public async Task<McpChatMessage[]> ListPinnedMessages(
+        [Description("The chat id.")] string chatId,
+        CancellationToken cancellationToken)
+    {
+        var parsedChatId = ChatId.Parse(chatId);
+        var entryIds = await Chats.ListPinnedEntries(Session, parsedChatId, cancellationToken).ConfigureAwait(false);
+        var entries = await Task.WhenAll(entryIds.Select(id => Chats.GetEntry(Session, id, cancellationToken).AsTask()))
+            .ConfigureAwait(false);
+        var existing = entries.Where(e => e is not null).Cast<ChatEntry>().ToList();
+        return await ToMcpMessages(parsedChatId, existing, cancellationToken).ConfigureAwait(false);
+    }
+
+    [McpServerTool(Name = "react", UseStructuredContent = true)]
+    [Description("Toggles the caller's reaction on a message: adds it, or removes it if the same emoji " +
+        "is already set. `emoji` is the emoji character, e.g. \"👍\".")]
+    public async Task React(
+        [Description("The chat id.")] string chatId,
+        [Description("The message local id (LID).")] long entryId,
+        [Description("The emoji character.")] string emoji,
+        CancellationToken cancellationToken)
+    {
+        var reaction = new Reaction {
+            Id = Symbol.Empty,
+            AuthorId = null!,
+            EntryId = ChatEntryId.New(ChatId.Parse(chatId), entryId),
+            Emoji = Emoji.Parse(emoji),
+        };
+        var command = new Reactions_React { Session = Session, Reaction = reaction };
+        await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+    }
+
+    [McpServerTool(Name = "list_reactions", UseStructuredContent = true)]
+    [Description("Lists reaction summaries on a message: emoji, count and the first reacting author ids.")]
+    public async Task<McpReactionSummary[]> ListReactions(
+        [Description("The chat id.")] string chatId,
+        [Description("The message local id (LID).")] long entryId,
+        CancellationToken cancellationToken)
+    {
+        var parsedEntryId = ChatEntryId.New(ChatId.Parse(chatId), entryId);
+        var summaries = await Reactions.ListSummaries(Session, parsedEntryId, cancellationToken).ConfigureAwait(false);
+        return summaries
+            .Where(s => s.Count > 0)
+            .Select(s => new McpReactionSummary(
+                s.Emoji.Value,
+                s.Count,
+                s.FirstAuthorIds.Select(a => a.Value).ToArray()))
+            .ToArray();
+    }
+
+    [McpServerTool(Name = "notify_members", UseStructuredContent = true)]
+    [Description("Rings all chat members (pushes through mute). Only for private chats " +
+        "with at most 10 members; use sparingly.")]
+    public async Task NotifyMembers(
+        [Description("The chat id.")] string chatId,
+        CancellationToken cancellationToken)
+    {
+        var command = new Notifications_NotifyMembers { Session = Session, ChatId = ChatId.Parse(chatId) };
+        await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+    }
+
+    [McpServerTool(Name = "notify_mentioned", UseStructuredContent = true)]
+    [Description("Rings the members mentioned in one of the caller's own messages (pushes through mute). " +
+        "Mention members in the text as @u:<userId>.")]
+    public async Task NotifyMentioned(
+        [Description("The chat id.")] string chatId,
+        [Description("The message local id (LID).")] long entryId,
+        CancellationToken cancellationToken)
+    {
+        var command = new Notifications_NotifyMentionedMembers {
+            Session = Session,
+            ChatEntryId = ChatEntryId.New(ChatId.Parse(chatId), entryId),
+        };
+        await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private async Task SetPinned(string chatId, long entryId, bool mustPin, CancellationToken cancellationToken)
+    {
+        var command = new Chats_SetPinned {
+            Session = Session,
+            EntryId = ChatEntryId.New(ChatId.Parse(chatId), entryId),
+            MustPin = mustPin,
+        };
+        await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<McpChatMessage[]> ToMcpMessages(
+        ChatId chatId, IReadOnlyList<ChatEntry> entries, CancellationToken cancellationToken)
+    {
+        var distinctAuthorIds = entries.Select(e => e.AuthorId).Distinct().ToArray();
+        var authorById = new Dictionary<AuthorId, Author?>(distinctAuthorIds.Length);
+        var fetched = await Task.WhenAll(distinctAuthorIds.Select(id =>
+            Authors.Get(Session, chatId, id, cancellationToken)))
+            .ConfigureAwait(false);
+        for (var i = 0; i < distinctAuthorIds.Length; i++)
+            authorById[distinctAuthorIds[i]] = fetched[i];
+
+        return entries.Select(e => e.ToMcpModel(authorById, UrlMapper)).ToArray();
     }
 }
