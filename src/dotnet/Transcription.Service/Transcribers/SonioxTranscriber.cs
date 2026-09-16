@@ -72,7 +72,7 @@ public sealed class SonioxTranscriber : ITranscriber
             await SendConfig(sender, apiKey, options, cancellationToken).ConfigureAwait(false);
 
             keepAliveTask = KeepAlive(sender, cts.Token);
-            await TranscriberHelper.WhenPushAndRead(
+            await TaskExt.WhenPushAndRead(
                     PushAudio(sender, audioSource, cts.Token),
                     ReadTranscripts(webSocket, output, audioStreamId, cts.Token),
                     cts)

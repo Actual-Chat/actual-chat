@@ -1,6 +1,6 @@
 using ActualChat.Audio;
 
-namespace ActualChat.Transcription.UnitTests;
+namespace ActualChat.Core.Server.UnitTests.Audio;
 
 public class OpusFramePumpTest
 {

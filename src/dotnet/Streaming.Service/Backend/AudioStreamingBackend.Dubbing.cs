@@ -244,8 +244,16 @@ public partial class AudioStreamingBackend
                 var voiceId = await GetSpeakerVoice(dubStreamId, cancellationToken).ConfigureAwait(false);
                 latencyTrace?.OnVoice(voiceId);
                 var options = new SpeechSynthesisOptions(language, voiceId) { Listener = latencyTrace };
-                await SpeechSynthesizer!
-                    .Synthesize(dubStreamId.Value, text, options, frames.Writer, cancellationToken)
+                var pcm = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions {
+                    SingleReader = true,
+                    SingleWriter = true,
+                });
+                using var pump = new OpusFramePump(Clocks.CpuClock);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                await TaskExt.WhenPushAndRead(
+                        SpeechSynthesizer!.Synthesize(dubStreamId.Value, text, options, pcm.Writer, cts.Token),
+                        pump.Run(pcm.Reader, frames.Writer, cts.Token),
+                        cts)
                     .ConfigureAwait(false);
             }
             catch (Exception e) {

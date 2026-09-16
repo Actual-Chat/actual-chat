@@ -135,7 +135,7 @@ a shared opus-decoder worker, and play back through a single
 | Streaming service (server) | `src/dotnet/Streaming.Service/Services/{LiveAudioStreams,LiveStreamMuxer,ReplayStreamMuxer,AudioSegmentSaver}.cs` |
 | Backend audio | `src/dotnet/Streaming.Service/Backend/{AudioStreamingBackend,LiveAudioBackend}.cs`, `AudioStreamingBackend.ProcessAudio.cs` |
 | Transcribers | `src/dotnet/Streaming.Service/Services/Transcribers/` |
-| Dubbing | `src/dotnet/Streaming.Service/Backend/AudioStreamingBackend.Dubbing.cs`, `Streaming.Service/Audio/DubStabilizer.cs`, `Transcription.Service/Synthesis/`, `Transcription.Service/Transcribers/SonioxTtsClient.cs` |
+| Dubbing | `src/dotnet/Streaming.Service/Backend/AudioStreamingBackend.Dubbing.cs`, `Streaming.Service/Audio/DubStabilizer.cs`, `Transcription.Service/Synthesis/`, `Transcription.Service/Transcribers/SonioxTtsClient.cs`, `Core.Server/Audio/OpusFramePump.cs` |
 | Wire types | `src/dotnet/Api/Audio/{AudioFrame,AudioFormat,ActualOpusStream*}.cs`, `src/dotnet/Api/Live/Live*.cs` |
 | Container converters | `src/dotnet/Api/Audio/{ActualOpus,Ogg,WebM}StreamConverter.cs`, `Api/Audio/Ogg/`, `Api/Audio/WebM/` |
 | VAD | `src/dotnet/Core.Audio/{Onnx,Noop}VoiceActivityDetector.cs`, `…/AudioRecorder/workers/audio-vad*.ts`, `vad_batched.ort` |

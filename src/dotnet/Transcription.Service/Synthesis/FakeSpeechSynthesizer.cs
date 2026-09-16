@@ -4,7 +4,7 @@ using ActualChat.Chat;
 namespace ActualChat.Transcription;
 
 /// <summary>
-/// Speaks one 20 ms frame of silence per four characters, so tests get real pacing without a provider.
+/// Speaks one 20 ms frame's worth of silent PCM per four characters, so tests get real durations without a provider.
 /// </summary>
 public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSynthesizer
 {
@@ -23,22 +23,13 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
     private MomentClockSet Clocks { get; } = services.Clocks();
     private ILogger Log { get; } = services.LogFor<FakeSpeechSynthesizer>();
 
-    public async Task Synthesize(
+    public Task Synthesize(
         string streamId,
         ChannelReader<string> text,
         SpeechSynthesisOptions options,
-        ChannelWriter<AudioFrame> output,
+        ChannelWriter<byte[]> pcm,
         CancellationToken cancellationToken = default)
-    {
-        var pcm = Channel.CreateUnbounded<byte[]>();
-        using var pump = new OpusFramePump(Clocks.CpuClock);
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        await TranscriberHelper.WhenPushAndRead(
-                Push(text, pcm.Writer, options.Listener, cts.Token),
-                pump.Run(pcm.Reader, output, cts.Token),
-                cts)
-            .ConfigureAwait(false);
-    }
+        => Push(text, pcm, options.Listener, cancellationToken);
 
     public Task<AudioSource> Synthesize(
         string text,

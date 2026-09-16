@@ -19,26 +19,6 @@ public static class TranscriberHelper
         return _silenceAudioSource;
     }
 
-    public static async Task WhenPushAndRead(
-        Task pushTask,
-        Task readTask,
-        CancellationTokenSource cancellationTokenSource)
-    {
-        // Both tasks share cancellationTokenSource, so cancelling it stops whichever side still runs.
-        var first = await Task.WhenAny(pushTask, readTask).ConfigureAwait(false);
-        var mustCancel = first.IsFaulted || first == readTask;
-        if (mustCancel)
-            await cancellationTokenSource.CancelAsync().ConfigureAwait(false);
-
-        await pushTask.SilentAwait(false);
-        await readTask.SilentAwait(false);
-        // Whichever side finished first holds the cause; the other one only saw the fallout,
-        // e.g. a write into a connection the server had already torn down.
-        await first.ConfigureAwait(false);
-        if (!mustCancel)
-            await readTask.ConfigureAwait(false);
-    }
-
     public static AudioSource AddSilentPrefixAndSuffix(
         AudioSource audioSource,
         AudioSource silenceAudioSource,

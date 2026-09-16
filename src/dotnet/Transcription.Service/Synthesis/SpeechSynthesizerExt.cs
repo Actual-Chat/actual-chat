@@ -50,7 +50,7 @@ public static class SpeechSynthesizerExt
                 var pcm = Channel.CreateUnbounded<byte[]>(ChannelOptions);
                 using var pump = new OpusFramePump(clocks.CpuClock, isPaced: false);
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                await TranscriberHelper.WhenPushAndRead(
+                await TaskExt.WhenPushAndRead(
                         producePcm.Invoke(pcm.Writer, cts.Token),
                         pump.Run(pcm.Reader, output, cts.Token),
                         cts)

@@ -21,27 +21,15 @@ public sealed class SonioxSpeechSynthesizer(IServiceProvider services) : ISpeech
     private MomentClockSet Clocks { get; } = services.Clocks();
     private ILogger Log { get; } = services.LogFor<SonioxSpeechSynthesizer>();
 
-    public async Task Synthesize(
+    public Task Synthesize(
         string streamId,
         ChannelReader<string> text,
         SpeechSynthesisOptions options,
-        ChannelWriter<AudioFrame> output,
+        ChannelWriter<byte[]> pcm,
         CancellationToken cancellationToken = default)
-    {
-        var pcm = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions {
-            SingleReader = true,
-            SingleWriter = true,
-        });
-        using var pump = new OpusFramePump(Clocks.CpuClock);
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var client = new SonioxTtsClient(Services);
-        await TranscriberHelper.WhenPushAndRead(
-                client.Run(streamId, options.Language.ToSoniox(), GetVoice(options), text, pcm.Writer,
-                    options.Listener, cts.Token),
-                pump.Run(pcm.Reader, output, cts.Token),
-                cts)
-            .ConfigureAwait(false);
-    }
+        => new SonioxTtsClient(Services).Run(
+            streamId, options.Language.ToSoniox(), GetVoice(options), text, pcm,
+            options.Listener, cancellationToken);
 
     public Task<AudioSource> Synthesize(
         string text,

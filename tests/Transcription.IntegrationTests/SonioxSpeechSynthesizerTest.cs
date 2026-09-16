@@ -11,7 +11,7 @@ public sealed class SonioxSpeechSynthesizerTest(ITestOutputHelper @out, ILogger<
     : TranscriberTestBase(@out, log)
 {
     [Fact]
-    public async Task SynthesizerShouldProduceAudibleOpusFrames()
+    public async Task SynthesizerShouldProduceAudiblePcm()
     {
         // arrange
         var services = CreateServices();
@@ -22,25 +22,25 @@ public sealed class SonioxSpeechSynthesizerTest(ITestOutputHelper @out, ILogger<
 
         var synthesizer = new SonioxSpeechSynthesizer(services);
         var text = Channel.CreateUnbounded<string>();
-        var frames = Channel.CreateUnbounded<AudioFrame>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
         text.Writer.TryWrite("Привет, это проверка синтеза речи.");
         text.Writer.Complete();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
         // act
         await synthesizer.Synthesize(
-            "test", text.Reader, new SpeechSynthesisOptions(Languages.Russian), frames.Writer, cts.Token);
-        var result = await frames.Reader.ReadAllAsync().ToListAsync();
+            "test", text.Reader, new SpeechSynthesisOptions(Languages.Russian), pcm.Writer, cts.Token);
+        var result = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
-        WriteLine($"{result.Count} frames = {result.Count * Constants.Audio.OpusFrameDurationMs / 1000.0:F1}s");
-        result.Count.Should().BeGreaterThan(50, "a sentence is more than a second of 20ms frames");
-        for (var i = 0; i < result.Count; i++)
-            result[i].Offset.Should().Be(Constants.Audio.OpusFrameDuration * i);
-
-        using var decoder = new OpusToPcmDecoder();
-        var loudFrameCount = result.Count(f => Rms(decoder.Decode(f.Data.Span)) > 200);
-        loudFrameCount.Should().BeGreaterThan(10, "speech must decode to something well above silence");
+        var byteCount = result.Sum(x => x.Length);
+        var seconds = byteCount / (double)OpusFramePump.FrameByteLength * 0.02;
+        WriteLine($"{result.Count} chunks, {byteCount} bytes = {seconds:F1}s");
+        byteCount.Should().BeGreaterThanOrEqualTo(
+            OpusFramePump.FrameByteLength, "a sentence is at least one 20ms frame");
+        (byteCount % 2).Should().Be(0, "s16le PCM is whole samples");
+        var loudChunkCount = result.Count(chunk => Rms(chunk) > 200);
+        loudChunkCount.Should().BeGreaterThan(0, "speech must be something well above silence");
     }
 
     [Fact]

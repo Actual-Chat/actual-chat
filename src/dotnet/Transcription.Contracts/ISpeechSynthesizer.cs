@@ -15,17 +15,17 @@ public interface ISpeechSynthesisListener
 }
 
 /// <summary>
-/// Speaks a stream of text chunks as 20 ms Opus <see cref="AudioFrame"/>s (48 kHz mono) emitted at
-/// wall-clock pace with contiguous offsets from zero, or one text as a whole, unpaced, as an
-/// <see cref="AudioSource"/>; gaps between chunks come out as silence.
+/// Speaks a stream of text chunks as 48 kHz mono s16le PCM (the caller encodes and paces),
+/// or one text as a whole, unpaced, as an <see cref="AudioSource"/>.
 /// </summary>
 public interface ISpeechSynthesizer
 {
+    // Writes PCM chunks of any size and completes pcm (with the error on failure) once text completes
     Task Synthesize(
         string streamId,
         ChannelReader<string> text,
         SpeechSynthesisOptions options,
-        ChannelWriter<AudioFrame> output,
+        ChannelWriter<byte[]> pcm,
         CancellationToken cancellationToken = default);
 
     Task<AudioSource> Synthesize(

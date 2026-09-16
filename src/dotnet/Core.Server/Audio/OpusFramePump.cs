@@ -1,8 +1,7 @@
-using ActualChat.Audio;
 using OpusSharp.Core;
 using OpusSharp.Core.Extensions;
 
-namespace ActualChat.Transcription;
+namespace ActualChat.Audio;
 
 /// <summary>
 /// Encodes 48 kHz mono PCM into 20 ms Opus <see cref="AudioFrame"/>s emitted at wall-clock pace by default;

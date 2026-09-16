@@ -79,7 +79,7 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
         string streamId,
         ChannelReader<string> text,
         SpeechSynthesisOptions options,
-        ChannelWriter<AudioFrame> output,
+        ChannelWriter<byte[]> pcm,
         CancellationToken cancellationToken = default)
     {
         lock (_lock) {
@@ -88,7 +88,7 @@ public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpe
         }
         var forwarded = Channel.CreateUnbounded<string>();
         var recordTask = ForwardAndRecord(streamId, text, forwarded.Writer, cancellationToken);
-        await Inner.Synthesize(streamId, forwarded.Reader, options, output, cancellationToken).ConfigureAwait(false);
+        await Inner.Synthesize(streamId, forwarded.Reader, options, pcm, cancellationToken).ConfigureAwait(false);
         await recordTask.ConfigureAwait(false);
     }
 

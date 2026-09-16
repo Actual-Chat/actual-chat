@@ -45,13 +45,13 @@ flowchart LR
         TS[("_transcriptStreams<br/>S, S~lang")]
         Stab["DubStabilizer<br/>Decide + Next + Flush"]
         SS["StartSynthesis<br/>header-first memoizer"]
+        Pump["OpusFramePump<br/>PCM to 20 ms Opus, wall-clock paced"]
         AS[("_audioStreams<br/>S, S~lang")]
     end
 
     subgraph TTS["Transcription.Service"]
         Syn["SonioxSpeechSynthesizer"]
         Cli["SonioxTtsClient<br/>1 connection, 1 stream per utterance"]
-        Pump["OpusFramePump<br/>PCM to 20 ms Opus, wall-clock paced"]
     end
 
     Soniox[("Soniox tts-rt-v2<br/>WebSocket")]
@@ -76,13 +76,17 @@ File: `src/dotnet/Transcription.Contracts/ISpeechSynthesizer.cs`.
 
 ```csharp
 Task Synthesize(string streamId, ChannelReader<string> text,
-    SpeechSynthesisOptions options, ChannelWriter<AudioFrame> output,
+    SpeechSynthesisOptions options, ChannelWriter<byte[]> pcm,
     CancellationToken cancellationToken = default);
 ```
 
-Text chunks in, 20 ms Opus `AudioFrame`s (48 kHz mono) out, emitted at
-wall-clock pace with contiguous offsets from zero; a gap between chunks
-comes out as silence. `SpeechSynthesisOptions(Language, VoiceId)` — the
+Text chunks in, 48 kHz mono s16le PCM out — byte chunks of any size, as
+the provider delivers them, no pacing; `pcm` is completed (with the error
+on failure) once `text` completes. The caller encodes and paces: today
+`StartSynthesis` feeds the PCM through an `OpusFramePump`, so the
+published `S~lang` stream is still 20 ms Opus `AudioFrame`s at wall-clock
+pace with contiguous offsets from zero and silence in the gaps; the
+voice-over mix takes the PCM instead. `SpeechSynthesisOptions(Language, VoiceId)` — the
 voice defaults to `TranscriptionSettings.SonioxTtsVoice` (`"Adrian"`)
 when `VoiceId` is null or empty; see [Voice](#voice) for where a
 non-default one comes from. The interface also carries the two
@@ -99,12 +103,12 @@ synthesizer and serves the original.
 
 File: `src/dotnet/Transcription.Service/Transcribers/SonioxTtsClient.cs`.
 
-`SonioxSpeechSynthesizer` composes the client and the pump with
-`TranscriberHelper.WhenPushAndRead`, the same push/read pairing the
-transcribers use. One `Run` opens one `wss://tts-rt.soniox.com/tts-websocket`
+`SonioxSpeechSynthesizer.Synthesize` is `Run` with the options unpacked —
+the client writes straight into the caller's PCM channel. One `Run` opens
+one `wss://tts-rt.soniox.com/tts-websocket`
 connection, lazily on the first chunk, and keeps it for the whole
 utterance; a reader task per connection demultiplexes responses (base64
-PCM goes to the pump's channel as it comes, see
+PCM goes to the channel as it comes, see
 [TTS transport](#tts-transport-pcm-live-opus-on-replay); `terminated` and
 `error_code` complete the stream they name — audio messages carry no
 `stream_id`, so they go to the one open stream). A stream is opened with
@@ -172,7 +176,9 @@ itself from the log.
 
 ### `OpusFramePump` — PCM to paced frames
 
-File: `src/dotnet/Transcription.Service/Synthesis/OpusFramePump.cs`.
+File: `src/dotnet/Core.Server/Audio/OpusFramePump.cs` (next to
+`OpusToPcmDecoder` and `VoiceOverMixer`; the services reference only
+each other's contracts, so shared audio plumbing lives in `Core.Server`).
 
 Encodes 48 kHz mono PCM with OpusSharp (`OPUS_APPLICATION_VOIP`,
 `Constants.Audio.Bitrate` = 32 kbps, VBR, voice signal) into
@@ -185,17 +191,19 @@ stream advances at real time regardless of how bursty Soniox's output is. Once t
 partial tail frame is zero-padded and the loop ends. PCM arrives as byte
 chunks that need not be sample-aligned: a lone trailing byte waits for
 the next chunk to pair up with, unless it is the last byte of the stream.
-The pump serves every PCM producer: `SonioxTtsClient.Run` (the live
-path, paced) and `FakeSpeechSynthesizer`, plus the PCM overload of
+The pump serves every PCM producer: the streaming
+`ISpeechSynthesizer.Synthesize` (Soniox or the fake — `StartSynthesis`
+pairs it with a paced pump via `TaskExt.WhenPushAndRead`, the same
+push/read pairing the transcribers use), plus the PCM overload of
 `SpeechSynthesizerExt.ToAudioSource` (unpaced).
 
 ### TTS transport: PCM live, Opus on replay
 
 The live WebSocket path takes PCM: `SonioxTtsClient.Run` asks Soniox for
 `audio_format: "pcm_s16le"` at 48 000 Hz, and every base64 `audio`
-message goes straight to the `OpusFramePump` the synthesizer pairs it
-with — one Opus encode per dub on the server, ~96 KB/s per dub from
-Soniox. The reason is the first frame: Soniox emits Opus as Ogg pages of
+message goes straight to the caller's PCM channel — one Opus encode per
+dub on the server (the `OpusFramePump` in `StartSynthesis`), ~96 KB/s
+per dub from Soniox. The reason is the first frame: Soniox emits Opus as Ogg pages of
 one second of audio each, so the first frame of every stream landed ~1 s
 later than PCM's ~256 ms chunks do (measured live, two sentences: first
 frame 0.7 s after `Run` started and 0.3 s after the first text was sent,
@@ -490,7 +498,10 @@ atomically, the author coming from `_authorIdByStream`, filled by
 `ProcessAudio` via `RememberAuthorId` — and then reads the speaker's
 voice once (`GetSpeakerVoice` → `SpeakerVoices`, [Voice](#voice)); a
 lookup failure is logged and falls back to the default voice rather than
-failing the dub. A dub outlives its source by the
+failing the dub. The synthesizer's PCM goes through a paced
+`OpusFramePump` into the frame channel (`TaskExt.WhenPushAndRead` ties
+the two, so a fault on either side cancels the other and the frame
+channel carries it). A dub outlives its source by the
 translation lag plus the spoken length, so without the chain an author's
 next utterance would talk over their still-draining previous one.
 
@@ -1634,7 +1645,7 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 
 ## Tests
 
-`tests/Transcription.UnitTests/OpusFramePumpTest.cs`,
+`tests/Core.Server.UnitTests/Audio/OpusFramePumpTest.cs`,
 `tests/Streaming.UnitTests/OggOpusReaderTest.cs` (the captured Soniox
 fixture `data/soniox-tts-sample.opus`, arbitrary chunking, the writer
 round-trip, CRC and packet-duration rejection, the converter and the

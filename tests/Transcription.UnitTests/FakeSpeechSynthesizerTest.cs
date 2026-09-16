@@ -10,19 +10,19 @@ public sealed class FakeSpeechSynthesizerTest
         // arrange
         var synthesizer = new FakeSpeechSynthesizer(CreateServices());
         var text = Channel.CreateUnbounded<string>();
-        var frames = Channel.CreateUnbounded<AudioFrame>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
         text.Writer.TryWrite("12345678");
         text.Writer.Complete();
 
         // act
         await synthesizer.Synthesize(
-            "test", text.Reader, new SpeechSynthesisOptions(Languages.English), frames.Writer);
-        var result = await frames.Reader.ReadAllAsync().ToListAsync();
+            "test", text.Reader, new SpeechSynthesisOptions(Languages.English), pcm.Writer);
+        var result = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
-        result.Should().HaveCount(2, "an 8-char chunk speaks two 20ms frames of silence");
-        result[0].Offset.Should().Be(TimeSpan.Zero);
-        result[1].Offset.Should().Be(Constants.Audio.OpusFrameDuration);
+        var byteCount = result.Sum(x => x.Length);
+        (byteCount / OpusFramePump.FrameByteLength).Should().Be(2, "an 8-char chunk speaks two 20ms frames of silence");
+        (byteCount % OpusFramePump.FrameByteLength).Should().Be(0, "the fake speaks whole frames");
     }
 
     [Fact]
@@ -31,17 +31,17 @@ public sealed class FakeSpeechSynthesizerTest
         // arrange
         var synthesizer = new FakeSpeechSynthesizer(CreateServices());
         var text = Channel.CreateUnbounded<string>();
-        var frames = Channel.CreateUnbounded<AudioFrame>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
         text.Writer.Complete(new InvalidOperationException("boom"));
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
         // act
         var act = () => synthesizer.Synthesize(
-            "test", text.Reader, new SpeechSynthesisOptions(Languages.English), frames.Writer, cts.Token);
+            "test", text.Reader, new SpeechSynthesisOptions(Languages.English), pcm.Writer, cts.Token);
 
         // assert
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*boom*");
-        var readAll = () => frames.Reader.ReadAllAsync().ToListAsync().AsTask();
+        var readAll = () => pcm.Reader.ReadAllAsync().ToListAsync().AsTask();
         await readAll.Should().ThrowAsync<InvalidOperationException>("the output carries the same error");
     }
 
@@ -67,19 +67,21 @@ public sealed class FakeSpeechSynthesizerTest
     {
         // arrange
         var synthesizer = new FakeSpeechSynthesizer(CreateServices());
-        var listener = new RecordingListener();
         var text = Channel.CreateUnbounded<string>();
-        var output = Channel.CreateUnbounded<AudioFrame>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
+        var listener = new RecordingListener(pcm.Reader);
         text.Writer.TryWrite("Hello, world.");
         text.Writer.TryComplete();
         var options = new SpeechSynthesisOptions(Languages.English) { Listener = listener };
 
         // act
-        await synthesizer.Synthesize("s1", text.Reader, options, output.Writer, CancellationToken.None);
+        await synthesizer.Synthesize("s1", text.Reader, options, pcm.Writer, CancellationToken.None);
 
         // assert
         listener.StreamsOpened.Should().Be(1);
         listener.AudioStarts.Should().Be(1);
+        listener.ChunksAtStreamOpened.Should().Be(0, "the stream opens before the first PCM write");
+        listener.ChunksAtAudioStarted.Should().Be(1, "audio starts right after the first PCM write");
     }
 
     private static IServiceProvider CreateServices()
@@ -87,12 +89,23 @@ public sealed class FakeSpeechSynthesizerTest
             .AddSingleton(MomentClockSet.Default)
             .BuildServiceProvider();
 
-    private sealed class RecordingListener : ISpeechSynthesisListener
+    private sealed class RecordingListener(ChannelReader<byte[]> pcm) : ISpeechSynthesisListener
     {
         public int StreamsOpened;
         public int AudioStarts;
+        public int ChunksAtStreamOpened = -1;
+        public int ChunksAtAudioStarted = -1;
 
-        public void OnStreamOpened() => StreamsOpened++;
-        public void OnAudioStarted() => AudioStarts++;
+        public void OnStreamOpened()
+        {
+            StreamsOpened++;
+            ChunksAtStreamOpened = pcm.Count;
+        }
+
+        public void OnAudioStarted()
+        {
+            AudioStarts++;
+            ChunksAtAudioStarted = pcm.Count;
+        }
     }
 }
