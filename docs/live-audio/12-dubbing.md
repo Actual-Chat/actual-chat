@@ -355,7 +355,7 @@ followed, if there is a tail, by the unstable finals+tail one
 Waiting for `is_final` alone put the first dubbed chunk 6–9 s behind the
 speaker, past the muxer's hold, so the builder also **promotes by age**:
 the leading non-final tokens that ended more than
-`Constants.Transcription.Soniox.StableTokenAge` (2.5 s) before the
+`Constants.Transcription.Soniox.StableTokenAge` (1.5 s) before the
 message's `total_audio_proc_ms` are appended to the finals as if they were
 final — Soniox practically never revises a tail token older than ~1 s. A
 promoted span is settled: the tail Soniox re-sends on every message and
@@ -476,7 +476,8 @@ that stream by its delta; `ProcessAudio` logs that delta per stream
 the transcript pipeline in `ProcessAudio` before it is memoized, so every
 lag is stamped on arrival rather than at stream end — `text` is every
 unstable transcript, `stable` every `IsStable` one (Soniox finals or the
-`StableTokenAge` promotion); both are read after the 0.2 s
+`StableTokenAge` promotion, now 1.5 s instead of 2.5 s — the `stable`
+p50 should drop by about a second); both are read after the 0.2 s
 `Constants.Transcription.ThrottlePeriod` pacing, so every `text` lag
 already carries up to that much of it. `DubLatencyTrace`
 (`.../DubLatencyTrace.cs`) sits in `RunDub`: `requested at` is the
@@ -1539,7 +1540,7 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 | `OpusFramePump.FrameLength` / `FrameByteLength` | 960 samples / 1920 bytes | One 20 ms frame at 48 kHz, 16-bit mono |
 | `Constants.Audio.Bitrate` | 32 kbps | Also the `bitrate` `SonioxTtsClient.Generate` requests for its Opus output (the live path takes PCM and encodes here) |
 | `DubStabilizer.MinDecisionLength` | 10 chars | Minimum text before `Decide` commits |
-| `Constants.Transcription.Soniox.StableTokenAge` | 2.5 s | A non-final token that ended this long before `total_audio_proc_ms` is promoted to stable by `SonioxTranscriptBuilder` |
+| `Constants.Transcription.Soniox.StableTokenAge` | 1.5 s | A non-final token that ended this long before `total_audio_proc_ms` is promoted to stable by `SonioxTranscriptBuilder` |
 | `TranscriptionSettings.SonioxTtsVoice` | `"Adrian"` | Stock voice for speakers who picked none (`UserLanguageSettings.DubVoice` empty) |
 | `Constants.Audio.VoiceSampleWindow` | 90 d | How far back a speaker's own recordings are considered for the auto voice sample |
 | `Constants.Audio.VoiceSampleMinEntryDuration` | 5 s | Entries shorter than this don't count toward the auto sample |

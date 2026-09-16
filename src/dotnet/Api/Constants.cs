@@ -286,7 +286,8 @@ public static partial class Constants
             public static readonly double EndpointSensitivity = 0.0; // -1.0...1.0, default = 0.0
             // A non-final token this far behind the processed audio counts as final: dubbing and
             // translation start seconds earlier, at the cost of a rare late correction being lost.
-            public static readonly TimeSpan StableTokenAge = TimeSpan.FromSeconds(2.5);
+            // 1.5 s (was 2.5 s): 2026-09-16 measured a flat 2.7-3.1 s stable lag with no retractions this young.
+            public static readonly TimeSpan StableTokenAge = TimeSpan.FromSeconds(1.5);
             // The end-of-audio frame makes the server finalize everything, so no silent padding
             // is needed to flush the tail - and padding is billed as stream time.
             public static readonly TimeSpan SilentPrefixDuration = TimeSpan.Zero;

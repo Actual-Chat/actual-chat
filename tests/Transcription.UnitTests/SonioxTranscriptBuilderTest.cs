@@ -219,9 +219,10 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     {
         // arrange
         var builder = new SonioxTranscriptBuilder();
+        var stableTokenAgeMs = (long)Constants.Transcription.Soniox.StableTokenAge.TotalMilliseconds;
 
-        // act - the token ended 2 s before the processed position, under StableTokenAge
-        var transcripts = builder.Update([Token("Hello", 0, 500, false)], 2500);
+        // act - the token ended just under StableTokenAge before the processed position
+        var transcripts = builder.Update([Token("Hello", 0, 500, false)], 500 + stableTokenAgeMs - 1);
         var completed = builder.Complete();
 
         // assert
@@ -233,13 +234,18 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     [Fact]
     public void APromotedSpanShouldNotBeAppendedAgain()
     {
-        // arrange
+        // arrange - the boundary sits exactly at "Hello"'s end, so it promotes; 200 ms later
+        // it's still 100 ms short of " world"'s end, so that one stays in the tail
         var builder = new SonioxTranscriptBuilder();
-        builder.Update([Token("Hello", 0, 500, false)], 3000);
+        var stableTokenAgeMs = (long)Constants.Transcription.Soniox.StableTokenAge.TotalMilliseconds;
+        var promotedAtMs = 500 + stableTokenAgeMs;
+        builder.Update([Token("Hello", 0, 500, false)], promotedAtMs);
 
         // act - Soniox re-sends the whole non-final tail, then finalizes it
-        var resent = builder.Update([Token("Hello", 0, 500, false), Token(" world", 500, 800, false)], 3200);
-        var finalized = builder.Update([Token("Hello", 0, 500, true), Token(" world", 500, 800, true)], 3500);
+        var resent = builder.Update([Token("Hello", 0, 500, false), Token(" world", 500, 800, false)],
+            promotedAtMs + 200);
+        var finalized = builder.Update([Token("Hello", 0, 500, true), Token(" world", 500, 800, true)],
+            promotedAtMs + 500);
         var completed = builder.Complete();
 
         // assert
@@ -275,9 +281,10 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     {
         // arrange
         var builder = new SonioxTranscriptBuilder();
+        var stableTokenAgeMs = (long)Constants.Transcription.Soniox.StableTokenAge.TotalMilliseconds;
 
-        // act - the stable boundary is at 500 ms, the token spans 0..600 ms
-        var transcripts = builder.Update([Token("Hello", 0, 600, false)], 3000);
+        // act - the stable boundary is 100 ms before the token's end, which spans 0..600 ms
+        var transcripts = builder.Update([Token("Hello", 0, 600, false)], 500 + stableTokenAgeMs);
         var completed = builder.Complete();
 
         // assert
