@@ -69,6 +69,25 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
         }
     }
 
+    // Protected/internal methods
+
+    // internal for tests
+    internal Dictionary<string, object?> NewRequest(string fileId, TranscriptionOptions options, TimeSpan? duration)
+    {
+        var request = new Dictionary<string, object?> {
+            ["file_id"] = fileId,
+            ["model"] = Model,
+            // Always on, as in SonioxTranscriber: the entry's language reflects the speech
+            ["enable_language_identification"] = true,
+        };
+        // Dictionary values are serialized even when null, and Soniox rejects a null context.
+        if (SonioxContext.Build(options.Context, Info.ContextPolicy, duration) is { } context)
+            request["context"] = context;
+        if (options.GetLanguageHints(SonioxLanguage.ToSoniox) is { Length: > 0 } languageHints)
+            request["language_hints"] = languageHints;
+        return request;
+    }
+
     // Private methods
 
     private async Task<string> UploadAudio(AudioSource audioSource, CancellationToken cancellationToken)
@@ -84,21 +103,10 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
         AudioSource audioSource,
         CancellationToken cancellationToken)
     {
-        var request = new Dictionary<string, object?> {
-            ["file_id"] = fileId,
-            ["model"] = Model,
-            ["enable_language_identification"] = options.DetectLanguage,
-        };
-        // Dictionary values are serialized even when null, and Soniox rejects a null context.
         var duration = audioSource.WhenDurationAvailable.IsCompletedSuccessfully
             ? audioSource.Duration
             : (TimeSpan?)null;
-        if (SonioxContext.Build(options.Context, Info.ContextPolicy, duration) is { } context)
-            request["context"] = context;
-        if (options.GetLanguageHints(SonioxLanguage.ToSoniox) is { Length: > 0 } languageHints)
-            request["language_hints"] = languageHints;
-
-        return Client.CreateTranscription(request, cancellationToken);
+        return Client.CreateTranscription(NewRequest(fileId, options, duration), cancellationToken);
     }
 
     private async Task WaitForCompletion(string transcriptionId, CancellationToken cancellationToken)

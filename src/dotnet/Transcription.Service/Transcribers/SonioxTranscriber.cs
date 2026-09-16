@@ -92,20 +92,22 @@ public sealed class SonioxTranscriber : ITranscriber
         }
     }
 
-    // Private methods
+    // Protected/internal methods
 
-    private async Task SendConfig(
-        Sender sender,
-        string apiKey,
-        TranscriptionOptions options,
-        CancellationToken cancellationToken)
+    // internal for tests
+    internal Dictionary<string, object?> NewConfig(string apiKey, TranscriptionOptions options)
     {
         var policy = Info.ContextPolicy;
         var config = new Dictionary<string, object?> {
             ["api_key"] = apiKey,
             ["model"] = Model,
             ["audio_format"] = "auto",
-            ["enable_language_identification"] = options.DetectLanguage,
+            // Always on, chat language or not: it's the only way tokens carry a language, and
+            // the dub decides on the language Soniox heard while the entry's language must
+            // reflect the speech rather than the chat setting - a Russian message in an English
+            // chat is [ru], translated for the readers and dubbed for the listeners. The
+            // configured language still goes out as the hint.
+            ["enable_language_identification"] = true,
             // Without it nothing is finalized until the stream ends, so Complete() would
             // drop the entire transcript as an unfinalized tail.
             ["enable_endpoint_detection"] = true,
@@ -119,7 +121,18 @@ public sealed class SonioxTranscriber : ITranscriber
         // rather than an empty array. They're never strict, so they only nudge the model.
         if (options.GetLanguageHints(SonioxLanguage.ToSoniox) is { Length: > 0 } languageHints)
             config["language_hints"] = languageHints;
-        var json = JsonSerializer.Serialize(config, JsonOptions);
+        return config;
+    }
+
+    // Private methods
+
+    private async Task SendConfig(
+        Sender sender,
+        string apiKey,
+        TranscriptionOptions options,
+        CancellationToken cancellationToken)
+    {
+        var json = JsonSerializer.Serialize(NewConfig(apiKey, options), JsonOptions);
         await sender
             .Send(Encoding.UTF8.GetBytes(json), WebSocketMessageType.Text, cancellationToken)
             .ConfigureAwait(false);

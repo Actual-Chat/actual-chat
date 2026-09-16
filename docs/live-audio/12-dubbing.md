@@ -282,14 +282,14 @@ skips the wait.
    replays the source transcript and calls
    `DubStabilizer.Decide(source, Transcript.Empty, language)` after each
    diff — the source-only form, which answers as soon as the source
-   carries a language (configured or detected) and ≥ 10 chars of text,
-   stable or not. `NoDub` ends the worker (logged "already in
+   carries a language and ≥ 10 chars of text, stable or not. `NoDub` ends the worker (logged "already in
    {Language}"), the translation wait cancelled; `Dub` calls
    `StartSynthesis` at once, so the TTS connect overlaps the translator's
    first output. Measured before this: `decided +3.2 … 7.7 s` after the
    request, because the decision sat inside the translated loop and, with
-   a configured chat language, needed 10 chars of *stable* translated
-   text. A source that reaches 10 chars with no language at all (a
+   a configured chat language (Soniox then ran without language
+   identification and tagged no token), needed 10 chars of *stable*
+   translated text. A source that reaches 10 chars with no language at all (a
    transcriber that tags none) leaves the decision `Undecided` right
    away rather than holding the dub until the source ends, and step 4
    decides it. If the translation then turns out to be missing after a
@@ -384,11 +384,15 @@ granularity and forcing finals early degrades accuracy.
 The first row is the one that decides in practice, and `RunDub` asks it
 on the source alone (`translated = Transcript.Empty`, which falls through
 the other rows as `Undecided`) before any translated text exists. The
-source languages come from the transcriber: a configured chat language
-is seeded into every Soniox transcript by `SonioxTranscriptBuilder`
-(Soniox tags tokens only when language identification is on, i.e. in
-detect mode, where the tags are what the transcript carries), and Google
-stamps its `LanguageCode` the same way. They ride on the diffs:
+source languages come from the transcriber, and are the languages it
+*heard*: Soniox tags tokens only with `enable_language_identification`
+on, so both Soniox transcribers send it unconditionally — the chat
+language goes out as a `language_hints` nudge, not as a stamp — and
+`SonioxTranscriptBuilder` collects the tags. A Russian message in an
+English chat is therefore `[ru]`: translated for the readers, dubbed for
+the English listeners, `NoDub` for a Russian one; and the entry's stored
+`ChatEntryLanguage` reflects the speech. Google stamps its `LanguageCode`;
+Deepgram in configured mode stamps nothing. They ride on the diffs:
 `TranscriptDiff.Languages` (null = unchanged) is what lets the folded
 source transcript carry them — a text diff alone never did, and the first
 row was dead on the real path.
@@ -1561,9 +1565,9 @@ pages; a first `audio` message shorter than a frame doesn't fire
 `OnAudioStarted`, the one completing the frame does),
 `tests/Transcription.UnitTests/TranscriptDiffTest.cs` (languages and
 stability through a diff),
-`tests/Transcription.UnitTests/SonioxTranscriptBuilderTest.cs` (the
-configured language on the first transcript, detect mode carrying only
-the tags), `tests/Streaming.UnitTests/DubStabilizerTest.cs`,
+`tests/Transcription.UnitTests/SonioxTranscriberConfigTest.cs`
+(language identification on with a configured language, the hints still
+sent), `tests/Streaming.UnitTests/DubStabilizerTest.cs`,
 `tests/Streaming.UnitTests/ListeningStreamMuxerTest.cs` (`MustDub`, the
 re-stamp, the fallback and the merge exemption),
 `tests/Streaming.UnitTests/ListeningStreamMuxerRelayTest.cs` (a real
