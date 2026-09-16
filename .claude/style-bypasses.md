@@ -17,6 +17,13 @@ These hold everywhere and need no per-file entry.
   the paragraph the author meant to point at, and nothing about formatting is
   worth that.
 
+- **An attribute on its own line may be any length** (within the 120-char line
+  limit). The 70-character rule is `csharp_max_attribute_length_for_same_line`:
+  it decides when an attribute may share a line with the member it annotates,
+  not how long an own-line `[Description("…")]` may be. Parameter attributes
+  (`[Description("…")] string chatId`) stay on the parameter's line whatever
+  their length — the MCP tool classes established that convention.
+
 One `##` subheader per file, one bullet per bypassed violation:
 
 ```
