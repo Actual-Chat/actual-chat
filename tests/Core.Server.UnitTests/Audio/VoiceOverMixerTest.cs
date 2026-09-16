@@ -176,6 +176,24 @@ public class VoiceOverMixerTest
         second[1..].Should().AllBeEquivalentTo((short)0);
     }
 
+    [Fact]
+    public void LoneTrailingByteShouldNotCountAsDubAudio()
+    {
+        // arrange
+        var mixer = NewMixer();
+        var pcm = Bytes(Constant(2000, 1));
+
+        // act
+        mixer.AddDubPcm(pcm.AsSpan(0, 1));
+        var hasAudioAfterOneByte = mixer.HasDubAudio;
+        mixer.AddDubPcm(pcm.AsSpan(1, 1));
+        var hasAudioAfterTwoBytes = mixer.HasDubAudio;
+
+        // assert
+        hasAudioAfterOneByte.Should().BeFalse("a lone byte can never become a sample on its own");
+        hasAudioAfterTwoBytes.Should().BeTrue();
+    }
+
     // Private methods
 
     private static VoiceOverMixer NewMixer()

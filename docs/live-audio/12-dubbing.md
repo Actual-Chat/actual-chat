@@ -272,36 +272,42 @@ this mixer instance doesn't itself receive as PCM.
 File: `src/dotnet/Streaming.Service/Audio/VoiceOverMix.cs`, with
 `DubActivity` beside it. One instance per dubbed stream: it decodes the
 original, runs it through a `VoiceOverMixer` with the dub PCM the
-synthesizer writes into `DubPcm`, and encodes once — `Run(output, ct)`
-pairs `Produce` with an unpaced `OpusFramePump` via
-`TaskExt.WhenPushAndRead`, so the output is 20 ms Opus `AudioFrame`s and
-is completed with `Produce`'s error on failure.
+synthesizer writes into `DubPcm`, and encodes once. `Run(output, ct)` is
+a single loop that owns the offsets: it encodes each mixed frame with an
+`OpusFramePump.NewEncoder()` (no pump, no PCM hop) and writes 20 ms Opus
+`AudioFrame`s straight to `output`, which it completes with the error on
+failure (the original's fault reaches the listener as the stream's).
 
 **Clocking.** While the original runs, its frames clock the mix: each
 original frame (the negative-offset header is skipped) is decoded and
-mixed into exactly one output frame with the same offset, no clock
-involved, so the `S~lang` stream lags the `S` stream by the decode +
-mix + encode of a frame and nothing else. The original is a 16 kHz
-recording and the mix runs at 48 kHz (TTS PCM, `PcmFrameLength` = 960
-samples), so the decoder is an `OpusToPcmDecoder(PlaybackSampleRate)` —
-Opus resamples on decode, and a 20 ms packet of any input rate comes out
-as 960 samples. A frame that decodes to nothing is mixed as silence, with
-one warning per stream. Once the original ends, the dub tail is paced by
-`CpuClock`: one frame per `OpusFrameDuration` from the moment the
-original ended, offsets continuing where the original's left off.
+mixed into exactly one output frame carrying the original frame's
+`Offset` verbatim — gaps and all — with no clock involved, so the
+`S~lang` stream lags the `S` stream by the decode + mix + encode of a
+frame and nothing else. The original is a 16 kHz recording and the mix
+runs at 48 kHz (TTS PCM, `PcmFrameLength` = 960 samples), so the decoder
+is an `OpusToPcmDecoder(PlaybackSampleRate)` — Opus resamples on decode,
+and a 20 ms packet of any input rate comes out as 960 samples. A frame
+that decodes to nothing is mixed as silence, with one warning per
+stream. Once the original ends, the dub tail is paced by `CpuClock`: one
+frame per `OpusFrameDuration`, offsets contiguous from the last original
+offset (`last + 20 ms × n`; from 0 with no original). The schedule is
+anchored when the original ends and re-anchored whenever the wait for
+dub audio parked for more than a frame, so a dub arriving late plays at
+20 ms per frame rather than bursting out to catch up with the old
+schedule.
 
-**End rule.** The tick loop runs while there is buffered dub audio, or
-while a synthesis that may still deliver some is pending: `WaitForDub`
-returns true when the mixer holds dub PCM; otherwise it ends the stream
-if `OnSynthesisStarted` was never called (no dub: the mix ends with the
-original) or if `DubPcm` is completed, and blocks on `DubPcm` until the
-next chunk otherwise. So a dub that arrives after the original ended
-still plays, and `OnSynthesisStarted` is what makes the mix outlive the
-original — the worker calls it when it commits to a synthesis, before
-the first chunk. A `DubPcm` completed with an error ends the tail the
-same way as a clean completion: the original stays intact, the dub's
-failure is the worker's to log. With no original (`null`), the mix is
-dub-only on the tick from the start.
+**End rule.** After the original ends the mix always waits for `DubPcm`
+to complete — the worker completes it on every path (no dub, dub done,
+dub failed). `WaitForDub` returns true while the mixer holds dub audio
+(at least one whole sample: a lone trailing byte doesn't count), blocks
+on the channel otherwise, and returns false once it is completed and
+drained. So a dub that arrives after the original ended still plays,
+and nothing is emitted while one is pending. A `DubPcm` completed with
+an error ends the tail like a clean completion — the parked wait throws
+the error, which is caught, logged once at Warning, and the mix goes on
+with what it has: the original stays intact and the output isn't
+faulted. With no original (`null`), the mix is dub-only on the tick from
+the start.
 
 **`DubActivity`** (`src/dotnet/Streaming.Service/Audio/DubActivity.cs`)
 is the per-`(author, language)` "a dub is speaking" signal, shared by
@@ -1769,12 +1775,16 @@ numbers and the line format.
 
 Voice-over: `tests/Core.Server.UnitTests/Audio/VoiceOverMixerTest.cs`
 (the pure mixer) and `tests/Streaming.UnitTests/VoiceOverMixTest.cs`
-(the per-stream pipeline: original frames clock the mix and keep their
-offsets, a 16 kHz original yields one 960-sample frame per frame, the
-dub is summed in and its tail drained on the tick, a dub arriving after
-the original ended still plays, dub-only and no-dub ends, the activity
-ducks the next utterance from its first frame and is marked while the
-dub speaks, the original's failure reaches the output). The signals are
+(the per-stream pipeline: original frames clock the mix and their
+offsets — non-zero start, gaps — pass through verbatim, a 16 kHz
+original yields one 960-sample frame per frame, the dub is summed in and
+its tail drained on the tick with offsets continuing the original's, a
+dub arriving after the original ended still plays and is paced rather
+than burst, a faulted `DubPcm` ends the tail with the original intact, a
+stray trailing byte doesn't hold the tail, dub-only and no-dub ends, the
+activity ducks the next utterance from its first frame and is marked
+while the dub speaks, the original's failure reaches the output). The
+signals are
 tones, not constants — Opus high-passes a constant away — and levels
 are asserted as RMS bands after decoding the whole stream in order,
 since a decoder without history under-delivers on its first frame. The

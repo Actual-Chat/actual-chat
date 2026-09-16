@@ -67,7 +67,7 @@ The per-`S~lang` pipeline, owned by the dub worker.
 - Clocking: **while the original runs, each original frame produces one mixed frame with the same
   `Offset`** (decode → mix → encode; the original's timing passes through). **After the original
   ends**, a 20 ms `CpuClock` tick produces dub-only frames while `HasDubAudio` or synthesis is
-  still running; offsets continue from the original's last offset plus wall-clock elapsed. Nothing
+  still running; offsets continue from the original's last offset, contiguous, 20 ms per tick. Nothing
   is emitted while waiting for dub audio that hasn't arrived (the client schedules by offset).
 - End: the original has ended **and** (no synthesis was started, or synthesis completed and the
   dub buffer drained).

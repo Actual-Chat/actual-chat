@@ -17,7 +17,9 @@ public sealed class VoiceOverMixer
     private float _gain = 1f;
     private int _framesSinceDubAudio;
 
-    public bool HasDubAudio => _dub.Length > 0;
+    public bool HasDubAudio
+        // A lone byte is not a sample: it only becomes one if a next chunk pairs it up
+        => _dub.Length >= sizeof(short);
     public bool IsDubSpeaking { get; private set; }
 
     public VoiceOverMixer(float duckGain, int holdFrameCount, int rampSampleCount)

@@ -16,9 +16,14 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact(Timeout = 20_000)]
     public async Task OriginalFramesShouldClockTheMixAndKeepTheirOffsets()
     {
-        // arrange - 10 frames of original, no dub; the clock never advances
+        // arrange - 4 frames of original with offsets that neither start at zero nor stay contiguous
         using var clock = new TestClock(multiplier: 0);
-        var original = OpusFrames(10, 4000).AsAsyncEnumerable().Memoize();
+        var offsets = new[] { 100, 120, 160, 180 }.Select(ms => TimeSpan.FromMilliseconds(ms)).ToArray();
+        var original = OpusFrames(offsets.Length, 4000)
+            .Select((frame, i) => frame with { Offset = offsets[i] })
+            .ToList()
+            .AsAsyncEnumerable()
+            .Memoize();
         var mix = new VoiceOverMix(original, new DubActivity(), new MomentClockSet(clock), Log);
         var output = Channel.CreateUnbounded<AudioFrame>();
 
@@ -28,8 +33,8 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
         var frames = await output.Reader.ReadAllAsync().ToListAsync();
 
         // assert
-        frames.Should().HaveCount(10);
-        frames.Select(x => x.Offset).Should().Equal(Enumerable.Range(0, 10).Select(i => FrameDuration * i));
+        frames.Should().HaveCount(4);
+        frames.Select(x => x.Offset).Should().Equal(offsets, "the original's offsets pass through verbatim");
         Rms(frames, 1..).Should().BeGreaterThan(2000, "the original passes at full gain");
     }
 
@@ -50,11 +55,8 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         frames.Should().HaveCount(10);
         frames.Select(x => x.Offset).Should().Equal(Enumerable.Range(0, 10).Select(i => FrameDuration * i));
-        using var decoder = new OpusToPcmDecoder(Constants.Audio.PlaybackSampleRate);
-        foreach (var frame in frames)
-            decoder.Decode(frame.Data.Span).Length.Should().Be(Constants.Audio.PcmFrameLength * sizeof(short),
-                "every original frame becomes exactly one 20 ms frame at the playback rate");
-        Rms(frames, 1..).Should().BeGreaterThan(2000, "the original passes at full gain");
+        Rms(frames, 1..).Should().BeGreaterThan(2000, "RMS is what proves the 48 kHz decode: a 16 kHz decode "
+            + "would fill only a third of each frame");
     }
 
     [Fact(Timeout = 20_000)]
@@ -64,7 +66,6 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
         var original = OpusFrames(5, 4000).AsAsyncEnumerable().Memoize();
         var mix = new VoiceOverMix(original, new DubActivity(), TickingClocks, Log);
         var output = Channel.CreateUnbounded<AudioFrame>();
-        mix.OnSynthesisStarted();
         mix.DubPcm.TryWrite(Pcm(10, 500));
         mix.DubPcm.TryComplete();
 
@@ -72,9 +73,10 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
         await mix.Run(output.Writer, CancellationToken.None);
         var frames = await output.Reader.ReadAllAsync().ToListAsync();
 
-        // assert - 5 mixed + 5 dub-only frames, offsets contiguous
+        // assert - 5 mixed + 5 dub-only frames, the tail's offsets continuing the original's
         frames.Should().HaveCount(10);
         frames.Select(x => x.Offset).Should().Equal(Enumerable.Range(0, 10).Select(i => FrameDuration * i));
+        frames[5].Offset.Should().Be(frames[4].Offset + FrameDuration, "the tail continues the last original offset");
         // Opus' first frame after the encoder starts is quieter (lookahead), so frame 1 is the reference
         Rms(frames, 1..2).Should().BeGreaterThan(Rms(frames, 4..5) * 1.5,
             "the original is ducked once the dub has ramped in");
@@ -88,12 +90,13 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
         var original = OpusFrames(2, 4000).AsAsyncEnumerable().Memoize();
         var mix = new VoiceOverMix(original, new DubActivity(), TickingClocks, Log);
         var output = Channel.CreateUnbounded<AudioFrame>();
-        mix.OnSynthesisStarted();
         var runTask = mix.Run(output.Writer, CancellationToken.None);
-        await Task.Delay(200);
+        await WhenEmitted(output, 2);
+        await Task.Delay(100);
 
         // act - nothing beyond the original is emitted while the dub is pending; then it arrives
         var pendingCount = output.Reader.Count;
+        var isRunCompletedWhilePending = runTask.IsCompleted;
         mix.DubPcm.TryWrite(Pcm(1, 8000));
         mix.DubPcm.TryComplete();
         await runTask;
@@ -101,8 +104,55 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
 
         // assert
         pendingCount.Should().Be(2);
+        isRunCompletedWhilePending.Should().BeFalse("the mix waits for the dub channel to complete");
         frames.Should().HaveCount(3);
         frames[2].Offset.Should().Be(FrameDuration * 2, "the dub tail continues the original's offsets");
+    }
+
+    [Fact(Timeout = 20_000)]
+    public async Task TailShouldBePacedAfterALateDub()
+    {
+        // arrange - the dub arrives 300 ms after the original ended, all 10 frames at once
+        var original = OpusFrames(2, 4000).AsAsyncEnumerable().Memoize();
+        var mix = new VoiceOverMix(original, new DubActivity(), TickingClocks, Log);
+        var output = Channel.CreateUnbounded<AudioFrame>();
+        var runTask = mix.Run(output.Writer, CancellationToken.None);
+        await WhenEmitted(output, 2);
+        await Task.Delay(300);
+
+        // act
+        var startedAt = CpuTimestamp.Now;
+        mix.DubPcm.TryWrite(Pcm(10, 8000));
+        mix.DubPcm.TryComplete();
+        await runTask;
+        var elapsed = startedAt.Elapsed;
+        var frames = await output.Reader.ReadAllAsync().ToListAsync();
+
+        // assert - the held-back schedule is rebased, not emitted as a burst
+        frames.Should().HaveCount(12);
+        elapsed.Should().BeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(150),
+            "10 tail frames are 9 ticks of 20 ms, minus scheduling slack");
+    }
+
+    [Fact(Timeout = 20_000)]
+    public async Task FaultedDubShouldEndTheTailWithTheOriginalIntact()
+    {
+        // arrange - the mix is parked waiting for dub audio when the synthesizer fails
+        var original = OpusFrames(2, 4000).AsAsyncEnumerable().Memoize();
+        var mix = new VoiceOverMix(original, new DubActivity(), TickingClocks, Log);
+        var output = Channel.CreateUnbounded<AudioFrame>();
+        var runTask = mix.Run(output.Writer, CancellationToken.None);
+        await WhenEmitted(output, 2);
+        await Task.Delay(100);
+
+        // act
+        mix.DubPcm.TryComplete(new InvalidOperationException("tts down"));
+        await runTask;
+        var frames = await output.Reader.ReadAllAsync().ToListAsync();
+
+        // assert - Run completed cleanly, the output isn't faulted, the original is all there is
+        frames.Should().HaveCount(2);
+        output.Reader.Completion.IsCompletedSuccessfully.Should().BeTrue();
     }
 
     [Fact(Timeout = 20_000)]
@@ -111,7 +161,6 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
         // arrange
         var mix = new VoiceOverMix(null, new DubActivity(), TickingClocks, Log);
         var output = Channel.CreateUnbounded<AudioFrame>();
-        mix.OnSynthesisStarted();
         mix.DubPcm.TryWrite(Pcm(3, 8000));
         mix.DubPcm.TryComplete();
 
@@ -121,16 +170,35 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
 
         // assert
         frames.Should().HaveCount(3);
+        frames.Select(x => x.Offset).Should().Equal(Enumerable.Range(0, 3).Select(i => FrameDuration * i));
         Rms(frames, 1..).Should().BeGreaterThan(4000, "the dub passes at full gain");
     }
 
     [Fact(Timeout = 20_000)]
-    public async Task NoOriginalAndNoSynthesisShouldEndAtOnce()
+    public async Task StrayTrailingByteShouldNotHoldTheTail()
+    {
+        // arrange - two frames of dub and one byte that can never become a sample
+        var mix = new VoiceOverMix(null, new DubActivity(), TickingClocks, Log);
+        var output = Channel.CreateUnbounded<AudioFrame>();
+        mix.DubPcm.TryWrite(Pcm(2, 8000));
+        mix.DubPcm.TryWrite(new byte[1]);
+        mix.DubPcm.TryComplete();
+
+        // act
+        await mix.Run(output.Writer, CancellationToken.None);
+
+        // assert
+        output.Reader.Count.Should().Be(2);
+    }
+
+    [Fact(Timeout = 20_000)]
+    public async Task NoOriginalAndNoDubShouldEndAtOnce()
     {
         // arrange
         using var clock = new TestClock(multiplier: 0);
         var mix = new VoiceOverMix(null, new DubActivity(), new MomentClockSet(clock), Log);
         var output = Channel.CreateUnbounded<AudioFrame>();
+        mix.DubPcm.TryComplete();
 
         // act
         await mix.Run(output.Writer, CancellationToken.None);
@@ -172,7 +240,6 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
         var original = OpusFrames(2, 4000).AsAsyncEnumerable().Memoize();
         var mix = new VoiceOverMix(original, activity, new MomentClockSet(clock), Log);
         var output = Channel.CreateUnbounded<AudioFrame>();
-        mix.OnSynthesisStarted();
         mix.DubPcm.TryWrite(Pcm(2, 8000));
         mix.DubPcm.TryComplete();
         var mixedCount = 0;
@@ -226,6 +293,13 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     // Private methods
+
+    private static async Task WhenEmitted(Channel<AudioFrame> output, int frameCount)
+    {
+        for (var i = 0; i < 200 && output.Reader.Count < frameCount; i++)
+            await Task.Delay(10);
+        output.Reader.Count.Should().Be(frameCount);
+    }
 
     private static List<AudioFrame> OpusFrames(int count, short amplitude)
     {
