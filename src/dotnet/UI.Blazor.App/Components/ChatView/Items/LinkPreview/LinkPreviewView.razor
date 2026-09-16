@@ -18,11 +18,14 @@
 }
 
 @if (m.LocalLink is { CanRender: true }) {
-    <LocalLinkPreview Data="@m.LocalLink"/>
+    <LocalLinkPreview Data="@m.LocalLink" DataMenu="@linkMenuRef"/>
 } else {
     var isLocal = m.LocalLink is { };
     var target = isLocal ? "_self" : "_blank";
-    <a class="link-preview unfocusable @hasThumbnailCls @compactCls" href="@uri" target="@target">
+    <a class="link-preview unfocusable @hasThumbnailCls @compactCls"
+       href="@uri"
+       target="@target"
+       data-menu="@linkMenuRef">
         @RenderMedia()
         <div class="c-info">
             @RenderInfo()
@@ -31,14 +34,6 @@
         <div class="incut"></div>
     </a>
 }
-
-<ButtonRound
-    Class="link-more-btn btn-xs"
-    data-menu="@linkMenuRef"
-    data-menu-trigger="@MenuTrigger.Primary"
-    data-menu-placement="@(FloatingPosition.BottomEnd.ToPositionString())">
-    <i class="icon-more-vertical text-xl"></i>
-</ButtonRound>
 
 <div class="link-buttons">
     <CopyTrigger Tooltip="@uri.ToString()" CopyText="@uri.ToString()">

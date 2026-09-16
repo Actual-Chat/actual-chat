@@ -122,9 +122,9 @@ body.narrow .link-preview.compact .c-description {
     @apply backdrop-brightness-50;
 }
 
-/* Link action buttons (Copy / Forward) — desktop only, revealed on card hover,
+/* Link action buttons (Copy / Share) — desktop only, revealed on card hover,
    overlaying the bottom-right corner (z-20 keeps them above local-link .c-info z-10).
-   On touch/mobile they're replaced by the "more" button (.link-more-btn). */
+   On touch/mobile the link menu opens via long-press (data-menu Secondary trigger). */
 .message-link-preview .link-buttons {
     @apply absolute bottom-2 right-2 z-20;
     @apply flex-x items-center gap-2;
@@ -144,17 +144,6 @@ body.narrow .message-link-preview .link-buttons {
 }
 .message-link-preview .link-buttons .btn-h {
     @apply px-2 min-h-8;
-}
-
-/* "More" button — touch/mobile only, top-right, opens the link menu. */
-.message-link-preview .link-more-btn {
-    @apply absolute top-2 right-2 z-20;
-    @apply hidden;
-}
-body.narrow .message-link-preview .link-more-btn {
-    @apply flex;
-    @apply bg-pal-black-20;
-    @apply text-white;
 }
 
 /* Our Link Preview */
