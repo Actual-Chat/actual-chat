@@ -59,12 +59,13 @@ public class VoiceOverMixerTest
         mixer.AddDubPcm(Bytes(Constant(2000)));
         var original = Constant(1000);
         var output = new short[FrameLength];
-        mixer.Mix(original, output, false);
-        mixer.Mix(original, output, false); // ramp completes here (2 frames)
+        mixer.Mix(original, output, false); // S = 0: the dub frame itself, hold counts from here
+        mixer.Mix(original, output, false); // S = 1: ramp completes here (2 frames)
 
-        // act - HoldFrameCount frames without dub keep the duck, the next one starts the release
+        // act - S = 2..HoldFrameCount (HoldFrameCount - 1 more frames) without dub keep the duck,
+        // the next one (S = HoldFrameCount + 1) starts the release
         var heldGains = new List<short>();
-        for (var i = 0; i < HoldFrameCount; i++) {
+        for (var i = 0; i < HoldFrameCount - 1; i++) {
             mixer.Mix(original, output, false);
             heldGains.Add(output[^1]);
         }
@@ -150,6 +151,29 @@ public class VoiceOverMixerTest
         second[..(FrameLength / 2)].Should().AllBeEquivalentTo((short)2000);
         second[(FrameLength / 2)..].Should().AllBeEquivalentTo((short)0);
         mixer.HasDubAudio.Should().BeFalse();
+    }
+
+    [Fact]
+    public void DubPcmShouldPairAnOddTrailingByteAcrossChunks()
+    {
+        // arrange - FrameLength + 1 samples of dub, split at an odd byte offset: the extra sample's
+        // low byte arrives with the first frame, its high byte arrives in a separate chunk
+        var mixer = NewMixer();
+        var pcm = Bytes(Constant(2000, FrameLength + 1));
+        mixer.AddDubPcm(pcm.AsSpan(0, FrameLength * sizeof(short) + 1));
+        var output = new short[FrameLength];
+
+        // act
+        mixer.Mix(ReadOnlySpan<short>.Empty, output, false);
+        var first = output.ToArray();
+        mixer.AddDubPcm(pcm.AsSpan(FrameLength * sizeof(short) + 1));
+        mixer.Mix(ReadOnlySpan<short>.Empty, output, false);
+        var second = output.ToArray();
+
+        // assert - the first frame is full dub, the second is the odd sample once its byte pairs up, then silence
+        first.Should().AllBeEquivalentTo((short)2000);
+        second[0].Should().Be((short)2000);
+        second[1..].Should().AllBeEquivalentTo((short)0);
     }
 
     // Private methods

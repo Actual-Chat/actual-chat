@@ -35,9 +35,7 @@ public sealed class VoiceOverMixer
     {
         var hasDubFrame = _dub.TryTake(_dubFrame);
         _framesSinceDubAudio = hasDubFrame ? 0 : _framesSinceDubAudio + 1;
-        // _framesSinceDubAudio is 0 on the dub frame itself, so the hold must allow one more
-        // frame than _holdFrameCount for the last dub frame's gap to actually outlive it by that many
-        IsDubSpeaking = isDubSpeakingElsewhere || _framesSinceDubAudio <= _holdFrameCount + 1;
+        IsDubSpeaking = isDubSpeakingElsewhere || _framesSinceDubAudio <= _holdFrameCount;
         var targetGain = IsDubSpeaking ? _duckGain : 1f;
         for (var i = 0; i < FrameLength; i++) {
             if (_gain > targetGain)
