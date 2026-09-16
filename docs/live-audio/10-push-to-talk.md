@@ -75,12 +75,13 @@ isPracticeMode, hasArmedChats, hasLiveIncoming, hasIncomingAnswerWindow)`:
 outside practice mode, the four substantive inputs are the user's toggle
 (`IsHushGestureEnabled`, default on), at least one armed chat, and either live
 incoming voice or a playing listening/replay player for any armed chat
-(`ChatAudioUI.IsAnyPlaying`), or an answer window dated from *incoming* voice
-only (`VoiceActivityUI.SnapshotLastIncomingVoiceAt`, not the merged snapshot
-the reply triggers use — your own utterance opens the reply window but never
-the hush one, so putting the phone face down after talking doesn't mute the
-chat), so the accelerometer/proximity feed only runs while a hush could
-plausibly do something. `GestureActivationPolicy.Route` sends a face-down or
+(`ChatAudioUI.IsAnyPlaying`), or an answer window dated from an *unanswered
+incoming* utterance (`VoiceActivityUI.SnapshotLastUnansweredIncomingVoiceAt`:
+incoming stamps minus the chats where your own voice came later — not the
+merged snapshot the reply triggers use, so neither your own utterance nor
+your reply to theirs leaves a hush window open, and putting the phone face
+down after talking doesn't mute the chat), so the accelerometer/proximity
+feed only runs while a hush could plausibly do something. `GestureActivationPolicy.Route` sends a face-down or
 double-pat (`DoublePat`) fire to `Hush` only when hush is armed, the mic is
 closed and no stop gesture claimed it first — an outgoing mic/camera/screencast
 always wins as `StopReply`, and with the mic open and stop sensing off nothing

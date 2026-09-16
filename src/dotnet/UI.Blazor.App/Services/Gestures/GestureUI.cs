@@ -175,10 +175,10 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                     settings, pttChatIds, lastVoiceAt, now, recencyWindow, isMicOpen, isPracticeMode);
                 var hasLiveIncoming = VoiceActivityUI.HasAnyLiveIncoming(pttChatIds)
                     || ChatAudioUI.IsAnyPlaying(pttChatIds);
-                // Not buttonState.HasAnswerWindow: that one is dated from your own utterance too,
+                // Not buttonState.HasAnswerWindow: that one runs from whichever side spoke last,
                 // and a hush armed by it would fire on the phone being put down after talking.
                 var hasIncomingAnswerWindow = GestureActivationPolicy.HasAnswerWindow(
-                    pttChatIds, VoiceActivityUI.SnapshotLastIncomingVoiceAt(), now, recencyWindow);
+                    pttChatIds, VoiceActivityUI.SnapshotLastUnansweredIncomingVoiceAt(), now, recencyWindow);
                 var mustSenseHush = GestureActivationPolicy.ShouldSenseHush(
                     settings.IsHushGestureEnabled ?? true, isPracticeMode,
                     pttChatIds.Count > 0, hasLiveIncoming, hasIncomingAnswerWindow);

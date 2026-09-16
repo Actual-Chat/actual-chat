@@ -117,6 +117,33 @@ public class VoiceActivitySnapshotTest
     }
 
     [Fact]
+    public void AnAnsweredUtteranceShouldLeaveTheHushWindow()
+    {
+        // arrange
+        var chatA = ChatId.Parse("aaaaaaaaaaaaaaaaaaaa");
+        var chatB = ChatId.Parse("bbbbbbbbbbbbbbbbbbbb");
+        var chatC = ChatId.Parse("cccccccccccccccccccc");
+        var now = Moment.EpochStart + TimeSpan.FromDays(20_000);
+        var incoming = new Dictionary<ChatId, Moment> {
+            [chatA] = now - TimeSpan.FromSeconds(10),
+            [chatB] = now - TimeSpan.FromSeconds(1),
+            [chatC] = now - TimeSpan.FromSeconds(1),
+        };
+        var own = new Dictionary<ChatId, Moment> {
+            [chatA] = now - TimeSpan.FromSeconds(1),
+            [chatB] = now - TimeSpan.FromSeconds(10),
+        };
+
+        // act
+        var unanswered = VoiceActivityUI.DropAnswered(incoming, own);
+
+        // assert
+        unanswered.Should().NotContainKey(chatA, "you spoke last in A - a face-down now is not a hush");
+        unanswered[chatB].Should().Be(now - TimeSpan.FromSeconds(1), "they spoke last in B");
+        unanswered[chatC].Should().Be(now - TimeSpan.FromSeconds(1), "nobody answered C");
+    }
+
+    [Fact]
     public void AnUnheardReplyShouldNotExtendTheOwnVoiceWindow()
     {
         // arrange
