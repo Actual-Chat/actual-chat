@@ -22,8 +22,9 @@ public partial class AudioStreamingBackend
 
     private async Task<bool> EnsureDub(StreamId dubStreamId, CancellationToken cancellationToken)
     {
-        // Publishes the S~lang mix of dubStreamId's base stream unless it's running already; whether a
-        // dub goes into it is decided later by the worker. False only means "no synthesizer here".
+        // Publishes the S~lang mix of dubStreamId's base stream unless it's running already, and returns
+        // once the mix has caught up with what the original had buffered; whether a dub goes into it is
+        // decided later by the worker. False only means "no synthesizer here".
         if (SpeechSynthesizer == null)
             return false;
 
@@ -78,7 +79,12 @@ public partial class AudioStreamingBackend
                 mix.Mixed += latencyTrace.OnMixed;
                 mix.Ducked += latencyTrace.OnDucked;
             }
-            mixTask = PublishMix(dubStreamId, mix, cancellationToken);
+            mixTask = PublishMix(dubStreamId, mix, out var memoizer, cancellationToken);
+            // A listener joining mid-utterance pins its live edge on the published stream as soon as
+            // EnsureDub returns: the frames the original had already buffered must be behind that edge
+            // by then, or the burst replaying them would be served as live audio
+            var caughtUpFrameCount = await mix.WhenCaughtUp.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await WaitForBuffered(memoizer, caughtUpFrameCount + 1, cancellationToken).ConfigureAwait(false);
             whenPublishedSource.TrySetResult();
         }
         catch (Exception e) {
@@ -273,7 +279,11 @@ public partial class AudioStreamingBackend
         return DubDecision.Undecided;
     }
 
-    private Task PublishMix(StreamId dubStreamId, VoiceOverMix mix, CancellationToken cancellationToken)
+    private Task PublishMix(
+        StreamId dubStreamId,
+        VoiceOverMix mix,
+        out AsyncMemoizer<AudioFrame> memoizer,
+        CancellationToken cancellationToken)
     {
         // Header-first: the muxer's GetStream(S~lang) succeeds on the publish, before any frame exists
         var frames = Channel.CreateUnbounded<AudioFrame>(new UnboundedChannelOptions {
@@ -284,7 +294,7 @@ public partial class AudioStreamingBackend
             Data = new ActualOpusStreamHeader(Clocks.ServerClock.Now, AudioSource.DefaultFormat).Serialize(),
             Offset = TimeSpan.FromMilliseconds(-1),
         };
-        var memoizer = frames.Reader.ReadAllAsync(cancellationToken).Prepend(header).Memoize(cancellationToken);
+        memoizer = frames.Reader.ReadAllAsync(cancellationToken).Prepend(header).Memoize(cancellationToken);
         if (!_audioStreams.Publish(dubStreamId, memoizer)) {
             _ = memoizer.DisposeAsync();
             throw StandardError.Internal($"Dub stream #{dubStreamId} is already published.");
@@ -293,6 +303,17 @@ public partial class AudioStreamingBackend
         return BackgroundTask.Run(
             () => mix.Run(frames.Writer, cancellationToken),
             Log, $"Dub #{dubStreamId} mix failed");
+    }
+
+    private static async Task WaitForBuffered(
+        AsyncMemoizer<AudioFrame> memoizer,
+        int producedCount,
+        CancellationToken cancellationToken)
+    {
+        // The mix writes its frames to a channel the published memoizer reads a moment later, so what
+        // the mix has emitted isn't behind the memoizer's tail - the live edge a joiner pins - just yet
+        while (memoizer.ProducedCount < producedCount && !memoizer.IsCompleted)
+            await memoizer.WhenChanged(memoizer.ProducedCount).WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private Task StartSynthesis(

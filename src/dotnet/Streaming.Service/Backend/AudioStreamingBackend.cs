@@ -92,8 +92,10 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
+        // A mix is published before it has caught up with its original, so a request that finds the
+        // stream must still wait for its dub entry; Has is the fast path only once the entry is gone
         if (streamId.Language != null
-            && !_audioStreams.Has(streamId)
+            && (_dubs.ContainsKey(streamId) || !_audioStreams.Has(streamId))
             && !await EnsureDub(streamId, cancellationToken).ConfigureAwait(false))
             return null;
 
@@ -284,6 +286,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
                 return null;
             }
         }
+
         memoizer = await _transcriptStreams.GetMemoizer(streamId, true, cancellationToken).ConfigureAwait(false);
         if (memoizer == null)
             _translatingStreams.TryRemove(streamId, out _);

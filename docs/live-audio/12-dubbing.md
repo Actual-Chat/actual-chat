@@ -295,7 +295,12 @@ runs at 48 kHz (TTS PCM, `PcmFrameLength` = 960 samples), so the decoder
 is an `OpusToPcmDecoder(PlaybackSampleRate)` — Opus resamples on decode,
 and a 20 ms packet of any input rate comes out as 960 samples. A frame
 that decodes to nothing is mixed as silence, with one warning per
-stream. Once the original ends, the dub tail is paced by `CpuClock`: one
+stream. Whatever the original had buffered when `Run` started is
+replayed as a burst (the memoizer's `ProducedCount` at the start, header
+included); `WhenCaughtUp` completes with the number of frames emitted
+once that many items are replayed — at once with nothing buffered, and
+on every exit of `Run` — so the worker knows when the mix has reached
+the original's live edge. Once the original ends, the dub tail is paced by `CpuClock`: one
 frame per `OpusFrameDuration`, offsets contiguous from the last original
 offset (`last + 20 ms × n`; from 0 with no original). The schedule is
 anchored when the original ends and re-anchored whenever the wait for
@@ -345,18 +350,31 @@ File: `src/dotnet/Streaming.Service/Backend/AudioStreamingBackend.Dubbing.cs`
 
 ### `GetAudio(S~lang)` → `EnsureDub`
 
-When the requested id carries a language and `_audioStreams` has no such
-stream, `GetAudio` calls `EnsureDub` before the normal lookup. `EnsureDub`
-adds a `DubEntry` (a `FuncWorker` running `RunDub` + a `WhenPublished`
-task) to `_dubs` once per dub id, starts it, and returns as soon as the
-worker has published `S~lang` — the mix, which begins with the original
-at once. There is no hold and no decision timeout: whether a dub gets
-summed onto the mix is decided later, by the worker, and a listener never
-waits for it. `false` means only "this host has no synthesizer", the one
-case where `GetAudio` returns `null` and the muxer serves the plain
-original. A failure before the publish (the id already published, the
-store stopping) faults `WhenPublished`, so `GetAudio` throws and the muxer
-falls back to the original.
+When the requested id carries a language and either `_dubs` has an entry
+for it or `_audioStreams` has no such stream, `GetAudio` calls
+`EnsureDub` before the normal lookup. `EnsureDub` adds a `DubEntry` (a
+`FuncWorker` running `RunDub` + a `WhenPublished` task) to `_dubs` once
+per dub id, starts it, and returns once the worker has published `S~lang`
+— the mix, which begins with the original at once — **and the mix has
+caught up with the original**: the frames the original had buffered when
+the mix started are replayed as a burst, and `WhenPublished` completes
+only after that burst is behind the published memoizer's tail
+(`VoiceOverMix.WhenCaughtUp`, then `WaitForBuffered` on the memoizer).
+That is what makes a mid-utterance join right: `GetAudio(S~lang,
+SkipToLive)` pins the live edge on the memoizer's tail the moment
+`EnsureDub` returns, so the edge sits past the burst instead of on the
+empty stream, where the whole utterance so far would have been served as
+live audio (the client trims nothing). `_dubs` is consulted before
+`_audioStreams.Has` for the same reason: a second listener arriving while
+the burst is still replaying finds the stream published and must wait for
+the catch-up too; `Has` is the fast path only once the entry is gone.
+There is no hold and no decision timeout: whether a dub gets summed onto
+the mix is decided later, by the worker, and a listener never waits for
+it. `false` means only "this host has no synthesizer", the one case where
+`GetAudio` returns `null` and the muxer serves the plain original. A
+failure before the publish (the id already published, the store stopping)
+faults `WhenPublished`, so `GetAudio` throws and the muxer falls back to
+the original.
 
 One cool-down survives: a synthesis failure marks the synthesizer down
 for every dub for `Constants.Audio.DubSynthesizerDownDelay` (60 s). It no
@@ -385,8 +403,11 @@ utterance rather than a failed TTS stream each.
    `ActualOpusStreamHeader(ServerClock.Now, AudioSource.DefaultFormat)`
    frame at `Offset = -1 ms` prepended to the mix's frame channel,
    memoized and published into `_audioStreams` under `S~lang`, with
-   `VoiceOverMix.Run` started on a background task. `WhenPublished`
-   completes here, and `EnsureDub` returns.
+   `VoiceOverMix.Run` started on a background task. The worker then
+   awaits `mix.WhenCaughtUp` (the buffered original replayed; see the
+   mix's clocking rule) and `WaitForBuffered` (those frames appended to
+   the published memoizer), and only then completes `WhenPublished`, so
+   `EnsureDub` returns with the live edge past the replay burst.
 1. **Wait for the source transcript.** The source transcript is published
    on the first non-empty STT result, which can trail the audio by more
    than the store's `ShareWaitDelay`, so `WaitForSourceTranscript` keeps
@@ -761,16 +782,22 @@ into the muxer's constructor.
   marked resumed). The source's own retry counters are never touched by
   this, so a broken mix cannot exclude a speaker.
 - **Header held, timestamps re-stamped.** The mix's first frame is the
-  header, published a share wait before any audio at most (it used to be
-  seconds, when the stream was the dub alone); with no original at all
-  it sits until the first TTS audio, as before. `ProcessStream` holds it, and
+  header; the original follows it at once when it is already published,
+  and after a share wait at most otherwise — up to `MaxOriginalWaitPasses
+  × ShareWaitDelay` (10 s) for a registered source whose audio is slow to
+  land (it used to be seconds, when the stream was the dub alone); with
+  no original at all it sits until the first TTS audio, as before.
+  `ProcessStream` holds it, and
   when the first data frame arrives stamps `BeginsAt = SourceBeginsAt =
   ServerClock.Now − frame.Offset` on the start info (`StampDubStart`),
   emits `MuxedAudioStreamStart`, then the held header, then the frame. So
   the start item's time is the dub's timeline origin: for a listener
   joining at the start it is when dubbed audio actually started, and for
-  one joining mid-dub (`SkipToLive`, first frame at a non-zero offset)
-  `BeginsAt + Offset` is still now.
+  one joining mid-dub (`SkipToLive`) the first frame is the first one
+  mixed *after* the request — `EnsureDub` returns only once the mix has
+  caught up with what the original had buffered, so the live edge is past
+  the replay burst — at a non-zero offset, and `BeginsAt + Offset` is
+  still now.
 - **Merge exemption.** `TryRegister` runs after `GetStream` and skips the
   per-author merge for dub start infos: the author's next original
   utterance must not evict a dub that is still draining, and the backend
@@ -1790,7 +1817,10 @@ contract with real audio via `Tester.RecordVoiceOnlyUtterance` /
 `RecordTranscribedUtterance`: the mix is served in under 2 s before any
 decision and carries every original frame, a transcribed English source
 for an English listener is the original alone with nothing synthesized,
-and a dub's tail is drained in full after a transcript-only source ends), `tests/Core.UnitTests/Identifiers/CanonicalLanguageTest.cs`,
+a dub's tail is drained in full after a transcript-only source ends, and
+a `SkipToLive` request on a fresh mix of a 150-frame recording gets
+nothing the original had buffered while a plain request afterwards still
+gets every frame), `tests/Core.UnitTests/Identifiers/CanonicalLanguageTest.cs`,
 and the two Soniox spikes `tests/Transcription.IntegrationTests/SonioxTtsClientTest.cs` /
 `SonioxSpeechSynthesizerTest.cs` (the latter also lists the shared-voice
 catalog and synthesizes an MP3 preview in a non-default voice), which

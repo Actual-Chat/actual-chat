@@ -29,6 +29,7 @@ public sealed class VoiceOverMix(
     private readonly short[] _originalPcm = new short[VoiceOverMixer.FrameLength];
     private readonly short[] _mixedPcm = new short[VoiceOverMixer.FrameLength];
     private readonly byte[] _packet = new byte[MaxPacketLength];
+    private readonly TaskCompletionSource<int> _whenCaughtUpSource = TaskCompletionSourceExt.New<int>();
     private bool _isDucked;
     private bool _isMixed;
     private bool _isDecodeFailureLogged;
@@ -40,6 +41,9 @@ public sealed class VoiceOverMix(
     private ILogger Log { get; } = log;
 
     public ChannelWriter<byte[]> DubPcm => _dubPcm.Writer;
+    // Completes with the number of frames emitted so far once the frames the original had buffered
+    // when Run started are replayed - from then on the mix follows the original live - or when Run ends
+    public Task<int> WhenCaughtUp => _whenCaughtUpSource.Task;
 
     public event Action? Ducked;
     public event Action? Mixed;
@@ -47,23 +51,32 @@ public sealed class VoiceOverMix(
     public async Task Run(ChannelWriter<AudioFrame> output, CancellationToken cancellationToken)
     {
         Exception? error = null;
+        var emittedCount = 0;
         try {
             using var decoder = new OpusToPcmDecoder(Constants.Audio.PlaybackSampleRate);
             using var encoder = OpusFramePump.NewEncoder();
             // The tail continues the original's offsets; with no original it starts at zero
             var lastOffset = -FrameDuration;
+            var bufferedCount = Original?.ProducedCount ?? 0;
+            if (bufferedCount == 0)
+                _whenCaughtUpSource.TrySetResult(0);
+            var replayedCount = 0;
             if (Original != null)
                 await foreach (var frame in Original.Replay(cancellationToken).ConfigureAwait(false)) {
-                    if (frame.Offset < TimeSpan.Zero)
-                        continue; // The stream header
-
-                    DecodeInto(decoder, frame);
-                    lastOffset = frame.Offset;
-                    await Emit(encoder, output, hasOriginal: true, frame.Offset, cancellationToken)
-                        .ConfigureAwait(false);
+                    // A negative offset is the stream header: replayed, not mixed
+                    if (frame.Offset >= TimeSpan.Zero) {
+                        DecodeInto(decoder, frame);
+                        lastOffset = frame.Offset;
+                        await Emit(encoder, output, hasOriginal: true, frame.Offset, cancellationToken)
+                            .ConfigureAwait(false);
+                        emittedCount++;
+                    }
+                    if (++replayedCount == bufferedCount)
+                        _whenCaughtUpSource.TrySetResult(emittedCount);
                 }
 
             // The original is over: the dub tail is paced by the clock from here on
+            _whenCaughtUpSource.TrySetResult(emittedCount);
             var tickStartedAt = Clock.Now;
             var tickIndex = 0;
             while (await WaitForDub(cancellationToken).ConfigureAwait(false)) {
@@ -86,6 +99,7 @@ public sealed class VoiceOverMix(
             throw;
         }
         finally {
+            _whenCaughtUpSource.TrySetResult(emittedCount);
             output.TryComplete(error);
         }
     }

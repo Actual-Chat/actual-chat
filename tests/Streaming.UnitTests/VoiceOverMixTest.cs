@@ -40,6 +40,39 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact(Timeout = 20_000)]
+    public async Task WhenCaughtUpShouldCompleteOnceTheBufferedOriginalIsReplayed()
+    {
+        // arrange - a live original with a header and 3 frames already buffered when the mix starts
+        using var clock = new TestClock(multiplier: 0);
+        var source = Channel.CreateUnbounded<AudioFrame>();
+        source.Writer.TryWrite(new AudioFrame { Data = Array.Empty<byte>(), Offset = TimeSpan.FromMilliseconds(-1) });
+        var frames = OpusFrames(5, 4000);
+        foreach (var frame in frames.Take(3))
+            source.Writer.TryWrite(frame);
+        var original = source.Reader.Memoize();
+        for (var i = 0; i < 100 && original.ProducedCount < 4; i++)
+            await Task.Delay(10);
+        original.ProducedCount.Should().Be(4);
+        var mix = new VoiceOverMix(original, new DubActivity(), new MomentClockSet(clock), Log);
+        var output = Channel.CreateUnbounded<AudioFrame>();
+        mix.DubPcm.TryComplete();
+
+        // act
+        var runTask = mix.Run(output.Writer, CancellationToken.None);
+        var caughtUpFrameCount = await mix.WhenCaughtUp.WaitAsync(TimeSpan.FromSeconds(5));
+        var isRunCompletedAtCatchUp = runTask.IsCompleted;
+        foreach (var frame in frames.Skip(3))
+            source.Writer.TryWrite(frame);
+        source.Writer.Complete();
+        await runTask;
+
+        // assert
+        caughtUpFrameCount.Should().Be(3, "the header is replayed but not mixed");
+        isRunCompletedAtCatchUp.Should().BeFalse("the mix goes on following the live original");
+        output.Reader.Count.Should().Be(5);
+    }
+
+    [Fact(Timeout = 20_000)]
     public async Task RecordingRateOriginalShouldYieldOnePlaybackRateFramePerFrame()
     {
         // arrange - the original is a 16 kHz recording, the mix runs at 48 kHz

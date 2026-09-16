@@ -168,6 +168,35 @@ public class DubbingTranslationFlowTest(
         frames.Count(x => x.Offset >= TimeSpan.Zero).Should().Be(20, "every original frame is mixed through");
     }
 
+    [Fact(Timeout = 60_000)]
+    public async Task MidUtteranceJoinerShouldNotHearTheStartOfTheUtterance()
+    {
+        // arrange - 150 frames of real audio are buffered before anyone asks for the mix
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        var sourceId = await Tester.RecordVoiceOnlyUtterance(
+            chatId, Languages.Russian, frameCount: 150, cancellationToken: ct);
+        var dubId = StreamId.New(sourceId, Languages.English);
+
+        // act - the first request pins the live edge on a fresh mix; a replay request follows
+        var live = await backend.GetAudio(dubId, Constants.Audio.SkipToLive, ct);
+        var liveFrames = await live!.ToListAsync(ct);
+        var whole = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+        var wholeFrames = await whole!.ToListAsync(ct);
+
+        // assert - the mix replays the buffered original before the request returns, so the live edge
+        // is past it: nothing the original had already buffered is served as live audio
+        var liveEdge = Constants.Audio.OpusFrameDuration * 150;
+        liveFrames[0].Offset.Should().Be(TimeSpan.FromMilliseconds(-1), "the first frame is the stream header");
+        liveFrames.Skip(1).Should().OnlyContain(x => x.Offset >= liveEdge,
+            "a joiner must not get the start of the utterance replayed as live audio");
+        wholeFrames.Count(x => x.Offset >= TimeSpan.Zero).Should().Be(150, "the mix itself has every frame");
+    }
+
     [Fact(Timeout = 90_000)]
     public async Task DubTailShouldBeDrainedAfterTheSourceEnds()
     {
