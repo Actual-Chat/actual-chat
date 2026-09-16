@@ -47,6 +47,39 @@ public class MultiUserAccessTest(McpCollection.AppHostFixture fixture, ITestOutp
         await AssertCanPost(bobMcp, peerChatId);
     }
 
+    [Fact]
+    public async Task OutsiderShouldNotManageAPrivateChat()
+    {
+        // arrange
+        var alice = await Tester.SignInAsUniqueAlice();
+        var bob = await Tester.SignInAsUniqueBob();
+        var bobKey = await IssueApiKey("bob");
+        await Tester.SignIn(alice);
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: false, title: "AliceOnly");
+        var entry = await Tester.CreateTextEntry(chatId, "mine");
+        await using var bobMcp = await CreateClientWithRawKey(bobKey);
+
+        // act
+        var updateError = await CallToolExpectingError(bobMcp, "update_chat",
+            new { chatId = chatId.Value, title = "Hijacked" });
+        var addError = await CallToolExpectingError(bobMcp, "add_members",
+            new { chatId = chatId.Value, userIds = new[] { bob.Id.Value } });
+        var pinError = await CallToolExpectingError(bobMcp, "pin_message",
+            new { chatId = chatId.Value, entryId = entry.LocalId });
+        var inviteError = await CallToolExpectingError(bobMcp, "create_invite_link",
+            new { chatId = chatId.Value });
+        var members = await CallTool<McpListMembersResult>(bobMcp, "list_members", new { chatId = chatId.Value });
+
+        // assert
+        updateError.Should().NotBeEmpty();
+        addError.Should().NotBeEmpty();
+        pinError.Should().NotBeEmpty();
+        inviteError.Should().NotBeEmpty();
+        members.Members.Should().BeEmpty("members are hidden without the SeeMembers permission");
+        var chat = await Tester.Chats.Get(Tester.Session, chatId, CancellationToken.None);
+        chat!.Title.Should().Be("AliceOnly");
+    }
+
     private static async Task AssertCanPost(McpClient mcp, ChatId chatId)
     {
         var result = await mcp.CallToolAsync("post_message", new Dictionary<string, object?> {

@@ -139,7 +139,8 @@ public sealed class McpMediaTools(IServiceProvider services)
 
     [McpServerTool(Name = "list_media", UseStructuredContent = true)]
     [Description("Lists photos and videos posted in a chat, newest period (month) first. Omit `periodKey` " +
-        "for the newest period; use `nextPeriodKey` to go older and `pageIndex` < `pageCount` to page within a period.")]
+        "for the newest period; use `nextPeriodKey` to go older and `pageIndex` < `pageCount` to page " +
+        "within a period.")]
     public Task<McpContentPage<McpMediaItem>> ListMedia(
         [Description("The chat id.")] string chatId,
         [Description("Period key from a previous result.")] string? periodKey = null,
