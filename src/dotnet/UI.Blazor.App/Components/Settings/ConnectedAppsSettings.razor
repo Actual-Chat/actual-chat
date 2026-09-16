@@ -7,23 +7,28 @@
 <TileTopic Topic="@L.ConnectedApps_Title"/>
 
 @if (m.Grants.Count == 0) {
-    <Tile Class="api-key-tile"><TileItem IsHoverable="false"><Content><span class="c-empty">@L.ConnectedApps_Empty</span></Content></TileItem></Tile>
+    <Tile Class="connected-apps-tile"><TileItem IsHoverable="false"><Content><span class="c-empty">@L.ConnectedApps_Empty</span></Content></TileItem></Tile>
 } else {
-    <Tile Class="api-key-tile">
+    <Tile Class="connected-apps-tile">
         @foreach (var grant in m.Grants) {
             <TileItem IsHoverable="false">
                 <Content>
-                    <div class="c-key-info">
-                        <span class="c-key-name">@grant.ClientName</span>
-                    </div>
-                    <div class="c-deactivate">
+                    <span class="c-app-name">@grant.ClientName</span>
+                    <div class="c-revoke">
                         <ButtonRound Class="btn-sm btn-danger" Tooltip="@L.ConnectedApps_Revoke" Click="@(() => OnRevokeClick(grant))">
                             <i class="icon-trash03 text-xl"></i>
                         </ButtonRound>
                     </div>
                 </Content>
                 <Caption>
-                    <span class="c-key-expires">@L.ConnectedApps_Connected_Format(FormatDate(grant.CreatedAt)) · @L.ConnectedApps_LastUsed_Format(FormatDate(grant.LastUsedAt))</span>
+                    <dl class="c-facts">
+                        <dt>@L.ConnectedApps_Connected</dt>
+                        <dd>@FormatDate(grant.CreatedAt)</dd>
+                        <dt>@L.ConnectedApps_LastUsed</dt>
+                        <dd>@FormatDate(grant.LastUsedAt)</dd>
+                        <dt>@L.ConnectedApps_Access</dt>
+                        <dd>@string.Join(" · ", grant.Scopes.Select(L.OAuthScopeText))</dd>
+                    </dl>
                 </Caption>
             </TileItem>
             @if (grant != m.Grants[^1]) {

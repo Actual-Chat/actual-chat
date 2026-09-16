@@ -147,10 +147,9 @@ public static class LocalizedStringsLocalizerExt
         public string ApiKeys_DeactivateAllTitle => l["ApiKeys_DeactivateAllTitle"].Value;
         public string ConnectedApps_Title => l["ConnectedApps_Title"].Value;
         public string ConnectedApps_Empty => l["ConnectedApps_Empty"].Value;
-        public string ConnectedApps_Connected_Format(object arg0)
-            => l["ConnectedApps_Connected_Format", arg0].Value;
-        public string ConnectedApps_LastUsed_Format(object arg0)
-            => l["ConnectedApps_LastUsed_Format", arg0].Value;
+        public string ConnectedApps_Connected => l["ConnectedApps_Connected"].Value;
+        public string ConnectedApps_LastUsed => l["ConnectedApps_LastUsed"].Value;
+        public string ConnectedApps_Access => l["ConnectedApps_Access"].Value;
         public string ConnectedApps_Revoke => l["ConnectedApps_Revoke"].Value;
         public string ConnectedApps_RevokeConfirm_Format(object arg0)
             => l["ConnectedApps_RevokeConfirm_Format", arg0].Value;
@@ -1325,7 +1324,7 @@ public static class LocalizedStringsLocalizerExt
         public string OAuthConsent_Loopback => l["OAuthConsent_Loopback"].Value;
         public string OAuthConsent_Scope_Mcp => l["OAuthConsent_Scope_Mcp"].Value;
         public string OAuthConsent_Scope_OfflineAccess => l["OAuthConsent_Scope_OfflineAccess"].Value;
-        public string OAuthConsent_SignedInAs_Format(object arg0) => l["OAuthConsent_SignedInAs_Format", arg0].Value;
+        public string OAuthConsent_SignedInAs => l["OAuthConsent_SignedInAs"].Value;
         public string OAuthConsent_Approve => l["OAuthConsent_Approve"].Value;
         public string OAuthConsent_Deny => l["OAuthConsent_Deny"].Value;
         public string OAuthConsent_UnknownClient => l["OAuthConsent_UnknownClient"].Value;
