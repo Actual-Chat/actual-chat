@@ -23,6 +23,18 @@
   "Error_MediaNotFound": "Файл не найден.",
   "Error_UploadNotFound": "Загрузка не найдена.",
 
+  // Connection errors
+  "Error_ConnectTimeout": "Не удалось подключиться к серверу: время ожидания истекло.",
+  "Error_ConnectTimeout_Format": "Не удалось подключиться к серверу: время ожидания истекло ({timeout}).",
+  "Error_CallTimeout": "Сервер не ответил вовремя.",
+  "Error_CallTimeout_Format": "Сервер не ответил вовремя ({timeout}).",
+  "Error_DelayTimeout_Format": "Сервер не ответил вовремя ({timeout}), отложенный запрос отменён.",
+  "Error_PrematureDisconnect": "Соединение неожиданно закрылось.",
+  "Error_ServerUnreachable": "Не удалось подключиться: сервер недоступен.",
+  "Error_NotConnected": "Запрос не выполнен: нет подключения к серверу.",
+  "Error_DisconnectedDuringCall": "Запрос не выполнен: соединение с сервером потеряно.",
+  "Error_ReconnectedToDifferentServer": "Запрос не выполнен: произошло переподключение к другому серверу.",
+
   // Sign-in and account
   "Error_RegistrationExpired": "Срок действия этого запроса на регистрацию истёк. Попробуйте войти ещё раз.",
   "Error_SessionExpired": "Сессия истекла или отключена. Перезапустите приложение.",

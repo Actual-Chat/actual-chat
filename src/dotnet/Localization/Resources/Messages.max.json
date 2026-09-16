@@ -34,6 +34,19 @@
   "Error_MediaNotFound": "Nie znaleziono pliku multimedialnego.",
   "Error_UploadNotFound": "アップロードが見つかりません。",
 
+  // Connection errors, composed by ActualLab.Rpc on the client while offline or on a flaky link.
+  // {timeout} arrives preformatted by the client ("20s", "1m 30s") - it is not a number to inflect.
+  "Error_ConnectTimeout": "Не удалось подключиться к серверу: время ожидания истекло.",
+  "Error_ConnectTimeout_Format": "Не удалось подключиться к серверу: время ожидания истекло ({timeout}).",
+  "Error_CallTimeout": "サーバーが時間内に応答しませんでした。",
+  "Error_CallTimeout_Format": "サーバーが時間内に応答しませんでした（{timeout}）。",
+  "Error_DelayTimeout_Format": "Der Server hat nicht rechtzeitig geantwortet ({timeout}), die verzögerte Anfrage wurde abgebrochen.",
+  "Error_PrematureDisconnect": "La connessione è stata chiusa prematuramente.",
+  "Error_ServerUnreachable": "Verbindung nicht möglich: Der Server ist nicht erreichbar.",
+  "Error_NotConnected": "Outbound call failed: not connected and AwaitForConnection is not set.",
+  "Error_DisconnectedDuringCall": "Anfrage fehlgeschlagen: Die Verbindung zum Server wurde unterbrochen.",
+  "Error_ReconnectedToDifferentServer": "Anfrage fehlgeschlagen: Es wurde eine Verbindung zu einem anderen Server hergestellt.",
+
   // Sign-in and account
   "Error_RegistrationExpired": "Срок действия этого запроса на регистрацию истёк. Попробуйте войти ещё раз.",
   "Error_SessionExpired": "セッションの期限が切れたか、無効になりました。アプリを再起動してください。",

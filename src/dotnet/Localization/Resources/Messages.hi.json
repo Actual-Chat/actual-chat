@@ -23,6 +23,18 @@
   "Error_MediaNotFound": "फ़ाइल नहीं मिली।",
   "Error_UploadNotFound": "अपलोड नहीं मिला।",
 
+  // Connection errors
+  "Error_ConnectTimeout": "सर्वर से कनेक्ट करते समय समय सीमा समाप्त हो गई।",
+  "Error_ConnectTimeout_Format": "सर्वर से कनेक्ट करते समय समय सीमा समाप्त हो गई ({timeout})।",
+  "Error_CallTimeout": "सर्वर ने समय पर जवाब नहीं दिया।",
+  "Error_CallTimeout_Format": "सर्वर ने समय पर जवाब नहीं दिया ({timeout})।",
+  "Error_DelayTimeout_Format": "सर्वर ने समय पर जवाब नहीं दिया ({timeout}), लंबित अनुरोध रद्द कर दिया गया।",
+  "Error_PrematureDisconnect": "कनेक्शन समय से पहले बंद हो गया।",
+  "Error_ServerUnreachable": "कनेक्ट नहीं हो सका: सर्वर उपलब्ध नहीं है।",
+  "Error_NotConnected": "अनुरोध विफल रहा: सर्वर से कनेक्शन नहीं है।",
+  "Error_DisconnectedDuringCall": "अनुरोध विफल रहा: सर्वर से कनेक्शन टूट गया।",
+  "Error_ReconnectedToDifferentServer": "अनुरोध विफल रहा: किसी दूसरे सर्वर से कनेक्ट हो गया।",
+
   // Sign-in and account
   "Error_RegistrationExpired": "यह पंजीकरण अनुरोध समाप्त हो चुका है। कृपया फिर से साइन इन करें।",
   "Error_SessionExpired": "आपका सत्र समाप्त हो चुका है या बंद कर दिया गया है। कृपया ऐप फिर से शुरू करें।",

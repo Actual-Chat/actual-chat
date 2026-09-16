@@ -23,6 +23,18 @@
   "Error_MediaNotFound": "Файл не знайдено.",
   "Error_UploadNotFound": "Завантаження не знайдено.",
 
+  // Connection errors
+  "Error_ConnectTimeout": "Не вдалося підключитися до сервера: час очікування минув.",
+  "Error_ConnectTimeout_Format": "Не вдалося підключитися до сервера: час очікування минув ({timeout}).",
+  "Error_CallTimeout": "Сервер не відповів вчасно.",
+  "Error_CallTimeout_Format": "Сервер не відповів вчасно ({timeout}).",
+  "Error_DelayTimeout_Format": "Сервер не відповів вчасно ({timeout}), відкладений запит скасовано.",
+  "Error_PrematureDisconnect": "З’єднання несподівано закрилося.",
+  "Error_ServerUnreachable": "Не вдалося підключитися: сервер недоступний.",
+  "Error_NotConnected": "Запит не виконано: немає підключення до сервера.",
+  "Error_DisconnectedDuringCall": "Запит не виконано: з’єднання із сервером втрачено.",
+  "Error_ReconnectedToDifferentServer": "Запит не виконано: відбулося перепідключення до іншого сервера.",
+
   // Sign-in and account
   "Error_RegistrationExpired": "Термін дії цього запиту на реєстрацію минув. Спробуйте увійти ще раз.",
   "Error_SessionExpired": "Сесія завершилася або вимкнена. Перезапустіть застосунок.",

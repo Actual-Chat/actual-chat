@@ -1,7 +1,9 @@
 using System.Text.RegularExpressions;
 using ActualChat.Localization;
 using ActualChat.UI.Blazor.App.Services;
+using ActualLab.Rpc;
 using ActualLab.Versioning;
+using RpcErrors = ActualLab.Rpc.Internal.Errors;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
@@ -23,6 +25,9 @@ public class ServerErrorLocalizationTest
     // Errors raised by ActualLab live in another repository and can never be found here -
     // those keys are anchored by Composed, which runs the real constructor instead.
     private static readonly Regex ErrorRaiserRe = new(@"StandardError\.|throw new |Exception\(");
+    // The app talks to the server over the default client peer, whose remote party name is "server"
+    private static readonly RpcRef ClientRef = RpcRef.GetDefaultRef();
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(20);
     private static readonly (string Message, string Key)[] Composed = [
         (StandardError.NotEnoughPermissions().Message, "Error_NotEnoughPermissions"),
         (ChatPermissionsExt.NotEnoughPermissions(ChatPermissions.Write).Message, "Error_NotEnoughPermissions_Format"),
@@ -40,6 +45,16 @@ public class ServerErrorLocalizationTest
         (StandardError.NotFound<Contacts.Contact>().Message, "Error_ContactNotFound"),
         (StandardError.NotFound<Media.Media>().Message, "Error_MediaNotFound"),
         (StandardError.NotFound<Upload>().Message, "Error_UploadNotFound"),
+        (RpcErrors.ConnectTimeout(ClientRef).Message, "Error_ConnectTimeout"),
+        (RpcErrors.ConnectTimeout(ClientRef, Timeout).Message, "Error_ConnectTimeout_Format"),
+        (RpcErrors.CallTimeout(ClientRef).Message, "Error_CallTimeout"),
+        (RpcErrors.CallTimeout(ClientRef, Timeout).Message, "Error_CallTimeout_Format"),
+        (RpcErrors.DelayTimeout(ClientRef, Timeout).Message, "Error_DelayTimeout_Format"),
+        (RpcErrors.PrematureDisconnect().Message, "Error_PrematureDisconnect"),
+        (RpcReconnectFailedException.ReconnectFailed(ClientRef).Message, "Error_ServerUnreachable"),
+        (RpcErrors.OutboundCallFailedNoConnection().Message, "Error_NotConnected"),
+        (RpcErrors.OutboundCallFailedCannotReconnect().Message, "Error_DisconnectedDuringCall"),
+        (RpcErrors.OutboundCallFailedCannotResend().Message, "Error_ReconnectedToDifferentServer"),
     ];
     // The two permission messages above wrap a literal that does live in the source, so the scan
     // below still anchors them - just to the part StandardError.NotEnoughPermissions was given.

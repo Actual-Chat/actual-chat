@@ -23,6 +23,18 @@
   "Error_MediaNotFound": "Fichier introuvable.",
   "Error_UploadNotFound": "Téléversement introuvable.",
 
+  // Connection errors
+  "Error_ConnectTimeout": "Délai d’attente dépassé lors de la connexion au serveur.",
+  "Error_ConnectTimeout_Format": "Délai d’attente dépassé lors de la connexion au serveur ({timeout}).",
+  "Error_CallTimeout": "Le serveur n’a pas répondu à temps.",
+  "Error_CallTimeout_Format": "Le serveur n’a pas répondu à temps ({timeout}).",
+  "Error_DelayTimeout_Format": "Le serveur n’a pas répondu à temps ({timeout}), la requête en attente a été annulée.",
+  "Error_PrematureDisconnect": "La connexion a été fermée prématurément.",
+  "Error_ServerUnreachable": "Connexion impossible : le serveur est injoignable.",
+  "Error_NotConnected": "La requête a échoué : aucune connexion au serveur.",
+  "Error_DisconnectedDuringCall": "La requête a échoué : la connexion au serveur a été perdue.",
+  "Error_ReconnectedToDifferentServer": "La requête a échoué : reconnexion à un autre serveur.",
+
   // Sign-in and account
   "Error_RegistrationExpired": "Cette demande d’inscription a expiré. Veuillez vous reconnecter.",
   "Error_SessionExpired": "Votre session a expiré ou a été désactivée. Veuillez redémarrer l’application.",

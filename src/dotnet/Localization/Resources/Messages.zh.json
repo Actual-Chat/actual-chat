@@ -23,6 +23,18 @@
   "Error_MediaNotFound": "未找到文件。",
   "Error_UploadNotFound": "未找到上传内容。",
 
+  // Connection errors
+  "Error_ConnectTimeout": "连接服务器超时。",
+  "Error_ConnectTimeout_Format": "连接服务器超时（{timeout}）。",
+  "Error_CallTimeout": "服务器未及时响应。",
+  "Error_CallTimeout_Format": "服务器未及时响应（{timeout}）。",
+  "Error_DelayTimeout_Format": "服务器未及时响应（{timeout}），已中止等待中的请求。",
+  "Error_PrematureDisconnect": "连接意外关闭。",
+  "Error_ServerUnreachable": "无法连接：服务器不可用。",
+  "Error_NotConnected": "请求失败：未连接到服务器。",
+  "Error_DisconnectedDuringCall": "请求失败：与服务器的连接已断开。",
+  "Error_ReconnectedToDifferentServer": "请求失败：已重新连接到其他服务器。",
+
   // Sign-in and account
   "Error_RegistrationExpired": "此注册请求已过期，请重新登录。",
   "Error_SessionExpired": "您的会话已过期或被停用，请重启应用。",

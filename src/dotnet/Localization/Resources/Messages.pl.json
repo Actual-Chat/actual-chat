@@ -31,6 +31,18 @@
   "Error_MediaNotFound": "Nie znaleziono pliku multimedialnego.",
   "Error_UploadNotFound": "Nie znaleziono przesyłanego pliku.",
 
+  // Connection errors
+  "Error_ConnectTimeout": "Przekroczono limit czasu połączenia z serwerem.",
+  "Error_ConnectTimeout_Format": "Przekroczono limit czasu połączenia z serwerem ({timeout}).",
+  "Error_CallTimeout": "Serwer nie odpowiedział na czas.",
+  "Error_CallTimeout_Format": "Serwer nie odpowiedział na czas ({timeout}).",
+  "Error_DelayTimeout_Format": "Serwer nie odpowiedział na czas ({timeout}), oczekujące żądanie zostało przerwane.",
+  "Error_PrematureDisconnect": "Połączenie zostało przedwcześnie zamknięte.",
+  "Error_ServerUnreachable": "Nie można się połączyć: serwer jest nieosiągalny.",
+  "Error_NotConnected": "Żądanie nie powiodło się: brak połączenia z serwerem.",
+  "Error_DisconnectedDuringCall": "Żądanie nie powiodło się: utracono połączenie z serwerem.",
+  "Error_ReconnectedToDifferentServer": "Żądanie nie powiodło się: nawiązano połączenie z innym serwerem.",
+
   // Sign-in and account
   "Error_RegistrationExpired": "To żądanie rejestracji wygasło. Spróbuj zalogować się ponownie.",
   "Error_SessionExpired": "Twoja sesja wygasła lub została dezaktywowana. Uruchom aplikację ponownie.",

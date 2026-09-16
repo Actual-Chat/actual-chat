@@ -23,6 +23,18 @@
   "Error_MediaNotFound": "Arquivo não encontrado.",
   "Error_UploadNotFound": "Envio não encontrado.",
 
+  // Connection errors
+  "Error_ConnectTimeout": "Tempo limite excedido ao conectar ao servidor.",
+  "Error_ConnectTimeout_Format": "Tempo limite excedido ao conectar ao servidor ({timeout}).",
+  "Error_CallTimeout": "O servidor não respondeu a tempo.",
+  "Error_CallTimeout_Format": "O servidor não respondeu a tempo ({timeout}).",
+  "Error_DelayTimeout_Format": "O servidor não respondeu a tempo ({timeout}); a solicitação pendente foi cancelada.",
+  "Error_PrematureDisconnect": "A conexão foi encerrada inesperadamente.",
+  "Error_ServerUnreachable": "Não foi possível conectar: o servidor está inacessível.",
+  "Error_NotConnected": "A solicitação falhou: sem conexão com o servidor.",
+  "Error_DisconnectedDuringCall": "A solicitação falhou: a conexão com o servidor foi perdida.",
+  "Error_ReconnectedToDifferentServer": "A solicitação falhou: a conexão foi restabelecida com outro servidor.",
+
   // Sign-in and account
   "Error_RegistrationExpired": "Este pedido de registro expirou. Tente entrar novamente.",
   "Error_SessionExpired": "Sua sessão expirou ou foi desativada. Reinicie o aplicativo.",

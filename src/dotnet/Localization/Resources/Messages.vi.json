@@ -23,6 +23,18 @@
   "Error_MediaNotFound": "Không tìm thấy tệp.",
   "Error_UploadNotFound": "Không tìm thấy tệp tải lên.",
 
+  // Connection errors
+  "Error_ConnectTimeout": "Hết thời gian chờ khi kết nối đến máy chủ.",
+  "Error_ConnectTimeout_Format": "Hết thời gian chờ khi kết nối đến máy chủ ({timeout}).",
+  "Error_CallTimeout": "Máy chủ không phản hồi kịp thời.",
+  "Error_CallTimeout_Format": "Máy chủ không phản hồi kịp thời ({timeout}).",
+  "Error_DelayTimeout_Format": "Máy chủ không phản hồi kịp thời ({timeout}), yêu cầu đang chờ đã bị hủy.",
+  "Error_PrematureDisconnect": "Kết nối đã bị đóng đột ngột.",
+  "Error_ServerUnreachable": "Không thể kết nối: không truy cập được máy chủ.",
+  "Error_NotConnected": "Yêu cầu thất bại: không có kết nối đến máy chủ.",
+  "Error_DisconnectedDuringCall": "Yêu cầu thất bại: mất kết nối đến máy chủ.",
+  "Error_ReconnectedToDifferentServer": "Yêu cầu thất bại: đã kết nối lại đến một máy chủ khác.",
+
   // Sign-in and account
   "Error_RegistrationExpired": "Yêu cầu đăng ký này đã hết hạn. Vui lòng đăng nhập lại.",
   "Error_SessionExpired": "Phiên của bạn đã hết hạn hoặc bị vô hiệu hóa. Vui lòng khởi động lại ứng dụng.",
