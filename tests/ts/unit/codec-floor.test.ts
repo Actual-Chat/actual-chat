@@ -1,4 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({ deviceInfo: { isMobile: false, isFirefox: false } }));
+vi.mock('device-info', () => ({ DeviceInfo: mocks.deviceInfo }));
+
 import {
     detectSupportedDecoderCodecs,
     excludeDecoderCodec,
@@ -82,6 +86,37 @@ describe('decoder capability detection', () => {
 
         expect(await detectSupportedDecoderCodecs()).toEqual([FORCED_CODEC_MARKER, FLOOR_CATEGORY]);
         setForceDecodeCodec(null);
+    });
+
+    it('never advertises AV1 on a phone, however the probe answers', async () => {
+        // One AV1 sender makes every mobile receiver decode AV1, and mobile AV1
+        // decode is uneven and hot: a 720p30 AV1 stream took a phone from 33 to
+        // 41 C in 15 minutes and stalled its audio for the rest of the call.
+        isConfigSupported.mockResolvedValue({ supported: true });
+        mocks.deviceInfo.isMobile = true;
+        try {
+            const codecs = await detectSupportedDecoderCodecs();
+
+            expect([...codecs].sort()).toEqual(['h264', 'hevc', 'vp9']);
+            expect(isConfigSupported.mock.calls.map(([c]) => c.codec)).not.toContainEqual(
+                expect.stringMatching(/^av01/));
+        }
+        finally {
+            mocks.deviceInfo.isMobile = false;
+        }
+    });
+
+    it('still lets a phone pin AV1 through the debug override', async () => {
+        isConfigSupported.mockResolvedValue({ supported: true });
+        mocks.deviceInfo.isMobile = true;
+        setForceDecodeCodec('av1');
+        try {
+            expect(await detectSupportedDecoderCodecs()).toEqual([FORCED_CODEC_MARKER, 'av1']);
+        }
+        finally {
+            setForceDecodeCodec(null);
+            mocks.deviceInfo.isMobile = false;
+        }
     });
 
     it('still advertises the floor when probing says it is unsupported', async () => {

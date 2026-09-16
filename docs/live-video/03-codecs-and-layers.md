@@ -113,6 +113,17 @@ mapped, and `excludeDecoderCodec(codec)` adds it to a localStorage exclusion
 set; subsequent `RegisterMember` calls report a smaller list and the server
 re-negotiates.
 
+Mobile clients (`DeviceInfo.isMobile`) never advertise AV1, whatever the probe
+says: one AV1 sender makes every phone in the call decode AV1, and mobile AV1
+decode is uneven and hot - a 720p30 AV1 stream took a phone to its thermal
+throttling threshold in 15 minutes. The "Force decode codec" debug override
+still pins AV1 when asked.
+
+`RegisterMember` is a heartbeat, so most calls change nothing; the server
+invalidates `GetSupportedCodecs` only when the intersection actually changed,
+and `GetVideoStreamMemberCount` only when a member was added or a stale one
+pruned.
+
 ## Hardware acceleration
 
 File: `src/dotnet/UI.Blazor.App/Services/Video/support/gpu.ts` and

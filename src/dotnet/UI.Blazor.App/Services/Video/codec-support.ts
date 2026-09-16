@@ -906,6 +906,13 @@ async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
             warnLog?.log(`Decoder ${category}: excluded at runtime`);
             continue;
         }
+        if (category === 'av1' && DeviceInfo.isMobile) {
+            // Advertising it makes one AV1 sender's stream a decode job for every phone in the
+            // call, and mobile AV1 decode is uneven and hot — a 720p30 AV1 stream heated a phone
+            // to its throttling threshold and stalled its audio for the rest of the call.
+            infoLog?.log(`Decoder ${category}: not advertised on mobile`);
+            continue;
+        }
 
         let supported = false;
         for (const codec of probes) {
