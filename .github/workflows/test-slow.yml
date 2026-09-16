@@ -5,10 +5,8 @@ concurrency:
 
 on:
   workflow_dispatch:
-  create:
   push:
     branches:
-      - "**"
       - master
       - dev
       - release/v*

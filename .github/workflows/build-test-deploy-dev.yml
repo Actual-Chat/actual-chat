@@ -35,10 +35,8 @@ on:
           - appkit
           - catalyst
           - none
-  create:
   push:
     branches:
-      - "**"
       - master
       - dev
       - release/v*
