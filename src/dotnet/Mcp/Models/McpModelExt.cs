@@ -56,6 +56,17 @@ public static class McpModelExt
             thumbnailUrl);
     }
 
+    public static McpAvatar ToMcpModel(this AvatarFull avatar, Symbol defaultAvatarId, UrlMapper urlMapper)
+        => new(avatar.Id.Value, avatar.Name, avatar.Bio, avatar.ToMcpPictureUrl(urlMapper), avatar.Id == defaultAvatarId);
+
+    public static string? ToMcpPictureUrl(this Avatar avatar, UrlMapper urlMapper)
+        => avatar.Media is { } media
+            ? urlMapper.ContentUrl(media.BlobId)
+            : avatar.PictureUrl.NullIfEmpty();
+
+    public static string? ToMcpPictureUrl(this Media.Media? media, UrlMapper urlMapper)
+        => media is null ? null : urlMapper.ContentUrl(media.BlobId);
+
     private static string GetKind(string contentType)
         => contentType switch {
             _ when contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) => "image",

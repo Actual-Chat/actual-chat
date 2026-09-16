@@ -27,6 +27,7 @@ public sealed class McpModule(IServiceProvider moduleServices)
             })
             .WithHttpTransport(o => o.Stateless = true)
             .WithTools<McpMessageTools>(serializerOptions)
-            .WithTools<McpChatTools>(serializerOptions);
+            .WithTools<McpChatTools>(serializerOptions)
+            .WithTools<McpAccountTools>(serializerOptions);
     }
 }
