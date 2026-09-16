@@ -33,18 +33,31 @@ public static class McpModelExt
 
     public static McpAttachment ToMcpModel(this ChatEntryAttachment attachment, UrlMapper urlMapper)
     {
-        var media = attachment.Media;
+        var media = attachment.Media.ToMcpMediaRef(attachment.ThumbnailMedia, urlMapper);
+        return new McpAttachment(
+            attachment.Id.Value,
+            media.MediaId,
+            media.Kind,
+            media.FileName,
+            media.ContentType,
+            media.Length,
+            media.Width,
+            media.Height,
+            media.Url,
+            media.PreviewUrl,
+            media.ThumbnailUrl);
+    }
+
+    public static McpMediaRef ToMcpMediaRef(this Media.Media media, Media.Media? thumbnail, UrlMapper urlMapper)
+    {
         var contentType = media.ContentType;
         var url = urlMapper.ContentUrl(media.BlobId);
         var isImage = contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
         var previewUrl = isImage && urlMapper.HasImageProxy
             ? urlMapper.ImagePreviewUrl(url, Constants.Attachments.MaxResolution)
             : null;
-        var thumbnailUrl = attachment.ThumbnailMedia is { } thumbnail
-            ? urlMapper.ContentUrl(thumbnail.BlobId)
-            : null;
-        return new McpAttachment(
-            attachment.Id.Value,
+        var thumbnailUrl = thumbnail is null ? null : urlMapper.ContentUrl(thumbnail.BlobId);
+        return new McpMediaRef(
             media.Id.Value,
             GetKind(contentType),
             media.FileName,
@@ -56,6 +69,36 @@ public static class McpModelExt
             previewUrl,
             thumbnailUrl);
     }
+
+    public static McpMediaItem ToMcpModel(this VisualMediaItem item, UrlMapper urlMapper)
+        => new(
+            item.EntryId.LocalId,
+            item.At.ToMcpMillis(),
+            item.MediaId.Value,
+            GetKind(item.ContentType),
+            item.FileName,
+            item.ContentType,
+            item.Size,
+            urlMapper.ContentUrl(item.BlobId),
+            item.ThumbnailBlobId.IsNullOrEmpty() ? null : urlMapper.ContentUrl(item.ThumbnailBlobId));
+
+    public static McpFileItem ToMcpModel(this FileItem item, UrlMapper urlMapper)
+        => new(
+            item.EntryId.LocalId,
+            item.At.ToMcpMillis(),
+            item.MediaId.Value,
+            item.FileName,
+            item.ContentType,
+            item.Size,
+            urlMapper.ContentUrl(item.BlobId));
+
+    public static McpLinkItem ToMcpModel(this LinkItem item)
+        => new(
+            item.EntryId.LocalId,
+            item.At.ToMcpMillis(),
+            item.Url,
+            item.LinkPreview?.Title.NullIfEmpty(),
+            item.LinkPreview?.Description.NullIfEmpty());
 
     public static McpChatDetails ToMcpDetails(this Chat.Chat chat, int memberCount, UrlMapper urlMapper)
         => new(

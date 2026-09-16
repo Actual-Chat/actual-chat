@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization.Metadata;
 using ActualChat.Mcp.Tools;
+using ActualChat.Media.Module;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using ModelContextProtocol.Protocol;
 
@@ -29,6 +30,8 @@ public sealed class McpModule(IServiceProvider moduleServices)
             .WithTools<McpMessageTools>(serializerOptions)
             .WithTools<McpChatTools>(serializerOptions)
             .WithTools<McpAccountTools>(serializerOptions)
-            .WithTools<McpPlaceTools>(serializerOptions);
+            .WithTools<McpPlaceTools>(serializerOptions)
+            .WithTools<McpMediaTools>(serializerOptions);
+        services.AddEgressHttpClient(McpMediaTools.HttpClientName, Constants.Attachments.FileSizeLimit);
     }
 }
