@@ -526,6 +526,8 @@ public partial class AudioStreamingBackend
         var chatId = audioSegment.Record.ChatId;
         var authorId = audioSegment.Author.Id;
         var repliedEntryId = audioSegment.Record.RepliedEntryId;
+        var latencyTrace = new TranscriptLatencyTrace(
+            transcriptStreamId.Value, audioSegment.Source.CreatedAt, Clocks.ServerClock);
 
         AsyncMemoizer<TranscriptDiff>? transcriptDiffStream = null;
         Transcript? lastTranscript = null;
@@ -534,6 +536,7 @@ public partial class AudioStreamingBackend
         Language? detectedLanguage = null;
         try {
             await foreach (var transcript in transcripts.Replay(cancellationToken).ConfigureAwait(false)) {
+                latencyTrace.OnTranscript(transcript);
                 lastTranscript = transcript;
                 if (transcriptionOptions.DetectLanguage && detectedLanguage is null)
                     detectedLanguage = TryApplyDetectedLanguage(transcript);
@@ -585,6 +588,7 @@ public partial class AudioStreamingBackend
                 audioSegment.StreamId);
         }
         finally {
+            latencyTrace.Report(Log);
             if (lastTranscript != null && textEntry != null) {
                 // The entry may have been removed by the user or already finalized by
                 // StreamingEntryFixupFlow while we were running. Both are legitimate races
