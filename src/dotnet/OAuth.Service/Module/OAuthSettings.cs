@@ -6,9 +6,14 @@ public sealed class OAuthSettings
     // Controllers (e.g. OAuthRegistrationController) hardcode "/oauth"; a different value
     // only works for OpenIddict's own endpoints.
     public string Route { get; set; } = "/oauth";
-    // Base64 PFX used for both signing and encryption; empty = ephemeral keys (dev/test only).
+    // Base64 PFX used for both signing and encryption; takes precedence over SigningCertificatePath/
+    // SigningKeyPath; empty (with no PEM pair either) = ephemeral keys (dev/test only).
     public string SigningCertificateBase64 { get; set; } = "";
     public string SigningCertificatePassword { get; set; } = "";
+    // PEM certificate + private key (what cert-manager mounts as tls.crt/tls.key); used when
+    // SigningCertificateBase64 is empty.
+    public string SigningCertificatePath { get; set; } = "";
+    public string SigningKeyPath { get; set; } = "";
     public TimeSpan AuthorizationCodeLifetime { get; set; } = TimeSpan.FromMinutes(5);
     public TimeSpan AccessTokenLifetime { get; set; } = TimeSpan.FromHours(1);
     public TimeSpan RefreshTokenLifetime { get; set; } = TimeSpan.FromDays(90);
