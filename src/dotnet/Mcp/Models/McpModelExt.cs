@@ -68,6 +68,17 @@ public static class McpModelExt
             memberCount,
             chat.Rules.Permissions.ToFlagNames());
 
+    public static McpPlaceDetails ToMcpDetails(this Place place, int memberCount, UrlMapper urlMapper)
+        => new(
+            place.Id.Value,
+            place.Title,
+            place.Description,
+            place.IsPublic,
+            place.Picture.ToMcpPictureUrl(urlMapper),
+            place.Background.ToMcpPictureUrl(urlMapper),
+            memberCount,
+            place.Rules.Permissions.ToFlagNames());
+
     public static async Task<McpMember[]> ToMcpMembers(
         this IEnumerable<AuthorId> authorIds,
         Func<AuthorId, Task<Author?>> getAuthor,
@@ -106,7 +117,12 @@ public static class McpModelExt
             .ToArray();
 
     public static McpAvatar ToMcpModel(this AvatarFull avatar, Symbol defaultAvatarId, UrlMapper urlMapper)
-        => new(avatar.Id.Value, avatar.Name, avatar.Bio, avatar.ToMcpPictureUrl(urlMapper), avatar.Id == defaultAvatarId);
+        => new(
+            avatar.Id.Value,
+            avatar.Name,
+            avatar.Bio,
+            avatar.ToMcpPictureUrl(urlMapper),
+            avatar.Id == defaultAvatarId);
 
     public static string? ToMcpPictureUrl(this Avatar avatar, UrlMapper urlMapper)
         => avatar.Media is { } media

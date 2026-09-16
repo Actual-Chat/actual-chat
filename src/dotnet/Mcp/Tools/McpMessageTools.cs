@@ -92,7 +92,8 @@ public sealed class McpMessageTools(IServiceProvider services)
         var fullRange = rawFullRange.ToMcpModel();
 
         if (rawFullRange.IsEmptyOrNegative)
-            return new McpListMessagesResult(new McpIdRange<long>(fullRange.FirstId, fullRange.FirstId - 1), fullRange, []);
+            return new McpListMessagesResult(
+                new McpIdRange<long>(fullRange.FirstId, fullRange.FirstId - 1), fullRange, []);
 
         var startLid = (afterId ?? -1) + 1;
         if (startLid < rawFullRange.Start)
