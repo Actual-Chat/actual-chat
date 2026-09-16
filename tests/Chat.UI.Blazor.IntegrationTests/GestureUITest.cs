@@ -156,6 +156,22 @@ public sealed class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper 
         await TestExt.When(
             () => GestureUI.IsHushArmed.Should().BeTrue("an incoming utterance opens the hush window"),
             WaitTimeout.Debuggable());
+
+        // act: you answer it
+        await Hub.ChatAudioUI.SetRecordingChatId(chatId);
+        await TestExt.When(
+            () => GestureUI.RecognizerOptions.IsMicOpen.Should().BeTrue(),
+            WaitTimeout.Debuggable());
+        await Hub.ChatAudioUI.SetRecordingChatId(null);
+
+        // assert: the reply closes the window the incoming utterance opened - well before the
+        // 15s answer window would have lapsed by itself
+        await TestExt.When(() => {
+            GestureUI.RecognizerOptions.IsMicOpen.Should().BeFalse();
+            GestureUI.IsHushArmed.Should().BeFalse("your reply answers the utterance");
+        }, TimeSpan.FromSeconds(5).Debuggable());
+        await Task.Delay(SettleDelay.Debuggable());
+        GestureUI.IsHushArmed.Should().BeFalse();
     }
 
     [Fact]

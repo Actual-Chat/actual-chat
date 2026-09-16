@@ -38,6 +38,16 @@ public class VoiceActivityUI(AppUIHub hub)
             BuildSnapshot(_lastOwnAt, [.._liveOwn.Keys], now));
     }
 
+    public IReadOnlyDictionary<ChatId, Moment> SnapshotLastUnansweredIncomingVoiceAt()
+    {
+        // The hush window: open only while the other side spoke last. Your reply answers the
+        // utterance, so putting the phone down after it must not read as a hush.
+        var now = Clocks.ServerClock.Now;
+        return DropAnswered(
+            BuildSnapshot(_lastIncomingAt, [.._liveIncoming.Keys], now),
+            BuildSnapshot(_lastOwnAt, [.._liveOwn.Keys], now));
+    }
+
     public bool HasAnyLiveIncoming(IReadOnlyList<ChatId> chatIds)
         => chatIds.Any(_liveIncoming.ContainsKey);
 
@@ -114,6 +124,17 @@ public class VoiceActivityUI(AppUIHub hub)
         foreach (var (chatId, at) in own)
             if (!incoming.TryGetValue(chatId, out var incomingAt) || at > incomingAt)
                 incoming[chatId] = at;
+
+        return incoming;
+    }
+
+    public static Dictionary<ChatId, Moment> DropAnswered(
+        Dictionary<ChatId, Moment> incoming,
+        IReadOnlyDictionary<ChatId, Moment> own)
+    {
+        foreach (var (chatId, ownAt) in own)
+            if (incoming.TryGetValue(chatId, out var incomingAt) && ownAt >= incomingAt)
+                incoming.Remove(chatId);
 
         return incoming;
     }
