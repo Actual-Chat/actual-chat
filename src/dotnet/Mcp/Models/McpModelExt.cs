@@ -100,6 +100,21 @@ public static class McpModelExt
             item.LinkPreview?.Title.NullIfEmpty(),
             item.LinkPreview?.Description.NullIfEmpty());
 
+    public static McpConversation ToMcpModel(this Conversation conversation)
+        => new(
+            conversation.Id.Value,
+            conversation.Id.ChatId.Value,
+            conversation.Id.StartEntryLid,
+            conversation.EndEntryLid,
+            conversation.StartsAt.ToMcpMillis(),
+            conversation.EndsAt.ToMcpMillis(),
+            conversation.Title,
+            conversation.Description,
+            conversation.Summary,
+            conversation.MessageCount,
+            conversation.AttachmentCount,
+            conversation.AuthorIds.Select(a => a.Value).ToArray());
+
     public static McpChatDetails ToMcpDetails(this Chat.Chat chat, int memberCount, UrlMapper urlMapper)
         => new(
             chat.Id.Value,
