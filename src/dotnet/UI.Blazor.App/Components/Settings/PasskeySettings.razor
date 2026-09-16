@@ -5,69 +5,51 @@
     var passkeys = m.Passkeys;
 }
 
-<TileTopic Topic="@L.Settings_Passkeys"/>
-
-<Tile Class="passkey-intro-tile">
-    <TileItem IsHoverable="false">
-        <Content>
-            <span class="c-intro">@L.Passkeys_Intro</span>
-        </Content>
-    </TileItem>
-</Tile>
-
-<ButtonTile Class="btn-primary" Filled="true" IsDisabled="@(!m.CanUse)" Click="@OnAddClick">
-    <Content>@L.Passkeys_Add</Content>
-</ButtonTile>
-@if (!m.CanUse) {
-    <div class="passkey-unavailable">@L.Passkeys_Unavailable</div>
-}
+<p class="c-description">@L.Passkeys_Intro</p>
 
 @if (passkeys.Count > 0) {
     <TileTopic Topic="@L.Passkeys_YourPasskeys"/>
 
     <Tile Class="passkey-tile">
         @foreach (var passkey in passkeys) {
-            <TileItem IsHoverable="false">
-                <Icon>
-                    <i class="icon-key"></i>
-                </Icon>
+            <TileItem Click="@(() => OnRenameClick(passkey))">
                 <Content>
                     <span class="c-name">@passkey.Name</span>
-                    <span class="c-pill @(passkey.IsSynced ? "synced" : "")">
-                        @(passkey.IsSynced ? L.Passkeys_Synced : L.Passkeys_ThisDeviceOnly)
-                    </span>
-                </Content>
-                <Caption>
-                    <span>@L.Passkeys_Added_Format(FormatDate(passkey.CreatedAt))</span>
-                    <span> · </span>
-                    <span>
-                        @(passkey.LastUsedAt is { } lastUsedAt
-                            ? L.Passkeys_LastUsed_Format(FormatDate(lastUsedAt))
-                            : L.Passkeys_NeverUsed)
-                    </span>
-                </Caption>
-                <Right>
-                    <div class="c-actions">
-                        <ButtonRound
-                            Class="btn-sm btn-transparent"
-                            Tooltip="@L.Passkeys_Rename"
-                            Click="@(() => OnRenameClick(passkey))">
-                            <i class="icon-edit text-xl"></i>
-                        </ButtonRound>
+                    <div class="c-delete">
                         <ButtonRound
                             Class="btn-sm btn-danger"
                             Tooltip="@L.Passkeys_Delete"
+                            StopPropagation="true"
                             Click="@(() => OnDeleteClick(passkey))">
                             <i class="icon-trash03 text-xl"></i>
                         </ButtonRound>
                     </div>
-                </Right>
+                </Content>
+                <Caption>
+                    <div class="c-facts">
+                        <span>@L.Passkeys_Added_Format(FormatDate(passkey.CreatedAt))</span>
+                        <span>
+                            @(passkey.LastUsedAt is { } lastUsedAt
+                                ? L.Passkeys_LastUsed_Format(FormatDate(lastUsedAt))
+                                : L.Passkeys_NeverUsed)
+                        </span>
+                        <span>@(passkey.IsSynced ? L.Passkeys_Synced : L.Passkeys_ThisDeviceOnly)</span>
+                    </div>
+                </Caption>
             </TileItem>
             @if (passkey != passkeys[^1]) {
                 <Divider/>
             }
         }
     </Tile>
+}
+
+<ButtonTile Class="btn-primary" Filled="true" IsDisabled="@(!m.CanUse)" Click="@OnAddClick">
+    <Icon><i class="icon-plus text-xl"></i></Icon>
+    <Content>@L.Passkeys_Add</Content>
+</ButtonTile>
+@if (!m.CanUse) {
+    <p class="c-description">@L.Passkeys_Unavailable</p>
 }
 
 @code {

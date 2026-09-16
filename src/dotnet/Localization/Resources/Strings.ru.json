@@ -126,7 +126,6 @@
   "Passkeys_Added_Format": "Добавлен {0}",
   "Passkeys_LastUsed_Format": "Последнее использование: {0}",
   "Passkeys_NeverUsed": "Ещё не использовался",
-  "Passkeys_Rename": "Переименовать",
   "Passkeys_RenameTitle": "Переименовать ключ доступа",
   "Passkeys_Name": "Имя",
   "Passkeys_Delete": "Удалить",

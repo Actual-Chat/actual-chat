@@ -126,7 +126,6 @@
   "Passkeys_Added_Format": "Eklenme tarihi: {0}",
   "Passkeys_LastUsed_Format": "Son kullanım: {0}",
   "Passkeys_NeverUsed": "Hiç kullanılmadı",
-  "Passkeys_Rename": "Yeniden adlandırın",
   "Passkeys_RenameTitle": "Erişim Anahtarını Yeniden Adlandırın",
   "Passkeys_Name": "Ad",
   "Passkeys_Delete": "Silin",

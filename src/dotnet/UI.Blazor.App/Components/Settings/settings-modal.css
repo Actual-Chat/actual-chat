@@ -283,23 +283,24 @@ body.hoverable .sessions-tile-item .sign-out-btn:hover,
 
 /* ── Passkeys tab ── */
 
-.passkey-intro-tile .c-intro {
-    @apply text-caption-4 text-03;
+.passkey-tile .tile-item {
+    @apply relative;
 }
-.passkey-unavailable {
-    @apply text-caption-6 text-03 px-4 pb-2;
+.passkey-tile .tile-item-body-content,
+.passkey-tile .tile-item-body-caption {
+    @apply max-h-none;
+    @apply pr-12;
 }
 .passkey-tile .c-name {
-    @apply mr-2;
+    @apply truncate;
+    @apply font-medium;
 }
-.passkey-tile .c-pill {
-    @apply px-2 py-0.5 rounded-full text-caption-6 bg-03 text-03;
+.passkey-tile .c-delete {
+    @apply absolute right-0 top-0;
 }
-.passkey-tile .c-pill.synced {
-    @apply bg-banner-success text-banner-success;
-}
-.passkey-tile .c-actions {
-    @apply flex-x gap-x-1;
+.passkey-tile .c-facts {
+    @apply flex-y gap-y-0.5;
+    @apply text-xs font-normal;
 }
 
 /* ── API Key Create Modal ── */
