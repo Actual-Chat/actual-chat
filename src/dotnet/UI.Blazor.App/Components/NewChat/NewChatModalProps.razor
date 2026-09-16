@@ -127,9 +127,9 @@
             </Button>
         }
         <Button
-            Click="@OnCreate"
+            Click="@_createHandler.Execute"
             Type="@ButtonType.Button"
-            IsDisabled="@(!context.Validate())"
+            IsDisabled="@(!context.Validate() || !CanCreate)"
             Class="btn-modal btn-primary">
             Create
         </Button>
@@ -141,9 +141,13 @@
     private static readonly string AvatarKey = "a-random-string";
     private Form _formRef = null!;
     private FormModel _form = null!;
+    // One Uuid per form, so a repeated submit is replayed by ApiCommandDeduplicator instead of creating a chat
+    private readonly string _createUuid = ApiCommand.NewUuid();
+    private IUIActionHandler _createHandler = null!;
     private bool _isAdmin;
+    private bool _isCreated;
     private Place? _place;
-
+    private bool CanCreate => _createHandler.IsReady && !_isCreated;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
     [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
@@ -153,6 +157,7 @@
     protected override void OnInitialized() {
         _form = new(ComponentIdGenerator);
         _isAdmin = Hub.AccountUI.OwnAccount.Value.IsAdmin;
+        _createHandler = UIActionHandler.Create(this, OnCreate);
     }
 
     protected override async Task OnInitializedAsync() {
@@ -185,10 +190,11 @@
     }
 
     private async Task OnCreate() {
-        if (!_formRef.IsValid)
+        if (_isCreated || !_formRef.IsValid)
             return;
         try {
             var command = new Chats_Change {
+                Uuid = _createUuid,
                 Session = Hub.Session,
                 ChatId = null,
                 ExpectedVersion = null,
@@ -210,6 +216,7 @@
                 return;
 
             chat.Require();
+            _isCreated = true;
             ChatCreated(chat);
         }
         catch { // Intended: command errors are shown in the UI anyway

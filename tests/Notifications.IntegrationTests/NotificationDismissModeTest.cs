@@ -101,6 +101,39 @@ public sealed class NotificationDismissModeTest(AppHostFixture fixture, ITestOut
     }
 
     [Fact]
+    public async Task ThreadCreatedShouldReachRecipientWhoHasReadItsEntry()
+    {
+        // arrange
+        // A thread hangs off an existing entry, which the recipient has typically read already -
+        // so an OnRead thread ping would die before delivery, and an anchorless one would never die.
+        var alice = await Tester.SignInAsAlice();
+        var bob = await Tester.SignInAsBob();
+        var (chatId, _) = await Tester.CreateChat(false, "Thread dismiss-mode chat");
+        await Tester.InviteToChat(chatId, alice);
+        var entry = await Tester.CreateTextEntry(chatId, "Let's discuss this");
+        await SetReadPosition(alice.Id, chatId, entry.LocalId);
+
+        // act
+        await Tester.SignIn(bob);
+        await Commander.Call(new ChatThreads_Start {
+            Session = Tester.Session,
+            ParentChatId = chatId,
+            Title = "Discussion",
+            Description = "",
+            EntryIds = [entry.Id],
+        });
+
+        // assert
+        await TestExt.When(async () => {
+            var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
+            var notification = info.Items.Should()
+                .ContainSingle(n => n is ThreadNotification, "a read anchor entry must not clear an OnView thread ping")
+                .Subject.Should().BeOfType<ThreadNotification>().Subject;
+            notification.EntryId.Should().Be(entry.Id, "the ping anchors at the entry the thread hangs off");
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public async Task ExpiredRingShouldNotBeCommitted()
     {
         // arrange
@@ -136,6 +169,7 @@ public sealed class NotificationDismissModeTest(AppHostFixture fixture, ITestOut
         Notification conversation = ConversationNotification.New(userId, conversationId, 2) with { SentAt = sentAt };
         Notification reaction = ReactionNotification.New(userId, entryId) with { SentAt = sentAt };
         Notification attention = AttentionNotification.New(userId, entryId) with { SentAt = sentAt };
+        Notification thread = ThreadNotification.New(userId, entryId) with { SentAt = sentAt };
         Notification call = CallNotification.New(userId, conversationId, default, false) with { SentAt = sentAt };
         Notification invitation = InvitationNotification.New(userId, TestChatId) with { SentAt = sentAt };
 
@@ -152,6 +186,9 @@ public sealed class NotificationDismissModeTest(AppHostFixture fixture, ITestOut
         attention.DismissMode.Should().Be(NotificationDismissMode.OnView,
             "a ping anchors at an entry the recipient has typically read, so a read position must not drop it");
         attention.ExpiresAt.Should().Be(sentAt + Constants.Notification.AttentionLifespan);
+        thread.DismissMode.Should().Be(NotificationDismissMode.OnView,
+            "a thread hangs off an entry the recipient has typically read, so a read position must not drop it");
+        thread.ExpiresAt.Should().Be(sentAt + Constants.Notification.ThreadLifespan);
 
         // Anchorless kinds fall through to the Explicit default rather than declaring it.
         call.DismissMode.Should().Be(NotificationDismissMode.Explicit);
@@ -175,7 +212,8 @@ public sealed class NotificationDismissModeTest(AppHostFixture fixture, ITestOut
         Notification[] notifications = [
             MessageNotification.New(userId, TestChatId, 1),
             ReplyNotification.New(userId, TestChatId, 1),
-            ThreadNotification.New(userId, TestChatId, 1),
+            ThreadNotification.New(userId, entryId),
+            new LegacyThreadNotification(NotificationId.New(userId, NotificationKind.Thread, TestChatId.Value)),
             MentionNotification.New(userId, entryId),
             AttentionNotification.New(userId, entryId),
             ReactionNotification.New(userId, entryId),
