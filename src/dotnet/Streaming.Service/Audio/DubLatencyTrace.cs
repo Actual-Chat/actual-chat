@@ -9,7 +9,7 @@ namespace ActualChat.Streaming;
 /// now - (recordedAt + TimeRange.End) of the text, the TTS open delay is first spoken chunk to
 /// first text sent, the TTS interval is first text to first audio per stream (a stream killed
 /// before audio folds into its replacement's sample), and the first word is the first stream's
-/// first audio behind the first chunk's speech.
+/// first audio behind the first chunk's speech. The line ends with the voice the dub spoke with.
 /// </summary>
 public sealed class DubLatencyTrace(StreamId dubStreamId, Moment recordedAt, MomentClock clock)
     : ISpeechSynthesisListener
@@ -22,6 +22,7 @@ public sealed class DubLatencyTrace(StreamId dubStreamId, Moment recordedAt, Mom
     private Moment? _firstSpokenAt;
     private float? _firstSpokenSourceEnd;
     private bool _isDub;
+    private string? _voiceId;
 
     public LatencyStats Translated { get; } = new();
     public LatencyStats Spoken { get; } = new();
@@ -54,6 +55,9 @@ public sealed class DubLatencyTrace(StreamId dubStreamId, Moment recordedAt, Mom
         _firstSpokenSourceEnd ??= translated.TimeRange.End;
         _firstSpokenAt ??= clock.Now;
     }
+
+    public void OnVoice(string? voiceId)
+        => _voiceId = voiceId;
 
     void ISpeechSynthesisListener.OnStreamOpened()
     {
@@ -103,9 +107,10 @@ public sealed class DubLatencyTrace(StreamId dubStreamId, Moment recordedAt, Mom
         var requestedAt = _requestedSourceEnd is { } sourceEnd ? $"{sourceEnd:F1}s of speech" : "-";
         var ttsOpened = TtsOpenDelay is { } openDelay ? $"+{openDelay.TotalSeconds:F1}s after the first chunk" : "-";
         var firstWord = FirstWordLag is { } lag ? $"{lag.TotalSeconds:F1}s behind speech" : "-";
+        var voice = _voiceId.NullIfEmpty() ?? "stock";
         return $"Dub latency #{dubStreamId}: decided +{DecisionDelay?.TotalSeconds ?? 0:F1}s; "
             + $"requested at {requestedAt}; translated lag {Translated}; spoken lag {Spoken}; "
-            + $"tts opened {ttsOpened}; tts first audio {TtsFirstAudio}; first word {firstWord}";
+            + $"tts opened {ttsOpened}; tts first audio {TtsFirstAudio}; first word {firstWord}; voice {voice}";
     }
 
     // Private methods

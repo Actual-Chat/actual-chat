@@ -427,7 +427,7 @@ a dub was actually started — a `NoDub` decision still records
 
 ```
 Transcript latency #S: first text +1.1s at 0.6s of speech; text lag p50 0.9s max 1.4s (n=42); stable lag p50 3.2s max 5.1s (n=9)
-Dub latency #S~en: decided +0.4s; requested at 0.6s of speech; translated lag p50 3.9s max 4.6s (n=8); spoken lag p50 4.1s max 4.8s (n=5); tts opened +0.3s after the first chunk; tts first audio p50 1.6s max 1.6s (n=1); first word 5.8s behind speech
+Dub latency #S~en: decided +0.4s; requested at 0.6s of speech; translated lag p50 3.9s max 4.6s (n=8); spoken lag p50 4.1s max 4.8s (n=5); tts opened +0.3s after the first chunk; tts first audio p50 1.6s max 1.6s (n=1); first word 5.8s behind speech; voice stock
 ```
 
 A *lag* is `ServerClock.Now − (recordedAt + TimeRange.End)`: the text's
@@ -462,7 +462,10 @@ audio folds its open time into the replacement stream's sample instead of
 being lost, so a resend still produces one `tts first audio` reading that
 covers the whole outage. `first word` is the first stream's first audio
 behind the speech the first chunk covered — the number a listener feels.
-The same values go to the `App` meter as `streaming.transcript.lag{kind}`,
+`voice` closes the line: the Soniox voice id the dub spoke with (a clone,
+see [Own voice](#own-voice-cloning)) or `stock` when the speaker got the
+stock voice, whether by choice or by fallback — the only place the Ready
+path says which one it was. The same values go to the `App` meter as `streaming.transcript.lag{kind}`,
 `streaming.dub.lag{stage}`, `streaming.dub.tts_open_delay`,
 `streaming.dub.tts_first_audio` and `streaming.dub.decision_delay`
 (seconds).

@@ -45,7 +45,24 @@ public class DubLatencyTraceTest
             "Dub latency #node01-abc~en: decided +0.4s; requested at 4.9s of speech; "
             + "translated lag p50 4.6s max 4.6s (n=2); spoken lag p50 4.6s max 4.6s (n=2); "
             + "tts opened +0.5s after the first chunk; tts first audio p50 1.2s max 1.2s (n=2); "
-            + "first word 5.5s behind speech");
+            + "first word 5.5s behind speech; voice stock");
+    }
+
+    [Theory]
+    [InlineData(null, "voice stock")]
+    [InlineData("", "voice stock")]
+    [InlineData("a1b2c3d4e5f6", "voice a1b2c3d4e5f6")]
+    public void LineShouldNameTheVoice(string? voiceId, string expected)
+    {
+        // arrange
+        using var clock = new TestClock(multiplier: 0).SetTo(RecordedAt);
+        var trace = new DubLatencyTrace(DubStreamId, RecordedAt, clock);
+
+        // act
+        trace.OnVoice(voiceId);
+
+        // assert
+        trace.ToString().Should().EndWith("; " + expected);
     }
 
     [Fact]

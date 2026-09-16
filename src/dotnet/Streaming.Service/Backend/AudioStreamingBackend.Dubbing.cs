@@ -192,6 +192,7 @@ public partial class AudioStreamingBackend
                 // may still be draining after its source ended.
                 await previousDubTask.SilentAwait(false);
                 var voiceId = await GetSpeakerVoice(dubStreamId, cancellationToken).ConfigureAwait(false);
+                latencyTrace?.OnVoice(voiceId);
                 var options = new SpeechSynthesisOptions(language, voiceId) { Listener = latencyTrace };
                 await SpeechSynthesizer!
                     .Synthesize(dubStreamId.Value, text, options, frames.Writer, cancellationToken)
