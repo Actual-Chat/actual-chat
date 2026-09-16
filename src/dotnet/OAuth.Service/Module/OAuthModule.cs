@@ -13,12 +13,21 @@ namespace ActualChat.OAuth.Module;
 public sealed class OAuthModule(IServiceProvider moduleServices)
     : HostModule<OAuthSettings>(moduleServices), IServerModule
 {
-    public bool IsEnabled => !Settings.Route.IsNullOrEmpty() && HostInfo.HasRole(HostRole.Api);
+    public bool IsEnabled => !Settings.Route.IsNullOrEmpty() && HostInfo.HasRole(HostRole.Api) && HasCredentials;
+
+    private X509Certificate2? Certificate => field ??= LoadCertificate(Settings);
+    private bool HasCredentials => Certificate is not null || HostInfo.IsDevelopmentInstance || HostInfo.IsTested;
 
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!IsEnabled)
+        if (Settings.Route.IsNullOrEmpty() || !HostInfo.HasRole(HostRole.Api))
             return;
+        if (!HasCredentials) {
+            Log.LogError(
+                "OAuth is disabled: no signing certificate configured " +
+                "(OAuthSettings.SigningCertificateBase64 or SigningCertificatePath + SigningKeyPath).");
+            return;
+        }
 
         var rpcHost = services.AddRpcHost(HostInfo);
         rpcHost.AddApi<IOAuthGrants, OAuthGrants>();
@@ -84,22 +93,31 @@ public sealed class OAuthModule(IServiceProvider moduleServices)
             => o.Resources.Add(new Uri(urlMapper.ToAbsolute(OAuthConstants.McpResourcePath))));
     }
 
+    // Internal methods
+
+    internal static X509Certificate2? LoadCertificate(OAuthSettings settings)
+    {
+        if (!settings.SigningCertificateBase64.IsNullOrEmpty())
+            return X509CertificateLoader.LoadPkcs12(
+                Convert.FromBase64String(settings.SigningCertificateBase64),
+                settings.SigningCertificatePassword.NullIfEmpty());
+
+        if (!settings.SigningCertificatePath.IsNullOrEmpty() && !settings.SigningKeyPath.IsNullOrEmpty())
+            return X509Certificate2.CreateFromPemFile(settings.SigningCertificatePath, settings.SigningKeyPath);
+
+        return null;
+    }
+
     // Private methods
 
     private void AddCredentials(OpenIddictServerBuilder o)
     {
-        if (Settings.SigningCertificateBase64.IsNullOrEmpty()) {
-            if (!HostInfo.IsDevelopmentInstance && !HostInfo.IsTested)
-                throw StandardError.Configuration(
-                    "OAuthSettings.SigningCertificateBase64 is required outside development.");
-
+        var certificate = Certificate;
+        if (certificate is null) {
             o.AddEphemeralSigningKey().AddEphemeralEncryptionKey();
             return;
         }
 
-        var certificate = X509CertificateLoader.LoadPkcs12(
-            Convert.FromBase64String(Settings.SigningCertificateBase64),
-            Settings.SigningCertificatePassword.NullIfEmpty());
         o.AddSigningCertificate(certificate).AddEncryptionCertificate(certificate);
     }
 }
