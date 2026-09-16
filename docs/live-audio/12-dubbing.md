@@ -161,6 +161,15 @@ mid-clause fragment — the case the stabilizer's boundary rule removes
 (2026-09-16: a 46-char complete sentence → 0.3 s; a 34-char fragment →
 4.0 s, held until the idle flush).
 
+The stream lifecycle is logged at Debug, one line per event, all
+prefixed `Soniox TTS #{StreamId}:` — `opened, stream N of 5 on its
+connection`; `sent|resent N chars, clause-complete|mid-clause` (a
+`mid-clause` line names a chunk Soniox will hold); `first audio +X.Xs
+after the first chunk`; `ending (Final|Idle|Rollover) X.Xs after it
+opened`; `terminated X.Xs after it opened`, or the Warning `ended with
+error 408 (…)` — so a live run's `tts first audio` reading explains
+itself from the log.
+
 ### `OpusFramePump` — PCM to paced frames
 
 File: `src/dotnet/Transcription.Service/Synthesis/OpusFramePump.cs`.
@@ -542,7 +551,7 @@ being lost, so a resend still produces one `tts first audio` reading that
 covers the whole outage. Expect `tts first audio` at ~0.3–0.7 s now that
 every chunk ends at a clause boundary; a reading near 2.5–4 s means a
 fragment reached Soniox and sat until the idle flush — check the
-stabilizer.
+`Soniox TTS #…: sent … mid-clause` debug line and the stabilizer.
 `first word` is the first stream's first audio
 behind the speech the first chunk covered — the number a listener feels.
 `voice` closes the line: the Soniox voice id the dub spoke with (a clone,

@@ -35,6 +35,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
     private const int ReadBufferSize = 32 * 1024;
     private const int MaxStreamsPerConnection = 5;
     private const int StreamKilledErrorCode = 408;
+    private const string ClauseEnds = ".!?…,;:。！？，；：";
     private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(3);
     private static readonly JsonSerializerOptions JsonOptions = new() {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
@@ -218,7 +219,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                 var first = await Task.WhenAny(_readTask, idleTask, _stream.WhenTerminated).ConfigureAwait(false);
                 await idleCts.CancelAsync().ConfigureAwait(false);
                 if (first == idleTask) {
-                    await EndStream(cancellationToken).ConfigureAwait(false);
+                    await EndStream(StreamEndReason.Idle, cancellationToken).ConfigureAwait(false);
                     continue;
                 }
                 if (first != _readTask) {
@@ -236,7 +237,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                 if (_stream.WhenTerminated.IsCompleted)
                     await OnStreamTerminated(cancellationToken).ConfigureAwait(false);
                 else if (Now - _stream.StartedAt >= StreamRollover)
-                    await EndStream(cancellationToken).ConfigureAwait(false);
+                    await EndStream(StreamEndReason.Rollover, cancellationToken).ConfigureAwait(false);
                 else
                     ThrowIfSilent(_stream);
             }
@@ -245,7 +246,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
             await SendChunk(chunk, false, cancellationToken).ConfigureAwait(false);
         }
         while (_stream != null)
-            await EndStream(cancellationToken).ConfigureAwait(false);
+            await EndStream(StreamEndReason.Final, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task OpenStream(CancellationToken cancellationToken)
@@ -267,15 +268,19 @@ public sealed class SonioxTtsClient(IServiceProvider services)
             sample_rate = SampleRate,
             stream_id = stream.Id,
         }, cancellationToken).ConfigureAwait(false);
+        Log.LogDebug("Soniox TTS #{StreamId}: opened, stream {Index} of {Max} on its connection",
+            stream.Id, _connection.StreamCount, MaxStreamsPerConnection);
         while (_chunksToResend.Count > 0) {
             await SendChunk(_chunksToResend[0], true, cancellationToken).ConfigureAwait(false);
             _chunksToResend.RemoveAt(0);
         }
     }
 
-    private async Task EndStream(CancellationToken cancellationToken)
+    private async Task EndStream(StreamEndReason reason, CancellationToken cancellationToken)
     {
         var stream = _stream!;
+        Log.LogDebug("Soniox TTS #{StreamId}: ending ({Reason}) {Elapsed:F1}s after it opened",
+            stream.Id, reason, (Now - stream.StartedAt).TotalSeconds);
         await SendText("", true, cancellationToken).ConfigureAwait(false);
         while (!stream.WhenTerminated.IsCompleted) {
             cancellationToken.ThrowIfCancellationRequested();
@@ -291,10 +296,13 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         var stream = _stream!;
         var response = await stream.WhenTerminated.ConfigureAwait(false);
         _stream = null;
-        if (response.ErrorCode is not { } errorCode)
+        if (response.ErrorCode is not { } errorCode) {
+            Log.LogDebug("Soniox TTS #{StreamId}: terminated {Elapsed:F1}s after it opened",
+                stream.Id, (Now - stream.StartedAt).TotalSeconds);
             return;
+        }
 
-        Log.LogWarning("Soniox TTS stream #{StreamId} ended with error {ErrorCode} ({ErrorType}): {ErrorMessage}",
+        Log.LogWarning("Soniox TTS #{StreamId}: ended with error {ErrorCode} ({ErrorType}): {ErrorMessage}",
             stream.Id, errorCode, response.ErrorType, response.ErrorMessage);
         if (errorCode != StreamKilledErrorCode)
             return;
@@ -375,8 +383,11 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                 if (!response.Audio.IsNullOrEmpty()) {
                     stream.OnAudioReceived();
                     var audio = Convert.FromBase64String(response.Audio);
-                    if (stream.TrySignalFirstFrame(audio.Length))
+                    if (stream.TrySignalFirstFrame(audio.Length)) {
+                        Log.LogDebug("Soniox TTS #{StreamId}: first audio +{Delay:F1}s after the first chunk",
+                            stream.Id, (Now - stream.FirstTextAt).TotalSeconds);
                         run.Listener?.OnAudioStarted();
+                    }
                     await run.Pcm.WriteAsync(audio, cancellationToken).ConfigureAwait(false);
                 }
                 if (response.Terminated)
@@ -395,9 +406,12 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         if (!char.IsWhiteSpace(chunk[^1]))
             chunk += " ";
         var isFirst = !_stream!.HasText;
-        _stream.OnChunkSent(chunk, isResent);
+        _stream.OnChunkSent(chunk, isResent, Now);
         if (isFirst)
             _run!.Listener?.OnStreamOpened();
+        Log.LogDebug("Soniox TTS #{StreamId}: {Action} {Length} chars, {Ending}",
+            _stream.Id, isResent ? "resent" : "sent", chunk.Length,
+            EndsWithClauseBoundary(chunk) ? "clause-complete" : "mid-clause");
         return SendText(chunk, false, cancellationToken);
     }
 
@@ -524,7 +538,21 @@ public sealed class SonioxTtsClient(IServiceProvider services)
     private static bool IsConnectionFailure(Exception e)
         => e is WebSocketException or IOException or SocketException;
 
+    private static bool EndsWithClauseBoundary(string chunk)
+    {
+        // Soniox speaks up to the last clause boundary at once and holds the rest for lookahead
+        var text = chunk.AsSpan().TrimEnd();
+        return text.Length > 0 && ClauseEnds.Contains(text[^1]);
+    }
+
     // Nested types
+
+    private enum StreamEndReason
+    {
+        Final,
+        Idle,
+        Rollover,
+    }
 
     private sealed record RunArgs(
         string SessionId,
@@ -558,6 +586,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
 
         public string Id { get; } = id;
         public Moment StartedAt { get; } = startedAt;
+        public Moment FirstTextAt { get; private set; } = startedAt;
         public Moment LastMessageAt { get; set; } = startedAt;
         // The result is the message that ended the stream (an error or terminated);
         // the task faults when the connection died under the stream.
@@ -566,8 +595,10 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         public bool HasAudio { get; private set; }
         public bool HasFrames { get; private set; }
 
-        public void OnChunkSent(string chunk, bool isResent)
+        public void OnChunkSent(string chunk, bool isResent, Moment now)
         {
+            if (!HasText)
+                FirstTextAt = now;
             HasText = true;
             lock (_unspokenChunks)
                 _unspokenChunks.Add((chunk, isResent));
