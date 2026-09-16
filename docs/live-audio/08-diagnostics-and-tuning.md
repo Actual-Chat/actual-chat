@@ -69,9 +69,18 @@ buffer hold. The EMAs are maintained whether or not sync is enabled.
 
 Per-track lines, at `Information` so they survive in production: the demuxer logs
 each track's frame count, peak backlog and whether it was dropped; the player
-logs its underrun count. Nothing acts on either - they exist to show whether a
-listener ever falls far enough behind, or starves often enough, to justify a
-catch-up mechanism the receiver currently doesn't have.
+logs its underrun count. Nothing acts on either. Note that own-author tracks are
+demuxed but never played, so their peak backlog always equals the full track
+length - filter those out before reading the metric. The receiver's actual
+catch-up is the arrival-lag watchdog in `ListeningStreamProcessor`
+([`07-receiver.md`](07-receiver.md#arrival-lag-watchdog)), which logs a warning
+each time it re-anchors.
+
+End-to-end audio latency per listener is on the server: each `AudioTrackPlayer`
+reports `ReportAudioLatency: session=…, latency=…ms, avSyncError=…ms` about
+every 2.5 s per track. Aggregating that line per session and minute is the
+quickest way to tell a receiver that fell behind (one session high, the rest
+normal) from a source that uploads late (every session high).
 
 Feeder worklet emits state changes for `playbackState` (`playing` /
 `starving` / `ended` / `paused`) and `bufferState` (`ok` / `low`).

@@ -101,6 +101,30 @@ reconnect, a dropped connection - are handled by re-subscribing, which makes the
 server build a new muxer and serve from the live edge. See
 [`06-server-fanout-and-replay.md`](06-server-fanout-and-replay.md).
 
+### Arrival-lag watchdog
+
+The same re-subscribe covers a receiver that cannot keep up. Every frame is
+stamped with its capture time (`BeginsAt + Offset`), and
+`ListeningStreamProcessor` compares that with the server clock as items come off
+the RPC stream, before any player buffer. A frame arriving more than
+`Constants.Audio.ListeningMaxArrivalLag` (8 s) late means the receive path fell
+behind and the server is holding the rest - the muxed stream's per-stream acks
+stop when the consumer does - and nothing downstream would ever shrink that
+backlog. The processor breaks the `ResilientStream`, which reconnects at the live
+edge, at most once per `ListeningReanchorMinPeriod` (20 s).
+
+The threshold sits above `MaxBeginsAtDrift` (5 s) on purpose: a source's tolerated
+clock skew must never look like a stall. A catch-up connection (PTT wake,
+`catchUpFrom` set) is exempt - it replays from t=0 by design - and only the live
+connection that follows it is judged. When the lag is upstream (a slow source),
+re-anchoring cannot help; the rate limit bounds what it costs, which is a restart
+of every in-flight track.
+
+Seen in the wild on 2026-09-16: a thermally throttled Android receiver ran ~0.5 s
+per wall-clock second behind for four minutes and then stayed 30-60 s late for
+the rest of the call, while the other four listeners in the same call sat at
+400-800 ms.
+
 ## C# side: `AudioTrackPlayer` and `WebAudioPlaybackEngine`
 
 File: `src/dotnet/UI.Blazor.App/Components/AudioPlayer/AudioTrackPlayer.cs`.

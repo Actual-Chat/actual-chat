@@ -93,6 +93,14 @@ public static partial class Constants
         public static readonly TimeSpan PttWebViewScopeWaitTimeout = TimeSpan.FromSeconds(8);
         // Clock-fuzz allowance between a wake's startedAt and the target stream's BeginsAt.
         public static readonly TimeSpan ListeningCatchUpTolerance = TimeSpan.FromSeconds(2);
+        // A frame reaching the listener this long after its capture time means the receive path
+        // fell behind and the server is holding the rest; the listener re-subscribes at the live
+        // edge rather than playing the backlog at 1x. Above MaxBeginsAtDrift, so a source's
+        // tolerated clock skew alone can never trip it.
+        public static readonly TimeSpan ListeningMaxArrivalLag = TimeSpan.FromSeconds(8);
+        // Bounds the re-subscribe rate when the lag is upstream (a slow source) and re-anchoring
+        // can't fix it: each one restarts every in-flight track.
+        public static readonly TimeSpan ListeningReanchorMinPeriod = TimeSpan.FromSeconds(20);
         // Must outlast ServerTimeSync's first sync (3s startup delay + a few RPC round trips).
         public static readonly TimeSpan ServerClockWaitTimeout = TimeSpan.FromSeconds(10);
         // Short: a PTT reply that waits longer than this has already lost its answer window.
