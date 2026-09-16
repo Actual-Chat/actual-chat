@@ -101,6 +101,27 @@ public class VoiceOverMixerTest
     }
 
     [Fact]
+    public void OnlyAConsumedDubFrameShouldCountAsOwnDubAudio()
+    {
+        // arrange
+        var mixer = NewMixer();
+        mixer.AddDubPcm(Bytes(Constant(2000)));
+        var original = Constant(1000);
+        var output = new short[FrameLength];
+
+        // act
+        var isElsewhereOwn = mixer.Mix(original, output, isDubSpeakingElsewhere: true);
+        var isElsewhereOwnAgain = mixer.Mix(original, output, isDubSpeakingElsewhere: true);
+        var isHoldOwn = mixer.Mix(original, output, isDubSpeakingElsewhere: false);
+
+        // assert - the duck is on throughout, but only the call that mixed a dub frame reports it
+        isElsewhereOwn.Should().BeTrue("the first call consumed the one dub frame");
+        isElsewhereOwnAgain.Should().BeFalse("a duck forced from elsewhere is not this mixer's own speech");
+        isHoldOwn.Should().BeFalse("the hold keeps the duck on without any dub audio");
+        mixer.IsDubSpeaking.Should().BeTrue();
+    }
+
+    [Fact]
     public void EndedOriginalShouldGiveTheDubAlone()
     {
         // arrange

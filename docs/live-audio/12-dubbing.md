@@ -269,7 +269,10 @@ click. `IsDubSpeaking` — and so the duck — stays true for
 `VoiceOverDuckHold` (1 s) after the last buffered dub sample, so a gap
 between TTS chunks doesn't pump the original up and down; a caller can
 also force the duck via `isDubSpeakingElsewhere`, for a dub whose speech
-this mixer instance doesn't itself receive as PCM.
+this mixer instance doesn't itself receive as PCM. `Mix` returns whether
+a frame of the buffered dub went into this output frame — distinct from
+`IsDubSpeaking`, which the hold and the forced duck keep true without
+any dub audio.
 
 ### `VoiceOverMix` — the `S~lang` stream, clocked by the original
 
@@ -316,14 +319,23 @@ the start.
 **`DubActivity`** (`src/dotnet/Streaming.Service/Audio/DubActivity.cs`)
 is the per-`(author, language)` "a dub is speaking" signal, shared by
 every mix of that author: `MarkSpeaking(until)` is a monotonic max over
-a volatile tick count, `IsSpeaking(now)` compares. Every mixed frame
-whose mixer reports `IsDubSpeaking` marks the activity for
-`VoiceOverDuckHold` past now, and every frame passes `IsSpeaking(now)`
-to the mixer as `isDubSpeakingElsewhere` — so the next utterance's mix
-starts ducked from its first frame while the previous utterance's dub
-is still draining, instead of popping up for the ramp and dropping
-again. Two events serve the latency trace: `Ducked` fires on the first
-frame with the duck engaged, `Mixed` on the first frame emitted.
+a volatile tick count, `IsSpeaking(now)` compares. Every frame into
+which the mixer consumed a frame of *this mix's own* dub audio
+(`Mix` returns true) marks the activity for `VoiceOverDuckHold` past
+now, and every frame passes `IsSpeaking(now)` to the mixer as
+`isDubSpeakingElsewhere` — so the next utterance's mix starts ducked
+from its first frame while the previous utterance's dub is still
+draining, instead of popping up for the ramp and dropping again. The
+mark must come from consumed dub audio only, never from the mixer's
+`IsDubSpeaking`: that is true because of the hold and because of the
+activity itself, so marking on it re-armed the hold on every frame — a
+mix that ducked once stayed ducked to the end of its original and
+handed the duck to the author's next utterance (the fix wave's item 1;
+`DuckShouldBeReleasedOnceTheDubAndItsHoldArePast` and
+`NextUtteranceShouldBeDuckedOnlyWhileThePreviousDubDrains` cover it on
+the real clock). Two events serve the latency trace: `Ducked` fires on
+the first frame with the duck engaged, `Mixed` on the first frame
+emitted.
 
 ## The dub worker — `AudioStreamingBackend.Dubbing.cs`
 

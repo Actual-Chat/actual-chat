@@ -256,6 +256,59 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact(Timeout = 20_000)]
+    public async Task DuckShouldBeReleasedOnceTheDubAndItsHoldArePast()
+    {
+        // arrange - 100 frames of original arriving at their own pace, 5 frames of dub at the start
+        var frames = OpusFrames(100, 4000);
+        var plain = await MixAlone(frames);
+        var mix = new VoiceOverMix(Paced(frames).Memoize(), new DubActivity(), TickingClocks, Log);
+        var output = Channel.CreateUnbounded<AudioFrame>();
+        mix.DubPcm.TryWrite(Pcm(5, 500));
+        mix.DubPcm.TryComplete();
+
+        // act
+        await mix.Run(output.Writer, CancellationToken.None);
+        var mixed = await output.Reader.ReadAllAsync().ToListAsync();
+
+        // assert - the hold (50 frames) past the last dub frame keeps the duck on, then it is released
+        mixed.Should().HaveCount(100);
+        AudioFrameRms.Of(mixed, 10..50).Should().BeLessThan(AudioFrameRms.Of(plain, 10..50) * 0.5,
+            "the original is ducked while the dub speaks and for the hold after it");
+        AudioFrameRms.Of(mixed, 60..).Should().BeGreaterThan(AudioFrameRms.Of(plain, 60..) * 0.9,
+            "the activity the mix marks must not feed its own duck back to it past the hold");
+    }
+
+    [Fact(Timeout = 20_000)]
+    public async Task NextUtteranceShouldBeDuckedOnlyWhileThePreviousDubDrains()
+    {
+        // arrange - one activity: A is a dub-only tail of 5 frames, B is 100 paced original frames
+        var activity = new DubActivity();
+        var mixA = new VoiceOverMix(null, activity, TickingClocks, Log);
+        var outputA = Channel.CreateUnbounded<AudioFrame>();
+        mixA.DubPcm.TryWrite(Pcm(5, 8000));
+        mixA.DubPcm.TryComplete();
+        var frames = OpusFrames(100, 4000);
+        var plain = await MixAlone(frames);
+        var outputB = Channel.CreateUnbounded<AudioFrame>();
+
+        // act - B starts while A speaks
+        var runATask = mixA.Run(outputA.Writer, CancellationToken.None);
+        await WhenEmitted(outputA, 1);
+        var mixB = new VoiceOverMix(Paced(frames).Memoize(), activity, TickingClocks, Log);
+        mixB.DubPcm.TryComplete();
+        await mixB.Run(outputB.Writer, CancellationToken.None);
+        await runATask;
+        var mixed = await outputB.Reader.ReadAllAsync().ToListAsync();
+
+        // assert - B is ducked through A's tail (100 ms) and hold (1 s), at full gain after the ramp
+        mixed.Should().HaveCount(100);
+        AudioFrameRms.Of(mixed, 5..30).Should().BeLessThan(AudioFrameRms.Of(plain, 5..30) * 0.5,
+            "the next utterance starts ducked while the previous dub is still speaking");
+        AudioFrameRms.Of(mixed, 70..).Should().BeGreaterThan(AudioFrameRms.Of(plain, 70..) * 0.9,
+            "a mix without a dub of its own never extends the duck the previous one handed it");
+    }
+
+    [Fact(Timeout = 20_000)]
     public async Task RunShouldPropagateTheOriginalsFailure()
     {
         // arrange
@@ -300,6 +353,26 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
         for (var i = 0; i < 200 && output.Reader.Count < frameCount; i++)
             await Task.Delay(10);
         output.Reader.Count.Should().Be(frameCount);
+    }
+
+    private async Task<List<AudioFrame>> MixAlone(List<AudioFrame> frames)
+    {
+        // The reference for the level assertions: the same original through a mix with no dub
+        var mix = new VoiceOverMix(frames.AsAsyncEnumerable().Memoize(), new DubActivity(), TickingClocks, Log);
+        var output = Channel.CreateUnbounded<AudioFrame>();
+        mix.DubPcm.TryComplete();
+        await mix.Run(output.Writer, CancellationToken.None);
+        return await output.Reader.ReadAllAsync().ToListAsync();
+    }
+
+    private static async IAsyncEnumerable<AudioFrame> Paced(List<AudioFrame> frames)
+    {
+        // One frame per 20 ms, as a live original arrives: the activity's hold is wall-clock time
+        foreach (var frame in frames) {
+            yield return frame;
+
+            await Task.Delay(FrameDuration);
+        }
     }
 
     private static List<AudioFrame> OpusFrames(int count, short amplitude)

@@ -114,13 +114,15 @@ public sealed class VoiceOverMix(
     {
         DrainDubPcm();
         var now = Clock.Now;
-        _mixer.Mix(hasOriginal ? _originalPcm : ReadOnlySpan<short>.Empty, _mixedPcm, Activity.IsSpeaking(now));
-        if (_mixer.IsDubSpeaking) {
+        var original = hasOriginal ? _originalPcm : ReadOnlySpan<short>.Empty;
+        var isDubFrameMixed = _mixer.Mix(original, _mixedPcm, Activity.IsSpeaking(now));
+        // Only this mix's own dub audio marks the activity: the activity feeds back into the mixer
+        // as isDubSpeakingElsewhere, and marking on the mixer's duck would re-arm the hold forever
+        if (isDubFrameMixed)
             Activity.MarkSpeaking(now + Constants.Audio.VoiceOverDuckHold);
-            if (!_isDucked) {
-                _isDucked = true;
-                Ducked?.Invoke();
-            }
+        if (_mixer.IsDubSpeaking && !_isDucked) {
+            _isDucked = true;
+            Ducked?.Invoke();
         }
         if (!_isMixed) {
             _isMixed = true;

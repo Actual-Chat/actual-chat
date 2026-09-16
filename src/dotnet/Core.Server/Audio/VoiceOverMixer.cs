@@ -33,7 +33,9 @@ public sealed class VoiceOverMixer
     public void AddDubPcm(ReadOnlySpan<byte> pcm)
         => _dub.Append(pcm);
 
-    public void Mix(ReadOnlySpan<short> original, Span<short> output, bool isDubSpeakingElsewhere)
+    // True when a frame of this mixer's own dub audio went into the output: the hold and
+    // isDubSpeakingElsewhere keep the duck on, but only consumed dub audio counts as speech
+    public bool Mix(ReadOnlySpan<short> original, Span<short> output, bool isDubSpeakingElsewhere)
     {
         var hasDubFrame = _dub.TryTake(_dubFrame);
         _framesSinceDubAudio = hasDubFrame ? 0 : _framesSinceDubAudio + 1;
@@ -48,6 +50,7 @@ public sealed class VoiceOverMixer
             var dubSample = hasDubFrame ? _dubFrame[i] : 0;
             output[i] = (short)Math.Clamp(originalSample + dubSample, short.MinValue, short.MaxValue);
         }
+        return hasDubFrame;
     }
 
     // Nested types
