@@ -27,7 +27,8 @@ public static class McpModelExt
             entry.HasAudio,
             entry.IsRemoved,
             text,
-            attachments);
+            attachments,
+            entry.RepliedEntryLid);
     }
 
     public static McpAttachment ToMcpModel(this ChatEntryAttachment attachment, UrlMapper urlMapper)

@@ -1,3 +1,4 @@
+using ActualChat.Notifications;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Mcp.IntegrationTests;
@@ -23,6 +24,161 @@ public class McpMessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutp
         var entry = await Tester.Chats.GetEntry(Tester.Session, ChatEntryId.New(chatId, lid));
         entry.Should().NotBeNull();
         entry!.Content.Should().Be("hello from mcp");
+    }
+
+    [Fact]
+    public async Task PostMessageWithReplyToShouldLinkEntries()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
+        var original = await Tester.CreateTextEntry(chatId, "original");
+        var client = await CreateClient();
+
+        // act
+        var lid = await CallTool<long>(client, "post_message",
+            new { chatId = chatId.Value, text = "a reply", replyToId = original.LocalId });
+        var listed = await CallTool<McpListMessagesResult>(client, "list_messages",
+            new { chatId = chatId.Value, afterId = lid - 1 });
+
+        // assert
+        var entry = await Tester.Chats.GetEntry(Tester.Session, ChatEntryId.New(chatId, lid));
+        entry!.RepliedEntryLid.Should().Be(original.LocalId);
+        listed.Messages.Single(m => m.Id == lid).RepliedToId.Should().Be(original.LocalId);
+    }
+
+    [Fact]
+    public async Task PostMessageWithAttachmentShouldCarryIt()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
+        var media = await Tester.CreateImageMedia(chatId, "photo.png");
+        var client = await CreateClient();
+
+        // act
+        var lid = await CallTool<long>(client, "post_message",
+            new { chatId = chatId.Value, text = "with photo", attachmentMediaIds = new[] { media.Id.Value } });
+        var listed = await CallTool<McpListMessagesResult>(client, "list_messages",
+            new { chatId = chatId.Value, afterId = lid - 1 });
+
+        // assert
+        var message = listed.Messages.Single(m => m.Id == lid);
+        message.Attachments.Should().ContainSingle().Which.MediaId.Should().Be(media.Id.Value);
+    }
+
+    [Fact]
+    public async Task PinAndUnpinShouldUpdatePinnedList()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
+        var entry = await Tester.CreateTextEntry(chatId, "pin me");
+        var client = await CreateClient();
+
+        // act
+        await CallTool(client, "pin_message", new { chatId = chatId.Value, entryId = entry.LocalId });
+        var pinned = await WaitFor(
+            () => CallTool<McpChatMessage[]>(client, "list_pinned_messages", new { chatId = chatId.Value }),
+            r => r.Length == 1);
+        await CallTool(client, "unpin_message", new { chatId = chatId.Value, entryId = entry.LocalId });
+        var unpinned = await WaitFor(
+            () => CallTool<McpChatMessage[]>(client, "list_pinned_messages", new { chatId = chatId.Value }),
+            r => r.Length == 0);
+
+        // assert
+        pinned.Should().ContainSingle().Which.Text.Should().Be("pin me");
+        unpinned.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ReactShouldToggleReaction()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
+        var entry = await Tester.CreateTextEntry(chatId, "react to me");
+        var client = await CreateClient();
+        var args = new { chatId = chatId.Value, entryId = entry.LocalId, emoji = "👍" };
+
+        // act
+        await CallTool(client, "react", args);
+        var reacted = await WaitFor(
+            () => CallTool<McpReactionSummary[]>(client, "list_reactions", args),
+            r => r.Length == 1);
+        await CallTool(client, "react", args);
+        var removed = await WaitFor(
+            () => CallTool<McpReactionSummary[]>(client, "list_reactions", args),
+            r => r.Length == 0);
+
+        // assert
+        var summary = reacted.Should().ContainSingle().Which;
+        summary.Emoji.Should().Be("👍");
+        summary.Count.Should().Be(1);
+        removed.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ReactWithUnknownEmojiShouldFail()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
+        var entry = await Tester.CreateTextEntry(chatId, "x");
+        var client = await CreateClient();
+
+        // act
+        var error = await CallToolExpectingError(client, "react",
+            new { chatId = chatId.Value, entryId = entry.LocalId, emoji = "not-an-emoji" });
+
+        // assert
+        error.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task NotifyMembersShouldPostNotifyEntry()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: false);
+        var client = await CreateClient();
+        var before = await Tester.Chats.GetIdRange(Tester.Session, chatId, CancellationToken.None);
+
+        // act
+        await CallTool(client, "notify_members", new { chatId = chatId.Value });
+
+        // assert
+        var after = await WaitFor(
+            () => Tester.Chats.GetIdRange(Tester.Session, chatId, CancellationToken.None),
+            r => r.End > before.End);
+        after.End.Should().BeGreaterThan(before.End, "notifying members writes a system entry");
+        var lastEntryId = ChatEntryId.New(chatId, after.End - 1);
+        var lastEntry = await Tester.Chats.GetEntry(Tester.Session, lastEntryId);
+        lastEntry.Should().BeOfType<NotifyMembersEntry>();
+    }
+
+    [Fact]
+    public async Task NotifyMentionedShouldMarkEntryNotified()
+    {
+        // arrange
+        var alice = await Tester.SignInAsUniqueAlice();
+        var aliceKey = await IssueApiKey("alice");
+        var bob = await Tester.SignInAsUniqueBob();
+        await Tester.SignIn(alice);
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: false);
+        await Tester.InviteToChat(chatId, bob.Id);
+        var entry = await Tester.CreateTextEntry(chatId, $"hey @u:{bob.Id} !");
+        var client = await CreateClientWithRawKey(aliceKey);
+
+        // act
+        await CallTool(client, "notify_mentioned", new { chatId = chatId.Value, entryId = entry.LocalId });
+
+        // assert
+        var notifications = Tester.AppServices.GetRequiredService<INotifications>();
+        var isNotified = await WaitFor(
+            () => notifications.HasNotifiedMentionedMembers(Tester.Session, entry.Id, CancellationToken.None),
+            x => x);
+        isNotified.Should().BeTrue();
     }
 
     [Fact]
