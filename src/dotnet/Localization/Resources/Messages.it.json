@@ -23,6 +23,18 @@
   "Error_MediaNotFound": "File non trovato.",
   "Error_UploadNotFound": "Caricamento non trovato.",
 
+  // Connection errors
+  "Error_ConnectTimeout": "Tempo scaduto durante la connessione al server.",
+  "Error_ConnectTimeout_Format": "Tempo scaduto durante la connessione al server ({timeout}).",
+  "Error_CallTimeout": "Il server non ha risposto in tempo.",
+  "Error_CallTimeout_Format": "Il server non ha risposto in tempo ({timeout}).",
+  "Error_DelayTimeout_Format": "Il server non ha risposto in tempo ({timeout}), la richiesta in sospeso è stata annullata.",
+  "Error_PrematureDisconnect": "La connessione è stata chiusa prematuramente.",
+  "Error_ServerUnreachable": "Impossibile connettersi: il server non è raggiungibile.",
+  "Error_NotConnected": "Richiesta non riuscita: nessuna connessione al server.",
+  "Error_DisconnectedDuringCall": "Richiesta non riuscita: la connessione al server è stata persa.",
+  "Error_ReconnectedToDifferentServer": "Richiesta non riuscita: è stata stabilita una connessione a un altro server.",
+
   // Sign-in and account
   "Error_RegistrationExpired": "Questa richiesta di registrazione è scaduta. Prova ad accedere di nuovo.",
   "Error_SessionExpired": "La tua sessione è scaduta o disattivata. Riavvia l’app.",

@@ -31,6 +31,18 @@
   "Error_MediaNotFound": "Medij nije pronađen.",
   "Error_UploadNotFound": "Otpremanje nije pronađeno.",
 
+  // Connection errors
+  "Error_ConnectTimeout": "Isteklo je vrijeme za povezivanje sa serverom.",
+  "Error_ConnectTimeout_Format": "Isteklo je vrijeme za povezivanje sa serverom ({timeout}).",
+  "Error_CallTimeout": "Server nije odgovorio na vrijeme.",
+  "Error_CallTimeout_Format": "Server nije odgovorio na vrijeme ({timeout}).",
+  "Error_DelayTimeout_Format": "Server nije odgovorio na vrijeme ({timeout}), odgođeni zahtjev je prekinut.",
+  "Error_PrematureDisconnect": "Veza je prerano zatvorena.",
+  "Error_ServerUnreachable": "Povezivanje nije moguće: server je nedostupan.",
+  "Error_NotConnected": "Zahtjev nije uspio: nema veze sa serverom.",
+  "Error_DisconnectedDuringCall": "Zahtjev nije uspio: veza sa serverom je prekinuta.",
+  "Error_ReconnectedToDifferentServer": "Zahtjev nije uspio: uspostavljena je veza s drugim serverom.",
+
   // Sign-in and account
   "Error_RegistrationExpired": "Ovaj zahtjev za registraciju je istekao. Pokušajte se prijaviti ponovo.",
   "Error_SessionExpired": "Vaša sesija je istekla ili je deaktivirana. Ponovo pokrenite aplikaciju.",

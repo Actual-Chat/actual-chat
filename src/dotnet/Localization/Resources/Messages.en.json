@@ -34,6 +34,19 @@
   "Error_MediaNotFound": "Media is not found.",
   "Error_UploadNotFound": "Upload is not found.",
 
+  // Connection errors, composed by ActualLab.Rpc on the client while offline or on a flaky link.
+  // {timeout} arrives preformatted by the client ("20s", "1m 30s") - it is not a number to inflect.
+  "Error_ConnectTimeout": "Timeout while connecting to server.",
+  "Error_ConnectTimeout_Format": "Timeout while connecting to server ({timeout}).",
+  "Error_CallTimeout": "The server didn't respond in time.",
+  "Error_CallTimeout_Format": "The server didn't respond in time ({timeout}).",
+  "Error_DelayTimeout_Format": "The server didn't respond in time ({timeout}), the delayed call is aborted.",
+  "Error_PrematureDisconnect": "Connection is closed prematurely.",
+  "Error_ServerUnreachable": "Impossible to (re)connect: the server is unreachable.",
+  "Error_NotConnected": "Outbound call failed: not connected and AwaitForConnection is not set.",
+  "Error_DisconnectedDuringCall": "Outbound call failed: disconnected and AllowReconnect is not set.",
+  "Error_ReconnectedToDifferentServer": "Outbound call failed: reconnected to a different peer and AllowResend is not set.",
+
   // Sign-in and account
   "Error_RegistrationExpired": "This registration request has expired. Please try signing in again.",
   "Error_SessionExpired": "Your session is expired or deactivated. Please restart the app.",

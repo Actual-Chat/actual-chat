@@ -23,6 +23,18 @@
   "Error_MediaNotFound": "Datei nicht gefunden.",
   "Error_UploadNotFound": "Upload nicht gefunden.",
 
+  // Connection errors
+  "Error_ConnectTimeout": "Zeitüberschreitung beim Verbinden mit dem Server.",
+  "Error_ConnectTimeout_Format": "Zeitüberschreitung beim Verbinden mit dem Server ({timeout}).",
+  "Error_CallTimeout": "Der Server hat nicht rechtzeitig geantwortet.",
+  "Error_CallTimeout_Format": "Der Server hat nicht rechtzeitig geantwortet ({timeout}).",
+  "Error_DelayTimeout_Format": "Der Server hat nicht rechtzeitig geantwortet ({timeout}), die verzögerte Anfrage wurde abgebrochen.",
+  "Error_PrematureDisconnect": "Die Verbindung wurde vorzeitig geschlossen.",
+  "Error_ServerUnreachable": "Verbindung nicht möglich: Der Server ist nicht erreichbar.",
+  "Error_NotConnected": "Anfrage fehlgeschlagen: keine Verbindung zum Server.",
+  "Error_DisconnectedDuringCall": "Anfrage fehlgeschlagen: Die Verbindung zum Server wurde unterbrochen.",
+  "Error_ReconnectedToDifferentServer": "Anfrage fehlgeschlagen: Es wurde eine Verbindung zu einem anderen Server hergestellt.",
+
   // Sign-in and account
   "Error_RegistrationExpired": "Diese Registrierungsanfrage ist abgelaufen. Bitte melde dich erneut an.",
   "Error_SessionExpired": "Deine Sitzung ist abgelaufen oder deaktiviert. Bitte starte die App neu.",

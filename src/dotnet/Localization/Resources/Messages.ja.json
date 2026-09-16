@@ -23,6 +23,18 @@
   "Error_MediaNotFound": "ファイルが見つかりません。",
   "Error_UploadNotFound": "アップロードが見つかりません。",
 
+  // Connection errors
+  "Error_ConnectTimeout": "サーバーへの接続がタイムアウトしました。",
+  "Error_ConnectTimeout_Format": "サーバーへの接続がタイムアウトしました（{timeout}）。",
+  "Error_CallTimeout": "サーバーが時間内に応答しませんでした。",
+  "Error_CallTimeout_Format": "サーバーが時間内に応答しませんでした（{timeout}）。",
+  "Error_DelayTimeout_Format": "サーバーが時間内に応答しなかったため（{timeout}）、保留中のリクエストを中止しました。",
+  "Error_PrematureDisconnect": "接続が予期せず切断されました。",
+  "Error_ServerUnreachable": "接続できません。サーバーに到達できません。",
+  "Error_NotConnected": "リクエストに失敗しました。サーバーに接続されていません。",
+  "Error_DisconnectedDuringCall": "リクエストに失敗しました。サーバーとの接続が切断されました。",
+  "Error_ReconnectedToDifferentServer": "リクエストに失敗しました。別のサーバーに再接続されました。",
+
   // Sign-in and account
   "Error_RegistrationExpired": "この登録リクエストは期限切れです。もう一度サインインしてください。",
   "Error_SessionExpired": "セッションの期限が切れたか、無効になりました。アプリを再起動してください。",

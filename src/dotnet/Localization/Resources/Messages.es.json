@@ -23,6 +23,18 @@
   "Error_MediaNotFound": "No se encontró el archivo.",
   "Error_UploadNotFound": "No se encontró la subida.",
 
+  // Connection errors
+  "Error_ConnectTimeout": "Se agotó el tiempo de espera al conectar con el servidor.",
+  "Error_ConnectTimeout_Format": "Se agotó el tiempo de espera al conectar con el servidor ({timeout}).",
+  "Error_CallTimeout": "El servidor no respondió a tiempo.",
+  "Error_CallTimeout_Format": "El servidor no respondió a tiempo ({timeout}).",
+  "Error_DelayTimeout_Format": "El servidor no respondió a tiempo ({timeout}); la solicitud pendiente se ha cancelado.",
+  "Error_PrematureDisconnect": "La conexión se cerró de forma inesperada.",
+  "Error_ServerUnreachable": "No se puede conectar: el servidor no está disponible.",
+  "Error_NotConnected": "La solicitud falló: no hay conexión con el servidor.",
+  "Error_DisconnectedDuringCall": "La solicitud falló: se perdió la conexión con el servidor.",
+  "Error_ReconnectedToDifferentServer": "La solicitud falló: se restableció la conexión con otro servidor.",
+
   // Sign-in and account
   "Error_RegistrationExpired": "Esta solicitud de registro ha caducado. Inicia sesión de nuevo.",
   "Error_SessionExpired": "Tu sesión ha caducado o está desactivada. Reinicia la aplicación.",

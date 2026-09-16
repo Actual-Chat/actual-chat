@@ -31,6 +31,18 @@
   "Error_MediaNotFound": "Media tidak ditemukan.",
   "Error_UploadNotFound": "Unggahan tidak ditemukan.",
 
+  // Connection errors
+  "Error_ConnectTimeout": "Waktu koneksi ke server habis.",
+  "Error_ConnectTimeout_Format": "Waktu koneksi ke server habis ({timeout}).",
+  "Error_CallTimeout": "Server tidak merespons tepat waktu.",
+  "Error_CallTimeout_Format": "Server tidak merespons tepat waktu ({timeout}).",
+  "Error_DelayTimeout_Format": "Server tidak merespons tepat waktu ({timeout}), permintaan yang tertunda dibatalkan.",
+  "Error_PrematureDisconnect": "Koneksi ditutup sebelum waktunya.",
+  "Error_ServerUnreachable": "Tidak dapat terhubung: server tidak dapat dijangkau.",
+  "Error_NotConnected": "Permintaan gagal: tidak ada koneksi ke server.",
+  "Error_DisconnectedDuringCall": "Permintaan gagal: koneksi ke server terputus.",
+  "Error_ReconnectedToDifferentServer": "Permintaan gagal: terhubung kembali ke server lain.",
+
   // Sign-in and account
   "Error_RegistrationExpired": "Permintaan pendaftaran ini sudah kedaluwarsa. Coba masuk lagi.",
   "Error_SessionExpired": "Sesi Anda kedaluwarsa atau dinonaktifkan. Mulai ulang aplikasi.",

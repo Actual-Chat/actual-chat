@@ -31,6 +31,18 @@
   "Error_MediaNotFound": "Медийният файл не е намерен.",
   "Error_UploadNotFound": "Качваният файл не е намерен.",
 
+  // Connection errors
+  "Error_ConnectTimeout": "Времето за свързване със сървъра изтече.",
+  "Error_ConnectTimeout_Format": "Времето за свързване със сървъра изтече ({timeout}).",
+  "Error_CallTimeout": "Сървърът не отговори навреме.",
+  "Error_CallTimeout_Format": "Сървърът не отговори навреме ({timeout}).",
+  "Error_DelayTimeout_Format": "Сървърът не отговори навреме ({timeout}), изчакващата заявка беше прекратена.",
+  "Error_PrematureDisconnect": "Връзката беше затворена преждевременно.",
+  "Error_ServerUnreachable": "Свързването е невъзможно: сървърът е недостъпен.",
+  "Error_NotConnected": "Заявката е неуспешна: няма връзка със сървъра.",
+  "Error_DisconnectedDuringCall": "Заявката е неуспешна: връзката със сървъра беше прекъсната.",
+  "Error_ReconnectedToDifferentServer": "Заявката е неуспешна: установена е връзка с друг сървър.",
+
   // Sign-in and account
   "Error_RegistrationExpired": "Тази заявка за регистрация е изтекла. Опитайте да влезете отново.",
   "Error_SessionExpired": "Сесията ви е изтекла или е деактивирана. Рестартирайте приложението.",

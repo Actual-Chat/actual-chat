@@ -23,6 +23,18 @@
   "Error_MediaNotFound": "Dosya bulunamadı.",
   "Error_UploadNotFound": "Yükleme bulunamadı.",
 
+  // Connection errors
+  "Error_ConnectTimeout": "Sunucuya bağlanırken zaman aşımı oluştu.",
+  "Error_ConnectTimeout_Format": "Sunucuya bağlanırken zaman aşımı oluştu ({timeout}).",
+  "Error_CallTimeout": "Sunucu zamanında yanıt vermedi.",
+  "Error_CallTimeout_Format": "Sunucu zamanında yanıt vermedi ({timeout}).",
+  "Error_DelayTimeout_Format": "Sunucu zamanında yanıt vermedi ({timeout}), bekleyen istek iptal edildi.",
+  "Error_PrematureDisconnect": "Bağlantı beklenmedik şekilde kapandı.",
+  "Error_ServerUnreachable": "Bağlanılamıyor: sunucuya erişilemiyor.",
+  "Error_NotConnected": "İstek başarısız oldu: sunucuyla bağlantı yok.",
+  "Error_DisconnectedDuringCall": "İstek başarısız oldu: sunucuyla bağlantı kesildi.",
+  "Error_ReconnectedToDifferentServer": "İstek başarısız oldu: başka bir sunucuya bağlanıldı.",
+
   // Sign-in and account
   "Error_RegistrationExpired": "Bu kayıt isteğinin süresi doldu. Lütfen tekrar giriş yapmayı deneyin.",
   "Error_SessionExpired": "Oturumunuzun süresi doldu veya oturum kapatıldı. Lütfen uygulamayı yeniden başlatın.",

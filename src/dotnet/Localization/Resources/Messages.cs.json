@@ -31,6 +31,18 @@
   "Error_MediaNotFound": "Médium nebylo nalezeno.",
   "Error_UploadNotFound": "Nahrávaný soubor nebyl nalezen.",
 
+  // Connection errors
+  "Error_ConnectTimeout": "Vypršel časový limit připojení k serveru.",
+  "Error_ConnectTimeout_Format": "Vypršel časový limit připojení k serveru ({timeout}).",
+  "Error_CallTimeout": "Server neodpověděl včas.",
+  "Error_CallTimeout_Format": "Server neodpověděl včas ({timeout}).",
+  "Error_DelayTimeout_Format": "Server neodpověděl včas ({timeout}), čekající požadavek byl zrušen.",
+  "Error_PrematureDisconnect": "Připojení bylo předčasně ukončeno.",
+  "Error_ServerUnreachable": "Nelze se připojit: server je nedostupný.",
+  "Error_NotConnected": "Požadavek se nezdařil: chybí připojení k serveru.",
+  "Error_DisconnectedDuringCall": "Požadavek se nezdařil: připojení k serveru bylo ztraceno.",
+  "Error_ReconnectedToDifferentServer": "Požadavek se nezdařil: došlo k připojení k jinému serveru.",
+
   // Sign-in and account
   "Error_RegistrationExpired": "Tato žádost o registraci vypršela. Zkuste se přihlásit znovu.",
   "Error_SessionExpired": "Vaše relace vypršela nebo byla deaktivována. Restartujte aplikaci.",
