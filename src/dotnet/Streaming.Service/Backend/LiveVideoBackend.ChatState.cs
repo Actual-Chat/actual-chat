@@ -31,23 +31,24 @@ public partial class LiveVideoBackend
             }
         }
 
-        public void RecomputeCodecs(Dictionary<string, VideoStreamMemberInfo> members)
+        // Returns whether CurrentSupportedDecoderCodecs changed.
+        public bool RecomputeCodecs(Dictionary<string, VideoStreamMemberInfo> members)
         {
             lock (_codecLock)
-                RecomputeSupportedDecoderCodecs(members);
+                return RecomputeSupportedDecoderCodecs(members);
         }
 
         // Private methods
 
         // Must be called under _codecLock
-        private void RecomputeSupportedDecoderCodecs(Dictionary<string, VideoStreamMemberInfo> members)
+        private bool RecomputeSupportedDecoderCodecs(Dictionary<string, VideoStreamMemberInfo> members)
         {
             var (newCodecs, isForced) = ComputeSupportedDecoderCodecs(members);
             // Compared as a set: the list carries no order, so a reshuffle is
             // not a change.
             if (_currentSupportedDecoderCodecs.Count == newCodecs.Count
                 && !newCodecs.Except(_currentSupportedDecoderCodecs, StringComparer.Ordinal).Any())
-                return;
+                return false;
 
             // Hysteresis works on the best codec the set contains, not on any
             // position in it: which codec a sender ends up using is the sender's
@@ -66,7 +67,7 @@ public partial class LiveVideoBackend
                 && !_isForced
                 && newBest > currentBest
                 && _lastCodecDowngradeAt.Elapsed < Constants.Video.CodecSwitchHysteresisWindow)
-                return;
+                return false;
 
             _isForced = isForced;
 
@@ -74,6 +75,7 @@ public partial class LiveVideoBackend
                 _lastCodecDowngradeAt = CpuTimestamp.Now;
 
             _currentSupportedDecoderCodecs = newCodecs;
+            return true;
         }
 
         // Compression quality, higher is better. Times the hysteresis above and
