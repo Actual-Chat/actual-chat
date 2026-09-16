@@ -460,9 +460,12 @@ channel, `tts opened` is the wait from that first spoken chunk to the
 first text actually sent on a TTS stream — `StartSynthesis` drains the
 speaker's previous dub, resolves the voice and opens the WebSocket before
 sending anything, and that wait is otherwise invisible — `tts first
-audio` is first-text-sent → first-audio per TTS stream (reported by the
-client through `ISpeechSynthesisListener` on
-`SpeechSynthesisOptions.Listener`); a stream Soniox kills before any
+audio` is first-text-sent → first-decoded-frame per TTS stream (reported
+by the client through `ISpeechSynthesisListener` on
+`SpeechSynthesisOptions.Listener`; `OnAudioStarted` fires on the first
+`AudioFrame` a stream's `OggOpusReader` actually yields, not on Soniox's
+first `audio` message — that message can be only the Ogg headers, which
+decode to no frame). A stream Soniox kills before any
 audio folds its open time into the replacement stream's sample instead of
 being lost, so a resend still produces one `tts first audio` reading that
 covers the whole outage. `first word` is the first stream's first audio

@@ -376,11 +376,13 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                 }
 
                 if (!response.Audio.IsNullOrEmpty()) {
-                    if (!stream.HasAudio)
-                        _run!.Listener?.OnAudioStarted();
                     stream.OnAudioReceived();
                     var audio = Convert.FromBase64String(response.Audio);
-                    await WriteFrames(stream.Reader, audio, output, cancellationToken).ConfigureAwait(false);
+                    await WriteFrames(stream.Reader, audio, output, cancellationToken, () => {
+                            if (stream.TrySignalFirstFrame())
+                                _run!.Listener?.OnAudioStarted();
+                        })
+                        .ConfigureAwait(false);
                 }
                 if (response.Terminated)
                     stream.Terminate(response);
@@ -424,16 +426,19 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         OggOpusReader reader,
         ReadOnlyMemory<byte> chunk,
         ChannelWriter<AudioFrame> output,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action? onFrameWritten = null)
     {
         // Every stream's reader starts its offsets from zero; the output's run on across streams
         reader.Append(chunk.Span);
-        while (reader.TryRead(out var frame))
+        while (reader.TryRead(out var frame)) {
             await output.WriteAsync(new AudioFrame {
                     Data = frame.Data,
                     Offset = Constants.Audio.OpusFrameDuration * _frameCount++,
                 }, cancellationToken)
                 .ConfigureAwait(false);
+            onFrameWritten?.Invoke();
+        }
     }
 
     private static async Task GeneratePart(
@@ -568,12 +573,23 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         public Task<SonioxTtsResponse> WhenTerminated => _whenTerminatedSource.Task;
         public bool HasText { get; private set; }
         public bool HasAudio { get; private set; }
+        public bool HasFrames { get; private set; }
 
         public void OnChunkSent(string chunk, bool isResent)
         {
             HasText = true;
             lock (_unspokenChunks)
                 _unspokenChunks.Add((chunk, isResent));
+        }
+
+        public bool TrySignalFirstFrame()
+        {
+            // True only the first time it's called for this stream, e.g. an Ogg header message
+            // carries no decoded frame, so this - not HasAudio - is when Soniox actually starts speaking
+            if (HasFrames)
+                return false;
+            HasFrames = true;
+            return true;
         }
 
         // Soniox synthesizes a sentence only once it sees the text after it, so the chunks sent

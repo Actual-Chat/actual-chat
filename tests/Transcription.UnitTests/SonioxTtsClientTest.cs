@@ -248,7 +248,29 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         client.StreamCount.Should().Be(1);
         listener.StreamsOpened.Should().Be(1, "opened once, when the first chunk was sent");
-        listener.AudioStarts.Should().Be(1, "reported once per stream, on its first audio message");
+        listener.AudioStarts.Should().Be(1, "reported once per stream, on its first decoded frame");
+    }
+
+    [Fact(Timeout = 15_000)]
+    public async Task ListenerShouldNotSeeAudioStartFromHeadersAlone()
+    {
+        // arrange - the fake answers with only the Ogg headers, never an actual frame page
+        var listener = new RecordingListener();
+        var soniox = new FakeSoniox { HeadersOnly = true };
+        var client = NewClient(soniox, idleFlush: Long, streamRollover: Long);
+        var text = Channel.CreateUnbounded<string>();
+        var output = Channel.CreateUnbounded<AudioFrame>();
+        text.Writer.TryWrite("Hello.");
+        text.Writer.TryComplete();
+
+        // act
+        await client.Run("s1", "en", "Adrian", text.Reader, output.Writer, listener, CancellationToken.None);
+        var audio = await output.Reader.ReadAllAsync().ToListAsync();
+
+        // assert
+        audio.Should().BeEmpty("headers alone decode to no frame");
+        listener.StreamsOpened.Should().Be(1);
+        listener.AudioStarts.Should().Be(0, "an Ogg header message carries no decoded frame yet");
     }
 
     [Fact(Timeout = 15_000)]
@@ -317,13 +339,14 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     // A Soniox stand-in that speaks one Ogg/Opus page with one frame per text (the stream's headers
-    // ride along with its first one) and can kill a stream (408) or drop the connection after a given
-    // number of texts on the first connection.
+    // ride along with its first one, or alone when HeadersOnly) and can kill a stream (408) or drop
+    // the connection after a given number of texts on the first connection.
     private sealed class FakeSoniox
     {
         public int KillAfterTextCount { get; init; }
         public int DropAfterTextCount { get; init; }
         public bool DropEveryConnection { get; init; }
+        public bool HeadersOnly { get; init; }
         public int ConnectionCount { get; private set; }
         public List<SentMessage> Sent { get; } = new();
 
@@ -368,9 +391,16 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
                             $$"""{"stream_id":"{{streamId}}","error_code":408,"error_message":"Stream killed"}""");
                         continue;
                     }
-                    var page = OggOpusTestStream.WritePage(ogg, OggOpusTestStream.Frames(1, frameIndex++), true);
-                    var audio = oggHeaders == null ? page : oggHeaders.Concat(page).ToArray();
-                    oggHeaders = null;
+                    byte[] audio;
+                    if (HeadersOnly) {
+                        audio = oggHeaders ?? [];
+                        oggHeaders = null;
+                    }
+                    else {
+                        var page = OggOpusTestStream.WritePage(ogg, OggOpusTestStream.Frames(1, frameIndex++), true);
+                        audio = oggHeaders == null ? page : oggHeaders.Concat(page).ToArray();
+                        oggHeaders = null;
+                    }
                     webSocket.Incoming.Writer.TryWrite(
                         $$"""{"stream_id":"{{streamId}}","audio":"{{Convert.ToBase64String(audio)}}"}""");
                 }
