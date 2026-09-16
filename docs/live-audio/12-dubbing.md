@@ -251,10 +251,10 @@ fails the one-shot otherwise.
 
 ### `VoiceOverMixer` — ducking the original under the dub
 
-File: `src/dotnet/Core.Server/Audio/VoiceOverMixer.cs`. Pure; a building
-block for a future voice-over mode that plays the dub *over* the
-original rather than substituting for it — not wired into the pipeline
-yet.
+File: `src/dotnet/Core.Server/Audio/VoiceOverMixer.cs`. Pure; the
+building block of the voice-over mode that plays the dub *over* the
+original rather than substituting for it. `VoiceOverMix` (next section)
+runs it per stream; the dub worker doesn't wire it in yet.
 
 Frame by frame (`FrameLength` = `Constants.Audio.PcmFrameLength`, 960
 samples at 48 kHz), `Mix` sums the buffered dub PCM onto the original
@@ -266,6 +266,54 @@ click. `IsDubSpeaking` — and so the duck — stays true for
 between TTS chunks doesn't pump the original up and down; a caller can
 also force the duck via `isDubSpeakingElsewhere`, for a dub whose speech
 this mixer instance doesn't itself receive as PCM.
+
+### `VoiceOverMix` — the `S~lang` stream, clocked by the original
+
+File: `src/dotnet/Streaming.Service/Audio/VoiceOverMix.cs`, with
+`DubActivity` beside it. One instance per dubbed stream: it decodes the
+original, runs it through a `VoiceOverMixer` with the dub PCM the
+synthesizer writes into `DubPcm`, and encodes once — `Run(output, ct)`
+pairs `Produce` with an unpaced `OpusFramePump` via
+`TaskExt.WhenPushAndRead`, so the output is 20 ms Opus `AudioFrame`s and
+is completed with `Produce`'s error on failure.
+
+**Clocking.** While the original runs, its frames clock the mix: each
+original frame (the negative-offset header is skipped) is decoded and
+mixed into exactly one output frame with the same offset, no clock
+involved, so the `S~lang` stream lags the `S` stream by the decode +
+mix + encode of a frame and nothing else. The original is a 16 kHz
+recording and the mix runs at 48 kHz (TTS PCM, `PcmFrameLength` = 960
+samples), so the decoder is an `OpusToPcmDecoder(PlaybackSampleRate)` —
+Opus resamples on decode, and a 20 ms packet of any input rate comes out
+as 960 samples. A frame that decodes to nothing is mixed as silence, with
+one warning per stream. Once the original ends, the dub tail is paced by
+`CpuClock`: one frame per `OpusFrameDuration` from the moment the
+original ended, offsets continuing where the original's left off.
+
+**End rule.** The tick loop runs while there is buffered dub audio, or
+while a synthesis that may still deliver some is pending: `WaitForDub`
+returns true when the mixer holds dub PCM; otherwise it ends the stream
+if `OnSynthesisStarted` was never called (no dub: the mix ends with the
+original) or if `DubPcm` is completed, and blocks on `DubPcm` until the
+next chunk otherwise. So a dub that arrives after the original ended
+still plays, and `OnSynthesisStarted` is what makes the mix outlive the
+original — the worker calls it when it commits to a synthesis, before
+the first chunk. A `DubPcm` completed with an error ends the tail the
+same way as a clean completion: the original stays intact, the dub's
+failure is the worker's to log. With no original (`null`), the mix is
+dub-only on the tick from the start.
+
+**`DubActivity`** (`src/dotnet/Streaming.Service/Audio/DubActivity.cs`)
+is the per-`(author, language)` "a dub is speaking" signal, shared by
+every mix of that author: `MarkSpeaking(until)` is a monotonic max over
+a volatile tick count, `IsSpeaking(now)` compares. Every mixed frame
+whose mixer reports `IsDubSpeaking` marks the activity for
+`VoiceOverDuckHold` past now, and every frame passes `IsSpeaking(now)`
+to the mixer as `isDubSpeakingElsewhere` — so the next utterance's mix
+starts ducked from its first frame while the previous utterance's dub
+is still draining, instead of popping up for the ramp and dropping
+again. Two events serve the latency trace: `Ducked` fires on the first
+frame with the duck engaged, `Mixed` on the first frame emitted.
 
 ## The dub worker — `AudioStreamingBackend.Dubbing.cs`
 
@@ -903,7 +951,7 @@ string BlobId, TimeSpan Duration)` or a `VoiceSampleFailure`
 
 Either way, the clip is written as a 16 kHz mono WAV
 (`Constants.Audio.RecordingSampleRate`, not 48 kHz — `OpusToPcmDecoder`
-decodes at the capture rate and Soniox accepts it as-is) via `WavWriter`
+decodes at the capture rate by default and Soniox accepts it as-is) via `WavWriter`
 (`src/dotnet/Core.Server/Audio/WavWriter.cs`) into
 `BlobScope.AudioRecord`, path `voice-sample/<userId>/<hash8>.wav`
 (`VoiceSampleBuilder.BlobIdOf`) — `<hash8>` is `ShortHashOf`, the hash's
@@ -1718,6 +1766,20 @@ Cloning: see [Own voice (cloning) → Tests](#tests-1) for the full list.
 `TranscriptLatencyTraceTest`, `DubLatencyTraceTest` (Streaming.UnitTests,
 `TestClock`-driven) and `LatencyStatsTest` (Core.UnitTests) pin the
 numbers and the line format.
+
+Voice-over: `tests/Core.Server.UnitTests/Audio/VoiceOverMixerTest.cs`
+(the pure mixer) and `tests/Streaming.UnitTests/VoiceOverMixTest.cs`
+(the per-stream pipeline: original frames clock the mix and keep their
+offsets, a 16 kHz original yields one 960-sample frame per frame, the
+dub is summed in and its tail drained on the tick, a dub arriving after
+the original ended still plays, dub-only and no-dub ends, the activity
+ducks the next utterance from its first frame and is marked while the
+dub speaks, the original's failure reaches the output). The signals are
+tones, not constants — Opus high-passes a constant away — and levels
+are asserted as RMS bands after decoding the whole stream in order,
+since a decoder without history under-delivers on its first frame. The
+tick-driven tests run on the real clock: a frozen `TestClock` can't
+`Delay` (it divides the due time by its multiplier).
 
 ## Not yet
 
