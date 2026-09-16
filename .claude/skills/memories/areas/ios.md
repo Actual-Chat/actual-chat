@@ -23,6 +23,15 @@ WebKit-specific — and say which of the two it is rather than implying a browse
   harness lives at `~/bin/safari` on macmini, with four non-obvious gotchas.
   → `../references/ios/macos-safari-via-safaridriver.md`
 
+## Reaching the dev server from the phone
+
+- **The phone needs the Mac's dnsmasq for `local.voxt.ai` and the shared mkcert root with full
+  trust.** On the same Wi-Fi, set the network's DNS to the Mac by hand. On the Mac tethered to the
+  phone's hotspot, install a DNS-over-TLS profile (port 853) pointing at the hotspot IP — DoH on a
+  non-443 port never gets a query, and LTE-to-Wi-Fi has no route at all. Recreate `dns-forwarder`
+  and restart dnsproxy after every IP change; a stale one answers with the old address.
+  → `../references/ios/iphone-reach-local-voxt-ai.md`
+
 ## Channels that lie
 
 - **Log to a file in the app container and pull it with `devicectl`.** `idevicesyslog` drops lines
