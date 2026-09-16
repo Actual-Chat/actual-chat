@@ -17,6 +17,8 @@
     var isThread = m.Chat.Id.IsThread();
     var canEditChatPic = !isThread;
     var canEditChatType = !isThread && m.IsOwner;
+    _chat = m.Chat;
+    Context.Header = canEditChatPic ? RenderHero : null;
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
@@ -24,42 +26,6 @@
         _submitButtonInfo.CanExecute = _formRef?.IsValid ?? false;
     }
     <DataAnnotationsValidator/>
-    @if (canEditChatPic) {
-        <FormBlock Class="chat-settings-header">
-            <div class="c-top">
-                <ChatIcon
-                    Chat="@m.Chat"
-                    Size="SquareSize.SizeFull"
-                    IsSquare="@true"
-                    HideTitle="@true"
-                    IsBlurred="@true"
-                    ShowPresence="@false"/>
-                <ButtonRound
-                    Click="@(() => Context.Close())"
-                    Class="btn-sm right-panel-close-btn close-btn">
-                    <i class="icon-close text-2xl"></i>
-                </ButtonRound>
-            </div>
-            <div class="c-center">
-                <Pic
-                    Title="@_form.Title"
-                    Picture="@_form.Picture"
-                    Size="@SquareSize.Size16"
-                    AvatarKind="@_avatarKind"
-                    AvatarKey="@_avatarKey"/>
-
-                <div class="c-buttons">
-                    <ButtonRound Class="btn-sm btn-tinted" Click="@(() => _avatarPicker!.Pick())">
-                        <i class="icon-person-add-2 text-2xl"></i>
-                    </ButtonRound>
-                    <ImageCropPicker @ref="_avatarPicker"
-                        Scope="@_form!.ImageScope"
-                        OnCropped="@OnImagePicked" />
-                </div>
-            </div>
-        </FormBlock>
-    }
-
     <FormBlock>
         <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true" Label="@L.Form_ChatTitle">
             <TextBox
@@ -147,6 +113,43 @@
     private string? _avatarKey;
     private PlaceId? _placeId;
     private bool _isPlaceWelcomeChat;
+    private Chat _chat = null!;
+
+    private RenderFragment RenderHero => @<div class="chat-settings-header">
+        <div class="c-top">
+            <ChatIcon
+                Chat="@_chat"
+                Size="SquareSize.SizeFull"
+                IsSquare="@true"
+                HideTitle="@true"
+                IsBlurred="@true"
+                ShowPresence="@false"/>
+            @if (!Context.IsInnerStep) {
+                <ButtonRound
+                    Click="@(() => Context.Close())"
+                    Class="btn-sm right-panel-close-btn close-btn">
+                    <i class="icon-close text-2xl"></i>
+                </ButtonRound>
+            }
+        </div>
+        <div class="c-center">
+            <Pic
+                Title="@_form!.Title"
+                Picture="@_form.Picture"
+                Size="@SquareSize.Size16"
+                AvatarKind="@_avatarKind"
+                AvatarKey="@_avatarKey"/>
+
+            <div class="c-buttons">
+                <ButtonRound Class="btn-sm btn-tinted" Click="@(() => _avatarPicker!.Pick())">
+                    <i class="icon-person-add-2 text-2xl"></i>
+                </ButtonRound>
+                <ImageCropPicker @ref="_avatarPicker"
+                    Scope="@_form!.ImageScope"
+                    OnCropped="@OnImagePicked" />
+            </div>
+        </div>
+    </div>;
 
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
@@ -225,6 +228,7 @@
 
     private void OnImagePicked(MediaRef mediaRef) {
         _form!.Picture = new (mediaRef);
+        Context.Refresh();
     }
 
     private void OnManageChatTypeClick()

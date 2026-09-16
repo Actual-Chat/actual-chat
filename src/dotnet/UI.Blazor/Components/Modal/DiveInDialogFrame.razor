@@ -2,6 +2,7 @@
 @implements IDiveInModalContext;
 @{
     var pageContext = _pageInfo.Context;
+    var isInnerStep = Modal.Ref.StepRef != null;
 }
 
 <CascadingValue IsFixed="true" Value="@this">
@@ -10,21 +11,36 @@
         var title = pageContext.Title;
         var cls = Class + " " + pageContext.Class;
         var narrowViewSettings = _narrowViewSettingsBuilder.GetFrom(pageContext.Buttons, Position);
+        var hasButtons = pageContext.Buttons.Length != 0;
     }
     <DialogFrame
         HasHeader="@HasHeader"
         HasCloseButton="@HasCloseButton"
+        HideHeaderBackButton="@(isInnerStep && hasButtons)"
+        HeaderMode="@(pageContext.Header != null ? HeaderMode.Custom : HeaderMode.Default)"
+        Header="@pageContext.Header"
+        Footer="@pageContext.Footer"
         Title="@title"
         ButtonsClass="@ButtonsClass"
         BodyClass="@BodyClass"
+        BodyVariant="@BodyVariant"
         Class="@cls"
         NarrowViewSettings="@narrowViewSettings">
         <Body>
             @_pageInfo.Body
         </Body>
         <Buttons>
-            @if (pageContext.Buttons.Length != 0) {
-                <DialogButtons ButtonInfos="@pageContext.Buttons" Cancel="@OnClose" />
+            @if (hasButtons) {
+                @if (isInnerStep) {
+                    <div class="btn-group">
+                        <ButtonSquare Class="btn-back btn-sm btn-cancel" Click="@(_ => Modal.StepBack())">
+                            <i class="icon-arrow-left text-2xl"></i>
+                        </ButtonSquare>
+                        <DialogButtons ButtonInfos="@pageContext.Buttons" Cancel="@OnClose" />
+                    </div>
+                } else {
+                    <DialogButtons ButtonInfos="@pageContext.Buttons" Cancel="@OnClose" />
+                }
             }
         </Buttons>
     </DialogFrame>
@@ -40,6 +56,7 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonsClass { get; set; } = "";
     [Parameter] public string BodyClass { get; set; } = "";
+    [Parameter] public BodyVariant BodyVariant { get; set; }
     [Parameter] public bool HasHeader { get; set; } = true;
     [Parameter] public bool HasCloseButton { get; set; }
     [Parameter] public DialogFramePosition Position { get; init; } = DialogFramePosition.Default;
@@ -84,6 +101,8 @@
     }
 
     MutablePropertyBag IDiveInModalContext.Items { get; } = new();
+
+    bool IDiveInModalContext.IsInnerStep => Modal.Ref.StepRef != null;
 
     void IDiveInModalContext.Close()
         => OnClose();

@@ -7,11 +7,6 @@
     Context.ContextItems.Set(nameof(PlaceSettingsStartModalPage.ComputedModel.MemberCount), m.MemberCount);
 }
 
-<ButtonTile Class="btn-primary" Filled="true" Click="@OnInviteClick">
-    <Icon><i class="text-2xl icon-person-add text-primary"></i></Icon>
-    <Content><span class="text-primary">@L.Place_AddMembers</span></Content>
-</ButtonTile>
-
 <SearchBox
     Class="icon-align-right"
     Placeholder="@L.Common_Search"
@@ -59,7 +54,7 @@
     protected override void OnInitialized() {
         PlaceId = Context.GetModel<PlaceId>();
         Context.Class = "edit-members";
-        Context.Buttons = [];
+        Context.Buttons = [DialogButtonInfo.CreateSubmitButton(L.Place_AddMembers, OnInviteClick)];
     }
 
     private void OnFilter(string filter) {

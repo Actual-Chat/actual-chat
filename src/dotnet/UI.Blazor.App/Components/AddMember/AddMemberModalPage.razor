@@ -2,20 +2,24 @@
 @inherits FusionComponentBase<AppUIHub>
 @implements IDisposable
 
+@{
+    // Share actions live in the footer (with the buttons' inset), not the body - so the body stays
+    // pure scrollable content and the share row lines up with the Add button instead of bleeding
+    // edge-to-edge like the flush list above it.
+    Context.Footer = _shareModel is not null ? RenderShareActions : null;
+}
+
 <FormBlock Class="with-contact-list">
     <MemberSelector
         @ref="_memberSelector"
         ListSource="@_backend"
         Changed="OnSelectionChanged" />
 </FormBlock>
-@if (_shareModel is not null) {
-    @* TODO: need invite links for private places (for Alexey K) *@
-    <FormBlock Class="share-block">
-        <ShareActions Model="@_shareModel" ScanHandler="@OnQrScanned"/>
-    </FormBlock>
-}
 
 @code {
+    // TODO: need invite links for private places (for Alexey K)
+    private RenderFragment RenderShareActions => @<ShareActions Model="@(_shareModel!)" ScanHandler="@OnQrScanned"/>;
+
     private DialogButtonInfo _submitButtonInfo = null!;
     private IMemberSelector _backend = null!;
     private MemberSelector? _memberSelector;

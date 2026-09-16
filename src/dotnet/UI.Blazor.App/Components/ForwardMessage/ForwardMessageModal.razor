@@ -5,14 +5,14 @@
 @using ActualChat.Search
 @{
     var canSubmit = SelectedChatIds.Count != 0;
-    _viewSettings.CanSubmit = canSubmit;
 }
 
 <DialogFrame
     Class="forward-message-modal fixed-height"
+    BodyVariant="BodyVariant.Flush"
     Title="@ModalModel.Title"
     HasCloseButton="true"
-    NarrowViewSettings="_viewSettings">
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
     <Body>
     <FormBlock Class="with-contact-list">
         <ContactSelector
@@ -44,16 +44,12 @@
 @code {
     private ContactSelector? _contactSelectorRef;
     private SearchQuery _searchQuery;
-    private DialogFrameNarrowViewSettings _viewSettings = null!;
 
     private ImmutableHashSet<ChatId> SelectedChatIds
         => _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
-
-    protected override void OnInitialized()
-        => _viewSettings = DialogFrameNarrowViewSettings.ForSubmitButton(OnSend, ModalModel.SubmitTitle);
 
     private void OnSend() {
         ModalModel.SelectedChatIds = SelectedChatIds;

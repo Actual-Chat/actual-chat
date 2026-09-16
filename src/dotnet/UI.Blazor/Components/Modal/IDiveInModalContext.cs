@@ -3,6 +3,7 @@
 public interface IDiveInModalContext
 {
     public MutablePropertyBag Items { get; }
+    public bool IsInnerStep { get; }
 
     void StepIn(DiveInDialogPage pageDescriptor);
     void Close();

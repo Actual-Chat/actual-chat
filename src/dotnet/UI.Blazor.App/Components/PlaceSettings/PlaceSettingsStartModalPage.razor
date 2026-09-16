@@ -10,75 +10,12 @@
     }
 
     Context.ContextItems.Set(nameof(ComputedModel.MemberCount), m.MemberCount);
-    var isOwner = m.IsOwner;
     var status = m.Place.IsPublic ? L.Place_Public : L.Place_Private;
+    _place = m.Place;
+    _isOwner = m.IsOwner;
+    _enableIncompleteUI = m.EnableIncompleteUI;
+    Context.Header = RenderHero;
 }
-
-<div class="chat-settings-header place">
-    <div class="c-top">
-        @if (m.Place.Background != null) {
-            <Pic
-                Picture="@m.Place.Background.ToPicture()"
-                ImageSkeletonClass="image-cover"
-                Size="@SquareSize.SizeFull"
-                IsSquare="true"
-                AvatarKind="@AvatarKind.Marble"
-                AvatarKey="@PlaceId.Value"
-                ShowFullSizeImage="true"/>
-        } else {
-            <Pic
-                Picture="@m.Place.Picture.ToPicture()"
-                ImageSkeletonClass="image-cover"
-                Size="@SquareSize.SizeFull"
-                IsSquare="true"
-                IsBlurred="true"
-                AvatarKind="@AvatarKind.Marble"
-                AvatarKey="@PlaceId.Value"/>
-        }
-        <ButtonRound
-            Click="@(() => Context.Close())"
-            Class="btn-sm right-panel-close-btn close-btn">
-            <i class="icon-close text-2xl"></i>
-        </ButtonRound>
-    </div>
-    <div class="c-center">
-        <Pic
-            IsSquare="true"
-            Size="@SquareSize.Size16"
-            Picture="@m.Place.Picture.ToPicture()"
-            AvatarKind="@AvatarKind.Marble"
-            AvatarKey="@PlaceId.Value"/>
-
-        <div class="c-buttons">
-            @if (m.EnableIncompleteUI) {
-                <ButtonRound
-                    Class="btn-sm"
-                    TooltipPosition="@FloatingPosition.Bottom"
-                    Tooltip="@L.Place_Notifications">
-                    <i class="icon-bell text-2xl"></i>
-                </ButtonRound>
-            }
-            @if (isOwner) {
-                <ButtonRound
-                    Class="btn-sm"
-                    TooltipPosition="@FloatingPosition.Bottom"
-                    Tooltip="@L.Place_AddMember"
-                    Click="@OnInviteMembersClick">
-                    <i class="icon-person-add text-2xl"></i>
-                </ButtonRound>
-            }
-            @if (isOwner) {
-                <ButtonRound
-                    Class="btn-sm"
-                    TooltipPosition="@FloatingPosition.Bottom"
-                    Tooltip="@L.Place_EditPlace"
-                    Click="@OnOwnerSettingsClick">
-                    <i class="icon-edit text-2xl"></i>
-                </ButtonRound>
-            }
-        </div>
-    </div>
-</div>
 
 <div class="chat-settings-subheader">
     <div class="c-title">@m.Place.Title</div>
@@ -115,6 +52,78 @@
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     private PlaceId PlaceId { get; set; } = null!;
+
+    private Place _place = null!;
+    private bool _isOwner;
+    private bool _enableIncompleteUI;
+
+    private RenderFragment RenderHero => @<div class="chat-settings-header place">
+        <div class="c-top">
+            @if (_place.Background != null) {
+                <Pic
+                    Picture="@_place.Background.ToPicture()"
+                    ImageSkeletonClass="image-cover"
+                    Size="@SquareSize.SizeFull"
+                    IsSquare="true"
+                    AvatarKind="@AvatarKind.Marble"
+                    AvatarKey="@PlaceId.Value"
+                    ShowFullSizeImage="true"/>
+            } else {
+                <Pic
+                    Picture="@_place.Picture.ToPicture()"
+                    ImageSkeletonClass="image-cover"
+                    Size="@SquareSize.SizeFull"
+                    IsSquare="true"
+                    IsBlurred="true"
+                    AvatarKind="@AvatarKind.Marble"
+                    AvatarKey="@PlaceId.Value"/>
+            }
+            @if (!Context.IsInnerStep) {
+                <ButtonRound
+                    Click="@(() => Context.Close())"
+                    Class="btn-sm right-panel-close-btn close-btn">
+                    <i class="icon-close text-2xl"></i>
+                </ButtonRound>
+            }
+        </div>
+        <div class="c-center">
+            <Pic
+                IsSquare="true"
+                Size="@SquareSize.Size16"
+                Picture="@_place.Picture.ToPicture()"
+                AvatarKind="@AvatarKind.Marble"
+                AvatarKey="@PlaceId.Value"/>
+
+            <div class="c-buttons">
+                @if (_enableIncompleteUI) {
+                    <ButtonRound
+                        Class="btn-sm"
+                        TooltipPosition="@FloatingPosition.Bottom"
+                        Tooltip="@L.Place_Notifications">
+                        <i class="icon-bell text-2xl"></i>
+                    </ButtonRound>
+                }
+                @if (_isOwner) {
+                    <ButtonRound
+                        Class="btn-sm"
+                        TooltipPosition="@FloatingPosition.Bottom"
+                        Tooltip="@L.Place_AddMember"
+                        Click="@OnInviteMembersClick">
+                        <i class="icon-person-add text-2xl"></i>
+                    </ButtonRound>
+                }
+                @if (_isOwner) {
+                    <ButtonRound
+                        Class="btn-sm"
+                        TooltipPosition="@FloatingPosition.Bottom"
+                        Tooltip="@L.Place_EditPlace"
+                        Click="@OnOwnerSettingsClick">
+                        <i class="icon-edit text-2xl"></i>
+                    </ButtonRound>
+                }
+            </div>
+        </div>
+    </div>;
 
     protected override void OnInitialized() {
         PlaceId = Context.GetModel<PlaceId>();

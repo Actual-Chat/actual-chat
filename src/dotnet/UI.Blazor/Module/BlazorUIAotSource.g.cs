@@ -56,7 +56,6 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DialogButtons>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DialogFrame>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DialogHeader>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DialogInteractiveHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DiveInDialogFrame>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.Divider>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.DotSeparator>();
@@ -590,7 +589,6 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.DialogButtons), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.DialogFrame), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.DialogHeader), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.Components.DialogInteractiveHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.DiveInDialogFrame), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.Divider), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.DotSeparator), AotTypeKind.Component),

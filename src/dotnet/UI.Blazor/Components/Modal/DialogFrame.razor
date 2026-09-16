@@ -11,19 +11,27 @@
         ? "narrow-view__modal__position-bottom"
         : "narrow-view__modal__position-stretch";
     var cls = Class + " " + positionClass + (FullBleed ? " full-bleed" : "");
+    var bodyVariantClass = BodyVariant switch {
+        BodyVariant.Flush => "body-flush",
+        BodyVariant.Tiles => "body-tiles",
+        _ => "",
+    };
 }
 
 <ModalFrame Class="@cls">
     <Header>
-        @if (HasHeader) {
+        @if (HeaderMode == HeaderMode.Custom) {
+            @Header
+        }
+        else if (HasHeader && HeaderMode != HeaderMode.None) {
             <DialogHeader
-                DialogFrame="@this"
                 Title="@Title"
-                HasCloseButton="@HasCloseButton" />
+                HasCloseButton="@HasCloseButton"
+                HideBackButton="@HideHeaderBackButton" />
         }
     </Header>
     <ChildContent>
-        <div class="dialog-body @BodyClass">
+        <div class="dialog-body @BodyClass @bodyVariantClass">
             @Body
         </div>
 
@@ -48,7 +56,11 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonsClass { get; set; } = "";
     [Parameter] public string BodyClass { get; set; } = "";
+    [Parameter] public BodyVariant BodyVariant { get; set; }
     [Parameter] public bool HasHeader { get; set; } = true;
+    [Parameter] public bool HideHeaderBackButton { get; set; }
+    [Parameter] public HeaderMode HeaderMode { get; set; }
+    [Parameter] public RenderFragment? Header { get; set; }
     [Parameter] public bool FullBleed { get; set; }
     [Parameter] public bool HasCloseButton { get; set; }
     [Parameter] public string Title { get; set; } = "";

@@ -1,7 +1,6 @@
 /* List */
 .contact-selector-list {
     @apply flex-y grow gap-px;
-    @apply px-2;
     @apply overflow-y-auto custom-scrollbar;
 }
 
@@ -90,9 +89,6 @@ body.hoverable .contact-selector-badges > .c-contact:active .c-close,
 .contact-selector-place-picker {
     @apply flex-none flex-x gap-x-4 ;
     @apply overflow-x-auto;
-}
-.contact-selector-place-picker .tab-panel {
-    @apply px-2;
 }
 .contact-selector-place-picker .tab-panel-tabs {
     @apply max-h-none;

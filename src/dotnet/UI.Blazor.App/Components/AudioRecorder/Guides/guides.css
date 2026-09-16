@@ -1,6 +1,5 @@
 .guide-modal .form-block {
     @apply gap-y-6;
-    @apply py-0;
 }
 
 .guide-modal .dialog-body {

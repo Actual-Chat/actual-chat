@@ -7,6 +7,7 @@
 
 <DialogFrame
     Class="new-chat-modal fixed-height"
+    BodyVariant="@(_page == Page.Members ? BodyVariant.Flush : BodyVariant.Default)"
     Title="@title"
     HasCloseButton="true"
     NarrowViewSettings="@_narrowViewSettings">
@@ -33,7 +34,6 @@
 
 @code {
     private readonly DialogFrameNarrowViewSettings _narrowViewSettings = DialogFrameNarrowViewSettings.Default with {
-        UseInteractiveHeader = true,
         ShouldHideButtons = false,
     };
     private readonly string _buttonsSlotName = Guid.NewGuid().ToString();

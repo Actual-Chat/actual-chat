@@ -37,7 +37,6 @@
                 @Cap(".dialog-buttons ×1", Stage(Frame("", Head("Info"), TextBody(), null, Buttons(1))))
                 @Cap(".dialog-buttons ×2", Stage(Frame("", Head("Info"), TextBody(), null, Buttons(2))))
                 @Cap(".dialog-footer + .dialog-buttons", Stage(Frame("", Head("Share"), TextBody(), FooterInput(), Buttons(1))))
-                @Cap("Submit-in-header", Stage(Frame("", HeadSubmit("Edit"), FormBody(), null, null)))
             </div>
 
             <h2>Body variants</h2>
@@ -99,13 +98,6 @@
             @Tag(".modal-header")
             <h3 class="modal-title">@title</h3>
             <HeaderButton><i class="icon-close"></i></HeaderButton>
-        </div>;
-
-    private RenderFragment HeadSubmit(string title) =>
-        @<div class="relative modal-header-interactive">
-            @Tag(".modal-header-interactive")
-            <h3 class="modal-title">@title</h3>
-            <Button Class="btn-submit btn-primary">Save</Button>
         </div>;
 
     private RenderFragment TextBody() =>

@@ -591,7 +591,6 @@ body.narrow .colored-card {
 }
 .colored-card > .c-wrapper {
     @apply relative;
-    /*@apply px-6 pb-12;*/
     min-height: 25.75rem;
 }
 body.narrow .colored-card > .c-wrapper,
@@ -601,7 +600,6 @@ body.narrow .colored-card > .c-wrapper > img {
 .colored-card.card-3 {
     @apply flex-y gap-y-2;
     @apply p-4;
-    /*@apply bg-[#BBBEFF];*/
 }
 .colored-card.card-3 > .c-title {
     @apply text-headline-6;
@@ -1518,13 +1516,13 @@ body.narrow .premium-features-modal.modal-frame {
 body.wide .premium-features-modal .modal-header {
     @apply hidden;
 }
-.premium-features-modal .modal-header-interactive {
+.premium-features-modal .modal-header {
     @apply bg-bubble;
 }
-.premium-features-modal .modal-header-interactive * {
+.premium-features-modal .modal-header * {
     @apply text-06;
 }
-.premium-features-modal .modal-header-interactive .modal-title {
+.premium-features-modal .modal-header .modal-title {
     @apply text-headline-1;
 }
 .premium-features-modal > .dialog-body {
@@ -1757,8 +1755,6 @@ body.narrow .btn.cookie-btn {
 }
 .landing-card-video {
     @apply absolute inset-0;
-}
-.landing-card-video-plug {
 }
 
 ul.custom-list {

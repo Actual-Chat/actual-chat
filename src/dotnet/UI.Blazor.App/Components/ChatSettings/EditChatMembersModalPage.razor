@@ -7,11 +7,6 @@
     Context.ContextItems.Set(nameof(ChatSettingsStartModalPage.ComputedModel.MemberCount), m.MemberCount);
 }
 
-<ButtonTile Class="btn-primary" Filled="true" Click="@OnInviteClick">
-    <Icon><i class="text-2xl icon-person-add text-primary"></i></Icon>
-    <Content><span class="text-primary">@L.Place_AddMembers</span></Content>
-</ButtonTile>
-
 <SearchBox
     Class="icon-align-right"
     Placeholder="@L.Common_Search"
@@ -64,7 +59,7 @@
         if (ChatId is PeerChatId)
             throw StandardError.NotSupported("Peer chat id should not be provided.");
         Context.Class = "edit-members";
-        Context.Buttons = [];
+        Context.Buttons = [DialogButtonInfo.CreateSubmitButton(L.Place_AddMembers, OnInviteClick)];
     }
 
     private void OnFilter(string filter) {
