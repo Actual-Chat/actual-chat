@@ -15,7 +15,25 @@ public sealed class OAuthModule(IServiceProvider moduleServices)
 {
     public bool IsEnabled => !Settings.Route.IsNullOrEmpty() && HostInfo.HasRole(HostRole.Api) && HasCredentials;
 
-    private X509Certificate2? Certificate => field ??= LoadCertificate(Settings);
+    private bool _certificateLoadAttempted;
+    private X509Certificate2? _certificate;
+
+    private X509Certificate2? Certificate {
+        get {
+            if (_certificateLoadAttempted)
+                return _certificate;
+
+            _certificateLoadAttempted = true;
+            try {
+                _certificate = LoadCertificate(Settings);
+            }
+            catch (Exception e) {
+                Log.LogError(e, "OAuth is disabled: the signing certificate could not be loaded");
+            }
+            return _certificate;
+        }
+    }
+
     private bool HasCredentials => Certificate is not null || HostInfo.IsDevelopmentInstance || HostInfo.IsTested;
 
     protected override void InjectServices(IServiceCollection services)
