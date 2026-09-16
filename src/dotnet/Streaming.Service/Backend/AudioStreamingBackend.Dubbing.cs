@@ -132,6 +132,15 @@ public partial class AudioStreamingBackend
                 // transcript that reaches the source's end has nothing left to translate
                 => translated.IsStable
                     && translated.TimeRange.End + Transcript.TimeMapEpsilon.Y >= Fold(sourceMemoizer).TimeRange.End;
+            async Task Speak(string chunk, string suffix) {
+                spokenChunkCount++;
+                Log.LogInformation(
+                    "RunDub: #{StreamId} - speaking chunk #{Index} ({Length} chars{Suffix}) "
+                    + "at {SourceEnd:F1}s of speech",
+                    dubStreamId, spokenChunkCount, chunk.Length, suffix, Fold(sourceMemoizer).TimeRange.End);
+                latencyTrace?.OnSpoken(translated);
+                await text.Writer.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
+            }
             var diffs = ReadTranslation(translatedMemoizer, sourceMemoizer, IsTranslationComplete, cancellationToken);
             await foreach (var diff in diffs.ConfigureAwait(false)) {
                 translated += diff;
@@ -150,15 +159,12 @@ public partial class AudioStreamingBackend
                     stabilizer.Skip(translated);
                     mustSkipBacklog = false;
                 }
-                if (stabilizer.Next(translated) is { } chunk) {
-                    spokenChunkCount++;
-                    Log.LogInformation(
-                        "RunDub: #{StreamId} - speaking chunk #{Index} ({Length} chars) at {SourceEnd:F1}s of speech",
-                        dubStreamId, spokenChunkCount, chunk.Length, Fold(sourceMemoizer).TimeRange.End);
-                    latencyTrace?.OnSpoken(translated);
-                    await text.Writer.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
-                }
+                if (stabilizer.Next(translated) is { } chunk)
+                    await Speak(chunk, "").ConfigureAwait(false);
             }
+            // The fragment after the last clause boundary was held for more text; none is coming
+            if (decision == DubDecision.Dub && stabilizer.Flush() is { } tail)
+                await Speak(tail, ", the tail").ConfigureAwait(false);
             if (decision == DubDecision.Undecided)
                 Log.LogInformation("RunDub: #{StreamId} - too short to decide, not dubbed", dubStreamId);
             else if (decision == DubDecision.Dub && spokenChunkCount == 0 && !isLate) {

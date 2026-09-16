@@ -43,7 +43,7 @@ flowchart LR
         ED["EnsureDub<br/>DubWaitTimeout 10 s"]
         RD["RunDub worker"]
         TS[("_transcriptStreams<br/>S, S~lang")]
-        Stab["DubStabilizer<br/>Decide + Next"]
+        Stab["DubStabilizer<br/>Decide + Next + Flush"]
         SS["StartSynthesis<br/>header-first memoizer"]
         AS[("_audioStreams<br/>S, S~lang")]
     end
@@ -113,12 +113,17 @@ voice and a fresh `stream_id`) on the first chunk, and every further chunk is se
 `{ text, text_end: false }` — with a trailing space appended when the
 chunk doesn't end in whitespace, since chunks are transcript increments
 that may stop right before the next word and Soniox tokenizes on
-whitespace. Soniox synthesizes a sentence once it sees the text after
-it (lookahead for prosody), so one stream per utterance is what keeps
-sentence-final intonation and the ~1–1.5 s inter-fragment gaps of the
-old chunk-per-stream model out of the dub. The stream ends with
-`{ text: "", text_end: true }` (accepted, verified live) and a read
-until `terminated`, then the socket is closed normally.
+whitespace. Soniox speaks clause-complete text at once and holds a
+mid-clause fragment until more text or `text_end` (lookahead for
+prosody), so one stream per utterance is what keeps sentence-final
+intonation and the ~1–1.5 s inter-fragment gaps of the old
+chunk-per-stream model out of the dub — and `DubStabilizer` only hands
+the client text that ends at a clause boundary, so nothing is held (see
+[`DubStabilizer`](#dubstabilizer)). The stream normally ends with the
+translation: `RunDub` flushes the last fragment when the translation is
+complete and closes the text channel, and the client sends
+`{ text: "", text_end: true }` (accepted, verified live), reads until
+`terminated`, then closes the socket normally.
 
 Two things force a stream to end early, both at a chunk boundary and both
 followed by a new stream on the same connection for the next chunk:
@@ -127,8 +132,12 @@ followed by a new stream on the same connection for the next chunk:
   `Constants.Transcription.Soniox.TtsIdleFlush` (2.5 s). Soniox kills a
   stream after ~3–4 s without output (`408 Stream killed: output audio
   rate below minimum`) and loses the text it hasn't synthesized, so the
-  client ends the stream first; the text held for lookahead gets spoken
-  by the `text_end`.
+  client ends the stream first; any text held for lookahead gets spoken
+  by the `text_end`. With clause-complete chunks this is a safety net —
+  it fires during a long pause in the speech, when Soniox has already
+  spoken everything it was sent — rather than what gets a fragment
+  spoken, which is what it was before the stabilizer cut at boundaries
+  (a mid-sentence first chunk then sat for the whole 2.5 s).
 - **Duration rollover** — a stream older than
   `Constants.Transcription.Soniox.TtsStreamRollover` (100 s). Soniox caps
   a stream at 2 min (not raisable) while an utterance runs to
@@ -146,8 +155,11 @@ stream may go without any message from Soniox. Measured live: a
 connection stays open for at least 20 s with no stream on it, streams
 reuse the connection (the client caps it at 5 per connection, Soniox's
 documented limit), first audio arrives ~0.3–0.7 s after the first chunk
-when a second chunk follows at once (PCM; it was 2.5 s with Opus), and
-~2.8 s (idle flush + ~0.3 s) for a lone chunk.
+when that chunk ends a clause or a second chunk follows at once (PCM; it
+was 2.5 s with Opus), and ~2.8 s (idle flush + ~0.3 s) for a lone
+mid-clause fragment — the case the stabilizer's boundary rule removes
+(2026-09-16: a 46-char complete sentence → 0.3 s; a 34-char fragment →
+4.0 s, held until the idle flush).
 
 ### `OpusFramePump` — PCM to paced frames
 
@@ -299,9 +311,17 @@ skips the wait.
    diff into the running `Transcript`. While still undecided it calls
    `DubStabilizer.Decide(Fold(source), translated, language)` — the
    translated-text heuristic — with the same `NoDub`/`Dub` handling as
-   step 3. Once dubbing, each `DubStabilizer.Next(translated)` chunk is
-   written to the text channel. A stream that ends `Undecided` is logged
-   "too short to decide" and not dubbed.
+   step 3. Once dubbing, each `DubStabilizer.Next(translated)` chunk —
+   the new stable text up to its last clause boundary — is written to
+   the text channel, and once the read ends `DubStabilizer.Flush()` hands
+   over the fragment held after that boundary as the last chunk (logged
+   `speaking chunk #N (… chars, the tail)`). A stream that ends
+   `Undecided` is logged "too short to decide" and not dubbed. A `Dub`
+   that spoke nothing at all (and had no backlog to skip) fails the text
+   channel with "no stable text to speak", so the muxer falls back to the
+   original instead of serving a header-only track; this is judged after
+   the flush, so a translation whose only stable text was a fragment
+   still counts as spoken.
    **Late listener.** If, when the dub was requested, the source
    transcript already covered more than `Constants.Audio.DubBacklogThreshold`
    (5 s) of audio, the listener joined mid-utterance: the first translated
@@ -331,12 +351,36 @@ File: `src/dotnet/Streaming.Service/Audio/DubStabilizer.cs`. Pure; depends
 only on `Transcript`.
 
 `Next(translated)` returns the text the TTS may speak now, or `null`. It
-ignores unstable transcripts (`!IsStable`), then returns whatever extends
-`SentText`. If the stable text no longer starts with `SentText` — the
-translator revised something already spoken — the chunk restarts from the
-common prefix, i.e. the divergent tail is re-spoken; there is no way to
-un-say audio. Whitespace-only chunks are skipped. `Skip(translated)` sets
-`SentText` without speaking, for the late-listener case above.
+ignores unstable transcripts (`!IsStable`), then returns what extends
+`SentText` **up to and including the last clause boundary** in it; the
+fragment after that boundary waits for the next call. A clause boundary
+is one of `. ! ? … , ; :` followed by whitespace or the end of the text
+(so the dot in `3.5` or the colon in `10:30` is not), or one of the
+fullwidth `。！？，；：`, which are never followed by a space (the
+`ClauseEndRegex` `[GeneratedRegex]`). If the stable text no longer
+starts with `SentText` — the translator revised something already spoken
+— the chunk restarts from the common prefix, i.e. the divergent tail is
+re-spoken; there is no way to un-say audio. Whitespace-only chunks are
+skipped. `Skip(translated)` sets `SentText` without speaking, for the
+late-listener case above. `Flush()` returns everything unsent of the
+last stable text regardless of boundaries; `RunDub` calls it once the
+translation read ends.
+
+Why the boundary: Soniox `tts-rt-v2` speaks clause-complete text at
+once but holds a mid-clause fragment until more text or `text_end`.
+Measured on the PCM build (2026-09-16): a first chunk that was a
+complete 46-char sentence → `tts first audio 0.3 s`; a 34-char
+mid-sentence fragment (the first chunk of an 11 s utterance) → held by
+Soniox until the client's `TtsIdleFlush` (2.5 s) ended the stream,
+`tts first audio 4.0 s`, first word 7.8 s behind the speech. Ending the
+stream per chunk isn't the fix (0.2–0.8 s to reopen, and choppy
+prosody); sending only text Soniox will speak is. The cost is that a
+clause's own tail waits for the next boundary, i.e. for the speaker to
+finish the clause — which is when it could be spoken anyway. Two
+guards: a run of more than `MaxUnpunctuatedLength` (120) chars after the
+last boundary is sent whole — a long unpunctuated stretch (a list, a
+transcriber that punctuates little) must not sit forever — and the
+end-of-translation `Flush()`.
 
 Stability reaches the dub through the translated diffs:
 `TranslationsBackend.TranslateTranscriptStream` writes every diff off a
@@ -495,7 +539,11 @@ chunk that completes a stream's first 20 ms frame — 1920 bytes,
 which may be shorter than a frame and encode to nothing yet). A stream Soniox kills before any
 audio folds its open time into the replacement stream's sample instead of
 being lost, so a resend still produces one `tts first audio` reading that
-covers the whole outage. `first word` is the first stream's first audio
+covers the whole outage. Expect `tts first audio` at ~0.3–0.7 s now that
+every chunk ends at a clause boundary; a reading near 2.5–4 s means a
+fragment reached Soniox and sat until the idle flush — check the
+stabilizer.
+`first word` is the first stream's first audio
 behind the speech the first chunk covered — the number a listener feels.
 `voice` closes the line: the Soniox voice id the dub spoke with (a clone,
 see [Own voice](#own-voice-cloning)) or `stock` when the speaker got the
@@ -1534,12 +1582,13 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 | `Constants.Audio.ReplayDubLookahead` | 2 | Entries the replay muxer keeps synthesizing ahead of the one currently streaming |
 | `Constants.Audio.ReplayDubMaxConcurrentSynthesis` | 2 | Caps concurrent replay-dub syntheses; shares Soniox's 3-stream quota with live dubbing |
 | `Constants.Transcription.Soniox.TtsChunkTimeout` | 30 s | Live WebSocket: the longest an open stream may go without any message from Soniox; replay's REST `Generate`: inactivity between body pieces. Exceeded = error, not hang |
-| `Constants.Transcription.Soniox.TtsIdleFlush` | 2.5 s | Live WebSocket: no new chunk for this long ends the stream (`text_end`) before Soniox kills it for low output and loses its unsynthesized text |
+| `Constants.Transcription.Soniox.TtsIdleFlush` | 2.5 s | Live WebSocket: no new chunk for this long ends the stream (`text_end`) before Soniox kills it for low output and loses its unsynthesized text; a safety net now that chunks are clause-complete — the stream normally ends with the translation |
 | `Constants.Transcription.Soniox.TtsStreamRollover` | 100 s | Live WebSocket: a stream this old is ended at the next chunk and the rest goes to a new stream, under Soniox's 2 min stream cap |
 | `AudioSettings.StreamExpirationDelay` | 60 s | Store expiry; bounds the transcript wait via `_audioStreams.Has` and triggers `ForgetDubs` |
 | `OpusFramePump.FrameLength` / `FrameByteLength` | 960 samples / 1920 bytes | One 20 ms frame at 48 kHz, 16-bit mono |
 | `Constants.Audio.Bitrate` | 32 kbps | Also the `bitrate` `SonioxTtsClient.Generate` requests for its Opus output (the live path takes PCM and encodes here) |
 | `DubStabilizer.MinDecisionLength` | 10 chars | Minimum text before `Decide` commits |
+| `DubStabilizer.MaxUnpunctuatedLength` | 120 chars | Unsent stable text after the last clause boundary longer than this is sent anyway, so a long unpunctuated run doesn't wait for the translation's end |
 | `Constants.Transcription.Soniox.StableTokenAge` | 1.5 s | A non-final token that ended this long before `total_audio_proc_ms` is promoted to stable by `SonioxTranscriptBuilder` |
 | `TranscriptionSettings.SonioxTtsVoice` | `"Adrian"` | Stock voice for speakers who picked none (`UserLanguageSettings.DubVoice` empty) |
 | `Constants.Audio.VoiceSampleWindow` | 90 d | How far back a speaker's own recordings are considered for the auto voice sample |

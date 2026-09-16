@@ -64,6 +64,120 @@ public class DubStabilizerTest
     }
 
     [Fact]
+    public void NextShouldHoldAStableFragmentUntilAClauseBoundary()
+    {
+        var stabilizer = new DubStabilizer();
+
+        stabilizer.Next(Stable("Hello there my")).Should().BeNull(
+            "Soniox holds a mid-clause fragment until more text arrives, so sending it gains nothing");
+        stabilizer.SentText.Should().BeEmpty();
+        stabilizer.Next(Stable("Hello there my friend, how")).Should().Be("Hello there my friend,");
+        stabilizer.SentText.Should().Be("Hello there my friend,");
+        stabilizer.Next(Stable("Hello there my friend, how are you?")).Should().Be(" how are you?");
+    }
+
+    [Theory]
+    [InlineData("Hello. How", "Hello.")]
+    [InlineData("Hello! How", "Hello!")]
+    [InlineData("Hello? How", "Hello?")]
+    [InlineData("Hello… How", "Hello…")]
+    [InlineData("Hello; how", "Hello;")]
+    [InlineData("Hello: how", "Hello:")]
+    [InlineData("Hello, how", "Hello,")]
+    [InlineData("你好。你", "你好。")]
+    [InlineData("你好！你", "你好！")]
+    [InlineData("你好？你", "你好？")]
+    [InlineData("你好，你", "你好，")]
+    [InlineData("你好；你", "你好；")]
+    [InlineData("你好：你", "你好：")]
+    public void NextShouldCutAtEveryClauseBoundary(string text, string expectedChunk)
+        => new DubStabilizer().Next(Stable(text)).Should().Be(expectedChunk);
+
+    [Fact]
+    public void NextShouldNotTreatPunctuationInsideAWordAsABoundary()
+    {
+        var stabilizer = new DubStabilizer();
+
+        stabilizer.Next(Stable("It costs 3.5 dollars")).Should().BeNull("a decimal point ends no clause");
+        stabilizer.Next(Stable("It costs 3.5 dollars, or")).Should().Be("It costs 3.5 dollars,");
+    }
+
+    [Fact]
+    public void NextShouldNotResendForABoundaryInsideTheSentPrefix()
+    {
+        var stabilizer = new DubStabilizer();
+        stabilizer.Next(Stable("Hello world."));
+
+        stabilizer.Next(Stable("Hello world. How are")).Should().BeNull();
+        stabilizer.SentText.Should().Be("Hello world.");
+    }
+
+    [Fact]
+    public void NextShouldSendALongUnpunctuatedRunAnyway()
+    {
+        // arrange
+        var stabilizer = new DubStabilizer();
+        var words = string.Join(' ', Enumerable.Repeat("word", 20));
+        var longRun = string.Join(' ', Enumerable.Repeat("word", 30));
+
+        // act
+        var held = stabilizer.Next(Stable(words));
+        var sent = stabilizer.Next(Stable(longRun));
+
+        // assert
+        words.Length.Should().BeLessThan(DubStabilizer.MaxUnpunctuatedLength);
+        longRun.Length.Should().BeGreaterThan(DubStabilizer.MaxUnpunctuatedLength);
+        held.Should().BeNull();
+        sent.Should().Be(longRun, "a fragment past the cap must not wait for punctuation that may never come");
+    }
+
+    [Fact]
+    public void FlushShouldSendTheTailWhateverItEndsWith()
+    {
+        // arrange
+        var stabilizer = new DubStabilizer();
+        stabilizer.Next(Stable("Hello world. How are"));
+
+        // act
+        var tail = stabilizer.Flush();
+
+        // assert
+        tail.Should().Be(" How are", "once the translation is complete nothing more is coming");
+        stabilizer.SentText.Should().Be("Hello world. How are");
+        stabilizer.Flush().Should().BeNull("the tail is sent once");
+    }
+
+    [Fact]
+    public void FlushShouldSendNothingBeforeAnyStableText()
+    {
+        var stabilizer = new DubStabilizer();
+        stabilizer.Next(Unstable("Hello there"));
+
+        stabilizer.Flush().Should().BeNull("unstable text is never spoken, not even at the end");
+    }
+
+    [Fact]
+    public void FlushShouldSendTheLastStableTailWhenTheTranslationEndsUnstable()
+    {
+        var stabilizer = new DubStabilizer();
+        stabilizer.Next(Stable("Hello world. How are"));
+        stabilizer.Next(Unstable("Hello world. How are you"));
+
+        stabilizer.Flush().Should().Be(" How are", "the stable tail is spoken; the unstable growth is not");
+    }
+
+    [Fact]
+    public void SkipThenNextShouldHoldTheFragmentAfterTheBacklog()
+    {
+        var stabilizer = new DubStabilizer();
+
+        stabilizer.Skip(Unstable("Hello there,"));
+        stabilizer.Next(Stable("Hello there, how are")).Should().BeNull("the fragment after the backlog waits too");
+        stabilizer.Next(Stable("Hello there, how are you?")).Should().Be(" how are you?");
+        stabilizer.SentText.Should().Be("Hello there, how are you?");
+    }
+
+    [Fact]
     public void DecideShouldSayNoDubWhenTheSourceIsAlreadyInTheTargetLanguage()
     {
         // act

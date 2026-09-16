@@ -89,6 +89,58 @@ public class DubbingTranslationFlowTest(
         }
     }
 
+    [Fact(Timeout = 90_000)]
+    public async Task DubShouldHoldAStableFragmentUntilAClauseEndsOrTheTranslationDoes()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        var sourceId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
+        var dubId = StreamId.New(sourceId, Languages.English);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var ct = cts.Token;
+        const string fragment = "Привет, как у тебя";
+        var source = Channel.CreateUnbounded<TranscriptDiff>();
+        var pushSourceTask = BackgroundTask.Run(
+            () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
+            ct);
+        var last = Transcript.Empty;
+        Push(Unstable(SourceSteps[0]));
+        await backend.WhenTranscriptPublished(sourceId, ct);
+        await Tester.CreateStreamingEntry(chatId, Languages.Russian, streamId: sourceId.Value, cancellationToken: ct);
+
+        // act - the stable text stops mid-clause, and the speaker says nothing more
+        var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+        Push(Stable(fragment));
+        var clauseChunks = await recorder.WhenSpoken(dubId.Value, 1, ct);
+        await Task.Delay(TimeSpan.FromSeconds(1), ct);
+        var heldChunks = recorder.GetChunks(dubId.Value);
+        source.Writer.Complete();
+        await pushSourceTask.SilentAwait(false);
+        var chunks = await recorder.WhenSpoken(dubId.Value, 2, ct);
+
+        // assert
+        stream.Should().NotBeNull();
+        var translation = FakeTranslator.Translated(fragment, Languages.English);
+        var clauseEnd = translation.LastIndexOf(',') + 1;
+        clauseChunks.Should().Equal([translation[..clauseEnd]],
+            "the text up to the last clause boundary is spoken at once");
+        heldChunks.Should().HaveCount(1, "the fragment after the boundary waits for more text, not for a timer");
+        chunks.Should().Equal([translation[..clauseEnd], translation[clauseEnd..]],
+            "the held fragment is spoken once the translation is complete, whatever it ends with");
+        var frameCount = await stream!.CountAsync(ct).AsTask().WaitAsync(TimeSpan.FromSeconds(10), ct);
+        frameCount.Should().BeGreaterThan(1);
+        return;
+
+        void Push(Transcript transcript) {
+            source.Writer.TryWrite(transcript - last);
+            last = transcript;
+        }
+    }
+
     [Fact(Timeout = 60_000)]
     public async Task SourceWithoutTranscriptShouldFallBackAtOnce()
     {
