@@ -244,6 +244,12 @@ public static partial class Constants
         public static readonly TimeSpan RetranscriptionTimeout = TimeSpan.FromSeconds(20);
         // Max time the realtime transcriber gets to complete after its audio source ends
         public static readonly TimeSpan CompletionTimeout = TimeSpan.FromSeconds(5);
+
+        // How long an entry may stay streaming after its audio ends: finalization awaits the offline
+        // refine pass, so the realtime transcriber's own deadline isn't the bound - the refine one is.
+        public static readonly TimeSpan EntryFinalizationTimeout =
+            RetranscriptionTimeout + TimeSpan.FromSeconds(5);
+
         public static readonly bool StartWithEllipsis = false;
         public static readonly bool IsRetranscriptionEnabled = true;
         // A token can't be sent until its Ogg page is complete, so this is pure added lag on every

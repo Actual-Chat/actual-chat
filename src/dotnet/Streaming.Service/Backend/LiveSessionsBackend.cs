@@ -38,6 +38,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     // EnforceCallConnectGrace) - short enough that a stalled connect surfaces fast, long enough to
     // cover the accept-flow reorder's round trip (client starts listening immediately on accept).
     private static readonly TimeSpan CallConnectGrace = TimeSpan.FromSeconds(3);
+    // How long CallTailFlow's first pass waits: the realtime transcriber's own post-audio deadline is
+    // how long the last utterance's entry can take to appear at all (its text settles later still).
+    private static readonly TimeSpan CallTailDelay = Constants.Transcription.CompletionTimeout;
 
     private readonly RedisScope<LiveSessionState> _redisScope;
     private readonly RedisScope<CallState> _callStates;
@@ -851,6 +854,13 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             .WithDelay(TimeSpan.Zero, TimeSpan.Zero)
             .Schedule(CancellationToken.None);
 
+    private Task WakeCallTailFlow(ConversationId conversationId)
+        // The last utterance's entry can be created after this close, since it's created on the first
+        // non-empty transcript - the flow grows the conversation over whatever lands and re-sizes it.
+        => FlowHub.NewResumeEvent(new FlowId(LiveFlows.CallTailFlowName, conversationId.Value))
+            .WithDelay(Clocks.SystemClock.Now + CallTailDelay, TimeSpan.Zero)
+            .Schedule(CancellationToken.None);
+
     private async Task ReassignHost(ChatId chatId, LiveSessionState state, CancellationToken cancellationToken)
     {
         // Without this the host slot would keep pointing at someone who already left, and in a call
@@ -1533,6 +1543,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                     };
                     var materialize = new ConversationBackend_Materialize(conversation);
                     await Commander.Call(materialize, true, CancellationToken.None).ConfigureAwait(false);
+                    await WakeCallTailFlow(conversation.Id).ConfigureAwait(false);
                 }
             }
             finally {

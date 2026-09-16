@@ -108,6 +108,29 @@ that ever latched writes `Ended` whichever button ended it.
 everything derived from it — a caller is registered as a recorder the moment they dial, and
 a stale `HasRecorder` reads as someone talking in the chat list long after the call is over.
 
+### The tail the close can't see
+
+A transcript's entry is created on its **first non-empty result**, and a call closes the instant it
+empties, with none of the grace an ambient session gets. So the last utterance routinely gets its id
+after the range was already fixed, and lands outside the card as a loose message.
+
+`CallTailFlow`, scheduled from the close and keyed by the conversation, re-reads the tail a few
+seconds later and pulls in every entry whose speech started before the call ended. That timestamp is
+the test, not `HasAudio`: a message written after the hang-up begins after it, while a finalized
+transcript drops its `Audio` when the media never saved. An entry that fails the test but sits before
+one that passes is swallowed — a range is contiguous, so the alternative isn't a cleaner range, it's
+leaving the transcript outside.
+
+The same pass re-sizes the conversation, which is the other half of what it's for. Finalization waits
+out the offline refine pass, so at the close the entries' content is usually still empty:
+`OnMaterialize` counts zero words, `ScheduleCallRefresh` drops the call below its threshold, and the
+call never gets the summary that refresh is its only source of. The flow re-materializes once nothing
+in the range is streaming any more — or, failing that, once `StreamingEntryFixupFlow` has had its
+chance — so the counting happens over text that is actually there.
+
+Hence the `CallEntry` is no longer the last row of a grown conversation. The invariant the render
+path needs is that the range **covers** it, not that it ends on it.
+
 ## Render path
 
 `ChatEntryMessageView` routes a `CallEntry` to its own card **unless** the outcome is
@@ -125,7 +148,8 @@ Two consequences follow from a call never reaching the summary flow:
 - **It is sized at materialization instead.** `ConversationsBackend.OnMaterialize` counts
   the entries and words in the range and applies `SummarizationSettings.IsExpandedByDefault`
   — the same rule, from the same thresholds, that the summary flow applies to an ordinary
-  conversation. A short call materializes expanded, a long one collapsed.
+  conversation. A short call materializes expanded, a long one collapsed. The count at the
+  close is provisional, though; `CallTailFlow` redoes it once the transcripts are final.
 - **A call with no transcript is collapsed whatever the rule says**, and its card drops both
   the expand toggle and the details link. There is nothing behind either: expanding reveals
   an empty block, and a call is never summarized. The footer still says "0 messages" — that
@@ -162,3 +186,8 @@ since only this build writes one.
   deletes.
 - A caller who hangs up an *answered* call does not end it for the other party — `CloseNow`
   declines to close while the invitee is still a fresh recorder.
+- An ambient session's close has the same race, and nothing catches it there.
+  `LiveConversationSummaryFlow.Finalize` takes `entries[^1].LocalId` at the moment it runs, so a
+  transcript that lands after it is outside the conversation for good. It bites far less often —
+  that close goes through a grace, where a call's does not — which is why `CallTailFlow` is keyed
+  to calls rather than to every materialized live session.

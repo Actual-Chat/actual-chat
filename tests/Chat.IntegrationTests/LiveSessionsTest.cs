@@ -1528,6 +1528,21 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public void CallTailFlowNameShouldMatchConstant()
+    {
+        // Same as above for the flow the streaming backend wakes once a call's conversation is written.
+
+        // arrange
+        var flowHub = AppHost.Services.GetRequiredService<ActualChat.Flows.FlowHub>();
+
+        // act
+        var name = flowHub.NewId<ActualChat.Chat.Flows.CallTailFlow>("x").Name.Value;
+
+        // assert
+        name.Should().Be(LiveFlows.CallTailFlowName);
+    }
+
+    [Fact]
     public async Task DeclineShouldRecordDeclinedOutcome()
     {
         // arrange — Bob rings two people
