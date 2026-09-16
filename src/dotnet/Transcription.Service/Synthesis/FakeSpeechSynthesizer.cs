@@ -34,7 +34,7 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
         using var pump = new OpusFramePump(Clocks.CpuClock);
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         await TranscriberHelper.WhenPushAndRead(
-                Push(text, pcm.Writer, cts.Token),
+                Push(text, pcm.Writer, options.Listener, cts.Token),
                 pump.Run(pcm.Reader, output, cts.Token),
                 cts)
             .ConfigureAwait(false);
@@ -58,17 +58,25 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
 
     // Private methods
 
-    private static async Task Push(
+    private async Task Push(
         ChannelReader<string> text,
         ChannelWriter<byte[]> pcm,
+        ISpeechSynthesisListener? listener,
         CancellationToken cancellationToken)
     {
         Exception? error = null;
+        var isFirstChunk = true;
         try {
             await foreach (var chunk in text.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
+                if (isFirstChunk)
+                    listener?.OnStreamOpened();
                 var frameCount = Math.Max(1, chunk.Length / 4);
                 await pcm.WriteAsync(new byte[OpusFramePump.FrameByteLength * frameCount], cancellationToken)
                     .ConfigureAwait(false);
+                if (isFirstChunk) {
+                    listener?.OnAudioStarted();
+                    isFirstChunk = false;
+                }
             }
         }
         catch (Exception e) {

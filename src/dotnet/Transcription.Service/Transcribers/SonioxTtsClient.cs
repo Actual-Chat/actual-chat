@@ -64,13 +64,14 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         string voice,
         ChannelReader<string> text,
         ChannelWriter<AudioFrame> output,
+        ISpeechSynthesisListener? listener,
         CancellationToken cancellationToken)
     {
         var apiKey = CoreServerSettings.SonioxKey;
         if (apiKey.IsNullOrEmpty())
             throw StandardError.Configuration("CoreSettings:SonioxKey is not set.");
 
-        _run = new RunArgs(sessionId, apiKey, language, voice, output);
+        _run = new RunArgs(sessionId, apiKey, language, voice, output, listener);
         Exception? error = null;
         try {
             var hasReconnected = false;
@@ -375,6 +376,8 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                 }
 
                 if (!response.Audio.IsNullOrEmpty()) {
+                    if (!stream.HasAudio)
+                        _run!.Listener?.OnAudioStarted();
                     stream.OnAudioReceived();
                     var audio = Convert.FromBase64String(response.Audio);
                     await WriteFrames(stream.Reader, audio, output, cancellationToken).ConfigureAwait(false);
@@ -394,7 +397,10 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         // and Soniox tokenizes on whitespace
         if (!char.IsWhiteSpace(chunk[^1]))
             chunk += " ";
-        _stream!.OnChunkSent(chunk, isResent);
+        var isFirst = !_stream!.HasText;
+        _stream.OnChunkSent(chunk, isResent);
+        if (isFirst)
+            _run!.Listener?.OnStreamOpened();
         return SendText(chunk, false, cancellationToken);
     }
 
@@ -528,7 +534,8 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         string ApiKey,
         string Language,
         string Voice,
-        ChannelWriter<AudioFrame> Output);
+        ChannelWriter<AudioFrame> Output,
+        ISpeechSynthesisListener? Listener);
 
     private sealed class Connection(WebSocket webSocket)
     {
@@ -559,9 +566,12 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         // The result is the message that ended the stream (an error or terminated);
         // the task faults when the connection died under the stream.
         public Task<SonioxTtsResponse> WhenTerminated => _whenTerminatedSource.Task;
+        public bool HasText { get; private set; }
+        public bool HasAudio { get; private set; }
 
         public void OnChunkSent(string chunk, bool isResent)
         {
+            HasText = true;
             lock (_unspokenChunks)
                 _unspokenChunks.Add((chunk, isResent));
         }
@@ -570,6 +580,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         // since the last audio are the closest cheap guess at what a killed stream never spoke
         public void OnAudioReceived()
         {
+            HasAudio = true;
             lock (_unspokenChunks)
                 _unspokenChunks.Clear();
         }

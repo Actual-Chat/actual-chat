@@ -105,7 +105,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var output = Channel.CreateUnbounded<AudioFrame>();
 
         // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, CancellationToken.None);
+        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, null, CancellationToken.None);
         foreach (var chunk in new[] { "One", " two", " three." }) {
             text.Writer.TryWrite(chunk);
             await Task.Delay(20);
@@ -134,7 +134,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var output = Channel.CreateUnbounded<AudioFrame>();
 
         // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, CancellationToken.None);
+        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, null, CancellationToken.None);
         text.Writer.TryWrite("First. ");
         await Task.Delay(Short * 4);
         text.Writer.TryWrite("Second. ");
@@ -158,7 +158,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var output = Channel.CreateUnbounded<AudioFrame>();
 
         // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, CancellationToken.None);
+        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, null, CancellationToken.None);
         text.Writer.TryWrite("Old. ");
         await Task.Delay(Short * 2);
         text.Writer.TryWrite("New. ");
@@ -182,7 +182,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var output = Channel.CreateUnbounded<AudioFrame>();
 
         // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, CancellationToken.None);
+        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, null, CancellationToken.None);
         text.Writer.TryWrite("Spoken. ");
         await Task.Delay(Short / 3);
         text.Writer.TryWrite("Lost. ");
@@ -209,7 +209,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var output = Channel.CreateUnbounded<AudioFrame>();
 
         // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, CancellationToken.None);
+        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, null, CancellationToken.None);
         text.Writer.TryWrite("Dropped. ");
         await Task.Delay(Short * 2);
         text.Writer.TryWrite("Late. ");
@@ -227,6 +227,28 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact(Timeout = 15_000)]
+    public async Task ListenerShouldSeeEachStreamOnceItHasTextAndAudio()
+    {
+        // arrange - two chunks in one stream, the fake answers audio for each
+        var listener = new RecordingListener();
+        var soniox = new FakeSoniox();
+        var client = NewClient(soniox, idleFlush: Long, streamRollover: Long);
+        var text = Channel.CreateUnbounded<string>();
+        var output = Channel.CreateUnbounded<AudioFrame>();
+        text.Writer.TryWrite("Hello,");
+        text.Writer.TryWrite("world.");
+        text.Writer.TryComplete();
+
+        // act
+        await client.Run("s1", "en", "Adrian", text.Reader, output.Writer, listener, CancellationToken.None);
+
+        // assert
+        client.StreamCount.Should().Be(1);
+        listener.StreamsOpened.Should().Be(1, "opened once, when the first chunk was sent");
+        listener.AudioStarts.Should().Be(1, "reported once per stream, on its first audio message");
+    }
+
+    [Fact(Timeout = 15_000)]
     public async Task RunShouldFailWhenTheConnectionDropsTwice()
     {
         // arrange
@@ -236,7 +258,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var output = Channel.CreateUnbounded<AudioFrame>();
 
         // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, CancellationToken.None);
+        var runTask = client.Run("s", "en", "Adrian", text.Reader, output.Writer, null, CancellationToken.None);
         text.Writer.TryWrite("Doomed. ");
 
         // assert
@@ -281,6 +303,15 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     private sealed record SentMessage(string Summary);
+
+    private sealed class RecordingListener : ISpeechSynthesisListener
+    {
+        public int StreamsOpened;
+        public int AudioStarts;
+
+        public void OnStreamOpened() => StreamsOpened++;
+        public void OnAudioStarted() => AudioStarts++;
+    }
 
     // A Soniox stand-in that speaks one Ogg/Opus page with one frame per text (the stream's headers
     // ride along with its first one) and can kill a stream (408) or drop the connection after a given

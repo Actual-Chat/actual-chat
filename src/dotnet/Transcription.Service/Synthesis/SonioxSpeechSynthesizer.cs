@@ -36,7 +36,8 @@ public sealed class SonioxSpeechSynthesizer(IServiceProvider services) : ISpeech
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var client = new SonioxTtsClient(Services);
         await TranscriberHelper.WhenPushAndRead(
-                client.Run(streamId, options.Language.ToSoniox(), GetVoice(options), text, frames.Writer, cts.Token),
+                client.Run(streamId, options.Language.ToSoniox(), GetVoice(options), text, frames.Writer,
+                    options.Listener, cts.Token),
                 pacer.Run(frames.Reader, output, cts.Token),
                 cts)
             .ConfigureAwait(false);

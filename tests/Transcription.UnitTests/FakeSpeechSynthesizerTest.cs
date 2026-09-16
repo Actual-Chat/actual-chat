@@ -62,8 +62,37 @@ public sealed class FakeSpeechSynthesizerTest
         audio.Duration.Should().Be(TimeSpan.FromMilliseconds(120));
     }
 
+    [Fact(Timeout = 30_000)]
+    public async Task FakeShouldReportOneStreamWithAudio()
+    {
+        // arrange
+        var synthesizer = new FakeSpeechSynthesizer(CreateServices());
+        var listener = new RecordingListener();
+        var text = Channel.CreateUnbounded<string>();
+        var output = Channel.CreateUnbounded<AudioFrame>();
+        text.Writer.TryWrite("Hello, world.");
+        text.Writer.TryComplete();
+        var options = new SpeechSynthesisOptions(Languages.English) { Listener = listener };
+
+        // act
+        await synthesizer.Synthesize("s1", text.Reader, options, output.Writer, CancellationToken.None);
+
+        // assert
+        listener.StreamsOpened.Should().Be(1);
+        listener.AudioStarts.Should().Be(1);
+    }
+
     private static IServiceProvider CreateServices()
         => new ServiceCollection()
             .AddSingleton(MomentClockSet.Default)
             .BuildServiceProvider();
+
+    private sealed class RecordingListener : ISpeechSynthesisListener
+    {
+        public int StreamsOpened;
+        public int AudioStarts;
+
+        public void OnStreamOpened() => StreamsOpened++;
+        public void OnAudioStarted() => AudioStarts++;
+    }
 }

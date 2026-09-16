@@ -3,7 +3,16 @@ using ActualChat.Chat;
 
 namespace ActualChat.Transcription;
 
-public sealed record SpeechSynthesisOptions(Language Language, string? VoiceId = null);
+public sealed record SpeechSynthesisOptions(Language Language, string? VoiceId = null)
+{
+    public ISpeechSynthesisListener? Listener { get; init; }
+}
+
+public interface ISpeechSynthesisListener
+{
+    void OnStreamOpened(); // the first text of a TTS stream went to the provider
+    void OnAudioStarted(); // the first audio of that stream came back
+}
 
 /// <summary>
 /// Speaks a stream of text chunks as 20 ms Opus <see cref="AudioFrame"/>s (48 kHz mono) emitted at

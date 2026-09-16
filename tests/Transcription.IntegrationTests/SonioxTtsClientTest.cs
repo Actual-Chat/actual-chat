@@ -41,7 +41,7 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         }, cts.Token);
 
         // act
-        await client.Run("test", "en", "Adrian", text.Reader, output.Writer, cts.Token);
+        await client.Run("test", "en", "Adrian", text.Reader, output.Writer, null, cts.Token);
         var frames = await readTask;
 
         // assert
@@ -82,7 +82,7 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         }, cts.Token);
 
         // act
-        var runTask = client.Run("test", "en", "Adrian", text.Reader, output.Writer, cts.Token);
+        var runTask = client.Run("test", "en", "Adrian", text.Reader, output.Writer, null, cts.Token);
         for (var i = 1; i <= 7; i++) {
             text.Writer.TryWrite($"Chunk number {i} of a steady stream keeps the stream alive and speaking, ");
             await Task.Delay(TimeSpan.FromSeconds(1), cts.Token);
@@ -139,7 +139,7 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(40));
 
         // act
-        var runTask = client.Run("test", "en", "Adrian", text.Reader, output.Writer, cts.Token);
+        var runTask = client.Run("test", "en", "Adrian", text.Reader, output.Writer, null, cts.Token);
         text.Writer.TryWrite("This chunk is spoken first.");
         await Task.Delay(TimeSpan.FromSeconds(12), cts.Token);
         text.Writer.TryWrite("This chunk arrives well after the first stream was ended as idle.");
@@ -172,7 +172,7 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
 
         // act
-        await client.Run("test", "en", "Adrian", text.Reader, output.Writer, cts.Token);
+        await client.Run("test", "en", "Adrian", text.Reader, output.Writer, null, cts.Token);
         var frames = await output.Reader.ReadAllAsync().ToListAsync();
 
         // assert
