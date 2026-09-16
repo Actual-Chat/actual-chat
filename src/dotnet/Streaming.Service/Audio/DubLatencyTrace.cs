@@ -14,8 +14,8 @@ public sealed class DubLatencyTrace(StreamId dubStreamId, Moment recordedAt, Mom
 {
     private Moment _requestedAt;
     private Moment? _streamOpenedAt;
-    // Written once by the listener thread, read once by the worker thread: a stale read costs
-    // at worst a missing first-word number, never a crash.
+    // Written once by the worker thread (OnSpoken), read by the listener thread (OnAudioStarted)
+    // until FirstWordLag is set: a stale read costs at worst a missing first-word number, never a crash.
     private float? _firstSpokenSourceEnd;
 
     public LatencyStats Translated { get; } = new();

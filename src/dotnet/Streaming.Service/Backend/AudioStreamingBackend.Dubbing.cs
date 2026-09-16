@@ -134,8 +134,8 @@ public partial class AudioStreamingBackend
                     Log.LogInformation(
                         "RunDub: #{StreamId} - speaking chunk #{Index} ({Length} chars) at {SourceEnd:F1}s of speech",
                         dubStreamId, spokenChunkCount, chunk.Length, Fold(sourceMemoizer).TimeRange.End);
-                    await text.Writer.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
                     latencyTrace?.OnSpoken(translated);
+                    await text.Writer.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
                 }
             }
             if (decision == DubDecision.Undecided)

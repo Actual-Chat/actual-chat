@@ -117,6 +117,7 @@ public class DubbingTranslationFlowTest(
         var streamingBackend = (AudioStreamingBackend)backend;
         streamingBackend.RememberChatId(sourceId, chatId);
         streamingBackend.RememberAuthorId(sourceId, entry.ChatEntrySlim.AuthorId);
+        streamingBackend.RememberRecordedAt(sourceId, services.Clocks().ServerClock.Now);
 
         // act
         var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
@@ -165,6 +166,7 @@ public class DubbingTranslationFlowTest(
         var streamingBackend = (AudioStreamingBackend)backend;
         streamingBackend.RememberChatId(sourceId, chatId);
         streamingBackend.RememberAuthorId(sourceId, entry.ChatEntrySlim.AuthorId);
+        streamingBackend.RememberRecordedAt(sourceId, services.Clocks().ServerClock.Now);
 
         // act
         var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
