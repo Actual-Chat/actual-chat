@@ -27,13 +27,23 @@
                 </Content>
                 <Caption>
                     <div class="c-facts">
+                        @if (passkey.IsSynced) {
+                            <span class="c-status synced">
+                                <i class="icon-checkmark-circle-2"></i>
+                                @L.Passkeys_Synced
+                            </span>
+                        } else {
+                            <span class="c-status local">
+                                <i class="icon-alert-triangle"></i>
+                                @L.Passkeys_ThisDeviceOnly
+                            </span>
+                        }
                         <span>@L.Passkeys_Added_Format(FormatDate(passkey.CreatedAt))</span>
                         <span>
                             @(passkey.LastUsedAt is { } lastUsedAt
                                 ? L.Passkeys_LastUsed_Format(FormatDate(lastUsedAt))
                                 : L.Passkeys_NeverUsed)
                         </span>
-                        <span>@(passkey.IsSynced ? L.Passkeys_Synced : L.Passkeys_ThisDeviceOnly)</span>
                     </div>
                 </Caption>
             </TileItem>
