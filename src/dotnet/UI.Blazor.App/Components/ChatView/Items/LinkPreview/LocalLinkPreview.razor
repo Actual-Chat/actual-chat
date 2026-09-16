@@ -34,7 +34,7 @@
     var inChatSuffix = entry is null ? "" : L.LinkPreview_InChat_Suffix;
 }
 
-<div class="link-preview local-link unfocusable @cls" data-children="local-link-top">
+<div class="link-preview local-link unfocusable @cls" data-children="local-link-top" data-menu="@DataMenu">
     @if (showBg) {
         <div class="c-bg">
             <ChatIcon Chat="@chat" Size="SquareSize.SizeFull" IsSquare="@true" IsBlurred="@true"/>
@@ -140,6 +140,7 @@
     private IAuthors Authors => Hub.Authors;
 
     [Parameter, EditorRequired] public LocalLinkInfo Data { get; set; } = null!;
+    [Parameter] public string? DataMenu { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
