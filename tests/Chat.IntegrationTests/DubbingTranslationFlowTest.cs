@@ -111,6 +111,45 @@ public class DubbingTranslationFlowTest(
         startedAt.Elapsed.Should().BeLessThan(Constants.Audio.DubWaitTimeout / 2);
     }
 
+    [Fact(Timeout = 60_000)]
+    public async Task LateTranscriptAfterAudioEndShouldStillBeDubbed()
+    {
+        // arrange - the audio ends with nothing published yet; the transcript that follows lands
+        // after WaitForSourceTranscript has already seen the audio end, inside its one grace pass
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        var sourceId = await Tester.RecordVoiceOnlyUtterance(chatId, Languages.Russian, cancellationToken: ct);
+        var dubId = StreamId.New(sourceId, Languages.English);
+
+        // act - the two ShareWaitDelay cycles WaitForSourceTranscript spends noticing the audio
+        // ended and then giving it one more pass span roughly [2s, 4s); publish inside that window.
+        // The transcript stream is registered only once PushTranscript is called (not once any
+        // content is written to it), so starting that call itself is what has to land late here.
+        var getAudioTask = backend.GetAudio(dubId, TimeSpan.Zero, ct);
+        await Task.Delay(TimeSpan.FromSeconds(2.5), ct);
+        var source = Channel.CreateUnbounded<TranscriptDiff>();
+        source.Writer.TryWrite(Stable(SourceText) - Transcript.Empty);
+        var pushSourceTask = BackgroundTask.Run(
+            () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
+            ct);
+        await backend.WhenTranscriptPublished(sourceId, ct);
+        await Tester.CreateStreamingEntry(chatId, Languages.Russian, streamId: sourceId.Value, cancellationToken: ct);
+
+        // assert
+        var stream = await getAudioTask;
+        stream.Should().NotBeNull("a transcript arriving shortly after the audio ends must still be dubbed");
+        var chunks = await recorder.WhenSpoken(dubId.Value, 1, ct);
+        chunks.Should().Equal([FakeTranslator.Translated(SourceText, Languages.English)]);
+
+        source.Writer.Complete();
+        await pushSourceTask.SilentAwait(false);
+    }
+
     [Fact(Timeout = 90_000)]
     public async Task DubShouldSpeakInTheSpeakersVoice()
     {

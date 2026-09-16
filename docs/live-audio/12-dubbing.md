@@ -268,14 +268,17 @@ skips the wait.
 ### `RunDub`
 
 1. **Wait for the source transcript.** The source transcript is published
-   on the first STT result, which can trail the audio by more than the
-   store's `ShareWaitDelay`, so `WaitForSourceTranscript` keeps re-asking
-   `_transcriptStreams` for as long as the source audio is still running.
-   The wait for the source transcript ends when the source audio has ended
-   without one (a short or silent utterance): the dub decides "no dub" at
-   once instead of holding the listener for `DubWaitTimeout`. A miss is
-   not a decision: the worker removes its own entry from `_dubs` so the
-   next `GetAudio` retries instead of inheriting it.
+   on the first non-empty STT result, which can trail the audio by more
+   than the store's `ShareWaitDelay`, so `WaitForSourceTranscript` keeps
+   re-asking `_transcriptStreams` for as long as the source audio is still
+   running. The wait ends one `ShareWaitDelay` pass after the source audio
+   has ended without one (a short or silent utterance): STT itself trails
+   the audio, so a transcript that lands just after the audio's end must
+   still get a chance, not zero. If that one extra pass also misses, the
+   dub decides "no dub" at once instead of holding the listener for
+   `DubWaitTimeout`. A miss is not a decision: the worker removes its own
+   entry from `_dubs` so the next `GetAudio` retries instead of inheriting
+   it.
 2. **Start or join the translation** with `GetOrStartTranslation(S~lang)`
    — the same code `GetTranscript` uses, so a listener with captions on
    and one with dubbing on share one `TranslationsBackend_TranslateStream`.

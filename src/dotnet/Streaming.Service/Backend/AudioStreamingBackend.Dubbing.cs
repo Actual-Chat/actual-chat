@@ -289,20 +289,22 @@ public partial class AudioStreamingBackend
         StreamId sourceStreamId,
         CancellationToken cancellationToken)
     {
-        // The source transcript is published on the first STT result, which can trail the audio by
-        // more than ShareWaitDelay, so keep waiting for as long as the audio itself is running - but
-        // not longer: the audio entry outlives its stream by the expiry window, and a source whose
-        // audio has already ended without publishing a transcript never will.
+        // The source transcript is published on the first non-empty STT result, which can trail
+        // the audio by more than ShareWaitDelay, so keep waiting for as long as the audio itself
+        // is running - but not much longer: the audio entry outlives its stream by the expiry
+        // window, and a source whose audio has ended without publishing a transcript usually
+        // never will. STT itself trails the audio too though, so once the audio has ended, one
+        // more pass is given before giving up, instead of none.
+        var isAudioEnded = false;
         while (true) {
             var memoizer = await _transcriptStreams
                 .GetMemoizer(sourceStreamId, true, cancellationToken)
                 .ConfigureAwait(false);
-            if (memoizer != null)
+            if (memoizer != null || isAudioEnded)
                 return memoizer;
 
             var audio = await _audioStreams.GetMemoizer(sourceStreamId, false, cancellationToken).ConfigureAwait(false);
-            if (audio == null || audio.WhenRunning is not { IsCompleted: false })
-                return null;
+            isAudioEnded = audio == null || audio.WhenRunning is not { IsCompleted: false };
         }
     }
 
