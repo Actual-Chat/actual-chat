@@ -424,6 +424,45 @@ the registry's records carry `DubLanguage = null`, no blob and no
 is a separate, independently stored `Media`, made on demand; see
 [Replay](#replay).
 
+### Latency trace
+
+Every live utterance ends with two `Information` lines that say how far
+behind the speech each stage ran, so the next optimization can be aimed
+at the biggest number rather than guessed:
+
+```
+Transcript latency #S: first text +1.1s at 0.6s of speech; text lag p50 0.9s max 1.4s (n=42); stable lag p50 3.2s max 5.1s (n=9)
+Dub latency #S~en: decided +0.4s; translated lag p50 3.9s max 4.6s (n=8); spoken lag p50 4.1s max 4.8s (n=5); tts first audio p50 1.6s max 1.6s (n=1); first word 5.8s behind speech
+```
+
+A *lag* is `ServerClock.Now − (recordedAt + TimeRange.End)`: the text's
+own time map says which second of speech it covers, and `recordedAt` is
+the source's server-synced capture moment (`AudioSource.CreatedAt`,
+remembered per stream like the author id), so no stage needs a stamp
+from another node. Every lag uses the source's raw client-reported
+`recordedAt` as-is, so a source whose clock is skewed shifts every lag of
+that stream by its delta; `ProcessAudio` logs that delta per stream
+(`ProcessAudio: … delta=…ms`) for correlation. `TranscriptLatencyTrace`
+(`src/dotnet/Streaming.Service/Audio/TranscriptLatencyTrace.cs`) sits in
+the transcription loop of `ProcessAudio` for every stream — `text` is
+every unstable transcript, `stable` every `IsStable` one (Soniox finals
+or the `StableTokenAge` promotion). `DubLatencyTrace`
+(`.../DubLatencyTrace.cs`) sits in `RunDub`: `translated` is every
+stable translated diff, `spoken` every chunk handed to the TTS channel,
+`tts first audio` is first-text-sent → first-audio per TTS stream
+(reported by the client through `ISpeechSynthesisListener` on
+`SpeechSynthesisOptions.Listener`; a rollover adds a second sample),
+and `first word` is the first stream's first audio behind the speech the
+first chunk covered — the number a listener feels. The same values go to
+the `App` meter as `streaming.transcript.lag{kind}`,
+`streaming.dub.lag{stage}`, `streaming.dub.tts_first_audio` and
+`streaming.dub.decision_delay` (seconds).
+
+Not traced yet: the fan-out leg (dub frame published on the owner node →
+served by `ListeningStreamMuxer` on the API pod) and the client leg
+(served → audible); both ride the same `RpcStream` path as the original
+audio, and a live-header diag row would be the place to show them.
+
 ## Muxer substitution — `ListeningStreamMuxer`
 
 File: `src/dotnet/Streaming.Service/Services/ListeningStreamMuxer.cs`.
@@ -1509,6 +1548,10 @@ unspoken chunks on a new stream, a dropped connection is reconnected
 once and a second drop fails the run).
 
 Cloning: see [Own voice (cloning) → Tests](#tests-1) for the full list.
+
+`TranscriptLatencyTraceTest`, `DubLatencyTraceTest` (Streaming.UnitTests,
+`TestClock`-driven) and `LatencyStatsTest` (Core.UnitTests) pin the
+numbers and the line format.
 
 ## Not yet
 
