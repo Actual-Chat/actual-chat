@@ -347,5 +347,5 @@ body.narrow.keyboard-open .edit-settings-modal:has(.chat-settings-header, .own-a
     @apply overflow-x-hidden;
 }
 .member-list .avatar-badge .c-status {
-    @apply text-03 text-xs leading-3.5;
+    @apply text-03 text-sm;
 }

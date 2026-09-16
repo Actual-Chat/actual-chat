@@ -525,7 +525,7 @@ body.narrow .narrow-panel .attachment-item > img,
     @apply always-white;
 }
 .attachment-item > .c-file .c-extension {
-    @apply text-caption-6;
+    @apply text-caption-1;
 }
 .narrow-panel .attachment-item > .c-file .c-extension {
     @apply hidden;
@@ -551,7 +551,7 @@ body.narrow .narrow-panel .attachment-item > img,
     @apply overflow-hidden;
     @apply cursor-default;
     @apply bg-pal-black-60;
-    @apply text-white text-xs font-medium;
+    @apply text-white text-sm font-medium;
 }
 .attachment-list-wrapper .attachment-filename {
     @apply font-normal;
@@ -564,7 +564,7 @@ body.narrow .narrow-panel .attachment-filename {
     @apply px-1.5 py-0.5;
     @apply rounded-md;
     @apply bg-pal-black-90 text-white;
-    @apply text-xs font-medium leading-none whitespace-nowrap;
+    @apply text-sm font-medium whitespace-nowrap;
     @apply pointer-events-none;
 }
 .narrow-panel .attachment-item > .c-duration {
@@ -583,7 +583,7 @@ body.narrow .narrow-panel .attachment-filename {
     @apply pb-0.5 pt-1;
     @apply rounded-t-sm;
     @apply bg-pal-black-60;
-    @apply text-danger text-xs font-medium;
+    @apply text-danger text-sm font-medium;
     @apply pointer-events-none;
 }
 /* Upload progress bar - no longer used by the editor's AttachmentItem,
@@ -615,7 +615,7 @@ body.narrow .narrow-panel .attachment-filename {
     @apply px-1.5 py-0.5;
     @apply rounded-md;
     @apply bg-pal-black-80 text-white;
-    @apply text-caption-9 whitespace-nowrap;
+    @apply text-caption-1 whitespace-nowrap;
     @apply pointer-events-none;
 }
 .narrow-panel .attachment-upload-size {

@@ -71,7 +71,7 @@
 }
 .location-message .c-footer .c-caption {
     @apply truncate;
-    @apply text-xs text-03;
+    @apply text-sm text-03;
 }
 .location-message .c-footer .c-copy {
     @apply flex shrink-0;

@@ -288,6 +288,39 @@ exception.** The full rule set — the six spacing primitives, the 4px scale, an
 worked examples — is [Spacing: inset, gap, margins](./spacing.md). Read it
 before adding `padding` / `margin` / `gap` to a shared class.
 
+## Typography — minimum font size
+
+**The readable floor is 14px** (`text-caption-4` = 14px/400, or `text-sm`) — the size of
+the chat-list last-message preview (`.c-last-message`). **Nothing a user reads may be
+smaller than this — on mobile or desktop.** "Reads" means labels, sentences, and any meta
+a person actually parses (timestamps, "12 min · 29 messages", presence status, member
+counts). The chat message body is 16px (`text-1`); summaries sit just under it, not below
+the floor.
+
+Size is one lever; **contrast is the other**:
+
+- To make something **less prominent**, drop its contrast (`text-03` / `text-04`, or
+  lower opacity) — do **not** shrink it below the floor.
+- To make small, dense, or unavoidable text **readable**, raise its contrast.
+- For a **lighter** look, prefer a lower `font-weight` (400, even <400) over a smaller size.
+
+When raising a sub-floor size, swap for its 14px sibling and drop any tight line-height
+override (`leading-3` / `leading-none`) so the taller text isn't clipped:
+
+| Sub-floor (avoid) | Raise to |
+|---|---|
+| `text-caption-8` (12/400) | `text-caption-4` (14/400) |
+| `text-caption-6` (12/500) | `text-caption-1` (14/500) |
+| `text-caption-9` (9.6/500) | `text-caption-1` (14/500) |
+| `text-xs` (12) | `text-sm` (14) |
+| `text-xxs` (9.6) | `text-sm` (14) |
+
+**The one carve-out** — a *fixed numeric micro-badge physically bounded by a control*
+(the mic-ring auto-stop countdown, the recording dot, a duration badge overlaid on a
+media thumbnail) may stay below the floor, because a control's geometry caps it and it is
+glanced at, not read. Such a badge must be **high-contrast**. This is not a license for
+running text; it is the exception the floor is defined against.
+
 ## Colors
 
 Every color must have a name in `colors.css` and a class in `tailwind.config.js`.

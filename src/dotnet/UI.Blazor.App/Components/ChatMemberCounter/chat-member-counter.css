@@ -7,7 +7,7 @@
 .chat-member-counter > .c-text {
     @apply block;
     @apply truncate;
-    @apply text-caption-6 text-03;
+    @apply text-caption-1 text-03;
 }
 .chat-member-counter > .c-text > * {
     @apply inline-block align-middle;

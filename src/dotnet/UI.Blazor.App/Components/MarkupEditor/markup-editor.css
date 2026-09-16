@@ -25,7 +25,7 @@
     @apply px-1.5 mx-px -mb-1.5;
     @apply rounded-full;
     @apply bg-mention-other;
-    @apply text-mention-other-text font-medium;
+    @apply text-mention-other-text font-normal;
 }
 body.narrow .markup-editor .editor-content .editor-mention-user {
     @apply -mb-1;

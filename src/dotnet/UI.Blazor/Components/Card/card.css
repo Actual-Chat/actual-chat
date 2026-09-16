@@ -36,7 +36,7 @@ body.hoverable .card-item.hovered:hover {
     @apply text-headline-1;
 }
 .card-item > .c-center > .c-caption {
-    @apply text-03 text-caption-6;
+    @apply text-03 text-caption-1;
 }
 .card-item > .c-right {
     @apply flex-x self-center;

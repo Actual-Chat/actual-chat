@@ -75,7 +75,7 @@ a.c-title {
 }
 .replay-subheader .c-info .c-date {
     @apply truncate;
-    @apply text-caption-8 text-03;
+    @apply text-caption-4 text-03;
 }
 .replay-subheader .c-playback {
     @apply flex-none flex-x items-center gap-x-0.5 md:gap-x-1;

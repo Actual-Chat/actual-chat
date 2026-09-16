@@ -37,7 +37,7 @@
 .thread-message .c-footer .c-info {
     @apply flex-1 flex-y;
     @apply truncate;
-    @apply text-xxs leading-3;
+    @apply text-sm;
 }
 .thread-message .c-footer .c-info .c-created {
     @apply flex-1 flex-x gap-x-0.5;

@@ -109,7 +109,7 @@ body.narrow .settings-panel > .c-tabs .c-footer {
 .settings-panel > .c-tabs .c-footer > .c-content {
     @apply flex-none flex-x items-center justify-between gap-x-2;
     @apply px-4;
-    @apply text-xxs;
+    @apply text-sm;
 }
 .settings-panel > .c-tabs .c-footer > .c-content > .c-version {
     @apply flex-1;
@@ -214,7 +214,7 @@ body.hoverable .tile-item.clickable.item-danger:hover,
     @apply whitespace-normal;
 }
 .tile-item-body-caption {
-    @apply text-caption-6 font-normal text-03;
+    @apply text-caption-1 font-normal text-03;
 }
 .tile-item-right {
     @apply flex-1 flex-x justify-end items-center;
@@ -304,7 +304,7 @@ body.narrow .settings-tab-header {
     @apply flex-1 flex-y items-start;
 }
 .settings-tab-item .c-comment {
-    @apply text-xxs text-primary;
+    @apply text-sm text-primary;
 }
 .settings-tab-item span {
     @apply font-semibold md:font-medium;

@@ -7,7 +7,7 @@
     @apply text-02 text-headline-7 truncate;
 }
 .peer-contact-editor-modal .c-name .c-peer-own-name {
-    @apply text-03 text-caption-6 truncate;
+    @apply text-03 text-caption-1 truncate;
 }
 
 .block-user-form-block {

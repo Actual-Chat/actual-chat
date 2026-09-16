@@ -249,7 +249,7 @@ body.hoverable .navbar-chats .chat-list-sort-btn.btn:hover .btn-content {
 }
 .chat-list .navbar-item-content > .c-container > .c-description > .c-chat-title > .c-timestamp {
     @apply flex-none flex;
-    @apply text-xs text-03;
+    @apply text-sm text-03;
 }
 body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-description > .c-chat-title > .c-timestamp {
     @apply hidden;

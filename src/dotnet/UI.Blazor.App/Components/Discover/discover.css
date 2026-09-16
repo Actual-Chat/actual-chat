@@ -210,7 +210,7 @@
 }
 .top-chat-item > .c-info > .c-description span {
     @apply line-clamp-1;
-    @apply text-01 text-caption-6;
+    @apply text-01 text-caption-1;
 }
 .top-chat-item > .c-info > .c-bottom,
 .top-place-item > .c-info > .c-bottom {
@@ -229,12 +229,12 @@
 }
 .top-chat-item > .c-info > .c-bottom > .online-counter > .c-text,
 .top-place-item > .c-info > .c-bottom > .online-counter > .c-text {
-    @apply text-caption-6 text-03;
+    @apply text-caption-1 text-03;
 }
 .top-chat-item > .c-info > .c-bottom > .members-counter,
 .top-place-item > .c-info > .c-bottom > .members-counter {
     @apply flex-none flex-x items-center gap-x-1;
-    @apply text-caption-6 text-03;
+    @apply text-caption-1 text-03;
 }
 
 .top-place-item {
@@ -256,5 +256,5 @@
 }
 .top-place-item > .c-info > .c-description span {
     @apply line-clamp-2;
-    @apply text-01 text-caption-6;
+    @apply text-01 text-caption-1;
 }

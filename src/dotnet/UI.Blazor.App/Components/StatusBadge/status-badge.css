@@ -42,7 +42,7 @@
 
 .chat-header-center > .chat-header-title > .c-info > .status-badge {
     @apply flex-initial;
-    @apply h-3.5 min-w-0;
+    @apply h-4.5 min-w-0;
     @apply p-0;
-    @apply text-caption-6 text-03;
+    @apply text-caption-1 text-03;
 }

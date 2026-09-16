@@ -200,12 +200,12 @@ body.narrow .chat-side-panel::before {
 }
 .chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-content > .c-info {
     @apply flex-x;
-    @apply text-caption-6 text-03;
+    @apply text-caption-1 text-03;
 }
 .chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-chat-description {
     @apply w-full;
     @apply overflow-auto;
-    @apply text-caption-6 text-03;
+    @apply text-caption-1 text-03;
     line-height: 0.875rem;
     max-height: calc(0.875rem * 3);
     word-break: break-word;
@@ -643,7 +643,7 @@ body.hoverable .content-list-rows .c-file-row:hover,
 }
 .content-list-rows .c-file-size,
 .content-list-rows .c-file-date {
-    @apply text-xs text-03 leading-tight;
+    @apply text-sm text-03 leading-tight;
 }
 .content-list-rows .c-file-row.is-current {
     background-color: color-mix(in srgb, var(--primary) 10%, transparent);
@@ -656,7 +656,7 @@ body.hoverable .content-list-rows .c-file-row:hover,
 }
 .content-list-rows .c-file-meta {
     @apply flex-x items-center justify-between gap-x-2;
-    @apply text-xs text-03 leading-tight;
+    @apply text-sm text-03 leading-tight;
     @apply whitespace-nowrap;
 }
 .content-list-rows .c-file-meta .c-meta-left {

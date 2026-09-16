@@ -117,13 +117,13 @@ body.hoverable .navbar-chat-buttons .navbar-button:has(.hover-zone:hover) .left-
     @apply pt-0;
 }
 .navbar-subgroup .navbar-subgroup-content {
-    @apply text-03 text-xs font-semibold uppercase;
+    @apply text-03 text-sm font-semibold uppercase;
     @apply opacity-75;
 }
 .navbar-subgroup .navbar-subgroup-ending {
     @apply flex-1 justify-self-end;
     @apply flex-x justify-end gap-x-1;
-    @apply text-03 text-xs font-light;
+    @apply text-03 text-sm font-light;
 }
 
 /* Navbar item */

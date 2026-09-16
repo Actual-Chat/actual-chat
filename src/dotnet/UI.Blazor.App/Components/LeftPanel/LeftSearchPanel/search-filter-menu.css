@@ -12,7 +12,7 @@
 }
 .search-filter-menu .c-section-title {
     @apply px-2 py-1;
-    @apply text-caption-6 text-03;
+    @apply text-caption-1 text-03;
     @apply uppercase tracking-wider;
 }
 .search-filter-menu .c-option {

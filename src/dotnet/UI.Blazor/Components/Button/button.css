@@ -328,7 +328,7 @@ body.hoverable .btn.btn-outline.btn-cancel:hover:not(:active)::after {
 }
 .btn.btn-tile > .btn-content > .c-content > .c-caption {
     @apply text-start;
-    @apply text-03 text-xs font-normal leading-3;
+    @apply text-03 text-sm font-normal;
     @apply whitespace-normal;
 }
 /* A caption that wraps to more than one line outgrows h-12, and .btn-content clips the overflow -
@@ -580,7 +580,7 @@ body.hoverable .btn-h.unhovered:hover {
     @apply text-headline-1;
 }
 .btn.btn-text.btn-xxs {
-    @apply text-caption-6;
+    @apply text-caption-1;
 }
 .btn.btn-text.btn-xs {
     @apply text-caption-3;

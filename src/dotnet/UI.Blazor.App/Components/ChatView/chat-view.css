@@ -134,7 +134,7 @@ body.hoverable .chat-message-author-name:hover {
     @apply flex-x items-center gap-x-1;
     @apply min-w-0;
     @apply py-0.5;
-    @apply text-03 text-caption-8;
+    @apply text-03 text-caption-4;
 }
 .forwarded-message .forwarded-chat-header-title {
     @apply flex-none;
@@ -212,7 +212,7 @@ body.hoverable .message-wrapper.mention.selected-message:hover {
 
 .chat-message-timestamp,
 .chat-message-timestamp-on-hover {
-    @apply text-04 text-xs;
+    @apply text-04 text-sm;
 }
 .chat-message-timestamp-on-hover {
     @apply hidden;
@@ -363,7 +363,7 @@ body.hoverable .chat-header-title:hover {
 }
 .system-entry *,
 .system-entry .chat-message-markup * {
-    @apply text-caption-8;
+    @apply text-caption-4;
 }
 .system-entry .message-content {
     @apply flex-x flex-wrap justify-center items-center gap-x-2;
@@ -388,7 +388,7 @@ body.hoverable .system-entry .message-content .avatar-name:hover {
 .system-entry .mention-markup *,
 .system-entry .mention-markup.mention-markup-own * {
     @apply m-0;
-    @apply text-xs font-medium;
+    @apply text-sm font-medium;
 }
 .system-entry .icon-at {
     @apply hidden;
@@ -545,7 +545,7 @@ body.narrow .chat-link .c-link-buttons {
     @apply truncate;
 }
 .chat-link .link-hint {
-    @apply text-xs font-normal text-03;
+    @apply text-sm font-normal text-03;
 }
 .chat-link .btn.btn-round i {
     @apply text-primary text-2xl;
@@ -608,7 +608,7 @@ body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
     @apply rounded-full border border-modal;
     @apply select-none;
     @apply overflow-hidden;
-    @apply text-01 text-xs;
+    @apply text-01 text-sm;
     box-shadow: 0 2px 4px 0 var(--shadow-alert);
     background: linear-gradient(-45deg, var(--background-01) 40%, var(--hover) 50%, var(--background-01) 60%);
     background-size: 300%;
@@ -669,14 +669,14 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply w-4 h-4;
     @apply rounded-full;
     @apply bg-primary;
-    @apply text-caption-6;
+    @apply text-caption-1;
     @apply always-white;
 }
 .notify-mentioned-members .mentioned-members-count > span {
     @apply flex-none w-5 h-5;
     @apply rounded-full;
     @apply bg-primary;
-    @apply text-caption-6;
+    @apply text-caption-1;
     @apply always-white;
 }
 .notify-mentioned-members .default-text {

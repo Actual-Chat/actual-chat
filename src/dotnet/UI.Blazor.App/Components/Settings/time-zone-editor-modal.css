@@ -27,7 +27,7 @@
     @apply text-base text-primary;
 }
 .time-zone-editor-modal .time-zone-item .c-meta {
-    @apply text-caption-6 text-03;
+    @apply text-caption-1 text-03;
     @apply truncate;
 }
 .time-zone-editor-modal .time-zone-item .c-time {

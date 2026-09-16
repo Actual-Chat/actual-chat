@@ -39,7 +39,7 @@ body.device-android .modal-frame.emoji-modal {
 }
 .emoji-modal .c-group-title {
     @apply px-1;
-    @apply text-xs font-medium text-03;
+    @apply text-sm font-medium text-03;
 }
 .emoji-modal .c-group-items {
     @apply grid gap-1;

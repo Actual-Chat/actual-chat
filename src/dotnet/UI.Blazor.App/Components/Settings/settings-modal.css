@@ -42,7 +42,7 @@ body.narrow .close-settings-btn {
    rows it describes */
 .settings-tab .tile > .c-description {
     @apply pl-12 pr-16;
-    @apply text-caption-6;
+    @apply text-caption-1;
 }
 
 /* A tab-level description sits right under the tab header, outside any tile, so it
@@ -53,7 +53,7 @@ body.narrow .close-settings-btn {
 
 /* Inset by the form block it sits in, so it lines up with the input below it */
 .settings-tab .notifications-panel-settings .c-description {
-    @apply text-caption-6 text-03;
+    @apply text-caption-1 text-03;
 }
 
 /* ── Voice & Transcription tab (language shortcut in the tab title) ── */
@@ -62,7 +62,7 @@ body.narrow .close-settings-btn {
     @apply text-primary text-sm whitespace-nowrap;
 }
 .language-shortcut .c-more {
-    @apply text-xxs;
+    @apply text-sm;
     line-height: 0;
 }
 
@@ -89,7 +89,7 @@ body.narrow .close-settings-btn {
 }
 
 .settings-tab .ptt-reply-window-settings .c-description {
-    @apply text-caption-6 text-03;
+    @apply text-caption-1 text-03;
 }
 
 /* ── App Settings tab ── */
@@ -121,7 +121,7 @@ body.narrow .close-settings-btn {
 }
 .render-mode-tile .c-comment {
     @apply whitespace-normal;
-    @apply text-caption-6 text-03;
+    @apply text-caption-1 text-03;
 }
 .clickable.transparent.tile-item:not(.selected):hover label,
 .clickable.transparent.tile-item:not(.selected):hover .tile-item-body-caption {
@@ -234,13 +234,13 @@ body.hoverable .sessions-tile-item .sign-out-btn:hover,
     @apply px-1;
     @apply rounded-full;
     @apply bg-banner-info;
-    @apply text-xs font-mono font-normal text-banner-info;
+    @apply text-sm font-mono font-normal text-banner-info;
 }
 .api-key-tile .c-key-expires {
-    @apply text-xs font-mono font-normal text-03;
+    @apply text-sm font-mono font-normal text-03;
 }
 .api-key-tile .c-deactivated {
-    @apply text-xs font-normal text-danger;
+    @apply text-sm font-normal text-danger;
 }
 .api-key-tile .c-deactivate {
     @apply absolute right-0 top-0;

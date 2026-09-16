@@ -758,7 +758,7 @@ body.show-fps-overlay .video-fps:empty {
     @apply absolute bottom-1 left-1 z-10;
     @apply flex items-center gap-1;
     @apply px-1.5 py-0.5 rounded;
-    @apply text-xs text-white;
+    @apply text-sm text-white;
     background: rgba(0, 0, 0, 0.5);
 }
 .video-panel .video-track-player .video-participant-label > span {

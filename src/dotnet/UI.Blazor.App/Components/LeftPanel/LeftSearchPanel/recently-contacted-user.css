@@ -18,6 +18,6 @@ body.hoverable .recently-contacted-user:hover {
 .recently-contacted-user .c-contact > .c-name {
     @apply max-w-14;
     @apply text-center;
-    @apply text-caption-6;
+    @apply text-caption-1;
     @apply truncate;
 }

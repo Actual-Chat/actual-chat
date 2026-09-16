@@ -264,7 +264,7 @@
     @apply px-2 py-1;
     @apply border-b border-separator;
     @apply bg-03;
-    @apply text-xs text-02;
+    @apply text-sm text-02;
     @apply select-none;
 }
 .code-block-language {

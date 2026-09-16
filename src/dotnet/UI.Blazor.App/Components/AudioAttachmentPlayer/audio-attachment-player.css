@@ -22,7 +22,7 @@ body.hoverable .audio-file-attachment .c-play-btn:hover {
 }
 .audio-file-attachment .c-time {
     @apply flex-x gap-x-2;
-    @apply text-caption-8 text-03;
+    @apply text-caption-4 text-03;
 }
 .audio-file-attachment .c-progress {
     @apply absolute left-13 right-13 bottom-0.5;
@@ -68,7 +68,7 @@ body.hoverable .audio-file-attachment .c-play-btn:hover {
 }
 .audio-attachment-subheader .c-info .c-time {
     @apply truncate;
-    @apply text-xs leading-3.5 text-03;
+    @apply text-sm leading-3.5 text-03;
 }
 .audio-attachment-subheader .c-playback {
     @apply flex-none flex-x items-center gap-x-0.5 md:gap-x-1;

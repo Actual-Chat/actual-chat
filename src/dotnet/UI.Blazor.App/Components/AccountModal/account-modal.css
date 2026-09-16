@@ -38,7 +38,7 @@
 .author-modal .c-header > .c-bottom > .c-public {
     @apply max-h-16;
     @apply overflow-y-auto overflow-x-hidden;
-    @apply text-caption-6 text-03;
+    @apply text-caption-1 text-03;
 }
 .author-modal .c-header > .c-center {
     @apply absolute top-12 z-20;
@@ -174,10 +174,9 @@ body.hoverable .author-modal .tile-remove-from-group:hover {
 .author-modal .tile-wrapper > .c-incut > .c-info {
     @apply flex-x items-start gap-x-2;
     @apply px-4 py-2;
-    @apply leading-3;
     @apply rounded-xl;
     @apply bg-pal-sienna-50-20;
-    @apply text-caption-6 font-normal text-03;
+    @apply text-caption-1 font-normal text-03;
 }
 .btn.anonymous-chat-btn .c-title {
     @apply flex-x gap-x-1;
@@ -189,6 +188,6 @@ body.hoverable .author-modal .tile-remove-from-group:hover {
 .anonymous-chat-btn .btn-content::after {
     content: "Anonymous";
     @apply absolute bottom-1 md:bottom-0;
-    @apply text-xs;
+    @apply text-sm;
     @apply opacity-70;
 }
