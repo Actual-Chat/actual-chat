@@ -17,36 +17,9 @@ public static class AudioRecordingOperations
         int frameCount = 200,
         CancellationToken cancellationToken = default)
     {
-        var services = tester.AppServices;
-        var session = tester.Session;
-        var userSettingsUI = services.UserSettingsUI(session);
-
-        await userSettingsUI.UserLanguageSettings()
-            .Set(new UserLanguageSettings { Primary = language }, cancellationToken)
-            .ConfigureAwait(false);
-        await userSettingsUI.ChatUserSettings(chatId)
-            .Update(x => x with { Language = language, VoiceMode = voiceMode }, cancellationToken)
-            .ConfigureAwait(false);
-
-        var backend = services.GetRequiredService<IAudioStreamingBackend>();
-        var thisNode = services.MeshWatcher().ThisNode;
-        var streamId = StreamId.New(thisNode.Ref);
-        var audioRecord = new AudioRecord(
-            streamId,
-            session,
-            chatId,
-            services.Clocks().SystemClock.Now.EpochOffset.TotalSeconds,
-            null);
-
-        var lidRangeBefore = await services.GetRequiredService<IChatsBackend>()
+        var lidRangeBefore = await tester.AppServices.GetRequiredService<IChatsBackend>()
             .GetLidRange(chatId, true, cancellationToken).ConfigureAwait(false);
-
-        var frames = GenerateAudioFrames(frameCount, services);
-        await backend.ProcessAudio(audioRecord, 0,
-                new RpcStream<AudioFrame>(frames),
-                cancellationToken)
-            .ConfigureAwait(false);
-
+        await RecordVoice(tester, chatId, language, voiceMode, frameCount, cancellationToken).ConfigureAwait(false);
         return await WaitForNextEntry(tester, chatId, lidRangeBefore.End, cancellationToken).ConfigureAwait(false);
     }
 
@@ -59,29 +32,8 @@ public static class AudioRecordingOperations
     {
         // JustVoice: audio fans out but nothing transcribes it, so the stream is published and
         // ends without ever publishing a transcript - the case a transcript-less dub must not hold on.
-        var services = tester.AppServices;
-        var session = tester.Session;
-        var userSettingsUI = services.UserSettingsUI(session);
-
-        await userSettingsUI.UserLanguageSettings()
-            .Set(new UserLanguageSettings { Primary = language }, cancellationToken)
-            .ConfigureAwait(false);
-        await userSettingsUI.ChatUserSettings(chatId)
-            .Update(x => x with { Language = language, VoiceMode = VoiceMode.JustVoice }, cancellationToken)
-            .ConfigureAwait(false);
-
-        var backend = services.GetRequiredService<IAudioStreamingBackend>();
-        var thisNode = services.MeshWatcher().ThisNode;
-        var streamId = StreamId.New(thisNode.Ref);
-        var audioRecord = new AudioRecord(
-            streamId,
-            session,
-            chatId,
-            services.Clocks().SystemClock.Now.EpochOffset.TotalSeconds,
-            null);
-
-        var frames = GenerateAudioFrames(frameCount, services);
-        await backend.ProcessAudio(audioRecord, 0, new RpcStream<AudioFrame>(frames), cancellationToken)
+        var audioRecord = await RecordVoice(
+                tester, chatId, language, VoiceMode.JustVoice, frameCount, cancellationToken)
             .ConfigureAwait(false);
         // ProcessAudio publishes under the segment id (record.StreamId + segment index), not the record id itself
         return OpenAudioSegment.GetStreamId(audioRecord, 0);
@@ -107,6 +59,41 @@ public static class AudioRecordingOperations
     }
 
     // Private methods
+
+    private static async Task<AudioRecord> RecordVoice(
+        IWebTester tester,
+        ChatId chatId,
+        Language language,
+        VoiceMode voiceMode,
+        int frameCount,
+        CancellationToken cancellationToken)
+    {
+        var services = tester.AppServices;
+        var session = tester.Session;
+        var userSettingsUI = services.UserSettingsUI(session);
+
+        await userSettingsUI.UserLanguageSettings()
+            .Set(new UserLanguageSettings { Primary = language }, cancellationToken)
+            .ConfigureAwait(false);
+        await userSettingsUI.ChatUserSettings(chatId)
+            .Update(x => x with { Language = language, VoiceMode = voiceMode }, cancellationToken)
+            .ConfigureAwait(false);
+
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var thisNode = services.MeshWatcher().ThisNode;
+        var streamId = StreamId.New(thisNode.Ref);
+        var audioRecord = new AudioRecord(
+            streamId,
+            session,
+            chatId,
+            services.Clocks().SystemClock.Now.EpochOffset.TotalSeconds,
+            null);
+
+        var frames = GenerateAudioFrames(frameCount, services);
+        await backend.ProcessAudio(audioRecord, 0, new RpcStream<AudioFrame>(frames), cancellationToken)
+            .ConfigureAwait(false);
+        return audioRecord;
+    }
 
     private static async IAsyncEnumerable<AudioFrame> GenerateAudioFrames(int frameCount, IServiceProvider services)
     {
