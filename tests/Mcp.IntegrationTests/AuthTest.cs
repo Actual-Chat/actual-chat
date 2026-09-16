@@ -85,7 +85,8 @@ public class AuthTest(McpCollection.AppHostFixture fixture, ITestOutputHelper @o
         // assert
         var baseUri = Tester.UrlMapper.BaseUri;
         doc.GetProperty("resource").GetString().Should().Be(new Uri(baseUri, "/api/mcp").ToString());
-        doc.GetProperty("authorization_servers")[0].GetString().Should().Be(baseUri.ToString().TrimEnd('/'));
+        doc.GetProperty("authorization_servers")[0].GetString().Should().Be(baseUri.ToString(),
+            because: "clients compare it byte-for-byte with the issuer in the AS metadata, which keeps the trailing slash");
         doc.GetProperty("scopes_supported").EnumerateArray().Select(x => x.GetString())
             .Should().Equal("mcp", "offline_access");
         doc.GetProperty("bearer_methods_supported")[0].GetString().Should().Be("header");

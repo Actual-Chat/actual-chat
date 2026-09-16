@@ -29,4 +29,17 @@ public class DiscoveryTest(OAuthCollection.AppHostFixture fixture, ITestOutputHe
         doc.GetProperty("grant_types_supported").EnumerateArray().Select(x => x.GetString())
             .Should().Contain(["authorization_code", "refresh_token"]);
     }
+
+    [Fact]
+    public async Task IssuerShouldMatchProtectedResourceAuthorizationServer()
+    {
+        // act
+        var authorizationServer = await GetJson("/.well-known/oauth-authorization-server");
+        var protectedResource = await GetJson("/.well-known/oauth-protected-resource/api/mcp");
+
+        // assert
+        protectedResource.GetProperty("authorization_servers")[0].GetString().Should().Be(
+            authorizationServer.GetProperty("issuer").GetString(),
+            because: "RFC 8414 §3.3 makes clients reject metadata whose issuer differs from the identifier they used");
+    }
 }
