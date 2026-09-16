@@ -180,8 +180,6 @@ public static partial class Constants
         public static readonly int VoiceCloneQuota = 20;
         // How long a fresh clone may take to turn ready before the attempt counts as failed
         public static readonly TimeSpan VoiceCloneReadyTimeout = TimeSpan.FromSeconds(30);
-        // How long a dub waits for a clone before taking the stock voice; the work keeps running past this
-        public static readonly TimeSpan VoiceCloneAcquireTimeout = TimeSpan.FromSeconds(15);
         // A clone unused for this long is deleted, freeing its quota slot for another speaker
         public static readonly TimeSpan VoiceCloneIdleTimeout = TimeSpan.FromMinutes(10);
         // After a failed attempt, how long the speaker keeps the stock voice before the clone is retried

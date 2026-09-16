@@ -83,7 +83,7 @@ public sealed class OwnVoicesTest(
             s.HasExplicitSample.Should().BeTrue();
             return s;
         });
-        var voiceId = await Pool.Acquire(account.Id, ct);
+        var voiceId = await Pool.AcquireSettled(account.Id, ct);
 
         // assert
         withSample.IsEnabled.Should().BeTrue();

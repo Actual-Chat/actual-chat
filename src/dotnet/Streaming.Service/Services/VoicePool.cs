@@ -9,14 +9,15 @@ namespace ActualChat.Streaming.Services;
 /// <summary>
 /// A transient pool of Soniox clones of opted-in speakers' voices: a clone is made the first time a
 /// speaker's dub asks for it and kept while it's used (<see cref="VoicePoolSweeper"/> drops the idle
-/// ones). Null means the stock voice: the pool is full, the attempt failed, or there's no Soniox here.
+/// ones). Null means the stock voice: the clone is still being made, the pool is full, the attempt
+/// failed, or there's no Soniox here.
 /// </summary>
 public sealed class VoicePool(IServiceProvider services)
 {
     private static readonly TimeSpan ReadyPollDelay = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan TouchPeriod = TimeSpan.FromMinutes(1);
 
-    private readonly ConcurrentDictionary<UserId, Task<string?>> _inFlight = new();
+    private readonly ConcurrentDictionary<UserId, Task> _inFlight = new();
 
     private IServiceProvider Services { get; } = services;
     private StreamingSettings Settings { get; } = services.GetRequiredService<StreamingSettings>();
@@ -37,47 +38,50 @@ public sealed class VoicePool(IServiceProvider services)
 
     public async Task<string?> Acquire(UserId userId, CancellationToken cancellationToken)
     {
+        // Never waits: a clone that isn't ready is made in the background and this dub speaks with
+        // the stock voice, so the answer costs a settings read, a record read and the sample hash
         if (SonioxVoices == null || userId.IsGuestOrNull())
             return null;
 
-        var source = TaskCompletionSourceExt.New<string?>();
-        var acquireTask = _inFlight.GetOrAdd(userId, source.Task);
-        // Only the winner of the race starts the work, and only after it's published in the map -
-        // a synchronously-completing Run() can then never race its own removal out of the map
-        if (ReferenceEquals(acquireTask, source.Task))
-            _ = Run();
-        try {
-            return await acquireTask
-                .WaitAsync(Constants.Audio.VoiceCloneAcquireTimeout, cancellationToken)
-                .ConfigureAwait(false);
+        var settings = await ServerKvasBackend.ForUser(userId)
+            .UserLanguageSettings()
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
+        var voice = await UserVoicesBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        var now = Clocks.SystemClock.Now;
+        if (!settings.IsOwnVoiceEnabled) {
+            if (voice is { Status: UserVoiceStatus.Ready or UserVoiceStatus.Creating })
+                Start(userId, ct => Release(voice, ct));
+            return null;
         }
-        catch (TimeoutException) {
-            // The work keeps running on its own budget; the clone serves the next utterance
+        if (voice is { Status: UserVoiceStatus.Failed, FailedUntil: { } failedUntil } && failedUntil > now) {
+            Log.LogDebug("Acquire: {UserId}'s clone failed recently, no retry before {FailedUntil}",
+                userId, failedUntil);
+            return null;
+        }
+        if (voice is { Status: UserVoiceStatus.Creating }
+            && voice.ModifiedAt + Constants.Audio.VoiceCloneCreatingTimeout > now) {
+            // This host's own attempt or another host's - own attempts never overlap; an older one is
+            // a crash leftover, and the version check in Create makes taking it over safe
+            Log.LogDebug("Acquire: {UserId}'s clone is still being made", userId);
             return null;
         }
 
-        async Task Run()
-        {
-            string? result = null;
-            try {
-                // Independent of our own caller's token: a clone is worth finishing after the dub that
-                // asked for it gave up, and a half-made one holds a quota slot until the sweeper gets to it
-                using var cts = Services.HostLifetime().CreateStopTokenSource();
-                try {
-                    result = await AcquireImpl(userId, cts.Token).ConfigureAwait(false);
-                }
-                catch (Exception e) when (!e.IsCancellationOf(cts.Token)) {
-                    Log.LogWarning(e, "Acquire: failed for {UserId}, using the stock voice", userId);
-                }
-            }
-            catch {
-                // Cancelled by the host stop, or the token source itself couldn't be made
-            }
-            finally {
-                _inFlight.TryRemove(new KeyValuePair<UserId, Task<string?>>(userId, source.Task));
-                source.TrySetResult(result);
-            }
+        // The hash alone decides whether the clone at hand is the right one: the common Ready path
+        // then costs no blob read, and nothing is built for a full pool either
+        var hash = await SampleBuilder.GetHash(userId, settings, cancellationToken).ConfigureAwait(false);
+        if (hash is not { } sampleHash) {
+            Log.LogDebug("Acquire: no voice sample for {UserId}", userId);
+            return null;
         }
+        if (voice is { Status: UserVoiceStatus.Ready } && voice.SampleHash == sampleHash)
+            return await Touch(voice, now, cancellationToken).ConfigureAwait(false);
+
+        if (Start(userId, ct => MakeClone(userId, voice, settings, ct)))
+            Log.LogInformation("Acquire: making {UserId}'s clone, this dub uses the stock voice", userId);
+        else
+            Log.LogDebug("Acquire: {UserId}'s clone is already being made", userId);
+        return null;
     }
 
     public async Task<bool> Release(UserVoice voice, CancellationToken cancellationToken)
@@ -117,55 +121,60 @@ public sealed class VoicePool(IServiceProvider services)
 
     // Private methods
 
-    private async Task<string?> AcquireImpl(UserId userId, CancellationToken cancellationToken)
+    private bool Start(UserId userId, Func<CancellationToken, Task> work)
     {
-        var settings = await ServerKvasBackend.ForUser(userId)
-            .UserLanguageSettings()
-            .Get(cancellationToken)
-            .ConfigureAwait(false);
-        var voice = await UserVoicesBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-        var now = Clocks.SystemClock.Now;
-        if (!settings.IsOwnVoiceEnabled) {
-            if (voice is { Status: UserVoiceStatus.Ready or UserVoiceStatus.Creating })
-                await Release(voice, cancellationToken).ConfigureAwait(false);
-            return null;
-        }
-        if (voice is { Status: UserVoiceStatus.Failed, FailedUntil: { } failedUntil } && failedUntil > now) {
-            Log.LogDebug("Acquire: {UserId}'s clone failed recently, no retry before {FailedUntil}",
-                userId, failedUntil);
-            return null;
-        }
-        if (voice is { Status: UserVoiceStatus.Creating }
-            && voice.ModifiedAt + Constants.Audio.VoiceCloneCreatingTimeout > now) {
-            // Another host is on it - this host's own attempts never overlap; an older one is a
-            // crash leftover, and the version check below makes taking it over safe
-            Log.LogDebug("Acquire: {UserId}'s clone is being made elsewhere", userId);
-            return null;
-        }
+        // Single-flight per user: only the winner of the race starts the work, and only after it's
+        // published in the map - a synchronously-completing Run() can then never race its own
+        // removal out of the map
+        var source = TaskCompletionSourceExt.New();
+        if (!_inFlight.TryAdd(userId, source.Task))
+            return false;
 
-        // The hash alone decides whether the clone at hand is the right one: the common Ready path
-        // then costs no blob read, and nothing is built for a full pool either
-        var hash = await SampleBuilder.GetHash(userId, settings, cancellationToken).ConfigureAwait(false);
-        if (hash is not { } sampleHash) {
-            Log.LogDebug("Acquire: no voice sample for {UserId}", userId);
-            return null;
-        }
-        if (voice is { Status: UserVoiceStatus.Ready } && voice.SampleHash == sampleHash)
-            return await Touch(voice, now, cancellationToken).ConfigureAwait(false);
+        _ = Run();
+        return true;
 
+        async Task Run()
+        {
+            try {
+                // Independent of the caller's token: a clone is worth finishing after the dub that
+                // asked for it is over, and a half-made one holds a quota slot until the sweeper gets to it
+                using var cts = Services.HostLifetime().CreateStopTokenSource();
+                try {
+                    await work.Invoke(cts.Token).ConfigureAwait(false);
+                }
+                catch (Exception e) when (!e.IsCancellationOf(cts.Token)) {
+                    Log.LogWarning(e, "Acquire: failed for {UserId}, using the stock voice", userId);
+                }
+            }
+            catch {
+                // Cancelled by the host stop, or the token source itself couldn't be made
+            }
+            finally {
+                _inFlight.TryRemove(new KeyValuePair<UserId, Task>(userId, source.Task));
+                source.TrySetResult();
+            }
+        }
+    }
+
+    private async Task MakeClone(
+        UserId userId,
+        UserVoice? voice,
+        UserLanguageSettings settings,
+        CancellationToken cancellationToken)
+    {
         var activeVoices = await UserVoicesBackend.ListActive(cancellationToken).ConfigureAwait(false);
         var activeCount = activeVoices.Count(x => x.UserId != userId);
         if (activeCount >= Quota) {
             Log.LogDebug("Acquire: the pool is full ({Count}/{Quota}), {UserId} keeps the stock voice",
                 activeCount, Quota, userId);
-            return null;
+            return;
         }
 
         var sample = await BuildSample(userId, voice, settings, cancellationToken).ConfigureAwait(false);
         if (sample == null)
-            return null;
+            return;
 
-        return await Create(userId, voice, sample, settings, cancellationToken).ConfigureAwait(false);
+        await Create(userId, voice, sample, settings, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<VoiceSample?> BuildSample(

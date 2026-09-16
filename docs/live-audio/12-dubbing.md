@@ -695,9 +695,12 @@ An opted-in speaker is dubbed — live and in replay — in a clone of their
 own voice instead of a stock one. The clone is a **transient pool**: a
 Soniox voice exists only while it is being used, made on first demand and
 dropped when idle, so it never becomes something to keep in sync or clean
-up by hand. Soniox charges no extra for a clone and it speaks every
-language exactly like a stock voice, so nothing downstream of `SpeakerVoices`
-needs to know a dub is cloned rather than stock: `SonioxSpeechSynthesizer`
+up by hand. Making one takes seconds, and no dub ever waits for it: the
+first utterance after opting in (or after a sample change) is spoken with
+the stock voice while the clone is made, and the clone serves the next
+one. Soniox charges no extra for a clone and it speaks every language
+exactly like a stock voice, so nothing downstream of `SpeakerVoices` needs
+to know a dub is cloned rather than stock: `SonioxSpeechSynthesizer`
 passes the id straight through `SpeechSynthesisOptions.VoiceId` unchanged.
 
 Rollout: the Translated Voice section is an incomplete-UI preview and the
@@ -826,41 +829,55 @@ WAV under that user's `voice-sample/` folder until their next clone.
 
 File: `src/dotnet/Streaming.Service/Services/VoicePool.cs`.
 `Task<string?> Acquire(UserId, CancellationToken)` returns a Soniox voice
-id or `null` (stock voice). Single-flight per user — a `TaskCompletionSource`
-map exactly like `ReplayDubs`' — with the winner running the work on a
-`HostLifetime().CreateStopTokenSource()` token (independent of the
-caller) and every caller, winner included, bounded by
-`Constants.Audio.VoiceCloneAcquireTimeout` (15 s): a caller that times out
-gets `null` for this utterance while the clone keeps being made for the
-next one. `Acquire` is a no-op `null` at once when no `ISonioxVoices` is
-registered (no Soniox key) or the user is a guest.
+id or `null` (stock voice) **without ever waiting for a clone**: a clone
+that is `Ready` for the current sample is handed out at the cost of a
+settings read, a record read and the sample hash; anything that needs
+Soniox — a first clone, a replacement after a sample change, the release
+of an opted-out speaker's clone — is started in the background (`Start`)
+and the caller gets `null` at once, so this dub speaks with the stock
+voice and the clone serves the speaker's next utterance. The background
+work is single-flight per user — a `TaskCompletionSource` map like
+`ReplayDubs`', where only the winner of the `TryAdd` race runs — on a
+`HostLifetime().CreateStopTokenSource()` token, independent of the
+caller: a clone is worth finishing after the dub that asked for it is
+over. A second `Acquire` while it runs neither waits nor starts another
+one (`null` again, until `Ready`). `Acquire` is a no-op `null` at once
+when no `ISonioxVoices` is registered (no Soniox key) or the user is a
+guest.
 
-`AcquireImpl`, in order:
+`Acquire`, in order:
 
 1. Read `UserLanguageSettings` and the `UserVoice` record.
-2. Not opted in (`IsOwnVoiceEnabled == false`) → `Release` a
+2. Not opted in (`IsOwnVoiceEnabled == false`) → start a `Release` of a
    `Ready`/`Creating` record if there is one, return `null`.
 3. `Failed` with `FailedUntil` still in the future → `null` (the cooldown).
 4. `Creating` and `ModifiedAt` younger than
-   `Constants.Audio.VoiceCloneCreatingTimeout` (2 min) → another host is
-   already on it, `null`. Older than that, it's a crash leftover: fell
-   through to step 5, and the version check on the update there makes
-   taking it over safe.
+   `Constants.Audio.VoiceCloneCreatingTimeout` (2 min) → this host's own
+   background attempt or another host's is on it, `null`. Older than
+   that, it's a crash leftover: fell through to step 5, and the version
+   check on the update in `Create` makes taking it over safe.
 5. `VoiceSampleBuilder.GetHash` for the current sample — no blob I/O.
-   `null` (no sample) → `null`.
+   `null` (no sample) → `null`, nothing started.
 6. `Ready` and `SampleHash` equal to that hash → touch `LastUsedAt`
    (throttled to once a minute) and return the id. This is the per-dub
    fast path: a settings read, a record read and (for an auto sample)
    the cached selection scan.
-7. Quota check: `ListActive().Count(other users) >= Quota` → `null`, the
+7. Otherwise start `MakeClone` in the background and return `null`; the
+   start is logged once per creation at `Information` (`Acquire: making
+   {UserId}'s clone, this dub uses the stock voice`), a call that finds
+   one already running at `Debug`.
+
+`MakeClone`, on the background token:
+
+1. Quota check: `ListActive().Count(other users) >= Quota` → done, the
    pool is full. It comes before the build, so a full pool writes no
    sample blob.
-8. `VoiceSampleBuilder.Build`. No sample (`NotEnoughRecordings` /
+2. `VoiceSampleBuilder.Build`. No sample (`NotEnoughRecordings` /
    `SampleMissing` — the hash said there'd be one, but e.g. the explicit
-   entry turned out not to be this user's) → `null`, the record untouched;
-   a builder *exception* → `null` and, unless the record is `Ready` (its
-   clone is still good, so it's left alone), the record is marked `Failed`.
-9. Otherwise create: mark `Creating` (new hash, cleared `SonioxVoiceId`),
+   entry turned out not to be this user's) → done, the record untouched;
+   a builder *exception* → unless the record is `Ready` (its clone is
+   still good, so it's left alone), the record is marked `Failed`.
+3. Otherwise create: mark `Creating` (new hash, cleared `SonioxVoiceId`),
    delete the previous clone and — if the hash changed — the previous
    sample blob, `ISonioxVoices.Create` with the sample's WAV, store the
    new id on the still-`Creating` record right away (so a concurrent
@@ -878,9 +895,10 @@ registered (no Soniox key) or the user is a guest.
    attempt's own clone and returns `null` — whatever the winner of that
    race decided stands.
 
-   The per-utterance outcomes that aren't errors — the cooldown, "being
-   made elsewhere", no sample, a full pool — are logged at `Debug`; a
-   successful clone and every failure are `Information`/`Warning`.
+   The per-utterance outcomes that aren't errors — the cooldown, "still
+   being made", no sample, a full pool — are logged at `Debug`; the start
+   of a creation, a successful clone and every failure are
+   `Information`/`Warning`.
 
 The clone's Soniox name is `NameOf(userId, hash)` =
 `voxt-<env>-<userId>-<hash8>` (`VoicePool.NamePrefix`), `<env>` being
@@ -947,10 +965,10 @@ existing stock-voice resolution unchanged.
 
 - **Live** reads it once per dub start (`StartSynthesis`, [The dub
   worker](#the-dub-worker--audiostreamingbackenddubbingcs)): the acquire
-  runs inside the existing per-utterance window, so a first opted-in
-  utterance can lose up to `VoiceCloneAcquireTimeout` (15 s) to a cold
-  clone before falling back to the stock voice for that one utterance —
-  see [Follow-ups](#follow-ups).
+  runs inside the existing per-utterance window and never waits, so a
+  first opted-in utterance is spoken with the stock voice while its
+  clone is made in the background — see [Follow-ups](#follow-ups) for
+  giving that utterance the clone too.
 - **Replay** reads it inside `ReplayDubs.GetOrCreate`'s existing 20 s
   wait ([Replay → `ReplayDubs`](#replaydubs--get-or-create)); the stored
   dub's hash already includes the voice id
@@ -1059,20 +1077,26 @@ names like the real API) and `AudioRecordingOperations.OptInOwnVoice`
   `GetHash` agreeing with it), `SampleMissing` for a nonexistent entry,
   and another user's entry → `SampleMissing` from both `Build` and
   `Inspect` with no blob written.
-- `tests/Chat.IntegrationTests/VoicePoolTest.cs` — acquire-creates-and-
-  reuses, a changed sample replacing the clone (old sample blob deleted,
-  new one present), a full pool returning `null`, a failed create cooling
-  down, an idle sweep, the reconcile (orphan delete, someone-else's-
-  environment voice kept, a `Ready` record reset when its voice is gone at
-  Soniox), a sweep releasing an idle clone while `List()` throws, a
-  `Ready` clone kept when the changed sample can't be built, a `Ready`
-  clone outliving its sample entry, another user's entry never cloned (no
-  Soniox call, no blob, no record), opt-out (clone and sample blob
-  deleted), the name-collision retry.
+- `tests/Chat.IntegrationTests/VoicePoolTest.cs` — a `Ready` clone
+  reused with no Soniox call, the first `Acquire` giving `null` within a
+  second with the creation in flight and the clone on the next call, a
+  second `Acquire` during the creation joining it (one create), a
+  changed sample replacing the clone (`null` once, old sample blob
+  deleted, new one present), a full pool returning `null`, a failed
+  create cooling down, an idle sweep, the reconcile (orphan delete,
+  someone-else's-environment voice kept, a `Ready` record reset when its
+  voice is gone at Soniox), a sweep releasing an idle clone while
+  `List()` throws, a `Ready` clone kept when the changed sample can't be
+  built, a `Ready` clone outliving its sample entry, another user's
+  entry never cloned (no Soniox call, no blob, no record), opt-out
+  (clone and sample blob deleted), the name-collision retry. Tests that
+  need the outcome of a background attempt use
+  `VoicePoolOperations.AcquireSettled` (`tests/Testing.Host/`): `Acquire`,
+  wait until nothing is in flight, `Acquire` again.
 - `tests/Chat.IntegrationTests/SpeakerVoicesTest.cs` — opted-in +
-  acquirable → clone id; not opted-in → stock voice, pool never touched;
-  opted-in with the quota at zero → stock voice, no record ever reaches
-  `Ready`.
+  acquirable → the stock voice while the clone is made, then the clone
+  id; not opted-in → stock voice, pool never touched; opted-in with the
+  quota at zero → stock voice, no record ever reaches `Ready`.
 - `tests/Chat.IntegrationTests/OwnVoicesTest.cs` — `GetOwnVoiceStatus`
   end to end, including over the RPC client (MessagePack round trip):
   off, `NotEnoughRecordings` with the right `MissingDuration`, an
@@ -1080,8 +1104,9 @@ names like the real API) and `AudioRecordingOperations.OptInOwnVoice`
   `NotEnoughRecordings` after the sample is removed.
 - `tests/Chat.IntegrationTests/ReplayDubsTest.cs` /
   `DubbingTranslationFlowTest.cs` — an opted-in speaker's live and replay
-  dub is synthesized with the clone id
-  (`RecordingSpeechSynthesizer` records `VoiceId`); opting out
+  dub is synthesized with the clone id once the clone is ready (the test
+  makes it with `AcquireSettled` first, as an earlier utterance would
+  have; `RecordingSpeechSynthesizer` records `VoiceId`); opting out
   regenerates the dub with the stock voice.
 - `tests/Users.IntegrationTests/UserVoicesBackendTest.cs` — the backend's
   create/get/version-mismatch/`ListActive` behavior directly.
@@ -1107,13 +1132,13 @@ suite.
 - **A quota-raise request.** The 20-voice Soniox cap is shared by every
   environment and only partitioned by configuration; there's no in-app
   way to ask Soniox for more or to see how close the fleet is to it.
-- **Speculative clone acquisition.** `VoicePool.Acquire` runs inside the
-  live dub's decision window today, so a speaker's *first* opted-in
-  utterance can hold up to `Constants.Audio.VoiceCloneAcquireTimeout`
-  (15 s) waiting on a cold clone before falling back to the stock voice
-  for that utterance. Acquiring speculatively — e.g. the moment a
-  speaker starts talking, ahead of the dub decision — would avoid that
-  silence for most first utterances.
+- **Speculative clone acquisition.** `VoicePool.Acquire` never waits,
+  so a speaker's *first* opted-in utterance (and the first after a
+  sample change) is spoken with the stock voice while the clone is made.
+  Acquiring speculatively — e.g. the moment a speaker starts talking,
+  ahead of the dub decision — would give most of those first utterances
+  the clone too; the pool's single-flight and idle release already make
+  it safe.
 - **A live countdown of needed recordings.** The status API's
   `MissingDuration` only updates once the 10 s compute cache expires (see
   [Status](#status--iownvoicesgetownvoicestatus)); there's no push the
@@ -1489,7 +1514,6 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 | `Constants.Audio.VoiceSampleMaxChats` / `VoiceSampleMaxEntriesPerChat` | 10 / 500 | Bounds on the auto-sample scan: most recent chats, newest entries first |
 | `Constants.Audio.VoiceCloneQuota` | 20 | Soniox clones per organization, shared by every environment; each environment's pool caps its own count at `StreamingSettings.SonioxVoiceQuota` (12 prod / 4 dev / 1 local via `appsettings*.json`), falling back to this |
 | `Constants.Audio.VoiceCloneReadyTimeout` | 30 s | How long a fresh clone may take to turn ready before the attempt counts as failed |
-| `Constants.Audio.VoiceCloneAcquireTimeout` | 15 s | How long `VoicePool.Acquire`'s caller waits for a clone before falling back to the stock voice; the work keeps running past this |
 | `Constants.Audio.VoiceCloneIdleTimeout` | 10 min | A clone unused this long is deleted by the sweeper, freeing its quota slot |
 | `Constants.Audio.VoiceCloneFailureCooldown` | 10 min | After a failed clone attempt, how long the speaker keeps the stock voice before a retry |
 | `Constants.Audio.VoiceCloneCreatingTimeout` | 2 min | A `Creating` record untouched this long belongs to a host that died mid-clone: taken over or swept |

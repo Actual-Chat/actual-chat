@@ -215,6 +215,9 @@ public class DubbingTranslationFlowTest(
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var ct = cts.Token;
         await Tester.OptInOwnVoice(chatId, Languages.Russian);
+        // The pool never waits for a clone, so the dub that asks first speaks with the stock voice:
+        // this one is made before the dub, as an earlier utterance would have done
+        var cloneVoiceId = await pool.AcquireSettled(account.Id, ct);
         var source = Channel.CreateUnbounded<TranscriptDiff>();
         var pushSourceTask = BackgroundTask.Run(
             () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
@@ -236,7 +239,6 @@ public class DubbingTranslationFlowTest(
         var chunks = await recorder.WhenSpoken(dubId.Value, 1, ct);
         source.Writer.Complete();
         await pushSourceTask.SilentAwait(false);
-        var cloneVoiceId = await pool.Acquire(account.Id, ct);
 
         // assert
         stream.Should().NotBeNull();

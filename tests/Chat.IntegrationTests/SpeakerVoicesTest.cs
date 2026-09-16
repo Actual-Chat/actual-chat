@@ -27,11 +27,14 @@ public class SpeakerVoicesTest(
         var ct = CancellationToken.None;
 
         // act
+        var whileCloning = await SpeakerVoices.Get(chatId, entry.AuthorId, ct);
+        var cloneVoiceId = await Pool.AcquireSettled(account.Id, ct);
         var voiceId = await SpeakerVoices.Get(chatId, entry.AuthorId, ct);
-        var cloneVoiceId = await Pool.Acquire(account.Id, ct);
 
         // assert
-        voiceId.Should().NotBeNullOrEmpty();
+        cloneVoiceId.Should().NotBeNullOrEmpty();
+        whileCloning.Should().NotBeNullOrEmpty("the stock voice speaks while the clone is made");
+        whileCloning.Should().NotBe(cloneVoiceId);
         voiceId.Should().Be(cloneVoiceId, "an opted-in, acquirable speaker is dubbed with their clone");
     }
 
@@ -69,6 +72,7 @@ public class SpeakerVoicesTest(
 
             // act
             var voiceId = await SpeakerVoices.Get(chatId, entry.AuthorId, ct);
+            await Pool.WhenSettled();
 
             // assert
             voiceId.Should().NotBeNullOrEmpty("an author's stock voice still resolves via DubVoiceAccents");

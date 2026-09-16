@@ -25,21 +25,24 @@ public sealed class VoicePoolTest(
         field ??= AppHost.Services.GetRequiredService<IBlobStorages>()[BlobScope.AudioRecord];
 
     [Fact(Timeout = 120_000)]
-    public async Task AcquireShouldCreateACloneOnceAndReuseIt()
+    public async Task ReadyCloneShouldBeReusedWithoutSoniox()
     {
         // arrange
         var speaker = await SignInWithSample(Tester);
-        var createCount = Soniox.CreateCount;
         var ct = CancellationToken.None;
+        var voiceId = await Pool.AcquireSettled(speaker.Account.Id, ct);
+        var createCount = Soniox.CreateCount;
+        var deleteCount = Soniox.DeleteCount;
 
         // act
-        var voiceId = await Pool.Acquire(speaker.Account.Id, ct);
         var again = await Pool.Acquire(speaker.Account.Id, ct);
 
         // assert
         voiceId.Should().NotBeNullOrEmpty("an opted-in speaker with a sample gets a clone");
         again.Should().Be(voiceId, "a ready clone is reused");
-        Soniox.CreateCount.Should().Be(createCount + 1, "the clone is created once per sample");
+        Soniox.CreateCount.Should().Be(createCount, "the clone is created once per sample");
+        Soniox.DeleteCount.Should().Be(deleteCount, "a ready clone costs no Soniox call");
+        Pool.InFlightCount.Should().Be(0, "a ready clone starts no work");
         var record = await UserVoices.Get(speaker.Account.Id, ct);
         record.Should().NotBeNull();
         record!.Status.Should().Be(UserVoiceStatus.Ready);
@@ -48,7 +51,67 @@ public sealed class VoicePoolTest(
         var voice = await Soniox.Get(voiceId!, ct);
         voice.Should().NotBeNull("the clone exists at Soniox");
         voice!.Name.Should().Be(Pool.NameOf(speaker.Account.Id, record.SampleHash));
-        Pool.InFlightCount.Should().Be(0, "nothing stays in flight once the result is handed out");
+    }
+
+    [Fact(Timeout = 120_000)]
+    public async Task FirstAcquireShouldStartTheCloneAndGiveNullAtOnce()
+    {
+        // arrange
+        var speaker = await SignInWithSample(Tester);
+        var ct = CancellationToken.None;
+        var createCount = Soniox.CreateCount;
+        Soniox.ReadyAfter = TimeSpan.FromSeconds(3);
+        try {
+            // act
+            var startedAt = CpuTimestamp.Now;
+            var first = await Pool.Acquire(speaker.Account.Id, ct);
+            var elapsed = startedAt.Elapsed;
+            var inFlightCount = Pool.InFlightCount;
+            await Pool.WhenSettled();
+            var next = await Pool.Acquire(speaker.Account.Id, ct);
+
+            // assert
+            first.Should().BeNull("the dub that asks first speaks with the stock voice while the clone is made");
+            elapsed.Should().BeLessThan(TimeSpan.FromSeconds(1), "Acquire never waits for the clone");
+            inFlightCount.Should().Be(1, "the clone is being made in the background");
+            Soniox.CreateCount.Should().Be(createCount + 1, "the first Acquire started the creation");
+            next.Should().NotBeNullOrEmpty("the clone serves the next utterance");
+            var record = await UserVoices.Get(speaker.Account.Id, ct);
+            record!.Status.Should().Be(UserVoiceStatus.Ready);
+            record.SonioxVoiceId.Should().Be(next);
+            Pool.InFlightCount.Should().Be(0, "nothing stays in flight once the clone is ready");
+        }
+        finally {
+            Soniox.ReadyAfter = TimeSpan.Zero;
+        }
+    }
+
+    [Fact(Timeout = 120_000)]
+    public async Task AcquireWhileCreatingShouldNotStartASecondClone()
+    {
+        // arrange
+        var speaker = await SignInWithSample(Tester);
+        var ct = CancellationToken.None;
+        var createCount = Soniox.CreateCount;
+        Soniox.ReadyAfter = TimeSpan.FromSeconds(3);
+        try {
+            var first = await Pool.Acquire(speaker.Account.Id, ct);
+
+            // act
+            var whileCreating = await Pool.Acquire(speaker.Account.Id, ct);
+            var inFlightCount = Pool.InFlightCount;
+            await Pool.WhenSettled();
+
+            // assert
+            first.Should().BeNull();
+            whileCreating.Should().BeNull("a dub during the creation still speaks with the stock voice");
+            inFlightCount.Should().Be(1, "the second Acquire joins the creation instead of starting another");
+            Soniox.CreateCount.Should().Be(createCount + 1, "the clone is created once");
+            (await Pool.Acquire(speaker.Account.Id, ct)).Should().NotBeNullOrEmpty();
+        }
+        finally {
+            Soniox.ReadyAfter = TimeSpan.Zero;
+        }
     }
 
     [Fact(Timeout = 120_000)]
@@ -57,16 +120,18 @@ public sealed class VoicePoolTest(
         // arrange
         var speaker = await SignInWithSample(Tester);
         var ct = CancellationToken.None;
-        var oldVoiceId = await Pool.Acquire(speaker.Account.Id, ct);
+        var oldVoiceId = await Pool.AcquireSettled(speaker.Account.Id, ct);
         var oldBlobId = VoiceSampleBuilder.BlobIdOf(speaker.Account.Id, VoiceSampleBuilder.HashOf(speaker.Entry.Id));
         var newEntry = await Tester.RecordVoiceEntry(speaker.ChatId, Languages.Russian, frameCount: EntryFrameCount);
         await SetSettings(Tester, x => x with { IsOwnVoiceEnabled = true, OwnVoiceSampleEntryId = newEntry.Id });
         var createCount = Soniox.CreateCount;
 
         // act
-        var newVoiceId = await Pool.Acquire(speaker.Account.Id, ct);
+        var withStaleClone = await Pool.Acquire(speaker.Account.Id, ct);
+        var newVoiceId = await Pool.AcquireSettled(speaker.Account.Id, ct);
 
         // assert
+        withStaleClone.Should().BeNull("a changed sample means a new clone, and the stock voice until it's made");
         newVoiceId.Should().NotBeNullOrEmpty();
         newVoiceId.Should().NotBe(oldVoiceId, "a new sample means a new clone");
         Soniox.CreateCount.Should().Be(createCount + 1);
@@ -87,7 +152,7 @@ public sealed class VoicePoolTest(
         // arrange
         var first = await SignInWithSample(Tester);
         var ct = CancellationToken.None;
-        var firstVoiceId = await Pool.Acquire(first.Account.Id, ct);
+        var firstVoiceId = await Pool.AcquireSettled(first.Account.Id, ct);
         await using var secondTester = AppHost.NewWebClientTester(Out);
         var second = await SignInWithSample(secondTester);
         var activeCount = (await UserVoices.ListActive(ct)).Count;
@@ -95,7 +160,7 @@ public sealed class VoicePoolTest(
         Settings.SonioxVoiceQuota = activeCount;
         try {
             // act
-            var secondVoiceId = await Pool.Acquire(second.Account.Id, ct);
+            var secondVoiceId = await Pool.AcquireSettled(second.Account.Id, ct);
 
             // assert
             firstVoiceId.Should().NotBeNullOrEmpty();
@@ -123,13 +188,14 @@ public sealed class VoicePoolTest(
         Soniox.FailCreate = true;
         try {
             // act
-            var voiceId = await Pool.Acquire(speaker.Account.Id, ct);
+            var voiceId = await Pool.AcquireSettled(speaker.Account.Id, ct);
             Soniox.FailCreate = false;
             var retried = await Pool.Acquire(speaker.Account.Id, ct);
 
             // assert
             voiceId.Should().BeNull("a failed clone means the stock voice");
             retried.Should().BeNull("the clone isn't retried within the cool-down");
+            Pool.InFlightCount.Should().Be(0, "the cool-down starts nothing");
             Soniox.CreateCount.Should().Be(createCount + 1, "only the failed attempt reached Soniox");
             var record = await UserVoices.Get(speaker.Account.Id, ct);
             record!.Status.Should().Be(UserVoiceStatus.Failed);
@@ -151,7 +217,7 @@ public sealed class VoicePoolTest(
         // arrange
         var speaker = await SignInWithSample(Tester);
         var ct = CancellationToken.None;
-        var voiceId = await Pool.Acquire(speaker.Account.Id, ct);
+        var voiceId = await Pool.AcquireSettled(speaker.Account.Id, ct);
         var record = await UserVoices.Get(speaker.Account.Id, ct);
         var idleSince = Clocks.SystemClock.Now - Constants.Audio.VoiceCloneIdleTimeout - TimeSpan.FromMinutes(1);
         var idleDiff = new UserVoiceDiff { LastUsedAt = idleSince };
@@ -178,7 +244,7 @@ public sealed class VoicePoolTest(
         // arrange
         var speaker = await SignInWithSample(Tester);
         var ct = CancellationToken.None;
-        var voiceId = await Pool.Acquire(speaker.Account.Id, ct);
+        var voiceId = await Pool.AcquireSettled(speaker.Account.Id, ct);
         var orphan = await Soniox.Create(Pool.NamePrefix + "orphan-abc", Stream.Null, ct);
         var otherEnv = await Soniox.Create("voxt-prod-orphan-abc", Stream.Null, ct);
         var foreign = await Soniox.Create("someone-elses-voice", Stream.Null, ct);
@@ -209,15 +275,15 @@ public sealed class VoicePoolTest(
         // arrange
         var speaker = await SignInWithSample(Tester);
         var ct = CancellationToken.None;
-        var voiceId = await Pool.Acquire(speaker.Account.Id, ct);
+        var voiceId = await Pool.AcquireSettled(speaker.Account.Id, ct);
         var record = await UserVoices.Get(speaker.Account.Id, ct);
         var createCount = Soniox.CreateCount;
         var othersEntry = await RecordSomeoneElsesEntry();
         await SetSettings(Tester, x => x with { OwnVoiceSampleEntryId = othersEntry.Id });
 
         // act
-        var afterFailure = await Pool.Acquire(speaker.Account.Id, ct);
-        var again = await Pool.Acquire(speaker.Account.Id, ct);
+        var afterFailure = await Pool.AcquireSettled(speaker.Account.Id, ct);
+        var again = await Pool.AcquireSettled(speaker.Account.Id, ct);
 
         // assert
         voiceId.Should().NotBeNullOrEmpty();
@@ -235,7 +301,7 @@ public sealed class VoicePoolTest(
         // arrange
         var speaker = await SignInWithSample(Tester);
         var ct = CancellationToken.None;
-        var voiceId = await Pool.Acquire(speaker.Account.Id, ct);
+        var voiceId = await Pool.AcquireSettled(speaker.Account.Id, ct);
         var createCount = Soniox.CreateCount;
         var mediaId = speaker.Entry.Audio!.MediaId!;
         await Commander.Call(new MediaBackend_Change(mediaId, null, Change.Remove<MediaFull>()), ct);
@@ -261,7 +327,7 @@ public sealed class VoicePoolTest(
         var blobId = VoiceSampleBuilder.BlobIdOf(account.Id, VoiceSampleBuilder.HashOf(othersEntry.Id));
 
         // act
-        var voiceId = await Pool.Acquire(account.Id, ct);
+        var voiceId = await Pool.AcquireSettled(account.Id, ct);
 
         // assert
         voiceId.Should().BeNull("another user's recording is no sample of this one's voice");
@@ -277,7 +343,7 @@ public sealed class VoicePoolTest(
         // arrange
         var speaker = await SignInWithSample(Tester);
         var ct = CancellationToken.None;
-        var voiceId = await Pool.Acquire(speaker.Account.Id, ct);
+        var voiceId = await Pool.AcquireSettled(speaker.Account.Id, ct);
         var record = await UserVoices.Get(speaker.Account.Id, ct);
         var idleSince = Clocks.SystemClock.Now - Constants.Audio.VoiceCloneIdleTimeout - TimeSpan.FromMinutes(1);
         var idleDiff = new UserVoiceDiff { LastUsedAt = idleSince };
@@ -309,7 +375,7 @@ public sealed class VoicePoolTest(
         var createCount = Soniox.CreateCount;
 
         // act
-        var voiceId = await Pool.Acquire(speaker.Account.Id, ct);
+        var voiceId = await Pool.AcquireSettled(speaker.Account.Id, ct);
 
         // assert
         voiceId.Should().NotBeNullOrEmpty("a same-named leftover is replaced, not a reason to fail");
@@ -336,7 +402,7 @@ public sealed class VoicePoolTest(
         Soniox.OnCreate = _ => deleteTask ??= Blobs.Delete(blobId, ct);
         try {
             // act
-            var voiceId = await Pool.Acquire(speaker.Account.Id, ct);
+            var voiceId = await Pool.AcquireSettled(speaker.Account.Id, ct);
 
             // assert
             voiceId.Should().NotBeNullOrEmpty("a sample that vanished mid-clone is rebuilt, not a failure");
@@ -362,12 +428,12 @@ public sealed class VoicePoolTest(
         // arrange
         var speaker = await SignInWithSample(Tester);
         var ct = CancellationToken.None;
-        var voiceId = await Pool.Acquire(speaker.Account.Id, ct);
+        var voiceId = await Pool.AcquireSettled(speaker.Account.Id, ct);
         await SetSettings(Tester, x => x with { IsOwnVoiceEnabled = false });
         var createCount = Soniox.CreateCount;
 
         // act
-        var afterOptOut = await Pool.Acquire(speaker.Account.Id, ct);
+        var afterOptOut = await Pool.AcquireSettled(speaker.Account.Id, ct);
 
         // assert
         voiceId.Should().NotBeNullOrEmpty();

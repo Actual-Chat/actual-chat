@@ -185,11 +185,13 @@ public class ReplayDubsTest(
         // A longer recording than the other tests', so its text can't collide with theirs in the recorder
         var entry = await Tester.RecordVoiceEntry(chatId, Languages.Russian, frameCount: 500);
         await Tester.OptInOwnVoice(chatId, Languages.Russian);
+        // The pool never waits for a clone, so the dub that asks first speaks with the stock voice:
+        // this one is made before the dub, as an earlier utterance would have done
+        var cloneVoiceId = await pool.AcquireSettled(account.Id, ct);
         var id = TranslationId.New(entry.Id, Languages.English);
 
         // act - the speaker is opted in
         var first = await dubs.GetOrCreate(entry, Languages.English, ct);
-        var cloneVoiceId = await pool.Acquire(account.Id, ct);
         var translation = await services.WhenReplayDubStored(id, ct, cloneVoiceId!);
         var streamId = RecordingSpeechSynthesizer.OneShotStreamId(Languages.English, translation.Content);
 
