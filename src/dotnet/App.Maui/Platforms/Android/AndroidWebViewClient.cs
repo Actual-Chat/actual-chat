@@ -1,4 +1,4 @@
-using Android.Webkit;
+﻿using Android.Webkit;
 using Uri = Android.Net.Uri;
 using WebView = Android.Webkit.WebView;
 
@@ -126,8 +126,11 @@ public class AndroidWebViewClient(
             var fetch = MauiContentRequests.BeginFetch(url, request?.Method, range);
             ContentCacheLog.DebugLog?.LogDebug("Intercept blocked {Elapsed} on T{ThreadId}, fetch={HasFetch}: {Url}",
                 CpuTimestamp.Now - startedAt, Environment.CurrentManagedThreadId, fetch != null, url);
+            // A fill answers before the real headers exist, so the one that matters for a
+            // CORS-flagged load (a canvas-bound image) has to be replayed from what every
+            // own-content host sends - without it such a load fails until the entry is cached.
             return fetch is var (body, mimeType)
-                ? new WebResourceResponse(mimeType, null, body)
+                ? new WebResourceResponse(mimeType, null, 200, "OK", CorsHeaders(), body)
                 : null;
         }
 
@@ -160,6 +163,9 @@ public class AndroidWebViewClient(
             return null;
         }
     }
+
+    private static Dictionary<string, string> CorsHeaders()
+        => new(StringComparer.OrdinalIgnoreCase) { ["Access-Control-Allow-Origin"] = "*" };
 
     private static bool IsAppOrigin(Uri url)
         => url.Scheme == System.Uri.UriSchemeHttps

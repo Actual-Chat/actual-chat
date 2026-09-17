@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using Foundation;
 using WebKit;
 
@@ -97,6 +97,9 @@ internal sealed class ContentSchemeHandler : NSObject, IWKUrlSchemeHandler
                 var length = response.Content.Headers.ContentLength;
                 var headers = new NSMutableDictionary();
                 headers[new NSString("Content-Type")] = new NSString(contentType);
+                // The projected URL is cross-origin to the page, so a CORS-flagged load
+                // (a canvas-bound image) needs what every own-content host sends anyway
+                headers[new NSString("Access-Control-Allow-Origin")] = new NSString("*");
                 if (length is { } l)
                     headers[new NSString("Content-Length")] = new NSString(l.ToString());
                 await using var body = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
