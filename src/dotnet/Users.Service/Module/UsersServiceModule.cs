@@ -179,6 +179,9 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<IChatUsages, ChatUsages>();
         rpcHost.AddBackend<IChatUsagesBackend, ChatUsagesBackend>();
 
+        // UserVoices
+        rpcHost.AddBackend<IUserVoicesBackend, UserVoicesBackend>();
+
         // UserSettings, ServerSettings and ServerKvas
         rpcHost.AddLocalApi<IUserSettings, UserSettings>();
         rpcHost.AddLocalApi<IServerKvas, ServerKvas>(); // Used by Authors, Avatars -> Chats, etc.
@@ -309,6 +312,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             db.AddEntityResolver<string, DbAvatar>();
             db.AddEntityResolver<string, DbUserPresence>();
             db.AddEntityResolver<string, DbChatPosition>();
+            db.AddEntityResolver<string, DbUserVoice>();
         });
     }
 }

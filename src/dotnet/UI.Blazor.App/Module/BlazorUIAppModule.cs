@@ -193,6 +193,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<AudioDiagnosticsModal.Model, AudioDiagnosticsModal>()
             .Add<CallModal.Model, CallModal>()
             .Add<TimeZoneEditorModal.Model, TimeZoneEditorModal>()
+            .Add<DubVoiceModal.Model, DubVoiceModal>()
             .Add<ApiKeyCreateModal.Model, ApiKeyCreateModal>()
             .Add<PasskeyRenameModal.Model, PasskeyRenameModal>()
             .Add<EmojiModal.Model, EmojiModal>()
@@ -204,6 +205,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         // IBannerViews
         services.AddTypeMap<IBannerView>(map => map
             .Add<SwitchToWasmBanner.Model, SwitchToWasmBanner>()
+            .Add<OwnVoiceSampleBanner.Model, OwnVoiceSampleBanner>()
         );
 
         services.ConfigureUIEvents(

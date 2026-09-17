@@ -1,9 +1,12 @@
 using ActualChat.App.Server;
 using ActualChat.App.Server.Module;
 using ActualChat.Blobs.Internal;
+using ActualChat.Hosting;
 using ActualChat.MLSearch.Engine;
 using ActualChat.Module;
 using ActualChat.Notifications;
+using ActualChat.Transcription;
+using ActualChat.Transcription.Module;
 using ActualLab.IO;
 using ActualLab.Testing.Web;
 using DotNetEnv.Configuration;
@@ -104,6 +107,12 @@ public static class TestAppHostFactory
                 services.AddSingleton<IApnsClient>(
                     c => c.GetRequiredService<ApnsTestSink>());
                 services.AddSingleton(new MeshWatcherOptions { MustAnnounceAfterHostStart = options.MustStart });
+
+                // AddSoniox (and its ISonioxVoices registration) is skipped when UseFakeTranscriber is set
+                if (ctx.Cfg.Settings<TranscriptionSettings>().UseFakeTranscriber) {
+                    services.AddSingleton<FakeSonioxVoices>();
+                    services.AddSingleton<ISonioxVoices>(c => c.GetRequiredService<FakeSonioxVoices>());
+                }
 
                 // Overrides from options
                 options.ConfigureServices?.Invoke(ctx, services);

@@ -65,6 +65,10 @@ body.narrow .close-settings-btn {
     @apply text-xxs;
     line-height: 0;
 }
+/* The status line under the "Use my own voice" consent caption */
+.settings-tab .own-voice-status {
+    @apply mt-1 text-02;
+}
 
 /* ── Push to Talk tab ── */
 

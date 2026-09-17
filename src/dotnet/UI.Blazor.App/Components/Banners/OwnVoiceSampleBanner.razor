@@ -1,0 +1,75 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@implements IBannerView<OwnVoiceSampleBanner.Model>
+@inherits ComputedStateComponent<AppUIHub, OwnVoiceSampleBanner.ComputedModel>
+@{
+    var m = State.Value;
+}
+
+@* The prompt card "Record a sample" in Transcription settings opens in the Notes chat: the user
+   reads the paragraph as an ordinary voice message, then keeps it as their voice sample. *@
+<Banner IsVisible="@m.IsVisible" Severity="BannerSeverity.Info" ShowDismissButton="true">
+    <Icon>
+        <i class="icon-mic text-2xl"></i>
+    </Icon>
+    <Body>
+        <div class="own-voice-sample-banner">
+            <div class="c-title">@L.Transcription_OwnVoiceReadAloud</div>
+            <div class="c-prompt">@L.Transcription_OwnVoicePromptText</div>
+        </div>
+    </Body>
+    <Buttons>
+        @if (m.Recording is { } recording) {
+            <BannerButton Click="@(() => OnUseRecordingClick(recording))">
+                @L.Transcription_OwnVoiceUseRecording
+            </BannerButton>
+        }
+    </Buttons>
+</Banner>
+
+@code {
+    private LanguageUI LanguageUI => Hub.LanguageUI;
+
+    [CascadingParameter] public ChatContext? ChatContext { get; set; }
+    [Parameter] public Model BannerModel { get; set; } = null!;
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ComputedModel>.Options() {
+                InitialValue = ComputedModel.Hidden,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var chatId = BannerModel.ChatId;
+        if (ChatContext?.Chat.Id != chatId)
+            return ComputedModel.Hidden;
+
+        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (ownAuthor == null)
+            return ComputedModel.Hidden;
+
+        // Entries come newest first; anything older than the card can't be the reading of it
+        var recording = await Hub.Chats.ReadReverse(Session, chatId, cancellationToken)
+            .TakeWhile(x => x.BeginsAt >= BannerModel.ShownAt)
+            .FirstOrDefaultAsync(x => x.AuthorId == ownAuthor.Id
+                && x is { IsRemoved: false, Audio: { IsStreaming: false, MediaId: not null } },
+                cancellationToken)
+            .ConfigureAwait(false);
+        return new ComputedModel(true, recording);
+    }
+
+    private async Task OnUseRecordingClick(ChatEntry recording) {
+        await LanguageUI.UpdateSettings(x => x with { OwnVoiceSampleEntryId = recording.Id }).ConfigureAwait(true);
+        ToastUI.Show(L.Transcription_OwnVoiceSampleSaved, "icon-checkmark-circle", ToastDismissDelay.Short);
+        LanguageUI.DismissOwnVoiceSamplePrompt();
+    }
+
+    // Nested types
+
+    public sealed record Model(ChatId ChatId, Moment ShownAt);
+
+    public sealed record ComputedModel(bool IsVisible, ChatEntry? Recording) {
+        public static readonly ComputedModel Hidden = new(false, null);
+    }
+}
