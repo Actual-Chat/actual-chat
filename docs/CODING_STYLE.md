@@ -218,6 +218,19 @@ public async switchFacing(): Promise<boolean> {
 
 #### Multi-targeting
 - Follow the project's multi-targeting patterns with conditional compilation.
+- In the MAUI projects platform code is selected by folder or file suffix (`Apple`, `MaciOS`,
+  `MacOS`, `iOS`, ... - the full table is in [macos-appkit.md](macos-appkit.md)). The two are
+  not interchangeable:
+  - **A suffix (`Foo.MaciOS.cs`) is the platform half of a `partial` type** and sits next to
+    `Foo.cs`.
+  - **A standalone type goes into the platform folder** (`Platforms/iOS/IconUIExt.cs`), with no
+    suffix.
+- Pick the widest folder the code has a *caller* on, not the widest it compiles for. `Apple` needs
+  no UIKit (the AppKit target, `net11.0-macos`, lacks it); `MaciOS` is for code Mac Catalyst really
+  runs. Code reached only from an iOS feature - CallKit, the share extension - goes to
+  `Platforms/iOS`, even when it would compile for Catalyst.
+- `IOS` is **not** defined for Mac Catalyst (only `MACCATALYST` is), so an `#if IOS` registration
+  leaves Catalyst out.
 
 ### Global Usings
 

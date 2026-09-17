@@ -1,10 +1,7 @@
 using ActualChat.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Diagnostics;
-using ActualLab.IO;
-using Foundation;
 using Intents;
-using UIKit;
 
 namespace ActualChat.App.Maui;
 
@@ -15,8 +12,6 @@ namespace ActualChat.App.Maui;
 /// </summary>
 public sealed class IosCallIntents(AppUIHub hub)
 {
-    private const int AvatarSize = 160;
-
     private AppUIHub Hub { get; } = hub;
     private IconUI IconUI => field ??= Hub.Services.GetRequiredService<IconUI>();
     private ILogger Log => field ??= Hub.LogFor(GetType());
@@ -32,68 +27,21 @@ public sealed class IosCallIntents(AppUIHub hub)
     private async Task DonateInternal(
         ChatId chatId, bool hasVideo, INInteractionDirection direction, CancellationToken cancellationToken)
     {
-        var chat = await Hub.Chats.Get(Hub.Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat is null)
+        var contact = await Hub.Contacts.GetForChat(Hub.Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (contact is null)
             return;
 
-        var iconQuery = await GetIconQuery(chat, cancellationToken).ConfigureAwait(false);
-        var loadedImage = await IconUI.Get(iconQuery, cancellationToken).ConfigureAwait(false);
-        using var image = loadedImage is null ? null : LoadImage(loadedImage.FilePath);
-        var person = new INPerson(
-            personHandle: new INPersonHandle(chatId.Value, INPersonHandleType.Unknown),
-            nameComponents: null,
-            displayName: chat.Title,
-            image: image,
-            contactIdentifier: null,
-            customIdentifier: chatId.Value);
+        using var image = await IconUI.GetIntentImage(contact, cancellationToken).ConfigureAwait(false);
         var intent = new INStartCallIntent(
             null,
             null,
             INCallAudioRoute.Unknown,
             INCallDestinationType.Normal,
-            [person],
+            [ChatIntents.NewPerson(contact.Chat, image)],
             hasVideo ? INCallCapability.VideoCall : INCallCapability.AudioCall);
-        var interaction = new INInteraction(intent, null) {
-            Direction = direction,
-            Identifier = $"{chatId}-{Hub.Clocks.SystemClock.Now.EpochOffsetTicks}",
-            GroupIdentifier = chatId.Value,
-        };
-        await interaction.DonateInteractionAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+        var now = Hub.Clocks.SystemClock.Now;
+        await ChatIntents.Donate(intent, chatId, direction, now, cancellationToken).ConfigureAwait(false);
         DebugLog?.LogInformation("Donated {Direction} call intent for chat #{ChatId}, hasImage={HasImage}",
             direction, chatId, image is not null);
-    }
-
-    private INImage? LoadImage(FilePath filePath)
-    {
-        // Re-encoded through UIKit and embedded: the cache holds whatever the image proxy served
-        // (WebP included), Intents renders a blank for data it can't decode, and iOS may purge the
-        // cache directory a referenced file would live in.
-        using var uiImage = UIImage.FromFile(filePath);
-        using var png = uiImage?.AsPNG();
-        if (png is null) {
-            Log.LogWarning("Avatar at '{FilePath}' isn't a decodable image", filePath);
-            return null;
-        }
-
-        return INImage.FromData(png);
-    }
-
-    private async Task<IconQuery> GetIconQuery(Chat.Chat chat, CancellationToken cancellationToken)
-    {
-        // In a peer chat the other party is the same person whichever way the call went; a group's
-        // own picture stands in for everyone else.
-        if (chat.Id is not PeerChatId peerChatId)
-            return chat.GetIconQuery(avatarSize: AvatarSize, renderAvatarTitle: true);
-
-        var ownAccount = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        var userId = peerChatId.UserIds.OtherThan(ownAccount.Id);
-        var author = await Hub.Authors
-            .GetByUserId(Hub.Session, chat.Id, userId, cancellationToken)
-            .ConfigureAwait(false);
-        return IconQuery.Create(
-            author?.Avatar.Picture,
-            AvatarKind.Beam,
-            DefaultUserPicture.GetAvatarKey(userId.Value),
-            AvatarSize);
     }
 }

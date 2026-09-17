@@ -1158,7 +1158,9 @@ Cross-MAUI-app shared utilities (used by App.Maui and IosShareExt).
 - `AndroidTaggedLogSink` - Android-specific Serilog sink with tags.
 - `AndroidFirebaseCrashlyticsSink` - Firebase Crashlytics Serilog sink.
 - `LoggerConfigurationXamarinExtensions` (static class) - Xamarin logger configuration extensions.
-- `IosIncomingShareSuggestions` - iOS incoming share suggestions.
+- `AppleIncomingShareSuggestions` - iOS incoming share suggestions (`INSendMessageIntent` + `NSUserActivity`).
+- `ChatIntents` (static class) - Shared parts of any chat-related Intents donation: `NewPerson`, `Donate`, `FormatTitle`.
+- `IconUIExt` (static class) - `IconUI.GetIntentImage(contact)`: the chat avatar as a PNG-embedded `INImage`.
 - `AppleSharedSecureStorage` - Apple keychain storage with shared-session and per-app service scopes.
 - `IosVideoTranscoder` - iOS video transcoding.
 - `OSLogLogger`, `OSLogLoggerProvider`, `AppleUnifiedLogSink` - iOS unified logging.
