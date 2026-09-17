@@ -39,19 +39,21 @@ public sealed class MacOSLocationPermissionHandler : LocationPermissionHandler
             if (ToIsGranted(manager.AuthorizationStatus) is { } isGranted)
                 return isGranted;
 
-            // The prompt's outcome arrives through the delegate, never as a return value
+            // The prompt's outcome arrives through the delegate, never as a return value.
+            // It has to be DidChangeAuthorization: the binding's delegate implements both callbacks,
+            // and CoreLocation never calls the legacy one (AuthorizationChanged) when the new one exists.
             var whenDecided = TaskCompletionSourceExt.New<bool>();
-            manager.AuthorizationChanged += OnAuthorizationChanged;
+            manager.DidChangeAuthorization += OnDidChangeAuthorization;
             try {
                 manager.RequestWhenInUseAuthorization();
                 return await whenDecided.Task.WaitAsync(cancellationToken).ConfigureAwait(true);
             }
             finally {
-                manager.AuthorizationChanged -= OnAuthorizationChanged;
+                manager.DidChangeAuthorization -= OnDidChangeAuthorization;
             }
 
-            void OnAuthorizationChanged(object? sender, CLAuthorizationChangedEventArgs e) {
-                if (ToIsGranted(e.Status) is { } isDecided)
+            void OnDidChangeAuthorization(object? sender, EventArgs e) {
+                if (ToIsGranted(manager.AuthorizationStatus) is { } isDecided)
                     whenDecided.TrySetResult(isDecided);
             }
         });
