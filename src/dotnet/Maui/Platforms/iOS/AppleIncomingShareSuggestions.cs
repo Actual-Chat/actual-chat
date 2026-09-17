@@ -19,13 +19,8 @@ public class AppleIncomingShareSuggestions(IServiceProvider services) : Incoming
     protected override async Task SuggestInternal(ContactId contactId, CancellationToken cancellationToken)
     {
         var contact = await Contacts.Get(Session, contactId, cancellationToken).Require().ConfigureAwait(false);
-        var loadedImage = await IconUI.Get(contact.GetIconQuery(avatarSize: 160, renderAvatarTitle: true), cancellationToken).ConfigureAwait(false);
-        // NOTE: Embed image data into the intent rather than referencing a file URL,
-        // because iOS may purge CacheDirectory at any time, breaking file references.
-        using var inImage = loadedImage is not null
-            ? INImage.FromData(NSData.FromFile(loadedImage.FilePath))
-            : null;
-        await DonateIntent(contact.Chat, inImage, cancellationToken).ConfigureAwait(false);
+        using var image = await IconUI.GetIntentImage(contact, cancellationToken).ConfigureAwait(false);
+        await DonateIntent(contact.Chat, image, cancellationToken).ConfigureAwait(false);
         DonateUserActivity(contact.Chat);
     }
 
@@ -33,14 +28,9 @@ public class AppleIncomingShareSuggestions(IServiceProvider services) : Incoming
     {
         try {
             var intent = CreateSendMessageIntent(chat, image);
-
-            var interaction = new INInteraction(intent, null) {
-                Direction = INInteractionDirection.Outgoing,
-                Identifier = $"{chat.Id}-{Clocks.SystemClock.UtcNow.Ticks}",
-                GroupIdentifier = chat.Id.Value,
-            };
-
-            await interaction.DonateInteractionAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+            var now = Clocks.SystemClock.Now;
+            await ChatIntents.Donate(intent, chat.Id, INInteractionDirection.Outgoing, now, cancellationToken)
+                .ConfigureAwait(false);
             DebugLog?.LogInformation("Donated INSendMessageIntent for chat {ChatId}", chat.Id);
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
@@ -48,25 +38,13 @@ public class AppleIncomingShareSuggestions(IServiceProvider services) : Incoming
         }
     }
 
-    private static INPerson CreateRecipient(Chat.Chat chat, INImage? image)
-    {
-        var handle = new INPersonHandle(chat.Id.Value, INPersonHandleType.Unknown);
-        return new INPerson(
-            personHandle: handle,
-            nameComponents: null,
-            displayName: FormatTitle(chat.Title),
-            image: image,
-            contactIdentifier: null,
-            customIdentifier: chat.Id.Value);
-    }
-
     private static INSendMessageIntent CreateSendMessageIntent(Chat.Chat chat, INImage? image)
     {
         var isPeer = chat.Kind is ChatKind.Peer;
-        var speakableGroupName = !isPeer ? new INSpeakableString(FormatTitle(chat.Title)) : null;
+        var speakableGroupName = !isPeer ? new INSpeakableString(ChatIntents.FormatTitle(chat.Title)) : null;
 
         var intent = new INSendMessageIntent(
-            recipients: isPeer ? [CreateRecipient(chat, image)] : [],
+            recipients: isPeer ? [ChatIntents.NewPerson(chat, image)] : [],
             outgoingMessageType: INOutgoingMessageType.Text,
             content: null,
             speakableGroupName: speakableGroupName,
@@ -89,13 +67,13 @@ public class AppleIncomingShareSuggestions(IServiceProvider services) : Incoming
 
             var chatUrl = $"https://{MauiSettings.Host}/chat/{chat.Id}";
             var activity = new NSUserActivity(ViewChatActivityType) {
-                Title = $"Chat with {FormatTitle(chat.Title)}",
+                Title = $"Chat with {ChatIntents.FormatTitle(chat.Title)}",
                 EligibleForSearch = true,
                 EligibleForPrediction = true,
                 WebPageUrl = NSUrl.FromString(chatUrl),
                 UserInfo = new NSDictionary("link", chatUrl),
                 ContentAttributeSet = new CSSearchableItemAttributeSet {
-                    DisplayName = FormatTitle(chat.Title),
+                    DisplayName = ChatIntents.FormatTitle(chat.Title),
                 },
             };
             activity.BecomeCurrent();
@@ -107,10 +85,4 @@ public class AppleIncomingShareSuggestions(IServiceProvider services) : Incoming
             Log.LogError(e, "Failed to donate NSUserActivity for chat {ChatId}", chat.Id);
         }
     }
-
-    private static string FormatTitle(string title)
-        // ReSharper disable once HeuristicUnreachableCode
- #pragma warning disable CS0162 // Unreachable code detected
-        => MauiSettings.IsDevApp ? $"🛠{title}️" : title;
- #pragma warning restore CS0162 // Unreachable code detected
 }

@@ -419,6 +419,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `MauiEncryptionKeys` — secure database/cache keys; await lazy `WhenReady` before reading `DbEncryptionKey`
 - `AppStrings` — the `IStringLocalizer` for code with no Blazor circuit (native dialogs, local notifications, the share extension); language from `MauiPreferences.UILanguage`
 - `KvasarStoreSupport` — Kvasar store suspend handling + legacy SQLite cleanup
+- `ChatIntents`, `IconUIExt.GetIntentImage` — shared pieces of an Intents donation (chat `INPerson`, PNG avatar `INImage`, `INInteraction` donation); reuse for any new `INIntent`
 - Platform-specific extensions for Android (`Android*`) and iOS (`Ios*`, `OSLog*`, `*Ext` for AVFoundation/UIKit)
 
 
