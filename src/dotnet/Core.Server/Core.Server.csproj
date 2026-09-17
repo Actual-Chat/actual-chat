@@ -16,6 +16,9 @@
     <PackageReference Include="Google.Cloud.Video.Transcoder.V1" />
     <PackageReference Include="libphonenumber-csharp" />
     <PackageReference Include="MaxMind.GeoIP2" />
+    <!-- Opus <-> PCM at the pipeline's edges: ElevenLabs realtime, voice-cloning samples, synthesis. -->
+    <PackageReference Include="OpusSharp.Core" />
+    <PackageReference Include="OpusSharp.Natives" />
     <PackageReference Include="UAParser" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" />
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />

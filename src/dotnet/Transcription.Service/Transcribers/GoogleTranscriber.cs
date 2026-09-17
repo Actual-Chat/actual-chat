@@ -199,7 +199,7 @@ public sealed partial class GoogleTranscriber : ITranscriber
 
         var state = new GoogleTranscribeState(audioSource, options, recognizeStream, output);
         try {
-            await TranscriberHelper.WhenPushAndRead(
+            await TaskExt.WhenPushAndRead(
                     PushAudio(state, cts.Token),
                     PullResponses(state, options, cts.Token),
                     cts)

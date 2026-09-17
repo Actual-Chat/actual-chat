@@ -25,6 +25,7 @@ public class AudioSource(
 {
     private static readonly byte[] ActualOpusStreamHeader = "A_OPUS_S"u8.ToArray();
     private static readonly byte[] WebMHeader = [0x1A, 0x45, 0xDF, 0xA3];
+    private static readonly byte[] OggHeader = "OggS"u8.ToArray();
     // A_OPUS_S + version = 3
     private static readonly byte[] OpusStreamFormat = [ 0x41, 0x5F, 0x4F, 0x50, 0x55, 0x53, 0x5F, 0x53, 0x03 ];
 
@@ -52,6 +53,8 @@ public class AudioSource(
             streamConverter = new WebMStreamConverter(clocks, audioSourceLog);
         else if (head.StartsWith(ActualOpusStreamHeader))
             streamConverter = new ActualOpusStreamConverter(clocks, audioSourceLog);
+        else if (head.StartsWith(OggHeader))
+            streamConverter = new OggOpusStreamConverter(clocks: clocks, log: audioSourceLog);
         else
             throw new InvalidOperationException("Unsupported audio stream container.");
 
