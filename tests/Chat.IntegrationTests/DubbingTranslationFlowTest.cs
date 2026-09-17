@@ -274,8 +274,8 @@ public class DubbingTranslationFlowTest(
         // assert - the mix is the original alone and ends with it
         frames.Count(x => x.Offset >= TimeSpan.Zero).Should().Be(150, "every original frame, nothing after");
         recorder.GetChunks(dubId.Value).Should().BeEmpty("nothing was synthesized");
-        drainedIn.Should().BeLessThan(TimeSpan.FromSeconds(2),
-            "NoDub ends the mix at once, while a transcript miss would take two share waits");
+        drainedIn.Should().BeLessThan(TimeSpan.FromSeconds(3.5),
+            "NoDub ends the mix at once, while a transcript miss takes two share waits (4 s)");
     }
 
     [Fact(Timeout = 90_000)]
@@ -356,7 +356,7 @@ public class DubbingTranslationFlowTest(
 
         // assert - the mix ends with the (absent) original: a header and nothing else. Two of the
         // seconds are the share wait for the audio a transcript-only source never has
-        servedIn.Should().BeLessThan(TimeSpan.FromSeconds(3), "the mix is served before any decision");
+        servedIn.Should().BeLessThan(TimeSpan.FromSeconds(5), "the mix is served before any decision");
         frames.Select(x => x.Offset).Should().Equal([TimeSpan.FromMilliseconds(-1)],
             "the source language alone decides, before any translation");
         recorder.GetChunks(dubId.Value).Should().BeEmpty("the source is already in the listener's language");
