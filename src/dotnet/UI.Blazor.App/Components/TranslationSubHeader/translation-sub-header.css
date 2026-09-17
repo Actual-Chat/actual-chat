@@ -18,7 +18,7 @@ sub-header.translation-sub-header .c-left {
 }
 sub-header.translation-sub-header .c-center {
     @apply flex-1 flex-x items-center justify-between;
-    @apply text-headline-1 text-01;
+    @apply text-body-500 text-01;
 }
 sub-header.translation-sub-header .c-language {
     @apply text-primary cursor-pointer;

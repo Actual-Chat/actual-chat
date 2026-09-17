@@ -21,18 +21,18 @@
 .time-zone-editor-modal .time-zone-item .c-city {
     @apply flex items-center gap-x-1;
     @apply truncate;
-    @apply text-headline-1 text-01;
+    @apply text-body-500 text-01;
 }
 .time-zone-editor-modal .time-zone-item .c-detected-mark {
     @apply text-base text-primary;
 }
 .time-zone-editor-modal .time-zone-item .c-meta {
-    @apply text-caption-6 text-03;
+    @apply text-caption-500 text-03;
     @apply truncate;
 }
 .time-zone-editor-modal .time-zone-item .c-time {
     @apply shrink-0;
-    @apply text-headline-1 text-03 tabular-nums;
+    @apply text-body-500 text-03 tabular-nums;
 }
 body.hoverable .time-zone-editor-modal .time-zone-item:not(.selected):hover,
 .touch-capable .time-zone-editor-modal .time-zone-item:not(.selected):active {

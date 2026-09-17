@@ -21,11 +21,11 @@
 }
 .live-session-member-list .c-rules-title,
 .live-session-member-list .c-manage-title {
-    @apply text-caption-1 text-03;
+    @apply text-caption-500 text-03;
     @apply min-w-16;
 }
 .live-session-member-list .c-rules-text {
-    @apply text-caption-1 text-02;
+    @apply text-caption-500 text-02;
 }
 .live-session-member-list .c-manage-buttons {
     @apply flex-x items-center gap-x-4 ml-auto;

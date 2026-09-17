@@ -119,7 +119,7 @@
     background: var(--progress-color);
 }
 .pic-crop-modal .c-blur-label {
-    @apply text-xs text-03;
+    @apply text-sm text-03;
 }
 
 /* ── Controls ── */

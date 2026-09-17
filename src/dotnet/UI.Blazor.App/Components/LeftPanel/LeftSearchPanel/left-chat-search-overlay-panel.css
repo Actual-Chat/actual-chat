@@ -69,5 +69,5 @@ body.narrow .left-place-search-overlay-panel .ai-btn .btn {
 }
 .left-place-search-overlay-panel .ai-btn .btn .btn-content {
     @apply gap-x-3;
-    @apply text-text-1;
+    @apply text-body;
 }

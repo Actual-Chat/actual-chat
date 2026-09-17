@@ -11,14 +11,14 @@
     background: linear-gradient(269deg, var(--blue-55) 0.4%, var(--magenta-45) 100.32%);
 }
 .download-app-banner .download-app-banner-title {
-    @apply always-white text-headline-1;
+    @apply always-white text-body-500;
 }
 .download-app-banner .download-app-banner-filler {
     @apply flex grow;
 }
 .download-app-banner .icon-download,
 .download-app-banner .icon-refresh {
-    @apply always-white text-title-1;
+    @apply always-white text-title-500;
 }
 .download-app-banner .icon-close {
     @apply always-white;

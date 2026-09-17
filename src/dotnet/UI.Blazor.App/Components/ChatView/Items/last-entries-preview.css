@@ -45,7 +45,7 @@
     @apply overflow-hidden;
 }
 .last-entries-preview .c-message-wrapper .c-content .c-message {
-    @apply text-caption-4 text-02;
+    @apply text-caption text-02;
     @apply line-clamp-1;
 }
 .last-entries-preview .attachment-plug {

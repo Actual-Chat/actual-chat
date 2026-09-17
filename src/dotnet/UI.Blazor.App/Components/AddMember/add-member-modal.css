@@ -10,7 +10,7 @@
     @apply px-2 py-2;
 }
 .c-contact-list > .c-no-contacts > .c-text {
-    @apply text-text-1;
+    @apply text-body;
 }
 .c-contact-list > .c-no-contacts .c-share {
     @apply w-full;
@@ -32,7 +32,7 @@ body.hoverable .c-contact-list > .c-item:hover {
 .c-contact-list > .c-item > .avatar-name {
     @apply grow;
     @apply truncate;
-    @apply text-headline-1 text-02;
+    @apply text-body-500 text-02;
 }
 body.hoverable .c-contact-list > .c-item:hover > .avatar-name {
     @apply text-01;

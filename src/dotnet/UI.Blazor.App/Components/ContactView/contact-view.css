@@ -4,5 +4,5 @@
 }
 .contact-view-headline {
     @apply truncate;
-    @apply text-headline-1 text-02;
+    @apply text-body-500 text-02;
 }

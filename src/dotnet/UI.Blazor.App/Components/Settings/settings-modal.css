@@ -42,18 +42,18 @@ body.narrow .close-settings-btn {
    rows it describes */
 .settings-tab .tile > .c-description {
     @apply pl-12 pr-16;
-    @apply text-caption-6;
+    @apply text-caption-500;
 }
 
 /* A tab-level description sits right under the tab header, outside any tile, so it
    reads as body text rather than as a tile row's fine print. */
 .settings-tab .settings-tab-content > .c-description {
-    @apply text-text-1 text-03;
+    @apply text-body text-03;
 }
 
 /* Inset by the form block it sits in, so it lines up with the input below it */
 .settings-tab .notifications-panel-settings .c-description {
-    @apply text-caption-6 text-03;
+    @apply text-caption-500 text-03;
 }
 
 /* ── Voice & Transcription tab (language shortcut in the tab title) ── */
@@ -62,7 +62,7 @@ body.narrow .close-settings-btn {
     @apply text-primary text-sm whitespace-nowrap;
 }
 .language-shortcut .c-more {
-    @apply text-xxs;
+    @apply text-sm;
     line-height: 0;
 }
 /* The status line under the "Use my own voice" consent caption */
@@ -93,7 +93,7 @@ body.narrow .close-settings-btn {
 }
 
 .settings-tab .ptt-reply-window-settings .c-description {
-    @apply text-caption-6 text-03;
+    @apply text-caption-500 text-03;
 }
 
 /* ── App Settings tab ── */
@@ -121,11 +121,11 @@ body.narrow .close-settings-btn {
 }
 .render-mode-tile .label {
     @apply whitespace-normal;
-    @apply text-headline-1 text-02;
+    @apply text-body-500 text-02;
 }
 .render-mode-tile .c-comment {
     @apply whitespace-normal;
-    @apply text-caption-6 text-03;
+    @apply text-caption-500 text-03;
 }
 .clickable.transparent.tile-item:not(.selected):hover label,
 .clickable.transparent.tile-item:not(.selected):hover .tile-item-body-caption {
@@ -194,7 +194,7 @@ body.narrow .close-settings-btn {
 }
 .sessions-tile-item .tile-item-body-content {
     @apply max-h-10;
-    @apply text-caption-4;
+    @apply text-caption;
 }
 .sessions-tile-item .tile-item-body-content .c-description {
     @apply whitespace-normal;
@@ -238,13 +238,13 @@ body.hoverable .sessions-tile-item .sign-out-btn:hover,
     @apply px-1;
     @apply rounded-full;
     @apply bg-banner-info;
-    @apply text-xs font-mono font-normal text-banner-info;
+    @apply text-sm font-mono font-normal text-banner-info;
 }
 .api-key-tile .c-key-expires {
-    @apply text-xs font-mono font-normal text-03;
+    @apply text-sm font-mono font-normal text-03;
 }
 .api-key-tile .c-deactivated {
-    @apply text-xs font-normal text-danger;
+    @apply text-sm font-normal text-danger;
 }
 .api-key-tile .c-deactivate {
     @apply absolute right-0 top-0;
@@ -322,7 +322,7 @@ body.hoverable .sessions-tile-item .sign-out-btn:hover,
 /* ── API Key Create Modal ── */
 
 .api-key-modal .form-block .c-title {
-    @apply text-01 text-text-1;
+    @apply text-01 text-body;
 }
 .api-key-form-block {
     @apply p-2;
@@ -363,7 +363,7 @@ body.hoverable .sessions-tile-item .sign-out-btn:hover,
 .docs-panel .tab p,
 .docs-panel .tab li {
     @apply text-justify;
-    @apply text-text-1;
+    @apply text-body;
 }
 .docs-panel .tab a {
     @apply text-primary;

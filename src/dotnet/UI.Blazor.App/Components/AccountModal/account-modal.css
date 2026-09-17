@@ -15,23 +15,32 @@
     @apply h-full;
 }
 .author-modal .c-header > .c-bottom {
-    @apply flex-y items-start justify-end;
+    @apply flex-y items-start justify-end gap-y-1;
     @apply w-full;
     @apply px-4 pt-10;
     @apply bg-modal;
 }
 .author-modal .c-header > .c-bottom  > .c-title {
     @apply w-full;
-    @apply text-caption-2 text-02;
+    @apply text-caption text-02;
     @apply truncate;
 }
 .author-modal .c-header > .c-bottom  > .c-title .call-text {
-    @apply text-02 text-text-1;
+    @apply text-02 text-body;
+}
+.author-modal .c-header > .c-bottom  > .c-title .avatar-name {
+    @apply text-body-500;
 }
 .author-modal .c-header > .c-bottom > .c-public {
-    @apply max-h-16;
+    max-height: 3.5lh;
+    padding-bottom: 0.5lh;
     @apply overflow-y-auto overflow-x-hidden;
-    @apply text-caption-6 text-03;
+    @apply text-caption text-03;
+    /* Cap at 3.5 lines so a 4th line peeks half-shown to advertise the scroll, and fog that bottom
+       half-line. padding-bottom parks the last line clear of the fog once scrolled to the end; a bio
+       of 3 lines or fewer shows in full. lh pins it to the line grid; mask needs no bg colour. */
+    -webkit-mask-image: linear-gradient(to bottom, var(--black) 3lh, transparent 3.5lh);
+    mask-image: linear-gradient(to bottom, var(--black) 3lh, transparent 3.5lh);
 }
 .author-modal .c-header > .c-center {
     @apply absolute top-12 z-20;
@@ -51,7 +60,7 @@
 }
 .author-modal .c-header > .c-center > .c-title {
     @apply flex flex-1 md:flex-none self-center;
-    @apply text-02 text-caption-2;
+    @apply text-02 text-caption;
 }
 .author-modal .c-header > .c-center i.icon-edit {
     @apply text-primary;
@@ -62,7 +71,7 @@
 
 .author-modal .header-tile-item .tile-item-body-content {
     @apply max-h-8;
-    @apply text-title-1 text-02;
+    @apply text-title-500 text-02;
 }
 .author-modal .header-tile-item {
     @apply h-8 md:h-10;
@@ -71,8 +80,8 @@
     @apply bg-modal;
 }
 .author-modal .tile-item-body-content {
-    @apply text-01;
     @apply max-h-6;
+    @apply text-01;
 }
 .author-modal .first-tile-item {
     @apply gap-x-4;
@@ -163,10 +172,9 @@ body.hoverable .author-modal .tile-remove-from-group:hover {
 .author-modal .tile-wrapper > .c-incut > .c-info {
     @apply flex-x items-start gap-x-2;
     @apply px-4 py-2;
-    @apply leading-3;
     @apply rounded-xl;
     @apply bg-pal-sienna-50-20;
-    @apply text-caption-6 font-normal text-03;
+    @apply text-caption-500 font-normal text-03;
 }
 .btn.anonymous-chat-btn .c-title {
     @apply flex-x gap-x-1;
@@ -178,6 +186,6 @@ body.hoverable .author-modal .tile-remove-from-group:hover {
 .anonymous-chat-btn .btn-content::after {
     content: "Anonymous";
     @apply absolute bottom-1 md:bottom-0;
-    @apply text-xs;
+    @apply text-sm;
     @apply opacity-70;
 }

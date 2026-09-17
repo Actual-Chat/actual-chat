@@ -28,14 +28,14 @@ body.hoverable .found-result.navbar-item:hover {
 .found-result.navbar-item .c-container .c-description .c-first-line > .c-title {
     @apply flex-1;
     @apply truncate;
-    @apply text-headline-1 text-01;
+    @apply text-body-500 text-01;
 }
 .found-result.navbar-item .c-container .c-description .c-first-line > .c-members {
-    @apply flex-none text-caption-4 text-04;
+    @apply flex-none text-caption text-04;
 }
 .found-result.navbar-item .c-container .c-description .c-second-line,
 .found-result.navbar-item .c-container .c-description .c-third-line {
-    @apply text-caption-4 text-03;
+    @apply text-caption text-03;
     @apply line-clamp-2;
     @apply whitespace-normal;
 }
@@ -85,6 +85,13 @@ body.hoverable .found-result.navbar-item:hover {
     @apply w-full h-3.5;
     @apply truncate;
     @apply text-03;
+}
+/* Three-line results (group / place messages) pack tighter so the extra line doesn't sprawl.
+   Set on the lines themselves - the text-* tokens carry their own unitless line-height. */
+.found-result.navbar-item.message .c-container .c-description[data-has-third-line] .c-first-line > .c-title,
+.found-result.navbar-item.message .c-container .c-description[data-has-third-line] .c-second-line,
+.found-result.navbar-item.message .c-container .c-description[data-has-third-line] .c-third-line {
+    line-height: 1.1;
 }
 .found-result.navbar-item.message .c-container .c-description .c-third-line.place-chat {
     @apply line-clamp-2;

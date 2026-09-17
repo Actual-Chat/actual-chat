@@ -227,7 +227,7 @@ body.narrow .landing .landing-header .c-btn-group {
     @apply flex-x items-center justify-center gap-x-2;
     @apply min-w-fit w-fit;
     @apply px-2;
-    @apply text-06 text-headline-1 leading-4.5;
+    @apply text-06 text-body-500 leading-4.5;
     @apply ease-in-out duration-300;
     transition-property: color;
 }
@@ -602,10 +602,10 @@ body.narrow .colored-card > .c-wrapper > img {
     @apply p-4;
 }
 .colored-card.card-3 > .c-title {
-    @apply text-headline-6;
+    @apply text-heading-600;
 }
 .colored-card.card-3 > .c-text {
-    @apply text-text-1;
+    @apply text-body;
 }
 .landing .page-4 > .c-content > .c-row .c-description {
     @apply flex-y gap-y-4;
@@ -669,7 +669,7 @@ body.narrow .page-7 .landing-image-card > .c-image {
 }
 .landing-image-card > .c-title {
     @apply pt-4 px-4;
-    @apply text-center text-headline-6;
+    @apply text-center text-heading-600;
 }
 .landing-image-card > .c-text {
     @apply flex-y gap-y-4;
@@ -686,7 +686,7 @@ body.narrow .page-7 .landing-image-card > .c-image {
     @apply w-6 h-6;
 }
 .landing-image-card-item > .c-content {
-    @apply text-text-1;
+    @apply text-body;
 }
 .landing-image-card .image-bg {
     @apply absolute z-0 -inset-4 md:inset-0;
@@ -878,12 +878,12 @@ body.narrow .landing .link-btn-content {
     @apply min-h-8 min-w-8 max-w-8 max-h-8;
 }
 .landing .footer-link {
-    @apply text-title-1 text-white;
+    @apply text-title-500 text-white;
     @apply cursor-pointer;
 }
 body.narrow .landing .footer-link {
     @apply h-8;
-    @apply text-title-1 text-start;
+    @apply text-title-500 text-start;
 }
 
 /* Landing Menu */
@@ -952,7 +952,7 @@ body.narrow .landing-menu {
 .landing-menu .menu-content button,
 .landing-menu .menu-content a {
     @apply flex-none;
-    @apply text-title-1 text-01;
+    @apply text-title-500 text-01;
 }
 .landing-menu .menu-content .sign-in-btn {
     @apply text-primary;
@@ -970,7 +970,8 @@ body.narrow .landing .landing-links {
 }
 .landing .landing-links > .c-title {
     @apply flex-none flex-y;
-    @apply text-06 text-headline-4;
+    @apply text-06;
+    @apply text-4.5xl font-semibold;
 }
 .landing .landing-links > .link-group {
     @apply flex-1 flex-x justify-evenly lg:gap-x-2;
@@ -1020,7 +1021,7 @@ body.narrow .landing .landing-footer .c-content .c-right {
     @apply px-6;
     @apply rounded-full;
     @apply bg-gradient-to-r from-pal-magenta-40 to-primary;
-    @apply text-06 text-headline-1;
+    @apply text-06 text-body-500;
 }
 .btn-download.light {
     @apply bg-none bg-01;
@@ -1067,7 +1068,7 @@ body.narrow .landing .btn-download.ios-disabled {
 }
 .btn-download .c-content {
     @apply flex items-center;
-    @apply text-06 text-headline-1;
+    @apply text-06 text-body-500;
 }
 .btn-download.btn-to-chats {
     @apply p-px;
@@ -1167,7 +1168,7 @@ body.narrow .docs-left-panel {
 }
 .docs-left-panel .navbar-item .c-title,
 .docs-right-panel .c-title {
-    @apply text-caption-3 font-medium;
+    @apply text-caption-500 font-medium;
 }
 .docs-left-panel .navbar-item.active .navbar-item-content {
     @apply text-primary;
@@ -1245,7 +1246,7 @@ body.narrow .docs-content {
 body.narrow .docs-header {
     @apply gap-x-2;
     @apply bg-02;
-    @apply text-headline-1;
+    @apply text-body-500;
 }
 .docs-header .menu-button.btn .btn-content {
     @apply text-03;
@@ -1401,7 +1402,8 @@ body.narrow .page-links {
 .page-links .page-title {
     @apply flex;
     @apply my-8;
-    @apply text-headline-4 text-06;
+    @apply text-4.5xl font-semibold;
+    @apply text-06;
 }
 body.narrow .page-links .page-title {
     @apply justify-start;
@@ -1436,7 +1438,7 @@ body.hoverable .landing-download-tile:hover .c-text {
 }
 .landing-download-tile .c-text {
     @apply flex justify-start;
-    @apply text-text-1;
+    @apply text-body;
 }
 .landing-download-tile .c-brand {
     @apply md:mt-4;
@@ -1497,7 +1499,7 @@ body.narrow .landing-download-tile .c-content {
 }
 .landing-card > .landing-card-header > .c-title {
     @apply flex items-center;
-    @apply text-headline-6;
+    @apply text-heading-600;
 }
 .landing-card > .c-text {
     @apply text-xl leading-6;
@@ -1523,7 +1525,7 @@ body.wide .premium-features-modal .modal-header {
     @apply text-06;
 }
 .premium-features-modal .modal-header .modal-title {
-    @apply text-headline-1;
+    @apply text-body-500;
 }
 .premium-features-modal > .dialog-body {
     @apply px-8;
@@ -1554,7 +1556,7 @@ body.narrow .premium-features-modal .c-right {
     @apply text-01;
 }
 .premium-features-modal .c-header > .c-title {
-    @apply text-headline-4;
+    @apply text-4.5xl font-semibold;
 }
 .premium-features-modal .c-header > .c-subtitle {
     @apply text-3.5xl font-normal;
@@ -1571,7 +1573,7 @@ body.narrow .premium-features-modal .c-right {
     @apply rounded-lg;
     @apply overflow-hidden;
     @apply bg-pal-sienna-90;
-    @apply text-headline-1 text-01;
+    @apply text-body-500 text-01;
 }
 body.narrow .premium-features-modal .c-block-1 {
     @apply -flex-y gap-y-4;
@@ -1589,10 +1591,10 @@ body.narrow .premium-features-modal .c-block-note {
     @apply flex-y gap-y-4;
 }
 .premium-features-modal .c-block-1 p {
-    @apply text-text-1 text-01;
+    @apply text-body text-01;
 }
 .premium-features-modal .c-block-1 .c-left p span {
-    @apply text-headline-1;
+    @apply text-body-500;
 }
 .premium-features-modal .c-block-3 .c-left {
     @apply gap-0;
@@ -1602,20 +1604,20 @@ body.narrow .premium-features-modal .c-block-note {
     @apply text-03;
 }
 .premium-features-modal .c-block-3 .c-right {
-    @apply text-text-1 text-01;
+    @apply text-body text-01;
 }
 .premium-features-modal .c-block-3 .c-right .btn-download {
     @apply flex-1;
 }
 .premium-features-modal .c-block-4 .c-left p {
-    @apply text-text-1 text-01;
+    @apply text-body text-01;
 }
 .premium-features-modal .c-block-4 .c-right {
-    @apply text-text-1 text-01;
+    @apply text-body text-01;
 }
 
 .premium-features-modal .text-note {
-    @apply text-caption-2 text-03;
+    @apply text-caption text-03;
 }
 .premium-features-modal-card {
     @apply flex-x items-center gap-x-4;
@@ -1628,7 +1630,7 @@ body.narrow .premium-features-modal .c-block-note {
     @apply text-primary;
 }
 .premium-features-modal-card .c-text {
-    @apply text-headline-1 text-01;
+    @apply text-body-500 text-01;
 }
 .premium-features-modal-card.text-only {
     @apply justify-start items-end;
@@ -1643,7 +1645,7 @@ body.narrow .premium-features-modal .c-block-note {
     @apply w-8 h-8;
     @apply rounded-full;
     @apply bg-pal-blue-95;
-    @apply text-title-1 text-primary;
+    @apply text-title-500 text-primary;
 }
 
 .ac-menu:has(.landing-account-menu) {
@@ -1681,11 +1683,11 @@ body.narrow .cookie-settings {
     @apply text-03;
 }
 .cookie-settings .c-top > .c-text {
-    @apply text-headline-7 text-white;
+    @apply text-title-500 text-white;
 }
 .cookie-settings .c-content {
     @apply flex-y gap-4;
-    @apply text-text-1 text-white;
+    @apply text-body text-white;
 }
 .cookie-settings .c-content a {
     @apply text-05;
@@ -1701,7 +1703,7 @@ body.narrow .cookie-settings .c-bottom {
 }
 .cookie-settings .c-bottom a.c-link {
     @apply flex-1 self-start md:self-auto;
-    @apply text-text-1 text-primary;
+    @apply text-body text-primary;
 }
 .cookie-settings .c-bottom a.c-link:hover {
     @apply underline;
@@ -1714,7 +1716,7 @@ body.narrow .cookie-settings .c-bottom .c-buttons {
 }
 .btn.cookie-btn {
     @apply min-w-40 min-h-0 h-10;
-    @apply text-text-1 text-white;
+    @apply text-body text-white;
     @apply bg-pal-white-10;
 }
 body.narrow .btn.cookie-btn {

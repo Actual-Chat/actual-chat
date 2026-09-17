@@ -2,7 +2,7 @@
     @apply relative;
     @apply flex-x justify-center items-center;
     @apply min-w-6 h-4.5 mx-1 px-1 py-0.5;
-    @apply rounded-full text-primary-title text-caption-1;
+    @apply rounded-full text-primary-title text-caption-500;
 }
 
 /* An exclamation mark in a filled circle: white on red while the warning stands;

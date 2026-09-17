@@ -19,7 +19,7 @@
     container-type: size;
 }
 .join-video-call-modal .video-frame .plug-text {
-    @apply text-title-1 text-02;
+    @apply text-title-500 text-02;
 }
 .join-video-call-modal .video-frame .video-loading {
     @apply absolute inset-0;
@@ -123,10 +123,10 @@
     @apply bg-03;
 }
 .join-video-call-modal .c-permission-block .c-text {
-    @apply text-center text-headline-1 text-02;
+    @apply text-center text-body-500 text-02;
 }
 .join-video-call-modal .c-permission-block .c-hint {
-    @apply text-center text-caption-1 text-03;
+    @apply text-center text-caption-500 text-03;
     @apply max-w-xs;
 }
 .join-video-call-modal .c-members {
@@ -134,16 +134,16 @@
 }
 .join-video-call-modal .c-members .c-text {
     @apply w-full;
-    @apply text-caption-4 text-03;
+    @apply text-caption text-03;
 }
 .join-video-call-modal .c-rules {
     @apply py-1;
 }
 .join-video-call-modal .c-rules .c-rules-header {
-    @apply text-title-1 text-01;
+    @apply text-title-500 text-01;
 }
 .join-video-call-modal .c-rules .c-rules-text {
-    @apply text-caption-1 text-02;
+    @apply text-caption-500 text-02;
 }
 
 /* Toolbar — centered */
@@ -190,11 +190,11 @@
     @apply min-w-[15rem] max-w-[20rem];
 }
 .camera-menu .c-header {
-    @apply text-caption-1 text-02 px-2 py-1;
+    @apply text-caption-500 text-02 px-2 py-1;
 }
 .camera-menu .c-loading,
 .camera-menu .c-empty {
-    @apply text-caption-1 text-03 px-2 py-2;
+    @apply text-caption-500 text-03 px-2 py-2;
 }
 .camera-menu .ac-menu-item.selected .ac-menu-icon > i {
     @apply text-primary;

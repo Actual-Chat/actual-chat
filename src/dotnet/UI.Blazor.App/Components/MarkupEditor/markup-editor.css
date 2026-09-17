@@ -25,7 +25,7 @@
     @apply px-1.5 mx-px -mb-1.5;
     @apply rounded-full;
     @apply bg-mention-other;
-    @apply text-mention-other-text font-medium;
+    @apply text-mention-other-text font-normal;
 }
 body.narrow .markup-editor .editor-content .editor-mention-user {
     @apply -mb-1;
@@ -34,7 +34,7 @@ body.narrow .markup-editor .editor-content .editor-mention-user {
 .markup-editor .editor-content .editor-mention-place {
     @apply inline;
     @apply max-w-none;
-    @apply text-primary font-medium;
+    @apply text-primary font-normal;
 }
 .markup-editor .editor-content .editor-mention-chat::before,
 .markup-editor .editor-content .editor-mention-place::before {
@@ -71,7 +71,7 @@ body.narrow .markup-editor .editor-content .editor-mention-user {
     @apply text-03;
 }
 body.narrow .markup-editor > .c-placeholder {
-    @apply text-text-1;
+    @apply text-body;
 }
 .markup-editor[data-has-editor-content] > .c-placeholder {
     @apply hidden;

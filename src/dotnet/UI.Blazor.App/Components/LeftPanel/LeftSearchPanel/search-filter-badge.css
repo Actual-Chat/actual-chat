@@ -4,7 +4,7 @@
     @apply pl-2 pr-1.5;
     @apply rounded-full border-0;
     @apply bg-03;
-    @apply text-caption-4 text-03 whitespace-nowrap;
+    @apply text-caption text-03 whitespace-nowrap;
     @apply cursor-pointer;
 }
 body.hoverable .search-filter-badge:hover,

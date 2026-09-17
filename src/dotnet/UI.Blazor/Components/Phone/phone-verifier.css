@@ -10,10 +10,10 @@
 }
 .phone-verifier .c-recaptcha-info {
     @apply my-1;
-    @apply text-caption-2 text-03;
+    @apply text-caption text-03;
 }
 .phone-verifier .c-recaptcha-info .recaptcha-link {
-    @apply text-caption-3 text-primary;
+    @apply text-caption-500 text-primary;
 }
 
 .phone-verifier .c-incut {
@@ -30,7 +30,7 @@
     @apply text-primary;
 }
 .phone-verifier .c-incut .c-info {
-    @apply text-caption-4;
+    @apply text-caption;
 }
 .phone-verifier .verification-status i {
     @apply text-pal-orange-60;

@@ -60,7 +60,7 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
 }
 .chat-activity-panel .silence-text {
     @apply flex-1 text-start;
-    @apply text-headline-1 text-03;
+    @apply text-body-500 text-03;
 }
 .chat-activity-panel > .author-circle-group {
     @apply justify-start gap-x-1;
@@ -246,7 +246,7 @@ body.narrow .chat-activity-panel > .c-buttons > .btn.not-listening {
 .chat-activity-panel > .c-member-count {
     @apply flex-none;
     @apply px-1;
-    @apply text-caption-3 text-03;
+    @apply text-caption-500 text-03;
     @apply whitespace-nowrap;
 }
 .activity-svg {
@@ -257,7 +257,7 @@ body.narrow .chat-activity-panel > .c-buttons > .btn.not-listening {
 .chat-activity-panel .btn.not-listening {
     @apply min-w-24;
     @apply md:px-4;
-    @apply text-pal-violet-60 text-caption-3;
+    @apply text-pal-violet-60 text-caption-500;
     @apply bg-leave-btn;
 }
 /* Audio controls (mic / hang up / listen+timer) — see chat-audio-controls.css */

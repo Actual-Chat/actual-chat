@@ -18,19 +18,19 @@ body.narrow .ac-bubble-host.landscape .bubble-content .c-body {
 }
 .bubble-body {
     @apply pt-2 pb-4;
-    @apply text-caption-4;
+    @apply text-caption;
     @apply whitespace-normal;
 }
 .bubble-body > ul {
     @apply list-disc pl-4;
 }
 .bubble-title {
-    @apply text-headline-1 whitespace-normal;
+    @apply text-body-500 whitespace-normal;
 }
 /* flex-none in the markup: an index is ~40px, and letting it shrink meant it absorbed every
    shortfall - down to one glyph per line - so the buttons' flex-wrap below never got to act. */
 .bubble-counter {
-    @apply text-caption-2;
+    @apply text-caption;
 }
 /* It has to take the leftover width for its own justify-end to have anything to distribute -
    content-sized, the buttons sat straight against the counter. */
@@ -57,7 +57,7 @@ body.narrow .ac-bubble-host.landscape .bubble-content .c-body {
     @apply min-w-20;
     @apply px-2;
     @apply border-0;
-    @apply text-bubble-text text-headline-1;
+    @apply text-bubble-text text-body-500;
 }
 .btn.btn-bubble .btn-content {
     @apply bg-transparent;

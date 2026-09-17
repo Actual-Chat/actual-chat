@@ -30,8 +30,8 @@ body.narrow .collapsed-call-view {
 .collapsed-call-view .c-peer-name {
     @apply block;
     @apply truncate;
-    /* Override .avatar-name's fixed text-text-1 with the island's contrast color (see the container). */
-    @apply text-headline-7 text-06;
+    /* Override .avatar-name's fixed text-body with the island's contrast color (see the container). */
+    @apply text-title-500 text-06;
 }
 .collapsed-call-view .c-decline,
 .collapsed-call-view .c-accept,

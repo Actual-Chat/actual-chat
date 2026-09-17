@@ -6,7 +6,7 @@
 }
 .recently-viewed-groups .c-header .c-title {
     @apply flex-1;
-    @apply text-caption-1 text-02;
+    @apply text-caption-500 text-02;
 }
 .recently-viewed-groups .c-header .btn-h {
     @apply flex-none;

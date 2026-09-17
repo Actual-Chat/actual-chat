@@ -1,5 +1,5 @@
 .sign-in-modal-header {
-    @apply text-headline-7 text-01;
+    @apply text-title-500 text-01;
 }
 .sign-in-modal-reason {
     @apply text-lg font-semibold md:font-medium text-03;
@@ -15,7 +15,7 @@
 }
 
 .sign-in.btn .btn-content {
-    @apply text-headline-1;
+    @apply text-body-500;
 }
 .sign-in-with.btn .btn-content {
     @apply text-02;
@@ -37,10 +37,10 @@
 }
 
 .sign-in-step .c-title {
-    @apply text-headline-7 text-02;
+    @apply text-title-500 text-02;
 }
 .sign-in-step .c-description {
-    @apply text-text-1 text-02;
+    @apply text-body text-02;
 }
 
 /* Sign-in step - auth providers block */
@@ -62,7 +62,7 @@
     @apply animate-spin;
 }
 .sign-in-step .c-phone-form .c-info {
-    @apply text-caption-1 text-03 flex items-center gap-1;
+    @apply text-caption-500 text-03 flex items-center gap-1;
 }
 .sign-in-step .c-phone-form .c-info i.icon-info {
     @apply text-sm align-bottom;
@@ -76,10 +76,10 @@
     @apply flex-y gap-y-2;
 }
 .verify-phone-step .c-text-container .c-title {
-    @apply text-headline-5 text-03;
+    @apply text-heading-500 text-03;
 }
 .verify-phone-step .c-text-container .c-text {
-    @apply text-headline-1 text-03;
+    @apply text-body-500 text-03;
 }
 
 /* Sign-in step - separator */
@@ -101,13 +101,13 @@
 }
 
 .sign-in-step .c-recaptcha-info {
-    @apply text-caption-2 text-03;
+    @apply text-caption text-03;
 }
 .sign-in-step .c-recaptcha-info .recaptcha-link {
-    @apply text-caption-3 text-primary;
+    @apply text-caption-500 text-primary;
 }
 
 /* Sign-in step - account error */
 .sign-in-step .c-account-error {
-    @apply text-caption-1 text-danger;
+    @apply text-caption-500 text-danger;
 }

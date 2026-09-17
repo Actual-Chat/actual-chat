@@ -1,8 +1,8 @@
 .oauth-consent-modal .c-heading {
-    @apply text-headline-7 text-02;
+    @apply text-title-500 text-02;
 }
 .oauth-consent-modal .c-note {
-    @apply text-caption-4 text-03;
+    @apply text-caption text-03;
 }
 
 .oauth-consent-modal .c-account {
@@ -12,10 +12,10 @@
     @apply flex-y min-w-0;
 }
 .oauth-consent-modal .c-account .c-label {
-    @apply text-caption-6 text-03;
+    @apply text-micro-500 text-03;
 }
 .oauth-consent-modal .c-account .c-title {
-    @apply text-headline-1 text-02 truncate;
+    @apply text-body-500 text-02 truncate;
 }
 
 .oauth-consent-modal .c-scope {

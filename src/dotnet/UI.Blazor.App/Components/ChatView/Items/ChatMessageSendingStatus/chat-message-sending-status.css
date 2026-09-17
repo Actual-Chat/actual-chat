@@ -6,7 +6,7 @@
     @apply rounded-full;
     @apply overflow-hidden;
     @apply bg-hover;
-    @apply text-xs text-primary;
+    @apply text-sm text-primary;
 }
 .chat-message-sending-status.only-dot {
     @apply absolute bottom-0;
@@ -22,7 +22,7 @@
     @apply bg-primary;
 }
 .chat-message-sending-status .c-text {
-    @apply text-caption-8;
+    @apply text-caption;
 }
 
 /*Sending status in NavbarItem*/

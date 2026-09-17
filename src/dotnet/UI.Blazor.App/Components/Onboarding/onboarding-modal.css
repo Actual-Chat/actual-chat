@@ -39,10 +39,10 @@ body.narrow .stepper.onboarding-stepper {
 }
 .step-tile-title {
     @apply truncate;
-    @apply text-headline-1;
+    @apply text-body-500;
 }
 .step-tile-subtitle {
-    @apply text-03 text-caption-2;
+    @apply text-03 text-caption;
 }
 .onboarding-modal .stepper-footer {
     @apply sticky bottom-0;
@@ -100,13 +100,13 @@ body.narrow .stepper.onboarding-stepper {
 }
 .analytics-step > .c-subtitle {
     @apply self-center;
-    @apply text-headline-1;
+    @apply text-body-500;
 }
 .analytics-step > .c-content {
     @apply p-4;
     @apply rounded-lg;
     @apply bg-white;
-    @apply text-justify text-headline-1 font-normal;
+    @apply text-justify text-body-500 font-normal;
 }
 .analytics-step > .c-content > a {
     @apply bg-transparent;
@@ -137,7 +137,7 @@ body.hoverable .analytics-step > .c-content > a:hover {
 }
 .step-tile > .c-docs .c-doc-wrapper .c-doc-text {
     @apply ml-2;
-    @apply text-caption-2;
+    @apply text-caption;
 }
 .step-tile > .c-docs a {
     @apply flex-1;
@@ -150,10 +150,10 @@ body.hoverable .step-tile > .c-docs a:hover {
 }
 
 .sign-in-step .c-recaptcha-info {
-    @apply text-caption-2 text-03;
+    @apply text-caption text-03;
 }
 .sign-in-step .c-recaptcha-info .recaptcha-link {
-    @apply text-caption-3 text-primary;
+    @apply text-caption-500 text-primary;
 }
 
 /* Specific styles */
@@ -213,7 +213,7 @@ body.narrow .stepper-image-filler {
     line-height: clamp(2rem, 3vw, 2rem);
 }
 .onboarding-tutorial .c-description {
-    @apply text-headline-7 font-light leading-5 wrap-anywhere;
+    @apply text-title-500 font-light leading-5 wrap-anywhere;
     font-size: clamp(1rem, 1.75vw, 1.375rem);
     line-height: clamp(1.25rem, 2.25vw, 1.75rem);
 }
@@ -314,7 +314,7 @@ body.hoverable .stepper-skip-filler .btn-h:hover {
     @apply p-4;
 }
 .phone-verification-modal .dialog-body > .c-content .c-title {
-    @apply text-headline-1 text-02;
+    @apply text-body-500 text-02;
 }
 
 /* Email verification */
@@ -360,11 +360,11 @@ body.hoverable .stepper-skip-filler .btn-h:hover {
 }
 .step-title {
     @apply mb-8;
-    @apply text-headline-5 text-center wrap-anywhere;
+    @apply text-heading-500 text-center wrap-anywhere;
 }
 .step-subtitle {
-    @apply text-headline-7 text-center wrap-anywhere;
+    @apply text-title-500 text-center wrap-anywhere;
 }
 .step-comment {
-    @apply text-caption-2 mt-2;
+    @apply text-caption mt-2;
 }

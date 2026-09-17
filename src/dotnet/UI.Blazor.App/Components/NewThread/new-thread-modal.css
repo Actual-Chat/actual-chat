@@ -17,6 +17,6 @@
     @apply hidden;
 }
 .form .thread-title .form-section-content.label-inside-input:has(.waiting-message-container) .internal-label {
-    @apply text-xs leading-3.5 font-normal text-03;
+    @apply text-sm font-normal text-03;
     @apply translate-y-0;
 }

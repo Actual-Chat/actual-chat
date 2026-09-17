@@ -21,7 +21,7 @@ body.wide .settings-panel > .c-tabs {
 .settings-panel > .c-tabs > .c-header {
     @apply ordinary-header;
     @apply flex-none;
-    @apply text-title-1;
+    @apply text-title-500;
     @apply bg-02 md:bg-transparent;
     @apply border-b border-separator md:border-none;
     @apply overflow-hidden;
@@ -109,7 +109,7 @@ body.narrow .settings-panel > .c-tabs .c-footer {
 .settings-panel > .c-tabs .c-footer > .c-content {
     @apply flex-none flex-x items-center justify-between gap-x-2;
     @apply px-4;
-    @apply text-xxs;
+    @apply text-sm;
 }
 .settings-panel > .c-tabs .c-footer > .c-content > .c-version {
     @apply flex-1;
@@ -199,7 +199,7 @@ body.hoverable .tile-item.clickable.item-danger:hover,
 .tile-item-body-content {
     @apply w-full min-h-5 max-h-5;
     @apply truncate;
-    @apply leading-5 text-02;
+    @apply text-body-500 text-02;
 }
 /* Option labels differ only in their tail ("... via Soniox" vs "... via OpenAI"), so the one-line
    ellipsis every other row keeps would render two different options as the same text. */
@@ -214,7 +214,7 @@ body.hoverable .tile-item.clickable.item-danger:hover,
     @apply whitespace-normal;
 }
 .tile-item-body-caption {
-    @apply text-caption-6 font-normal text-03;
+    @apply text-caption-500 font-normal text-03;
 }
 .tile-item-right {
     @apply flex-1 flex-x justify-end items-center;
@@ -277,7 +277,7 @@ body.narrow .settings-tab-content {
     @apply ordinary-header;
     @apply px-4;
     @apply w-full md:w-100;
-    @apply text-title-1;
+    @apply text-title-500;
     @apply bg-01;
     @apply border-b border-separator md:border-none;
 }
@@ -304,7 +304,7 @@ body.narrow .settings-tab-header {
     @apply flex-1 flex-y items-start;
 }
 .settings-tab-item .c-comment {
-    @apply text-xxs text-primary;
+    @apply text-sm text-primary;
 }
 .settings-tab-item span {
     @apply font-semibold md:font-medium;
@@ -347,7 +347,7 @@ body.narrow .settings-tab-header {
     @apply min-w-24;
 }
 .tile-item-my-account-link .tile-item-body-content {
-    @apply text-01 text-text-1;
+    @apply text-01 text-body;
 }
 /* The share button is decoration, the account name is the identity, so the button yields first -
    but by a factor that lets its label ellipsise on the way rather than snap to icon-only. */

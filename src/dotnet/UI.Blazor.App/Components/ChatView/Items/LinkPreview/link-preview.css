@@ -86,23 +86,23 @@ body.narrow .link-preview.compact .c-icon > i {
 }
 /* text */
 .link-preview .c-title {
-    @apply text-caption-1 md:text-headline-1 leading-tight text-primary;
+    @apply text-caption-500 md:text-body-500 leading-tight text-primary;
     @apply line-clamp-2;
 }
 .link-preview .c-name {
-    @apply text-caption-6 md:text-caption-1 text-primary;
+    @apply text-caption-500 text-primary;
     @apply line-clamp-1;
 }
 .link-preview .c-description {
-    @apply text-caption-2 text-02;
+    @apply text-caption text-02;
     @apply line-clamp-1;
 }
 body.narrow .link-preview.compact .c-description {
-    @apply text-xs font-normal leading-3;
+    @apply text-sm font-normal;
 }
 .link-preview .c-domain {
     @apply w-fit max-w-full;
-    @apply text-caption-3 text-04;
+    @apply text-caption-500 text-04;
     @apply line-clamp-1;
 }
 .link-preview.local-link-chat .c-domain {
@@ -211,7 +211,7 @@ body.device-ios .link-preview.local-link > .c-bg {
     @apply text-base;
 }
 .link-preview.local-link .c-chat-meta {
-    @apply text-caption-6 text-03;
+    @apply text-caption-500 text-03;
     @apply line-clamp-1;
 }
 body.narrow .link-preview.local-link .c-info {

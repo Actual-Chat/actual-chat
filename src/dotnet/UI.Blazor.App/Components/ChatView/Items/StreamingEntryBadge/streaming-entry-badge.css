@@ -17,7 +17,7 @@ body.hoverable .streaming-entry-badge:hover::after,
 }
 .streaming-entry-badge span,
 .chat-message-markup .streaming-entry-badge span {
-    @apply text-caption-4 text-03;
+    @apply text-caption text-03;
 }
 .streaming-entry-badge::before {
     @apply content-empty;
@@ -35,7 +35,7 @@ body.hoverable .streaming-entry-badge:hover::after,
 }
 .streaming-entry-badge .c-icon,
 .chat-message-markup .streaming-entry-badge .c-icon {
-    @apply text-text-1 text-03;
+    @apply text-body text-03;
 }
 body.hoverable .streaming-entry-badge:hover .c-icon,
 .touch-capable .streaming-entry-badge:active .c-icon {

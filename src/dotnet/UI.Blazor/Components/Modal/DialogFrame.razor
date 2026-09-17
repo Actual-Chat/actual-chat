@@ -31,9 +31,11 @@
         }
     </Header>
     <ChildContent>
-        <div class="dialog-body @BodyClass @bodyVariantClass">
-            @Body
-        </div>
+        @if (Body != null) {
+            <div class="dialog-body @BodyClass @bodyVariantClass">
+                @Body
+            </div>
+        }
 
         @if (hasFooterContent || hasButtons) {
             <div class="dialog-footer">

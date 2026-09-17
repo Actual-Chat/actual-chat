@@ -44,7 +44,7 @@
 }
 .full-screen-call-view .c-brand {
     @apply justify-center gap-2;
-    @apply text-title-1 text-white;
+    @apply text-title-500 text-white;
 }
 .full-screen-call-view .c-call-bar {
     @apply justify-between;
@@ -60,7 +60,7 @@
 }
 .full-screen-call-view .c-name {
     @apply flex-x items-center justify-center gap-2;
-    @apply text-headline-6 text-white;
+    @apply text-heading-600 text-white;
 }
 .full-screen-call-view .c-status,
 .full-screen-call-view .c-timer {

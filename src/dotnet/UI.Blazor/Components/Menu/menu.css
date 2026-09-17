@@ -105,7 +105,7 @@ body.narrow .ac-menu-icon > i {
     @apply text-ellipsis;
 }
 body.narrow .ac-menu-text {
-    @apply text-headline-1;
+    @apply text-body-500;
 }
 /* Narrow pins the menu to the viewport width, so a long label has nowhere to grow and was cut
    mid-word without even an ellipsis. Wide sizes the menu to its content and never clips, so it

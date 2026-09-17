@@ -63,7 +63,7 @@ body.hoverable .location-map-modal .c-participant:hover,
 .location-map-modal .c-participant .c-name {
     @apply flex-x items-center gap-x-1;
     @apply truncate;
-    @apply text-text-1 font-medium;
+    @apply text-body font-medium;
 }
 .location-map-modal .c-participant .c-name .c-you {
     @apply text-02;
@@ -112,7 +112,7 @@ body.hoverable .location-map-modal .c-menu .c-menu-item:hover:not(:disabled),
 }
 .location-map-modal .c-menu .c-menu-item span {
     @apply grow text-left;
-    @apply text-headline-1 text-01;
+    @apply text-body-500 text-01;
 }
 .location-map-modal .c-menu .c-menu-item .c-check {
     @apply text-xl text-primary;

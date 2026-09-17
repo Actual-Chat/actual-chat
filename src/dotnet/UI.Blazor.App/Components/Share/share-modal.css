@@ -30,7 +30,7 @@
 .share-modal .link-info .c-link {
     @apply w-full max-h-5;
     @apply truncate;
-    @apply leading-5 text-headline-1 text-02;
+    @apply leading-5 text-body-500 text-02;
 }
 .share-modal .copy-to-clipboard .btn.btn-round .btn-content {
     @apply min-h-12 min-w-12 max-h-12 max-w-12;

@@ -196,6 +196,7 @@
         vertical-align: baseline;
     }
     .sup {
+        font-size: 0.75rem;
         top: -0.20em;
         vertical-align: super;
     }

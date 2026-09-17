@@ -69,7 +69,7 @@
     @apply min-h-0;
     @apply rounded-none;
     @apply border-0;
-    @apply text-02 text-caption-1 tracking-wider;
+    @apply text-02 text-caption-500 tracking-wider;
 }
 .tab-panel-tabs .btn.btn-tab.on {
     @apply text-primary;

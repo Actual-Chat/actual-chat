@@ -40,12 +40,12 @@
 .recording-sub-header .c-line-1 .c-text,
 .recording-sub-header .c-line-2 .c-text {
     @apply shrink-0;
-    @apply text-caption-4 text-banner-error;
+    @apply text-caption text-banner-error;
 }
 .recording-sub-header.recording-elsewhere .c-line-1 .c-text,
 .recording-sub-header.recording-elsewhere .c-line-2 .c-text {
     @apply shrink-0;
-    @apply text-caption-4 text-banner-error;
+    @apply text-caption text-banner-error;
 }
 .recording-sub-header .c-line-2 .c-text {
     @apply text-banner-error;
@@ -56,7 +56,7 @@
 .recording-sub-header .c-line-1 .c-text.highlight {
     @apply shrink;
     @apply truncate;
-    @apply text-caption-1;
+    @apply text-caption-500;
 }
 .recording-sub-header .btn {
     @apply flex-none;

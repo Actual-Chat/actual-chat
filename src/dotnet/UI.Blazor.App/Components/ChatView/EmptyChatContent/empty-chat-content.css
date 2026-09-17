@@ -5,7 +5,7 @@
 .empty-chat-content > .c-text {
     @apply flex-y items-center;
     @apply max-w-full;
-    @apply text-03 text-headline-1;
+    @apply text-03 text-body-500;
 }
 .empty-chat-content > .c-text > .c-sentence {
     @apply w-full;
@@ -14,7 +14,7 @@
 }
 .empty-chat-content > .c-text > .c-sentence > .c-value {
     max-width: min(30rem, 100%);
-    @apply text-03 text-headline-1;
+    @apply text-03 text-body-500;
 }
 /* The skeleton bars are sized children, so they still need a flex box of their own */
 .empty-chat-content > .c-text > .c-sentence > .c-value.skeleton {
@@ -25,5 +25,5 @@
     width: 226px;
 }
 .narrow .empty-chat-content > .c-text {
-    @apply text-headline-1;
+    @apply text-body-500;
 }

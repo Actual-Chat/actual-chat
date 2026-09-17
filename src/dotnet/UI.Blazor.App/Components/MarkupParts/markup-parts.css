@@ -171,7 +171,7 @@
     @apply flex items-center justify-center;
     @apply rounded-full;
     @apply pointer-events-none;
-    @apply text-text-1 text-transparent;
+    @apply text-body text-transparent;
     @apply bg-pal-blue-50-30;
     @apply opacity-0;
     outline: 0.125rem solid var(--blue-50-30);
@@ -264,12 +264,12 @@
     @apply px-2 py-1;
     @apply border-b border-separator;
     @apply bg-03;
-    @apply text-xs text-02;
+    @apply text-sm text-02;
     @apply select-none;
 }
 .code-block-language {
     @apply truncate;
-    @apply text-caption-1 uppercase;
+    @apply text-caption-500 uppercase;
     @apply tracking-wide;
 }
 .code-block-language:empty {

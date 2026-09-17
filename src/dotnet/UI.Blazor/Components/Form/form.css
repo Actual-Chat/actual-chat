@@ -109,7 +109,7 @@ form .form-section {
     @apply pl-4;
     @apply rounded-b-md;
     @apply bg-transparent;
-    @apply text-caption-6 font-normal;
+    @apply text-caption-500 font-normal;
 }
 .form-section-validation.invalid {
     @apply text-danger;
@@ -156,7 +156,7 @@ form .form-section {
 }
 
 .form .form-section-content.label-inside-input label {
-    @apply text-xs leading-3.5 font-normal text-03;
+    @apply text-sm font-normal text-03;
 }
 .form .form-section-content.label-inside-input:focus-within label {
     @apply text-primary;
@@ -202,7 +202,7 @@ form .form-section {
     @apply absolute top-1.5 left-4 right-10 z-10;
     @apply line-clamp-2;
     @apply text-left;
-    @apply text-caption-6 font-normal leading-3.5 text-danger;
+    @apply text-caption-500 font-normal text-danger;
     @apply pointer-events-none;
 }
 /* One right-side affordance slot: clear ×, copy, verification and the inline-error
@@ -238,7 +238,6 @@ form .form-section {
 
 .form .tile-item-body-content {
     @apply max-h-max;
-    @apply text-headline-1;
 }
 
 .form .tile-item-right {
@@ -259,7 +258,7 @@ form .form-section {
 }
 
 .form-block .form-block-title {
-    @apply text-caption-1 text-01;
+    @apply text-caption-500 text-01;
 }
 
 .form-block section {
@@ -341,7 +340,7 @@ form .form-section {
    top-left anchor as the inline error, so the label and the error line up exactly */
 .form .form-section-content.label-inside-input label.internal-label {
     @apply inline-block;
-    @apply text-xs leading-3.5 font-normal text-03;
+    @apply text-caption text-03;
 }
 .form-section-content.label-inside-input:not(:has(textarea)) .form-section-label {
     @apply absolute top-1 left-4 right-8 z-10;

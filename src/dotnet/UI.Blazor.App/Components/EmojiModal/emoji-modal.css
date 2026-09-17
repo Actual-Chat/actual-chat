@@ -39,7 +39,7 @@ body.device-android .modal-frame.emoji-modal {
 }
 .emoji-modal .c-group-title {
     @apply px-1;
-    @apply text-xs font-medium text-03;
+    @apply text-sm font-medium text-03;
 }
 .emoji-modal .c-group-items {
     @apply grid gap-1;
@@ -91,7 +91,7 @@ body.hoverable .emoji-modal .c-item:hover,
 }
 .emoji-modal .c-gif-recent-label {
     @apply pb-1;
-    @apply text-03 text-text-1;
+    @apply text-03 text-body;
 }
 .emoji-modal .c-gif-recent-list {
     @apply flex gap-1;
@@ -201,7 +201,7 @@ body.hoverable .emoji-modal .c-gif-item:hover {
     @apply py-2;
     @apply opacity-0;
     @apply rounded-lg;
-    @apply text-text-1 text-03;
+    @apply text-body text-03;
     @apply text-center;
     animation: gif-status-fade-in 0s ease-in 1s forwards;
 }

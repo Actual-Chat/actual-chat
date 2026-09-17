@@ -77,7 +77,7 @@
     color: var(--location-accent);
 }
 .map-panel .btn.btn-share-location .btn-content {
-    @apply text-caption-1;
+    @apply text-caption-500;
 }
 
 /* ── Map panel ⋮ menu — mirrors the LocationMapModal map-type menu ── */
@@ -112,7 +112,7 @@ body.hoverable .map-panel-host .c-menu .c-menu-item:hover:not(:disabled),
 }
 .map-panel-host .c-menu .c-menu-item span {
     @apply grow text-left;
-    @apply text-headline-1 text-01;
+    @apply text-body-500 text-01;
 }
 
 /* ── Activity pill ── */
@@ -129,7 +129,7 @@ body.wide .activity-pill {
     @apply px-3;
     @apply rounded-full;
     background: linear-gradient(180deg, var(--black-40) -20.83%, var(--black-60) 100%);
-    @apply text-headline-1 text-white;
+    @apply text-body-500 text-white;
     @apply cursor-pointer;
     box-shadow:
         inset 0 0 0 1px rgba(255, 255, 255, 0.18),
