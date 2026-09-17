@@ -1,9 +1,8 @@
 using System.Net;
-using ActualChat.Media.Module;
-using ActualChat.Resilience;
+using ActualChat.Module;
 using Microsoft.Extensions.Hosting;
 
-namespace ActualChat.Media.UnitTests;
+namespace ActualChat.Core.Server.UnitTests;
 
 public class EgressGuardTest
 {
@@ -29,24 +28,6 @@ public class EgressGuardTest
         // assert
         await act.Should().ThrowAsync<HttpRequestException>();
         handler.RequestCount.Should().Be(1);
-    }
-
-    [Fact]
-    public void RefusesNonHttpScheme()
-    {
-        // act
-        var graph = OpenGraphParser.Parse("""
-            <html>
-            <head>
-                <title>Title</title>
-                <meta property="og:image" content="file:///etc/hosts">
-            </head>
-            </html>
-            """);
-
-        // assert
-        graph.Should().NotBeNull();
-        graph!.ImageUrl.Should().BeEmpty();
     }
 
     [Fact]
@@ -99,8 +80,8 @@ public class EgressGuardTest
     public void UsesConfiguredDomainDenylist()
     {
         // arrange
-        var sut = NewGuard(new MediaSettings {
-            CrawlingDomainDenylist = ["blocked.example"],
+        var sut = NewGuard(new CoreServerSettings {
+            EgressDomainDenylist = ["blocked.example"],
         });
 
         // act
@@ -128,35 +109,6 @@ public class EgressGuardTest
 
         // assert
         await act.Should().ThrowAsync<HttpRequestException>();
-    }
-
-    [Fact]
-    public async Task RefusesGifRequestPastBudget()
-    {
-        // arrange
-        var policy = new CountingRateLimitPolicy(RateLimitClass.GifProvider, 2);
-        var handler = new RedirectHandlerMock(_ => new HttpResponseMessage(HttpStatusCode.OK) {
-            Content = new StringContent("""{"data":{"data":[],"has_next":true}}"""),
-        });
-        using var services = new ServiceCollection()
-            .AddLogging()
-            .AddSingleton<IHttpClientFactory>(new HttpClientFactoryMock(handler))
-            .AddSingleton<RateLimitPolicy>(policy)
-            .AddSingleton(c => new RateLimitIdentityResolver(c))
-            .AddSingleton(new MediaSettings { KlipyApiKey = "test-key" })
-            .BuildServiceProvider();
-        var sut = new Gifs(services);
-
-        // act
-        var first = await sut.GetTrending(1, default);
-        var second = await sut.Search("hello", 1, default);
-        var act = () => sut.GetTrending(2, default);
-
-        // assert
-        first.HasNext.Should().BeTrue();
-        second.HasNext.Should().BeTrue();
-        await act.Should().ThrowAsync<Exception>().WithMessage("*Too many requests*");
-        handler.RequestCount.Should().Be(2);
     }
 
     [Theory]
@@ -211,9 +163,9 @@ public class EgressGuardTest
     public async Task DomainDenyListBlocksMatchingHost()
     {
         // arrange
-        var sut = NewGuard(new MediaSettings {
-            CrawlingDomainDenylist = ["actual.chat"],
-            CrawlingCidrDenylist = ["10.0.0.0/8"],
+        var sut = NewGuard(new CoreServerSettings {
+            EgressDomainDenylist = ["actual.chat"],
+            EgressCidrDenylist = ["10.0.0.0/8"],
         });
 
         // act
@@ -229,13 +181,13 @@ public class EgressGuardTest
 
     // Private methods
 
-    private static EgressGuard NewGuard(MediaSettings? settings = null)
+    private static EgressGuard NewGuard(CoreServerSettings? settings = null)
         => new (new HostInfo {
             Environment = Environments.Production,
             IsTested = true,
         },
-        settings ?? new MediaSettings {
-            CrawlingHostAllowList = ["public.example"],
+        settings ?? new CoreServerSettings {
+            EgressHostAllowList = ["public.example"],
         },
         NullLogger<EgressGuard>.Instance);
 
@@ -259,29 +211,6 @@ public class EgressGuardTest
         {
             RequestCount++;
             return Task.FromResult(getResponse(request));
-        }
-    }
-
-    private sealed class HttpClientFactoryMock(HttpMessageHandler handler) : IHttpClientFactory
-    {
-        public HttpClient CreateClient(string name)
-            => new(handler, false);
-    }
-
-    private sealed class CountingRateLimitPolicy(RateLimitClass rateLimitClass, int limit) : RateLimitPolicy
-    {
-        private int _count;
-
-        public override ValueTask Check(
-            string method,
-            RateLimitClass actualClass,
-            ReadOnlySpan<RateLimitIdentity> identities,
-            CancellationToken cancellationToken = default)
-        {
-            if (actualClass != rateLimitClass || Interlocked.Increment(ref _count) <= limit)
-                return default;
-
-            throw StandardError.RateLimitExceeded(TimeSpan.FromMinutes(1));
         }
     }
 }

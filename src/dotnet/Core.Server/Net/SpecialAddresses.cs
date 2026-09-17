@@ -1,4 +1,4 @@
-namespace ActualChat.Media;
+namespace ActualChat;
 
 public static class SpecialAddresses
 {

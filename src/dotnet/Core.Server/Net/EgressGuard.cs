@@ -1,21 +1,23 @@
 using System.Net;
 using System.Net.Sockets;
-using ActualChat.Media.Module;
+using ActualChat.Module;
 using ActualLab.Diagnostics;
 
-namespace ActualChat.Media;
+namespace ActualChat;
 
-public class EgressGuard(HostInfo hostInfo, MediaSettings settings, ILogger<EgressGuard> log)
+public class EgressGuard(HostInfo hostInfo, CoreServerSettings settings, ILogger<EgressGuard> log)
 {
     private static readonly string[] DomainDenyListPrefix = [".local"];
-    private ILogger? DebugLog => log.IfEnabled(LogLevel.Debug, Constants.DebugMode.TranscriptionTranslation);
+    private ILogger? DebugLog => log.IfEnabled(LogLevel.Debug);
 
-    private HostWildcard[] AllowedHostWildcards => field ??= [..settings.CrawlingHostAllowList.Select(x => new HostWildcard(x))];
+    private HostWildcard[] AllowedHostWildcards
+        => field ??= [..settings.EgressHostAllowList.Select(x => new HostWildcard(x))];
 
-    private IPNetwork[] SpecialSubnets => field ??= [..SpecialAddresses.Subnets.Union(settings.CrawlingCidrDenylist).Select(IPNetwork.Parse)];
+    private IPNetwork[] SpecialSubnets
+        => field ??= [..SpecialAddresses.Subnets.Union(settings.EgressCidrDenylist).Select(IPNetwork.Parse)];
 
     private string[] DomainDenyList => field ??= [
-        ..DomainDenyListPrefix.Union(settings.CrawlingDomainDenylist, StringComparer.OrdinalIgnoreCase),
+        ..DomainDenyListPrefix.Union(settings.EgressDomainDenylist, StringComparer.OrdinalIgnoreCase),
     ];
 
     public async Task<bool> IsAllowed(string host, CancellationToken cancellationToken = default)

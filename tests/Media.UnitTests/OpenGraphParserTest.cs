@@ -72,6 +72,24 @@ public class OpenGraphParserTest
     }
 
     [Fact]
+    public void RefusesNonHttpScheme()
+    {
+        // act
+        var graph = OpenGraphParser.Parse("""
+            <html>
+            <head>
+                <title>Title</title>
+                <meta property="og:image" content="file:///etc/hosts">
+            </head>
+            </html>
+            """);
+
+        // assert
+        graph.Should().NotBeNull();
+        graph!.ImageUrl.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task ShouldEnrichImageRelativeUrl()
     {
         // arrange
