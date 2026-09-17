@@ -8,37 +8,66 @@ namespace ActualChat.Transcription;
 // and the tail is rebuilt on each update.
 //
 // enable_endpoint_detection also emits an "<end>" token once per finalized segment. It's a
-// structural marker rather than speech, so it's dropped before it can reach the transcript.
+// structural marker rather than speech, so it never enters the text; the stable transcript of
+// its message carries it as IsSegmentEnd instead - re-emitted if the message brought no new
+// finals, so the signal isn't lost. Complete() is not flagged: the stream end is its own signal.
+//
+// Finals never change, so a message that brings new ones yields a stable finals-only transcript
+// first; the tail, if any, follows in an unstable one. Stability is what the realtime translation
+// and the dub build on, and Soniox hands it out phrase by phrase - not only at the end of the stream.
+//
+// Soniox finalizes 3-5s behind the speech, though, and practically never revises a tail token
+// that's more than ~1s old - so the leading tail tokens older than the stable token age
+// (`TranscriptionSettings.SonioxStableTokenAge`, relative to the message's processed-audio
+// position) are promoted to finals as well. Once promoted, a span is settled: the tail re-sent
+// by the next messages and the eventual finals for it are ignored, and a late revision of a
+// promoted word is lost - offline re-transcription fixes the stored text.
 
-public sealed class SonioxTranscriptBuilder
+public sealed class SonioxTranscriptBuilder(TimeSpan stableTokenAge)
 {
     private const string EndpointToken = "<end>";
+    private readonly long _stableTokenAgeMs = (long)stableTokenAge.TotalMilliseconds;
     private readonly StringBuilder _finalText = new();
     private readonly List<Language> _languages = [];
     private LinearMap _finalMap = LinearMap.Zero;
     private float _finalEndTime;
+    private long _promotedEndMs;
     private string _tailText = "";
     private LinearMap _tailMap = LinearMap.Zero;
     private float _tailEndTime;
 
-    public Transcript Update(IReadOnlyList<SonioxToken> tokens)
+    public IReadOnlyList<Transcript> Update(IReadOnlyList<SonioxToken> tokens, long audioProcMs)
     {
+        var stableEndMs = audioProcMs - _stableTokenAgeMs;
         var tail = new StringBuilder();
         var map = _finalMap;
         var tailStartOffset = _finalText.Length;
         var endTime = _finalEndTime;
+        var hasNewFinals = false;
+        var isSegmentEnd = false;
         foreach (var token in tokens) {
-            if (token.Text.IsNullOrEmpty() || token.Text == EndpointToken)
+            if (token.Text == EndpointToken) {
+                isSegmentEnd = true;
+                continue;
+            }
+            if (token.Text.IsNullOrEmpty())
+                continue;
+            if (token.StartMs < _promotedEndMs)
                 continue;
 
-            AddLanguage(token.Language);
-            if (token.IsFinal) {
+            if (token.IsFinal || (tail.Length == 0 && token.EndMs <= stableEndMs)) {
+                hasNewFinals = true;
+                // The languages come from settled tokens only: a tail token's tag is retracted with
+                // the tail, and a wrong one would decide the dub for the whole utterance
+                AddLanguage(token.Language);
                 // A final token can only arrive while the tail is still empty for this message:
                 // Soniox emits finals before the non-final tail it supersedes.
                 var startOffset = _finalText.Length;
                 _finalText.Append(token.Text);
                 _finalMap = AppendToken(_finalMap, startOffset, _finalText.Length, token);
                 _finalEndTime = ToSeconds(token.EndMs);
+                if (!token.IsFinal)
+                    _promotedEndMs = token.EndMs;
                 map = _finalMap;
                 tailStartOffset = _finalText.Length;
                 endTime = _finalEndTime;
@@ -54,8 +83,12 @@ public sealed class SonioxTranscriptBuilder
         _tailText = tail.ToString();
         _tailMap = map;
         _tailEndTime = endTime;
-        var text = tail.Length == 0 ? _finalText.ToString() : _finalText + _tailText;
-        return NewTranscript(text, map, endTime, false);
+        var transcripts = new List<Transcript>(2);
+        if (hasNewFinals || (isSegmentEnd && _finalText.Length > 0))
+            transcripts.Add(NewTranscript(_finalText.ToString(), _finalMap, _finalEndTime, true, isSegmentEnd));
+        if (tail.Length > 0)
+            transcripts.Add(NewTranscript(_finalText + _tailText, map, endTime, false));
+        return transcripts;
     }
 
     public Transcript Complete(bool hasFinished = true)
@@ -67,12 +100,17 @@ public sealed class SonioxTranscriptBuilder
 
     // Private methods
 
-    private Transcript NewTranscript(string text, LinearMap map, float endTime, bool isStable)
+    private Transcript NewTranscript(
+        string text,
+        LinearMap map,
+        float endTime,
+        bool isStable,
+        bool isSegmentEnd = false)
     {
         if (map.IsDegenerate && !text.IsNullOrEmpty())
             map = new LinearMap(new Vector2(0, 0), new Vector2(text.Length, endTime));
 
-        return new Transcript(text, map, _languages.ToArray()) { IsStable = isStable };
+        return new Transcript(text, map, _languages.ToArray()) { IsStable = isStable, IsSegmentEnd = isSegmentEnd };
     }
 
     private void AddLanguage(string? code)

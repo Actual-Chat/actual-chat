@@ -37,6 +37,10 @@ public sealed partial record Transcript(
 
     [DataMember(Order = 3), Key(3)]
     public bool IsStable { get; init; }
+    // The transcriber detected the end of an utterance segment at this transcript's end. Per
+    // transcript, like IsStable: the next one, carrying new speech, is a segment in progress again.
+    [DataMember(Order = 4), Key(4)]
+    public bool IsSegmentEnd { get; init; }
 
     public static Transcript New()
         => new ("", LinearMap.Zero, []);

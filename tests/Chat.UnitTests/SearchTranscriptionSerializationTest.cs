@@ -66,10 +66,12 @@ public class SearchTranscriptionSerializationTest(ITestOutputHelper @out) : Test
     {
         var transcript = new Transcript("Hello world", LinearMap.Zero, [Languages.English]) {
             IsStable = true,
+            IsSegmentEnd = true,
         };
         var s = transcript.PassThroughSerializers(Out);
         s.Text.Should().Be(transcript.Text);
         s.IsStable.Should().Be(transcript.IsStable);
+        s.IsSegmentEnd.Should().BeTrue();
         s.Languages.Length.Should().Be(1);
     }
 
@@ -87,10 +89,12 @@ public class SearchTranscriptionSerializationTest(ITestOutputHelper @out) : Test
     {
         var diff = new TranscriptDiff(new StringDiff(5, " world"), LinearMapDiff.None) {
             IsStable = false,
+            IsSegmentEnd = true,
         };
         var s = diff.PassThroughSerializers(Out);
         s.TextDiff.Should().Be(diff.TextDiff);
         s.IsStable.Should().Be(diff.IsStable);
+        s.IsSegmentEnd.Should().BeTrue();
     }
 
     [Fact]
@@ -100,6 +104,7 @@ public class SearchTranscriptionSerializationTest(ITestOutputHelper @out) : Test
         var s = diff.PassThroughSerializers(Out);
         s.TextDiff.Should().Be(diff.TextDiff);
         s.IsStable.Should().Be(diff.IsStable);
+        s.IsSegmentEnd.Should().BeFalse();
     }
 
     [Fact]
