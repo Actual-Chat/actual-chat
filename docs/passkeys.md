@@ -77,11 +77,34 @@ is the worked example.
 |---|---|---|
 | Android | `.well-known/assetlinks.json` | `delegate_permission/common.get_login_creds` per package + cert fingerprint |
 | Apple | `.well-known/apple-app-site-association.json` | `webcredentials.apps` lists `M287G8G83F.chat.actual.app` and `.dev.app` |
-| Apple app | `Platforms/{iOS,MacCatalyst,MacOS}/Entitlements.{dev,prod}.plist` | `webcredentials:voxt.ai` (prod) / `webcredentials:dev.voxt.ai` (dev) |
+| Apple app | `Platforms/{iOS,MacCatalyst,MacOS}/Entitlements.{dev,prod}.plist` | `webcredentials:voxt.ai` (prod) / `webcredentials:dev.voxt.ai` + `webcredentials:local.voxt.ai?mode=developer` (dev) |
 
 The RP id the server hands out must be one of the `webcredentials:` domains, or
 Apple refuses the ceremony; `ApplePasskeyClient.IsAvailable` returns `false`
 when the host is overridden for that reason.
+
+### Apple apps against a local server
+
+Apple normally fetches the association file through its own CDN, which can never
+reach `local.voxt.ai` - the name has no public DNS record. `?mode=developer` makes
+the device fetch it straight from the domain instead. It only applies to
+development-signed builds, so a `MauiSettings.UseLocalhost` build needs:
+
+- **iPhone**: Settings › Developer › Associated Domains Development on, *before*
+  the app is installed - the association is checked at install time. The phone
+  must resolve `local.voxt.ai` and trust the mkcert root CA at that moment.
+- **Mac**: `sudo swcutil developer-mode -e true`, once. The app must also carry
+  `com.apple.security.get-task-allow`; `App.Maui.csproj` adds it to Debug Mac
+  builds only, because the App Store rejects it.
+- **Mac, stale copies**: macOS keeps one association record per app id and binds
+  it to a copy in `/Applications` when there is one. An installed
+  `/Applications/Voxt (Dev).app` without the entitlement shadows every fresh
+  build - remove it while testing. Unregistering it with `lsregister -u` doesn't
+  hold; it is back within seconds.
+
+`sudo swcutil show` lists what macOS has registered per app id and domain;
+`log show --predicate 'process == "swcd"'` shows the download attempts
+(`route: .wk` is the direct developer-mode fetch, `route: cdn` the normal one).
 
 ## Client seam
 
