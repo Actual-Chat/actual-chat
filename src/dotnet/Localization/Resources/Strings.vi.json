@@ -279,6 +279,8 @@
   "SystemEntry_CallCanceled": " đã gọi. Đã hủy.",
   "SystemEntry_CallEnded": " đã gọi.",
 
+  "ChatMaintenance_Mode": "Chế độ bảo trì",
+  "ChatMaintenance_Title": "Cuộc trò chuyện tạm thời không khả dụng",
   "ChatFooter_ReadOnly": "Cuộc trò chuyện chỉ để đọc",
   "ChatFooter_YouBlockedUser": "Bạn đã chặn người dùng này.",
   "ChatFooter_Unblock": "Bỏ chặn",

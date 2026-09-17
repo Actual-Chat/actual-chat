@@ -103,7 +103,10 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
             var audioRecord = new AudioRecord(streamId, session, chatIdTyped, clientStartAt, repliedEntryIdTyped);
             Log.LogInformation("PushStream: {AudioRecord}", audioRecord);
 
-            var newFrameStream = RpcStream.New(frameStream);
+            var maintenances = Services.GetRequiredService<IMaintenancesBackend>();
+            await maintenances.RequireAvailable(chatIdTyped, cancellationToken).ConfigureAwait(false);
+            var checkedFrameStream = frameStream.RequireAvailable(maintenances, chatIdTyped, stopCts.Token);
+            var newFrameStream = RpcStream.New(checkedFrameStream);
             await Backend.ProcessAudio(audioRecord, preSkip, newFrameStream, stopCts.Token).ConfigureAwait(false);
         }
         finally {

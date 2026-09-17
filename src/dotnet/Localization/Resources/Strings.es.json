@@ -279,6 +279,8 @@
   "SystemEntry_CallCanceled": " llamó. Cancelada.",
   "SystemEntry_CallEnded": " llamó.",
 
+  "ChatMaintenance_Mode": "Modo de mantenimiento",
+  "ChatMaintenance_Title": "Chat temporalmente no disponible",
   "ChatFooter_ReadOnly": "Chat de solo lectura",
   "ChatFooter_YouBlockedUser": "Has bloqueado a este usuario.",
   "ChatFooter_Unblock": "Desbloquear",

@@ -11,6 +11,7 @@ public partial class ChatVideoUI
         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(true);
         var baseChains = new[] {
             AsyncChain.From(SyncCameraLifecycle),
+            AsyncChain.From(StopChatsInMaintenance),
             AsyncChain.From(SyncScreenCastLifecycle),
             AsyncChain.From(MonitorVideoIdleness),
             AsyncChain.From(SyncMemberRegistration),

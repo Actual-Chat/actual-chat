@@ -7,6 +7,8 @@ namespace ActualChat;
 /// </summary>
 public static partial class StandardError
 {
+    public static Exception NotFound(string message)
+        => new NotFoundException(message);
     public static Exception NotFound<TTarget>(string? message = null)
         => new NotFoundException<TTarget>(message.IsNullOrEmpty()
             ? $"{typeof(TTarget).GetName()} is not found."

@@ -279,6 +279,8 @@
   "SystemEntry_CallCanceled": " се обади. Отменено.",
   "SystemEntry_CallEnded": " се обади.",
 
+  "ChatMaintenance_Mode": "Режим на поддръжка",
+  "ChatMaintenance_Title": "Чатът временно не е достъпен",
   "ChatFooter_ReadOnly": "Чатът е само за четене",
   "ChatFooter_YouBlockedUser": "Блокирахте този потребител.",
   "ChatFooter_Unblock": "Отблокирайте",

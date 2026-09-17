@@ -314,7 +314,10 @@ public class LiveVideoStreams : ILiveVideoStreams
             var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartAt, format, sourceKind);
             Log.LogInformation("PushStream: {VideoRecord}", videoRecord);
 
-            var newFrameStream = RpcStream.New(frameStream);
+            var maintenances = Services.GetRequiredService<IMaintenancesBackend>();
+            await maintenances.RequireAvailable(chatIdTyped, cancellationToken).ConfigureAwait(false);
+            var checkedFrameStream = frameStream.RequireAvailable(maintenances, chatIdTyped, stopCts.Token);
+            var newFrameStream = RpcStream.New(checkedFrameStream);
             await VideoStreamingBackend.PushVideo(videoRecord, newFrameStream, stopCts.Token).ConfigureAwait(false);
         }
         finally {

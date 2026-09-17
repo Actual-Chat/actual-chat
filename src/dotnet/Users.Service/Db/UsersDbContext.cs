@@ -7,6 +7,7 @@ namespace ActualChat.Users.Db;
 
 public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContextBase(options)
 {
+    public DbSet<DbMaintenance> Maintenances { get; protected set; } = null!;
     public DbSet<DbKvasEntry> KvasEntries { get; protected set; } = null!;
     public DbSet<DbAccount> Accounts { get; protected set; } = null!;
     public DbSet<DbAccountIdentity> AccountIdentities { get; protected set; } = null!;
@@ -31,6 +32,8 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
     protected override void OnModelCreating(ModelBuilder model)
     {
         model.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly).UseSnakeCaseNaming();
+
+        model.Entity<DbMaintenance>().Property(e => e.Id).UseCollation("C");
 
         var kvasEntry = model.Entity<DbKvasEntry>();
         kvasEntry.Property(e => e.Key).UseCollation("C");

@@ -1,4 +1,4 @@
-﻿@using ActualChat.UI.Blazor.App.Pages
+@using ActualChat.UI.Blazor.App.Pages
 @inherits FusionComponentBase<AppUIHub>
 @{
     var m = Model;
@@ -10,6 +10,8 @@
         <chat-view-footer-skeleton/>
     } else if (chat is null) {
         <ReadOnlyChatFooter Text="" />
+    } else if (chat.MaintenanceMode != MaintenanceMode.None) {
+        <ReadOnlyChatFooter Text="@L.ChatMaintenance_Mode"/>
     } else if (m.IsBlocked) {
         <div class="chat-footer readonly">
             <div class="c-content">

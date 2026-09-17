@@ -18,6 +18,7 @@ public partial class Chats(IServiceProvider services) : IChats
     private IAvatars Avatars { get; } = services.GetRequiredService<IAvatars>();
     private IPlaces Places => field ??= services.GetRequiredService<IPlaces>(); // Lazy resolving to prevent cyclic dependency
     private IConversationsBackend ConversationsBackend { get; } = services.GetRequiredService<IConversationsBackend>();
+    private IMaintenancesBackend Maintenances { get; } = services.GetRequiredService<IMaintenancesBackend>();
 
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
@@ -76,7 +77,8 @@ public partial class Chats(IServiceProvider services) : IChats
         if (!rules.CanRead())
             return null;
 
-        chat = chat with { Rules = rules };
+        var maintenanceMode = await Maintenances.Get(chatId, cancellationToken).ConfigureAwait(false);
+        chat = chat with { Rules = rules, MaintenanceMode = maintenanceMode };
 
         return chat;
     }
@@ -205,6 +207,13 @@ public partial class Chats(IServiceProvider services) : IChats
                 Permissions = permissions,
             };
         }
+        if (await Maintenances.Get(chatId, cancellationToken).ConfigureAwait(false) != MaintenanceMode.None)
+            rules = rules with {
+                Permissions = rules.Permissions & ~(ChatPermissions.Write | ChatPermissions.Upload
+                    | ChatPermissions.WriteAudio | ChatPermissions.WriteVideo
+                    | ChatPermissions.ReadAudio | ChatPermissions.ReadVideo),
+            };
+
         return rules;
     }
 
@@ -352,6 +361,9 @@ public partial class Chats(IServiceProvider services) : IChats
             ? null
             : await Get(session, chatId, cancellationToken).ConfigureAwait(false);
 
+        if (chatId is not null)
+            await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
+
         var changeCommand = new ChatsBackend_Change(chatId, expectedVersion, change.RequireValid());
         if (change.IsCreate(out var chatDiff1)) {
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -360,6 +372,8 @@ public partial class Chats(IServiceProvider services) : IChats
                 OwnerId = account.Id,
             };
             var placeId = chatDiff1.PlaceId;
+            if (placeId is not null)
+                await Maintenances.RequireAvailable(placeId.RootChatId, cancellationToken).ConfigureAwait(false);
             await ValidatePlaceChatChangeConstraints(placeId, chatDiff1).ConfigureAwait(false);
         }
         else {
@@ -1170,6 +1184,7 @@ public partial class Chats(IServiceProvider services) : IChats
             throw StandardError.Constraint("Invalid message.");
 
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
         if (!(chatId.Kind == ChatKind.Peer || chat.Rules.CanModerate()))
             throw StandardError.NotEnoughPermissions("Only chat Owners and Moderators can pin messages.");
 

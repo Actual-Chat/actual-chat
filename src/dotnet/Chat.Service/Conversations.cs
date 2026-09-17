@@ -38,6 +38,8 @@ public class Conversations(IServiceProvider services) : IConversations
         var chatId = conversationId.ChatId;
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Owner);
+        await services.GetRequiredService<IMaintenancesBackend>()
+            .RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
 
         var conversation = await Backend.Get(conversationId, cancellationToken).ConfigureAwait(false);
         if (conversation == null)

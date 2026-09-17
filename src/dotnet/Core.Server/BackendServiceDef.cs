@@ -12,9 +12,9 @@ public sealed record BackendServiceDef(
     private string? _toStringCached;
 
     public ShardScheme ShardScheme { get; }
-        = HostedByRole is { } hostedByRole
+        = ShardScheme.ForType(ServiceType) ?? (HostedByRole is { } hostedByRole
             ? ShardScheme.ById.GetValueOrDefault(hostedByRole, ShardScheme.None)
-            : ShardScheme.None;
+            : ShardScheme.None);
 
     public override string ToString()
     {

@@ -5,11 +5,11 @@ namespace ActualChat;
 /// </summary>
 #pragma warning disable SYSLIB0051 // Type or member is obsolete
 [Serializable]
-public abstract class NotFoundException : Exception, INotFoundException
+public class NotFoundException : Exception, INotFoundException
 {
-    protected NotFoundException() { }
-    protected NotFoundException(string? message) : base(message) { }
-    protected NotFoundException(string? message, Exception? innerException) : base(message, innerException) { }
+    public NotFoundException() : this("Object not found.") { }
+    public NotFoundException(string? message) : base(message) { }
+    public NotFoundException(string? message, Exception? innerException) : base(message, innerException) { }
 }
 
 /// <summary>
@@ -20,7 +20,7 @@ public class NotFoundException<TTarget> : NotFoundException
 {
     public Type TargetType => typeof(TTarget);
 
-    public NotFoundException() { }
+    public NotFoundException() : this($"{typeof(TTarget).GetName()} is not found.") { }
     public NotFoundException(string? message) : base(message) { }
     public NotFoundException(string? message, Exception? innerException) : base(message, innerException) { }
 }

@@ -68,6 +68,10 @@ export class DebugUI {
         void this._backendRef.invokeMethodAsync('StopServer');
     }
 
+    public static async chatMaintenance(chatId: string, isEnabled: boolean): Promise<void> {
+        await this._backendRef.invokeMethodAsync('ChatMaintenance', chatId, isEnabled);
+    }
+
     public static async getThreadPoolSettings(): Promise<string> {
         const settings = await this._backendRef.invokeMethodAsync('GetThreadPoolSettings');
         console.log(settings);

@@ -125,6 +125,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // System properties
         rpcHost.AddApi<ISystemProperties, SystemProperties>();
+        rpcHost.AddBackend<IMaintenancesBackend, MaintenancesBackend>();
 
         // Secure tokens
         rpcHost.AddApi<ISecureTokens, SecureTokens>();

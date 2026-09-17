@@ -76,6 +76,9 @@
         @if (m is null) {
             <chat-view-skeleton count="15" class="chat-view-skeleton-list no-scrollbar"/>
             <ContentSwapDisplay/>
+        } else if (chatContext?.Chat.MaintenanceMode is { } mode && mode != MaintenanceMode.None) {
+            <ChatMaintenanceView/>
+            <ContentSwapDisplay/>
         } else if (chatContext is not null) {
             @* Keeps a failing transcript item from taking down the page along with the header, footer and
                right panel it renders into layout slots *@

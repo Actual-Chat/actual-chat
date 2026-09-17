@@ -2,19 +2,17 @@
 
 ## Decisions
 
-Object maintenance is centralized in a persisted Users service. Maintenance mode is
-an enum with `None` meaning normal operation. Active rows identify objects with a
-`ContentRef`; the full typed value is the database key, so hash collisions do
-not conflate objects.
+Maintenance is centralized in the Users service. `MaintenanceKey` holds an arbitrary
+string and a stable `ShardKey` routing value; it does not require a `ContentRef`.
+The database key combines the full eight-digit routing value and the string, so
+routing collisions do not conflate objects. `MaintenanceMode.None` means normal
+operation; only active rows are stored.
 
-Maintenance initially has 16 mesh shards and 256 independently cached data
-partitions. The first hex digit of an object's `ShardKey` selects its mesh
-shard. The first two digits select its data partition. Each mesh shard therefore
-owns 16 data partitions; a physical node can own multiple mesh shards.
-
-Only active maintenance rows are stored. Missing rows mean `None`. Empty partition
-snapshots are cached as well. Database placement remains independent of mesh
-ownership.
+There are 16 maintenance mesh shards. Each shard caches its entire set of active
+rows, selected by the first hexadecimal digit of the routing value. Empty snapshots
+are cached too. There is no separate partition layer. Warm negative lookups use the
+snapshot and do not query the database. Existing Users service shard assignments
+are unchanged.
 
 ## Identifier foundation
 
@@ -78,43 +76,34 @@ IDs. Do not register a separate content-reference routing override.
 
 ## Reactive maintenance reads
 
-The backend's partition compute method loads all active rows in one data partition.
-A maintenance change invalidates that partition immediately. This method has no
-consolidation delay.
+`IMaintenancesBackend.GetSnapshot` loads all active rows for one shard prefix.
+Commands use `CreateOperationDbContext`, a key lock, and `Operation.MustStore(false)`.
+On successful commit, `Operation.AddCompletionHandler` invalidates the local shard snapshot;
+the delegating command does not use durable operation-framework invalidation. Per-object backend projections use
+`ConsolidationDelay = 0` and value equality, suppressing notifications when an
+unrelated object's status changes. All callers use `IMaintenancesBackend.Get`. Its protected `GetImpl` computation
+consolidates the result inside the backend; the RPC entry point has no consolidation.
 
-Per-object status projections depend on the snapshot and use
-`ConsolidationDelay = 0`. They recompute after a partition invalidation and notify
-their own consumers only if that object's status changed. This avoids propagating
-an unrelated object's maintenance changes throughout the cluster.
+Routing uses the numeric high hexadecimal digit, from zero through fifteen.
+Do not hash the prefix again or pass a left-aligned prefix directly to modulo.
 
-Fusion forbids consolidation on RPC-exposed methods of a distributed service.
-Keep the consolidated projection server-local or protected, with a distributed
-entry point delegating to it. The status result must have value equality and must
-not include a partition-wide version that changes for unrelated objects.
+## Chat maintenance
 
-Use `ShardKey` with the numeric first hex digit when routing
-partition reads and writes. Do not hash a prefix string again or route a left-aligned
-32-bit prefix through modulo directly; both would break the intended grouping.
+`ChatMaintenance` resolves direct status, then parent-thread and Place-root status.
+The administrator-only `Chats_SetMaintenance` command toggles any existing chat.
+Use `await debugUI.chatMaintenance(chatId, true)` to enable maintenance and pass
+`false` to clear the direct status. An inherited status remains effective.
 
-## Maintenance lifecycle
+The chat displays the maintenance robot and a read-only footer. Client content
+writes, pinning, chat changes, summarization, and live publishing are guarded.
+Existing media streams check status before forwarding each frame, and UI workers
+clear active recording, playback, and watching intent. Trusted backend operations
+remain available. Persisted state survives server restarts.
 
-A backend command persists the mode and a durable flow-start/resume event in the
-same operation. An object maintenance flow performs the work through trusted backend
-commands. Maintenance guards apply to client-facing operations; backend operations
-remain available.
-
-The chat layer immediately treats chats with `AllowAnonymousAuthors` as under
-maintenance while durable registration is pending. Registration happens through
-commands/events and a scan of existing chats, without writes in computed reads.
-Deletion uses the existing backend chat-removal command.
-
-Only chats with anonymous mode enabled are eligible for this deletion. Ordinary
-chats containing anonymous authors are preserved for separate handling. Account
-identities behind anonymous authors must never be exposed.
-
-A flow failure leaves maintenance active. Expected versions and operation IDs prevent
-an older flow from clearing a newer maintenance operation. Client streams must
-quiesce before destructive work proceeds.
+Owner-driven imports/resets, anonymous-chat cleanup, and durable maintenance flows
+are deferred. Destructive workflows will additionally need a drain barrier and
+operation/version ownership before clearing maintenance; the manual toggle and
+per-frame guards do not provide those guarantees.
 
 ## Reuse
 
@@ -140,8 +129,8 @@ prefixes and parsers. They do not fit content-reference registration. The existi
 Put them in Core, rather than Users or Chat. Prefix registrations remain in the
 module that owns each concrete identifier.
 
-Generic maintenance models also belong in Core; backend contracts and generic flow
-coordination can live in Core.Server. Keep Users database persistence in
+Generic maintenance models belong in Core; backend contracts and shared chat guards
+live in Core.Server. Keep Users database persistence in
 Users.Service and chat deletion/guard policy in Chat.Service. This shares reusable
 infrastructure without making Core depend on users, chats, EF Core, or the UI.
 
@@ -152,7 +141,7 @@ and retained object identity, disambiguation of equal raw values belonging to di
 types, malformed inputs, truncation, all hex slice positions, and stable hash vectors.
 Regenerate AOT metadata and build the affected projects.
 
-The subsequent maintenance slice needs tests for independent partition invalidation,
+The subsequent maintenance slice needs tests for shard snapshot invalidation,
 unchanged per-object results suppressing notifications, empty snapshots, durable
 restart/retry, stale flow completion, client guards, and backend operations remaining
 available. These service and flow tests are separate from the identifier tests.

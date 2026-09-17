@@ -97,6 +97,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListSortMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListTabUnreadCount>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListTabsBubble>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMaintenanceView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMemberCounter>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuAddMember>();
@@ -885,6 +886,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListSortMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListTabUnreadCount), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListTabsBubble), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMaintenanceView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMemberCounter), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuAddMember), AotTypeKind.Component),

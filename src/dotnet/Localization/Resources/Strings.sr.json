@@ -279,6 +279,8 @@
   "SystemEntry_CallCanceled": " је назвао. Отказано.",
   "SystemEntry_CallEnded": " је назвао.",
 
+  "ChatMaintenance_Mode": "Режим одржавања",
+  "ChatMaintenance_Title": "Разговор је привремено недоступан",
   "ChatFooter_ReadOnly": "Чет је само за читање",
   "ChatFooter_YouBlockedUser": "Блокирали сте овог корисника.",
   "ChatFooter_Unblock": "Одблокирајте",

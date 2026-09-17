@@ -279,6 +279,8 @@
   "SystemEntry_CallCanceled": " aradı. İptal edildi.",
   "SystemEntry_CallEnded": " aradı.",
 
+  "ChatMaintenance_Mode": "Bakım modu",
+  "ChatMaintenance_Title": "Sohbet geçici olarak kullanılamıyor",
   "ChatFooter_ReadOnly": "Sohbet salt okunur",
   "ChatFooter_YouBlockedUser": "Bu kullanıcıyı engellediniz.",
   "ChatFooter_Unblock": "Engeli kaldırın",

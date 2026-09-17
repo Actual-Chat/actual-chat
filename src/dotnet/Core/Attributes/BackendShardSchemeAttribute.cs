@@ -7,4 +7,5 @@ namespace ActualChat.Attributes;
 public sealed class BackendShardSchemeAttribute(string hostRole) : Attribute
 {
     public string HostRole { get; } = hostRole;
+    public string? Scheme { get; set; }
 }

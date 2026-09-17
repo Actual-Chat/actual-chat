@@ -6,12 +6,15 @@ public static partial class ApiModuleInitializer
     {
         ContentRef.Register<UserId>("u");
         ContentRef.Register<AuthorId>("a");
-        ContentRef.Register<ChatId>("c");
+        ContentRef.Register<GroupChatId>("c");
+        ContentRef.Register<PeerChatId>("c2");
+        ContentRef.Register<PlaceChatId>("cP");
+        ContentRef.Register<ThreadChatId>("cT");
         ContentRef.Register<PlaceId>("p");
-        ContentRef.Register<ChatEntryId>("ce");
+        ContentRef.Register<ChatEntryId>("e");
         ContentRef.Register<RoleId>("r");
         ContentRef.Register<MediaId>("m");
-        ContentRef.Register<ContactId>("ct");
+        ContentRef.Register<ContactId>("C");
         ContentRef.Register<ConversationId>("cnv");
         ContentRef.Register<SharedLocationId>("loc");
     }

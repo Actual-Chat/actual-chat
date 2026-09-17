@@ -279,6 +279,8 @@
   "SystemEntry_CallCanceled": " 拨打了电话。已取消。",
   "SystemEntry_CallEnded": " 拨打了电话。",
 
+  "ChatMaintenance_Mode": "维护模式",
+  "ChatMaintenance_Title": "聊天暂时不可用",
   "ChatFooter_ReadOnly": "聊天为只读",
   "ChatFooter_YouBlockedUser": "你已屏蔽此用户。",
   "ChatFooter_Unblock": "解除屏蔽",

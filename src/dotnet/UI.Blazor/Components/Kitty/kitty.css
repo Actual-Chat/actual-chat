@@ -119,3 +119,14 @@
 .theme-dark .kitty-upgrade-app-cat {
     background-image: url("images/kitties/upgrade-app-cat-dark.svg");
 }
+
+.kitty-chat-maintenance {
+    --kitty-w: 240px;
+    --kitty-ar: 1 / 1;
+    background-image: url("images/kitties/chat-maintenance.svg");
+}
+.theme-dark .kitty-chat-maintenance {
+    --kitty-w: 240px;
+    --kitty-ar: 1 / 1;
+    background-image: url("images/kitties/chat-maintenance-dark.svg");
+}

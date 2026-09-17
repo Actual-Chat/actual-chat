@@ -33,34 +33,36 @@ public sealed class ShardKeySerializationTest(ITestOutputHelper @out) : TestBase
         // act
         var bytes = MessagePackSerializer.Serialize(ShardKey.New(-1234567), NoDynamicOptions);
         var shardKey = MessagePackSerializer.Deserialize<ShardKey>(bytes, NoDynamicOptions);
+        var headBytes = MessagePackSerializer.Serialize(ShardKey.New(-1234567).Head(2), NoDynamicOptions);
+        var headShardKey = MessagePackSerializer.Deserialize<ShardKey>(headBytes, NoDynamicOptions);
 
         // assert
         shardKey.Should().Be(ShardKey.New(-1234567));
+        headShardKey.Should().Be(ShardKey.New(-1234567).Head(2));
+        headShardKey.Size.Should().Be(2);
     }
 
     [Fact]
-    public void WritesBareInt()
+    public void WritesValueSizePair()
     {
         // act
         var options = MessagePackByteSerializer.DefaultOptions;
         var bytes = MessagePackSerializer.Serialize(ShardKey.New(42), options);
 
-        // assert - a bare integer, i.e. exactly what an int writes; the pre-formatter
-        // DynamicObjectResolver layout was the [Key(0)] array-of-1 0x91 0x2A
-        bytes.Should().Equal(MessagePackSerializer.Serialize(42, options));
-        MessagePackSerializer.ConvertToJson(bytes, options).Should().Be("42");
+        // assert - Size is part of the key identity, so a bare integer would restore
+        // every key as a 0-digit one
+        MessagePackSerializer.ConvertToJson(bytes, options).Should().Be("[42,8]");
     }
 
     [Fact]
-    public void KeylessWritesBareIntToo()
+    public void KeylessWritesTheSamePair()
     {
         // act
         var options = MessagePackSerializerOptions.Standard.WithResolver(AppMessagePackKeylessResolver.Instance);
         var bytes = MessagePackSerializer.Serialize(ShardKey.New(42), options);
 
-        // assert - AttributeFormatterResolver wins in the keyless chain as well,
-        // so there's no "{"Value":42}" map form anymore
-        MessagePackSerializer.ConvertToJson(bytes, options).Should().Be("42");
+        // assert - AttributeFormatterResolver wins in the keyless chain as well
+        MessagePackSerializer.ConvertToJson(bytes, options).Should().Be("[42,8]");
     }
 
     [Fact]

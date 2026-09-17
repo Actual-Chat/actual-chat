@@ -8,7 +8,7 @@ public class ContentLinksBackendTest
     [Theory]
     [InlineData("u:abcdef")]
     [InlineData("c:abcdef")]
-    [InlineData("ce:abcdef:0:1")]
+    [InlineData("e:abcdef:0:1")]
     [InlineData("a:abcdef:1")]
     [InlineData("p:abcdefghij")]
     public async Task MissingObjectsShouldProduceRemovedMetadata(string value)

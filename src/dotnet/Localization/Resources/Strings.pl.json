@@ -279,6 +279,8 @@
   "SystemEntry_CallCanceled": " zadzwonił(a). Anulowane.",
   "SystemEntry_CallEnded": " zadzwonił(a).",
 
+  "ChatMaintenance_Mode": "Tryb konserwacji",
+  "ChatMaintenance_Title": "Czat jest chwilowo niedostępny",
   "ChatFooter_ReadOnly": "Czat tylko do odczytu",
   "ChatFooter_YouBlockedUser": "Zablokowano tego użytkownika.",
   "ChatFooter_Unblock": "Odblokuj",

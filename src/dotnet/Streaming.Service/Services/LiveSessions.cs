@@ -12,6 +12,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     private static readonly TileLayer<long> EntryIdTiles = Constants.Chat.EntryIdTiles;
 
     private IServiceProvider Services { get; } = services;
+    private IMaintenancesBackend Maintenances => field ??= Services.GetRequiredService<IMaintenancesBackend>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private AudioSettings AudioSettings => field ??= Services.GetRequiredService<AudioSettings>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
@@ -134,6 +135,9 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
 
         var authorId = chat.Rules.Author!.Id;
         var peer = RpcInboundContext.Current?.Peer;
+        if (isActive)
+            await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
+
         await PeerParticipations.SetParticipation(peer, chatId, authorId, kind, isActive, cancellationToken)
             .ConfigureAwait(false);
     }
@@ -221,6 +225,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         // permissions are stripped unless the recipient stored the caller's contact or replied to
         // them (a block by the recipient leaves the contact non-regular too). So CanWriteAudio is the
         // reused signal that this caller is allowed to reach the peer with a call.
+        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
         if (chatId is PeerChatId && !chat.Rules.CanWriteAudio())
             throw StandardError.Constraint(
                 "You can call this user only after they add you to their contacts or reply to you.");
@@ -240,6 +245,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
 
     public async Task AcceptCall(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
+        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
         if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
             await Backend.AcceptCall(chatId, authorId, cancellationToken).ConfigureAwait(false);
     }

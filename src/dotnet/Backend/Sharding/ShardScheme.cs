@@ -31,6 +31,9 @@ public sealed class ShardScheme(
     public static readonly ShardScheme NotificationBackend = new(nameof(NotificationBackend), N, HostRole.NotificationBackend);
     public static readonly ShardScheme SearchBackend = new(nameof(SearchBackend), N, HostRole.SearchBackend);
     public static readonly ShardScheme TranscriptionBackend = new(nameof(TranscriptionBackend), N, HostRole.TranscriptionBackend);
+    // Must match MaintenanceKey.ShardCount - it lives in Core.Server, which references this project.
+    // MaintenanceShardTest asserts the two agree.
+    public static readonly ShardScheme MaintenanceBackend = new(nameof(MaintenanceBackend), 16, HostRole.UsersBackend);
     public static readonly ShardScheme UsersBackend = new(nameof(UsersBackend), N, HostRole.UsersBackend);
     public static readonly ShardScheme TestBackend = new(nameof(TestBackend), N, HostRole.TestBackend); // Should be used only for testing
     public static readonly ShardScheme DiagnosticsBackend = new(nameof(DiagnosticsBackend), N, HostRole.DiagnosticsBackend);
@@ -52,12 +55,13 @@ public sealed class ShardScheme(
         { SearchBackend.Id, SearchBackend },
         { TranscriptionBackend.Id, TranscriptionBackend },
         { UsersBackend.Id, UsersBackend },
+        { MaintenanceBackend.Id, MaintenanceBackend },
         { TestBackend.Id, TestBackend },
         { DiagnosticsBackend.Id, DiagnosticsBackend },
     };
     public static readonly IReadOnlyDictionary<Symbol, ShardScheme> ByBackendHostRole
         = ById.Values
-            .Where(x => x.IsNone || x.HostRole.IsBackend)
+            .Where(x => x != MaintenanceBackend && (x.IsNone || x.HostRole.IsBackend))
             .Select(x => KeyValuePair.Create(x.HostRole.Id, x))
             .Append(new KeyValuePair<Symbol, ShardScheme>(nameof(HostRole.None), None))
             .ToDictionary();
@@ -89,7 +93,11 @@ public sealed class ShardScheme(
         var attr = BackendClientAttributes.GetOrAdd(type,
             static (_, t) => t.GetCustomAttributes<BackendShardSchemeAttribute>().SingleOrDefault(),
             type);
-        var shardScheme = attr != null ? ByBackendHostRole[attr.HostRole] : null;
+        var shardScheme = attr?.Scheme is { } scheme
+            ? ById[scheme]
+            : attr?.HostRole is { } hostRole
+                ? ByBackendHostRole[hostRole]
+                : null;
         return shardScheme ?? ForAssembly(type.Assembly);
     }
 
