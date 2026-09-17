@@ -6,7 +6,9 @@ public static class ServiceCollectionExt
     public static IServiceCollection AddSoniox(this IServiceCollection services)
     {
         services.AddHttpClient(SonioxClient.HttpClientName);
+        services.AddHttpClient(SonioxTtsClient.HttpClientName);
         services.AddSingleton<SonioxClient>();
+        services.AddSingleton<ISonioxVoices, SonioxVoicesClient>();
         services.AddSingleton(_ => new SonioxCleaner.Options());
         services.AddSingleton<SonioxCleaner>();
         return services;
