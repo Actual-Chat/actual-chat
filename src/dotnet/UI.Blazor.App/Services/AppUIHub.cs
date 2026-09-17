@@ -5,6 +5,7 @@ using ActualChat.MediaPlayback;
 using ActualChat.Notifications;
 using ActualChat.OAuth;
 using ActualChat.Streaming;
+using ActualChat.WebHooks;
 using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor.App.Services.Gestures;
 
@@ -25,6 +26,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
     public IReactions Reactions => field ??= Services.GetRequiredService<IReactions>();
     public ISharedLocations SharedLocations => field ??= Services.GetRequiredService<ISharedLocations>();
+    public IWebHooks WebHooks => field ??= Services.GetRequiredService<IWebHooks>();
     public IRoles Roles => field ??= Services.GetRequiredService<IRoles>();
     public IInvites Invites => field ??= Services.GetRequiredService<IInvites>();
     public IContacts Contacts => field ??= Services.GetRequiredService<IContacts>();

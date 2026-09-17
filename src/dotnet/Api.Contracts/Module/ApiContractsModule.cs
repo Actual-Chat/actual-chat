@@ -10,6 +10,7 @@ using ActualChat.Search;
 using ActualChat.Security;
 using ActualChat.Streaming;
 using ActualChat.Rpc;
+using ActualChat.WebHooks;
 using ActualLab.RestEase;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Clients;
@@ -41,6 +42,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<IMentions>();
         fusion.AddClient<IReactions>();
         fusion.AddClient<ISharedLocations>();
+        fusion.AddClient<IWebHooks>();
         fusion.AddClient<IPlaces>();
         fusion.AddClient<ITranslations>();
         fusion.AddClient<IChatThreads>();
