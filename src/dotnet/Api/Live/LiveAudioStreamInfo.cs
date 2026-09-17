@@ -27,6 +27,16 @@ public sealed partial record LiveAudioStreamInfo
     // JustText authors: transcribed, never fanned out. Negative so older entries default to voice.
     [DataMember(Order = 7), Key(7)]
     public bool IsTextOnly { get; init; }
+    // The speaker's candidate languages: the chat language, else what they speak. A dubbing
+    // listener's muxer holds the original until a dub exists only when its language isn't here.
+    [DataMember(Order = 8), Key(8)]
+    public ApiArray<Language> Languages { get; init; }
+    // Set only on the muxed start item of a dub track; the registry's records carry null.
+    [DataMember(Order = 9), Key(9)]
+    public Language? DubLanguage { get; init; }
+
+    public bool MaySpeak(Language language)
+        => Languages.Any(x => x.IsoCode == language.IsoCode);
 
     public bool IsCatchUpTarget(Moment catchUpFrom)
         // Shared by ListeningStreamMuxer (serve from t=0) and ChatListeningPlayer (skip the

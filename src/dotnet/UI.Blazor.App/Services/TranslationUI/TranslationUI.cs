@@ -48,6 +48,24 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
     }
 
     [ComputeMethod]
+    public virtual async Task<Language?> GetDubLanguage(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        if (await IsEnabled(chatId, cancellationToken).ConfigureAwait(false) != true)
+            return null;
+
+        var chatSetting = await UserSettingsUI.ChatUserSettings(GetTranslationSettingsTargetChatId(chatId))
+            .Get(x => x.IsTranslatedVoiceEnabled, cancellationToken)
+            .ConfigureAwait(false);
+        var isEnabled = chatSetting
+            ?? (await LanguageUI.Settings.Use(LanguageUI.WhenReady, cancellationToken).ConfigureAwait(false))
+                .IsTranslatedVoiceEnabled;
+        if (!isEnabled)
+            return null;
+
+        return await GetTranslationLanguage(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
     public virtual async Task<bool> MustTranslate(ChatEntry entry, bool isForStreaming, CancellationToken cancellationToken)
     {
         if (await IsEnabled(entry.ChatId, cancellationToken).ConfigureAwait(false) != true)
@@ -141,6 +159,10 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
     public Task SetTargetLanguage(ChatId chatId, Language? language, CancellationToken cancellationToken = default)
         => UserSettingsUI.ChatUserSettings(GetTranslationSettingsTargetChatId(chatId))
             .Update(x => x with { TranslationTargetLanguage = language }, cancellationToken);
+
+    public Task SetTranslatedVoice(ChatId chatId, bool? value, CancellationToken cancellationToken = default)
+        => UserSettingsUI.ChatUserSettings(GetTranslationSettingsTargetChatId(chatId))
+            .Update(x => x with { IsTranslatedVoiceEnabled = value }, cancellationToken);
 
     // Protected/internal methods
 

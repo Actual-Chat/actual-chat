@@ -1,3 +1,4 @@
+using ActualChat.Audio;
 using ActualChat.Live;
 using ActualLab.Rpc;
 
@@ -22,6 +23,8 @@ public sealed class ListeningStreamMuxer : WorkerBase
     // Restarted after failing mid-relay: marked preexisting so GetSkipTo serves them live rather
     // than replaying the utterance.
     private readonly ConcurrentDictionary<string, byte> _resumedStreamIds = new();
+    // Sources whose mix faulted: served as originals from then on, so a broken mix never mutes a speaker
+    private readonly ConcurrentDictionary<string, byte> _undubbedStreamIds = new();
     private TaskCompletionSource _whenRetryNeededSource = TaskCompletionSourceExt.New();
     private int _nextStreamIndex;
 
@@ -29,6 +32,8 @@ public sealed class ListeningStreamMuxer : WorkerBase
     private Session Session { get; }
     private ChatId ChatId { get; }
     private Moment CatchUpFrom { get; }
+    private Language? DubLanguage { get; }
+    private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILiveAudioStreams LiveAudioStreams => field ??= Services.GetRequiredService<ILiveAudioStreams>();
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private ILogger Log => field ??= Services.LogFor(GetType());
@@ -36,12 +41,14 @@ public sealed class ListeningStreamMuxer : WorkerBase
     public ChannelReader<MuxedAudioStreamItem> Output => _output.Reader;
 
     public ListeningStreamMuxer(
-        IServiceProvider services, Session session, ChatId chatId, Moment catchUpFrom = default)
+        IServiceProvider services, Session session, ChatId chatId, Moment catchUpFrom = default,
+        Language? dubLanguage = null)
     {
         Services = services;
         Session = session;
         ChatId = chatId;
         CatchUpFrom = catchUpFrom;
+        DubLanguage = dubLanguage;
         _output = ChannelExt.Create<MuxedAudioStreamItem>(ChannelExt.UnboundedFanInOptions);
         _ = Run(); // Start immediately
     }
@@ -59,6 +66,19 @@ public sealed class ListeningStreamMuxer : WorkerBase
         => streamInfo.IsCatchUpTarget(catchUpFrom) || !isPreexisting
             ? TimeSpan.Zero
             : Constants.Audio.SkipToLive;
+
+    // internal for tests
+    internal static bool MustDub(LiveAudioStreamInfo streamInfo, Language? dubLanguage)
+        => dubLanguage != null && streamInfo.Languages.Count > 0 && !streamInfo.MaySpeak(dubLanguage);
+
+    // internal for tests
+    internal static LiveAudioStreamInfo StampDubStart(LiveAudioStreamInfo streamInfo, AudioFrame firstFrame, Moment now)
+    {
+        // The dub's timeline origin: a mid-join listener's first frame sits at a non-zero offset,
+        // and the client derives the presentation lag from BeginsAt + Offset
+        var beginsAt = now - firstFrame.Offset;
+        return streamInfo with { BeginsAt = beginsAt, SourceBeginsAt = beginsAt };
+    }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -100,12 +120,24 @@ public sealed class ListeningStreamMuxer : WorkerBase
                             if (_streamById.ContainsKey(streamInfo.StreamId))
                                 continue; // Already processing this stream
 
+                            var isDubbed = MustDub(streamInfo, DubLanguage);
+                            if (isDubbed && IsStaleDub(streamInfo, currentStreams)) {
+                                // Dropped the way a merge loser is: a backlog flush lists an author's
+                                // stale streams next to the live one, and a dub of each would play in
+                                // full, serialized, before the live one is heard
+                                Log.LogInformation("Author {AuthorId}: stream {StreamId} is stale, not dubbing it",
+                                    streamInfo.AuthorId, streamInfo.StreamId);
+                                _excludedStreamIds.TryAdd(streamInfo.StreamId, 0);
+                                continue;
+                            }
+
                             var streamEntry = new StreamEntry(
                                 Interlocked.Increment(ref _nextStreamIndex),
                                 streamInfo,
                                 cancellationToken.CreateLinkedTokenSource()) {
                                 IsPreexisting = isColdSnapshot
                                     || _resumedStreamIds.ContainsKey(streamInfo.StreamId),
+                                IsDubbed = isDubbed,
                             };
                             Log.LogDebug(
                                 "Starting stream #{StreamIndex} for {AuthorId} stream #{StreamId}",
@@ -157,36 +189,43 @@ public sealed class ListeningStreamMuxer : WorkerBase
         var isStartEmitted = false;
         var shouldRetry = false;
         var mustResume = false;
+        var isDub = false;
         try {
-            if (!TryRegister(streamEntry))
-                return; // See `finally` block below
-
+            _streamById[streamId] = streamEntry;
             var skipTo = GetSkipTo(streamEntry.IsPreexisting, streamInfo, CatchUpFrom);
-            var rpcStream = await LiveAudioStreams
-                .GetStream(Session, streamId, skipTo, streamStopToken)
-                .ConfigureAwait(false);
+            var (rpcStream, startInfo) = await GetStream(streamEntry, skipTo, streamStopToken).ConfigureAwait(false);
             if (rpcStream == null) {
                 Log.LogWarning("ProcessStream: Stream #{StreamId} not found", streamId);
                 mustRetry = true;
                 return;
             }
 
+            isDub = startInfo.DubLanguage != null;
+            if (!TryRegister(streamEntry, isDub))
+                return; // See `finally` block below
+
+            AudioFrame? heldHeader = null;
             await foreach (var frame in rpcStream.ConfigureAwait(false)) {
+                if (isDub && frameCount == 0 && frame.Offset < TimeSpan.Zero) {
+                    // A dub's header is published seconds before its first data frame, and the
+                    // start item's BeginsAt must stamp the audio, not the header
+                    heldHeader = frame;
+                    continue;
+                }
+
                 if (frameCount == 0) {
+                    if (isDub)
+                        startInfo = StampDubStart(startInfo, frame, Clocks.ServerClock.Now);
                     var startItem = new MuxedAudioStreamStart() {
                         StreamIndex = streamIndex,
-                        StreamInfo = streamInfo,
+                        StreamInfo = startInfo,
                     };
                     await _output.Writer.WriteAsync(startItem, streamStopToken).ConfigureAwait(false);
                     isStartEmitted = true;
+                    if (heldHeader != null)
+                        await EmitFrame(heldHeader).ConfigureAwait(false);
                 }
-                var audioFrame = new MuxedAudioFrame {
-                    StreamIndex = streamIndex,
-                    Data = frame.Data,
-                    Offset = frame.Offset,
-                };
-                frameCount++;
-                await _output.Writer.WriteAsync(audioFrame, streamStopToken).ConfigureAwait(false);
+                await EmitFrame(frame).ConfigureAwait(false);
             }
             Log.LogInformation(
                 "Stream #{StreamIndex} for {AuthorId} completed, {FrameCount} frames emitted",
@@ -225,7 +264,19 @@ public sealed class ListeningStreamMuxer : WorkerBase
             streamStopTokenSource.CancelAndDisposeSilently();
             await EmitEndSafe().ConfigureAwait(false);
 
-            if (mustResume) {
+            if (isDub && (mustResume || mustRetry)) {
+                // The mix faulted (a synthesis failure doesn't: the mix keeps the original); the retry
+                // serves the original - from the live edge if the listener already heard the mix start -
+                // and the source's own retry counters stay untouched: a failing dub must never exclude
+                // the speaker.
+                Log.LogWarning("ProcessStream: {Language} dub of #{StreamId} failed, serving the original",
+                    DubLanguage, streamId);
+                _undubbedStreamIds.TryAdd(streamId, 0);
+                if (isStartEmitted)
+                    _resumedStreamIds.TryAdd(streamId, 0);
+                shouldRetry = true;
+            }
+            else if (mustResume) {
                 // Excluding here silenced the speaker until their next utterance. The retry path
                 // builds a fresh entry with a new index, so the listener gets a clean start item.
                 var resumeCount = _preStartRetryCountByStreamId.AddOrUpdate(streamId, 1, (_, count) => count + 1);
@@ -243,7 +294,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
                     _resumedStreamIds.TryRemove(streamId, out _);
                 }
             }
-            if (mustRetry) {
+            else if (mustRetry) {
                 var retryCount = _preStartRetryCountByStreamId.AddOrUpdate(streamId, 1, (_, count) => count + 1);
                 if (retryCount <= MaxPreStartRetryCount) {
                     await Task.Delay(PreStartRetryDelays[retryCount], CancellationToken.None).ConfigureAwait(false);
@@ -257,10 +308,6 @@ public sealed class ListeningStreamMuxer : WorkerBase
                     _preStartRetryCountByStreamId.TryRemove(streamId, out _);
                     _resumedStreamIds.TryRemove(streamId, out _);
                 }
-            }
-            else if (mustResume) {
-                // Nothing to clear: the resume block owns the counter, and falling through to the
-                // else below wiped the increment it had just made.
             }
             else {
                 _preStartRetryCountByStreamId.TryRemove(streamId, out _);
@@ -276,6 +323,16 @@ public sealed class ListeningStreamMuxer : WorkerBase
         }
         return;
 
+        async ValueTask EmitFrame(AudioFrame frame) {
+            var audioFrame = new MuxedAudioFrame {
+                StreamIndex = streamIndex,
+                Data = frame.Data,
+                Offset = frame.Offset,
+            };
+            frameCount++;
+            await _output.Writer.WriteAsync(audioFrame, streamStopToken).ConfigureAwait(false);
+        }
+
         async ValueTask EmitEndSafe() {
             if (!isStartEmitted || cancellationToken.IsCancellationRequested)
                 return;
@@ -290,9 +347,57 @@ public sealed class ListeningStreamMuxer : WorkerBase
 
     // Per-author stream management
 
-    private bool TryRegister(StreamEntry entry)
+    private async Task<(RpcStream<AudioFrame>? Stream, LiveAudioStreamInfo StartInfo)> GetStream(
+        StreamEntry entry,
+        TimeSpan skipTo,
+        CancellationToken cancellationToken)
     {
-        _streamById[entry.StreamId] = entry;
+        var streamInfo = entry.StreamInfo;
+        if (entry.IsDubbed && !_undubbedStreamIds.ContainsKey(streamInfo.StreamId)) {
+            var dubStreamId = StreamId.New(StreamId.Parse(streamInfo.StreamId), DubLanguage!).Value;
+            try {
+                var dub = await LiveAudioStreams
+                    .GetStream(Session, dubStreamId, skipTo, cancellationToken)
+                    .ConfigureAwait(false);
+                if (dub != null)
+                    return (dub, streamInfo with { DubLanguage = DubLanguage });
+
+                // In practice null only when the owner node has no synthesizer
+                Log.LogDebug("GetStream: no {Language} dub for #{StreamId}, serving the original",
+                    DubLanguage, streamInfo.StreamId);
+            }
+            catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+                Log.LogWarning(e, "GetStream: {Language} mix of #{StreamId} failed, serving the original",
+                    DubLanguage, streamInfo.StreamId);
+                _undubbedStreamIds.TryAdd(streamInfo.StreamId, 0);
+            }
+        }
+        var original = await LiveAudioStreams
+            .GetStream(Session, streamInfo.StreamId, skipTo, cancellationToken)
+            .ConfigureAwait(false);
+        return (original, streamInfo);
+    }
+
+    private bool IsStaleDub(LiveAudioStreamInfo streamInfo, ApiArray<LiveAudioStreamInfo> currentStreams)
+    {
+        // Ties go to the newcomer, as in TryRegister, so only a strictly fresher sibling wins here
+        var listed = currentStreams
+            .Where(x => !x.IsTextOnly)
+            .Select(x => (x.StreamId, x.AuthorId, x.BeginsAt));
+        var processed = _streamById.Values.Select(x => (x.StreamId, x.AuthorId, x.BeginsAt));
+        return listed.Concat(processed).Any(x => x.AuthorId == streamInfo.AuthorId
+            && x.StreamId != streamInfo.StreamId
+            && x.BeginsAt > streamInfo.BeginsAt);
+    }
+
+    private bool TryRegister(StreamEntry entry, bool isDub)
+    {
+        // Called after GetStream: a dubbed entry that fell back to the original must still merge.
+        // A dub outlives its source by the translation lag plus the spoken length, so the author's
+        // next utterance must not evict it; the backend serializes an author's dubs instead.
+        if (isDub)
+            return true;
+
         return ReferenceEquals(entry, _streamByAuthor.AddOrUpdate(
             entry.AuthorId,
             _ => entry,
@@ -349,6 +454,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
         // Per-entry rather than per-muxer: a pre-start retry re-runs ProcessStream up to
         // MaxPreStartRetryCount times, and each retry must still ask for the live edge.
         public bool IsPreexisting { get; init; }
+        public bool IsDubbed { get; init; }
         public string StreamId => StreamInfo.StreamId;
         public AuthorId AuthorId => StreamInfo.AuthorId;
         public Moment BeginsAt => StreamInfo.BeginsAt;

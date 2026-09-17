@@ -127,6 +127,8 @@ public partial class AudioStreamingBackend
             OpenAudioSegmentLog);
         openSegment.SetRecordedAt(recordedAt);
         RememberChatId(openSegment.StreamId, chatId);
+        RememberAuthorId(openSegment.StreamId, author.Id);
+        RememberRecordedAt(openSegment.StreamId, recordedAt);
 
         // Registered in both modes: this is the chat's live-activity signal, and a JustText
         // author is just as live as a speaking one. IsTextOnly keeps voice consumers away.
@@ -138,6 +140,11 @@ public partial class AudioStreamingBackend
             SourceBeginsAt = sourceBeginsAt,
             Format = audio.Format,
             IsTextOnly = !mustStreamVoice,
+            // Empty = never dub: without a transcript there's nothing to translate, and a dubbing
+            // listener would get every utterance of this speaker transcoded for nothing
+            Languages = !mustTranscribe ? ApiArray<Language>.Empty
+                : languages.ChatLanguage is { } chatLanguage ? new ApiArray<Language>([chatLanguage])
+                : languages.UserSettings.ListSpoken().ToApiArray(),
         };
         await LiveAudioBackend.Register(chatId, streamInfo, cancellationToken).ConfigureAwait(false);
 
@@ -387,6 +394,27 @@ public partial class AudioStreamingBackend
         }
     }
 
+    // It's internal to be accessible from tests
+    internal static async IAsyncEnumerable<Transcript> WithLatencyTrace(
+        IAsyncEnumerable<Transcript> source,
+        TranscriptLatencyTrace latencyTrace,
+        ILogger log,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        // Stamps latency here, before the memoizer's buffer: the memoizer pumps its source
+        // exactly once no matter how many Replay() consumers read from it, so this still
+        // fires once per transcript, at arrival time rather than at stream drain time.
+        try {
+            await foreach (var transcript in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                latencyTrace.OnTranscript(transcript);
+                yield return transcript;
+            }
+        }
+        finally {
+            latencyTrace.Report(log);
+        }
+    }
+
     private async Task<AudioSegmentLanguage> GetTranscriptionLanguage(
         AudioRecord record,
         CancellationToken cancellationToken)
@@ -510,10 +538,13 @@ public partial class AudioStreamingBackend
                 catch (ObjectDisposedException) { }
             },
             CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-        using var transcripts = transcriber
+        var latencyTrace = new TranscriptLatencyTrace(
+            audioSegment.StreamId.Value, audioSegment.Source.CreatedAt, Clocks.ServerClock);
+        IAsyncEnumerable<Transcript> tracedTranscripts = transcriber
             .Transcribe(audioSegment.StreamId.Value, audioSegment.Source, transcriptionOptions, deadlineCts.Token)
-            .ThrottleTranscript(Constants.Transcription.ThrottlePeriod, Clocks.CpuClock, cancellationToken)
-            .Memoize(CancellationToken.None);
+            .ThrottleTranscript(Constants.Transcription.ThrottlePeriod, Clocks.CpuClock, cancellationToken);
+        tracedTranscripts = WithLatencyTrace(tracedTranscripts, latencyTrace, Log, cancellationToken);
+        using var transcripts = tracedTranscripts.Memoize(CancellationToken.None);
         cancellationToken = CancellationToken.None; // Past this point only deadlineCts cancels the transcriber
 
         var transcriptStreamId = audioSegment.StreamId;
