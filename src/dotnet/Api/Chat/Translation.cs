@@ -22,6 +22,8 @@ public sealed partial record Translation(
     [DataMember, Key(4)] public Moment CreatedAt { get; init; }
     [DataMember, Key(5)] public Moment ModifiedAt { get; init; }
     [DataMember, Key(6)] public StreamId? StreamId { get; set; }
+    [DataMember, Key(7)] public MediaId? DubMediaId { get; init; }
+    [DataMember, Key(8)] public HashString DubContentHash { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Language TargetLanguage => Id.Language;
@@ -52,4 +54,6 @@ public sealed partial record TranslationDiff : RecordDiff, ISanitized
     }
     [DataMember] public HashString? SourceContentHash { get; init; }
     [DataMember] public Option<StreamId?> StreamId { get; init; }
+    [DataMember] public Option<MediaId?> DubMediaId { get; init; }
+    [DataMember] public HashString? DubContentHash { get; init; }
 }
