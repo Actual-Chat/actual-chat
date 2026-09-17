@@ -475,6 +475,54 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
                 b.ToTable("user_sessions");
             });
 
+        modelBuilder.Entity("ActualChat.Users.Db.DbUserVoice", b =>
+            {
+                b.Property<string>("Id")
+                    .HasColumnType("text")
+                    .HasColumnName("id")
+                    .UseCollation("C");
+
+                b.Property<DateTime>("CreatedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("created_at");
+
+                b.Property<DateTime?>("FailedUntil")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("failed_until");
+
+                b.Property<DateTime>("LastUsedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("last_used_at");
+
+                b.Property<DateTime>("ModifiedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("modified_at");
+
+                b.Property<string>("SampleHash")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("sample_hash");
+
+                b.Property<string>("SonioxVoiceId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("soniox_voice_id");
+
+                b.Property<int>("Status")
+                    .HasColumnType("integer")
+                    .HasColumnName("status");
+
+                b.Property<long>("Version")
+                    .IsConcurrencyToken()
+                    .HasColumnType("bigint")
+                    .HasColumnName("version");
+
+                b.HasKey("Id")
+                    .HasName("pk_user_voices");
+
+                b.ToTable("user_voices");
+            });
+
         modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbEvent", b =>
             {
                 b.Property<string>("Uuid")

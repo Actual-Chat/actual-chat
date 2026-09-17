@@ -138,6 +138,34 @@
   "ListeningLinger_5Seconds": "5 seconds",
   "ListeningLinger_10Seconds": "10 seconds",
   "ListeningLinger_30Seconds": "30 seconds",
+  "Transcription_TranslatedVoiceTopic": "Translated Voice",
+  "Transcription_TranslatedVoice": "Hear translations spoken",
+  "Transcription_TranslatedVoiceCaption": "In live conversations, speakers of other languages are replaced by a spoken translation in your language",
+  "Transcription_DubVoice": "My voice in translations",
+  "Transcription_DubVoiceCaption": "The voice others hear when your speech is translated",
+  "Transcription_DubVoiceDefault": "Default",
+  "Transcription_DubVoicePreviewText": "Hello! This is how others will hear you.",
+  // "Use my own voice" - voice cloning for dubbing (admin preview). {0} in _NeedsMore_Format is
+  // rounded up to a multiple of 5, so the two-form "seconds" is safe in every language.
+  // _PromptText is what the user reads aloud to record a voice sample: natural first-person prose,
+  // about 30 seconds spoken, with nothing that marks the speaker's gender.
+  "Transcription_OwnVoice": "Use my own voice",
+  "Transcription_OwnVoiceCaption": "Others hear your translated speech in a clone of your voice, made from your recordings. Turn off to delete it.",
+  "Transcription_OwnVoiceStatus_Off": "Off",
+  "Transcription_OwnVoiceStatus_ReadyToUse": "Ready to use on your next call",
+  "Transcription_OwnVoiceStatus_Ready": "Ready",
+  "Transcription_OwnVoiceStatus_Preparing": "Preparing your voice…",
+  "Transcription_OwnVoiceStatus_NeedsMore_Format": "Needs about {0} more seconds of your recordings",
+  "Transcription_OwnVoiceStatus_Fallback": "Temporarily using a standard voice",
+  "Transcription_OwnVoiceStatus_SampleMissing": "Your voice sample is gone — record a new one",
+  "Transcription_OwnVoiceRecord": "Record a sample",
+  "Transcription_OwnVoiceRerecord": "Re-record the sample",
+  "Transcription_OwnVoiceRemoveSample": "Remove sample",
+  "Transcription_OwnVoiceReadAloud": "Read this aloud in your usual voice to record a sample:",
+  "Transcription_OwnVoicePromptText": "Hi, this is my voice. I'm recording a short sample so the app can learn how I sound and use it whenever my words are translated for someone else. I'll speak the way I usually do: not too fast, not too slow, with the pauses I would normally make. Some sentences are short. Others go on a little longer, rise and fall, and end on a calmer note. That should be enough for a good match, so I'll stop here.",
+  "Transcription_OwnVoiceUseRecording": "Use this recording",
+  "Transcription_OwnVoiceSampleSaved": "Voice sample saved",
+  "Transcription_DubVoiceFallbackCaption": "Used when your own voice isn't available",
   "Transcription_LanguageDetected_Format": "Detected transcription language for chat '{0}' is {1}.",
 
   // Settings > Sessions - the signed-in devices and the sign-out actions.
@@ -231,6 +259,23 @@
   "TimeZone_SelectTitle": "Select time zone",
   "TimeZone_Question": "What is your time zone?",
   "TimeZone_Updated": "Time zone has been updated",
+
+  // The voice picker for "My voice in translations" (Settings > Transcription): the search box, the
+  // "Suggested" section (voices matching the user's spoken languages; the first one is the default)
+  // above the collapsed "All voices" section with the gender and accent filters, and the per-voice
+  // preview button.
+  "DubVoice_Title": "Voice in translations",
+  "DubVoice_Gender": "Gender",
+  "DubVoice_AnyGender": "Any gender",
+  "DubVoice_Male": "Male",
+  "DubVoice_Female": "Female",
+  "DubVoice_Accent": "Accent",
+  "DubVoice_AnyAccent": "Any accent",
+  "DubVoice_Preview": "Preview",
+  "DubVoice_Unavailable": "Voices are unavailable right now",
+  "DubVoice_Suggested": "Suggested",
+  "DubVoice_AllVoices": "All voices",
+  "DubVoice_SearchPlaceholder": "Search voices",
 
   // Settings > Application on the Windows desktop app: the "start when I log on" toggle and
   // the three reasons it can be unavailable. "Task Manager" and "Startup" name Windows' own
@@ -1900,6 +1945,9 @@
   "Call_Entry_Ended": "Call",
   "Call_Entry_NoAnswer": "No answer",
   "Call_Entry_TapToCallBack": "Tap to call back",
+
+  // The label on a live-session card when the speaker's voice is replaced by a spoken translation.
+  "LiveConversation_TranslatedVoice": "Translated voice",
 
   // The text the share sheet hands to another app. In the _Format values the last placeholder
   // is the app name.

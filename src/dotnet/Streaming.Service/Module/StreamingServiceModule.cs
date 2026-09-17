@@ -20,6 +20,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<ILiveVideoStreams, LiveVideoStreams>();
         rpcHost.AddApi<ILiveSessions, LiveSessions>();
         rpcHost.AddApi<IChatTypingActivities, ChatTypingActivities>();
+        rpcHost.AddApi<IOwnVoices, OwnVoices>();
         rpcHost.AddBackend<IAudioStreamingBackend, AudioStreamingBackend>();
         rpcHost.AddBackend<IVideoStreamingBackend, VideoStreamingBackend>();
         rpcHost.AddBackend<ILiveAudioBackend, LiveAudioBackend>();
@@ -31,6 +32,8 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<RemoteVideoStreamCache>();
         services.AddSingleton<RemoteAudioStreamCache>();
         services.TryAddSingleton<AudioSettings>(); // AudioSettings are not configured now
+        // The API host inspects the sample selection through it; only Build needs the backend-side services
+        services.AddSingleton<VoiceSampleBuilder>();
         if (isBackendClient)
             return;
 
@@ -39,6 +42,11 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         // Internal services
         services.AddSingleton(_ => new AudioSettings()); // Used in BlazorUIAppModule as well
         services.AddSingleton<AudioSegmentSaver>();
+        services.AddSingleton<ReplayDubs>();
+        services.AddSingleton<SpeakerVoices>();
+        services.AddSingleton<VoicePool>();
+        services.AddSingleton<VoicePoolSweeper>()
+            .AddHostedService(c => c.GetRequiredService<VoicePoolSweeper>());
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();

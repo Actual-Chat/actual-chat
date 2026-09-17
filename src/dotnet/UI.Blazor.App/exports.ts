@@ -27,6 +27,7 @@ export * from './Components/ChatView/Items/ChatEntryMessageInternalView/chat-ent
 export * from './Components/ContentList/content-list-date-visor';
 export * from './Components/ContentList/visual-media-duration';
 export * from './Components/DateVisor/date-visor';
+export * from './Components/DubVoiceModal/dub-voice-modal';
 export * from './Components/FontSizeSlider/font-size-slider';
 export * from './Components/JoinVideoCallModal/join-video-call-modal';
 export * from './Components/LogView/log-view';

@@ -92,6 +92,7 @@
 @import './Components/Settings/settings-modal.css';
 @import './Components/Settings/time-zone-editor-modal.css';
 @import './Components/Settings/documents-modal.css';
+@import './Components/DubVoiceModal/dub-voice-modal.css';
 @import './Components/Selection/selection-header.css';
 @import './Components/Share/share-modal.css';
 @import './Components/Share/share-qr-modal.css';

@@ -1,0 +1,322 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Module
+@inherits ComputedStateComponent<AppUIHub, DubVoiceModal.ViewModel>
+@implements IModalView<DubVoiceModal.Model>
+@{
+    var m = State.Value;
+    var searchWords = _search.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    var voices = m.Voices.Where(PassesFilters).Where(v => Matches(v, searchWords)).ToList();
+    var suggested = m.Suggested.Where(PassesFilters).ToList();
+    var accents = m.Voices.Select(v => v.Accent).Where(a => !a.IsNullOrEmpty()).Distinct().Order().ToList();
+    var isSearching = searchWords.Length > 0;
+    var hasSuggested = suggested.Count > 0;
+}
+
+<DialogFrame
+    Class="dub-voice-modal"
+    Title="@L.DubVoice_Title"
+    HasCloseButton="true"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
+    <Body>
+        @if (m.Voices.Count > 0) {
+            <div class="dub-voice-top">
+                <SearchBox
+                    Class="dub-voice-search"
+                    Placeholder="@L.DubVoice_SearchPlaceholder"
+                    ClearButton="true"
+                    TextChanged="@OnSearchChanged"/>
+                <Form Model="@_filters">
+                    <FormBlock Class="dub-voice-filters">
+                        <FormSection
+                            For="@(() => _filters.Gender)"
+                            InputId="@_filters.GenderFormId"
+                            IsLabelInsideInput="true"
+                            IsRequired="true"
+                            Label="@L.DubVoice_Gender">
+                            <InputSelect
+                                TValue="string"
+                                Value="@_filters.Gender"
+                                ValueExpression="@(() => _filters.Gender)"
+                                ValueChanged="@OnGenderChanged">
+                                <option value="">@L.DubVoice_AnyGender</option>
+                                <option value="male">@L.DubVoice_Male</option>
+                                <option value="female">@L.DubVoice_Female</option>
+                            </InputSelect>
+                        </FormSection>
+                        <FormSection
+                            For="@(() => _filters.Accent)"
+                            InputId="@_filters.AccentFormId"
+                            IsLabelInsideInput="true"
+                            IsRequired="true"
+                            Label="@L.DubVoice_Accent">
+                            <InputSelect
+                                TValue="string"
+                                Value="@_filters.Accent"
+                                ValueExpression="@(() => _filters.Accent)"
+                                ValueChanged="@OnAccentChanged">
+                                <option value="">@L.DubVoice_AnyAccent</option>
+                                @foreach (var accent in accents) {
+                                    <option value="@accent">@Humanize(accent)</option>
+                                }
+                            </InputSelect>
+                        </FormSection>
+                    </FormBlock>
+                </Form>
+            </div>
+        }
+        <div class="dub-voice-list" role="listbox">
+            @if (m.Voices.Count == 0 && !m.IsLoading) {
+                <div class="c-empty">@L.DubVoice_Unavailable</div>
+            }
+            @if (isSearching) {
+                @AllVoices(voices)
+            } else if (hasSuggested) {
+                <div class="c-section-title">@L.DubVoice_Suggested</div>
+                @foreach (var voice in suggested) {
+                    @VoiceItem(voice)
+                }
+                <Collapsed Title="@L.DubVoice_AllVoices" TitleClass="c-section-title">
+                    @AllVoices(voices)
+                </Collapsed>
+            } else if (m.Voices.Count > 0) {
+                @AllVoices(voices)
+            }
+        </div>
+    </Body>
+</DialogFrame>
+
+@code {
+    private static readonly string JSPlay = $"{BlazorUIAppModule.ImportName}.DubVoicePreview.play";
+    private static readonly string JSStop = $"{BlazorUIAppModule.ImportName}.DubVoicePreview.stop";
+
+    private FilterModel _filters = null!;
+    private string _search = "";
+    private string? _loadingVoiceId;
+    private string? _playingVoiceId;
+    private bool _isSuggestedWarmedUp;
+    private DotNetObjectReference<DubVoiceModal>? _blazorRef;
+    private CancellationTokenSource _disposeTokenSource = null!;
+    private CancellationToken _disposeToken;
+
+    private LanguageUI LanguageUI => Hub.LanguageUI;
+    private ITranslations Translations => Hub.Translations;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private RenderFragment<List<DubVoice>> AllVoices => list =>
+        @<text>
+            @foreach (var voice in list) {
+                @VoiceItem(voice)
+            }
+        </text>;
+
+    private RenderFragment<DubVoice> VoiceItem => voice => {
+        var m = State.Value;
+        var isSelected = voice.Id == m.EffectiveVoiceId;
+        var isDefault = voice.Id == m.DefaultVoiceId;
+        var isLoading = voice.Id == _loadingVoiceId;
+        var isPlaying = voice.Id == _playingVoiceId;
+        var icon = isLoading ? "icon-refresh animate-spin" : isPlaying ? "icon-stop-fill" : "icon-play-fill";
+        return
+            @<div class="dub-voice-item @(isSelected ? "selected" : "")"
+                  role="option"
+                  tabindex="0"
+                  aria-selected="@(isSelected ? "true" : "false")"
+                  @onclick="@(() => OnVoiceSelected(voice.Id))"
+                  @onpointerenter="@NoStateHasChanged.EventCallback(() => WarmUp(voice.Id))">
+                <div class="c-info">
+                    <div class="c-name">
+                        <span>@voice.Id</span>
+                        <span class="c-facets">@FormatFacets(voice)</span>
+                        @if (isDefault) {
+                            <span class="c-default-chip">@L.Transcription_DubVoiceDefault</span>
+                        }
+                    </div>
+                    @if (!voice.Description.IsNullOrEmpty()) {
+                        <div class="c-meta">@voice.Description</div>
+                    }
+                    @if (voice.Style.Count > 0) {
+                        <div class="c-meta c-style">@string.Join(" · ", voice.Style.Select(Humanize))</div>
+                    }
+                </div>
+                <button type="button"
+                        class="btn-preview @(isPlaying || isLoading ? "on" : "")"
+                        aria-label="@L.DubVoice_Preview"
+                        title="@L.DubVoice_Preview"
+                        @onclick="@(() => OnPreviewClick(voice.Id))"
+                        @onclick:stopPropagation="true">
+                    <i class="@icon text-xl"></i>
+                </button>
+            </div>;
+    };
+
+    public override async ValueTask DisposeAsync() {
+        _disposeTokenSource.CancelAndDisposeSilently();
+        if (_loadingVoiceId != null || _playingVoiceId != null)
+            await JS.InvokeVoidAsync(JSStop).SilentAwait(true);
+        _blazorRef?.Dispose();
+        await base.DisposeAsync().ConfigureAwait(true);
+    }
+
+    protected override void OnInitialized() {
+        _disposeTokenSource = new();
+        _disposeToken = _disposeTokenSource.Token;
+        _filters = new FilterModel(ComponentIdGenerator);
+    }
+
+    protected override ComputedState<ViewModel>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ViewModel>.Options() {
+                InitialValue = ViewModel.Loading,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<ViewModel> ComputeState(CancellationToken cancellationToken) {
+        var settings = await LanguageUI.Settings.Use(LanguageUI.WhenReady, cancellationToken).ConfigureAwait(false);
+        var voices = await Translations.ListDubVoices(Session, cancellationToken).ConfigureAwait(false);
+        var suggested = await Translations.ListSuggestedDubVoices(Session, cancellationToken).ConfigureAwait(false);
+        var defaultVoiceId = suggested.Count > 0 ? suggested[0].Id : null;
+        var chosenVoiceId = settings.DubVoice;
+        var effectiveVoiceId = voices.Any(v => v.Id == chosenVoiceId) ? chosenVoiceId : defaultVoiceId;
+        return new(voices, suggested, defaultVoiceId, effectiveVoiceId, settings.Primary);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        await base.OnAfterRenderAsync(firstRender).ConfigureAwait(true);
+        if (_isSuggestedWarmedUp || State.ValueOrDefault is not { Suggested.Count: > 0 } m)
+            return;
+
+        // The first screen is the suggested voices: fill the Fusion cache before a click
+        _isSuggestedWarmedUp = true;
+        await Task.WhenAll(m.Suggested.Select(v => WarmUp(v.Id))).SilentAwait(true);
+    }
+
+    [JSInvokable]
+    public void OnPreviewStarted(string voiceId) {
+        if (_loadingVoiceId != voiceId)
+            return;
+
+        _loadingVoiceId = null;
+        _playingVoiceId = voiceId;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnPreviewEnded(string voiceId) {
+        if (_loadingVoiceId == voiceId)
+            _loadingVoiceId = null;
+        if (_playingVoiceId == voiceId)
+            _playingVoiceId = null;
+        StateHasChanged();
+    }
+
+    private void OnSearchChanged(string text) {
+        _search = text;
+        StateHasChanged();
+    }
+
+    private void OnGenderChanged(string value) {
+        _filters.Gender = value;
+        StateHasChanged();
+    }
+
+    private void OnAccentChanged(string value) {
+        _filters.Accent = value;
+        StateHasChanged();
+    }
+
+    private async Task OnPreviewClick(string voiceId) {
+        if (_loadingVoiceId == voiceId)
+            return;
+
+        if (_playingVoiceId == voiceId) {
+            _playingVoiceId = null;
+            StateHasChanged();
+            await JS.InvokeVoidAsync(JSStop);
+            return;
+        }
+
+        // Rendered before the RPC call: on a cache miss the preview takes ~2 s to arrive
+        _loadingVoiceId = voiceId;
+        _playingVoiceId = null;
+        StateHasChanged();
+        var language = State.Value.PreviewLanguage;
+        var mp3 = (await Translations.GetDubVoicePreview(Session, voiceId, language, _disposeToken)
+            .ResultAwait(true)).ValueOrDefault;
+        if (_loadingVoiceId != voiceId)
+            return; // superseded by another click, or the modal is closing
+
+        if (mp3 is not { Length: > 0 }) {
+            _loadingVoiceId = null;
+            StateHasChanged();
+            return;
+        }
+
+        _blazorRef ??= DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync(JSPlay, mp3, voiceId, _blazorRef);
+    }
+
+    private async Task WarmUp(string voiceId) {
+        var language = State.Value.PreviewLanguage;
+        await Translations.GetDubVoicePreview(Session, voiceId, language, _disposeToken).SilentAwait(true);
+    }
+
+    private async Task OnVoiceSelected(string voiceId) {
+        // The default row stores "", so the choice keeps following the suggestion as the languages change
+        var chosenVoiceId = voiceId == State.Value.DefaultVoiceId ? "" : voiceId;
+        await LanguageUI.UpdateSettings(x => x with { DubVoice = chosenVoiceId });
+        Modal.Close();
+    }
+
+    private string FormatFacets(DubVoice voice) {
+        var gender = voice.Gender switch {
+            "male" => L.DubVoice_Male,
+            "female" => L.DubVoice_Female,
+            _ => "",
+        };
+        var facets = new[] { gender, Humanize(voice.Accent) }.Where(x => !x.IsNullOrEmpty());
+        return string.Join(", ", facets);
+    }
+
+    // Every search word must occur in some facet: "female calm" narrows to calm female voices
+    private bool PassesFilters(DubVoice voice)
+        => (_filters.Gender.IsNullOrEmpty() || voice.Gender == _filters.Gender)
+            && (_filters.Accent.IsNullOrEmpty() || voice.Accent == _filters.Accent);
+
+    private static bool Matches(DubVoice voice, string[] searchWords)
+        => searchWords.All(word =>
+            voice.Id.Contains(word, StringComparison.OrdinalIgnoreCase)
+            || voice.Description.Contains(word, StringComparison.OrdinalIgnoreCase)
+            || voice.Gender.Contains(word, StringComparison.OrdinalIgnoreCase)
+            || Humanize(voice.Accent).Contains(word, StringComparison.OrdinalIgnoreCase)
+            || voice.UseCase.Any(x => Humanize(x).Contains(word, StringComparison.OrdinalIgnoreCase))
+            || voice.Style.Any(x => Humanize(x).Contains(word, StringComparison.OrdinalIgnoreCase)));
+
+    // Soniox's facet tokens ("middle_aged", "latin_american") are provider data, not catalog text
+    private static string Humanize(string token)
+        => token.IsNullOrEmpty() ? "" : char.ToUpper(token[0]) + token[1..].Replace('_', ' ');
+
+    // Nested types
+
+    public sealed record Model;
+
+    public sealed record ViewModel(
+        ApiArray<DubVoice> Voices,
+        ApiArray<DubVoice> Suggested,
+        string? DefaultVoiceId,
+        string? EffectiveVoiceId,
+        Language PreviewLanguage,
+        bool IsLoading = false)
+    {
+        public static readonly ViewModel Loading =
+            new(ApiArray<DubVoice>.Empty, ApiArray<DubVoice>.Empty, null, null, Languages.Main, true);
+    }
+
+    public sealed class FilterModel(ComponentIdGenerator componentIdGenerator) {
+        public string GenderFormId { get; } = $"{componentIdGenerator.Next("dub-voice-filters")}-gender";
+        public string AccentFormId { get; } = $"{componentIdGenerator.Next("dub-voice-filters")}-accent";
+        public string Gender { get; set; } = "";
+        public string Accent { get; set; } = "";
+    }
+}

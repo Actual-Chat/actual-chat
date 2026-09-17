@@ -1,4 +1,5 @@
 using ActualChat.Kvas;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -10,6 +11,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class LanguageUI : UIWorkerBase<AppUIHub>, IComputeService, IDisposable
 {
     private const string JSSetMethod = "window.LocalizationUI.set";
+    private BannerDef? _ownVoiceSampleBanner;
+
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
     public SyncedState<UserLanguageSettings> Settings { get; init; }
@@ -94,6 +97,20 @@ public class LanguageUI : UIWorkerBase<AppUIHub>, IComputeService, IDisposable
     {
         await UpdateSettings(x => x with { UILanguage = language }).ConfigureAwait(false);
         await SetStoredLanguage(language).ConfigureAwait(false);
+    }
+
+    public void ShowOwnVoiceSamplePrompt(ChatId notesChatId)
+    {
+        // One card at a time: Record, back, Re-record must replace the card, not stack a second one
+        DismissOwnVoiceSamplePrompt();
+        var model = new OwnVoiceSampleBanner.Model(notesChatId, Clocks.ServerClock.Now);
+        _ownVoiceSampleBanner = Hub.BannerUI.Show(model);
+    }
+
+    public void DismissOwnVoiceSamplePrompt()
+    {
+        _ownVoiceSampleBanner?.Dismiss();
+        _ownVoiceSampleBanner = null;
     }
 
     // Protected/internal methods
