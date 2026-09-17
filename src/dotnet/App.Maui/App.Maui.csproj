@@ -624,6 +624,14 @@
     <CodesignKey Condition="'$(CodesignKey)' == ''">Apple Development</CodesignKey>
   </PropertyGroup>
 
+  <!-- macOS only honors the "?mode=developer" associated domains (local.voxt.ai passkeys)
+       for apps carrying get-task-allow. iOS Debug builds get it from the SDK, the Mac ones
+       don't. Debug only - the App Store rejects it, so it can't live in Entitlements.*.plist,
+       which the Release builds share. -->
+  <ItemGroup Condition="'$(Configuration)' == 'Debug' and ($(TargetFramework.Contains('-macos')) or $(TargetFramework.Contains('-maccatalyst')))">
+    <CustomEntitlements Include="com.apple.security.get-task-allow" Type="Boolean" Value="true" />
+  </ItemGroup>
+
 
   <!-- Windows build properties -->
 
