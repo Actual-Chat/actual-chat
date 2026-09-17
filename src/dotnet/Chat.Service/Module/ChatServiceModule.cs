@@ -9,6 +9,7 @@ using ActualChat.Module;
 using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualChat.Resilience;
+using ActualChat.WebHooks;
 using ActualLab.Redis;
 using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
@@ -62,6 +63,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<ISharedLocationsBackend, SharedLocationsBackend>();
 
         // Web hooks
+        rpcHost.AddApi<IWebHooks, WebHooks>();
         rpcHost.AddBackend<IWebHooksBackend, WebHooksBackend>();
         services.AddSingleton<WebHookSecrets>();
 
