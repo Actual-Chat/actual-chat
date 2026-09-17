@@ -61,6 +61,10 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<ISharedLocations, SharedLocations>();
         rpcHost.AddBackend<ISharedLocationsBackend, SharedLocationsBackend>();
 
+        // Web hooks
+        rpcHost.AddBackend<IWebHooksBackend, WebHooksBackend>();
+        services.AddSingleton<WebHookSecrets>();
+
         // Aliases
         rpcHost.AddLocalApi<IAliases, Aliases>();
         rpcHost.AddBackend<IAliasBackend, AliasBackend>();
