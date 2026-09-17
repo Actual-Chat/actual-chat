@@ -185,30 +185,30 @@ public sealed class RpcEndpointMonitor : UIWorkerBase<UIHub>
             return;
 
         var selection = await FindBestEndpoint(selector, cancellationToken).ConfigureAwait(false);
-        if (selection is null && ServerProbe.IsSizedProbeSupported) {
-            // Nothing answered, and the server can measure - so the network is simply down.
+        if (selection is null && ServerProbe.IsMeasurable) {
+            // Nothing answered, and the server would measure - so the network is simply down.
             // That's no verdict rather than a bad one; the next cycle tries again.
             return;
         }
 
         _selectedVersion = version;
         _selectedAt = Clocks.CpuClock.Now;
-        // A server predating the sized probe can't be measured at all, so this falls back to
-        // the older rule: a new network gets the origin, and a failing probe demotes us again.
         var endpoint = selection?.Endpoint ?? selector.OriginHost;
         _pendingReport = new RpcEndpointReport(endpoint,
             selection is null ? RpcEndpointReason.Unmeasurable : RpcEndpointReason.Measured,
             ToMilliseconds(selection?.OriginElapsed),
             ToMilliseconds(selection?.EndpointElapsed));
-        if (endpoint == selector.Current)
-            return;
-
-        Log.LogWarning("Selected RPC endpoint: {Endpoint}", endpoint);
-        selector.Use(endpoint);
-        _verifiedVersion = -1;
-        // ReSharper disable once MethodSupportsCancellation
-        _ = Peer?.Disconnect();
-        ReconnectUI.ResetReconnectDelays();
+        if (endpoint != selector.Current) {
+            Log.LogWarning("Selected RPC endpoint: {Endpoint}", endpoint);
+            selector.Use(endpoint);
+            // ReSharper disable once MethodSupportsCancellation
+            _ = Peer?.Disconnect();
+            ReconnectUI.ResetReconnectDelays();
+        }
+        // The server serves the sized probe only where a network may cap a connection, so its
+        // bare "ok" means this client needs no failover: the origin it is, and the post-connect
+        // probe would only pull the same "ok" over RPC.
+        _verifiedVersion = selection is null ? version : -1;
     }
 
     private async Task<Selection?> FindBestEndpoint(
@@ -225,8 +225,12 @@ public sealed class RpcEndpointMonitor : UIWorkerBase<UIHub>
             var originTask = ServerProbe.MeasureTransfer(origin, ProbeSize, SelectTimeout, cts.Token);
             var hedgeTask = Clocks.CpuClock.Delay(SelectHedgeDelay, cancellationToken);
             var completedTask = await Task.WhenAny(originTask, hedgeTask).ConfigureAwait(false);
-            if (completedTask == originTask && await originTask.ConfigureAwait(false) is { } fast)
-                return new Selection(origin, fast, fast);
+            if (completedTask == originTask) {
+                if (await originTask.ConfigureAwait(false) is { } fast)
+                    return new Selection(origin, fast, fast);
+                if (!ServerProbe.IsMeasurable)
+                    return null;
+            }
 
             var relays = await ShortlistRelays(candidates, cts.Token).ConfigureAwait(false);
             var probeTasks = relays

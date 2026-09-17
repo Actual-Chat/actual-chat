@@ -16,9 +16,10 @@ public sealed class RpcServerProbe(IServiceProvider services)
     private IServiceProvider Services { get; } = services;
     private UrlMapper UrlMapper => field ??= Services.UrlMapper();
     private ILogger Log => field ??= Services.LogFor(GetType());
-    // False while a server answers without honoring "size" - it predates the sized probe, or
-    // this client has no session yet to be served one. Both can resolve, so this can go back.
-    public bool IsSizedProbeSupported { get; private set; } = true;
+    // False once a server answers a sized probe with the bare "ok": the client is outside the
+    // countries it measures, or has no session yet to be served one. Both can change with the
+    // network, so this can go back.
+    public bool IsMeasurable { get; private set; } = true;
     public async Task<bool> IsServerReachable(CancellationToken cancellationToken)
     {
         var url = UrlMapper.BaseUrl.TrimSuffix("/") + ProbePath;
@@ -54,16 +55,14 @@ public sealed class RpcServerProbe(IServiceProvider services)
             var payload = await httpClient.GetByteArrayAsync(url, cts.Token).ConfigureAwait(false);
             var elapsed = CpuTimestamp.Now - startedAt;
             if (payload.Length >= size) {
-                IsSizedProbeSupported = true;
+                IsMeasurable = true;
                 Log.LogInformation("RPC transfer probe to {Host}: {Size} bytes in {Elapsed}",
                     host, payload.Length, elapsed.ToShortString());
                 return elapsed;
             }
 
-            // A server predating the "size" parameter answers "ok", which proves reachability
-            // but says nothing about throughput - the only thing this probe is for.
-            IsSizedProbeSupported = false;
-            Log.LogWarning("RPC transfer probe to {Host}: {Size} of {ExpectedSize} bytes",
+            IsMeasurable = false;
+            Log.LogInformation("RPC transfer probe to {Host}: {Size} of {ExpectedSize} bytes, not measurable",
                 host, payload.Length, size);
             return null;
         }

@@ -1,9 +1,11 @@
 using System.Security.Cryptography;
 using ActualChat.Diagnostics;
+using ActualChat.Rpc;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Fusion.Internal;
 using ActualLab.Rpc;
+using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Users;
 
@@ -20,18 +22,25 @@ public class SystemProperties(IServiceProvider services)
     // Normalized the same way as the client version, so an X.Y match means CompatibilityLevel.Full
     private static readonly Version ApiVersion = VersionExt.ParseBuildVersion(ApiConstants.VersionString);
     private HostInfo HostInfo => field ??= Services.HostInfo();
+    private RpcProbePolicy ProbePolicy => field ??= Services.GetRequiredService<RpcProbePolicy>();
 
     // Not a [ComputeMethod]!
     public Task<double> GetTime(CancellationToken cancellationToken)
         => Task.FromResult(Clocks.SystemClock.Now.EpochOffset.TotalSeconds);
 
     // Not a [ComputeMethod]!
-    public Task<byte[]> GetProbePayload(int size, CancellationToken cancellationToken)
+    public async Task<byte[]> GetProbePayload(int size, CancellationToken cancellationToken)
     {
+        // An empty reply outside the probed countries: the client reads a short payload as
+        // "inconclusive", which keeps the endpoint, rather than as a failure.
+        var ipAddress = RpcInboundContext.Current.GetRemoteIPAddress();
+        if (!await ProbePolicy.ShouldMeasure(ipAddress).ConfigureAwait(false))
+            return [];
+
         // Random rather than zeroed: WebSocket deflate would shrink a compressible payload
         // to nothing, so it would cross a throttled link just fine and prove nothing.
         size = size.Clamp(MinProbePayloadSize, MaxProbePayloadSize);
-        return Task.FromResult(RandomNumberGenerator.GetBytes(size));
+        return RandomNumberGenerator.GetBytes(size);
     }
 
     public Task ReportRpcEndpoint(RpcEndpointReport report, CancellationToken cancellationToken)

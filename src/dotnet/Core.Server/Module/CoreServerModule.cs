@@ -2,6 +2,7 @@ using ActualChat.Blobs.Internal;
 using ActualChat.AspNetCore;
 using ActualChat.Diagnostics;
 using ActualChat.Queues.Internal;
+using ActualChat.Rpc;
 using ActualChat.Uploads;
 using Google.Cloud.Storage.V1;
 using Microsoft.AspNetCore.StaticFiles;
@@ -27,6 +28,7 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
     {
         // RPC host
         services.AddRpcHost(HostInfo, Log);
+        services.AddSingleton(_ => new RpcProbePolicy(Settings));
 
         // ShardOwners
         ShardKeyResolvers.MustThrowOnNotFound |= HostInfo.BaseUrlKind != BaseUrlKind.Production;

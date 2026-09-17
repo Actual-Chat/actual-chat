@@ -12,6 +12,8 @@ public sealed class CoreServerSettings
     public string GoogleProjectId { get; set; } = "";
     public string GoogleRegionId { get; set; } = "us-central1";
     public bool UseGoogleTranscoder { get; set; }
+    // ISO country codes (";" or ","), or "*" for every country; empty serves nobody
+    public string RpcProbeCountries { get; set; } = "";
     public FilePath PromptsDir { get; set; }
     public string OpenAIKey { get; set; } = "";
     public string OpenAIProxy { get; set; } = "";
