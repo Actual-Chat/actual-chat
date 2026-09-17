@@ -260,6 +260,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
             // DbSharedLocation
             db.AddEntityResolver<string, DbSharedLocation>();
+
+            // DbWebHook
+            db.AddEntityResolver<string, DbWebHook>();
         });
     }
 
