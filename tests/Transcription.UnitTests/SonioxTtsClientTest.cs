@@ -132,19 +132,49 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var text = Channel.CreateUnbounded<string>();
         var pcm = Channel.CreateUnbounded<byte[]>();
 
-        // act
+        // act - the pre-opened stream idles out empty before the first chunk arrives
         var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, null, CancellationToken.None);
+        await Task.Delay(Short * 2);
         text.Writer.TryWrite("First. ");
         await Task.Delay(Short * 4);
         text.Writer.TryWrite("Second. ");
         text.Writer.Complete();
         await runTask;
+        var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
-        client.StreamCount.Should().Be(2, "the idle flush ends the first stream before the second chunk");
-        soniox.ConnectionCount.Should().Be(1, "both streams share the connection");
+        client.StreamCount.Should().Be(3,
+            "the empty pre-opened stream idles out, then the idle flush ends the stream carrying the first chunk");
+        soniox.ConnectionCount.Should().Be(1, "all streams share the connection");
         soniox.Sent.Select(x => x.Summary).Should().Equal(
-            "config s-1", "text s-1 'First. '", "end s-1", "config s-2", "text s-2 'Second. '", "end s-2");
+            "config s-1", "end s-1",
+            "config s-2", "text s-2 'First. '", "end s-2",
+            "config s-3", "text s-3 'Second. '", "end s-3");
+        audio.Should().HaveCount(2, "both chunks are still spoken despite the empty first stream idling out");
+    }
+
+    [Fact(Timeout = 15_000)]
+    public async Task RunShouldOpenTheStreamBeforeAnyText()
+    {
+        // arrange
+        var soniox = new FakeSoniox();
+        var client = NewClient(soniox, idleFlush: Long, streamRollover: Long);
+        var text = Channel.CreateUnbounded<string>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
+        var listener = new RecordingListener();
+
+        // act
+        var runTask = client.Run("s1", "en", "Adrian", text.Reader, pcm.Writer, listener, CancellationToken.None);
+        await soniox.WhenStreamsOpened(1).WaitAsync(TimeSpan.FromSeconds(2));
+        var openedBeforeText = listener.StreamsOpened;
+        text.Writer.TryWrite("Hello world. ");
+        text.Writer.Complete();
+        await runTask;
+
+        // assert
+        soniox.OpenedStreamCount.Should().Be(1, "the stream was opened at start and reused for the first chunk");
+        openedBeforeText.Should().Be(0, "the listener still sees the stream as opened on its first text");
+        listener.StreamsOpened.Should().Be(1);
     }
 
     [Fact(Timeout = 15_000)]
@@ -348,12 +378,27 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
     // connection.
     private sealed class FakeSoniox
     {
+        private readonly List<(int Count, TaskCompletionSource Source)> _streamOpenedWaiters = new();
+
         public int KillAfterTextCount { get; init; }
         public int DropAfterTextCount { get; init; }
         public bool DropEveryConnection { get; init; }
         public int PcmBytesPerText { get; init; } = OpusFramePump.FrameByteLength;
         public int ConnectionCount { get; private set; }
+        public int OpenedStreamCount { get; private set; }
         public List<SentMessage> Sent { get; } = new();
+
+        public Task WhenStreamsOpened(int count)
+        {
+            lock (_streamOpenedWaiters) {
+                if (OpenedStreamCount >= count)
+                    return Task.CompletedTask;
+
+                var source = TaskCompletionSourceExt.New();
+                _streamOpenedWaiters.Add((count, source));
+                return source.Task;
+            }
+        }
 
         public Task<WebSocket> Connect(CancellationToken cancellationToken)
         {
@@ -375,6 +420,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
                     message.TryGetProperty("bitrate", out _).Should().BeFalse("PCM has no bitrate");
                     lock (Sent)
                         Sent.Add(new SentMessage($"config {streamId}"));
+                    OnStreamOpened();
                     continue;
                 }
 
@@ -397,6 +443,21 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
                 }
                 if (isEnd)
                     webSocket.Incoming.Writer.TryWrite($$"""{"stream_id":"{{streamId}}","terminated":true}""");
+            }
+        }
+
+        private void OnStreamOpened()
+        {
+            lock (_streamOpenedWaiters) {
+                OpenedStreamCount++;
+                for (var i = _streamOpenedWaiters.Count - 1; i >= 0; i--) {
+                    var (count, source) = _streamOpenedWaiters[i];
+                    if (OpenedStreamCount < count)
+                        continue;
+
+                    source.TrySetResult();
+                    _streamOpenedWaiters.RemoveAt(i);
+                }
             }
         }
     }

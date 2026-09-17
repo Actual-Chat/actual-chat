@@ -209,7 +209,9 @@ public sealed class SonioxTtsClient(IServiceProvider services)
 
     private async Task RunStreams(ChannelReader<string> text, CancellationToken cancellationToken)
     {
-        if (_chunksToResend.Count > 0)
+        // Opened before the first chunk: the connect + open (~0.4 s) overlaps the first clause's
+        // translation instead of following it. Idle streams re-open on their next chunk below.
+        if (_stream == null)
             await OpenStream(cancellationToken).ConfigureAwait(false);
         while (true) {
             _readTask ??= ReadChunk(text, cancellationToken);
