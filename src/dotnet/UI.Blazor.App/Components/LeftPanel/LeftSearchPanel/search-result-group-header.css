@@ -8,7 +8,7 @@
     @apply px-0 py-1;
     @apply border-0;
     @apply bg-transparent;
-    @apply text-left text-03 text-headline-1;
+    @apply text-left text-03 text-body-500;
     @apply cursor-pointer;
 }
 .search-result-group-header > .c-title > .c-title-text {
@@ -17,7 +17,7 @@
 }
 .search-result-group-header > .c-title > .c-collapse-arrow {
     @apply flex-none;
-    @apply text-03 text-text-1;
+    @apply text-03 text-body;
 }
 body.hoverable .search-result-group-header > .c-title:hover > .c-title-text,
 .touch-capable .search-result-group-header > .c-title:active > .c-title-text {
@@ -25,7 +25,7 @@ body.hoverable .search-result-group-header > .c-title:hover > .c-title-text,
 }
 .search-result-group-header .show-more-btn.btn {
     @apply px-0;
-    @apply text-caption-4;
+    @apply text-caption;
 }
 .search-result-group-header .show-more-btn.btn .btn-content {
     @apply gap-0;
@@ -42,5 +42,5 @@ body.hoverable .search-result-group-header > .c-title:hover > .c-title-text,
 }
 .search-result-group-header .show-btn.btn {
     @apply px-2;
-    @apply text-caption-4;
+    @apply text-caption;
 }

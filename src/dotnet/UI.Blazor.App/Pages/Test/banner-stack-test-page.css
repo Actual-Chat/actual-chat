@@ -3,7 +3,7 @@
     @apply p-4;
 }
 .banner-stack-test .c-title {
-    @apply text-headline-1;
+    @apply text-body-500;
 }
 .banner-stack-test .c-note {
     @apply text-02;

@@ -44,7 +44,7 @@ body.hoverable .pinned-bar:has(.c-cycle:hover) {
 .pinned-bar > .c-pin-icon {
     @apply self-center shrink-0;
     @apply pr-2 md:pr-3.5;
-    @apply text-03 text-text-1;
+    @apply text-03 text-body;
 }
 .pinned-bar > .c-pin-btn {
     @apply self-center shrink-0;

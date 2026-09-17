@@ -97,7 +97,7 @@ body.narrow .toast .btn-timer {
 }
 .error-toast > .c-content > .c-title {
     @apply flex;
-    @apply text-headline-1;
+    @apply text-body-500;
 }
 .error-toast > .c-content > .c-title > .c-count {
     @apply font-bold;

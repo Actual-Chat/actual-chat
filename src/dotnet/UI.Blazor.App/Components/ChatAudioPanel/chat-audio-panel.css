@@ -247,7 +247,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply bg-05;
 }
 .btn-round.mic-disabled i {
-    @apply text-headline-5 md:text-headline-7 text-06;
+    @apply text-heading-500 md:text-title-500 text-06;
 }
 
 /* Recorder, Mobile View */
@@ -658,7 +658,7 @@ body.hoverable .language-btn-group > .c-languages > button:not(.active):hover,
     @apply text-primary-title text-xxs;
 }
 body.narrow .selected-language {
-    @apply text-caption-6;
+    @apply text-micro-500;
 }
 
 /* Options item */
@@ -827,7 +827,7 @@ body.narrow .volume-settings-btn.text {
     @apply bg-post-panel;
 }
 body.narrow .volume-settings-btn.text > .c-text {
-    @apply text-caption-6 font-semibold;
+    @apply text-micro-500 font-semibold;
     @apply bg-mobile-landscape-audio-panel-button-text;
     -webkit-background-clip: text;
     background-clip: text;

@@ -21,7 +21,7 @@
 .discover-header {
     @apply ordinary-header;
     @apply px-4;
-    @apply text-01 text-headline-7;
+    @apply text-01 text-title-500;
     @apply border-b border-separator;
 }
 .discover-header .c-title {
@@ -54,7 +54,7 @@
     @apply px-0;
 }
 .discover-left .c-wide > .c-header > span {
-    @apply text-headline-7;
+    @apply text-title-500;
 }
 .discover-left .c-wide > .c-header .discover-search .search-icon {
     @apply hidden;
@@ -75,7 +75,7 @@
     @apply rounded-lg;
     @apply overflow-hidden;
     @apply bg-01;
-    @apply text-primary text-caption-3;
+    @apply text-primary text-caption-500;
     @apply cursor-pointer;
 }
 .creation-btn > .c-content {
@@ -93,7 +93,7 @@
     @apply items-center gap-x-4;
 }
 .discover-left .c-wide .navbar-item .c-title {
-    @apply text-headline-1;
+    @apply text-body-500;
 }
 .discover-left .c-wide .navbar-item i,
 .discover-left .c-wide .navbar-item .c-title i {
@@ -139,7 +139,7 @@
     @apply text-03;
 }
 .discover-center .reaction-text {
-    @apply text-caption-1 text-01;
+    @apply text-caption-500 text-01;
 }
 .discover-center .message-info > .c-views {
     @apply flex-none flex-x items-center gap-x-2;
@@ -162,10 +162,10 @@
     @apply rounded-lg;
     @apply overflow-hidden;
     @apply bg-01;
-    @apply text-text-1 text-01;
+    @apply text-body text-01;
 }
 .welcome-message > .c-title {
-    @apply text-headline-1;
+    @apply text-body-500;
 }
 .welcome-message .c-chat-link {
     @apply text-primary;
@@ -179,7 +179,7 @@
 }
 .top-container .c-header .c-title {
     @apply flex-1 flex items-center;
-    @apply text-01 text-headline-1;
+    @apply text-01 text-body-500;
 }
 .show-more-btn.btn {
     @apply px-0;
@@ -202,7 +202,7 @@
 }
 .top-chat-item > .c-info > .c-title,
 .top-place-item > .c-info > .c-title {
-    @apply text-headline-1 text-01;
+    @apply text-body-500 text-01;
 }
 .top-chat-item > .c-info > .c-description,
 .top-place-item > .c-info > .c-description {
@@ -210,7 +210,7 @@
 }
 .top-chat-item > .c-info > .c-description span {
     @apply line-clamp-1;
-    @apply text-01 text-caption-6;
+    @apply text-01 text-caption-500;
 }
 .top-chat-item > .c-info > .c-bottom,
 .top-place-item > .c-info > .c-bottom {
@@ -229,12 +229,12 @@
 }
 .top-chat-item > .c-info > .c-bottom > .online-counter > .c-text,
 .top-place-item > .c-info > .c-bottom > .online-counter > .c-text {
-    @apply text-caption-6 text-03;
+    @apply text-caption-500 text-03;
 }
 .top-chat-item > .c-info > .c-bottom > .members-counter,
 .top-place-item > .c-info > .c-bottom > .members-counter {
     @apply flex-none flex-x items-center gap-x-1;
-    @apply text-caption-6 text-03;
+    @apply text-caption-500 text-03;
 }
 
 .top-place-item {
@@ -256,5 +256,5 @@
 }
 .top-place-item > .c-info > .c-description span {
     @apply line-clamp-2;
-    @apply text-01 text-caption-6;
+    @apply text-01 text-caption-500;
 }

@@ -87,7 +87,7 @@ body.hoverable .audio-recording-message.message-wrapper:hover .avatar-badge {
        inherited 1rem it inks 12px against that font's 11px cap height, and 2.75px down seats it on
        the shared baseline. Relative, so this stays optical and never moves the row. */
     @apply relative top-[2.75px];
-    @apply text-04 text-text-1;
+    @apply text-04 text-body;
     /* The icon font's ascent exceeds the name font's, so a baseline-aligned line box built around it
        came out 2px taller - which moved the whole header down by 2px on rows that have an icon and
        not on rows that don't. Zero leading keeps the glyph off the line's own measurements. */
@@ -107,7 +107,7 @@ body.hoverable .audio-recording-message.message-wrapper:hover .avatar-badge {
 
 .chat-message-author-name {
     @apply truncate;
-    @apply text-headline-1 text-author-name;
+    @apply text-body-500 text-author-name;
     @apply cursor-pointer;
 }
 body.hoverable .chat-message-author-name:hover {
@@ -134,7 +134,7 @@ body.hoverable .chat-message-author-name:hover {
     @apply flex-x items-center gap-x-1;
     @apply min-w-0;
     @apply py-0.5;
-    @apply text-03 text-caption-8;
+    @apply text-03 text-caption;
 }
 .forwarded-message .forwarded-chat-header-title {
     @apply flex-none;
@@ -151,7 +151,7 @@ body.hoverable .chat-message-author-name:hover {
 .forwarded-message .forwarded-author-header-name {
     @apply max-h-6;
     @apply truncate;
-    @apply text-headline-1 text-author-name;
+    @apply text-body-500 text-author-name;
 }
 .message-link {
     @apply cursor-pointer;
@@ -212,7 +212,7 @@ body.hoverable .message-wrapper.mention.selected-message:hover {
 
 .chat-message-timestamp,
 .chat-message-timestamp-on-hover {
-    @apply text-04 text-xs;
+    @apply text-04 text-sm;
 }
 .chat-message-timestamp-on-hover {
     @apply hidden;
@@ -226,7 +226,7 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     @apply relative;
     @apply h-auto;
     @apply mb-0.5 pr-1.5;
-    @apply text-02 text-text-1;
+    @apply text-02 text-body;
 }
 .chat-message-markup.empty {
     @apply hidden;
@@ -234,7 +234,7 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 .chat-message-unsupported {
     @apply flex-x items-center gap-x-1.5;
     @apply mb-0.5 pr-1.5;
-    @apply text-02 text-text-1;
+    @apply text-02 text-body;
 }
 .playable-text-markup,
 .plain-text-markup {
@@ -360,10 +360,11 @@ body.hoverable .chat-header-title:hover {
 }
 .system-entry .chat-message-markup {
     @apply flex flex-wrap items-center justify-center gap-x-0.5;
+    @apply m-0;
 }
 .system-entry *,
 .system-entry .chat-message-markup * {
-    @apply text-caption-8;
+    @apply text-caption;
 }
 .system-entry .message-content {
     @apply flex-x flex-wrap justify-center items-center gap-x-2;
@@ -385,16 +386,8 @@ body.hoverable .system-entry .message-content .avatar-name:hover {
     @apply p-0;
     @apply bg-transparent;
 }
-.system-entry .mention-markup *,
-.system-entry .mention-markup.mention-markup-own * {
-    @apply m-0;
-    @apply text-xs font-medium;
-}
 .system-entry .icon-at {
     @apply hidden;
-}
-.system-entry:has(.mention-markup) .plain-text-markup {
-    @apply pt-0.5;
 }
 
 .chat-message-quote {
@@ -421,7 +414,7 @@ body.hoverable .chat-message-quote:hover,
 }
 .chat-message-quote > .c-content > .c-text {
     @apply max-h-6 overflow-hidden truncate;
-    @apply text-text-1 text-03;
+    @apply text-body text-03;
     @apply pointer-events-none;
 }
 
@@ -437,7 +430,7 @@ body.hoverable .chat-message-quote:hover,
     @apply px-4;
 }
 .message-attachments .extra-media-count {
-    @apply text-headline-1 text-cr-item-badge-selected-text;
+    @apply text-body-500 text-cr-item-badge-selected-text;
     @apply cursor-pointer;
 }
 .message-image-attachments {
@@ -472,15 +465,15 @@ body.narrow .message-file-attachments {
 }
 .chat-welcome-block .c-chat-title {
     @apply truncate;
-    @apply text-01 text-headline-6;
+    @apply text-01 text-heading-600;
 }
 .chat-welcome-block .c-content {
     @apply flex-x gap-x-1;
-    @apply text-02 text-text-1;
+    @apply text-02 text-body;
 }
 .chat-welcome-block.search-welcome .c-content {
     @apply flex-y gap-x-1;
-    @apply text-02 text-text-1;
+    @apply text-02 text-body;
 }
 .chat-welcome-block .c-content.c-contact-share {
     @apply block;
@@ -505,7 +498,7 @@ body.narrow .message-file-attachments {
     @apply w-full;
     @apply mt-2 p-2 md:p-2;
     @apply border border-separator rounded-full;
-    @apply text-primary text-headline-1;
+    @apply text-primary text-body-500;
     @apply bg-transparent;
     max-width: 35.5rem;
 }
@@ -519,7 +512,7 @@ body.narrow .message-file-attachments {
 .chat-link .c-link-url {
     @apply flex-1;
     @apply min-h-12;
-    @apply text-caption-1 md:text-headline-1;
+    @apply text-caption-500 md:text-body-500;
     @apply truncate;
 }
 .chat-link .c-link-url > .c-round {
@@ -545,7 +538,7 @@ body.narrow .chat-link .c-link-buttons {
     @apply truncate;
 }
 .chat-link .link-hint {
-    @apply text-xs font-normal text-03;
+    @apply text-sm font-normal text-03;
 }
 .chat-link .btn.btn-round i {
     @apply text-primary text-2xl;
@@ -585,7 +578,7 @@ body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
     @apply my-0.5;
     @apply rounded-full;
     @apply bg-01;
-    @apply text-02 text-headline-1;
+    @apply text-02 text-body-500;
 }
 .link-preview-attachment-list .image-attachment > .c-content {
     @apply flex-auto;
@@ -608,7 +601,7 @@ body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
     @apply rounded-full border border-modal;
     @apply select-none;
     @apply overflow-hidden;
-    @apply text-01 text-xs;
+    @apply text-01 text-sm;
     box-shadow: 0 2px 4px 0 var(--shadow-alert);
     background: linear-gradient(-45deg, var(--background-01) 40%, var(--hover) 50%, var(--background-01) 60%);
     background-size: 300%;
@@ -669,14 +662,14 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply w-4 h-4;
     @apply rounded-full;
     @apply bg-primary;
-    @apply text-caption-6;
+    @apply text-caption-500;
     @apply always-white;
 }
 .notify-mentioned-members .mentioned-members-count > span {
     @apply flex-none w-5 h-5;
     @apply rounded-full;
     @apply bg-primary;
-    @apply text-caption-6;
+    @apply text-caption-500;
     @apply always-white;
 }
 .notify-mentioned-members .default-text {
@@ -813,7 +806,7 @@ body.narrow .chat-view.virtual-list > .c-wrapper > ul.c-virtual-container > li {
     @apply opacity-80;
 }
 .upload-plug-icons .c-icon i {
-    @apply text-text-1 text-01;
+    @apply text-body text-01;
 }
 .upload-plug-icons .c-icon:nth-child(1) {
     animation-delay: 0s;
@@ -850,7 +843,7 @@ body.narrow .chat-view.virtual-list > .c-wrapper > ul.c-virtual-container > li {
 
 .upload-plug-text {
     @apply whitespace-nowrap;
-    @apply text-text-1;
+    @apply text-body;
 }
 
 /* Wraps where the markup under it wraps, or the two paint as a smear: `inset: 0` is the padding box,

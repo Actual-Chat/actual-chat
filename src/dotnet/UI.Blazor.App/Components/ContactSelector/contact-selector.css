@@ -59,7 +59,7 @@ body.hoverable .contact-selector-list-item:hover,
     @apply grow min-w-0;
     @apply px-0.5;
     @apply truncate;
-    @apply text-caption-6 text-01;
+    @apply text-caption-500 text-01;
 }
 .contact-selector-badges > .c-contact > .c-close {
     @apply flex-none flex items-center justify-center;

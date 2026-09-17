@@ -11,12 +11,12 @@
 
 <div>
     @if (Stepper.CurrentStepIndex == 0) {
-        <p class="text-title-1 text-center">@L.Onboarding_Welcome_Format(CoreConstants.AppName)</p>
+        <p class="text-title-500 text-center">@L.Onboarding_Welcome_Format(CoreConstants.AppName)</p>
     }
     <p class="step-subtitle">
         @L.TimeZone_Question
     </p>
-    <p class="text-headline-1 mt-2">
+    <p class="text-body-500 mt-2">
     </p>
     <Form
         @ref="_formRef"

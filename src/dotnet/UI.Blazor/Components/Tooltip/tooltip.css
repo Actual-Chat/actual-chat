@@ -5,7 +5,7 @@
     @apply px-[12px] py-[7px];
     @apply rounded-lg;
     @apply bg-01;
-    @apply text-text-1 text-02;
+    @apply text-body text-02;
     @apply pointer-events-none;
     filter: drop-shadow(0 0px 4px var(--tooltip-shadow));
     transform-origin: center center;

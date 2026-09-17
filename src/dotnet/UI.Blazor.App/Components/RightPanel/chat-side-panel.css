@@ -195,20 +195,26 @@ body.narrow .chat-side-panel::before {
 .chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-content > .c-title {
     @apply flex-auto;
     @apply min-w-24;
-    @apply text-headline-7 text-02;
+    @apply text-title-500 text-02;
     @apply truncate;
 }
 .chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-content > .c-info {
     @apply flex-x;
-    @apply text-caption-6 text-03;
+    @apply text-caption-500 text-03;
 }
 .chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-chat-description {
     @apply w-full;
     @apply overflow-auto;
-    @apply text-caption-6 text-03;
+    @apply text-caption text-03;
     line-height: 0.875rem;
-    max-height: calc(0.875rem * 3);
+    max-height: 3.5lh;
+    padding-bottom: 0.5lh;
     word-break: break-word;
+    /* Cap at 3.5 lines so a 4th line peeks half-shown to advertise the scroll, and fog that bottom
+       half-line. padding-bottom parks the last line clear of the fog once scrolled to the end; a
+       description of 3 lines or fewer shows in full. lh pins it to the line grid; mask needs no bg. */
+    -webkit-mask-image: linear-gradient(to bottom, var(--black) 3lh, transparent 3.5lh);
+    mask-image: linear-gradient(to bottom, var(--black) 3lh, transparent 3.5lh);
 }
 .chat-side-panel > .c-top-region > .c-header > .c-bottom > .c-info > .c-bullet {
     @apply px-1;
@@ -380,7 +386,7 @@ body.narrow .chat-side-panel::before {
 
 .chat-side-panel > .c-top-region > .c-header > .c-center > .c-title {
     @apply flex-1 flex-x md:flex-none self-center;
-    @apply text-02 text-title-1;
+    @apply text-02 text-title-500;
 }
 .chat-side-panel > .c-top-region > .c-header > .c-center i.icon-edit {
     @apply text-primary;
@@ -391,7 +397,7 @@ body.narrow .chat-side-panel::before {
    transform (it uses top/width), so both can coexist. */
 .chat-side-panel > .c-top-region > .c-header > .c-compact-title {
     @apply absolute z-20;
-    @apply text-02 text-headline-1;
+    @apply text-02 text-body-500;
     @apply truncate pointer-events-none;
     top: calc(0.5rem + var(--safe-area-top));
     left: calc(1rem + 2.5rem + 0.5rem);
@@ -480,7 +486,7 @@ body.hoverable .author-list-tab .avatar-badge:hover {
     @apply flex-auto flex-y gap-y-1;
 }
 .author-list-tab > .c-content > .c-group-title {
-    @apply text-caption-1 text-02;
+    @apply text-caption-500 text-02;
 }
 .author-list-tab .avatar-badge .avatar-name {
     @apply font-medium text-02;
@@ -520,7 +526,7 @@ body.hoverable .thread-list-item:hover {
 .thread-list-item .c-chat-title {
     @apply w-full;
     @apply truncate;
-    @apply text-text-1 text-01;
+    @apply text-body text-01;
 }
 .thread-list-item .last-entry-time {
     @apply leading-5;
@@ -533,13 +539,13 @@ body.hoverable .thread-list-item:hover {
     @apply flex-x items-end gap-x-1;
     @apply w-full h-4.5;
     @apply truncate;
-    @apply text-caption-4 text-03;
+    @apply text-caption text-03;
 }
 .thread-list-item .c-bottom .c-last-message .c-name {
     @apply flex;
     @apply truncate;
     @apply whitespace-pre;
-    @apply text-caption-1 text-pal-blue-30;
+    @apply text-caption-500 text-pal-blue-30;
 }
 .thread-list-item .c-bottom .c-last-message .c-name[data-has-non-shrinkable] {
     @apply flex-none;
@@ -549,7 +555,7 @@ body.hoverable .thread-list-item:hover {
 }
 .thread-list-item .c-bottom .c-last-message .c-colon {
     @apply -ml-1;
-    @apply text-caption-1 text-02;
+    @apply text-caption-500 text-02;
 }
 .thread-list-item .c-bottom .c-last-message .c-text {
     @apply min-w-8;
@@ -643,7 +649,7 @@ body.hoverable .content-list-rows .c-file-row:hover,
 }
 .content-list-rows .c-file-size,
 .content-list-rows .c-file-date {
-    @apply text-xs text-03 leading-tight;
+    @apply text-sm text-03 leading-tight;
 }
 .content-list-rows .c-file-row.is-current {
     background-color: color-mix(in srgb, var(--primary) 10%, transparent);
@@ -656,7 +662,7 @@ body.hoverable .content-list-rows .c-file-row:hover,
 }
 .content-list-rows .c-file-meta {
     @apply flex-x items-center justify-between gap-x-2;
-    @apply text-xs text-03 leading-tight;
+    @apply text-sm text-03 leading-tight;
     @apply whitespace-nowrap;
 }
 .content-list-rows .c-file-meta .c-meta-left {
@@ -723,7 +729,7 @@ body.narrow .content-list-links .link-preview:not(.local-link) {
     @apply mb-1;
 }
 .chat-notification-mode-menu .ac-menu-text {
-    @apply text-headline-1 text-02;
+    @apply text-body-500 text-02;
 }
 .chat-notification-mode-menu .ac-menu-item:hover .ac-menu-text,
 .chat-notification-mode-menu .ac-menu-item:hover .ac-menu-icon > i {
@@ -736,7 +742,7 @@ body.narrow .content-list-links .link-preview:not(.local-link) {
 /* Plain URL fallback: middle-truncate via start (ellipsis) + pinned end (keeps the .ext visible). */
 .content-list-links .c-link-plain .c-normal-title {
     @apply flex-x min-w-0;
-    @apply text-caption-1 md:text-headline-1 leading-tight text-primary;
+    @apply text-caption-500 md:text-body-500 leading-tight text-primary;
 }
 .content-list-links .c-link-plain .c-normal-title .c-start {
     @apply truncate;

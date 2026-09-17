@@ -12,7 +12,7 @@
 }
 .search-filter-menu .c-section-title {
     @apply px-2 py-1;
-    @apply text-caption-6 text-03;
+    @apply text-caption-500 text-03;
     @apply uppercase tracking-wider;
 }
 .search-filter-menu .c-option {
@@ -20,7 +20,7 @@
     @apply px-2 py-2;
     @apply rounded-md border-0;
     @apply bg-transparent;
-    @apply text-left text-headline-1 text-01;
+    @apply text-left text-body-500 text-01;
     @apply cursor-pointer;
 }
 body.hoverable .search-filter-menu .c-option:hover {

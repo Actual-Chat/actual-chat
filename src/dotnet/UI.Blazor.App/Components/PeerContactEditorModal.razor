@@ -36,22 +36,33 @@
         </FormBlock>
         @if (_contact is not null) {
             <FormBlock Class="block-user-form-block">
-                <Card>
-                    <CardItem>
-                        <Title>@(_contact.IsBlocked ? L.PeerContact_UnblockUser : L.PeerContact_BlockUser)</Title>
-                        <Caption>
-                            @(_contact.IsBlocked ? L.PeerContact_BlockedCaption : L.PeerContact_BlockCaption)
-                        </Caption>
-                        <Right>
-                            <Button
-                                Type="@ButtonType.Button"
-                                Class="@(_contact.IsBlocked ? "btn-transparent btn-sm" : "btn-transparent btn-danger btn-sm")"
-                                Click="@OnToggleBlock">
-                                @(_contact.IsBlocked ? L.PeerContact_Unblock : L.Common_Block)
-                            </Button>
-                        </Right>
-                    </CardItem>
-                </Card>
+                <Tile>
+                    @if (_contact.IsBlocked) {
+                        <TileItem Click="@OnToggleBlock">
+                            <Icon>
+                                <i class="icon-slash-circle text-2xl text-03"></i>
+                            </Icon>
+                            <Content>
+                                @L.PeerContact_UnblockUser
+                            </Content>
+                            <Caption>
+                                @L.PeerContact_BlockedCaption
+                            </Caption>
+                        </TileItem>
+                    } else {
+                        <TileItem Class="item-danger" Click="@OnToggleBlock">
+                            <Icon>
+                                <i class="icon-slash-circle text-xl"></i>
+                            </Icon>
+                            <Content>
+                                @L.PeerContact_BlockUser
+                            </Content>
+                            <Caption>
+                                @L.PeerContact_BlockCaption
+                            </Caption>
+                        </TileItem>
+                    }
+                </Tile>
             </FormBlock>
         }
         </Body>

@@ -33,10 +33,10 @@ body.hoverable .card-item.hovered:hover {
 }
 .card-item > .c-center > .c-title {
     @apply truncate;
-    @apply text-headline-1;
+    @apply text-body-500;
 }
 .card-item > .c-center > .c-caption {
-    @apply text-03 text-caption-6;
+    @apply text-03 text-caption;
 }
 .card-item > .c-right {
     @apply flex-x self-center;

@@ -288,6 +288,51 @@ exception.** The full rule set — the six spacing primitives, the 4px scale, an
 worked examples — is [Spacing: inset, gap, margins](./spacing.md). Read it
 before adding `padding` / `margin` / `gap` to a shared class.
 
+## Typography
+
+The semantic type scale lives in `tailwind.config.js` under `fontSize`. Each token is
+`size × weight`: the bare name is weight 400 (with a `-400` alias), `-500` / `-600` add
+weight. **Sizes are in `rem`; line-heights are unitless**, so the ratio holds when the root
+size changes or an element's size is overridden (e.g. `md:text-body`).
+
+| role | classes (400 / 500 / 600) | size | line-height |
+|---|---|---|---|
+| micro | `text-micro` · `text-micro-500` | 12px | 1.25 |
+| caption | `text-caption` · `text-caption-500` | 14px | 1.25 |
+| body | `text-body` · `text-body-500` | 16px | 1.25 |
+| subhead | `text-subhead` · `text-subhead-500` · `text-subhead-600` | 18px | 1.22 |
+| title | `text-title` · `text-title-500` | 20px | 1.20 |
+| heading | `text-heading` · `text-heading-500` · `text-heading-600` | 24px | 1.17 |
+
+Outside this scale: the raw Tailwind sizes (`text-sm/base/lg/xl/2xl/…`) are for **icon
+glyphs** and rare display text (30–48px), not body copy — reach for a role token instead.
+`text-xxs` (9.6px) is the sub-micro escape hatch for fixed numeric micro-badges only.
+
+### Minimum font size
+
+**The readable floor is 14px** (`text-caption`) — the size of the chat-list last-message
+preview (`.c-last-message`). **Nothing a user reads may be smaller than this — on mobile or
+desktop.** "Reads" means labels, sentences, and any meta a person actually parses
+(timestamps, "12 min · 29 messages", presence status, member counts). The chat message body
+is 16px (`text-body`); summaries sit just under it, not below the floor.
+
+Size is one lever; **contrast is the other**:
+
+- To make something **less prominent**, drop its contrast (`text-03` / `text-04`, or
+  lower opacity) — do **not** shrink it below the floor.
+- To make small, dense, or unavoidable text **readable**, raise its contrast.
+- For a **lighter** look, prefer a lower `font-weight` (the bare `text-…` = 400) over a
+  smaller size.
+
+When raising a sub-floor size, swap for its 14px `text-caption` sibling (or `text-micro`'s
+14px counterpart) and drop any tight line-height override (`leading-3` / `leading-none`).
+
+**The one carve-out** — a *fixed numeric micro-badge physically bounded by a control*
+(the mic-ring auto-stop countdown, the recording dot, a duration badge overlaid on a
+media thumbnail) may stay below the floor via `text-xxs`, because a control's geometry caps
+it and it is glanced at, not read. Such a badge must be **high-contrast**. This is not a
+license for running text; it is the exception the floor is defined against.
+
 ## Colors
 
 Every color must have a name in `colors.css` and a class in `tailwind.config.js`.

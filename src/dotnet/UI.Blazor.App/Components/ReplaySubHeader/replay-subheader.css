@@ -68,14 +68,14 @@
 }
 .replay-subheader .c-info .c-title {
     @apply truncate;
-    @apply text-caption-4 text-01;
+    @apply text-caption text-01;
 }
 a.c-title {
     @apply cursor-pointer hover:underline;
 }
 .replay-subheader .c-info .c-date {
     @apply truncate;
-    @apply text-caption-8 text-03;
+    @apply text-caption text-03;
 }
 .replay-subheader .c-playback {
     @apply flex-none flex-x items-center gap-x-0.5 md:gap-x-1;
@@ -95,7 +95,7 @@ a.c-title {
     @apply flex-none;
 }
 .replay-subheader .c-speed-btn .c-speed-label {
-    @apply text-caption-2 whitespace-nowrap;
+    @apply text-caption whitespace-nowrap;
 }
 
 /* Speed menu */

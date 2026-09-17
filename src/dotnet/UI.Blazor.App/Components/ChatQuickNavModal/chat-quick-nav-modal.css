@@ -59,7 +59,7 @@ body.wide .chat-quick-nav-modal .modal-content {
 .chat-quick-nav > .c-search > .c-input {
     @apply flex-auto min-w-0;
     @apply bg-transparent border-0 outline-none;
-    @apply text-title-1 text-01;
+    @apply text-title-500 text-01;
 }
 .chat-quick-nav > .c-search > .c-input::placeholder {
     @apply text-03;
@@ -87,7 +87,7 @@ body.hoverable .chat-quick-nav .c-item.selected,
 .chat-quick-nav .c-item.c-no-match {
     @apply cursor-default;
     @apply flex-x items-center h-12 px-3;
-    @apply text-headline-1 text-03 opacity-60;
+    @apply text-body-500 text-03 opacity-60;
 }
 .chat-quick-nav .c-item > .c-content {
     @apply flex-x items-center gap-x-3;
@@ -95,7 +95,7 @@ body.hoverable .chat-quick-nav .c-item.selected,
 }
 .chat-quick-nav .c-item > .c-content > .c-center {
     @apply flex-auto truncate;
-    @apply text-headline-1 text-01;
+    @apply text-body-500 text-01;
 }
 .chat-quick-nav .c-item .c-description {
     @apply text-03 opacity-60 font-light;

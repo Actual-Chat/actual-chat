@@ -17,18 +17,18 @@
 }
 
 .guide-modal .c-title {
-    @apply text-text-1 text-02;
+    @apply text-body text-02;
     @apply font-bold;
 }
 
 .guide-modal .c-intro {
-    @apply text-text-1 text-02;
+    @apply text-body text-02;
 }
 
 .guide-modal ol.c-steps {
     @apply flex-y gap-y-4;
     @apply list-decimal;
-    @apply text-text-1 text-02;
+    @apply text-body text-02;
 }
 
 .guide-modal ol.c-steps > li {

@@ -57,7 +57,7 @@ body.device-android .share-location-modal.picking .c-map-area {
     @apply text-3xl text-03;
 }
 .share-location-modal .c-permission-prompt span {
-    @apply text-headline-1 text-02;
+    @apply text-body-500 text-02;
 }
 .share-location-modal .c-map-area .btn-video-panel i {
     @apply text-2xl;
@@ -118,7 +118,7 @@ body.hoverable .share-location-modal .c-menu .c-menu-item:hover:not(:disabled),
 }
 .share-location-modal .c-menu .c-menu-item span {
     @apply grow text-left;
-    @apply text-headline-1 text-01;
+    @apply text-body-500 text-01;
 }
 .share-location-modal .c-menu .c-menu-item .c-check {
     @apply text-xl text-primary;

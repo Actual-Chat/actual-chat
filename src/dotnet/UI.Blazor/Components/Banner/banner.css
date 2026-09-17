@@ -20,7 +20,7 @@
 .banner-body {
     @apply flex-1;
     @apply ml-1;
-    @apply text-text-1;
+    @apply text-body;
 }
 .banner-buttons {
     @apply flex-x items-center justify-end gap-x-2;
@@ -88,7 +88,7 @@ body.narrow .banner.banner-wrap.banner-dismissible .banner-body {
 }
 body.narrow .banner.banner-wrap .banner-body {
     @apply min-w-0 min-h-6;
-    @apply text-caption-4;
+    @apply text-caption;
 }
 body.narrow .banner.banner-wrap .banner-buttons {
     @apply justify-end basis-auto;

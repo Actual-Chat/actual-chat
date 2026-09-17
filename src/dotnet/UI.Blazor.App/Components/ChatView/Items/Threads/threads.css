@@ -9,7 +9,7 @@
 }
 .thread-message .c-title .c-left {
     @apply flex-1;
-    @apply text-headline-1 text-01;
+    @apply text-body-500 text-01;
 }
 .thread-message .c-title .c-left .c-hash {
     @apply relative;
@@ -18,10 +18,10 @@
 }
 .thread-message .c-title .c-left .c-hash i {
     @apply absolute -top-0.5;
-    @apply text-title-1;
+    @apply text-title-500;
 }
 .thread-message .c-short {
-    @apply text-caption-4;
+    @apply text-caption;
 }
 .thread-message .divider {
     @apply h-px w-full;
@@ -37,7 +37,7 @@
 .thread-message .c-footer .c-info {
     @apply flex-1 flex-y;
     @apply truncate;
-    @apply text-xxs leading-3;
+    @apply text-sm;
 }
 .thread-message .c-footer .c-info .c-created {
     @apply flex-1 flex-x gap-x-0.5;

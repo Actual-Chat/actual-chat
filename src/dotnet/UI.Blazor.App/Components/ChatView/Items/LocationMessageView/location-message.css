@@ -43,7 +43,7 @@
     @apply flex-x items-center gap-1.5;
     @apply px-3 pt-8 pb-2;
     background: linear-gradient(to top, var(--black-70), transparent);
-    @apply text-white text-caption-1 font-medium;
+    @apply text-white text-caption-500 font-medium;
     @apply pointer-events-none;
 }
 .location-message .c-tracking-error i {
@@ -64,14 +64,14 @@
 }
 .location-message .c-footer .c-title {
     @apply truncate;
-    @apply text-headline-1 text-01;
+    @apply text-body-500 text-01;
 }
 .location-message.live .c-footer .c-title {
     color: var(--location-accent);
 }
 .location-message .c-footer .c-caption {
     @apply truncate;
-    @apply text-xs text-03;
+    @apply text-sm text-03;
 }
 .location-message .c-footer .c-copy {
     @apply flex shrink-0;
@@ -83,5 +83,5 @@
     @apply h-8 min-h-8 max-h-8 w-auto;
     @apply rounded-md;
     @apply bg-cancel;
-    @apply text-primary text-caption-1;
+    @apply text-primary text-caption-500;
 }

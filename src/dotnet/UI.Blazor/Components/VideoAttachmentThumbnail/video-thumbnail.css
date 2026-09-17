@@ -14,7 +14,7 @@ body.narrow .video-thumbnail .c-overlay {
     @apply -mt-4 -ml-4;
 }
 .video-thumbnail .c-play {
-    @apply text-white text-text-1 md:text-xl;
+    @apply text-white text-body md:text-xl;
 }
 .video-thumbnail .c-duration {
     @apply absolute bottom-1 left-1;

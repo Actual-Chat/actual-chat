@@ -7,5 +7,5 @@
 }
 .no-results-container > .c-wrapper > .text-wrapper {
     @apply flex-y items-center;
-    @apply text-headline-6 text-03;
+    @apply text-heading-600 text-03;
 }

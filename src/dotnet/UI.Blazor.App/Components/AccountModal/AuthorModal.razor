@@ -31,6 +31,21 @@
         tileCls += " unhovered tile-selected";
     var toggleValue = m.OnlyAnonymousChatAllowed || _anonymousChat;
     var peerContact = m.IsOwnAuthor || author.IsAnonymous ? null : m.PeerChatContact;
+    // Mirrors AuthorModalContent's own guard: with none of these the content renders nothing,
+    // so we skip the whole body and let DialogFrame drop the empty padded strip.
+    var hasMembership = m.UsePlaceSettingsToEditMember
+        || m.EditMemberModel is { CanPromoteToOwner: true } or { CanSetModerator: true } or { CanRemoveFromGroup: true };
+    var hasBody = author.IsAnonymous || peerContact is not null || hasMembership;
+    RenderFragment? body = null;
+    if (hasBody)
+        body = @<FormBlock>
+            <AuthorModalContent
+                Author="@author"
+                IsOwn="@m.IsOwnAuthor"
+                UsePlaceSettingsToEditMember="@m.UsePlaceSettingsToEditMember"
+                EditMemberModel="@m.EditMemberModel"
+                PeerContact="@peerContact"/>
+        </FormBlock>;
     EventCallback onEditClick = default;
     if (m.IsOwnAuthor) {
         if (!author.IsAnonymous)
@@ -40,23 +55,13 @@
     }
 }
 
-<DialogFrame Title="@title" Class="@cls" HasCloseButton="true" HeaderMode="HeaderMode.Custom">
+<DialogFrame Title="@title" Class="@cls" HasCloseButton="true" HeaderMode="HeaderMode.Custom" Body="body">
     <Header>
         <AuthorModalHeader
             Author="author"
             IsOwn="m.IsOwnAuthor"
             OnEditClick="@onEditClick"/>
     </Header>
-    <Body>
-    <FormBlock>
-        <AuthorModalContent
-            Author="@author"
-            IsOwn="@m.IsOwnAuthor"
-            UsePlaceSettingsToEditMember="@m.UsePlaceSettingsToEditMember"
-            EditMemberModel="@m.EditMemberModel"
-            PeerContact="@peerContact"/>
-    </FormBlock>
-    </Body>
     <Buttons>
         @if (m.IsOwnAuthor) {
             if (!author.IsAnonymous) {

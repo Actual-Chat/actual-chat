@@ -127,11 +127,11 @@ body.hoverable .file-attachment:not(.upload-file):hover,
 .file-attachment .c-title {
     @apply w-64;
     @apply line-clamp-1;
-    @apply text-headline-1 text-02;
+    @apply text-body-500 text-02;
 }
 .file-attachment .c-normal-title {
     @apply flex-x;
-    @apply text-caption-4 text-02;
+    @apply text-caption text-02;
 }
 .file-attachment .c-normal-title .c-start {
     @apply truncate;
@@ -151,10 +151,10 @@ body.hoverable .file-attachment:not(.upload-file):hover,
 }
 .file-attachment .c-size {
     @apply flex-x gap-x-2;
-    @apply text-caption-8 text-03;
+    @apply text-caption text-03;
 }
 .file-attachment .c-open {
-    @apply text-caption-4 text-primary;
+    @apply text-caption text-primary;
 }
 
 .file-text {
@@ -233,7 +233,7 @@ body.hoverable .message-image-attachments.media-attachment-uploads .image-item:h
 }
 .attachment-upload-ring .c-percent {
     @apply relative z-10;
-    @apply text-caption-9;
+    @apply text-caption-500;
 }
 .narrow-panel .attachment-upload-ring {
     @apply w-8 h-8;

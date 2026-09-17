@@ -252,7 +252,7 @@ body.narrow .video-panel .btn-video-hide {
     @apply min-h-12 max-w-48;
     @apply px-8 py-1;
     @apply rounded-none;
-    @apply text-caption-1 text-white;
+    @apply text-caption-500 text-white;
     @apply overflow-hidden;
     @apply pointer-events-none;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.60);
@@ -265,7 +265,7 @@ body.narrow .video-panel .btn-video-hide {
     );
 }
 .video-panel .video-panel-header .c-center .c-member-name {
-    @apply text-text-1 font-semibold leading-tight;
+    @apply text-body font-semibold leading-tight;
     @apply max-w-full;
     @apply truncate;
 }
@@ -758,7 +758,7 @@ body.show-fps-overlay .video-fps:empty {
     @apply absolute bottom-1 left-1 z-10;
     @apply flex items-center gap-1;
     @apply px-1.5 py-0.5 rounded;
-    @apply text-xs text-white;
+    @apply text-sm text-white;
     background: rgba(0, 0, 0, 0.5);
 }
 .video-panel .video-track-player .video-participant-label > span {

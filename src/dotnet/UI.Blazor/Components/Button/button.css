@@ -30,7 +30,7 @@ body.device-ios * {
     @apply flex-initial inline-flex-x items-center justify-center;
     @apply px-4;
     @apply rounded-lg border-0 border-transparent;
-    @apply text-headline-1;
+    @apply text-body-500;
     @apply fill-current;
     @apply truncate;
     @apply select-none;
@@ -95,11 +95,11 @@ body.device-ios * {
 }
 .btn.btn-xs {
     @apply min-h-8 max-h-8 md:min-h-6 md:max-h-6;
-    @apply text-caption-4;
+    @apply text-caption;
 }
 .btn.btn-sm {
     @apply min-h-10 max-h-10 md:min-h-8 md:max-h-8;
-    @apply text-caption-1;
+    @apply text-caption-500;
 }
 .btn.btn-lg {
     @apply min-h-16 md:min-h-12;
@@ -324,11 +324,11 @@ body.hoverable .btn.btn-outline.btn-cancel:hover:not(:active)::after {
 }
 .btn.btn-tile > .btn-content > .c-content > .c-text {
     @apply flex justify-start;
-    @apply text-headline-1 leading-4;
+    @apply text-body-500 leading-4;
 }
 .btn.btn-tile > .btn-content > .c-content > .c-caption {
     @apply text-start;
-    @apply text-03 text-xs font-normal leading-3;
+    @apply text-03 text-sm font-normal;
     @apply whitespace-normal;
 }
 /* A caption that wraps to more than one line outgrows h-12, and .btn-content clips the overflow -
@@ -541,7 +541,7 @@ body.hoverable .btn-h.unhovered:hover {
 }
 
 .btn-submit {
-    @apply text-headline-1;
+    @apply text-body-500;
     @apply text-primary;
 }
 .btn-submit.pseudo-disabled,
@@ -577,19 +577,19 @@ body.hoverable .btn-h.unhovered:hover {
 }
 .btn.btn-text,
 .btn.btn-text.btn-md {
-    @apply text-headline-1;
+    @apply text-body-500;
 }
 .btn.btn-text.btn-xxs {
-    @apply text-caption-6;
+    @apply text-caption-500;
 }
 .btn.btn-text.btn-xs {
-    @apply text-caption-3;
+    @apply text-caption-500;
 }
 .btn.btn-text.btn-sm {
-    @apply text-caption-1;
+    @apply text-caption-500;
 }
 .btn.btn-text.btn-lg {
-    @apply text-title-1;
+    @apply text-title-500;
 }
 .btn.btn-text,
 .btn.btn-text.btn-primary {

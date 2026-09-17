@@ -4,15 +4,20 @@
 }
 
 .peer-contact-editor-modal .c-name .c-title {
-    @apply text-02 text-headline-7 truncate;
+    @apply text-02 text-title-500 truncate;
 }
 .peer-contact-editor-modal .c-name .c-peer-own-name {
-    @apply text-03 text-caption-6 truncate;
+    @apply text-03 text-caption-500 truncate;
 }
 
 .block-user-form-block {
     @apply pt-0 pb-0;
 }
-.block-user-form-block .card {
+.block-user-form-block .tile {
     @apply mt-4;
+}
+/* Re-center the icon: the form resets .tile-item-icon to justify-start, but this action
+   tile should match the author modal (icon centered in its box). */
+.form .block-user-form-block .tile-item-icon {
+    @apply justify-center;
 }

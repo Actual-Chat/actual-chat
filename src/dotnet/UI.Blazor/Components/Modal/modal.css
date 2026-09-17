@@ -199,7 +199,7 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 .modal-header .modal-title {
     @apply min-w-0;
     @apply line-clamp-2;
-    @apply text-title-1 text-02;
+    @apply text-title-500 text-02;
 }
 
 /* The body owns its own inset via --modal-pad. See docs/ui/spacing.md.
@@ -363,7 +363,7 @@ body.wide .modal-overlay-fullscreen .modal-frame.modal-chrome {
 }
 .dialog-body .c-chat-list .c-chat .c-chat-title {
     @apply line-clamp-1;
-    @apply text-headline-1 text-01;
+    @apply text-body-500 text-01;
 }
 body.hoverable .dialog-body .c-chat-list .c-chat:hover {
     @apply bg-hover;

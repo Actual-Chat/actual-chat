@@ -16,7 +16,7 @@
 }
 .call-message .c-cm-name {
     @apply flex-1 truncate;
-    @apply text-title-1 text-02;
+    @apply text-title-500 text-02;
 }
 .call-message .c-cm-hint {
     @apply text-sm text-03;

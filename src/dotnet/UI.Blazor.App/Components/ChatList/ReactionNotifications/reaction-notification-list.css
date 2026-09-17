@@ -24,7 +24,7 @@
 }
 .reaction-notification-item .c-meta {
     @apply flex-x items-center gap-x-2;
-    @apply text-xs text-03;
+    @apply text-sm text-03;
 }
 .reaction-notification-item .c-chat {
     @apply truncate;

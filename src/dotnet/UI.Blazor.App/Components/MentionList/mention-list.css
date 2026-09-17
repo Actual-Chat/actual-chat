@@ -89,7 +89,7 @@ body.hoverable .mention-list .mention-list-item.selected,
     @apply h-9;
     @apply px-2 md:px-4;
     @apply opacity-60;
-    @apply text-headline-1 text-03;
+    @apply text-body-500 text-03;
     @apply cursor-default;
 }
 .mention-list .mention-list-item > .c-content {
@@ -115,7 +115,7 @@ body.hoverable .mention-list .mention-list-item.selected,
 .mention-list .mention-list-item > .c-content > .c-center {
     @apply flex-auto;
     @apply truncate;
-    @apply text-headline-1;
+    @apply text-body-500;
 }
 .mention-list-wrapper .mention-list-chips {
     @apply absolute -top-7 right-3 z-10;

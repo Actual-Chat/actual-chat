@@ -2,7 +2,7 @@
 @inherits FusionComponentBase<AppUIHub>
 @{
     var authorNameCls = IsOwn ? "text-author-name " : "text-02 ";
-    authorNameCls += "font-medium text-text-1";
+    authorNameCls += "font-medium text-body";
     var authorId = (AuthorId?)Entry.AuthorId; // NOTE(DF): AuthorId can be null for Loading and Removed entries
 }
 

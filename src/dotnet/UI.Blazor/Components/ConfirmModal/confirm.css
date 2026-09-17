@@ -4,14 +4,14 @@
 }
 .modal-frame.confirm-modal .c-text {
     @apply flex-y gap-y-2;
-    @apply text-text-1;
+    @apply text-body;
 }
 .narrow .modal-frame.confirm-modal .dialog-body {
     @apply gap-y-4;
 }
 .confirm-modal .alert-text {
     @apply text-justify;
-    @apply text-caption-6 font-normal text-03;
+    @apply text-caption-500 font-normal text-03;
 }
 .confirm-modal.alert-confirm-modal .form-block.confirm-text {
     @apply pt-0;
