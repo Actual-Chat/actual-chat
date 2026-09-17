@@ -1,3 +1,4 @@
+using ActualChat.Transcription.Module;
 using ActualChat.Module;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
@@ -101,6 +102,7 @@ public class SonioxTranscriberTest(ITestOutputHelper @out, ILogger<SonioxTranscr
             .AddSingleton<IConfiguration>(_ => configuration)
             .AddSingleton(MomentClockSet.Default)
             .AddSingleton(_ => configuration.Settings<CoreServerSettings>(nameof(CoreSettings)))
+            .AddSingleton(new TranscriptionSettings())
             .AddSoniox()
             .AddTestLogging(Out)
             .BuildServiceProvider();
