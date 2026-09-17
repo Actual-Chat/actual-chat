@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Numerics;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
@@ -6,6 +7,7 @@ using ActualChat.Transcription;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
+using ActualLab.Rpc;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
@@ -197,6 +199,73 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
         // assert - own messages are still translated once they stop streaming
         await AssertMustTranslate(ownEntry.ChatEntrySlim, true);
+    }
+
+    [Fact]
+    public async Task ShouldStopTranslatingStreamWhenTranslationIsTurnedOff()
+    {
+        // arrange
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15).Debuggable());
+        var cancellationToken = cts.Token;
+        var chatId = await CreateChat(cancellationToken);
+        await TranslationUI.SetTargetLanguage(chatId, Languages.English, cancellationToken);
+        await TranslationUI.SetIsOn(chatId, true, cancellationToken);
+        var streamId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref);
+        var entry = await AliceTester.CreateStreamingEntry(
+            chatId, Languages.French, streamId: streamId, cancellationToken: cancellationToken);
+        await AssertIsStreaming(entry.ChatEntrySlim, true);
+
+        // act
+        await TranslationUI.SetIsOn(chatId, false, cancellationToken);
+
+        // assert
+        await AssertIsStreaming(entry.ChatEntrySlim, false);
+    }
+
+    [Fact]
+    public async Task ShouldSwitchReaderToSourceStreamWhenTranslationIsTurnedOff()
+    {
+        // arrange
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60).Debuggable());
+        var cancellationToken = cts.Token;
+        var chatId = await CreateChat(cancellationToken);
+        await TranslationUI.SetTargetLanguage(chatId, Languages.English, cancellationToken);
+        await TranslationUI.SetIsOn(chatId, true, cancellationToken);
+        var services = AppHost.Services;
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var streamId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
+        var diffs = Channel.CreateUnbounded<TranscriptDiff>();
+        var pushTask = BackgroundTask.Run(
+            () => backend.PushTranscript(
+                streamId,
+                new RpcStream<TranscriptDiff>(diffs.Reader.ReadAllAsync(cancellationToken)),
+                cancellationToken),
+            cancellationToken);
+        var entry = await AliceTester.CreateStreamingEntry(
+            chatId, Languages.French, streamId: streamId, cancellationToken: cancellationToken);
+        var source = Text("Bonjour, comment allez-vous ?");
+        diffs.Writer.TryWrite(source - Transcript.Empty);
+        await AssertTranscriptState(entry.ChatEntrySlim, true, x => !x.IsTextEmpty);
+
+        // act
+        await TranslationUI.SetIsOn(chatId, false, cancellationToken);
+
+        // assert - the reader follows the source, and the server stops the translation nobody reads
+        await AssertTranscriptState(entry.ChatEntrySlim, false, x => x.Text == source.Text);
+        var translatedStreamId = StreamId.New(streamId, Languages.English);
+        await ComputedTest.When(async ct => {
+            var snapshot = await backend.GetTranscriptSnapshot(translatedStreamId, ct);
+            snapshot.Should().BeNull();
+        }, TimeSpan.FromSeconds(10).Debuggable());
+
+        // act
+        await TranslationUI.SetIsOn(chatId, true, cancellationToken);
+
+        // assert - a returning reader gets the translation started over
+        await AssertTranscriptState(entry.ChatEntrySlim, true, x => !x.IsTextEmpty);
+
+        diffs.Writer.Complete();
+        await pushTask.SilentAwait(false);
     }
 
     [Fact]
@@ -541,6 +610,18 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
             isStreaming.Should().Be(expected);
             return streamingState;
         }, TimeSpan.FromSeconds(10).Debuggable());
+
+    private Task<TranscriptStreamReaderState> AssertTranscriptState(
+        ChatEntry entry, bool isTranslating, Func<TranscriptStreamReaderState, bool> predicate)
+        => ComputedTest.When(async ct => {
+            var state = await TranscriptUI.GetTranscriptState(entry.Id, ct);
+            state.IsTranslating.Should().Be(isTranslating);
+            predicate(state).Should().BeTrue("state = {0}", state);
+            return state;
+        }, TimeSpan.FromSeconds(30).Debuggable());
+
+    private static Transcript Text(string text)
+        => new(text, LinearMap.Zero.Append(new Vector2(text.Length, text.Length)), []) { IsStable = true };
 
     private Task<Translation> AssertTranslation(ChatEntry entry, string expected, double similarity = 0.7)
         => ComputedTest.When(async ct => {

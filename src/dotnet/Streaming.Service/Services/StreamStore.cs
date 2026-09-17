@@ -98,6 +98,18 @@ public class StreamStore<TItem> : ProcessorBase
         return true;
     }
 
+    public bool TryRemove(StreamId streamId)
+    {
+        // Drops the stream ahead of its expiration: its memoizer is disposed, which ends the push
+        // feeding it, and OnStreamExpire runs as it does for an expired stream.
+        StreamIdValidator.Invoke(streamId);
+        if (!_streams.TryGetValue(streamId.Value, out var entry))
+            return false;
+
+        entry.Dispose();
+        return true;
+    }
+
     // Protected methods
 
     protected ExpiringEntry<Symbol, AsyncTaskMethodBuilder<AsyncMemoizer<TItem>?>> GetOrAddStream(StreamId streamId)
