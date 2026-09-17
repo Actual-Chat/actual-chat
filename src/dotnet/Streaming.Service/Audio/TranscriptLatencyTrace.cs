@@ -14,6 +14,7 @@ public sealed class TranscriptLatencyTrace(string streamId, Moment recordedAt, M
     public LatencyStats Stable { get; } = new();
     public TimeSpan? FirstTextDelay { get; private set; }
     public float FirstTextSourceEnd { get; private set; }
+    public int SegmentEndCount { get; private set; }
 
     public void OnTranscript(Transcript transcript)
     {
@@ -31,6 +32,8 @@ public sealed class TranscriptLatencyTrace(string streamId, Moment recordedAt, M
             Stable.Add(lag);
         else
             Text.Add(lag);
+        if (transcript.IsSegmentEnd)
+            SegmentEndCount++;
     }
 
     public void Report(ILogger log)
@@ -47,5 +50,6 @@ public sealed class TranscriptLatencyTrace(string streamId, Moment recordedAt, M
 
     public override string ToString()
         => $"Transcript latency #{streamId}: first text +{FirstTextDelay?.TotalSeconds ?? 0:F1}s "
-            + $"at {FirstTextSourceEnd:F1}s of speech; text lag {Text}; stable lag {Stable}";
+            + $"at {FirstTextSourceEnd:F1}s of speech; text lag {Text}; stable lag {Stable}; "
+            + $"{SegmentEndCount} segment ends";
 }

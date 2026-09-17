@@ -221,6 +221,47 @@ public class ClauseTranslatorTest
     }
 
     [Fact]
+    public async Task AnEndpointMakesTheRemainderAClause()
+    {
+        var fake = new FakeTranslate();
+        var source = Channel.CreateUnbounded<Transcript>();
+        var translator = new ClauseTranslator(fake.Translate, NullLogger.Instance);
+        var outputs = new List<Transcript>();
+        var runTask = Collect(translator.Run(source.Reader.ReadAllAsync(), CancellationToken.None), outputs);
+
+        source.Writer.TryWrite(Unstable("Да", 1f));
+        await Task.Delay(100);
+        fake.Calls.Should().BeEmpty("no punctuation, no overflow: nothing to translate yet");
+
+        source.Writer.TryWrite(Stable("Да", 1f) with { IsSegmentEnd = true });
+        await fake.WhenCalled(1);
+        fake.Calls[0].Should().Be("Да", "the transcriber heard the utterance out, so its remainder is a clause");
+        fake.Respond("Да");
+        await WhenCount(outputs, 1);
+        outputs[0].IsStable.Should().BeTrue("the clause is stable, so it's promoted at once");
+        outputs[0].Text.Should().Be("EN[Да]");
+        outputs[0].TimeRange.End.Should().BeApproximately(1f, 0.01f);
+
+        // The stream goes on: the next segment is split as usual, from the promoted end
+        source.Writer.TryWrite(Unstable("Да Как дела? Я", 3f));
+        await fake.WhenCalled(2);
+        fake.Calls[1].Should().Be(" Как дела?", "a segment end doesn't end the stream");
+        fake.Respond(" Как дела?");
+        await WhenCount(outputs, 2);
+        outputs[1].IsStable.Should().BeFalse();
+        outputs[1].Text.Should().Be("EN[Да] EN[ Как дела?]");
+
+        source.Writer.Complete();
+        await fake.WhenCalled(3);
+        fake.Calls[2].Should().Be(" Я");
+        fake.Respond(" Я");
+        await runTask;
+        outputs[^1].IsStable.Should().BeTrue();
+        outputs[^1].Text.Should().Be("EN[Да] EN[ Как дела?] EN[ Я]");
+        translator.ClauseCount.Should().Be(3);
+    }
+
+    [Fact]
     public async Task AnUnstableTailAtTheEndIsTranslatedAsTheLastClause()
     {
         var fake = new FakeTranslate();

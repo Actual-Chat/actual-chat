@@ -85,6 +85,35 @@ public class TranscriptDiffTest(ITestOutputHelper @out) : TestBase(@out)
         promoted.Languages.Should().Equal([Languages.Russian]);
     }
 
+    [Fact]
+    public void DiffShouldCarryTheSegmentEnd()
+    {
+        // arrange
+        var unstable = new Transcript("Да", LinearMap.Zero.Append(new Vector2(2, 1f)), [Languages.Russian]);
+        var stable = unstable with { IsStable = true };
+        var segmentEnd = stable with { IsSegmentEnd = true };
+        var next = new Transcript("Да Как", stable.TimeMap.Append(new Vector2(6, 1.8f)), [Languages.Russian]);
+
+        // act
+        var grown = Transcript.Empty + (unstable - Transcript.Empty);
+        var promoted = grown + (stable - unstable);
+        var endedDiff = segmentEnd - stable;
+        var ended = promoted + endedDiff;
+        var repeated = ended + (segmentEnd - segmentEnd);
+        var continued = ended + (next - segmentEnd);
+        var collapsed = Transcript.Empty + (segmentEnd - Transcript.Empty);
+
+        // assert
+        grown.IsSegmentEnd.Should().BeFalse();
+        promoted.IsSegmentEnd.Should().BeFalse();
+        endedDiff.IsNone.Should().BeTrue("the text and the map didn't change");
+        ended.IsSegmentEnd.Should().BeTrue("a flags-only diff carries the segment end like it carries stability");
+        ended.IsStable.Should().BeTrue();
+        repeated.IsSegmentEnd.Should().BeTrue();
+        continued.IsSegmentEnd.Should().BeFalse("the flag is per transcript: new speech is a segment in progress");
+        collapsed.IsSegmentEnd.Should().BeTrue("a late reader's collapsed diff keeps the fold's flag");
+    }
+
     // Private methods
 
     private async Task CheckDiff(string title, IReadOnlyList<Transcript> transcripts)

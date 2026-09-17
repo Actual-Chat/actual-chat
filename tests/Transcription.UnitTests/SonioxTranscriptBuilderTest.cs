@@ -218,6 +218,85 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
+    public void AnEndpointWithFinalsShouldFlagTheStableTranscript()
+    {
+        // arrange
+        var builder = new SonioxTranscriptBuilder(StableTokenAge);
+        builder.Update([Token("Да", 500, 1000, false)], 1000);
+
+        // act
+        var transcripts = builder.Update([Token("Да", 500, 1080, true), Token("<end>", 1080, 1100, true)], 1100);
+
+        // assert
+        transcripts.Should().ContainSingle();
+        transcripts[0].IsStable.Should().BeTrue();
+        transcripts[0].IsSegmentEnd.Should().BeTrue("the endpoint is the transcriber's end-of-utterance call");
+    }
+
+    [Fact]
+    public void AnEndpointAloneShouldReEmitTheFlaggedStableTranscript()
+    {
+        // arrange - the finals came a message earlier, so the endpoint's message brings no new text
+        var builder = new SonioxTranscriptBuilder(StableTokenAge);
+        var finals = builder.Update([Token("Да", 500, 1080, true)], 1100)[^1];
+
+        // act
+        var transcripts = builder.Update([Token("<end>", 1080, 1100, true)], 1200);
+
+        // assert
+        finals.IsSegmentEnd.Should().BeFalse();
+        transcripts.Should().ContainSingle("the signal must not be lost with the message that carries no text");
+        transcripts[0].Text.Should().Be("Да");
+        transcripts[0].IsStable.Should().BeTrue();
+        transcripts[0].IsSegmentEnd.Should().BeTrue();
+        transcripts[0].TimeRange.End.Should().BeApproximately(1.08f, 0.001f);
+    }
+
+    [Fact]
+    public void AnEndpointWithNoFinalsYetShouldEmitNothing()
+    {
+        // act
+        var transcripts = new SonioxTranscriptBuilder(StableTokenAge).Update([Token("<end>", 0, 20, true)], 20);
+
+        // assert
+        transcripts.Should().BeEmpty("an empty stable transcript would rewind the readers to nothing");
+    }
+
+    [Fact]
+    public void TheTranscriptsAfterAnEndpointShouldNotBeFlagged()
+    {
+        // arrange
+        var builder = new SonioxTranscriptBuilder(StableTokenAge);
+        builder.Update([Token("Да", 500, 1080, true), Token("<end>", 1080, 1100, true)], 1100);
+
+        // act - new speech: a tail, then its finals, then the stream ends
+        var tail = builder.Update([Token(" Как", 1500, 1800, false)], 1800)[^1];
+        var finals = builder.Update([Token(" Как", 1500, 1800, true)], 1900)[^1];
+        var completed = builder.Complete();
+
+        // assert
+        tail.IsSegmentEnd.Should().BeFalse("the flag is per transcript, like IsStable");
+        finals.IsSegmentEnd.Should().BeFalse();
+        completed.IsSegmentEnd.Should().BeFalse("the stream end is its own signal");
+    }
+
+    [Fact]
+    public void ATailInTheEndpointsMessageShouldFollowTheFlaggedFinalsUnflagged()
+    {
+        // act - the next segment's first tail token rides the same message as the endpoint
+        var transcripts = new SonioxTranscriptBuilder(StableTokenAge).Update(
+            [Token("Да", 500, 1080, true), Token("<end>", 1080, 1100, true), Token(" Как", 1500, 1800, false)],
+            1800);
+
+        // assert
+        transcripts.Should().HaveCount(2);
+        transcripts[0].Text.Should().Be("Да");
+        transcripts[0].IsSegmentEnd.Should().BeTrue();
+        transcripts[1].Text.Should().Be("Да Как");
+        transcripts[1].IsSegmentEnd.Should().BeFalse();
+    }
+
+    [Fact]
     public void EmptyTokensShouldBeSkipped()
     {
         // act

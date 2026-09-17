@@ -455,7 +455,14 @@ utterance rather than a failed TTS stream each.
    for an early call, and nothing better is coming, so its languages
    decide on whatever there is; with no languages it stays `Undecided`
    for step 4. Measured before this: such utterances were never dubbed
-   (6 of 13 in one pass). If the translation then turns out to be missing after a
+   (6 of 13 in one pass). A source whose fold carries
+   `Transcript.IsSegmentEnd` — Soniox's endpoint, the transcriber's own
+   end-of-utterance call — is decided the same way at that point, without
+   waiting for the source to end: the recorder keeps sending trailing
+   silence for seconds after the speaker stops (measured: "да" endpointed
+   at 1.08 s of audio, source ended at 3.7 s), and the dub used to wait
+   for all of it. Text before any endpoint keeps the length gate. If the
+   translation then turns out to be missing after a
    `Dub`, the worker logs one Warning ("had nothing to speak: no
    translation") and completes the text channel normally with nothing
    written, so the synthesis ends cleanly; the mix goes on with the
@@ -464,7 +471,10 @@ utterance rather than a failed TTS stream each.
    diff into the running `Transcript`. While still undecided it calls
    `DubStabilizer.Decide(Fold(source), translated, language)` — the
    translated-text heuristic — with the same `NoDub`/`Dub` handling as
-   step 3. Once dubbing, each `DubStabilizer.Next(translated)` chunk —
+   step 3, and with `isSourceEnded: true` whenever the folded source's
+   last transcript was a segment end: the translation of a segment the
+   transcriber heard out decides whole, however short ("Yes" for "Да"),
+   as soon as it's stable. Once dubbing, each `DubStabilizer.Next(translated)` chunk —
    the new stable text, one translated clause — is written to the text
    channel (logged `speaking chunk #N (… chars)`). A read that ends
    still `Undecided` — nothing more is coming: the source has ended and
@@ -660,6 +670,19 @@ versus 2000 / 0 / 0.0), and `SonioxTranscriptBuilder.Update` turns each
 message that brings new finals into a stable finals-only transcript
 followed, if there is a tail, by the unstable finals+tail one
 (`src/dotnet/Transcription.Service/Transcribers/SonioxTranscriptBuilder.cs`).
+The endpoint itself travels too: the `<end>` token never enters the
+text, but the stable transcript of the message that carries it gets
+`Transcript.IsSegmentEnd` (re-emitted flagged if the message brought no
+new finals, so the signal isn't lost), and `TranscriptDiff` carries the
+flag like `IsStable` — a flags-only diff applies it — so the fold on
+either side of the wire shows it on exactly that transcript; the next
+one, with new speech, is unflagged, and so is `Complete()`, since the
+stream end is its own signal. Two consumers read it: `ClauseTranslator`
+makes the text before a segment end a clause whatever its punctuation
+(as it does with the whole text at the source end, without ending the
+stream), so "Да" is translated and promoted the moment the transcriber
+heard it out; and `RunDub` decides on it as on an ended source (steps
+3–4). Deepgram, Google and the fake transcriber set no segment ends.
 Waiting for `is_final` alone put the first dubbed chunk 6–9 s behind the
 speaker (past the 10 s hold the muxer had at the time), so the builder
 also **promotes by age**:

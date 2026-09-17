@@ -20,6 +20,8 @@ public sealed partial record TranscriptDiff(
     // stream never knows them - and the dub's Decide can't tell a Russian speaker from an English one.
     [DataMember(Order = 3), Key(3)]
     public Language[]? Languages { get; init; }
+    [DataMember(Order = 4), Key(4)]
+    public bool IsSegmentEnd { get; init; }
 
     public static TranscriptDiff New(Transcript transcript, Transcript baseTranscript)
     {
@@ -29,6 +31,7 @@ public sealed partial record TranscriptDiff(
         return new TranscriptDiff(textDiff, timeMapDiff) {
             IsStable = transcript.IsStable,
             Languages = languages,
+            IsSegmentEnd = transcript.IsSegmentEnd,
         };
     }
 
@@ -46,13 +49,15 @@ public sealed partial record TranscriptDiff(
         var languages = Languages ?? baseTranscript.Languages;
         if (IsNone)
             // An empty diff still carries the flags: "same text, now stable" is a real update
-            return IsStable == baseTranscript.IsStable && ReferenceEquals(languages, baseTranscript.Languages)
+            return IsStable == baseTranscript.IsStable
+                && IsSegmentEnd == baseTranscript.IsSegmentEnd
+                && ReferenceEquals(languages, baseTranscript.Languages)
                 ? baseTranscript
-                : baseTranscript with { IsStable = IsStable, Languages = languages };
+                : baseTranscript with { IsStable = IsStable, Languages = languages, IsSegmentEnd = IsSegmentEnd };
 
         var text = baseTranscript.Text + TextDiff;
         var timeMap = TimeMapDiff.ApplyTo(baseTranscript.TimeMap, Transcript.TimeMapEpsilon.X);
-        return new Transcript(text, timeMap, languages) { IsStable = IsStable };
+        return new Transcript(text, timeMap, languages) { IsStable = IsStable, IsSegmentEnd = IsSegmentEnd };
     }
 
     // Operators

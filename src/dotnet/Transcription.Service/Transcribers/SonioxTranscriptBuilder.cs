@@ -8,7 +8,9 @@ namespace ActualChat.Transcription;
 // and the tail is rebuilt on each update.
 //
 // enable_endpoint_detection also emits an "<end>" token once per finalized segment. It's a
-// structural marker rather than speech, so it's dropped before it can reach the transcript.
+// structural marker rather than speech, so it never enters the text; the stable transcript of
+// its message carries it as IsSegmentEnd instead - re-emitted if the message brought no new
+// finals, so the signal isn't lost. Complete() is not flagged: the stream end is its own signal.
 //
 // Finals never change, so a message that brings new ones yields a stable finals-only transcript
 // first; the tail, if any, follows in an unstable one. Stability is what the realtime translation
@@ -42,8 +44,13 @@ public sealed class SonioxTranscriptBuilder(TimeSpan stableTokenAge)
         var tailStartOffset = _finalText.Length;
         var endTime = _finalEndTime;
         var hasNewFinals = false;
+        var isSegmentEnd = false;
         foreach (var token in tokens) {
-            if (token.Text.IsNullOrEmpty() || token.Text == EndpointToken)
+            if (token.Text == EndpointToken) {
+                isSegmentEnd = true;
+                continue;
+            }
+            if (token.Text.IsNullOrEmpty())
                 continue;
             if (token.StartMs < _promotedEndMs)
                 continue;
@@ -77,8 +84,8 @@ public sealed class SonioxTranscriptBuilder(TimeSpan stableTokenAge)
         _tailMap = map;
         _tailEndTime = endTime;
         var transcripts = new List<Transcript>(2);
-        if (hasNewFinals)
-            transcripts.Add(NewTranscript(_finalText.ToString(), _finalMap, _finalEndTime, true));
+        if (hasNewFinals || (isSegmentEnd && _finalText.Length > 0))
+            transcripts.Add(NewTranscript(_finalText.ToString(), _finalMap, _finalEndTime, true, isSegmentEnd));
         if (tail.Length > 0)
             transcripts.Add(NewTranscript(_finalText + _tailText, map, endTime, false));
         return transcripts;
@@ -93,12 +100,17 @@ public sealed class SonioxTranscriptBuilder(TimeSpan stableTokenAge)
 
     // Private methods
 
-    private Transcript NewTranscript(string text, LinearMap map, float endTime, bool isStable)
+    private Transcript NewTranscript(
+        string text,
+        LinearMap map,
+        float endTime,
+        bool isStable,
+        bool isSegmentEnd = false)
     {
         if (map.IsDegenerate && !text.IsNullOrEmpty())
             map = new LinearMap(new Vector2(0, 0), new Vector2(text.Length, endTime));
 
-        return new Transcript(text, map, _languages.ToArray()) { IsStable = isStable };
+        return new Transcript(text, map, _languages.ToArray()) { IsStable = isStable, IsSegmentEnd = isSegmentEnd };
     }
 
     private void AddLanguage(string? code)

@@ -181,8 +181,10 @@ public partial class AudioStreamingBackend
                 translated += diff;
                 latencyTrace?.OnTranslated(translated);
                 if (decision == DubDecision.Undecided) {
-                    // The source named no language, so the translated text has to tell
-                    decision = DubStabilizer.Decide(Fold(sourceMemoizer), translated, language);
+                    // The source named no language, so the translated text has to tell - whole, once
+                    // the transcriber heard the utterance segment out, however short it is
+                    var source = Fold(sourceMemoizer);
+                    decision = DubStabilizer.Decide(source, translated, language, isSourceEnded: source.IsSegmentEnd);
                     if (decision == DubDecision.Undecided)
                         continue;
                     if (!ApplyDecision(decision))
@@ -274,13 +276,17 @@ public partial class AudioStreamingBackend
         CancellationToken cancellationToken)
     {
         // Undecided as soon as the source has enough text but no language - a transcriber that tags
-        // none would otherwise hold the dub until the source ends; the translated text decides then
+        // none would otherwise hold the dub until the source ends; the translated text decides then.
+        // A segment end lifts the length gate like the source end does: the transcriber heard the
+        // utterance out, and "да" must not wait for the recorder to stop sending silence.
         var source = Transcript.Empty;
         var diffs = sourceMemoizer.Replay(cancellationToken);
         await foreach (var diff in diffs.ConfigureAwait(false)) {
             source = TranscriptFolder(source, diff);
             if (source.Text.Length >= DubStabilizer.MinDecisionLength)
                 return DubStabilizer.Decide(source, Transcript.Empty, language);
+            if (source.IsSegmentEnd)
+                return DubStabilizer.Decide(source, Transcript.Empty, language, isSourceEnded: true);
         }
 
         // The source ended under the length gate: its languages decide on what there is, if it has any

@@ -21,7 +21,7 @@ public class TranscriptLatencyTraceTest
         trace.OnTranscript(Unstable("Hello", 0.6f));
         // 4.0 s in, the finals cover 0.8 s: 3.2 s behind
         clock.SetTo(RecordedAt + TimeSpan.FromSeconds(4.0));
-        trace.OnTranscript(Stable("Hello", 0.8f));
+        trace.OnTranscript(Stable("Hello", 0.8f) with { IsSegmentEnd = true });
         clock.SetTo(RecordedAt + TimeSpan.FromSeconds(4.5));
         trace.OnTranscript(Unstable("Hello world", 3.1f));
 
@@ -33,9 +33,10 @@ public class TranscriptLatencyTraceTest
         trace.Text.Max.Should().BeCloseTo(TimeSpan.FromSeconds(1.4), TimeSpan.FromMilliseconds(10));
         trace.Stable.Count.Should().Be(1);
         trace.Stable.First.Should().BeCloseTo(TimeSpan.FromSeconds(3.2), TimeSpan.FromMilliseconds(10));
+        trace.SegmentEndCount.Should().Be(1);
         trace.ToString().Should().Be(
             "Transcript latency #s1: first text +1.5s at 0.6s of speech; "
-            + "text lag p50 1.4s max 1.4s (n=2); stable lag p50 3.2s max 3.2s (n=1)");
+            + "text lag p50 1.4s max 1.4s (n=2); stable lag p50 3.2s max 3.2s (n=1); 1 segment ends");
     }
 
     [Fact]

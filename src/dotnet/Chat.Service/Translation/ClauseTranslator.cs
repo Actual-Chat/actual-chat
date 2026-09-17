@@ -28,6 +28,9 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
     private LinearMap _stableMap = LinearMap.Zero;
     private bool _isLastStable;
     private bool _isEnd;
+    // Where the transcriber last detected the end of an utterance segment: the text up to there
+    // ends in a clause whatever its punctuation, as the whole text does once the source ends
+    private int _segmentEnd;
     private int _promotedEnd;
     private Transcript _promoted = Transcript.Empty;
     private Transcript? _lastPromoted;
@@ -64,6 +67,8 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
             await foreach (var transcript in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 lock (_lock) {
                     _isLastStable = transcript.IsStable;
+                    if (transcript.IsSegmentEnd)
+                        _segmentEnd = transcript.Text.Length;
                     if (transcript.IsStable) {
                         _stableLength = transcript.Text.Length;
                         _stableMap = transcript.TimeMap;
@@ -107,7 +112,7 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
         // Under _lock. Lines the speculations up with the clauses of the current source text, starts
         // the missing ones, promotes the stable ones, and publishes whatever changed.
         var text = _text;
-        var ends = ClauseSplitter.Split(text, _promotedEnd, _isEnd);
+        var ends = SplitClauses(text);
         var start = _promotedEnd;
         for (var i = 0; i < ends.Count; i++) {
             var clause = text[start..ends[i]];
@@ -131,6 +136,19 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
             Drop(ends.Count);
         Promote();
         Publish();
+    }
+
+    private List<int> SplitClauses(string text)
+    {
+        // Under _lock. A segment end still ahead of the promoted text cuts it like the source end
+        // does: the remainder before it is a clause, and the clauses after it start from it
+        var segmentEnd = Math.Min(_segmentEnd, text.Length);
+        if (segmentEnd <= _promotedEnd)
+            return ClauseSplitter.Split(text, _promotedEnd, _isEnd);
+
+        var ends = ClauseSplitter.Split(text[..segmentEnd], _promotedEnd, true);
+        ends.AddRange(ClauseSplitter.Split(text, segmentEnd, _isEnd));
+        return ends;
     }
 
     private void Drop(int from)
