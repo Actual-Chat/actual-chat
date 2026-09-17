@@ -10,9 +10,7 @@
         + (ModalModel.IsSquare ? " square" : "")
         + (ModalModel.HasBlur ? " has-blur" : "")
         + (_isSaving ? " saving" : ""))"
-    Title="@(ModalModel.HasBlur
-        ? L.PicCrop_WallpaperTitle
-        : ModalModel.IsSquare ? L.PicCrop_PlaceAvatarTitle : L.PicCrop_AvatarTitle)"
+    Title="@Title"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default"
     HasCloseButton="true">
     <Body>
@@ -25,6 +23,11 @@
             <div class="c-content">
                 <div class="c-canvas-container">
                     <canvas @ref="_canvasRef" width="400" height="400"></canvas>
+                    @if (_isGenerating) {
+                        <div class="c-generating">
+                            <Spinner/>
+                        </div>
+                    }
                 </div>
                 @if (ModalModel.ViewportAspectRatio > 0) {
                     <div class="c-preview">
@@ -74,8 +77,18 @@
                             <i class="icon-refresh text-2xl"></i>
                         </ButtonRound>
                     </div>
+                    <ButtonRound Class="btn-generate"
+                                 Click="@OnOpenGeneration"
+                                 Tooltip="@L.ImageGeneration_Title"
+                                 IsDisabled="@(_isSaving || _isGenerating)">
+                        <i class="icon-ai-stars text-2xl"></i>
+                    </ButtonRound>
                 </div>
-                <div class="c-status">@_saveStatus</div>
+                @if (_hasGenerationError) {
+                    <div class="c-status c-generation-error">@L.PicCrop_GenerationFailed</div>
+                } else if (!_saveStatus.IsNullOrEmpty()) {
+                    <div class="c-status">@_saveStatus</div>
+                }
             </div>
         }
     </Body>
@@ -86,6 +99,11 @@
 
     private FileUploader FileUploader => field ??= Services.GetRequiredService<FileUploader>();
 
+    private string Title => ModalModel.Title.NullIfEmpty()
+        ?? (ModalModel.HasBlur
+            ? L.PicCrop_WallpaperTitle
+            : ModalModel.IsSquare ? L.PicCrop_PlaceAvatarTitle : L.PicCrop_AvatarTitle);
+
     private ElementReference _canvasRef;
     private ElementReference _previewRef;
     private IJSObjectReference? _jsRef;
@@ -94,6 +112,12 @@
     private bool _hasError;
     private bool _isSaving;
     private string _saveStatus = "";
+    private CancellationTokenSource? _generateCts;
+    private bool _isGenerating;
+    private bool _hasGenerationError;
+    private string _description = "";
+    private ImageStyle? _style;
+    private MediaId? _generatedMediaId;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -117,12 +141,83 @@
     public async ValueTask DisposeAsync() {
         _saveCts.CancelAndDisposeSilently();
         _saveCts = null;
+        // Cancel first, or an in-flight generation lands after this and leaks the media it saved
+        _generateCts.CancelAndDisposeSilently();
+        _generateCts = null;
+        if (_generatedMediaId is { } generatedMediaId) {
+            _generatedMediaId = null;
+            await RemoveMedia(generatedMediaId).SilentAwait(false);
+        }
         if (_jsRef is { } jsRef) {
             _jsRef = null;
             await jsRef.DisposeSilentlyAsync("dispose");
         }
         _blazorRef?.Dispose();
         _blazorRef = null;
+    }
+
+    protected override void OnInitialized() {
+        _description = ModalModel.Description;
+        _style = ModalModel.Style;
+    }
+
+    private void OnOpenGeneration()
+        => ModalUI.Show(new ImageGenerationModal.Model(_description, _style, OnGenerate));
+
+    private void OnGenerate(string description, ImageStyle style) {
+        _description = description;
+        _style = style;
+        _ = Generate(description, style);
+    }
+
+    private async Task Generate(string description, ImageStyle style) {
+        if (_isGenerating)
+            return;
+
+        _isGenerating = true;
+        _hasGenerationError = false;
+        _generateCts = new CancellationTokenSource();
+        var cancellationToken = _generateCts.Token;
+        StateHasChanged();
+        try {
+            var command = new Media_Generate {
+                Session = Session,
+                Scope = ModalModel.Scope,
+                Description = description,
+                Style = style,
+                Kind = ModalModel.MediaKind,
+            };
+            var (mediaRef, error) = await UICommander.Run(command, cancellationToken).ConfigureAwait(true);
+            if (error != null || mediaRef is null) {
+                _hasGenerationError = true;
+                return;
+            }
+
+            var url = UrlMapper.ContentUrl(mediaRef.BlobId);
+            if (_jsRef is { } jsRef)
+                await jsRef.InvokeVoidAsync("setImage", url).ConfigureAwait(true);
+
+            // Only now is the one it replaced certainly off screen. Anything the user accepts is a
+            // fresh crop upload, so nothing here is ever what they keep.
+            var replaced = _generatedMediaId;
+            _generatedMediaId = mediaRef.MediaId;
+            await RemoveMedia(replaced).ConfigureAwait(true);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            _hasGenerationError = true;
+        }
+        finally {
+            _isGenerating = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RemoveMedia(MediaId? mediaId) {
+        if (mediaId is null)
+            return;
+
+        var command = new Media_RemoveMedia { Session = Session, MediaId = mediaId };
+        await UICommander.Run(command).ConfigureAwait(true);
     }
 
     [JSInvokable("OnImageLoadError")]
@@ -207,5 +302,16 @@
         Action<MediaRef>? OnCropped,
         bool IsSquare = false,
         float ViewportAspectRatio = 0,
-        bool HasBlur = false);
+        bool HasBlur = false)
+    {
+        // "Edit chat picture" and so on; falls back to the generic crop titles when unset
+        public string Title { get; init; } = "";
+
+        // Seeds the generation modal. Empty everywhere except the AI suggestion banner, which
+        // already has a description worth editing rather than retyping.
+        public string Description { get; init; } = "";
+
+        public ImageStyle? Style { get; init; }
+        public MediaKind MediaKind { get; init; } = MediaKind.ChatPicture;
+    }
 }

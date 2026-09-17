@@ -51,6 +51,7 @@ namespace ActualChat;
 [Union(16, typeof(RecentGifs))]
 [Union(17, typeof(UserPttSettings))]
 [Union(19, typeof(UserCarAudioSettings))]
+[Union(20, typeof(UserImageStyleSettings))]
 // Chat-User settings
 [Union(50, typeof(ChatUserSettings))]
 [Union(51, typeof(ChatInviteSettings))]

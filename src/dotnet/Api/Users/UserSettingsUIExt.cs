@@ -44,6 +44,9 @@ public static class UserSettingsUIExt
     public static UserSettingsAccessor<UserOnboardingSettings> UserOnboardingSettings(this UserSettingsUI settingsUI)
         => new(settingsUI, nameof(UserOnboardingSettings));
 
+    public static UserSettingsAccessor<UserImageStyleSettings> UserImageStyleSettings(this UserSettingsUI settingsUI)
+        => new(settingsUI, nameof(UserImageStyleSettings));
+
     public static UserSettingsAccessor<UserTranscodingTestSettings> UserTranscodingTestSettings(
         this UserSettingsUI settingsUI)
         => new(settingsUI, nameof(UserTranscodingTestSettings));

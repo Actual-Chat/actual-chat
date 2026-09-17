@@ -1,0 +1,19 @@
+/* The body owns its own insets here - the fields are filled boxes, and without this they run
+   edge to edge while the footer's buttons stay inset. */
+.image-generation-modal .dialog-body {
+    @apply p-4;
+}
+
+.image-generation-modal .c-body {
+    @apply flex-y gap-3;
+    @apply w-full;
+}
+
+/* The shared field box rounds its top only, because in a FormBlock the fields stack into one
+   tile. These two stand on their own, so they round all the way round. */
+.image-generation-modal .form-section-content.label-inside-input {
+    @apply rounded-md;
+}
+.image-generation-modal textarea {
+    @apply resize-none;
+}

@@ -63,3 +63,7 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
     @apply self-center;
     width: calc(100% - 1rem);
 }
+
+.banner .c-suggestion {
+    @apply flex-x items-center gap-3;
+}

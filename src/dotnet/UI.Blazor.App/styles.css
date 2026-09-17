@@ -4,6 +4,7 @@
 
 @import './Components/components.css';
 @import './Components/PicCropModal/pic-crop-modal.css';
+@import './Components/PicCropModal/image-generation-modal.css';
 @import './Components/AvatarSelect/avatar-select.css';
 @import './Components/AccountDropdown/account-dropdown.css';
 @import './Components/AccountModal/account-modal.css';

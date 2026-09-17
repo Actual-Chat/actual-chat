@@ -27,6 +27,7 @@ public class UserSettings(IServiceProvider services) : IUserSettings
         [nameof(UserReplaySettings)] = typeof(UserReplaySettings),
         [nameof(UserPttSettings)] = typeof(UserPttSettings),
         [nameof(UserCarAudioSettings)] = typeof(UserCarAudioSettings),
+        [nameof(UserImageStyleSettings)] = typeof(UserImageStyleSettings),
         [nameof(RecentMentions)] = typeof(RecentMentions),
         [nameof(RecentGifs)] = typeof(RecentGifs),
     };

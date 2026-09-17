@@ -161,6 +161,7 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 ### Media
 - `Media` (record) — media metadata (content type, size, dimensions)
 - `Picture` (record) — picture with multiple sizes
+- `ImageSuggestion` (record) — a generated image offered for a piece of content, pending acceptance
 - `LinkPreview` (record) — preview of linked content
 
 ### Users & Accounts
@@ -185,6 +186,7 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `IPlaces` — place (community) management; `ListOwnerIds`/`ListModeratorIds` forward to the place root chat
 - `IRoles` — role management; `ListOwnerIds`/`ListModeratorIds` mask anonymous members from non-owner callers (use `IRolesBackend` when that masking would be a hole)
 - `IReactions` — message reactions
+- `IImageSuggestions` — AI picture suggestions for a chat (generate, accept, dismiss)
 - `IMentions` — mention queries
 
 ### User Services
@@ -217,6 +219,7 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 - `IAccountsBackend`, `IAvatarsBackend`, `ISessionTemporalsBackend`, `UserScopedKvasBackend`, `IPasskeysBackend` — user backends
 - `IContactsBackend` — contact backend
 - `IMediaBackend`, `IMediaProgressBackend`, `IUploadsBackend` — media backends
+- `IImageSuggestionsBackend` — one pending generated image per opaque key, plus its dismissal
 - `INotificationsBackend` — notification backend
 - `IStreamingBackend`, `ILiveBackend`, `ILiveAudioBackend`, `ILiveVideoBackend`, `IVideoStreamingBackend` — streaming backends
 
@@ -259,6 +262,7 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 ### AI Helpers
 - `IAnthropicClient` — Anthropic Claude API client
 - `IPromptHelpers`, `PromptTemplate` — reusable prompt templates
+- `IImageGenerator`, `ImageGenerationRequest`, `GeneratedImage` — provider-agnostic text-to-image; `CloudflareImageGenerator` is the Workers AI implementation
 
 
 ## Localization (`ActualChat.Localization`)
@@ -361,6 +365,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `IConversationSummarizer`, `ConversationSummarizer` — AI conversation summarization
 - `IChatDigestSummarizer` — chat digest summarization
 - `IThreadInsightExtractor` — thread insight extraction
+- `IChatImageDescriber` — describes a chat as the subject of a picture
 - `IEmbeddingsCalculator` — text embeddings
 - `IEntryGroupExtractor`, `EntryGroupBuilder` — group entries for ML
 - `RateLimitedChatCompletionService` — rate-limited LLM calls

@@ -15,6 +15,20 @@ public interface IMedia : IComputeService
     Task OnUpdateProgress(Media_UpdateProgress command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<MediaRef> OnProcessUpload(Media_ProcessUpload command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<MediaRef?> OnGenerate(Media_Generate command, CancellationToken cancellationToken);
+}
+
+// Makes an image rather than taking one, and stores it in Scope exactly as an upload would.
+// Returns null when the provider declines the description or is not configured.
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Media_Generate : ApiCommand<MediaRef?>
+{
+    [DataMember(Order = 2), Key(2)] public required string Scope { get; init; }
+    [DataMember(Order = 3), Key(3)] public required string Description { get; init; }
+    [DataMember(Order = 4), Key(4)] public ImageStyle Style { get; init; } = ImageStyle.Default;
+    [DataMember(Order = 5), Key(5)] public MediaKind Kind { get; init; } = MediaKind.ChatPicture;
 }
 
 [DataContract, MessagePackObject]

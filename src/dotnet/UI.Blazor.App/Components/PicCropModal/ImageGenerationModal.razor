@@ -1,0 +1,115 @@
+@using ActualChat.Media
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<ImageGenerationModal.Model>
+@{
+    _formModel.Description = _description;
+    _formModel.StyleCode = _style.ToString();
+}
+
+<DialogFrame
+    Class="image-generation-modal"
+    Title="@L.ImageGeneration_Title"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Default"
+    HasCloseButton="true">
+    <Body>
+        <Form Model="@_formModel" Class="c-body">
+            <FormSection
+                For="() => _formModel.Description"
+                InputId="@_formModel.DescriptionFormId"
+                IsLabelInsideInput="true"
+                HideValidationMessage="true">
+                <textarea id="@_formModel.DescriptionFormId"
+                          rows="4"
+                          placeholder="@L.ImageGeneration_DescriptionPlaceholder"
+                          @bind="_description"
+                          @bind:event="oninput"></textarea>
+            </FormSection>
+            <FormSection
+                For="() => _formModel.StyleCode"
+                InputId="@_formModel.StyleFormId"
+                IsLabelInsideInput="true"
+                HideValidationMessage="true"
+                IsRequired="true"
+                Label="@L.ImageGeneration_Style">
+                <InputSelect
+                    TValue="string"
+                    id="@_formModel.StyleFormId"
+                    Value="@_formModel.StyleCode"
+                    ValueExpression="@(() => _formModel.StyleCode)"
+                    ValueChanged="@OnStyleChanged">
+                    @foreach (var style in ImageStyleExt.All) {
+                        <option value="@style">@L.ImageStyleName(style)</option>
+                    }
+                </InputSelect>
+            </FormSection>
+        </Form>
+    </Body>
+    <Buttons>
+        <Button Class="btn-modal" Click="@OnCancel">@L.Common_Cancel</Button>
+        <Button Class="btn-modal btn-primary"
+                Click="@OnGenerate"
+                IsDisabled="@_description.IsNullOrWhiteSpace()">@L.ImageGeneration_Generate</Button>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    private FormModel _formModel = null!;
+    private string _description = "";
+    private ImageStyle _style = ImageStyle.Default;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        _formModel = new FormModel(ComponentIdGenerator);
+        _description = ModalModel.Description;
+        if (ModalModel.Style is { } style) {
+            _style = style;
+            return;
+        }
+
+        var settings = await UserSettingsUI.UserImageStyleSettings().Get().ConfigureAwait(true);
+        _style = settings.Style;
+    }
+
+    private void OnStyleChanged(string code) {
+        if (Enum.TryParse<ImageStyle>(code, out var style))
+            _style = style;
+    }
+
+    private void OnCancel()
+        => Modal.Close();
+
+    private void OnGenerate() {
+        // Closes first: the caller shows its own progress over the image it is about to replace,
+        // and leaving this modal up over that would hide the thing being generated.
+        var description = _description.Trim();
+        var style = _style;
+        Modal.Close();
+        _ = UserSettingsUI.UserImageStyleSettings()
+            .Update(x => x with { Style = style }, CancellationToken.None);
+        ModalModel.OnGenerate(description, style);
+    }
+
+    // Nested types
+
+    // A null Style means "whatever the user picked last" - see OnInitializedAsync
+    public sealed record Model(
+        string Description,
+        ImageStyle? Style,
+        Action<string, ImageStyle> OnGenerate);
+
+    public sealed class FormModel {
+        public string DescriptionFormId { get; }
+        public string StyleFormId { get; }
+        public string Description { get; set; } = "";
+        public string StyleCode { get; set; } = "";
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            var formId = componentIdGenerator.Next("image-generation-form");
+            DescriptionFormId = $"{formId}-description";
+            StyleFormId = $"{formId}-style";
+        }
+    }
+}
