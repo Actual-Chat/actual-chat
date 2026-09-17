@@ -450,7 +450,12 @@ utterance rather than a failed TTS stream each.
    translated text. A source that reaches 10 chars with no language at all (a
    transcriber that tags none) leaves the decision `Undecided` right
    away rather than holding the dub until the source ends, and step 4
-   decides it. If the translation then turns out to be missing after a
+   decides it. A source that *ends* under 10 chars ("Да", "Нет", "Yes")
+   is decided at its end, with `isSourceEnded: true`: the length gate is
+   for an early call, and nothing better is coming, so its languages
+   decide on whatever there is; with no languages it stays `Undecided`
+   for step 4. Measured before this: such utterances were never dubbed
+   (6 of 13 in one pass). If the translation then turns out to be missing after a
    `Dub`, the worker logs one Warning ("had nothing to speak: no
    translation") and completes the text channel normally with nothing
    written, so the synthesis ends cleanly; the mix goes on with the
@@ -461,8 +466,14 @@ utterance rather than a failed TTS stream each.
    translated-text heuristic — with the same `NoDub`/`Dub` handling as
    step 3. Once dubbing, each `DubStabilizer.Next(translated)` chunk —
    the new stable text, one translated clause — is written to the text
-   channel (logged `speaking chunk #N (… chars)`). A stream that ends
-   `Undecided` is logged "too short to decide" and not dubbed. A `Dub`
+   channel (logged `speaking chunk #N (… chars)`). A read that ends
+   still `Undecided` — nothing more is coming: the source has ended and
+   is translated in full, or the translated stream ended — decides on
+   the folded source and the whole translated text with
+   `isSourceEnded: true` (no length gate: equal/prefix → `NoDub`, else
+   `Dub`), applies it the same way and speaks the translated text as one
+   clause. Only empty text is left `Undecided` then, logged "too short
+   to decide" and not dubbed. A `Dub`
    that spoke nothing at all (and had no backlog to skip) is logged once
    at Warning ("had nothing to speak: the translation never became
    stable") and nothing else happens: the text channel completes normally
@@ -670,15 +681,21 @@ clause. Deepgram and Google mark their final results stable the same
 way. Manual `finalize` is not used: endpoints give the phrase granularity
 and forcing finals early degrades accuracy.
 
-`Decide(source, translated, target)`:
+`Decide(source, translated, target, isSourceEnded = false)`:
 
 | Condition | Result |
 |---|---|
-| Source transcript carries `Languages` and ≥ 10 chars of text | `NoDub` if **all** of them match `target` by ISO code, else `Dub` |
+| Source transcript carries `Languages` and ≥ 10 chars of text (≥ 1 once the source has ended) | `NoDub` if **all** of them match `target` by ISO code, else `Dub` |
 | Otherwise, translated transcript not yet stable | `Undecided` |
-| Normalized translated text < 10 chars | `Undecided` |
+| Normalized translated text < 10 chars (empty once the source has ended) | `Undecided` |
 | Normalized source text starts with normalized translated text | `NoDub` |
 | Else | `Dub` |
+
+The 10-char gate is for an early call — a fragment's language tag may be
+wrong, and a couple of characters can't tell two languages apart. Once
+the source has ended nothing better is coming, and skipping a "no" is
+the expensive error, so `isSourceEnded: true` drops the gate to "any
+text at all".
 
 The first row is the one that decides in practice, and `RunDub` asks it
 on the source alone (`translated = Transcript.Empty`, which falls through
@@ -1884,7 +1901,7 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 | `AudioSettings.StreamExpirationDelay` | 60 s | Store expiry; the transcript-store placeholder a transcript-less source leaves behind expires with it and triggers `ForgetDubs` (the transcript wait itself is bounded by the original's `WhenRunning`) |
 | `OpusFramePump.FrameLength` / `FrameByteLength` | 960 samples / 1920 bytes | One 20 ms frame at 48 kHz, 16-bit mono |
 | `Constants.Audio.Bitrate` | 32 kbps | Also the `bitrate` `SonioxTtsClient.Generate` requests for its Opus output (the live path takes PCM and encodes here) |
-| `DubStabilizer.MinDecisionLength` | 10 chars | Minimum text before `Decide` commits |
+| `DubStabilizer.MinDecisionLength` | 10 chars | Minimum text before `Decide` commits while the source is live; not applied once it has ended (`isSourceEnded: true`), when any text decides |
 | `ClauseSplitter.MinCommaClauseLength` | 20 chars | A comma-class mark (`, ; :` / fullwidth) ends a clause only once the clause it would close reaches this length; a shorter fragment (`"Well,"`) waits for more text |
 | `ClauseSplitter.MaxUnpunctuatedLength` | 120 chars | A run with no clause boundary longer than this is cut at the last space before the limit, in every run the text produces, so it doesn't wait for the translation's end |
 | `TranscriptionSettings.SonioxStableTokenAge` | 1 s (was the constant `Constants.Transcription.Soniox.StableTokenAge` = 1.5 s) | A non-final token that ended this long before `total_audio_proc_ms` is promoted to stable by `SonioxTranscriptBuilder` |

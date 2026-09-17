@@ -235,6 +235,47 @@ public class DubStabilizerTest
         brief.Should().Be(DubDecision.Undecided, "a couple of characters can't tell the languages apart");
     }
 
+    [Fact]
+    public void DecideAtEndShouldDubAShortForeignUtterance()
+    {
+        // act
+        var tagged = DubStabilizer
+            .Decide(Stable("Да", Languages.Russian), Transcript.Empty, Languages.English, isSourceEnded: true);
+        var untagged = DubStabilizer.Decide(Stable("Да"), Stable("Yes"), Languages.English, isSourceEnded: true);
+
+        // assert
+        tagged.Should().Be(DubDecision.Dub, "nothing better is coming once the source has ended");
+        untagged.Should().Be(DubDecision.Dub, "a translation that differs from the source is a translation");
+    }
+
+    [Fact]
+    public void DecideAtEndShouldNotDubAShortUtteranceInTheTargetLanguage()
+    {
+        // act
+        var tagged = DubStabilizer
+            .Decide(Stable("Yes", Languages.English), Transcript.Empty, Languages.English, isSourceEnded: true);
+        var untagged = DubStabilizer.Decide(Stable("Yes"), Stable("Yes"), Languages.English, isSourceEnded: true);
+
+        // assert
+        tagged.Should().Be(DubDecision.NoDub);
+        untagged.Should().Be(DubDecision.NoDub,
+            "the translator hands the text back verbatim when no translation is needed");
+    }
+
+    [Fact]
+    public void DecideAtEndShouldStayUndecidedOnEmptyText()
+    {
+        // act
+        var noSource = DubStabilizer
+            .Decide(Transcript.Empty, Transcript.Empty, Languages.English, isSourceEnded: true);
+        var noTranslation = DubStabilizer
+            .Decide(Stable("Да"), Transcript.Empty, Languages.English, isSourceEnded: true);
+
+        // assert
+        noSource.Should().Be(DubDecision.Undecided, "there is nothing to decide on");
+        noTranslation.Should().Be(DubDecision.Undecided, "an untagged source needs the translated text to tell");
+    }
+
     private static Transcript Stable(string text, params Language[] languages)
         => Unstable(text, languages) with { IsStable = true };
 

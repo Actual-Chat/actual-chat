@@ -137,6 +137,56 @@ public class DubbingTranslationFlowTest(
         }
     }
 
+    [Fact(Timeout = 90_000)]
+    public Task ShortUtteranceShouldBeDubbedOnceTheSourceEnds()
+        => AssertShortUtteranceIsDubbedOnceTheSourceEnds(isTagged: true);
+
+    [Fact(Timeout = 90_000)]
+    public Task ShortUntaggedUtteranceShouldBeDecidedOnItsTranslationOnceTheSourceEnds()
+        => AssertShortUtteranceIsDubbedOnceTheSourceEnds(isTagged: false);
+
+    [Fact(Timeout = 60_000)]
+    public async Task ShortUtteranceInTheListenersLanguageShouldNotBeDubbed()
+    {
+        // arrange - "Yes", tagged English, for an English listener
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        var sourceId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
+        var dubId = StreamId.New(sourceId, Languages.English);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        const string shortText = "Yes";
+        var source = Channel.CreateUnbounded<TranscriptDiff>();
+        var pushSourceTask = BackgroundTask.Run(
+            () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
+            ct);
+        var last = Transcript.Empty;
+        Push(Unstable(shortText, language: Languages.English));
+        await backend.WhenTranscriptPublished(sourceId, ct);
+        await Tester.CreateStreamingEntry(chatId, Languages.English, streamId: sourceId.Value, cancellationToken: ct);
+
+        // act - the mix ends only once the worker has decided, so draining it proves the decision
+        var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+        Push(Unstable(shortText, language: Languages.English) with { IsStable = true });
+        source.Writer.Complete();
+        await pushSourceTask.SilentAwait(false);
+        var frames = await stream!.ToListAsync(ct);
+
+        // assert - the (absent) original alone: a header and nothing else
+        frames.Select(x => x.Offset).Should().Equal([TimeSpan.FromMilliseconds(-1)],
+            "the source language decides NoDub once the source ends, however short it is");
+        recorder.GetChunks(dubId.Value).Should().BeEmpty("the source is already in the listener's language");
+        return;
+
+        void Push(Transcript transcript) {
+            source.Writer.TryWrite(transcript - last);
+            last = transcript;
+        }
+    }
+
     [Fact(Timeout = 60_000)]
     public async Task ListenerShouldHearTheOriginalBeforeAnyDecision()
     {
@@ -646,6 +696,64 @@ public class DubbingTranslationFlowTest(
     }
 
     // Private methods
+
+    private async Task AssertShortUtteranceIsDubbedOnceTheSourceEnds(bool isTagged)
+    {
+        // arrange - "Да" is under DubStabilizer.MinDecisionLength, so nothing decides while it's live;
+        // the translation is as short as a real one ("Yes"), which the early gate holds back too
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var services = Tester.AppServices;
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var recorder = services.GetRequiredService<RecordingSpeechSynthesizer>();
+        var translator = FakeTranslator.Realtime(services);
+        var sourceId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
+        var dubId = StreamId.New(sourceId, Languages.English);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var ct = cts.Token;
+        const string shortText = "Да";
+        const string shortTranslation = "Yes";
+        var source = Channel.CreateUnbounded<TranscriptDiff>();
+        var pushSourceTask = BackgroundTask.Run(
+            () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
+            ct);
+        var last = Transcript.Empty;
+        translator.Respond = (text, language) => text.Trim() == shortText
+            ? shortTranslation
+            : FakeTranslator.Translated(text, language);
+        try {
+            Push(Unstable(shortText));
+            await backend.WhenTranscriptPublished(sourceId, ct);
+            await Tester.CreateStreamingEntry(
+                chatId, Languages.Russian, streamId: sourceId.Value, cancellationToken: ct);
+
+            // act - the source ends with the short utterance as its whole text
+            var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+            Push(Stable(shortText));
+            source.Writer.Complete();
+            await pushSourceTask.SilentAwait(false);
+            var chunks = await recorder.WhenSpoken(dubId.Value, 1, ct);
+
+            // assert
+            stream.Should().NotBeNull();
+            chunks.Should().Equal([shortTranslation], isTagged
+                ? "a Russian-tagged utterance too short for an early call is dubbed once the source ends"
+                : "a translation that differs from the source decides the dub once nothing more is coming");
+            var frameCount = await stream!.CountAsync(ct).AsTask().WaitAsync(TimeSpan.FromSeconds(10), ct);
+            frameCount.Should().BeGreaterThan(1);
+        }
+        finally {
+            translator.Respond = FakeTranslator.Translated;
+        }
+        return;
+
+        void Push(Transcript transcript) {
+            if (!isTagged)
+                transcript = transcript with { Languages = [] };
+            source.Writer.TryWrite(transcript - last);
+            last = transcript;
+        }
+    }
 
     private async Task AssertDubSpeaksTheTranslation(
         TimeSpan entryDelay,

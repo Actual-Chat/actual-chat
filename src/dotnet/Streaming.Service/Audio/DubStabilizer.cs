@@ -54,11 +54,16 @@ public sealed partial class DubStabilizer
         return Send(text, GetSentPrefixLength(text), text.Length);
     }
 
-    public static DubDecision Decide(Transcript source, Transcript translated, Language targetLanguage)
+    public static DubDecision Decide(
+        Transcript source,
+        Transcript translated,
+        Language targetLanguage,
+        bool isSourceEnded = false)
     {
         // NoDub only when every language heard is the target: a needless dub is the cheaper error, a
-        // wrong NoDub loses the utterance for the listener
-        if (source.Languages.Length > 0 && source.Text.Length >= MinDecisionLength)
+        // wrong NoDub loses the utterance. The length gate is for an early call, not for an ended source
+        var minLength = isSourceEnded ? 1 : MinDecisionLength;
+        if (source.Languages.Length > 0 && source.Text.Length >= minLength)
             return source.Languages.All(x => x.IsoCode == targetLanguage.IsoCode)
                 ? DubDecision.NoDub
                 : DubDecision.Dub;
@@ -66,7 +71,7 @@ public sealed partial class DubStabilizer
             return DubDecision.Undecided;
 
         var translatedText = Normalize(translated.Text);
-        if (translatedText.Length < MinDecisionLength)
+        if (translatedText.Length < minLength)
             return DubDecision.Undecided;
 
         // The translator hands the source text back verbatim when no translation is needed

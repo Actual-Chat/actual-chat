@@ -197,9 +197,22 @@ public partial class AudioStreamingBackend
                 if (stabilizer.Next(translated) is { } chunk)
                     await Speak(chunk).ConfigureAwait(false);
             }
-            if (decision == DubDecision.Undecided)
-                Log.LogInformation("RunDub: #{StreamId} - too short to decide, not dubbed", dubStreamId);
-            else if (decision == DubDecision.Dub && spokenChunkCount == 0 && !isLate)
+            if (decision == DubDecision.Undecided) {
+                // The read ends once nothing more is coming: what there is decides, and is spoken whole
+                decision = DubStabilizer.Decide(Fold(sourceMemoizer), translated, language, isSourceEnded: true);
+                if (decision == DubDecision.Undecided) {
+                    Log.LogInformation("RunDub: #{StreamId} - too short to decide, not dubbed", dubStreamId);
+                    return;
+                }
+                if (!ApplyDecision(decision))
+                    return;
+
+                if (isLate)
+                    stabilizer.Skip(translated, backlogEnd);
+                if (stabilizer.Next(translated) is { } chunk)
+                    await Speak(chunk).ConfigureAwait(false);
+            }
+            if (decision == DubDecision.Dub && spokenChunkCount == 0 && !isLate)
                 Log.LogWarning(
                     "RunDub: #{StreamId} - had nothing to speak: the translation never became stable",
                     dubStreamId);
@@ -270,7 +283,8 @@ public partial class AudioStreamingBackend
                 return DubStabilizer.Decide(source, Transcript.Empty, language);
         }
 
-        return DubDecision.Undecided;
+        // The source ended under the length gate: its languages decide on what there is, if it has any
+        return DubStabilizer.Decide(source, Transcript.Empty, language, isSourceEnded: true);
     }
 
     private Task PublishMix(
