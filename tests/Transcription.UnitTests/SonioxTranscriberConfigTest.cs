@@ -1,4 +1,5 @@
 using ActualChat.Module;
+using ActualChat.Transcription.Module;
 
 namespace ActualChat.Transcription.UnitTests;
 
@@ -53,6 +54,7 @@ public sealed class SonioxTranscriberConfigTest(ITestOutputHelper @out) : TestBa
         var services = new ServiceCollection()
             .AddSingleton(MomentClockSet.Default)
             .AddSingleton(new CoreServerSettings { SonioxKey = "test" })
+            .AddSingleton(new TranscriptionSettings())
             .AddSingleton<SonioxClient>()
             .AddSingleton(new SonioxCleaner.Options())
             .AddSingleton<SonioxCleaner>()
