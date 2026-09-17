@@ -1,4 +1,3 @@
-using System.Security;
 using ActualChat.WebHooks;
 
 namespace ActualChat.Chat;
@@ -117,11 +116,21 @@ public class WebHooks(IServiceProvider services) : IWebHooks
         string scopeId,
         CancellationToken cancellationToken)
     {
-        try {
-            return await RequireManager(session, scope, scopeId, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception e) when (e is UnauthorizedAccessException or SecurityException) {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (!AccountFull.MustBeActive.IsSatisfied(account))
             return null;
+
+        switch (scope) {
+        case WebHookScope.Chat:
+            var chatRules = await Chats.GetRules(session, ChatId.Parse(scopeId), cancellationToken)
+                .ConfigureAwait(false);
+            return chatRules.CanModerate() ? account : null;
+        case WebHookScope.Place:
+            var placeRules = await Places.GetRules(session, PlaceId.Parse(scopeId), cancellationToken)
+                .ConfigureAwait(false);
+            return placeRules.IsOwner() ? account : null;
+        default:
+            return account.Id.Value == scopeId ? account : null;
         }
     }
 

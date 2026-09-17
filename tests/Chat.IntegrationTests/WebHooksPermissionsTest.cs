@@ -118,4 +118,32 @@ public class WebHooksPermissionsTest(ChatCollection.AppHostFixture fixture, ITes
         bobCreate.Should().BeOfType<UnauthorizedAccessException>();
         aliceResult.WebHook.Should().NotBeNull();
     }
+
+    [Fact]
+    public async Task GuestGetShouldReturnNullInsteadOfThrowing()
+    {
+        // arrange
+        var aliceAccount = await Alice.Accounts.GetOwn(Alice.Session, CancellationToken.None);
+        var createChange = new WebHooks_Change {
+            Session = Alice.Session,
+            Scope = WebHookScope.User,
+            ScopeId = aliceAccount.Id.Value,
+            Change = Change.Create(new WebHookDiff {
+                Name = "Alice's personal hook",
+                Url = "https://example.com/hook",
+                Events = WebHookEvents.Notification,
+                SubscribeNotifications = true,
+            }),
+        };
+        var aliceResult = await Alice.Commander.Call(createChange);
+        var hookId = aliceResult.WebHook!.Id;
+        await using var guest = fixture.AppHost.NewWebClientTester(Out);
+        var guestWebHooks = guest.AppServices.GetRequiredService<IWebHooks>();
+
+        // act
+        var guestGet = await guestWebHooks.Get(guest.Session, hookId, CancellationToken.None);
+
+        // assert
+        guestGet.Should().BeNull();
+    }
 }
