@@ -33,7 +33,7 @@ public sealed class LocalizingUIActionFailureTracker : UIActionFailureTracker
             message = await LocalizationUI.Get(error.Message, cts.Token).ConfigureAwait(false);
         }
         catch (Exception e) {
-            if (e is not OperationCanceledException)
+            if (e is not (OperationCanceledException or TimeoutException))
                 Log.LogWarning(e, "Failed to localize action failure: {Message}", error.Message);
         }
         var localized = message == error.Message
