@@ -127,7 +127,7 @@ public sealed partial class DeepgramTranscriber : ITranscriber
 
             // whenCompleted completes on the finalize ack, connection close, or error; with keepAlive
             // on, a lost ack would otherwise hang forever - so it must observe the token.
-            await TranscriberHelper.WhenPushAndRead(
+            await TaskExt.WhenPushAndRead(
                     PushAudio(transcriptState, deepgramClient, tokenSource.Token),
                     whenCompleted.WaitAsync(tokenSource.Token),
                     tokenSource)

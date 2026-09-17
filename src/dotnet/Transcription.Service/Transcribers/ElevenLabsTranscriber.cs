@@ -57,7 +57,7 @@ public sealed class ElevenLabsTranscriber : ITranscriber
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         try {
             await webSocket.ConnectAsync(GetUrl(options), cancellationToken).ConfigureAwait(false);
-            await TranscriberHelper.WhenPushAndRead(
+            await TaskExt.WhenPushAndRead(
                     PushAudio(webSocket, audioSource, options, cts.Token),
                     ReadTranscripts(webSocket, output, audioStreamId, cts.Token),
                     cts)
