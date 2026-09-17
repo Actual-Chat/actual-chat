@@ -25,6 +25,15 @@ public static partial class ClauseSplitter
         var start = from;
         foreach (Match match in ClauseEndRegex.Matches(text, from)) {
             var end = match.Index + match.Length;
+            // Apply overflow cuts before accepting this boundary
+            while (end - start > MaxUnpunctuatedLength) {
+                var limit = start + MaxUnpunctuatedLength;
+                var space = text.LastIndexOf(' ', limit, limit - start);
+                var cutEnd = space > start ? space : limit;
+                ends.Add(cutEnd);
+                start = cutEnd;
+            }
+
             if (match.Groups["comma"].Success && end - start < MinCommaClauseLength)
                 continue;
 
