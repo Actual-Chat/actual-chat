@@ -169,6 +169,28 @@ public class WebHookPayloadsTest
         doc.RootElement.GetProperty("data").GetProperty("sentBy").GetString().Should().Be("Alexey");
     }
 
+    [Fact]
+    public async Task ChatUpdatedShouldReportPictureChangeByMediaId()
+    {
+        // arrange
+        var mediaId = MediaId.New("chat-picture");
+        var services = CreateServices(mediaId, "blob-1");
+        var payloads = new WebHookPayloads(services);
+        var hook = CreateHook(includeText: true);
+        var old = new Chat(TestChatId, 1) { Title = "Hooks" };
+        var chat = new Chat(TestChatId, 2) { Title = "Hooks", MediaId = mediaId };
+
+        // act
+        var json = await payloads.ChatChanged(hook, WebHookEvents.ChatUpdated, chat, old, CancellationToken.None);
+
+        // assert
+        using var doc = JsonDocument.Parse(json);
+        var data = doc.RootElement.GetProperty("data");
+        data.GetProperty("changed").EnumerateArray().Select(x => x.GetString()).Should().Equal("pictureUrl");
+        var expectedUrl = services.GetRequiredService<UrlMapper>().ContentUrl("blob-1");
+        data.GetProperty("pictureUrl").GetString().Should().Be(expectedUrl);
+    }
+
     // Private methods
 
     private static WebHook CreateHook(bool includeText)
@@ -182,7 +204,7 @@ public class WebHookPayloadsTest
             IncludeText = includeText,
         };
 
-    private static ServiceProvider CreateServices()
+    private static ServiceProvider CreateServices(MediaId? knownMediaId = null, string blobId = "")
     {
         var chatsBackend = new Mock<IChatsBackend>(MockBehavior.Loose);
         chatsBackend
@@ -191,7 +213,8 @@ public class WebHookPayloadsTest
         var mediaBackend = new Mock<IMediaBackend>(MockBehavior.Loose);
         mediaBackend
             .Setup(x => x.Get(It.IsAny<MediaId?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Media.Media?)null);
+            .ReturnsAsync((MediaId? id, CancellationToken _)
+                => id is not null && id == knownMediaId ? new Media.Media(id) { BlobId = blobId } : null);
 
         return new ServiceCollection()
             .AddSingleton(chatsBackend.Object)

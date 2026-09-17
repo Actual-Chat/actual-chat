@@ -58,7 +58,7 @@ public sealed class WebHookPayloads(IServiceProvider services)
         return Serialize(BuildEnvelope(hook, type, eventKey, chat, data));
     }
 
-    public Task<string> ChatChanged(
+    public async Task<string> ChatChanged(
         WebHook hook, WebHookEvents e, Chat chat, Chat? old,
         CancellationToken cancellationToken)
     {
@@ -67,22 +67,24 @@ public sealed class WebHookPayloads(IServiceProvider services)
         var chatBlock = ChatBlock(chat);
         object data = type is "chat.created" or "chat.archived"
             ? new { chat = chatBlock }
-            : ChangedBlock(
-                chat.Title, chat.Description, chat.Picture,
-                old?.Title, old?.Description, old?.Picture, old is not null);
-        return Task.FromResult(Serialize(BuildEnvelope(hook, type, eventKey, chatBlock, data)));
+            : await ChangedBlock(
+                    chat.Title, chat.Description, chat.MediaId,
+                    old?.Title, old?.Description, old?.MediaId, old is not null, cancellationToken)
+                .ConfigureAwait(false);
+        return Serialize(BuildEnvelope(hook, type, eventKey, chatBlock, data));
     }
 
-    public Task<string> PlaceChanged(
+    public async Task<string> PlaceChanged(
         WebHook hook, WebHookEvents e, Place place, Place? old,
         CancellationToken cancellationToken)
     {
         var type = e.ToEventType();
         var eventKey = place.Version.ToString();
-        var data = ChangedBlock(
-            place.Title, place.Description, place.Picture,
-            old?.Title, old?.Description, old?.Picture, old is not null);
-        return Task.FromResult(Serialize(BuildEnvelope(hook, type, eventKey, null, data)));
+        var data = await ChangedBlock(
+                place.Title, place.Description, place.MediaId,
+                old?.Title, old?.Description, old?.MediaId, old is not null, cancellationToken)
+            .ConfigureAwait(false);
+        return Serialize(BuildEnvelope(hook, type, eventKey, null, data));
     }
 
     public async Task<string> Notification(
@@ -194,13 +196,9 @@ public sealed class WebHookPayloads(IServiceProvider services)
     private async Task<ExternalAuthor> ToExternalAuthor(AuthorFull author, CancellationToken cancellationToken)
     {
         var avatar = author.Avatar;
-        string? avatarUrl;
-        if (avatar.MediaId is { } mediaId) {
-            var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
-            avatarUrl = media is null ? null : UrlMapper.ContentUrl(media.BlobId);
-        }
-        else
-            avatarUrl = avatar.PictureUrl.NullIfEmpty();
+        var avatarUrl = avatar.MediaId is { } mediaId
+            ? await MediaUrl(mediaId, cancellationToken).ConfigureAwait(false)
+            : avatar.PictureUrl.NullIfEmpty();
         return new ExternalAuthor(author.Id.Value, avatar.Name, avatarUrl);
     }
 
@@ -228,23 +226,31 @@ public sealed class WebHookPayloads(IServiceProvider services)
             .ToArray();
     }
 
-    private object ChangedBlock(
-        string title, string description, Media.Media? picture,
-        string? oldTitle, string? oldDescription, Media.Media? oldPicture, bool hasOld)
+    private async Task<object> ChangedBlock(
+        string title, string description, MediaId? mediaId,
+        string? oldTitle, string? oldDescription, MediaId? oldMediaId, bool hasOld,
+        CancellationToken cancellationToken)
     {
-        var pictureUrl = PictureUrl(picture);
+        // Chat.Picture / Place.Picture are populated for the UI only, so the backend diffs MediaId
+        var pictureUrl = await MediaUrl(mediaId, cancellationToken).ConfigureAwait(false);
         var changed = new List<string>(3);
         if (!hasOld || title != oldTitle)
             changed.Add("title");
         if (!hasOld || description != oldDescription)
             changed.Add("description");
-        if (!hasOld || pictureUrl != PictureUrl(oldPicture))
+        if (!hasOld || mediaId != oldMediaId)
             changed.Add("pictureUrl");
         return new { changed = changed.ToArray(), title, description, pictureUrl };
     }
 
-    private string? PictureUrl(Media.Media? media)
-        => media is null ? null : UrlMapper.ContentUrl(media.BlobId);
+    private async Task<string?> MediaUrl(MediaId? mediaId, CancellationToken cancellationToken)
+    {
+        if (mediaId is null)
+            return null;
+
+        var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
+        return media is null ? null : UrlMapper.ContentUrl(media.BlobId);
+    }
 
     private static long ToUnixMillis(Moment moment)
         => (long)(moment - Moment.EpochStart).TotalMilliseconds;

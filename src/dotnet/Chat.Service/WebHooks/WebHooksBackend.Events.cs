@@ -18,9 +18,15 @@ public partial class WebHooksBackend
 
         // Typed text arrives complete in Create; a voice message is created empty + streaming and its
         // final text lands in the streaming -> finalized Update, so that transition is its "posted".
+        // Removal usually comes as Remove, but a thread start is removed (and any entry restored)
+        // through an Update flipping IsRemoved.
         var e = changeKind switch {
             ChangeKind.Create when !entry.IsContentStreaming => WebHookEvents.MessagePosted,
             ChangeKind.Update when oldEntry is { IsContentStreaming: true } && !entry.IsContentStreaming
+                => WebHookEvents.MessagePosted,
+            ChangeKind.Update when oldEntry is { IsRemoved: false } && entry.IsRemoved
+                => WebHookEvents.MessageRemoved,
+            ChangeKind.Update when oldEntry is { IsRemoved: true } && !entry.IsRemoved
                 => WebHookEvents.MessagePosted,
             ChangeKind.Update when oldEntry is { IsContentStreaming: false }
                 && !entry.IsContentStreaming
@@ -163,11 +169,7 @@ public partial class WebHooksBackend
 
         var e = hasLeft ? WebHookEvents.PlaceMemberLeft : WebHookEvents.PlaceMemberJoined;
         var hooks = await HooksForPlace(placeId, cancellationToken).ConfigureAwait(false);
-        var eventKey = $"{userId}:{hasLeft}:{Clocks.SystemClock.Now.EpochOffsetTicks}";
-        await Enqueue(hooks, e, eventKey,
-                hook => Payloads.Member(hook, e, author, cancellationToken),
-                cancellationToken)
-            .ConfigureAwait(false);
+        await EnqueueMember(hooks, e, author, cancellationToken).ConfigureAwait(false);
     }
 
     // [EventHandler]
@@ -204,9 +206,9 @@ public partial class WebHooksBackend
         }
     }
 
-    // Chat + place hooks for the chat, plus personal "selected chats" hooks of members who can still read it
     private async Task<List<WebHook>> HooksForChat(ChatId chatId, CancellationToken cancellationToken)
     {
+        // Chat + place hooks for the chat, plus personal "selected chats" hooks of members who can still read it
         var hooks = (await ListActiveForChat(chatId, cancellationToken).ConfigureAwait(false)).ToList();
         var userIds = await AuthorsBackend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
         foreach (var userId in userIds) {
@@ -226,8 +228,8 @@ public partial class WebHooksBackend
         return hooks.Where(x => x.IsActiveOutgoing).ToList();
     }
 
-    // The place root chat is not a user-facing chat: its members are the place's, reported by the place events
     private static bool IsMemberEventAuthor(AuthorFull author)
+        // The place root chat is not a user-facing chat: its members are the place's, reported by the place events
         => !Bots.IsBot(author.Id) && author.ChatId is not PlaceChatId { IsRoot: true };
 
     private static bool IsEdited(ChatEntry oldEntry, ChatEntry entry)

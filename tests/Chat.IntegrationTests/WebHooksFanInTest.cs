@@ -48,6 +48,65 @@ public class WebHooksFanInTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var payload = await ReadPayload(delivery.Id);
         payload.Should().Contain("hello hooks");
         payload.Should().Contain(chatId.Value);
+        EnvelopeId(payload).Should().Be(delivery.Id, "the webhook-id header and the body id must agree");
+    }
+
+    [Fact]
+    public async Task RemovalViaUpdateAndRestoreShouldEnqueue()
+    {
+        // arrange
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Fan-in removal via update" });
+        var hook = await CreateHook(Alice, WebHookScope.Chat, chatId.Value, WebHookEvents.Messages);
+        var entry = await Alice.CreateTextEntry(chatId, "soon gone");
+        await WaitForDeliveries(hook.Id, 1);
+
+        // act - a thread start is removed through an Update flipping IsRemoved, not a Remove
+        await Commander.Call(new ChatsBackend_ChangeEntry(
+            entry.Id, null, Change.Update(new ChatEntryDiff { IsRemoved = true })));
+
+        // assert
+        var deliveries = await WaitForDeliveries(hook.Id, 2);
+        deliveries[0].EventType.Should().Be("message.removed");
+
+        // act - restore flips it back
+        await Commander.Call(new Chats_RestoreEntry {
+            Session = Alice.Session, ChatId = chatId, LocalId = entry.LocalId,
+        });
+
+        // assert
+        deliveries = await WaitForDeliveries(hook.Id, 3);
+        deliveries[0].EventType.Should().Be("message.posted");
+        deliveries[0].Id.Should().NotBe(deliveries[2].Id, "the restored entry has a new version");
+        (await ReadPayload(deliveries[0].Id)).Should().Contain("soon gone");
+    }
+
+    [Fact]
+    public async Task PlaceMemberJoinedShouldEnqueueWithMatchingIds()
+    {
+        // arrange
+        var place = await Alice.CreatePlace(true, "Fan-in place members");
+        var hook = await CreateHook(Alice, WebHookScope.Place, place.Id.Value, WebHookEvents.PlaceChanges);
+        var bob = await Bob.GetOwnAccount();
+
+        // act
+        await Bob.JoinPlace(place.Id);
+
+        // assert
+        var bobAuthor = await ComputedTest.When(async ct => {
+            var author = await AppHost.Services.GetRequiredService<IAuthorsBackend>()
+                .GetByUserId(place.Id.RootChatId, bob.Id, RequestedAuthorKind.Full, ct);
+            author.Should().NotBeNull();
+            return author!;
+        });
+        var delivery = await ComputedTest.When(async ct => {
+            var deliveries = await Backend.ListDeliveries(hook.Id, Constants.WebHooks.DeliveryListLimit, ct);
+            return deliveries.Single(x => x.EventType == "place.member.joined" && x.Id.Contains(bobAuthor.Id.Value));
+        }, TimeSpan.FromSeconds(10));
+        delivery.Id.Should().Be(WebHookPayloads.DeliveryId(
+            hook.Id, "place.member.joined", $"{bobAuthor.Id.Value}:{bobAuthor.Version}"));
+        var payload = await ReadPayload(delivery.Id);
+        EnvelopeId(payload).Should().Be(delivery.Id, "the webhook-id header and the body id must agree");
+        payload.Should().Contain(bobAuthor.Id.Value);
     }
 
     [Fact]
@@ -186,6 +245,12 @@ public class WebHooksFanInTest(ChatCollection.AppHostFixture fixture, ITestOutpu
             deliveries.Should().HaveCount(count);
             return deliveries;
         }, TimeSpan.FromSeconds(10));
+
+    private static string EnvelopeId(string payload)
+    {
+        using var doc = JsonDocument.Parse(payload);
+        return doc.RootElement.GetProperty("id").GetString()!;
+    }
 
     private async Task<string> ReadPayload(string deliveryId)
     {
