@@ -16,6 +16,7 @@ using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualChat.Resilience;
 using ActualChat.Resilience.Internal;
+using ActualChat.Rpc;
 using ActualChat.Streaming.Diagnostics;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
@@ -161,14 +162,19 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         }
         app.MapRpcWebSocketServer();
         app.MapRpcHttpServer();
-        app.MapGet("/rpc/check", (int? size, HttpContext httpContext) => {
+        var probePolicy = app.Services.GetRequiredService<RpcProbePolicy>();
+        app.MapGet("/rpc/check", async (int? size, HttpContext httpContext) => {
             // "size" makes this a throughput probe rather than a reachability one: some
             // networks let a connection's first few KB through and cap it after that, so
             // only a payload larger than that allowance tells the two apart. It answers
             // that to clients only - the bare "ok" has to stay open, because it's what
             // RpcSwitchingClient falls back to exactly when RPC itself can't get through.
+            // Outside the countries where such capping happens the bare "ok" is the whole
+            // answer too: the client reads it as "no need to measure" and stays on the origin.
             httpContext.Response.Headers.CacheControl = "no-store";
             if (size is not { } byteCount || httpContext.TryGetSessionFromHeader() is null)
+                return Results.Text("ok");
+            if (!await probePolicy.ShouldMeasure(httpContext.GetRemoteIPAddress()?.ToString()).ConfigureAwait(false))
                 return Results.Text("ok");
 
             return Results.Bytes(ProbePayload.AsMemory(0, Math.Clamp(byteCount, 1024, ProbePayload.Length)));
