@@ -51,4 +51,29 @@ public sealed class AudioSegmentSaver(IServiceProvider services) : AudioProcesso
 
         return mediaId;
     }
+
+    public async Task<MediaId> SaveAndCreateMedia(
+        AudioSource audio,
+        MediaId mediaId,
+        string blobId,
+        CancellationToken cancellationToken)
+    {
+        var converter = new WebMStreamConverter(Clocks, Log);
+        var byteStream = converter.ToByteStream(audio, cancellationToken);
+        await Blobs[BlobScope.AudioRecord].UploadByteStream(blobId, byteStream, cancellationToken)
+            .ConfigureAwait(false);
+        await audio.WhenDurationAvailable.ConfigureAwait(false);
+
+        var media = new MediaFull(mediaId) {
+            BlobId = blobId,
+            ContentType = "audio/webm",
+            BeginsAt = default,
+            EndsAt = default(Moment) + audio.Duration,
+            ContentEndsAt = default(Moment) + audio.Duration,
+        };
+        var command = new MediaBackend_Change(mediaId, null, Change.Create(media));
+        await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+
+        return mediaId;
+    }
 }

@@ -65,7 +65,9 @@ public sealed class ChatReplayPlayer : ChatPlayer
         Operation = $"replaying in \"{chat.Title}\"";
         var streamProcessor = new ReplayStreamProcessor(
             Hub.Services, Session, ChatId, startAt, rewindOffset, speed,
-            cancellationToken.CreateLinkedTokenSource());
+            cancellationToken.CreateLinkedTokenSource()) {
+            DubLanguageProvider = ct => Hub.TranslationUI.GetDubLanguage(ChatId, ct),
+        };
         await using var _ = streamProcessor.ConfigureAwait(false);
 
         // Capture playbackStartedAt on first StreamStarted event, not before the RPC call,
