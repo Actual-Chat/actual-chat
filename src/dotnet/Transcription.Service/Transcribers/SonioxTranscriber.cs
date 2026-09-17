@@ -2,6 +2,7 @@ using System.Net.WebSockets;
 using System.Text;
 using ActualChat.Audio;
 using ActualChat.Module;
+using ActualChat.Transcription.Module;
 using ActualLab.Diagnostics;
 using static ActualChat.Constants.Transcription.Soniox;
 
@@ -23,6 +24,7 @@ public sealed class SonioxTranscriber : ITranscriber
 
     private IServiceProvider Services { get; }
     private CoreServerSettings CoreServerSettings { get; }
+    private TranscriptionSettings Settings { get; }
     private MomentClockSet Clocks { get; }
     private OggOpusStreamConverter OggOpusStreamConverter { get; }
     private ILogger Log { get; }
@@ -46,6 +48,7 @@ public sealed class SonioxTranscriber : ITranscriber
         Log = services.LogFor(GetType());
         Clocks = services.Clocks();
         CoreServerSettings = services.GetRequiredService<CoreServerSettings>();
+        Settings = services.GetRequiredService<TranscriptionSettings>();
         OggOpusStreamConverter = new OggOpusStreamConverter(new OggOpusStreamConverter.Options {
             PageDuration = Constants.Transcription.StreamPageDuration,
         });
@@ -211,7 +214,7 @@ public sealed class SonioxTranscriber : ITranscriber
         string audioStreamId,
         CancellationToken cancellationToken)
     {
-        var builder = new SonioxTranscriptBuilder();
+        var builder = new SonioxTranscriptBuilder(Settings.SonioxStableTokenAge);
         var buffer = new ArraySegment<byte>(new byte[16 * 1024]);
         var message = new StringBuilder();
         var hasFinished = false;

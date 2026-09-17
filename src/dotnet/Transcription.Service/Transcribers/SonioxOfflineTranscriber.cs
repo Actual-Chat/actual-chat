@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.Transcription.Module;
 using Microsoft.IO;
 
 namespace ActualChat.Transcription;
@@ -15,6 +16,7 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
 
     private SonioxClient Client { get; }
     private SonioxCleaner Cleaner { get; }
+    private TranscriptionSettings Settings { get; }
     private MomentClockSet Clocks { get; }
     private OggOpusStreamConverter OggOpusStreamConverter { get; }
     private ILogger Log { get; }
@@ -39,6 +41,7 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
         Clocks = services.Clocks();
         Client = services.GetRequiredService<SonioxClient>();
         Cleaner = services.GetRequiredService<SonioxCleaner>();
+        Settings = services.GetRequiredService<TranscriptionSettings>();
         OggOpusStreamConverter = new OggOpusStreamConverter(new OggOpusStreamConverter.Options {
             PageDuration = TimeSpan.FromMilliseconds(200),
         });
@@ -129,7 +132,7 @@ public sealed class SonioxOfflineTranscriber : IOfflineTranscriber
             return null;
 
         // The async API returns the whole transcript at once, and its tokens carry no is_final flag.
-        var builder = new SonioxTranscriptBuilder();
+        var builder = new SonioxTranscriptBuilder(Settings.SonioxStableTokenAge);
         foreach (var token in tokens)
             token.IsFinal = true;
         builder.Update(tokens, tokens[^1].EndMs);

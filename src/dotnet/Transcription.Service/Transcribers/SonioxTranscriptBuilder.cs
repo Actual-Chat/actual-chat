@@ -15,16 +15,16 @@ namespace ActualChat.Transcription;
 // and the dub build on, and Soniox hands it out phrase by phrase - not only at the end of the stream.
 //
 // Soniox finalizes 3-5s behind the speech, though, and practically never revises a tail token
-// that's more than ~1s old - so the leading tail tokens older than StableTokenAge (relative to
-// the message's processed-audio position) are promoted to finals as well. Once promoted, a span
-// is settled: the tail re-sent by the next messages and the eventual finals for it are ignored,
-// and a late revision of a promoted word is lost - offline re-transcription fixes the stored text.
+// that's more than ~1s old - so the leading tail tokens older than the stable token age
+// (`TranscriptionSettings.SonioxStableTokenAge`, relative to the message's processed-audio
+// position) are promoted to finals as well. Once promoted, a span is settled: the tail re-sent
+// by the next messages and the eventual finals for it are ignored, and a late revision of a
+// promoted word is lost - offline re-transcription fixes the stored text.
 
-public sealed class SonioxTranscriptBuilder
+public sealed class SonioxTranscriptBuilder(TimeSpan stableTokenAge)
 {
     private const string EndpointToken = "<end>";
-    private static readonly long StableTokenAgeMs =
-        (long)Constants.Transcription.Soniox.StableTokenAge.TotalMilliseconds;
+    private readonly long _stableTokenAgeMs = (long)stableTokenAge.TotalMilliseconds;
     private readonly StringBuilder _finalText = new();
     private readonly List<Language> _languages = [];
     private LinearMap _finalMap = LinearMap.Zero;
@@ -36,7 +36,7 @@ public sealed class SonioxTranscriptBuilder
 
     public IReadOnlyList<Transcript> Update(IReadOnlyList<SonioxToken> tokens, long audioProcMs)
     {
-        var stableEndMs = audioProcMs - StableTokenAgeMs;
+        var stableEndMs = audioProcMs - _stableTokenAgeMs;
         var tail = new StringBuilder();
         var map = _finalMap;
         var tailStartOffset = _finalText.Length;

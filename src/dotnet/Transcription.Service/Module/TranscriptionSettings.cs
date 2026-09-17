@@ -15,4 +15,8 @@ public class TranscriptionSettings
     public Dictionary<string, string> OfflineRankingOverrides { get; set; } = new();
     // The built-in Soniox voice used for speakers without a cloned voice
     public string SonioxTtsVoice { get; set; } = "Adrian";
+    // Soniox finalizes 3-5 s behind the speech but practically never revises a tail token older
+    // than ~1 s; a dub speaks a promoted token, so this is the margin between latency and a
+    // spoken revision
+    public TimeSpan SonioxStableTokenAge { get; set; } = TimeSpan.FromSeconds(1);
 }
