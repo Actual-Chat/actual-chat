@@ -3,6 +3,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="$(RootNamespace).Users.UnitTests$(AssemblyPublicKey)" />
     <InternalsVisibleTo Include="$(RootNamespace).Users.IntegrationTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="$(BaseName).Mcp.IntegrationTests$(AssemblyPublicKey)" />
   </ItemGroup>
 
   <ItemGroup>
@@ -34,6 +35,8 @@
     <PackageReference Include="ActualLab.Fusion.EntityFramework.Npgsql" />
     <PackageReference Include="Twilio" />
     <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" />
+    <PackageReference Include="OpenIddict.AspNetCore" />
+    <PackageReference Include="OpenIddict.EntityFrameworkCore" />
     <PackageReference Include="TimeZoneNames" />
     <PackageReference Include="TimeZoneConverter" />
     <PackageReference Include="Google.Cloud.RecaptchaEnterprise.V1" />

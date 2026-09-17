@@ -1,8 +1,9 @@
 using System.Net;
+using ActualChat.OAuth;
 using ActualChat.Testing.Host;
 using ModelContextProtocol.Protocol;
 
-namespace ActualChat.OAuth.IntegrationTests;
+namespace ActualChat.Mcp.IntegrationTests;
 
 [Collection(nameof(OAuthCollection))]
 public class McpAccessTest(OAuthCollection.AppHostFixture fixture, ITestOutputHelper @out)

@@ -1,7 +1,7 @@
 using ActualChat.OAuth.Module;
 using ActualChat.Testing.Host;
 
-namespace ActualChat.OAuth.IntegrationTests;
+namespace ActualChat.Mcp.IntegrationTests;
 
 [CollectionDefinition(nameof(OAuthCollection))]
 public class OAuthCollection : ICollectionFixture<OAuthCollection.AppHostFixture>

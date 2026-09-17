@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using ActualChat.OAuth.Module;
 
-namespace ActualChat.OAuth.IntegrationTests;
+namespace ActualChat.Mcp.IntegrationTests;
 
 public sealed class SigningCertificateTest
 {

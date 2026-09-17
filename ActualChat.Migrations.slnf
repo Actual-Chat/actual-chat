@@ -8,7 +8,6 @@
       "src\\dotnet\\Media.Service.Migration\\Media.Service.Migration.csproj",
       "src\\dotnet\\MLSearch.Service.Migration\\MLSearch.Service.Migration.csproj",
       "src\\dotnet\\Notifications.Service.Migration\\Notifications.Service.Migration.csproj",
-      "src\\dotnet\\OAuth.Service.Migration\\OAuth.Service.Migration.csproj",
       "src\\dotnet\\Users.Service.Migration\\Users.Service.Migration.csproj"
     ]
   }

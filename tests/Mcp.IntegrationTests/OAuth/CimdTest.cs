@@ -1,8 +1,9 @@
 using System.Net;
+using ActualChat.OAuth;
 using ActualChat.OAuth.Handlers;
 using ActualChat.Testing.Host;
 
-namespace ActualChat.OAuth.IntegrationTests;
+namespace ActualChat.Mcp.IntegrationTests;
 
 [Collection(nameof(OAuthCollection))]
 public sealed class CimdTest(OAuthCollection.AppHostFixture fixture, ITestOutputHelper @out)

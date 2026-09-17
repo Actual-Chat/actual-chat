@@ -11,8 +11,8 @@
     <ProjectReference Include="..\Core.Server\Core.Server.csproj" />
     <ProjectReference Include="..\Media.Contracts\Media.Contracts.csproj" />
     <ProjectReference Include="..\Media.Service\Media.Service.csproj" />
-    <ProjectReference Include="..\OAuth.Service\OAuth.Service.csproj" />
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
+    <ProjectReference Include="..\Users.Service\Users.Service.csproj" />
   </ItemGroup>
 
   <ItemGroup>
