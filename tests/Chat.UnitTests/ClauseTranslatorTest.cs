@@ -89,8 +89,14 @@ public class ClauseTranslatorTest
         await WhenCount(outputs, 3);
         outputs[^1].Text.Should().Be("EN[Первое второе.] EN[ Третье.]");
 
+        // The unstable tail at the end is translated as the last clause
         source.Writer.Complete();
+        await fake.WhenCalled(5);
+        fake.Calls[4].Should().Be(" Че");
+        fake.Respond(" Че");
         await runTask;
+        outputs[^1].IsStable.Should().BeTrue();
+        outputs[^1].Text.Should().Be("EN[Первое второе.] EN[ Третье.] EN[ Че]");
     }
 
     [Fact]
@@ -110,8 +116,14 @@ public class ClauseTranslatorTest
         fake.Contexts[1].Should().Equal([new TranslationResult("Первое.", "EN[Первое.]")]);
         fake.Respond(" Второе.");
 
+        // The unstable tail at the end is translated as the last clause
         source.Writer.Complete();
+        await fake.WhenCalled(3);
+        fake.Calls[2].Should().Be(" Тре");
+        fake.Respond(" Тре");
         await runTask;
+        outputs[^1].IsStable.Should().BeTrue();
+        outputs[^1].Text.Should().Be("EN[Первое.] EN[ Второе.] EN[ Тре]");
     }
 
     [Fact]
@@ -135,6 +147,30 @@ public class ClauseTranslatorTest
         outputs[^1].IsStable.Should().BeTrue();
         outputs[^1].Text.Should().Be("EN[Привет, как у тебя]");
         outputs[^1].TimeRange.End.Should().BeApproximately(2f, 0.01f);
+    }
+
+    [Fact]
+    public async Task AnUnstableTailAtTheEndIsTranslatedAsTheLastClause()
+    {
+        var fake = new FakeTranslate();
+        var source = Channel.CreateUnbounded<Transcript>();
+        var translator = new ClauseTranslator(fake.Translate, NullLogger.Instance);
+        var outputs = new List<Transcript>();
+        var runTask = Collect(translator.Run(source.Reader.ReadAllAsync(), CancellationToken.None), outputs);
+
+        source.Writer.TryWrite(Unstable("Привет, как дела? Я иду", 3f));
+        await fake.WhenCalled(1);
+        fake.Respond("Привет, как дела?");
+        await WhenCount(outputs, 1);
+
+        source.Writer.Complete();
+        await fake.WhenCalled(2);
+        fake.Calls[1].Should().Be(" Я иду", "nothing can revise the tail any more, so it's the last clause");
+        fake.Respond(" Я иду");
+        await runTask;
+        outputs[^1].IsStable.Should().BeTrue();
+        outputs[^1].Text.Should().Be("EN[Привет, как дела?] EN[ Я иду]");
+        outputs[^1].TimeRange.End.Should().BeApproximately(3f, 0.01f, "the tail's end time is the source's end");
     }
 
     [Fact]

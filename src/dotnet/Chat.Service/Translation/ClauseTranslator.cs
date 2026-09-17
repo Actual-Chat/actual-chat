@@ -64,7 +64,10 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
             }
             Task laneTask;
             lock (_lock) {
+                // Nothing can revise the text any more, so the unstable tail is as final as the
+                // stable text: its remainder is translated and promoted as the last clause
                 _isEnd = true;
+                _stableLength = _source.Text.Length;
                 Reconcile(cancellationToken);
                 laneTask = _laneTask;
             }
@@ -81,10 +84,7 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
         // Under _lock. Lines the speculations up with the clauses of the current source text, starts
         // the missing ones, promotes the stable ones, and publishes whatever changed.
         var text = _source.Text;
-        // The remainder is flushed as the last clause only once the whole text is stable: an
-        // unstable tail at the end of the stream can never be promoted, so it isn't translated
-        var isEnd = _isEnd && _stableLength >= text.Length;
-        var ends = ClauseSplitter.Split(text, _promotedEnd, isEnd);
+        var ends = ClauseSplitter.Split(text, _promotedEnd, _isEnd);
         var start = _promotedEnd;
         for (var i = 0; i < ends.Count; i++) {
             var clause = text[start..ends[i]];
