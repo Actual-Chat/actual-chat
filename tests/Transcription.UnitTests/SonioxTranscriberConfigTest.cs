@@ -34,6 +34,38 @@ public sealed class SonioxTranscriberConfigTest(ITestOutputHelper @out) : TestBa
     }
 
     [Fact]
+    public void StreamingConfigShouldCarryTheEndpointSettings()
+    {
+        // arrange
+        var settings = new TranscriptionSettings {
+            SonioxMaxEndpointDelayMs = 800,
+            SonioxEndpointLatencyAdjustmentLevel = 2,
+            SonioxEndpointSensitivity = 0.4,
+        };
+
+        // act
+        var config = new SonioxTranscriber(NewServices(settings)).NewConfig("key", new TranscriptionOptions());
+
+        // assert
+        config["max_endpoint_delay_ms"].Should().Be(800);
+        config["endpoint_latency_adjustment_level"].Should().Be(2);
+        config["endpoint_sensitivity"].Should().Be(0.4);
+    }
+
+    [Fact]
+    public void StreamingConfigShouldOmitALatencyAdjustmentLevelOfZero()
+    {
+        // act - the defaults
+        var config = new SonioxTranscriber(NewServices()).NewConfig("key", new TranscriptionOptions());
+
+        // assert
+        config["max_endpoint_delay_ms"].Should().Be(2000);
+        config["endpoint_sensitivity"].Should().Be(0.0);
+        config.Should().NotContainKey("endpoint_latency_adjustment_level",
+            "level 0 is Soniox's default, and it's sent only when it changes something");
+    }
+
+    [Fact]
     public void OfflineRequestShouldIdentifyTheLanguageEvenWhenTheChatHasOne()
     {
         // arrange
@@ -49,12 +81,12 @@ public sealed class SonioxTranscriberConfigTest(ITestOutputHelper @out) : TestBa
 
     // Private methods
 
-    private IServiceProvider NewServices()
+    private IServiceProvider NewServices(TranscriptionSettings? settings = null)
     {
         var services = new ServiceCollection()
             .AddSingleton(MomentClockSet.Default)
             .AddSingleton(new CoreServerSettings { SonioxKey = "test" })
-            .AddSingleton(new TranscriptionSettings())
+            .AddSingleton(settings ?? new TranscriptionSettings())
             .AddSingleton<SonioxClient>()
             .AddSingleton(new SonioxCleaner.Options())
             .AddSingleton<SonioxCleaner>()

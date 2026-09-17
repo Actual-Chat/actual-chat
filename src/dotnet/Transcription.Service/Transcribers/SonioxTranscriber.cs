@@ -114,9 +114,11 @@ public sealed class SonioxTranscriber : ITranscriber
             // Without it nothing is finalized until the stream ends, so Complete() would
             // drop the entire transcript as an unfinalized tail.
             ["enable_endpoint_detection"] = true,
-            ["max_endpoint_delay_ms"] = MaxEndpointDelayMs,
-            ["endpoint_sensitivity"] = EndpointSensitivity,
+            ["max_endpoint_delay_ms"] = Settings.SonioxMaxEndpointDelayMs,
+            ["endpoint_sensitivity"] = Settings.SonioxEndpointSensitivity,
         };
+        if (Settings.SonioxEndpointLatencyAdjustmentLevel > 0)
+            config["endpoint_latency_adjustment_level"] = Settings.SonioxEndpointLatencyAdjustmentLevel;
         // Dictionary values are serialized even when null, and Soniox rejects a null context.
         if (SonioxContext.Build(options.Context, policy) is { } context)
             config["context"] = context;

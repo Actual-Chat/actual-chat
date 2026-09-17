@@ -19,4 +19,11 @@ public class TranscriptionSettings
     // than ~1 s; a dub speaks a promoted token, so this is the margin between latency and a
     // spoken revision
     public TimeSpan SonioxStableTokenAge { get; set; } = TimeSpan.FromSeconds(1);
+    // An endpoint turns the tokens before a pause into finals at once, so it beats the stable token
+    // age only when it fires under it; aggressive values split sentences at every hesitation.
+    // MaxEndpointDelayMs: 500..3000 (Soniox default 2000); LatencyAdjustmentLevel: 0..3, sent only
+    // when > 0; Sensitivity: -1.0..1.0 (Soniox default 0.0)
+    public int SonioxMaxEndpointDelayMs { get; set; } = 2000;
+    public int SonioxEndpointLatencyAdjustmentLevel { get; set; }
+    public double SonioxEndpointSensitivity { get; set; }
 }

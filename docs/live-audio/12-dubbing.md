@@ -651,7 +651,12 @@ could speak.
 
 Where the stability comes from: Soniox streams `is_final` tokens
 progressively (3–5 s behind the tail, and immediately at every pause with
-endpoint detection on), and `SonioxTranscriptBuilder.Update` turns each
+endpoint detection on — the three `TranscriptionSettings.SonioxEndpoint*`
+/ `SonioxMaxEndpointDelayMs` settings in the table below shape those
+pauses; an endpoint beats the stable token age only when it fires under
+it, and aggressive values split sentences at every hesitation, so dev
+runs an A/B against the defaults: 800 ms / level 2 / 0.4 sensitivity
+versus 2000 / 0 / 0.0), and `SonioxTranscriptBuilder.Update` turns each
 message that brings new finals into a stable finals-only transcript
 followed, if there is a tail, by the unstable finals+tail one
 (`src/dotnet/Transcription.Service/Transcribers/SonioxTranscriptBuilder.cs`).
@@ -1905,6 +1910,9 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 | `ClauseSplitter.MinCommaClauseLength` | 20 chars | A comma-class mark (`, ; :` / fullwidth) ends a clause only once the clause it would close reaches this length; a shorter fragment (`"Well,"`) waits for more text |
 | `ClauseSplitter.MaxUnpunctuatedLength` | 120 chars | A run with no clause boundary longer than this is cut at the last space before the limit, in every run the text produces, so it doesn't wait for the translation's end |
 | `TranscriptionSettings.SonioxStableTokenAge` | 1 s (was the constant `Constants.Transcription.Soniox.StableTokenAge` = 1.5 s) | A non-final token that ended this long before `total_audio_proc_ms` is promoted to stable by `SonioxTranscriptBuilder` |
+| `TranscriptionSettings.SonioxMaxEndpointDelayMs` | 2000 (Soniox's default; 800 in `appsettings.Development.json`; was `Constants.Transcription.Soniox.MaxEndpointDelayMs`) | Soniox `max_endpoint_delay_ms`, 500..3000: the longest pause before an endpoint fires and finalizes the tokens before it |
+| `TranscriptionSettings.SonioxEndpointLatencyAdjustmentLevel` | 0 (2 in `appsettings.Development.json`) | Soniox `endpoint_latency_adjustment_level`, 0..3; sent only when > 0 |
+| `TranscriptionSettings.SonioxEndpointSensitivity` | 0.0 (Soniox's default; 0.4 in `appsettings.Development.json`; was `Constants.Transcription.Soniox.EndpointSensitivity`) | Soniox `endpoint_sensitivity`, -1.0..1.0: how readily a pause counts as an endpoint |
 | `TranscriptionSettings.SonioxTtsVoice` | `"Adrian"` | Stock voice for speakers who picked none (`UserLanguageSettings.DubVoice` empty) |
 | `Constants.Audio.VoiceSampleWindow` | 90 d | How far back a speaker's own recordings are considered for the auto voice sample |
 | `Constants.Audio.VoiceSampleMinEntryDuration` | 5 s | Entries shorter than this don't count toward the auto sample |
