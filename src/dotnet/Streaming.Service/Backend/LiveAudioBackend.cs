@@ -100,6 +100,10 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
     [ComputeMethod]
     protected virtual async Task<State> ListRaw(ChatId chatId, CancellationToken cancellationToken)
     {
+        // List's own ownership dependency doesn't cover this cache - invalidating List just re-reads it.
+        // Without this, a shard that leaves and comes back serves a view missing the other node's writes.
+        ShardOwner.GetShardStateComputed(chatId, addDependency: true);
+
         var computed = Computed.GetCurrent();
         var now = Clocks.SystemClock.Now;
         if (_listRawPrimer.TryUsePrimed(chatId, out var primed))
