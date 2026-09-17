@@ -84,7 +84,12 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
             (await Backend.Get(created.Id, ct))!.Name.Should().Be("CI 2");
         });
 
-        // act - remove
+        // act - remove, with a delivery in the outbox
+        await Commander.Call(NewEnqueue(created.Id, chatId, $"{created.Id}:d1"));
+        await ComputedTest.When(async ct => {
+            var deliveries = await Backend.ListDeliveries(created.Id, Constants.WebHooks.DeliveryListLimit, ct);
+            deliveries.Should().ContainSingle();
+        });
         var removed = await Commander.Call(new WebHooksBackend_Change(
             WebHookScope.Chat, chatId.Value, created.Id, null, Change.Remove<WebHookDiff>(), alice.Id));
 
@@ -93,6 +98,8 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
         await ComputedTest.When(async ct => {
             (await Backend.Get(created.Id, ct)).Should().BeNull();
             (await Backend.ListByScope(WebHookScope.Chat, chatId.Value, ct)).Should().BeEmpty();
+            (await Backend.ListDeliveries(created.Id, Constants.WebHooks.DeliveryListLimit, ct))
+                .Should().BeEmpty("deliveries die with the hook and their computed must be invalidated");
         });
     }
 
@@ -349,6 +356,9 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
             alice.Id))).WebHook!;
         var deliveryId = $"{webHook.Id}:d1";
         await Commander.Call(NewEnqueue(webHook.Id, chatId, deliveryId));
+        var redeliverPending = ()
+            => Commander.Call(new WebHooksBackend_Redeliver(webHook.Id, chatId.Value, deliveryId));
+        await redeliverPending.Should().ThrowAsync<InvalidOperationException>().WithMessage("*completed*");
         await Commander.Call(new WebHooksBackend_RecordDelivery(
             webHook.Id, chatId.Value, deliveryId, WebHookDeliveryStatus.Failed, 500, "boom", 10, null));
 

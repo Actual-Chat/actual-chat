@@ -85,6 +85,8 @@ public partial class WebHooksBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
             InvalidateHook(context);
+            if (change.IsRemove() && context.Operation.Items.KeylessGet<WebHook>() is { } removedHook)
+                _ = ListDeliveries(removedHook.Id, Constants.WebHooks.DeliveryListLimit, default);
             return default!;
         }
 
@@ -311,6 +313,9 @@ public partial class WebHooksBackend(IServiceProvider services)
             .FirstOrDefaultAsync(x => x.Id == deliveryId && x.WebHookId == id.Value, cancellationToken)
             .ConfigureAwait(false);
         dbDelivery = dbDelivery.Require();
+        if (dbDelivery.Status == WebHookDeliveryStatus.Pending)
+            throw StandardError.Constraint("Only a completed delivery can be redelivered.");
+
         var cloneId = $"{deliveryId}:r{dbDelivery.Attempts}";
         var isRedelivered = await dbContext.WebHookDeliveries
             .AnyAsync(x => x.Id == cloneId, cancellationToken)
@@ -386,5 +391,7 @@ public partial class WebHooksBackend(IServiceProvider services)
     {
         if (diff.CustomHeaderValue is { } headerValue)
             dbWebHook.CustomHeaderValueProtected = headerValue.IsNullOrEmpty() ? null : Secrets.Protect(headerValue);
+        if (dbWebHook.CustomHeaderName.IsNullOrEmpty())
+            dbWebHook.CustomHeaderValueProtected = null;
     }
 }
