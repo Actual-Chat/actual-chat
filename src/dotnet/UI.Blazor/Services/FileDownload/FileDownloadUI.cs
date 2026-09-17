@@ -32,7 +32,8 @@ public sealed class FileDownloadUI(UIHub hub)
     }
 
     public Task Preview(string blobId)
-        => Hub.ExternalUrlOpener.Open(Hub.UrlMapper.ContentUrl(blobId));
+        // ToOrigin: the OS opens this one, and it cannot resolve the app's content scheme
+        => Hub.ExternalUrlOpener.Open(UrlMapper.ToOrigin(Hub.UrlMapper.ContentUrl(blobId)));
 
     public Task DownloadUrl(string url, string fileName, string contentType)
         => Download([new FileToSave(url, fileName, contentType)]);

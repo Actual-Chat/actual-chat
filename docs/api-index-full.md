@@ -3,16 +3,17 @@
 This document lists notable public types in ActualChat .NET projects.
 See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-ts.md).
 
-
 ## ActualChat.ContentCaching
 
 - `IContentHandler` — Composable content request handler returning an owned HTTP response or null for native fallback.
 - `ContentRequest` (record) — Representation URL, method, and headers.
-- `LoggingContentHandler` — Logging decorator with synchronous native pass-through when no downstream is supplied.
 - `HttpContentHandler` — Streaming HTTP fetcher using a supplied HttpClient.
 - `FileSystemContentHandler` — Progressive AES-GCM filesystem cache with hash buckets, shared downloads, and byte ranges.
-- `FileSystemContentHandler.Options` (record) — Cache directory, root encryption key, download buffer size, and cache URL normalization.
+- `FileSystemContentHandler.TryHandleCached` — Serves a published entry only; never fetches or starts a fill.
 
+- `FileSystemContentHandler.Options` (record) — Cache directory, root encryption key, download buffer size, cache URL normalization, the `Cache-Control` max-age served to the caller, and the max stored length.
+- `ContentCacheStats` — Thread-safe cumulative outcome counters and served/fetched byte totals of one handler.
+- `ContentCacheOutcome` (enum) — Hit, JoinedFill, StartedFill, Bypass, Error.
 
 ## ActualChat.Core
 
@@ -184,7 +185,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `LocalUrlExt` (static class) - Extension methods for LocalUrl.
 - `DisplayUrl` (record) - URL with display properties.
 - `BaseUrlKind` (enum) - Specifies the type of base URL.
-- `UrlMapper` - Maps between different URL formats.
+- `UrlMapper` - Maps between different URL formats; its media URLs return cache URLs on Apple, and `UrlMapper.ToOrigin` reverses that where a URL leaves the WebView.
 - `Maybe<T>` (struct) - Optional value wrapper.
 - `MappingChannelReader<TIn, TOut>` - Channel reader with mapping.
 - `MemorySegment<T>` - Memory segment wrapper.
@@ -235,7 +236,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `AliasId` (class) - Plain string identifier for an alias.
 - `AliasInfo` (record) - Alias information.
 
-
 ## ActualChat.Core.Audio
 
 - `AudioProcessingModule` - Web audio API audio processing module wrapper.
@@ -248,7 +248,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `NoopVoiceActivityDetector` - No-op voice activity detector.
 - `OnnxVoiceActivityDetector` - ONNX-based voice activity detector.
 - `VoiceActivityKind` (enum) - Types of voice activity (Start, End).
-
 
 ## ActualChat.Core.Server
 
@@ -347,7 +346,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `UploadedTempFile` - Uploaded temp file.
 - `IHealthState` - Health state.
 
-
 ## ActualChat.Backend
 
 - `IRequiresRandomShard` - Marker interface indicating a service requires a random shard.
@@ -357,13 +355,11 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ShardSchemeFlags` (enum) - Flags configuring a shard scheme's behavior.
 - `ServerHashInputExt` (static class) - Server-side hash input extensions.
 
-
 ## ActualChat.Db
 
 - `DbModule` - Database module configuration.
 - `DbSettings` - Database settings.
 - `IDbEntity` - Database entity marker.
-
 
 ## ActualChat.Redis
 
@@ -372,7 +368,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `RedisSettings` - Redis settings.
 - `RedisSlidingWindowRateLimiter` (sealed class) - Sliding window rate limiter.
 - `RedisRateLimitPolicy` (static class) - Builds the API host `RateLimitPolicy`: commands local, the rest via Redis.
-
 
 ## ActualChat.Api.Contracts
 
@@ -656,7 +651,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `IDiffHandler<T>` - Interface for diff handlers.
 - `ThreadContact` (record) - Contact information for a thread.
 
-
 ## ActualChat.Chat.Contracts
 
 - `ChangedAuthorsQuery` (record) - Query parameters for listing changed authors by version range.
@@ -685,7 +679,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `PlacesBackendExt` (static class) - Extension methods for IPlacesBackend.
 - `RolesBackendExt` (static class) - Extension methods for IRolesBackend.
 
-
 ## ActualChat.Users.Contracts
 
 - `UserLocalizers` - Resolves the IStringLocalizer for text a given user will read: `UILanguage ?? DetectedUILanguage ?? English`.
@@ -705,7 +698,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ServerKvasBackendExt` (static class) - Extension methods for IServerKvasBackend.
 - `AccountsBackendExt` (static class) - Extension methods for IAccountsBackend.
 
-
 ## ActualChat.Contacts.Contracts
 
 - `ChangedContactsQuery` (record) - Query parameters for listing changed contacts by version range.
@@ -714,11 +706,9 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `IExternalContactsBackend` - Backend service for managing external contacts synced from devices.
 - `ContactsBackendExt` (static class) - Extension methods for IContactsBackend.
 
-
 ## ActualChat.Invite.Contracts
 
 - `IInvitesBackend` - Backend service for managing invitation links.
-
 
 ## ActualChat.Media.Contracts
 
@@ -729,13 +719,11 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `IUploadsBackend` - Backend service for file upload handling.
 - `GrabStatusesBackendExt` (static class) - Extension methods for IGrabStatusesBackend.
 
-
 ## ActualChat.Notifications.Contracts
 
 - `Device` (record) - Represents a user's push notification device registration.
 - `ExplicitNotification` (record) - Represents an explicit notification to be sent.
 - `INotificationsBackend` - Backend service for push notification management.
-
 
 ## ActualChat.Streaming.Contracts
 
@@ -749,21 +737,17 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ITranscriber` - Interface for audio transcription.
 - `ITranscriberFactory` - Factory for creating transcriber instances.
 
-
 ## ActualChat.Search.Contracts
 
 - `ISearchBackend` - Backend service for full-text search operations.
-
 
 ## ActualChat.MLSearch.Contracts
 
 (Marker contract project — types are defined in `ActualChat.Search.Contracts` and `ActualChat.MLSearch.Service`.)
 
-
 ## ActualChat.Transcription.Contracts
 
 (Marker contract project — transcription contracts are defined alongside `ActualChat.Streaming.Contracts`.)
-
 
 ## ActualChat.Asr
 
@@ -773,7 +757,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `TdtDecoder` - Token-and-Duration Transducer decoder.
 - `TranscriptionResult` - Result of ASR transcription.
 - `Vocabulary` - ASR model vocabulary.
-
 
 ## ActualChat.Users.Service
 
@@ -792,7 +775,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `SessionsBackend` - Implementation of ISessionsBackend.
 - `UserPresences` - Implementation of IUserPresences for presence tracking.
 - `UserPresencesBackend` - Implementation of IUserPresencesBackend.
-
 
 ## ActualChat.Chat.Service
 
@@ -821,7 +803,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `Translations` - Implementation of ITranslations.
 - `TranslationsBackend` - Implementation of ITranslationsBackend.
 
-
 ## ActualChat.Contacts.Service
 
 - `Contacts` - Implementation of IContacts for contact management.
@@ -830,7 +811,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ExternalContactHashesBackend` - Implementation of IExternalContactHashesBackend.
 - `ExternalContacts` - Implementation of IExternalContacts.
 - `ExternalContactsBackend` - Implementation of IExternalContactsBackend.
-
 
 ## ActualChat.Invite.Service
 
@@ -841,7 +821,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `InviteDbContext` - EF Core context for invites.
 - `InviteDbInitializer` - Database initializer for invites.
 - `InviteServiceModule` - DI module for Invite service.
-
 
 ## ActualChat.Media.Service
 
@@ -882,7 +861,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `MediaDbInitializer` - Database initializer for media.
 - `MediaServiceModule` - DI module for Media service.
 
-
 ## ActualChat.Notifications.Service
 
 - `Notifications` - Implementation of INotifications for push notifications.
@@ -897,7 +875,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `NotificationDbInitializer` - Database initializer for notifications.
 - `NotificationServiceModule` - DI module for Notification service.
 
-
 ## ActualChat.Streaming.Service
 
 - `FlowBackend` - Implementation of IFlowBackend.
@@ -910,12 +887,10 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `VideoStreamingBackend` - Implementation of IVideoStreamingBackend.
 - `TranscriberFactory` - Implementation of ITranscriberFactory.
 
-
 ## ActualChat.Search.Service
 
 - `Search` - Implementation of ISearch.
 - `SearchBackend` - Implementation of ISearchBackend.
-
 
 ## ActualChat.MLSearch.Service
 
@@ -950,7 +925,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `PlaceExt` (static class) - Place extensions for search.
 - `UriAttribute` (attribute) - URI validation attribute.
 
-
 ## ActualChat.Flows.Service
 
 - `FlowBackend` - Backend implementation for flows.
@@ -958,7 +932,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `DbFlow` - Database entity for flows.
 - `FlowsDbContext` - EF Core context for flows.
 - `FlowsDbInitializer` - Database initializer for flows.
-
 
 ## ActualChat.Chat.ML
 
@@ -984,7 +957,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `OpenAITranscriber` - Transcriber using OpenAI API.
 - `TokenEstimator` - Estimates token counts for prompts.
 
-
 ## ActualChat.Localization
 
 Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
@@ -1000,7 +972,6 @@ Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 - `MessageLocalizer` - Localizes a runtime message through `MessageIndex`.
 - `Strings` - Resource-anchor type for `IStringLocalizer<Strings>`.
 
-
 ## ActualChat.UI
 
 - `AppRemoteComputedCache` (abstract class) - Client-side computed value cache.
@@ -1008,7 +979,6 @@ Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 - `ChunkedFileUploader` - Resumable file uploads with retry.
 - `SystemSettingsUI` - System settings UI.
 - `UICoreModule` - UI core module.
-
 
 ## ActualChat.UI.Blazor
 
@@ -1047,7 +1017,6 @@ Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 - `InfiniteList<T>` - Unbounded feed: no scrollbar, fixed huge virtual space, items held by anchoring.
 - `WebRemoteComputedCache` - IndexedDB-based remote computed cache.
 
-
 ## ActualChat.UI.Blazor.App
 
 - `AppUIHub` - Extended UI hub with chat-specific services.
@@ -1074,13 +1043,11 @@ Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 - `SendingMessages` - Message sending with retry logic.
 - `WebApp` - Root Blazor component of the web (server & WASM) app.
 
-
 ## ActualChat.UI.App
 
 - `AppServerInstanceSelector` - Selects which app server instance to connect to.
 - `IncomingShareSuggestions` - Handles OS-level incoming share suggestions.
 - `VideoTranscoder` - Transcodes video files for upload/playback.
-
 
 ## ActualChat.Mjml.Blazor
 
@@ -1089,12 +1056,10 @@ Blazor components for building MJML email templates. Each MJML element has a cor
 - `Mjml`, `MjmlAccordion`, `MjmlAccordionElement`, `MjmlAccordionText`, `MjmlAccordionTitle`, `MjmlAll`, `MjmlAttributes`, `MjmlBody`, `MjmlBreakpoint`, `MjmlButton`, `MjmlCarousel`, `MjmlCarouselImage`, `MjmlClass`, `MjmlColumn`, `MjmlDivider`, `MjmlFont`, `MjmlGroup`, `MjmlHead`, `MjmlHero`, `MjmlHtmlAttribute`, `MjmlHtmlAttributes`, `MjmlImage`, `MjmlInclude`, `MjmlNavbar`, `MjmlNavbarLink`, `MjmlPreview`, `MjmlRaw`, `MjmlSection`, `MjmlSelector`, `MjmlSocial`, `MjmlSocialElement`, `MjmlSpacer`, `MjmlStyle`, `MjmlTable`, `MjmlText`, `MjmlTitle`, `MjmlWrapper` — Blazor components for MJML email template building.
 - Enum/extension pairs (`MjmlButtonAlign`, `MjmlSectionDirection`, `MjmlSocialMode`, `MjmlStyleInline`, etc.) typed property values for the components above.
 
-
 ## ActualChat.Users.Templates
 
 - `BlazorRenderer` - Renders user-facing email templates with Blazor.
 - `DigestArgs` - Arguments for the digest email template.
-
 
 ## ActualChat.Kubernetes
 
@@ -1116,7 +1081,6 @@ Blazor components for building MJML email templates. Each MJML element has a cor
 - `NullableMicroTimeJsonConverter` - JSON converter for nullable MicroTime.
 - `ServiceProviderExt` (static class) - Service-provider extensions for Kubernetes.
 
-
 ## ActualChat.App.Server
 
 - `AppHost` - Main application host.
@@ -1137,7 +1101,6 @@ Blazor components for building MJML email templates. Each MJML element has a cor
 - `ApplicationBuilderExt` (static class) - Middleware configuration extensions.
 - `EndpointsExt` (static class) - Health and metrics endpoint mapping.
 - `HostSettings` - Host configuration settings.
-
 
 ## ActualChat.App.Maui
 
@@ -1164,7 +1127,6 @@ Blazor components for building MJML email templates. Each MJML element has a cor
 - `SafeJSObjectReference` - Safe JS object reference.
 - `SafeJSRuntime` - JS runtime with disconnection handling.
 - `PhoneParser` - Phone number parsing with LibPhoneNumbers.
-
 
 ## ActualChat.Maui
 
@@ -1193,7 +1155,6 @@ Cross-MAUI-app shared utilities (used by App.Maui and IosShareExt).
 - `LoggerConfigurationExtensions`, `LoggingBuilderExt` (static classes) - iOS logger configuration.
 - `SentryExt` (static class) - Sentry integration extensions.
 
-
 ## ActualChat.App.Maui.IosShareExt
 
 Standalone iOS share extension app and views.
@@ -1221,7 +1182,6 @@ Standalone iOS share extension app and views.
 - `NSId`, `NSId<TId>`, `NSHasId<T, TId>` - NSObject ID wrappers.
 - `FusionBuilderExt`, `ServiceProviderExt`, `UICollectionViewCellRegistrationExt`, `UIKitExt`, `NSItemProviderExt` (static classes) - DI/UIKit/Fusion extensions.
 
-
 ## ActualChat.App.AotHelper
 
 Tooling that emits AOT-friendly type "keeps" so MessagePack/STJ trimming-safe.
@@ -1237,31 +1197,25 @@ Tooling that emits AOT-friendly type "keeps" so MessagePack/STJ trimming-safe.
 - `StjConverterDiscovery` - Discovers System.Text.Json converters.
 - `StjKeepsGenerator` - Generates System.Text.Json converter keeps.
 
-
 ## ActualChat.App.Wasm
 
 Blazor WebAssembly host shell for the client app. (Mostly bootstrap glue — no dedicated public types beyond `Program`.)
-
 
 ## ActualChat.App.AspireHost
 
 .NET Aspire host for orchestrated local development. (Aspire app-host bootstrap — no dedicated public types beyond `Program`.)
 
-
 ## ActualChat.App.ConsoleClient
 
 Console-based client used for diagnostics and integration testing. (CLI bootstrap — no dedicated public types beyond `Program`.)
-
 
 ## ActualChat.App.VideoLoadTest
 
 Standalone load-testing tool for the video pipeline. (CLI bootstrap — no dedicated public types beyond `Program`.)
 
-
 ## ActualChat.Asr.Demo
 
 Standalone demo app exercising `ActualChat.Asr`. (CLI bootstrap — no dedicated public types beyond `Program`.)
-
 
 ## ActualChat.MLSearch
 

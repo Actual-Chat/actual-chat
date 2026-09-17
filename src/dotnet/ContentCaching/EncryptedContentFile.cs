@@ -100,7 +100,10 @@ internal sealed class EncryptedContentFile : IDisposable
             if (!footer.AsSpan(0, 8).SequenceEqual("ACECFEND"u8))
                 throw new InvalidDataException("Missing encrypted content footer.");
 
-            cipher.Decrypt(footer.AsSpan(24, 12), [], footer.AsSpan(36), [], footer.AsSpan(0, 36));
+            // A zero-length slice of a real array, not []: an empty span carries a null pointer,
+            // and Android's AES-GCM shim aborts the process on one instead of throwing
+            cipher.Decrypt(footer.AsSpan(24, 12), footer.AsSpan(0, 0), footer.AsSpan(36),
+                footer.AsSpan(0, 0), footer.AsSpan(0, 36));
             var length = BinaryPrimitives.ReadInt64LittleEndian(footer.AsSpan(8));
             var storedDataEnd = BinaryPrimitives.ReadInt64LittleEndian(footer.AsSpan(16));
             var physicalLength = dataEnd - dataStart;
@@ -187,7 +190,9 @@ internal sealed class EncryptedContentFile : IDisposable
             BinaryPrimitives.WriteInt64LittleEndian(footer.AsSpan(16), _dataEnd);
             RandomNumberGenerator.Fill(footer.AsSpan(24, 12));
             using var cipher = new AesGcm(_key, TagLength);
-            cipher.Encrypt(footer.AsSpan(24, 12), [], [], footer.AsSpan(36), footer.AsSpan(0, 36));
+            // See Open: [] would be a null pointer, which Android's AES-GCM shim aborts on
+            cipher.Encrypt(footer.AsSpan(24, 12), footer.AsSpan(0, 0), footer.AsSpan(0, 0),
+                footer.AsSpan(36), footer.AsSpan(0, 36));
             await RandomAccess.WriteAsync(_handle, footer, _dataEnd, cancellationToken).ConfigureAwait(false);
             RandomAccess.FlushToDisk(_handle);
             _isComplete = true;

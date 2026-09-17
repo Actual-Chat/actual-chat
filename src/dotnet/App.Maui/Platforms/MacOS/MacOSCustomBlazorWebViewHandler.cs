@@ -55,6 +55,8 @@ public sealed class MacOSCustomBlazorWebViewHandler : BlazorWebViewHandler
         config.SetUrlSchemeHandler(this.NewAppSchemeHandler(), "app");
         // content://files/<key> previews of local files (attachments, gallery thumbnails) - what
         // MauiWebView.MaciOS registers from BlazorWebViewInitializing on iOS and Catalyst.
+        // media/<key> carries remote media too, since WKWebView refuses a handler for https
+        ContentResolver.InstallUrlConverters();
         config.SetUrlSchemeHandler(ContentSchemeHandler.Instance, "content");
         // The page extends under the titlebar: it reserves the traffic lights' corner and moves the
         // window from its own drag regions - see WindowConfigurator.ExtendContentUnderTitlebar

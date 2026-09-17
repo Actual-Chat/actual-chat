@@ -30,12 +30,14 @@ public sealed partial class FileSystemContentHandler
         private bool _areResourcesDisposed;
 
         public override bool CanRead => Volatile.Read(ref _isDisposed) == 0;
-        public override bool CanSeek => false;
+        // Seeking only moves a cursor; a read past an active fill waits for that position.
+        // A declared length is still required - WebView2 needs Size up front.
+        public override bool CanSeek => _length != null && _fallbackStream == null && CanRead;
         public override bool CanWrite => false;
         public override long Length => _length ?? throw new NotSupportedException();
         public override long Position {
             get => _position;
-            set => throw new NotSupportedException();
+            set => Seek(value, SeekOrigin.Begin);
         }
 
         public ReadStream(
@@ -110,7 +112,33 @@ public sealed partial class FileSystemContentHandler
         }
 
         public override void Flush() { }
-        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            lock (_lock) {
+                _requestToken.ThrowIfCancellationRequested();
+                ObjectDisposedException.ThrowIf(!CanRead, this);
+                if (!CanSeek)
+                    throw new NotSupportedException();
+                if (_isReading)
+                    throw new InvalidOperationException("Concurrent reads on one response stream are not supported.");
+
+                var length = _length!.Value;
+                var position = origin switch {
+                    SeekOrigin.Begin => offset,
+                    SeekOrigin.Current => checked(_position + offset),
+                    SeekOrigin.End => checked(length + offset),
+                    _ => throw new ArgumentOutOfRangeException(nameof(origin)),
+                };
+                ArgumentOutOfRangeException.ThrowIfNegative(position);
+                ArgumentOutOfRangeException.ThrowIfGreaterThan(position, length);
+
+                _reader.Seek(_offset + position, SeekOrigin.Begin);
+                _position = position;
+                return position;
+            }
+        }
+
         public override void SetLength(long value) => throw new NotSupportedException();
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
@@ -179,6 +207,7 @@ public sealed partial class FileSystemContentHandler
                     throw new EndOfStreamException("Cached content ended before its published length.");
 
                 _position += count;
+                _owner.Stats.ReportServed(count);
                 return count;
             }
             catch (Exception e) when (e is CryptographicException or InvalidDataException or EndOfStreamException) {
@@ -246,6 +275,7 @@ public sealed partial class FileSystemContentHandler
                 throw new EndOfStreamException("The fallback content ended before its declared length.");
 
             _position += count;
+            _owner.Stats.ReportFetched(count);
             return count;
         }
     }

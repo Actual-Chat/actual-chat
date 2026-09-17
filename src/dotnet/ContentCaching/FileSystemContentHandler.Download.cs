@@ -49,7 +49,7 @@ public sealed partial class FileSystemContentHandler
                 body = new ReadStream(
                     owner, path, file, 0, metadata.ExpectedLength, this,
                     request, metadata, cancellationToken);
-                var result = metadata.CreateResponse(body, metadata.ExpectedLength);
+                var result = owner.ApplyResponseMaxAge(metadata.CreateResponse(body, metadata.ExpectedLength));
                 _ = Run();
                 body.ActivateCancellation();
                 cancellationToken.ThrowIfCancellationRequested();
@@ -98,6 +98,7 @@ public sealed partial class FileSystemContentHandler
         protected override async Task OnRun(CancellationToken cancellationToken)
         {
             Exception? error = null;
+            var startedAt = CpuTimestamp.Now;
             var buffer = new byte[owner.Settings.DownloadBufferSize];
             var length = 0L;
             try {
@@ -116,6 +117,7 @@ public sealed partial class FileSystemContentHandler
                         throw new StorageFailure(e);
                     }
                     length = nextLength;
+                    owner.Stats.ReportFetched(count);
                     lock (_lock)
                         Publish(new Progress(length, false, null));
                 }
@@ -157,6 +159,15 @@ public sealed partial class FileSystemContentHandler
                 if (mustDispose)
                     file.Dispose();
                 Downloads.TryRemove(KeyValuePair.Create(path, this));
+                if (error == null)
+                    owner.DebugLog?.LogDebug("Content cache fill completed: {Path}, {Length} in {Elapsed}",
+                        path.FileName, length, CpuTimestamp.Now - startedAt);
+                else if (error is OperationCanceledException)
+                    owner.DebugLog?.LogDebug("Content cache fill canceled: {Path}, {Length}", path.FileName, length);
+                else {
+                    owner.Stats.Report(ContentCacheOutcome.Error);
+                    owner.Log?.LogWarning(error, "Content cache fill failed: {Path}, {Length}", path.FileName, length);
+                }
             }
         }
 

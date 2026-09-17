@@ -21,7 +21,7 @@ public sealed class MauiEncryptionKeysTest
         await keys.WhenReady;
 
         // assert
-        keys.DbEncryptionKey.Should().Equal(Enumerable.Range(0, 32).Select(x => (byte)x));
+        keys.Primary.Should().Equal(Enumerable.Range(0, 32).Select(x => (byte)x));
         stores.SecureValue.Should().Be(EncodedKey);
         stores.LegacyValue.Should().BeNull();
         stores.Operations.Should().Equal(
@@ -39,7 +39,7 @@ public sealed class MauiEncryptionKeysTest
         await keys.WhenReady;
 
         // assert
-        keys.DbEncryptionKey.Should().Equal(Convert.FromBase64String(EncodedKey));
+        keys.Primary.Should().Equal(Convert.FromBase64String(EncodedKey));
         stores.LegacyValue.Should().BeNull();
         stores.Operations.Should().Equal("read secure", "remove preferences");
     }
@@ -57,9 +57,9 @@ public sealed class MauiEncryptionKeysTest
         await restartedKeys.WhenReady;
 
         // assert
-        keys.DbEncryptionKey.Should().HaveCount(32).And.Contain(x => x != 0);
-        restartedKeys.DbEncryptionKey.Should().Equal(keys.DbEncryptionKey);
-        Convert.FromBase64String(stores.SecureValue!).Should().Equal(keys.DbEncryptionKey);
+        keys.Primary.Should().HaveCount(32).And.Contain(x => x != 0);
+        restartedKeys.Primary.Should().Equal(keys.Primary);
+        Convert.FromBase64String(stores.SecureValue!).Should().Equal(keys.Primary);
         stores.LegacyValue.Should().BeNull();
     }
 
@@ -101,7 +101,7 @@ public sealed class MauiEncryptionKeysTest
         await initialize.Should().ThrowAsync<IOException>();
         stores.LegacyValue.Should().Be(LegacyKey);
         stores.SecureValue.Should().BeNull();
-        var readKey = () => keys.DbEncryptionKey;
+        var readKey = () => keys.Primary;
         readKey.Should().Throw<InvalidOperationException>();
     }
 
@@ -181,7 +181,7 @@ public sealed class MauiEncryptionKeysTest
         await restartedKeys.WhenReady;
 
         // assert
-        restartedKeys.DbEncryptionKey.Should().Equal(Convert.FromBase64String(EncodedKey));
+        restartedKeys.Primary.Should().Equal(Convert.FromBase64String(EncodedKey));
         stores.LegacyValue.Should().BeNull();
         stores.Operations.Count(x => x == "write secure").Should().Be(1);
     }
@@ -204,7 +204,7 @@ public sealed class MauiEncryptionKeysTest
         // assert
         await initialize.Should().ThrowAsync<IOException>();
         stores.LegacyValue.Should().Be(LegacyKey);
-        var readKey = () => keys.DbEncryptionKey;
+        var readKey = () => keys.Primary;
         readKey.Should().Throw<InvalidOperationException>();
     }
 

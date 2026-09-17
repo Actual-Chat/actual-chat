@@ -59,7 +59,6 @@ public class AndroidWebViewClient(
         if (IsDisconnected)
             return null;
 
-        MauiContentRequests.Observe(request?.Url?.ToString(), request?.Method);
         var requestUrl = request?.Url;
         if (request != null && requestUrl != null
             && IsAppOrigin(requestUrl)
@@ -74,6 +73,10 @@ public class AndroidWebViewClient(
             };
             return new WebResourceResponse(mimeType, null, 200, "OK", headers, stream);
         }
+
+        var cachedResponse = TryReadFromContentCache(request);
+        if (cachedResponse != null)
+            return cachedResponse;
 
         var resourceResponse = Original.ShouldInterceptRequest(view, request);
         if (resourceResponse == null)
@@ -111,6 +114,52 @@ public class AndroidWebViewClient(
     }
 
     // Private methods
+
+    private WebResourceResponse? TryReadFromContentCache(IWebResourceRequest? request)
+    {
+        var url = request?.Url?.ToString();
+        var range = request?.RequestHeaders?
+            .FirstOrDefault(x => x.Key.Equals("Range", StringComparison.OrdinalIgnoreCase)).Value;
+        var startedAt = CpuTimestamp.Now;
+        var response = MauiContentRequests.TryHandleCached(url, request?.Method, range);
+        if (response == null) {
+            var fetch = MauiContentRequests.BeginFetch(url, request?.Method, range);
+            ContentCacheLog.DebugLog?.LogDebug("Intercept blocked {Elapsed} on T{ThreadId}, fetch={HasFetch}: {Url}",
+                CpuTimestamp.Now - startedAt, Environment.CurrentManagedThreadId, fetch != null, url);
+            return fetch is var (body, mimeType)
+                ? new WebResourceResponse(mimeType, null, body)
+                : null;
+        }
+
+        ContentCacheLog.DebugLog?.LogDebug("Intercept blocked {Elapsed} on T{ThreadId}, hit: {Url}",
+            CpuTimestamp.Now - startedAt, Environment.CurrentManagedThreadId, url);
+
+        try {
+            // WebView hands an intercepted body to the renderer undecoded
+            if (response.Content.Headers.ContentEncoding.Count != 0) {
+                response.Dispose();
+                return null;
+            }
+
+            var contentType = response.Content.Headers.ContentType;
+            // Android appends its own Content-Type from the mimeType/encoding arguments
+            var headers = response.Headers.Concat(response.Content.Headers)
+                .Where(x => !x.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase))
+                .ToDictionary(x => x.Key, x => x.Value.ToDelimitedString(", "), StringComparer.OrdinalIgnoreCase);
+            return new WebResourceResponse(
+                contentType?.MediaType.NullIfEmpty() ?? "application/octet-stream",
+                contentType?.CharSet.NullIfEmpty(),
+                (int)response.StatusCode,
+                response.ReasonPhrase.NullIfEmpty() ?? "OK",
+                headers,
+                new ContentResponseStream(response, response.Content.ReadAsStream()));
+        }
+        catch (Exception e) {
+            response.Dispose();
+            Log.LogWarning(e, "Cannot serve a cached response: {Url}", url);
+            return null;
+        }
+    }
 
     private static bool IsAppOrigin(Uri url)
         => url.Scheme == System.Uri.UriSchemeHttps

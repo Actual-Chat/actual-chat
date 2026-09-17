@@ -195,6 +195,7 @@ public static partial class MauiProgram
         _ = MauiSession.Start();
         var encryptionKeys = MauiEncryptionKeys.Default;
         await encryptionKeys.WhenReady.ConfigureAwait(false);
+        MauiContentRequests.Start();
         BlazorWebViewApp blazorViewApp;
         // ReSharper disable once ExplicitCallerInfoArgument
         using (Tracer.Region("RunBlazorViewAppBuilder")) {

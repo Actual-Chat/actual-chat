@@ -83,8 +83,12 @@ public sealed partial class FileSystemContentHandler
 
         // Private methods
 
+        // Set-Cookie never reaches disk, so a shared entry can't replay one reader's cookie
         private static KeyValuePair<string, string[]>[] Snapshot(HttpHeaders headers)
-            => headers.Select(x => KeyValuePair.Create(x.Key, x.Value.ToArray())).ToArray();
+            => headers
+                .Where(x => !x.Key.Equals("Set-Cookie", StringComparison.OrdinalIgnoreCase))
+                .Select(x => KeyValuePair.Create(x.Key, x.Value.ToArray()))
+                .ToArray();
 
         private static string? Find(KeyValuePair<string, string[]>[] headers, string name)
             => headers.FirstOrDefault(x => x.Key.Equals(name, StringComparison.OrdinalIgnoreCase)).Value is { } values

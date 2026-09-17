@@ -41,6 +41,13 @@ public sealed partial class UrlMapper
     public string MapTilesBaseUrl { get; }
     public string WebsocketBaseUrl { get; }
 
+    // Installed on Apple MAUI only: WKWebView refuses a scheme handler for http/https, so media
+    // reaches it over the app's own content:// scheme. Both are identity everywhere else, and
+    // ToCacheUrl is what the media URLs below return - ToOrigin reverses it for the few consumers
+    // that hand a URL to something outside the WebView.
+    public static Func<string, string> ToCacheUrlConverter { get; set; } = static url => url;
+    public static Func<string, string> ToOriginConverter { get; set; } = static url => url;
+
     public UrlMapper(HostInfo hostInfo) : this(hostInfo.BaseUrl) { }
     public UrlMapper(string baseUrl)
     {
@@ -164,14 +171,24 @@ public sealed partial class UrlMapper
         throw new ArgumentException(message);
     }
 
+    public static string ToOrigin(string url)
+        // The canonical URL behind a cache one. Needed only where a URL leaves the WebView -
+        // artwork iOS fetches itself, a link opened in the browser - since everything the app
+        // renders can go through the cache.
+        => url.IsNullOrEmpty() ? url : ToOriginConverter.Invoke(url);
+
+    public static string ToCacheUrl(string url)
+        => url.IsNullOrEmpty() ? url : ToCacheUrlConverter.Invoke(url);
+
     // Returns absolute URL
     public string ContentUrl(string contentId)
-        => ToAbsolute(ContentBaseUrl, contentId, true);
+        => ToCacheUrl(ToAbsolute(ContentBaseUrl, contentId, true));
 
     // Returns absolute URL that forces a download: content URLs are always cross-origin,
     // where <a download> is ignored, so only Content-Disposition can trigger one.
     public string ContentDownloadUrl(string contentId)
-        => ContentUrl(contentId) + "?download=1";
+        // Not a cache URL: this one is handed to the OS, which can't resolve the app's scheme
+        => ToAbsolute(ContentBaseUrl, contentId, true) + "?download=1";
 
     // Returns absolute URL
     public string ImagePreviewUrl(string imageUrl, Vector2 maxResolution)
@@ -180,6 +197,9 @@ public sealed partial class UrlMapper
     // Returns absolute URL
     public string ImagePreviewUrl(string imageUrl, int? maxWidth, int? maxHeight)
     {
+        // The proxy fetches this itself, so it has to be a real URL - callers often pass one
+        // ContentUrl already turned into a cache URL
+        imageUrl = ToOrigin(imageUrl);
         if (!HasImageProxy)
             return imageUrl;
 
@@ -192,7 +212,7 @@ public sealed partial class UrlMapper
 
         var sMaxWidth = maxWidth?.Format();
         var sMaxHeight = maxHeight?.Format();
-        return $"{ImageProxyBaseUrl}{sMaxWidth}x{sMaxHeight}/{imageUrl}";
+        return ToCacheUrl($"{ImageProxyBaseUrl}{sMaxWidth}x{sMaxHeight}/{imageUrl}");
     }
 
     // Returns absolute URL routed through the image proxy in passthrough mode (no resize).
@@ -201,15 +221,17 @@ public sealed partial class UrlMapper
     // Returns "" if image proxy is not available — caller should fall back to a plain link.
     public string GifProxyUrl(string gifUrl)
     {
+        gifUrl = ToOrigin(gifUrl);
         if (!HasImageProxy || gifUrl.IsNullOrEmpty())
             return "";
 
-        return $"{ImageProxyBaseUrl}0/{gifUrl}";
+        return ToCacheUrl($"{ImageProxyBaseUrl}0/{gifUrl}");
     }
 
     // Returns absolute URL
     public string ImagePreview128Url(string imageUrl)
     {
+        imageUrl = ToOrigin(imageUrl);
         if (!HasImageProxy)
             return imageUrl;
 
@@ -227,6 +249,6 @@ public sealed partial class UrlMapper
         // if (imageUrl.StartsWith("https://www.gravatar.com", StringComparison.OrdinalIgnoreCase))
         //     return imageUrl;
 
-        return $"{ImageProxyBaseUrl}128/{imageUrl}";
+        return ToCacheUrl($"{ImageProxyBaseUrl}128/{imageUrl}");
     }
 }

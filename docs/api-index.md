@@ -8,9 +8,9 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 ## Content Caching (`ActualChat.ContentCaching`)
 
 - `IContentHandler` / `ContentRequest` — MAUI-independent content pipeline; a null response leaves native handling unchanged
-- `LoggingContentHandler` — observes requests without exposing URL paths or credentials
 - `HttpContentHandler` — pluggable HTTP source returning headers before reading the body
-- `FileSystemContentHandler` — progressive encrypted filesystem cache for immutable media and byte ranges
+- `FileSystemContentHandler` — progressive encrypted filesystem cache for immutable media and byte ranges; `Handle` streams a fill while writing it, `TryHandleCached` serves a published entry without fetching
+- `ContentCacheStats` / `ContentCacheOutcome` — hit / fill / bypass / error counters and byte totals of a `FileSystemContentHandler`
 
 
 ## Core (`ActualChat.Core`)

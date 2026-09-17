@@ -62,6 +62,8 @@ public partial class MauiWebView
 
         // Allow loading images and media from the 'content' scheme (content://files/<path>).
         // Mirrors Windows behavior where local file previews are served via a custom content resolver.
+        // media/<key> carries remote media too, since WKWebView refuses a handler for https
+        ContentResolver.InstallUrlConverters();
         eventArgs.Configuration.SetUrlSchemeHandler(ContentSchemeHandler.Instance, "content");
     }
 

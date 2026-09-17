@@ -213,7 +213,8 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
         if (chat is null)
             return new ActivityChatInfo(chatId, "unknown chat", "", 0);
 
-        var picUrl = chat.Picture is not null ? UrlMapper.ContentUrl(chat.Picture.BlobId) : "";
+        // ToOrigin: the OS fetches activity artwork itself, outside the WebView
+        var picUrl = chat.Picture is not null ? global::ActualChat.UrlMapper.ToOrigin(UrlMapper.ContentUrl(chat.Picture.BlobId)) : "";
         if (!picUrl.IsNullOrEmpty() || chatId is not PeerChatId peerChatId)
             return new ActivityChatInfo(chatId, chat.Title, picUrl, 0);
 
@@ -222,7 +223,7 @@ public class AudioActivitySource : IActivitySource, IDisposable, IHasDisposeStat
         var peerUserId = peerChatId.AnotherUserId(ownAccount.Id);
         var peerAccount = await Accounts.Get(Session, peerUserId, CancellationToken.None).ConfigureAwait(false);
         if (peerAccount?.Avatar.Picture?.MediaRef is { } mediaRef)
-            picUrl = UrlMapper.ContentUrl(mediaRef.BlobId);
+            picUrl = global::ActualChat.UrlMapper.ToOrigin(UrlMapper.ContentUrl(mediaRef.BlobId));
 
         return new ActivityChatInfo(chatId, chat.Title, picUrl, 0);
     }

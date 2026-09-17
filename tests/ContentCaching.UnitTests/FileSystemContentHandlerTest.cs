@@ -26,15 +26,17 @@ public sealed partial class FileSystemContentHandlerTest : IDisposable
         var handler = Create(source);
 
         // act
-        using var first = await handler.Handle(request);
-        (await first!.Content.ReadAsStringAsync()).Should().Be(body);
+        // The responses are scoped: a fill holds its file open for writing until it's disposed
+        using (var first = await handler.Handle(request))
+            (await first!.Content.ReadAsStringAsync()).Should().Be(body);
         var restarted = Create(new TestSource(_ => throw new InvalidOperationException("Offline")));
-        using var cached = await restarted.Handle(request);
+        using (var cached = await restarted.Handle(request)) {
+            // assert
+            (await cached!.Content.ReadAsStringAsync()).Should().Be(body);
+            cached.Content.Headers.ContentType!.MediaType.Should().Be("image/png");
+            cached.Headers.ETag!.Tag.Should().Be("\"v1\"");
+        }
 
-        // assert
-        (await cached!.Content.ReadAsStringAsync()).Should().Be(body);
-        cached.Content.Headers.ContentType!.MediaType.Should().Be("image/png");
-        cached.Headers.ETag!.Tag.Should().Be("\"v1\"");
         var files = GetCacheFiles();
         files.Should().ContainSingle();
         foreach (var file in files) {

@@ -50,6 +50,11 @@ public partial class MauiWebView
         // But I still have some doubts about using 2 subscribers for handling web resource requests
         // and using `args.GetDeferral()`.
         var sUri = args.Request.Uri;
+        if (MauiContentRequests.IsCacheable(sUri)) {
+            ServeFromContentCache(sender, args);
+            return;
+        }
+
         MauiContentRequests.Observe(sUri, args.Request.Method);
         if (!sUri.StartsWith(ContentResolver.UriContentScheme))
             return;
@@ -81,6 +86,77 @@ public partial class MauiWebView
         }
         catch {
             // Intended
+        }
+    }
+
+    // WebResourceRequested fires on the UI thread, so the cache lookup runs under a deferral
+    // and comes back to set args.Response. The body streams: WebView2 reads the
+    // IRandomAccessStream as the fill arrives, and a read past it waits.
+    private void ServeFromContentCache(CoreWebView2 sender, CoreWebView2WebResourceRequestedEventArgs args)
+    {
+        var request = args.Request;
+        var url = request.Uri;
+        var method = request.Method;
+        var range = request.Headers.Contains("Range") ? request.Headers.GetHeader("Range") : null;
+        var dispatcherQueue = WindowsWebView.DispatcherQueue;
+        var deferral = args.GetDeferral();
+        var startedAt = CpuTimestamp.Now;
+        _ = Task.Run(async () => {
+            var response = await MauiContentRequests.HandleAsync(url, method, range).ConfigureAwait(false);
+            var lookupAt = CpuTimestamp.Now;
+            if (!dispatcherQueue.TryEnqueue(Complete)) {
+                response?.Dispose();
+                deferral.Complete();
+            }
+            return;
+
+            void Complete() {
+                try {
+                    // Never assign null here - WebView2 access-violates on it. Leaving Response
+                    // unset is what makes it fetch the request itself.
+                    if (response != null && CreateResponse(sender, response) is { } webResponse)
+                        args.Response = webResponse;
+                }
+                finally {
+                    deferral.Complete();
+                    ContentCacheLog.DebugLog?.LogDebug(
+                        "Served in {Elapsed} (lookup {Lookup}, dispatcher {Dispatcher}): {Url}",
+                        CpuTimestamp.Now - startedAt, lookupAt - startedAt, CpuTimestamp.Now - lookupAt, url);
+                }
+            }
+        });
+    }
+
+    private static CoreWebView2WebResourceResponse? CreateResponse(CoreWebView2 sender, HttpResponseMessage response)
+    {
+        try {
+            // WebView2 hands an intercepted body to the renderer undecoded
+            if (response.Content.Headers.ContentEncoding.Count != 0) {
+                response.Dispose();
+                return null;
+            }
+
+            var body = response.Content.ReadAsStream();
+            // A bypassed response carries a plain network stream, and AsRandomAccessStream below
+            // only takes a seekable one - let the WebView fetch that itself
+            if (!body.CanSeek) {
+                response.Dispose();
+                return null;
+            }
+
+            var headers = response.Headers.Concat(response.Content.Headers)
+                .ToDictionary(x => x.Key, x => x.Value.ToDelimitedString(", "), StringComparer.OrdinalIgnoreCase);
+            var content = new ContentResponseStream(response, body);
+            return sender.Environment.CreateWebResourceResponse(
+                content.AsRandomAccessStream(),
+                (int)response.StatusCode,
+                response.ReasonPhrase.NullIfEmpty() ?? "OK",
+                WebResourceUtils.GetHeaderString(headers));
+        }
+        catch (Exception e) {
+            response.Dispose();
+            StaticLog.For<MauiWebView>().LogWarning(e, "Cannot serve a cached response");
+            return null;
         }
     }
 

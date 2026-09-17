@@ -26,7 +26,7 @@ public sealed class MauiModule(IServiceProvider moduleServices)
         // RemoteComputedCache
         services.AddSingleton(c => new KvasarRemoteComputedCache.Options() {
             BasePath = appCacheDir & "ccc",
-            EncryptionKey = c.GetRequiredService<MauiEncryptionKeys>().DbEncryptionKey,
+            EncryptionKey = c.GetRequiredService<MauiEncryptionKeys>().Primary,
         });
         services.AddSingleton(c => {
             var options = c.GetRequiredService<KvasarRemoteComputedCache.Options>();
@@ -40,7 +40,7 @@ public sealed class MauiModule(IServiceProvider moduleServices)
         services.AddSingleton(_ => new LocalSettings.Options() {
             StoreFactory = c => new KvasarKvas(new KvasarKvas.Options() {
                 BasePath = appDataDir & "LocalSettings",
-                EncryptionKey = c.GetRequiredService<MauiEncryptionKeys>().DbEncryptionKey,
+                EncryptionKey = c.GetRequiredService<MauiEncryptionKeys>().Primary,
                 Version = "1.0",
                 PageSize = 16 * 1024,
                 PageCacheBytes = 256 * 1024,
