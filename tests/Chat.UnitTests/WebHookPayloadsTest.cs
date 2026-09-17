@@ -126,6 +126,33 @@ public class WebHookPayloadsTest
     }
 
     [Fact]
+    public async Task OversizedNonAsciiTextShouldBeTruncated()
+    {
+        // arrange
+        var payloads = new WebHookPayloads(CreateServices());
+        var hook = CreateHook(includeText: true);
+        var authorId = AuthorId.New(TestChatId, 5);
+        var entry = new TextEntry(ChatEntryId.New(TestChatId, 1), 1) {
+            AuthorId = authorId,
+            BeginsAt = new Moment(DateTime.UtcNow),
+            Content = new string('Ж', 300_000),
+        };
+        var author = new AuthorFull(UserId.New(), authorId, 1) {
+            Avatar = new Avatar("avatar-1") { Name = "Alexey" },
+        };
+
+        // act
+        var json = await payloads.Message(
+            hook, WebHookEvents.MessagePosted, entry, null, author, CancellationToken.None);
+
+        // assert
+        json.Length.Should().BeLessThanOrEqualTo(Constants.WebHooks.MaxPayloadLength);
+        using var doc = JsonDocument.Parse(json);
+        doc.RootElement.GetProperty("data").GetProperty("message").GetProperty("textTruncated").GetBoolean()
+            .Should().BeTrue();
+    }
+
+    [Fact]
     public void PingShouldHaveNoChatBlock()
     {
         // arrange

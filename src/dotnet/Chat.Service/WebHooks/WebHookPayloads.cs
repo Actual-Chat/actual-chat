@@ -121,15 +121,22 @@ public sealed class WebHookPayloads(IServiceProvider services)
         if (json.Length <= Constants.WebHooks.MaxPayloadLength || message?.Text is not { Length: > 0 } text)
             return json;
 
-        var truncated = message with {
-            Text = text[..Math.Min(text.Length, Constants.WebHooks.MaxPayloadLength / 2)],
-            TextTruncated = true,
-        };
-        return Serialize(BuildEnvelope(hook, type, eventKey, chat, buildData(truncated)));
+        // Escaping (e.g. non-ASCII text) can inflate the JSON well past a plain char-count cut,
+        // so keep halving the kept text until it fits or there's nothing left to cut.
+        var cutLength = Math.Min(text.Length, Constants.WebHooks.MaxPayloadLength / 2);
+        while (true) {
+            var truncated = message with { Text = text[..cutLength], TextTruncated = true };
+            json = Serialize(BuildEnvelope(hook, type, eventKey, chat, buildData(truncated)));
+            if (json.Length <= Constants.WebHooks.MaxPayloadLength || cutLength == 0)
+                return json;
+
+            cutLength /= 2;
+        }
     }
 
     private object BuildEnvelope(
-        WebHook hook, string type, string eventKey, object? chat, object data)
+        WebHook hook, string type, string eventKey, object? chat,
+        object data)
         => new {
             id = DeliveryId(hook.Id, type, eventKey),
             type,
