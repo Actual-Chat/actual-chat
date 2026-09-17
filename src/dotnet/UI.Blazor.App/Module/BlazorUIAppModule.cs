@@ -255,6 +255,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<OwnAccountEditorModal.Model, OwnAccountEditorModal>()
             .Add<OwnAvatarEditorModal.Model, OwnAvatarEditorModal>()
             .Add<PicCropModal.Model, PicCropModal>()
+            .Add<ImageGenerationModal.Model, ImageGenerationModal>()
             .Add<DeleteAccountModal.Model, DeleteAccountModal>()
         );
 

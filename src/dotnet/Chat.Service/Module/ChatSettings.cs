@@ -12,6 +12,10 @@ public sealed class ChatSettings
     public bool IsSummarizationEnabled { get; set; }
     public SummarizationSettings Summarization { get; set; } = new ();
     public bool IsChatContentItemIndexingEnabled { get; set; }
+    // How much of a chat's tail the describer reads. The lower bound is the client's - see
+    // Constants.Chat.MinImageSuggestionEntries.
+    public int MaxImageSuggestionEntries { get; set; } = 100;
+    public TimeSpan ImageSuggestionDismissPeriod { get; set; } = TimeSpan.FromDays(30);
 }
 
 public class TranslationSettings
@@ -57,6 +61,7 @@ public class SummarizationSettings
     public FilePath SummarizeConversationPromptFile { get; set; } = "summarize-conversation.md";
     public FilePath SummarizeChatDigestPromptFile { get; set; } = "summarize-chat-digest.md";
     public FilePath SuggestChatThreadTitlePromptFile { get; set; } = "suggest-thread-title.md";
+    public FilePath SuggestImageDescriptionPromptFile { get; set; } = "suggest-image-description.md";
     public TimeSpan HttpTimeout { get; set; } = TimeSpan.FromMinutes(5);
 
     public bool IsExpandedByDefault(int words, int entryCount)

@@ -263,6 +263,10 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `IRateLimitUserIdResolver` - Resolves the user id dimension of a session.
 
 - `IAnthropicClient` - Anthropic Claude API client wrapper.
+- `IImageGenerator` - Provider-agnostic text-to-image generation.
+- `ImageGenerationRequest` (record) - Prompt, size and optional seed for a generation.
+- `GeneratedImage` (record) - Generated image bytes with their content type and size.
+- `CloudflareImageGenerator` (sealed class) - IImageGenerator over Cloudflare Workers AI.
 - `IPromptHelpers` - Prompt-template helper service.
 - `PromptTemplate` (record) - Reusable prompt template with named variables.
 - `PromptHelpersExt` (static class) - Extensions for IPromptHelpers.
@@ -383,6 +387,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `IDiagnostics` - Service for retrieving server mesh diagnostic information.
 - `IMentions` - Service for tracking mentions of users in chat messages.
 - `IPlaces` - Service for managing places and their members; `ListOwnerIds` / `ListModeratorIds` and `Places_ChangeRole` forward to the place root chat.
+- `IImageSuggestions` - Session-scoped API offering a chat a generated picture: generate, accept, dismiss.
+- `ImageSlot` (enum) - Which image of a piece of content a suggestion is for (Picture, Background).
 - `IReactions` - Service for managing reactions (emoji responses) to chat messages.
 - `IRoles` - Service for managing chat roles and permissions; `ListOwnerIds` / `ListModeratorIds` mask anonymous members from non-owner callers.
 - `ITranslations` - Service for translating chat messages to different languages.
@@ -538,6 +544,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `MediaFrame` - Represents a frame of media data with timing information.
 - `MediaSource` (abstract class) - Base class providing a memoized stream of media frames with format metadata.
 - `Picture` (record) - Represents a picture with multiple size variants.
+- `ImageSuggestion` (record) - A generated image offered for a piece of content, pending acceptance.
 - `RecordingPart` - Represents a part of a recording stream (data, pause, or resume event).
 - `Upload` (record) - Represents a file upload session with progress tracking.
 - `UploadExt` (static class) - Extension methods for Upload.
@@ -714,6 +721,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 
 - `IGrabStatusesBackend` - Backend service for tracking link preview grab statuses.
 - `ILinkPreviewsBackend` - Backend service for link preview generation and caching.
+- `IImageSuggestionsBackend` - Backend service holding one pending generated image per key, plus its dismissal.
 - `IMediaBackend` - Backend service for media management.
 - `IMediaProgressBackend` - Backend service for tracking media processing progress.
 - `IUploadsBackend` - Backend service for file upload handling.
@@ -935,6 +943,9 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 
 ## ActualChat.Chat.ML
 
+- `IChatImageDescriber` - Describes a chat as the subject of a picture.
+- `ChatImageDescriber` - Writes an image description from a chat with AI.
+- `ChatImageDescriberStub` - Stub implementation for chat image description.
 - `IChatDigestSummarizer` - Interface for chat digest summarization.
 - `ChatDigestSummarizer` - Summarizes chat digests with AI.
 - `ChatDigestSummarizerStub` - Stub implementation for chat digest summarization.

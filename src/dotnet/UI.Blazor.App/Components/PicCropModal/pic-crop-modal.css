@@ -1,5 +1,5 @@
 .pic-crop-modal .dialog-body {
-    @apply flex-y items-center justify-between gap-16;
+    @apply flex-y items-center justify-between gap-4;
     @apply p-4;
     @apply overflow-hidden;
     @apply select-none;
@@ -141,8 +141,13 @@
     @apply w-5 h-5;
 }
 .pic-crop-modal .c-controls .c-status {
-    @apply h-5;
     @apply text-sm text-03;
+}
+/* The shared disabled look repaints the button in bg-03, which is the dialog's own background here -
+   the circle vanishes and only a dim glyph is left. Keep the enabled colors and halve the opacity. */
+.pic-crop-modal .c-controls .btn.btn-round:disabled {
+    @apply !bg-round !text-round-title;
+    @apply opacity-50;
 }
 .pic-crop-modal .c-controls .c-flip {
     @apply -scale-x-100;
@@ -154,5 +159,16 @@
     @apply flex-y items-center justify-center gap-2;
     @apply w-full;
     @apply py-16;
+    @apply text-danger text-sm;
+}
+
+/* ── Generation ── */
+
+.pic-crop-modal .c-canvas-container .c-generating {
+    @apply absolute inset-0;
+    @apply flex-y items-center justify-center;
+    @apply backdrop-brightness-50;
+}
+.pic-crop-modal .c-controls .c-generation-error {
     @apply text-danger text-sm;
 }

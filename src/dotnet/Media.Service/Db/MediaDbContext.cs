@@ -11,6 +11,7 @@ public class MediaDbContext(DbContextOptions<MediaDbContext> options) : DbContex
     public DbSet<DbMediaProgress> MediaProgresses { get; protected set; } = null!;
     public DbSet<DbLinkPreview> LinkPreviews { get; protected set; } = null!;
     public DbSet<DbGrabStatus> GrabStatuses { get; protected set; } = null!;
+    public DbSet<DbImageSuggestion> ImageSuggestions { get; protected set; } = null!;
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
@@ -39,6 +40,10 @@ public class MediaDbContext(DbContextOptions<MediaDbContext> options) : DbContex
 
         var grabStatus = model.Entity<DbGrabStatus>();
         grabStatus.Property(e => e.Id).UseCollation("C");
+
+        var imageSuggestion = model.Entity<DbImageSuggestion>();
+        imageSuggestion.Property(e => e.Id).UseCollation("C");
+        imageSuggestion.Property(e => e.MediaId).UseCollation("C");
 
         var linkPreview = model.Entity<DbLinkPreview>();
         linkPreview.Property(e => e.Id).UseCollation("C");

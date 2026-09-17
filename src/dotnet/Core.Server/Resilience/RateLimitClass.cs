@@ -12,4 +12,5 @@ public enum RateLimitClass
     GifProvider,
     UploadCreation,
     UploadBytes,
+    ImageGeneration,
 }

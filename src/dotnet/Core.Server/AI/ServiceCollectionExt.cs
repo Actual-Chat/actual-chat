@@ -9,6 +9,8 @@ public static class ServiceCollectionExt
     {
         services.AddSingleton<IPromptHelpers, PromptHelpers>();
         services.AddSingleton<IAnthropicClient, AnthropicClientWrapper>();
+        services.AddSingleton<IImageGenerator, CloudflareImageGenerator>();
+        services.AddHttpClient(CloudflareImageGenerator.HttpClientName);
         services.AddSingleton(c => {
             // Anthropic.SDK falls back to the ANTHROPIC_API_KEY env var when constructed without one.
             var key = c.GetRequiredService<CoreServerSettings>().AnthropicKey;

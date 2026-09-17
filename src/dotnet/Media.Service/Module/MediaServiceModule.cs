@@ -19,6 +19,7 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<IMedia, MediaService>(name: "IMedias");
         rpcHost.AddBackend<IMediaBackend, MediaBackend>();
         rpcHost.AddBackend<IMediaProgressBackend, MediaProgressBackend>();
+        rpcHost.AddBackend<IImageSuggestionsBackend, ImageSuggestionsBackend>();
 
         // Link previews
         rpcHost.AddApi<IMediaLinkPreviews, MediaLinkPreviews>();
@@ -29,6 +30,7 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<IUploads, Uploads>();
         rpcHost.AddBackend<IUploadsBackend, UploadsBackend>();
         services.AddSingleton<IMediaSaver, MediaSaver>();
+        services.AddSingleton<IImageGenerations, ImageGenerations>();
 
         // GIFs
         rpcHost.AddApi<IGifs, Gifs>();
@@ -64,6 +66,7 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
             db.AddEntityResolver<string, DbMedia>();
             db.AddEntityResolver<string, DbMediaProgress>();
             db.AddEntityResolver<string, DbGrabStatus>();
+            db.AddEntityResolver<string, DbImageSuggestion>();
             db.AddEntityResolver<string, DbLinkPreview>();
         });
 
@@ -71,7 +74,8 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         services.AddFlows()
             .Add<LinkPreviewFlow>()
             .Add<PreviewThumbnailUpdateFlow>()
-            .Add<UploadProcessingFlow>();
+            .Add<UploadProcessingFlow>()
+            .Add<ImageSuggestionSweepFlow>();
 
         // Uploads
         services.AddSingleton<UploadsStorage>();

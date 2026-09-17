@@ -94,6 +94,9 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         this.hasBlur = hasBlur;
 
         this.img = new Image();
+        // The source is served from the CDN origin, and without this the canvas it is drawn into
+        // is tainted - toBlob() then throws a SecurityError when the crop is applied.
+        this.img.crossOrigin = 'anonymous';
         this.img.onload = () => this.onImageLoaded();
         this.img.onerror = () => {
             void blazorRef.invokeMethodAsync('OnImageLoadError');
@@ -188,6 +191,11 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
                 this.render();
             });
         }
+    }
+
+    /** Swaps the source image in place, e.g. after a regenerate. onImageLoaded re-fits the view. */
+    public setImage(blobUrl: string): void {
+        this.img.src = blobUrl;
     }
 
     public getBlob(): Blob {

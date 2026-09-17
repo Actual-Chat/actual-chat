@@ -9,7 +9,10 @@
 .banner i {
     @apply text-xl md:text-2xl;
 }
-.banner .c-content {
+/* Direct child only: c-content is a common inner-wrapper name, and as a descendant selector this
+   row layout leaked into any component placed in a banner - notably Pic, whose picture then sat in
+   a box 1rem narrower than its circle and got cropped. */
+.banner > .c-content {
     @apply flex-1 flex-x justify-center items-center gap-x-2;
     @apply lg:max-w-192;
     @apply md:px-2;

@@ -14,4 +14,8 @@ public sealed class MediaSettings
     public string[] CrawlingHostAllowList { get; set; } = [];
     public TimeSpan LinkPreviewUpdatePeriod { get; set; } = TimeSpan.FromDays(1);
     public string KlipyApiKey { get; set; } = "";
+    // A suggestion nobody accepted or dismissed holds a ~50KB blob; the sweep collects it.
+    public TimeSpan ImageSuggestionLifespan { get; set; } = TimeSpan.FromDays(30);
+    public TimeSpan ImageSuggestionSweepInterval { get; set; } = TimeSpan.FromHours(6);
+    public int MaxConcurrentImageGenerations { get; set; } = 8;
 }

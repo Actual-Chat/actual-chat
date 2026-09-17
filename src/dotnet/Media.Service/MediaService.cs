@@ -1,3 +1,6 @@
+using ActualChat.Resilience;
+using ActualLab.Rpc.Infrastructure;
+
 namespace ActualChat.Media;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
@@ -8,6 +11,11 @@ public class MediaService(IServiceProvider services) : IMedia
     private IMediaProgressBackend MediaProgressBackend { get; } = services.GetRequiredService<IMediaProgressBackend>();
     private IUploadsBackend UploadsBackend { get; } = services.GetRequiredService<IUploadsBackend>();
     private ICommander Commander { get; } = services.Commander();
+    private IImageGenerations ImageGenerations => field ??= services.GetRequiredService<IImageGenerations>();
+    private RateLimitPolicy RateLimitPolicy => field ??= services.GetRequiredService<RateLimitPolicy>();
+
+    private RateLimitIdentityResolver IdentityResolver
+        => field ??= services.GetRequiredService<RateLimitIdentityResolver>();
 
     // [ComputeMethod]
     public virtual async Task<MediaProgress?> GetProgress(Session session, MediaId mediaId, CancellationToken cancellationToken)
@@ -66,6 +74,46 @@ public class MediaService(IServiceProvider services) : IMedia
         await Commander.Call(new MediaProgressBackend_Change(mediaId, null, progressChange), cancellationToken).ConfigureAwait(false);
 
         return mediaId;
+    }
+
+    // [CommandHandler]
+    public virtual async Task<MediaRef?> OnGenerate(Media_Generate command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return default!;
+
+        // Scope is not checked beyond requiring an account, exactly as OnReserveMedia does not check
+        // it: generating into a scope is an upload you did not have to take yourself. What the check
+        // below guards is money, not access.
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        account.Require(AccountFull.MustBeActive);
+        await CheckGenerationRateLimit(nameof(OnGenerate), cancellationToken).ConfigureAwait(false);
+
+        var spec = new ImageGenerationSpec(command.Scope, command.Description, command.Style) {
+            // The caller is expected to remove it once it has served its purpose, which is owner-only
+            OwnerId = account.Id,
+            MediaKind = command.Kind,
+            // Without one the provider picks its own, so two generations of one description differ
+            Seed = Random.Shared.NextInt64(1, int.MaxValue),
+        };
+        var mediaId = await ImageGenerations.Generate(spec, cancellationToken).ConfigureAwait(false);
+        if (mediaId is null)
+            return null;
+
+        var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
+        return media?.ToMediaRef();
+    }
+
+    private async Task CheckGenerationRateLimit(string method, CancellationToken cancellationToken)
+    {
+        var source = RateLimitSource.ForConnection(RpcInboundContext.Current?.Peer.ConnectionState.Value.Connection);
+        var identities = new RateLimitIdentity[RateLimitIdentityResolver.MaxIdentityCount];
+        var identityCount = await IdentityResolver
+            .Resolve(RateLimitPolicy, RateLimitClass.ImageGeneration, source, identities, cancellationToken)
+            .ConfigureAwait(false);
+        await RateLimitPolicy
+            .Check(method, RateLimitClass.ImageGeneration, identities.AsSpan(0, identityCount), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // [CommandHandler]

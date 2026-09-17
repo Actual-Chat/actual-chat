@@ -31,6 +31,11 @@ public sealed record RateLimitBudgets
             [(RateLimitClass.UploadCreation, RateLimitIdentityKind.IP)] = new(100_000, TimeSpan.FromDays(1)),
             [(RateLimitClass.UploadBytes, RateLimitIdentityKind.UserId)] = new(10_486, TimeSpan.FromDays(1)),
             [(RateLimitClass.UploadBytes, RateLimitIdentityKind.IP)] = new(104_858, TimeSpan.FromDays(1)),
+
+            // Every generation is money at an external provider, so this is charged far harder than
+            // anything else here: ~10 pictures a day is a few tenths of a cent per user.
+            [(RateLimitClass.ImageGeneration, RateLimitIdentityKind.UserId)] = new(10, TimeSpan.FromDays(1)),
+            [(RateLimitClass.ImageGeneration, RateLimitIdentityKind.IP)] = new(100, TimeSpan.FromDays(1)),
         };
 
     public SlidingWindowBudget? Get(RateLimitClass rateLimitClass, RateLimitIdentityKind kind)

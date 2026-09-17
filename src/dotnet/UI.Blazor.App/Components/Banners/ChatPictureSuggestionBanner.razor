@@ -1,0 +1,146 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Media
+@inherits ComputedStateComponent<AppUIHub, ChatPictureSuggestionBanner.Model>
+@{
+    var m = State.Value;
+}
+
+<Banner
+    IsVisible="@(m.Suggestion != null)"
+    Severity="BannerSeverity.Info"
+    ShowDismissButton="true"
+    Dismiss="@OnDismiss">
+    @* Empty rather than absent: it suppresses the severity bell, which the picture replaces *@
+    <Icon></Icon>
+    <Body>
+        <div class="c-suggestion">
+            @* Same shape and size the chat list and header use, so it reads as the picture it would become *@
+            <Pic
+                Title="@Chat.Title"
+                Picture="@m.Picture"
+                Size="SquareSize.Size10"
+                AvatarKind="AvatarKind.Marble"
+                AvatarKey="@Chat.Id.Value"
+                Click="@OnEdit"/>
+            <span>@L.Banner_SuggestedPicture</span>
+        </div>
+    </Body>
+    <Buttons>
+        <BannerButton Click="@OnAccept">@L.Banner_UseSuggestedPicture</BannerButton>
+        <BannerButton Click="@OnEdit">@L.Common_Edit</BannerButton>
+    </Buttons>
+</Banner>
+
+@code {
+    private bool _isGenerateRequested;
+
+    private Chat Chat => ChatContext.Chat;
+    private IImageSuggestions ImageSuggestions => Hub.Services.GetRequiredService<IImageSuggestions>();
+
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chat = Chat;
+        var chatId = chat.Id;
+        // A thread or a peer chat has no picture of its own to suggest
+        if (chatId.IsThread())
+            return Model.None;
+        if (chatId.Kind is not (ChatKind.Group or ChatKind.Place))
+            return Model.None;
+        if (chat.MediaId != null)
+            return Model.None; // A real picture is already set - never offer, never generate
+
+        // Read through Chats rather than ChatContext.Chat.Rules: that one is a snapshot, not a
+        // dependency, so it reads false until rules resolve and this would never recompute.
+        var rules = await Hub.Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (!rules.CanEditProperties())
+            return Model.None; // Also stops a non-owner's render from firing an unauthorized generate
+
+        var dismissedUntil = await ImageSuggestions
+            .GetDismissedUntilForChat(Session, chatId, ImageSlot.Picture, cancellationToken)
+            .ConfigureAwait(false);
+        // Compared here rather than server-side: a compute method that depends on "now" would
+        // cache its answer past the moment the dismissal expires
+        if (dismissedUntil is { } until && until > Clocks.ServerClock.Now)
+            return Model.None;
+
+        var suggestion = await ImageSuggestions
+            .GetForChat(Session, chatId, ImageSlot.Picture, cancellationToken)
+            .ConfigureAwait(false);
+        if (suggestion != null)
+            return new Model(suggestion);
+
+        // Nothing to show yet, and nothing to describe it from. Read through a compute method so the
+        // message that crosses the threshold is what triggers the generation, rather than the next
+        // time this chat is opened. A description is enough on its own - the chat says what it is.
+        if (chat.Description.IsNullOrEmpty()) {
+            var idRange = await Hub.Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
+            if (idRange.Size() < Constants.Chat.MinImageSuggestionEntries)
+                return Model.None;
+        }
+
+        // Start one and stay hidden: at ~10s a visible wait is worse than nothing, so the banner's
+        // appearance is itself the signal that an image is ready.
+        // Once per component - ComputeState re-runs often, and the backend rejects the repeats anyway.
+        if (!_isGenerateRequested) {
+            _isGenerateRequested = true;
+            _ = Generate(isExplicit: false);
+        }
+
+        return Model.None;
+    }
+
+    // Event handlers
+
+    private Task OnAccept()
+        => UICommander.Run(new ImageSuggestions_AcceptForChat(Session, Chat.Id, ImageSlot.Picture));
+
+    private void OnEdit() {
+        if (State.Value is not { Suggestion: { } suggestion, Picture: { } picture })
+            return;
+
+        var model = new PicCropModal.Model(
+            UrlMapper.AvatarFullSizePreviewUrl(picture),
+            MediaUploadScopes.ForChat(Chat.Id),
+            OnCropped) {
+            Title = L.PicCrop_ChatPictureTitle,
+            // The only caller with one already: everywhere else the generation modal opens empty
+            Description = suggestion.ImageDescription,
+        };
+        ModalUI.Show(model);
+    }
+
+    private void OnCropped(MediaRef mediaRef)
+        => _ = UICommander.Run(new Chats_Change {
+            Session = Session,
+            ChatId = Chat.Id,
+            ExpectedVersion = null,
+            Change = Change.Update(new ChatDiff { MediaId = mediaRef.MediaId }),
+        });
+
+    private void OnDismiss()
+        => _ = UICommander.Run(new ImageSuggestions_DismissForChat(Session, Chat.Id, ImageSlot.Picture));
+
+    // Private methods
+
+    private Task Generate(bool isExplicit)
+        => UICommander.Run(new ImageSuggestions_GenerateForChat(Session, Chat.Id, ImageSlot.Picture, null) {
+            IsExplicit = isExplicit,
+        });
+
+    // Nested types
+
+    public sealed record Model(ImageSuggestion? Suggestion) {
+        public static readonly Model None = new((ImageSuggestion?)null);
+
+        public Picture? Picture => Suggestion?.Media?.ToPicture();
+    }
+}

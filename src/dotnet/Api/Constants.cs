@@ -85,6 +85,9 @@ public static partial class Constants
         public const int ReactionFirstAuthorIdsLimit = 10;
         public const int MaxSearchFilterLength = 100;
         public const int MinChatPageMapSize = 100;
+        // Below this an image suggestion would be a guess, and a letter avatar beats a guess. The
+        // client owns the threshold: it is the one watching the chat grow past it.
+        public const int MinImageSuggestionEntries = 5;
 
         // The English titles here are a deliberate second copy of the SystemChat_* and Onboarding_Chat*
         // keys in Strings.en.json: a chat is stored with this title and shown under the catalog's while it

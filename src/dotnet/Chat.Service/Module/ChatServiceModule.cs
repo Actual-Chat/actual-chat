@@ -57,6 +57,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<IReactions, Reactions>();
         rpcHost.AddBackend<IReactionsBackend, ReactionsBackend>();
 
+        // Image suggestions
+        rpcHost.AddApi<IImageSuggestions, ImageSuggestions>();
+
         // Shared locations
         rpcHost.AddApi<ISharedLocations, SharedLocations>();
         rpcHost.AddBackend<ISharedLocationsBackend, SharedLocationsBackend>();
@@ -175,11 +178,19 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
                             | Settings.Summarization.SummarizeChatDigestPromptFile,
                     },
                     c));
+            services.AddSingleton<IChatImageDescriber, ChatImageDescriber>(
+                c => new ChatImageDescriber(
+                    new ChatImageDescriber.Options {
+                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir
+                            | Settings.Summarization.SuggestImageDescriptionPromptFile,
+                    },
+                    c));
         }
         else {
             services.AddSingleton<IConversationSummarizer, ConversationSummarizerStub>();
             services.AddSingleton<IThreadInsightExtractor, ThreadInsightExtractorStub>();
             services.AddSingleton<IChatDigestSummarizer, ChatDigestSummarizerStub>();
+            services.AddSingleton<IChatImageDescriber, ChatImageDescriberStub>();
         }
 
         // Embeddings
