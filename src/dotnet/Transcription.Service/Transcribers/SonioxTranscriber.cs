@@ -2,6 +2,8 @@ using System.Net.WebSockets;
 using System.Text;
 using ActualChat.Audio;
 using ActualChat.Module;
+using ActualChat.Transcription.Module;
+using ActualLab.Diagnostics;
 using static ActualChat.Constants.Transcription.Soniox;
 
 namespace ActualChat.Transcription;
@@ -18,12 +20,15 @@ public sealed class SonioxTranscriber : ITranscriber
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
     private static readonly byte[] KeepAlivePayload = """{"type":"keepalive"}"""u8.ToArray();
+    private static bool DebugMode => Constants.DebugMode.TranscriberSoniox;
 
     private IServiceProvider Services { get; }
     private CoreServerSettings CoreServerSettings { get; }
+    private TranscriptionSettings Settings { get; }
     private MomentClockSet Clocks { get; }
     private OggOpusStreamConverter OggOpusStreamConverter { get; }
     private ILogger Log { get; }
+    private ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     public TranscriberInfo Info { get; } = new() {
         Id = TranscriberId.SonioxStream,
@@ -43,6 +48,7 @@ public sealed class SonioxTranscriber : ITranscriber
         Log = services.LogFor(GetType());
         Clocks = services.Clocks();
         CoreServerSettings = services.GetRequiredService<CoreServerSettings>();
+        Settings = services.GetRequiredService<TranscriptionSettings>();
         OggOpusStreamConverter = new OggOpusStreamConverter(new OggOpusStreamConverter.Options {
             PageDuration = Constants.Transcription.StreamPageDuration,
         });
@@ -69,7 +75,7 @@ public sealed class SonioxTranscriber : ITranscriber
             await SendConfig(sender, apiKey, options, cancellationToken).ConfigureAwait(false);
 
             keepAliveTask = KeepAlive(sender, cts.Token);
-            await TranscriberHelper.WhenPushAndRead(
+            await TaskExt.WhenPushAndRead(
                     PushAudio(sender, audioSource, cts.Token),
                     ReadTranscripts(webSocket, output, audioStreamId, cts.Token),
                     cts)
@@ -89,6 +95,40 @@ public sealed class SonioxTranscriber : ITranscriber
         }
     }
 
+    // Protected/internal methods
+
+    // internal for tests
+    internal Dictionary<string, object?> NewConfig(string apiKey, TranscriptionOptions options)
+    {
+        var policy = Info.ContextPolicy;
+        var config = new Dictionary<string, object?> {
+            ["api_key"] = apiKey,
+            ["model"] = Model,
+            ["audio_format"] = "auto",
+            // Always on, chat language or not: it's the only way tokens carry a language, and
+            // the dub decides on the language Soniox heard while the entry's language must
+            // reflect the speech rather than the chat setting - a Russian message in an English
+            // chat is [ru], translated for the readers and dubbed for the listeners. The
+            // configured language still goes out as the hint.
+            ["enable_language_identification"] = true,
+            // Without it nothing is finalized until the stream ends, so Complete() would
+            // drop the entire transcript as an unfinalized tail.
+            ["enable_endpoint_detection"] = true,
+            ["max_endpoint_delay_ms"] = Settings.SonioxMaxEndpointDelayMs,
+            ["endpoint_sensitivity"] = Settings.SonioxEndpointSensitivity,
+        };
+        if (Settings.SonioxEndpointLatencyAdjustmentLevel > 0)
+            config["endpoint_latency_adjustment_level"] = Settings.SonioxEndpointLatencyAdjustmentLevel;
+        // Dictionary values are serialized even when null, and Soniox rejects a null context.
+        if (SonioxContext.Build(options.Context, policy) is { } context)
+            config["context"] = context;
+        // Hints come from what the chat actually selected; with nothing selected we send none
+        // rather than an empty array. They're never strict, so they only nudge the model.
+        if (options.GetLanguageHints(SonioxLanguage.ToSoniox) is { Length: > 0 } languageHints)
+            config["language_hints"] = languageHints;
+        return config;
+    }
+
     // Private methods
 
     private async Task SendConfig(
@@ -97,26 +137,7 @@ public sealed class SonioxTranscriber : ITranscriber
         TranscriptionOptions options,
         CancellationToken cancellationToken)
     {
-        var policy = Info.ContextPolicy;
-        var config = new Dictionary<string, object?> {
-            ["api_key"] = apiKey,
-            ["model"] = Model,
-            ["audio_format"] = "auto",
-            ["enable_language_identification"] = options.DetectLanguage,
-            // Without it nothing is finalized until the stream ends, so Complete() would
-            // drop the entire transcript as an unfinalized tail.
-            ["enable_endpoint_detection"] = true,
-            ["max_endpoint_delay_ms"] = MaxEndpointDelayMs,
-            ["endpoint_sensitivity"] = EndpointSensitivity,
-        };
-        // Dictionary values are serialized even when null, and Soniox rejects a null context.
-        if (SonioxContext.Build(options.Context, policy) is { } context)
-            config["context"] = context;
-        // Hints come from what the chat actually selected; with nothing selected we send none
-        // rather than an empty array. They're never strict, so they only nudge the model.
-        if (options.GetLanguageHints(SonioxLanguage.ToSoniox) is { Length: > 0 } languageHints)
-            config["language_hints"] = languageHints;
-        var json = JsonSerializer.Serialize(config, JsonOptions);
+        var json = JsonSerializer.Serialize(NewConfig(apiKey, options), JsonOptions);
         await sender
             .Send(Encoding.UTF8.GetBytes(json), WebSocketMessageType.Text, cancellationToken)
             .ConfigureAwait(false);
@@ -153,16 +174,26 @@ public sealed class SonioxTranscriber : ITranscriber
         var clock = Clocks.CpuClock;
         var startedAt = clock.Now;
         var nextChunkAt = startedAt;
+        var nextTraceAt = TimeSpan.Zero;
         await foreach (var (chunk, lastFrame) in byteFrameStream.ConfigureAwait(false)) {
             var delay = nextChunkAt - clock.Now;
             if (delay > TimeSpan.Zero)
                 await clock.Delay(delay, cancellationToken).ConfigureAwait(false);
 
+            var sendStartedAt = clock.Now;
             await sender.Send(chunk, WebSocketMessageType.Binary, cancellationToken).ConfigureAwait(false);
+            var sendDuration = clock.Now - sendStartedAt;
+            if (sendDuration > TimeSpan.FromSeconds(1))
+                DebugLog?.LogDebug("PushAudio: a {Size}B send took {Duration}", chunk.Length, sendDuration);
             if (lastFrame == null)
                 continue;
 
             var processedAudioDuration = (lastFrame.Offset + lastFrame.Duration - SilentPrefixDuration).Positive();
+            if (processedAudioDuration >= nextTraceAt) {
+                DebugLog?.LogDebug("PushAudio: {Audio} of audio pushed after {Wall}",
+                    processedAudioDuration, clock.Now - startedAt);
+                nextTraceAt = processedAudioDuration + TimeSpan.FromSeconds(2);
+            }
             if (audioSource.WhenDurationAvailable.IsCompletedSuccessfully)
                 processedAudioDuration = TimeSpanExt.Min(audioSource.Duration, processedAudioDuration);
             nextChunkAt = startedAt
@@ -170,6 +201,7 @@ public sealed class SonioxTranscriber : ITranscriber
                 - TimeSpan.FromMilliseconds(50);
         }
 
+        DebugLog?.LogDebug("PushAudio: audio ended after {Duration}", clock.Now - startedAt);
         // An empty frame is Soniox's "no more audio" signal; without it the server keeps waiting
         // and drops the connection on its 20s inactivity timeout. It must be a Text frame:
         // an empty Binary one goes unnoticed, which is exactly how that timeout used to fire.
@@ -184,10 +216,11 @@ public sealed class SonioxTranscriber : ITranscriber
         string audioStreamId,
         CancellationToken cancellationToken)
     {
-        var builder = new SonioxTranscriptBuilder();
+        var builder = new SonioxTranscriptBuilder(Settings.SonioxStableTokenAge);
         var buffer = new ArraySegment<byte>(new byte[16 * 1024]);
         var message = new StringBuilder();
         var hasFinished = false;
+        var audioProcMs = 0L;
         while (!hasFinished && webSocket.State == WebSocketState.Open) {
             message.Clear();
             WebSocketReceiveResult result;
@@ -208,6 +241,8 @@ public sealed class SonioxTranscriber : ITranscriber
             var response = JsonSerializer.Deserialize<SonioxResponse>(message.ToString(), JsonOptions);
             if (response == null)
                 continue;
+            DebugLog?.LogDebug("#{StreamId}: {AudioMs}ms, finished={Finished}, tokens: {Tokens}",
+                audioStreamId, response.TotalAudioProcMs, response.Finished, DescribeTokens(response.Tokens));
             if (response.ErrorCode is { } errorCode)
                 throw StandardError.External(
                     $"Soniox error {errorCode} for #{audioStreamId}: {response.ErrorMessage}");
@@ -215,8 +250,10 @@ public sealed class SonioxTranscriber : ITranscriber
             if (response.Tokens?.Any(x => x.Text == EndpointToken) == true)
                 Log.LogInformation("Soniox endpoint for #{StreamId} at {AudioMs}ms of audio",
                     audioStreamId, response.TotalAudioProcMs);
+            audioProcMs = response.TotalAudioProcMs ?? audioProcMs;
             if (response.Tokens is { Length: > 0 } tokens)
-                await output.WriteAsync(builder.Update(tokens), cancellationToken).ConfigureAwait(false);
+                foreach (var transcript in builder.Update(tokens, audioProcMs))
+                    await output.WriteAsync(transcript, cancellationToken).ConfigureAwait(false);
 
             if (response.Finished) {
                 await output.WriteAsync(builder.Complete(), cancellationToken).ConfigureAwait(false);
@@ -229,10 +266,17 @@ public sealed class SonioxTranscriber : ITranscriber
 
         // The socket ended without a finished response, so nothing more will be finalized -
         // emit what we have, tail included, rather than leaving only unstable updates behind.
+        DebugLog?.LogDebug("#{StreamId}: socket closed without a finished response, state={State}",
+            audioStreamId, webSocket.State);
         var partial = builder.Complete(false);
         if (!partial.Text.IsNullOrEmpty())
             await output.WriteAsync(partial, cancellationToken).ConfigureAwait(false);
     }
+
+    private static string DescribeTokens(SonioxToken[]? tokens)
+        => tokens == null
+            ? "none"
+            : string.Join("", tokens.Select(x => x.IsFinal ? $"[{x.Text}]" : x.Text));
 
     // Nested types
 

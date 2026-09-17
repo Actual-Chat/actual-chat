@@ -290,14 +290,17 @@ public static partial class Constants
             public static readonly double Speed = 2;
             // The server drops the connection after 20s without audio or a keepalive.
             public static readonly TimeSpan KeepAlivePeriod = TimeSpan.FromSeconds(5);
-            // Both govern finalization, not token latency - tokens stream either way - so they
-            // only trade how often the tail stops being rewritten.
-            public static readonly int MaxEndpointDelayMs = 2000; // 500...3000, default = 2000
-            public static readonly double EndpointSensitivity = 0.0; // -1.0...1.0, default = 0.0
             // The end-of-audio frame makes the server finalize everything, so no silent padding
             // is needed to flush the tail - and padding is billed as stream time.
             public static readonly TimeSpan SilentPrefixDuration = TimeSpan.Zero;
             public static readonly TimeSpan SilentSuffixDuration = TimeSpan.Zero;
+            // TTS: the longest a live stream may go without any message from Soniox; for the
+            // streamed one-shot REST call it's how long the next piece of audio may take to arrive.
+            // Either way exceeding it is an error rather than a hang.
+            public static readonly TimeSpan TtsChunkTimeout = TimeSpan.FromSeconds(30);
+            // Soniox kills a live TTS stream after ~3-4 s without output, so a stream opened ahead of
+            // its chunk that got none for this long is ended first.
+            public static readonly TimeSpan TtsIdleFlush = TimeSpan.FromSeconds(2.5);
         }
 
         public static class ElevenLabs

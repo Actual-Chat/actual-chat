@@ -16,12 +16,23 @@ public sealed partial record TranscriptDiff(
 
     [DataMember(Order = 2), Key(2)]
     public bool IsStable { get; init; }
+    // Null = unchanged. Detected languages don't fit a text diff, so without this a folded diff
+    // stream never knows them - and the dub's Decide can't tell a Russian speaker from an English one.
+    [DataMember(Order = 3), Key(3)]
+    public Language[]? Languages { get; init; }
+    [DataMember(Order = 4), Key(4)]
+    public bool IsSegmentEnd { get; init; }
 
     public static TranscriptDiff New(Transcript transcript, Transcript baseTranscript)
     {
         var textDiff = StringDiff.New(transcript.Text, baseTranscript.Text);
         var timeMapDiff = LinearMapDiff.New(transcript.TimeMap, baseTranscript.TimeMap, Transcript.TimeMapEpsilon);
-        return new TranscriptDiff(textDiff, timeMapDiff) { IsStable = transcript.IsStable };
+        var languages = transcript.Languages.SequenceEqual(baseTranscript.Languages) ? null : transcript.Languages;
+        return new TranscriptDiff(textDiff, timeMapDiff) {
+            IsStable = transcript.IsStable,
+            Languages = languages,
+            IsSegmentEnd = transcript.IsSegmentEnd,
+        };
     }
 
     public override string ToString()
@@ -35,12 +46,18 @@ public sealed partial record TranscriptDiff(
 
     public Transcript ApplyTo(Transcript baseTranscript)
     {
+        var languages = Languages ?? baseTranscript.Languages;
         if (IsNone)
-            return baseTranscript;
+            // An empty diff still carries the flags: "same text, now stable" is a real update
+            return IsStable == baseTranscript.IsStable
+                && IsSegmentEnd == baseTranscript.IsSegmentEnd
+                && ReferenceEquals(languages, baseTranscript.Languages)
+                ? baseTranscript
+                : baseTranscript with { IsStable = IsStable, Languages = languages, IsSegmentEnd = IsSegmentEnd };
 
         var text = baseTranscript.Text + TextDiff;
         var timeMap = TimeMapDiff.ApplyTo(baseTranscript.TimeMap, Transcript.TimeMapEpsilon.X);
-        return new Transcript(text, timeMap, baseTranscript.Languages) { IsStable = IsStable };
+        return new Transcript(text, timeMap, languages) { IsStable = IsStable, IsSegmentEnd = IsSegmentEnd };
     }
 
     // Operators
