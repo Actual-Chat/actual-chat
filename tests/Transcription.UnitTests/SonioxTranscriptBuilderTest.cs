@@ -3,28 +3,28 @@ namespace ActualChat.Transcription.UnitTests;
 public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact]
-    public void FinalTokensAccumulate()
+    public void FinalTokensShouldAccumulate()
     {
         // arrange
         var builder = new SonioxTranscriptBuilder();
 
         // act
-        builder.Update([Token("Hello", 0, 500, true)]);
-        var second = builder.Update([Token(" world", 500, 1000, true)]);
+        builder.Update([Token("Hello", 0, 500, true)], 500);
+        var second = builder.Update([Token(" world", 500, 1000, true)], 1000)[^1];
 
         // assert
         second.Text.Should().Be("Hello world");
     }
 
     [Fact]
-    public void NonFinalTailIsReplacedNotAppended()
+    public void ANonFinalTailShouldBeReplacedNotAppended()
     {
         // arrange
         var builder = new SonioxTranscriptBuilder();
 
         // act
-        var first = builder.Update([Token("Hello", 0, 500, true), Token(" wor", 500, 700, false)]);
-        var second = builder.Update([Token(" world", 500, 1000, false)]);
+        var first = builder.Update([Token("Hello", 0, 500, true), Token(" wor", 500, 700, false)], 700)[^1];
+        var second = builder.Update([Token(" world", 500, 1000, false)], 1000)[^1];
 
         // assert
         first.Text.Should().Be("Hello wor");
@@ -32,13 +32,13 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
-    public void CompleteDropsTheNonFinalTail()
+    public void CompleteShouldDropTheNonFinalTail()
     {
         // arrange
         var builder = new SonioxTranscriptBuilder();
 
         // act
-        builder.Update([Token("Hello", 0, 500, true), Token(" wor", 500, 700, false)]);
+        builder.Update([Token("Hello", 0, 500, true), Token(" wor", 500, 700, false)], 700);
         var completed = builder.Complete();
 
         // assert
@@ -47,13 +47,13 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
-    public void AnAbnormalEndKeepsTheTail()
+    public void AnAbnormalEndShouldKeepTheTail()
     {
         // arrange
         var builder = new SonioxTranscriptBuilder();
 
         // act
-        builder.Update([Token("Hello", 0, 500, true), Token(" wor", 500, 700, false)]);
+        builder.Update([Token("Hello", 0, 500, true), Token(" wor", 500, 700, false)], 700);
         var completed = builder.Complete(false);
 
         // assert
@@ -62,13 +62,13 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
-    public void AnAbnormalEndWithNoTailIsJustTheFinals()
+    public void AnAbnormalEndWithNoTailShouldBeJustTheFinals()
     {
         // arrange
         var builder = new SonioxTranscriptBuilder();
 
         // act
-        builder.Update([Token("Hello", 0, 500, true)]);
+        builder.Update([Token("Hello", 0, 500, true)], 500);
         var completed = builder.Complete(false);
 
         // assert
@@ -77,21 +77,71 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
-    public void StreamingTranscriptsAreNotStable()
+    public void FinalsOnlyResponseShouldBeStable()
     {
         // act
-        var transcript = new SonioxTranscriptBuilder().Update([Token("Hello", 0, 500, true)]);
+        var transcripts = new SonioxTranscriptBuilder().Update([Token("Hello", 0, 500, true)], 500);
 
         // assert
-        transcript.IsStable.Should().BeFalse();
+        transcripts.Should().ContainSingle();
+        transcripts[0].Text.Should().Be("Hello");
+        transcripts[0].IsStable.Should().BeTrue("a final token never changes, so the finals alone are stable");
     }
 
     [Fact]
-    public void TimeMapIsBuiltFromTokenTimings()
+    public void FinalsWithATailShouldEmitTheStableFinalsBeforeTheUnstableWhole()
+    {
+        // act
+        var transcripts = new SonioxTranscriptBuilder()
+            .Update([Token("Hello", 0, 500, true), Token(" wor", 500, 700, false)], 700);
+
+        // assert
+        transcripts.Should().HaveCount(2);
+        transcripts[0].Text.Should().Be("Hello");
+        transcripts[0].IsStable.Should().BeTrue();
+        transcripts[1].Text.Should().Be("Hello wor");
+        transcripts[1].IsStable.Should().BeFalse("the tail may still change");
+    }
+
+    [Fact]
+    public void ATailOnlyResponseShouldNotRepeatTheStableFinals()
+    {
+        // arrange
+        var builder = new SonioxTranscriptBuilder();
+        builder.Update([Token("Hello", 0, 500, true)], 500);
+
+        // act
+        var transcripts = builder.Update([Token(" wor", 500, 700, false)], 700);
+
+        // assert
+        transcripts.Should().ContainSingle();
+        transcripts[0].Text.Should().Be("Hello wor");
+        transcripts[0].IsStable.Should().BeFalse();
+    }
+
+    [Fact]
+    public void StableFinalsShouldGrowByTheNewFinalsOnly()
+    {
+        // arrange
+        var builder = new SonioxTranscriptBuilder();
+        builder.Update([Token("Hello", 0, 500, true), Token(" wor", 500, 700, false)], 700);
+
+        // act - the tail became final, and a new tail starts
+        var transcripts = builder.Update([Token(" world", 500, 1000, true), Token(" how", 1000, 1200, false)], 1200);
+
+        // assert
+        transcripts[0].Text.Should().Be("Hello world");
+        transcripts[0].IsStable.Should().BeTrue();
+        transcripts[0].TimeRange.End.Should().BeApproximately(1f, 0.01f);
+        transcripts[1].Text.Should().Be("Hello world how");
+    }
+
+    [Fact]
+    public void TimeMapShouldBeBuiltFromTokenTimings()
     {
         // act
         var transcript = new SonioxTranscriptBuilder()
-            .Update([Token("Hello", 0, 500, true), Token(" world", 500, 2000, true)]);
+            .Update([Token("Hello", 0, 500, true), Token(" world", 500, 2000, true)], 2000)[^1];
 
         // assert
         WriteLine(transcript.TimeMap.ToString());
@@ -100,11 +150,11 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
-    public void LanguagesAreCollectedFromTokens()
+    public void LanguagesShouldBeCollectedFromTokens()
     {
         // act
         var transcript = new SonioxTranscriptBuilder()
-            .Update([Token("Hello", 0, 500, true, "en"), Token(" мир", 500, 1000, true, "ru")]);
+            .Update([Token("Hello", 0, 500, true, "en"), Token(" мир", 500, 1000, true, "ru")], 1000)[^1];
 
         // assert
         transcript.Languages.Should().Contain(Languages.English);
@@ -112,13 +162,30 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
-    public void EndpointMarkersNeverReachTheTranscript()
+    public void LanguagesShouldComeFromSettledTokensOnly()
+    {
+        // arrange
+        var builder = new SonioxTranscriptBuilder();
+
+        // act - a tail token tagged "en" is retracted by the next message, whose final is tagged "ru"
+        var withTail = builder
+            .Update([Token("Привет", 0, 500, true, "ru"), Token(" wor", 500, 700, false, "en")], 700)[^1];
+        var settled = builder.Update([Token(" мир", 500, 1000, true, "ru")], 1000)[^1];
+
+        // assert
+        withTail.Languages.Should().Equal([Languages.Russian], "a retractable tail tag is not a language heard");
+        settled.Languages.Should().Equal([Languages.Russian]);
+        settled.Text.Should().Be("Привет мир");
+    }
+
+    [Fact]
+    public void EndpointMarkersShouldNeverReachTheTranscript()
     {
         // arrange - enable_endpoint_detection emits "<end>" once per finalized segment
         var builder = new SonioxTranscriptBuilder();
 
         // act
-        var update = builder.Update([Token("Проверка", 0, 500, true), Token("<end>", 500, 520, true)]);
+        var update = builder.Update([Token("Проверка", 0, 500, true), Token("<end>", 500, 520, true)], 520)[^1];
         var completed = builder.Complete();
 
         // assert
@@ -127,25 +194,136 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
-    public void EndpointMarkerInTheTailIsDroppedToo()
+    public void AnEndpointMarkerInTheTailShouldBeDroppedToo()
     {
         // act
         var transcript = new SonioxTranscriptBuilder()
-            .Update([Token("Hi", 0, 500, true), Token("<end>", 500, 520, false)]);
+            .Update([Token("Hi", 0, 500, true), Token("<end>", 500, 520, false)], 520)[^1];
 
         // assert
         transcript.Text.Should().Be("Hi");
     }
 
     [Fact]
-    public void EmptyTokensAreSkipped()
+    public void EmptyTokensShouldBeSkipped()
     {
         // act
         var transcript = new SonioxTranscriptBuilder()
-            .Update([Token("", 0, 100, true), Token("Hi", 100, 500, true)]);
+            .Update([Token("", 0, 100, true), Token("Hi", 100, 500, true)], 500)[^1];
 
         // assert
         transcript.Text.Should().Be("Hi");
+    }
+
+    [Fact]
+    public void AnOldNonFinalTokenShouldBePromotedToStable()
+    {
+        // act - "Hello" ended 3 s before the processed position, " world" ended 0.5 s before it
+        var transcripts = new SonioxTranscriptBuilder()
+            .Update([Token("Hello", 0, 500, false), Token(" world", 500, 3000, false)], 3500);
+
+        // assert
+        transcripts.Should().HaveCount(2);
+        transcripts[0].Text.Should().Be("Hello");
+        transcripts[0].IsStable.Should().BeTrue("a non-final token older than StableTokenAge is as good as final");
+        transcripts[0].TimeRange.End.Should().BeApproximately(0.5f, 0.001f);
+        transcripts[1].Text.Should().Be("Hello world");
+        transcripts[1].IsStable.Should().BeFalse();
+    }
+
+    [Fact]
+    public void AYoungNonFinalTokenShouldStayInTheTail()
+    {
+        // arrange
+        var builder = new SonioxTranscriptBuilder();
+        var stableTokenAgeMs = (long)Constants.Transcription.Soniox.StableTokenAge.TotalMilliseconds;
+
+        // act - the token ended just under StableTokenAge before the processed position
+        var transcripts = builder.Update([Token("Hello", 0, 500, false)], 500 + stableTokenAgeMs - 1);
+        var completed = builder.Complete();
+
+        // assert
+        transcripts.Should().ContainSingle();
+        transcripts[0].IsStable.Should().BeFalse();
+        completed.Text.Should().BeEmpty("nothing was final or old enough to be promoted");
+    }
+
+    [Fact]
+    public void APromotedSpanShouldNotBeAppendedAgain()
+    {
+        // arrange - the boundary sits exactly at "Hello"'s end, so it promotes; 200 ms later
+        // it's still 100 ms short of " world"'s end, so that one stays in the tail
+        var builder = new SonioxTranscriptBuilder();
+        var stableTokenAgeMs = (long)Constants.Transcription.Soniox.StableTokenAge.TotalMilliseconds;
+        var promotedAtMs = 500 + stableTokenAgeMs;
+        builder.Update([Token("Hello", 0, 500, false)], promotedAtMs);
+
+        // act - Soniox re-sends the whole non-final tail, then finalizes it
+        var resent = builder.Update([Token("Hello", 0, 500, false), Token(" world", 500, 800, false)],
+            promotedAtMs + 200);
+        var finalized = builder.Update([Token("Hello", 0, 500, true), Token(" world", 500, 800, true)],
+            promotedAtMs + 500);
+        var completed = builder.Complete();
+
+        // assert
+        resent.Should().ContainSingle();
+        resent[0].Text.Should().Be("Hello world");
+        resent[0].IsStable.Should().BeFalse();
+        finalized.Should().ContainSingle();
+        finalized[0].Text.Should().Be("Hello world");
+        finalized[0].IsStable.Should().BeTrue();
+        finalized[0].TimeMap.Length.Should().Be(3, "the map holds one point per token boundary: 0, 0.5, 0.8");
+        finalized[0].TimeRange.End.Should().BeApproximately(0.8f, 0.001f);
+        completed.Text.Should().Be("Hello world");
+    }
+
+    [Fact]
+    public void ARevisionOfAPromotedWordShouldBeIgnored()
+    {
+        // arrange
+        var builder = new SonioxTranscriptBuilder();
+        builder.Update([Token("Hello", 0, 500, false)], 3000);
+
+        // act
+        var revised = builder.Update([Token("Hallo", 0, 500, false)], 3100);
+        var completed = builder.Complete();
+
+        // assert
+        revised.Should().BeEmpty("the promoted span is settled, so a revision of it changes nothing");
+        completed.Text.Should().Be("Hello");
+    }
+
+    [Fact]
+    public void ATokenStraddlingTheBoundaryShouldStayInTheTail()
+    {
+        // arrange
+        var builder = new SonioxTranscriptBuilder();
+        var stableTokenAgeMs = (long)Constants.Transcription.Soniox.StableTokenAge.TotalMilliseconds;
+
+        // act - the stable boundary is 100 ms before the token's end, which spans 0..600 ms
+        var transcripts = builder.Update([Token("Hello", 0, 600, false)], 500 + stableTokenAgeMs);
+        var completed = builder.Complete();
+
+        // assert
+        transcripts.Should().ContainSingle();
+        transcripts[0].IsStable.Should().BeFalse();
+        completed.Text.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void CompleteAfterPromotionShouldReturnThePromotedTextAsStable()
+    {
+        // arrange
+        var builder = new SonioxTranscriptBuilder();
+        builder.Update([Token("Hello", 0, 500, false), Token(" world", 500, 2900, false)], 3000);
+
+        // act
+        var completed = builder.Complete();
+
+        // assert
+        completed.Text.Should().Be("Hello");
+        completed.IsStable.Should().BeTrue();
+        completed.TimeRange.End.Should().BeApproximately(0.5f, 0.001f);
     }
 
     // Private methods

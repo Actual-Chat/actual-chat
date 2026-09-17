@@ -49,6 +49,7 @@ public static partial class Constants
         public static readonly bool TranscriberAny = false;
         public static readonly bool TranscriberGoogle = false;
         public static readonly bool TranscriberDeepgram = false;
+        public static readonly bool TranscriberSoniox = false;
 
         // Notifications
         public static readonly bool Notifications = false;
