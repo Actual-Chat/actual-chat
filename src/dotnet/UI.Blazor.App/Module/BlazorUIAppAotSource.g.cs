@@ -315,6 +315,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotifyAllButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotifyCallPanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotifyMentionedMembers>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OAuthConsentModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OnboardingModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OwnAccountEditorModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OwnAvatarAddTile>();
@@ -390,11 +391,13 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SelectionHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SelectionHost>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SendingMessageMenuContent>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.ApiAndAppsSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.ApiKeyCreateFormPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.ApiKeyCreateModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.ApiKeyRevealPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.ApiKeySettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.AppSettings>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.ConnectedAppsSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DeveloperTools>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsPage>();
@@ -530,6 +533,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.MeshTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.MicPermissionTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.NotificationsTestPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.OAuthConsentPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.SettingsPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Test.BannerStackTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Test.BlazorTestNode>();
@@ -1105,6 +1109,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotifyAllButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotifyCallPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotifyMentionedMembers), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.OAuthConsentModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.OnboardingModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.OwnAccountEditorModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.OwnAvatarAddTile), AotTypeKind.Component),
@@ -1180,11 +1185,13 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.SelectionHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SelectionHost), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SendingMessageMenuContent), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.ApiAndAppsSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.ApiKeyCreateFormPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.ApiKeyCreateModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.ApiKeyRevealPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.ApiKeySettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.AppSettings), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.ConnectedAppsSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DeveloperTools), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsPage), AotTypeKind.Component),
@@ -1320,6 +1327,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Pages.MeshTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.MicPermissionTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.NotificationsTestPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Pages.OAuthConsentPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.SettingsPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Test.BannerStackTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Test.BlazorTestNode), AotTypeKind.Component),
