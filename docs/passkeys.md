@@ -60,16 +60,23 @@ derived from the same SHA-256 fingerprint `assetlinks.json` lists:
 echo "7F:34:78:A4:..." | tr -d ':' | xxd -r -p | base64 | tr '+/' '-_' | tr -d '='
 ```
 
-| Environment | Package | apk-key-hash |
-|---|---|---|
-| dev (`myapp.keystore`) | `chat.actual.dev.app` | `fzR4pOolsfmBS_aofT7PcsXMAc_Iihkd6-O6tWbDfQs` |
-| prod (Play signing) | `chat.actual.app` | `oUXW_CW4O6BYDXt9nq9CHqTTpNk_rLYPXjDiyIkAXnc` |
+| Environment | Package | Signed by | apk-key-hash |
+|---|---|---|---|
+| dev, Play build | `chat.actual.dev.app` | Play app signing | `teyyQLAlytNdVpouFUXplnRaKYEChk-Dvbjlu91FZkk` |
+| dev, side-loaded build | `chat.actual.dev.app` | `myapp.keystore` (upload key) | `fzR4pOolsfmBS_aofT7PcsXMAc_Iihkd6-O6tWbDfQs` |
+| prod | `chat.actual.app` | Play app signing | `oUXW_CW4O6BYDXt9nq9CHqTTpNk_rLYPXjDiyIkAXnc` |
 
-Both values are derived from the fingerprints in
-[assetlinks.json](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Wasm/wwwroot/.well-known/assetlinks.json);
-re-derive rather than copy if a signing key ever rotates. The local dev config
+Play App Signing re-signs every build it distributes, so a Play-installed dev app
+presents Play's key, not the upload key — both must be listed, in
+[assetlinks.json](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Wasm/wwwroot/.well-known/assetlinks.json)
+and in `PasskeyOrigins`, or Credential Manager fails with "Unable to verify RP ID"
+(`Не удалось проверить идентификатор RP`) before our server is ever called. The
+authoritative fingerprint is the installed app's:
+`adb shell pm dump <package> | grep Signatures:`. Re-derive rather than copy if a
+signing key ever rotates. The local dev config
 ([appsettings.Development.json](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Server/appsettings.Development.json))
-is the worked example.
+is the worked example; the dev and prod clusters take the value from
+`UsersSettings__PasskeyOrigins` in `flux-team-core`.
 
 ## Association files
 
