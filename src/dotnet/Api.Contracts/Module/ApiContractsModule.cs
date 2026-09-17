@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using ActualChat.Contacts;
@@ -40,6 +40,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<IRoles>();
         fusion.AddClient<IMentions>();
         fusion.AddClient<IReactions>();
+        fusion.AddClient<IImageSuggestions>();
         fusion.AddClient<ISharedLocations>();
         fusion.AddClient<IPlaces>();
         fusion.AddClient<ITranslations>();

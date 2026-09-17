@@ -119,6 +119,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatNotFound>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatNotificationBell>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatNotificationModeMenu>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatPictureSuggestionBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatPinnedBar>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatPinnedBarMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatPropertiesMenu>();
@@ -204,6 +205,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.GrantFileUploadsSubHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.HasContextMenuBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ImageCropPicker>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ImageGenerationModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.InaccessiblePlace>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingShareModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.InviteFriendsBanner>();
@@ -913,6 +915,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatNotFound), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatNotificationBell), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatNotificationModeMenu), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatPictureSuggestionBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatPinnedBar), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatPinnedBarMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatPropertiesMenu), AotTypeKind.Component),
@@ -998,6 +1001,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.GrantFileUploadsSubHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.HasContextMenuBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ImageCropPicker), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ImageGenerationModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.InaccessiblePlace), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingShareModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.InviteFriendsBanner), AotTypeKind.Component),
