@@ -668,12 +668,13 @@ public class DubbingTranslationFlowTest(
             () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
             ct);
         var last = Transcript.Empty;
-        // The translation runs per clause, so what a late listener skips is a whole clause: the
-        // backlog is the first sentence, unstable but complete, and the speaker goes on with a second
+        // The translation runs per clause, so what a late listener skips is whole clauses: the
+        // backlog is two sentences, unstable but complete, and the speaker goes on with a third
         const string secondSentence = " Хорошо, спасибо.";
+        const string thirdSentence = " До встречи!";
         var isLate = backlogSeconds > 0;
-        var backlog = Unstable(isLate ? SourceText : SourceSteps[0], backlogSeconds);
-        var fullText = isLate ? SourceText + secondSentence : SourceText;
+        var backlog = Unstable(isLate ? SourceText + secondSentence : SourceSteps[0], backlogSeconds);
+        var fullText = isLate ? backlog.Text + thirdSentence : SourceText;
         Push(backlog);
         await backend.WhenTranscriptPublished(sourceId, ct);
 
@@ -689,27 +690,29 @@ public class DubbingTranslationFlowTest(
         await createEntryTask;
         var captions = await backend.GetTranscript(dubId, ct);
         if (isLate) {
-            // The dub is decided on the source, before the translation has read it; what a late
-            // listener skips is the translation's first transcript, which must not cover the rest.
-            // The dub attaches to the translation moments after opening the synthesis, and a reader
-            // gets whatever is buffered by then as one transcript: the second sentence waits it out
-            await captions!.FirstAsync(ct);
+            // The dub is decided on the source, before the translation has read it; the backlog is
+            // translated before the speaker goes on. Whether the dub then sees it as transcripts of
+            // its own or folded into the third sentence depends on when it attaches to the
+            // translation, and the skip must cut the backlog off either way. Real time maps keep
+            // the backlog's end where it was: the later transcripts extend the backlog's map rather
+            // than re-timing it.
+            await WhenTranslated(captions!, secondSentence, ct);
             await recorder.WhenStarted(dubId.Value, ct);
-            await Task.Delay(TimeSpan.FromMilliseconds(500), ct);
-            Push(Unstable(fullText[..^5]));
+            Push(backlog.WithSuffix(thirdSentence[..^5], backlogSeconds + 2));
+            Push(backlog.WithSuffix(thirdSentence, backlogSeconds + 3) with { IsStable = true });
         }
         else {
             foreach (var step in SourceSteps.Skip(1))
                 Push(Unstable(step));
+            Push(Stable(fullText));
         }
-        Push(Stable(fullText));
 
         // assert
         stream.Should().NotBeNull("a Russian speaker is dubbed for an English listener");
         captions.Should().NotBeNull("the caption reader must get the same translated stream");
         var chunks = await recorder.WhenSpoken(dubId.Value, 1, ct);
         if (isLate)
-            chunks.Should().ContainSingle().Which.Should().Contain("Хорошо, спасибо.").And.NotContain(SourceText,
+            chunks.Should().Equal([$" {FakeTranslator.Translated(thirdSentence, Languages.English)}"],
                 "a listener who joined seconds into the utterance hears only the clause said after that");
         else
             chunks.Should().Equal([FakeTranslator.Translated(SourceText, Languages.English)],
@@ -727,6 +730,21 @@ public class DubbingTranslationFlowTest(
             source.Writer.TryWrite(transcript - last);
             last = transcript;
         }
+    }
+
+    private static async Task WhenTranslated(
+        RpcStream<TranscriptDiff> captions,
+        string sourceText,
+        CancellationToken cancellationToken)
+    {
+        var translated = FakeTranslator.Translated(sourceText, Languages.English);
+        var folded = Transcript.Empty;
+        await foreach (var diff in captions.WithCancellation(cancellationToken)) {
+            folded += diff;
+            if (folded.Text.Contains(translated))
+                return;
+        }
+        throw new InvalidOperationException($"The captions ended without '{translated}'.");
     }
 
     private static Transcript Unstable(string text, float endTime = 0, Language? language = null)

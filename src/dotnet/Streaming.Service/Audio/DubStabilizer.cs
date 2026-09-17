@@ -11,8 +11,9 @@ public enum DubDecision
 }
 
 /// <summary>
-/// Turns a translated transcript stream into text a TTS engine may speak - only the stable prefix,
-/// only what wasn't sent yet - and decides whether the source needs dubbing at all.
+/// Turns a translated transcript stream into text a TTS engine may speak - only the stable text,
+/// which arrives clause by clause, and only what wasn't sent yet - and decides whether the source
+/// needs dubbing at all.
 /// </summary>
 public sealed partial class DubStabilizer
 {
@@ -22,13 +23,25 @@ public sealed partial class DubStabilizer
     private static partial Regex WhitespaceRegexFactory();
     private static readonly Regex WhitespaceRegex = WhitespaceRegexFactory();
 
-    private string _stableText = "";
-
     public string SentText { get; private set; } = "";
 
-    public void Skip(Transcript translated)
-        // Whatever is spoken next starts after this text - the backlog a late listener must not hear
-        => SentText = translated.Text;
+    public void Skip(Transcript translated, float backlogEnd)
+    {
+        // Whatever is spoken next starts after the backlog a late listener must not hear. The
+        // translator puts a time map point at every clause end, so the backlog ends at the last one
+        // at or before backlogEnd - the clause the join point falls in is spoken whole - whether the
+        // transcript is one clause or a late reader's fold of everything translated so far
+        var text = translated.Text;
+        var end = 0;
+        foreach (var point in translated.TimeMap.Points) {
+            if (point.Y > backlogEnd + Transcript.TimeMapEpsilon.Y)
+                break;
+
+            end = Math.Min(text.Length, (int)MathF.Round(point.X));
+        }
+        if (end > GetSentPrefixLength(text))
+            SentText = text[..end];
+    }
 
     public string? Next(Transcript translated)
     {
@@ -38,12 +51,8 @@ public sealed partial class DubStabilizer
             return null;
 
         var text = translated.Text;
-        _stableText = text;
         return Send(text, GetSentPrefixLength(text), text.Length);
     }
-
-    public string? Flush()
-        => Send(_stableText, GetSentPrefixLength(_stableText), _stableText.Length);
 
     public static DubDecision Decide(Transcript source, Transcript translated, Language targetLanguage)
     {

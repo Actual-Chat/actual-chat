@@ -115,7 +115,8 @@ public partial class AudioStreamingBackend
 
             // Measured when the dub is requested: a listener who joins mid-utterance finds seconds of
             // audio already transcribed, and must not hear that backlog read out before the live text
-            var isLate = Fold(sourceMemoizer).TimeRange.End > Constants.Audio.DubBacklogThreshold.TotalSeconds;
+            var backlogEnd = Fold(sourceMemoizer).TimeRange.End;
+            var isLate = backlogEnd > Constants.Audio.DubBacklogThreshold.TotalSeconds;
             var startedAt = CpuTimestamp.Now;
             var stabilizer = new DubStabilizer();
             var spokenChunkCount = 0;
@@ -162,18 +163,16 @@ public partial class AudioStreamingBackend
             }
 
             var translated = Transcript.Empty;
-            var mustSkipBacklog = isLate;
             bool IsTranslationComplete()
                 // The translator scales each increment's time map from the source's, so a translated
                 // transcript that reaches the source's end has nothing left to translate
                 => translated.IsStable
                     && translated.TimeRange.End + Transcript.TimeMapEpsilon.Y >= Fold(sourceMemoizer).TimeRange.End;
-            async Task Speak(string chunk, string suffix) {
+            async Task Speak(string chunk) {
                 spokenChunkCount++;
                 Log.LogInformation(
-                    "RunDub: #{StreamId} - speaking chunk #{Index} ({Length} chars{Suffix}) "
-                    + "at {SourceEnd:F1}s of speech",
-                    dubStreamId, spokenChunkCount, chunk.Length, suffix, Fold(sourceMemoizer).TimeRange.End);
+                    "RunDub: #{StreamId} - speaking chunk #{Index} ({Length} chars) at {SourceEnd:F1}s of speech",
+                    dubStreamId, spokenChunkCount, chunk.Length, Fold(sourceMemoizer).TimeRange.End);
                 latencyTrace?.OnSpoken(translated);
                 await text.Writer.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
             }
@@ -190,17 +189,14 @@ public partial class AudioStreamingBackend
                         return;
                 }
 
-                if (mustSkipBacklog) {
-                    // The first translated transcript is the backlog whatever decided the dub
-                    stabilizer.Skip(translated);
-                    mustSkipBacklog = false;
-                }
+                // The backlog is skipped whatever decided the dub, and on every transcript: the
+                // translation arrives one clause at a time, but a dub attaching after it has moved on
+                // gets everything so far folded into one
+                if (isLate)
+                    stabilizer.Skip(translated, backlogEnd);
                 if (stabilizer.Next(translated) is { } chunk)
-                    await Speak(chunk, "").ConfigureAwait(false);
+                    await Speak(chunk).ConfigureAwait(false);
             }
-            // The fragment after the last clause boundary was held for more text; none is coming
-            if (decision == DubDecision.Dub && stabilizer.Flush() is { } tail)
-                await Speak(tail, ", the tail").ConfigureAwait(false);
             if (decision == DubDecision.Undecided)
                 Log.LogInformation("RunDub: #{StreamId} - too short to decide, not dubbed", dubStreamId);
             else if (decision == DubDecision.Dub && spokenChunkCount == 0 && !isLate)

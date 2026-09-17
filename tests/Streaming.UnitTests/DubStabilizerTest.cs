@@ -64,18 +64,66 @@ public class DubStabilizerTest
     }
 
     [Fact]
-    public void SkipShouldLeaveOnlyTheTextAfterItToSpeak()
+    public void SkipShouldLeaveOnlyTheClausesPastTheBacklogToSpeak()
+    {
+        // arrange - one translated clause per time map point, 1 s per char
+        var stabilizer = new DubStabilizer();
+        var fold = WithClauseEnds("Hello there. How are you? Fine.", 12, 25, 31) with { IsStable = true };
+
+        // act
+        stabilizer.Skip(fold, 25);
+        var chunk = stabilizer.Next(fold);
+
+        // assert
+        chunk.Should().Be(" Fine.", "a listener who joined late must not hear the backlog read out");
+        stabilizer.SentText.Should().Be("Hello there. How are you? Fine.");
+    }
+
+    [Fact]
+    public void SkipShouldSpeakTheClauseTheJoinPointFallsIn()
+    {
+        // arrange
+        var stabilizer = new DubStabilizer();
+        var fold = WithClauseEnds("Hello there. How are you? Fine.", 12, 25, 31) with { IsStable = true };
+
+        // act
+        stabilizer.Skip(fold, 20);
+        var chunk = stabilizer.Next(fold);
+
+        // assert
+        chunk.Should().Be(" How are you? Fine.", "the skip ends at the first clause boundary past the join point");
+    }
+
+    [Fact]
+    public void SkipShouldNeverRewindWhatWasSpoken()
+    {
+        // arrange
+        var stabilizer = new DubStabilizer();
+        var first = WithClauseEnds("Hello there. How are you?", 12, 25) with { IsStable = true };
+        stabilizer.Skip(first, 12);
+        stabilizer.Next(first).Should().Be(" How are you?");
+
+        // act - the next transcript is skipped against the same backlog
+        var second = WithClauseEnds("Hello there. How are you? Fine.", 12, 25, 31) with { IsStable = true };
+        stabilizer.Skip(second, 12);
+        var chunk = stabilizer.Next(second);
+
+        // assert
+        chunk.Should().Be(" Fine.", "the backlog ends before what was spoken already");
+    }
+
+    [Fact]
+    public void SkipShouldCoverAnUnstableBacklog()
     {
         // arrange
         var stabilizer = new DubStabilizer();
 
         // act
-        stabilizer.Skip(Unstable("Hello there"));
-        var chunk = stabilizer.Next(Stable("Hello there, how are you?"));
+        stabilizer.Skip(WithClauseEnds("Hello there.", 12), 12);
+        var chunk = stabilizer.Next(WithClauseEnds("Hello there. How are you?", 12, 25) with { IsStable = true });
 
         // assert
-        chunk.Should().Be(", how are you?", "a listener who joined late must not hear the backlog read out");
-        stabilizer.SentText.Should().Be("Hello there, how are you?");
+        chunk.Should().Be(" How are you?");
     }
 
     [Fact]
@@ -90,36 +138,6 @@ public class DubStabilizerTest
         // assert
         chunk.Should().Be("Hello world. How are",
             "the translator hands over whole clauses, so a stable text is spoken as it is, however it ends");
-        stabilizer.SentText.Should().Be("Hello world. How are");
-    }
-
-    [Fact]
-    public void FlushShouldSendNothingBeforeAnyStableText()
-    {
-        // arrange
-        var stabilizer = new DubStabilizer();
-        stabilizer.Next(Unstable("Hello there"));
-
-        // act
-        var tail = stabilizer.Flush();
-
-        // assert
-        tail.Should().BeNull("unstable text is never spoken, not even at the end");
-    }
-
-    [Fact]
-    public void FlushShouldHaveNothingLeftOnceNextSpokeTheStableText()
-    {
-        // arrange
-        var stabilizer = new DubStabilizer();
-        stabilizer.Next(Stable("Hello world. How are"));
-        stabilizer.Next(Unstable("Hello world. How are you"));
-
-        // act
-        var tail = stabilizer.Flush();
-
-        // assert
-        tail.Should().BeNull("the stable text was spoken as it arrived, and the unstable growth is never spoken");
         stabilizer.SentText.Should().Be("Hello world. How are");
     }
 
@@ -219,6 +237,14 @@ public class DubStabilizerTest
 
     private static Transcript Stable(string text, params Language[] languages)
         => Unstable(text, languages) with { IsStable = true };
+
+    private static Transcript WithClauseEnds(string text, params int[] ends)
+    {
+        var map = LinearMap.Zero;
+        foreach (var end in ends)
+            map = map.Append(new Vector2(end, end));
+        return new Transcript(text, map, []);
+    }
 
     private static Transcript Unstable(string text, params Language[] languages)
         => new(text, LinearMap.Zero.Append(new Vector2(text.Length, text.Length)), languages);
