@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using ActualChat.Hashing;
 using ActualChat.Live;
 using ActualChat.Streaming;
@@ -2252,15 +2252,21 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await Task.Delay(2000);
 
         // A viewer who left the old call must see the new call's collapsed card and typed messages.
-        var afterRestart = (await liveBlockUI.GetBlock(chat.Id, CancellationToken.None)).Require();
+        // The restart reaches the block through the fold governor, and the block state through its own
+        // refetch - which stands in with the last known value while it's in flight, so a one-shot read
+        // can land on the closed session's null.
+        var afterRestart = await ComputedTest.When(async ct => {
+            var block = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            block.Should().BeOfType<OpenLiveBlock>();
+            block.HasAttended.Should().BeFalse();
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            LeafEntryLids(items).Should().Contain(typed.Select(e => e.Id.LocalId));
+            return block;
+        }, TimeSpan.FromSeconds(15));
         Out.WriteLine($"after restart: block={Describe(afterRestart)}");
-        afterRestart.Should().BeOfType<OpenLiveBlock>();
-        afterRestart.HasAttended.Should().BeFalse();
         var finalItems = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
-        var finalLids = LeafEntryLids(finalItems);
         Out.WriteLine($"spoken lids: {string.Join(", ", spoken.Select(e => e.Id.LocalId))}");
-        Out.WriteLine($"visible lids: {string.Join(", ", finalLids)}");
-        finalLids.Should().Contain(typed.Select(e => e.Id.LocalId));
+        Out.WriteLine($"visible lids: {string.Join(", ", LeafEntryLids(finalItems))}");
     }
 
     [Fact]
