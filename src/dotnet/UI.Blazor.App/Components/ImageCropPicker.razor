@@ -17,6 +17,7 @@
     private ElementReference _fileInputRef;
 
     [Parameter, EditorRequired] public string Scope { get; set; } = "";
+    [Parameter] public string Title { get; set; } = "";
     [Parameter] public EventCallback<MediaRef> OnCropped { get; set; }
     [Parameter] public bool IsSquare { get; set; }
     [Parameter] public float ViewportAspectRatio { get; set; }
@@ -32,7 +33,10 @@
 
         await JS.InvokeVoidAsync(JSClearFileInput, _fileInputRef).ConfigureAwait(true);
 
-        var model = new PicCropModal.Model(blobUrl, Scope, OnCroppedInternal, IsSquare, ViewportAspectRatio, HasBlur);
+        var model = new PicCropModal.Model(
+            blobUrl, Scope, OnCroppedInternal, IsSquare, ViewportAspectRatio, HasBlur) {
+            Title = Title,
+        };
         await Hub.ModalUI.Show(model).ConfigureAwait(true);
     }
 
