@@ -3,7 +3,7 @@ namespace ActualChat.Core.UnitTests.Identifiers;
 public class ContentRefTest(ITestOutputHelper @out) : StringIdentifierTestBase<ContentRef>(@out)
 {
     public override string[] ValidIdentifiers
-        => ["u:abcdef", "c:abcdef", "ce:abcdef:0:1", "a:abcdef:1", "p:abcdefghij"];
+        => ["u:abcdef", "c:abcdef", "e:abcdef:0:1", "a:abcdef:1", "p:abcdefghij"];
 
     public override string[] InvalidIdentifiers
         => ["", "abcdef", ":abcdef", "u:", "u:!", "unknown:abcdef"];
@@ -51,7 +51,7 @@ public class ContentRefTest(ITestOutputHelper @out) : StringIdentifierTestBase<C
     {
         // arrange
         (string Prefix, ContentId Id)[] cases = [
-            ("ct", ContactId.NewAny(UserId.Parse("abcdef"), ChatId.Parse("ghijkl"))),
+            ("C", ContactId.NewAny(UserId.Parse("abcdef"), ChatId.Parse("ghijkl"))),
             ("cnv", ConversationId.New(ChatId.Parse("ghijkl"), 1)),
             ("loc", SharedLocationId.Parse("abcdefghij")),
         ];

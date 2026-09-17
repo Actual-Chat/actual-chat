@@ -43,6 +43,8 @@ public sealed partial record Chat(
     // Non-null = PTT is on; the value is the consent epoch: only PttChat.JoinedAt >= PttEnabledAt counts as armed.
     [DataMember, Key(18)] public Moment? PttEnabledAt { get; init; }
 
+    [DataMember, Key(19)] public MaintenanceMode MaintenanceMode { get; init; }
+
     // Populated only on front-end
     [DataMember, Key(11)] public AuthorRules Rules { get; init; } = null!;
     [DataMember, Key(12)] public Media.Media? Picture { get; init; }

@@ -186,6 +186,9 @@ public interface IChats : IComputeService
 
     [CommandHandler]
     Task OnSetPinned(Chats_SetPinned command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task OnSetMaintenance(Chats_SetMaintenance command, CancellationToken cancellationToken);
 }
 
 [DataContract, MessagePackObject]
@@ -301,4 +304,12 @@ public sealed partial record Chat_PublishCopiedChat : ApiCommand<Unit>
 {
     [DataMember(Order = 2), Key(2)] public required PlaceChatId NewChatId { get; init; }
     [DataMember(Order = 3), Key(3)] public required ChatId SourceChatId { get; init; }
+}
+
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Chats_SetMaintenance : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
+    [DataMember(Order = 3), Key(3)] public bool IsEnabled { get; init; }
 }

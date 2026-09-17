@@ -279,6 +279,8 @@
   "SystemEntry_CallCanceled": " zavolal(a). Zrušeno.",
   "SystemEntry_CallEnded": " zavolal(a).",
 
+  "ChatMaintenance_Mode": "Režim údržby",
+  "ChatMaintenance_Title": "Chat je dočasně nedostupný",
   "ChatFooter_ReadOnly": "Chat je jen pro čtení",
   "ChatFooter_YouBlockedUser": "Tohoto uživatele jste zablokovali.",
   "ChatFooter_Unblock": "Odblokovat",

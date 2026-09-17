@@ -279,6 +279,8 @@
   "SystemEntry_CallCanceled": " menelepon. Dibatalkan.",
   "SystemEntry_CallEnded": " menelepon.",
 
+  "ChatMaintenance_Mode": "Mode pemeliharaan",
+  "ChatMaintenance_Title": "Chat sementara tidak tersedia",
   "ChatFooter_ReadOnly": "Obrolan hanya bisa dibaca",
   "ChatFooter_YouBlockedUser": "Anda memblokir pengguna ini.",
   "ChatFooter_Unblock": "Buka blokir",

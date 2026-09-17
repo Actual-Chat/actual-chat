@@ -301,6 +301,8 @@ public static class LocalizedStringsLocalizerExt
         public string SystemEntry_CallCanceled => l["SystemEntry_CallCanceled"].Value;
         public string SystemEntry_CallEnded => l["SystemEntry_CallEnded"].Value;
 
+        public string ChatMaintenance_Mode => l["ChatMaintenance_Mode"].Value;
+        public string ChatMaintenance_Title => l["ChatMaintenance_Title"].Value;
         public string ChatFooter_ReadOnly => l["ChatFooter_ReadOnly"].Value;
         public string ChatFooter_YouBlockedUser => l["ChatFooter_YouBlockedUser"].Value;
         public string ChatFooter_Unblock => l["ChatFooter_Unblock"].Value;

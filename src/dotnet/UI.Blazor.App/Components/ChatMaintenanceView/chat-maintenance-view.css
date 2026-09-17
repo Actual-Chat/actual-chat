@@ -1,0 +1,12 @@
+.chat-maintenance-view {
+    @apply flex-y items-center justify-center gap-4;
+    @apply w-full h-full min-h-0;
+    @apply p-6;
+    @apply text-center text-01;
+}
+.chat-maintenance-view h2 {
+    @apply text-xl font-semibold;
+}
+.chat-maintenance-view .kitty {
+    @apply w-60 max-w-full;
+}

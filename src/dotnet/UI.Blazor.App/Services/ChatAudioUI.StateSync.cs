@@ -24,6 +24,7 @@ public partial class ChatAudioUI
         cancellationToken.ThrowIfCancellationRequested();
         var baseChains = new[] {
             AsyncChain.From(InitializeListening),
+            AsyncChain.From(StopChatsInMaintenance),
             AsyncChain.From(StopListeningWhenPttDisarmed),
             AsyncChain.From(InvalidateActiveChatDependencies),
             AsyncChain.From(InvalidateReplayDependencies),

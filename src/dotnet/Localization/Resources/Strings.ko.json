@@ -279,6 +279,8 @@
   "SystemEntry_CallCanceled": "님이 전화를 걸었습니다. 취소되었습니다.",
   "SystemEntry_CallEnded": "님이 전화를 걸었습니다.",
 
+  "ChatMaintenance_Mode": "유지보수 모드",
+  "ChatMaintenance_Title": "채팅을 일시적으로 사용할 수 없습니다",
   "ChatFooter_ReadOnly": "읽기 전용 채팅입니다",
   "ChatFooter_YouBlockedUser": "이 사용자를 차단했습니다.",
   "ChatFooter_Unblock": "차단 해제",

@@ -279,6 +279,8 @@
   "SystemEntry_CallCanceled": ": звонок отменён.",
   "SystemEntry_CallEnded": ": звонок.",
 
+  "ChatMaintenance_Mode": "Режим обслуживания",
+  "ChatMaintenance_Title": "Чат временно недоступен",
   "ChatFooter_ReadOnly": "Чат доступен только для чтения",
   "ChatFooter_YouBlockedUser": "Вы заблокировали этого пользователя.",
   "ChatFooter_Unblock": "Разблокировать",

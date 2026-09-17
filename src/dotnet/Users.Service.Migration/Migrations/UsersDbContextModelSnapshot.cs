@@ -16,7 +16,7 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20260911162134_Add_Passkeys";
+    public override string LastMigrationId => "20260916085622_AddMaintenances";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -276,6 +276,23 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
                     .HasName("pk_kvas_entries");
 
                 b.ToTable("kvas_entries");
+            });
+
+        modelBuilder.Entity("ActualChat.Users.Db.DbMaintenance", b =>
+            {
+                b.Property<string>("Id")
+                    .HasColumnType("text")
+                    .HasColumnName("id")
+                    .UseCollation("C");
+
+                b.Property<int>("Mode")
+                    .HasColumnType("integer")
+                    .HasColumnName("mode");
+
+                b.HasKey("Id")
+                    .HasName("pk_maintenances");
+
+                b.ToTable("maintenances");
             });
 
         modelBuilder.Entity("ActualChat.Users.Db.DbPasskey", b =>

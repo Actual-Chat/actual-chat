@@ -279,6 +279,8 @@
   "SystemEntry_CallCanceled": " さんが発信しました。キャンセルされました。",
   "SystemEntry_CallEnded": " さんが発信しました。",
 
+  "ChatMaintenance_Mode": "メンテナンスモード",
+  "ChatMaintenance_Title": "チャットは一時的に利用できません",
   "ChatFooter_ReadOnly": "チャットは読み取り専用です",
   "ChatFooter_YouBlockedUser": "このユーザーをブロックしています。",
   "ChatFooter_Unblock": "ブロック解除",
