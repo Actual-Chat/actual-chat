@@ -92,6 +92,7 @@
     [Parameter] public string TabsClass { get; set; } = "";
     [Parameter] public bool BottomHill { get; set; }
     [Parameter] public bool AutoSelectInitialTab { get; set; } = true;
+    [Parameter] public string? DefaultTabId { get; set; }
     // Opt-in: most tab panels cut, and the ones that animate are the ones whose bodies are lists
     [Parameter] public TabContentSwap SwapKind { get; set; }
     [Parameter] public bool MustPropagateDisplay { get; set; }
@@ -148,8 +149,15 @@
         var selectedTabId = SelectedTabId;
         if (tabs.Count == 0)
             return null;
-        if (selectedTabId is null || IndexOf(lastTabs, selectedTabId) < 0)
-            return AutoSelectInitialTab ? tabs[0].Id : null;
+        if (selectedTabId is null || IndexOf(lastTabs, selectedTabId) < 0) {
+            if (!AutoSelectInitialTab)
+                return null;
+
+            return IndexOf(tabs, DefaultTabId) >= 0
+                ? DefaultTabId
+                : tabs[0].Id;
+        }
+
         if (IndexOf(tabs, selectedTabId) >= 0)
             return selectedTabId;
 
