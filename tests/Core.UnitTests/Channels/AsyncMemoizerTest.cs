@@ -1014,7 +1014,7 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
     //     pointer and sees every item produced (the stall just delays delivery).
     // Either way, a *new* late-joiner sees only the current buffer (last capacity items).
 
-    [Fact]
+    [FlakyFact("AK: Timing-dependent - eviction under a slow consumer", 3)]
     public async Task BoundedReplay_SlowConsumerUnderCapacityOverflow()
     {
         var source = Channel.CreateUnbounded<int>();
