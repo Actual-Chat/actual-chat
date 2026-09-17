@@ -386,7 +386,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                     if (!stream.HasText) {
                         // Soniox answers text_end on an empty stream with real audio; a stream that never
                         // got a chunk never spoke, so this is never real speech
-                        if (stream.TryMarkAudioDiscarded())
+                        if (stream.TryLogAudioDiscarded())
                             Log.LogDebug("Soniox TTS #{StreamId}: discarding audio - it never got any text",
                                 stream.Id);
                     }
@@ -630,7 +630,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
             return true;
         }
 
-        public bool TryMarkAudioDiscarded()
+        public bool TryLogAudioDiscarded()
         {
             if (_hasLoggedDiscardedAudio)
                 return false;

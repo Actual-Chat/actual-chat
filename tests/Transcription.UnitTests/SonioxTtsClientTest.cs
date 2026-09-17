@@ -134,7 +134,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
 
         // act - the pre-opened stream idles out empty before the first chunk arrives
         var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, null, CancellationToken.None);
-        await Task.Delay(Short * 2);
+        await Task.Delay(Short * 4);
         text.Writer.TryWrite("First. ");
         await Task.Delay(Short * 4);
         text.Writer.TryWrite("Second. ");
