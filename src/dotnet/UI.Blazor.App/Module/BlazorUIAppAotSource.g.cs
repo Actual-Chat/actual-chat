@@ -396,6 +396,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.ApiKeySettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.AppSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DeveloperTools>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.EmailSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.LanguageSettings>();
@@ -1185,6 +1186,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.ApiKeySettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.AppSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DeveloperTools), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.EmailSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.LanguageSettings), AotTypeKind.Component),

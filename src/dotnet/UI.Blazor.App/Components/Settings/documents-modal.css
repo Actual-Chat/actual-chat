@@ -1,0 +1,19 @@
+/* Wider and taller than a default modal: the documents are long prose, and their
+   content is already capped at the same width the Documents settings tab uses. */
+.modal-frame.documents-modal {
+    @apply md:w-full md:max-w-160 md:h-192;
+}
+.documents-modal .dialog-body {
+    @apply overflow-y-hidden;
+}
+.documents-modal .docs-panel .tab {
+    @apply overflow-y-auto;
+    @apply custom-scrollbar;
+}
+.documents-modal .docs-content {
+    @apply md:py-2;
+}
+body.narrow .documents-modal .docs-content {
+    @apply p-4;
+    @apply bg-transparent;
+}
