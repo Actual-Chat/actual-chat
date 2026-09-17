@@ -793,7 +793,7 @@
 
   "Onboarding_PasskeyTitle": "다음에는 더 빠르게 로그인하세요",
   "Onboarding_PasskeyText": "패스키를 만들고 코드를 기다리는 대신 Face ID, Touch ID, 지문 또는 Windows Hello를 사용하세요.",
-  "Onboarding_CreatePasskey": "패스키 만들기",
+  "Onboarding_CreatePasskey": "만들기",
   "Onboarding_NotNow": "나중에",
   "Permission_Microphone": "마이크",
   "Permission_MicrophoneRationale_Format": "실시간 전사 음성 메시지는 {0}의 강점이지만, 마이크 접근 권한 없이는 사용할 수 없습니다.",

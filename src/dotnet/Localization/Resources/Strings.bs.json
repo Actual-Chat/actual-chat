@@ -793,7 +793,7 @@
 
   "Onboarding_PasskeyTitle": "Prijavite se brže sljedeći put",
   "Onboarding_PasskeyText": "Napravite pristupni ključ i koristite Face ID, Touch ID, otisak prsta ili Windows Hello umjesto čekanja na kod.",
-  "Onboarding_CreatePasskey": "Napravite pristupni ključ",
+  "Onboarding_CreatePasskey": "Napravite",
   "Onboarding_NotNow": "Ne sada",
   "Permission_Microphone": "Mikrofon",
   "Permission_MicrophoneRationale_Format": "Glasovne poruke s transkripcijom uživo su ono u čemu {0} briljira, ali ta funkcija ne radi bez pristupa mikrofonu.",

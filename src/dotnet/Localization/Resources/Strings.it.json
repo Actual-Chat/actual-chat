@@ -793,7 +793,7 @@
 
   "Onboarding_PasskeyTitle": "Accedi più velocemente la prossima volta",
   "Onboarding_PasskeyText": "Crea una chiave di accesso e usa Face ID, Touch ID, l'impronta digitale o Windows Hello invece di aspettare un codice.",
-  "Onboarding_CreatePasskey": "Crea chiave di accesso",
+  "Onboarding_CreatePasskey": "Crea",
   "Onboarding_NotNow": "Non ora",
   "Permission_Microphone": "Microfono",
   "Permission_MicrophoneRationale_Format": "I messaggi vocali trascritti in tempo reale sono il punto di forza di {0}, ma senza accesso al microfono non funzionano.",

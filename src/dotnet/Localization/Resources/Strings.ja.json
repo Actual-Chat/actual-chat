@@ -793,7 +793,7 @@
 
   "Onboarding_PasskeyTitle": "次回からもっと速くサインイン",
   "Onboarding_PasskeyText": "パスキーを作成すると、コードを待つ代わりにFace ID、Touch ID、指紋、Windows Helloでサインインできます。",
-  "Onboarding_CreatePasskey": "パスキーを作成",
+  "Onboarding_CreatePasskey": "作成",
   "Onboarding_NotNow": "今はしない",
   "Permission_Microphone": "マイク",
   "Permission_MicrophoneRationale_Format": "リアルタイム文字起こしの音声メッセージは {0} の真骨頂ですが、マイクへのアクセスがないと利用できません。",

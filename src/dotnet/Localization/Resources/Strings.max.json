@@ -946,7 +946,7 @@
   // A one-time nudge shown after sign-up, suggesting a passkey instead of a code next time.
   "Onboarding_PasskeyTitle": "Connectez-vous plus vite la prochaine fois",
   "Onboarding_PasskeyText": "Erstellen Sie einen Passkey und nutzen Sie Face ID, Touch ID, Fingerabdruck oder Windows Hello, statt auf einen Code zu warten.",
-  "Onboarding_CreatePasskey": "Направите приступни кључ",
+  "Onboarding_CreatePasskey": "Направите",
   "Onboarding_NotNow": "Pas maintenant",
 
   // The rationale shown above each OS permission prompt, and - as Permissions_* - the Settings >

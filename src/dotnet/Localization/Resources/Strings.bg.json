@@ -793,7 +793,7 @@
 
   "Onboarding_PasskeyTitle": "Влизайте по-бързо следващия път",
   "Onboarding_PasskeyText": "Създайте ключ за достъп и използвайте Face ID, Touch ID, отпечатък или Windows Hello вместо да чакате код.",
-  "Onboarding_CreatePasskey": "Създайте ключ за достъп",
+  "Onboarding_CreatePasskey": "Създайте",
   "Onboarding_NotNow": "Не сега",
   "Permission_Microphone": "Микрофон",
   "Permission_MicrophoneRationale_Format": "Гласовите съобщения с транскрипция на живо са силата на {0}, но тази функция не работи без достъп до микрофона.",

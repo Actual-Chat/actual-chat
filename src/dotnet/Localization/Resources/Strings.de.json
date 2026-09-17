@@ -793,7 +793,7 @@
 
   "Onboarding_PasskeyTitle": "Nächstes Mal schneller anmelden",
   "Onboarding_PasskeyText": "Erstellen Sie einen Passkey und nutzen Sie Face ID, Touch ID, Fingerabdruck oder Windows Hello, statt auf einen Code zu warten.",
-  "Onboarding_CreatePasskey": "Passkey erstellen",
+  "Onboarding_CreatePasskey": "Erstellen",
   "Onboarding_NotNow": "Nicht jetzt",
   "Permission_Microphone": "Mikrofon",
   "Permission_MicrophoneRationale_Format": "Live transkribierte Sprachnachrichten sind die Stärke von {0} – ohne Mikrofonzugriff funktioniert das nicht.",

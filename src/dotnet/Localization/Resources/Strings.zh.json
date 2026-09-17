@@ -793,7 +793,7 @@
 
   "Onboarding_PasskeyTitle": "下次更快登录",
   "Onboarding_PasskeyText": "创建一个通行密钥，下次即可使用 Face ID、Touch ID、指纹或 Windows Hello 登录，无需等待验证码。",
-  "Onboarding_CreatePasskey": "创建通行密钥",
+  "Onboarding_CreatePasskey": "创建",
   "Onboarding_NotNow": "以后再说",
   "Permission_Microphone": "麦克风",
   "Permission_MicrophoneRationale_Format": "实时转写的语音消息是 {0} 的亮点，但没有麦克风权限就无法使用。",

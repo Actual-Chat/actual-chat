@@ -793,7 +793,7 @@
 
   "Onboarding_PasskeyTitle": "Đăng nhập nhanh hơn vào lần sau",
   "Onboarding_PasskeyText": "Tạo khóa truy cập và dùng Face ID, Touch ID, vân tay hoặc Windows Hello thay vì chờ mã.",
-  "Onboarding_CreatePasskey": "Tạo khóa truy cập",
+  "Onboarding_CreatePasskey": "Tạo",
   "Onboarding_NotNow": "Để sau",
   "Permission_Microphone": "Micrô",
   "Permission_MicrophoneRationale_Format": "Nhắn tin thoại kèm chuyển văn bản trực tiếp là điểm mạnh của {0}, nhưng tính năng này cần quyền truy cập micrô.",

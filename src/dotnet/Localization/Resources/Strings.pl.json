@@ -793,7 +793,7 @@
 
   "Onboarding_PasskeyTitle": "Loguj się szybciej następnym razem",
   "Onboarding_PasskeyText": "Utwórz klucz dostępu i używaj Face ID, Touch ID, odcisku palca lub Windows Hello zamiast czekania na kod.",
-  "Onboarding_CreatePasskey": "Utwórz klucz dostępu",
+  "Onboarding_CreatePasskey": "Utwórz",
   "Onboarding_NotNow": "Nie teraz",
   "Permission_Microphone": "Mikrofon",
   "Permission_MicrophoneRationale_Format": "Wiadomości głosowe transkrybowane na żywo to mocna strona {0}, ale ta funkcja nie zadziała bez dostępu do mikrofonu.",

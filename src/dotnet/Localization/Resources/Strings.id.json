@@ -793,7 +793,7 @@
 
   "Onboarding_PasskeyTitle": "Masuk lebih cepat lain kali",
   "Onboarding_PasskeyText": "Buat kunci sandi dan gunakan Face ID, Touch ID, sidik jari, atau Windows Hello daripada menunggu kode.",
-  "Onboarding_CreatePasskey": "Buat kunci sandi",
+  "Onboarding_CreatePasskey": "Buat",
   "Onboarding_NotNow": "Nanti saja",
   "Permission_Microphone": "Mikrofon",
   "Permission_MicrophoneRationale_Format": "Pesan suara dengan transkripsi langsung adalah keunggulan {0}, tapi fitur ini tidak berfungsi tanpa akses mikrofon.",

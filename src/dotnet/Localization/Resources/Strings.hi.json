@@ -793,7 +793,7 @@
 
   "Onboarding_PasskeyTitle": "अगली बार तेज़ी से साइन इन करें",
   "Onboarding_PasskeyText": "एक पासकी बनाएं और कोड का इंतज़ार करने की बजाय Face ID, Touch ID, फ़िंगरप्रिंट या Windows Hello का इस्तेमाल करें।",
-  "Onboarding_CreatePasskey": "पासकी बनाएं",
+  "Onboarding_CreatePasskey": "बनाएं",
   "Onboarding_NotNow": "अभी नहीं",
   "Permission_Microphone": "माइक्रोफ़ोन",
   "Permission_MicrophoneRationale_Format": "लाइव ट्रांसक्राइब्ड वॉइस मैसेजिंग {0} की सबसे बड़ी ख़ूबी है, लेकिन माइक्रोफ़ोन एक्सेस के बिना यह काम नहीं करेगी।",

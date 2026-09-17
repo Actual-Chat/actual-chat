@@ -67,6 +67,11 @@
                     </LineProgress>
                 }
                 <div class="btn-group">
+                    @if (!isTutorial && stepper.CanMoveBack) {
+                        <ButtonSquare Class="btn-back btn-sm btn-cancel" Click="@(_ => stepper.MoveBack())">
+                            <i class="icon-arrow-left text-2xl"></i>
+                        </ButtonSquare>
+                    }
                     @if (stepper.CanSkip) {
                         if (isTutorial) {
                             <TutorialSkipButton Stepper="@stepper" Click="@(() => OnSkip(stepper))"/>
@@ -79,11 +84,6 @@
                         }
                     }
                     @if (!isTutorial) {
-                        @if (stepper.CanMoveBack) {
-                            <ButtonSquare Class="btn-back btn-sm btn-cancel" Click="@(_ => stepper.MoveBack())">
-                                <i class="icon-arrow-left text-2xl"></i>
-                            </ButtonSquare>
-                        }
                         <Button
                             Class="btn-primary"
                             Click="@(() => OnNext(stepper))">

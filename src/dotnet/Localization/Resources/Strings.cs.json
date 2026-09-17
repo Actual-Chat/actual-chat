@@ -793,7 +793,7 @@
 
   "Onboarding_PasskeyTitle": "Přihlaste se příště rychleji",
   "Onboarding_PasskeyText": "Vytvořte si přístupový klíč a použijte Face ID, Touch ID, otisk prstu nebo Windows Hello místo čekání na kód.",
-  "Onboarding_CreatePasskey": "Vytvořit přístupový klíč",
+  "Onboarding_CreatePasskey": "Vytvořit",
   "Onboarding_NotNow": "Teď ne",
   "Permission_Microphone": "Mikrofon",
   "Permission_MicrophoneRationale_Format": "Hlasové zprávy s přepisem naživo jsou to, v čem {0} vyniká, ale bez přístupu k mikrofonu tato funkce nefunguje.",

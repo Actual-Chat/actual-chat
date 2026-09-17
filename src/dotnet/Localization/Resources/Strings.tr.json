@@ -793,7 +793,7 @@
 
   "Onboarding_PasskeyTitle": "Bir dahaki sefere daha hızlı giriş yapın",
   "Onboarding_PasskeyText": "Bir erişim anahtarı oluşturun ve kod beklemek yerine Face ID, Touch ID, parmak izi veya Windows Hello kullanın.",
-  "Onboarding_CreatePasskey": "Erişim anahtarı oluşturun",
+  "Onboarding_CreatePasskey": "Oluşturun",
   "Onboarding_NotNow": "Şimdi değil",
   "Permission_Microphone": "Mikrofon",
   "Permission_MicrophoneRationale_Format": "Anlık yazıya dökülen sesli mesajlaşma {0} uygulamasının en güçlü yanı, ancak mikrofon erişimi olmadan çalışmaz.",
