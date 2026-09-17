@@ -152,10 +152,12 @@ public partial class AudioStreamingBackend
 
             var translatedMemoizer = await translationTask.ConfigureAwait(false);
             if (translatedMemoizer == null) {
-                Log.LogWarning("RunDub: #{StreamId} - no translation to dub", dubStreamId);
-                // A dub already has the synthesis open on the text channel: the error ends it without speech
+                // A dub already has the synthesis open on the text channel: completing it with nothing
+                // written ends the synthesis cleanly, and the mix carries the original either way
                 if (decision == DubDecision.Dub)
-                    error = StandardError.External($"Dub #{dubStreamId} has no translation to speak.");
+                    Log.LogWarning("RunDub: #{StreamId} - had nothing to speak: no translation", dubStreamId);
+                else
+                    Log.LogWarning("RunDub: #{StreamId} - no translation to dub", dubStreamId);
                 return;
             }
 
@@ -201,13 +203,10 @@ public partial class AudioStreamingBackend
                 await Speak(tail, ", the tail").ConfigureAwait(false);
             if (decision == DubDecision.Undecided)
                 Log.LogInformation("RunDub: #{StreamId} - too short to decide, not dubbed", dubStreamId);
-            else if (decision == DubDecision.Dub && spokenChunkCount == 0 && !isLate) {
-                // The language decided "dub" but the translation never became stable: the text channel's
-                // error is what tells the synthesis this apart from a provider failure; the mix keeps the
-                // original either way
-                error = StandardError.External($"Dub #{dubStreamId} got no stable text to speak.");
-                Log.LogWarning("RunDub: #{StreamId} - no stable text to speak, failing the dub", dubStreamId);
-            }
+            else if (decision == DubDecision.Dub && spokenChunkCount == 0 && !isLate)
+                Log.LogWarning(
+                    "RunDub: #{StreamId} - had nothing to speak: the translation never became stable",
+                    dubStreamId);
         }
         catch (Exception e) {
             error = e;
@@ -342,8 +341,8 @@ public partial class AudioStreamingBackend
                 if (e.IsCancellationOf(cancellationToken))
                     throw;
                 if (text.Completion.IsFaulted) {
-                    // The failure came in through the text channel (translation, nothing to speak):
-                    // the mix carries on with the original alone, and the provider is fine
+                    // The failure came in through the text channel (the worker's own failure, already
+                    // logged there): the mix carries on with the original alone, and the provider is fine
                     Log.LogInformation("Dub #{StreamId} ended without speech: {Error}", dubStreamId, e.Message);
                     return;
                 }

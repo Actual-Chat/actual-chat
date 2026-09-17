@@ -148,30 +148,66 @@ public class DubbingTest(DubbingCollection.AppHostFixture fixture, ITestOutputHe
             "a dub with nothing to say ends the mix cleanly with the original - here, the header alone");
 
         // A silent translation is not a synthesizer outage: the next dub must still be spoken
-        var sourceId2 = StreamId.New(services.MeshWatcher().ThisNode.Ref);
-        var dubId2 = StreamId.New(sourceId2, Languages.Russian);
-        var source2 = Channel.CreateUnbounded<TranscriptDiff>();
-        var translated2 = Channel.CreateUnbounded<TranscriptDiff>();
-        var pushSource2Task = BackgroundTask.Run(
-            () => backend.PushTranscript(sourceId2, new RpcStream<TranscriptDiff>(source2.Reader.ReadAllAsync(ct)), ct),
+        await AssertNextDubIsSpoken(backend, ct);
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task ADubWithNoTranslationShouldEndWithTheOriginal()
+    {
+        // arrange - a Russian source decides "dub", but nothing keys a translation (no entry, no stream)
+        var services = AppHost.Services;
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var sourceId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
+        var dubId = StreamId.New(sourceId, Languages.English);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+        var ct = cts.Token;
+        var source = Channel.CreateUnbounded<TranscriptDiff>();
+        var pushSourceTask = BackgroundTask.Run(
+            () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
             ct);
-        var pushTranslated2Task = BackgroundTask.Run(
-            () => backend.PushTranscript(dubId2, new RpcStream<TranscriptDiff>(translated2.Reader.ReadAllAsync(ct)), ct),
-            ct);
-        source2.Writer.TryWrite(Stable("Hello there, how are you doing today?") - Transcript.Empty);
-        translated2.Writer.TryWrite(Stable("Привет, как у тебя сегодня дела?") - Transcript.Empty);
-        await backend.WhenTranscriptPublished(dubId2, ct);
-        var stream2 = await backend.GetAudio(dubId2, TimeSpan.Zero, ct);
-        source2.Writer.Complete();
-        translated2.Writer.Complete();
-        await pushSource2Task.SilentAwait(false);
-        await pushTranslated2Task.SilentAwait(false);
-        var frames2 = await stream2!.ToListAsync(ct);
-        frames2.Count(f => f.Offset >= TimeSpan.Zero).Should().BeGreaterThan(0,
-            "only a synthesizer failure trips the provider-down cool-down");
+        source.Writer.TryWrite(Stable("Привет, как у тебя сегодня дела?", Languages.Russian) - Transcript.Empty);
+        await backend.WhenTranscriptPublished(sourceId, ct);
+
+        // act - the source ends with the translation still missing
+        var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+        source.Writer.Complete();
+        await pushSourceTask.SilentAwait(false);
+        var frames = await stream!.ToListAsync(ct);
+
+        // assert - the synthesis ends cleanly with nothing to say; the mix is the (absent) original
+        frames.Select(f => f.Offset).Should().Equal([TimeSpan.FromMilliseconds(-1)],
+            "a dub with no translation ends the mix cleanly with the original - here, the header alone");
+        await AssertNextDubIsSpoken(backend, ct);
     }
 
     // Private methods
+
+    private async Task AssertNextDubIsSpoken(IAudioStreamingBackend backend, CancellationToken ct)
+    {
+        // Only a synthesizer failure trips the provider-down cool-down: a dub that had nothing to speak
+        // must leave the next one spoken
+        var sourceId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref);
+        var dubId = StreamId.New(sourceId, Languages.Russian);
+        var source = Channel.CreateUnbounded<TranscriptDiff>();
+        var translated = Channel.CreateUnbounded<TranscriptDiff>();
+        var pushSourceTask = BackgroundTask.Run(
+            () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
+            ct);
+        var pushTranslatedTask = BackgroundTask.Run(
+            () => backend.PushTranscript(dubId, new RpcStream<TranscriptDiff>(translated.Reader.ReadAllAsync(ct)), ct),
+            ct);
+        source.Writer.TryWrite(Stable("Hello there, how are you doing today?") - Transcript.Empty);
+        translated.Writer.TryWrite(Stable("Привет, как у тебя сегодня дела?") - Transcript.Empty);
+        await backend.WhenTranscriptPublished(dubId, ct);
+        var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+        source.Writer.Complete();
+        translated.Writer.Complete();
+        await pushSourceTask.SilentAwait(false);
+        await pushTranslatedTask.SilentAwait(false);
+        var frames = await stream!.ToListAsync(ct);
+        frames.Count(f => f.Offset >= TimeSpan.Zero).Should().BeGreaterThan(0,
+            "only a synthesizer failure trips the provider-down cool-down");
+    }
 
     private static Transcript Stable(string text, params Language[] languages)
         => Unstable(text, languages) with { IsStable = true };

@@ -449,8 +449,10 @@ utterance rather than a failed TTS stream each.
    transcriber that tags none) leaves the decision `Undecided` right
    away rather than holding the dub until the source ends, and step 4
    decides it. If the translation then turns out to be missing after a
-   `Dub`, the text channel is completed with an error so `StartSynthesis`
-   ends "without speech"; the mix goes on with the original alone.
+   `Dub`, the worker logs one Warning ("had nothing to speak: no
+   translation") and completes the text channel normally with nothing
+   written, so the synthesis ends cleanly; the mix goes on with the
+   original alone.
 4. **Feed.** The worker awaits the translation and folds every translated
    diff into the running `Transcript`. While still undecided it calls
    `DubStabilizer.Decide(Fold(source), translated, language)` — the
@@ -461,12 +463,18 @@ utterance rather than a failed TTS stream each.
    over the fragment held after that boundary as the last chunk (logged
    `speaking chunk #N (… chars, the tail)`). A stream that ends
    `Undecided` is logged "too short to decide" and not dubbed. A `Dub`
-   that spoke nothing at all (and had no backlog to skip) fails the text
-   channel with "no stable text to speak" — the error is what tells the
-   synthesis this apart from a provider failure, so it ends "without
-   speech" and the synthesizer-down flag stays clear; the mix keeps the
-   original either way. This is judged after the flush, so a translation
-   whose only stable text was a fragment still counts as spoken.
+   that spoke nothing at all (and had no backlog to skip) is logged once
+   at Warning ("had nothing to speak: the translation never became
+   stable") and nothing else happens: the text channel completes normally
+   in step 5, the synthesis ends cleanly with no text ever written (both
+   `SonioxTtsClient.Run` and the fake end on a completed empty channel
+   without opening a stream), the synthesizer-down flag is untouched, and
+   the mix keeps the original. The text channel used to be faulted here
+   so the synthesis could tell this apart from a provider failure — a
+   signal for the muxer fallback that no longer exists, and one that cost
+   an Error from the TTS client plus a Warning from the mix per silent
+   dub. This is judged after the flush, so a translation whose only
+   stable text was a fragment still counts as spoken.
    **Late listener.** If, when the dub was requested, the source
    transcript already covered more than `Constants.Audio.DubBacklogThreshold`
    (5 s) of audio, the listener joined mid-utterance: the first translated
@@ -637,12 +645,15 @@ A synthesis failure completes `DubPcm` with the error — the mix logs it
 once and goes on with the original alone, and the `S~lang` stream is
 **not** faulted — marks the synthesizer down for
 `DubSynthesizerDownDelay`, and is logged once as a warning. A failure
-that arrives through the text channel — the translation errored, or the
-language said "dub" but no stable translation ever came, so nothing was
-spoken — ends the synthesis the same way but does not touch the
-synthesizer-down flag: only the provider's own failures cool every dub
-down. The late-listener case is the exception: a dub that skipped its
-backlog may legitimately have nothing left to say.
+that arrives through the text channel — the worker's own decision body
+threw, which faults the channel in its `finally` — ends the synthesis
+the same way but does not touch the synthesizer-down flag: only the
+provider's own failures cool every dub down. A dub that merely had
+nothing to speak (no translation, or none that ever became stable) is
+not a failure at all: the channel completes normally and the synthesis
+ends cleanly. The late-listener case is quieter still: a dub that
+skipped its backlog may legitimately have nothing left to say, and
+isn't even logged.
 
 ### Lifetime
 
@@ -1817,9 +1828,9 @@ muxer over fake stream services: the dub-error fallback, the stale
 backlog skip), `tests/Streaming.IntegrationTests/DubbingTest.cs`
 (backend-level: `GetAudio(S~lang)` with the fake synthesizer and
 hand-made translated diffs, no muxer; a `NoDub` source, a transcript
-miss and a dub with no stable text each end the mix cleanly with the
-original — header alone, there being no audio — and only a provider
-failure trips the synthesizer-down cool-down),
+miss, a dub with no stable text and a dub with no translation each end
+the mix cleanly with the original — header alone, there being no audio —
+and only a provider failure trips the synthesizer-down cool-down),
 `tests/Chat.IntegrationTests/DubbingTranslationFlowTest.cs` (the real
 `TranslationsBackend` stream with a recording synthesizer: the spoken
 text, the entry-after-transcript ordering, the late listener, the end of
