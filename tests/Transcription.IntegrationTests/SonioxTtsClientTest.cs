@@ -58,11 +58,11 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         firstFrameAt.Should().BeLessThan(TimeSpan.FromSeconds(2),
             "PCM comes in 256 ms chunks, not the 1 s Ogg pages Opus came in (measured 2.48 s)");
         chunks.Should().OnlyContain(c => c.Length % sizeof(short) == 0, "s16le chunks are sample-aligned");
-        client.StreamCount.Should().Be(1, "chunks of one utterance share a stream");
+        client.StreamCount.Should().Be(2, "every chunk is spoken on a stream of its own");
     }
 
     [Fact]
-    public async Task TtsShouldKeepOneStreamForSteadyChunks()
+    public async Task TtsShouldSpeakEachChunkOnItsOwnStream()
     {
         // arrange
         var services = CreateServices();
@@ -89,8 +89,8 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
 
         // act
         var runTask = client.Run("test", "en", "Adrian", text.Reader, pcm.Writer, null, cts.Token);
-        for (var i = 1; i <= 7; i++) {
-            text.Writer.TryWrite($"Chunk number {i} of a steady stream keeps the stream alive and speaking, ");
+        for (var i = 1; i <= 5; i++) {
+            text.Writer.TryWrite($"This is clause number {i}.");
             await Task.Delay(TimeSpan.FromSeconds(1), cts.Token);
         }
         text.Writer.Complete();
@@ -100,8 +100,9 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         // assert
         WriteLine($"{client.StreamCount} streams, {totalBytes / (double)BytesPerSecond:F1}s of audio, "
             + $"first audio at {firstAudioAt.TotalSeconds:F1}s, done at {startedAt.Elapsed.TotalSeconds:F1}s");
-        client.StreamCount.Should().Be(1, "chunks arriving every second never let the stream go idle");
-        totalBytes.Should().BeGreaterThan(5 * BytesPerSecond, "seven phrases are well over five seconds of speech");
+        client.StreamCount.Should().BeInRange(5, 6,
+            "one stream per chunk, plus at most the one pre-opened for a chunk that never came");
+        totalBytes.Should().BeGreaterThan(5 * BytesPerSecond, "five clauses are well over five seconds of speech");
     }
 
     [Fact]
@@ -148,7 +149,7 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         var runTask = client.Run("test", "en", "Adrian", text.Reader, pcm.Writer, null, cts.Token);
         text.Writer.TryWrite("This chunk is spoken first.");
         await Task.Delay(TimeSpan.FromSeconds(12), cts.Token);
-        text.Writer.TryWrite("This chunk arrives well after the first stream was ended as idle.");
+        text.Writer.TryWrite("This chunk arrives well after the stream pre-opened for it was ended as idle.");
         text.Writer.Complete();
         await runTask;
         var chunks = await pcm.Reader.ReadAllAsync().ToListAsync();
@@ -157,7 +158,8 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         var totalBytes = chunks.Sum(c => (long)c.Length);
         WriteLine($"{client.StreamCount} streams, {totalBytes / (double)BytesPerSecond:F1}s of audio");
         totalBytes.Should().BeGreaterThan(3 * BytesPerSecond, "both chunks should be spoken");
-        client.StreamCount.Should().Be(2, "the idle flush ends the first stream, so the late chunk opens another");
+        client.StreamCount.Should().Be(3,
+            "each chunk is its own stream, and the one pre-opened between them idles out");
     }
 
     [Fact]
@@ -181,8 +183,8 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         var chunks = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
-        chunks.Should().BeEmpty("a stream that never got any text never spoke, so its audio is discarded");
-        client.StreamCount.Should().Be(1, "the stream is still pre-opened at the start of the run");
+        chunks.Should().BeEmpty();
+        client.StreamCount.Should().Be(0, "no stream is opened ahead of a text that is already over");
     }
 
     [Theory(Skip = "Diagnostic, for manual runs only")]

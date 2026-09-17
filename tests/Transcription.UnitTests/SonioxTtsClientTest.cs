@@ -96,31 +96,60 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact(Timeout = 15_000)]
-    public async Task RunShouldKeepOneStreamForSteadyChunks()
+    public async Task RunShouldEndEachChunkOnItsOwnStream()
     {
-        // arrange
-        var soniox = new FakeSoniox();
-        var client = NewClient(soniox, idleFlush: Long, streamRollover: Long);
+        // arrange - the fake holds every terminated for a while, so a chunk sent before the previous
+        // stream ended would show up ahead of it in the traffic
+        var listener = new RecordingListener();
+        var soniox = new FakeSoniox { TerminatedDelay = Short };
+        var client = NewClient(soniox, idleFlush: Long);
         var text = Channel.CreateUnbounded<string>();
         var pcm = Channel.CreateUnbounded<byte[]>();
+        foreach (var chunk in new[] { "One.", "Two.", "Three." })
+            text.Writer.TryWrite(chunk);
+        text.Writer.Complete();
 
         // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, null, CancellationToken.None);
-        foreach (var chunk in new[] { "One", " two", " three." }) {
-            text.Writer.TryWrite(chunk);
-            await Task.Delay(20);
-        }
-        text.Writer.Complete();
-        await runTask;
+        await client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, listener, CancellationToken.None);
         var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
-        client.StreamCount.Should().Be(1);
-        soniox.ConnectionCount.Should().Be(1);
-        soniox.Sent.Select(x => x.Summary).Should().Equal(
-            "config s-1", "text s-1 'One '", "text s-1 ' two '", "text s-1 ' three. '", "end s-1");
-        audio.Should().HaveCount(3, "the fake speaks one frame of PCM per chunk it's fed");
-        audio.Should().OnlyContain(chunk => chunk.Length == OpusFramePump.FrameByteLength);
+        client.StreamCount.Should().Be(3, "every chunk is its own stream");
+        soniox.ConnectionCount.Should().Be(1, "the streams share the connection");
+        soniox.Traffic.Should().Equal(
+            "config s-1", "text+end s-1 'One.'", "audio s-1", "terminated s-1",
+            "config s-2", "text+end s-2 'Two.'", "audio s-2", "terminated s-2",
+            "config s-3", "text+end s-3 'Three.'", "audio s-3", "terminated s-3");
+        audio.Select(TextOf).Should().Equal("One.", "Two.", "Three.");
+        listener.StreamsOpened.Should().Be(3, "the listener sees every stream on its chunk");
+        listener.AudioStarts.Should().Be(3, "every stream's first frame is reported");
+    }
+
+    [Fact(Timeout = 15_000)]
+    public async Task RunShouldReuseTheConnectionAcrossStreams()
+    {
+        // arrange
+        var soniox = new FakeSoniox();
+        var client = NewClient(soniox, idleFlush: Long);
+        var text = Channel.CreateUnbounded<string>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
+        for (var i = 1; i <= 6; i++)
+            text.Writer.TryWrite($"Chunk {i}.");
+        text.Writer.Complete();
+
+        // act
+        await client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, null, CancellationToken.None);
+        var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
+
+        // assert
+        client.StreamCount.Should().Be(6);
+        soniox.ConnectionCount.Should().Be(2, "a connection carries at most 5 streams");
+        soniox.StreamConnections.Should().Equal(new Dictionary<string, int> {
+            { "s-1", 1 }, { "s-2", 1 }, { "s-3", 1 }, { "s-4", 1 }, { "s-5", 1 }, { "s-6", 2 },
+        });
+        soniox.Sent.Should().Equal(Enumerable.Range(1, 6)
+            .SelectMany(i => new[] { $"config s-{i}", $"text+end s-{i} 'Chunk {i}.'" }));
+        audio.Select(TextOf).Should().Equal(Enumerable.Range(1, 6).Select(i => $"Chunk {i}."));
     }
 
     [Fact(Timeout = 15_000)]
@@ -128,11 +157,12 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
     {
         // arrange
         var soniox = new FakeSoniox();
-        var client = NewClient(soniox, idleFlush: Short, streamRollover: Long);
+        var client = NewClient(soniox, idleFlush: Short);
         var text = Channel.CreateUnbounded<string>();
         var pcm = Channel.CreateUnbounded<byte[]>();
 
-        // act - the pre-opened stream idles out empty before the first chunk arrives
+        // act - the pre-opened stream idles out empty before the first chunk arrives, and so does
+        // the one pre-opened after it
         var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, null, CancellationToken.None);
         await Task.Delay(Short * 4);
         text.Writer.TryWrite("First. ");
@@ -143,14 +173,15 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
-        client.StreamCount.Should().Be(3,
-            "the empty pre-opened stream idles out, then the idle flush ends the stream carrying the first chunk");
+        client.StreamCount.Should().Be(4,
+            "the stream pre-opened at start and the one pre-opened after the first chunk both idle out");
         soniox.ConnectionCount.Should().Be(1, "all streams share the connection");
-        soniox.Sent.Select(x => x.Summary).Should().Equal(
+        soniox.Sent.Should().Equal(
             "config s-1", "end s-1",
-            "config s-2", "text s-2 'First. '", "end s-2",
-            "config s-3", "text s-3 'Second. '", "end s-3");
-        audio.Should().HaveCount(2, "both chunks are still spoken despite the empty first stream idling out");
+            "config s-2", "text+end s-2 'First. '",
+            "config s-3", "end s-3",
+            "config s-4", "text+end s-4 'Second. '");
+        audio.Select(TextOf).Should().Equal("First. ", "Second. ");
     }
 
     [Fact(Timeout = 15_000)]
@@ -158,7 +189,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
     {
         // arrange
         var soniox = new FakeSoniox();
-        var client = NewClient(soniox, idleFlush: Long, streamRollover: Long);
+        var client = NewClient(soniox, idleFlush: Long);
         var text = Channel.CreateUnbounded<string>();
         var pcm = Channel.CreateUnbounded<byte[]>();
         var listener = new RecordingListener();
@@ -183,7 +214,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         // arrange - Soniox answers text_end on an empty stream with real audio, which is never speech
         var listener = new RecordingListener();
         var soniox = new FakeSoniox { PcmBytesOnEmptyEnd = OpusFramePump.FrameByteLength };
-        var client = NewClient(soniox, idleFlush: Short, streamRollover: Long);
+        var client = NewClient(soniox, idleFlush: Short);
         var text = Channel.CreateUnbounded<string>();
         var pcm = Channel.CreateUnbounded<byte[]>();
 
@@ -197,41 +228,17 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
 
         // assert
         client.StreamCount.Should().Be(2, "the empty stream idles out before the real chunk arrives");
-        audio.Should().HaveCount(1, "only the real chunk's audio reaches the pcm channel");
+        audio.Select(TextOf).Should().Equal("Real. ");
         listener.AudioStarts.Should().Be(1, "the discarded empty-stream audio never counts as speech starting");
     }
 
     [Fact(Timeout = 15_000)]
-    public async Task RunShouldRollOverAStreamPastItsDurationCap()
-    {
-        // arrange
-        var soniox = new FakeSoniox();
-        var client = NewClient(soniox, idleFlush: Long, streamRollover: Short);
-        var text = Channel.CreateUnbounded<string>();
-        var pcm = Channel.CreateUnbounded<byte[]>();
-
-        // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, null, CancellationToken.None);
-        text.Writer.TryWrite("Old. ");
-        await Task.Delay(Short * 2);
-        text.Writer.TryWrite("New. ");
-        text.Writer.Complete();
-        await runTask;
-
-        // assert
-        client.StreamCount.Should().Be(2, "a chunk arriving past the rollover age goes to a new stream");
-        soniox.ConnectionCount.Should().Be(1);
-        soniox.Sent.Select(x => x.Summary).Should().Equal(
-            "config s-1", "text s-1 'Old. '", "end s-1", "config s-2", "text s-2 'New. '", "end s-2");
-    }
-
-    [Fact(Timeout = 15_000)]
-    public async Task RunShouldResendUnspokenChunksAfterSonioxKillsTheStream()
+    public async Task RunShouldResendAnUnspokenChunkAfterSonioxKillsTheStream()
     {
         // arrange
         var listener = new RecordingListener();
         var soniox = new FakeSoniox { KillAfterTextCount = 2 };
-        var client = NewClient(soniox, idleFlush: Short, streamRollover: Long);
+        var client = NewClient(soniox, idleFlush: Long);
         var text = Channel.CreateUnbounded<string>();
         var pcm = Channel.CreateUnbounded<byte[]>();
 
@@ -246,11 +253,14 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
-        client.StreamCount.Should().Be(2, "the killed stream is replaced right away");
-        soniox.Sent.Select(x => x.Summary).Should().Equal(
-            "config s-1", "text s-1 'Spoken. '", "text s-1 'Lost. '", "config s-2", "text s-2 'Lost. '", "end s-2");
-        audio.Should().HaveCount(2, "the chunk the killed stream never spoke is spoken by the next one");
-        listener.StreamsOpened.Should().Be(2, "the replacement stream opens too");
+        client.StreamCount.Should().Be(4, "the killed stream is replaced right away, then one is pre-opened");
+        soniox.Sent.Should().Equal(
+            "config s-1", "text+end s-1 'Spoken. '",
+            "config s-2", "text+end s-2 'Lost. '",
+            "config s-3", "text+end s-3 'Lost. '",
+            "config s-4", "end s-4");
+        audio.Select(TextOf).Should().Equal("Spoken. ", "Lost. ");
+        listener.StreamsOpened.Should().Be(3, "the replacement stream opens too, the empty pre-opened one doesn't");
         listener.AudioStarts.Should().Be(2, "'Spoken.' answers before the kill, 'Lost.' after the resend");
     }
 
@@ -259,7 +269,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
     {
         // arrange
         var soniox = new FakeSoniox { DropAfterTextCount = 1 };
-        var client = NewClient(soniox, idleFlush: Long, streamRollover: Long);
+        var client = NewClient(soniox, idleFlush: Long);
         var text = Channel.CreateUnbounded<string>();
         var pcm = Channel.CreateUnbounded<byte[]>();
 
@@ -274,20 +284,21 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
 
         // assert
         soniox.ConnectionCount.Should().Be(2);
-        client.StreamCount.Should().Be(2);
-        soniox.Sent.Select(x => x.Summary).Should().Equal(
-            "config s-1", "text s-1 'Dropped. '",
-            "config s-2", "text s-2 'Dropped. '", "text s-2 'Late. '", "end s-2");
-        audio.Should().HaveCount(2);
+        client.StreamCount.Should().Be(3);
+        soniox.Sent.Should().Equal(
+            "config s-1", "text+end s-1 'Dropped. '",
+            "config s-2", "text+end s-2 'Dropped. '",
+            "config s-3", "text+end s-3 'Late. '");
+        audio.Select(TextOf).Should().Equal("Dropped. ", "Late. ");
     }
 
     [Fact(Timeout = 15_000)]
     public async Task ListenerShouldSeeEachStreamOnceItHasTextAndAudio()
     {
-        // arrange - two chunks in one stream, the fake answers audio for each
+        // arrange - two chunks, the fake answers audio for each
         var listener = new RecordingListener();
         var soniox = new FakeSoniox();
-        var client = NewClient(soniox, idleFlush: Long, streamRollover: Long);
+        var client = NewClient(soniox, idleFlush: Long);
         var text = Channel.CreateUnbounded<string>();
         var pcm = Channel.CreateUnbounded<byte[]>();
         text.Writer.TryWrite("Hello,");
@@ -298,38 +309,37 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         await client.Run("s1", "en", "Adrian", text.Reader, pcm.Writer, listener, CancellationToken.None);
 
         // assert
-        client.StreamCount.Should().Be(1);
-        listener.StreamsOpened.Should().Be(1, "opened once, when the first chunk was sent");
-        listener.AudioStarts.Should().Be(1, "reported once per stream, on its first frame's worth of PCM");
+        client.StreamCount.Should().Be(2);
+        listener.StreamsOpened.Should().Be(2, "opened once per stream, when its chunk was sent");
+        listener.AudioStarts.Should().Be(2, "reported once per stream, on its first frame's worth of PCM");
     }
 
     [Fact(Timeout = 15_000)]
     public async Task ListenerShouldSeeAudioStartOnceAFrameIsComplete()
     {
-        // arrange - the fake answers half a frame of PCM per text
-        var listener = new RecordingListener();
-        var soniox = new FakeSoniox { PcmBytesPerText = OpusFramePump.FrameByteLength / 2 };
-        var client = NewClient(soniox, idleFlush: Long, streamRollover: Long);
+        // arrange - the fake answers the chunk with two half-frame audio messages
+        var soniox = new FakeSoniox {
+            PcmBytesPerText = OpusFramePump.FrameByteLength / 2,
+            AudioMessagesPerText = 2,
+        };
+        var client = NewClient(soniox, idleFlush: Long);
         var text = Channel.CreateUnbounded<string>();
         var pcm = Channel.CreateUnbounded<byte[]>();
+        var listener = new RecordingListener(pcm.Reader);
+        text.Writer.TryWrite("Hello, world.");
+        text.Writer.TryComplete();
 
         // act
-        var runTask = client.Run("s1", "en", "Adrian", text.Reader, pcm.Writer, listener, CancellationToken.None);
-        text.Writer.TryWrite("Hello,");
-        var first = await pcm.Reader.ReadAsync();
-        var audioStartsAfterFirst = listener.AudioStarts;
-        text.Writer.TryWrite("world.");
-        var second = await pcm.Reader.ReadAsync();
-        var audioStartsAfterSecond = listener.AudioStarts;
-        text.Writer.TryComplete();
-        await runTask;
+        await client.Run("s1", "en", "Adrian", text.Reader, pcm.Writer, listener, CancellationToken.None);
+        var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
-        first.Length.Should().BeLessThan(OpusFramePump.FrameByteLength);
-        (first.Length + second.Length).Should().Be(OpusFramePump.FrameByteLength);
+        audio.Should().HaveCount(2);
+        audio.Should().OnlyContain(chunk => chunk.Length == OpusFramePump.FrameByteLength / 2);
         listener.StreamsOpened.Should().Be(1);
-        audioStartsAfterFirst.Should().Be(0, "a chunk shorter than one frame yields no frame yet");
-        audioStartsAfterSecond.Should().Be(1, "the chunk that completes the first frame is when audio starts");
+        listener.AudioStarts.Should().Be(1);
+        listener.PcmChunksAtAudioStart.Should().Equal([1],
+            "a message shorter than one frame yields no frame yet; the one completing the frame is when audio starts");
     }
 
     [Fact(Timeout = 15_000)]
@@ -337,7 +347,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
     {
         // arrange
         var soniox = new FakeSoniox { DropAfterTextCount = 1, DropEveryConnection = true };
-        var client = NewClient(soniox, idleFlush: Short, streamRollover: Long);
+        var client = NewClient(soniox, idleFlush: Short);
         var text = Channel.CreateUnbounded<string>();
         var pcm = Channel.CreateUnbounded<byte[]>();
 
@@ -354,14 +364,13 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
 
     // Private methods
 
-    private SonioxTtsClient NewClient(FakeSoniox soniox, TimeSpan idleFlush, TimeSpan streamRollover)
+    private SonioxTtsClient NewClient(FakeSoniox soniox, TimeSpan idleFlush)
     {
         var services = new ServiceCollection()
             .AddSingleton(new CoreServerSettings { SonioxKey = "test" })
             .AddTestLogging(Out);
         return new SonioxTtsClient(services.BuildServiceProvider()) {
             IdleFlush = idleFlush,
-            StreamRollover = streamRollover,
             WebSocketFactory = soniox.Connect,
         };
     }
@@ -376,6 +385,10 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         return new SonioxTtsClient(services.BuildServiceProvider());
     }
 
+    // The fake speaks a chunk as its text padded with zeros to the PCM size
+    private static string TextOf(byte[] pcm)
+        => Encoding.UTF8.GetString(pcm).TrimEnd('\0');
+
     // Nested types
 
     private sealed class RespondingHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
@@ -386,33 +399,63 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
             => Task.FromResult(respond.Invoke(request));
     }
 
-    private sealed record SentMessage(string Summary);
-
-    private sealed class RecordingListener : ISpeechSynthesisListener
+    private sealed class RecordingListener(ChannelReader<byte[]>? pcm = null) : ISpeechSynthesisListener
     {
         public int StreamsOpened;
         public int AudioStarts;
+        public List<int> PcmChunksAtAudioStart { get; } = new();
 
         public void OnStreamOpened() => StreamsOpened++;
-        public void OnAudioStarted() => AudioStarts++;
+
+        public void OnAudioStarted()
+        {
+            AudioStarts++;
+            if (pcm != null)
+                PcmChunksAtAudioStart.Add(pcm.Count);
+        }
     }
 
-    // A Soniox stand-in that speaks PcmBytesPerText of silence per text (one 20 ms frame by default)
-    // and can kill a stream (408) or drop the connection after a given number of texts on the first
-    // connection.
+    // A Soniox stand-in that answers every text with AudioMessagesPerText audio messages of PcmBytesPerText
+    // bytes (one 20 ms frame by default) carrying the text itself, and can kill a stream (408) or drop
+    // the connection after a given number of texts on the first connection. Traffic lists both what it
+    // received and what it wrote, in order; Sent is the received part.
     private sealed class FakeSoniox
     {
         private readonly List<(int Count, TaskCompletionSource Source)> _streamOpenedWaiters = new();
         private readonly HashSet<string> _streamsWithText = new();
+        private readonly List<(bool IsFromClient, string Summary)> _traffic = new();
+        private readonly Dictionary<string, int> _streamConnections = new();
 
         public int KillAfterTextCount { get; init; }
         public int DropAfterTextCount { get; init; }
         public bool DropEveryConnection { get; init; }
         public int PcmBytesPerText { get; init; } = OpusFramePump.FrameByteLength;
+        public int AudioMessagesPerText { get; init; } = 1;
         public int PcmBytesOnEmptyEnd { get; init; }
+        public TimeSpan TerminatedDelay { get; init; }
         public int ConnectionCount { get; private set; }
         public int OpenedStreamCount { get; private set; }
-        public List<SentMessage> Sent { get; } = new();
+
+        public IReadOnlyList<string> Traffic {
+            get {
+                lock (_traffic)
+                    return _traffic.Select(x => x.Summary).ToList();
+            }
+        }
+
+        public IReadOnlyList<string> Sent {
+            get {
+                lock (_traffic)
+                    return _traffic.Where(x => x.IsFromClient).Select(x => x.Summary).ToList();
+            }
+        }
+
+        public IReadOnlyDictionary<string, int> StreamConnections {
+            get {
+                lock (_streamConnections)
+                    return new Dictionary<string, int>(_streamConnections);
+            }
+        }
 
         public Task WhenStreamsOpened(int count)
         {
@@ -430,57 +473,82 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         {
             ConnectionCount++;
             var webSocket = new FakeWebSocket();
-            _ = Serve(webSocket, ConnectionCount == 1 || DropEveryConnection);
+            _ = Serve(webSocket, ConnectionCount, ConnectionCount == 1 || DropEveryConnection);
             return Task.FromResult<WebSocket>(webSocket);
         }
 
-        private async Task Serve(FakeWebSocket webSocket, bool mayFail)
+        private async Task Serve(FakeWebSocket webSocket, int connectionIndex, bool mayFail)
         {
             var textCount = 0;
-            var audio = Convert.ToBase64String(new byte[PcmBytesPerText]);
             await foreach (var json in webSocket.Sent.Reader.ReadAllAsync()) {
                 var message = JsonDocument.Parse(json).RootElement;
-                var streamId = message.GetProperty("stream_id").GetString();
+                var streamId = message.GetProperty("stream_id").GetString()!;
                 if (message.TryGetProperty("api_key", out _)) {
                     message.GetProperty("audio_format").GetString().Should().Be("pcm_s16le");
                     message.TryGetProperty("bitrate", out _).Should().BeFalse("PCM has no bitrate");
-                    lock (Sent)
-                        Sent.Add(new SentMessage($"config {streamId}"));
+                    Record(true, $"config {streamId}");
+                    lock (_streamConnections)
+                        _streamConnections[streamId] = connectionIndex;
                     OnStreamOpened();
                     continue;
                 }
 
                 var text = message.GetProperty("text").GetString() ?? "";
                 var isEnd = message.GetProperty("text_end").GetBoolean();
-                lock (Sent)
-                    Sent.Add(new SentMessage(isEnd ? $"end {streamId}" : $"text {streamId} '{text}'"));
+                Record(true, (text.Length, isEnd) switch {
+                    (0, _) => $"end {streamId}",
+                    (_, true) => $"text+end {streamId} '{text}'",
+                    (_, false) => $"text {streamId} '{text}'",
+                });
                 if (text.Length > 0) {
                     textCount++;
                     lock (_streamsWithText)
-                        _streamsWithText.Add(streamId!);
+                        _streamsWithText.Add(streamId);
                     if (mayFail && textCount == DropAfterTextCount) {
                         webSocket.Incoming.Writer.TryComplete();
                         return;
                     }
                     if (mayFail && textCount == KillAfterTextCount) {
+                        Record(false, $"killed {streamId}");
                         webSocket.Incoming.Writer.TryWrite(
                             $$"""{"stream_id":"{{streamId}}","error_code":408,"error_message":"Stream killed"}""");
                         continue;
                     }
-                    webSocket.Incoming.Writer.TryWrite($$"""{"stream_id":"{{streamId}}","audio":"{{audio}}"}""");
+                    var audio = new byte[PcmBytesPerText];
+                    Encoding.UTF8.GetBytes(text, audio);
+                    for (var i = 0; i < AudioMessagesPerText; i++)
+                        WriteAudio(webSocket, streamId, audio);
                 }
                 if (isEnd) {
                     bool hadText;
                     lock (_streamsWithText)
-                        hadText = _streamsWithText.Remove(streamId!);
-                    if (!hadText && PcmBytesOnEmptyEnd > 0) {
-                        var emptyEndAudio = Convert.ToBase64String(new byte[PcmBytesOnEmptyEnd]);
-                        webSocket.Incoming.Writer.TryWrite(
-                            $$"""{"stream_id":"{{streamId}}","audio":"{{emptyEndAudio}}"}""");
-                    }
-                    webSocket.Incoming.Writer.TryWrite($$"""{"stream_id":"{{streamId}}","terminated":true}""");
+                        hadText = _streamsWithText.Remove(streamId);
+                    if (!hadText && PcmBytesOnEmptyEnd > 0)
+                        WriteAudio(webSocket, streamId, new byte[PcmBytesOnEmptyEnd]);
+                    _ = Terminate(webSocket, streamId);
                 }
             }
+        }
+
+        private void WriteAudio(FakeWebSocket webSocket, string streamId, byte[] audio)
+        {
+            Record(false, $"audio {streamId}");
+            var base64 = Convert.ToBase64String(audio);
+            webSocket.Incoming.Writer.TryWrite($$"""{"stream_id":"{{streamId}}","audio":"{{base64}}"}""");
+        }
+
+        private async Task Terminate(FakeWebSocket webSocket, string streamId)
+        {
+            if (TerminatedDelay > TimeSpan.Zero)
+                await Task.Delay(TerminatedDelay);
+            Record(false, $"terminated {streamId}");
+            webSocket.Incoming.Writer.TryWrite($$"""{"stream_id":"{{streamId}}","terminated":true}""");
+        }
+
+        private void Record(bool isFromClient, string summary)
+        {
+            lock (_traffic)
+                _traffic.Add((isFromClient, summary));
         }
 
         private void OnStreamOpened()

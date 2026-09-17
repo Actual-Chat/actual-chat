@@ -11,11 +11,9 @@ using static ActualChat.Constants.Transcription.Soniox;
 namespace ActualChat.Transcription;
 
 /// <summary>
-/// One utterance over Soniox's <c>tts-rt</c> WebSocket API: text chunks in, 48 kHz PCM out. The whole run
-/// shares one connection and, as far as Soniox allows, one stream, so sentences keep their prosody across
-/// chunks. A stream is ended early only when the text goes idle (Soniox kills a stream that produces nothing
-/// for a few seconds and loses its unsynthesized text) or when it nears Soniox's 2-minute stream cap; the
-/// next chunk then opens a new stream on the same connection.
+/// One utterance over Soniox's <c>tts-rt</c> WebSocket API: text chunks in, 48 kHz PCM out. Every chunk
+/// (a translated clause) is spoken on a stream of its own, sent as text + <c>text_end</c> in one message
+/// and awaited to its end before the next chunk goes out; the streams share one connection per run.
 /// </summary>
 public sealed class SonioxTtsClient(IServiceProvider services)
 {
@@ -35,13 +33,12 @@ public sealed class SonioxTtsClient(IServiceProvider services)
     private const int ReadBufferSize = 32 * 1024;
     private const int MaxStreamsPerConnection = 5;
     private const int StreamKilledErrorCode = 408;
-    private const string ClauseEnds = ".!?…,;:。！？，；：";
     private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(3);
     private static readonly JsonSerializerOptions JsonOptions = new() {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    private readonly List<string> _chunksToResend = new();
+    private string? _chunkToResend;
     private RunArgs? _run;
     private Connection? _connection;
     private TtsStream? _stream;
@@ -59,7 +56,6 @@ public sealed class SonioxTtsClient(IServiceProvider services)
 
     // Test hooks
     internal TimeSpan IdleFlush { get; init; } = TtsIdleFlush;
-    internal TimeSpan StreamRollover { get; init; } = TtsStreamRollover;
     internal Func<CancellationToken, Task<WebSocket>> WebSocketFactory { get; init; } = ConnectToSoniox;
 
     public async Task Run(
@@ -209,10 +205,9 @@ public sealed class SonioxTtsClient(IServiceProvider services)
 
     private async Task RunStreams(ChannelReader<string> text, CancellationToken cancellationToken)
     {
-        // Opened before the first chunk: the connect + open (~0.4 s) overlaps the first clause's
-        // translation instead of following it. Idle streams re-open on their next chunk below.
-        if (_stream == null)
-            await OpenStream(cancellationToken).ConfigureAwait(false);
+        // Re-entered after a reconnect, when the chunk that was in flight goes first
+        await ResendChunk(cancellationToken).ConfigureAwait(false);
+        await OpenStreamAhead(text, cancellationToken).ConfigureAwait(false);
         while (true) {
             _readTask ??= ReadChunk(text, cancellationToken);
             if (_stream != null && !_readTask.IsCompleted) {
@@ -225,7 +220,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                     continue;
                 }
                 if (first != _readTask) {
-                    await OnStreamTerminated(cancellationToken).ConfigureAwait(false);
+                    await OnStreamTerminated().ConfigureAwait(false);
                     continue;
                 }
             }
@@ -235,20 +230,45 @@ public sealed class SonioxTtsClient(IServiceProvider services)
             if (chunk == null)
                 break;
 
-            if (_stream != null) {
-                if (_stream.WhenTerminated.IsCompleted)
-                    await OnStreamTerminated(cancellationToken).ConfigureAwait(false);
-                else if (Now - _stream.StartedAt >= StreamRollover)
-                    await EndStream(StreamEndReason.Rollover, cancellationToken).ConfigureAwait(false);
-                else
-                    ThrowIfSilent(_stream);
-            }
-            if (_stream == null)
-                await OpenStream(cancellationToken).ConfigureAwait(false);
-            await SendChunk(chunk, false, cancellationToken).ConfigureAwait(false);
+            await Speak(chunk, false, cancellationToken).ConfigureAwait(false);
+            await ResendChunk(cancellationToken).ConfigureAwait(false);
+            await OpenStreamAhead(text, cancellationToken).ConfigureAwait(false);
         }
-        while (_stream != null)
+        if (_stream != null)
             await EndStream(StreamEndReason.Final, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task ResendChunk(CancellationToken cancellationToken)
+    {
+        if (_chunkToResend is not { } chunk)
+            return;
+
+        _chunkToResend = null;
+        await Speak(chunk, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task OpenStreamAhead(ChannelReader<string> text, CancellationToken cancellationToken)
+    {
+        // Opened before the chunk arrives: the connect + open (~0.4 s) overlaps the clause's translation
+        // instead of following it. Not when the chunk (or the end of the text) is already here, and an
+        // idle-ended stream re-opens only on its next chunk, so a long pause doesn't churn streams.
+        _readTask ??= ReadChunk(text, cancellationToken);
+        if (_stream == null && !_readTask.IsCompleted)
+            await OpenStream(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task Speak(string chunk, bool isResent, CancellationToken cancellationToken)
+    {
+        if (_stream is { } stream) {
+            if (stream.WhenTerminated.IsCompleted)
+                await OnStreamTerminated().ConfigureAwait(false);
+            else
+                ThrowIfSilent(stream);
+        }
+        if (_stream == null)
+            await OpenStream(cancellationToken).ConfigureAwait(false);
+        await SendChunk(chunk, isResent, cancellationToken).ConfigureAwait(false);
+        await WaitForTermination(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task OpenStream(CancellationToken cancellationToken)
@@ -272,10 +292,6 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         }, cancellationToken).ConfigureAwait(false);
         Log.LogDebug("Soniox TTS #{StreamId}: opened, stream {Index} of {Max} on its connection",
             stream.Id, _connection.StreamCount, MaxStreamsPerConnection);
-        while (_chunksToResend.Count > 0) {
-            await SendChunk(_chunksToResend[0], true, cancellationToken).ConfigureAwait(false);
-            _chunksToResend.RemoveAt(0);
-        }
     }
 
     private async Task EndStream(StreamEndReason reason, CancellationToken cancellationToken)
@@ -284,16 +300,22 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         Log.LogDebug("Soniox TTS #{StreamId}: ending ({Reason}) {Elapsed:F1}s after it opened",
             stream.Id, reason, (Now - stream.StartedAt).TotalSeconds);
         await SendText("", true, cancellationToken).ConfigureAwait(false);
+        await WaitForTermination(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task WaitForTermination(CancellationToken cancellationToken)
+    {
+        var stream = _stream!;
         while (!stream.WhenTerminated.IsCompleted) {
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfSilent(stream);
             var timeout = stream.LastMessageAt + TtsChunkTimeout - Now;
             await stream.WhenTerminated.WaitAsync(timeout, cancellationToken).SilentAwait(false);
         }
-        await OnStreamTerminated(cancellationToken).ConfigureAwait(false);
+        await OnStreamTerminated().ConfigureAwait(false);
     }
 
-    private async Task OnStreamTerminated(CancellationToken cancellationToken)
+    private async Task OnStreamTerminated()
     {
         var stream = _stream!;
         var response = await stream.WhenTerminated.ConfigureAwait(false);
@@ -306,18 +328,14 @@ public sealed class SonioxTtsClient(IServiceProvider services)
 
         Log.LogWarning("Soniox TTS #{StreamId}: ended with error {ErrorCode} ({ErrorType}): {ErrorMessage}",
             stream.Id, errorCode, response.ErrorType, response.ErrorMessage);
-        if (errorCode != StreamKilledErrorCode)
-            return;
-
-        _chunksToResend.AddRange(stream.TakeUnspokenChunks());
-        if (_chunksToResend.Count > 0)
-            await OpenStream(cancellationToken).ConfigureAwait(false);
+        if (errorCode == StreamKilledErrorCode)
+            _chunkToResend = stream.UnspokenChunk;
     }
 
     private async Task OnConnectionLost()
     {
         if (_stream is { } stream) {
-            _chunksToResend.AddRange(stream.TakeUnspokenChunks());
+            _chunkToResend = stream.UnspokenChunk;
             _stream = null;
         }
         await CloseConnection().ConfigureAwait(false);
@@ -412,18 +430,15 @@ public sealed class SonioxTtsClient(IServiceProvider services)
 
     private Task SendChunk(string chunk, bool isResent, CancellationToken cancellationToken)
     {
-        // Chunks are transcript increments that may stop right before the next word,
-        // and Soniox tokenizes on whitespace
-        if (!char.IsWhiteSpace(chunk[^1]))
-            chunk += " ";
-        var isFirst = !_stream!.HasText;
-        _stream.OnChunkSent(chunk, isResent, Now);
-        if (isFirst)
-            _run!.Listener?.OnStreamOpened();
-        Log.LogDebug("Soniox TTS #{StreamId}: {Action} {Length} chars, {Ending}",
-            _stream.Id, isResent ? "resent" : "sent", chunk.Length,
-            EndsWithClauseBoundary(chunk) ? "clause-complete" : "mid-clause");
-        return SendText(chunk, false, cancellationToken);
+        // Ended in the same message: Soniox holds text until text_end or ~100+ buffered chars and has
+        // no flush message, so a clause sent open sits unspoken (measured: four clause-complete chunks
+        // of 17-20 chars got no audio for 6.4 s, until the idle flush ended the stream)
+        var stream = _stream!;
+        stream.OnChunkSent(chunk, isResent, Now);
+        _run!.Listener?.OnStreamOpened();
+        Log.LogDebug("Soniox TTS #{StreamId}: {Action} {Length} chars, ended",
+            stream.Id, isResent ? "resent" : "sent", chunk.Length);
+        return SendText(chunk, true, cancellationToken);
     }
 
     private Task SendText(string text, bool isEnd, CancellationToken cancellationToken)
@@ -549,20 +564,12 @@ public sealed class SonioxTtsClient(IServiceProvider services)
     private static bool IsConnectionFailure(Exception e)
         => e is WebSocketException or IOException or SocketException;
 
-    private static bool EndsWithClauseBoundary(string chunk)
-    {
-        // Soniox speaks up to the last clause boundary at once and holds the rest for lookahead
-        var text = chunk.AsSpan().TrimEnd();
-        return text.Length > 0 && ClauseEnds.Contains(text[^1]);
-    }
-
     // Nested types
 
     private enum StreamEndReason
     {
         Final,
         Idle,
-        Rollover,
     }
 
     private sealed record RunArgs(
@@ -592,7 +599,9 @@ public sealed class SonioxTtsClient(IServiceProvider services)
     {
         private readonly TaskCompletionSource<SonioxTtsResponse> _whenTerminatedSource
             = TaskCompletionSourceExt.New<SonioxTtsResponse>();
-        private readonly List<(string Chunk, bool IsResent)> _unspokenChunks = new();
+        private string? _chunk;
+        private bool _isResent;
+        private bool _hasAudio;
         private int _pcmByteCount;
         private bool _hasLoggedDiscardedAudio;
 
@@ -603,16 +612,18 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         // The result is the message that ended the stream (an error or terminated);
         // the task faults when the connection died under the stream.
         public Task<SonioxTtsResponse> WhenTerminated => _whenTerminatedSource.Task;
-        public bool HasText { get; private set; }
+        public bool HasText => _chunk != null;
         public bool HasFrames { get; private set; }
+        // The chunk a killed stream never spoke: null once any audio came back (an ended chunk is
+        // spoken in one go), and for a resent chunk, so a stream that keeps dying can't loop.
+        // Read once WhenTerminated has completed, which orders it after the reader's writes.
+        public string? UnspokenChunk => _hasAudio || _isResent ? null : _chunk;
 
         public void OnChunkSent(string chunk, bool isResent, Moment now)
         {
-            if (!HasText)
-                FirstTextAt = now;
-            HasText = true;
-            lock (_unspokenChunks)
-                _unspokenChunks.Add((chunk, isResent));
+            FirstTextAt = now;
+            _chunk = chunk;
+            _isResent = isResent;
         }
 
         public bool TrySignalFirstFrame(int pcmByteCount)
@@ -640,22 +651,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         }
 
         public void OnAudioReceived()
-        {
-            // Soniox synthesizes a sentence only once it sees the text after it, so the chunks sent
-            // since the last audio are the closest cheap guess at what a killed stream never spoke
-            lock (_unspokenChunks)
-                _unspokenChunks.Clear();
-        }
-
-        public List<string> TakeUnspokenChunks()
-        {
-            // A chunk is resent at most once, so a stream that keeps dying can't loop
-            lock (_unspokenChunks) {
-                var chunks = _unspokenChunks.Where(x => !x.IsResent).Select(x => x.Chunk).ToList();
-                _unspokenChunks.Clear();
-                return chunks;
-            }
-        }
+            => _hasAudio = true;
 
         public void Terminate(SonioxTtsResponse response)
             => _whenTerminatedSource.TrySetResult(response);

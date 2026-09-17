@@ -298,12 +298,9 @@ public static partial class Constants
             // streamed one-shot REST call it's how long the next piece of audio may take to arrive.
             // Either way exceeding it is an error rather than a hang.
             public static readonly TimeSpan TtsChunkTimeout = TimeSpan.FromSeconds(30);
-            // Soniox kills a live TTS stream after ~3-4 s without output and loses the text it hasn't
-            // synthesized yet, so a stream that got no new text for this long is ended first.
+            // Soniox kills a live TTS stream after ~3-4 s without output, so a stream opened ahead of
+            // its chunk that got none for this long is ended first.
             public static readonly TimeSpan TtsIdleFlush = TimeSpan.FromSeconds(2.5);
-            // Soniox caps a TTS stream at 2 min while an utterance runs up to Chat.MaxEntryDuration
-            // (3 min), so a stream this old is ended at the next chunk and the rest goes to a new one.
-            public static readonly TimeSpan TtsStreamRollover = TimeSpan.FromSeconds(100);
         }
 
         public static class ElevenLabs
