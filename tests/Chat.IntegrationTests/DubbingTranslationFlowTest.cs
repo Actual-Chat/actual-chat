@@ -91,7 +91,7 @@ public class DubbingTranslationFlowTest(
     }
 
     [Fact(Timeout = 90_000)]
-    public async Task DubShouldHoldAStableFragmentUntilAClauseEndsOrTheTranslationDoes()
+    public async Task DubShouldSpeakAStableFragmentWithoutAClauseEndWhenTheSourceEnds()
     {
         // arrange
         await Tester.SignInAsUniqueAlice();
@@ -116,22 +116,17 @@ public class DubbingTranslationFlowTest(
         // act - the stable text stops mid-clause, and the speaker says nothing more
         var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
         Push(Stable(fragment));
-        var clauseChunks = await recorder.WhenSpoken(dubId.Value, 1, ct);
         await Task.Delay(TimeSpan.FromSeconds(1), ct);
         var heldChunks = recorder.GetChunks(dubId.Value);
         source.Writer.Complete();
         await pushSourceTask.SilentAwait(false);
-        var chunks = await recorder.WhenSpoken(dubId.Value, 2, ct);
+        var chunks = await recorder.WhenSpoken(dubId.Value, 1, ct);
 
         // assert
         stream.Should().NotBeNull();
-        var translation = FakeTranslator.Translated(fragment, Languages.English);
-        var clauseEnd = translation.LastIndexOf(',') + 1;
-        clauseChunks.Should().Equal([translation[..clauseEnd]],
-            "the text up to the last clause boundary is spoken at once");
-        heldChunks.Should().HaveCount(1, "the fragment after the boundary waits for more text, not for a timer");
-        chunks.Should().Equal([translation[..clauseEnd], translation[clauseEnd..]],
-            "the held fragment is spoken once the translation is complete, whatever it ends with");
+        heldChunks.Should().BeEmpty("\"Привет,\" is too short to be a clause of its own, and the rest has no boundary");
+        chunks.Should().Equal([FakeTranslator.Translated(fragment, Languages.English)],
+            "the fragment is the last clause once the source ends");
         var frameCount = await stream!.CountAsync(ct).AsTask().WaitAsync(TimeSpan.FromSeconds(10), ct);
         frameCount.Should().BeGreaterThan(1);
         return;
@@ -673,7 +668,12 @@ public class DubbingTranslationFlowTest(
             () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
             ct);
         var last = Transcript.Empty;
-        var backlog = Unstable(SourceSteps[0], backlogSeconds);
+        // The translation runs per clause, so what a late listener skips is a whole clause: the
+        // backlog is the first sentence, unstable but complete, and the speaker goes on with a second
+        const string secondSentence = " Хорошо, спасибо.";
+        var isLate = backlogSeconds > 0;
+        var backlog = Unstable(isLate ? SourceText : SourceSteps[0], backlogSeconds);
+        var fullText = isLate ? SourceText + secondSentence : SourceText;
         Push(backlog);
         await backend.WhenTranscriptPublished(sourceId, ct);
 
@@ -688,26 +688,32 @@ public class DubbingTranslationFlowTest(
         var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
         await createEntryTask;
         var captions = await backend.GetTranscript(dubId, ct);
-        if (backlogSeconds > 0) {
+        if (isLate) {
             // The dub is decided on the source, before the translation has read it; what a late
-            // listener skips is the translation's first transcript, which must not cover the rest
+            // listener skips is the translation's first transcript, which must not cover the rest.
+            // The dub attaches to the translation moments after opening the synthesis, and a reader
+            // gets whatever is buffered by then as one transcript: the second sentence waits it out
             await captions!.FirstAsync(ct);
+            await recorder.WhenStarted(dubId.Value, ct);
+            await Task.Delay(TimeSpan.FromMilliseconds(500), ct);
+            Push(Unstable(fullText[..^5]));
         }
-        foreach (var step in SourceSteps.Skip(1))
-            Push(Unstable(step));
-        Push(Stable(SourceText));
+        else {
+            foreach (var step in SourceSteps.Skip(1))
+                Push(Unstable(step));
+        }
+        Push(Stable(fullText));
 
         // assert
         stream.Should().NotBeNull("a Russian speaker is dubbed for an English listener");
         captions.Should().NotBeNull("the caption reader must get the same translated stream");
         var chunks = await recorder.WhenSpoken(dubId.Value, 1, ct);
-        var translation = FakeTranslator.Translated(SourceText, Languages.English);
-        var expectedChunk = backlogSeconds > 0
-            ? translation[FakeTranslator.Translated(backlog.Text, Languages.English).Length..]
-            : translation;
-        chunks.Should().Equal([expectedChunk], backlogSeconds > 0
-            ? "a listener who joined seconds into the utterance hears only what was said after that"
-            : "only the stable translation is spoken, and once");
+        if (isLate)
+            chunks.Should().ContainSingle().Which.Should().Contain("Хорошо, спасибо.").And.NotContain(SourceText,
+                "a listener who joined seconds into the utterance hears only the clause said after that");
+        else
+            chunks.Should().Equal([FakeTranslator.Translated(SourceText, Languages.English)],
+                "only the stable translation is spoken, and once");
 
         source.Writer.Complete();
         await pushSourceTask.SilentAwait(false);

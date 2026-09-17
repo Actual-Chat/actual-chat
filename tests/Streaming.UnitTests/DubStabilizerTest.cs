@@ -8,17 +8,24 @@ public class DubStabilizerTest
     [Fact]
     public void NextShouldSkipUnstableTranscripts()
     {
+        // arrange
         var stabilizer = new DubStabilizer();
 
-        stabilizer.Next(Unstable("Hello wor")).Should().BeNull();
+        // act
+        var chunk = stabilizer.Next(Unstable("Hello wor"));
+
+        // assert
+        chunk.Should().BeNull("unstable text is never spoken");
         stabilizer.SentText.Should().BeEmpty();
     }
 
     [Fact]
     public void NextShouldReturnOnlyTheNewStableSuffix()
     {
+        // arrange
         var stabilizer = new DubStabilizer();
 
+        // act, assert - one step at a time, each depends on what the previous one sent
         stabilizer.Next(Stable("Hello world.")).Should().Be("Hello world.");
         stabilizer.Next(Stable("Hello world.")).Should().BeNull("nothing new is stable");
         stabilizer.Next(Unstable("Hello world. How are")).Should().BeNull();
@@ -29,11 +36,14 @@ public class DubStabilizerTest
     [Fact]
     public void NextShouldResendFromTheDivergencePoint()
     {
+        // arrange
         var stabilizer = new DubStabilizer();
         stabilizer.Next(Stable("Hello world."));
 
+        // act
         var chunk = stabilizer.Next(Stable("Hello there, world."));
 
+        // assert
         chunk.Should().Be("there, world.",
             "TTS can't retract, so the divergent tail is spoken again rather than lost");
         stabilizer.SentText.Should().Be("Hello there, world.");
@@ -42,10 +52,15 @@ public class DubStabilizerTest
     [Fact]
     public void NextShouldIgnoreWhitespaceOnlyGrowth()
     {
+        // arrange
         var stabilizer = new DubStabilizer();
         stabilizer.Next(Stable("Hello."));
 
-        stabilizer.Next(Stable("Hello. ")).Should().BeNull();
+        // act
+        var chunk = stabilizer.Next(Stable("Hello. "));
+
+        // assert
+        chunk.Should().BeNull("there is nothing to say in whitespace");
     }
 
     [Fact]
@@ -64,117 +79,48 @@ public class DubStabilizerTest
     }
 
     [Fact]
-    public void NextShouldHoldAStableFragmentUntilAClauseBoundary()
-    {
-        var stabilizer = new DubStabilizer();
-
-        stabilizer.Next(Stable("Hello there my")).Should().BeNull(
-            "Soniox holds a mid-clause fragment until more text arrives, so sending it gains nothing");
-        stabilizer.SentText.Should().BeEmpty();
-        stabilizer.Next(Stable("Hello there my friend, how")).Should().Be("Hello there my friend,");
-        stabilizer.SentText.Should().Be("Hello there my friend,");
-        stabilizer.Next(Stable("Hello there my friend, how are you?")).Should().Be(" how are you?");
-    }
-
-    [Theory]
-    [InlineData("Hello. How", "Hello.")]
-    [InlineData("Hello! How", "Hello!")]
-    [InlineData("Hello? How", "Hello?")]
-    [InlineData("Hello… How", "Hello…")]
-    [InlineData("Hello; how", "Hello;")]
-    [InlineData("Hello: how", "Hello:")]
-    [InlineData("Hello, how", "Hello,")]
-    [InlineData("你好。你", "你好。")]
-    [InlineData("你好！你", "你好！")]
-    [InlineData("你好？你", "你好？")]
-    [InlineData("你好，你", "你好，")]
-    [InlineData("你好；你", "你好；")]
-    [InlineData("你好：你", "你好：")]
-    public void NextShouldCutAtEveryClauseBoundary(string text, string expectedChunk)
-        => new DubStabilizer().Next(Stable(text)).Should().Be(expectedChunk);
-
-    [Fact]
-    public void NextShouldNotTreatPunctuationInsideAWordAsABoundary()
-    {
-        var stabilizer = new DubStabilizer();
-
-        stabilizer.Next(Stable("It costs 3.5 dollars")).Should().BeNull("a decimal point ends no clause");
-        stabilizer.Next(Stable("It costs 3.5 dollars, or")).Should().Be("It costs 3.5 dollars,");
-    }
-
-    [Fact]
-    public void NextShouldNotResendForABoundaryInsideTheSentPrefix()
-    {
-        var stabilizer = new DubStabilizer();
-        stabilizer.Next(Stable("Hello world."));
-
-        stabilizer.Next(Stable("Hello world. How are")).Should().BeNull();
-        stabilizer.SentText.Should().Be("Hello world.");
-    }
-
-    [Fact]
-    public void NextShouldSendALongUnpunctuatedRunAnyway()
+    public void NextShouldSendStableTextWhateverItEndsWith()
     {
         // arrange
         var stabilizer = new DubStabilizer();
-        var words = string.Join(' ', Enumerable.Repeat("word", 20));
-        var longRun = string.Join(' ', Enumerable.Repeat("word", 30));
 
         // act
-        var held = stabilizer.Next(Stable(words));
-        var sent = stabilizer.Next(Stable(longRun));
+        var chunk = stabilizer.Next(Stable("Hello world. How are"));
 
         // assert
-        words.Length.Should().BeLessThan(DubStabilizer.MaxUnpunctuatedLength);
-        longRun.Length.Should().BeGreaterThan(DubStabilizer.MaxUnpunctuatedLength);
-        held.Should().BeNull();
-        sent.Should().Be(longRun, "a fragment past the cap must not wait for punctuation that may never come");
-    }
-
-    [Fact]
-    public void FlushShouldSendTheTailWhateverItEndsWith()
-    {
-        // arrange
-        var stabilizer = new DubStabilizer();
-        stabilizer.Next(Stable("Hello world. How are"));
-
-        // act
-        var tail = stabilizer.Flush();
-
-        // assert
-        tail.Should().Be(" How are", "once the translation is complete nothing more is coming");
+        chunk.Should().Be("Hello world. How are",
+            "the translator hands over whole clauses, so a stable text is spoken as it is, however it ends");
         stabilizer.SentText.Should().Be("Hello world. How are");
-        stabilizer.Flush().Should().BeNull("the tail is sent once");
     }
 
     [Fact]
     public void FlushShouldSendNothingBeforeAnyStableText()
     {
+        // arrange
         var stabilizer = new DubStabilizer();
         stabilizer.Next(Unstable("Hello there"));
 
-        stabilizer.Flush().Should().BeNull("unstable text is never spoken, not even at the end");
+        // act
+        var tail = stabilizer.Flush();
+
+        // assert
+        tail.Should().BeNull("unstable text is never spoken, not even at the end");
     }
 
     [Fact]
-    public void FlushShouldSendTheLastStableTailWhenTheTranslationEndsUnstable()
+    public void FlushShouldHaveNothingLeftOnceNextSpokeTheStableText()
     {
+        // arrange
         var stabilizer = new DubStabilizer();
         stabilizer.Next(Stable("Hello world. How are"));
         stabilizer.Next(Unstable("Hello world. How are you"));
 
-        stabilizer.Flush().Should().Be(" How are", "the stable tail is spoken; the unstable growth is not");
-    }
+        // act
+        var tail = stabilizer.Flush();
 
-    [Fact]
-    public void SkipThenNextShouldHoldTheFragmentAfterTheBacklog()
-    {
-        var stabilizer = new DubStabilizer();
-
-        stabilizer.Skip(Unstable("Hello there,"));
-        stabilizer.Next(Stable("Hello there, how are")).Should().BeNull("the fragment after the backlog waits too");
-        stabilizer.Next(Stable("Hello there, how are you?")).Should().Be(" how are you?");
-        stabilizer.SentText.Should().Be("Hello there, how are you?");
+        // assert
+        tail.Should().BeNull("the stable text was spoken as it arrived, and the unstable growth is never spoken");
+        stabilizer.SentText.Should().Be("Hello world. How are");
     }
 
     [Fact]
@@ -261,10 +207,14 @@ public class DubStabilizerTest
     [Fact]
     public void DecideShouldStayUndecidedWhileTheTranslationIsUnstableOrShort()
     {
-        DubStabilizer.Decide(Unstable("Привет, как дела"), Unstable("Hello, how are you"), Languages.English)
-            .Should().Be(DubDecision.Undecided);
-        DubStabilizer.Decide(Unstable("Привет"), Stable("Hi"), Languages.English)
-            .Should().Be(DubDecision.Undecided);
+        // act
+        var unstable = DubStabilizer
+            .Decide(Unstable("Привет, как дела"), Unstable("Hello, how are you"), Languages.English);
+        var brief = DubStabilizer.Decide(Unstable("Привет"), Stable("Hi"), Languages.English);
+
+        // assert
+        unstable.Should().Be(DubDecision.Undecided, "an unstable translation may still change");
+        brief.Should().Be(DubDecision.Undecided, "a couple of characters can't tell the languages apart");
     }
 
     private static Transcript Stable(string text, params Language[] languages)

@@ -12,22 +12,15 @@ public enum DubDecision
 
 /// <summary>
 /// Turns a translated transcript stream into text a TTS engine may speak - only the stable prefix,
-/// only what wasn't sent yet, only up to a clause boundary until <see cref="Flush"/> -
-/// and decides whether the source needs dubbing at all.
+/// only what wasn't sent yet - and decides whether the source needs dubbing at all.
 /// </summary>
 public sealed partial class DubStabilizer
 {
     public const int MinDecisionLength = 10;
-    public const int MaxUnpunctuatedLength = 120;
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex WhitespaceRegexFactory();
     private static readonly Regex WhitespaceRegex = WhitespaceRegexFactory();
-    // The ASCII marks need a following space or the end: "3.5" or "10:30" end no clause.
-    // The fullwidth ones are never followed by a space and never sit inside a number.
-    [GeneratedRegex(@"[.!?…,;:](?=\s|$)|[。！？，；：]")]
-    private static partial Regex ClauseEndRegexFactory();
-    private static readonly Regex ClauseEndRegex = ClauseEndRegexFactory();
 
     private string _stableText = "";
 
@@ -39,21 +32,14 @@ public sealed partial class DubStabilizer
 
     public string? Next(Transcript translated)
     {
-        // Soniox speaks clause-complete text at once but holds a mid-clause fragment until more text
-        // or the stream's end (measured: 0.3 s vs 4.0 s to the first audio), so the fragment after the
-        // last boundary waits here for the next stable text; a long run without any boundary goes anyway.
+        // The translator hands over whole clauses, sized so Soniox TTS speaks each at once;
+        // there's nothing to cut here any more - only what's stable and wasn't sent yet
         if (!translated.IsStable)
             return null;
 
         var text = translated.Text;
         _stableText = text;
-        var prefixLength = GetSentPrefixLength(text);
-        var end = prefixLength;
-        foreach (var match in ClauseEndRegex.EnumerateMatches(text.AsSpan(prefixLength)))
-            end = prefixLength + match.Index + match.Length;
-        if (text.Length - end > MaxUnpunctuatedLength)
-            end = text.Length;
-        return Send(text, prefixLength, end);
+        return Send(text, GetSentPrefixLength(text), text.Length);
     }
 
     public string? Flush()
