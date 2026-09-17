@@ -103,7 +103,6 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.UserMention>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.VisualMediaItem>();
         CodeKeeper.KeepSerializable<global::ActualChat.ChatEntryId>();
-        CodeKeeper.KeepSerializable<global::ActualChat.ChatId>();
         CodeKeeper.KeepSerializable<global::ActualChat.ContactId>();
         CodeKeeper.KeepSerializable<global::ActualChat.Contacts.Contact>();
         CodeKeeper.KeepSerializable<global::ActualChat.Contacts.ContactSubset>();
@@ -188,7 +187,6 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Picture>();
         CodeKeeper.KeepSerializable<global::ActualChat.PlaceChatId>();
         CodeKeeper.KeepSerializable<global::ActualChat.PlaceId>();
-        CodeKeeper.KeepSerializable<global::ActualChat.PrincipalId>();
         CodeKeeper.KeepSerializable<global::ActualChat.RoleId>();
         CodeKeeper.KeepSerializable<global::ActualChat.Search.ContactSearchQuery>();
         CodeKeeper.KeepSerializable<global::ActualChat.Search.EntrySearchQuery>();
@@ -1645,7 +1643,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Text.Internal.SymbolMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Time.Internal.MomentMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("MessagePack.Formatters.ActualChat_ApiCommandFormatter1, MessagePack.Resolvers.DynamicObjectResolver");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Media_Size2DFormatter3, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Media_Size2DFormatter2, MessagePack.Resolvers.DynamicObjectResolver");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.AuthorId, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Chat.AuthorReadPosition, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Chat.ChatContentPeriod, ActualChat.Api]], MessagePack");
@@ -1693,7 +1691,6 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.Formatters.GenericDictionaryFormatter`3[[System.String, System.Private.CoreLib],[System.Boolean, System.Private.CoreLib],[ActualLab.Api.ApiMap`2[[System.String, System.Private.CoreLib],[System.Boolean, System.Private.CoreLib]], ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericDictionaryFormatter`3[[System.String, System.Private.CoreLib],[System.String, System.Private.CoreLib],[ActualLab.Api.ApiMap`2[[System.String, System.Private.CoreLib],[System.String, System.Private.CoreLib]], ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.Chat.TextMarkupKind, ActualChat.Api]], MessagePack");
-        CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.MaintenanceMode, ActualChat.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.Media.VideoSourceKind, ActualChat.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.TranslationIdKind, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.HashSetFormatter`1[[System.String, System.Private.CoreLib]], MessagePack");
@@ -1870,6 +1867,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Live+SessionRulesFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+LocalAppSettingsFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+LocalOnboardingSettingsFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+MaintenanceModeFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Media+GrabStatusFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Media+LinkPreviewFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Media+LinkPreviewModeFormatter, ActualChat.Api");
@@ -2050,7 +2048,6 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Chat.UserMention), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.VisualMediaItem), AotTypeKind.Serializable),
             (typeof(global::ActualChat.ChatEntryId), AotTypeKind.Serializable),
-            (typeof(global::ActualChat.ChatId), AotTypeKind.Serializable),
             (typeof(global::ActualChat.ContactId), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Contacts.Contact), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Contacts.ContactSubset), AotTypeKind.Serializable),
@@ -2135,7 +2132,6 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Picture), AotTypeKind.Serializable),
             (typeof(global::ActualChat.PlaceChatId), AotTypeKind.Serializable),
             (typeof(global::ActualChat.PlaceId), AotTypeKind.Serializable),
-            (typeof(global::ActualChat.PrincipalId), AotTypeKind.Serializable),
             (typeof(global::ActualChat.RoleId), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Search.ContactSearchQuery), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Search.EntrySearchQuery), AotTypeKind.Serializable),
