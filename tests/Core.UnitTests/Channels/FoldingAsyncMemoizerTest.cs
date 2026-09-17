@@ -99,6 +99,62 @@ public class FoldingAsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
+    public async Task FoldShouldKeepTheFinalStateAfterDisposeWhenNeverFoldedBefore()
+    {
+        // arrange - the source completed and the owner disposed the memoizer; a reader still holds it
+        var source = Channel.CreateUnbounded<int>();
+        source.Writer.TryWrite(1);
+        source.Writer.TryWrite(2);
+        source.Writer.Complete();
+        var memoizer = NewSum(source);
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // act
+        await memoizer.DisposeAsync();
+
+        // assert
+        memoizer.Fold().Value.Should().Be(3, "the state of a disposed memoizer is what it produced, not the seed");
+    }
+
+    [Fact]
+    public async Task FoldShouldKeepTheFinalStateAfterDisposeWhenFoldedBefore()
+    {
+        // arrange
+        var source = Channel.CreateUnbounded<int>();
+        source.Writer.TryWrite(1);
+        source.Writer.TryWrite(2);
+        source.Writer.Complete();
+        var memoizer = NewSum(source);
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
+        memoizer.Fold();
+
+        // act
+        await memoizer.DisposeAsync();
+
+        // assert
+        memoizer.Fold().Value.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task ReplayAfterDisposeShouldCollapseToTheState()
+    {
+        // arrange
+        var source = Channel.CreateUnbounded<int>();
+        source.Writer.TryWrite(1);
+        source.Writer.TryWrite(2);
+        source.Writer.Complete();
+        var memoizer = NewSum(source, toItem: state => state);
+        await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
+        await memoizer.DisposeAsync();
+
+        // act
+        var items = await memoizer.Replay().ToListAsync();
+
+        // assert
+        items.Should().Equal([3], "a late subscriber wants the state, and the state outlives the chain");
+    }
+
+    [Fact]
     public async Task ConcurrentFoldsAgreeAndNeverGoBackwards()
     {
         // arrange

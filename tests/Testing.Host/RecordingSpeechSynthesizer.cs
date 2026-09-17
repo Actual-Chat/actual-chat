@@ -1,0 +1,185 @@
+using ActualChat.Audio;
+using ActualChat.Chat;
+using ActualChat.Transcription;
+
+namespace ActualChat.Testing.Host;
+
+/// <summary>
+/// Records every text chunk a dub sends to the synthesizer before speaking it like
+/// <see cref="FakeSpeechSynthesizer"/> does, so a test can assert what was said.
+/// </summary>
+public sealed class RecordingSpeechSynthesizer(IServiceProvider services) : ISpeechSynthesizer
+{
+    private readonly object _lock = new();
+    private readonly List<(string StreamId, string Text)> _chunks = [];
+    private readonly ConcurrentDictionary<string, string?> _voiceIds = new();
+    private TaskCompletionSource _whenChangedSource = TaskCompletionSourceExt.New();
+
+    private FakeSpeechSynthesizer Inner { get; } = new(services);
+
+    // Test-only: while set, a one-shot synthesis holds its frames until the task returned for its
+    // text completes, so a test can observe a dub that's still being made
+    public Func<string, Task>? OneShotGate { get; set; }
+    // Test-only: the exception a streaming synthesis of streamId fails with before writing any PCM,
+    // null = it speaks as usual
+    public Func<string, Exception?>? FailWith { get; set; }
+
+    // The VoiceId the synthesis of streamId was asked for; null = the synthesizer's default
+    public string? GetVoiceId(string streamId)
+        => _voiceIds.GetValueOrDefault(streamId);
+
+    public IReadOnlyList<string> GetChunks(string streamId)
+    {
+        lock (_lock)
+            return _chunks.Where(x => x.StreamId == streamId).Select(x => x.Text).ToList();
+    }
+
+    public void Clear()
+    {
+        // The recorder outlives the test: a one-shot's id is language + text, and FakeTranscriber
+        // picks one of a few templates per stream, so two tests of the same collection can speak
+        // the same text. A test that counts one-shots forgets what came before it.
+        lock (_lock) {
+            _chunks.Clear();
+            _voiceIds.Clear();
+        }
+    }
+
+    public async Task<IReadOnlyList<string>> WhenSpoken(
+        string streamId,
+        int minChunkCount,
+        CancellationToken cancellationToken)
+    {
+        while (true) {
+            Task whenChanged;
+            lock (_lock) {
+                var chunks = _chunks.Where(x => x.StreamId == streamId).Select(x => x.Text).ToList();
+                if (chunks.Count >= minChunkCount)
+                    return chunks;
+
+                whenChanged = _whenChangedSource.Task;
+            }
+            await whenChanged.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    // Completes once the streaming synthesis of streamId has been asked for, spoken text or not
+    public async Task WhenStarted(string streamId, CancellationToken cancellationToken)
+    {
+        while (true) {
+            Task whenChanged;
+            lock (_lock) {
+                if (_voiceIds.ContainsKey(streamId))
+                    return;
+
+                whenChanged = _whenChangedSource.Task;
+            }
+            await whenChanged.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    public async Task Synthesize(
+        string streamId,
+        ChannelReader<string> text,
+        SpeechSynthesisOptions options,
+        ChannelWriter<byte[]> pcm,
+        CancellationToken cancellationToken = default)
+    {
+        lock (_lock) {
+            _voiceIds[streamId] = options.VoiceId;
+            NotifyChanged();
+        }
+        if (FailWith?.Invoke(streamId) is { } error) {
+            pcm.TryComplete(error);
+            throw error;
+        }
+
+        var forwarded = Channel.CreateUnbounded<string>();
+        var recordTask = ForwardAndRecord(streamId, text, forwarded.Writer, cancellationToken);
+        await Inner.Synthesize(streamId, forwarded.Reader, options, pcm, cancellationToken).ConfigureAwait(false);
+        await recordTask.ConfigureAwait(false);
+    }
+
+    public async Task<AudioSource> Synthesize(
+        string text,
+        SpeechSynthesisOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        var streamId = OneShotStreamId(options.Language, text);
+        _voiceIds[streamId] = options.VoiceId;
+        Record(streamId, text);
+        var inner = await Inner.Synthesize(text, options, cancellationToken).ConfigureAwait(false);
+        if (OneShotGate is not { } gate)
+            return inner;
+
+        return new AudioSource(
+            inner.CreatedAt,
+            inner.Format,
+            GateFrames(gate.Invoke(text), inner, cancellationToken),
+            TimeSpan.Zero,
+            inner.Log,
+            cancellationToken);
+    }
+
+    public Task<byte[]> SynthesizeMp3(
+        string text,
+        SpeechSynthesisOptions options,
+        CancellationToken cancellationToken = default)
+        => Inner.SynthesizeMp3(text, options, cancellationToken);
+
+    public Task<ApiArray<DubVoice>> ListVoices(CancellationToken cancellationToken = default)
+        => Inner.ListVoices(cancellationToken);
+
+    public static string OneShotStreamId(Language language, string text)
+        => $"{language.Value}:{text.GetHashCode()}";
+
+    // Private methods
+
+    private async Task ForwardAndRecord(
+        string streamId,
+        ChannelReader<string> text,
+        ChannelWriter<string> forwarded,
+        CancellationToken cancellationToken)
+    {
+        Exception? error = null;
+        try {
+            await foreach (var chunk in text.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
+                Record(streamId, chunk);
+                await forwarded.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (Exception e) {
+            error = e;
+            throw;
+        }
+        finally {
+            forwarded.TryComplete(error);
+        }
+    }
+
+    private static async IAsyncEnumerable<AudioFrame> GateFrames(
+        Task gate,
+        AudioSource inner,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await foreach (var frame in inner.GetFrames(cancellationToken).ConfigureAwait(false))
+            yield return frame;
+    }
+
+    private void Record(string streamId, string chunk)
+    {
+        lock (_lock) {
+            _chunks.Add((streamId, chunk));
+            NotifyChanged();
+        }
+    }
+
+    private void NotifyChanged()
+    {
+        // Under _lock
+        var whenChangedSource = _whenChangedSource;
+        _whenChangedSource = TaskCompletionSourceExt.New();
+        whenChangedSource.TrySetResult();
+    }
+}

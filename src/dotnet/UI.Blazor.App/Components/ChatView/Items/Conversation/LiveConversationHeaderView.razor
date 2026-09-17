@@ -27,6 +27,14 @@
     @if (!s.IsJoined && !s.IsDissolving) {
         <button type="button" class="c-lc-join btn btn-sm btn-transparent" @onclick="@Join">@L.Call_Join</button>
     }
+    @if (s.IsTranslatedVoiceAvailable) {
+        <HeaderButton
+            Class="@("c-lc-dub" + (s.IsTranslatedVoiceOn ? " on" : ""))"
+            Tooltip="@L.LiveConversation_TranslatedVoice"
+            Click="@ToggleTranslatedVoice">
+            <i class="icon-headphones-fill"></i>
+        </HeaderButton>
+    }
     @if (s.CanExpand) {
         <HeaderButton
             Class="c-lc-expand"
@@ -45,6 +53,8 @@
     private LiveBlockUI LiveBlockUI => Hub.LiveBlockUI;
     private ConversationUI ConversationUI => Hub.ConversationUI;
     private ChatUI ChatUI => Hub.ChatUI;
+    private TranslationUI TranslationUI => Hub.TranslationUI;
+    private LanguageUI LanguageUI => Hub.LanguageUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public LiveConversationHeader Header { get; set; } = null!;
@@ -87,10 +97,17 @@
         var canExpand = isLive && !isVoiceOnly && block is not ClosedLiveBlock;
         var isAnyoneTalking = isLive
             && await LiveStreamUI.IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(false);
+        var isTranslationOn = isLive
+            && await TranslationUI.IsEnabled(chatId, cancellationToken).ConfigureAwait(false) == true;
+        var isTranslatedVoiceAvailable = isTranslationOn
+            && (await LanguageUI.Settings.Use(LanguageUI.WhenReady, cancellationToken).ConfigureAwait(false))
+                .IsTranslatedVoiceEnabled;
+        var isTranslatedVoiceOn = isTranslatedVoiceAvailable
+            && await TranslationUI.GetDubLanguage(chatId, cancellationToken).ConfigureAwait(false) != null;
         return new LiveConversationHeaderState(
             translated.Title.Text, participantsText, isJoined,
             block?.HasAttended ?? false, isDissolving, canExpand,
-            isAnyoneTalking);
+            isAnyoneTalking, isTranslatedVoiceAvailable, isTranslatedVoiceOn);
     }
 
     private void Toggle()
@@ -98,4 +115,9 @@
 
     private async Task Join()
         => await Hub.ChatAudioUI.SetRecordingChatId(Header.Conversation!.Id.ChatId).ConfigureAwait(true);
+
+    private Task ToggleTranslatedVoice()
+        // Off is a per-chat override; on is "inherit", since the chip only shows when the user-level setting is on
+        => TranslationUI.SetTranslatedVoice(
+            Header.Conversation!.Id.ChatId, State.Value.IsTranslatedVoiceOn ? false : null);
 }

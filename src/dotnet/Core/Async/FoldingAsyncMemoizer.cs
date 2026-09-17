@@ -28,12 +28,6 @@ public sealed class FoldingAsyncMemoizer<T, TState> : AsyncMemoizer<T>
         this.Start();
     }
 
-    protected override async Task DisposeAsyncCore()
-    {
-        await base.DisposeAsyncCore().ConfigureAwait(false);
-        Volatile.Write(ref _checkpoint, null);
-    }
-
     public (TState Value, int ProducedCount) Fold()
     {
         var (node, value) = FoldPrefix();
@@ -51,6 +45,16 @@ public sealed class FoldingAsyncMemoizer<T, TState> : AsyncMemoizer<T>
     }
 
     // Protected methods
+
+    protected override Task OnStop()
+    {
+        // The producer is done, so this fold is final. Parked at the tail, it survives the disposal
+        // that follows: that detaches the chain, and a reader still holding the memoizer (the dub
+        // folds its source transcript until the dub ends) would otherwise fold to the seed. The tail
+        // node is all the checkpoint keeps alive - the chain links forward only.
+        FoldPrefix();
+        return Task.CompletedTask;
+    }
 
     protected override void EvictIfNeeded(Node newNode)
     {

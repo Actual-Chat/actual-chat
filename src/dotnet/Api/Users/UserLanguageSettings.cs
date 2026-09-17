@@ -27,6 +27,20 @@ public sealed partial record UserLanguageSettings : StoredSettings, IHasOrigin, 
     // A ?ui-language= override never lands here - it is deliberately non-persistent.
     [DataMember, MemoryPackOrder(5), Key(5)]
     public Language? DetectedUILanguage { get; init; }
+    // Listener side of voice dubbing: other-language speakers in live sessions are heard dubbed
+    [DataMember, MemoryPackOrder(6), Key(6)]
+    public bool IsTranslatedVoiceEnabled { get; init; }
+    // Speaker side: the stock voice others hear this user dubbed with; "" = the server default.
+    // Absent in blobs written before this key, which MessagePack reads as null - hence the coalesce.
+    [DataMember, MemoryPackOrder(7), Key(7)]
+    public string DubVoice { get => field ?? ""; init; } = "";
+    // Consent to clone this user's own voice for dubbing, instead of a stock voice.
+    [DataMember, MemoryPackOrder(8), Key(8)]
+    public bool IsOwnVoiceEnabled { get; init; }
+    // The user's own voice entry the clone is made from; null = build the sample from past speech.
+    // An entry rather than its media: the builder checks the entry's author is this user.
+    [DataMember, MemoryPackOrder(9), Key(9)]
+    public ChatEntryId? OwnVoiceSampleEntryId { get; init; }
 
     public List<Language> ListSpoken()
     {

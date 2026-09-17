@@ -26,6 +26,7 @@ public sealed class ListeningStreamProcessor : WorkerBase
     // The listener's own utterances are muxed back but never played, so their arrival lag says
     // nothing a re-anchor could fix - only how slow the uplink is.
     public AuthorId? OwnAuthorId { get; init; }
+    public Func<CancellationToken, Task<Language?>>? DubLanguageProvider { get; init; }
 
     public event Action<LiveAudioStreamInfo, TimeSpan, IAsyncEnumerable<AudioFrame>>? StreamStarted;
 
@@ -62,10 +63,18 @@ public sealed class ListeningStreamProcessor : WorkerBase
                 // utterance from t=0 to whoever asks, so a reconnect that still carried it would
                 // re-play what the listener already heard.
                 var catchUpFrom = Volatile.Read(ref _isCatchUpConsumed) ? default : effectiveCatchUpFrom;
-                Log.LogInformation("-> LiveStreams.GetListeningStream({ChatId}), catchUpFrom={CatchUpFrom}",
-                    ChatId, catchUpFrom);
-                var stream = await liveStreams.GetListeningStream(Session, ChatId, catchUpFrom, ct)
-                    .ConfigureAwait(false);
+                var dubLanguage = DubLanguageProvider == null
+                    ? null
+                    : await DubLanguageProvider.Invoke(ct).ConfigureAwait(false);
+                Log.LogInformation(
+                    "-> LiveStreams.GetListeningStream({ChatId}), catchUpFrom={CatchUpFrom}, dub={DubLanguage}",
+                    ChatId, catchUpFrom, dubLanguage);
+                // The four-argument call is what every published server speaks; only a dub asks for more
+                var stream = dubLanguage == null
+                    ? await liveStreams.GetListeningStream(Session, ChatId, catchUpFrom, ct).ConfigureAwait(false)
+                    : await liveStreams
+                        .GetListeningStream(Session, ChatId, catchUpFrom, dubLanguage, ct)
+                        .ConfigureAwait(false);
                 // Release: the watchdog reads this on the demuxer's thread to classify the next connection.
                 Volatile.Write(ref _isCatchUpConsumed, true);
                 DebugLog?.LogInformation("<- LiveStreams.GetListeningStream({ChatId})", ChatId);

@@ -21,6 +21,29 @@ public class StreamingSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
+    public void LiveStreamInfoShouldRoundTripLanguagesAndDubLanguage()
+    {
+        // arrange
+        var info = new LiveAudioStreamInfo {
+            ChatId = TestChatId,
+            AuthorId = AuthorId.New(TestChatId, 5),
+            StreamId = "stream-1",
+            BeginsAt = new Moment(DateTime.UtcNow),
+            Languages = new ApiArray<Language>([Languages.Russian, Languages.English]),
+            DubLanguage = Languages.English,
+        };
+
+        // act
+        var copy = info.PassThroughSerializers(Out);
+
+        // assert
+        copy.Languages.Should().Equal(Languages.Russian, Languages.English);
+        copy.DubLanguage.Should().Be(Languages.English);
+        copy.MaySpeak(Language.Parse("en-GB")).Should().BeTrue("English variants share an ISO code");
+        copy.MaySpeak(Languages.German).Should().BeFalse();
+    }
+
+    [Fact]
     public void AudioRecord_Basic()
     {
         var session = Session.New();

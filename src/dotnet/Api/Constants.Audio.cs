@@ -153,6 +153,51 @@ public static partial class Constants
         public static readonly TimeSpan SkipToLive = TimeSpan.MaxValue;
         public static readonly TimeSpan MaxStreamDuration = TimeSpan.FromMinutes(3);
         public static readonly TimeSpan MaxBeginsAtDrift = TimeSpan.FromSeconds(5);
+        // Between attempts to start the translation a dub reads, while the source transcript is live
+        public static readonly TimeSpan DubTranslationRetryDelay = TimeSpan.FromMilliseconds(250);
+        // After a synthesis failure, how long every dub is skipped - the provider is assumed down
+        public static readonly TimeSpan DubSynthesizerDownDelay = TimeSpan.FromSeconds(60);
+        // Audio already transcribed when a dub is requested beyond which the listener counts as late
+        public static readonly TimeSpan DubBacklogThreshold = TimeSpan.FromSeconds(5);
+        // Voice-over: the original's gain while the dub speaks, how long the duck outlives the last
+        // dub audio (gaps between TTS chunks), and how long each gain transition takes
+        public static readonly float VoiceOverDuckGain = 0.25f;
+        public static readonly TimeSpan VoiceOverDuckHold = TimeSpan.FromSeconds(1);
+        public static readonly TimeSpan VoiceOverDuckRamp = TimeSpan.FromMilliseconds(50);
+        // How long a caller waits for a replay dub to be stored or to start synthesizing before
+        // falling back to the original; the work keeps running past this, see ReplayDubSynthesisTimeout
+        public static readonly TimeSpan ReplayDubTimeout = TimeSpan.FromSeconds(20);
+        // Upper bound on one entry's synthesis + upload + stamp, counted from the moment its synthesis
+        // slot is taken (the translation wait + slot wait before that get the same budget separately),
+        // so a slow entry is eventually abandoned rather than held open until the host shuts down.
+        // Synthesis streams at roughly the pace it's spoken, so this must clear Chat.MaxEntryDuration
+        public static readonly TimeSpan ReplayDubSynthesisTimeout = TimeSpan.FromMinutes(5);
+        // Entries whose dubs are prepared while the current one streams
+        public static readonly int ReplayDubLookahead = 2;
+        // Caps concurrent Soniox REST syntheses; shares Soniox's 3-concurrent-stream quota with live dubbing
+        public static readonly int ReplayDubMaxConcurrentSynthesis = 2;
+        // How far back a speaker's own recordings are considered for the auto voice sample
+        public static readonly TimeSpan VoiceSampleWindow = TimeSpan.FromDays(90);
+        // Recordings shorter than this are too little continuous speech to help a voice clone
+        public static readonly TimeSpan VoiceSampleMinEntryDuration = TimeSpan.FromSeconds(5);
+        // Below this much speech in total no auto sample is built - the clone would be poor
+        public static readonly TimeSpan VoiceSampleMinDuration = TimeSpan.FromSeconds(30);
+        // The sample is cut here; Soniox takes up to 2 min, and more speech doesn't improve the clone
+        public static readonly TimeSpan VoiceSampleMaxDuration = TimeSpan.FromSeconds(60);
+        // Bounds on the scan behind the auto sample: most recent chats first, newest entries first
+        public static readonly int VoiceSampleMaxChats = 10;
+        public static readonly int VoiceSampleMaxEntriesPerChat = 500;
+        // Soniox allows this many clones per organization, which every environment shares - each one's
+        // pool caps its own Ready|Creating records at StreamingSettings.SonioxVoiceQuota, a slice of this
+        public static readonly int VoiceCloneQuota = 20;
+        // How long a fresh clone may take to turn ready before the attempt counts as failed
+        public static readonly TimeSpan VoiceCloneReadyTimeout = TimeSpan.FromSeconds(30);
+        // A clone unused for this long is deleted, freeing its quota slot for another speaker
+        public static readonly TimeSpan VoiceCloneIdleTimeout = TimeSpan.FromMinutes(10);
+        // After a failed attempt, how long the speaker keeps the stock voice before the clone is retried
+        public static readonly TimeSpan VoiceCloneFailureCooldown = TimeSpan.FromMinutes(10);
+        // A Creating record untouched for this long belongs to a host that died mid-clone: it's taken over or swept
+        public static readonly TimeSpan VoiceCloneCreatingTimeout = TimeSpan.FromMinutes(2);
 
         // Watchdog: cancel ProcessAudio handler if no frame arrives within this window.
         // Opus frames are 20 ms; 2 s of silence means the producer is pathologically stalled.

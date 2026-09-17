@@ -174,6 +174,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Discover.TopContainer>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Discover.TopPlaceItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Discover.TopPlaces>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.DubVoiceModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.EditChatMemberMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.EditChatMembersModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.EditChatTypeModalPage>();
@@ -323,6 +324,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OwnAvatarAddTile>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OwnAvatarEditorModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OwnAvatarList>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OwnVoiceSampleBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PageHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PasskeyRenameModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PasskeySettings>();
@@ -970,6 +972,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.Discover.TopContainer), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Discover.TopPlaceItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Discover.TopPlaces), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.DubVoiceModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.EditChatMemberMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.EditChatMembersModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.EditChatTypeModalPage), AotTypeKind.Component),
@@ -1119,6 +1122,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.OwnAvatarAddTile), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.OwnAvatarEditorModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.OwnAvatarList), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.OwnVoiceSampleBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PageHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PasskeyRenameModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PasskeySettings), AotTypeKind.Component),

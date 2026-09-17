@@ -49,8 +49,17 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     {
         var parsedStreamId = StreamId.Parse(streamId);
         await Access.RequireReadAudio(session, parsedStreamId, cancellationToken).ConfigureAwait(false);
-        if (await IsTextOnly(parsedStreamId, cancellationToken).ConfigureAwait(false))
+        var chatId = await Backend.GetChatId(parsedStreamId, cancellationToken).ConfigureAwait(false);
+        if (await IsTextOnly(chatId, parsedStreamId, cancellationToken).ConfigureAwait(false))
             return null;
+
+        if (parsedStreamId.Language is { } dubLanguage) {
+            if (chatId == null
+                || !await IsDubLanguageAllowed(session, chatId, dubLanguage, cancellationToken).ConfigureAwait(false))
+                return null;
+
+            parsedStreamId = StreamId.New(parsedStreamId.BaseStreamId, Languages.GetCanonical(dubLanguage));
+        }
 
         var isLocal = parsedStreamId.NodeRef == MeshWatcher.ThisNode.Ref;
 
@@ -166,24 +175,51 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
+    public Task<RpcStream<MuxedAudioStreamItem>> GetListeningStream(
+        Session session,
+        ChatId chatId,
+        Moment catchUpFrom,
+        CancellationToken cancellationToken)
+        => GetListeningStream(session, chatId, catchUpFrom, null, cancellationToken);
+
     public async Task<RpcStream<MuxedAudioStreamItem>> GetListeningStream(
         Session session,
         ChatId chatId,
         Moment catchUpFrom,
+        Language? dubLanguage,
         CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
         chat.Rules.Require(ChatPermissions.ReadAudio);
+        if (dubLanguage != null) {
+            if (await IsDubLanguageAllowed(session, chatId, dubLanguage, cancellationToken).ConfigureAwait(false))
+                dubLanguage = Languages.GetCanonical(dubLanguage);
+            else {
+                Log.LogWarning("GetListeningStream: {DubLanguage} isn't a language of this listener, not dubbing",
+                    dubLanguage);
+                dubLanguage = null;
+            }
+        }
 
-        Log.LogInformation("GetListeningStream: chat '{ChatId}', catchUpFrom={CatchUpFrom}", chatId, catchUpFrom);
+        Log.LogInformation("GetListeningStream: chat '{ChatId}', catchUpFrom={CatchUpFrom}, dub={DubLanguage}",
+            chatId, catchUpFrom, dubLanguage);
         var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author != null)
             await SetListenerPresence(chatId, author.Id, true, cancellationToken).ConfigureAwait(false);
-        var muxer = new ListeningStreamMuxer(Services, session, chatId, catchUpFrom);
+        var muxer = new ListeningStreamMuxer(Services, session, chatId, catchUpFrom, dubLanguage);
         var stream = ToLiveAsyncEnumerable(muxer, muxer.Output, chatId, author?.Id, cancellationToken);
         return StandardRpcStream.NewAudioDelivery(stream, allowReconnect: false);
     }
+
+    public Task<RpcStream<MuxedAudioStreamItem>> GetReplayStream(
+        Session session,
+        ChatId chatId,
+        Moment startAt,
+        TimeSpan rewindOffset,
+        double speed,
+        CancellationToken cancellationToken)
+        => GetReplayStream(session, chatId, startAt, rewindOffset, speed, null, cancellationToken);
 
     public async Task<RpcStream<MuxedAudioStreamItem>> GetReplayStream(
         Session session,
@@ -191,13 +227,25 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         Moment startAt,
         TimeSpan rewindOffset,
         double speed,
+        Language? dubLanguage,
         CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
         chat.Rules.Require(ChatPermissions.ReadAudio);
+        if (dubLanguage != null) {
+            if (await IsDubLanguageAllowed(session, chatId, dubLanguage, cancellationToken).ConfigureAwait(false))
+                dubLanguage = Languages.GetCanonical(dubLanguage);
+            else {
+                Log.LogWarning("GetReplayStream: {DubLanguage} isn't a language of this listener, not dubbing",
+                    dubLanguage);
+                dubLanguage = null;
+            }
+        }
 
-        var muxer = new ReplayStreamMuxer(Services, session, chatId, startAt, rewindOffset, speed);
+        Log.LogInformation("GetReplayStream: chat '{ChatId}', startAt={StartAt}, dub={DubLanguage}",
+            chatId, startAt, dubLanguage);
+        var muxer = new ReplayStreamMuxer(Services, session, chatId, startAt, rewindOffset, speed, dubLanguage);
         var stream = ToReplayAsyncEnumerable(muxer, muxer.Output, cancellationToken);
         return StandardRpcStream.NewAudioDelivery(stream, allowReconnect: false);
     }
@@ -236,16 +284,38 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         }
     }
 
-    private async Task<bool> IsTextOnly(StreamId streamId, CancellationToken cancellationToken)
+    private async Task<bool> IsTextOnly(ChatId? chatId, StreamId streamId, CancellationToken cancellationToken)
     {
-        // Isolated: an SSB caller must not depend on this.
-        using var _ = Computed.BeginIsolation();
-        var chatId = await Backend.GetChatId(streamId, cancellationToken).ConfigureAwait(false);
         if (chatId is not { } || chatId.Value.IsNullOrEmpty())
             return false;
 
+        // Isolated: an SSB caller must not depend on this.
+        using var _ = Computed.BeginIsolation();
         var streams = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
-        return streams.Any(x => x.StreamId == streamId.Value && x.IsTextOnly);
+        var baseStreamId = streamId.BaseStreamId.Value;
+        return streams.Any(x => x.StreamId == baseStreamId && x.IsTextOnly);
+    }
+
+    private async Task<bool> IsDubLanguageAllowed(
+        Session session,
+        ChatId chatId,
+        Language language,
+        CancellationToken cancellationToken)
+    {
+        // A dub costs a TTS stream per (speaker, language), so it's served only in a language the
+        // listener reads or hears this chat in - the same set TranslationUI.GetTranslationLanguage
+        // picks from, read off the same settings
+        using var _ = Computed.BeginIsolation();
+        var userSettingsUI = Services.UserSettingsUI(session);
+        var chatSettings = await userSettingsUI
+            .ChatUserSettings(chatId.GetThreadOutermostParentOrSelf())
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
+        var languageSettings = await userSettingsUI.UserLanguageSettings().Get(cancellationToken).ConfigureAwait(false);
+        return languageSettings.ListSpoken()
+            .Append(chatSettings.TranslationTargetLanguage)
+            .Append(chatSettings.Language)
+            .Any(x => x?.IsoCode == language.IsoCode);
     }
 
     private async Task<ChatEntryId?> ResolveEntryId(

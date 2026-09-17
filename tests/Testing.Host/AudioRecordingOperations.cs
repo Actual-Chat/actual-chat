@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Streaming;
+using ActualChat.Transcription;
 using ActualLab.Rpc;
 
 namespace ActualChat.Testing.Host;
@@ -15,6 +16,72 @@ public static class AudioRecordingOperations
         VoiceMode voiceMode = VoiceMode.TextAndVoice,
         int frameCount = 200,
         CancellationToken cancellationToken = default)
+    {
+        var lidRangeBefore = await tester.AppServices.GetRequiredService<IChatsBackend>()
+            .GetLidRange(chatId, true, cancellationToken).ConfigureAwait(false);
+        await RecordVoice(tester, chatId, language, voiceMode, frameCount, cancellationToken).ConfigureAwait(false);
+        return await WaitForNextEntry(tester, chatId, lidRangeBefore.End, cancellationToken).ConfigureAwait(false);
+    }
+
+    public static async Task<StreamId> RecordVoiceOnlyUtterance(
+        this IWebTester tester,
+        ChatId chatId,
+        Language language,
+        int frameCount = 3,
+        CancellationToken cancellationToken = default)
+    {
+        // JustVoice: audio fans out but nothing transcribes it, so the stream is published and
+        // ends without ever publishing a transcript - the case a transcript-less dub must not hold on.
+        var audioRecord = await RecordVoice(
+                tester, chatId, language, VoiceMode.JustVoice, frameCount, cancellationToken)
+            .ConfigureAwait(false);
+        // ProcessAudio publishes under the segment id (record.StreamId + segment index), not the record id itself
+        return OpenAudioSegment.GetStreamId(audioRecord, 0);
+    }
+
+    public static async Task<StreamId> RecordTranscribedUtterance(
+        this IWebTester tester,
+        ChatId chatId,
+        Language language,
+        int frameCount = 150,
+        CancellationToken cancellationToken = default)
+    {
+        // TextAndVoice: the audio fans out and the (fake) transcriber tags its transcript with the
+        // recording's language, so a dub decision can be made on the source alone
+        var audioRecord = await RecordVoice(
+                tester, chatId, language, VoiceMode.TextAndVoice, frameCount, cancellationToken)
+            .ConfigureAwait(false);
+        return OpenAudioSegment.GetStreamId(audioRecord, 0);
+    }
+
+    public static async Task<ChatEntry> OptInOwnVoice(
+        this IWebTester tester,
+        ChatId chatId,
+        Language language,
+        int frameCount = 600,
+        CancellationToken cancellationToken = default)
+    {
+        // Records a sample entry and opts the signed-in user into their own voice, so their
+        // next dub is eligible for a VoicePool clone
+        var entry = await tester
+            .RecordVoiceEntry(chatId, language, frameCount: frameCount, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        await tester.AppServices.UserSettingsUI(tester.Session)
+            .UserLanguageSettings()
+            .Update(x => x with { IsOwnVoiceEnabled = true, OwnVoiceSampleEntryId = entry.Id }, cancellationToken)
+            .ConfigureAwait(false);
+        return entry;
+    }
+
+    // Private methods
+
+    private static async Task<AudioRecord> RecordVoice(
+        IWebTester tester,
+        ChatId chatId,
+        Language language,
+        VoiceMode voiceMode,
+        int frameCount,
+        CancellationToken cancellationToken)
     {
         var services = tester.AppServices;
         var session = tester.Session;
@@ -37,33 +104,36 @@ public static class AudioRecordingOperations
             services.Clocks().SystemClock.Now.EpochOffset.TotalSeconds,
             null);
 
-        var lidRangeBefore = await services.GetRequiredService<IChatsBackend>()
-            .GetLidRange(chatId, true, cancellationToken).ConfigureAwait(false);
-
-        var frames = GenerateAudioFrames(frameCount);
-        await backend.ProcessAudio(audioRecord, 0,
-                new RpcStream<AudioFrame>(frames),
-                cancellationToken)
+        var frames = GenerateAudioFrames(frameCount, services);
+        await backend.ProcessAudio(audioRecord, 0, new RpcStream<AudioFrame>(frames), cancellationToken)
             .ConfigureAwait(false);
-
-        return await WaitForNextEntry(tester, chatId, lidRangeBefore.End, cancellationToken).ConfigureAwait(false);
+        return audioRecord;
     }
 
-    // Private methods
-
-    private static async IAsyncEnumerable<AudioFrame> GenerateAudioFrames(int frameCount)
+    private static async IAsyncEnumerable<AudioFrame> GenerateAudioFrames(int frameCount, IServiceProvider services)
     {
-        var offset = TimeSpan.Zero;
-        for (var i = 0; i < frameCount; i++) {
-            var data = new byte[100];
-            Array.Fill(data, (byte)(i % 256));
-            yield return new AudioFrame {
-                Data = data,
-                Offset = offset,
-                Duration = DefaultFrameDuration,
-            };
-            offset += DefaultFrameDuration;
+        // Real Opus frames of a quiet tone, so whatever decodes the stored recording gets the
+        // audio it expects - a voice sample, for one - rather than packets libopus rejects
+        var log = services.LogFor(typeof(AudioRecordingOperations));
+        var audio = SpeechSynthesizerExt.ToAudioSource(ProduceTone, services.Clocks(), log, CancellationToken.None);
+        await foreach (var frame in audio.GetFrames(CancellationToken.None).ConfigureAwait(false)) {
+            yield return frame with { Duration = DefaultFrameDuration };
             await Task.Delay(5).ConfigureAwait(false);
+        }
+        yield break;
+
+        async Task ProduceTone(ChannelWriter<byte[]> pcm, CancellationToken cancellationToken)
+        {
+            var pcmFrame = new byte[OpusFramePump.FrameByteLength];
+            for (var i = 0; i < frameCount; i++) {
+                for (var j = 0; j < OpusFramePump.FrameLength; j++) {
+                    var time = (double)(i * OpusFramePump.FrameLength + j) / OpusFramePump.SampleRate;
+                    var sample = (short)(2000 * Math.Sin(2 * Math.PI * 440 * time));
+                    BitConverter.TryWriteBytes(pcmFrame.AsSpan(j * sizeof(short)), sample);
+                }
+                await pcm.WriteAsync(pcmFrame.ToArray(), cancellationToken).ConfigureAwait(false);
+            }
+            pcm.Complete();
         }
     }
 
