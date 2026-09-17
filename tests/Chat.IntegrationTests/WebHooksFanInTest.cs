@@ -1,0 +1,197 @@
+using ActualChat.Chat.Db;
+using ActualChat.Testing.Host;
+using ActualChat.WebHooks;
+using ActualLab.Fusion.EntityFramework;
+using Microsoft.EntityFrameworkCore;
+
+namespace ActualChat.Chat.IntegrationTests;
+
+[Collection(nameof(ChatCollection))]
+public class WebHooksFanInTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
+{
+    private WebClientTester Alice => field ??= fixture.AppHost.NewWebClientTester(Out);
+    private WebClientTester Bob => field ??= fixture.AppHost.NewWebClientTester(Out);
+    private IWebHooksBackend Backend => field ??= AppHost.Services.GetRequiredService<IWebHooksBackend>();
+
+    protected override async Task InitializeAsync()
+    {
+        await base.InitializeAsync();
+        await Alice.SignInAsAlice();
+        await Bob.SignInAsBob();
+    }
+
+    protected override async Task DisposeAsync()
+    {
+        await Alice.DisposeSilentlyAsync();
+        await Bob.DisposeSilentlyAsync();
+        await base.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task PostedMessageShouldEnqueueOneDelivery()
+    {
+        // arrange
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Fan-in posted" });
+        var hook = await CreateHook(Alice, WebHookScope.Chat, chatId.Value, WebHookEvents.Messages);
+
+        // act
+        var entry = await Alice.CreateTextEntry(chatId, "hello hooks");
+
+        // assert
+        var deliveries = await WaitForDeliveries(hook.Id, 1);
+        var delivery = deliveries.Single();
+        delivery.EventType.Should().Be("message.posted");
+        delivery.Status.Should().Be(WebHookDeliveryStatus.Pending);
+        delivery.Id.Should()
+            .Be(WebHookPayloads.DeliveryId(hook.Id, "message.posted", $"{entry.LocalId}:{entry.Version}"));
+        var payload = await ReadPayload(delivery.Id);
+        payload.Should().Contain("hello hooks");
+        payload.Should().Contain(chatId.Value);
+    }
+
+    [Fact]
+    public async Task EditShouldEnqueueEditedWithPrevious()
+    {
+        // arrange
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Fan-in edited" });
+        var hook = await CreateHook(Alice, WebHookScope.Chat, chatId.Value, WebHookEvents.Messages);
+        var entry = await Alice.CreateTextEntry(chatId, "first take");
+        await WaitForDeliveries(hook.Id, 1);
+
+        // act
+        await Alice.UpdateTextEntry(entry.Id, "second take");
+
+        // assert
+        var deliveries = await WaitForDeliveries(hook.Id, 2);
+        var edited = deliveries.Single(x => x.EventType == "message.edited");
+        var payload = await ReadPayload(edited.Id);
+        payload.Should().Contain("second take");
+        payload.Should().Contain("first take", "the previous text travels with the edit");
+    }
+
+    [Fact]
+    public async Task UnsubscribedEventShouldNotEnqueue()
+    {
+        // arrange
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Fan-in unsubscribed" });
+        var hook = await CreateHook(Alice, WebHookScope.Chat, chatId.Value, WebHookEvents.Reactions);
+        // Both hooks ride the same event, so once the canary has its row the other one would have had its too
+        var canary = await CreateHook(Alice, WebHookScope.Chat, chatId.Value, WebHookEvents.Messages);
+
+        // act
+        await Alice.CreateTextEntry(chatId, "no reaction here");
+
+        // assert
+        await WaitForDeliveries(canary.Id, 1);
+        (await Backend.ListDeliveries(hook.Id, Constants.WebHooks.DeliveryListLimit, default))
+            .Should().BeEmpty("the hook doesn't subscribe to message events");
+    }
+
+    [Fact]
+    public async Task PlaceAllowListShouldFilterChats()
+    {
+        // arrange
+        var place = await Alice.CreatePlace(true, "Fan-in place");
+        var (chatAId, _) = await Alice.CreateChat(true, "Fan-in A", place.Id);
+        var (chatBId, _) = await Alice.CreateChat(true, "Fan-in B", place.Id);
+        var hook = await CreateHook(
+            Alice, WebHookScope.Place, place.Id.Value, WebHookEvents.Messages,
+            diff => diff with { ChatIds = ApiArray.New(chatAId) });
+
+        // act
+        await Alice.CreateTextEntry(chatBId, "not for the hook");
+        await Alice.CreateTextEntry(chatAId, "for the hook");
+
+        // assert
+        var deliveries = await WaitForDeliveries(hook.Id, 1);
+        var payload = await ReadPayload(deliveries.Single().Id);
+        payload.Should().Contain("for the hook");
+        payload.Should().NotContain("not for the hook");
+        payload.Should().Contain(chatAId.Value);
+    }
+
+    [Fact]
+    public async Task PersonalSelectedChatShouldRequireRead()
+    {
+        // arrange
+        var (chatId, inviteId) = await Alice.CreateChat(x => x with { Title = "Fan-in personal", IsPublic = true });
+        var bob = await Bob.GetOwnAccount();
+        var hook = await CreateHook(
+            Bob, WebHookScope.User, bob.Id.Value, WebHookEvents.Messages,
+            diff => diff with { ChatIds = ApiArray.New(chatId) });
+        var canary = await CreateHook(Alice, WebHookScope.Chat, chatId.Value, WebHookEvents.Messages);
+
+        // act - Bob is not a member yet
+        await Alice.CreateTextEntry(chatId, "before bob");
+
+        // assert
+        await WaitForDeliveries(canary.Id, 1);
+        (await Backend.ListDeliveries(hook.Id, Constants.WebHooks.DeliveryListLimit, default))
+            .Should().BeEmpty("Bob cannot read the chat yet");
+
+        // act - Bob joins
+        await Bob.JoinChat(chatId, inviteId);
+        await ComputedTest.When(async ct => {
+            var userIds = await AppHost.Services.GetRequiredService<IAuthorsBackend>().ListUserIds(chatId, ct);
+            userIds.Should().Contain(bob.Id);
+        });
+        await Alice.CreateTextEntry(chatId, "after bob");
+
+        // assert
+        var deliveries = await WaitForDeliveries(hook.Id, 1);
+        var payload = await ReadPayload(deliveries.Single().Id);
+        payload.Should().Contain("after bob");
+    }
+
+    [Fact]
+    public async Task DuplicateEventShouldNotDuplicateRow()
+    {
+        // arrange
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Fan-in duplicate" });
+        var hook = await CreateHook(Alice, WebHookScope.Chat, chatId.Value, WebHookEvents.Messages);
+        var deliveryId = WebHookPayloads.DeliveryId(hook.Id, "message.posted", "1:1");
+
+        // act
+        await Commander.Call(new WebHooksBackend_Enqueue(hook.Id, chatId.Value, deliveryId, "message.posted", "{}"));
+        await Commander.Call(new WebHooksBackend_Enqueue(hook.Id, chatId.Value, deliveryId, "message.posted", "{}"));
+
+        // assert
+        var deliveries = await WaitForDeliveries(hook.Id, 1);
+        deliveries.Single().Id.Should().Be(deliveryId);
+    }
+
+    // Private methods
+
+    private async Task<WebHook> CreateHook(
+        WebClientTester tester,
+        WebHookScope scope,
+        string scopeId,
+        WebHookEvents events,
+        Func<WebHookDiff, WebHookDiff>? configure = null)
+    {
+        var account = await tester.GetOwnAccount();
+        var diff = new WebHookDiff { Name = "CI", Url = "https://example.com/hook", Events = events };
+        diff = configure?.Invoke(diff) ?? diff;
+        var hook = (await Commander.Call(new WebHooksBackend_Change(
+            scope, scopeId, null, null, Change.Create(diff), account.Id))).WebHook!;
+        await ComputedTest.When(async ct
+            => (await Backend.ListByScope(scope, scopeId, ct)).Should().Contain(x => x.Id == hook.Id));
+        return hook;
+    }
+
+    private Task<ApiArray<WebHookDelivery>> WaitForDeliveries(WebHookId hookId, int count)
+        => ComputedTest.When(async ct => {
+            var deliveries = await Backend.ListDeliveries(hookId, Constants.WebHooks.DeliveryListLimit, ct);
+            deliveries.Should().HaveCount(count);
+            return deliveries;
+        }, TimeSpan.FromSeconds(10));
+
+    private async Task<string> ReadPayload(string deliveryId)
+    {
+        var dbHub = AppHost.Services.DbHub<ChatDbContext>();
+        await using var dbContext = await dbHub.CreateDbContext();
+        var dbDelivery = await dbContext.WebHookDeliveries.FirstAsync(x => x.Id == deliveryId);
+        return dbDelivery.Payload;
+    }
+}

@@ -10,6 +10,9 @@ public partial class WebHooksBackend(IServiceProvider services)
     : DbServiceBase<ChatDbContext>(services), IWebHooksBackend
 {
     private WebHookSecrets Secrets => field ??= Services.GetRequiredService<WebHookSecrets>();
+    private WebHookPayloads Payloads => field ??= Services.GetRequiredService<WebHookPayloads>();
+    private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IDbEntityResolver<string, DbWebHook> DbWebHookResolver
         => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbWebHook>>();
     private HostInfo HostInfo => field ??= Services.HostInfo();
