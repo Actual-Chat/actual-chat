@@ -181,8 +181,8 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         var chunks = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
-        chunks.Should().BeEmpty("no text was ever sent, so no stream should have opened");
-        client.StreamCount.Should().Be(0);
+        chunks.Should().BeEmpty("a stream that never got any text never spoke, so its audio is discarded");
+        client.StreamCount.Should().Be(1, "the stream is still pre-opened at the start of the run");
     }
 
     [Theory(Skip = "Diagnostic, for manual runs only")]

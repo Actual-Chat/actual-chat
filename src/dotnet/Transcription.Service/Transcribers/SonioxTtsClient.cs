@@ -383,14 +383,23 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                 }
 
                 if (!response.Audio.IsNullOrEmpty()) {
-                    stream.OnAudioReceived();
-                    var audio = Convert.FromBase64String(response.Audio);
-                    if (stream.TrySignalFirstFrame(audio.Length)) {
-                        Log.LogDebug("Soniox TTS #{StreamId}: first audio +{Delay:F1}s after the first chunk",
-                            stream.Id, (Now - stream.FirstTextAt).TotalSeconds);
-                        run.Listener?.OnAudioStarted();
+                    if (!stream.HasText) {
+                        // Soniox answers text_end on an empty stream with real audio; a stream that never
+                        // got a chunk never spoke, so this is never real speech
+                        if (stream.TryMarkAudioDiscarded())
+                            Log.LogDebug("Soniox TTS #{StreamId}: discarding audio - it never got any text",
+                                stream.Id);
                     }
-                    await run.Pcm.WriteAsync(audio, cancellationToken).ConfigureAwait(false);
+                    else {
+                        stream.OnAudioReceived();
+                        var audio = Convert.FromBase64String(response.Audio);
+                        if (stream.TrySignalFirstFrame(audio.Length)) {
+                            Log.LogDebug("Soniox TTS #{StreamId}: first audio +{Delay:F1}s after the first chunk",
+                                stream.Id, (Now - stream.FirstTextAt).TotalSeconds);
+                            run.Listener?.OnAudioStarted();
+                        }
+                        await run.Pcm.WriteAsync(audio, cancellationToken).ConfigureAwait(false);
+                    }
                 }
                 if (response.Terminated)
                     stream.Terminate(response);
@@ -585,6 +594,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
             = TaskCompletionSourceExt.New<SonioxTtsResponse>();
         private readonly List<(string Chunk, bool IsResent)> _unspokenChunks = new();
         private int _pcmByteCount;
+        private bool _hasLoggedDiscardedAudio;
 
         public string Id { get; } = id;
         public Moment StartedAt { get; } = startedAt;
@@ -617,6 +627,15 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                 return false;
 
             HasFrames = true;
+            return true;
+        }
+
+        public bool TryMarkAudioDiscarded()
+        {
+            if (_hasLoggedDiscardedAudio)
+                return false;
+
+            _hasLoggedDiscardedAudio = true;
             return true;
         }
 

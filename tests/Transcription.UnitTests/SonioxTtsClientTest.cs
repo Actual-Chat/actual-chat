@@ -178,6 +178,30 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact(Timeout = 15_000)]
+    public async Task RunShouldDiscardAudioFromAStreamThatNeverGotText()
+    {
+        // arrange - Soniox answers text_end on an empty stream with real audio, which is never speech
+        var listener = new RecordingListener();
+        var soniox = new FakeSoniox { PcmBytesOnEmptyEnd = OpusFramePump.FrameByteLength };
+        var client = NewClient(soniox, idleFlush: Short, streamRollover: Long);
+        var text = Channel.CreateUnbounded<string>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
+
+        // act - the pre-opened stream idles out before any text arrives, then a real chunk is sent
+        var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, listener, CancellationToken.None);
+        await Task.Delay(Short * 2);
+        text.Writer.TryWrite("Real. ");
+        text.Writer.Complete();
+        await runTask;
+        var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
+
+        // assert
+        client.StreamCount.Should().Be(2, "the empty stream idles out before the real chunk arrives");
+        audio.Should().HaveCount(1, "only the real chunk's audio reaches the pcm channel");
+        listener.AudioStarts.Should().Be(1, "the discarded empty-stream audio never counts as speech starting");
+    }
+
+    [Fact(Timeout = 15_000)]
     public async Task RunShouldRollOverAStreamPastItsDurationCap()
     {
         // arrange
@@ -379,11 +403,13 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
     private sealed class FakeSoniox
     {
         private readonly List<(int Count, TaskCompletionSource Source)> _streamOpenedWaiters = new();
+        private readonly HashSet<string> _streamsWithText = new();
 
         public int KillAfterTextCount { get; init; }
         public int DropAfterTextCount { get; init; }
         public bool DropEveryConnection { get; init; }
         public int PcmBytesPerText { get; init; } = OpusFramePump.FrameByteLength;
+        public int PcmBytesOnEmptyEnd { get; init; }
         public int ConnectionCount { get; private set; }
         public int OpenedStreamCount { get; private set; }
         public List<SentMessage> Sent { get; } = new();
@@ -430,6 +456,8 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
                     Sent.Add(new SentMessage(isEnd ? $"end {streamId}" : $"text {streamId} '{text}'"));
                 if (text.Length > 0) {
                     textCount++;
+                    lock (_streamsWithText)
+                        _streamsWithText.Add(streamId!);
                     if (mayFail && textCount == DropAfterTextCount) {
                         webSocket.Incoming.Writer.TryComplete();
                         return;
@@ -441,8 +469,17 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
                     }
                     webSocket.Incoming.Writer.TryWrite($$"""{"stream_id":"{{streamId}}","audio":"{{audio}}"}""");
                 }
-                if (isEnd)
+                if (isEnd) {
+                    bool hadText;
+                    lock (_streamsWithText)
+                        hadText = _streamsWithText.Remove(streamId!);
+                    if (!hadText && PcmBytesOnEmptyEnd > 0) {
+                        var emptyEndAudio = Convert.ToBase64String(new byte[PcmBytesOnEmptyEnd]);
+                        webSocket.Incoming.Writer.TryWrite(
+                            $$"""{"stream_id":"{{streamId}}","audio":"{{emptyEndAudio}}"}""");
+                    }
                     webSocket.Incoming.Writer.TryWrite($$"""{"stream_id":"{{streamId}}","terminated":true}""");
+                }
             }
         }
 
