@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Components.Settings
 @inherits SimpleStep<AppUIHub>;
 @{
     var m = _model;
@@ -38,11 +39,15 @@
         <div class="step-tile">
             <div class="c-docs">
                 <div class="c-doc-wrapper">
-                    <a class="c-doc" href="@Links.Docs.ToAbsolute(UrlMapper)/privacy">@L.Onboarding_PrivacyPolicy</a>
+                    <a class="c-doc" @onclick="() => OnDocumentClick(DocumentsTabId.PrivacyPolicy)">
+                        @L.Onboarding_PrivacyPolicy
+                    </a>
                     <i class="icon-chevron-right text-xl"></i>
                 </div>
                 <div class="c-doc-wrapper">
-                    <a class="c-doc" href="@Links.Docs.ToAbsolute(UrlMapper)/terms">@L.Onboarding_TermsOfService</a>
+                    <a class="c-doc" @onclick="() => OnDocumentClick(DocumentsTabId.TermsConditions)">
+                        @L.Onboarding_TermsOfService
+                    </a>
                     <i class="icon-chevron-right text-xl"></i>
                 </div>
             </div>
@@ -84,4 +89,7 @@
             StateHasChanged();
         }
     }
+
+    private Task OnDocumentClick(string tabId)
+        => ModalUI.Show(new DocumentsModal.Model(tabId));
 }

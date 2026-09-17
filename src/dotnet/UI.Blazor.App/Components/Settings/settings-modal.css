@@ -354,12 +354,14 @@ body.hoverable .sessions-tile-item .sign-out-btn:hover,
     @apply overflow-y-auto;
     @apply custom-scrollbar;
 }
-.docs-tab .tab-panel .tab p,
-.docs-tab .tab-panel .tab li {
+/* Scoped to the panel DocumentsPage renders rather than to this tab, so the same document
+   prose reads the same in DocumentsModal. */
+.docs-panel .tab p,
+.docs-panel .tab li {
     @apply text-justify;
     @apply text-text-1;
 }
-.docs-tab .tab-panel .tab a {
+.docs-panel .tab a {
     @apply text-primary;
     @apply underline decoration-from-font underline-offset-2;
 }

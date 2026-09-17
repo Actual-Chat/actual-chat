@@ -1,0 +1,18 @@
+@implements IModalView<DocumentsModal.Model>
+@inherits ComponentBase<AppUIHub>
+
+<DialogFrame
+    Class="documents-modal"
+    Title="@L.Settings_Documents"
+    HasCloseButton="true"
+    NarrowViewSettings="DialogFrameNarrowViewSettings.Default">
+    <Body>
+        <DocumentsPage TabId="@ModalModel.TabId"/>
+    </Body>
+</DialogFrame>
+
+@code {
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public sealed record Model(string? TabId = null);
+}
