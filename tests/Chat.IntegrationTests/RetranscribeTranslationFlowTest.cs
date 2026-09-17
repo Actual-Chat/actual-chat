@@ -37,8 +37,7 @@ public class RetranscribeTranslationFlowTest(
     {
         // arrange
         FakeOfflineTranscriber.Reset();
-        FakeTranslator.Reset();
-        FakeTranslator.MustFailRealtime = mustFailRealtimeTranslation;
+        FakeTranslator.Realtime(AppHost.Services).MustFail = mustFailRealtimeTranslation;
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false);
         var targetLanguage = Languages.Russian;
