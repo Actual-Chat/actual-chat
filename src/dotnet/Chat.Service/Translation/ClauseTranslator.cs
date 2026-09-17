@@ -1,3 +1,4 @@
+using System.Numerics;
 using ActualChat.Transcription;
 
 namespace ActualChat.Chat;
@@ -19,8 +20,13 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
     private readonly Lock _lock = new();
     private readonly List<Speculation> _speculations = [];
     private Channel<Transcript>? _output;
-    private Transcript _source = Transcript.Empty;
+    // The longest consistent source text: a stable item is a prefix of the unstable one before it,
+    // so it only refreshes the stable length and map unless it contradicts or outgrows that text
+    private string _text = "";
+    private LinearMap _map = LinearMap.Zero;
     private int _stableLength;
+    private LinearMap _stableMap = LinearMap.Zero;
+    private bool _isLastStable;
     private bool _isEnd;
     private int _promotedEnd;
     private Transcript _promoted = Transcript.Empty;
@@ -33,6 +39,7 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
 
     public int ClauseCount { get; private set; }
     public int RetranslatedCount { get; private set; }
+    public int DroppedCount { get; private set; }
 
     public async IAsyncEnumerable<Transcript> Run(
         IAsyncEnumerable<Transcript> source,
@@ -56,18 +63,34 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
         try {
             await foreach (var transcript in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 lock (_lock) {
-                    _source = transcript;
-                    if (transcript.IsStable)
+                    _isLastStable = transcript.IsStable;
+                    if (transcript.IsStable) {
                         _stableLength = transcript.Text.Length;
+                        _stableMap = transcript.TimeMap;
+                        if (!_text.StartsWith(transcript.Text)) {
+                            _text = transcript.Text;
+                            _map = transcript.TimeMap;
+                        }
+                    }
+                    else {
+                        _text = transcript.Text;
+                        _map = transcript.TimeMap;
+                    }
                     Reconcile(cancellationToken);
                 }
             }
             Task laneTask;
             lock (_lock) {
                 // Nothing can revise the text any more, so the unstable tail is as final as the
-                // stable text: its remainder is translated and promoted as the last clause
+                // stable text: its remainder is translated and promoted as the last clause - unless
+                // the source ended on a stable item, which is its final word on the tail it left out
                 _isEnd = true;
-                _stableLength = _source.Text.Length;
+                if (_isLastStable) {
+                    _text = _text[.._stableLength];
+                    _map = _stableMap;
+                }
+                _stableLength = _text.Length;
+                _stableMap = _map;
                 Reconcile(cancellationToken);
                 laneTask = _laneTask;
             }
@@ -83,12 +106,12 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
     {
         // Under _lock. Lines the speculations up with the clauses of the current source text, starts
         // the missing ones, promotes the stable ones, and publishes whatever changed.
-        var text = _source.Text;
+        var text = _text;
         var ends = ClauseSplitter.Split(text, _promotedEnd, _isEnd);
         var start = _promotedEnd;
         for (var i = 0; i < ends.Count; i++) {
             var clause = text[start..ends[i]];
-            var endTime = _source.TimeMap.Map(ends[i]);
+            var endTime = MapEnd(ends[i]);
             if (i < _speculations.Count && _speculations[i].Clause == clause) {
                 // The stable time map is the authoritative one, so the end time follows the source
                 _speculations[i].EndTime = endTime;
@@ -112,11 +135,14 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
 
     private void Drop(int from)
     {
-        // Under _lock. RetranslatedCount counts the completed translations a revision throws away
+        // Under _lock. RetranslatedCount counts the completed translations a revision throws away,
+        // DroppedCount the calls it cancels in flight
         for (var j = _speculations.Count - 1; j >= from; j--) {
             var speculation = _speculations[j];
             if (speculation.Translated != null)
                 RetranslatedCount++;
+            else
+                DroppedCount++;
             speculation.Cancel();
         }
         _speculations.RemoveRange(from, _speculations.Count - from);
@@ -135,29 +161,26 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
             // The lane must never run inside the caller's lock: a lane whose predecessor is already
             // complete would otherwise continue synchronously right here, into Reconcile
             await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding);
-            if (speculation.IsCancelled)
-                return;
-
-            TranslationResult[] context;
-            CancellationToken speculationToken;
-            lock (_lock) {
-                var index = _speculations.IndexOf(speculation);
-                if (index < 0)
-                    return;
-
-                speculationToken = speculation.CancellationToken;
-                var contextText = _source.Text[.._promotedEnd];
-                var contextTranslated = _promoted.Text;
-                for (var i = 0; i < index; i++) {
-                    contextText += _speculations[i].Clause;
-                    contextTranslated += ToSuffix(contextTranslated, _speculations[i].Translated!);
-                }
-                context = contextText.IsNullOrWhiteSpace()
-                    ? []
-                    : [new TranslationResult(contextText, contextTranslated)];
-            }
             string translated;
             try {
+                TranslationResult[] context;
+                CancellationToken speculationToken;
+                lock (_lock) {
+                    var index = _speculations.IndexOf(speculation);
+                    if (index < 0)
+                        return;
+
+                    speculationToken = speculation.CancellationToken;
+                    var contextText = _text[.._promotedEnd];
+                    var contextTranslated = _promoted.Text;
+                    for (var i = 0; i < index; i++) {
+                        contextText += _speculations[i].Clause;
+                        contextTranslated += ToSuffix(contextTranslated, _speculations[i].Translated!);
+                    }
+                    context = contextText.IsNullOrWhiteSpace()
+                        ? []
+                        : [new TranslationResult(contextText, contextTranslated)];
+                }
                 translated = await Translate(speculation.Clause, context, speculationToken).ConfigureAwait(false);
                 // An empty translation would leave the clause's end time out of the time map
                 if (translated.IsNullOrWhiteSpace())
@@ -168,6 +191,7 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
                 return;
             }
             catch (Exception e) {
+                // Whatever failed, the clause must land: Promote waits for its translation forever otherwise
                 Log.LogWarning(e, "Clause translation failed, passing it through: {Clause}", speculation.Clause);
                 translated = speculation.Clause;
             }
@@ -197,6 +221,15 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
             first.Dispose();
             ClauseCount++;
         }
+        // A whitespace-only remainder is no clause, but the dub reads "translated" only once the
+        // translated end time reaches the source's, so the last clause's end time takes it over
+        if (_isEnd && _speculations.Count == 0 && _promotedEnd < _text.Length && _promoted.Text.Length > 0) {
+            var end = new Vector2(_promoted.Text.Length, MapEnd(_text.Length));
+            _promoted = _promoted with {
+                TimeMap = _promoted.TimeMap.AppendOrUpdateSuffix(end, Transcript.TimeMapEpsilon.X),
+            };
+            _promotedEnd = _text.Length;
+        }
     }
 
     private void Publish()
@@ -222,8 +255,12 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
 
     private void Write(Transcript transcript)
     {
-        // Under _lock
-        if (_lastOutput is { } last && last.IsStable == transcript.IsStable && last.Text == transcript.Text)
+        // Under _lock. An end time refresh alone isn't worth a write unless it moves the end past
+        // the epsilon the readers compare ends with
+        if (_lastOutput is { } last
+            && last.IsStable == transcript.IsStable
+            && last.Text == transcript.Text
+            && Math.Abs(last.TimeRange.End - transcript.TimeRange.End) <= Transcript.TimeMapEpsilon.Y)
             return;
         if (transcript.Text.Length == 0)
             return;
@@ -231,6 +268,9 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
         _lastOutput = transcript;
         _output!.Writer.TryWrite(transcript);
     }
+
+    private float MapEnd(int end)
+        => end <= _stableLength ? _stableMap.Map(end) : _map.Map(end);
 
     // A clause's translation loses the space that separated the clause from the one before it
     private static string ToSuffix(string text, string translated)

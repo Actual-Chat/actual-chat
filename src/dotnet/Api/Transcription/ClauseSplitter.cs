@@ -22,10 +22,9 @@ public static partial class ClauseSplitter
     public static List<int> Split(string text, int from, bool isEnd)
     {
         var ends = new List<int>();
-        var start = from;
-        foreach (Match match in ClauseEndRegex.Matches(text, from)) {
+        var start = Math.Min(from, text.Length);
+        foreach (Match match in ClauseEndRegex.Matches(text, start)) {
             var end = match.Index + match.Length;
-            // Apply overflow cuts before accepting this boundary
             while (end - start > MaxUnpunctuatedLength) {
                 var limit = start + MaxUnpunctuatedLength;
                 var space = text.LastIndexOf(' ', limit, limit - start);

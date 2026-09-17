@@ -569,8 +569,12 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                             runCts.Cancel();
                         }
                         Log.LogInformation(
-                            "TranslateTranscriptStream: #{StreamId} - {Clauses} clauses, {Retranslated} re-translated",
-                            translatedStreamId, clauseTranslator.ClauseCount, clauseTranslator.RetranslatedCount);
+                            "TranslateTranscriptStream: #{StreamId} - {Clauses} clauses, "
+                            + "{Retranslated} re-translated, {Dropped} dropped",
+                            translatedStreamId,
+                            clauseTranslator.ClauseCount,
+                            clauseTranslator.RetranslatedCount,
+                            clauseTranslator.DroppedCount);
                         var sourceContent = lastTranscript.Text;
                         var content = KeepOriginalOnScriptMismatch(translationId, sourceContent, lastTranslatedTranscript.Text);
                         var finalizeRealtime = new TranslationsBackend_Change(translationId,
@@ -627,18 +631,8 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                         }
                     }
 
-                    async Task<string> TranslateOneClause(
-                        string clause,
-                        TranslationResult[] context,
-                        CancellationToken ct) {
-                        var translated = await RealtimeTranslator
-                            .Translate(clause, language, context, cancellationToken: ct)
-                            .ConfigureAwait(false);
-                        var isNoTranslationNeeded = string.Equals(translated,
-                            Constants.Translation.NoTranslationNeededText,
-                            StringComparison.OrdinalIgnoreCase);
-                        return isNoTranslationNeeded ? clause : translated;
-                    }
+                    Task<string> TranslateOneClause(string clause, TranslationResult[] context, CancellationToken ct)
+                        => RealtimeTranslator.Translate(clause, language, context, cancellationToken: ct);
                 },
                 cancellationToken);
 

@@ -36,6 +36,77 @@ public class ClauseTranslatorTest
     }
 
     [Fact]
+    public async Task AStablePrefixInsideASpeculatedClauseKeepsTheSpeculation()
+    {
+        var fake = new FakeTranslate();
+        var source = Channel.CreateUnbounded<Transcript>();
+        var translator = new ClauseTranslator(fake.Translate, NullLogger.Instance);
+        var outputs = new List<Transcript>();
+        var runTask = Collect(translator.Run(source.Reader.ReadAllAsync(), CancellationToken.None), outputs);
+
+        source.Writer.TryWrite(Unstable("Привет, как дела? Я", 3f));
+        await fake.WhenCalled(1);
+
+        // Soniox finalizes a few tokens at a time: the stable text stops inside the speculated clause
+        source.Writer.TryWrite(Stable("Привет, как", 1.5f));
+        await Task.Delay(100);
+        fake.IsPendingCancelled.Should().BeFalse("a stable prefix that agrees with the tail changes nothing");
+        fake.Calls.Should().HaveCount(1, "the speculation is kept, not re-created");
+
+        fake.Respond("Привет, как дела?");
+        await WhenCount(outputs, 1);
+        outputs[0].IsStable.Should().BeFalse();
+        source.Writer.TryWrite(Stable("Привет, как дела?", 2f));
+        await WhenCount(outputs, 2);
+        outputs[1].IsStable.Should().BeTrue();
+        outputs[1].Text.Should().Be("EN[Привет, как дела?]");
+        outputs[1].TimeRange.End.Should().BeApproximately(2f, 0.01f, "the clause's end time is the stable map's");
+        fake.Calls.Should().HaveCount(1, "the clause stabilized unchanged, so its speculation is promoted as is");
+
+        source.Writer.Complete();
+        await runTask;
+        fake.Calls.Should().HaveCount(1, "the source ended on a stable item that left the tail out, so it's gone");
+        translator.ClauseCount.Should().Be(1);
+        translator.DroppedCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AStablePrefixContradictingTheTailDropsTheSpeculation()
+    {
+        var fake = new FakeTranslate();
+        var source = Channel.CreateUnbounded<Transcript>();
+        var translator = new ClauseTranslator(fake.Translate, NullLogger.Instance);
+        var outputs = new List<Transcript>();
+        var runTask = Collect(translator.Run(source.Reader.ReadAllAsync(), CancellationToken.None), outputs);
+
+        source.Writer.TryWrite(Unstable("Привет, как дела? Я", 3f));
+        await fake.WhenCalled(1);
+
+        // The finalized tokens differ from the tail they were speculated on
+        source.Writer.TryWrite(Stable("Привет, кот", 1.5f));
+        await fake.WhenPendingCancelled();
+        fake.Calls.Should().HaveCount(1);
+
+        source.Writer.TryWrite(Unstable("Привет, кот дела? Я", 3f));
+        await fake.WhenCalled(2);
+        fake.Calls[1].Should().Be("Привет, кот дела?", "the clause is speculated again once it's complete again");
+        fake.Respond("Привет, кот дела?");
+        await WhenCount(outputs, 1);
+        outputs[0].IsStable.Should().BeFalse();
+
+        source.Writer.TryWrite(Stable("Привет, кот дела?", 2f));
+        await WhenCount(outputs, 2);
+        outputs[1].IsStable.Should().BeTrue();
+        outputs[1].Text.Should().Be("EN[Привет, кот дела?]");
+        fake.Calls.Should().HaveCount(2);
+
+        source.Writer.Complete();
+        await runTask;
+        translator.DroppedCount.Should().Be(1, "the first speculation was cancelled in flight");
+        translator.RetranslatedCount.Should().Be(0, "it never completed, so nothing was thrown away");
+    }
+
+    [Fact]
     public async Task ARevisedClauseIsTranslatedAgainAndTheTextRewinds()
     {
         var fake = new FakeTranslate();
@@ -171,6 +242,48 @@ public class ClauseTranslatorTest
         outputs[^1].IsStable.Should().BeTrue();
         outputs[^1].Text.Should().Be("EN[Привет, как дела?] EN[ Я иду]");
         outputs[^1].TimeRange.End.Should().BeApproximately(3f, 0.01f, "the tail's end time is the source's end");
+    }
+
+    [Fact]
+    public async Task AWhitespaceRemainderAtTheEndExtendsTheLastClausesEndTime()
+    {
+        var fake = new FakeTranslate();
+        var source = Channel.CreateUnbounded<Transcript>();
+        var translator = new ClauseTranslator(fake.Translate, NullLogger.Instance);
+        var outputs = new List<Transcript>();
+        var runTask = Collect(translator.Run(source.Reader.ReadAllAsync(), CancellationToken.None), outputs);
+
+        source.Writer.TryWrite(Stable("Привет. ", 2f));
+        await fake.WhenCalled(1);
+        fake.Respond("Привет.");
+        await WhenCount(outputs, 1);
+        outputs[0].TimeRange.End.Should().BeApproximately(1.75f, 0.01f, "the clause ends before the trailing space");
+
+        source.Writer.Complete();
+        await runTask;
+        fake.Calls.Should().HaveCount(1, "whitespace is no clause");
+        outputs[^1].Text.Should().Be("EN[Привет.]");
+        outputs[^1].TimeRange.End.Should().BeApproximately(2f, 0.01f,
+            "the dub reads the translation only once its end time reaches the source's");
+    }
+
+    [Fact]
+    public async Task ASynchronousFaultInTheDelegatePassesTheClauseThrough()
+    {
+        var source = Channel.CreateUnbounded<Transcript>();
+        var translator = new ClauseTranslator(
+            (_, _, _) => throw new InvalidOperationException("boom"),
+            NullLogger.Instance);
+        var outputs = new List<Transcript>();
+        var runTask = Collect(translator.Run(source.Reader.ReadAllAsync(), CancellationToken.None), outputs);
+
+        source.Writer.TryWrite(Stable("Привет, как дела?", 2f));
+        await WhenCount(outputs, 1);
+        outputs[0].IsStable.Should().BeTrue("a fault outside the call itself must not leave the clause pending");
+        outputs[0].Text.Should().Be("Привет, как дела?");
+
+        source.Writer.Complete();
+        await runTask;
     }
 
     [Fact]
@@ -358,11 +471,15 @@ public class ClauseTranslatorTest
                     return $"{Calls.Count} of {count} calls";
             });
 
-        public Task WhenPendingCancelled()
-            => WaitUntil(() => {
+        public bool IsPendingCancelled {
+            get {
                 lock (_lock)
                     return _pending?.Task.IsCanceled == true;
-            }, () => {
+            }
+        }
+
+        public Task WhenPendingCancelled()
+            => WaitUntil(() => IsPendingCancelled, () => {
                 lock (_lock)
                     return $"pending call status: {_pending?.Task.Status}";
             });
