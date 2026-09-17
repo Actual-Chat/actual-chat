@@ -570,11 +570,12 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                         }
                         Log.LogInformation(
                             "TranslateTranscriptStream: #{StreamId} - {Clauses} clauses, "
-                            + "{Retranslated} re-translated, {Dropped} dropped",
+                            + "{Retranslated} re-translated, {Dropped} dropped; translate call {CallLatency}",
                             translatedStreamId,
                             clauseTranslator.ClauseCount,
                             clauseTranslator.RetranslatedCount,
-                            clauseTranslator.DroppedCount);
+                            clauseTranslator.DroppedCount,
+                            clauseTranslator.CallLatency);
                         var sourceContent = lastTranscript.Text;
                         var content = KeepOriginalOnScriptMismatch(translationId, sourceContent, lastTranslatedTranscript.Text);
                         var finalizeRealtime = new TranslationsBackend_Change(translationId,

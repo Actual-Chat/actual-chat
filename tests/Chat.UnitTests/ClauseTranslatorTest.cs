@@ -345,6 +345,28 @@ public class ClauseTranslatorTest
 
         source.Writer.Complete();
         await runTask;
+        translator.CallLatency.Values.Should().BeEmpty("a failed call is not sampled");
+    }
+
+    [Fact]
+    public async Task CallLatencySamplesEveryAnsweredCall()
+    {
+        var fake = new FakeTranslate();
+        var source = Channel.CreateUnbounded<Transcript>();
+        var translator = new ClauseTranslator(fake.Translate, NullLogger.Instance);
+        var outputs = new List<Transcript>();
+        var runTask = Collect(translator.Run(source.Reader.ReadAllAsync(), CancellationToken.None), outputs);
+
+        source.Writer.TryWrite(Stable("Первое. Второе.", 2f));
+        await fake.WhenCalled(1);
+        fake.Respond("Первое.");
+        await fake.WhenCalled(2);
+        fake.Respond(" Второе.");
+        await WhenCount(outputs, 2);
+
+        source.Writer.Complete();
+        await runTask;
+        translator.CallLatency.Values.Should().HaveCount(2, "one sample per answered translate call");
     }
 
     [Fact]

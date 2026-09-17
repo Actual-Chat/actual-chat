@@ -612,11 +612,11 @@ remainder the splitter skipped is folded into the promoted end time, so
 the dub worker's "translated end reaches the source end" check
 (`IsTranslationComplete`) can't stay false on a trailing space.
 
-Once the stream ends, `ClauseCount`/`RetranslatedCount`/`DroppedCount`
+Once the stream ends, `ClauseCount`/`RetranslatedCount`/`DroppedCount`/`CallLatency`
 are logged once at Information:
 
 ```
-TranslateTranscriptStream: #{StreamId} - {Clauses} clauses, {Retranslated} re-translated, {Dropped} dropped
+TranslateTranscriptStream: #{StreamId} - {Clauses} clauses, {Retranslated} re-translated, {Dropped} dropped; translate call {CallLatency}
 ```
 
 `Clauses` is what was promoted. `Retranslated` counts completed
@@ -628,6 +628,14 @@ What they cannot show is a revision Soniox makes *after* the age
 promoted a token — by then the dub has spoken the clause and the
 promoted text never changes; the stored re-transcription fixes that text
 later.
+
+`CallLatency` is a `LatencyStats` sample per completed `Translate`
+delegate call — the LLM round trip for one clause. Most calls run
+speculatively while the source keeps talking, so their latency is hidden
+inside the stability wait; it only surfaces on screen as playback lag
+when a clause has nothing after it to speculate on — the first clause of
+an utterance, e.g. a one-word reply — where the call's full duration
+lands on the critical path.
 
 ### `DubStabilizer`
 

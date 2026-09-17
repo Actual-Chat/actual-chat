@@ -1,4 +1,5 @@
 using System.Numerics;
+using ActualChat.Diagnostics;
 using ActualChat.Transcription;
 
 namespace ActualChat.Chat;
@@ -43,6 +44,7 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
     public int ClauseCount { get; private set; }
     public int RetranslatedCount { get; private set; }
     public int DroppedCount { get; private set; }
+    public LatencyStats CallLatency { get; } = new();
 
     public async IAsyncEnumerable<Transcript> Run(
         IAsyncEnumerable<Transcript> source,
@@ -199,7 +201,9 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
                         ? []
                         : [new TranslationResult(contextText, contextTranslated)];
                 }
+                var startedAt = CpuTimestamp.Now;
                 translated = await Translate(speculation.Clause, context, speculationToken).ConfigureAwait(false);
+                CallLatency.Add(startedAt.Elapsed);
                 // An empty translation would leave the clause's end time out of the time map
                 if (translated.IsNullOrWhiteSpace())
                     translated = speculation.Clause;
