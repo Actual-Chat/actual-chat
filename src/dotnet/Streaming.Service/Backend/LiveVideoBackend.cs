@@ -196,6 +196,10 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     [ComputeMethod]
     protected virtual async Task<ApiArray<VideoStreamInfo>> ListRaw(ChatId chatId, CancellationToken cancellationToken)
     {
+        // List's own ownership dependency doesn't cover this cache - invalidating List just re-reads it.
+        // Without this, a shard that leaves and comes back serves a view missing the other node's writes.
+        ShardOwner.GetShardStateComputed(chatId, addDependency: true);
+
         var computed = Computed.GetCurrent();
         if (_listRawPrimer.TryUsePrimed(chatId, out var primed))
             return WithAutoInvalidation(primed);
