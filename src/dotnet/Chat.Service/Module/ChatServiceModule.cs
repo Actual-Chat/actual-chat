@@ -66,6 +66,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<IWebHooks, WebHooks>();
         rpcHost.AddBackend<IWebHooksBackend, WebHooksBackend>();
         services.AddSingleton<WebHookSecrets>();
+        services.AddSingleton<WebHookPayloads>();
 
         // Aliases
         rpcHost.AddLocalApi<IAliases, Aliases>();
