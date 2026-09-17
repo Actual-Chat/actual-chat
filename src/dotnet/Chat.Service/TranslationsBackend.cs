@@ -4,6 +4,8 @@ using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Diagnostics;
 using ActualChat.Flows;
+using ActualChat.Hashing;
+using ActualChat.Localization;
 using ActualChat.Queues;
 using ActualChat.Streaming;
 using ActualChat.Transcription;
@@ -20,7 +22,6 @@ namespace ActualChat.Chat;
 /// </summary>
 public class TranslationsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), ITranslationsBackend
 {
-    private static readonly TimeSpan TranslateThrottleDelay = TimeSpan.FromMilliseconds(500);
     private readonly ConcurrentDictionary<StreamId, FuncWorker> _activePublishers = new();
 
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
@@ -37,6 +38,8 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
     private IHostApplicationLifetime HostLifetime => field ??= Services.HostLifetime();
     private FlowHub FlowHub => field ??= Services.FlowHub();
+    // Absent when no TTS provider is configured (no key, and not the fake): then there are no voices
+    private ISpeechSynthesizer? SpeechSynthesizer => field ??= Services.GetService<ISpeechSynthesizer>();
 
     private static bool DebugMode => Constants.DebugMode.TranslationBackend;
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -87,6 +90,41 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         return translated.NullIfEmpty();
     }
 
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<DubVoice>> ListDubVoices(CancellationToken cancellationToken)
+    {
+        if (SpeechSynthesizer is not { } synthesizer)
+            return ApiArray<DubVoice>.Empty;
+
+        var voices = await synthesizer.ListVoices(cancellationToken).ConfigureAwait(false);
+        if (voices.Count == 0)
+            // Nothing cached yet: a provider failure is retried well before the hour is up
+            Computed.GetCurrent().Invalidate(ServerConstants.Backend.RetryDelay);
+        return voices;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<byte[]?> GetDubVoicePreview(
+        string voiceId,
+        Language language,
+        CancellationToken cancellationToken)
+    {
+        if (SpeechSynthesizer is not { } synthesizer)
+            return null;
+
+        // Isolated: a dependency on the hourly catalog would cut this day-long cache to an hour
+        ApiArray<DubVoice> voices;
+        using (Computed.BeginIsolation())
+            voices = await ListDubVoices(cancellationToken).ConfigureAwait(false);
+        if (!voices.Any(x => x.Id == voiceId))
+            return null;
+
+        var text = LanguageStringLocalizer.Get(language).Transcription_DubVoicePreviewText;
+        return await synthesizer
+            .SynthesizeMp3(text, new SpeechSynthesisOptions(language, voiceId), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     // Not a [ComputeMethod]!
     public virtual async Task<ApiArray<Translation>> ListHanging(ThisNodeRef nodeRef, int limit, CancellationToken cancellationToken)
     {
@@ -121,6 +159,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var now = Clocks.SystemClock.Now;
 
         DbTranslation? dbTranslation;
+        MediaId? previousDubMediaId = null;
         if (change.IsCreate(out var update)) {
             // Lock is required. We can't double-check the existence of the translation because we use RepeatableRead isolation level..
             await dbContext.Translations.Lock(id, cancellationToken).ConfigureAwait(false);
@@ -147,7 +186,9 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 return null;
 
             dbTranslation.RequireVersion(expectedVersion);
-            var translation = ApplyDiff(dbTranslation.ToModel(), update);
+            var currentTranslation = dbTranslation.ToModel();
+            previousDubMediaId = currentTranslation.DubMediaId;
+            var translation = ApplyDiff(currentTranslation, update);
             dbContext.Translations.Attach(dbTranslation);
             dbTranslation.UpdateFrom(translation);
         }
@@ -168,7 +209,12 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 .Schedule(cancellationToken)
                 .ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return dbTranslation.ToModel();
+        var result = dbTranslation.ToModel();
+        if (previousDubMediaId is { } orphan && result.DubMediaId != orphan) {
+            var removeOrphan = new MediaBackend_Change(orphan, null, Change.Remove<MediaFull>());
+            await Commander.Call(removeOrphan, true, cancellationToken).ConfigureAwait(false);
+        }
+        return result;
 
         Translation ApplyDiff(Translation originalTranslation, TranslationDiff? diff) {
             // Update
@@ -176,6 +222,9 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 ModifiedAt = now,
                 Version = diff?.Version ?? VersionGenerator.NextVersion(originalTranslation.Version),
             };
+            // A dub is audio of one specific Content; a new Content orphans it
+            if (diff?.Content is { } content && content != originalTranslation.Content)
+                newTranslation = newTranslation with { DubMediaId = null, DubContentHash = HashString.None };
             // Validate
             if (!newTranslation.Content.IsNullOrEmpty() && newTranslation.SourceContentHash.IsNone)
                 throw StandardError.Constraint("SourceContentHash must be set for non-empty Content.");
@@ -499,76 +548,34 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             var writer = channel.Writer;
             _ = BackgroundTask.Run(async () => {
                     Exception? error = null;
-                    var lastText = "";
                     var lastTranscript = Transcript.Empty;
                     var lastTranslatedTranscript = Transcript.Empty;
-                    var stableTranscript = Transcript.Empty;
-                    var stableTranslatedTranscript = Transcript.Empty;
+                    var lastWritten = Transcript.Empty;
                     try {
-                        // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
-                        await foreach (var transcriptDiffBatch in originalStream.Replay(cancellationToken)
-                                           .Buffer(TranslateThrottleDelay,
-                                               Clocks.CpuClock,
-                                               cancellationToken: cancellationToken)
-                                           .ConfigureAwait(false)) {
-                            if (transcriptDiffBatch.Count == 0)
-                                continue; // Skip empty batches
-
-                            if (lastTranscript == Transcript.Empty)
-                                DebugLog?.LogDebug("TranslateTranscriptStream: #{StreamId} - First Transcript",
-                                    translatedStreamId);
-                            var transcriptBatch = transcriptDiffBatch.Scan((t, td) => t + td, lastTranscript).ToList();
-                            var transcript = transcriptBatch[^1];
-                            var newStableTranscript =
-                                transcriptBatch.FirstOrDefault(t => t.IsStable) ?? stableTranscript;
-                            if (newStableTranscript != stableTranscript) {
-                                // Translate stable diff first, then the diff since stable state
-                                var stableDiff = stableTranscript - newStableTranscript;
-                                await Translate(stableDiff).ConfigureAwait(false);
-                            }
-
-                            // The diff represents the changes between the current transcript (transcript) and the stable transcript (stableTranscript).
-                            // This diff is distinct from the transcriptDiff object because transcriptDiff is derived from the unstable transcript, which may still be undergoing changes.
-                            // The purpose of this calculation is to isolate the differences that have occurred since the last stable state of the transcript.
-                            var diffSinceStable = transcript - stableTranscript;
-                            await Translate(diffSinceStable).ConfigureAwait(false);
-                            lastTranscript = transcript;
-                            continue;
-
-                            async Task Translate(TranscriptDiff diff)
-                            {
-                                var text = diff.TextDiff.Suffix ?? "";
-                                if (text.IsNullOrWhiteSpace())
-                                    return;
-
-                                if (text == lastText)
-                                    return; // No need to translate the same text (it's already been translated')
-
-                                var context = new List<TranslationResult>();
-                                if (stableTranscript.Text != stableTranslatedTranscript.Text)
-                                    context.Add(new TranslationResult(stableTranscript.Text,
-                                        stableTranslatedTranscript.Text));
-                                var translatedText = await RealtimeTranslator.Translate(
-                                        text,
-                                        language,
-                                        context.ToArray(),
-                                        cancellationToken: cancellationToken)
+                        var clauseTranslator = new ClauseTranslator(TranslateOneClause, Log);
+                        // Cancelled on any way out of the loop: an early exit would otherwise leave
+                        // the in-flight speculative translations running against the host stop token
+                        using var runCts = cancellationToken.CreateLinkedTokenSource();
+                        try {
+                            var translatedTranscripts = clauseTranslator.Run(Track(runCts.Token), runCts.Token);
+                            await foreach (var translated in translatedTranscripts.ConfigureAwait(false)) {
+                                lastTranslatedTranscript = translated;
+                                await writer.WriteAsync(translated - lastWritten, cancellationToken)
                                     .ConfigureAwait(false);
-                                if (string.Equals(translatedText, Constants.Translation.NoTranslationNeededText, StringComparison.OrdinalIgnoreCase))
-                                    translatedText = text; // No translation needed, use original content
-                                if (!translatedText.StartsWith(' ')
-                                    && stableTranslatedTranscript.Text.Length > 0)
-                                    translatedText = $" {translatedText}";
-                                lastTranslatedTranscript = stableTranslatedTranscript.WithSuffix(translatedText,
-                                    diff.TimeMapDiff.Suffix.Scale(text.Length, translatedText.Length));
-                                var translatedStableDiff = lastTranslatedTranscript - stableTranslatedTranscript;
-                                await writer.WriteAsync(translatedStableDiff, cancellationToken).ConfigureAwait(false);
-                                if (diff.IsStable)
-                                    stableTranslatedTranscript = lastTranslatedTranscript with { IsStable = true };
-                                stableTranscript = newStableTranscript;
-                                lastText = text;
+                                lastWritten = translated;
                             }
                         }
+                        finally {
+                            runCts.Cancel();
+                        }
+                        Log.LogInformation(
+                            "TranslateTranscriptStream: #{StreamId} - {Clauses} clauses, "
+                            + "{Retranslated} re-translated, {Dropped} dropped; translate call {CallLatency}",
+                            translatedStreamId,
+                            clauseTranslator.ClauseCount,
+                            clauseTranslator.RetranslatedCount,
+                            clauseTranslator.DroppedCount,
+                            clauseTranslator.CallLatency);
                         var sourceContent = lastTranscript.Text;
                         var content = KeepOriginalOnScriptMismatch(translationId, sourceContent, lastTranslatedTranscript.Text);
                         var finalizeRealtime = new TranslationsBackend_Change(translationId,
@@ -615,6 +622,18 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                             writer.Complete(error);
                         }
                     }
+                    return;
+
+                    async IAsyncEnumerable<Transcript> Track([EnumeratorCancellation] CancellationToken ct) {
+                        var transcripts = originalStream.Replay(ct).ToTranscripts();
+                        await foreach (var transcript in transcripts.ConfigureAwait(false)) {
+                            lastTranscript = transcript;
+                            yield return transcript;
+                        }
+                    }
+
+                    Task<string> TranslateOneClause(string clause, TranslationResult[] context, CancellationToken ct)
+                        => RealtimeTranslator.Translate(clause, language, context, cancellationToken: ct);
                 },
                 cancellationToken);
 
