@@ -209,6 +209,9 @@ public class ClauseTranslatorTest
         fake.Calls.Should().HaveCount(1, "the lane is sequential: the second clause waits for the first's context");
         fake.Respond("Первое.");
         await fake.WhenCalled(2);
+        fake.Contexts[1].Should().Equal(
+            [new TranslationResult("Первое.", "EN[Первое.]")],
+            "the context pairs the promoted source text with its translation");
         fake.Respond(" Второе.");
         await WhenCount(outputs, 2);
         outputs[0].Text.Should().Be("EN[Первое.]");
@@ -217,6 +220,61 @@ public class ClauseTranslatorTest
 
         source.Writer.Complete();
         await runTask;
+        translator.ClauseCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task AVanishedBoundaryDropsTheSpeculationsPastIt()
+    {
+        var fake = new FakeTranslate();
+        var source = Channel.CreateUnbounded<Transcript>();
+        var translator = new ClauseTranslator(fake.Translate, NullLogger.Instance);
+        var outputs = new List<Transcript>();
+        var runTask = Collect(translator.Run(source.Reader.ReadAllAsync(), CancellationToken.None), outputs);
+
+        source.Writer.TryWrite(Unstable("Первое. Второе. Тре", 3f));
+        await fake.WhenCalled(1);
+        fake.Respond("Первое.");
+        await fake.WhenCalled(2);
+        await WhenCount(outputs, 1);
+
+        // The second boundary vanished while its clause was in flight
+        source.Writer.TryWrite(Unstable("Первое. Второе Тре", 3f));
+        await fake.WhenPendingCancelled();
+        await Task.Delay(100);
+        outputs.Should().HaveCount(1, "a cancelled speculation produces no output");
+        outputs[0].Text.Should().Be("EN[Первое.]");
+
+        source.Writer.Complete();
+        await fake.WhenCalled(3);
+        fake.Calls[2].Should().Be(" Второе Тре");
+        fake.Respond(" Второе Тре");
+        await runTask;
+        outputs[^1].IsStable.Should().BeTrue();
+        outputs[^1].Text.Should().Be("EN[Первое.] EN[ Второе Тре]");
+        translator.RetranslatedCount.Should().Be(0, "the dropped speculation never completed");
+    }
+
+    [Fact]
+    public async Task AnEmptyTranslationPassesTheClauseThrough()
+    {
+        var fake = new FakeTranslate();
+        var source = Channel.CreateUnbounded<Transcript>();
+        var translator = new ClauseTranslator(fake.Translate, NullLogger.Instance);
+        var outputs = new List<Transcript>();
+        var runTask = Collect(translator.Run(source.Reader.ReadAllAsync(), CancellationToken.None), outputs);
+
+        source.Writer.TryWrite(Stable("Привет, как дела?", 2f));
+        await fake.WhenCalled(1);
+        fake.RespondWith("");
+        await WhenCount(outputs, 1);
+        outputs[0].IsStable.Should().BeTrue();
+        outputs[0].Text.Should().Be("Привет, как дела?");
+        outputs[0].TimeRange.End.Should().BeApproximately(2f, 0.01f, "the clause's end time still enters the map");
+
+        source.Writer.Complete();
+        await runTask;
+        outputs.Should().HaveCount(1, "an empty translation adds no speculative tail");
     }
 
     // Helpers
@@ -235,14 +293,23 @@ public class ClauseTranslatorTest
         }
     }
 
-    private static async Task WhenCount(List<Transcript> outputs, int count)
-    {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        while (true) {
+    private static Task WhenCount(List<Transcript> outputs, int count)
+        => WaitUntil(() => {
             lock (outputs)
-                if (outputs.Count >= count)
-                    return;
-            await Task.Delay(10, cts.Token);
+                return outputs.Count >= count;
+        }, () => {
+            lock (outputs)
+                return $"{outputs.Count} of {count} outputs";
+        });
+
+    private static async Task WaitUntil(Func<bool> condition, Func<string> describeState)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        while (!condition()) {
+            if (DateTime.UtcNow > deadline)
+                throw new TimeoutException($"Timed out waiting, state: {describeState()}");
+
+            await Task.Delay(10);
         }
     }
 
@@ -268,9 +335,12 @@ public class ClauseTranslatorTest
         }
 
         public void Respond(string clause)
+            => RespondWith($"EN[{clause}]");
+
+        public void RespondWith(string translated)
         {
             lock (_lock)
-                _pending!.TrySetResult($"EN[{clause}]");
+                _pending!.TrySetResult(translated);
         }
 
         public void Fail(Exception error)
@@ -279,15 +349,22 @@ public class ClauseTranslatorTest
                 _pending!.TrySetException(error);
         }
 
-        public async Task WhenCalled(int count)
-        {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            while (true) {
+        public Task WhenCalled(int count)
+            => WaitUntil(() => {
                 lock (_lock)
-                    if (Calls.Count >= count)
-                        return;
-                await Task.Delay(10, cts.Token);
-            }
-        }
+                    return Calls.Count >= count;
+            }, () => {
+                lock (_lock)
+                    return $"{Calls.Count} of {count} calls";
+            });
+
+        public Task WhenPendingCancelled()
+            => WaitUntil(() => {
+                lock (_lock)
+                    return _pending?.Task.IsCanceled == true;
+            }, () => {
+                lock (_lock)
+                    return $"pending call status: {_pending?.Task.Status}";
+            });
     }
 }

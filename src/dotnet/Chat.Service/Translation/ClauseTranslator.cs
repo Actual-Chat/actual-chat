@@ -95,27 +95,31 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
                 start = ends[i];
                 continue;
             }
-            if (i < _speculations.Count) {
-                // A changed clause: what followed it was translated against the old one
-                if (_speculations[i].Translated != null)
-                    RetranslatedCount++;
-                for (var j = _speculations.Count - 1; j >= i; j--)
-                    _speculations[j].Cancel();
-                _speculations.RemoveRange(i, _speculations.Count - i);
-            }
+            // A changed clause: what followed it was translated against the old one
+            if (i < _speculations.Count)
+                Drop(i);
             var speculation = new Speculation(clause, ends[i], endTime, cancellationToken);
             _speculations.Add(speculation);
             StartTranslation(speculation, cancellationToken);
             start = ends[i];
         }
         // Speculations past the last clause the current text has (a boundary vanished)
-        if (_speculations.Count > ends.Count) {
-            for (var j = _speculations.Count - 1; j >= ends.Count; j--)
-                _speculations[j].Cancel();
-            _speculations.RemoveRange(ends.Count, _speculations.Count - ends.Count);
-        }
+        if (_speculations.Count > ends.Count)
+            Drop(ends.Count);
         Promote();
         Publish();
+    }
+
+    private void Drop(int from)
+    {
+        // Under _lock. RetranslatedCount counts the completed translations a revision throws away
+        for (var j = _speculations.Count - 1; j >= from; j--) {
+            var speculation = _speculations[j];
+            if (speculation.Translated != null)
+                RetranslatedCount++;
+            speculation.Cancel();
+        }
+        _speculations.RemoveRange(from, _speculations.Count - from);
     }
 
     private void StartTranslation(Speculation speculation, CancellationToken cancellationToken)
@@ -142,7 +146,7 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
                     return;
 
                 speculationToken = speculation.CancellationToken;
-                var contextText = _promoted.Text;
+                var contextText = _source.Text[.._promotedEnd];
                 var contextTranslated = _promoted.Text;
                 for (var i = 0; i < index; i++) {
                     contextText += _speculations[i].Clause;
@@ -155,11 +159,15 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
             string translated;
             try {
                 translated = await Translate(speculation.Clause, context, speculationToken).ConfigureAwait(false);
+                // An empty translation would leave the clause's end time out of the time map
+                if (translated.IsNullOrWhiteSpace())
+                    translated = speculation.Clause;
             }
-            catch (OperationCanceledException) when (speculation.IsCancelled) {
+            catch (Exception) when (speculation.IsCancelled) {
+                // The speculation's token is linked to the run's, so this covers a cancelled run too
                 return;
             }
-            catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
+            catch (Exception e) {
                 Log.LogWarning(e, "Clause translation failed, passing it through: {Clause}", speculation.Clause);
                 translated = speculation.Clause;
             }
