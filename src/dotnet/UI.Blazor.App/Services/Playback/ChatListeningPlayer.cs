@@ -101,6 +101,12 @@ public sealed class ChatListeningPlayer : ChatPlayer
                         return;
                 }
 
+                // A peer starting to talk while we record here puts our VAD into conversation
+                // mode, so a short pause closes our utterance instead of the monologue silence.
+                var recorderState = Hub.AudioRecorder.State.Value;
+                if (recorderState.IsRecording && recorderState.ChatId == ChatId)
+                    _ = Hub.AudioRecorder.ConversationSignal(cancellationToken);
+
                 if (!await CanContinuePlayback(cancellationToken).ConfigureAwait(false)) {
                     await ChatAudioUI.SetListeningState(ChatId, false).ConfigureAwait(false);
                     return;

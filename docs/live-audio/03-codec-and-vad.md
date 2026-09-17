@@ -114,6 +114,29 @@ transcription) its own chat entry.
 The audio-power value (gain 0..1) from VAD also feeds the UI — it drives
 the `active-recording-svg.lit.ts` mic-meter animation.
 
+### Conversation signal — splitting on a peer's interjection
+
+Left alone, the VAD closes an utterance only after a long pause
+(`MaxPauseMs`, 2.7 s), which suits a monologue but reads badly in a
+conversation: a speaker's message keeps going while the peer's "yes",
+"ok", "agree" pile up after it instead of interleaving.
+
+So the recorder has a **conversation mode**. When `ChatListeningPlayer`
+sees another author's live stream start while the recorder is recording
+in that same chat, it calls `AudioRecorder.ConversationSignal()`
+(`WebRecorderEngine` → `opus-media-recorder.ts` → VAD worker on web;
+`MauiRecorderEngine` → `Core.Audio/VoiceActivityDetector` on MAUI). For
+the next `ConvDurationMs` (30 s) the VAD uses `MaxConvPauseMs` (0.65 s)
+as its max pause, so the speaker's utterance is cut at the first short
+pause after the interjection and the history comes out in natural turn
+order. The signal is a side effect of the *playback* path on purpose — a
+peer's stream arriving is the only client-side evidence that they spoke.
+
+This trigger was lost once already (RTC Hub rerouted realtime playback
+around the method that fired it, and the orphaned method was later deleted
+as dead code). `tests/Core.Audio.UnitTests/VoiceActivityDetectorConversationTest.cs`
+pins the VAD half; if you restructure the listening player, keep the call.
+
 ### Disabling VAD
 
 There is no production-facing switch to disable VAD. Test pages
