@@ -79,6 +79,69 @@
     <ListeningLingerSettings/>
 </Tile>
 
+@if (m.ShowTranslatedVoice) {
+    <TileTopic Topic="@L.Transcription_TranslatedVoiceTopic"/>
+    <Tile>
+        <TileItem Click="@OnToggleTranslatedVoice">
+            <Icon><i class="icon-headphones-fill text-2xl"></i></Icon>
+            <Content>@L.Transcription_TranslatedVoice</Content>
+            <Caption>@L.Transcription_TranslatedVoiceCaption</Caption>
+            <Right>
+                <Toggle IsChecked="@m.Languages.IsTranslatedVoiceEnabled"
+                        IsCheckedChanged="@(_ => OnToggleTranslatedVoice())"/>
+            </Right>
+        </TileItem>
+        @if (m.OwnVoice is { } ownVoice) {
+            <TileItem Click="@OnToggleOwnVoice">
+                <Icon><i class="icon-voice-01 text-2xl"></i></Icon>
+                <Content>@L.Transcription_OwnVoice</Content>
+                <Caption>
+                    @L.Transcription_OwnVoiceCaption
+                    <div class="own-voice-status">@FormatOwnVoiceStatus(ownVoice)</div>
+                </Caption>
+                <Right>
+                    <Toggle IsChecked="@ownVoice.IsEnabled"
+                            IsCheckedChanged="@(_ => OnToggleOwnVoice())"/>
+                </Right>
+            </TileItem>
+            @if (ownVoice.IsEnabled) {
+                @if (m.NotesChatId is { } notesChatId) {
+                    <TileItem Click="@(() => OnRecordSampleClick(notesChatId))">
+                        <Icon><i class="icon-mic-2 text-2xl"></i></Icon>
+                        <Content>
+                            @(ownVoice.HasExplicitSample
+                                ? L.Transcription_OwnVoiceRerecord
+                                : L.Transcription_OwnVoiceRecord)
+                        </Content>
+                        <Right>
+                            <i class="icon-chevron-right text-xl text-03"></i>
+                        </Right>
+                    </TileItem>
+                }
+                @if (ownVoice.HasExplicitSample) {
+                    <TileItem Click="@OnRemoveSampleClick">
+                        <Icon><i class="icon-trash03 text-2xl"></i></Icon>
+                        <Content>@L.Transcription_OwnVoiceRemoveSample</Content>
+                    </TileItem>
+                }
+            }
+        }
+        <TileItem Click="@OnDubVoiceClick">
+            <Icon><i class="icon-mic text-2xl"></i></Icon>
+            <Content>@L.Transcription_DubVoice</Content>
+            <Caption>
+                @(m.OwnVoice is { IsEnabled: true }
+                    ? L.Transcription_DubVoiceFallbackCaption
+                    : L.Transcription_DubVoiceCaption)
+            </Caption>
+            <Right>
+                <span class="text-03">@FormatDubVoice(m)</span>
+                <i class="icon-chevron-right text-xl text-03"></i>
+            </Right>
+        </TileItem>
+    </Tile>
+}
+
 @if (hasSensors && m.EnableIncompleteUI) {
     <TileTopic Topic="@L.Transcription_MicrophoneTopic"/>
     <Tile>
@@ -105,6 +168,9 @@
 
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private GestureUI GestureUI => Hub.GestureUI;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+
+    [CascadingParameter] public Modal? Modal { get; set; }
 
     protected override void OnInitialized()
         => _formModel = new FormModel(ComponentIdGenerator);
@@ -115,7 +181,47 @@
         var isFaceDownMicStopEnabled = await UserSettingsUI.UserAppSettings()
             .Get(x => !(x.IsFaceDownMicStopDisabled ?? false), cancellationToken)
             .ConfigureAwait(false);
-        return new(languages, enableIncompleteUI, isFaceDownMicStopEnabled);
+        // Dubbing is an incomplete-UI preview until the Soniox TTS quota is settled, and own-voice
+        // cloning an admin-only one on top of that (20 voices per organization)
+        var showTranslatedVoice = enableIncompleteUI;
+        var defaultDubVoiceId = showTranslatedVoice
+            ? await GetDefaultDubVoiceId(cancellationToken).ConfigureAwait(false)
+            : null;
+        var ownVoice = showTranslatedVoice
+            ? await GetOwnVoice(cancellationToken).ConfigureAwait(false)
+            : null;
+        // The sample is recorded in Notes; without that chat there's nowhere to record it, so no row
+        var notesChatId = ownVoice is { IsEnabled: true }
+            ? (await ChatListUI.NotesChat.Use(cancellationToken).ConfigureAwait(false))?.Id
+            : null;
+        return new(languages, enableIncompleteUI, showTranslatedVoice, isFaceDownMicStopEnabled,
+            defaultDubVoiceId, ownVoice, notesChatId);
+    }
+
+    private async Task<OwnVoiceStatus?> GetOwnVoice(CancellationToken cancellationToken) {
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        if (!account.IsAdmin)
+            return null;
+
+        return await Hub.OwnVoices.GetOwnVoiceStatus(Session, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<string?> GetDefaultDubVoiceId(CancellationToken cancellationToken) {
+        // Guests can't list voices; the tile then reads "Default" and the modal explains
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        if (!account.IsActive())
+            return null;
+
+        var suggested = await Hub.Translations.ListSuggestedDubVoices(Session, cancellationToken)
+            .ConfigureAwait(false);
+        return suggested.Count > 0 ? suggested[0].Id : null;
+    }
+
+    private string FormatDubVoice(Model m) {
+        if (!m.Languages.DubVoice.IsNullOrEmpty())
+            return m.Languages.DubVoice;
+
+        return m.DefaultDubVoiceId ?? L.Transcription_DubVoiceDefault;
     }
 
     private async Task OnLanguageChanged(int index, string languageId) {
@@ -128,6 +234,47 @@
         => UserSettingsUI.UserAppSettings().Update(
             x => x with { IsFaceDownMicStopDisabled = !(x.IsFaceDownMicStopDisabled ?? false) },
             CancellationToken.None);
+
+    private string FormatOwnVoiceStatus(OwnVoiceStatus ownVoice) {
+        if (!ownVoice.IsEnabled)
+            return L.Transcription_OwnVoiceStatus_Off;
+        if (ownVoice.Status == UserVoiceStatus.Ready)
+            return L.Transcription_OwnVoiceStatus_Ready;
+        if (ownVoice.Failure == VoiceSampleFailure.SampleMissing)
+            return L.Transcription_OwnVoiceStatus_SampleMissing;
+        if (ownVoice.MissingDuration is { } missing && missing > TimeSpan.Zero) {
+            // Rounded up to 5 s: the catalog's "seconds" is written for that, see Strings.en.json
+            var seconds = (int)Math.Ceiling(missing.TotalSeconds / 5) * 5;
+            return L.Transcription_OwnVoiceStatus_NeedsMore_Format(seconds);
+        }
+        if (ownVoice.Status == UserVoiceStatus.Failed || ownVoice.Failure != VoiceSampleFailure.None)
+            return L.Transcription_OwnVoiceStatus_Fallback;
+        if (ownVoice.Status == UserVoiceStatus.Creating)
+            return L.Transcription_OwnVoiceStatus_Preparing;
+
+        return L.Transcription_OwnVoiceStatus_ReadyToUse;
+    }
+
+    private Task OnToggleTranslatedVoice()
+        => LanguageUI.UpdateSettings(x => x with { IsTranslatedVoiceEnabled = !x.IsTranslatedVoiceEnabled });
+
+    private Task OnToggleOwnVoice()
+        => LanguageUI.UpdateSettings(x => x with { IsOwnVoiceEnabled = !x.IsOwnVoiceEnabled });
+
+    private Task OnRemoveSampleClick() {
+        LanguageUI.DismissOwnVoiceSamplePrompt();
+        return LanguageUI.UpdateSettings(x => x with { OwnVoiceSampleEntryId = null });
+    }
+
+    private void OnRecordSampleClick(ChatId notesChatId) {
+        // The sample is an ordinary voice message in Notes, prompted by a banner there
+        LanguageUI.ShowOwnVoiceSamplePrompt(notesChatId);
+        Modal?.Close();
+        _ = History.NavigateTo(Links.Chat(notesChatId));
+    }
+
+    private void OnDubVoiceClick()
+        => ModalUI.Show(new DubVoiceModal.Model());
 
     // Nested types
 
@@ -152,5 +299,9 @@
     public sealed record Model(
         UserLanguageSettings Languages,
         bool EnableIncompleteUI,
-        bool IsFaceDownMicStopEnabled);
+        bool ShowTranslatedVoice,
+        bool IsFaceDownMicStopEnabled,
+        string? DefaultDubVoiceId,
+        OwnVoiceStatus? OwnVoice,
+        ChatId? NotesChatId);
 }

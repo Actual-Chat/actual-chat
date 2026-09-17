@@ -1,0 +1,298 @@
+using ActualChat.Audio;
+using ActualChat.Chat;
+using ActualChat.Hashing;
+using ActualChat.IO;
+using ActualChat.Users;
+
+namespace ActualChat.Streaming.Services;
+
+public sealed record VoiceSample(HashString Hash, string BlobId, TimeSpan Duration);
+
+/// <summary>
+/// Builds the reference clip a voice clone is made from: the explicit sample when the user recorded
+/// one, otherwise the longest of their recent recordings joined into one WAV. The clip is keyed by
+/// a hash of what went in, so an unchanged selection reuses the stored blob.
+/// </summary>
+public sealed class VoiceSampleBuilder(IServiceProvider services)
+{
+    private const int SampleRate = Constants.Audio.RecordingSampleRate;
+    private const int BytesPerSecond = SampleRate * Constants.Audio.Channels * sizeof(short);
+    private static readonly int MaxPcmLength = PcmLengthOf(Constants.Audio.VoiceSampleMaxDuration);
+    private static readonly int MinPcmLength = PcmLengthOf(Constants.Audio.VoiceSampleMinDuration);
+
+    private IServiceProvider Services { get; } = services;
+    private IChatUsagesBackend ChatUsagesBackend => field ??= Services.GetRequiredService<IChatUsagesBackend>();
+    private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
+    private AudioSourceDownloader AudioDownloader => field ??= Services.GetRequiredService<AudioSourceDownloader>();
+    private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();
+    private MomentClockSet Clocks => field ??= Services.Clocks();
+    private ILogger Log => field ??= Services.LogFor(GetType());
+
+    public async Task<(VoiceSample? Sample, VoiceSampleFailure Failure)> Build(
+        UserId userId,
+        UserLanguageSettings settings,
+        CancellationToken cancellationToken)
+    {
+        if (settings.OwnVoiceSampleEntryId is { } entryId)
+            return await BuildExplicit(userId, entryId, cancellationToken).ConfigureAwait(false);
+
+        return await BuildAuto(userId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<HashString?> GetHash(
+        UserId userId,
+        UserLanguageSettings settings,
+        CancellationToken cancellationToken)
+    {
+        // What Build would key the sample by, with no blob touched: null when there's no sample.
+        // The explicit hash is the entry id's alone - the ownership check is Build's, and a record
+        // can carry such a hash only through a Build that passed it
+        if (settings.OwnVoiceSampleEntryId is { } entryId)
+            return HashOf(entryId);
+
+        var (selected, available) = await SelectOwnEntries(userId, cancellationToken).ConfigureAwait(false);
+        return available < Constants.Audio.VoiceSampleMinDuration ? null : HashOf(selected.Select(x => x.Id));
+    }
+
+    public async Task<(TimeSpan? Available, VoiceSampleFailure Failure)> Inspect(
+        UserId userId,
+        UserLanguageSettings settings,
+        CancellationToken cancellationToken)
+    {
+        // What Build would do without doing it: no blob is read, decoded or written. Available is
+        // the auto selection's total, null with an explicit sample.
+        if (settings.OwnVoiceSampleEntryId is { } entryId) {
+            var entry = await GetOwnSampleEntry(userId, entryId, cancellationToken).ConfigureAwait(false);
+            return (null, entry == null ? VoiceSampleFailure.SampleMissing : VoiceSampleFailure.None);
+        }
+
+        var (_, available) = await SelectOwnEntries(userId, cancellationToken).ConfigureAwait(false);
+        var failure = available < Constants.Audio.VoiceSampleMinDuration
+            ? VoiceSampleFailure.NotEnoughRecordings
+            : VoiceSampleFailure.None;
+        return (available, failure);
+    }
+
+    public static string BlobIdOf(UserId userId, HashString hash)
+        => BlobPath.Format(BlobScope.AudioRecord, "voice-sample", userId.Value, ShortHashOf(hash) + ".wav");
+
+    public static string ShortHashOf(HashString hash)
+        // Names the blob and the Soniox voice, so it must stay file- and identifier-safe
+        => HashOutputExt.FromBase64(hash.Hash).AlphaNumeric(6);
+
+    // Internal for tests
+
+    internal static IReadOnlyList<ChatEntry> SelectEntries(IEnumerable<ChatEntry> ownAudioEntries, Moment now)
+    {
+        var windowStart = now - Constants.Audio.VoiceSampleWindow;
+        var candidates = ownAudioEntries
+            .Where(x => !x.IsRemoved
+                && x.BeginsAt >= windowStart
+                && x.Audio is { IsStreaming: false } audio
+                && !audio.BlobId.IsNullOrEmpty()
+                && AudioDurationOf(x) >= Constants.Audio.VoiceSampleMinEntryDuration)
+            .OrderByDescending(AudioDurationOf)
+            .ThenBy(x => x.Id.Value, StringComparer.Ordinal);
+        var selected = new List<ChatEntry>();
+        var total = TimeSpan.Zero;
+        foreach (var entry in candidates) {
+            if (total >= Constants.Audio.VoiceSampleMaxDuration)
+                break;
+
+            selected.Add(entry);
+            total += AudioDurationOf(entry);
+        }
+        return selected;
+    }
+
+    internal static TimeSpan TotalDuration(IReadOnlyList<ChatEntry> entries)
+    {
+        var total = entries.Aggregate(TimeSpan.Zero, (sum, x) => sum + AudioDurationOf(x));
+        return TimeSpanExt.Min(total, Constants.Audio.VoiceSampleMaxDuration);
+    }
+
+    internal static HashString HashOf(IEnumerable<ChatEntryId> ids)
+        => HashOf(string.Join('\n', ids.Select(x => x.Value)));
+
+    internal static HashString HashOf(ChatEntryId entryId)
+        => HashOf(entryId.Value);
+
+    // Private methods
+
+    private async Task<(VoiceSample?, VoiceSampleFailure)> BuildExplicit(
+        UserId userId,
+        ChatEntryId entryId,
+        CancellationToken cancellationToken)
+    {
+        var entry = await GetOwnSampleEntry(userId, entryId, cancellationToken).ConfigureAwait(false);
+        if (entry == null)
+            return (null, VoiceSampleFailure.SampleMissing);
+
+        var hash = HashOf(entryId);
+        var stored = await GetStored(userId, hash, cancellationToken).ConfigureAwait(false);
+        if (stored != null)
+            return (stored, VoiceSampleFailure.None);
+
+        var pcm = await Decode([entry.Audio!.BlobId], cancellationToken).ConfigureAwait(false);
+        if (pcm.Length == 0)
+            return (null, VoiceSampleFailure.SampleMissing);
+
+        var sample = await Store(userId, hash, pcm, cancellationToken).ConfigureAwait(false);
+        return (sample, VoiceSampleFailure.None);
+    }
+
+    private async Task<ChatEntry?> GetOwnSampleEntry(
+        UserId userId,
+        ChatEntryId entryId,
+        CancellationToken cancellationToken)
+    {
+        // The setting is client-writable and any member can see an entry's media id, so only an
+        // entry this user authored may be cloned - anything else is as good as missing
+        var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
+        if (entry is not { IsRemoved: false, IsContentStreaming: false, Audio: { IsStreaming: false } audio }
+            || audio.BlobId.IsNullOrEmpty())
+            return null;
+
+        var author = await AuthorsBackend
+            .Get(entry.ChatId, entry.AuthorId, RequestedAuthorKind.Default, cancellationToken)
+            .ConfigureAwait(false);
+        return author?.UserId == userId ? entry : null;
+    }
+
+    private async Task<(VoiceSample?, VoiceSampleFailure)> BuildAuto(UserId userId, CancellationToken cancellationToken)
+    {
+        var (selected, available) = await SelectOwnEntries(userId, cancellationToken).ConfigureAwait(false);
+        if (available < Constants.Audio.VoiceSampleMinDuration)
+            return (null, VoiceSampleFailure.NotEnoughRecordings);
+
+        var hash = HashOf(selected.Select(x => x.Id));
+        var stored = await GetStored(userId, hash, cancellationToken).ConfigureAwait(false);
+        if (stored != null)
+            return (stored, VoiceSampleFailure.None);
+
+        var blobIds = selected.Select(x => x.Audio!.BlobId);
+        var pcm = await Decode(blobIds, cancellationToken).ConfigureAwait(false);
+        if (pcm.Length < MinPcmLength) {
+            // The entries promised enough, their blobs delivered less - most likely some are gone
+            Log.LogWarning("Build: {UserId}'s recordings decoded to {Duration} of speech, not enough for a sample",
+                userId, DurationOf(pcm.Length));
+            return (null, VoiceSampleFailure.NotEnoughRecordings);
+        }
+
+        var sample = await Store(userId, hash, pcm, cancellationToken).ConfigureAwait(false);
+        return (sample, VoiceSampleFailure.None);
+    }
+
+    private async Task<(IReadOnlyList<ChatEntry> Selected, TimeSpan Available)> SelectOwnEntries(
+        UserId userId,
+        CancellationToken cancellationToken)
+    {
+        var entries = await ListOwnEntries(userId, cancellationToken).ConfigureAwait(false);
+        var selected = SelectEntries(entries, Clocks.SystemClock.Now);
+        return (selected, TotalDuration(selected));
+    }
+
+    private async Task<List<ChatEntry>> ListOwnEntries(UserId userId, CancellationToken cancellationToken)
+    {
+        var entries = new List<ChatEntry>();
+        var windowStart = Clocks.SystemClock.Now - Constants.Audio.VoiceSampleWindow;
+        foreach (var chatId in await ListRecentChatIds(userId, cancellationToken).ConfigureAwait(false)) {
+            var author = await AuthorsBackend
+                .GetByUserId(chatId, userId, RequestedAuthorKind.Default, cancellationToken)
+                .ConfigureAwait(false);
+            if (author == null)
+                continue;
+
+            var recentEntries = await ChatsBackend
+                .ListEntries(chatId, windowStart, Constants.Audio.VoiceSampleMaxEntriesPerChat, cancellationToken)
+                .ConfigureAwait(false);
+            entries.AddRange(recentEntries.Where(x => x.AuthorId == author.Id && x.HasAudio));
+        }
+        return entries;
+    }
+
+    private async Task<ChatId[]> ListRecentChatIds(UserId userId, CancellationToken cancellationToken)
+    {
+        // A peer chat lands on the list on the first entry written there, a group chat when it's
+        // viewed - together that's every chat the user has recently spoken in
+        var peerChatIds = await ChatUsagesBackend
+            .GetRecencyList(userId, ChatUsageListKind.PeerChatsWroteTo, cancellationToken)
+            .ConfigureAwait(false);
+        var groupChatIds = await ChatUsagesBackend
+            .GetRecencyList(userId, ChatUsageListKind.ViewedGroupChats, cancellationToken)
+            .ConfigureAwait(false);
+        return peerChatIds.Concat(groupChatIds)
+            .Distinct()
+            .Take(Constants.Audio.VoiceSampleMaxChats)
+            .ToArray();
+    }
+
+    private async Task<VoiceSample?> GetStored(UserId userId, HashString hash, CancellationToken cancellationToken)
+    {
+        var blobId = BlobIdOf(userId, hash);
+        var stream = await Blobs[BlobScope.AudioRecord].Read(blobId, cancellationToken).ConfigureAwait(false);
+        if (stream == null)
+            return null;
+
+        await using var _ = stream.ConfigureAwait(false);
+        var header = new byte[WavWriter.HeaderLength];
+        var readLength = await stream
+            .ReadAtLeastAsync(header, header.Length, false, cancellationToken)
+            .ConfigureAwait(false);
+        var pcmLength = WavWriter.GetPcmLength(header.AsSpan(0, readLength));
+        return pcmLength < 0 ? null : new VoiceSample(hash, blobId, DurationOf(pcmLength));
+    }
+
+    private async Task<VoiceSample> Store(
+        UserId userId,
+        HashString hash,
+        byte[] pcm,
+        CancellationToken cancellationToken)
+    {
+        var blobId = BlobIdOf(userId, hash);
+        var stream = MemoryStreamManager.Default.GetStream();
+        await using var _ = stream.ConfigureAwait(false);
+        WavWriter.Write(stream, pcm, SampleRate);
+        stream.Position = 0;
+        await Blobs[BlobScope.AudioRecord].Write(blobId, stream, "audio/wav", cancellationToken).ConfigureAwait(false);
+        return new VoiceSample(hash, blobId, DurationOf(pcm.Length));
+    }
+
+    private async Task<byte[]> Decode(IEnumerable<string> blobIds, CancellationToken cancellationToken)
+    {
+        using var decoder = new OpusToPcmDecoder();
+        var pcm = new MemoryStream();
+        foreach (var blobId in blobIds) {
+            if (pcm.Length >= MaxPcmLength)
+                break;
+
+            // Cancelling the download once enough is decoded stops the rest of the blob from being read
+            using var blobCts = cancellationToken.CreateLinkedTokenSource();
+            var audio = await AudioDownloader.TryDownload(blobId, TimeSpan.Zero, blobCts.Token).ConfigureAwait(false);
+            if (audio == null)
+                continue;
+
+            await foreach (var frame in audio.GetFrames(blobCts.Token).ConfigureAwait(false)) {
+                var chunk = decoder.Decode(frame.Data.Span);
+                pcm.Write(chunk, 0, (int)Math.Min(chunk.Length, MaxPcmLength - pcm.Length));
+                if (pcm.Length >= MaxPcmLength)
+                    break;
+            }
+            blobCts.Cancel();
+        }
+        return pcm.ToArray();
+    }
+
+    private static TimeSpan AudioDurationOf(ChatEntry entry)
+        => TimeSpan.FromSeconds(entry.Audio?.Duration ?? entry.Duration ?? 0);
+
+    private static TimeSpan DurationOf(long pcmLength)
+        => TimeSpan.FromSeconds((double)pcmLength / BytesPerSecond);
+
+    private static int PcmLengthOf(TimeSpan duration)
+        => (int)(duration.TotalSeconds * BytesPerSecond);
+
+    private static HashString HashOf(string input)
+        => input.Hash().Blake3().ToBlake3Base64HashString();
+}
