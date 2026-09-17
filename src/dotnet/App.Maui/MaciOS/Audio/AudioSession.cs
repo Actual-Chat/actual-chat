@@ -663,9 +663,13 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
     {
         // VoiceChat carries the PTT call's AEC under a PTT owner. VideoChat, not Default, for
         // ours: SetVoiceProcessingEnabled replaces Default and drops DefaultToSpeaker with it.
+        // Default for a PTT playback: VoiceChat puts the loudspeaker on the telephony profile and
+        // the call volume, far too quiet for a hands-free listener - and a wake plays, it doesn't
+        // record, so it wants no AEC. A transmit re-prepares with VoiceChat when it begins.
         var sessionMode = owner switch {
             AudioSessionOwner.App => AVAudioSessionMode.VideoChat,
             AudioSessionOwner.CallKit when isCallVideo => AVAudioSessionMode.VideoChat,
+            AudioSessionOwner.PttPlayback => AVAudioSessionMode.Default,
             _ => AVAudioSessionMode.VoiceChat,
         };
         var options = AVAudioSessionCategoryOptions.AllowBluetooth
