@@ -739,6 +739,9 @@ public class DubbingTranslationFlowTest(
             chunks.Should().Equal([shortTranslation], isTagged
                 ? "a Russian-tagged utterance too short for an early call is dubbed once the source ends"
                 : "a translation that differs from the source decides the dub once nothing more is coming");
+            var snapshot = await backend.GetTranscriptSnapshot(sourceId, ct);
+            snapshot!.TimeRange.End.Should().BeApproximately(last.TimeRange.End, 0.001f,
+                "the source fold the dub reads its end from must not drop to zero once the source has ended");
             var frameCount = await stream!.CountAsync(ct).AsTask().WaitAsync(TimeSpan.FromSeconds(10), ct);
             frameCount.Should().BeGreaterThan(1);
         }

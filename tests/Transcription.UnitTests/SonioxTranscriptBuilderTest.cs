@@ -339,7 +339,73 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
         completed.TimeRange.End.Should().BeApproximately(0.5f, 0.001f);
     }
 
+    [Fact]
+    public void FoldedDiffsShouldKeepTheEndTimeOfAShortUtterance()
+    {
+        // arrange - a tail, then its finals, then a silent finish: the sequence a one-word utterance yields
+        var builder = new SonioxTranscriptBuilder(StableTokenAge);
+        var transcripts = new List<Transcript>();
+        transcripts.AddRange(builder.Update([Token("Да", 500, 1000, false)], 1000));
+        transcripts.AddRange(builder.Update([Token("Да", 500, 1080, true), Token("<end>", 1080, 1100, true)], 1100));
+        transcripts.Add(builder.Complete());
+
+        // act
+        var folded = FoldThroughDiffs(transcripts);
+
+        // assert
+        folded.Text.Should().Be("Да");
+        folded.IsStable.Should().BeTrue();
+        folded.TimeRange.End.Should().BeApproximately(transcripts[^1].TimeRange.End, Transcript.TimeMapEpsilon.Y);
+    }
+
+    [Fact]
+    public void FoldedDiffsShouldKeepTheEndTimeAfterAFinalsOnlyRepeat()
+    {
+        // arrange - the finals transcript is emitted twice in a row (the endpoint re-emits it), then completed
+        var builder = new SonioxTranscriptBuilder(StableTokenAge);
+        var transcripts = new List<Transcript>();
+        transcripts.AddRange(builder.Update([Token("Да", 500, 1000, false)], 1000));
+        transcripts.AddRange(builder.Update([Token("Да", 500, 1080, true)], 1100));
+        transcripts.Add(builder.Complete());
+        transcripts.Add(builder.Complete());
+
+        // act
+        var folded = FoldThroughDiffs(transcripts);
+
+        // assert
+        folded.Text.Should().Be("Да");
+        folded.TimeRange.End.Should().BeApproximately(1.08f, Transcript.TimeMapEpsilon.Y);
+    }
+
+    [Fact]
+    public void FoldedDiffsShouldKeepTheEndTimeAfterARewind()
+    {
+        // arrange - the tail ran ahead of what got finalized: "Да я" is rewound to "Да."
+        var builder = new SonioxTranscriptBuilder(StableTokenAge);
+        var transcripts = new List<Transcript>();
+        transcripts.AddRange(builder.Update([Token("Да", 500, 1000, false), Token(" я", 1100, 1300, false)], 1300));
+        transcripts.AddRange(builder.Update([Token("Да.", 500, 1050, true)], 1400));
+        transcripts.Add(builder.Complete());
+
+        // act
+        var folded = FoldThroughDiffs(transcripts);
+
+        // assert
+        folded.Text.Should().Be("Да.");
+        folded.TimeRange.End.Should().BeApproximately(1.05f, 0.001f);
+    }
+
     // Private methods
+
+    private Transcript FoldThroughDiffs(IReadOnlyList<Transcript> transcripts)
+    {
+        var folded = Transcript.Empty;
+        foreach (var diff in transcripts.ToTranscriptDiffs()) {
+            folded += diff;
+            WriteLine($"{diff} -> {folded} stable={folded.IsStable}");
+        }
+        return folded;
+    }
 
     private static SonioxToken Token(
         string text,
