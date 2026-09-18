@@ -96,6 +96,11 @@ public static class ImageStyleExt
     private const string Framing = "centered, fills the frame, plain background, no text, no watermark";
     private const string DarkFraming = "centered, fills the frame, dark plain background, no text, no watermark";
 
+    // A background is shown large behind the UI, so it wants the scene the icon framing forbids.
+    private const string BackgroundFraming =
+        "camera-style scene, spacious composition, natural depth, fills the frame, "
+        + "no text, no watermark, no frame, no border";
+
     // Every style but None gets this. The result is displayed at avatar size, and left to itself a
     // model paints a detailed scene and frames it - both wrong at 40px.
     private const string IconBrief =
@@ -144,7 +149,7 @@ public static class ImageStyleExt
             [ImageStyle.PixelArt] =
                 "16-bit pixel art, chunky pixels, limited retro palette, hard aliased edges",
             [ImageStyle.Photo] =
-                "studio photograph, 85mm lens, soft key light, shallow depth of field",
+                "professional photograph, 85mm lens, soft key light, shallow depth of field",
             [ImageStyle.Cinematic] =
                 "cinematic film still, moody dramatic lighting, teal and amber color grade, soft film grain",
             [ImageStyle.NeonCyberpunk] =
@@ -168,8 +173,9 @@ public static class ImageStyleExt
             var backgroundStyle = style == ImageStyle.FlatVector
                 ? "flat vector illustration, bold shapes, flat colors, crisp edges"
                 : Tails.GetValueOrDefault(style, "");
-            return $"{{0}}. {backgroundStyle}, camera-style scene, spacious composition, natural depth, "
-                + "fills the frame, no text, no watermark, no frame, no border.";
+            return backgroundStyle.IsNullOrEmpty()
+                ? $"{{0}}. {BackgroundFraming}."
+                : $"{{0}}. {backgroundStyle}, {BackgroundFraming}.";
         }
 
         style = style.Resolve();
