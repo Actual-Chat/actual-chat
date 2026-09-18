@@ -202,6 +202,30 @@ public class EgressGuardTest
         isOtherHostAllowed.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task CheckShouldTellUnresolvableFromDenied()
+    {
+        // arrange
+        var sut = NewGuard(new CoreServerSettings {
+            EgressDomainDenylist = ["blocked.example"],
+            EgressCidrDenylist = ["8.8.0.0/16"],
+        });
+
+        // act
+        var unresolvable = await sut.Check("no-such-host.invalid");
+        var deniedIpLiteral = await sut.Check("10.0.0.1");
+        var deniedDomain = await sut.Check("api.blocked.example");
+        var deniedCidr = await sut.Check("dns.google");
+        var allowed = await sut.Check("voxt.ai");
+
+        // assert
+        unresolvable.Should().Be(EgressVerdict.Unresolvable, ".invalid never resolves");
+        deniedIpLiteral.Should().Be(EgressVerdict.Denied);
+        deniedDomain.Should().Be(EgressVerdict.Denied);
+        deniedCidr.Should().Be(EgressVerdict.Denied, "dns.google resolves into the denied 8.8.0.0/16");
+        allowed.Should().Be(EgressVerdict.Allowed);
+    }
+
     // Private methods
 
     private static EgressGuard NewGuard(CoreServerSettings? settings = null)

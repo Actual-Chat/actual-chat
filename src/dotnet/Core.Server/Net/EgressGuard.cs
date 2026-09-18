@@ -5,6 +5,13 @@ using ActualLab.Diagnostics;
 
 namespace ActualChat;
 
+public enum EgressVerdict
+{
+    Allowed,
+    Unresolvable,
+    Denied,
+}
+
 public class EgressGuard(HostInfo hostInfo, CoreServerSettings settings, ILogger<EgressGuard> log)
 {
     private static readonly string[] DomainDenyListPrefix = [".local"];
@@ -21,18 +28,24 @@ public class EgressGuard(HostInfo hostInfo, CoreServerSettings settings, ILogger
     ];
 
     public async Task<bool> IsAllowed(string host, CancellationToken cancellationToken = default)
+        => await Check(host, cancellationToken).ConfigureAwait(false) == EgressVerdict.Allowed;
+
+    public async Task<EgressVerdict> Check(string host, CancellationToken cancellationToken = default)
     {
         if (IsDevelopmentInstanceBypassEnabled)
-            return true;
+            return EgressVerdict.Allowed;
 
         if (AllowedHostWildcards.Any(x => x.IsMatch(host)))
-            return true;
+            return EgressVerdict.Allowed;
 
         if (!IsAllowedHost(host))
-            return false;
+            return EgressVerdict.Denied;
 
         var addresses = await Resolve(host, cancellationToken).ConfigureAwait(false);
-        return addresses.Length != 0 && addresses.All(x => IsAllowedAddress(host, x));
+        if (addresses.Length == 0)
+            return EgressVerdict.Unresolvable;
+
+        return addresses.All(x => IsAllowedAddress(host, x)) ? EgressVerdict.Allowed : EgressVerdict.Denied;
     }
 
     public bool IsAllowedUri(Uri uri)
