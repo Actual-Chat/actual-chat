@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace ActualChat.Media;
+namespace ActualChat;
 
 public sealed class HostWildcard(string pattern)
 {
