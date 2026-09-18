@@ -104,6 +104,7 @@ public class ImageSuggestionsBackend(IServiceProvider services)
 
             var spec = new ImageGenerationSpec(key, command.ImageDescription, command.Style) {
                 MediaKind = command.MediaKind,
+                IsBackground = command.IsBackground,
                 Width = command.Width,
                 Height = command.Height,
                 Seed = command.Seed,

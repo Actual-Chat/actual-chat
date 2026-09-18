@@ -51,6 +51,7 @@ public sealed partial record ImageSuggestionsBackend_Generate(
 
     // Set on a regenerate so the same description yields a different image
     [DataMember, Key(7)] public long? Seed { get; init; }
+    [DataMember, Key(8)] public bool IsBackground { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => ShardKey.New(Key);

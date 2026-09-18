@@ -6,19 +6,21 @@ namespace ActualChat.Media;
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class MediaService(IServiceProvider services) : IMedia
 {
+    private IServiceProvider Services { get; } = services;
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
     private IMediaProgressBackend MediaProgressBackend { get; } = services.GetRequiredService<IMediaProgressBackend>();
     private IUploadsBackend UploadsBackend { get; } = services.GetRequiredService<IUploadsBackend>();
     private ICommander Commander { get; } = services.Commander();
-    private IImageGenerations ImageGenerations => field ??= services.GetRequiredService<IImageGenerations>();
-    private RateLimitPolicy RateLimitPolicy => field ??= services.GetRequiredService<RateLimitPolicy>();
+    private IImageGenerations ImageGenerations => field ??= Services.GetRequiredService<IImageGenerations>();
+    private RateLimitPolicy RateLimitPolicy => field ??= Services.GetRequiredService<RateLimitPolicy>();
 
     private RateLimitIdentityResolver IdentityResolver
-        => field ??= services.GetRequiredService<RateLimitIdentityResolver>();
+        => field ??= Services.GetRequiredService<RateLimitIdentityResolver>();
 
     // [ComputeMethod]
-    public virtual async Task<MediaProgress?> GetProgress(Session session, MediaId mediaId, CancellationToken cancellationToken)
+    public virtual async Task<MediaProgress?> GetProgress(
+        Session session, MediaId mediaId, CancellationToken cancellationToken)
     {
         var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
         if (media == null)
@@ -33,7 +35,8 @@ public class MediaService(IServiceProvider services) : IMedia
     }
 
     // [ComputeMethod]
-    public virtual async Task<MediaRef?> GetContent(Session session, MediaId mediaId, CancellationToken cancellationToken)
+    public virtual async Task<MediaRef?> GetContent(
+        Session session, MediaId mediaId, CancellationToken cancellationToken)
     {
         var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
         if (media == null)
@@ -67,11 +70,13 @@ public class MediaService(IServiceProvider services) : IMedia
         var media = new MediaFull(mediaId) { UserId = account.Id, Kind = command.Kind, Metadata = command.Metadata };
         var mediaChange = new Change<MediaFull> { Create = media };
 
-        await Commander.Call(new MediaBackend_Change(mediaId, null, mediaChange), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new MediaBackend_Change(mediaId, null, mediaChange), cancellationToken)
+            .ConfigureAwait(false);
 
         var progress = new MediaProgress(mediaId, 0, MediaProcessingStage.Reserved, 0);
         var progressChange = new Change<MediaProgress> { Create = progress };
-        await Commander.Call(new MediaProgressBackend_Change(mediaId, null, progressChange), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new MediaProgressBackend_Change(mediaId, null, progressChange), cancellationToken)
+            .ConfigureAwait(false);
 
         return mediaId;
     }
@@ -93,6 +98,7 @@ public class MediaService(IServiceProvider services) : IMedia
             // The caller is expected to remove it once it has served its purpose, which is owner-only
             OwnerId = account.Id,
             MediaKind = command.Kind,
+            IsBackground = command.IsBackground,
             // Without one the provider picks its own, so two generations of one description differ
             Seed = Random.Shared.NextInt64(1, int.MaxValue),
         };
@@ -102,18 +108,6 @@ public class MediaService(IServiceProvider services) : IMedia
 
         var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
         return media?.ToMediaRef();
-    }
-
-    private async Task CheckGenerationRateLimit(string method, CancellationToken cancellationToken)
-    {
-        var source = RateLimitSource.ForConnection(RpcInboundContext.Current?.Peer.ConnectionState.Value.Connection);
-        var identities = new RateLimitIdentity[RateLimitIdentityResolver.MaxIdentityCount];
-        var identityCount = await IdentityResolver
-            .Resolve(RateLimitPolicy, RateLimitClass.ImageGeneration, source, identities, cancellationToken)
-            .ConfigureAwait(false);
-        await RateLimitPolicy
-            .Check(method, RateLimitClass.ImageGeneration, identities.AsSpan(0, identityCount), cancellationToken)
-            .ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -131,10 +125,12 @@ public class MediaService(IServiceProvider services) : IMedia
         await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
 
         var mediaChange = new Change<MediaFull> { Remove = true };
-        await Commander.Call(new MediaBackend_Change(mediaId, null, mediaChange), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new MediaBackend_Change(mediaId, null, mediaChange), cancellationToken)
+            .ConfigureAwait(false);
 
         var progressChange = new Change<MediaProgress> { Remove = true };
-        await Commander.Call(new MediaProgressBackend_Change(mediaId, null, progressChange), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new MediaProgressBackend_Change(mediaId, null, progressChange), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -157,11 +153,13 @@ public class MediaService(IServiceProvider services) : IMedia
 
         var progress = new MediaProgress(mediaId, 0, stage, stageProgress, error);
         var change = new Change<MediaProgress> { Update = progress };
-        await Commander.Call(new MediaProgressBackend_Change(mediaId, expectedVersion, change), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new MediaProgressBackend_Change(mediaId, expectedVersion, change), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task<MediaRef> OnProcessUpload(Media_ProcessUpload command, CancellationToken cancellationToken)
+    public virtual async Task<MediaRef> OnProcessUpload(
+        Media_ProcessUpload command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return default!;
@@ -186,12 +184,25 @@ public class MediaService(IServiceProvider services) : IMedia
             .ConfigureAwait(false);
 
         // Remove the upload
-        await Commander.Call(new UploadsBackend_Remove(uploadId), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new UploadsBackend_Remove(uploadId), cancellationToken)
+            .ConfigureAwait(false);
 
         return mediaRef;
     }
 
     // Private methods
+
+    private async Task CheckGenerationRateLimit(string method, CancellationToken cancellationToken)
+    {
+        var source = RateLimitSource.ForConnection(RpcInboundContext.Current?.Peer.ConnectionState.Value.Connection);
+        var identities = new RateLimitIdentity[RateLimitIdentityResolver.MaxIdentityCount];
+        var identityCount = await IdentityResolver
+            .Resolve(RateLimitPolicy, RateLimitClass.ImageGeneration, source, identities, cancellationToken)
+            .ConfigureAwait(false);
+        await RateLimitPolicy
+            .Check(method, RateLimitClass.ImageGeneration, identities.AsSpan(0, identityCount), cancellationToken)
+            .ConfigureAwait(false);
+    }
 
     private async Task RequireOwner(Session session, MediaFull media, CancellationToken cancellationToken)
     {

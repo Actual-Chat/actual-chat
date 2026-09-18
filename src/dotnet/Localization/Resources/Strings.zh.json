@@ -716,6 +716,8 @@
   "Banner_OnlyPersonInChat": "这个聊天里只有你一个人！",
   "Banner_AddMembers": "添加成员",
   "Banner_SuggestedPicture": "← 我为这个聊天生成了一张图片！",
+  "Banner_SuggestedPlacePicture": "← 我为这个空间生成了一张图片！",
+  "Banner_SuggestedPlaceBackground": "← 我为这个空间生成了一张背景图！",
   "Banner_UseSuggestedPicture": "使用",
   "Banner_RegenerateSuggestedPicture": "换一张",
   "Banner_NotInContacts": "该用户还不在你的联系人列表中",

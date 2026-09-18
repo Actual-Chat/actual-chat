@@ -716,6 +716,8 @@
   "Banner_OnlyPersonInChat": "Bu sohbetteki tek kişi sizsiniz!",
   "Banner_AddMembers": "Üye ekleyin",
   "Banner_SuggestedPicture": "← Bu sohbet için bir görsel oluşturdum!",
+  "Banner_SuggestedPlacePicture": "← Bu yer için bir görsel oluşturdum!",
+  "Banner_SuggestedPlaceBackground": "← Bu yer için bir arka plan oluşturdum!",
   "Banner_UseSuggestedPicture": "Kullan",
   "Banner_RegenerateSuggestedPicture": "Başkasını dene",
   "Banner_NotInContacts": "Bu kullanıcı henüz kişi listenizde değil",

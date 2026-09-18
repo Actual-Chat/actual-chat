@@ -716,6 +716,8 @@
   "Banner_OnlyPersonInChat": "Ви сте једина особа у овом чету!",
   "Banner_AddMembers": "Додајте чланове",
   "Banner_SuggestedPicture": "← Генерирао сам слику за овај чет!",
+  "Banner_SuggestedPlacePicture": "← Направио сам слику за ово место!",
+  "Banner_SuggestedPlaceBackground": "← Направио сам позадину за ово место!",
   "Banner_UseSuggestedPicture": "Користи",
   "Banner_RegenerateSuggestedPicture": "Пробај другу",
   "Banner_NotInContacts": "Овај корисник још није на вашој листи контаката",

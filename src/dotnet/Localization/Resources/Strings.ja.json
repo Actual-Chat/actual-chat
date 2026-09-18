@@ -716,6 +716,8 @@
   "Banner_OnlyPersonInChat": "このチャットにはあなたしかいません!",
   "Banner_AddMembers": "メンバーを追加",
   "Banner_SuggestedPicture": "← このチャットの画像を生成しました！",
+  "Banner_SuggestedPlacePicture": "← このスペースの画像を生成しました！",
+  "Banner_SuggestedPlaceBackground": "← このスペースの背景を生成しました！",
   "Banner_UseSuggestedPicture": "使う",
   "Banner_RegenerateSuggestedPicture": "別の画像",
   "Banner_NotInContacts": "このユーザーはまだ連絡先に追加されていません",

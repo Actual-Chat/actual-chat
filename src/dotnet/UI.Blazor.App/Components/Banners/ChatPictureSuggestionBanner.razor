@@ -1,28 +1,35 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
+@using System.Collections.Concurrent
 @inherits ComputedStateComponent<AppUIHub, ChatPictureSuggestionBanner.Model>
 @{
     var m = State.Value;
+    var text = m.PlaceId is null ? L.Banner_SuggestedPicture
+        : m.IsBackground ? L.Banner_SuggestedPlaceBackground : L.Banner_SuggestedPlacePicture;
 }
 
 <Banner
+    Class="chat-picture-suggestion-banner"
     IsVisible="@(m.Suggestion != null)"
     Severity="BannerSeverity.Info"
     ShowDismissButton="true"
     Dismiss="@OnDismiss">
-    @* Empty rather than absent: it suppresses the severity bell, which the picture replaces *@
     <Icon></Icon>
     <Body>
         <div class="c-suggestion">
-            @* Same shape and size the chat list and header use, so it reads as the picture it would become *@
-            <Pic
-                Title="@Chat.Title"
-                Picture="@m.Picture"
-                Size="SquareSize.Size10"
-                AvatarKind="AvatarKind.Marble"
-                AvatarKey="@Chat.Id.Value"
-                Click="@OnEdit"/>
-            <span>@L.Banner_SuggestedPicture</span>
+            @if (m.IsBackground && m.Picture is { } background) {
+                <button class="btn-background-preview" @onclick="OnEdit" aria-label="@L.Common_Edit">
+                    <img src="@UrlMapper.AvatarFullSizePreviewUrl(background)" alt="@text"/>
+                </button>
+            } else {
+                <Pic
+                    Title="@m.Title"
+                    Picture="@m.Picture"
+                    Size="SquareSize.Size10"
+                    IsSquare="@(m.PlaceId != null)"
+                    Click="@OnEdit"/>
+            }
+            <span>@text</span>
         </div>
     </Body>
     <Buttons>
@@ -32,9 +39,8 @@
 </Banner>
 
 @code {
-    private bool _isGenerateRequested;
+    private readonly ConcurrentDictionary<string, bool> _generationRequests = new();
 
-    private Chat Chat => ChatContext.Chat;
     private IImageSuggestions ImageSuggestions => Hub.Services.GetRequiredService<IImageSuggestions>();
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
@@ -48,99 +54,170 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chat = Chat;
-        var chatId = chat.Id;
-        // A thread or a peer chat has no picture of its own to suggest
-        if (chatId.IsThread())
-            return Model.None;
-        if (chatId.Kind is not (ChatKind.Group or ChatKind.Place))
-            return Model.None;
-        if (chat.MediaId != null)
-            return Model.None; // A real picture is already set - never offer, never generate
-
-        // Read through Chats rather than ChatContext.Chat.Rules: that one is a snapshot, not a
-        // dependency, so it reads false until rules resolve and this would never recompute.
-        var rules = await Hub.Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (!rules.CanEditProperties())
-            return Model.None; // Also stops a non-owner's render from firing an unauthorized generate
-
-        var dismissedUntil = await ImageSuggestions
-            .GetDismissedUntilForChat(Session, chatId, ImageSlot.Picture, cancellationToken)
-            .ConfigureAwait(false);
-        // Compared here rather than server-side: a compute method that depends on "now" would
-        // cache its answer past the moment the dismissal expires
-        if (dismissedUntil is { } until && until > Clocks.ServerClock.Now)
+        var chatId = ChatContext.Chat.Id;
+        await ThreadPoolExt.Yield();
+        var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
             return Model.None;
 
-        var suggestion = await ImageSuggestions
-            .GetForChat(Session, chatId, ImageSlot.Picture, cancellationToken)
-            .ConfigureAwait(false);
-        if (suggestion != null)
-            return new Model(suggestion);
-
-        // Nothing to show yet, and nothing to describe it from. Read through a compute method so the
-        // message that crosses the threshold is what triggers the generation, rather than the next
-        // time this chat is opened. A description is enough on its own - the chat says what it is.
-        if (chat.Description.IsNullOrEmpty()) {
-            var idRange = await Hub.Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
-            if (idRange.Size() < Constants.Chat.MinImageSuggestionEntries)
-                return Model.None;
+        if (!chatId.IsThread() && chatId.Kind is ChatKind.Group or ChatKind.Place
+            && chatId is not PlaceChatId { IsRoot: true } && chat.MediaId is null) {
+            var rules = await Hub.Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
+            if (rules.CanEditProperties()) {
+                var hasContent = !chat.Description.IsNullOrEmpty();
+                if (!hasContent) {
+                    var range = await Hub.Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
+                    hasContent = range.Size() >= Constants.Chat.MinImageSuggestionEntries;
+                }
+                var target = new Model(chatId, null, ImageSlot.Picture, chat.Title, chat.Version, null);
+                var suggestion = await GetSuggestion(target, hasContent, cancellationToken).ConfigureAwait(false);
+                if (suggestion != null)
+                    return suggestion;
+            }
         }
 
-        // Start one and stay hidden: at ~10s a visible wait is worse than nothing, so the banner's
-        // appearance is itself the signal that an image is ready.
-        // Once per component - ComputeState re-runs often, and the backend rejects the repeats anyway.
-        if (!_isGenerateRequested) {
-            _isGenerateRequested = true;
-            _ = Generate(isExplicit: false);
-        }
+        var parentChatId = chatId is ThreadChatId threadChatId ? threadChatId.GetOutermostParent() : chatId;
+        if (parentChatId is not PlaceChatId placeChatId)
+            return Model.None;
 
+        var placeId = placeChatId.PlaceId;
+        var place = await Hub.Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+        var placeRules = await Hub.Places.GetRules(Session, placeId, cancellationToken).ConfigureAwait(false);
+        if (place is null || !placeRules.IsOwner())
+            return Model.None;
+
+        var canGenerate = await ImageSuggestions
+            .CanGenerateForPlace(Session, placeId, cancellationToken).ConfigureAwait(false);
+        foreach (var slot in new[] { ImageSlot.Picture, ImageSlot.Background }) {
+            if ((slot == ImageSlot.Picture ? place.MediaId : place.BackgroundMediaId) != null)
+                continue;
+
+            var target = new Model(null, placeId, slot, place.Title, place.Version, null);
+            var suggestion = await GetSuggestion(target, canGenerate, cancellationToken).ConfigureAwait(false);
+            if (suggestion != null)
+                return suggestion;
+        }
         return Model.None;
     }
 
-    // Event handlers
-
-    private Task OnAccept()
-        => UICommander.Run(new ImageSuggestions_AcceptForChat(Session, Chat.Id, ImageSlot.Picture));
+    private Task OnAccept() {
+        var model = State.Value;
+        return model.PlaceId is { } placeId
+            ? UICommander.Run(new ImageSuggestions_AcceptForPlace(Session, placeId, model.Slot))
+            : model.ChatId is { } chatId
+                ? UICommander.Run(new ImageSuggestions_AcceptForChat(Session, chatId, ImageSlot.Picture))
+                : Task.CompletedTask;
+    }
 
     private void OnEdit() {
-        if (State.Value is not { Suggestion: { } suggestion, Picture: { } picture })
+        var target = State.Value;
+        if (target is not { Suggestion: { } suggestion, Picture: { } picture })
             return;
 
+        var scope = target.PlaceId is { } placeId
+            ? MediaUploadScopes.ForPlace(placeId)
+            : MediaUploadScopes.ForChat(target.ChatId!);
         var model = new PicCropModal.Model(
             UrlMapper.AvatarFullSizePreviewUrl(picture),
-            MediaUploadScopes.ForChat(Chat.Id),
-            OnCropped) {
-            Title = L.PicCrop_ChatPictureTitle,
-            // The only caller with one already: everywhere else the generation modal opens empty
+            scope,
+            mediaRef => OnCropped(target, mediaRef),
+            IsSquare: target.PlaceId != null,
+            ViewportAspectRatio: target.IsBackground ? 2.5f : 0,
+            HasBlur: target.IsBackground) {
+            Title = target.PlaceId is null ? L.PicCrop_ChatPictureTitle
+                : target.IsBackground ? L.PicCrop_WallpaperTitle : L.PicCrop_PlaceAvatarTitle,
             Description = suggestion.ImageDescription,
+            Style = target.IsBackground ? ImageStyle.Photo : null,
         };
         ModalUI.Show(model);
     }
 
-    private void OnCropped(MediaRef mediaRef)
-        => _ = UICommander.Run(new Chats_Change {
-            Session = Session,
-            ChatId = Chat.Id,
-            ExpectedVersion = null,
-            Change = Change.Update(new ChatDiff { MediaId = mediaRef.MediaId }),
-        });
+    private void OnCropped(Model target, MediaRef mediaRef) {
+        if (target.PlaceId is { } placeId) {
+            var diff = target.IsBackground
+                ? new PlaceDiff { BackgroundMediaId = mediaRef.MediaId }
+                : new PlaceDiff { MediaId = mediaRef.MediaId };
+            _ = UICommander.Run(new Places_Change {
+                Session = Session,
+                PlaceId = placeId,
+                ExpectedVersion = target.Version,
+                Change = Change.Update(diff),
+            });
+        } else if (target.ChatId is { } chatId) {
+            _ = UICommander.Run(new Chats_Change {
+                Session = Session,
+                ChatId = chatId,
+                ExpectedVersion = target.Version,
+                Change = Change.Update(new ChatDiff { MediaId = mediaRef.MediaId }),
+            });
+        }
+    }
 
-    private void OnDismiss()
-        => _ = UICommander.Run(new ImageSuggestions_DismissForChat(Session, Chat.Id, ImageSlot.Picture));
+    private Task OnDismiss() {
+        var model = State.Value;
+        return model.PlaceId is { } placeId
+            ? UICommander.Run(new ImageSuggestions_DismissForPlace(Session, placeId, model.Slot))
+            : model.ChatId is { } chatId
+                ? UICommander.Run(new ImageSuggestions_DismissForChat(Session, chatId, ImageSlot.Picture))
+                : Task.CompletedTask;
+    }
 
-    // Private methods
+    private async Task<Model?> GetSuggestion(Model target, bool canGenerate, CancellationToken cancellationToken) {
+        var dismissedUntil = target.PlaceId is { } placeId
+            ? await ImageSuggestions.GetDismissedUntilForPlace(Session, placeId, target.Slot, cancellationToken)
+                .ConfigureAwait(false)
+            : await ImageSuggestions.GetDismissedUntilForChat(Session, target.ChatId!, target.Slot, cancellationToken)
+                .ConfigureAwait(false);
+        if (dismissedUntil is { } until && until > Clocks.ServerClock.Now) {
+            Computed.GetCurrent().Invalidate(until - Clocks.ServerClock.Now + TimeSpan.FromMilliseconds(250), false);
+            return null;
+        }
 
-    private Task Generate(bool isExplicit)
-        => UICommander.Run(new ImageSuggestions_GenerateForChat(Session, Chat.Id, ImageSlot.Picture, null) {
-            IsExplicit = isExplicit,
-        });
+        var suggestion = target.PlaceId is { } suggestionPlaceId
+            ? await ImageSuggestions.GetForPlace(Session, suggestionPlaceId, target.Slot, cancellationToken)
+                .ConfigureAwait(false)
+            : await ImageSuggestions.GetForChat(Session, target.ChatId!, target.Slot, cancellationToken)
+                .ConfigureAwait(false);
+        if (suggestion != null)
+            return target with { Suggestion = suggestion };
+        if (!canGenerate)
+            return null;
+        if (_generationRequests.TryGetValue(target.Key, out var isRunning))
+            return isRunning ? target : null;
 
-    // Nested types
+        if (_generationRequests.TryAdd(target.Key, true))
+            _ = InvokeAsync(() => Generate(target));
 
-    public sealed record Model(ImageSuggestion? Suggestion) {
-        public static readonly Model None = new((ImageSuggestion?)null);
+        return target;
+    }
 
+    private async Task Generate(Model target) {
+        try {
+            if (target.PlaceId is { } placeId)
+                await UICommander.Run(new ImageSuggestions_GenerateForPlace(Session, placeId, target.Slot, null))
+                    .ConfigureAwait(true);
+            else
+                await UICommander.Run(
+                    new ImageSuggestions_GenerateForChat(Session, target.ChatId!, ImageSlot.Picture, null))
+                    .ConfigureAwait(true);
+        }
+        finally {
+            _generationRequests[target.Key] = false;
+            State.Invalidate();
+        }
+    }
+
+    public sealed record Model(
+        ChatId? ChatId,
+        PlaceId? PlaceId,
+        ImageSlot Slot,
+        string Title,
+        long Version,
+        ImageSuggestion? Suggestion) {
+        public static readonly Model None = new(null, null, ImageSlot.Picture, "", 0, null);
+
+        public bool IsBackground => Slot == ImageSlot.Background;
+        public string Key => PlaceId is null ? $"chat/{ChatId}/{Slot}" : $"place/{PlaceId}/{Slot}";
         public Picture? Picture => Suggestion?.Media?.ToPicture();
     }
 }

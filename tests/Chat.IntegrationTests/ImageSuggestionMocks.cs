@@ -39,6 +39,20 @@ public sealed class ChatImageDescriberMock : IChatImageDescriber
 
     public string Result { get; set; } = "a stack of books";
     public int CallCount => Volatile.Read(ref _callCount);
+    public IReadOnlyCollection<ChatImageDescriptionSource> PlaceChats { get; private set; } = [];
+    public bool IsBackground { get; private set; }
+
+    public Task<string> DescribePlace(
+        Place place,
+        IReadOnlyCollection<ChatImageDescriptionSource> chats,
+        bool isBackground,
+        CancellationToken cancellationToken)
+    {
+        PlaceChats = chats;
+        IsBackground = isBackground;
+        Interlocked.Increment(ref _callCount);
+        return Task.FromResult(Result);
+    }
 
     public Task<string> Describe(
         string title,
@@ -54,5 +68,7 @@ public sealed class ChatImageDescriberMock : IChatImageDescriber
     {
         Volatile.Write(ref _callCount, 0);
         Result = "a stack of books";
+        PlaceChats = [];
+        IsBackground = false;
     }
 }

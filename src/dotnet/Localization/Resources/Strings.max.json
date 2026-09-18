@@ -867,6 +867,8 @@
   "Banner_OnlyPersonInChat": "Vous êtes la seule personne dans cette discussion !",
   "Banner_AddMembers": "Добавить участников",
   "Banner_SuggestedPicture": "← J'ai généré une image pour cette discussion !",
+  "Banner_SuggestedPlacePicture": "← Ho generato un’immagine per questo spazio!",
+  "Banner_SuggestedPlaceBackground": "← Ich habe einen Hintergrund für diesen Ort erstellt!",
   "Banner_UseSuggestedPicture": "Использовать",
   "Banner_RegenerateSuggestedPicture": "En essayer une autre",
   "Banner_NotInContacts": "Tego użytkownika nie ma jeszcze na Twojej liście kontaktów",

@@ -29,6 +29,7 @@ public sealed partial record Media_Generate : ApiCommand<MediaRef?>
     [DataMember(Order = 3), Key(3)] public required string Description { get; init; }
     [DataMember(Order = 4), Key(4)] public ImageStyle Style { get; init; } = ImageStyle.Default;
     [DataMember(Order = 5), Key(5)] public MediaKind Kind { get; init; } = MediaKind.ChatPicture;
+    [DataMember(Order = 6), Key(6)] public bool IsBackground { get; init; }
 }
 
 [DataContract, MessagePackObject]

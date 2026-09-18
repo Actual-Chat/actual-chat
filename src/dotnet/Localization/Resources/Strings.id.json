@@ -716,6 +716,8 @@
   "Banner_OnlyPersonInChat": "Anda satu-satunya orang di obrolan ini!",
   "Banner_AddMembers": "Tambah anggota",
   "Banner_SuggestedPicture": "← Saya membuatkan gambar untuk obrolan ini!",
+  "Banner_SuggestedPlacePicture": "← Saya membuat gambar untuk tempat ini!",
+  "Banner_SuggestedPlaceBackground": "← Saya membuat latar belakang untuk tempat ini!",
   "Banner_UseSuggestedPicture": "Gunakan",
   "Banner_RegenerateSuggestedPicture": "Coba yang lain",
   "Banner_NotInContacts": "Pengguna ini belum ada di daftar kontak Anda",

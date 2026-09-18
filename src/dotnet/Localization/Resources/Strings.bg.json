@@ -716,6 +716,8 @@
   "Banner_OnlyPersonInChat": "Вие сте единственият човек в този чат!",
   "Banner_AddMembers": "Добавете участници",
   "Banner_SuggestedPicture": "← Генерирах картинка за този чат!",
+  "Banner_SuggestedPlacePicture": "← Създадох картинка за това място!",
+  "Banner_SuggestedPlaceBackground": "← Създадох фон за това място!",
   "Banner_UseSuggestedPicture": "Използвай",
   "Banner_RegenerateSuggestedPicture": "Друга",
   "Banner_NotInContacts": "Този потребител още не е в списъка ви с контакти",

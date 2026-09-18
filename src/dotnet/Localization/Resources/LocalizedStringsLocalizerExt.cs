@@ -740,6 +740,8 @@ public static class LocalizedStringsLocalizerExt
         public string Banner_OnlyPersonInChat => l["Banner_OnlyPersonInChat"].Value;
         public string Banner_AddMembers => l["Banner_AddMembers"].Value;
         public string Banner_SuggestedPicture => l["Banner_SuggestedPicture"].Value;
+        public string Banner_SuggestedPlacePicture => l["Banner_SuggestedPlacePicture"].Value;
+        public string Banner_SuggestedPlaceBackground => l["Banner_SuggestedPlaceBackground"].Value;
         public string Banner_UseSuggestedPicture => l["Banner_UseSuggestedPicture"].Value;
         public string Banner_RegenerateSuggestedPicture => l["Banner_RegenerateSuggestedPicture"].Value;
         public string Banner_NotInContacts => l["Banner_NotInContacts"].Value;

@@ -716,6 +716,8 @@
   "Banner_OnlyPersonInChat": "Vous êtes la seule personne dans cette discussion !",
   "Banner_AddMembers": "Ajouter des membres",
   "Banner_SuggestedPicture": "← J'ai généré une image pour cette discussion !",
+  "Banner_SuggestedPlacePicture": "← J’ai généré une image pour cet espace !",
+  "Banner_SuggestedPlaceBackground": "← J’ai généré un arrière-plan pour cet espace !",
   "Banner_UseSuggestedPicture": "L'utiliser",
   "Banner_RegenerateSuggestedPicture": "En essayer une autre",
   "Banner_NotInContacts": "Cet utilisateur ne figure pas encore dans vos contacts",

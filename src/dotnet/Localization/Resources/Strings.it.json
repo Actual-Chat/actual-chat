@@ -716,6 +716,8 @@
   "Banner_OnlyPersonInChat": "Sei l'unica persona in questa chat!",
   "Banner_AddMembers": "Aggiungi membri",
   "Banner_SuggestedPicture": "← Ho generato un'immagine per questa chat!",
+  "Banner_SuggestedPlacePicture": "← Ho generato un’immagine per questo spazio!",
+  "Banner_SuggestedPlaceBackground": "← Ho generato uno sfondo per questo spazio!",
   "Banner_UseSuggestedPicture": "Usala",
   "Banner_RegenerateSuggestedPicture": "Provane un'altra",
   "Banner_NotInContacts": "Questo utente non è ancora nei tuoi contatti",
