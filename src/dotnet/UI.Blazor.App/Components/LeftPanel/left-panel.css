@@ -27,6 +27,10 @@ html.native-titlebar .left-panel-buttons,
 html.native-titlebar .page-with-header-and-footer[data-has-right-panel-open] .left-panel-buttons {
     @apply w-[4.875rem];
 }
+/* The column's own margins already frame the squares; a gap after it would widen the right one */
+html.native-titlebar .left-panel {
+    @apply gap-x-0;
+}
 html.native-titlebar .left-panel-buttons > .c-spacer {
     @apply hidden;
 }
