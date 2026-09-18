@@ -353,7 +353,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `SendingMessages` — manages message sending with retry logic
 - `AttachmentsController` — attachment management
 - `ImageAttachmentProcessor` — runs an attachment image through the JS image processor (resize, jpegli, metadata strip)
-- `ImageQualityPreset` — the quality presets the attachment editor offers (Up to 50mpx / 12K, Up to 12mpx / 6K, Up to 3mpx / 3K, Original, Original with EXIF)
+- `ImageQualityPreset` — the quality presets the attachment editor offers (Up to 12mpx / 6K, Up to 3mpx / 3K, Original, Original with EXIF)
 - `ImageProcessRequest` / `ProcessedImage` — what the JS image processor is asked for and what it returns
 - `IProcessedImageStore` — stores a processed attachment image as a local file; implemented by the MAUI host
 - `ImageQualityBudget` — a preset's pixel budget and long-side cap
