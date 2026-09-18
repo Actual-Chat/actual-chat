@@ -8,6 +8,7 @@ public enum GuideType {
     WebEdge,
     WebSafari,
     IosApp,
+    MacApp,
     AndroidApp,
     Unknown,
 }
