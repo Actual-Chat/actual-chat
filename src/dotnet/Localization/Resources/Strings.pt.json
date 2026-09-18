@@ -1437,6 +1437,7 @@
   "Download_QrCode_Format": "Código QR do {0}",
   "Download_GetApp_Format": "Obter {0}",
   "Download_GetAppBanner_Format": "Instalar {0}",
+  "Download_OpenAppBanner_Format": "Abrir {0}",
 
   "AppUpdate_Banner_Format": "Atualizar {0}",
   "AppUpdate_ReloadTitle_Format": "Atualizar o {0}?",

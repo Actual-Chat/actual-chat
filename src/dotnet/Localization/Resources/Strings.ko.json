@@ -1437,6 +1437,7 @@
   "Download_QrCode_Format": "{0} QR 코드",
   "Download_GetApp_Format": "{0} 받기",
   "Download_GetAppBanner_Format": "{0} 설치",
+  "Download_OpenAppBanner_Format": "{0} 열기",
 
   "AppUpdate_Banner_Format": "{0} 업데이트",
   "AppUpdate_ReloadTitle_Format": "{0}을(를) 업데이트할까요?",

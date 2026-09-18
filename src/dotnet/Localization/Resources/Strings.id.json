@@ -1437,6 +1437,7 @@
   "Download_QrCode_Format": "Kode QR {0}",
   "Download_GetApp_Format": "Dapatkan {0}",
   "Download_GetAppBanner_Format": "Instal {0}",
+  "Download_OpenAppBanner_Format": "Buka {0}",
 
   "AppUpdate_Banner_Format": "Perbarui {0}",
   "AppUpdate_ReloadTitle_Format": "Perbarui {0}?",

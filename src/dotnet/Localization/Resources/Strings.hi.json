@@ -1437,6 +1437,7 @@
   "Download_QrCode_Format": "{0} क्यूआर कोड",
   "Download_GetApp_Format": "{0} प्राप्त करें",
   "Download_GetAppBanner_Format": "{0} इंस्टॉल करें",
+  "Download_OpenAppBanner_Format": "{0} खोलें",
 
   "AppUpdate_Banner_Format": "{0} अपडेट करें",
   "AppUpdate_ReloadTitle_Format": "{0} अपडेट करें?",

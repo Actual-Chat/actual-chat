@@ -15,5 +15,15 @@
     ],
     "theme_color": "#0C003D",
     "background_color": "#0C003D",
-    "display": "standalone"
+    "display": "standalone",
+    "related_applications": [
+        {
+            "platform": "play",
+            "id": "chat.actual.app"
+        },
+        {
+            "platform": "play",
+            "id": "chat.actual.dev.app"
+        }
+    ]
 }

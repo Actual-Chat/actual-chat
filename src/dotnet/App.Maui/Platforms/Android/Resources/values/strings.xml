@@ -2,4 +2,16 @@
   <!-- Resource value should aligned with Constants.Notification.ChannelIds.Default -->
   <string name="default_notification_channel_id" translatable="false">fcm_default_channel</string>
   <string name="com.google.firebase.crashlytics.mapping_file_id">none</string>
+  <!--
+  Digital Asset Links, app -> site. Chrome's getInstalledRelatedApps() checks this direction as
+  well as the site -> app one in .well-known/assetlinks.json, and answers "not installed" while
+  either is missing. Every instance is listed in both flavors, exactly as assetlinks.json lists
+  both packages on every server; the web client tells the flavors apart by package id.
+  -->
+  <string name="asset_statements" translatable="false">
+    [{ \"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": { \"namespace\": \"web\", \"site\": \"https://voxt.ai\" } },
+     { \"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": { \"namespace\": \"web\", \"site\": \"https://dev.voxt.ai\" } },
+     { \"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": { \"namespace\": \"web\", \"site\": \"https://actual.chat\" } },
+     { \"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": { \"namespace\": \"web\", \"site\": \"https://dev.actual.chat\" } }]
+  </string>
 </resources>

@@ -34,6 +34,7 @@ export type LogScope =
     | 'default'
     // Library
     | 'AppRecovery'
+    | 'AppUpdateUI'
     | 'Api'
     | 'AsyncProcessor'
     | 'AsyncVideoEncoder'
@@ -156,6 +157,7 @@ const defaults: Record<LogScope, LogLevel> = {
     default: LogLevel.Warn,
     // Library
     AppRecovery: LogLevel.Warn,
+    AppUpdateUI: LogLevel.Warn,
     Api: LogLevel.Warn,
     AsyncProcessor: LogLevel.Warn,
     AsyncVideoEncoder: LogLevel.Warn,
