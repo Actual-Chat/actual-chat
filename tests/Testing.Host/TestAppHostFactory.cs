@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using ActualChat.App.Server;
 using ActualChat.App.Server.Module;
 using ActualChat.Blobs.Internal;
@@ -22,7 +24,25 @@ namespace ActualChat.Testing.Host;
 
 public static class TestAppHostFactory
 {
+    private const int BindAttemptCount = 3;
+
     public static async Task<TestAppHost> NewAppHost(TestAppHostOptions options)
+    {
+        // The backstop for a port that something outside the test run took anyway: the port is baked into
+        // the host's configuration, so a new one means building the host again.
+        for (var attempt = 1;; attempt++) {
+            try {
+                return await NewAppHostOnce(options).ConfigureAwait(false);
+            }
+            catch (Exception e) when (options.ServerUrls == null
+                && attempt < BindAttemptCount
+                && IsAddressInUse(e)) {
+                // NewAppHostOnce logged it and disposed the half-built host; the next attempt picks a new port
+            }
+        }
+    }
+
+    private static async Task<TestAppHost> NewAppHostOnce(TestAppHostOptions options)
     {
         var instanceName = options.InstanceName.RequireNonEmpty();
         var testOutputHelper = options.Output.ToSafe();
@@ -31,7 +51,18 @@ public static class TestAppHostFactory
         log.LogInformation("-> NewAppHost, instance '{InstanceName}'", instanceName);
         var manifestPath = GetManifestPath();
 
-        var serverUrls = options.ServerUrls ?? WebTestHelpers.GetUnusedLocalUri().ToString();
+        // GetUnusedTcpPort closes its listener before returning, so the port is only reserved for as long
+        // as it takes the OS to hand it to someone else. Keep it bound until Kestrel is ready to take it:
+        // while this listener lives, no other request for a free port can be answered with the same one.
+        TcpListener? portHolder = null;
+        string serverUrls;
+        if (options.ServerUrls is { } configuredUrls)
+            serverUrls = configuredUrls;
+        else {
+            portHolder = new TcpListener(IPAddress.Any, 0);
+            portHolder.Start();
+            serverUrls = WebTestHelpers.GetLocalUri(((IPEndPoint)portHolder.LocalEndpoint).Port).ToString();
+        }
         var appHost = new TestAppHost(options, outputAccessor) {
             ServerUrls = serverUrls,
             HostOptions = new() {
@@ -119,29 +150,48 @@ public static class TestAppHostFactory
             },
             ConfigureApp = (ctx, app) => options.ConfigureApp?.Invoke(ctx, app),
         };
-        appHost.Build();
-        log.LogInformation("-- NewAppHost has built, instance '{InstanceName}'", instanceName);
+        try {
+            appHost.Build();
+            log.LogInformation("-- NewAppHost has built, instance '{InstanceName}'", instanceName);
 
-        if (Constants.DebugMode.Npgsql)
-            Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(), true);
-        _ = appHost.Services.GetRequiredService<PostgreSqlPoolCleaner>(); // Force instantiation to ensure it's disposed in the end
+            if (Constants.DebugMode.Npgsql)
+                Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(), true);
+            _ = appHost.Services.GetRequiredService<PostgreSqlPoolCleaner>(); // Force instantiation to ensure it's disposed in the end
 
-        // Cleanup existing queues
-        await appHost.Services.Queues().PurgeWithTimeout(
-            TimeSpan.FromSeconds(10),
-            msg => log.LogWarning("{Message}", msg));
+            // Cleanup existing queues
+            await appHost.Services.Queues().PurgeWithTimeout(
+                TimeSpan.FromSeconds(10),
+                msg => log.LogWarning("{Message}", msg));
 
-        if (options.MustInitializeDb)
-            await appHost.RunInitializers();
+            if (options.MustInitializeDb)
+                await appHost.RunInitializers();
 
-        if (options.MustStart)
-            await appHost.Start();
+            portHolder?.Stop();
+            if (options.MustStart)
+                await appHost.Start();
+        }
+        catch (Exception e) {
+            log.LogWarning(e, "-- NewAppHost failed, instance '{InstanceName}'", instanceName);
+            await appHost.DisposeSilentlyAsync().ConfigureAwait(false);
+            throw;
+        }
+        finally {
+            portHolder?.Stop();
+        }
 
         log.LogInformation("<- NewAppHost, instance '{InstanceName}'", instanceName);
         return appHost;
     }
 
     // Private methods
+
+    private static bool IsAddressInUse(Exception e)
+    {
+        for (var current = (Exception?)e; current != null; current = current.InnerException)
+            if (current is SocketException { SocketErrorCode: SocketError.AddressAlreadyInUse })
+                return true;
+        return false;
+    }
 
     private static FilePath GetManifestPath()
     {
