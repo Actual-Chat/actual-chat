@@ -14,7 +14,7 @@ single stage. References are to source paths under `/proj/ActualChat-C1`.
 | Sender encoder worker | Web Worker | `opus-encoder-worker.ts` + `audio-streamer.ts` |
 | API pod | .NET | `LiveAudioStreams` (`ILiveAudioStreams`) |
 | Backend pod | .NET, sharded by `ChatId` | `AudioStreamingBackend`, `LiveAudioBackend` |
-| Receiver DOM | Main thread | `ChatAudioUI` → `ChatListener` / `ChatReplayer` → `AudioTrackPlayer.cs` → JS `AudioPlayer` |
+| Receiver DOM | Main thread | `ChatAudioUI` → `ChatListeningPlayer` / `ChatReplayPlayer` → `AudioTrackPlayer.cs` → JS `AudioPlayer` |
 | Receiver decoder worker | Web Worker (one per app) | `opus-decoder-worker.ts` |
 | Receiver feeder worklet | AudioWorkletGlobalScope | `feeder-audio-worklet-processor.ts` |
 
@@ -32,7 +32,7 @@ sequenceDiagram
     participant Memo as StreamStore<AudioFrame>
     participant Tr as Transcriber
     participant Save as AudioSegmentSaver
-    participant Mux as LiveStreamMuxer
+    participant Mux as ListeningStreamMuxer
     participant DOMB as Receiver DOM
     participant DC as opus-decoder worker
     participant FE as feeder worklet
@@ -65,16 +65,16 @@ sequenceDiagram
     end
     ASB->>ASB: register in LiveAudioBackend (Redis)
 
-    DOMB->>API: LegacyGetStream(session, chatId, settings)
+    DOMB->>API: GetListeningStream(session, chatId, catchUpFrom)
     API->>Mux: subscribe
-    Mux-->>API: RpcStream<LiveStreamItem><br/>(LiveStreamStart, LiveAudioFrame*, LiveStreamEnd)
+    Mux-->>API: RpcStream<MuxedAudioStreamItem><br/>(MuxedAudioStreamStart, MuxedAudioFrame*, MuxedAudioStreamEnd)
     API-->>DOMB: stream
     DOMB->>DC: frame(opusBytes, sourceOffsetMs)
     DC->>DC: EncodedFrameBuffer (jitter)<br/>→ Opus decode
     DC->>FE: PCM 48 kHz mono via MessagePort
     FE->>FE: ring buffer (~170 ms)<br/>process() @ 128 samples
     FE-->>DOMB: speakers + presentationLag
-    DOMB->>API: ReportAudioLatency(now − BeginsAt)
+    DOMB->>API: ReportAudioLatency(presentation lag, A/V sync error)
 ```
 
 ## Stage-by-stage data shapes
@@ -99,8 +99,8 @@ sender:
         │
         └─▶ live fan-out:
               RpcStream<AudioFrame>            (per-stream pull)
-              RpcStream<LiveStreamItem>         (per-chat multiplex)
-              RpcStream<LiveStreamItem>         (replay, with speed)
+              RpcStream<MuxedAudioStreamItem>  (per-chat multiplex)
+              RpcStream<MuxedAudioStreamItem>  (replay, with speed)
 
 receiver:
   AudioFrame → EncodedFrameBuffer → Opus decode → Float32 PCM 48 kHz
@@ -137,7 +137,7 @@ machinery as video; the wire types differ but the lifecycle is the same.
   server has to keep them for transcription and persistence. The recorder
   uses `AllowReconnect = true` so a peer-change replays buffered frames.
 - **Server-side per-author merge.** When a publisher reconnects with a new
-  `streamId`, `LiveStreamMuxer` evicts the older stream by `BeginsAt`. The
+  `streamId`, `ListeningStreamMuxer` evicts the older stream by `BeginsAt`. The
   client doesn't have to reconcile.
 - **Single sender per author.** Microphone + screencast are separate paths
   in video; audio has just the microphone.
@@ -149,7 +149,7 @@ machinery as video; the wire types differ but the lifecycle is the same.
   blob).
 - **Two RPC subscription shapes** for the same data —
   `GetStream(streamId)` returns raw `RpcStream<AudioFrame>` for one stream,
-  `LegacyGetStream(chatId)` returns `RpcStream<LiveStreamItem>` multiplexing
+  `GetListeningStream(chatId)` returns `RpcStream<MuxedAudioStreamItem>` multiplexing
   every author in a chat.
 - **AudioWorklet thread + Worker thread + Main thread** all participate in
   both recording and playback, with `MessageChannel` plumbing between them.

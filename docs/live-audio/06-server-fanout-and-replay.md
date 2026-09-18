@@ -4,9 +4,9 @@ The server has three audio-distribution paths:
 
 1. **Per-stream pull** via `ILiveAudioStreams.GetStream(streamId)` —
    raw `RpcStream<AudioFrame>`.
-2. **Per-chat live multiplex** via `LegacyGetStream(chatId)` — the live
+2. **Per-chat live multiplex** via `GetListeningStream(chatId, catchUpFrom)` — the live
    "Listening" path; mixes multiple authors into one
-   `RpcStream<LiveStreamItem>`.
+   `RpcStream<MuxedAudioStreamItem>`.
 3. **Replay** via `GetReplayStream(chatId, startAt, rewindOffset, speed)`
    — rebuilds historical audio from blob storage, paced for playback.
 
@@ -23,12 +23,12 @@ audio streams per chat. It's simpler than the video equivalent:
 - One Redis-backed registry: `live-audio:state:{chatId}` (TTL 5 min).
 - No member registry, no codec negotiation (audio is always Opus mono).
 
-`State` (line 164):
+`State`:
 
 ```csharp
 public sealed partial record State(
     long Version,
-    ApiArray<LiveStreamInfo> Streams);
+    ApiArray<LiveAudioStreamInfo> Streams);
 ```
 
 ### `Register(chatId, streamInfo)`
@@ -53,27 +53,29 @@ If Redis is unavailable, `LiveAudioBackend` reconstructs state from
 `BeginsAt > now - MaxEntryDuration`). The recovered state is
 re-persisted to Redis as soon as it comes back.
 
-## `LiveStreamMuxer` — the live multiplex
+## `ListeningStreamMuxer` — the live multiplex
 
-File: `src/dotnet/Streaming.Service/Services/LiveStreamMuxer.cs`.
+File: `src/dotnet/Streaming.Service/Services/ListeningStreamMuxer.cs`.
 
-One `LiveStreamMuxer` per chat per subscribing API pod. It watches
+One `ListeningStreamMuxer` per chat per subscribing API pod. It watches
 `LiveAudioBackend.List(chatId)` (the compute method auto-invalidates on
 register/unregister) and dispatches per-stream `ProcessStream` tasks.
 
 ### Frame multiplexing
 
 Each muxed stream has its own `StreamIndex` (assigned sequentially per
-muxer). Output is a `Channel<LiveStreamItem>`:
+muxer). Output is a `Channel<MuxedAudioStreamItem>`:
 
 ```
-LiveStreamStart { StreamIndex, LiveStreamInfo, PlaysAt }
-LiveAudioFrame  { StreamIndex, Data, Offset }   (zero-or-more)
-LiveStreamEnd   { StreamIndex }
+MuxedAudioStreamStart { StreamIndex, StreamInfo: LiveAudioStreamInfo, PlaysAt }
+MuxedAudioFrame       { StreamIndex, Data, Offset }   (zero-or-more)
+MuxedAudioStreamEnd   { StreamIndex }
 ```
 
-The client's `LiveStreamDemuxer` matches frames to `StreamIndex` and
-routes them to per-author audio tracks.
+The client's `AudioStreamDemuxer` matches frames to `StreamIndex` and
+routes them to per-author audio tracks. A fourth item, `MuxedAudioStreamReset`,
+never comes from the server: `ListeningStreamProcessor` inserts it when its
+resilient stream reconnects, so the demuxer ends every stream that was in flight.
 
 ### Live-edge trim
 
@@ -112,12 +114,12 @@ Same logic as `LiveAudioBackend.Register` but at the streaming level: if
 two streams from the same author are simultaneously active, the muxer
 keeps the one with the larger `BeginsAt` and cancels the older's
 `StopTokenSource`. The cancelled stream's `ProcessStream` exits cleanly
-and emits `LiveStreamEnd`.
+and emits `MuxedAudioStreamEnd`.
 
 ### Eviction delay
 
 Stream entries linger in the muxer's per-stream map for an extra
-`EvictionDelay = 4 s` after `LiveStreamEnd` so a flapping publisher
+`EvictionDelay` (2.5 s, `MaxRealtimeStreamDrift` + 1 s) after `MuxedAudioStreamEnd` so a flapping publisher
 doesn't oscillate the muxer.
 
 ## `ReplayStreamMuxer` — historical playback
@@ -125,7 +127,7 @@ doesn't oscillate the muxer.
 File: `src/dotnet/Streaming.Service/Services/ReplayStreamMuxer.cs`.
 
 `ILiveAudioStreams.GetReplayStream(chatId, startAt, rewindOffset, speed)`
-returns the same `RpcStream<LiveStreamItem>` shape as live, but the
+returns the same `RpcStream<MuxedAudioStreamItem>` shape as live, but the
 frames come from blob storage instead of the live memoizer.
 
 ### Position resolution
@@ -138,17 +140,35 @@ Two helpers walk chat entries to find the seek point:
   entry to find the exact `(MediaId, offsetWithinMedia)` for the seek
   position.
 
+### Timeline
+
+Each entry gets a `PlaysAt` - its start relative to the first stream, divided by `speed`. The
+timeline is built from the entry's `BeginsAt`/`EndsAt`, which are its first and last word, not
+the blob's extent:
+
+- The pause before the first entry is skipped whole; later pauses are cut down to
+  `ReplayMaxGap` (0.5 s) - both across speakers and within one.
+- The blob runs past the last word by the VAD's trailing silence, up to `MaxPauseMs` (2.7 s).
+  Frames past `EndsAt + ReplayTailMargin` (0.4 s) are not sent, and the margin is kept below
+  the gap, so an entry never runs into the next one. A dub is not cut: it ends where its
+  speech does.
+- A dubbed replay also never starts an entry before the previous one's dub has finished
+  (`notBefore`), since a dub's length differs from the source's.
+
 ### Frame delivery
 
-For each chat entry whose audio overlaps the playback window:
+Frames of every open entry go out in one sequence, ordered by when they play:
+`PlaysAt + offset / speed`. The muxer keeps each open entry one frame ahead and always sends
+the frame that plays first; the next entry is opened once its `PlaysAt` is the earliest
+deadline. Its blob download starts as soon as the entry before it is admitted, so the open
+latency hides behind the audio already queued.
 
-```csharp
-var audioSource = await AudioDownloader.Download(blobId, skipTo, ct);
-foreach (var frame in audioSource.Frames) {
-    if (skipFraming(frame)) continue;       // speed > 1.0 → keep N of M
-    yield return new LiveAudioFrame { StreamIndex, Data, Offset };
-}
-```
+This order matters because the whole replay is one flow-controlled `RpcStream`: with an ack
+window of 61 items it carries 61 frames per round trip, ~150-300 frames/s to a remote server,
+shared by all entries. Sending every entry of the next two minutes at once - as the muxer did
+until #4617 - starved the entry that plays first behind ones that play a minute later: a
+measured 7 s before the first frame of the clicked entry arrived, and tracks that stretched by
+seconds and ran into the next one.
 
 `AudioSourceDownloader`
 (`Core.Server/Blobs/AudioSourceDownloader.cs`):
@@ -161,9 +181,11 @@ return audio.SkipTo(skipTo, ct);
 
 ### Speed control
 
-For `speed > 1.0`, the muxer drops frames in a regular pattern:
+For `speed > 1.0`, the muxer keeps `1 / speed` of the frames, spread evenly
+(`ReplayTimeline.MustKeepFrame`):
 
 - 1.5× — keep 2 of every 3 frames.
+- 1.75× — keep 4 of every 7.
 - 2.0× — keep every other frame.
 
 The decoder still receives valid Opus frames (each is independent), and
@@ -172,10 +194,31 @@ step.
 
 ### Pacing
 
-The muxer paces emission based on `CpuTimestamp` so the replay arrives
-near real-time playback rate (adjusted for `speed`). If the consumer is
-> 1 minute ahead of where it should be, the muxer waits — prevents a
-slow consumer from accumulating server-side state.
+A frame is sent at most `ReplayMaxLead` (10 s) before it plays, measured against the time
+since the muxer started. That hides a blob's open latency and network jitter, and bounds what
+either side buffers.
+
+### Client side
+
+`ChatReplayPlayer` starts each track once a `ReplayClock` reaches its `PlaysAt`. The clock
+follows the audio that actually plays, not wall time:
+
+- While tracks are active, its position is the smallest `PlaysAt + played / speed` among them,
+  where `played` is the engine's reported `PlayingAt`, extrapolated between reports by at most
+  300 ms. A track counts from the moment it's due, so one still buffering holds the clock at
+  its start, and one that starves stops it.
+- With nothing playing, it runs on wall time - that covers the pauses between entries, which
+  are at most `ReplayMaxGap` long.
+- It never steps back, and it starts with the first `StreamStart`, so the RPC call's latency
+  doesn't count as played time.
+
+So a track that starts late or starves delays everything after it by the same amount, and
+concurrent speakers keep their offset against each other. As a last guard, a track never
+starts while the same author's previous one is still playing - with the clock following the
+audio, only overlapping recordings of one speaker reach that point.
+
+Set `Constants.DebugMode.ReplayTiming` to trace a replay from the click to each track's end
+(banner, RPC, first frame per track, engine start) - one `Replay.#<entry>` line per step.
 
 ## `_audioStreams` — `StreamStore<AudioFrame>`
 
@@ -224,24 +267,28 @@ consumer-node, regardless of viewer count.
 ## How `GetStream` ties it together
 
 ```csharp
-var isLocal = streamId.NodeRef == MeshWatcher.ThisNode.Ref;
-var rawStream = isLocal
-    ? await Backend.GetAudio(streamId, skipTo, ct)
-    : await GetOrFetchRemoteAudio(streamId, skipTo, ct);
-return rawStream is null ? null : MediaRpcStreamOptions.AudioDelivery(rawStream);
+var isLocal = parsedStreamId.NodeRef == MeshWatcher.ThisNode.Ref;
+if (isLocal)
+    return await Backend.GetAudio(parsedStreamId, skipTo, ct);
+
+var cached = await GetOrFetchRemoteAudio(parsedStreamId, skipTo, ct);
+return cached == null ? null : StandardRpcStream.NewAudioDelivery(cached);
 ```
 
-`MediaRpcStreamOptions.AudioDelivery` wraps the result with
-`AckPeriod = 5` and `AllowReconnect = true` for reasonable network
-behaviour.
+`StandardRpcStream.NewAudioDelivery` (`Backend.GetAudio` wraps its stream with it too) sets
+`AckPeriod = Constants.Audio.DeliveryRpcStreamAckPeriod` (10 frames, 200 ms) and
+`AllowReconnect = true`; `GetListeningStream` and `GetReplayStream` use it with
+`allowReconnect: false`. `AckAdvance` stays at RpcStream's default of 61 items, so a sender
+gets at most 61 items per round trip - the limit the replay's
+[frame order](#frame-delivery) is built around.
 
-## `LegacyGetStream` topology
+## `GetListeningStream` topology
 
 ```mermaid
 flowchart TD
-    Sub[Subscriber: ChatListener<br/>LegacyGetStream(chatId, settings)]
+    Sub[Subscriber: ChatListeningPlayer<br/>GetListeningStream(chatId, catchUpFrom)]
     Sub --> ApiB[API pod B]
-    ApiB --> Mux[LiveStreamMuxer for chat<br/>watches LiveAudioBackend.List]
+    ApiB --> Mux[ListeningStreamMuxer for chat<br/>watches LiveAudioBackend.List]
     Mux --> List[ILiveAudioBackend.List<br/>(Fusion compute, sharded)]
     List --> Redis[(Redis live-audio:state:{chatId})]
     Mux --> ProcA["ProcessStream(streamId 1)<br/>(may be remote)"]
@@ -252,7 +299,7 @@ flowchart TD
     Local -- yes --> NodeA[Backend.GetAudio<br/>same node]
     Local -- no --> RAC[RemoteAudioStreamCache]
     RAC --> NodeC[Cross-shard RPC<br/>to publisher node]
-    NodeA --> Out[per-author<br/>LiveStreamItem stream]
+    NodeA --> Out[per-author<br/>MuxedAudioStreamItem stream]
     NodeC --> Out
     GetB --> Out
     Out --> ApiB
@@ -287,5 +334,5 @@ unset and the stream is no longer needed.
 |---|---|---|
 | `GetStream(streamId, skipTo)` | `RpcStream<AudioFrame>` | per-message audio playback |
 | `GetTranscriptStream(streamId)` | `RpcStream<TranscriptDiff>` | live captions |
-| `LegacyGetStream(chatId, settings)` | `RpcStream<LiveStreamItem>` | "Listening" (live group audio) |
-| `GetReplayStream(chatId, startAt, …)` | `RpcStream<LiveStreamItem>` | replay/seek |
+| `GetListeningStream(chatId, catchUpFrom, …)` | `RpcStream<MuxedAudioStreamItem>` | "Listening" (live group audio) |
+| `GetReplayStream(chatId, startAt, …)` | `RpcStream<MuxedAudioStreamItem>` | replay/seek |

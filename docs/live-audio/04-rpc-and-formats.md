@@ -10,8 +10,8 @@ File: `src/dotnet/Api.Contracts/Streaming/ILiveAudioStreams.cs`.
 ```csharp
 public interface ILiveAudioStreams : IComputeService
 {
-    [ComputeMethod]
-    Task<ApiArray<LiveStreamInfo>> List(Session session, ChatId chatId, CancellationToken ct);
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    Task<ApiArray<LiveAudioStreamInfo>> List(Session session, ChatId chatId, CancellationToken ct);
 
     Task<RpcStream<AudioFrame>?> GetStream(
         Session session, string streamId, TimeSpan skipTo, CancellationToken ct);
@@ -19,22 +19,30 @@ public interface ILiveAudioStreams : IComputeService
     Task<RpcStream<TranscriptDiff>?> GetTranscriptStream(
         Session session, string streamId, CancellationToken ct);
 
-    [RpcMethod(RemoteExecutionMode = AwaitForConnection | AllowReconnect)]
+    // Streams beginning at/after catchUpFrom (default = none) are served from t=0, not the live edge
+    Task<RpcStream<MuxedAudioStreamItem>> GetListeningStream(
+        Session session, ChatId chatId, Moment catchUpFrom, CancellationToken ct);
+    Task<RpcStream<MuxedAudioStreamItem>> GetListeningStream(
+        Session session, ChatId chatId, Moment catchUpFrom, Language? dubLanguage, CancellationToken ct);
+
+    Task<RpcStream<MuxedAudioStreamItem>> GetReplayStream(
+        Session session, ChatId chatId, Moment startAt, TimeSpan rewindOffset, double speed, CancellationToken ct);
+    Task<RpcStream<MuxedAudioStreamItem>> GetReplayStream(
+        Session session, ChatId chatId, Moment startAt, TimeSpan rewindOffset, double speed,
+        Language? dubLanguage, CancellationToken ct);
+
+    [RpcMethod(RemoteExecutionMode = AwaitForConnection | AllowReconnect, DelayTimeout = double.PositiveInfinity)]
     Task PushStream(
         Session session, string chatId, string? repliedChatEntryId,
         double clientStartAt, int preSkip,
         RpcStream<AudioFrame> frameStream, CancellationToken ct);
 
-    Task ReportAudioLatency(Session session, TimeSpan latency, CancellationToken ct);
+    Task ReportAudioLatency(Session session, TimeSpan latency, TimeSpan? avSyncError, CancellationToken ct);
 
-    [LegacyName("GetStream", "2.7.9999")]
-    Task<RpcStream<LiveStreamItem>> LegacyGetStream(
-        Session session, ChatId chatId, LiveStreamSettings settings, CancellationToken ct);
+    Task ReportPlayback(Session session, ChatId chatId, string streamId, ChatEntryId? entryId, CancellationToken ct);
 
-    Task ChangeSettings(Session session, ChatId chatId, LiveStreamSettings settings, CancellationToken ct);
-
-    Task<RpcStream<LiveStreamItem>> GetReplayStream(
-        Session session, ChatId chatId, Moment startAt, TimeSpan rewindOffset, double speed, CancellationToken ct);
+    // Legacy methods, kept for already-published clients: LegacyGetListeningStream (no catchUpFrom),
+    // LegacyChangeSettings (a no-op), and the 3-argument ReportAudioLatency (its reading is discarded)
 }
 ```
 
@@ -44,11 +52,10 @@ Two subscription shapes for the same audio:
   `RpcStream<AudioFrame>` with optional skip-forward into the buffer.
   Used by the chat-entry-attached audio playback (the played-once-only
   path on a specific message).
-- **`LegacyGetStream(chatId, settings)`** — per-chat multiplexed feed,
-  returns `RpcStream<LiveStreamItem>` (a tagged union). Used for
-  "Listening" mode where the user is following live audio for an entire
-  chat. Despite the name, this is the **active** path for live group
-  listening.
+- **`GetListeningStream(chatId, catchUpFrom[, dubLanguage])`** — per-chat
+  multiplexed feed, returns `RpcStream<MuxedAudioStreamItem>` (a tagged union).
+  Used for "Listening" mode where the user is following live audio for an
+  entire chat.
 
 `GetReplayStream` is the time-travel variant: `startAt` + `rewindOffset` +
 `speed` (1.0–2.0×). Server-side `ReplayStreamMuxer` reads from blob
@@ -57,25 +64,35 @@ storage, resolves position, and emits at scaled speed. See
 
 ## RPC tuning
 
-```csharp
-// MediaRpcStreamOptions.cs
-public static RpcStream<T> AudioRecording<T>(IAsyncEnumerable<T> source)
-    => new(source) { AckPeriod = Constants.Audio.RecordingRpcStreamAckPeriod };  // 5
+The recorder's upload is built on the client, by the TypeScript `MediaRpcStreamOptions`
+(`src/nodejs/src/api/api.ts`); the server's delivery streams by the C#
+`StandardRpcStream` (`src/dotnet/Api/StandardRpcStream.cs`):
 
-public static RpcStream<T> AudioDelivery<T>(IAsyncEnumerable<T> source, bool allowReconnect = true)
-    => new(source) { AllowReconnect = allowReconnect, AckPeriod = Constants.Audio.DeliveryRpcStreamAckPeriod };  // 5
+```ts
+// MediaRpcStreamOptions (TypeScript)
+static audioRecording<T>(): RpcStreamOptions<T> {
+    return { isRealTime: false, allowReconnect: true, ackPeriod: AUDIO.stream.recordingRpcStreamAckPeriod }; // 10
+}
 ```
+
+```csharp
+// StandardRpcStream (C#)
+public static RpcStream<T> NewAudioDelivery<T>(IAsyncEnumerable<T> source, bool allowReconnect = true)
+    => new(source) { AllowReconnect = allowReconnect, AckPeriod = Constants.Audio.DeliveryRpcStreamAckPeriod }; // 10
+```
+
+Neither sets `AckAdvance`, so both run with RpcStream's default of 61 items in flight.
 
 Comparison with video:
 
 | Parameter | Video | Audio |
 |---|---|---|
 | Direction | realtime | non-realtime |
-| `AckPeriod` (frames) | 5 | 5 |
-| Acked interval | ~167 ms (30 fps) | ~100 ms (50 fps) |
+| `AckPeriod` (frames) | 5 | 10 |
+| Acked interval | ~167 ms (30 fps) | ~200 ms (50 fps) |
 | `BufferSize` | 10 (≈333 ms) | not capped explicitly; flow controlled by ACK |
 | `canSkipTo` | keyframe | not used (every frame is independently decodable but **never dropped**) |
-| `AllowReconnect` | publish: false; subscribe: false | publish: **true**; subscribe: true |
+| `AllowReconnect` | publish: false; subscribe: false | publish: **true**; subscribe: true (false for the listening and replay multiplexes) |
 | Loss policy | drop / compact at keyframes | preserve all frames |
 
 The publish-side `AllowReconnect = true` is the headline difference. When
@@ -114,28 +131,29 @@ frame; `Data` becomes a slice into it. On the publish side, when fanning
 out to multiple consumers, the formatter writes the previously-serialized
 bytes via `WriteRaw` — no re-encoding per consumer.
 
-## `LiveStreamItem` — the multiplexed wire union
+## `MuxedAudioStreamItem` — the multiplexed wire union
 
-Files: `src/dotnet/Api/Live/{LiveStreamItem,LiveStreamStart,LiveAudioFrame,LiveStreamEnd,LiveStreamReset,LiveStreamInfo}.cs`.
+Files: `src/dotnet/Api/Live/{MuxedAudioStreamItem,MuxedAudioStreamStart,MuxedAudioStreamEnd,MuxedAudioFrame,MuxedAudioStreamReset,LiveAudioStreamInfo}.cs`.
 
 ```
-LiveStreamItem (abstract, union-serialized)
-├── LiveStreamStart  (#0): { StreamIndex, LiveStreamInfo, PlaysAt }
-├── LiveStreamEnd    (#1): { StreamIndex }
-├── LiveAudioFrame   (#2): { StreamIndex, Data, Offset }
-└── LiveStreamReset  (#3): { } -- chat-level reset, defined but not currently emitted
+MuxedAudioStreamItem (abstract, union-serialized)
+├── MuxedAudioStreamStart (#0): { StreamIndex, StreamInfo: LiveAudioStreamInfo, PlaysAt }
+├── MuxedAudioStreamEnd   (#1): { StreamIndex }
+├── MuxedAudioFrame       (#2): { StreamIndex, Data, Offset }
+└── MuxedAudioStreamReset (#3): { } -- never sent by the server: ListeningStreamProcessor
+                                     inserts it on reconnect, so the demuxer flushes every stream
 ```
 
-`StreamIndex` is assigned by `LiveStreamMuxer` per subscription, so the
-client demultiplexes by `StreamIndex` (not `StreamId`). Every
-`LiveStreamStart` for a given `StreamIndex` is followed by zero-or-more
-`LiveAudioFrame`s with the same index, terminated by exactly one
-`LiveStreamEnd`.
+`StreamIndex` is assigned by the muxer (`ListeningStreamMuxer` or
+`ReplayStreamMuxer`) per subscription, so the client demultiplexes by
+`StreamIndex` (not `StreamId`). Every `MuxedAudioStreamStart` for a given
+`StreamIndex` is followed by zero-or-more `MuxedAudioFrame`s with the same
+index, terminated by exactly one `MuxedAudioStreamEnd`.
 
-`LiveStreamInfo` (`Api/Live/LiveStreamInfo.cs`):
+`LiveAudioStreamInfo` (`Api/Live/LiveAudioStreamInfo.cs`):
 
 ```csharp
-public sealed partial record LiveStreamInfo
+public sealed partial record LiveAudioStreamInfo
 {
     public ChatId ChatId { get; init; }
     public AuthorId AuthorId { get; init; }
@@ -144,14 +162,11 @@ public sealed partial record LiveStreamInfo
     public AudioFormat? Format { get; init; }
     public ChatEntryId? EntryId { get; init; }
     public Moment SourceBeginsAt { get; init; } // sender's claimed start time
+    public bool IsTextOnly { get; init; }       // JustText author: transcribed, never fanned out
+    public ApiArray<Language> Languages { get; init; } // the speaker's candidate languages
+    public Language? DubLanguage { get; init; } // set only on the start item of a dub track
 }
 ```
-
-`LiveStreamSettings` (passed to `LegacyGetStream`):
-
-- Currently just toggles whether the muxer should also include the user's
-  own audio. Always `false` in production; debug pages can enable
-  self-listen.
 
 ## Three container formats (and where each is used)
 
@@ -211,7 +226,9 @@ via `WriteRaw`. The cost of fan-out is a memcpy per consumer plus the
 `RpcStream` framing, not full MessagePack encoding.
 
 `OnRecordingStateChange` and similar callback RPCs use normal MessagePack;
-only `AudioFrame` and `LiveStreamItem` get the caching treatment.
+only `AudioFrame` gets the caching treatment. `MuxedAudioStreamItem` has no caching
+formatter: a `MuxedAudioFrame` carries the frame's bytes as a plain `Data` field, encoded
+per subscriber.
 
 ## `AudioSource` — the in-memory abstraction
 
