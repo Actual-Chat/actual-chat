@@ -173,7 +173,7 @@ KEEP_LATIN = [
     "Telegram", "KLIPY", "GIF", "API", "URL", "SMS", "ID", "QR", "OK",
     "emoji", "Emoji", "Cookie", "cookie",
     "Live Activities", "AI", "txt", "MB", "&nbsp;", "&ndash;", "Welcome", "DELETE", "Voxt",
-    "OAuth", "Claude", "Cursor",
+    "OAuth", "Claude", "Cursor", "Webhook", "webhook",
 ]
 
 CYRILLIC = {
