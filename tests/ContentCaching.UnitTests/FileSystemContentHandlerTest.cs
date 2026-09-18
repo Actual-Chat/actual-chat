@@ -12,8 +12,16 @@ public sealed partial class FileSystemContentHandlerTest : IDisposable
 
     public void Dispose()
     {
-        if (Directory.Exists(_directory))
-            Directory.Delete(_directory, true);
+        // A fill worker outlives the response that started it, so it can still hold its partial file open
+        // here - on Windows that fails the delete, and with it whichever test happened to leave a fill running.
+        for (var i = 0; i < 100 && Directory.Exists(_directory); i++) {
+            try {
+                Directory.Delete(_directory, true);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
+                Thread.Sleep(10);
+            }
+        }
     }
 
     [Fact]
@@ -326,8 +334,27 @@ public sealed partial class FileSystemContentHandlerTest : IDisposable
 
         // assert
         await action.Should().ThrowAsync<OperationCanceledException>();
+        await WhenMet(() => !stream.CanRead && GetCacheFiles().Length == 0);
         stream.CanRead.Should().BeFalse();
         GetCacheFiles().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task CancellationBetweenReadsShouldStillSurfaceAsCancellation()
+    {
+        // arrange
+        using var cancellation = new CancellationTokenSource();
+        var handler = Create(new TestSource(_ => Response("body")));
+        using var response = await handler.Handle(Request(), cancellation.Token);
+
+        // act - the request is canceled while the body stream sits between two reads, which is what
+        // CancellationDuringReadShouldDisposeTheSourceWithoutPublishing races the fill for
+        await cancellation.CancelAsync();
+        var action = async () => await response!.Content.ReadAsByteArrayAsync();
+
+        // assert
+        await action.Should().ThrowAsync<OperationCanceledException>(
+            "a canceled request must not reach the caller as a transport failure");
     }
 
     [Fact]
@@ -343,6 +370,7 @@ public sealed partial class FileSystemContentHandlerTest : IDisposable
 
         // assert
         (await response!.Content.ReadAsStringAsync()).Should().Be("body");
+        await WhenMet(() => !stream.CanRead);
         stream.CanRead.Should().BeFalse();
     }
 
@@ -384,6 +412,14 @@ public sealed partial class FileSystemContentHandlerTest : IDisposable
 
     private string[] GetCacheFiles()
         => Directory.Exists(_directory) ? Directory.GetFiles(_directory, "*", SearchOption.AllDirectories) : [];
+
+    private static async Task WhenMet(Func<bool> condition)
+    {
+        // The fill worker runs past the response that started it: disposing a body only asks it to stop,
+        // so whatever that worker does on its way out - releasing the source, dropping a partial file - lands later.
+        for (var i = 0; i < 500 && !condition(); i++)
+            await Task.Delay(10);
+    }
 
     private static ContentRequest Request()
         => new(new Uri("https://cdn.example/asset"));
