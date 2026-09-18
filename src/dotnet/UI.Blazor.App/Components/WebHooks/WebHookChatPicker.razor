@@ -1,0 +1,56 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.WebHooks
+@inherits ComputedStateComponent<AppUIHub, List<Chat>>
+@{
+    var chats = State.Value;
+}
+
+<div class="web-hook-chat-picker custom-scrollbar">
+    @foreach (var chat in chats) {
+        var isSelected = Value.Contains(chat.Id);
+        <div class="c-item" @key="@chat.Id" @onclick="@(() => OnToggle(chat.Id))">
+            <ChatIcon Chat="@chat" Size="SquareSize.Size8"/>
+            <span class="c-title">@chat.Title</span>
+            <Checkbox IsChecked="@isSelected" Change="@(() => OnToggle(chat.Id))"/>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public WebHookScope Scope { get; set; }
+    [Parameter, EditorRequired] public string ScopeId { get; set; } = "";
+    [Parameter, EditorRequired] public IReadOnlySet<ChatId> Value { get; set; } = ImmutableHashSet<ChatId>.Empty;
+    [Parameter] public EventCallback<IReadOnlySet<ChatId>> ValueChanged { get; set; }
+
+    protected override ComputedState<List<Chat>>.Options GetStateOptions()
+        => new() {
+            InitialValue = [],
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<List<Chat>> ComputeState(CancellationToken cancellationToken) {
+        var scope = Scope;
+        var scopeId = ScopeId;
+        var placeIds = scope == WebHookScope.Place
+            ? [PlaceId.Parse(scopeId)]
+            : await Hub.Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
+        var chats = new List<Chat>();
+        if (scope == WebHookScope.User)
+            chats.AddRange(await ListChats(null, cancellationToken).ConfigureAwait(false));
+        foreach (var placeId in placeIds)
+            chats.AddRange(await ListChats(placeId, cancellationToken).ConfigureAwait(false));
+        return chats;
+    }
+
+    private async Task<IEnumerable<Chat>> ListChats(PlaceId? placeId, CancellationToken cancellationToken) {
+        var contacts = await Hub.LocalSearchUI.ListContacts(placeId, cancellationToken).ConfigureAwait(false);
+        return contacts.Select(x => x.Chat).OrderBy(x => x.Title);
+    }
+
+    private Task OnToggle(ChatId chatId) {
+        var value = Value.Contains(chatId)
+            ? Value.Where(x => x != chatId).ToHashSet()
+            : Value.Append(chatId).ToHashSet();
+        return ValueChanged.InvokeAsync(value);
+    }
+}

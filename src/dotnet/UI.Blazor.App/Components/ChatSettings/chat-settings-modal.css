@@ -143,6 +143,30 @@ body.hoverable .chat-settings-container .tile-item:hover {
     @apply shrink-0; /* prevents shrinking tile item when list overflows */
 }
 
+/* Integrations row, page (chat) and tab (place) */
+
+.tile-item.item-integrations .tile-item-right {
+    @apply min-w-8 justify-end;
+    @apply text-03;
+}
+.tile-item.item-integrations .tile-item-right .c-count {
+    @apply whitespace-nowrap;
+}
+.tile-item.item-integrations .tile-item-right i {
+    @apply -ml-2;
+}
+
+.chat-integrations,
+.place-integrations {
+    @apply flex-y gap-y-2;
+}
+.chat-integrations {
+    @apply pt-6;
+}
+.place-integrations {
+    @apply px-4 pb-4;
+}
+
 .edit-settings-modal .pic.pic-square {
     @apply overflow-hidden;
 }

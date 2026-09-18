@@ -17,7 +17,7 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20260915112759_Add_ChatEntry_QuotedText";
+    public override string LastMigrationId => "20260917163140_Add_WebHooks";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -1314,6 +1314,208 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                     .HasDatabaseName("ix_translations_stream_id_modified_at");
 
                 b.ToTable("translations");
+            });
+
+        modelBuilder.Entity("ActualChat.Chat.Db.DbWebHook", b =>
+            {
+                b.Property<string>("Id")
+                    .HasColumnType("text")
+                    .HasColumnName("id")
+                    .UseCollation("C");
+
+                b.Property<string>("ChatIds")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("chat_ids");
+
+                b.Property<int>("ConsecutiveFailures")
+                    .HasColumnType("integer")
+                    .HasColumnName("consecutive_failures");
+
+                b.Property<DateTime>("CreatedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("created_at");
+
+                b.Property<string>("CreatedBy")
+                    .HasColumnType("text")
+                    .HasColumnName("created_by")
+                    .UseCollation("C");
+
+                b.Property<string>("CustomHeaderName")
+                    .HasColumnType("text")
+                    .HasColumnName("custom_header_name");
+
+                b.Property<string>("CustomHeaderValueProtected")
+                    .HasColumnType("text")
+                    .HasColumnName("custom_header_value_protected");
+
+                b.Property<int>("DisabledReason")
+                    .HasColumnType("integer")
+                    .HasColumnName("disabled_reason");
+
+                b.Property<long>("Events")
+                    .HasColumnType("bigint")
+                    .HasColumnName("events");
+
+                b.Property<bool>("IncludeText")
+                    .HasColumnType("boolean")
+                    .HasColumnName("include_text");
+
+                b.Property<bool>("IsEnabled")
+                    .HasColumnType("boolean")
+                    .HasColumnName("is_enabled");
+
+                b.Property<int>("Kind")
+                    .HasColumnType("integer")
+                    .HasColumnName("kind");
+
+                b.Property<DateTime?>("LastActivityAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("last_activity_at");
+
+                b.Property<string>("LastError")
+                    .HasColumnType("text")
+                    .HasColumnName("last_error");
+
+                b.Property<int?>("LastStatusCode")
+                    .HasColumnType("integer")
+                    .HasColumnName("last_status_code");
+
+                b.Property<DateTime>("ModifiedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("modified_at");
+
+                b.Property<string>("Name")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("name");
+
+                b.Property<DateTime?>("PrevSecretExpiresAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("prev_secret_expires_at");
+
+                b.Property<string>("PrevSecretProtected")
+                    .HasColumnType("text")
+                    .HasColumnName("prev_secret_protected");
+
+                b.Property<int>("Scope")
+                    .HasColumnType("integer")
+                    .HasColumnName("scope");
+
+                b.Property<string>("ScopeId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("scope_id")
+                    .UseCollation("C");
+
+                b.Property<string>("SecretProtected")
+                    .HasColumnType("text")
+                    .HasColumnName("secret_protected");
+
+                b.Property<bool>("SubscribeNotifications")
+                    .HasColumnType("boolean")
+                    .HasColumnName("subscribe_notifications");
+
+                b.Property<string>("TokenHash")
+                    .HasColumnType("text")
+                    .HasColumnName("token_hash")
+                    .UseCollation("C");
+
+                b.Property<string>("Url")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("url");
+
+                b.Property<long>("Version")
+                    .IsConcurrencyToken()
+                    .HasColumnType("bigint")
+                    .HasColumnName("version");
+
+                b.HasKey("Id")
+                    .HasName("pk_web_hooks");
+
+                b.HasIndex("ScopeId")
+                    .HasDatabaseName("ix_web_hooks_scope_id");
+
+                b.HasIndex("TokenHash")
+                    .IsUnique()
+                    .HasDatabaseName("ix_web_hooks_token_hash");
+
+                b.ToTable("web_hooks");
+            });
+
+        modelBuilder.Entity("ActualChat.Chat.Db.DbWebHookDelivery", b =>
+            {
+                b.Property<string>("Id")
+                    .HasColumnType("text")
+                    .HasColumnName("id")
+                    .UseCollation("C");
+
+                b.Property<int>("Attempts")
+                    .HasColumnType("integer")
+                    .HasColumnName("attempts");
+
+                b.Property<DateTime?>("CompletedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("completed_at");
+
+                b.Property<DateTime>("CreatedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("created_at");
+
+                b.Property<string>("EventType")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("event_type");
+
+                b.Property<string>("LastError")
+                    .HasColumnType("text")
+                    .HasColumnName("last_error");
+
+                b.Property<int?>("LastLatencyMs")
+                    .HasColumnType("integer")
+                    .HasColumnName("last_latency_ms");
+
+                b.Property<int?>("LastStatusCode")
+                    .HasColumnType("integer")
+                    .HasColumnName("last_status_code");
+
+                b.Property<DateTime?>("NextAttemptAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("next_attempt_at");
+
+                b.Property<string>("Payload")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("payload");
+
+                b.Property<long>("Seq")
+                    .HasColumnType("bigint")
+                    .HasColumnName("seq");
+
+                b.Property<int>("Status")
+                    .HasColumnType("integer")
+                    .HasColumnName("status");
+
+                b.Property<string>("WebHookId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("web_hook_id")
+                    .UseCollation("C");
+
+                b.HasKey("Id")
+                    .HasName("pk_web_hook_deliveries");
+
+                b.HasIndex("CreatedAt")
+                    .HasDatabaseName("ix_web_hook_deliveries_created_at");
+
+                b.HasIndex("Status", "NextAttemptAt")
+                    .HasDatabaseName("ix_web_hook_deliveries_status_next_attempt_at");
+
+                b.HasIndex("WebHookId", "Seq")
+                    .HasDatabaseName("ix_web_hook_deliveries_web_hook_id_seq");
+
+                b.ToTable("web_hook_deliveries");
             });
 
         modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbEvent", b =>

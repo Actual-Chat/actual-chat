@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
+@using ActualChat.WebHooks
 @inherits ComputedStateComponent<AppUIHub, PlaceSettingsStartModalPage.ComputedModel>
 @{
     if (State.IsInitial(out var m))
@@ -30,9 +31,15 @@
 </div>
 
 @{
-    var tabs = new TabDef[] {
+    var tabs = new List<TabDef> {
         new("members", L.Place_TabMembers) { Content = @<AuthorList PlaceId="@PlaceId"/> },
     };
+    if (_isOwner && _enableIncompleteUI)
+        tabs.Add(new("integrations", L.Integrations_Title) {
+            Content = @<div class="place-integrations">
+                          <WebHookList Scope="WebHookScope.Place" ScopeId="@PlaceId.Value"/>
+                      </div>,
+        });
 }
 
 <div class="c-panel-content">

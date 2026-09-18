@@ -27,6 +27,8 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
     public DbSet<DbAlias> Aliases { get; protected set; } = null!;
     public DbSet<DbConversation> Conversations { get; protected set; } = null!;
     public DbSet<DbSharedLocation> SharedLocations { get; protected set; } = null!;
+    public DbSet<DbWebHook> WebHooks { get; protected set; } = null!;
+    public DbSet<DbWebHookDelivery> WebHookDeliveries { get; protected set; } = null!;
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
@@ -153,6 +155,16 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         sharedLocation.Property(e => e.ChatId).UseCollation("C");
         sharedLocation.Property(e => e.AuthorId).UseCollation("C");
         sharedLocation.HasIndex(e => e.ChatId);
+
+        var webHook = model.Entity<DbWebHook>();
+        webHook.Property(e => e.Id).UseCollation("C");
+        webHook.Property(e => e.ScopeId).UseCollation("C");
+        webHook.Property(e => e.CreatedBy).UseCollation("C");
+        webHook.Property(e => e.TokenHash).UseCollation("C");
+
+        var webHookDelivery = model.Entity<DbWebHookDelivery>();
+        webHookDelivery.Property(e => e.Id).UseCollation("C");
+        webHookDelivery.Property(e => e.WebHookId).UseCollation("C");
 
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");
