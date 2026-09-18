@@ -1338,7 +1338,7 @@
   "Uploads_Resume": "Resume",
 
   // The share sheet.
-  "Share_ShareExternally": "Share Externally",
+  "Share_ShareExternally": "Share via…",
   "Share_CopyLink": "Copy link",
   "Share_LinkCopied": "Link copied!",
   "Share_WhoToShareWith": "Who would you like to share with",

@@ -58,6 +58,8 @@
             </Button>
         } else if (_mustShowActions) {
             <ShareActions Model="@ModalModel" Request="@RequestWithComment"/>
+        } else if (ModalModel.Request.HasMedia()) {
+            <ShareExternallyButton HideWhenCopyLink="true" Request="@RequestWithComment"/>
         }
     </Buttons>
 </DialogFrame>
@@ -115,7 +117,7 @@
         foreach (var chatId in selectedChatIds) {
             var sendRequest = SendMessageRequest.NewMessage(
                 chatId, text,
-                existingMedia: request.HasMedia() ? request.Media : null);
+                existingMedia: request.HasMedia() ? request.Media.Select(x => x.Ref).ToList() : null);
             _ = await SendingMessages.Send(sendRequest, CancellationToken.None);
         }
         Modal.Close(true);
