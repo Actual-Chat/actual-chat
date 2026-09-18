@@ -1640,6 +1640,7 @@
   "Call_Entry_Canceled": "취소된 통화",
   "Call_Entry_Ended": "통화",
   "Call_Entry_NoAnswer": "응답 없음",
+  "Call_Entry_Busy": "통화 중",
   "Call_Entry_TapToCallBack": "탭하여 다시 전화하기",
 
   "LiveConversation_TranslatedVoice": "번역 음성",

@@ -1948,6 +1948,7 @@
   "Call_Entry_Canceled": "Canceled call",
   "Call_Entry_Ended": "Call",
   "Call_Entry_NoAnswer": "No answer",
+  "Call_Entry_Busy": "Busy",
   "Call_Entry_TapToCallBack": "Tap to call back",
 
   // The label on a live-session card when the speaker's voice is replaced by a spoken translation.

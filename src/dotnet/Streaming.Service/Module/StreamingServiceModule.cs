@@ -26,6 +26,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<ILiveAudioBackend, LiveAudioBackend>();
         rpcHost.AddBackend<ILiveVideoBackend, LiveVideoBackend>();
         rpcHost.AddBackend<ILiveSessionsBackend, LiveSessionsBackend>();
+        rpcHost.AddBackend<ICallsBackend, CallsBackend>();
         rpcHost.AddBackend<IChatTypingActivitiesBackend, ChatTypingActivitiesBackend>();
         services.AddSingleton<LiveStreamAccess>();
         services.AddSingleton<PeerParticipations>();

@@ -10,6 +10,7 @@ public enum CallStatus
     Declined = 5,
     Canceled = 6,
     Ended = 7,
+    Busy = 8,
 }
 
 /// <summary>

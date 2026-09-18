@@ -1948,6 +1948,7 @@
   "Call_Entry_Canceled": "キャンセルされた通話",
   "Call_Entry_Ended": "Połączenie",
   "Call_Entry_NoAnswer": "Nessuna risposta",
+  "Call_Entry_Busy": "Sedang sibuk",
   "Call_Entry_TapToCallBack": "Toque para retornar a chamada",
 
   // The label on a live-session card when the speaker's voice is replaced by a spoken translation.

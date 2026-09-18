@@ -36,6 +36,11 @@ public static class CallCardFormat
                 ("icon-call-cross", l.Call_Entry_Canceled, null, false),
             CallOutcome.Canceled =>
                 ("icon-call-arrow-in", l.Call_Entry_Missed, l.Call_Entry_TapToCallBack, true),
+            // The callee never saw this one ring - it reads to them exactly like a missed call.
+            CallOutcome.Busy when isCaller =>
+                ("icon-call-arrow-out", l.Call_Entry_Outgoing, l.Call_Entry_Busy, false),
+            CallOutcome.Busy =>
+                ("icon-call-arrow-in", l.Call_Entry_Missed, l.Call_Entry_TapToCallBack, true),
             CallOutcome.Ended when isCaller =>
                 ("icon-call-arrow-out", l.Call_Entry_Outgoing, null, false),
             CallOutcome.Ended =>

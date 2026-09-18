@@ -111,6 +111,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
             CallStatus.Canceled => CallerStatus.Canceled,
             CallStatus.NoAnswer => CallerStatus.NoAnswer,
             CallStatus.Ended => CallerStatus.Ended,
+            CallStatus.Busy => CallerStatus.Busy,
             _ => CallerStatus.Dialing,   // Dialing (None can't reach here - callState is null then)
         };
     }
