@@ -4,17 +4,13 @@ How a ring gets from the caller's click to the callee's screen, and what each an
 both sides. What a finished call leaves in the chat is covered separately, in
 [Call entries](./call-entries.md).
 
-**The short version.** `StartCall` writes the call into the chat's live session in Redis and
-queues a notification. The notification pipeline turns it into one `CallNotification` per
-invitee and pushes it to every device. On the client, every delivery path only records the
-chat as a *candidate* in `CallUI`, through `CallScreensUI.OnRing(chatId)` or straight
-through `CallUI.AddCandidate(chatId)`. Whether the device
-actually rings is decided by the reactive live session: the call is still unanswered, the
-reader isn't its host, and the reader's invite is `Ringing`. The first candidate that passes
-claims the client's call slot and is held there until its ring ends: answered elsewhere,
-canceled, declined or timed out. A ring that arrives meanwhile gets `Busy`, so a lost or stale
-push can neither start a ring nor leave one stranded, and a second ring never takes over the
-first.
+**The short version.** `StartCall` first claims the **user call** of the caller and of every
+invitee - one per user, kept on that user's own shard - and only then writes the call into the
+chat's live session and queues a notification. A user already in a call isn't claimed: their
+invite is closed as `Busy` and they are left out of the notification batch, so no device of
+theirs is pushed at all. Every client then follows one reactive answer,
+`ILiveSessions.GetMyCall`, and shows the call it names. Pushes, notification lists and the
+Android ring only nudge a client to re-read that answer - none of them decides anything.
 
 [[toc]]
 
@@ -23,21 +19,22 @@ first.
 ```mermaid
 sequenceDiagram
     participant Caller as Caller client
+    participant CB as CallsBackend
     participant LS as LiveSessionsBackend
     participant NB as NotificationsBackend
     participant Push as FCM / APNs / Web Push
     participant Callee as Callee client
 
     Caller->>LS: StartCall
-    LS->>LS: session Kind=Call, CallState Dialing, CallInvite Ringing
-    LS->>NB: NotificationsBackend_NotifyCall (queue)
+    LS->>CB: TryClaim - the caller, then each invitee
+    CB-->>LS: free or busy, per user
+    LS->>LS: session Kind=Call, CallState Dialing, invites Ringing (Busy for the busy ones)
+    LS->>NB: NotificationsBackend_NotifyCall - only the invitees that were free
     NB->>NB: CallNotification per invitee, commit to active set
     NB->>Push: NotificationsBackend_Push
-    Push->>Callee: data message / APNs alert
-    Callee->>Callee: CallUI.AddCandidate(chatId), directly or via CallScreensUI.OnRing
-    Callee->>LS: LiveSessions.Get - is my invite Ringing?
-    Callee->>Callee: hold the ring in the call slot until it ends
-    Callee->>LS: ConfirmRing(Ringing or Busy)
+    Push->>Callee: data message / APNs alert - a nudge to re-read
+    Callee->>CB: GetMyCall - which call is mine?
+    Callee->>Callee: project it into the slot
     Callee->>LS: AcceptCall or DeclineCall
     LS->>NB: NotificationsBackend_CancelCall - stop the ring on other devices
 ```
@@ -53,7 +50,17 @@ ring anyone. The public `LiveSessions.StartCall` then checks that:
   Otherwise the call fails with a constraint error whose text is shown to the caller;
 - an empty invitee list means every other member of the chat.
 
-`LiveSessionsBackend.StartCall` does the rest under the chat's change lock:
+`LiveSessionsBackend.StartCall` claims the user calls first - before the chat's change lock,
+since each claim is an RPC to that user's shard:
+
+- **the caller's own**, as `Caller/Dialing`. A refused claim fails the call with "You're
+  already in a call", however many devices that other call is spread across.
+- **one per invitee**, as `Callee/Ringing`. A refused one drops that invitee out of the ring:
+  their invite is written `Busy` straight away and they are left out of the notification batch.
+  If that leaves nobody to answer, the call is closed at once with `CallStatus.Busy` and
+  `CallOutcome.Busy`, so the caller isn't left dialing.
+
+Then, under the lock:
 
 - **Live session state.** `Kind = Call`, `CallerId` and `Host` are the caller, and
   `SessionStartedAt` stays `null`. A call with no `SessionStartedAt` is dialing
@@ -97,72 +104,70 @@ notification id. The notification leaves the active set, and a dismissal push ca
 
 ## How the client learns about the ring
 
-Pushes and taps on the call notification go through `CallScreensUI.OnRing(chatId)`, which
-adds the chat to `CallUI`'s candidates and, for a ring shown over the lock screen, sets the
-over-lock flag. The two notification lists, the system's on start and `ListActive`, call
-`CallUI.AddCandidate(chatId)` directly, with no over-lock flag. Answer skips the candidates
-and goes straight to `CallScreensUI.Accept`.
+`CallUI` follows `ILiveSessions.GetMyCall` and shows whatever it names. Pushes and taps go
+through `CallScreensUI.OnRing(chatId)`, which calls `CallUI.Touch()` - "re-read now" - and, for
+a ring shown over the lock screen, sets the over-lock flag. Answer skips all of it and goes
+straight to `CallScreensUI.Accept`.
 
 | Situation | Path |
 |---|---|
 | Android, app in the foreground and unlocked | `FirebaseMessagingService` dispatches `OnRing` straight into Blazor. No system notification is shown, because the in-app modal and ringer already own the ring. |
-| Android, backgrounded, killed or locked | `IncomingCallNotifications.Show` posts a `CallStyle` notification with Answer/Decline and a full-screen intent, and `IncomingCallRinger` starts the ringtone with it. Neither happens when another chat's call notification is shown or the slot is held by another chat. If the Blazor scope is alive, `OnRing` is dispatched as well. |
+| Android, backgrounded, killed or locked | `IncomingCallNotifications.Show` posts a `CallStyle` notification with Answer/Decline and a full-screen intent, and `IncomingCallRinger` starts the ringtone with it. No local arbitration: a ring that shouldn't be shown was never pushed. If the Blazor scope is alive, `OnRing` is dispatched as well. |
 | Android, opened from that notification | `NotificationHandler` → `IncomingCallNotifications.HandleViewIntent`. A full-screen intent passes `overLockScreen: true`; Answer goes straight to `CallScreensUI.Accept`. |
-| Android, opened from the launcher after a push | `CallUI`'s search loop (`SearchRings`) picks the ring up from the still-active system notifications on start (`Bridge.ListActiveCallChatIds` → `AddCandidate`). |
+| Android, opened from the launcher after a push | Nothing special: the first `GetMyCall` on start returns the call, if it is still ringing. |
 | Web, tab in the foreground | Firebase `onMessage` → `NotificationUI.OnIncomingCall`. |
 | Web, tab in the background or closed | The service worker posts `INCOMING_CALL` to every open tab and shows an OS notification. |
-| Every platform | `CallUI.SyncActiveCallNotifications` watches `Notifications.ListActive` and calls `CallUI.AddCandidate` for every `CallNotification`. Off Android this is the primary trigger; on Android it covers a dropped push while the app is alive. |
+| Every platform | `GetMyCall` is a compute method, so it arrives on its own when the claim or the session changes - no notification list is involved. |
 
 ::: info The push is only a hint
-`AddCandidate` only appends the chat to a list of candidates. `GetRingingCall` reads
-`LiveSessionUI.Get(chatId)` and returns a call only when all of these hold:
-
-- `Kind == Call`;
-- the reader's invite is `Ringing`.
-
-Only the reader's own invite decides. The caller is never invited, so their own call
-never rings them; someone else answering a group call leaves the reader's invite
-`Ringing`, while the reader answering on another device moves it on. A stale push, or a
-call the reader already answered elsewhere, produces nothing, and dead candidates are
-pruned.
+A push can't make a client ring: `Touch()` invalidates the `GetMyCall` computed and nothing
+more. The answer comes from `CallsBackend.GetUserCall`, which returns the claim only while the
+chat's session still backs it - the reader's invite is `Ringing`, or they are the dialing
+caller, or they are present in the conversation. A stale push, or a call already answered on
+another device, therefore produces nothing.
 :::
 
-## The call slot
+## The user's call, and the client slot
 
-`CallUI` holds the one call this client is in, incoming or outgoing: `_activeCall` names its
-chat, origin and phase (`Ringing`, `Dialing`, `Active`), and an empty `_activeCall` is a free
-slot. While the slot is held, every other ring is answered `Busy` and doesn't ring, and no
-new outgoing call can start. Ambient live sessions never hold it. Besides searching and
-holding, `CallUI` runs `SyncActiveCallNotifications`, which feeds `Notifications.ListActive`
-call notifications into the candidates.
+**The user's call** is the server's: `CallsBackend` keeps one record per user, keyed by
+`UserId` so it lives on that user's shard - `ChatId`, `AuthorId`, `Role` (`Caller` / `Callee`),
+`Phase` (`Ringing`, `Dialing`, `Active`), with a two-minute TTL.
 
-**Searching.** Whenever the candidate list, a candidate's ring or the slot changes, the
-search walks the ringing candidates newest first:
+The record is a **claim, not the truth**. `GetUserCall` answers with it only while the chat's
+live session still backs it: the invite is `Ringing` for a `Ringing` claim, `CallState` is
+still dialing for a `Dialing` one, and for `Active` the invite is accepted or the user is a
+live member. A claim the session no longer backs is released on the spot, so a crashed client
+can't stay busy. Two exceptions keep that rule workable:
 
-| Slot | Outcome |
-|---|---|
-| free | take it as `Incoming/Ringing` and send `ConfirmRing(Ringing)` — the ring was just read from the session |
-| held by this chat | nothing |
-| held by another chat | `ConfirmRing(Busy)` once per chat, and close its Android notification |
+- a claim younger than `ClaimGrace` (10 s) backs itself, because `StartCall` has to know who
+  is free *before* it writes the session the claim would be checked against;
+- a live claim re-checks itself every `ClaimSelfHeal` (10 s), since nothing invalidates a
+  claim that lapsed with its Redis TTL or outlived its call.
 
-Candidates that aren't ringing on a pass are dropped.
+Ambient live sessions never claim anything: recording or listening in a chat without a call
+doesn't make anyone busy.
 
-**Holding.** While the slot is held, a second loop follows that chat's session and releases
-the slot when the call ends:
+**The client slot** is `CallUI._activeCall`, and it is a projection of `GetMyCall` plus the
+intent of a gesture this client just made - `StartCall` sets `Caller/Dialing`, `Accept` sets
+`Active`, hanging up clears it, each before its RPC, so the screens follow the tap and not the
+round trip. `CallUI.Reconcile` decides between the two:
 
-| Held call | Released when |
-|---|---|
-| `Incoming/Ringing` | the ring ends — canceled, timed out, answered or declined elsewhere |
-| `Outgoing/Dialing` | no answer, declined, canceled, the session vanished; an answer joins the call and moves it to `Active` |
-| `Active` | the session stops being a call, or I was in the conversation and left it |
+| Server says | Intent | Slot |
+|---|---|---|
+| nothing | fresh, wants a call | the intent - "no call" is also what a disconnected client reads |
+| nothing | stale or none | empty |
+| this chat | fresh, just left it | empty, until the server catches up |
+| this chat | fresh, already `Active` | keep `Active` - a just-accepted ring must not blink back to ringing |
+| this chat | otherwise | the server's |
+| another chat | any | the server's - it arbitrated, and the local claim lost |
 
-`StartCall` claims the slot as `Outgoing/Dialing` before its RPC; `Accept` commits the ring to
-`Active` before its RPC, claiming a free slot itself when Answer on a notification beat the
-search. Hanging up releases the slot right away.
+An intent expires on its own timer (`IntentGrace`, 10 s), because the answer that ignores it
+may never change again.
 
 Everything that shows a call reads the slot. The modal, the island and the full-screen view
 read it through `CallScreensUI.GetCallView`; the ringtone through `GetIncomingCall`, the slot
-filtered to `Incoming/Ringing`; the ringback through `CallUI`.
+filtered to `Callee/Ringing`; the ringback through `CallUI`.
+
 
 ## Presenting the ring
 
@@ -200,7 +205,7 @@ swaps the dialing full-screen view for the modal.
 
 `CallScreensUI` is a UI worker; it runs two reactive loops:
 
-- **`SyncRingtone`** plays the ringtone while the slot holds an Incoming/Ringing call the user
+- **`SyncRingtone`** plays the ringtone while the slot holds a `Callee/Ringing` call the user
   hasn't muted.
 - **`SyncCallView`** follows `GetCallView`. It opens `CallModal` when the view switches to it;
   the modal closes itself once the view moves on. When the slot is released it tears the
@@ -213,7 +218,7 @@ swaps the dialing full-screen view for the modal.
   `EndRing` clears itself, since there is no release to do it.
 
 `ConfirmRing` is telemetry only. The server stores it on the invite (`CallInvite.Ack`) and
-changes nothing else.
+changes nothing else - the arbitration it used to feed now happens before the ring is sent.
 
 **Ringtone.** On Android it is the native `IncomingCallRinger`, reached through
 `AndroidIncomingCallsBridge`, playing the system default ringtone. When no audio is live, the
@@ -250,6 +255,7 @@ On the callee's client, `CallScreensUI.Accept`:
 
 On the server, `AcceptCall`:
 
+- moves the invitee's user call to `Active`;
 - sets the invite to `Accepted`;
 - on the first accept, latches the call: `SessionStartedAt = now`, `VisibleStartLid` at the
   chat's end, and the invitee added to `AuthorIds`. `RecomputeCallStatus` moves the caller's
@@ -325,6 +331,10 @@ notification's own `SetTimeoutAfter(RingTimeout)`.
 | `Constants.Call.RingTimeout` | 20 s | How long an invite rings before it becomes `Missed`. |
 | `Constants.Call.RingTtl` | 60 s | Redis field TTL on a ringing invite: the backstop when nobody observes the session. |
 | `CallConnectGrace` | 3 s | After the first accept, both sides must be present by then, or the call closes. |
+| `CallsBackend.ClaimTtl` | 2 min | Redis TTL on a user call, refreshed while the call lives. |
+| `CallsBackend.ClaimGrace` | 10 s | How long a fresh claim backs itself, before the session has to. |
+| `CallsBackend.ClaimSelfHeal` | 10 s | How often a live claim re-checks itself against the session. |
+| `CallUI.IntentGrace` | 10 s | How long a gesture's own view of the slot outlives an answer that ignores it. |
 
 ## Known gaps
 
@@ -339,11 +349,13 @@ notification's own `SetTimeoutAfter(RingTimeout)`.
   with a ringtone, and the in-app ring appears only once the app is open, through
   `ListActive`.
 - **The web OS notification has no Answer/Decline.** Clicking it just opens the chat.
-- **A ring during an active call doesn't ring at all.** It gets `Busy`; answering it means
-  hanging up first. Holding the current call to take another is a later feature.
-- **The slot is per client scope.** Each app instance — and on the web each browser tab —
-  holds its own, so the same user can still be in a call in one tab and take another in a
-  second tab.
+- **A ring during a call doesn't ring at all** - on any device, and the caller is told "busy"
+  right away. Answering it means hanging up first; holding the current call to take another is
+  a later feature. An *unanswered* ring counts the same way, so the first ring wins and a
+  second caller is turned away while it is still going.
+- **A hang-up frees the user only as fast as presence travels.** The claim goes when the
+  session stops backing it, which follows the participation the client drops on hang-up; the
+  self-heal bounds the worst case at `ClaimSelfHeal`.
 
 ## Related
 
