@@ -1133,6 +1133,8 @@
   "Translation_Setup": "(सेट अप करें)",
   "Translation_ModalTitle": "अनुवाद भाषा",
   "Translation_TranslateOwnMessages": "अपने संदेश भी अनुवाद करें",
+  "Translation_TranslatedVoiceOnInChat": "इस चैट में चालू",
+  "Translation_TranslatedVoiceOffInChat": "इस चैट में बंद",
   "Uploads_Pending": "कुछ फ़ाइल अपलोड लंबित हैं।",
   "Uploads_Resume": "जारी रखें",
   "Share_ShareExternally": "बाहर साझा करें",

@@ -1186,6 +1186,8 @@ public static class LocalizedStringsLocalizerExt
         public string Translation_Setup => l["Translation_Setup"].Value;
         public string Translation_ModalTitle => l["Translation_ModalTitle"].Value;
         public string Translation_TranslateOwnMessages => l["Translation_TranslateOwnMessages"].Value;
+        public string Translation_TranslatedVoiceOnInChat => l["Translation_TranslatedVoiceOnInChat"].Value;
+        public string Translation_TranslatedVoiceOffInChat => l["Translation_TranslatedVoiceOffInChat"].Value;
         public string Uploads_Pending => l["Uploads_Pending"].Value;
         public string Uploads_Resume => l["Uploads_Resume"].Value;
         public string Share_ShareExternally => l["Share_ShareExternally"].Value;

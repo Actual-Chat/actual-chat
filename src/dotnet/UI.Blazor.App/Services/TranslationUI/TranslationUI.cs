@@ -48,18 +48,25 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
     }
 
     [ComputeMethod]
+    public virtual Task<bool?> GetTranslatedVoiceOverride(ChatId chatId, CancellationToken cancellationToken = default)
+        => UserSettingsUI.ChatUserSettings(GetTranslationSettingsTargetChatId(chatId))
+            .Get(x => x.IsTranslatedVoiceEnabled, cancellationToken);
+
+    [ComputeMethod]
+    public virtual async Task<bool> IsTranslatedVoiceOn(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        var chatOverride = await GetTranslatedVoiceOverride(chatId, cancellationToken).ConfigureAwait(false);
+        return chatOverride
+            ?? (await LanguageUI.Settings.Use(LanguageUI.WhenReady, cancellationToken).ConfigureAwait(false))
+                .IsTranslatedVoiceEnabled;
+    }
+
+    [ComputeMethod]
     public virtual async Task<Language?> GetDubLanguage(ChatId chatId, CancellationToken cancellationToken = default)
     {
         if (await IsEnabled(chatId, cancellationToken).ConfigureAwait(false) != true)
             return null;
-
-        var chatSetting = await UserSettingsUI.ChatUserSettings(GetTranslationSettingsTargetChatId(chatId))
-            .Get(x => x.IsTranslatedVoiceEnabled, cancellationToken)
-            .ConfigureAwait(false);
-        var isEnabled = chatSetting
-            ?? (await LanguageUI.Settings.Use(LanguageUI.WhenReady, cancellationToken).ConfigureAwait(false))
-                .IsTranslatedVoiceEnabled;
-        if (!isEnabled)
+        if (!await IsTranslatedVoiceOn(chatId, cancellationToken).ConfigureAwait(false))
             return null;
 
         return await GetTranslationLanguage(chatId, cancellationToken).ConfigureAwait(false);
@@ -163,6 +170,17 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
     public Task SetTranslatedVoice(ChatId chatId, bool? value, CancellationToken cancellationToken = default)
         => UserSettingsUI.ChatUserSettings(GetTranslationSettingsTargetChatId(chatId))
             .Update(x => x with { IsTranslatedVoiceEnabled = value }, cancellationToken);
+
+    public async Task ToggleTranslatedVoice(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        // A per-chat override only where it departs from the user-level setting: turning it back to
+        // what Settings says returns the chat to "follow Settings", so later changes there apply here
+        var isOn = await IsTranslatedVoiceOn(chatId, cancellationToken).ConfigureAwait(false);
+        var userDefault = (await LanguageUI.Settings.Use(LanguageUI.WhenReady, cancellationToken).ConfigureAwait(false))
+            .IsTranslatedVoiceEnabled;
+        var value = !isOn == userDefault ? (bool?)null : !isOn;
+        await SetTranslatedVoice(chatId, value, cancellationToken).ConfigureAwait(false);
+    }
 
     // Protected/internal methods
 

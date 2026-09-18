@@ -1133,6 +1133,8 @@
   "Translation_Setup": "(налаштувати)",
   "Translation_ModalTitle": "Мова перекладу",
   "Translation_TranslateOwnMessages": "Перекладати мої повідомлення",
+  "Translation_TranslatedVoiceOnInChat": "Увімкнено в цьому чаті",
+  "Translation_TranslatedVoiceOffInChat": "Вимкнено в цьому чаті",
   "Uploads_Pending": "Є незавершені завантаження файлів.",
   "Uploads_Resume": "Продовжити",
   "Share_ShareExternally": "Поділитися поза застосунком",

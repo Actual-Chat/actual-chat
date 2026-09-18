@@ -1133,6 +1133,8 @@
   "Translation_Setup": "(настрой)",
   "Translation_ModalTitle": "Език на превода",
   "Translation_TranslateOwnMessages": "Превеждай собствените съобщения",
+  "Translation_TranslatedVoiceOnInChat": "Включено в този чат",
+  "Translation_TranslatedVoiceOffInChat": "Изключено в този чат",
   "Uploads_Pending": "Има файлове, чакащи качване.",
   "Uploads_Resume": "Продължи",
   "Share_ShareExternally": "Споделете навън",

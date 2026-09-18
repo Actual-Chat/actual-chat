@@ -7,6 +7,11 @@
         return;
 
     var ownMessagesStatus = m.TranslateOwnMessages ? L.RightPanel_On : L.RightPanel_Off;
+    var translatedVoiceStatus = m.TranslatedVoiceOverride switch {
+        true => L.Translation_TranslatedVoiceOnInChat,
+        false => L.Translation_TranslatedVoiceOffInChat,
+        null => m.IsTranslatedVoiceOn ? L.RightPanel_On : L.RightPanel_Off,
+    };
 }
 
 <DialogFrame
@@ -42,6 +47,15 @@
                     IsCheckedChanged="@(_ => OnTranslateOwnMessagesClick())" />
             </Right>
         </TileItem>
+        <TileItem Click="@OnTranslatedVoiceClick">
+            <Content>@L.Transcription_TranslatedVoice</Content>
+            <Caption>@translatedVoiceStatus</Caption>
+            <Right>
+                <Toggle
+                    IsChecked="@m.IsTranslatedVoiceOn"
+                    IsCheckedChanged="@(_ => OnTranslatedVoiceClick())" />
+            </Right>
+        </TileItem>
     </FormBlock>
     </Body>
 </DialogFrame>
@@ -62,7 +76,11 @@
         var translateOwnMessages = await TranslationUI
             .MustTranslateOwnMessages(chatId, cancellationToken)
             .ConfigureAwait(false);
-        return new(languages, translationLanguage, chatId, translateOwnMessages);
+        var isTranslatedVoiceOn = await TranslationUI.IsTranslatedVoiceOn(chatId, cancellationToken).ConfigureAwait(false);
+        var translatedVoiceOverride = await TranslationUI
+            .GetTranslatedVoiceOverride(chatId, cancellationToken)
+            .ConfigureAwait(false);
+        return new(languages, translationLanguage, chatId, translateOwnMessages, isTranslatedVoiceOn, translatedVoiceOverride);
     }
 
     private async Task OnClick(Language language) {
@@ -78,6 +96,11 @@
         }
     }
 
+    private Task OnTranslatedVoiceClick()
+        => State.Value is { } m
+            ? TranslationUI.ToggleTranslatedVoice(m.ChatId, CancellationToken.None)
+            : Task.CompletedTask;
+
     private Task OnOpenLanguageSettings()
         => UIEventHub.Publish(new ShowSettingsEvent(SettingsTabId.Transcription));
 
@@ -87,7 +110,9 @@
         IReadOnlyCollection<Language> Languages,
         Language Selected,
         ChatId ChatId,
-        bool TranslateOwnMessages);
+        bool TranslateOwnMessages,
+        bool IsTranslatedVoiceOn,
+        bool? TranslatedVoiceOverride);
 
     public sealed record Model(ChatId ChatId);
 }

@@ -1133,6 +1133,8 @@
   "Translation_Setup": "(configura)",
   "Translation_ModalTitle": "Lingua di traduzione",
   "Translation_TranslateOwnMessages": "Traduci i miei messaggi",
+  "Translation_TranslatedVoiceOnInChat": "Attivo in questa chat",
+  "Translation_TranslatedVoiceOffInChat": "Disattivato in questa chat",
   "Uploads_Pending": "Ci sono caricamenti di file in sospeso.",
   "Uploads_Resume": "Riprendi",
   "Share_ShareExternally": "Condividi all'esterno",

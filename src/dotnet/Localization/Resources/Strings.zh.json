@@ -1133,6 +1133,8 @@
   "Translation_Setup": "（设置）",
   "Translation_ModalTitle": "翻译语言",
   "Translation_TranslateOwnMessages": "翻译我自己的消息",
+  "Translation_TranslatedVoiceOnInChat": "在此聊天中开启",
+  "Translation_TranslatedVoiceOffInChat": "在此聊天中关闭",
   "Uploads_Pending": "有待完成的文件上传。",
   "Uploads_Resume": "继续",
   "Share_ShareExternally": "分享到其他应用",

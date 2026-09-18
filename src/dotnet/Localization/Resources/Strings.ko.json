@@ -1133,6 +1133,8 @@
   "Translation_Setup": "(설정)",
   "Translation_ModalTitle": "번역 언어",
   "Translation_TranslateOwnMessages": "내 메시지도 번역",
+  "Translation_TranslatedVoiceOnInChat": "이 채팅에서 켜짐",
+  "Translation_TranslatedVoiceOffInChat": "이 채팅에서 꺼짐",
   "Uploads_Pending": "대기 중인 파일 업로드가 있습니다.",
   "Uploads_Resume": "재개",
   "Share_ShareExternally": "외부로 공유",

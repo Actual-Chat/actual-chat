@@ -1323,12 +1323,15 @@
   "Replay_Speed": "Speed",
   "Replay_SpeedMenuTitle": "Replay speed:",
 
-  // The per-chat translation target language.
+  // The per-chat translation target language, plus the per-chat translated-voice override:
+  // "On/Off in this chat" say the chat departs from the user-level Settings choice.
   "Translation_TranslateTo": "Translate to",
   "Translation_TranslateToColon": "Translate to:",
   "Translation_Setup": "(setup)",
   "Translation_ModalTitle": "Translation language",
   "Translation_TranslateOwnMessages": "Translate own messages",
+  "Translation_TranslatedVoiceOnInChat": "On in this chat",
+  "Translation_TranslatedVoiceOffInChat": "Off in this chat",
 
   // The warning shown when leaving with uploads still in flight.
   "Uploads_Pending": "There are pending file uploads.",

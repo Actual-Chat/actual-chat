@@ -1133,6 +1133,8 @@
   "Translation_Setup": "(設定)",
   "Translation_ModalTitle": "翻訳言語",
   "Translation_TranslateOwnMessages": "自分のメッセージも翻訳",
+  "Translation_TranslatedVoiceOnInChat": "このチャットではオン",
+  "Translation_TranslatedVoiceOffInChat": "このチャットではオフ",
   "Uploads_Pending": "保留中のファイルアップロードがあります。",
   "Uploads_Resume": "再開",
   "Share_ShareExternally": "外部アプリで共有",

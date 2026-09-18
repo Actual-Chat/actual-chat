@@ -117,7 +117,5 @@
         => await Hub.ChatAudioUI.SetRecordingChatId(Header.Conversation!.Id.ChatId).ConfigureAwait(true);
 
     private Task ToggleTranslatedVoice()
-        // Off is a per-chat override; on is "inherit", since the chip only shows when the user-level setting is on
-        => TranslationUI.SetTranslatedVoice(
-            Header.Conversation!.Id.ChatId, State.Value.IsTranslatedVoiceOn ? false : null);
+        => TranslationUI.ToggleTranslatedVoice(Header.Conversation!.Id.ChatId);
 }

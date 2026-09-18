@@ -1133,6 +1133,8 @@
   "Translation_Setup": "(thiết lập)",
   "Translation_ModalTitle": "Ngôn ngữ dịch",
   "Translation_TranslateOwnMessages": "Dịch tin nhắn của tôi",
+  "Translation_TranslatedVoiceOnInChat": "Bật trong cuộc trò chuyện này",
+  "Translation_TranslatedVoiceOffInChat": "Tắt trong cuộc trò chuyện này",
   "Uploads_Pending": "Có tệp đang chờ tải lên.",
   "Uploads_Resume": "Tiếp tục",
   "Share_ShareExternally": "Chia sẻ ra ngoài",

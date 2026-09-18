@@ -1133,6 +1133,8 @@
   "Translation_Setup": "(ayarlayın)",
   "Translation_ModalTitle": "Çeviri dili",
   "Translation_TranslateOwnMessages": "Kendi mesajlarımı çevir",
+  "Translation_TranslatedVoiceOnInChat": "Bu sohbette açık",
+  "Translation_TranslatedVoiceOffInChat": "Bu sohbette kapalı",
   "Uploads_Pending": "Bekleyen dosya yüklemeleri var.",
   "Uploads_Resume": "Devam edin",
   "Share_ShareExternally": "Dışarıda paylaşın",

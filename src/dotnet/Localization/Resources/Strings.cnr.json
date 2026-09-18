@@ -1133,6 +1133,8 @@
   "Translation_Setup": "(podesi)",
   "Translation_ModalTitle": "Jezik prijevoda",
   "Translation_TranslateOwnMessages": "Prevodi vlastite poruke",
+  "Translation_TranslatedVoiceOnInChat": "Uključeno u ovom razgovoru",
+  "Translation_TranslatedVoiceOffInChat": "Isključeno u ovom razgovoru",
   "Uploads_Pending": "Ima fajlova koji čekaju otpremanje.",
   "Uploads_Resume": "Nastavi",
   "Share_ShareExternally": "Podijelite izvan aplikacije",

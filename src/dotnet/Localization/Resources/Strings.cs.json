@@ -1133,6 +1133,8 @@
   "Translation_Setup": "(nastavit)",
   "Translation_ModalTitle": "Jazyk překladu",
   "Translation_TranslateOwnMessages": "Překládat vlastní zprávy",
+  "Translation_TranslatedVoiceOnInChat": "Zapnuto v tomto chatu",
+  "Translation_TranslatedVoiceOffInChat": "Vypnuto v tomto chatu",
   "Uploads_Pending": "Některé soubory čekají na nahrání.",
   "Uploads_Resume": "Pokračovat",
   "Share_ShareExternally": "Sdílet mimo aplikaci",

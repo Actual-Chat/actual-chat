@@ -1133,6 +1133,8 @@
   "Translation_Setup": "(atur)",
   "Translation_ModalTitle": "Bahasa terjemahan",
   "Translation_TranslateOwnMessages": "Terjemahkan pesan sendiri",
+  "Translation_TranslatedVoiceOnInChat": "Aktif di obrolan ini",
+  "Translation_TranslatedVoiceOffInChat": "Nonaktif di obrolan ini",
   "Uploads_Pending": "Ada unggahan file yang tertunda.",
   "Uploads_Resume": "Lanjutkan",
   "Share_ShareExternally": "Bagikan ke luar",
