@@ -791,7 +791,7 @@
   "Onboarding_Telemetry_Suffix": ", i když v budoucnu můžeme využít i jiné služby.",
   "Onboarding_TelemetryConsent_Format": "Pomozte nám vylepšovat {0} — souhlaste se sběrem a zpracováním vašich telemetrických dat.",
   "Onboarding_DeclineTelemetry": "Odmítnout",
-  "Onboarding_EnableTelemetry": "Zapnout telemetrii",
+  "Onboarding_AcceptTelemetry": "Přijmout",
   "Onboarding_RequiredPermissions": "Potřebná oprávnění",
   "Onboarding_AllPermissionsGranted": "Všechna potřebná oprávnění už byla udělena.",
   "Onboarding_PrivacyPolicy": "Zásady ochrany osobních údajů",

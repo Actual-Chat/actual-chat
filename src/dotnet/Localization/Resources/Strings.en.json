@@ -949,7 +949,7 @@
   "Onboarding_Telemetry_Suffix": ", though we may use other services in the future.",
   "Onboarding_TelemetryConsent_Format": "Please help us improve {0} by consenting to the collection and processing of your telemetry data.",
   "Onboarding_DeclineTelemetry": "Decline",
-  "Onboarding_EnableTelemetry": "Enable Telemetry",
+  "Onboarding_AcceptTelemetry": "Accept",
   "Onboarding_RequiredPermissions": "Required permissions",
   "Onboarding_AllPermissionsGranted": "All necessary permissions are already granted.",
   "Onboarding_PrivacyPolicy": "Privacy Policy",

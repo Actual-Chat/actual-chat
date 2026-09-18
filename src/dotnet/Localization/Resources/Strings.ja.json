@@ -791,7 +791,7 @@
   "Onboarding_Telemetry_Suffix": " が処理しています(今後、他のサービスを利用する可能性があります)。",
   "Onboarding_TelemetryConsent_Format": "テレメトリデータの収集と処理に同意して、{0} の改善にご協力ください。",
   "Onboarding_DeclineTelemetry": "同意しない",
-  "Onboarding_EnableTelemetry": "テレメトリを有効にする",
+  "Onboarding_AcceptTelemetry": "同意する",
   "Onboarding_RequiredPermissions": "必要な権限",
   "Onboarding_AllPermissionsGranted": "必要な権限はすべて許可済みです。",
   "Onboarding_PrivacyPolicy": "プライバシーポリシー",

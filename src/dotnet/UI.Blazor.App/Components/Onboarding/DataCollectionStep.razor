@@ -38,7 +38,7 @@
 
     public override bool CanSkip => true;
     public override string SkipTitle => L.Onboarding_DeclineTelemetry;
-    public override string NextTitle => L.Onboarding_EnableTelemetry;
+    public override string NextTitle => L.Onboarding_AcceptTelemetry;
     public override bool IsCompleted
         => OnboardingUI.UserSettings.Value.IsDataCollectionStepCompleted || IsConfigured;
 

@@ -791,7 +791,7 @@
   "Onboarding_Telemetry_Suffix": ", хоча в майбутньому ми можемо використовувати й інші сервіси.",
   "Onboarding_TelemetryConsent_Format": "Допоможіть нам покращити {0} — дозвольте збір і обробку ваших телеметричних даних.",
   "Onboarding_DeclineTelemetry": "Відмовитися",
-  "Onboarding_EnableTelemetry": "Увімкнути телеметрію",
+  "Onboarding_AcceptTelemetry": "Дозволити",
   "Onboarding_RequiredPermissions": "Потрібні дозволи",
   "Onboarding_AllPermissionsGranted": "Усі потрібні дозволи вже надано.",
   "Onboarding_PrivacyPolicy": "Політика конфіденційності",

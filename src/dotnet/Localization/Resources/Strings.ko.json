@@ -791,7 +791,7 @@
   "Onboarding_Telemetry_Suffix": " 에서 처리하며, 향후 다른 서비스를 사용할 수도 있습니다.",
   "Onboarding_TelemetryConsent_Format": "텔레메트리 데이터의 수집과 처리에 동의해 {0} 개선에 도움을 주세요.",
   "Onboarding_DeclineTelemetry": "동의 안 함",
-  "Onboarding_EnableTelemetry": "텔레메트리 사용",
+  "Onboarding_AcceptTelemetry": "동의",
   "Onboarding_RequiredPermissions": "필요한 권한",
   "Onboarding_AllPermissionsGranted": "필요한 권한이 모두 허용되어 있습니다.",
   "Onboarding_PrivacyPolicy": "개인정보 처리방침",

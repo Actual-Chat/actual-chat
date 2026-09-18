@@ -791,7 +791,7 @@
   "Onboarding_Telemetry_Suffix": " – künftig können andere Dienste hinzukommen.",
   "Onboarding_TelemetryConsent_Format": "Helfen Sie uns, {0} zu verbessern, indem Sie der Erfassung und Verarbeitung Ihrer Telemetriedaten zustimmen.",
   "Onboarding_DeclineTelemetry": "Ablehnen",
-  "Onboarding_EnableTelemetry": "Telemetrie aktivieren",
+  "Onboarding_AcceptTelemetry": "Zustimmen",
   "Onboarding_RequiredPermissions": "Erforderliche Berechtigungen",
   "Onboarding_AllPermissionsGranted": "Alle erforderlichen Berechtigungen sind bereits erteilt.",
   "Onboarding_PrivacyPolicy": "Datenschutzerklärung",
