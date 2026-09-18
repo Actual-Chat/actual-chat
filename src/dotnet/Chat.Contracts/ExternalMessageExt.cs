@@ -16,6 +16,8 @@ public static class ExternalMessageExt
         var authorBlock = await author.ToExternalAuthor(urlMapper, avatarUrl, cancellationToken).ConfigureAwait(false);
         var attachments = entry.Attachments.Select(a => a.ToExternalAttachment(urlMapper)).ToArray();
         var url = urlMapper.ToAbsolute(Links.Chat(entry.ChatId, entry.LocalId).Value);
+        // In-progress transcription is never exposed
+        var text = includeText && !entry.IsContentStreaming ? entry.Content : null;
         return new ExternalMessage(
             entry.LocalId,
             entry.Version,
@@ -25,7 +27,7 @@ public static class ExternalMessageExt
             entry.IsContentStreaming,
             entry.HasAudio,
             entry.IsRemoved,
-            includeText ? entry.Content : null,
+            text,
             null,
             attachments,
             entry.RepliedEntryLid,
