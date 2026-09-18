@@ -1,0 +1,156 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.WebHooks
+@inherits ComputedStateComponent<AppUIHub, WebHookDetailPage.Model>
+@{
+    if (State.IsInitial(out var m))
+        return;
+    if (m.Hook is not { } hook) {
+        Context.Close();
+        return;
+    }
+
+    Context.Title = hook.Name;
+}
+
+<div class="web-hook-detail">
+    <Tile>
+        <TileItem Click="@(() => OnEditClick(hook))">
+            <Icon><i class="icon-edit"></i></Icon>
+            <Content>@hook.Name</Content>
+            <Caption>@hook.GetHost()</Caption>
+            <Right><i class="icon-chevron-right text-3xl"></i></Right>
+        </TileItem>
+    </Tile>
+
+    <Tile Class="c-status-tile">
+        <TileItem IsHoverable="false">
+            <Icon><i class="icon-call-arrow-out"></i></Icon>
+            <Content>@L.WebHook_Enabled</Content>
+            <Caption>
+                @if (m.StatusText != null) {
+                    <span class="@(m.IsFailing ? "c-failing" : "")">@m.StatusText</span>
+                }
+            </Caption>
+            <Right>
+                <Toggle IsChecked="@hook.IsEnabled" IsCheckedChanged="@(x => OnEnabledChanged(hook, x))"/>
+            </Right>
+        </TileItem>
+    </Tile>
+
+    <WebHookTestButton WebHookId="@hook.Id"/>
+
+    <WebHookDeliveryList WebHookId="@hook.Id" Deliveries="@m.Deliveries"/>
+
+    <Tile>
+        <TileItem Class="item-danger" Click="@(() => OnRotateSecretClick(hook))">
+            <Icon><i class="icon-key"></i></Icon>
+            <Content>@L.WebHook_RotateSecret</Content>
+        </TileItem>
+        <Divider/>
+        <TileItem Class="item-danger" Click="@(() => OnDeleteClick(hook))">
+            <Icon><i class="icon-trash03"></i></Icon>
+            <Content>@L.WebHook_Delete</Content>
+        </TileItem>
+    </Tile>
+</div>
+
+@code {
+    private WebHookId Id { get; set; } = null!;
+
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        Id = Context.GetModel<WebHookId>();
+        Context.Buttons = [DialogButtonInfo.CreateCloseButton(L)];
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new Model(),
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var id = Id;
+        var hook = await Hub.WebHooks.Get(Session, id, cancellationToken).ConfigureAwait(false);
+        if (hook == null)
+            return new Model();
+
+        var deliveries = await Hub.WebHooks.ListDeliveries(Session, id, cancellationToken).ConfigureAwait(false);
+        var (statusText, isFailing) = await hook.GetStatusText(L, Hub.LiveTime, cancellationToken)
+            .ConfigureAwait(false);
+        return new Model {
+            Hook = hook,
+            Deliveries = deliveries,
+            StatusText = statusText,
+            IsFailing = isFailing,
+        };
+    }
+
+    private void OnEditClick(WebHook hook)
+        => Context.StepIn(DiveInDialogPage.New<WebHookFormPage>(
+            new WebHookFormPage.Model(hook.Scope, hook.ScopeId, hook)));
+
+    private Task OnEnabledChanged(WebHook hook, bool isEnabled)
+        => UICommander.Run(new WebHooks_Change {
+            Session = Session,
+            Scope = hook.Scope,
+            ScopeId = hook.ScopeId,
+            Id = hook.Id,
+            ExpectedVersion = hook.Version,
+            Change = Change.Update(new WebHookDiff { IsEnabled = isEnabled }),
+        });
+
+    private async Task OnRotateSecretClick(WebHook hook) {
+        if (!await Confirm(L.WebHook_RotateSecret, L.WebHook_RotateSecretConfirm, false).ConfigureAwait(true))
+            return;
+
+        var result = await UICommander.Run(new WebHooks_RotateSecret { Session = Session, Id = hook.Id });
+        if (result.HasError)
+            return;
+
+        Context.StepIn(DiveInDialogPage.New<WebHookRevealPage>(new WebHookRevealPage.Model(hook, result.Value)));
+    }
+
+    private async Task OnDeleteClick(WebHook hook) {
+        if (!await Confirm(L.WebHook_Delete, L.WebHook_DeleteConfirm_Format(hook.Name), true).ConfigureAwait(true))
+            return;
+
+        var result = await UICommander.Run(new WebHooks_Change {
+            Session = Session,
+            Scope = hook.Scope,
+            ScopeId = hook.ScopeId,
+            Id = hook.Id,
+            ExpectedVersion = hook.Version,
+            Change = Change.Remove<WebHookDiff>(),
+        });
+        if (result.HasError)
+            return;
+
+        Modal.Close();
+    }
+
+    private async Task<bool> Confirm(string title, string text, bool isDestructive) {
+        var isConfirmed = false;
+        var model = new ConfirmModal.Model(isDestructive, text, () => { isConfirmed = true; }) {
+            Title = title,
+            ConfirmButtonText = L.Common_Yes,
+        };
+        var modalRef = await ModalUI.Show(model).ConfigureAwait(true);
+        await modalRef.WhenClosed.ConfigureAwait(true);
+        // Closing the confirm modal is a history move; a step opened before it lands gets
+        // rolled back by the stepper's history state, so the caller must wait it out
+        await History.WhenNavigationCompletedOrTimeout().ConfigureAwait(true);
+        return isConfirmed;
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public WebHook? Hook { get; init; }
+        public ApiArray<WebHookDelivery> Deliveries { get; init; }
+        public string? StatusText { get; init; }
+        public bool IsFailing { get; init; }
+    }
+}

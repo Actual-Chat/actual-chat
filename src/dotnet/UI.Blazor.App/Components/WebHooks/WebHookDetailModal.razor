@@ -1,0 +1,15 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<WebHookDetailModal.Model>
+
+<DiveInDialogFrame
+    Class="web-hook-modal"
+    HasCloseButton="true"
+    StartPage="@(DiveInDialogPage.New<WebHookDetailPage>(ModalModel.Id))">
+</DiveInDialogFrame>
+
+@code {
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public sealed record Model(WebHookId Id);
+}

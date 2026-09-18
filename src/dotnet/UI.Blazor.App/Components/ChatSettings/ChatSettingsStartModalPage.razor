@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
+@using ActualChat.WebHooks
 @inherits ComputedStateComponent<AppUIHub, ChatSettingsStartModalPage.ComputedModel>
 @{
     if (State.IsInitial(out var m))
@@ -80,6 +81,21 @@
                     <Caption>
                         @L.ChatSettings_UsePlaceSettingsForMembers
                     </Caption>
+                </TileItem>
+            }
+
+            @if (m.ShowIntegrations) {
+                <TileItem Class="item-integrations" Click="OnIntegrationsClick">
+                    <Icon>
+                        <i class="icon-link-2"></i>
+                    </Icon>
+                    <Content>
+                        @L.Integrations_Title
+                    </Content>
+                    <Right>
+                        <span class="c-count">@L.Integrations_Hooks_Format(m.WebHookCount, m.WebHookCount)</span>
+                        <i class="icon-chevron-right text-3xl"></i>
+                    </Right>
                 </TileItem>
             }
 
@@ -215,6 +231,12 @@
         var isPublic = chat.IsPublic;
         _placeId = (chat.Id as PlaceChatId)?.PlaceId;
         var isPlace = _placeId is not null;
+        var showIntegrations = chat.Rules.CanModerate()
+            && await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        var webHookCount = showIntegrations
+            ? (await Hub.WebHooks.List(Session, WebHookScope.Chat, chatId.Value, cancellationToken)
+                .ConfigureAwait(false)).Count
+            : 0;
 
         return new() {
             Chat = chat,
@@ -223,6 +245,8 @@
             IsPublic = isPublic,
             IsPlace = isPlace,
             IsAdmin = AccountUI.OwnAccount.Value.IsAdmin,
+            ShowIntegrations = showIntegrations,
+            WebHookCount = webHookCount,
         };
     }
 
@@ -236,6 +260,9 @@
 
     private void OnManageMembersClick()
         => Context.StepIn(DiveInDialogPage.New<EditChatMembersModalPage>(ChatId));
+
+    private void OnIntegrationsClick()
+        => Context.StepIn(DiveInDialogPage.New<ChatIntegrationsModalPage>(ChatId));
 
     private void OnDeleteChatClick(Chat chat)
         => ChatUI.DeleteChat(chat);
@@ -305,5 +332,7 @@
         public bool IsPlace { get; init; }
         public bool IsAdmin { get; init; }
         public bool CanRemoveThread { get; init; }
+        public bool ShowIntegrations { get; init; }
+        public int WebHookCount { get; init; }
     }
 }

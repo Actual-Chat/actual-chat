@@ -1,0 +1,20 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.WebHooks
+@inherits ComponentBase<AppUIHub>
+
+<div class="chat-integrations">
+    <WebHookList Scope="WebHookScope.Chat" ScopeId="@ChatId.Value"/>
+</div>
+
+@code {
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+
+    private ChatId ChatId { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        ChatId = Context.GetModel<ChatId>();
+        Context.Title = L.Integrations_Title;
+        // The chat settings hero stays on inner steps, so the footer is the only way back
+        Context.Buttons = [DialogButtonInfo.CreateBackButton(L)];
+    }
+}

@@ -143,6 +143,19 @@ body.hoverable .chat-settings-container .tile-item:hover {
     @apply shrink-0; /* prevents shrinking tile item when list overflows */
 }
 
+/* Integrations page (chat) and tab (place) */
+
+.chat-integrations,
+.place-integrations {
+    @apply flex-y gap-y-2;
+}
+.chat-integrations {
+    @apply pt-6;
+}
+.place-integrations {
+    @apply px-4 pb-4;
+}
+
 .edit-settings-modal .pic.pic-square {
     @apply overflow-hidden;
 }

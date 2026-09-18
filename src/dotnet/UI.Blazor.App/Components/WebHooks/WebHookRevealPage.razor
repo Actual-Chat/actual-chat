@@ -1,0 +1,33 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.WebHooks
+@inherits ComponentBase<AppUIHub>
+
+<FormBlock Class="web-hook-reveal">
+    <p class="c-title">@L.WebHook_SecretCopyWarning</p>
+    <div class="c-secret">
+        <code>@_model.Secret</code>
+        <CopyToClipboard
+            Kind="CopyButtonKind.Square"
+            ButtonClass="btn-sm btn-transparent"
+            Text="@_model.Secret"/>
+    </div>
+    <WebHookTestButton WebHookId="@_model.WebHook.Id"/>
+</FormBlock>
+
+@code {
+    private Model _model = null!;
+
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _model = Context.GetModel<Model>();
+        Context.Title = L.WebHook_SecretTitle;
+        Context.Buttons = [DialogButtonInfo.CreateSubmitButton(L.Common_Close, OnClose)];
+    }
+
+    private void OnClose()
+        => Modal.Close();
+
+    public sealed record Model(WebHook WebHook, string Secret);
+}

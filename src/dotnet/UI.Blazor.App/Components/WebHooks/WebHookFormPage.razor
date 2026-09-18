@@ -1,0 +1,275 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.WebHooks
+@inherits ComponentBase<AppUIHub>
+@{
+    _submitButtonInfo.CanExecute = IsValid();
+    var isPlace = _model.Scope == WebHookScope.Place;
+    var isPersonal = _model.Scope == WebHookScope.User;
+    var showChatPicker = isPersonal || (isPlace && !_form.IsAllChats);
+}
+
+<Form Class="web-hook-form" Model="@_form">
+    <FormBlock>
+        <FormSection
+            For="() => _form.Name"
+            InputId="@_form.NameId"
+            IsLabelInsideInput="true"
+            Label="@L.WebHook_Name">
+            <TextBox
+                Id="@_form.NameId"
+                @bind-Value="@_form.Name"
+                ClearButton="true"/>
+        </FormSection>
+        <FormSection
+            For="() => _form.Url"
+            InputId="@_form.UrlId"
+            IsLabelInsideInput="true"
+            Label="@L.WebHook_Url">
+            <TextBox
+                Id="@_form.UrlId"
+                Type="url"
+                Placeholder="https://"
+                @bind-Value="@_form.Url"
+                ClearButton="true"/>
+        </FormSection>
+    </FormBlock>
+
+    <FormBlock Title="@L.WebHook_Events">
+        <WebHookEventsPicker
+            Scope="@_model.Scope"
+            Value="@_form.Events"
+            ValueChanged="@OnEventsChanged"/>
+        <div class="c-toggle-row">
+            <label for="@_form.IncludeTextId" class="c-label">@L.WebHook_IncludeText</label>
+            <Toggle
+                Id="@_form.IncludeTextId"
+                IsChecked="@_form.IncludeText"
+                IsCheckedChanged="@(x => _form.IncludeText = x)"/>
+        </div>
+    </FormBlock>
+
+    @if (isPlace || isPersonal) {
+        <FormBlock Title="@L.WebHook_Chats">
+            @if (isPlace) {
+                <InputRadioGroup Name="@_form.ChatsModeName" @bind-Value="_form.IsAllChats">
+                    <div class="c-chats-mode">
+                        <label class="c-option">
+                            <FormRadio Id="@_form.AllChatsId" Value="@true"/>
+                            <span>@L.WebHook_Chats_All</span>
+                        </label>
+                        <label class="c-option">
+                            <FormRadio Id="@_form.SelectedChatsId" Value="@false"/>
+                            <span>@L.WebHook_Chats_Selected</span>
+                        </label>
+                    </div>
+                </InputRadioGroup>
+            }
+            @if (showChatPicker) {
+                <WebHookChatPicker
+                    Scope="@_model.Scope"
+                    ScopeId="@_model.ScopeId"
+                    Value="@_form.ChatIds"
+                    ValueChanged="@(x => _form.ChatIds = x)"/>
+            }
+        </FormBlock>
+    }
+
+    <FormBlock>
+        <button type="button" class="c-advanced-toggle" @onclick="@(() => _form.ShowAdvanced = !_form.ShowAdvanced)">
+            <i class="@(_form.ShowAdvanced ? "icon-chevron-up" : "icon-chevron-right")"></i>
+            <span>@L.WebHook_ShowAdvanced</span>
+        </button>
+        @if (_form.ShowAdvanced) {
+            <div class="c-advanced">
+                <div class="form-block-title">@L.WebHook_CustomHeader</div>
+                <FormSection
+                    For="() => _form.HeaderName"
+                    InputId="@_form.HeaderNameId"
+                    IsLabelInsideInput="true"
+                    Label="@L.WebHook_CustomHeaderName">
+                    <TextBox
+                        Id="@_form.HeaderNameId"
+                        @bind-Value="@_form.HeaderName"
+                        ClearButton="true"/>
+                </FormSection>
+                <FormSection
+                    For="() => _form.HeaderValue"
+                    InputId="@_form.HeaderValueId"
+                    IsLabelInsideInput="true"
+                    Label="@L.WebHook_CustomHeaderValue">
+                    <TextBox
+                        Id="@_form.HeaderValueId"
+                        Type="password"
+                        Autocomplete="new-password"
+                        @bind-Value="@_form.HeaderValue"
+                        ClearButton="true"/>
+                </FormSection>
+            </div>
+        }
+    </FormBlock>
+</Form>
+
+@code {
+    private Model _model = null!;
+    private FormModel _form = null!;
+    private DialogButtonInfo _submitButtonInfo = null!;
+
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _model = Context.GetModel<Model>();
+        var existing = _model.Existing;
+        _form = new FormModel(ComponentIdGenerator) {
+            // "All chats" exists only for place hooks; a personal hook always lists its chats
+            IsAllChats = _model.Scope == WebHookScope.Place,
+        };
+        if (existing != null) {
+            _form.Name = existing.Name;
+            _form.Url = existing.Url;
+            _form.Events = existing.Events;
+            _form.IncludeText = existing.IncludeText;
+            _form.ChatIds = existing.ChatIds.ToHashSet();
+            _form.IsAllChats = _form.IsAllChats && existing.ChatIds.Count == 0;
+            _form.HeaderName = existing.CustomHeaderName ?? "";
+            _form.ShowAdvanced = !_form.HeaderName.IsNullOrEmpty();
+        }
+        Context.Title = existing?.Name ?? L.Integrations_Outgoing;
+        _submitButtonInfo = DialogButtonInfo.CreateSubmitButton(
+            existing == null ? L.WebHook_Create : L.WebHook_Save,
+            OnSubmit);
+        Context.Buttons = [_submitButtonInfo];
+    }
+
+    private void OnEventsChanged(WebHookEvents events)
+        => _form.Events = events;
+
+    private bool IsValid() {
+        var name = _form.Name.Trim();
+        if (name.IsNullOrEmpty() || name.Length > Constants.WebHooks.MaxNameLength)
+            return false;
+        if (!IsAllowedUrl(_form.Url.Trim()))
+            return false;
+        if (_form.Events == WebHookEvents.None)
+            return false;
+
+        return _model.Scope switch {
+            WebHookScope.User => _form.SubscribeNotifications || _form.ChatIds.Count > 0,
+            WebHookScope.Place => _form.IsAllChats || _form.ChatIds.Count > 0,
+            _ => true,
+        };
+    }
+
+    private static bool IsAllowedUrl(string url) {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return false;
+
+        return uri.Scheme == Uri.UriSchemeHttps
+            || (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback);
+    }
+
+    private async Task OnSubmit() {
+        if (!IsValid())
+            return;
+
+        var existing = _model.Existing;
+        var diff = existing == null ? ToCreateDiff() : ToUpdateDiff(existing);
+        var command = new WebHooks_Change {
+            Session = Session,
+            Scope = _model.Scope,
+            ScopeId = _model.ScopeId,
+            Id = existing?.Id,
+            ExpectedVersion = existing?.Version,
+            Change = existing == null ? Change.Create(diff) : Change.Update(diff),
+        };
+        var result = await UICommander.Run(command);
+        if (result.HasError)
+            return;
+
+        if (existing != null || result.Value.WebHook is not { } webHook || result.Value.Secret is not { } secret) {
+            Context.Close();
+            return;
+        }
+
+        Context.StepIn(DiveInDialogPage.New<WebHookRevealPage>(new WebHookRevealPage.Model(webHook, secret)));
+    }
+
+    private WebHookDiff ToCreateDiff() {
+        var headerName = _form.HeaderName.Trim().NullIfEmpty();
+        return new WebHookDiff {
+            Name = _form.Name.Trim(),
+            Url = _form.Url.Trim(),
+            Events = _form.Events,
+            IncludeText = _form.IncludeText,
+            ChatIds = _form.EffectiveChatIds,
+            SubscribeNotifications = _form.SubscribeNotifications,
+            CustomHeaderName = headerName,
+            CustomHeaderValue = headerName == null ? null : _form.HeaderValue,
+        };
+    }
+
+    private WebHookDiff ToUpdateDiff(WebHook existing) {
+        var name = _form.Name.Trim();
+        var url = _form.Url.Trim();
+        var chatIds = _form.EffectiveChatIds;
+        var headerName = _form.HeaderName.Trim();
+        var hasNewHeaderName = headerName != (existing.CustomHeaderName ?? "");
+        var hasNewHeaderValue = !headerName.IsNullOrEmpty() && !_form.HeaderValue.IsNullOrEmpty();
+        return new WebHookDiff {
+            Name = name != existing.Name ? name : null,
+            Url = url != existing.Url ? url : null,
+            Events = _form.Events != existing.Events ? _form.Events : null,
+            IncludeText = _form.IncludeText != existing.IncludeText ? _form.IncludeText : null,
+            ChatIds = !chatIds.SequenceEqual(existing.ChatIds) ? chatIds : null,
+            SubscribeNotifications = _form.SubscribeNotifications != existing.SubscribeNotifications
+                ? _form.SubscribeNotifications
+                : null,
+            CustomHeaderName = hasNewHeaderName ? headerName : null,
+            CustomHeaderValue = hasNewHeaderValue ? _form.HeaderValue : null,
+        };
+    }
+
+    // Nested types
+
+    public sealed record Model(WebHookScope Scope, string ScopeId, WebHook? Existing);
+
+    public sealed class FormModel {
+        public string NameId { get; }
+        public string UrlId { get; }
+        public string IncludeTextId { get; }
+        public string ChatsModeName { get; }
+        public string AllChatsId { get; }
+        public string SelectedChatsId { get; }
+        public string HeaderNameId { get; }
+        public string HeaderValueId { get; }
+
+        // The annotations only drive the "(optional)" label suffix: there is no validator in the
+        // form, the submit button gates on IsValid instead
+        [Required]
+        public string Name { get; set; } = "";
+        [Required]
+        public string Url { get; set; } = "";
+        public WebHookEvents Events { get; set; } = WebHookEvents.Messages;
+        public bool IncludeText { get; set; } = true;
+        public bool IsAllChats { get; set; }
+        public IReadOnlySet<ChatId> ChatIds { get; set; } = ImmutableHashSet<ChatId>.Empty;
+        public bool ShowAdvanced { get; set; }
+        public string HeaderName { get; set; } = "";
+        public string HeaderValue { get; set; } = "";
+
+        // Both must agree for a notification to be delivered, so the picker's entry drives both
+        public bool SubscribeNotifications => (Events & WebHookEvents.Notification) != 0;
+        public ApiArray<ChatId> EffectiveChatIds => IsAllChats ? [] : ChatIds.OrderBy(x => x.Value).ToApiArray();
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            var formId = componentIdGenerator.Next("web-hook-form");
+            NameId = $"{formId}-name";
+            UrlId = $"{formId}-url";
+            IncludeTextId = $"{formId}-include-text";
+            ChatsModeName = $"{formId}-chats-mode";
+            AllChatsId = $"{ChatsModeName}-all";
+            SelectedChatsId = $"{ChatsModeName}-selected";
+            HeaderNameId = $"{formId}-header-name";
+            HeaderValueId = $"{formId}-header-value";
+        }
+    }
+}

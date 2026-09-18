@@ -1,0 +1,208 @@
+/* ── Hook list ── */
+
+.web-hook-tile .tile-item-body-content {
+    @apply flex-x items-baseline gap-x-2;
+    @apply max-h-none;
+}
+.web-hook-tile .tile-item-body-caption {
+    @apply flex-x items-center gap-x-1;
+    @apply max-h-none;
+}
+.web-hook-tile .c-name {
+    @apply overflow-hidden overflow-ellipsis;
+    @apply font-medium;
+}
+.web-hook-tile .c-disabled {
+    @apply text-xs font-normal text-03;
+}
+.web-hook-tile .c-host {
+    @apply font-mono;
+}
+.web-hook-tile .c-failing,
+.web-hook-detail .c-failing {
+    @apply text-danger;
+}
+.web-hook-tile .c-empty,
+.web-hook-delivery-tile .c-empty {
+    @apply text-sm text-03;
+    @apply whitespace-normal;
+}
+.web-hook-tile .tile-item-right {
+    @apply min-w-8 justify-end;
+    @apply text-03;
+}
+
+/* ── Chat settings row ── */
+
+.tile-item.item-integrations .tile-item-right {
+    @apply min-w-8 justify-end;
+    @apply text-03;
+}
+.tile-item.item-integrations .tile-item-right .c-count {
+    @apply whitespace-nowrap;
+}
+.tile-item.item-integrations .tile-item-right i {
+    @apply -ml-2;
+}
+
+/* ── Modal (create / detail) ── */
+
+.web-hook-modal .form-block .c-title {
+    @apply text-01 text-text-1;
+}
+
+/* Form page */
+
+.web-hook-form .c-toggle-row {
+    @apply flex-x items-center gap-x-2;
+    @apply pt-2;
+}
+.web-hook-form .c-toggle-row .c-label {
+    @apply flex-1;
+    @apply text-01;
+    @apply cursor-pointer;
+}
+.web-hook-form .c-chats-mode {
+    @apply flex-x gap-x-6;
+    @apply pb-2;
+}
+.web-hook-form .c-chats-mode .c-option {
+    @apply flex-x items-center gap-x-2;
+    @apply text-01;
+    @apply cursor-pointer;
+}
+.web-hook-form .c-advanced-toggle {
+    @apply flex-x items-center gap-x-1;
+    @apply text-caption-1 text-primary;
+}
+.web-hook-form .c-advanced {
+    @apply flex-y gap-y-2;
+}
+
+.web-hook-events-picker {
+    @apply flex-y gap-y-1;
+}
+.web-hook-events-picker .c-item {
+    @apply flex-x items-center;
+    @apply h-10;
+    @apply px-2;
+    @apply rounded-lg;
+    @apply cursor-pointer;
+}
+body.hoverable .web-hook-events-picker .c-item:hover,
+.touch-capable .web-hook-events-picker .c-item:active {
+    @apply bg-hover;
+}
+
+.web-hook-chat-picker {
+    @apply flex-y gap-px;
+    @apply max-h-64;
+    @apply overflow-y-auto;
+}
+.web-hook-chat-picker .c-item {
+    @apply flex-none flex-x items-center gap-x-2;
+    @apply h-12;
+    @apply px-2;
+    @apply rounded-lg;
+    @apply cursor-pointer;
+}
+body.hoverable .web-hook-chat-picker .c-item:hover,
+.touch-capable .web-hook-chat-picker .c-item:active {
+    @apply bg-hover;
+}
+.web-hook-chat-picker .c-item .c-title {
+    @apply flex-1;
+    @apply truncate;
+    @apply text-01;
+}
+.web-hook-chat-picker .c-item .checkbox {
+    @apply flex-none;
+}
+
+/* Reveal page */
+
+.web-hook-reveal .c-secret {
+    @apply relative;
+    @apply flex-x items-center gap-2;
+}
+.web-hook-reveal .c-secret .copy-to-clipboard {
+    @apply absolute right-1 bottom-1;
+}
+.web-hook-reveal .c-secret code {
+    @apply flex-1 flex items-center;
+    @apply min-h-12;
+    @apply pl-2 pr-11;
+    @apply rounded-lg border border-separator;
+    @apply bg-input;
+    @apply text-sm;
+    @apply break-all select-all;
+}
+
+.web-hook-test-button {
+    @apply flex-y items-start gap-y-2;
+    @apply pt-2;
+}
+.web-hook-test-button .c-result {
+    @apply text-sm;
+}
+.web-hook-test-button .c-result.success {
+    @apply text-success;
+}
+.web-hook-test-button .c-result.failure {
+    @apply text-danger;
+}
+
+/* Detail page */
+
+.web-hook-detail {
+    @apply flex-y gap-y-4;
+}
+.web-hook-detail .tile-item-body-caption {
+    @apply max-h-none;
+}
+.web-hook-detail .tile-item-right {
+    @apply min-w-8 justify-end;
+    @apply text-03;
+}
+
+.web-hook-delivery-tile .tile-item {
+    @apply relative;
+}
+.web-hook-delivery-tile .tile-item-body-content {
+    @apply flex-x items-center gap-x-2;
+    @apply max-h-none;
+}
+.web-hook-delivery-tile .tile-item-body-caption {
+    @apply max-h-none;
+}
+.web-hook-delivery-tile .c-time {
+    @apply text-xs text-03;
+}
+.web-hook-delivery-tile .c-event {
+    @apply font-mono text-sm;
+}
+.web-hook-delivery-tile .c-status {
+    @apply px-2;
+    @apply rounded-full;
+    @apply text-xs font-normal;
+}
+.web-hook-delivery-tile .c-status.succeeded {
+    @apply bg-banner-success;
+    @apply text-banner-success;
+}
+.web-hook-delivery-tile .c-status.failed,
+.web-hook-delivery-tile .c-status.abandoned {
+    @apply bg-banner-error;
+    @apply text-banner-error;
+}
+.web-hook-delivery-tile .c-status.pending {
+    @apply bg-banner-info;
+    @apply text-banner-info;
+}
+.web-hook-delivery-tile .c-outcome {
+    @apply font-mono text-xs;
+}
+.web-hook-delivery-tile .c-error {
+    @apply text-xs text-danger;
+    @apply break-all;
+}
