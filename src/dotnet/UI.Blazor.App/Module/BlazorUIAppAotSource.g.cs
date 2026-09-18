@@ -87,6 +87,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatHeaderFollowThreadToggle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatHeaderRightPanelToggle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatIcon>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatIntegrationsModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListCreateButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListItem>();
@@ -485,6 +486,16 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebChromeLocationGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebEdgeGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebEdgeLocationGuideContent>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookChatPicker>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookCreateModal>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookDeliveryList>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookDetailModal>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookDetailPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookEventsPicker>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookFormPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookList>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookRevealPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookTestButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebSafariGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebSafariLocationGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AdminCopyChatToPlacePage>();
@@ -895,6 +906,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatHeaderFollowThreadToggle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatHeaderRightPanelToggle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatIcon), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatIntegrationsModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListCreateButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListItem), AotTypeKind.Component),
@@ -1293,6 +1305,16 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebChromeLocationGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebEdgeGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebEdgeLocationGuideContent), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookChatPicker), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookCreateModal), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookDeliveryList), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookDetailModal), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookDetailPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookEventsPicker), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookFormPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookList), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookRevealPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookTestButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebSafariGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebSafariLocationGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.AdminCopyChatToPlacePage), AotTypeKind.Component),
