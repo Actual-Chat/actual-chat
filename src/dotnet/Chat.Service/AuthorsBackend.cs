@@ -137,6 +137,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+        await ChatImportGuard.RequireAvailable(dbContext, chatId, cancellationToken).ConfigureAwait(false);
 
         // Can't use .ForUpdate() here due to join
         await dbContext.Authors.LockShared(chatId, userId, cancellationToken).ConfigureAwait(false);

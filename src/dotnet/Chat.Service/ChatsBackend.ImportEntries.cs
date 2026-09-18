@@ -32,7 +32,7 @@ public partial class ChatsBackend
         command.BatchId.RequireMaxLength(100);
         var db = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var lease = db.ConfigureAwait(false);
-        await LockImport(db, chatId, cancellationToken).ConfigureAwait(false);
+        await ChatImportGuard.Lock(db, chatId, cancellationToken).ConfigureAwait(false);
         var import = await RequireActiveImport(db, chatId, command.ImportId, cancellationToken).ConfigureAwait(false);
         await RequireImportOwner(ChatId.Parse(import.Id), command.UserId, cancellationToken).ConfigureAwait(false);
         var callerRules = await GetRules(chatId, command.UserId, cancellationToken).ConfigureAwait(false);
@@ -48,7 +48,8 @@ public partial class ChatsBackend
             return JsonSerializer.Deserialize<ApiArray<ChatImportEntryResult>>(receipt.Result);
         }
 
-        var tail = await db.ChatEntries.Where(x => x.ChatId == chatId.Value && !x.IsRemoved)
+        var tail = await db.ChatEntries
+            .Where(x => x.ChatId == chatId.Value && x.Kind == 0 && !x.IsThreadEntry && !x.IsRemoved)
             .OrderByDescending(x => x.LocalId).Select(x => (DateTime?)x.BeginsAt)
             .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
         var consenting = (await db.ChatImportConsents.Where(x => x.ImportId == command.ImportId && x.HasConsent)
@@ -94,7 +95,8 @@ public partial class ChatsBackend
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return results.ToApiArray();
 
-        async Task<(AuthorFull? Author, List<DbChatImportUpload> Uploads, string? Error)> Validate(ChatImportEntry input) {
+        async Task<(AuthorFull? Author, List<DbChatImportUpload> Uploads, string? Error)> Validate(
+            ChatImportEntry input) {
             DateTime date = input.BeginsAt;
             if (date.Ticks % 10 != 0)
                 return (null, [], "Import timestamps must have microsecond precision.");
@@ -111,7 +113,9 @@ public partial class ChatsBackend
 
             var author = await AuthorsBackend.GetByUserId(chatId, input.UserId,
                 RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
-            if (author is null || author.HasLeft || author.IsAnonymous || input.UserId.IsGuest)
+            var authorRules = await GetRules(chatId, input.UserId, cancellationToken).ConfigureAwait(false);
+            if (!authorRules.CanRead() || author is null || author.HasLeft
+                || author.IsAnonymous || input.UserId.IsGuest)
                 return (null, [], "The imported author must be a current nonanonymous member.");
             if (input.RepliedEntryLid is { } reply && !await db.ChatEntries.AnyAsync(
                 x => x.ChatId == chatId.Value && x.LocalId == reply && !x.IsRemoved, cancellationToken)
@@ -120,7 +124,8 @@ public partial class ChatsBackend
 
             var uploads = new List<DbChatImportUpload>();
             foreach (var uploadId in input.UploadIds) {
-                var upload = await db.ChatImportUploads.FindAsync([uploadId.Value], cancellationToken).ConfigureAwait(false);
+                var upload = await db.ChatImportUploads.FindAsync([uploadId.Value], cancellationToken)
+                    .ConfigureAwait(false);
                 if (upload is null || upload.ImportId != import.ImportId || upload.ChatId != chatId.Value
                     || upload.UserId != input.UserId.Value || upload.EntryId != null || upload.MediaJson.IsNullOrEmpty()
                     || uploads.Contains(upload))

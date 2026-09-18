@@ -38,7 +38,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
 
     public async Task<MediaRef> Save(
         MediaId mediaId, ProcessedFile processedFile, bool isUpdate, MediaKind kind,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, UserId? userId = null)
     {
         var mediaRef = GetMediaRef(mediaId, processedFile);
         if (processedFile.Thumbnail != null) {
@@ -52,6 +52,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
                 null,
                 false,
                 kind,
+                userId,
                 cancellationToken)
                 .ConfigureAwait(false);
             await SetMediaProgressToReady(mediaRef.ThumbnailMediaId!, cancellationToken).ConfigureAwait(false);
@@ -66,6 +67,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
             mediaRef.ThumbnailMediaId,
             isUpdate,
             kind,
+            userId,
             cancellationToken).ConfigureAwait(false);
         await SetMediaProgressToReady(mediaId, cancellationToken).ConfigureAwait(false);
         return mediaRef;
@@ -98,13 +100,14 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
         MediaId? thumbnailMediaId,
         bool isUpdate,
         MediaKind kind,
+        UserId? userId,
         CancellationToken cancellationToken)
     {
         MediaFull? media;
         if (isUpdate)
             media = await MediaBackend.GetFull(mediaId, cancellationToken).Require().ConfigureAwait(false);
         else
-            media = new MediaFull(mediaId) { Kind = kind };
+            media = new MediaFull(mediaId) { Kind = kind, UserId = userId };
         media = media with {
             BlobId = blobId,
             FileName = file.FileName,

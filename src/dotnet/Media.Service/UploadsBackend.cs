@@ -147,6 +147,10 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
 
         await EnsureUploadHasBeenCompleted(upload, cancellationToken).ConfigureAwait(false);
 
+        var importedUpload = upload.Tag.StartsWith(nameof(ChatEntryAttachment) + "/v1/")
+            ? await Services.GetRequiredService<IChatsBackend>()
+                .GetImportUpload(upload.ExtractChatIdFromTag(), uploadId, cancellationToken).ConfigureAwait(false)
+            : null;
         var mediaId = GetConvertedMediaId(upload);
         return await ConvertToMediaRefLocks
             .LockAndRun(
@@ -174,7 +178,8 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
                     processedFile,
                     isUpdate: false,
                     MediaKind.ChatEntryAttachment,
-                    cancellationToken1)
+                    cancellationToken1,
+                    importedUpload?.UserId)
                 .ConfigureAwait(false);
         }
     }

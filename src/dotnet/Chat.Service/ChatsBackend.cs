@@ -951,6 +951,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        var importGuardChatId = chatId
+            ?? (change.IsCreate(out var importCreate) ? importCreate.PlaceId?.RootChatId : null);
+        if (importGuardChatId is not null)
+            await ChatImportGuard.RequireAvailable(dbContext, importGuardChatId, cancellationToken)
+                .ConfigureAwait(false);
+
         var dbChat = chatId is null
             ? null
             : await dbContext.Chats.ForUpdate()
@@ -1348,11 +1354,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         bool boundToThreadHasChanged = false;
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using (var __ = dbContext.ConfigureAwait(false)) {
-            await LockImport(dbContext, chatId, cancellationToken).ConfigureAwait(false);
-            var importScopeIds = chatId.ToMaintenanceKeyChain().Select(x => ContentRef.Parse(x.Value).ContentId.Value).ToArray();
-            if (await dbContext.ChatImports.AnyAsync(x => x.IsActive && importScopeIds.Contains(x.Id), cancellationToken)
-                .ConfigureAwait(false))
-                throw StandardError.Constraint("The chat is in import maintenance mode.");
+            await ChatImportGuard.RequireAvailable(dbContext, chatId, cancellationToken).ConfigureAwait(false);
 
             var dbEntry = changeKind == ChangeKind.Create
                 ? null
@@ -1589,6 +1591,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        await ChatImportGuard.RequireAvailable(dbContext, entryId.ChatId, cancellationToken).ConfigureAwait(false);
+
         var dbAttachments = new List<DbChatEntryAttachment>();
         foreach (var attachment in attachments) {
             var dbChatEntry = await dbContext.ChatEntries.Get(entryId.Value, cancellationToken)
@@ -1632,6 +1636,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
+        await ChatImportGuard.RequireAvailable(dbContext, entryId.ChatId, cancellationToken).ConfigureAwait(false);
 
         var idPrefix = DbChatEntryAttachment.IdPrefix(entryId);
         await dbContext.ChatEntryAttachments

@@ -194,6 +194,8 @@ public class Uploads(IServiceProvider services) : IUploads
             .ConfigureAwait(false);
     }
 
+    // Private methods
+
     private async Task RequireCanAccessUpload(Upload? upload, Account user, CancellationToken cancellationToken)
     {
         if (upload is null || upload.UserId != user.Id)
@@ -217,8 +219,10 @@ public class Uploads(IServiceProvider services) : IUploads
             throw StandardError.Constraint("The import session is not active.");
 
         var rules = await chats.GetRules(import.ChatId, user.Id, cancellationToken).ConfigureAwait(false);
-        var consents = await chats.ListImportConsents(import.ChatId, import.Id, cancellationToken).ConfigureAwait(false);
-        if (!rules.IsOwner() || !consents.Contains(importedUpload.UserId))
+        var consents = await chats.ListImportConsents(import.ChatId, import.Id, cancellationToken)
+            .ConfigureAwait(false);
+        var authorRules = await chats.GetRules(chatId, importedUpload.UserId, cancellationToken).ConfigureAwait(false);
+        if (!rules.IsOwner() || !authorRules.CanRead() || !consents.Contains(importedUpload.UserId))
             throw StandardError.Constraint("Import permission or consent was revoked.");
     }
 }

@@ -24,7 +24,8 @@ public class ChatImports(IServiceProvider services) : IChatImports
             return false;
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var consents = await Backend.ListImportConsents(import.ChatId, importId, cancellationToken).ConfigureAwait(false);
+        var consents = await Backend.ListImportConsents(import.ChatId, importId, cancellationToken)
+            .ConfigureAwait(false);
         return consents.Contains(account.Id);
     }
 
@@ -37,7 +38,8 @@ public class ChatImports(IServiceProvider services) : IChatImports
         var import = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         await RequireOwner(session, import.ChatId, cancellationToken).ConfigureAwait(false);
         var members = await Authors.ListUserIds(import.ChatId, cancellationToken).ConfigureAwait(false);
-        var consents = await Backend.ListImportConsents(import.ChatId, import.Id, cancellationToken).ConfigureAwait(false);
+        var consents = (await Backend.ListImportConsents(import.ChatId, import.Id, cancellationToken)
+            .ConfigureAwait(false)).ToHashSet();
         var memberIds = members.Where(x => !x.IsGuest).Distinct().OrderBy(x => x.Value).ToArray();
         var pending = memberIds.Where(x => !consents.Contains(x)).ToArray();
         return new ChatImportConsentSummary(memberIds.Length - pending.Length, pending.Length,
@@ -54,7 +56,8 @@ public class ChatImports(IServiceProvider services) : IChatImports
         command.Uuid.RequireMaxLength(100);
         var import = await Commander.Call(new ChatsBackend_StartImport(
             command.ChatId, userId, $"{command.ChatId.Value}:{command.Uuid}"), cancellationToken).ConfigureAwait(false);
-        await Commander.Call(new ChatImportChangedEvent(import.ChatId, import.Id), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new ChatImportChangedEvent(import.ChatId, import.Id), cancellationToken)
+            .ConfigureAwait(false);
         return import;
     }
 
@@ -67,7 +70,8 @@ public class ChatImports(IServiceProvider services) : IChatImports
         var userId = await RequireOwner(command.Session, import.ChatId, cancellationToken).ConfigureAwait(false);
         await Commander.Call(new ChatsBackend_EndImport(import.ChatId, userId, command.ImportId), cancellationToken)
             .ConfigureAwait(false);
-        await Commander.Call(new ChatImportChangedEvent(import.ChatId, import.Id), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new ChatImportChangedEvent(import.ChatId, import.Id), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public virtual async Task OnSetConsent(ChatImports_SetConsent command, CancellationToken cancellationToken)
@@ -113,10 +117,12 @@ public class ChatImports(IServiceProvider services) : IChatImports
             ContentType = command.ContentType,
         }.Metadata;
         var uploadId = await Commander.Call(new Uploads_Create {
-            Session = command.Session, Length = command.Length, Tag = UploadExt.BuildTag(command.ChatId), Metadata = metadata,
+            Session = command.Session, Length = command.Length,
+            Tag = UploadExt.BuildTag(command.ChatId), Metadata = metadata,
         }, cancellationToken).ConfigureAwait(false);
         await Commander.Call(new ChatsBackend_RegisterImportUpload(new ChatImportUpload(
-            command.ChatId, import.Id, uploadId, command.UserId, userId, null)), cancellationToken).ConfigureAwait(false);
+            command.ChatId, import.Id, uploadId, command.UserId, userId, null)), cancellationToken)
+                .ConfigureAwait(false);
         return uploadId;
     }
 

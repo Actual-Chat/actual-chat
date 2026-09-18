@@ -19,6 +19,8 @@
     protected override Task<Chat?> ComputeState(CancellationToken cancellationToken)
         => Hub.Chats.Get(Session, ChatId, cancellationToken);
 
+    // Private methods
+
     private async Task OnStart() {
         if (_isBusy || State.Value?.MaintenanceMode != MaintenanceMode.None)
             return;

@@ -9,17 +9,16 @@ public partial class ChatsBackend
     public virtual async Task<ChatImportSession?> GetImport(ChatId chatId, CancellationToken cancellationToken)
     {
         foreach (var key in chatId.ToMaintenanceKeyChain().Skip(1)) {
-            var parent = await GetImport(ChatId.Parse(ContentRef.Parse(key.Value).ContentId.Value), cancellationToken).ConfigureAwait(false);
+            var parent = await GetImport(ChatId.Parse(ContentRef.Parse(key.Value).ContentId.Value), cancellationToken)
+                .ConfigureAwait(false);
             if (parent is { IsActive: true })
                 return parent;
         }
-        var ids = new[] { chatId.Value };
         var db = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var lease = db.ConfigureAwait(false);
-        var rows = await db.ChatImports.AsNoTracking().Where(x => ids.Contains(x.Id))
-            .ToListAsync(cancellationToken).ConfigureAwait(false);
-        return rows.FirstOrDefault(x => x.IsActive)?.ToModel()
-            ?? rows.FirstOrDefault(x => x.Id == chatId.Value)?.ToModel();
+        var row = await db.ChatImports.AsNoTracking().SingleOrDefaultAsync(x => x.Id == chatId.Value, cancellationToken)
+            .ConfigureAwait(false);
+        return row?.ToModel();
     }
 
     public virtual async Task<ApiArray<UserId>> ListImportConsents(
@@ -62,7 +61,7 @@ public partial class ChatsBackend
 
         var db = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var lease = db.ConfigureAwait(false);
-        await LockImport(db, chatId, cancellationToken).ConfigureAwait(false);
+        await ChatImportGuard.Lock(db, chatId, cancellationToken).ConfigureAwait(false);
         await RequireImportOwner(chatId, command.UserId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(chatId, cancellationToken).Require().ConfigureAwait(false);
         if (chat.AllowAnonymousAuthors)
@@ -82,6 +81,9 @@ public partial class ChatsBackend
             if (await db.ChatImports.AnyAsync(x => x.IsActive && x.Id.StartsWith(prefix), cancellationToken)
                 .ConfigureAwait(false))
                 throw StandardError.Constraint("A chat in this Place is already importing.");
+            foreach (var childId in await ListPlaceChatIds(rootId.PlaceId, cancellationToken).ConfigureAwait(false))
+                await Services.GetRequiredService<IMaintenancesBackend>().RequireAvailable(childId, cancellationToken)
+                    .ConfigureAwait(false);
         }
 
         await Services.GetRequiredService<IMaintenancesBackend>().RequireAvailable(chatId, cancellationToken)
@@ -109,7 +111,7 @@ public partial class ChatsBackend
 
         var db = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var lease = db.ConfigureAwait(false);
-        await LockImport(db, command.ChatId, cancellationToken).ConfigureAwait(false);
+        await ChatImportGuard.Lock(db, command.ChatId, cancellationToken).ConfigureAwait(false);
         await RequireImportOwner(command.ChatId, command.UserId, cancellationToken).ConfigureAwait(false);
         var row = await db.ChatImports.SingleAsync(x => x.Id == command.ChatId.Value, cancellationToken)
             .ConfigureAwait(false);
@@ -131,7 +133,7 @@ public partial class ChatsBackend
 
         var db = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var lease = db.ConfigureAwait(false);
-        await LockImport(db, command.ChatId, cancellationToken).ConfigureAwait(false);
+        await ChatImportGuard.Lock(db, command.ChatId, cancellationToken).ConfigureAwait(false);
         await RequireActiveImport(db, command.ChatId, command.ImportId, cancellationToken).ConfigureAwait(false);
         await RequireImportAuthor(command.ChatId, command.UserId, cancellationToken).ConfigureAwait(false);
         var id = command.ImportId + ":" + command.UserId.Value;
@@ -155,7 +157,7 @@ public partial class ChatsBackend
 
         var db = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var lease = db.ConfigureAwait(false);
-        await LockImport(db, upload.ChatId, cancellationToken).ConfigureAwait(false);
+        await ChatImportGuard.Lock(db, upload.ChatId, cancellationToken).ConfigureAwait(false);
         var import = await RequireActiveImport(db, upload.ChatId, upload.ImportId, cancellationToken)
             .ConfigureAwait(false);
         await RequireImportOwner(ChatId.Parse(import.Id), upload.UploadedBy, cancellationToken).ConfigureAwait(false);
@@ -164,7 +166,8 @@ public partial class ChatsBackend
             && x.UserId == upload.UserId.Value && x.HasConsent, cancellationToken).ConfigureAwait(false))
             throw StandardError.Constraint("This member has not consented to import.");
 
-        var row = await db.ChatImportUploads.FindAsync([upload.UploadId.Value], cancellationToken).ConfigureAwait(false);
+        var row = await db.ChatImportUploads.FindAsync([upload.UploadId.Value], cancellationToken)
+            .ConfigureAwait(false);
         if (row is null) {
             row = new DbChatImportUpload {
                 Id = upload.UploadId.Value, ChatId = upload.ChatId.Value, ImportId = upload.ImportId,
@@ -178,12 +181,13 @@ public partial class ChatsBackend
 
         if (upload.Media is { } mediaRef) {
             var media = await MediaBackend.GetFull(mediaRef.MediaId, cancellationToken).Require().ConfigureAwait(false);
-            await Commander.Call(new MediaBackend_Change(media.Id, media.Version,
-                Change.Update(media with { UserId = upload.UserId })), true, cancellationToken).ConfigureAwait(false);
+            if (media.UserId != upload.UserId)
+                throw StandardError.Constraint("The media owner does not match the imported author.");
             if (mediaRef.ThumbnailMediaId is { } thumbnailId) {
-                var thumbnail = await MediaBackend.GetFull(thumbnailId, cancellationToken).Require().ConfigureAwait(false);
-                await Commander.Call(new MediaBackend_Change(thumbnailId, thumbnail.Version,
-                    Change.Update(thumbnail with { UserId = upload.UserId })), true, cancellationToken).ConfigureAwait(false);
+                var thumbnail = await MediaBackend.GetFull(thumbnailId, cancellationToken).Require()
+                    .ConfigureAwait(false);
+                if (thumbnail.UserId != upload.UserId)
+                    throw StandardError.Constraint("The thumbnail owner does not match the imported author.");
             }
             row.MediaJson = JsonSerializer.Serialize(mediaRef);
         }
@@ -197,9 +201,13 @@ public partial class ChatsBackend
 
         var db = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var lease = db.ConfigureAwait(false);
-        await LockImport(db, command.ChatId, cancellationToken).ConfigureAwait(false);
+        await ChatImportGuard.Lock(db, command.ChatId, cancellationToken).ConfigureAwait(false);
         var row = await db.ChatImports.FindAsync([command.ChatId.Value], cancellationToken).ConfigureAwait(false);
         if (row is null || row.ImportId != command.ImportId)
+            return;
+
+        if (!row.IsActive && await Services.GetRequiredService<IMaintenancesBackend>()
+            .Get(command.ChatId.ToMaintenanceKey(), cancellationToken).ConfigureAwait(false) != MaintenanceMode.Import)
             return;
 
         var mode = row.IsActive ? MaintenanceMode.Import : MaintenanceMode.None;
@@ -210,13 +218,17 @@ public partial class ChatsBackend
 
     // Private methods
 
-    private static Task LockImport(ChatDbContext db, ChatId chatId, CancellationToken cancellationToken)
-        => db.ChatImports.Lock(chatId.ToMaintenanceKeyChain()[^1].Value, cancellationToken);
-
-    private static async Task<DbChatImport> RequireActiveImport(
+    private async Task<DbChatImport> RequireActiveImport(
         ChatDbContext db, ChatId chatId, string importId, CancellationToken cancellationToken)
     {
-        var ids = chatId.ToMaintenanceKeyChain().Select(x => ContentRef.Parse(x.Value).ContentId.Value).ToArray();
+        var keys = chatId.ToMaintenanceKeyChain();
+        var maintenances = Services.GetRequiredService<IMaintenancesBackend>();
+        foreach (var key in keys) {
+            var mode = await maintenances.Get(key, cancellationToken).ConfigureAwait(false);
+            if (mode is not MaintenanceMode.None and not MaintenanceMode.Import)
+                throw StandardError.Constraint("Another maintenance operation is active.");
+        }
+        var ids = keys.Select(x => ContentRef.Parse(x.Value).ContentId.Value).ToArray();
         return await db.ChatImports.SingleOrDefaultAsync(
             x => ids.Contains(x.Id) && x.ImportId == importId && x.IsActive, cancellationToken).ConfigureAwait(false)
             ?? throw StandardError.Constraint("The import session is not active.");
@@ -232,9 +244,10 @@ public partial class ChatsBackend
     private async Task<AuthorFull> RequireImportAuthor(
         ChatId chatId, UserId userId, CancellationToken cancellationToken)
     {
+        var rules = await GetRules(chatId, userId, cancellationToken).ConfigureAwait(false);
         var author = await AuthorsBackend.GetByUserId(chatId, userId, RequestedAuthorKind.Full, cancellationToken)
             .ConfigureAwait(false);
-        if (author is null || author.HasLeft || author.IsAnonymous || userId.IsGuest)
+        if (!rules.CanRead() || author is null || author.HasLeft || author.IsAnonymous || userId.IsGuest)
             throw StandardError.Constraint("The imported author must be a current nonanonymous member.");
 
         return author;

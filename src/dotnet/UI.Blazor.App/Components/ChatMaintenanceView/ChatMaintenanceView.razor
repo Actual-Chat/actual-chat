@@ -11,7 +11,7 @@
         @if (import.ChatId is PlaceChatId { IsRoot: true }) {
             <p>@L.ChatImport_PlaceScope</p>
         }
-        <Checkbox Label="@L.ChatImport_Consent" IsChecked="@m.HasConsent" IsDisabled="@_isBusy"
+        <Checkbox Label="@L.ChatImport_Consent" IsChecked="@m.HasConsent" IsDisabled="@(_isBusy || !m.CanConsent)"
                   Change="@(_ => OnConsent(import, !m.HasConsent))"/>
         @if (m.Summary is { } summary) {
             <dl class="c-counts">
@@ -53,22 +53,26 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var import = await Imports.Get(Session, ChatId, cancellationToken);
         if (import is not { IsActive: true })
-            return new(import, false, null, []);
+            return new(import, false, false, null, []);
 
         var hasConsent = await Imports.HasConsent(Session, ChatId, import.Id, cancellationToken);
         var scope = await Hub.Chats.Get(Session, import.ChatId, cancellationToken);
+        var canConsent = scope?.Rules.Author is { HasLeft: false, IsAnonymous: false };
         if (scope?.Rules.IsOwner() != true)
-            return new(import, hasConsent, null, []);
+            return new(import, hasConsent, canConsent, null, []);
 
-        var summary = await Imports.GetConsentSummary(Session, ChatId, _offset, _showEveryone ? 50 : 5, cancellationToken);
+        var summary = await Imports.GetConsentSummary(
+            Session, ChatId, _offset, _showEveryone ? 50 : 5, cancellationToken);
         var members = new List<Account>();
         foreach (var userId in summary.NonConsentingUserIds) {
             var account = await Hub.Accounts.Get(Session, userId, cancellationToken);
             if (account is not null)
                 members.Add(account);
         }
-        return new(import, hasConsent, summary, members.ToArray());
+        return new(import, hasConsent, canConsent, summary, members.ToArray());
     }
+
+    // Private methods
 
     private async Task OnConsent(ChatImportSession import, bool hasConsent) {
         _isBusy = true;
@@ -110,8 +114,11 @@
         State.Invalidate();
     }
 
+    // Nested types
+
     public sealed record Model(
-        ChatImportSession? Import, bool HasConsent, ChatImportConsentSummary? Summary, Account[] Members) {
-        public static readonly Model Empty = new(null, false, null, []);
+        ChatImportSession? Import, bool HasConsent, bool CanConsent,
+        ChatImportConsentSummary? Summary, Account[] Members) {
+        public static readonly Model Empty = new(null, false, false, null, []);
     }
 }

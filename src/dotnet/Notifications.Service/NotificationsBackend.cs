@@ -493,6 +493,12 @@ public class NotificationsBackend(IServiceProvider services)
 
         var (conversationId, phase, text, endEntryLid, authorIds) = command;
         var chatId = conversationId.ChatId;
+        if (await MustSuppress(chatId, cancellationToken).ConfigureAwait(false))
+            return;
+        if (endEntryLid > 0 && await ChatsBackend.GetEntry(ChatEntryId.New(chatId, endEntryLid), cancellationToken)
+            .ConfigureAwait(false) is { IsImported: true })
+            return;
+
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null)
             return;
@@ -840,7 +846,7 @@ public class NotificationsBackend(IServiceProvider services)
             return;
 
         var (chatId, authorId, startedAt) = eventCommand;
-        if (!Settings.EnablePttPush)
+        if (!Settings.EnablePttPush || await MustSuppress(chatId, cancellationToken).ConfigureAwait(false))
             return;
 
         var userIds = await AuthorsBackend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
@@ -896,12 +902,12 @@ public class NotificationsBackend(IServiceProvider services)
             .ToList();
     }
 
+    // Private methods
+
     private async Task<bool> MustSuppress(ChatId? chatId, CancellationToken cancellationToken)
         => chatId is not null
             && (await Maintenances.Get(chatId, cancellationToken).ConfigureAwait(false) != MaintenanceMode.None
                 || await ChatsBackend.GetImport(chatId, cancellationToken).ConfigureAwait(false) is { IsActive: true });
-
-    // Private methods
 
     private async Task SendChatMessageNotification(
         ChatEntry entry,
@@ -1015,7 +1021,8 @@ public class NotificationsBackend(IServiceProvider services)
 
         var notification = command.Notification;
         if (await MustSuppress(notification.GetChatId(), cancellationToken).ConfigureAwait(false)) {
-            await Commander.Call(new NotificationsBackend_Dismiss(notification.Id), cancellationToken).ConfigureAwait(false);
+            await Commander.Call(new NotificationsBackend_Dismiss(notification.Id), cancellationToken)
+                .ConfigureAwait(false);
             return;
         }
 
@@ -1367,6 +1374,9 @@ public class NotificationsBackend(IServiceProvider services)
     private async Task SendPttWake(
         UserId userId, ChatId chatId, AuthorId authorId, Moment startedAt, CancellationToken cancellationToken)
     {
+        if (await MustSuppress(chatId, cancellationToken).ConfigureAwait(false))
+            return;
+
         // One settings read serves both gates: consent within the chat's enable-epoch, then the
         // per-chat mute. Both compare against server-stamped moments.
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
@@ -1926,7 +1936,8 @@ public class NotificationsBackend(IServiceProvider services)
             // so reference equality detects them.
             var changedIds = new List<NotificationId>();
             foreach (var incoming in notifications) {
-                if (IsRead(incoming, readPositions) || IsExpired(incoming, now))
+                if (IsRead(incoming, readPositions) || IsExpired(incoming, now)
+                    || await MustSuppress(incoming.GetChatId(), cancellationToken).ConfigureAwait(false))
                     continue;
 
                 var notification = incoming;

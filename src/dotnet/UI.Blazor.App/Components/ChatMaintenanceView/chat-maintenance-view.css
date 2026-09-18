@@ -1,5 +1,5 @@
 .chat-maintenance-view {
-    @apply flex-y items-center  gap-4;
+    @apply flex-y items-center gap-4;
     @apply w-full h-full min-h-0;
     @apply p-6 overflow-y-auto;
     @apply text-center text-01;

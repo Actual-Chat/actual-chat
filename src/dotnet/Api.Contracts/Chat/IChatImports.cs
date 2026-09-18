@@ -47,7 +47,7 @@ public sealed partial record ChatImports_SetConsent : ApiCommand<Unit>
 }
 
 [DataContract, MessagePackObject]
-public sealed partial record ChatImports_ImportEntries : ApiCommand<ApiArray<ChatImportEntryResult>>
+public sealed partial record ChatImports_ImportEntries : ApiCommand<ApiArray<ChatImportEntryResult>>, INotDeduplicated
 {
     [DataMember, Key(2)] public required ChatId ChatId { get; init; }
     [DataMember, Key(3)] public required string ImportId { get; init; }
