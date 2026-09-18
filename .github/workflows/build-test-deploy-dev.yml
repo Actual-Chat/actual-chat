@@ -365,7 +365,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          lfs: false
+          # The image pipeline's tests instantiate src/nodejs/jpegli/*/jpegli.wasm, which is an LFS pointer
+          # without this - WebAssembly.instantiate then reads "version https://git-lfs..." as the module
+          lfs: true
 
       - name: Setup Node.js
         if: env.SKIP_TESTS != 'true'
