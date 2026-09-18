@@ -396,7 +396,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             Version = VersionGenerator.NextVersion(dbAccount.Version),
             Name = AccountNameValidator.Normalize(account.Name),
         };
-        dbAccount.UpdateFrom(account);
+        dbAccount.UpdateFrom(account, existingAccount.Identities);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
