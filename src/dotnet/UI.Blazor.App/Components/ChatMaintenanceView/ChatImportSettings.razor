@@ -1,0 +1,37 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, Chat?>
+@{
+    var chat = State.Value;
+}
+@if (chat is not null && chat.Rules.IsOwner() && chat.Id is not ThreadChatId && !chat.AllowAnonymousAuthors) {
+    <TileItem Click="OnStart" aria-disabled="@(_isBusy || chat.MaintenanceMode != MaintenanceMode.None)">
+        <Icon><i class="icon-cloud-upload text-xl"></i></Icon>
+        <Content>@L.ChatImport_Start</Content>
+    </TileItem>
+}
+
+@code {
+    private bool _isBusy;
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
+    [Parameter] public EventCallback Started { get; set; }
+
+    protected override Task<Chat?> ComputeState(CancellationToken cancellationToken)
+        => Hub.Chats.Get(Session, ChatId, cancellationToken);
+
+    private async Task OnStart() {
+        if (_isBusy || State.Value?.MaintenanceMode != MaintenanceMode.None)
+            return;
+
+        _isBusy = true;
+        try {
+            await Hub.UICommander.Run(new ChatImports_Start { Session = Session, ChatId = ChatId });
+            var import = await Hub.Services.GetRequiredService<IChatImports>().Get(Session, ChatId, default);
+            if (import is { IsActive: true })
+                await Started.InvokeAsync();
+        }
+        finally {
+            _isBusy = false;
+        }
+    }
+}

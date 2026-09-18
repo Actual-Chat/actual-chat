@@ -54,6 +54,15 @@ public partial class MentionReminderFlow : PeriodicFlow
         var hasMore = false;
         foreach (var mention in mentions) {
             var id = mention.Id.Value;
+            if (mention.GetChatId() is { } chatId
+                && (await Services.GetRequiredService<IMaintenancesBackend>()
+                        .Get(chatId, cancellationToken).ConfigureAwait(false) != MaintenanceMode.None
+                    || await Services.GetRequiredService<IChatsBackend>()
+                        .GetImport(chatId, cancellationToken).ConfigureAwait(false) is { IsActive: true })) {
+                ReAlertCounts[id] = Constants.Notification.MaxMentionReAlerts;
+                continue;
+            }
+
             var count = ReAlertCounts.GetValueOrDefault(id);
             if (ShouldReAlert(mention, now, count)) {
                 await queues.Enqueue(new NotificationsBackend_Push(mention), cancellationToken).ConfigureAwait(false);

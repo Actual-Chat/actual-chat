@@ -1348,6 +1348,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         bool boundToThreadHasChanged = false;
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using (var __ = dbContext.ConfigureAwait(false)) {
+            await LockImport(dbContext, chatId, cancellationToken).ConfigureAwait(false);
+            var importScopeIds = chatId.ToMaintenanceKeyChain().Select(x => ContentRef.Parse(x.Value).ContentId.Value).ToArray();
+            if (await dbContext.ChatImports.AnyAsync(x => x.IsActive && importScopeIds.Contains(x.Id), cancellationToken)
+                .ConfigureAwait(false))
+                throw StandardError.Constraint("The chat is in import maintenance mode.");
+
             var dbEntry = changeKind == ChangeKind.Create
                 ? null
                 : await dbContext.ChatEntries.ForUpdate()
@@ -1529,7 +1535,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         async Task EnqueueChangedEvent() {
             var authorId = entry.AuthorId;
             var author = await AuthorsBackend.Get(authorId.ChatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
-            context.Operation.AddEvent(new ChatEntryChangedEvent(entry, author!, changeKind, oldEntry));
+            var mode = await Services.GetRequiredService<IMaintenancesBackend>()
+                .Get(chatId, cancellationToken).ConfigureAwait(false);
+            context.Operation.AddEvent(new ChatEntryChangedEvent(entry, author!, changeKind, oldEntry) {
+                SuppressNotifications = mode != MaintenanceMode.None || entry.IsImported,
+            });
         }
 
         async Task StorePreviousAndNextEntryIds(long localEntryLid)

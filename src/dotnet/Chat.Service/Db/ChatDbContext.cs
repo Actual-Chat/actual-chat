@@ -7,6 +7,10 @@ namespace ActualChat.Chat.Db;
 
 public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextBase(options)
 {
+    public DbSet<DbChatImport> ChatImports { get; protected set; } = null!;
+    public DbSet<DbChatImportConsent> ChatImportConsents { get; protected set; } = null!;
+    public DbSet<DbChatImportBatch> ChatImportBatches { get; protected set; } = null!;
+    public DbSet<DbChatImportUpload> ChatImportUploads { get; protected set; } = null!;
     public DbSet<DbChat> Chats { get; protected set; } = null!;
     public DbSet<DbChatEntry> ChatEntries { get; protected set; } = null!;
     public DbSet<DbChatEntryLanguage> ChatEntryLanguages { get; protected set; } = null!;

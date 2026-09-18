@@ -1,7 +1,117 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComponentBase<AppUIHub>
+@inherits ComputedStateComponent<AppUIHub, ChatMaintenanceView.Model>
+@{
+    var m = State.Value ?? Model.Empty;
+}
 
 <div class="chat-maintenance-view" role="status">
-    <h2>@L.ChatMaintenance_Title</h2>
+    <h2>@(m.Import is { IsActive: true } ? L.ChatImport_Title : L.ChatMaintenance_Title)</h2>
     <Kitty Name="chat-maintenance"/>
+    @if (m.Import is { IsActive: true } import) {
+        @if (import.ChatId is PlaceChatId { IsRoot: true }) {
+            <p>@L.ChatImport_PlaceScope</p>
+        }
+        <Checkbox Label="@L.ChatImport_Consent" IsChecked="@m.HasConsent" IsDisabled="@_isBusy"
+                  Change="@(_ => OnConsent(import, !m.HasConsent))"/>
+        @if (m.Summary is { } summary) {
+            <dl class="c-counts">
+                <dt>@L.ChatImport_Consenting</dt><dd>@summary.ConsentingCount</dd>
+                <dt>@L.ChatImport_NonConsenting</dt><dd>@summary.NonConsentingCount</dd>
+            </dl>
+            <ul class="c-members">
+                @foreach (var account in m.Members) {
+                    <li><a href="@Links.User(account.Id)">@account.Avatar.Name</a></li>
+                }
+            </ul>
+            @if (!_showEveryone && summary.NonConsentingCount > 5) {
+                <Button Click="ShowEveryone">@L.ChatImport_SeeEveryone</Button>
+            }
+            @if (_showEveryone) {
+                <div class="c-pages">
+                    <Button Click="PreviousPage" IsDisabled="@(_offset == 0)">@L.Common_Back</Button>
+                    <Button Click="NextPage" IsDisabled="@(_offset + 50 >= summary.NonConsentingCount)">
+                        @L.Common_Next
+                    </Button>
+                </div>
+            }
+            <Button Class="btn-primary" Click="@(() => OnEnd(import))" IsDisabled="@_isBusy">
+                @L.ChatImport_End
+            </Button>
+        }
+    }
 </div>
+
+@code {
+    private bool _isBusy;
+    private bool _showEveryone;
+    private int _offset;
+
+    private IChatImports Imports => Hub.Services.GetRequiredService<IChatImports>();
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var import = await Imports.Get(Session, ChatId, cancellationToken);
+        if (import is not { IsActive: true })
+            return new(import, false, null, []);
+
+        var hasConsent = await Imports.HasConsent(Session, ChatId, import.Id, cancellationToken);
+        var scope = await Hub.Chats.Get(Session, import.ChatId, cancellationToken);
+        if (scope?.Rules.IsOwner() != true)
+            return new(import, hasConsent, null, []);
+
+        var summary = await Imports.GetConsentSummary(Session, ChatId, _offset, _showEveryone ? 50 : 5, cancellationToken);
+        var members = new List<Account>();
+        foreach (var userId in summary.NonConsentingUserIds) {
+            var account = await Hub.Accounts.Get(Session, userId, cancellationToken);
+            if (account is not null)
+                members.Add(account);
+        }
+        return new(import, hasConsent, summary, members.ToArray());
+    }
+
+    private async Task OnConsent(ChatImportSession import, bool hasConsent) {
+        _isBusy = true;
+        try {
+            await Hub.UICommander.Run(new ChatImports_SetConsent {
+                Session = Session, ChatId = ChatId, ImportId = import.Id, HasConsent = hasConsent,
+            });
+        }
+        finally {
+            _isBusy = false;
+        }
+    }
+
+    private async Task OnEnd(ChatImportSession import) {
+        _isBusy = true;
+        try {
+            await Hub.UICommander.Run(new ChatImports_End {
+                Session = Session, ChatId = import.ChatId, ImportId = import.Id,
+            });
+        }
+        finally {
+            _isBusy = false;
+        }
+    }
+
+    private void ShowEveryone() {
+        _showEveryone = true;
+        _offset = 0;
+        State.Invalidate();
+    }
+
+    private void PreviousPage() {
+        _offset = Math.Max(0, _offset - 50);
+        State.Invalidate();
+    }
+
+    private void NextPage() {
+        _offset += 50;
+        State.Invalidate();
+    }
+
+    public sealed record Model(
+        ChatImportSession? Import, bool HasConsent, ChatImportConsentSummary? Summary, Account[] Members) {
+        public static readonly Model Empty = new(null, false, null, []);
+    }
+}
