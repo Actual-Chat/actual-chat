@@ -119,7 +119,8 @@ RUN mkdir -p /src/artifacts \
  && ./ef-migrations.cmd Media.Service bundle --output ./artifacts/Media.Service.Migration.exe \
  && ./ef-migrations.cmd MLSearch.Service bundle --output ./artifacts/MLSearch.Service.Migration.exe \
  && ./ef-migrations.cmd Notifications.Service bundle --output ./artifacts/Notifications.Service.Migration.exe \
- && ./ef-migrations.cmd Users.Service bundle --output ./artifacts/Users.Service.Migration.exe \
+ && ./ef-migrations.cmd Users.Service bundle --context UsersDbContext --output ./artifacts/Users.Service.Migration.exe \
+ && ./ef-migrations.cmd Users.Service bundle --context OAuthDbContext --output ./artifacts/Users.Service.OAuth.Migration.exe \
  && ls -lha /src/artifacts
 
 FROM runtime AS migrations-app
@@ -141,6 +142,8 @@ COPY <<"EOF" /migrations/entrypoint.sh
 ./Notifications.Service.Migration.exe --connection "Host=$HOST;Database=ac_${INSTANCE}notification;Port=$PORT;User Id=$USER;Password=$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
 
 ./Users.Service.Migration.exe --connection "Host=$HOST;Database=ac_${INSTANCE}users;Port=$PORT;User Id=$USER;Password=$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
+
+./Users.Service.OAuth.Migration.exe --connection "Host=$HOST;Database=ac_${INSTANCE}oauth;Port=$PORT;User Id=$USER;Password=$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
 EOF
 RUN chmod -R 755 /migrations/
 WORKDIR /migrations
