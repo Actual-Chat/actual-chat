@@ -27,8 +27,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
 
-        await services.GetRequiredService<IAuthors>().EnsureJoined(session, TestChatId, CancellationToken.None);
-        await WaitForIdRangeToStabilize(chats, session, TestChatId);
+        await tester.EnsureJoinedAndSettled(TestChatId);
 
         await CreateChatEntries(chats, session, TestChatId, 3);
         var idRange = await chats.GetIdRange(session, TestChatId, CancellationToken.None);
@@ -66,8 +65,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
 
-        await services.GetRequiredService<IAuthors>().EnsureJoined(session, TestChatId, CancellationToken.None);
-        await WaitForIdRangeToStabilize(chats, session, TestChatId);
+        await tester.EnsureJoinedAndSettled(TestChatId);
 
         await CreateChatEntries(chats, session, TestChatId, 3);
         var idRange = await chats.GetIdRange(session, TestChatId, CancellationToken.None);
@@ -114,8 +112,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
 
-        await services.GetRequiredService<IAuthors>().EnsureJoined(session, TestChatId, CancellationToken.None);
-        await WaitForIdRangeToStabilize(chats, session, TestChatId);
+        await tester.EnsureJoinedAndSettled(TestChatId);
 
         await CreateChatEntries(chats, session, TestChatId, 3);
         var idRange = await chats.GetIdRange(session, TestChatId, CancellationToken.None);
@@ -194,8 +191,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
 
-        await services.GetRequiredService<IAuthors>().EnsureJoined(session, TestChatId, CancellationToken.None);
-        await WaitForIdRangeToStabilize(chats, session, TestChatId);
+        await tester.EnsureJoinedAndSettled(TestChatId);
 
         var idRangeBefore = await chats.GetIdRange(session, TestChatId, CancellationToken.None);
         await CreateChatEntries(chats, session, TestChatId, 3);
@@ -236,12 +232,9 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
 
-        // Ensure Bob is joined before capturing idRange to avoid
-        // a "member joined" system entry being created during CreateChatEntries.
-        // EnsureJoined fires AuthorUpsertedEvent which creates a system entry asynchronously,
-        // so we need to wait for the idRange to stabilize.
-        await services.GetRequiredService<IAuthors>().EnsureJoined(session, TestChatId, CancellationToken.None);
-        await WaitForIdRangeToStabilize(chats, session, TestChatId);
+        // Joining writes a "member added" system entry, so capturing idRange before it lands would
+        // count it as one of the entries this test creates.
+        await tester.EnsureJoinedAndSettled(TestChatId);
 
         var reader = chats.NewEntryReader(session, TestChatId);
         var idRange = await chats.GetIdRange(session, TestChatId, CancellationToken.None);
@@ -288,12 +281,9 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
 
-        // Ensure Bob is joined before capturing idRange to avoid
-        // a "member joined" system entry being created during CreateChatEntries.
-        // EnsureJoined fires AuthorUpsertedEvent which creates a system entry asynchronously,
-        // so we need to wait for the idRange to stabilize.
-        await services.GetRequiredService<IAuthors>().EnsureJoined(session, TestChatId, CancellationToken.None);
-        await WaitForIdRangeToStabilize(chats, session, TestChatId);
+        // Joining writes a "member added" system entry, so capturing idRange before it lands would
+        // count it as one of the entries this test creates.
+        await tester.EnsureJoinedAndSettled(TestChatId);
 
         var idRangeTask = chats.GetIdRange(session, TestChatId, CancellationToken.None);
         var reader = chats.NewEntryReader(session, TestChatId);
@@ -307,23 +297,6 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
                     (int)Constants.Chat.EntryIdTiles.TileSize));
             var result = await resultTask;
             result.Count.Should().Be(1 + (int)Constants.Chat.EntryIdTiles.TileSize);
-        }
-    }
-
-    private static async Task WaitForIdRangeToStabilize(
-        IChats chats,
-        Session session,
-        ChatId chatId,
-        int maxAttempts = 20,
-        int delayMs = 100)
-    {
-        var idRange = await chats.GetIdRange(session, chatId, CancellationToken.None);
-        for (var i = 0; i < maxAttempts; i++) {
-            await Task.Delay(delayMs);
-            var newIdRange = await chats.GetIdRange(session, chatId, CancellationToken.None);
-            if (newIdRange == idRange)
-                return;
-            idRange = newIdRange;
         }
     }
 
