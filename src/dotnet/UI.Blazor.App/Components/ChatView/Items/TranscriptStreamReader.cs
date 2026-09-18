@@ -106,45 +106,11 @@ public sealed class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : Worke
         if (rpcStream is null)
             return false;
 
-        var lastText = "";
+        var projection = new TranscriptStreamProjection(content, isTranslation);
         try {
-            var transcripts = rpcStream.ToTranscripts();
-
-            var stablePrefixLength = 0;
-            var lastWordIndex = isTranslation
-                ? content.LastIndexOf(' ') + 1
-                : 0;
-
-            await foreach (var transcript in transcripts.ConfigureAwait(false)) {
-                var text = transcript.Text;
-                var isStable = transcript.IsStable;
-
-                var retainedLength = GetRetainedLength(lastText, text, stablePrefixLength);
-                var changedPart = text[retainedLength..];
-
-                // Animate only the delta growth; if it shrinks or equal, no animation
-                var animatedLength = (text.Length - lastText.Length).Clamp(0, changedPart.Length);
-                var animatedStartIndex = changedPart.Length - animatedLength;
-
-                var tail = "";
-                if (isTranslation) {
-                    var tailStartIndex = text.Length.Clamp(0, lastWordIndex);
-                    tail = content[tailStartIndex..];
-                }
-
-                _state.Value = new(
-                    RetainedText: text[..retainedLength],
-                    ChangedText: changedPart[..animatedStartIndex],
-                    AnimatedText: changedPart[animatedStartIndex..],
-                    Tail: tail,
-                    true,
-                    isTranslation);
-
-                if (isStable)
-                    stablePrefixLength = Math.Max(stablePrefixLength, text.Length);
-
-                lastText = text;
-            }
+            await foreach (var transcript in rpcStream.ToTranscripts().ConfigureAwait(false))
+                if (projection.Next(transcript) is { } state)
+                    _state.Value = state;
         }
         catch (Exception e) when (e.IsCancellationOf(cancellationToken)) {
             // ProcessStreamingState cancels us right before it publishes the next stream's state,
@@ -154,49 +120,7 @@ public sealed class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : Worke
 
         // Normal completion — mark streaming as done.
         // Any other error propagates to the retry loop with the state intact.
-        _state.Value = new(
-            RetainedText: lastText,
-            ChangedText: "",
-            AnimatedText: "",
-            Tail: "",
-            false,
-            isTranslation);
+        _state.Value = projection.Complete();
         return true;
-    }
-
-    private static int GetRetainedLength(string previous, string current, int stablePrefixLength)
-    {
-        // Uses knowledge of an immutable prefix (stablePrefixLength) to avoid re-comparing it.
-        // Also handles fast-paths for pure appends/truncations within the unstable suffix.
-        if (previous.Length == 0 || current.Length == 0)
-            return 0;
-
-        var baseLen = Math.Min(stablePrefixLength, Math.Min(previous.Length, current.Length));
-
-        // Fast append: current = previous + delta (beyond baseLen)
-        if (previous.Length <= current.Length) {
-            var prevSuffix = previous.AsSpan(baseLen);
-            var currSuffix = current.AsSpan(baseLen);
-            if (currSuffix.StartsWith(prevSuffix))
-                return previous.Length;
-        }
-
-        // Fast truncate: previous = current + removed tail (beyond baseLen)
-        if (current.Length <= previous.Length) {
-            var currSuffix = current.AsSpan(baseLen);
-            var prevSuffix = previous.AsSpan(baseLen);
-            if (prevSuffix.StartsWith(currSuffix))
-                return current.Length;
-        }
-
-        // Generic suffix common prefix scan after the stable base
-        var a = previous.AsSpan(baseLen);
-        var b = current.AsSpan(baseLen);
-        var n = Math.Min(a.Length, b.Length);
-        var i = 0;
-        while (i < n && a[i] == b[i])
-            i++;
-
-        return baseLen + i;
     }
 }
