@@ -1,3 +1,4 @@
+using ActualChat.Notifications;
 using ActualChat.WebHooks;
 
 namespace ActualChat.Chat;
@@ -173,8 +174,32 @@ public partial class WebHooksBackend
     }
 
     // [EventHandler]
-    public virtual Task OnUserNotifiedEvent(UserNotifiedEvent eventCommand, CancellationToken cancellationToken)
-        => Task.CompletedTask;
+    public virtual async Task OnUserNotifiedEvent(UserNotifiedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var n = eventCommand.Notification;
+        if (n is not ChatNotification cn)
+            return;
+
+        var hooks = (await ListActiveForUser(n.UserId, cancellationToken).ConfigureAwait(false))
+            .Where(h => h.SubscribeNotifications)
+            .ToList();
+        if (hooks.Count == 0)
+            return;
+
+        var entryId = cn is ChatEntryNotification en ? en.EntryId : (ChatEntryId?)null;
+        var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
+        var author = entry is null
+            ? null
+            : await AuthorsBackend.Get(entry.ChatId, entry.AuthorId, RequestedAuthorKind.Full, cancellationToken)
+                .ConfigureAwait(false);
+        await Enqueue(hooks, WebHookEvents.Notification, n.Id.Value,
+                hook => Payloads.Notification(hook, n, entry, author, cancellationToken),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
 
     // Private methods
 
