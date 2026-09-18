@@ -1,0 +1,13 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<UIHub>
+
+<div class="c-hero">
+    <img draggable="false" src="/dist/images/guide/mic-access.svg" alt="@L.MicGuide_BlockedImageAlt">
+</div>
+<div class="c-title">
+    @L.MicGuide_Title
+</div>
+<div class="c-intro">
+    @L.MicGuide_Intro_Format(CoreConstants.AppName)
+    @L.PermissionGuide_App
+</div>

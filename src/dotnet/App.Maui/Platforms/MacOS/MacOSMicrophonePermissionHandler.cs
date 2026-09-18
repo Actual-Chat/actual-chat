@@ -1,7 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Components;
-using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using AVFoundation;
 
@@ -34,8 +33,7 @@ public sealed class MacOSMicrophonePermissionHandler : MicrophonePermissionHandl
 
     protected override async Task Troubleshoot(CancellationToken cancellationToken)
     {
-        // RecordingTroubleshooterModal has no Mac guide, so it would show the Chrome steps
-        var model = new PermissionGuideModal.Model(PermissionKind.Microphone);
+        var model = new RecordingTroubleshooterModal.Model();
         var modalRef = await ModalUI.Show(model, cancellationToken).ConfigureAwait(true);
         await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(false);
     }

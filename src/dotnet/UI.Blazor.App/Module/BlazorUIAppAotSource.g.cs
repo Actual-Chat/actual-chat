@@ -247,6 +247,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LogItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LogList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LogView>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MacAppGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ManageAccountSettingsBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MapAppPickerModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MapPanel>();
@@ -1045,6 +1046,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.LogItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LogList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LogView), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.MacAppGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ManageAccountSettingsBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MapAppPickerModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MapPanel), AotTypeKind.Component),

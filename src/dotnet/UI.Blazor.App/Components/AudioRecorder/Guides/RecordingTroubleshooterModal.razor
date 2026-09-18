@@ -13,6 +13,7 @@
         else if (HostInfo.HostKind.IsMauiApp()) {
             type = HostInfo.AppKind switch {
                 AppKind.Ios => GuideType.IosApp,
+                AppKind.MacOS => GuideType.MacApp,
                 AppKind.Android => GuideType.AndroidApp,
                 _ => GuideType.WebChrome,
             };
@@ -71,6 +72,9 @@
                 break;
             case GuideType.IosApp:
                 <IosAppGuideContent/>
+                break;
+            case GuideType.MacApp:
+                <MacAppGuideContent/>
                 break;
             case GuideType.Unknown:
                 <UnknownGuideContent/>
