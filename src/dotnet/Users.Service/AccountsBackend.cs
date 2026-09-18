@@ -253,7 +253,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             dbAccount.Require();
 
             account = UpdateExistingAccount(existingAccount, userId);
-            await UpdateDbAccount(dbContext, dbAccount, account, cancellationToken).ConfigureAwait(false);
+            var originalIdentities = existingAccount?.Identities ?? new ApiMap<UserIdentity, string>();
+            await UpdateDbAccount(dbContext, dbAccount, account, originalIdentities, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         context.Operation.Items.KeylessSet(account);
@@ -585,6 +587,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         UsersDbContext dbContext,
         DbAccount dbAccount,
         AccountFull account,
+        ApiMap<UserIdentity, string> originalIdentities,
         CancellationToken cancellationToken)
     {
         dbAccount.Version = VersionGenerator.NextVersion(dbAccount.Version);
@@ -610,6 +613,11 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
                 foundIdentity.Secret = secret;
                 continue;
             }
+
+            // account comes from a compute method, so it can predate a removal (passkeys do that) - only
+            // the identities this sign-in brings in are created here, for the rest the DB decides.
+            if (originalIdentities.ContainsKey(userIdentity))
+                continue;
 
             // Never steal identities from other accounts
             var existingOwner = await dbContext
