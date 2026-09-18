@@ -18,10 +18,13 @@ background ones are the FCM cold start blowing the 10 s broadcast deadline on lo
 | — | `MauiSession.Read` is already off main (`Task.Run`, MauiProgram.cs:195) | no change |
 | — | `TrimMode=full`, assembly-compression flag, headless slim start, R2R profile refresh, Crashlytics symbol upload | out of scope / follow-ups |
 
-Crashlytics' own init on the FCM path (`CrashlyticsRegistrar → AnalyticsDeferredProxy → zzc.<clinit>`)
-runs from `FirebaseInitProvider` before `Application.onCreate`; skipping it means either removing the
-provider (breaks FCM message delivery ordering) or `firebase_analytics_collection_deactivated`
-(permanent). Not doing either — E covers the part we own.
+**H (added):** Firebase init is ours now — `FirebaseInitProvider` removed, `MauiFirebase.Start` on a
+dedicated thread from `Application.OnCreate`, consumers gated on `MauiFirebase.WhenReady`
+(`FirebaseMessagingService.HandleIntent`, the Crashlytics sink with a 256-line replay buffer, token
+retriever, dev BigQuery toggle, analytics). FCM's message path only dereferences `FirebaseApp` for
+analytics-labelled messages (`MessagingAnalytics`), hence the `HandleIntent` wait. Device pass owed:
+push on cold start, push right after a user launch, token refresh, Crashlytics logs present, a test
+crash reported.
 
 ## Reuse
 

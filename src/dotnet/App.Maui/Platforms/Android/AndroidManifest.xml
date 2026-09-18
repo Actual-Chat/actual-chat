@@ -42,6 +42,17 @@
         android:name="androidx.work.WorkManagerInitializer"
         tools:node="remove" />
     </provider>
+    <!--
+    Firebase's own initializer runs on the main thread before Application.onCreate and eagerly
+    builds Crashlytics, which class-loads GMS measurement on the way - the frames under
+    MainApplication.n_onCreate in the FCM-wake ANRs. MauiFirebase initializes FirebaseApp on its
+    own thread from Application.OnCreate instead; FirebaseMessagingService.HandleIntent waits for
+    it, since FCM's message path dereferences FirebaseApp for analytics-labelled messages.
+    -->
+    <provider
+      android:name="com.google.firebase.provider.FirebaseInitProvider"
+      android:authorities="${applicationId}.firebaseinitprovider"
+      tools:node="remove" />
     <service android:name="com.google.android.gms.metadata.ModuleDependencies"
              android:enabled="false"
              android:exported="false"

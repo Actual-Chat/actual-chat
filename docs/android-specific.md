@@ -129,9 +129,8 @@ sequenceDiagram
 What the headless path skips is only ever *work*, never a prerequisite:
 `WarmupStaticServices`, `BlazorViewAppPostBuildRoutine`, `LoadingUI.MarkAppBuilt`,
 `EnsureStarted`, the Chromium warm-up and Firebase Analytics init (nothing headless logs an
-analytics event; `FirebaseInitProvider` has already set up `FirebaseApp` for FCM). None of it
-serves the FCM handler, and the ThreadPool spin-up alone competes with the broadcast the
-process was started to deliver.
+analytics event). None of it serves the FCM handler, and the ThreadPool spin-up alone competes
+with the broadcast the process was started to deliver.
 
 ::: info
 The skip is safe because the container is already built **on demand by whoever needs it** —
@@ -139,6 +138,30 @@ The skip is safe because the container is already built **on demand by whoever n
 calls `BlazorWebViewApp.EnsureStarted()` before touching the scope, and `PttSession` awaits
 `WhenAppReady`. Ordinary notification display touches Android APIs only.
 :::
+
+### Firebase initializes on its own thread
+
+`FirebaseInitProvider` is removed from the manifest. Firebase's own initializer is a content
+provider, so it ran on the main thread *before* `Application.onCreate`, and it eagerly builds
+Crashlytics, whose `AnalyticsDeferredProxy` class-loads GMS measurement on the way — the
+`zzc.<clinit>` / `CustomThreadFactory.newThread` frames under `MainApplication.n_onCreate` in
+the FCM-wake ANRs, and part of the pre-`onCreate` window on user launches.
+[`MauiFirebase.Start`](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Maui/Platforms/Android/MauiFirebase.cs)
+runs `FirebaseApp.InitializeApp` on a dedicated thread (not the pool — see the headless note
+above) from the first line of `MainApplication.OnCreate`; `MauiFirebase.WhenReady` is the gate.
+
+What waits on it, and why:
+
+| Consumer | Why it has to wait |
+|---|---|
+| `FirebaseMessagingService.HandleIntent` | FCM's own `handleIntent` calls `MessagingAnalytics.logNotificationReceived` → `FirebaseApp.getInstance()` for messages carrying an analytics label, which the server sets on dev and for opted-in users. The override waits (on FCM's executor, 15 s cap) and then calls base; a broadcast that started the process would otherwise race the init. Nothing else on FCM's message path references `FirebaseApp` (checked in the 25.0.2 bytecode). |
+| `AndroidFirebaseCrashlyticsSink` | `FirebaseCrashlytics.getInstance` throws before init. The sink buffers up to 256 Information+ lines and replays them once ready, so the startup lines an ANR report needs are kept. |
+| `AndroidDeviceTokenRetriever`, the dev-only `SetDeliveryMetricsExportToBigQuery`, `StartFirebaseAnalytics` | `FirebaseMessaging.getInstance` / analytics need the app. |
+
+`OnNewToken` needs no guard: it's raised by `FirebaseMessaging`, itself a component of the
+initialized app. The cost is that a crash in the first few hundred milliseconds of a start
+reaches Crashlytics only through `ApplicationExitInfo` on the next launch — the same as Sentry,
+which initializes ten seconds after first render.
 
 ### What is awaited, and where
 
