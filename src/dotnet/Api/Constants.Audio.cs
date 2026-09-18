@@ -174,6 +174,14 @@ public static partial class Constants
         public static readonly TimeSpan ReplayDubSynthesisTimeout = TimeSpan.FromMinutes(5);
         // Entries whose dubs are prepared while the current one streams
         public static readonly int ReplayDubLookahead = 2;
+        // How far ahead of its playback time a replay frame may be sent: it hides a blob's open latency
+        // and network jitter, and bounds what either side buffers
+        public static readonly TimeSpan ReplayMaxLead = TimeSpan.FromSeconds(10);
+        // Longest silence a replay keeps between consecutive entries; longer pauses are cut down to it
+        public static readonly TimeSpan ReplayMaxGap = TimeSpan.FromMilliseconds(500);
+        // Audio a replay keeps past an entry's last word; the rest is the VAD's trailing silence (up to
+        // MaxPauseMs). Kept below ReplayMaxGap, so an entry ends before the next one starts
+        public static readonly TimeSpan ReplayTailMargin = TimeSpan.FromMilliseconds(400);
         // Caps concurrent Soniox REST syntheses; shares Soniox's 3-concurrent-stream quota with live dubbing
         public static readonly int ReplayDubMaxConcurrentSynthesis = 2;
         // How far back a speaker's own recordings are considered for the auto voice sample

@@ -6,6 +6,7 @@ namespace ActualChat.Streaming.Services;
 /// <summary>
 /// Reads historical chat entries, downloads their audio from blob storage,
 /// and multiplexes them into a single <see cref="MuxedAudioStreamItem"/> output channel.
+/// Frames go out in the order they play, at most <see cref="Constants.Audio.ReplayMaxLead"/> early.
 /// </summary>
 public sealed class ReplayStreamMuxer : WorkerBase
 {
@@ -57,6 +58,9 @@ public sealed class ReplayStreamMuxer : WorkerBase
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var dubTasks = new Dictionary<ChatEntryId, Task<ReplayDub?>>();
+        var streams = new List<EntryStream>();
+        IAsyncEnumerator<ChatEntry>? upcoming = null;
+        Task<(bool HasEntry, EntryStream? Stream)>? nextTask = null;
         try {
             Log.LogInformation("OnRun: Starting for chat {ChatId}, startAt={StartAt}, rewindOffset={RewindOffset}",
                 ChatId, StartAt, RewindOffset);
@@ -76,13 +80,6 @@ public sealed class ReplayStreamMuxer : WorkerBase
 
             Log.LogInformation("OnRun: Resolved start position to {ResolvedStartAt}", resolvedStartAt.Value);
 
-            // Stream entries from resolved position
-            var streamStartedAt = SystemClock.Now;
-            var gapAdjustment = TimeSpan.Zero;
-            var lastEntryEnd = resolvedStartAt.Value;
-            var notBefore = TimeSpan.Zero;
-            var streamTasks = new List<Task>();
-
             var entryReader = new ChatEntryReader(Chats, Session, ChatId);
             var idRange = await Chats.GetIdRange(Session, ChatId, cancellationToken).ConfigureAwait(false);
             var startEntry = await entryReader
@@ -96,77 +93,45 @@ public sealed class ReplayStreamMuxer : WorkerBase
             idRange = (startEntry.LocalId, idRange.End);
             var entries = entryReader.Read(idRange, cancellationToken)
                 .Where(x => x.HasAudio && !x.IsContentStreaming && x.GetEndsAt() >= resolvedStartAt.Value);
+            upcoming = WithDubLookahead(entries, dubTasks, cancellationToken).GetAsyncEnumerator(cancellationToken);
+            var timeline = new TimelineState(resolvedStartAt.Value);
+            var streamStartedAt = SystemClock.Now;
+            var hasMoreEntries = true;
+            while (true) {
+                // Where the entry after a dub still being spoken goes is known only once that dub ends
+                if (nextTask == null && hasMoreEntries && !streams.Any(x => x.IsLiveDub))
+                    nextTask = PrepareNext(upcoming, dubTasks, timeline, cancellationToken);
 
-            await foreach (var entry in WithDubLookahead(entries, dubTasks, cancellationToken).ConfigureAwait(false)) {
-                var entryEndsAt = entry.GetEndsAt();
-
-                // Detect and skip gaps: only count time after lastEntryEnd
-                // that isn't covered by this entry's audio range
-                var gapStart = Moment.Max(lastEntryEnd, resolvedStartAt.Value);
-                if (entry.BeginsAt > gapStart)
-                    gapAdjustment += entry.BeginsAt - gapStart;
-
-                // Pacing: check how far ahead we are of expected client playback
-                var expectedPosition = resolvedStartAt.Value + gapAdjustment
-                    + (SystemClock.Now - streamStartedAt) * Speed;
-                var aheadBy = (entry.BeginsAt - expectedPosition) / 2; // /2 for safety margin
-
-                if (aheadBy > TimeSpan.FromMinutes(1)) {
-                    var waitFor = aheadBy - TimeSpan.FromSeconds(10);
-                    Log.LogDebug("Pacing: waiting {WaitFor} (ahead by {AheadBy})", waitFor, aheadBy);
-                    await Task.Delay(waitFor, cancellationToken).ConfigureAwait(false);
-                }
-
-                // Calculate skip for first entry
-                var skipTo = (resolvedStartAt.Value - entry.BeginsAt).Positive();
-
-                // PlaysAt = when this stream should start playing relative to the first stream,
-                // divided by speed so entries start proportionally sooner at higher speeds
-                var timelinePlaysAt = (entry.BeginsAt - resolvedStartAt.Value - gapAdjustment).Positive() / Speed;
-                var dub = DubLanguage == null
-                    ? null
-                    : await GetDub(entry, dubTasks, cancellationToken).ConfigureAwait(false);
-                // A dub's spoken length rarely matches the source's, so later entries in a dubbed
-                // replay are pushed out to never start before the previous one finished playing;
-                // an undubbed replay (no DubLanguage) keeps concurrent speakers concurrent, as before
-                var playsAt = ReplayTimeline.PlaysAt(timelinePlaysAt, notBefore, DubLanguage != null);
-                var streamIndex = Interlocked.Increment(ref _nextStreamIndex);
-                if (dub?.Live != null) {
-                    // How long a dub still being spoken lasts is known only once it's over, so the
-                    // entry is streamed to its end before the next one is placed on the timeline;
-                    // the dub's skip is the source's as-is, assuming the two run at the same pace
-                    var playedDuration = await ProcessEntry(
-                        entry, dub, skipTo, streamIndex, skipTo, playsAt, cancellationToken).ConfigureAwait(false);
-                    notBefore = playsAt + playedDuration / Speed;
-                }
-                else {
-                    var stored = dub?.Stored;
-                    var dubSkipTo = stored != null
-                        ? ReplayTimeline.ScaleSkip(
-                            skipTo, entryEndsAt - entry.BeginsAt, stored.EndsAt - stored.BeginsAt)
-                        : TimeSpan.Zero;
-                    if (DubLanguage != null) {
-                        var playedDuration = stored != null
-                            ? (stored.EndsAt - stored.BeginsAt) - dubSkipTo
-                            : entryEndsAt - entry.BeginsAt - skipTo;
-                        notBefore = playsAt + playedDuration.Positive() / Speed;
+                var current = streams.MinBy(x => x.Deadline);
+                // The next entry is waited for only when nothing else can be sent meanwhile
+                if (nextTask != null && (current == null || nextTask.IsCompleted)) {
+                    var (hasEntry, next) = await nextTask.ConfigureAwait(false);
+                    if (!hasEntry) {
+                        hasMoreEntries = false;
+                        nextTask = null;
+                        continue;
                     }
-
-                    // Start streaming this entry (allows concurrent speakers)
-                    var streamTask = ProcessEntry(
-                        entry, dub, dubSkipTo, streamIndex, skipTo, playsAt, cancellationToken);
-                    streamTasks.Add(streamTask);
-
-                    // Clean up completed tasks
-                    streamTasks.RemoveAll(t => t.IsCompleted);
+                    if (next == null || current == null || next.PlaysAt <= current.Deadline) {
+                        nextTask = null;
+                        if (next != null && await Admit(next, cancellationToken).ConfigureAwait(false))
+                            streams.Add(next);
+                        continue;
+                    }
                 }
+                if (current == null)
+                    break;
 
-                lastEntryEnd = Moment.Max(lastEntryEnd, entryEndsAt);
+                var lead = current.Deadline - (SystemClock.Now - streamStartedAt);
+                if (lead > Constants.Audio.ReplayMaxLead)
+                    await Task.Delay(lead - Constants.Audio.ReplayMaxLead / 2, cancellationToken).ConfigureAwait(false);
+                if (await SendFrameAndAdvance(current, cancellationToken).ConfigureAwait(false))
+                    continue;
+
+                streams.Remove(current);
+                await current.DisposeAsync().ConfigureAwait(false);
+                if (current.IsLiveDub)
+                    timeline.NotBefore = current.PlaysAt + current.StreamedDuration / Speed;
             }
-
-            // Wait for all remaining stream tasks
-            if (streamTasks.Count > 0)
-                await Task.WhenAll(streamTasks).ConfigureAwait(false);
 
             Log.LogInformation("OnRun: Replay completed for chat {ChatId}", ChatId);
         }
@@ -174,6 +139,14 @@ public sealed class ReplayStreamMuxer : WorkerBase
             Log.LogError(e, "OnRun: Failed for chat {ChatId}", ChatId);
         }
         finally {
+            // The pending entry uses the enumerator and the dub tasks, so it's awaited before either goes
+            if (nextTask != null && (await nextTask.ResultAwait(false)).ValueOrDefault.Stream is { } pending)
+                streams.Add(pending);
+
+            foreach (var stream in streams)
+                await stream.DisposeAsync().ConfigureAwait(false);
+            if (upcoming != null)
+                await upcoming.DisposeSilentlyAsync().ConfigureAwait(false);
             // Lookahead dubs still in flight when the replay stops early would otherwise fault
             // unobserved - their token is this method's own, so they're already unwinding
             foreach (var dubTask in dubTasks.Values)
@@ -181,100 +154,90 @@ public sealed class ReplayStreamMuxer : WorkerBase
         }
     }
 
-    // Returns the raw duration streamed - the last frame's end offset, before any speed-up drops
-    private async Task<TimeSpan> ProcessEntry(
+    // Private methods
+
+    // HasEntry is false once the entries run out; an entry with nothing to play comes with a null Stream
+    private async Task<(bool HasEntry, EntryStream? Stream)> PrepareNext(
+        IAsyncEnumerator<ChatEntry> upcoming,
+        Dictionary<ChatEntryId, Task<ReplayDub?>> dubTasks,
+        TimelineState timeline,
+        CancellationToken cancellationToken)
+    {
+        if (!await upcoming.MoveNextAsync().ConfigureAwait(false))
+            return (false, null);
+
+        var entry = upcoming.Current;
+        var entryEndsAt = entry.GetEndsAt();
+        // The pause before the first entry is skipped whole, later ones are cut down to ReplayMaxGap
+        var gap = entry.BeginsAt - Moment.Max(timeline.LastEntryEnd ?? timeline.StartAt, timeline.StartAt);
+        timeline.SkippedDuration += timeline.LastEntryEnd == null
+            ? gap.Positive()
+            : ReplayTimeline.SkippedGap(gap, Constants.Audio.ReplayMaxGap);
+        timeline.LastEntryEnd = Moment.Max(timeline.LastEntryEnd ?? entryEndsAt, entryEndsAt);
+
+        var skipTo = (timeline.StartAt - entry.BeginsAt).Positive();
+        // PlaysAt = when this stream should start playing relative to the first stream,
+        // divided by speed so entries start proportionally sooner at higher speeds
+        var timelinePlaysAt = (entry.BeginsAt - timeline.StartAt - timeline.SkippedDuration).Positive() / Speed;
+        var dub = DubLanguage == null
+            ? null
+            : await GetDub(entry, dubTasks, cancellationToken).ConfigureAwait(false);
+        // A dub's spoken length rarely matches the source's, so later entries in a dubbed
+        // replay are pushed out to never start before the previous one finished playing;
+        // an undubbed replay (no DubLanguage) keeps concurrent speakers concurrent, as before
+        var playsAt = ReplayTimeline.PlaysAt(timelinePlaysAt, timeline.NotBefore, DubLanguage != null);
+        var streamIndex = Interlocked.Increment(ref _nextStreamIndex);
+        if (dub?.Live != null) {
+            // How long a dub still being spoken lasts is known only once it's over, so the entry
+            // streams to its end before the next one is placed; the dub's skip is the source's as-is,
+            // assuming the two run at the same pace
+            var liveOpenTask = OpenAudio(entry, dub, skipTo, skipTo, cancellationToken);
+            return (true, new EntryStream(entry, streamIndex, playsAt, skipTo, Speed, liveOpenTask) {
+                IsLiveDub = true,
+            });
+        }
+
+        var stored = dub?.Stored;
+        var dubSkipTo = stored != null
+            ? ReplayTimeline.ScaleSkip(skipTo, entryEndsAt - entry.BeginsAt, stored.EndsAt - stored.BeginsAt)
+            : TimeSpan.Zero;
+        if (DubLanguage != null) {
+            var playedDuration = stored != null
+                ? (stored.EndsAt - stored.BeginsAt) - dubSkipTo
+                : entryEndsAt - entry.BeginsAt - skipTo;
+            timeline.NotBefore = playsAt + playedDuration.Positive() / Speed;
+        }
+        var openTask = OpenAudio(entry, dub, dubSkipTo, skipTo, cancellationToken);
+        return (true, new EntryStream(entry, streamIndex, playsAt, skipTo, Speed, openTask));
+    }
+
+    private async Task<OpenedAudio?> OpenAudio(
         ChatEntry entry,
         ReplayDub? dub,
         TimeSpan dubSkipTo,
-        int streamIndex,
         TimeSpan skipTo,
-        TimeSpan playsAt,
         CancellationToken cancellationToken)
     {
-        var frameCount = 0;
-        var streamedDuration = TimeSpan.Zero;
-        try {
-            if (entry.Audio is not { } audio) {
-                Log.LogWarning("ProcessEntry: Entry {EntryId} has no audio metadata", entry.Id);
-                return streamedDuration;
-            }
-
-            var blobId = audio.BlobId;
-            if (blobId.IsNullOrEmpty()) {
-                Log.LogWarning("ProcessEntry: Entry {EntryId} has no BlobId", entry.Id);
-                return streamedDuration;
-            }
-
-            var audioSource = dub != null
-                ? await TryOpenDub(dub, dubSkipTo, entry, cancellationToken).ConfigureAwait(false)
-                : null;
-            if (audioSource == null) {
-                dub = null; // No dub audio (or an error opening it) - fall back to the original
-                audioSource = await AudioDownloader.Download(blobId, skipTo, cancellationToken).ConfigureAwait(false);
-            }
-
-            // Emit stream start
-            var streamInfo = new LiveAudioStreamInfo {
-                ChatId = ChatId,
-                AuthorId = entry.AuthorId,
-                StreamId = audio.StreamId.NullIfEmpty() ?? blobId,
-                BeginsAt = entry.BeginsAt + skipTo,
-                SourceBeginsAt = entry.BeginsAt + skipTo,
-                Format = audioSource.Format,
-                EntryId = entry.Id,
-            };
-            if (dub != null)
-                streamInfo = streamInfo with { DubLanguage = DubLanguage };
-            var startItem = new MuxedAudioStreamStart {
-                StreamIndex = streamIndex,
-                StreamInfo = streamInfo,
-                PlaysAt = playsAt,
-            };
-            await _output.Writer.WriteAsync(startItem, cancellationToken).ConfigureAwait(false);
-
-            // Emit audio frames, skipping some for speedup
-            // For speed S, we keep 1/S fraction of frames.
-            // E.g. 1.5x → skip every 3rd frame (keep 2 of 3),
-            //      2.0x → skip every 2nd frame (keep 1 of 2).
-            var skipInterval = Speed > 1.0 ? (int)Math.Round(Speed / (Speed - 1.0)) : 0;
-            var rawFrameIndex = 0;
-            await foreach (var frame in audioSource.GetFrames(cancellationToken).ConfigureAwait(false)) {
-                rawFrameIndex++;
-                streamedDuration = frame.Offset + frame.Duration;
-                if (skipInterval > 0 && rawFrameIndex % skipInterval == 0)
-                    continue; // Skip this frame for speedup
-
-                var audioFrame = new MuxedAudioFrame {
-                    StreamIndex = streamIndex,
-                    Data = frame.Data,
-                    Offset = frame.Offset,
-                };
-                await _output.Writer.WriteAsync(audioFrame, cancellationToken).ConfigureAwait(false);
-                frameCount++;
-            }
-
-            // Emit stream end
-            var endItem = new MuxedAudioStreamEnd { StreamIndex = streamIndex };
-            await _output.Writer.WriteAsync(endItem, cancellationToken).ConfigureAwait(false);
-            Log.LogDebug("Entry {EntryId}: completed, {FrameCount} frames", entry.Id, frameCount);
+        if (entry.Audio is not { } audio) {
+            Log.LogWarning("OpenAudio: Entry {EntryId} has no audio metadata", entry.Id);
+            return null;
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            Log.LogDebug("Entry stream #{StreamIndex} cancelled after {FrameCount} frames", streamIndex, frameCount);
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "Error processing entry {EntryId}, {FrameCount} frames emitted",
-                entry.Id, frameCount);
 
-            // Still emit end marker on error
-            try {
-                var endItem = new MuxedAudioStreamEnd { StreamIndex = streamIndex };
-                await _output.Writer.WriteAsync(endItem, cancellationToken).ConfigureAwait(false);
-            }
-            catch {
-                // Ignore
-            }
+        var blobId = audio.BlobId;
+        if (blobId.IsNullOrEmpty()) {
+            Log.LogWarning("OpenAudio: Entry {EntryId} has no BlobId", entry.Id);
+            return null;
         }
-        return streamedDuration;
+
+        var audioSource = dub != null
+            ? await TryOpenDub(dub, dubSkipTo, entry, cancellationToken).ConfigureAwait(false)
+            : null;
+        if (audioSource != null)
+            return new OpenedAudio(audioSource, dub);
+
+        // No dub audio (or an error opening it) - fall back to the original
+        audioSource = await AudioDownloader.Download(blobId, skipTo, cancellationToken).ConfigureAwait(false);
+        return new OpenedAudio(audioSource, null);
     }
 
     private async Task<AudioSource?> TryOpenDub(
@@ -292,17 +255,85 @@ public sealed class ReplayStreamMuxer : WorkerBase
                 return source;
 
             Log.LogInformation(
-                "ProcessEntry: {Language} dub for entry {EntryId} is being made but has no audio, serving the original",
+                "OpenAudio: {Language} dub for entry {EntryId} is being made but has no audio, serving the original",
                 DubLanguage, entry.Id);
             return null;
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             Log.LogInformation(e,
-                "ProcessEntry: {Language} dub for entry {EntryId} failed to open, serving the original",
+                "OpenAudio: {Language} dub for entry {EntryId} failed to open, serving the original",
                 DubLanguage, entry.Id);
             return null;
         }
     }
+
+    // Returns false when the entry has nothing to stream
+    private async Task<bool> Admit(EntryStream stream, CancellationToken cancellationToken)
+    {
+        var entry = stream.Entry;
+        try {
+            if (await stream.Open(cancellationToken).ConfigureAwait(false) is not { } opened) {
+                await stream.DisposeAsync().ConfigureAwait(false);
+                return false;
+            }
+
+            var audio = entry.Audio!;
+            var streamInfo = new LiveAudioStreamInfo {
+                ChatId = ChatId,
+                AuthorId = entry.AuthorId,
+                StreamId = audio.StreamId.NullIfEmpty() ?? audio.BlobId,
+                BeginsAt = entry.BeginsAt + stream.SkipTo,
+                SourceBeginsAt = entry.BeginsAt + stream.SkipTo,
+                Format = opened.Source.Format,
+                EntryId = entry.Id,
+            };
+            if (opened.Dub != null)
+                streamInfo = streamInfo with { DubLanguage = DubLanguage };
+            var startItem = new MuxedAudioStreamStart {
+                StreamIndex = stream.StreamIndex,
+                StreamInfo = streamInfo,
+                PlaysAt = stream.PlaysAt,
+            };
+            await _output.Writer.WriteAsync(startItem, cancellationToken).ConfigureAwait(false);
+            if (await stream.MoveNext().ConfigureAwait(false))
+                return true;
+
+            await WriteEnd(stream, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogWarning(e, "Admit: Error opening entry {EntryId}", entry.Id);
+            await WriteEnd(stream, cancellationToken).SilentAwait(false);
+        }
+        await stream.DisposeAsync().ConfigureAwait(false);
+        return false;
+    }
+
+    // Returns false once the stream is over - its end marker is sent by then
+    private async Task<bool> SendFrameAndAdvance(EntryStream stream, CancellationToken cancellationToken)
+    {
+        try {
+            var frame = stream.Frame;
+            var audioFrame = new MuxedAudioFrame {
+                StreamIndex = stream.StreamIndex,
+                Data = frame.Data,
+                Offset = frame.Offset,
+            };
+            await _output.Writer.WriteAsync(audioFrame, cancellationToken).ConfigureAwait(false);
+            if (await stream.MoveNext().ConfigureAwait(false))
+                return true;
+
+            Log.LogDebug("Entry {EntryId}: completed, {FrameCount} frames", stream.Entry.Id, stream.FrameCount);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogWarning(e, "Error processing entry {EntryId}, {FrameCount} frames emitted",
+                stream.Entry.Id, stream.FrameCount);
+        }
+        await WriteEnd(stream, cancellationToken).SilentAwait(false);
+        return false;
+    }
+
+    private ValueTask WriteEnd(EntryStream stream, CancellationToken cancellationToken)
+        => _output.Writer.WriteAsync(new MuxedAudioStreamEnd { StreamIndex = stream.StreamIndex }, cancellationToken);
 
     // Dubbing lookahead
 
@@ -481,5 +512,87 @@ public sealed class ReplayStreamMuxer : WorkerBase
             lastPlayingAt = entryBeginsAt;
         }
         return lastPlayingAt;
+    }
+
+    // Nested types
+
+    private sealed class TimelineState(Moment startAt)
+    {
+        public Moment StartAt { get; } = startAt;
+        public Moment? LastEntryEnd { get; set; }
+        public TimeSpan SkippedDuration { get; set; }
+        public TimeSpan NotBefore { get; set; }
+    }
+
+    private sealed record OpenedAudio(AudioSource Source, ReplayDub? Dub);
+
+    // One entry's audio, read a frame ahead so the muxer can pick whichever frame plays first
+    private sealed class EntryStream(
+        ChatEntry entry,
+        int streamIndex,
+        TimeSpan playsAt,
+        TimeSpan skipTo,
+        double speed,
+        Task<OpenedAudio?> openTask
+        ) : IAsyncDisposable
+    {
+        private OpenedAudio? _opened;
+        private IAsyncEnumerator<AudioFrame>? _frames;
+        private TimeSpan? _tailCutoff;
+        private int _rawFrameIndex;
+
+        public ChatEntry Entry { get; } = entry;
+        public int StreamIndex { get; } = streamIndex;
+        public TimeSpan PlaysAt { get; } = playsAt;
+        public TimeSpan SkipTo { get; } = skipTo;
+        public bool IsLiveDub { get; init; }
+        public AudioFrame Frame { get; private set; } = null!;
+        public int FrameCount { get; private set; }
+        // The raw duration streamed - the last frame's end offset, before any speed-up drops
+        public TimeSpan StreamedDuration { get; private set; }
+        public TimeSpan Deadline => ReplayTimeline.Deadline(PlaysAt, Frame.Offset, speed);
+
+        public async ValueTask DisposeAsync()
+        {
+            if (_frames != null)
+                await _frames.DisposeSilentlyAsync().ConfigureAwait(false);
+            // An entry that was lined up but never started still owns whatever its download opened
+            var opened = _opened ?? (await openTask.ResultAwait(false)).ValueOrDefault;
+            // A live dub's source is shared with the synthesis that stores it, so only ours are disposed
+            if (opened?.Dub?.Live == null)
+                opened?.Source.Dispose();
+        }
+
+        public async Task<OpenedAudio?> Open(CancellationToken cancellationToken)
+        {
+            _opened = await openTask.ConfigureAwait(false);
+            if (_opened is not { } opened)
+                return null;
+
+            // Only the original has the VAD's trailing silence to cut: a dub ends where its speech does
+            if (opened.Dub == null && Entry.EndsAt is { } entryEndsAt)
+                _tailCutoff = ReplayTimeline.TailCutoff(
+                    entryEndsAt - Entry.BeginsAt, SkipTo, Constants.Audio.ReplayTailMargin);
+            _frames = opened.Source.GetFrames(cancellationToken).GetAsyncEnumerator(cancellationToken);
+            return opened;
+        }
+
+        public async Task<bool> MoveNext()
+        {
+            while (await _frames!.MoveNextAsync().ConfigureAwait(false)) {
+                var frame = _frames.Current;
+                if (frame.Offset >= _tailCutoff)
+                    return false;
+
+                StreamedDuration = frame.Offset + frame.Duration;
+                if (!ReplayTimeline.MustKeepFrame(_rawFrameIndex++, speed))
+                    continue; // Dropped for the speed-up
+
+                Frame = frame;
+                FrameCount++;
+                return true;
+            }
+            return false;
+        }
     }
 }
