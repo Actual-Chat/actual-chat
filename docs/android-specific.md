@@ -224,6 +224,29 @@ recreates the WebView when it finds `Content: null`, which is also the state dur
 initial attach — so it checks `MainPage.IsWebViewAttachPending` to tell "not attached yet"
 from "went away while backgrounded" and leave the first attach alone.
 
+## Runtime environment of the store build
+
+`android-release-env.txt` is packaged as an `AndroidEnvironment` file in Release (not in
+tracing builds, which need the diagnostics IPC it switches off). Two settings:
+
+- `DOTNET_GCgen0size=0x2000000` — a 32 MB gen0 budget. The default derives from the SoC's
+  cache size, which on Helio G35/G85 and Exynos 850 class phones is sub-MB: a gen0 GC every
+  few hundred KB of allocation, and the Java GC bridge follows every managed GC with a blocking
+  full ART GC (`Runtime.gc`) — the stop-the-world that shows up as `WaitHoldingLocks` under a
+  JNI transition in every user-perceived ANR dump. Fewer managed GCs, fewer of those.
+- `DOTNET_EnableDiagnostics=0` — no `.NET Debugger` / `.NET DebugPipe` threads or IPC socket.
+
+The A/B for the budget is `pwsh scripts/Measure-AndroidGcRate.ps1 -Seconds 60` over the same
+minute of use on the same phone, before and after: it counts the app's ART GC lines by cause
+(`Explicit` is the bridge's share) and sums their pauses. ART tags GC lines with the process
+name, so a `-s art` logcat filter returns nothing.
+
+Measured 2026-09-18 on a OnePlus CPH2747 (Android 16), launch → 25 s settle → 60 s idle on the
+chat list: dev 2.21.178 without the budget had **119 ART GCs in the minute, all `Explicit`**,
+242 ms of stop-the-world and 2.8 s of GC wall time; 2.21.208 with it had **none** (two during
+startup, then nothing), and **2** during a 60 s recording (~1.4 ms pause each). For scale, the
+August measurement on the same phone was 35/min over ~75 s of ordinary use.
+
 ## Recording a CPU profile
 
 ### 1. Build a tracing-enabled APK
