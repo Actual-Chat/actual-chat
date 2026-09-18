@@ -97,14 +97,14 @@
                 <Content>@L.Transcription_OwnVoice</Content>
                 <Caption>
                     @L.Transcription_OwnVoiceCaption
-                    <div class="own-voice-status">@FormatOwnVoiceStatus(ownVoice)</div>
+                    <div class="own-voice-status">@FormatOwnVoiceStatus(m, ownVoice)</div>
                 </Caption>
                 <Right>
-                    <Toggle IsChecked="@ownVoice.IsEnabled"
+                    <Toggle IsChecked="@m.IsOwnVoiceEnabled"
                             IsCheckedChanged="@(_ => OnToggleOwnVoice())"/>
                 </Right>
             </TileItem>
-            @if (ownVoice.IsEnabled) {
+            @if (m.IsOwnVoiceEnabled) {
                 @if (m.NotesChatId is { } notesChatId) {
                     <TileItem Click="@(() => OnRecordSampleClick(notesChatId))">
                         <Icon><i class="icon-mic-2 text-2xl"></i></Icon>
@@ -130,7 +130,7 @@
             <Icon><i class="icon-mic text-2xl"></i></Icon>
             <Content>@L.Transcription_DubVoice</Content>
             <Caption>
-                @(m.OwnVoice is { IsEnabled: true }
+                @(m.IsOwnVoiceEnabled
                     ? L.Transcription_DubVoiceFallbackCaption
                     : L.Transcription_DubVoiceCaption)
             </Caption>
@@ -191,7 +191,7 @@
             ? await GetOwnVoice(cancellationToken).ConfigureAwait(false)
             : null;
         // The sample is recorded in Notes; without that chat there's nowhere to record it, so no row
-        var notesChatId = ownVoice is { IsEnabled: true }
+        var notesChatId = ownVoice != null && languages.IsOwnVoiceEnabled
             ? (await ChatListUI.NotesChat.Use(cancellationToken).ConfigureAwait(false))?.Id
             : null;
         return new(languages, enableIncompleteUI, showTranslatedVoice, isFaceDownMicStopEnabled,
@@ -235,9 +235,13 @@
             x => x with { IsFaceDownMicStopDisabled = !(x.IsFaceDownMicStopDisabled ?? false) },
             CancellationToken.None);
 
-    private string FormatOwnVoiceStatus(OwnVoiceStatus ownVoice) {
-        if (!ownVoice.IsEnabled)
+    private string FormatOwnVoiceStatus(Model m, OwnVoiceStatus ownVoice) {
+        // The toggle follows the local setting; the status is a server-side recompute that lags it by
+        // a second or more (Inspect scans the recordings), so the interim reads as "preparing"
+        if (!m.IsOwnVoiceEnabled)
             return L.Transcription_OwnVoiceStatus_Off;
+        if (!ownVoice.IsEnabled)
+            return L.Transcription_OwnVoiceStatus_Preparing;
         if (ownVoice.Status == UserVoiceStatus.Ready)
             return L.Transcription_OwnVoiceStatus_Ready;
         if (ownVoice.Failure == VoiceSampleFailure.SampleMissing)
@@ -303,5 +307,8 @@
         bool IsFaceDownMicStopEnabled,
         string? DefaultDubVoiceId,
         OwnVoiceStatus? OwnVoice,
-        ChatId? NotesChatId);
+        ChatId? NotesChatId)
+    {
+        public bool IsOwnVoiceEnabled => OwnVoice != null && Languages.IsOwnVoiceEnabled;
+    }
 }
