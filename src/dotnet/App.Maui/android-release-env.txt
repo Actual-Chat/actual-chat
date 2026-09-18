@@ -1,0 +1,10 @@
+# Applied by the .NET for Android host before the runtime starts (Release only; see App.Maui.csproj).
+#
+# GC gen0 budget, hex bytes. The default derives from the SoC's cache size, which on the low-tier
+# phones that ANR (Helio G35/G85, Exynos 850 class) yields a sub-MB budget - i.e. a gen0 GC every
+# few hundred KB of allocation, and the Java GC bridge follows every managed GC with a blocking
+# full ART GC (Runtime.gc). 32 MB cuts the GC count by an order of magnitude at ~32 MB of extra RSS.
+DOTNET_GCgen0size=0x2000000
+# No diagnostics IPC in the store build: drops the ".NET Debugger" / ".NET DebugPipe" threads and
+# the /tmp socket they open at startup.
+DOTNET_EnableDiagnostics=0
