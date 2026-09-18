@@ -9,6 +9,7 @@ public record ChatAudioTrackInfo : TrackInfo
     public Author? Author { get; }
     public ChatEntryId? EntryId { get; }
     public string StreamId { get; init; } = "";
+    public Tracer Tracer { get; init; } = Tracer.None;
 
     // Primary constructor for entry-based playback
     public ChatAudioTrackInfo(ChatEntry audioEntry, Chat.Chat chat, Author author)

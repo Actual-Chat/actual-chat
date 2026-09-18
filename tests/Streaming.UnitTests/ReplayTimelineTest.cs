@@ -30,4 +30,55 @@ public class ReplayTimelineTest
         ReplayTimeline.ScaleSkip(TimeSpan.FromSeconds(3), TimeSpan.Zero, TimeSpan.FromSeconds(9))
             .Should().Be(TimeSpan.Zero, "an entry without a known duration can't be scaled, so the dub starts over");
     }
+
+    [Fact]
+    public void APauseBetweenEntriesShouldBeCutDownToMaxGap()
+    {
+        // arrange
+        var maxGap = TimeSpan.FromSeconds(0.5);
+
+        // act & assert
+        ReplayTimeline.SkippedGap(TimeSpan.FromSeconds(3), maxGap).Should().Be(TimeSpan.FromSeconds(2.5));
+        ReplayTimeline.SkippedGap(TimeSpan.FromSeconds(0.3), maxGap)
+            .Should().Be(TimeSpan.Zero, "a pause shorter than the max gap is kept as it is");
+        ReplayTimeline.SkippedGap(TimeSpan.FromSeconds(-1), maxGap)
+            .Should().Be(TimeSpan.Zero, "overlapping entries have no pause to cut");
+    }
+
+    [Fact]
+    public void TailCutoffShouldBeCountedFromTheSkip()
+    {
+        // arrange
+        var speech = TimeSpan.FromSeconds(10);
+        var margin = TimeSpan.FromSeconds(0.4);
+
+        // act & assert
+        ReplayTimeline.TailCutoff(speech, TimeSpan.Zero, margin).Should().Be(TimeSpan.FromSeconds(10.4));
+        ReplayTimeline.TailCutoff(speech, TimeSpan.FromSeconds(4), margin).Should().Be(TimeSpan.FromSeconds(6.4));
+    }
+
+    [Theory]
+    [InlineData(1.0, 1.0)]
+    [InlineData(1.25, 0.8)]
+    [InlineData(1.33, 0.75)]
+    [InlineData(1.5, 2.0 / 3)]
+    [InlineData(1.75, 4.0 / 7)]
+    [InlineData(2.0, 0.5)]
+    public void MustKeepFrameShouldKeepOneOverSpeedOfFrames(double speed, double expectedShare)
+    {
+        // arrange
+        const int frameCount = 8400; // Divisible by 3, 4, 5, 7 and 8
+
+        // act
+        var keptCount = Enumerable.Range(0, frameCount).Count(i => ReplayTimeline.MustKeepFrame(i, speed));
+
+        // assert
+        ((double)keptCount / frameCount).Should().BeApproximately(expectedShare, 0.01);
+    }
+
+    [Fact]
+    public void DeadlineShouldScaleTheFrameOffsetBySpeed()
+        // act & assert
+        => ReplayTimeline.Deadline(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(2), 2.0)
+            .Should().Be(TimeSpan.FromSeconds(6));
 }

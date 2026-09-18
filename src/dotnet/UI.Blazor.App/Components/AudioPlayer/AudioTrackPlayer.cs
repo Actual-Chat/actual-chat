@@ -44,6 +44,8 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private ChatAudioUI ChatAudioUI => field ??= Services.GetRequiredService<ChatAudioUI>();
     private IAudioPlaybackEngineFactory Factory { get; }
 
+    private Tracer Tracer => (TrackInfo as ChatAudioTrackInfo)?.Tracer ?? Tracer.None;
+
     public AudioTrackPlayer(
         string id,
         TrackInfo trackInfo,
@@ -102,6 +104,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             Log.LogError(error, "[AudioTrackPlayer #{AudioTrackPlayerId}] Playback stopped with an error", _id);
         }
         DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] OnEnded: {Message}", _id, errorMessage);
+        Tracer.Point($"engine ended after {_playDuration.TotalSeconds:F3}s of media pushed");
         SetEndState(error);
     }
 
@@ -110,14 +113,17 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         switch (command) {
             case PlayCommand:
                 var trackInfo = (ChatAudioTrackInfo)TrackInfo;
+                trackInfo.Tracer.Point("PlayCommand: started");
                 _isOwnStream = await IsOwnStream(trackInfo, cancellationToken).ConfigureAwait(false);
                 await MediaMetadataUI
                     .SetPlayback(MediaMetadata.FromTrack(trackInfo, Hub.StringLocalizer), trackInfo.IsStreaming)
                     .ConfigureAwait(false);
+                trackInfo.Tracer.Point("PlayCommand: own-stream check and media metadata done");
                 var heldTrackInfo = ApplyAvSyncHold(trackInfo);
                 _currentTargetBufferSize = heldTrackInfo.TargetBufferSize;
                 _playbackEngine = Factory.Create(_id, heldTrackInfo, Source, this);
                 await _playbackEngine.Play(cancellationToken).ConfigureAwait(false);
+                trackInfo.Tracer.Point("PlayCommand: engine Play returned");
                 break;
             case PauseCommand:
                 if (_playbackEngine == null)
@@ -156,8 +162,10 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             // pushed before the JS run action fires, causing the feeder to end
             // without ever playing. After PacingDuration, switch to buffer-based
             // flow control (the JS side is initialized and reports isBufferLow).
-            if (_playStartedAt == default)
+            if (_playStartedAt == default) {
                 _playStartedAt = CpuTimestamp.Now;
+                Tracer.Point("first frame pushed to engine");
+            }
 
             if (_playDuration < PacingDuration) {
                 var framePushMoment = (_playDuration - frame.Duration - PacingHeadStartDuration).Positive();

@@ -153,10 +153,11 @@ All in `src/dotnet/Api/Constants.Audio.cs` unless noted.
 
 | Name | Default | Notes |
 |---|---|---|
-| `RecordingRpcStreamAckPeriod` | 5 frames (≈100 ms) | client → server |
-| `DeliveryRpcStreamAckPeriod` | 5 frames (≈100 ms) | server → client |
+| `RecordingRpcStreamAckPeriod` | 10 frames (≈200 ms) | client → server |
+| `DeliveryRpcStreamAckPeriod` | 10 frames (≈200 ms) | server → client |
+| `AckAdvance` | 61 items (RpcStream default) | items in flight per round trip, both directions |
 | `AllowReconnect` (publish) | true | client resumes on peer change |
-| `AllowReconnect` (subscribe) | true (false on `LegacyGetStream`) | per `MediaRpcStreamOptions` |
+| `AllowReconnect` (subscribe) | true (false on `GetListeningStream` and `GetReplayStream`) | per `StandardRpcStream.NewAudioDelivery` |
 
 ### Server timings
 
@@ -169,8 +170,8 @@ All in `src/dotnet/Api/Constants.Audio.cs` unless noted.
 | `StreamExpirationDelay` (`AudioSettings`) | 10 s | StreamStore idle expiry |
 | `StreamTtl` (`LiveAudioBackend`) | 3 min | Redis state TTL = 5 min |
 | `SkipToLive` (`ListeningStreamMuxer`) | sentinel | serve a pre-existing stream from the live edge |
-| `EvictionDelay` (`LiveStreamMuxer`) | 4 s | post-end stream removal |
-| `ReconnectDelay` (`LiveStreamMuxer`) | 1 s | List-watch retry |
+| `EvictionDelay` (`ListeningStreamMuxer`) | 2.5 s (`MaxRealtimeStreamDrift` + 1 s) | post-end stream removal |
+| `ReconnectDelay` (`ListeningStreamMuxer`) | 1 s | List-watch retry |
 
 ### Transcription
 

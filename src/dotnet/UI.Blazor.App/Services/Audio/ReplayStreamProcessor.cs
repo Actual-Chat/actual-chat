@@ -19,6 +19,7 @@ public sealed class ReplayStreamProcessor : WorkerBase
     public TimeSpan RewindOffset { get; }
     public double Speed { get; }
     public Func<CancellationToken, Task<Language?>>? DubLanguageProvider { get; init; }
+    public Tracer Tracer { get; init; } = Tracer.None;
 
     public event Action<LiveAudioStreamInfo, TimeSpan, IAsyncEnumerable<AudioFrame>>? StreamStarted;
 
@@ -41,6 +42,9 @@ public sealed class ReplayStreamProcessor : WorkerBase
         Speed = speed;
     }
 
+    public static Tracer GetTrackTracer(Tracer tracer, LiveAudioStreamInfo streamInfo)
+        => tracer[$"#{streamInfo.EntryId?.LocalId.ToString() ?? streamInfo.StreamId}"];
+
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var liveStreams = Services.GetRequiredService<ILiveAudioStreams>();
@@ -50,6 +54,7 @@ public sealed class ReplayStreamProcessor : WorkerBase
             var dubLanguage = DubLanguageProvider == null
                 ? null
                 : await DubLanguageProvider.Invoke(cancellationToken).ConfigureAwait(false);
+            Tracer.Point($"Stream: dub language resolved ({dubLanguage?.ToString() ?? "none"})");
             Log.LogInformation(
                 "-> LiveStreams.GetReplayStream({ChatId}, {StartAt}, {RewindOffset}, speed={Speed}, dub={DubLanguage})",
                 ChatId, StartAt, RewindOffset, Speed, dubLanguage);
@@ -61,8 +66,10 @@ public sealed class ReplayStreamProcessor : WorkerBase
                     .GetReplayStream(Session, ChatId, StartAt, RewindOffset, Speed, dubLanguage, cancellationToken)
                     .ConfigureAwait(false);
             Log.LogInformation("<- LiveStreams.GetReplayStream({ChatId})", ChatId);
+            Tracer.Point("Stream: GetReplayStream returned");
 
-            var demuxer = new AudioStreamDemuxer(stream, demuxerLog, cancellationToken.CreateLinkedTokenSource());
+            var items = Tracer.IsEnabled ? TraceItems(stream, cancellationToken) : stream;
+            var demuxer = new AudioStreamDemuxer(items, demuxerLog, cancellationToken.CreateLinkedTokenSource());
             await using var _ = demuxer.ConfigureAwait(false);
             demuxer.StreamStarted += (info, playsAt, frames) => StreamStarted?.Invoke(info, playsAt, frames);
 
@@ -73,5 +80,36 @@ public sealed class ReplayStreamProcessor : WorkerBase
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             Log.LogWarning(e, "Replay stream failed for chat {ChatId}", ChatId);
         }
+    }
+
+    // Private methods
+
+    private async IAsyncEnumerable<MuxedAudioStreamItem> TraceItems(
+        IAsyncEnumerable<MuxedAudioStreamItem> items,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var isFirstItem = true;
+        var trackTracers = new Dictionary<int, Tracer>();
+        var framedStreamIndexes = new HashSet<int>();
+        await foreach (var item in items.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            if (isFirstItem) {
+                isFirstItem = false;
+                Tracer.Point("Stream: first item received");
+            }
+            switch (item) {
+            case MuxedAudioStreamStart start:
+                trackTracers[start.StreamIndex] = GetTrackTracer(Tracer, start.StreamInfo);
+                break;
+            case MuxedAudioFrame frame when framedStreamIndexes.Add(frame.StreamIndex):
+                trackTracers.GetValueOrDefault(frame.StreamIndex, Tracer)
+                    .Point($"first frame received, offset {frame.Offset.TotalSeconds:F3}s");
+                break;
+            case MuxedAudioStreamEnd end:
+                trackTracers.GetValueOrDefault(end.StreamIndex, Tracer).Point("StreamEnd received");
+                break;
+            }
+            yield return item;
+        }
+        Tracer.Point("Stream: completed");
     }
 }
