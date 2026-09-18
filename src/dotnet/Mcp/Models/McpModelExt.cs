@@ -26,23 +26,6 @@ public static class McpModelExt
             => Task.FromResult(avatar.ToMcpPictureUrl(urlMapper));
     }
 
-    public static McpAttachment ToMcpModel(this ChatEntryAttachment attachment, UrlMapper urlMapper)
-    {
-        var media = attachment.Media.ToMcpMediaRef(attachment.ThumbnailMedia, urlMapper);
-        return new McpAttachment(
-            attachment.Id.Value,
-            media.MediaId,
-            media.Kind,
-            media.FileName,
-            media.ContentType,
-            media.Length,
-            media.Width,
-            media.Height,
-            media.Url,
-            media.PreviewUrl,
-            media.ThumbnailUrl);
-    }
-
     public static McpMediaRef ToMcpMediaRef(this Media.Media media, Media.Media? thumbnail, UrlMapper urlMapper)
     {
         var contentType = media.ContentType;
