@@ -4,6 +4,8 @@ using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
 using Android.Content;
 using Android.Media;
+using Android.Runtime;
+using Java.Nio;
 
 namespace ActualChat.App.Maui.Audio;
 
@@ -110,11 +112,19 @@ public class AndroidAudioCapture(IServiceProvider services) : IAudioCapture
         // Return enumerator
         return AudioCaptureResult.Ok(Enumerate(cancellationToken));
 
-        void Producer()
+        unsafe void Producer()
         {
             Android.OS.Process.SetThreadPriority(Android.OS.ThreadPriority.UrgentAudio);
 
-            var floatReadBuffer = ArrayBuffer<float>.Lease(false, frameSamples * 4);
+            // A direct buffer read at its native address. The float[] overload of Read marshals
+            // a fresh Java float[] per call plus two copies - ART garbage at the read rate, in the
+            // heap the GC bridge's Runtime.gc() has to compact. AudioRecord writes from the
+            // buffer's base address (position is ignored and left unchanged), and a direct
+            // buffer's address is fixed for its lifetime, so one lookup serves every read.
+            var readBytes = frameSamples * 2 * sizeof(float);
+            using var readBuffer = ByteBuffer.AllocateDirect(readBytes)!;
+            var readSamples = new ReadOnlySpan<float>(
+                (void*)JNIEnv.GetDirectBufferAddress(readBuffer.Handle), frameSamples * 2);
             // Cadence tracking: each Read requests `frameSamples * 2` floats
             // (= 40ms at 16kHz mono). Anything >80ms means at least one expected
             // window was missed. GC counts surface GC-pause culprits across stages.
@@ -158,35 +168,34 @@ public class AndroidAudioCapture(IServiceProvider services) : IAudioCapture
                 };
 
                 while (!cancellationToken.IsCancellationRequested) {
-                    int readCount;
+                    int readByteCount;
                     try {
                         // readMode = 0 == AudioRecord.READ_BLOCKING (per Android API).
-                        // ReadAsync overload was used previously with the same int sentinel.
-                        readCount = recorder.Read(
-                            floatReadBuffer.Buffer, 0, frameSamples * 2, 0);
+                        readByteCount = recorder.Read(readBuffer, readBytes, 0);
                     }
                     catch (Exception e) {
                         Log.LogWarning(e, "AudioRecord.Read threw - ending capture");
                         break;
                     }
 
-                    if (readCount <= 0) {
-                        if (readCount < 0) {
-                            Log.LogWarning("AudioRecord.Read returned {ReadCount} - ending capture", readCount);
+                    if (readByteCount <= 0) {
+                        if (readByteCount < 0) {
+                            Log.LogWarning("AudioRecord.Read returned {ReadCount} - ending capture", readByteCount);
                             break;
                         }
 
                         continue;
                     }
 
-                    for (var i = 0; i < readCount; i++) {
-                        var level = MathF.Abs(floatReadBuffer.Buffer[i]);
+                    var samples = readSamples[..(readByteCount / sizeof(float))];
+                    foreach (var sample in samples) {
+                        var level = MathF.Abs(sample);
                         if (level > windowPeak)
                             windowPeak = level;
                     }
 
                     // Push to ring buffer (fire-and-forget: drop if full)
-                    buffer.TryWrite(floatReadBuffer.Buffer.AsSpan(0, readCount));
+                    buffer.TryWrite(samples);
 
                     var nowStamp = Stopwatch.GetTimestamp();
                     if (lastReadStamp != 0) {
@@ -238,7 +247,6 @@ public class AndroidAudioCapture(IServiceProvider services) : IAudioCapture
                 // source throws, which would skip the rest of this finally: the mic would stay
                 // held until finalization and the throw would escape a raw Thread entry point.
                 whenProducerEndedCts.CancelSilently();
-                floatReadBuffer.Release();
                 try {
                     if (recorder.RecordingState == RecordState.Recording)
                         recorder.Stop();
