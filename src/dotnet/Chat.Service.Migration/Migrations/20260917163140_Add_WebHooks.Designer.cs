@@ -4,6 +4,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,14 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations;
 
 [DbContext(typeof(ChatDbContext))]
-partial class ChatDbContextModelSnapshot : ModelSnapshot
+[Migration("20260917163140_Add_WebHooks")]
+partial class _20260917163140_Add_WebHooks
 {
-    // If you encounter a merge conflict in the line below, it means you need to
-    // discard one of the migration branches and recreate its migrations on top of
-    // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20260917163140_Add_WebHooks";
-
-    protected override void BuildModel(ModelBuilder modelBuilder)
+    /// <inheritdoc />
+    protected override void BuildTargetModel(ModelBuilder modelBuilder)
     {
 #pragma warning disable 612, 618
         modelBuilder
@@ -445,10 +443,6 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                 b.Property<string>("LocationId")
                     .HasColumnType("text")
                     .HasColumnName("location_id");
-
-                b.Property<string>("QuotedText")
-                    .HasColumnType("text")
-                    .HasColumnName("quoted_text");
 
                 b.Property<long?>("RepliedChatEntryId")
                     .HasColumnType("bigint")
@@ -1275,15 +1269,6 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                 b.Property<DateTime>("CreatedAt")
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("created_at");
-
-                b.Property<string>("DubContentHash")
-                    .IsRequired()
-                    .HasColumnType("text")
-                    .HasColumnName("dub_content_hash");
-
-                b.Property<string>("DubMediaId")
-                    .HasColumnType("text")
-                    .HasColumnName("dub_media_id");
 
                 b.Property<string>("EntryId")
                     .HasColumnType("text")

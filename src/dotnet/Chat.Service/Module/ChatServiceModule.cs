@@ -9,6 +9,7 @@ using ActualChat.Module;
 using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualChat.Resilience;
+using ActualChat.WebHooks;
 using ActualLab.Redis;
 using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
@@ -63,6 +64,17 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         // Shared locations
         rpcHost.AddApi<ISharedLocations, SharedLocations>();
         rpcHost.AddBackend<ISharedLocationsBackend, SharedLocationsBackend>();
+
+        // Web hooks
+        rpcHost.AddApi<IWebHooks, WebHooks>();
+        rpcHost.AddBackend<IWebHooksBackend, WebHooksBackend>();
+        services.AddSingleton<WebHookSecrets>();
+        services.AddSingleton<WebHookPayloads>();
+        services.AddSingleton<WebHookDeliverer>();
+        // A redirect is a delivery failure: a 301/302 would turn the signed POST into a body-less GET
+        services.AddEgressHttpClient(WebHookDeliverer.HttpClientName, maxRedirectCount: 0);
+        services.AddSingleton<WebHookDeliveryPruner>()
+            .AddHostedService(c => c.GetRequiredService<WebHookDeliveryPruner>());
 
         // Aliases
         rpcHost.AddLocalApi<IAliases, Aliases>();
@@ -210,7 +222,8 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             .Add<LiveConversationSummaryFlow>()
             .Add<ConversationRefreshFlow>()
             .Add<CallTailFlow>()
-            .Add<TranslationCleanupFlow>();
+            .Add<TranslationCleanupFlow>()
+            .Add<WebHookDeliveryFlow>();
         if (Settings.IsChatContentItemIndexingEnabled)
             flows
                 .Add<ChatContentIndexingMasterFlow>()
@@ -271,6 +284,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
             // DbSharedLocation
             db.AddEntityResolver<string, DbSharedLocation>();
+
+            // DbWebHook
+            db.AddEntityResolver<string, DbWebHook>();
         });
     }
 
