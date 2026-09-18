@@ -90,7 +90,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Claims = claims,
         };
 
-    public void UpdateFrom(AccountFull model)
+    public void UpdateFrom(AccountFull model, ApiMap<UserIdentity, string> originalIdentities)
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id.Value);
@@ -121,6 +121,12 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
                 foundIdentity.Secret = secret;
                 continue;
             }
+
+            // model can predate a removal - a passkey deletion drops its identity row, and re-adding it
+            // here undoes that. Only identities the caller brings in are created; the rest the DB decides.
+            if (originalIdentities.ContainsKey(userIdentity))
+                continue;
+
             Identities.Add(new DbAccountIdentity {
                 Id = userIdentity.Id,
                 DbAccountId = Id,
