@@ -1,6 +1,7 @@
 using ActualChat.App.Maui.Activities;
 using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Services.Recording;
+using ActualChat.UI;
 using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
@@ -29,7 +30,8 @@ public static partial class MauiProgram
         services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<IosPushNotifications>());
         services.AddScoped(c => new IosPttUI(c.AppUIHub()));
         services.AddScoped<IDeviceNotifications>(_ => new IosDeviceNotifications());
-        services.AddScoped<IRecordingPermissionRequester>(_ => new AppleRecordingPermissionRequester());
+        services.AddScoped<IRecordingPermissionRequester>(c
+            => new AppleRecordingPermissionRequester(c.GetRequiredService<SystemSettingsUI>()));
         services.AddScoped(c => new NativeAppleAuth(c));
         services.AddScoped<IPasskeyClient>(_ => new ApplePasskeyClient());
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);

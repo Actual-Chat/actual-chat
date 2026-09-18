@@ -1,4 +1,5 @@
 using ActualChat.App.Maui.Services;
+using ActualChat.UI;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Contacts;
@@ -39,5 +40,5 @@ public sealed class MacOSContactsPermissionHandler : ContactsPermissionHandler
     }
 
     protected override Task Troubleshoot(CancellationToken cancellationToken)
-        => OpenSystemSettings();
+        => OpenSystemSettings(SystemSettingsPane.Contacts);
 }

@@ -146,6 +146,6 @@ public abstract class PermissionHandler : UIWorkerBase<UIHub>
             _cached.Value = value;
     }
 
-    protected Task OpenSystemSettings()
-        => SystemSettingsUI.Open();
+    protected Task OpenSystemSettings(SystemSettingsPane pane)
+        => SystemSettingsUI.Open(pane);
 }

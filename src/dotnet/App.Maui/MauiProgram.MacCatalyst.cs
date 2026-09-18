@@ -1,4 +1,5 @@
 using ActualChat.App.Maui.Services;
+using ActualChat.UI;
 using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
@@ -17,7 +18,8 @@ public static partial class MauiProgram
         // Push notifications are not wired up on MacCatalyst yet (no Firebase native bindings).
         services.AddTransient<IDeviceTokenRetriever>(_ => new MacDeviceTokenRetriever());
         services.AddScoped<INotificationsPermission>(_ => new MacNotificationsPermission());
-        services.AddScoped<IRecordingPermissionRequester>(_ => new AppleRecordingPermissionRequester());
+        services.AddScoped<IRecordingPermissionRequester>(c
+            => new AppleRecordingPermissionRequester(c.GetRequiredService<SystemSettingsUI>()));
         services.AddScoped(c => new NativeAppleAuth(c));
         services.AddScoped<IPasskeyClient>(_ => new ApplePasskeyClient());
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);

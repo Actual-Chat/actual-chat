@@ -1,4 +1,5 @@
 using ActualChat.App.Maui.Services;
+using ActualChat.UI;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using AVFoundation;
@@ -30,5 +31,5 @@ public sealed class MacOSCameraPermissionHandler : CameraPermissionHandler
         => MacOSMediaCapture.Request(AVAuthorizationMediaType.Video);
 
     protected override Task Troubleshoot(CancellationToken cancellationToken)
-        => OpenSystemSettings();
+        => OpenSystemSettings(SystemSettingsPane.Camera);
 }

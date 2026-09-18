@@ -1,3 +1,4 @@
+using ActualChat.UI;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;
@@ -43,9 +44,6 @@ public class MauiCameraPermissionHandler : CameraPermissionHandler
         return status is PermissionStatus.Granted or PermissionStatus.Limited;
     }
 
-    protected override async Task Troubleshoot(CancellationToken cancellationToken)
-    {
-        await Task.CompletedTask.ConfigureAwait(false);
-        AppInfo.ShowSettingsUI();
-    }
+    protected override Task Troubleshoot(CancellationToken cancellationToken)
+        => OpenSystemSettings(SystemSettingsPane.Camera);
 }

@@ -5,6 +5,9 @@ namespace ActualChat.UI;
 /// </summary>
 public class SystemSettingsUI
 {
-    public virtual Task Open()
+    public Task Open()
+        => Open(SystemSettingsPane.App);
+
+    public virtual Task Open(SystemSettingsPane pane)
         => Task.CompletedTask;
 }
