@@ -20,11 +20,15 @@ public partial class ChatAudioUI
     // MutableState, not a plain flag: ShouldHoldListeningFocus reads it, and a focus-driven pause
     // must keep that compute's hold/retry signal alive - a non-reactive read would freeze it.
     private readonly MutableState<bool> _isListeningPausedByFocus;
+    private Tracer _replayTracer = Tracer.None;
 
     public int AudioFocusDenialCount
         // Advances on every refused acquisition, listening bursts included: an advance inside a
         // PTT wake window is what makes PttSessionCore fall back to a notification.
         => Volatile.Read(ref _audioFocusDenialCount);
+    public Tracer ReplayTracer
+        // A new one per StartReplay, so every point of the replay pipeline reads as time since the click
+        => Volatile.Read(ref _replayTracer);
 
     // Compute methods
 
@@ -69,6 +73,9 @@ public partial class ChatAudioUI
 
     public async Task StartReplay(ChatId chatId, Moment startAt, TimeSpan rewindOffset = default)
     {
+        var tracer = Constants.DebugMode.ReplayTiming
+            ? new Tracer("Replay", () => Tracer.Default.IsEnabled, Tracer.Default.Writer, CpuTimestamp.Now)
+            : Tracer.None;
         // If listening is active, ask user to confirm stopping it
         var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
         if (!listeningChatIds.IsEmpty) {
@@ -91,6 +98,7 @@ public partial class ChatAudioUI
                     _listeningChatsBeforeReplay = listeningChatIds;
             }
             await ClearListeningChats().ConfigureAwait(false);
+            tracer.Point("StartReplay: listening confirmed and cleared");
         }
 
         var speed = ReplaySettings.Value.Speed;
@@ -98,8 +106,10 @@ public partial class ChatAudioUI
             "StartReplay: chatId={ChatId}, startAt={StartAt}, rewindOffset={RewindOffset}, speed={Speed}",
             chatId, startAt, rewindOffset, speed);
 
+        Volatile.Write(ref _replayTracer, tracer);
         StopReplay();
         _replayState.Value = new ReplayState(chatId, startAt, rewindOffset, speed);
+        tracer.Point($"StartReplay: ReplayState set (banner), chat {chatId}, startAt {startAt}, speed {speed}");
 
         // Replay and audio-attachment playback are mutually exclusive.
         _ = Hub.AudioAttachmentPlayer.Stop();

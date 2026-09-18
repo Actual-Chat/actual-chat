@@ -495,8 +495,10 @@ public partial class ChatAudioUI
         var changes = _replayState.Computed.Changes(cancellationToken);
         await foreach (var cState in changes.ConfigureAwait(false)) {
             var newState = cState.Value;
+            var tracer = ReplayTracer;
             try {
                 if (newState == null) {
+                    tracer.Point($"StateSync: null state observed, lastState is null: {lastState is null}");
                     // Stop replay
                     if (lastState is not null) {
                         _ = TuneUI.Play(Tune.StopReplay);
@@ -513,13 +515,17 @@ public partial class ChatAudioUI
 
                         // Listening runs on its own transient focus now, so replay's ends with replay
                         TryReleaseAudioFocus();
+                        tracer.Point($"StateSync: stop handled, {toRestore.Count} listening chat(s) restored");
                     }
                     lastState = null;
                     continue;
                 }
 
-                if (lastState is not null) // Stop previous replay player
+                tracer.Point($"StateSync: new state observed, lastState is null: {lastState is null}");
+                if (lastState is not null) { // Stop previous replay player
                     await StopPlayer(lastState.ChatId, ChatPlayerKind.Replaying).ConfigureAwait(false);
+                    tracer.Point("StateSync: previous replay player stopped");
+                }
 
                 // Paused state: stop the player/stream but keep the state (banner stays visible)
                 if (newState.PausedAt.HasValue) {
@@ -535,6 +541,7 @@ public partial class ChatAudioUI
                     continue;
                 }
 
+                tracer.Point("StateSync: audio focus acquired");
                 _ = TuneUI.Play(Tune.StartReplay);
                 var startTask = StartReplayPlayer(newState.ChatId, newState.StartAt, cancellationToken);
                 // Set up "resume listening after done" background task
@@ -550,6 +557,7 @@ public partial class ChatAudioUI
                         _replayState.Value = null;
                 }, cancellationToken);
                 await startTask.ConfigureAwait(false);
+                tracer.Point("StateSync: replay player started");
 
                 lastState = newState;
             }
