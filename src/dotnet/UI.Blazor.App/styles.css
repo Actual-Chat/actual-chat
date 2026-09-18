@@ -3,6 +3,7 @@
 @import './Pages/Landing/landing.css';
 
 @import './Components/components.css';
+@import './Components/AppReview/app-review-modal.css';
 @import './Components/PicCropModal/pic-crop-modal.css';
 @import './Components/PicCropModal/image-generation-modal.css';
 @import './Components/AvatarSelect/avatar-select.css';

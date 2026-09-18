@@ -130,3 +130,58 @@
     --kitty-ar: 1 / 1;
     background-image: url("images/kitties/chat-maintenance-dark.svg");
 }
+
+/* App review flow — six expressions on a padded square 1254 canvas. */
+.kitty-app-review-small-team-kittens {
+    --kitty-w: 220px;
+    --kitty-ar: 1 / 1;
+    background-image: url("images/kitties/app-review-small-team-kittens.svg");
+}
+.theme-dark .kitty-app-review-small-team-kittens {
+    background-image: url("images/kitties/app-review-small-team-kittens-dark.svg");
+}
+
+.kitty-app-review-big-eyes {
+    --kitty-w: 220px;
+    --kitty-ar: 1 / 1;
+    background-image: url("images/kitties/app-review-big-eyes.svg");
+}
+.theme-dark .kitty-app-review-big-eyes {
+    background-image: url("images/kitties/app-review-big-eyes-dark.svg");
+}
+
+.kitty-app-review-big-eyes-pleading {
+    --kitty-w: 220px;
+    --kitty-ar: 1 / 1;
+    background-image: url("images/kitties/app-review-big-eyes-pleading.svg");
+}
+.theme-dark .kitty-app-review-big-eyes-pleading {
+    background-image: url("images/kitties/app-review-big-eyes-pleading-dark.svg");
+}
+
+.kitty-app-review-big-eyes-extra-pleading {
+    --kitty-w: 220px;
+    --kitty-ar: 1 / 1;
+    background-image: url("images/kitties/app-review-big-eyes-extra-pleading.svg");
+}
+.theme-dark .kitty-app-review-big-eyes-extra-pleading {
+    background-image: url("images/kitties/app-review-big-eyes-extra-pleading-dark.svg");
+}
+
+.kitty-app-review-happy-thank-you {
+    --kitty-w: 220px;
+    --kitty-ar: 1 / 1;
+    background-image: url("images/kitties/app-review-happy-thank-you.svg");
+}
+.theme-dark .kitty-app-review-happy-thank-you {
+    background-image: url("images/kitties/app-review-happy-thank-you-dark.svg");
+}
+
+.kitty-app-review-sad-farewell {
+    --kitty-w: 220px;
+    --kitty-ar: 1 / 1;
+    background-image: url("images/kitties/app-review-sad-farewell.svg");
+}
+.theme-dark .kitty-app-review-sad-farewell {
+    background-image: url("images/kitties/app-review-sad-farewell-dark.svg");
+}
