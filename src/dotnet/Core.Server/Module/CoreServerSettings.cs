@@ -14,6 +14,9 @@ public sealed class CoreServerSettings
     public bool UseGoogleTranscoder { get; set; }
     // ISO country codes (";" or ","), or "*" for every country; empty serves nobody
     public string RpcProbeCountries { get; set; } = "";
+    public string[] EgressCidrDenylist { get; set; } = [];
+    public string[] EgressDomainDenylist { get; set; } = [];
+    public string[] EgressHostAllowList { get; set; } = [];
     public FilePath PromptsDir { get; set; }
     public string OpenAIKey { get; set; } = "";
     public string OpenAIProxy { get; set; } = "";

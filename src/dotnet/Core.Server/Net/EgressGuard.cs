@@ -1,36 +1,51 @@
 using System.Net;
 using System.Net.Sockets;
-using ActualChat.Media.Module;
+using ActualChat.Module;
 using ActualLab.Diagnostics;
 
-namespace ActualChat.Media;
+namespace ActualChat;
 
-public class EgressGuard(HostInfo hostInfo, MediaSettings settings, ILogger<EgressGuard> log)
+public enum EgressVerdict
+{
+    Allowed,
+    Unresolvable,
+    Denied,
+}
+
+public class EgressGuard(HostInfo hostInfo, CoreServerSettings settings, ILogger<EgressGuard> log)
 {
     private static readonly string[] DomainDenyListPrefix = [".local"];
-    private ILogger? DebugLog => log.IfEnabled(LogLevel.Debug, Constants.DebugMode.TranscriptionTranslation);
+    private ILogger? DebugLog => log.IfEnabled(LogLevel.Debug);
 
-    private HostWildcard[] AllowedHostWildcards => field ??= [..settings.CrawlingHostAllowList.Select(x => new HostWildcard(x))];
+    private HostWildcard[] AllowedHostWildcards
+        => field ??= [..settings.EgressHostAllowList.Select(x => new HostWildcard(x))];
 
-    private IPNetwork[] SpecialSubnets => field ??= [..SpecialAddresses.Subnets.Union(settings.CrawlingCidrDenylist).Select(IPNetwork.Parse)];
+    private IPNetwork[] SpecialSubnets
+        => field ??= [..SpecialAddresses.Subnets.Union(settings.EgressCidrDenylist).Select(IPNetwork.Parse)];
 
     private string[] DomainDenyList => field ??= [
-        ..DomainDenyListPrefix.Union(settings.CrawlingDomainDenylist, StringComparer.OrdinalIgnoreCase),
+        ..DomainDenyListPrefix.Union(settings.EgressDomainDenylist, StringComparer.OrdinalIgnoreCase),
     ];
 
     public async Task<bool> IsAllowed(string host, CancellationToken cancellationToken = default)
+        => await Check(host, cancellationToken).ConfigureAwait(false) == EgressVerdict.Allowed;
+
+    public async Task<EgressVerdict> Check(string host, CancellationToken cancellationToken = default)
     {
         if (IsDevelopmentInstanceBypassEnabled)
-            return true;
+            return EgressVerdict.Allowed;
 
         if (AllowedHostWildcards.Any(x => x.IsMatch(host)))
-            return true;
+            return EgressVerdict.Allowed;
 
         if (!IsAllowedHost(host))
-            return false;
+            return EgressVerdict.Denied;
 
         var addresses = await Resolve(host, cancellationToken).ConfigureAwait(false);
-        return addresses.Length != 0 && addresses.All(x => IsAllowedAddress(host, x));
+        if (addresses.Length == 0)
+            return EgressVerdict.Unresolvable;
+
+        return addresses.All(x => IsAllowedAddress(host, x)) ? EgressVerdict.Allowed : EgressVerdict.Denied;
     }
 
     public bool IsAllowedUri(Uri uri)

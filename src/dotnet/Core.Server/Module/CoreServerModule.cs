@@ -29,6 +29,7 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         // RPC host
         services.AddRpcHost(HostInfo, Log);
         services.AddSingleton(_ => new RpcProbePolicy(Settings));
+        services.AddSingleton<EgressGuard>();
 
         // ShardOwners
         ShardKeyResolvers.MustThrowOnNotFound |= HostInfo.BaseUrlKind != BaseUrlKind.Production;

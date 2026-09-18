@@ -34,7 +34,6 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
 
         // GIFs
         rpcHost.AddApi<IGifs, Gifs>();
-        services.AddSingleton<EgressGuard>();
         services.AddEgressHttpClient(Gifs.HttpClientName);
 
         if (isBackendClient)
@@ -80,18 +79,4 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         // Uploads
         services.AddSingleton<UploadsStorage>();
     }
-}
-
-public static class MediaServiceCollectionExt
-{
-    public static IHttpClientBuilder AddEgressHttpClient(
-        this IServiceCollection services, string name, long? maxResponseContentLength = null)
-        => services.AddHttpClient(name)
-            .ConfigurePrimaryHttpMessageHandler(c => {
-                var guard = c.GetRequiredService<EgressGuard>();
-                var options = new EgressHttpHandler.Options(guard.IsAllowedUri, guard.IsAllowedAddress);
-                if (maxResponseContentLength is { } max)
-                    options = options with { MaxResponseContentLength = max };
-                return new EgressHttpHandler(options);
-            });
 }
