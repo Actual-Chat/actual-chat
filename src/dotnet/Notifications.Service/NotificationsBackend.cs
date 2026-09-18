@@ -154,8 +154,15 @@ public class NotificationsBackend(IServiceProvider services)
             userId, notification.Id);
 
         // A hook wants every notification, even one the recipient's own dormant/active-reader
-        // filters would suppress, so this fires before those checks.
-        await Queues.Enqueue(new UserNotifiedEvent(notification), cancellationToken).ConfigureAwait(false);
+        // filters would suppress, so this fires before those checks. Web hook fan-out is
+        // best-effort relative to push, so a queue outage here must not cost the push below.
+        try {
+            await Queues.Enqueue(new UserNotifiedEvent(notification), cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException || !cancellationToken.IsCancellationRequested) {
+            Log.LogError(e, "UserNotifiedEvent enqueue failed. UserId={UserId}, NotificationId={NotificationId}",
+                userId, notification.Id);
+        }
 
         var info = await GetUserNotificationInfo(userId, cancellationToken).ConfigureAwait(false);
         if (info.IsDormant) {
