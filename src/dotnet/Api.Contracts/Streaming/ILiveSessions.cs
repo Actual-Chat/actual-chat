@@ -46,6 +46,11 @@ public interface ILiveSessions : IComputeService
     [ComputeMethod(ConsolidationDelay = 0)]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<CallerStatus?> GetCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
+    // The one call this user is in, whichever device they're on and whoever started it. Null means
+    // free - which is also what a disconnected client reads, so it is "unknown" until it reconnects.
+    [ComputeMethod(ConsolidationDelay = 0)]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    Task<UserCall?> GetMyCall(Session session, CancellationToken cancellationToken);
 
     Task SetParticipation(
         Session session,
