@@ -1839,14 +1839,16 @@ a warning, same as live.
   `playsAt` plus its played duration divided by `Speed`
   (`notBefore = playsAt + playedDuration / Speed`). For a `Stored` dub
   (or an undubbed entry) the played duration is known up front — the
-  media's (or the source's) duration minus whatever was skipped — and
-  the entry is started as a concurrent `ProcessEntry` task, as before.
-  For a `Live` dub it cannot be: the muxer **awaits that entry's
-  `ProcessEntry` before moving to the next entry** and uses what was
-  actually streamed — `ProcessEntry` returns the last frame's end offset
-  (before any speed-up frame drops, so the same `/ Speed` applies). Soniox
-  paces at about 1×, so this holds the replay loop for roughly the dub's
-  own length, which is where it would have to wait anyway.
+  media's (or the source's) duration minus whatever was skipped — so the
+  next entry is placed right away and the two are merged into the
+  deadline-ordered frame sequence (see
+  [06](06-server-fanout-and-replay.md#frame-delivery)). For a `Live` dub
+  it cannot be: the muxer **doesn't place the next entry until that
+  entry's stream ends** and uses what was actually streamed — the last
+  frame's end offset (before any speed-up frame drops, so the same
+  `/ Speed` applies). Soniox paces at about 1×, so this holds the replay
+  for roughly the dub's own length, which is where it would have to wait
+  anyway.
 - **`ScaleSkip`.** Seeking into a `Stored` dub (`skipTo` into the source)
   is rescaled to the dub's own length:
   `ReplayTimeline.ScaleSkip(skipTo, entryDuration, dubDuration) = skipTo *
@@ -1858,7 +1860,7 @@ a warning, same as live.
   that is about `skipTo` of wall-clock time after the synthesis started,
   minus whatever lookahead already covered). The position is kept rather
   than restarting the entry from its beginning.
-- **Audio swap and fallback.** `ProcessEntry` opens the dub via
+- **Audio swap and fallback.** `OpenAudio` opens the dub via
   `TryOpenDub` instead of the entry's own blob when a dub was returned.
   `Stored` → `AudioSourceDownloader.TryDownload(dub.Stored.BlobId,
   dubSkipTo)` (`src/dotnet/Core.Server/Blobs/AudioSourceDownloader.cs`),
@@ -1910,7 +1912,7 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 - **Re-subscribing on a mid-replay toggle.** See Client above — a toggle
   applies starting with the next replay, not the current one.
 - **A dub media with a missing blob** falls back to the original for
-  that one replay (see `ProcessEntry` above) but is *not* cleared from
+  that one replay (see `OpenAudio` above) but is *not* cleared from
   the translation — only the media *record's* absence, not the blob's,
   makes `ReplayDubs` regenerate it. A blob lost without its media record
   being deleted keeps falling back on every replay until either is fixed.

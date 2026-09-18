@@ -1,7 +1,7 @@
 # 07 — Receiver pipeline
 
 The receiver consumes either `RpcStream<AudioFrame>` (per-stream pull) or
-`RpcStream<LiveStreamItem>` (per-chat live multiplex), decodes Opus in a
+`RpcStream<MuxedAudioStreamItem>` (per-chat live multiplex), decodes Opus in a
 shared Web Worker, and feeds 48 kHz PCM through an `AudioWorklet` ring
 buffer to a `WebAudio` destination.
 
@@ -10,7 +10,7 @@ buffer to a `WebAudio` destination.
 ```
 ┌─── Main thread ──────────────────────────────────────────────┐
 │ ChatAudioUI (start/stop, audio focus)                         │
-│  ├─ ChatPlayer / ChatListener / ChatReplayer                  │
+│  ├─ ChatPlayer / ChatListeningPlayer / ChatReplayPlayer       │
 │  │   └─ AudioTrackPlayer.cs (one per author per chat)        │
 │  │       └─ WebAudioPlaybackEngine.cs                         │
 │  │           └─ JS: AudioPlayer (one instance per track)     │
@@ -50,12 +50,12 @@ decoder → feeder via a per-track `MessagePort` pair.
 1. **`ChatAudioUI.SetListeningState(chatId, true)`** — UI toggle. Updates
    `ActiveChatsUI`.
 2. **`ChatAudioUI.GetOrCreatePlayer(chatId, ChatPlayerKind.Listening)`**
-   (`ChatAudioUI.Players.cs`) — creates a `ChatListener`.
-3. **`ChatListener.Play()`** (`Services/Playback/ChatListener.cs`):
+   (`ChatAudioUI.Players.cs`) — creates a `ChatListeningPlayer`.
+3. **`ChatListeningPlayer.Play()`** (`Services/Playback/ChatListeningPlayer.cs`):
    - Acquires audio focus via `AudioFocusUI`.
-   - `LiveStreamProcessor` calls
-     `ILiveAudioStreams.LegacyGetStream(session, chatId, settings)`.
-   - `LiveStreamDemuxer` parses the `RpcStream<LiveStreamItem>` and fires
+   - `ListeningStreamProcessor` calls
+     `ILiveAudioStreams.GetListeningStream(session, chatId, catchUpFrom[, dubLanguage])`.
+   - `AudioStreamDemuxer` parses the `RpcStream<MuxedAudioStreamItem>` and fires
      `StreamStarted` per author.
 4. **Per author**: `OnStreamStarted(streamInfo, audioFrames)` constructs an
    `AudioSource` over the frames exactly as they arrive and calls
@@ -77,11 +77,15 @@ the same.
 
 ### Replay
 
-`ChatReplayer.Play(startAt, rewindOffset, speed)` calls
-`ILiveAudioStreams.GetReplayStream`. The wire stream is a
-`RpcStream<LiveStreamItem>` paced server-side; the client doesn't add
-its own playback delay logic. Wall-clock tracking via `CpuTimestamp`
-corrects for sleep and pauses.
+`ChatReplayPlayer.Play(startAt, rewindOffset, speed)` calls
+`ILiveAudioStreams.GetReplayStream`. The whole replay comes as one
+`RpcStream<MuxedAudioStreamItem>`: the frames of all its entries are ordered by
+the moment each plays, and the server sends none earlier than
+`ReplayMaxLead` (10 s) before that moment. Each
+track starts once a `ReplayClock` reaches its `PlaysAt`; the clock follows
+the audio the playing tracks report, so a late or starving track holds
+everything after it - see
+[`06-server-fanout-and-replay.md`](06-server-fanout-and-replay.md#client-side).
 
 ### The receiver never discards audio
 
@@ -181,18 +185,18 @@ For full design, see
 
 ### Latency reporting
 
-`ChatListener.OnStreamStarted` reports end-to-end latency once per
-stream:
+The engines report the presentation lag - speaker time, not buffer time - at ~2 Hz via
+`AudioTrackPlayer.OnPresentationLag`. That feeds the `PlaybackLagTracker` used by the A/V
+sync policy, and every `LagReportSamplePeriod`-th (5th) sample, so about one per 2.5 s, goes
+to the server along with the A/V sync error, unless the track is the listener's own:
 
 ```csharp
-var latency = serverClock.Now - streamInfo.BeginsAt;
-_ = LiveAudioStreams.ReportAudioLatency(session, latency, ct);
+var avSyncError = videoLag is { } vLag ? audioLag - vLag : (TimeSpan?)null;
+Hub.LiveAudioStreams.ReportAudioLatency(Hub.Session, audioLag, avSyncError, CancellationToken.None);
 ```
 
-Server records into `AppMeters.AudioLatency`. Receiver-side EMA-smoothed
-presentation lag is reported separately at ~2 Hz via
-`OnPresentationLag(ms)` from JS — that feeds the `PlaybackLagTracker`
-used by the A/V sync policy.
+Server records them into `AppMeters.AudioLatency` and `AppMeters.AvSyncError`. The older
+3-argument `ReportAudioLatency` (a delivery-leg reading from old clients) is discarded.
 
 ## JS side: `audio-player.ts`
 

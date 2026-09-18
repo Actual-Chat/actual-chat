@@ -30,9 +30,9 @@ it — the fan-out and the receiver are untouched.
 | 1 | [01-end-to-end.md](./01-end-to-end.md) | Browser → server → browser walkthrough |
 | 2 | [02-recorder.md](./02-recorder.md) | Microphone → AudioWorklet → VAD → Opus encoder → audio-streamer |
 | 3 | [03-codec-and-vad.md](./03-codec-and-vad.md) | Opus configuration, WebRTC + Silero VAD, resampling |
-| 4 | [04-rpc-and-formats.md](./04-rpc-and-formats.md) | `AudioFrame`, `LiveStreamItem` union, ActualOpus / WebM / OggOpus, RPC tuning |
+| 4 | [04-rpc-and-formats.md](./04-rpc-and-formats.md) | `AudioFrame`, `MuxedAudioStreamItem` union, ActualOpus / WebM / OggOpus, RPC tuning |
 | 5 | [05-server-publish-and-transcribe.md](./05-server-publish-and-transcribe.md) | `PushStream` → `ProcessAudio` → segments → WebM blob → Google / Deepgram transcription |
-| 6 | [06-server-fanout-and-replay.md](./06-server-fanout-and-replay.md) | `LiveAudioBackend`, `LiveStreamMuxer`, `ReplayStreamMuxer`, `RemoteAudioStreamCache` |
+| 6 | [06-server-fanout-and-replay.md](./06-server-fanout-and-replay.md) | `LiveAudioBackend`, `ListeningStreamMuxer`, `ReplayStreamMuxer`, `RemoteAudioStreamCache` |
 | 7 | [07-receiver.md](./07-receiver.md) | Subscribe → opus-decoder worker → feeder worklet → WebAudio |
 | 8 | [08-diagnostics-and-tuning.md](./08-diagnostics-and-tuning.md) | Meters, debug hooks, tunable constants |
 | 9 | [09-glossary.md](./09-glossary.md) | Glossary of types, files, and abbreviations |
@@ -59,7 +59,7 @@ flowchart LR
     end
 
     subgraph API["API pod"]
-        ILAS[ILiveAudioStreams<br/>PushStream / GetStream<br/>LegacyGetStream / GetReplayStream]
+        ILAS[ILiveAudioStreams<br/>PushStream / GetStream<br/>GetListeningStream / GetReplayStream]
         RAC[RemoteAudioStreamCache]
     end
 
@@ -67,7 +67,7 @@ flowchart LR
         ASB[AudioStreamingBackend<br/>ProcessAudio]
         Memo[StreamStore<AudioFrame><br/>memoizer]
         LAB[LiveAudioBackend<br/>(Redis state)]
-        Mux[LiveStreamMuxer]
+        Mux[ListeningStreamMuxer]
         Replay[ReplayStreamMuxer]
         Trans[Transcribers<br/>Google / Deepgram / Fake]
         Saver[AudioSegmentSaver]
@@ -99,7 +99,7 @@ flowchart LR
     Blob --> Replay
     ILAS -.cross-shard.-> RAC
     RAC -.-> Memo
-    ILAS -- "RpcStream<AudioFrame> /<br/>RpcStream<LiveStreamItem>" --> Player
+    ILAS -- "RpcStream<AudioFrame> /<br/>RpcStream<MuxedAudioStreamItem>" --> Player
     Player --> Dec
     Dec --> Feed
     Feed --> Out
@@ -132,7 +132,7 @@ a shared opus-decoder worker, and play back through a single
 | TS player + workers | same folder (`audio-player.ts`, `workers/`, `worklets/`) |
 | Chat-level orchestration | `src/dotnet/UI.Blazor.App/Services/ChatAudioUI.cs`, `Services/Playback/` |
 | RPC contracts | `src/dotnet/Api.Contracts/Streaming/ILiveAudioStreams.cs`, `Streaming.Contracts/{IAudioStreamingBackend,ILiveAudioBackend,AudioRecord}.cs` |
-| Streaming service (server) | `src/dotnet/Streaming.Service/Services/{LiveAudioStreams,LiveStreamMuxer,ReplayStreamMuxer,AudioSegmentSaver}.cs` |
+| Streaming service (server) | `src/dotnet/Streaming.Service/Services/{LiveAudioStreams,ListeningStreamMuxer,ReplayStreamMuxer,AudioSegmentSaver}.cs` |
 | Backend audio | `src/dotnet/Streaming.Service/Backend/{AudioStreamingBackend,LiveAudioBackend}.cs`, `AudioStreamingBackend.ProcessAudio.cs` |
 | Transcribers | `src/dotnet/Streaming.Service/Services/Transcribers/` |
 | Dubbing | `src/dotnet/Streaming.Service/Backend/AudioStreamingBackend.Dubbing.cs`, `Streaming.Service/Audio/DubStabilizer.cs`, `Transcription.Service/Synthesis/`, `Transcription.Service/Transcribers/SonioxTtsClient.cs`, `Core.Server/Audio/OpusFramePump.cs` |

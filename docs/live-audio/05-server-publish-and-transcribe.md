@@ -122,7 +122,7 @@ audio's tail-keep policy is just `ReplayTailSize`/expiration delay).
 ### 5. Register in `LiveAudioBackend`
 
 ```csharp
-var streamInfo = new LiveStreamInfo {
+var streamInfo = new LiveAudioStreamInfo {
     ChatId = chatId,
     AuthorId = author.Id,
     StreamId = streamId.Value,

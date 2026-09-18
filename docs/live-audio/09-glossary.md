@@ -27,7 +27,7 @@ live-audio docs.
 - **Feeder worklet** — the `AudioWorkletProcessor` that owns the final
   ring buffer and writes PCM to `AudioContext.destination`.
 - **Listening / Replaying** — the two `ChatPlayerKind`s.
-  Listening = live multiplex via `LegacyGetStream`. Replaying = blob-
+  Listening = live multiplex via `GetListeningStream`. Replaying = blob-
   backed via `GetReplayStream`.
 - **Source vs server time** — every audio unit carries a `SourceBeginsAt`
   (sender's wall-clock at stream start) and a `BeginsAt` (server's
@@ -77,7 +77,9 @@ live-audio docs.
 | `ActualOpusStream*` | same | Custom binary container (live RPC) |
 | `OggOpusStreamConverter` + `Ogg/*` | same | Ogg/Opus (transcription only) |
 | `WebMStreamConverter` + `WebM/*` | same | EBML/Matroska (blob persistence) |
-| `LiveAudioFrame`, `LiveStreamItem`, `LiveStreamStart`, `LiveStreamEnd`, `LiveStreamReset`, `LiveStreamInfo`, `LiveStreamSettings` | `Api/Live/` | Multiplexed live stream union |
+| `MuxedAudioStreamItem`, `MuxedAudioStreamStart`, `MuxedAudioFrame`, `MuxedAudioStreamEnd`, `MuxedAudioStreamReset` | `Api/Live/` | Multiplexed live/replay stream union |
+| `LiveAudioStreamInfo` | same | One audio stream in a chat: author, start, format, entry, languages |
+| `StandardRpcStream` | `Api/` | RpcStream presets: `NewAudioDelivery`, `NewTranscriptDelivery`, `NewUpload` |
 | `AudioRecord` | `Streaming.Contracts/` | Publisher session info |
 | `LiveAudioBackend` | `Streaming.Service/Backend/` | Sharded chat-wide registry (Redis) |
 | `AudioStreamingBackend` + `…ProcessAudio` | same | Per-node ingestion + ProcessFrames-equivalent |
@@ -86,8 +88,8 @@ live-audio docs.
 | `AudioMetadataEntry` | same | Per-segment metadata |
 | `LiveAudioStreams` | `Streaming.Service/Services/` | API-pod façade (`ILiveAudioStreams`) |
 | `AudioSegmentSaver` | same | WebM blob upload + Media record creation |
-| `LiveStreamMuxer` | same | Per-chat live multiplex |
-| `ReplayStreamMuxer` | same | Replay/seek with speed control |
+| `ListeningStreamMuxer` | same | Per-chat live multiplex |
+| `ReplayStreamMuxer` / `ReplayTimeline` | same | Replay/seek with speed control; frames sent in playback order |
 | `StreamStore<T>` | same | Per-node stream registry |
 | `RemoteAudioStreamCache` | `Services/RemoteStreamCaches.cs` | Cross-shard fan-out cache |
 | `AudioProcessorBase` | same | Base for transcription processors |
@@ -103,7 +105,9 @@ live-audio docs.
 | `DubStabilizer` / `DubDecision` | `Streaming.Service/Audio/` | Stable-prefix feed + dub / no-dub decision |
 | `AudioStreamingBackend.Dubbing` | `Streaming.Service/Backend/` | Lazy dub start from `GetAudio(S~lang)`, per-voice chain, expiry |
 | `PlaybackLagTracker` | `UI.Blazor.App/Services/` | EMAs of audio + video presentation lag, keyed by author |
-| `ChatPlayer` / `ChatListener` / `ChatReplayer` | `UI.Blazor.App/Services/Playback/` | Per-chat playback orchestrators |
+| `ChatPlayer` / `ChatListeningPlayer` / `ChatReplayPlayer` | `UI.Blazor.App/Services/Playback/` | Per-chat playback orchestrators |
+| `ReplayClock` | same | Replay timeline position, advanced by the audio that actually plays |
+| `ListeningStreamProcessor` / `ReplayStreamProcessor` / `AudioStreamDemuxer` | `UI.Blazor.App/Services/Audio/` | Subscribe to the multiplex and split it into per-author tracks |
 | `ChatAudioUI` (+ `.Players`, `.StateSync`) | `UI.Blazor.App/Services/` | Top-level toggle + state |
 | `AudioRecorder` | `UI.Blazor.App/Components/AudioRecorder/` | C# recorder façade |
 | `WebRecorderEngine` | same | Blazor → JS bridge |
@@ -119,11 +123,12 @@ live-audio docs.
 | `PushStream` | Publisher → server | Open the publish stream |
 | `GetStream` | Subscriber → server | Per-stream pull (`RpcStream<AudioFrame>`) |
 | `GetTranscriptStream` | Subscriber → server | Per-stream live transcript (`RpcStream<TranscriptDiff>`) |
-| `LegacyGetStream` | Subscriber → server | Per-chat live multiplex (`RpcStream<LiveStreamItem>`) |
-| `GetReplayStream` | Subscriber → server | Per-chat replay with speed |
-| `ChangeSettings` | Subscriber → server | Update `LiveStreamSettings` for an active subscription |
+| `GetListeningStream` | Subscriber → server | Per-chat live multiplex (`RpcStream<MuxedAudioStreamItem>`) |
+| `GetReplayStream` | Subscriber → server | Per-chat replay with speed (`RpcStream<MuxedAudioStreamItem>`) |
 | `List` | Subscriber → server | Active streams in chat (Fusion compute) |
-| `ReportAudioLatency` | Subscriber → server | E2E latency telemetry |
+| `ReportAudioLatency` | Subscriber → server | Presentation lag + A/V sync error telemetry |
+| `ReportPlayback` | Subscriber → server | A PTT chat's track started playing |
+| `LegacyGetListeningStream`, `LegacyChangeSettings` | Subscriber → server | Kept for already-published clients; the latter is a no-op |
 
 `IAudioStreamingBackend` (backend, used internally):
 
@@ -136,7 +141,7 @@ live-audio docs.
 
 | Method | Purpose |
 |---|---|
-| `Register` / `Unregister` | Add/remove `LiveStreamInfo` in chat |
+| `Register` / `Unregister` | Add/remove `LiveAudioStreamInfo` in chat |
 | `List` | Active streams (Fusion compute) |
 
 ## Source-tree map
@@ -155,11 +160,11 @@ src/dotnet/
 │  │  ├ OggOpusStreamConverter.cs, Ogg/*
 │  │  └ WebMStreamConverter.cs, WebM/*
 │  ├ Live/
-│  │  ├ LiveAudioFrame.cs, LiveStreamItem.cs
-│  │  ├ LiveStreamStart.cs, LiveStreamEnd.cs, LiveStreamReset.cs
-│  │  ├ LiveStreamInfo.cs, LiveStreamSettings.cs
+│  │  ├ MuxedAudioStreamItem.cs, MuxedAudioStreamStart.cs, MuxedAudioFrame.cs
+│  │  ├ MuxedAudioStreamEnd.cs, MuxedAudioStreamReset.cs
+│  │  ├ LiveAudioStreamInfo.cs, Legacy/LegacyLiveStreamSettings.cs
 │  ├ MediaPlayback/* (TrackPlayer, Playback, PlayerCommands, …)
-│  ├ MediaRpcStreamOptions.cs
+│  ├ StandardRpcStream.cs
 │  └ Constants.Audio.cs, AppConstants.Audio.cs
 ├ Core.Audio/
 │  ├ {Onnx,Noop}VoiceActivityDetector.cs, VoiceActivityChange.cs, VadResult.cs
@@ -177,7 +182,7 @@ src/dotnet/
 │  ├ Services/
 │  │  ├ LiveAudioStreams.cs
 │  │  ├ AudioProcessorBase.cs, AudioSegmentSaver.cs
-│  │  ├ LiveStreamMuxer.cs, ReplayStreamMuxer.cs
+│  │  ├ ListeningStreamMuxer.cs, ReplayStreamMuxer.cs, ReplayTimeline.cs
 │  │  ├ StreamStore.cs, StreamHub.cs, RemoteStreamCaches.cs
 │  │  └ Transcribers/{TranscriberFactory,Google,Deepgram,Fake,OpenAI,DeepgramOffline}*.cs
 │  └ Module/StreamingServiceModule.cs
@@ -214,7 +219,8 @@ src/dotnet/
       ├ ChatAudioState.cs
       ├ IAudioInfoBackend.cs
       ├ PlaybackLagTracker.cs
-      ├ Playback/{ChatPlayer,ChatListener,ChatReplayer,ChatAudioTrackInfo,
-      │           AudioFramesExt,IAudioCatchUpPolicy}.cs
+      ├ Playback/{ChatPlayer,ChatListeningPlayer,ChatReplayPlayer,ChatAudioTrackInfo,
+      │           ReplayClock}.cs
+      ├ Audio/{ListeningStreamProcessor,ReplayStreamProcessor,AudioStreamDemuxer}.cs
       └ {audio-context-source,audio-context-traits,audio-stream-fader}.ts
 ```
