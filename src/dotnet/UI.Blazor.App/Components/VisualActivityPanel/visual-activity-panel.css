@@ -79,6 +79,9 @@
 .map-panel .btn.btn-share-location .btn-content {
     @apply text-caption-500;
 }
+.map-panel .btn.btn-share-location.beside-stop {
+    @apply right-14;
+}
 
 /* ── Map panel ⋮ menu — mirrors the LocationMapModal map-type menu ── */
 
