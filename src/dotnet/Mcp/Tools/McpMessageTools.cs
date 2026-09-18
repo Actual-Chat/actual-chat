@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using ActualChat.External;
 using ActualChat.Mcp.Auth;
 using ActualChat.Notifications;
 using ModelContextProtocol.Server;
@@ -14,6 +15,7 @@ public sealed class McpMessageTools(IServiceProvider services)
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IReactions Reactions { get; } = services.GetRequiredService<IReactions>();
+    private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();
     private UrlMapper UrlMapper { get; } = services.GetRequiredService<UrlMapper>();
     private ICommander Commander { get; } = services.Commander();
     private McpSessionAccessor SessionAccessor { get; } = services.GetRequiredService<McpSessionAccessor>();
@@ -158,7 +160,7 @@ public sealed class McpMessageTools(IServiceProvider services)
 
     [McpServerTool(Name = "list_pinned_messages", UseStructuredContent = true)]
     [Description("Lists the chat's pinned messages.")]
-    public async Task<McpChatMessage[]> ListPinnedMessages(
+    public async Task<ExternalMessage[]> ListPinnedMessages(
         [Description("The chat id.")] string chatId,
         CancellationToken cancellationToken)
     {
@@ -245,7 +247,7 @@ public sealed class McpMessageTools(IServiceProvider services)
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<McpChatMessage[]> ToMcpMessages(
+    private async Task<ExternalMessage[]> ToMcpMessages(
         ChatId chatId, IReadOnlyList<ChatEntry> entries, CancellationToken cancellationToken)
     {
         var distinctAuthorIds = entries.Select(e => e.AuthorId).Distinct().ToArray();
@@ -256,6 +258,8 @@ public sealed class McpMessageTools(IServiceProvider services)
         for (var i = 0; i < distinctAuthorIds.Length; i++)
             authorById[distinctAuthorIds[i]] = fetched[i];
 
-        return entries.Select(e => e.ToMcpModel(authorById, UrlMapper)).ToArray();
+        return await Task.WhenAll(
+                entries.Select(e => e.ToMcpModel(authorById, UrlMapper, MarkupParser, cancellationToken)))
+            .ConfigureAwait(false);
     }
 }
