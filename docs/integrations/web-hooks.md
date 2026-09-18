@@ -22,10 +22,11 @@ A web hook belongs to one of three scopes, chosen at creation:
 | **Personal** | Settings → API & Apps → Webhooks | your notifications (`Notification` event, if subscribed) and/or a hand-picked set of chats you can read |
 
 A personal hook is re-checked against your `Read` permission on each source
-chat at delivery time; if you've lost access, that event is skipped silently
-— it never counts as a delivery failure. A chat you no longer read produces no
-events for a personal hook, and archiving a chat doesn't stop its outgoing
-hooks (archiving isn't deletion).
+chat when an event is enqueued for it (fan-in time, not delivery time); if
+you've lost access, that event is skipped silently — it never counts as a
+delivery failure. A chat you no longer read produces no events for a personal
+hook, and archiving a chat doesn't stop its outgoing hooks (archiving isn't
+deletion).
 
 Source:
 [WebHook.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Api/WebHooks/WebHook.cs),
@@ -43,7 +44,7 @@ is the flag name in dotted lower case, exactly as sent on the wire:
 | `message.removed` | An entry is soft-removed | chat, place, personal |
 | `reaction.added` / `reaction.removed` | A reaction is added or removed | chat, place, personal |
 | `member.joined` / `member.left` | An author joins or leaves the chat | chat, place, personal |
-| `chat.updated` | Title, description, or picture changes | chat, place, personal |
+| `chat.updated` | Title, description, picture, or public/private visibility changes | chat, place, personal |
 | `chat.created` / `chat.archived` | A chat of the place is created or archived | place |
 | `place.updated` | The place's title, description, or picture changes | place |
 | `place.member.joined` / `place.member.left` | Someone joins or leaves the place | place |
@@ -145,7 +146,9 @@ Source:
 }
 ```
 
-- `hook.scope` is `chat`, `place`, or `user` (the personal scope).
+- `hook.scope` is `chat`, `place`, or `user` (the personal scope). For a
+  personal hook `hook.scopeId` is the owner's own user id — the only user id
+  that ever appears in a payload.
 - `chat.kind` is `group`, `peer`, `place`, or `thread`; `placeId` is present
   only for a chat that belongs to a place.
 - The `chat` field is omitted entirely for `place.*` events and for `ping`
@@ -209,11 +212,12 @@ Source:
 ### `chat.updated` / `place.updated`
 
 ```json
-"data": { "changed": ["title"], "title": "…", "description": "…", "pictureUrl": "…" }
+"data": { "changed": ["title"], "title": "…", "description": "…", "pictureUrl": "…", "isPublic": true }
 ```
 
-`title`, `description`, and `pictureUrl` are always the chat's/place's current
-values; `changed` lists which of the three differ from before the update.
+`title`, `description`, `pictureUrl`, and `isPublic` are always the
+chat's/place's current values; `changed` lists which of the four differ from
+before the update.
 
 ### `chat.created` / `chat.archived`
 
@@ -247,29 +251,36 @@ absence means the text (if any) is complete.
 
 ## Delivery semantics
 
-- **Ordering.** One flow per hook drains its outbox strictly in the order
-  events were enqueued (`Seq`), and stops at the first delivery that has to
-  wait for a retry — so a receiver never sees `message.edited` before the
-  `message.posted` it follows.
-- **Retries.** A network error, a timeout, a `429`, or a `5xx` response is
-  retried with backoff **1 min → 5 min → 30 min → 2 h → 12 h**, then repeats
-  at 12 h.
+- **Ordering.** One flow per hook drains its outbox in the order events were
+  enqueued (`Seq`), and stops at the first delivery that has to wait for a
+  retry — so deliveries arrive in outbox order per hook. Ordering across
+  near-simultaneous events is best-effort: the events are fanned in
+  concurrently, so two changes made within the same instant can be enqueued
+  in either order.
+- **Retries.** A network error, a DNS failure, a timeout, a `429`, or a `5xx`
+  response is retried with backoff **1 min → 5 min → 30 min → 2 h → 12 h**,
+  then repeats at 12 h.
 - **Terminal failures.** Any other non-2xx status (a `4xx` other than `429`,
   or a `3xx` — redirects are never followed) fails that one delivery
   permanently and moves on to the next; it does **not** retry and does not by
   itself disable the hook.
 - **`410 Gone`** disables the hook immediately (`DeliveryFailures`).
 - **Auto-disable.** If the head-of-line delivery keeps failing for **72
-  hours** straight, the hook is disabled and every remaining pending
-  delivery is marked `Abandoned`.
+  hours** straight (counted from the later of the delivery's creation and the
+  hook's last edit or re-enable), the hook is disabled and every remaining
+  pending delivery is marked `Abandoned`. Re-enabling the hook does **not**
+  resume those abandoned rows — use *Redeliver* on the ones you still want.
+  A manual disable leaves pending rows pending, so re-enabling resumes them.
 - **Unsafe URL.** If the URL fails the egress check at delivery time (it now
   resolves to a private/loopback/link-local address, for example), that
-  delivery fails and the hook is disabled with reason `UnsafeUrl`.
+  delivery fails and the hook is disabled with reason `UnsafeUrl`. A host
+  that merely doesn't resolve is a network failure and is retried like one.
 - **Redelivery.** A completed (non-pending) delivery can be redelivered from
   its detail page; the clone reuses `<originalId>:r<attempts>` as its id, so
   redelivering the same completed delivery twice is a no-op.
 - **Idempotency.** The delivery id is derived from the event itself (entry id
-  + version, reaction id, author id + version, or notification id), so a
+  + version, reaction id + version, author id + version, or notification
+  id), so a
   redelivered NATS event on our side is a harmless no-op insert — and the
   same id on retries lets you dedupe on `webhook-id`.
 - **Queue overflow.** A hook's outbox caps at **10,000** pending rows; past
@@ -304,17 +315,22 @@ still-`Pending` row is never pruned.
   **24 hours**; during that window every request carries both signatures (see
   the `webhook-signature` header above), so you can roll your verifier over
   without dropping deliveries.
-- **URL rules.** Outgoing URLs must be `https://`; plain `http://` is
-  accepted only for a loopback address, and only on a development or test
-  instance of Voxt — never in production. The rule is re-checked at delivery
-  time, not just at save time, so a URL that later resolves somewhere unsafe
-  gets caught and the hook disabled, not silently delivered to.
-- **Reserved header names.** A custom header can't reuse `webhook-id`,
-  `webhook-timestamp`, `webhook-signature`, `user-agent`, or `content-type` —
-  those are Voxt's own.
-- **No user ids, ever.** Authors are represented exactly like MCP represents
-  them — a chat-scoped author id, display name, and avatar URL. Payloads
-  never contain a `userId` or an `/u/…` profile link.
+- **URL rules.** Outgoing URLs must be `https://` and use a host name — an
+  IP-literal host or an internal domain is rejected at save time. Plain
+  `http://` is accepted only for a loopback address, and only on a
+  development or test instance of Voxt — never in production. The rules are
+  re-checked at delivery time, not just at save time, so a URL that later
+  resolves somewhere unsafe gets caught and the hook disabled, not silently
+  delivered to.
+- **Custom header hygiene.** The header name must be a plain HTTP token
+  (letters, digits, and `` !#$%&'*+-.^_`|~ ``), the value can't contain line
+  breaks or control characters, and neither can reuse `webhook-id`,
+  `webhook-timestamp`, `webhook-signature`, `user-agent`, `content-type`,
+  `host`, `content-length`, `transfer-encoding`, or `connection`.
+- **No user ids.** Authors are represented exactly like MCP represents them
+  — a chat-scoped author id, display name, and avatar URL. Payloads never
+  contain a `userId` or an `/u/…` profile link; the one user id on the wire
+  is a personal hook's `hook.scopeId`, which is the owner's own.
 - **Compliance opt-out.** `IncludeText` can be turned off per hook; when it
   is, `text` and `previous.text` are both omitted, but the rest of the
   envelope (author, attachments, reaction emoji, etc.) still arrives.
@@ -350,5 +366,7 @@ A hook's detail page shows its status (enabled/disabled, last delivery,
 consecutive failures), its recent delivery log, and — for an outgoing hook —
 *Rotate secret* and *Delete*, both behind a confirmation. Disabling a hook
 (manually, or automatically after repeated failures) stops new deliveries but
-keeps its history and configuration, so re-enabling it just resumes where it
-left off.
+keeps its history and configuration. Re-enabling after a manual disable
+resumes the deliveries that were left pending; after an auto-disable the
+pending ones were already marked `Abandoned`, so only new events flow and
+anything you still need has to be *Redeliver*ed by hand.
