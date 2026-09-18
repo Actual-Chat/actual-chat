@@ -60,7 +60,7 @@ public sealed class ContentRef : StringIdentifier, IStringIdentifier<ContentRef>
 
     public static string GetTypePrefix(Type type)
     {
-        // Subtypes share their base type's prefix - every ChatId kind formats as "c"
+        // An unregistered subtype falls back to its nearest registered base type's prefix
         for (var current = type; current is not null; current = current.BaseType)
             if (Prefixes.TryGetValue(current, out var prefix))
                 return prefix;

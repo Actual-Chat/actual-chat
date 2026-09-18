@@ -51,6 +51,10 @@ public class ContentRefTest(ITestOutputHelper @out) : StringIdentifierTestBase<C
     {
         // arrange
         (string Prefix, ContentId Id)[] cases = [
+            ("c", ChatId.Parse("ghijkl")),
+            ("c2", ChatId.Parse("p-admin1-admin2")),
+            ("cP", ChatId.Parse("s-abcdefghij-ghijkl")),
+            ("cT", ChatId.Parse("ghijkl").CreateThreadId(7)),
             ("C", ContactId.NewAny(UserId.Parse("abcdef"), ChatId.Parse("ghijkl"))),
             ("cnv", ConversationId.New(ChatId.Parse("ghijkl"), 1)),
             ("loc", SharedLocationId.Parse("abcdefghij")),

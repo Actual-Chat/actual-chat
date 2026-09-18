@@ -35,6 +35,14 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
+    public void ThreadChatId_Basic()
+    {
+        var id = ChatId.Parse("1234abcd").CreateThreadId(7);
+        ChatId chatId = id;
+        chatId.AssertPassesThroughSerializers();
+    }
+
+    [Fact]
     public void UserId_Basic()
     {
         var id = UserId.Parse("admin1");

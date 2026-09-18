@@ -2,14 +2,19 @@ using System.ComponentModel;
 using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Generators;
+using ActualLab.Rpc;
 
 namespace ActualChat;
 
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 
+// [RpcSerializable] is what keeps this abstract type off RPC's polymorphic path: every
+// serializer writes it as a plain string and rebuilds the concrete subtype via Parse.
+
 /// <summary>
 /// Unique identifier for a chat (group, peer, place, or thread).
 /// </summary>
+[RpcSerializable]
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringLikeJsonConverter<ChatId>))]
 [Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<ChatId>))]
