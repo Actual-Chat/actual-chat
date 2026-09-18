@@ -36,15 +36,18 @@ public class OpusFramePumpTest
         var runTask = pump.Run(pcm.Reader, frames.Writer, CancellationToken.None);
 
         // act
-        await Task.Delay(200);
+        // Reading the frames before any input exists is what proves they are synthesized silence;
+        // a wall-clock wait would race the pump's own timer and count whatever landed first
+        var result = new List<AudioFrame>();
+        for (var i = 0; i < 6; i++)
+            result.Add(await frames.Reader.ReadAsync());
         pcm.Writer.TryWrite(new byte[OpusFramePump.FrameByteLength]);
         pcm.Writer.Complete();
         await runTask;
-        var result = await frames.Reader.ReadAllAsync().ToListAsync();
+        result.AddRange(await frames.Reader.ReadAllAsync().ToListAsync());
 
         // assert
-        result.Count.Should().BeGreaterThanOrEqualTo(6,
-            "200ms of waiting is 10 silence frames minus scheduling slack, plus the real one");
+        result.Count.Should().BeGreaterThanOrEqualTo(7, "6 silence frames plus the real one");
         for (var i = 0; i < result.Count; i++)
             result[i].Offset.Should().Be(Constants.Audio.OpusFrameDuration * i);
     }
