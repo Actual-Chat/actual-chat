@@ -54,7 +54,7 @@ public sealed class ChatListeningPlayer : ChatPlayer
         await using var _ = streamProcessor.ConfigureAwait(false);
 
         streamProcessor.StreamStarted +=
-            (info, _, frames) => OnStreamStarted(playback, state, info, frames, cancellationToken);
+            (info, _, frames) => OnStreamStarted(playback, state, ownAuthor?.Id, info, frames, cancellationToken);
         StartSleepWatcher(streamProcessor, cancellationToken);
         StartDubLanguageWatcher(streamProcessor, cancellationToken);
         await streamProcessor.Run().ConfigureAwait(false);
@@ -119,25 +119,33 @@ public sealed class ChatListeningPlayer : ChatPlayer
         }
     }
 
+    // Internal for tests
+    internal static bool IsPeerInterjection(
+        AuthorId? ownAuthorId,
+        AuthorId streamAuthorId,
+        AudioRecorderState recorderState,
+        ChatId chatId)
+        => streamAuthorId != ownAuthorId && recorderState.IsRecording && recorderState.ChatId == chatId;
+
     private void OnStreamStarted(
         Playback playback,
         PlayState state,
+        AuthorId? ownAuthorId,
         LiveAudioStreamInfo streamInfo,
         IAsyncEnumerable<AudioFrame> audioFrames,
         CancellationToken cancellationToken)
     {
         _ = BackgroundTask.Run(async () => {
             try {
-                if (!Constants.DebugMode.ListenOwnAudio) {
-                    var author = await Authors.GetOwn(Session, ChatId, cancellationToken).ConfigureAwait(false);
-                    if (author is { } own && streamInfo.AuthorId == own.Id)
-                        return;
-                }
+                var isOwnStream = streamInfo.AuthorId == ownAuthorId;
+                if (isOwnStream && !Constants.DebugMode.ListenOwnAudio)
+                    return;
 
                 // A peer starting to talk while we record here puts our VAD into conversation
                 // mode, so a short pause closes our utterance instead of the monologue silence.
-                var recorderState = Hub.AudioRecorder.State.Value;
-                if (recorderState.IsRecording && recorderState.ChatId == ChatId)
+                // Our own stream, heard under ListenOwnAudio, is not a peer: signalling on it
+                // cut every utterance at the first breath and re-armed itself with each cut.
+                if (IsPeerInterjection(ownAuthorId, streamInfo.AuthorId, Hub.AudioRecorder.State.Value, ChatId))
                     _ = Hub.AudioRecorder.ConversationSignal(cancellationToken);
 
                 if (!await CanContinuePlayback(cancellationToken).ConfigureAwait(false)) {
