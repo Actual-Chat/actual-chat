@@ -70,6 +70,8 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<WebHookDeliverer>();
         // A redirect is a delivery failure: a 301/302 would turn the signed POST into a body-less GET
         services.AddEgressHttpClient(WebHookDeliverer.HttpClientName, maxRedirectCount: 0);
+        services.AddSingleton<WebHookDeliveryPruner>()
+            .AddHostedService(c => c.GetRequiredService<WebHookDeliveryPruner>());
 
         // Aliases
         rpcHost.AddLocalApi<IAliases, Aliases>();
