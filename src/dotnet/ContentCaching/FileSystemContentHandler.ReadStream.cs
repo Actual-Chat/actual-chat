@@ -111,6 +111,29 @@ public sealed partial class FileSystemContentHandler
             }
         }
 
+        public override void CopyTo(Stream destination, int bufferSize)
+            => CopyToAsync(destination, bufferSize, CancellationToken.None).GetAwaiter().GetResult();
+
+        public override async Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
+        {
+            // Stream's copy loop rejects a disposed stream before reading, so a request canceled between two
+            // reads would surface as ObjectDisposedException; ReadAsync puts cancellation ahead of disposal.
+            ValidateCopyToArguments(destination, bufferSize);
+            var buffer = new byte[bufferSize];
+            try {
+                while (true) {
+                    var count = await ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                    if (count == 0)
+                        return;
+
+                    await destination.WriteAsync(buffer.AsMemory(0, count), cancellationToken).ConfigureAwait(false);
+                }
+            }
+            finally {
+                CryptographicOperations.ZeroMemory(buffer);
+            }
+        }
+
         public override void Flush() { }
 
         public override long Seek(long offset, SeekOrigin origin)
