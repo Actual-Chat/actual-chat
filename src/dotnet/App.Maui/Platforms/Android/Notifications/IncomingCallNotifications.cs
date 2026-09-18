@@ -93,7 +93,9 @@ public static class IncomingCallNotifications
             fullScreenIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
         var callerBuilder = new Person.Builder()
-            .SetName(title ?? L.Call_Incoming)!
+            // Empty, not just null: CallStyle throws on a nameless Person, so a title-less push
+            // would cost the ring its notification entirely.
+            .SetName(title.NullIfEmpty() ?? L.Call_Incoming)!
             .SetImportant(true)!;
         var largeImage = imageUrl.IsNullOrEmpty() ? null : NotificationHelper.GetImage(imageUrl!);
         if (largeImage != null)
