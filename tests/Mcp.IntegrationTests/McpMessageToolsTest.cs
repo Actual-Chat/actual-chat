@@ -1,3 +1,4 @@
+using ActualChat.External;
 using ActualChat.Notifications;
 using ActualChat.Testing.Host;
 
@@ -79,11 +80,11 @@ public class McpMessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutp
         // act
         await CallTool(client, "pin_message", new { chatId = chatId.Value, entryId = entry.LocalId });
         var pinned = await WaitFor(
-            () => CallTool<McpChatMessage[]>(client, "list_pinned_messages", new { chatId = chatId.Value }),
+            () => CallTool<ExternalMessage[]>(client, "list_pinned_messages", new { chatId = chatId.Value }),
             r => r.Length == 1);
         await CallTool(client, "unpin_message", new { chatId = chatId.Value, entryId = entry.LocalId });
         var unpinned = await WaitFor(
-            () => CallTool<McpChatMessage[]>(client, "list_pinned_messages", new { chatId = chatId.Value }),
+            () => CallTool<ExternalMessage[]>(client, "list_pinned_messages", new { chatId = chatId.Value }),
             r => r.Length == 0);
 
         // assert
@@ -322,7 +323,7 @@ public class McpMessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutp
             !m.IsStreaming &&
             !m.IsTranscribed &&
             !m.IsRemoved &&
-            !string.IsNullOrEmpty(m.AuthorId));
+            !string.IsNullOrEmpty(m.Author.Id));
         page.FullRange.FirstId.Should().BeLessThanOrEqualTo(posted[0].LocalId);
         page.FullRange.LastId.Should().BeGreaterThanOrEqualTo(posted[^1].LocalId);
     }
