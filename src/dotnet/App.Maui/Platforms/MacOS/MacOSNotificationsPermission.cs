@@ -47,7 +47,7 @@ public class MacOSNotificationsPermission(AppUIHub hub) : UIServiceBase<AppUIHub
 
             isGranted = await IsGranted(cancellationToken).ConfigureAwait(true);
             if (isGranted == false)
-                await SystemSettingsUI.Open().ConfigureAwait(true);
+                await SystemSettingsUI.Open(SystemSettingsPane.Notifications).ConfigureAwait(true);
             NotificationUI.SetIsGranted(isGranted);
         }, Log, "Notifications permission request failed", cancellationToken);
 }

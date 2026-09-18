@@ -1,15 +1,15 @@
-﻿using ActualChat.UI.Blazor.App.Services;
-using Microsoft.Maui.ApplicationModel;
+using ActualChat.UI;
+using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.App.Maui;
 
-public class AppleRecordingPermissionRequester : IRecordingPermissionRequester
+public class AppleRecordingPermissionRequester(SystemSettingsUI systemSettingsUI) : IRecordingPermissionRequester
 {
     public bool CanRequest => true;
 
-    public Task<bool> TryRequest()
+    public async Task<bool> TryRequest()
     {
-        AppInfo.Current.ShowSettingsUI();
-        return ActualLab.Async.TaskExt.TrueTask;
+        await systemSettingsUI.Open(SystemSettingsPane.Microphone).ConfigureAwait(false);
+        return true;
     }
 }

@@ -98,7 +98,7 @@
 
     private async Task OnPrimaryClick() {
         if (HostInfo.HostKind.IsMauiApp())
-            await SystemSettingsUI.Open();
+            await SystemSettingsUI.Open(SystemSettingsPane.Location);
         Modal.Close();
     }
 

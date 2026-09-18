@@ -1,3 +1,4 @@
+using ActualChat.UI;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;
@@ -38,5 +39,5 @@ public class MauiContactsPermissionHandler : ContactsPermissionHandler
     }
 
     protected override Task Troubleshoot(CancellationToken cancellationToken)
-        => OpenSystemSettings();
+        => OpenSystemSettings(SystemSettingsPane.Contacts);
 }

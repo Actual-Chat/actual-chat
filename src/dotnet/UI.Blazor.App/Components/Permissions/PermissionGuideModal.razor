@@ -50,9 +50,19 @@
 
     private async Task OnPrimaryClick() {
         if (HostInfo.HostKind.IsMauiApp())
-            await SystemSettingsUI.Open().ConfigureAwait(true);
+            await SystemSettingsUI.Open(GetSystemSettingsPane(ModalModel.Kind)).ConfigureAwait(true);
         Modal.Close();
     }
+
+    private static SystemSettingsPane GetSystemSettingsPane(PermissionKind kind)
+        => kind switch {
+            PermissionKind.Microphone => SystemSettingsPane.Microphone,
+            PermissionKind.Camera => SystemSettingsPane.Camera,
+            PermissionKind.Contacts => SystemSettingsPane.Contacts,
+            PermissionKind.Location => SystemSettingsPane.Location,
+            PermissionKind.Notifications => SystemSettingsPane.Notifications,
+            _ => SystemSettingsPane.App,
+        };
 
     public sealed record Model(PermissionKind Kind);
 }

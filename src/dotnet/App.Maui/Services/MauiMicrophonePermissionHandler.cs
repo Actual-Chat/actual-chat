@@ -1,5 +1,6 @@
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Components;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;
 
@@ -53,8 +54,11 @@ public class MauiMicrophonePermissionHandler : MicrophonePermissionHandler
 
     protected override async Task Troubleshoot(CancellationToken cancellationToken)
     {
-        var model = new RecordingTroubleshooterModal.Model();
-        var modalRef = await ModalUI.Show(model, cancellationToken).ConfigureAwait(true);
+        // RecordingTroubleshooterModal has no Mac guide, so it would show the Chrome steps there
+        var modalRef = HostInfo.AppKind == AppKind.MacOS
+            ? await ModalUI.Show(new PermissionGuideModal.Model(PermissionKind.Microphone), cancellationToken)
+                .ConfigureAwait(true)
+            : await ModalUI.Show(new RecordingTroubleshooterModal.Model(), cancellationToken).ConfigureAwait(true);
         await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 }
