@@ -1,0 +1,36 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.WebHooks
+@inherits ComponentBase<AppUIHub>
+@{
+    var groups = new List<(WebHookEvents Group, string Label)> {
+        (WebHookEvents.Messages, L.WebHook_Events_Messages),
+        (WebHookEvents.Reactions, L.WebHook_Events_Reactions),
+        (WebHookEvents.Members, L.WebHook_Events_Members),
+        (WebHookEvents.ChatChanges, L.WebHook_Events_Chat),
+    };
+    if (Scope == WebHookScope.Place)
+        groups.Add((WebHookEvents.PlaceChanges, L.WebHook_Events_Place));
+    if (Scope == WebHookScope.User)
+        groups.Add((WebHookEvents.Notification, L.WebHook_Events_Notifications));
+}
+
+<div class="web-hook-events-picker">
+    @foreach (var (group, label) in groups) {
+        var isChecked = (Value & group) == group;
+        <div class="c-item" @onclick="@(() => OnToggle(group))">
+            <Checkbox IsChecked="@isChecked" Label="@label" Change="@(() => OnToggle(group))"/>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public WebHookEvents Value { get; set; }
+    [Parameter] public EventCallback<WebHookEvents> ValueChanged { get; set; }
+    [Parameter, EditorRequired] public WebHookScope Scope { get; set; }
+
+    private Task OnToggle(WebHookEvents group) {
+        var isChecked = (Value & group) == group;
+        var value = isChecked ? Value & ~group : Value | group;
+        return ValueChanged.InvokeAsync(value);
+    }
+}

@@ -1,0 +1,67 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.WebHooks
+@inherits ComponentBase<AppUIHub>
+
+<TileTopic Topic="@L.WebHook_RecentDeliveries"/>
+
+<Tile Class="web-hook-delivery-tile">
+    @if (Deliveries.Count == 0) {
+        <TileItem IsHoverable="false">
+            <Content><span class="c-empty">@L.WebHook_NoDeliveries</span></Content>
+        </TileItem>
+    } else {
+        @foreach (var delivery in Deliveries) {
+            var (statusText, statusClass) = GetStatus(delivery.Status);
+            <TileItem IsHoverable="false" @key="@delivery.Id">
+                <Content>
+                    <LiveTimeDeltaText Class="c-time" Moment="@delivery.CreatedAt"/>
+                    <span class="c-event">@delivery.EventType</span>
+                    <span class="c-status @statusClass">@statusText</span>
+                </Content>
+                <Caption>
+                    @if (delivery.LastError is { } error) {
+                        <span class="c-error">@Truncate(error)</span>
+                    } else if (delivery.LastStatusCode is { } statusCode) {
+                        <span class="c-outcome">
+                            @L.WebHook_DeliveryOutcome_Format(statusCode, delivery.LastLatencyMs ?? 0)
+                        </span>
+                    }
+                </Caption>
+                <Right>
+                    @if (delivery.Status != WebHookDeliveryStatus.Pending) {
+                        <ButtonRound
+                            Class="btn-sm btn-transparent"
+                            Tooltip="@L.WebHook_Redeliver"
+                            Click="@(() => OnRedeliverClick(delivery.Id))">
+                            <i class="icon-refresh text-xl"></i>
+                        </ButtonRound>
+                    }
+                </Right>
+            </TileItem>
+            @if (delivery != Deliveries[^1]) {
+                <Divider/>
+            }
+        }
+    }
+</Tile>
+
+@code {
+    private const int MaxErrorLength = 80;
+
+    [Parameter, EditorRequired] public WebHookId WebHookId { get; set; } = null!;
+    [Parameter, EditorRequired] public ApiArray<WebHookDelivery> Deliveries { get; set; }
+
+    private (string Text, string Class) GetStatus(WebHookDeliveryStatus status)
+        => status switch {
+            WebHookDeliveryStatus.Succeeded => (L.WebHook_Status_Succeeded, "succeeded"),
+            WebHookDeliveryStatus.Failed => (L.WebHook_Status_Failed, "failed"),
+            WebHookDeliveryStatus.Abandoned => (L.WebHook_Status_Abandoned, "abandoned"),
+            _ => (L.WebHook_Status_Pending, "pending"),
+        };
+
+    private static string Truncate(string text)
+        => text.Length <= MaxErrorLength ? text : text[..MaxErrorLength] + "…";
+
+    private Task OnRedeliverClick(string deliveryId)
+        => UICommander.Run(new WebHooks_Redeliver { Session = Session, Id = WebHookId, DeliveryId = deliveryId });
+}

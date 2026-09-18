@@ -1,0 +1,22 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.WebHooks
+@inherits ComponentBase<AppUIHub>
+
+<div class="chat-integrations">
+    <WebHookList Scope="WebHookScope.Chat" ScopeId="@ChatId.Value"/>
+</div>
+
+@code {
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+
+    private ChatId ChatId { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        ChatId = Context.GetModel<ChatId>();
+        Context.Title = L.Integrations_Title;
+        // A page without buttons gets no footer at all, so its only way back would be the frame's
+        // header arrow, which the chat settings hero hides on inner steps; the footer Back keeps
+        // this page navigable the same way the Members page is (frame arrow + a footer action)
+        Context.Buttons = [DialogButtonInfo.CreateBackButton(L)];
+    }
+}

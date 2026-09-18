@@ -1,0 +1,100 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.WebHooks
+@inherits ComputedStateComponent<AppUIHub, WebHookList.Model>
+@{
+    var m = State.Value;
+    if (!m.IsEnabled)
+        return;
+
+    var isPersonal = Scope == WebHookScope.User;
+}
+
+<TileTopic Topic="@(isPersonal ? L.Settings_Webhooks : L.Integrations_Title)"/>
+
+<ButtonTile Class="btn-primary" Filled="true" Click="@OnAddClick">
+    <Content>@L.Integrations_Add</Content>
+</ButtonTile>
+
+<Tile Class="web-hook-tile">
+    @if (m.Rows.Count == 0) {
+        <TileItem IsHoverable="false">
+            <Content>
+                <span class="c-empty">@(isPersonal ? L.Integrations_PersonalEmpty : L.Integrations_Empty)</span>
+            </Content>
+        </TileItem>
+    } else {
+        @foreach (var row in m.Rows) {
+            var hook = row.Hook;
+            <TileItem Click="@(() => OnHookClick(hook.Id))">
+                <Icon>
+                    <i class="icon-call-arrow-out"></i>
+                </Icon>
+                <Content>
+                    <span class="c-name">@hook.Name</span>
+                    @if (!hook.IsEnabled) {
+                        <span class="c-disabled">(@L.Integrations_Disabled)</span>
+                    }
+                </Content>
+                <Caption>
+                    <span class="c-host">@row.Host</span>
+                    @if (row.StatusText != null) {
+                        <span class="c-dot">·</span>
+                        <span class="@(row.IsFailing ? "c-failing" : "c-status")">@row.StatusText</span>
+                    }
+                </Caption>
+                <Right>
+                    <i class="icon-chevron-right text-3xl"></i>
+                </Right>
+            </TileItem>
+            @if (row != m.Rows[^1]) {
+                <Divider/>
+            }
+        }
+    }
+</Tile>
+
+@code {
+    [Parameter, EditorRequired] public WebHookScope Scope { get; set; }
+    [Parameter, EditorRequired] public string ScopeId { get; set; } = "";
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new Model(),
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var scope = Scope;
+        var scopeId = ScopeId;
+        var isEnabled = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        if (!isEnabled)
+            return new Model();
+
+        var hooks = await Hub.WebHooks.List(Session, scope, scopeId, cancellationToken).ConfigureAwait(false);
+        var rows = new List<Row>(hooks.Count);
+        foreach (var hook in hooks.OrderBy(x => x.Name).ThenBy(x => x.CreatedAt))
+            rows.Add(await ToRow(hook, cancellationToken).ConfigureAwait(false));
+        return new Model { IsEnabled = true, Rows = rows };
+    }
+
+    private async Task<Row> ToRow(WebHook hook, CancellationToken cancellationToken) {
+        var (statusText, isFailing) = await hook.GetStatusText(L, Hub.LiveTime, cancellationToken)
+            .ConfigureAwait(false);
+        return new Row(hook, hook.GetHost(), statusText, isFailing);
+    }
+
+    private Task OnAddClick()
+        => Hub.ModalUI.Show(new WebHookCreateModal.Model(Scope, ScopeId));
+
+    private Task OnHookClick(WebHookId id)
+        => Hub.ModalUI.Show(new WebHookDetailModal.Model(id));
+
+    // Nested types
+
+    public sealed record Row(WebHook Hook, string Host, string? StatusText, bool IsFailing);
+
+    public sealed record Model {
+        public bool IsEnabled { get; init; }
+        public List<Row> Rows { get; init; } = [];
+    }
+}
