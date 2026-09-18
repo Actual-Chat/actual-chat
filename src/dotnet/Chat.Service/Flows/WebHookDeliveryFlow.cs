@@ -11,13 +11,18 @@ namespace ActualChat.Chat.Flows;
 public sealed partial class WebHookDeliveryFlow : Flow<Unit>
 {
     private const int MaxDeliveriesPerResume = 50;
+    // A delivery can take the 10 s send timeout plus a RecordDelivery round-trip, and the whole resume
+    // has to fit inside the 120 s ResumeTimeout - a resume cut off mid-send loses the attempt's result
+    // and re-POSTs the same row under the same webhook-id
+    private static readonly TimeSpan ResumeBudget = TimeSpan.FromSeconds(60);
 
     private WebHookDeliverer Deliverer => field ??= Services.GetRequiredService<WebHookDeliverer>();
     private WebHookId HookId => field ??= WebHookId.Parse(Id.Arguments);
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
-        for (var i = 0; i < MaxDeliveriesPerResume; i++) {
+        var startedAt = CpuTimestamp.Now;
+        for (var i = 0; i < MaxDeliveriesPerResume && startedAt.Elapsed < ResumeBudget; i++) {
             var outcome = await Deliverer.DeliverNext(HookId, cancellationToken).ConfigureAwait(false);
             if (!outcome.HasMore)
                 return;
@@ -27,7 +32,7 @@ public sealed partial class WebHookDeliveryFlow : Flow<Unit>
             }
         }
 
-        // There is more, but one hook doesn't get to monopolize the runner
+        // There is more, but one hook doesn't get to monopolize the runner, and the budget is spent
         Runtime.StageResume();
     }
 }

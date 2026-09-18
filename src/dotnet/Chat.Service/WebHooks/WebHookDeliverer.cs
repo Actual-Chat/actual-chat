@@ -28,6 +28,7 @@ public sealed class WebHookDeliverer(IServiceProvider services)
     private IHttpClientFactory HttpClientFactory => field ??= Services.GetRequiredService<IHttpClientFactory>();
     private ICommander Commander => field ??= Services.Commander();
     private MomentClockSet Clocks => field ??= Services.Clocks();
+    private HostInfo HostInfo => field ??= Services.HostInfo();
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     public async Task<Outcome> DeliverNext(WebHookId hookId, CancellationToken cancellationToken)
@@ -46,6 +47,7 @@ public sealed class WebHookDeliverer(IServiceProvider services)
 
         var attempt = await Send(dbWebHook, dbDelivery.Id, dbDelivery.Payload, cancellationToken)
             .ConfigureAwait(false);
+        now = Clocks.SystemClock.Now; // The send may have taken the whole timeout
         var scopeId = dbWebHook.ScopeId;
         if (attempt.IsUnsafeUrl) {
             await Record(dbWebHook, dbDelivery.Id, WebHookDeliveryStatus.Failed, attempt, null, cancellationToken)
@@ -147,7 +149,9 @@ public sealed class WebHookDeliverer(IServiceProvider services)
         string payload,
         CancellationToken cancellationToken)
     {
-        if (!Uri.TryCreate(dbWebHook.Url, UriKind.Absolute, out var uri)
+        // Re-asserted at delivery time, so a URL saved under looser rules is never posted to
+        if (!WebHooksBackend.IsAllowedUrl(dbWebHook.Url, HostInfo)
+            || !Uri.TryCreate(dbWebHook.Url, UriKind.Absolute, out var uri)
             || !await EgressGuard.IsAllowed(uri.DnsSafeHost, cancellationToken).ConfigureAwait(false))
             return new Attempt(null, "URL is not allowed", 0, IsUnsafeUrl: true);
 

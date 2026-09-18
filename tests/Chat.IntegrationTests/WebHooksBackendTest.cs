@@ -218,12 +218,17 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
             WebHookScope.User, alice.Id.Value, null, null,
             Change.Create(NewDiff("Me")),
             alice.Id));
+        var reservedHeader = () => Commander.Call(new WebHooksBackend_Change(
+            WebHookScope.Chat, chatId.Value, null, null,
+            Change.Create(NewDiff() with { CustomHeaderName = "Webhook-Signature", CustomHeaderValue = "x" }),
+            alice.Id));
 
         // assert
         await httpUrl.Should().ThrowAsync<InvalidOperationException>().WithMessage("*https*");
         await noEvents.Should().ThrowAsync<InvalidOperationException>().WithMessage("*event*");
         await emptyName.Should().ThrowAsync<InvalidOperationException>().WithMessage("*name*");
         await userHookWithoutTargets.Should().ThrowAsync<InvalidOperationException>();
+        await reservedHeader.Should().ThrowAsync<InvalidOperationException>().WithMessage("*reserved*");
         (await Backend.ListByScope(WebHookScope.Chat, chatId.Value, default)).Should().BeEmpty();
     }
 

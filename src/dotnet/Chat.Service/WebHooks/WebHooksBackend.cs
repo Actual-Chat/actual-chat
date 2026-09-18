@@ -11,6 +11,10 @@ namespace ActualChat.Chat;
 public partial class WebHooksBackend(IServiceProvider services)
     : DbServiceBase<ChatDbContext>(services), IWebHooksBackend
 {
+    private static readonly HashSet<string> ReservedHeaderNames = new(StringComparer.OrdinalIgnoreCase) {
+        "webhook-id", "webhook-timestamp", "webhook-signature", "user-agent", "content-type",
+    };
+
     private WebHookSecrets Secrets => field ??= Services.GetRequiredService<WebHookSecrets>();
     private WebHookPayloads Payloads => field ??= Services.GetRequiredService<WebHookPayloads>();
     private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
@@ -395,8 +399,10 @@ public partial class WebHooksBackend(IServiceProvider services)
         if (webHook.Name.Length > Constants.WebHooks.MaxNameLength)
             throw StandardError.Constraint(
                 $"Web hook name can't be longer than {Constants.WebHooks.MaxNameLength} characters.");
-        if (!IsAllowedUrl(webHook.Url))
+        if (!IsAllowedUrl(webHook.Url, HostInfo))
             throw StandardError.Constraint("Web hook URL must be an absolute https:// URL.");
+        if (webHook.CustomHeaderName is { } headerName && ReservedHeaderNames.Contains(headerName))
+            throw StandardError.Constraint("This header name is reserved.");
         if (webHook.Events == WebHookEvents.None)
             throw StandardError.Constraint("Select at least one event.");
         if (webHook.Scope == WebHookScope.User && !webHook.SubscribeNotifications && webHook.ChatIds.Count == 0)
@@ -404,7 +410,8 @@ public partial class WebHooksBackend(IServiceProvider services)
                 "A user web hook must subscribe to notifications or list at least one chat.");
     }
 
-    private bool IsAllowedUrl(string url)
+    // Checked on save and again at delivery time (WebHookDeliverer), so it's static and shared
+    internal static bool IsAllowedUrl(string url, HostInfo hostInfo)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
             return false;
@@ -414,7 +421,7 @@ public partial class WebHooksBackend(IServiceProvider services)
         // Plain http is fine only for a loopback receiver on a dev box or in tests
         return uri.Scheme == Uri.UriSchemeHttp
             && uri.IsLoopback
-            && (HostInfo.IsDevelopmentInstance || HostInfo.IsTested);
+            && (hostInfo.IsDevelopmentInstance || hostInfo.IsTested);
     }
 
     private void ApplyCustomHeader(DbWebHook dbWebHook, WebHookDiff diff)
