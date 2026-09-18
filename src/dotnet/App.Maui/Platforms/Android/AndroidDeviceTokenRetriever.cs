@@ -11,6 +11,7 @@ public class AndroidDeviceTokenRetriever(IServiceProvider services) : IDeviceTok
     public async Task<string?> GetDeviceToken(CancellationToken cancellationToken)
     {
         try {
+            await MauiFirebase.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
             var javaString = await FirebaseMessaging.Instance.GetToken().AsAsync<Java.Lang.String>().ConfigureAwait(false);
             var token = javaString.ToString();
             Log.LogDebug("FCM token is \'{Token}\'", token);
@@ -25,6 +26,7 @@ public class AndroidDeviceTokenRetriever(IServiceProvider services) : IDeviceTok
     public async Task DeleteDeviceToken(CancellationToken cancellationToken)
     {
         try {
+            await MauiFirebase.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
             await FirebaseMessaging.Instance.DeleteToken().AsAsync().ConfigureAwait(false);
         }
         catch(Exception e) {
