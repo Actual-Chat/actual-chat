@@ -52,7 +52,11 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<KeepWebViewAliveUI>(c => new (c.UIHub()));
         services.AddScoped<IMauiShare>(c => new MauiShare(c));
         services.AddScoped<AppServerInstanceSelector>(c => new MauiAppServerInstanceSelector(c.UIHub()));
+#if MACOS || MACCATALYST
+        services.AddScoped<SystemSettingsUI>(_ => new MacSystemSettingsUI());
+#else
         services.AddScoped<SystemSettingsUI>(_ => new MauiSystemSettingsUI());
+#endif
         services.AddScoped<ExternalUrlOpener>(c => new MauiExternalUrlOpener(c.UIHub()));
 #if ANDROID
         services.AddScoped<ExternalMapOpener>(c => new AndroidMapOpener(c.AppUIHub()));
