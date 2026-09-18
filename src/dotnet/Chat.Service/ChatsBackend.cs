@@ -149,7 +149,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .Select(c => c.Id)
             .OrderBy(c => c)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
-        return sChatIds.Select(x => (PlaceChatId)ChatId.Parse(x)).Where(x => !x.IsRoot).ToArray();
+        // The prefix also matches the place's thread chats
+        return sChatIds.Select(ChatId.Parse).OfType<PlaceChatId>().Where(x => !x.IsRoot).ToArray();
     }
 
     // [ComputeMethod]

@@ -62,6 +62,31 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
     }
 
     [Fact]
+    public async Task ListPlaceChatIdsSkipsThreads()
+    {
+        var appHost = AppHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var session = tester.Session;
+        await tester.SignInAsUniqueBob();
+
+        var services = tester.AppServices;
+        var chats = services.GetRequiredService<IChats>();
+        var chatsBackend = services.GetRequiredService<IChatsBackend>();
+        var commander = tester.Commander;
+        CancellationToken cancellationToken = default;
+
+        var place = await tester.CreatePlace(false);
+        var (parentChatId, _) = await tester.CreateChat(false, placeId: place.Id);
+        var entries = await InsertEntries(commander, session, parentChatId, ["Hello!"], cancellationToken);
+        var thread = await CreateThreadChat(commander, chats, session, parentChatId, "Thread#1", [entries[0].Id], cancellationToken);
+        thread.Id.IsThread().Should().BeTrue();
+
+        var placeChatIds = await chatsBackend.ListPlaceChatIds(place.Id, cancellationToken);
+        placeChatIds.Should().Contain((PlaceChatId)parentChatId);
+        placeChatIds.Should().NotContain(id => id.Value == thread.Id.Value);
+    }
+
+    [Fact]
     public async Task StarterShouldFollowThreadStartedOnAnotherUsersMessage()
     {
         // arrange
