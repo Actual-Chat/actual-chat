@@ -1,9 +1,10 @@
 using System.Net;
+using ActualChat.OAuth;
 using ActualChat.Testing.Host;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
-namespace ActualChat.OAuth.IntegrationTests;
+namespace ActualChat.Mcp.IntegrationTests;
 
 [Collection(nameof(OAuthCollection))]
 public sealed class RevocationTest(OAuthCollection.AppHostFixture fixture, ITestOutputHelper @out)

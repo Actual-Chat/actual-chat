@@ -1,12 +1,13 @@
 using System.Net;
 using ActualChat.Mcp;
+using ActualChat.OAuth;
 using ActualChat.Testing.Host;
 using Microsoft.AspNetCore.WebUtilities;
 using ModelContextProtocol.Authentication;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
-namespace ActualChat.OAuth.IntegrationTests;
+namespace ActualChat.Mcp.IntegrationTests;
 
 /// <summary>
 /// Drives the official MCP SDK's OAuth client against the server end to end: discovery, DCR, consent

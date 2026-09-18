@@ -3,12 +3,13 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
+using ActualChat.OAuth;
 using ActualChat.Testing.Host;
 using Microsoft.AspNetCore.WebUtilities;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
-namespace ActualChat.OAuth.IntegrationTests;
+namespace ActualChat.Mcp.IntegrationTests;
 
 public abstract class OAuthTestBase<TFixture>(TFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<TFixture>(fixture, @out)

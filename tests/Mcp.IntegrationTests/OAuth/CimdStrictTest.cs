@@ -1,7 +1,7 @@
 using System.Net;
 using ActualChat.Testing.Host;
 
-namespace ActualChat.OAuth.IntegrationTests;
+namespace ActualChat.Mcp.IntegrationTests;
 
 [Collection(nameof(OAuthStrictCollection))]
 public sealed class CimdStrictTest(OAuthStrictCollection.AppHostFixture fixture, ITestOutputHelper @out)

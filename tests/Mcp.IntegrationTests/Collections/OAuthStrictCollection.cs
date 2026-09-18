@@ -1,7 +1,7 @@
 using ActualChat.OAuth.Module;
 using ActualChat.Testing.Host;
 
-namespace ActualChat.OAuth.IntegrationTests;
+namespace ActualChat.Mcp.IntegrationTests;
 
 // Same host as OAuthCollection minus AllowInsecureClientMetadata, so the CIMD host checks are live
 [CollectionDefinition(nameof(OAuthStrictCollection))]

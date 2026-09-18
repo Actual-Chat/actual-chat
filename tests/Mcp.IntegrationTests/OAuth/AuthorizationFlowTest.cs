@@ -1,7 +1,7 @@
 using System.Net;
 using ActualChat.Testing.Host;
 
-namespace ActualChat.OAuth.IntegrationTests;
+namespace ActualChat.Mcp.IntegrationTests;
 
 [Collection(nameof(OAuthCollection))]
 public sealed class AuthorizationFlowTest(OAuthCollection.AppHostFixture fixture, ITestOutputHelper @out)

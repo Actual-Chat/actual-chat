@@ -1,4 +1,4 @@
-namespace ActualChat.OAuth.IntegrationTests;
+namespace ActualChat.Mcp.IntegrationTests;
 
 [Collection(nameof(OAuthCollection))]
 public class DiscoveryTest(OAuthCollection.AppHostFixture fixture, ITestOutputHelper @out)

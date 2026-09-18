@@ -3,7 +3,7 @@ using System.Net;
 using System.Text;
 using ActualLab.Testing.Web;
 
-namespace ActualChat.OAuth.IntegrationTests;
+namespace ActualChat.Mcp.IntegrationTests;
 
 /// <summary>
 /// Serves client ID metadata documents over plain http on a free local port; one document per name.
