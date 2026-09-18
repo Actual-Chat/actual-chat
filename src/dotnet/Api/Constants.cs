@@ -541,4 +541,20 @@ public static partial class Constants
     {
         public const string ServiceKey = nameof(LanguageDetection);
     }
+
+    public static class WebHooks
+    {
+        public const int MaxNameLength = 64;
+        public const int MaxErrorLength = 512;
+        public const int MaxPayloadLength = 256 * 1024;
+        public const int MaxPendingDeliveries = 10_000;
+        public const int DeliveryListLimit = 20;
+        public static readonly TimeSpan DeliveryTimeout = TimeSpan.FromSeconds(10);
+        public static readonly TimeSpan DisableAfter = TimeSpan.FromHours(72);
+        public static readonly TimeSpan SecretOverlap = TimeSpan.FromHours(24);
+        public static readonly TimeSpan DeliveryRetention = TimeSpan.FromDays(30);
+        public static readonly TimeSpan[] RetryDelays = [
+            TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(30),
+            TimeSpan.FromHours(2), TimeSpan.FromHours(12)];
+    }
 }
