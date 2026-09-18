@@ -107,6 +107,12 @@ public class WebHookDeliveryTest(ChatCollection.AppHostFixture fixture, ITestOut
             updatedHook.ConsecutiveFailures.Should().Be(1);
             updatedHook.LastStatusCode.Should().Be(500);
         }, ReceiveTimeout);
+
+        // cleanup - the retry must not fire into whatever later reuses this port
+        await Commander.Call(new WebHooksBackend_Change(
+            WebHookScope.Chat, chatId.Value, hook.Id, null,
+            Change.Update(new WebHookDiff { IsEnabled = false }),
+            hook.CreatedBy));
     }
 
     [Fact]
@@ -173,6 +179,10 @@ public class WebHookDeliveryTest(ChatCollection.AppHostFixture fixture, ITestOut
         var staleCreatedAt = Clocks.SystemClock.Now - Constants.WebHooks.DisableAfter - TimeSpan.FromHours(1);
         var dbHub = AppHost.Services.DbHub<ChatDbContext>();
         await using (var dbContext = await dbHub.CreateDbContext(readWrite: true)) {
+            // The 72 h count starts at the later of the row and the hook's last edit, so both are backdated
+            await dbContext.WebHooks
+                .Where(x => x.Id == hook.Id.Value)
+                .ExecuteUpdateAsync(x => x.SetProperty(h => h.ModifiedAt, staleCreatedAt.ToDateTime()));
             dbContext.Add(new DbWebHookDelivery {
                 Id = staleId,
                 WebHookId = hook.Id.Value,

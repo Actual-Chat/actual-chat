@@ -159,8 +159,11 @@
         };
     }
 
+    // A fail-fast mirror of the server rules (WebHooksBackend.IsAllowedUrl), which stay authoritative
     private static bool IsAllowedUrl(string url) {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return false;
+        if (uri.HostNameType is UriHostNameType.IPv4 or UriHostNameType.IPv6)
             return false;
 
         return uri.Scheme == Uri.UriSchemeHttps

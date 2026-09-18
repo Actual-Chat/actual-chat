@@ -11,8 +11,10 @@ namespace ActualChat.Chat;
 public partial class WebHooksBackend(IServiceProvider services)
     : DbServiceBase<ChatDbContext>(services), IWebHooksBackend
 {
+    private const string HeaderTokenSymbols = "!#$%&'*+-.^_`|~";
     private static readonly HashSet<string> ReservedHeaderNames = new(StringComparer.OrdinalIgnoreCase) {
         "webhook-id", "webhook-timestamp", "webhook-signature", "user-agent", "content-type",
+        "host", "content-length", "transfer-encoding", "connection",
     };
 
     private WebHookSecrets Secrets => field ??= Services.GetRequiredService<WebHookSecrets>();
@@ -22,6 +24,7 @@ public partial class WebHooksBackend(IServiceProvider services)
     private IDbEntityResolver<string, DbWebHook> DbWebHookResolver
         => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbWebHook>>();
     private WebHookDeliverer Deliverer => field ??= Services.GetRequiredService<WebHookDeliverer>();
+    private EgressGuard EgressGuard => field ??= Services.GetRequiredService<EgressGuard>();
     private FlowHub FlowHub => field ??= Services.FlowHub();
     private HostInfo HostInfo => field ??= Services.HostInfo();
 
@@ -70,6 +73,18 @@ public partial class WebHooksBackend(IServiceProvider services)
     }
 
     // [ComputeMethod]
+    public virtual async Task<bool> HasUserScopedHooks(CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        return await dbContext.WebHooks
+            .AnyAsync(x => x.Scope == WebHookScope.User && x.Kind == WebHookKind.Outgoing && x.IsEnabled,
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
     public virtual async Task<ApiArray<WebHookDelivery>> ListDeliveries(
         WebHookId id,
         int limit,
@@ -96,6 +111,7 @@ public partial class WebHooksBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
             InvalidateHook(context);
+            _ = HasUserScopedHooks(default);
             if (change.IsRemove() && context.Operation.Items.KeylessGet<WebHook>() is { } removedHook)
                 _ = ListDeliveries(removedHook.Id, Constants.WebHooks.DeliveryListLimit, default);
             return default!;
@@ -121,7 +137,7 @@ public partial class WebHooksBackend(IServiceProvider services)
                 CreatedAt = now,
                 ModifiedAt = now,
             }.ApplyDiff(createDiff);
-            Validate(webHook);
+            Validate(webHook, createDiff);
             secret = StandardWebhookSigner.NewSecret();
             dbWebHook = new DbWebHook(webHook) { SecretProtected = Secrets.Protect(secret) };
             ApplyCustomHeader(dbWebHook, createDiff);
@@ -139,7 +155,7 @@ public partial class WebHooksBackend(IServiceProvider services)
             }
             if (updateDiff.IsEnabled == false)
                 webHook = webHook with { DisabledReason = WebHookDisabledReason.Manual };
-            Validate(webHook);
+            Validate(webHook, updateDiff);
             dbWebHook.UpdateFrom(webHook);
             ApplyCustomHeader(dbWebHook, updateDiff);
         }
@@ -258,6 +274,7 @@ public partial class WebHooksBackend(IServiceProvider services)
             .FirstOrDefaultAsync(x => x.Id == deliveryId && x.WebHookId == id.Value, cancellationToken)
             .ConfigureAwait(false);
         dbDelivery = dbDelivery.Require();
+        error = CleanError(error);
         var isTerminal = status != WebHookDeliveryStatus.Pending;
         dbDelivery.Status = status;
         dbDelivery.Attempts++;
@@ -287,6 +304,7 @@ public partial class WebHooksBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
             InvalidateHook(context);
+            _ = HasUserScopedHooks(default);
             _ = ListDeliveries(id, Constants.WebHooks.DeliveryListLimit, default);
             return;
         }
@@ -298,7 +316,7 @@ public partial class WebHooksBackend(IServiceProvider services)
         var dbWebHook = await GetDbWebHook(dbContext, id, cancellationToken).ConfigureAwait(false);
         dbWebHook.IsEnabled = false;
         dbWebHook.DisabledReason = reason;
-        dbWebHook.LastError = error;
+        dbWebHook.LastError = CleanError(error);
         dbWebHook.ModifiedAt = now;
         dbWebHook.Version = VersionGenerator.NextVersion(dbWebHook.Version);
         var nowUtc = now.ToDateTime();
@@ -392,17 +410,26 @@ public partial class WebHooksBackend(IServiceProvider services)
         return dbWebHook.Require();
     }
 
-    private void Validate(WebHook webHook)
+    private void Validate(WebHook webHook, WebHookDiff diff)
     {
         if (webHook.Name.IsNullOrWhiteSpace())
             throw StandardError.Constraint("Web hook name is required.");
         if (webHook.Name.Length > Constants.WebHooks.MaxNameLength)
             throw StandardError.Constraint(
                 $"Web hook name can't be longer than {Constants.WebHooks.MaxNameLength} characters.");
-        if (!IsAllowedUrl(webHook.Url, HostInfo))
+        if (!IsSchemeAllowed(webHook.Url, HostInfo, out var uri))
             throw StandardError.Constraint("Web hook URL must be an absolute https:// URL.");
-        if (webHook.CustomHeaderName is { } headerName && ReservedHeaderNames.Contains(headerName))
-            throw StandardError.Constraint("This header name is reserved.");
+        if (!EgressGuard.IsAllowedUri(uri))
+            throw StandardError.Constraint(
+                "Web hook URL must use a public host name, not an IP address or an internal domain.");
+        if (webHook.CustomHeaderName is { } headerName) {
+            if (!headerName.All(IsHeaderTokenChar))
+                throw StandardError.Constraint("Header name can contain only letters, digits and !#$%&'*+-.^_`|~.");
+            if (ReservedHeaderNames.Contains(headerName))
+                throw StandardError.Constraint("This header name is reserved.");
+        }
+        if (diff.CustomHeaderValue is { } headerValue && headerValue.Any(char.IsControl))
+            throw StandardError.Constraint("Header value can't contain line breaks or control characters.");
         if (webHook.Events == WebHookEvents.None)
             throw StandardError.Constraint("Select at least one event.");
         if (webHook.Scope == WebHookScope.User && !webHook.SubscribeNotifications && webHook.ChatIds.Count == 0)
@@ -411,9 +438,12 @@ public partial class WebHooksBackend(IServiceProvider services)
     }
 
     // Checked on save and again at delivery time (WebHookDeliverer), so it's static and shared
-    internal static bool IsAllowedUrl(string url, HostInfo hostInfo)
+    internal static bool IsAllowedUrl(string url, HostInfo hostInfo, EgressGuard egressGuard)
+        => IsSchemeAllowed(url, hostInfo, out var uri) && egressGuard.IsAllowedUri(uri);
+
+    private static bool IsSchemeAllowed(string url, HostInfo hostInfo, [NotNullWhen(true)] out Uri? uri)
     {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        if (!Uri.TryCreate(url, UriKind.Absolute, out uri))
             return false;
         if (uri.Scheme == Uri.UriSchemeHttps)
             return true;
@@ -422,6 +452,21 @@ public partial class WebHooksBackend(IServiceProvider services)
         return uri.Scheme == Uri.UriSchemeHttp
             && uri.IsLoopback
             && (hostInfo.IsDevelopmentInstance || hostInfo.IsTested);
+    }
+
+    private static bool IsHeaderTokenChar(char c)
+        => char.IsAsciiLetterOrDigit(c) || HeaderTokenSymbols.Contains(c);
+
+    // Receiver-controlled text lands in the UI and the log, so it's bounded and printable
+    private static string? CleanError(string? error)
+    {
+        if (error.IsNullOrEmpty())
+            return error;
+
+        var cleaned = new string(error.Where(c => !char.IsControl(c)).ToArray());
+        return cleaned.Length <= Constants.WebHooks.MaxErrorLength
+            ? cleaned
+            : cleaned[..Constants.WebHooks.MaxErrorLength];
     }
 
     private void ApplyCustomHeader(DbWebHook dbWebHook, WebHookDiff diff)

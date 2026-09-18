@@ -1,4 +1,3 @@
-using System.Security;
 using ActualChat.Testing.Host;
 using ActualChat.WebHooks;
 
@@ -53,9 +52,9 @@ public class WebHooksPermissionsTest(ChatCollection.AppHostFixture fixture, ITes
         var aliceList = await aliceWebHooks.List(
             Alice.Session, WebHookScope.Chat, chatId.Value, CancellationToken.None);
 
-        // assert
-        bobList.Should().BeOfType<SecurityException>();
-        bobCreate.Should().BeOfType<SecurityException>();
+        // assert - every scope answers a non-manager the same way
+        bobList.Should().BeOfType<UnauthorizedAccessException>();
+        bobCreate.Should().BeOfType<UnauthorizedAccessException>();
         aliceResult.WebHook.Should().NotBeNull();
         aliceList.Count.Should().Be(1);
     }

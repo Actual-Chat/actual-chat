@@ -43,7 +43,7 @@ public sealed class WebHookPayloads(IServiceProvider services)
         AuthorFull reactionAuthor, CancellationToken cancellationToken)
     {
         var type = e.ToEventType();
-        var eventKey = reaction.Id.Value;
+        var eventKey = $"{reaction.Id.Value}:{reaction.Version}";
         var chat = await ChatBlockFor(entry.ChatId, cancellationToken).ConfigureAwait(false);
         var author = await reactionAuthor
             .ToExternalAuthor(UrlMapper, AvatarUrl, cancellationToken)
@@ -74,9 +74,9 @@ public sealed class WebHookPayloads(IServiceProvider services)
         var chatBlock = ChatBlock(chat);
         object data = type is "chat.created" or "chat.archived"
             ? new { chat = chatBlock }
-            : await ChangedBlock(
-                    chat.Title, chat.Description, chat.MediaId,
-                    old?.Title, old?.Description, old?.MediaId, old is not null, cancellationToken)
+            : await ChangedBlock(new(chat.Title, chat.Description, chat.MediaId, chat.IsPublic),
+                    old is null ? null : new(old.Title, old.Description, old.MediaId, old.IsPublic),
+                    cancellationToken)
                 .ConfigureAwait(false);
         return Serialize(BuildEnvelope(hook, type, eventKey, chatBlock, data));
     }
@@ -87,9 +87,9 @@ public sealed class WebHookPayloads(IServiceProvider services)
     {
         var type = e.ToEventType();
         var eventKey = place.Version.ToString();
-        var data = await ChangedBlock(
-                place.Title, place.Description, place.MediaId,
-                old?.Title, old?.Description, old?.MediaId, old is not null, cancellationToken)
+        var data = await ChangedBlock(new(place.Title, place.Description, place.MediaId, place.IsPublic),
+                old is null ? null : new(old.Title, old.Description, old.MediaId, old.IsPublic),
+                cancellationToken)
             .ConfigureAwait(false);
         return Serialize(BuildEnvelope(hook, type, eventKey, null, data));
     }
@@ -136,6 +136,8 @@ public sealed class WebHookPayloads(IServiceProvider services)
         // so keep halving the kept text until it fits or there's nothing left to cut.
         var cutLength = Math.Min(text.Length, Constants.WebHooks.MaxPayloadLength / 2);
         while (true) {
+            if (cutLength > 0 && char.IsHighSurrogate(text[cutLength - 1]))
+                cutLength--; // Never split a surrogate pair
             var truncated = message with { Text = text[..cutLength], TextTruncated = true };
             json = Serialize(BuildEnvelope(hook, type, eventKey, chat, buildData(truncated)));
             if (json.Length <= Constants.WebHooks.MaxPayloadLength || cutLength == 0)
@@ -183,21 +185,26 @@ public sealed class WebHookPayloads(IServiceProvider services)
             ? MediaUrl(mediaId, cancellationToken)
             : Task.FromResult(avatar.PictureUrl.NullIfEmpty());
 
-    private async Task<object> ChangedBlock(
-        string title, string description, MediaId? mediaId,
-        string? oldTitle, string? oldDescription, MediaId? oldMediaId, bool hasOld,
-        CancellationToken cancellationToken)
+    private async Task<object> ChangedBlock(Changeable current, Changeable? old, CancellationToken cancellationToken)
     {
         // Chat.Picture / Place.Picture are populated for the UI only, so the backend diffs MediaId
-        var pictureUrl = await MediaUrl(mediaId, cancellationToken).ConfigureAwait(false);
-        var changed = new List<string>(3);
-        if (!hasOld || title != oldTitle)
+        var pictureUrl = await MediaUrl(current.MediaId, cancellationToken).ConfigureAwait(false);
+        var changed = new List<string>(4);
+        if (old is null || current.Title != old.Title)
             changed.Add("title");
-        if (!hasOld || description != oldDescription)
+        if (old is null || current.Description != old.Description)
             changed.Add("description");
-        if (!hasOld || mediaId != oldMediaId)
+        if (old is null || current.MediaId != old.MediaId)
             changed.Add("pictureUrl");
-        return new { changed = changed.ToArray(), title, description, pictureUrl };
+        if (old is null || current.IsPublic != old.IsPublic)
+            changed.Add("isPublic");
+        return new {
+            changed = changed.ToArray(),
+            title = current.Title,
+            description = current.Description,
+            pictureUrl,
+            isPublic = current.IsPublic,
+        };
     }
 
     private async Task<string?> MediaUrl(MediaId? mediaId, CancellationToken cancellationToken)
@@ -208,4 +215,9 @@ public sealed class WebHookPayloads(IServiceProvider services)
         var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
         return media is null ? null : UrlMapper.ContentUrl(media.BlobId);
     }
+
+    // Nested types
+
+    // The fields chat.updated and place.updated diff, so both events share one ChangedBlock
+    private sealed record Changeable(string Title, string Description, MediaId? MediaId, bool IsPublic);
 }

@@ -524,6 +524,7 @@ public static partial class Constants
     public static class WebHooks
     {
         public const int MaxNameLength = 64;
+        public const int MaxErrorLength = 512;
         public const int MaxPayloadLength = 256 * 1024;
         public const int MaxPendingDeliveries = 10_000;
         public const int DeliveryListLimit = 20;

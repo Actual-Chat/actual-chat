@@ -153,6 +153,36 @@ public class WebHookPayloadsTest
     }
 
     [Fact]
+    public async Task TruncationShouldNotSplitSurrogatePair()
+    {
+        // arrange
+        var payloads = new WebHookPayloads(CreateServices());
+        var hook = CreateHook(includeText: true);
+        var authorId = AuthorId.New(TestChatId, 5);
+        // One leading char puts every high surrogate at an odd index, so a power-of-two cut lands on one
+        var entry = new TextEntry(ChatEntryId.New(TestChatId, 1), 1) {
+            AuthorId = authorId,
+            BeginsAt = new Moment(DateTime.UtcNow),
+            Content = "a" + string.Concat(Enumerable.Repeat("\U0001F600", 150_000)),
+        };
+        var author = new AuthorFull(UserId.New(), authorId, 1) {
+            Avatar = new Avatar("avatar-1") { Name = "Alexey" },
+        };
+
+        // act
+        var json = await payloads.Message(
+            hook, WebHookEvents.MessagePosted, entry, null, author, CancellationToken.None);
+
+        // assert
+        using var doc = JsonDocument.Parse(json);
+        var message = doc.RootElement.GetProperty("data").GetProperty("message");
+        message.GetProperty("textTruncated").GetBoolean().Should().BeTrue();
+        var text = message.GetProperty("text").GetString()!;
+        char.IsHighSurrogate(text[^1]).Should().BeFalse("the cut backs off to a full pair");
+        text.Should().EndWith("\U0001F600");
+    }
+
+    [Fact]
     public void PingShouldHaveNoChatBlock()
     {
         // arrange

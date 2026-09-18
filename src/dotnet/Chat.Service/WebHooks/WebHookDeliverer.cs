@@ -74,7 +74,9 @@ public sealed class WebHookDeliverer(IServiceProvider services)
             await Record(
                     dbWebHook, dbDelivery.Id, WebHookDeliveryStatus.Pending, attempt, now + retryIn, cancellationToken)
                 .ConfigureAwait(false);
-            if (now - dbDelivery.CreatedAt.ToMoment() <= Constants.WebHooks.DisableAfter)
+            // A hook re-enabled after a long manual pause gets a fresh 72 h, not an instant re-disable
+            var failingSince = Moment.Max(dbDelivery.CreatedAt.ToMoment(), dbWebHook.ModifiedAt.ToMoment());
+            if (now - failingSince <= Constants.WebHooks.DisableAfter)
                 return new Outcome(true, retryIn);
 
             // The line hasn't moved for too long: the receiver is gone for good, as far as we can tell
@@ -150,10 +152,16 @@ public sealed class WebHookDeliverer(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         // Re-asserted at delivery time, so a URL saved under looser rules is never posted to
-        if (!WebHooksBackend.IsAllowedUrl(dbWebHook.Url, HostInfo)
-            || !Uri.TryCreate(dbWebHook.Url, UriKind.Absolute, out var uri)
-            || !await EgressGuard.IsAllowed(uri.DnsSafeHost, cancellationToken).ConfigureAwait(false))
+        if (!WebHooksBackend.IsAllowedUrl(dbWebHook.Url, HostInfo, EgressGuard)
+            || !Uri.TryCreate(dbWebHook.Url, UriKind.Absolute, out var uri))
             return new Attempt(null, "URL is not allowed", 0, IsUnsafeUrl: true);
+
+        switch (await EgressGuard.Check(uri.DnsSafeHost, cancellationToken).ConfigureAwait(false)) {
+        case EgressVerdict.Denied:
+            return new Attempt(null, "URL is not allowed", 0, IsUnsafeUrl: true);
+        case EgressVerdict.Unresolvable:
+            return new Attempt(null, "DNS resolution failed", 0);
+        }
 
         var now = Clocks.SystemClock.Now;
         var timestamp = now.ToIntegerUnixEpoch();
@@ -190,8 +198,12 @@ public sealed class WebHookDeliverer(IServiceProvider services)
             var timeout = Constants.WebHooks.DeliveryTimeout;
             return new Attempt(null, $"no response within {timeout.ToShortString()}", LatencyMs(startedAt));
         }
-        catch (Exception e) when (e is HttpRequestException or IOException) {
-            Log.LogDebug(e, "Delivery {DeliveryId} to {Host} failed", deliveryId, uri.DnsSafeHost);
+        catch (Exception e) when (e is not OperationCanceledException) {
+            // Whatever the send throws is this attempt's failure, never the flow's
+            if (e is HttpRequestException or IOException)
+                Log.LogDebug(e, "Delivery {DeliveryId} to {Host} failed", deliveryId, uri.DnsSafeHost);
+            else
+                Log.LogWarning(e, "Delivery {DeliveryId} to {Host} failed unexpectedly", deliveryId, uri.DnsSafeHost);
             return new Attempt(null, e.Message, LatencyMs(startedAt));
         }
     }

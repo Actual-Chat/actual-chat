@@ -14,6 +14,8 @@ public class WebHooksFanInTest(ChatCollection.AppHostFixture fixture, ITestOutpu
     // Nothing listens there: the delivery flow's attempt is refused at once, and the rows stay Pending
     private static readonly string HookUrl = $"http://localhost:{WebTestHelpers.GetUnusedTcpPort()}/hook";
 
+    private readonly List<WebHook> _createdHooks = [];
+
     private WebClientTester Alice => field ??= fixture.AppHost.NewWebClientTester(Out);
     private WebClientTester Bob => field ??= fixture.AppHost.NewWebClientTester(Out);
     private IWebHooksBackend Backend => field ??= AppHost.Services.GetRequiredService<IWebHooksBackend>();
@@ -27,6 +29,11 @@ public class WebHooksFanInTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
     protected override async Task DisposeAsync()
     {
+        // The hooks point at a port nothing listens on; removed, they can't retry into a later test's receiver
+        foreach (var hook in _createdHooks)
+            await Commander.Call(new WebHooksBackend_Change(
+                    hook.Scope, hook.ScopeId, hook.Id, null, Change.Remove<WebHookDiff>(), hook.CreatedBy))
+                .SilentAwait();
         await Alice.DisposeSilentlyAsync();
         await Bob.DisposeSilentlyAsync();
         await base.DisposeAsync();
@@ -82,6 +89,27 @@ public class WebHooksFanInTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         deliveries[0].EventType.Should().Be("message.posted");
         deliveries[0].Id.Should().NotBe(deliveries[2].Id, "the restored entry has a new version");
         (await ReadPayload(deliveries[0].Id)).Should().Contain("soon gone");
+    }
+
+    [Fact]
+    public async Task ReactionRemovedAndReAddedShouldEnqueueTwoAdds()
+    {
+        // arrange
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Fan-in reaction re-add" });
+        var hook = await CreateHook(Alice, WebHookScope.Chat, chatId.Value, WebHookEvents.Reactions);
+        var entry = await Alice.CreateTextEntry(chatId, "react to me");
+
+        // act - the same emoji toggles the reaction: add, remove, add again
+        await Alice.React(entry.Id, Emojis.Love);
+        await WaitForDeliveries(hook.Id, 1);
+        await Alice.React(entry.Id, Emojis.Love);
+        await WaitForDeliveries(hook.Id, 2);
+        await Alice.React(entry.Id, Emojis.Love);
+
+        // assert - the reaction id is (entry, author), so only the version can tell the re-add apart
+        var deliveries = await WaitForDeliveries(hook.Id, 3);
+        deliveries.Select(x => x.EventType).Should().Equal("reaction.added", "reaction.removed", "reaction.added");
+        deliveries.Select(x => x.Id).Should().OnlyHaveUniqueItems();
     }
 
     [Fact]
@@ -180,16 +208,19 @@ public class WebHooksFanInTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         // arrange
         var (chatId, inviteId) = await Alice.CreateChat(x => x with { Title = "Fan-in personal", IsPublic = true });
         var bob = await Bob.GetOwnAccount();
+        var canary = await CreateHook(Alice, WebHookScope.Chat, chatId.Value, WebHookEvents.Messages);
+        // The first event runs the fan-in (and its "any personal hooks?" gate) before Bob's hook exists
+        await Alice.CreateTextEntry(chatId, "before hook");
+        await WaitForDeliveries(canary.Id, 1);
         var hook = await CreateHook(
             Bob, WebHookScope.User, bob.Id.Value, WebHookEvents.Messages,
             diff => diff with { ChatIds = ApiArray.New(chatId) });
-        var canary = await CreateHook(Alice, WebHookScope.Chat, chatId.Value, WebHookEvents.Messages);
 
         // act - Bob is not a member yet
         await Alice.CreateTextEntry(chatId, "before bob");
 
         // assert
-        await WaitForDeliveries(canary.Id, 1);
+        await WaitForDeliveries(canary.Id, 2);
         (await Backend.ListDeliveries(hook.Id, Constants.WebHooks.DeliveryListLimit, default))
             .Should().BeEmpty("Bob cannot read the chat yet");
 
@@ -201,7 +232,7 @@ public class WebHooksFanInTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         });
         await Alice.CreateTextEntry(chatId, "after bob");
 
-        // assert
+        // assert - the hook created after the first event is picked up, so the gate was invalidated
         var deliveries = await WaitForDeliveries(hook.Id, 1);
         var payload = await ReadPayload(deliveries.Single().Id);
         payload.Should().Contain("after bob");
@@ -240,6 +271,7 @@ public class WebHooksFanInTest(ChatCollection.AppHostFixture fixture, ITestOutpu
             scope, scopeId, null, null, Change.Create(diff), account.Id))).WebHook!;
         await ComputedTest.When(async ct
             => (await Backend.ListByScope(scope, scopeId, ct)).Should().Contain(x => x.Id == hook.Id));
+        _createdHooks.Add(hook);
         return hook;
     }
 

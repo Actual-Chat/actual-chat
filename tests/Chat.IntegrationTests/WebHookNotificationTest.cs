@@ -11,6 +11,8 @@ public class WebHookNotificationTest(ChatCollection.AppHostFixture fixture, ITes
     private static readonly TimeSpan ReceiveTimeout = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan SilenceTimeout = TimeSpan.FromSeconds(5);
 
+    private readonly List<WebHook> _createdHooks = [];
+
     private WebClientTester Alice => field ??= fixture.AppHost.NewWebClientTester(Out);
     private WebClientTester Bob => field ??= fixture.AppHost.NewWebClientTester(Out);
     private IWebHooksBackend Backend => field ??= AppHost.Services.GetRequiredService<IWebHooksBackend>();
@@ -18,6 +20,11 @@ public class WebHookNotificationTest(ChatCollection.AppHostFixture fixture, ITes
 
     protected override async Task DisposeAsync()
     {
+        // A personal hook outlives the test's chat, so it's removed before its receiver's port can be reused
+        foreach (var hook in _createdHooks)
+            await Commander.Call(new WebHooksBackend_Change(
+                    hook.Scope, hook.ScopeId, hook.Id, null, Change.Remove<WebHookDiff>(), hook.CreatedBy))
+                .SilentAwait();
         await Receiver.DisposeAsync();
         await Alice.DisposeSilentlyAsync();
         await Bob.DisposeSilentlyAsync();
@@ -80,6 +87,7 @@ public class WebHookNotificationTest(ChatCollection.AppHostFixture fixture, ITes
         var hook = result.WebHook!;
         await ComputedTest.When(async ct
             => (await Backend.ListActiveForUser(userId, ct)).Should().Contain(x => x.Id == hook.Id));
+        _createdHooks.Add(hook);
         return hook;
     }
 

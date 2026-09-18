@@ -222,9 +222,24 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
             WebHookScope.Chat, chatId.Value, null, null,
             Change.Create(NewDiff() with { CustomHeaderName = "Webhook-Signature", CustomHeaderValue = "x" }),
             alice.Id));
+        var ipLiteralUrl = () => Commander.Call(new WebHooksBackend_Change(
+            WebHookScope.Chat, chatId.Value, null, null,
+            Change.Create(NewDiff(url: "https://203.0.113.5/hook")),
+            alice.Id));
+        var headerNameWithSpace = () => Commander.Call(new WebHooksBackend_Change(
+            WebHookScope.Chat, chatId.Value, null, null,
+            Change.Create(NewDiff() with { CustomHeaderName = "X Token", CustomHeaderValue = "x" }),
+            alice.Id));
+        var headerValueWithNewLine = () => Commander.Call(new WebHooksBackend_Change(
+            WebHookScope.Chat, chatId.Value, null, null,
+            Change.Create(NewDiff() with { CustomHeaderName = "X-Token", CustomHeaderValue = "x\r\nHost: evil" }),
+            alice.Id));
 
         // assert
         await httpUrl.Should().ThrowAsync<InvalidOperationException>().WithMessage("*https*");
+        await ipLiteralUrl.Should().ThrowAsync<InvalidOperationException>().WithMessage("*IP address*");
+        await headerNameWithSpace.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Header name*");
+        await headerValueWithNewLine.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Header value*");
         await noEvents.Should().ThrowAsync<InvalidOperationException>().WithMessage("*event*");
         await emptyName.Should().ThrowAsync<InvalidOperationException>().WithMessage("*name*");
         await userHookWithoutTargets.Should().ThrowAsync<InvalidOperationException>();
@@ -242,11 +257,11 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
         // act
         var webHook = (await Commander.Call(new WebHooksBackend_Change(
             WebHookScope.Chat, chatId.Value, null, null,
-            Change.Create(NewDiff("Local", "http://127.0.0.1:5555/hook", WebHookEvents.Ping)),
+            Change.Create(NewDiff("Local", "http://localhost:5555/hook", WebHookEvents.Ping)),
             alice.Id))).WebHook!;
 
         // assert
-        webHook.Url.Should().Be("http://127.0.0.1:5555/hook");
+        webHook.Url.Should().Be("http://localhost:5555/hook");
     }
 
     [Fact]
@@ -294,20 +309,23 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // act - one failed attempt with a retry scheduled
         var nextAttemptAt = Clocks.SystemClock.Now + TimeSpan.FromMinutes(1);
+        var longError = "boom\r\n" + new string('x', 2 * Constants.WebHooks.MaxErrorLength);
+        var expectedError = "boom" + new string('x', Constants.WebHooks.MaxErrorLength - 4);
         await Commander.Call(new WebHooksBackend_RecordDelivery(
-            webHook.Id, chatId.Value, failedId, WebHookDeliveryStatus.Pending, 503, "boom", 120, nextAttemptAt));
+            webHook.Id, chatId.Value, failedId, WebHookDeliveryStatus.Pending, 503, longError, 120, nextAttemptAt));
 
         // assert
         await ComputedTest.When(async ct => {
             var hook = (await Backend.Get(webHook.Id, ct))!;
             hook.ConsecutiveFailures.Should().Be(1);
             hook.LastStatusCode.Should().Be(503);
-            hook.LastError.Should().Be("boom");
+            hook.LastError.Should().Be(expectedError, "receiver text is capped and stripped of control chars");
             hook.LastActivityAt.Should().NotBeNull();
             var delivery = (await Backend.ListDeliveries(webHook.Id, Constants.WebHooks.DeliveryListLimit, ct))
                 .Single(x => x.Id == failedId);
             delivery.Attempts.Should().Be(1);
             delivery.LastStatusCode.Should().Be(503);
+            delivery.LastError.Should().Be(expectedError);
             delivery.LastLatencyMs.Should().Be(120);
             delivery.NextAttemptAt.Should().NotBeNull();
             (delivery.NextAttemptAt!.Value - nextAttemptAt).Duration()

@@ -14,6 +14,9 @@ public interface IWebHooksBackend : IComputeService, IBackendService
     Task<ApiArray<WebHook>> ListActiveForChat(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<WebHook>> ListActiveForUser(UserId userId, CancellationToken cancellationToken);
+    // Cheap gate in front of the per-member scan chat events do for personal "selected chats" hooks
+    [ComputeMethod]
+    Task<bool> HasUserScopedHooks(CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<WebHookDelivery>> ListDeliveries(WebHookId id, int limit, CancellationToken cancellationToken);
 

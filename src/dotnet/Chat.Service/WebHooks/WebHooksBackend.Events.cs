@@ -58,7 +58,8 @@ public partial class WebHooksBackend
         var (reaction, entry, _, reactionAuthor, changeKind) = eventCommand;
         var e = changeKind == ChangeKind.Remove ? WebHookEvents.ReactionRemoved : WebHookEvents.ReactionAdded;
         var hooks = await HooksForChat(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        await Enqueue(hooks, e, reaction.Id.Value,
+        // The id is (entry, author), so it's the version that tells a re-added reaction from the first one
+        await Enqueue(hooks, e, $"{reaction.Id.Value}:{reaction.Version}",
                 hook => Payloads.Reaction(hook, e, reaction, entry, reactionAuthor, cancellationToken),
                 cancellationToken)
             .ConfigureAwait(false);
@@ -235,6 +236,9 @@ public partial class WebHooksBackend
     {
         // Chat + place hooks for the chat, plus personal "selected chats" hooks of members who can still read it
         var hooks = (await ListActiveForChat(chatId, cancellationToken).ConfigureAwait(false)).ToList();
+        if (!await HasUserScopedHooks(cancellationToken).ConfigureAwait(false))
+            return hooks;
+
         var userIds = await AuthorsBackend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
         foreach (var userId in userIds) {
             var personal = await ListActiveForUser(userId, cancellationToken).ConfigureAwait(false);
@@ -265,5 +269,6 @@ public partial class WebHooksBackend
         => oldChat is null
             || chat.Title != oldChat.Title
             || chat.Description != oldChat.Description
-            || chat.MediaId != oldChat.MediaId;
+            || chat.MediaId != oldChat.MediaId
+            || chat.IsPublic != oldChat.IsPublic;
 }

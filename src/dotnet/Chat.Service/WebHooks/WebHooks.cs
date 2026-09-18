@@ -56,13 +56,14 @@ public class WebHooks(IServiceProvider services) : IWebHooks
         var (session, scope, scopeId, id, change) =
             (command.Session, command.Scope, command.ScopeId, command.Id, command.Change);
         change.RequireValid();
+        var account = await RequireManager(session, scope, scopeId, cancellationToken).ConfigureAwait(false);
         if (!change.IsCreate(out _)) {
-            var existing = await Backend.Get(id!, cancellationToken).Require().ConfigureAwait(false);
+            var hookId = id ?? throw StandardError.Constraint("Web hook id is required.");
+            var existing = await Backend.Get(hookId, cancellationToken).Require().ConfigureAwait(false);
             if (existing.Scope != scope || existing.ScopeId != scopeId)
                 throw StandardError.Constraint("Scope mismatch.");
         }
 
-        var account = await RequireManager(session, scope, scopeId, cancellationToken).ConfigureAwait(false);
         var backendCommand =
             new WebHooksBackend_Change(scope, scopeId, id, command.ExpectedVersion, change, account.Id);
         return await Commander.Call(backendCommand, true, cancellationToken).ConfigureAwait(false);
@@ -122,18 +123,8 @@ public class WebHooks(IServiceProvider services) : IWebHooks
         if (!AccountFull.MustBeActive.IsSatisfied(account))
             return null;
 
-        switch (scope) {
-        case WebHookScope.Chat:
-            var chatRules = await Chats.GetRules(session, ChatId.Parse(scopeId), cancellationToken)
-                .ConfigureAwait(false);
-            return chatRules.CanModerate() ? account : null;
-        case WebHookScope.Place:
-            var placeRules = await Places.GetRules(session, PlaceId.Parse(scopeId), cancellationToken)
-                .ConfigureAwait(false);
-            return placeRules.IsOwner() ? account : null;
-        default:
-            return account.Id.Value == scopeId ? account : null;
-        }
+        var isManager = await IsManager(session, scope, scopeId, account, cancellationToken).ConfigureAwait(false);
+        return isManager ? account : null;
     }
 
     private async Task<AccountFull> RequireManager(
@@ -144,23 +135,34 @@ public class WebHooks(IServiceProvider services) : IWebHooks
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeActive);
+        if (await IsManager(session, scope, scopeId, account, cancellationToken).ConfigureAwait(false))
+            return account;
+
+        throw StandardError.Unauthorized(scope switch {
+            WebHookScope.Chat => "Only chat moderators can manage its integrations.",
+            WebHookScope.Place => "Only place owners can manage its integrations.",
+            _ => "You can manage only your own web hooks.",
+        });
+    }
+
+    private async Task<bool> IsManager(
+        Session session,
+        WebHookScope scope,
+        string scopeId,
+        AccountFull account,
+        CancellationToken cancellationToken)
+    {
         switch (scope) {
         case WebHookScope.Chat:
             var chatRules = await Chats.GetRules(session, ChatId.Parse(scopeId), cancellationToken)
                 .ConfigureAwait(false);
-            chatRules.Require(ChatPermissions.Moderate);
-            break;
+            return chatRules.CanModerate();
         case WebHookScope.Place:
             var placeRules = await Places.GetRules(session, PlaceId.Parse(scopeId), cancellationToken)
                 .ConfigureAwait(false);
-            if (!placeRules.IsOwner())
-                throw StandardError.Unauthorized("Only place owners can manage its integrations.");
-            break;
+            return placeRules.IsOwner();
         default:
-            if (account.Id.Value != scopeId)
-                throw StandardError.Unauthorized("You can manage only your own web hooks.");
-            break;
+            return account.Id.Value == scopeId;
         }
-        return account;
     }
 }
