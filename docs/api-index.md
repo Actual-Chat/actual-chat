@@ -310,7 +310,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `IPasskeyClient` — platform passkey (WebAuthn) ceremonies, one implementation per platform (web/Android/Apple)
 - `ThemeUI` — theme (light/dark) management
 - `ReconnectUI` — RPC connection state monitoring
-- `AppUpdateUI` — whether this client is behind its store, and the tap that updates it
+- `AppUpdateUI` — whether this client is behind its store or already has the native app installed, and the taps that update it or open it
 
 ### Components
 - `VirtualList<T>` — abstract base of the two virtualized lists (data source, JS bridge, visibility)

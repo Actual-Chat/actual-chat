@@ -1437,6 +1437,7 @@
   "Download_QrCode_Format": "{0} QR kodu",
   "Download_GetApp_Format": "{0} edinin",
   "Download_GetAppBanner_Format": "{0}'u yükle",
+  "Download_OpenAppBanner_Format": "{0}'u aç",
 
   "AppUpdate_Banner_Format": "{0}'u güncelleyin",
   "AppUpdate_ReloadTitle_Format": "{0} güncellensin mi?",

@@ -9,6 +9,16 @@
         return;
 
     var isUpdate = mode == BannerMode.Update;
+    var title = mode switch {
+        BannerMode.Update => L.AppUpdate_Banner_Format(CoreConstants.AppName),
+        BannerMode.Open => L.Download_OpenAppBanner_Format(CoreConstants.AppName),
+        _ => L.Download_GetAppBanner_Format(CoreConstants.AppName),
+    };
+    var icon = mode switch {
+        BannerMode.Update => "icon-refresh",
+        BannerMode.Open => "icon-external-link",
+        _ => "icon-download",
+    };
 }
 
 <div class="download-app-banner">
@@ -17,11 +27,9 @@
         @onclick="@OnClick">
         <div class="download-app-banner-filler"></div>
         <div class="download-app-banner-title">
-            @(isUpdate
-                ? L.AppUpdate_Banner_Format(CoreConstants.AppName)
-                : L.Download_GetAppBanner_Format(CoreConstants.AppName))
+            @title
         </div>
-        <i class="@(isUpdate ? "icon-refresh" : "icon-download")"></i>
+        <i class="@icon"></i>
         <div class="download-app-banner-filler"></div>
         @if (CanBeClosed && !isUpdate) {
             <HeaderButton
@@ -47,8 +55,11 @@
             });
 
     private Task OnClick() {
-        if (State.Value == BannerMode.Update)
+        var mode = State.Value;
+        if (mode == BannerMode.Update)
             return AppUpdateUI.Update();
+        if (mode == BannerMode.Open)
+            return AppUpdateUI.OpenApp();
 
         ModalUI.Show(new DownloadAppModal.Model());
         return Task.CompletedTask;
@@ -72,12 +83,17 @@
 
         if (HostInfo.HostKind == HostKind.MauiApp && (HostInfo.AppKind.IsMobile() || CanBeClosed))
             return BannerMode.Hidden; // No banner on mobile + only non-closable banner (in SettingsPanel) on Windows
+
+        // Open follows the same visibility rules as Install - it's still the same banner, just
+        // pointing at an app that's already there rather than at the store.
+        var isAppInstalled = await AppUpdateUI.IsAppInstalled(cancellationToken).ConfigureAwait(false);
+        var mode = isAppInstalled ? BannerMode.Open : BannerMode.Install;
         if (!CanBeClosed)
-            return BannerMode.Install;
+            return mode;
 
         await _isDismissed.WhenRead.ConfigureAwait(false);
         var box = await _isDismissed.Use(cancellationToken).ConfigureAwait(false);
-        return box.Value ? BannerMode.Hidden : BannerMode.Install;
+        return box.Value ? BannerMode.Hidden : mode;
     }
 
     // Nested types
@@ -85,6 +101,7 @@
     public enum BannerMode {
         Hidden = 0,
         Install,
+        Open,
         Update,
     }
 }

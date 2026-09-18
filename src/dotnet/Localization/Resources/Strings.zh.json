@@ -1437,6 +1437,7 @@
   "Download_QrCode_Format": "{0} 二维码",
   "Download_GetApp_Format": "获取 {0}",
   "Download_GetAppBanner_Format": "安装 {0}",
+  "Download_OpenAppBanner_Format": "打开 {0}",
 
   "AppUpdate_Banner_Format": "更新 {0}",
   "AppUpdate_ReloadTitle_Format": "更新 {0}？",

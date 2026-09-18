@@ -385,6 +385,13 @@ See also: [C# Full API Index](api-index-full.md), [Condensed API Index](api-inde
 - `YoutubePlayer` (class) - YouTube video player.
 
 
+## UI Blazor — App Update (`src/dotnet/UI.Blazor/Services/AppUpdateUI`)
+
+- `AppUpdateUI` (class) - Native-app probes behind `AppUpdateUI.cs`: `getInstalledAppIds` over
+  `navigator.getInstalledRelatedApps()` (Chromium-only, matched against the manifest's
+  `related_applications`), and `openApp` for handing an `intent://` URL to the installed app.
+
+
 ## UI Blazor — Passkeys (`src/dotnet/UI.Blazor/Services/PasskeyUI`)
 
 - `PasskeyResult` (interface) - Ceremony outcome: either a WebAuthn JSON response or an error.

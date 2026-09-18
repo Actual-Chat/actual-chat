@@ -17,6 +17,10 @@
     <meta-data
       android:name="google_analytics_adid_collection_enabled"
       android:value="false" />
+    <!-- Lets our own web clients see this app via navigator.getInstalledRelatedApps() -->
+    <meta-data
+      android:name="asset_statements"
+      android:resource="@string/asset_statements" />
     <!--
     The photo picker is not available on devices before ANDROID 11 (API level 30).
     See https://developer.android.com/training/data-storage/shared/photopicker#device-availability for details.

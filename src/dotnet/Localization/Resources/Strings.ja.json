@@ -1437,6 +1437,7 @@
   "Download_QrCode_Format": "{0} の QR コード",
   "Download_GetApp_Format": "{0} を入手",
   "Download_GetAppBanner_Format": "{0} をインストール",
+  "Download_OpenAppBanner_Format": "{0} を開く",
 
   "AppUpdate_Banner_Format": "{0} を更新",
   "AppUpdate_ReloadTitle_Format": "{0} を更新しますか？",

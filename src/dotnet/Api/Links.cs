@@ -19,31 +19,31 @@ public static class Links
     public static readonly LocalUrl TestPageHome = "/test/blazor";
 
 
-    public static LocalUrl Chat(ChatEntryId? ChatEntryId)
-        => ChatEntryId == null
+    public static LocalUrl Chat(ChatEntryId? chatEntryId)
+        => chatEntryId == null
             ? "/chat"
-            : $"/chat/{ChatEntryId.ChatId.Value}{TextEntryQuery(ChatEntryId.LocalId)}";
+            : $"/chat/{chatEntryId.ChatId.Value}{TextEntryQuery(chatEntryId.LocalId)}";
 
-    public static LocalUrl Chat(ChatId chatId, long ChatEntryId = 0)
-        => $"/chat/{chatId.Value}{TextEntryQuery(ChatEntryId)}";
+    public static LocalUrl Chat(ChatId chatId, long chatEntryId = 0)
+        => $"/chat/{chatId.Value}{TextEntryQuery(chatEntryId)}";
 
-    public static LocalUrl Chat(AliasInfo<ChatId> aliasInfo, long ChatEntryId = 0)
+    public static LocalUrl Chat(AliasInfo<ChatId> aliasInfo, long chatEntryId = 0)
     {
         var chatId = aliasInfo.Id;
         if (chatId is PlaceChatId)
             throw new ArgumentOutOfRangeException(nameof(aliasInfo), "Place chat requires place alias info.");
 
         return aliasInfo.AliasId is { } aliasId
-            ? $"/chat/@{aliasId.Value}{TextEntryQuery(ChatEntryId)}"
-            : Chat(chatId, ChatEntryId);
+            ? $"/chat/@{aliasId.Value}{TextEntryQuery(chatEntryId)}"
+            : Chat(chatId, chatEntryId);
     }
 
-    public static LocalUrl Chat(AliasInfo<ChatId> aliasInfo, AliasInfo<PlaceId>? placeAliasInfo, long ChatEntryId = 0)
+    public static LocalUrl Chat(AliasInfo<ChatId> aliasInfo, AliasInfo<PlaceId>? placeAliasInfo, long chatEntryId = 0)
     {
         var chatId = aliasInfo.Id;
         if (chatId is not PlaceChatId placeChatId)
             return placeAliasInfo is null
-                ? Chat(aliasInfo, ChatEntryId)
+                ? Chat(aliasInfo, chatEntryId)
                 : throw new ArgumentOutOfRangeException(nameof(placeAliasInfo),
                     "Chat doesn't belong to a place, but place alias info is provided.");
 
@@ -54,12 +54,12 @@ public static class Links
                 "Chat belongs to a place that differs from place alias info.");
 
         if (placeAliasInfo.AliasId is null) // Should we allow chat aliases for places w/o an alias?
-            return Chat(chatId, ChatEntryId);
+            return Chat(chatId, chatEntryId);
 
         var fullAlias = aliasInfo.AliasId is not { } aliasId
             ? string.Concat(placeAliasInfo.AliasId.Value, Separator, placeChatId.LocalChatId)
             : string.Concat(placeAliasInfo.AliasId.Value, Separator, AliasPrefix, aliasId.Value);
-        return $"/chat/@{fullAlias}" + TextEntryQuery(ChatEntryId);
+        return $"/chat/@{fullAlias}" + TextEntryQuery(chatEntryId);
     }
 
     public static LocalUrl EmbeddedChat(ChatId chatId, long textEntryLid = 0)
@@ -101,7 +101,9 @@ public static class Links
 
     public static class Apps
     {
-        public static readonly string Android = "https://play.google.com/store/apps/details?id=chat.actual.app";
+        public static readonly string Android =
+            $"https://play.google.com/store/apps/details?id={Constants.AppIds.Prod}";
+
         public static readonly string iOS = "https://apps.apple.com/us/app/actual-chat/id6450874551";
         public static readonly string Windows = "https://www.microsoft.com/store/apps/9N6RWRD9FMS2";
         // The two custom-scheme links open the store app on the product page; their https

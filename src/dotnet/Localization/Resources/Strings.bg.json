@@ -1437,6 +1437,7 @@
   "Download_QrCode_Format": "QR код — {0}",
   "Download_GetApp_Format": "Вземи {0}",
   "Download_GetAppBanner_Format": "Инсталирай {0}",
+  "Download_OpenAppBanner_Format": "Отвори {0}",
 
   "AppUpdate_Banner_Format": "Обновете {0}",
   "AppUpdate_ReloadTitle_Format": "Да обновим ли {0}?",
