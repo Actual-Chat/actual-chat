@@ -10,6 +10,7 @@ public sealed class WebShareInfo : UIServiceBase<UIHub>, IDisposable, IWebShareI
     private readonly DotNetObjectReference<IWebShareInfoBackend>? _backendRef;
     private bool _canShareText;
     private bool _canShareLink;
+    private bool _canShareFile;
 
     private Task WhenReady => _whenReadySource.Task;
 
@@ -40,12 +41,19 @@ public sealed class WebShareInfo : UIServiceBase<UIHub>, IDisposable, IWebShareI
         return _canShareLink;
     }
 
+    public async ValueTask<bool> CanShareFile()
+    {
+        await WhenReady;
+        return _canShareFile;
+    }
+
     [JSInvokable]
     public void OnInitialized(IWebShareInfoBackend.InitResult initResult)
     {
         Log.LogDebug("OnInitialized: {InitResult}", initResult);
         _canShareText = initResult.CanShareText;
         _canShareLink = initResult.CanShareLink;
+        _canShareFile = initResult.CanShareFile;
         _whenReadySource.TrySetResult();
     }
 }

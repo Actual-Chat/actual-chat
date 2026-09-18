@@ -67,6 +67,7 @@ describe('share media as a new message', () => {
         // wait for it so we know the upload was accepted before posting.
         await page.locator('.attachment-list-wrapper').first()
             .waitFor({ state: 'visible', timeout: 15_000 });
+        await page.waitForTimeout(2_000);
 
         const messageInput = page.locator('#message-input .editor-content[contenteditable="true"]').first();
         await messageInput.click({ force: true });
@@ -105,13 +106,14 @@ describe('share media as a new message', () => {
         await page.screenshot({ path: shot('share-viewer-open') });
 
         // act — click the Share button in the viewer header
-        const shareBtn = viewerHeader.locator('button:has(i.icon-share)').first();
+        const shareBtn = viewerHeader.locator('button:has(i.icon-share-2)').first();
         await shareBtn.waitFor({ state: 'visible', timeout: 5_000 });
         await shareBtn.click();
 
         // assert — ShareModal appears
         const shareModal = page.locator('.share-modal').first();
         await shareModal.waitFor({ state: 'visible', timeout: 10_000 });
+        await page.waitForTimeout(1_000);
         await page.screenshot({ path: shot('share-modal-open') });
 
         // act — pick the first contact in the list
