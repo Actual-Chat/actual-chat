@@ -188,6 +188,7 @@
   "WebHook_Enabled": "Uključeno",
   "WebHook_RecentDeliveries": "Nedavne isporuke",
   "WebHook_NoDeliveries": "Još nema isporuka",
+  "WebHook_DeliveryOutcome_Format": "{0} · {1} ms",
   "WebHook_Redeliver": "Ponovo isporučite",
   "WebHook_RotateSecret": "Zamijenite tajnu",
   "WebHook_RotateSecretConfirm": "Trenutna tajna će raditi još 24 sata kako biste mogli ažurirati primaoca. Nastaviti?",

@@ -188,6 +188,7 @@
   "WebHook_Enabled": "Habilitado",
   "WebHook_RecentDeliveries": "Entregas recientes",
   "WebHook_NoDeliveries": "Aún no hay entregas",
+  "WebHook_DeliveryOutcome_Format": "{0} · {1} ms",
   "WebHook_Redeliver": "Reenviar",
   "WebHook_RotateSecret": "Rotar secreto",
   "WebHook_RotateSecretConfirm": "El secreto actual seguirá funcionando durante 24 horas para que puedas actualizar el receptor. ¿Continuar?",

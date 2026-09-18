@@ -216,6 +216,8 @@ public static class LocalizedStringsLocalizerExt
         public string WebHook_Enabled => l["WebHook_Enabled"].Value;
         public string WebHook_RecentDeliveries => l["WebHook_RecentDeliveries"].Value;
         public string WebHook_NoDeliveries => l["WebHook_NoDeliveries"].Value;
+        public string WebHook_DeliveryOutcome_Format(object arg0, object arg1)
+            => l["WebHook_DeliveryOutcome_Format", arg0, arg1].Value;
         public string WebHook_Redeliver => l["WebHook_Redeliver"].Value;
         public string WebHook_RotateSecret => l["WebHook_RotateSecret"].Value;
         public string WebHook_RotateSecretConfirm => l["WebHook_RotateSecretConfirm"].Value;

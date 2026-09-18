@@ -188,6 +188,7 @@
   "WebHook_Enabled": "Включено",
   "WebHook_RecentDeliveries": "Последни доставки",
   "WebHook_NoDeliveries": "Все още няма доставки",
+  "WebHook_DeliveryOutcome_Format": "{0} · {1} мс",
   "WebHook_Redeliver": "Изпратете отново",
   "WebHook_RotateSecret": "Сменете тайната",
   "WebHook_RotateSecretConfirm": "Текущата тайна ще продължи да работи 24 часа, за да успеете да обновите получателя. Да продължим ли?",

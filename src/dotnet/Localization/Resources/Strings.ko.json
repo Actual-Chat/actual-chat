@@ -188,6 +188,7 @@
   "WebHook_Enabled": "활성화됨",
   "WebHook_RecentDeliveries": "최근 전송 내역",
   "WebHook_NoDeliveries": "아직 전송 내역이 없습니다",
+  "WebHook_DeliveryOutcome_Format": "{0} · {1}ms",
   "WebHook_Redeliver": "다시 전송",
   "WebHook_RotateSecret": "시크릿 교체",
   "WebHook_RotateSecretConfirm": "현재 시크릿은 수신자를 업데이트할 수 있도록 24시간 동안 계속 작동합니다. 계속하시겠습니까?",

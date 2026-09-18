@@ -188,6 +188,7 @@
   "WebHook_Enabled": "Zapnuto",
   "WebHook_RecentDeliveries": "Poslední doručení",
   "WebHook_NoDeliveries": "Zatím žádná doručení",
+  "WebHook_DeliveryOutcome_Format": "{0} · {1} ms",
   "WebHook_Redeliver": "Doručit znovu",
   "WebHook_RotateSecret": "Změnit tajemství",
   "WebHook_RotateSecretConfirm": "Aktuální tajemství bude fungovat ještě 24 hodin, abyste mohli aktualizovat příjemce. Pokračovat?",

@@ -22,7 +22,9 @@
                     @if (delivery.LastError is { } error) {
                         <span class="c-error">@Truncate(error)</span>
                     } else if (delivery.LastStatusCode is { } statusCode) {
-                        <span class="c-outcome">@statusCode · @delivery.LastLatencyMs ms</span>
+                        <span class="c-outcome">
+                            @L.WebHook_DeliveryOutcome_Format(statusCode, delivery.LastLatencyMs ?? 0)
+                        </span>
                     }
                 </Caption>
                 <Right>

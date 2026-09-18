@@ -188,6 +188,7 @@
   "WebHook_Enabled": "Aktif",
   "WebHook_RecentDeliveries": "Pengiriman terbaru",
   "WebHook_NoDeliveries": "Belum ada pengiriman",
+  "WebHook_DeliveryOutcome_Format": "{0} · {1} ms",
   "WebHook_Redeliver": "Kirim ulang",
   "WebHook_RotateSecret": "Ganti rahasia",
   "WebHook_RotateSecretConfirm": "Rahasia saat ini akan tetap berfungsi selama 24 jam agar Anda dapat memperbarui penerima. Lanjutkan?",

@@ -188,6 +188,7 @@
   "WebHook_Enabled": "Включено",
   "WebHook_RecentDeliveries": "Последние доставки",
   "WebHook_NoDeliveries": "Пока нет доставок",
+  "WebHook_DeliveryOutcome_Format": "{0} · {1} мс",
   "WebHook_Redeliver": "Доставить снова",
   "WebHook_RotateSecret": "Сменить секрет",
   "WebHook_RotateSecretConfirm": "Текущий секрет будет работать ещё 24 часа, чтобы вы успели обновить получателя. Продолжить?",

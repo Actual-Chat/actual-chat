@@ -32,19 +32,6 @@
     @apply text-03;
 }
 
-/* ── Chat settings row ── */
-
-.tile-item.item-integrations .tile-item-right {
-    @apply min-w-8 justify-end;
-    @apply text-03;
-}
-.tile-item.item-integrations .tile-item-right .c-count {
-    @apply whitespace-nowrap;
-}
-.tile-item.item-integrations .tile-item-right i {
-    @apply -ml-2;
-}
-
 /* ── Modal (create / detail) ── */
 
 .web-hook-modal .form-block .c-title {
