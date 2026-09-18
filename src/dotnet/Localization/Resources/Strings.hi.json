@@ -791,7 +791,7 @@
   "Onboarding_Telemetry_Suffix": ", हालाँकि भविष्य में हम अन्य सेवाओं का उपयोग कर सकते हैं।",
   "Onboarding_TelemetryConsent_Format": "अपने टेलीमेट्री डेटा के संग्रह और प्रोसेसिंग के लिए सहमति देकर {0} को बेहतर बनाने में हमारी मदद करें।",
   "Onboarding_DeclineTelemetry": "अस्वीकारें",
-  "Onboarding_EnableTelemetry": "टेलीमेट्री चालू करें",
+  "Onboarding_AcceptTelemetry": "स्वीकारें",
   "Onboarding_RequiredPermissions": "आवश्यक अनुमतियाँ",
   "Onboarding_AllPermissionsGranted": "सभी आवश्यक अनुमतियाँ पहले से दी जा चुकी हैं।",
   "Onboarding_PrivacyPolicy": "गोपनीयता नीति",

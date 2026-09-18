@@ -817,7 +817,7 @@ public static class LocalizedStringsLocalizerExt
         public string Onboarding_TelemetryConsent_Format(object arg0)
             => l["Onboarding_TelemetryConsent_Format", arg0].Value;
         public string Onboarding_DeclineTelemetry => l["Onboarding_DeclineTelemetry"].Value;
-        public string Onboarding_EnableTelemetry => l["Onboarding_EnableTelemetry"].Value;
+        public string Onboarding_AcceptTelemetry => l["Onboarding_AcceptTelemetry"].Value;
         public string Onboarding_RequiredPermissions => l["Onboarding_RequiredPermissions"].Value;
         public string Onboarding_AllPermissionsGranted => l["Onboarding_AllPermissionsGranted"].Value;
         public string Onboarding_PrivacyPolicy => l["Onboarding_PrivacyPolicy"].Value;

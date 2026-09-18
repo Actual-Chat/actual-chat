@@ -791,7 +791,7 @@
   "Onboarding_Telemetry_Suffix": ", meski kami mungkin memakai layanan lain di kemudian hari.",
   "Onboarding_TelemetryConsent_Format": "Bantu kami meningkatkan {0} dengan menyetujui pengumpulan dan pemrosesan data telemetri Anda.",
   "Onboarding_DeclineTelemetry": "Tolak",
-  "Onboarding_EnableTelemetry": "Aktifkan telemetri",
+  "Onboarding_AcceptTelemetry": "Setuju",
   "Onboarding_RequiredPermissions": "Izin yang diperlukan",
   "Onboarding_AllPermissionsGranted": "Semua izin yang diperlukan sudah diberikan.",
   "Onboarding_PrivacyPolicy": "Kebijakan Privasi",

@@ -791,7 +791,7 @@
   "Onboarding_Telemetry_Suffix": ", mặc dù trong tương lai chúng tôi có thể dùng dịch vụ khác.",
   "Onboarding_TelemetryConsent_Format": "Hãy giúp chúng tôi cải thiện {0} bằng cách đồng ý cho thu thập và xử lý dữ liệu đo từ xa của bạn.",
   "Onboarding_DeclineTelemetry": "Từ chối",
-  "Onboarding_EnableTelemetry": "Bật đo từ xa",
+  "Onboarding_AcceptTelemetry": "Đồng ý",
   "Onboarding_RequiredPermissions": "Quyền cần thiết",
   "Onboarding_AllPermissionsGranted": "Tất cả quyền cần thiết đã được cấp.",
   "Onboarding_PrivacyPolicy": "Chính sách quyền riêng tư",

@@ -791,7 +791,7 @@
   "Onboarding_Telemetry_Suffix": " (gelecekte başka hizmetler de kullanabiliriz).",
   "Onboarding_TelemetryConsent_Format": "Telemetri verilerinin toplanmasına ve işlenmesine izin vererek {0} uygulamasını geliştirmemize yardım edin.",
   "Onboarding_DeclineTelemetry": "Reddedin",
-  "Onboarding_EnableTelemetry": "Telemetriyi etkinleştir",
+  "Onboarding_AcceptTelemetry": "İzin verin",
   "Onboarding_RequiredPermissions": "Gerekli izinler",
   "Onboarding_AllPermissionsGranted": "Gerekli tüm izinler zaten verilmiş.",
   "Onboarding_PrivacyPolicy": "Gizlilik Politikası",

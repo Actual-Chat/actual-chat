@@ -791,7 +791,7 @@
   "Onboarding_Telemetry_Suffix": " 处理，未来我们可能会使用其他服务。",
   "Onboarding_TelemetryConsent_Format": "同意收集和处理你的遥测数据，帮助我们改进 {0}。",
   "Onboarding_DeclineTelemetry": "拒绝",
-  "Onboarding_EnableTelemetry": "启用遥测",
+  "Onboarding_AcceptTelemetry": "同意",
   "Onboarding_RequiredPermissions": "所需权限",
   "Onboarding_AllPermissionsGranted": "所有必要权限均已授予。",
   "Onboarding_PrivacyPolicy": "隐私政策",
