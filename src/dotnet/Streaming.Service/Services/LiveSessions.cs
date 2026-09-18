@@ -22,6 +22,8 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private ILiveVideoBackend LiveVideoBackend => field ??= Services.GetRequiredService<ILiveVideoBackend>();
     private ILiveSessionsBackend Backend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
+    private ICallsBackend CallsBackend => field ??= Services.GetRequiredService<ICallsBackend>();
+    private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     private PeerParticipations PeerParticipations => field ??= Services.GetRequiredService<PeerParticipations>();
     private IAudioStreamingBackend AudioStreamingBackend
         => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
@@ -114,6 +116,13 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
             CallStatus.Busy => CallerStatus.Busy,
             _ => CallerStatus.Dialing,   // Dialing (None can't reach here - callState is null then)
         };
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<UserCall?> GetMyCall(Session session, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        return await CallsBackend.GetUserCall(account.Id, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task DismissCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken)
