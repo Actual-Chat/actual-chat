@@ -1,0 +1,17 @@
+.app-review-modal .c-app-review {
+    @apply flex-y items-center;
+    @apply gap-y-4;
+    @apply text-center;
+}
+.app-review-modal .c-title {
+    @apply text-body-500 text-01;
+}
+.app-review-modal .c-text {
+    @apply text-02;
+    @apply text-wrap;
+}
+.app-review-modal .c-actions {
+    @apply flex-y items-stretch;
+    @apply w-full;
+    @apply gap-y-2 mt-2;
+}

@@ -1,0 +1,75 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<UIHub>
+@implements IModalView<AppReviewModal.Model>
+
+<DialogFrame Class="app-review-modal modal-sm" HasHeader="false">
+    <Body>
+    <div class="c-app-review">
+        @switch (_step) {
+            case Step.OpeningRequest:
+                <Kitty Name="app-review-small-team-kittens"/>
+                <p class="c-text">
+                    We're a tiny team. Our competitors are giants. We believe chat can be so much
+                    better—and we've put our hearts into proving it. Please help us grow.
+                </p>
+                <div class="c-actions">
+                    <Button Class="btn-primary btn-w-full" Click="@(() => SetStep(Step.ThankYou))">
+                        Leave a review
+                    </Button>
+                    <Button Class="btn-transparent btn-w-full" Click="@(() => SetStep(Step.AreYouSure))">
+                        Maybe later
+                    </Button>
+                </div>
+                break;
+            case Step.ThankYou:
+                <Kitty Name="app-review-happy-thank-you"/>
+                <p class="c-title">Thank you!</p>
+                <p class="c-text">Your support means a lot to our little team.</p>
+                <div class="c-actions">
+                    <Button Class="btn-primary btn-w-full" Click="@(() => Modal.Close())">Done</Button>
+                </div>
+                break;
+            case Step.AreYouSure:
+                <Kitty Name="app-review-big-eyes-pleading"/>
+                <p class="c-title">Are you sure?</p>
+                <p class="c-text">
+                    A better chat app needs people willing to give it a chance. Your review—or an
+                    invitation to a friend—can help us find them.
+                </p>
+                <div class="c-actions">
+                    <Button Class="btn-primary btn-w-full" Click="@(() => SetStep(Step.ThankYou))">
+                        Leave a review
+                    </Button>
+                    <Button Class="btn-modal btn-w-full" Click="@(() => SetStep(Step.ThankYou))">
+                        Invite friends
+                    </Button>
+                    <Button Class="btn-transparent btn-w-full" Click="@(() => SetStep(Step.Farewell))">
+                        Not right now
+                    </Button>
+                </div>
+                break;
+            case Step.Farewell:
+                <Kitty Name="app-review-sad-farewell"/>
+                <p class="c-text">No worries. You can always leave a review from Settings.</p>
+                <div class="c-actions">
+                    <Button Class="btn-primary btn-w-full" Click="@(() => Modal.Close())">Close</Button>
+                </div>
+                break;
+        }
+    </div>
+    </Body>
+</DialogFrame>
+
+@code {
+    private Step _step = Step.OpeningRequest;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private void SetStep(Step step)
+        => _step = step;
+
+    public enum Step { OpeningRequest, ThankYou, AreYouSure, Farewell }
+
+    public sealed record Model;
+}
