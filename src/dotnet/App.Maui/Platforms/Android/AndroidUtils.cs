@@ -18,7 +18,9 @@ public static class AndroidUtils
     private const string Tag = Firebase.Messaging.Constants.Tag;
     private const string ThreadNetworkIo = "Firebase-Messaging-Network-Io";
     private static readonly Lock WebViewWarmUpLock = new();
+    private static readonly TimeSpan MemoryPressureWindow = TimeSpan.FromSeconds(60);
     private static Task? _whenWebViewWarm;
+    private static long _lastRunningTrimAt;
 
     public static bool? IsAppForeground()
     {
@@ -44,6 +46,35 @@ public static class AndroidUtils
         }
 
         return false;
+    }
+
+    public static void NoteTrimMemory(TrimMemory level)
+    {
+        // The Running* levels are the foreground ones: the app is on screen and the OS is short on
+        // memory. The Background*/UiHidden levels say the app went off screen, which is not
+        // pressure. LastTrimLevel in RunningAppProcessInfo keeps the last delivered level forever,
+        // so a timestamp is the only way to say "recently".
+        if (level is TrimMemory.RunningModerate or TrimMemory.RunningLow or TrimMemory.RunningCritical)
+            Volatile.Write(ref _lastRunningTrimAt, CpuTimestamp.Now.Value);
+    }
+
+    public static bool IsUnderMemoryPressure()
+    {
+        var lastRunningTrimAt = Volatile.Read(ref _lastRunningTrimAt);
+        if (lastRunningTrimAt != 0 && new CpuTimestamp(lastRunningTrimAt).Elapsed < MemoryPressureWindow)
+            return true;
+
+        try {
+            if (Application.Context.GetSystemService(Context.ActivityService) is not ActivityManager activityManager)
+                return false;
+
+            var memoryInfo = new ActivityManager.MemoryInfo();
+            activityManager.GetMemoryInfo(memoryInfo);
+            return memoryInfo.LowMemory;
+        }
+        catch (System.Exception) {
+            return false;
+        }
     }
 
     public static ActivityManager.RunningAppProcessInfo? GetProcessInfo()

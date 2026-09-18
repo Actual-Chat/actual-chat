@@ -79,6 +79,13 @@ The two things that used to block the main thread and no longer do:
 - **The Chromium provider.** Constructing `BlazorAndroidWebView` loads it on whatever
   thread constructs the view and blocks on Chromium's provider lock. `MainPage` therefore
   does not construct it until the warm-up has already taken that lock.
+- **Firebase Analytics.** `FirebaseAnalytics.getInstance` is GMS class loading plus binder
+  calls; it used to run on the main thread inside `Activity.onCreate` (and again inside
+  `Application.onCreate`). `MauiProgram.StartFirebaseAnalytics` runs it on a worker once the
+  Activity exists, and waits — 15 s steps, two minutes at most — while
+  `AndroidUtils.IsUnderMemoryPressure()` (a `Running*` trim in the last minute, or
+  `MemoryInfo.LowMemory`) says the OS is asking for less work. Until it completes,
+  `MauiProgram.IsFirebaseAnalyticsReady` is false and analytics events are dropped, not queued.
 
 ::: warning
 Nothing may block the main thread on the warm-up task. Chromium posts its native init back
@@ -121,8 +128,10 @@ sequenceDiagram
 
 What the headless path skips is only ever *work*, never a prerequisite:
 `WarmupStaticServices`, `BlazorViewAppPostBuildRoutine`, `LoadingUI.MarkAppBuilt`,
-`EnsureStarted` and the Chromium warm-up. None of it serves the FCM handler, and the
-ThreadPool spin-up alone competes with the broadcast the process was started to deliver.
+`EnsureStarted`, the Chromium warm-up and Firebase Analytics init (nothing headless logs an
+analytics event; `FirebaseInitProvider` has already set up `FirebaseApp` for FCM). None of it
+serves the FCM handler, and the ThreadPool spin-up alone competes with the broadcast the
+process was started to deliver.
 
 ::: info
 The skip is safe because the container is already built **on demand by whoever needs it** —

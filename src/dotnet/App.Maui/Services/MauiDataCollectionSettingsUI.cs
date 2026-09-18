@@ -13,6 +13,11 @@ public class MauiDataCollectionSettingsUI : IDataCollectionSettingsUI
     public Task UpdateState(bool isEnabled, CancellationToken cancellationToken)
     {
         MauiPreferences.IsDataCollectionEnabled = isEnabled;
+#if ANDROID
+        // A pending init reads the preference above when it completes
+        if (!MauiProgram.IsFirebaseAnalyticsReady)
+            return Task.CompletedTask;
+#endif
 #if IOS || ANDROID
         CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isEnabled;
         MauiDiagnostics.SetIsAnalyticsCollectionEnabled(isEnabled);
