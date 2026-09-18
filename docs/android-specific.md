@@ -79,6 +79,13 @@ The two things that used to block the main thread and no longer do:
 - **The Chromium provider.** Constructing `BlazorAndroidWebView` loads it on whatever
   thread constructs the view and blocks on Chromium's provider lock. `MainPage` therefore
   does not construct it until the warm-up has already taken that lock.
+- **Firebase Analytics.** `FirebaseAnalytics.getInstance` is GMS class loading plus binder
+  calls; it used to run on the main thread inside `Activity.onCreate` (and again inside
+  `Application.onCreate`). `MauiProgram.StartFirebaseAnalytics` runs it on a worker once the
+  Activity exists, and waits — 15 s steps, two minutes at most — while
+  `AndroidUtils.IsUnderMemoryPressure()` (a `Running*` trim in the last minute, or
+  `MemoryInfo.LowMemory`) says the OS is asking for less work. Until it completes,
+  `MauiProgram.IsFirebaseAnalyticsReady` is false and analytics events are dropped, not queued.
 
 ::: warning
 Nothing may block the main thread on the warm-up task. Chromium posts its native init back
@@ -121,8 +128,10 @@ sequenceDiagram
 
 What the headless path skips is only ever *work*, never a prerequisite:
 `WarmupStaticServices`, `BlazorViewAppPostBuildRoutine`, `LoadingUI.MarkAppBuilt`,
-`EnsureStarted` and the Chromium warm-up. None of it serves the FCM handler, and the
-ThreadPool spin-up alone competes with the broadcast the process was started to deliver.
+`EnsureStarted`, the Chromium warm-up and Firebase Analytics init (nothing headless logs an
+analytics event; `FirebaseInitProvider` has already set up `FirebaseApp` for FCM). None of it
+serves the FCM handler, and the ThreadPool spin-up alone competes with the broadcast the
+process was started to deliver.
 
 ::: info
 The skip is safe because the container is already built **on demand by whoever needs it** —
@@ -223,6 +232,23 @@ Exactly one `MauiWebView` is created per launch (`Current = #1`). The foreground
 recreates the WebView when it finds `Content: null`, which is also the state during the
 initial attach — so it checks `MainPage.IsWebViewAttachPending` to tell "not attached yet"
 from "went away while backgrounded" and leave the first attach alone.
+
+## Runtime environment of the store build
+
+`android-release-env.txt` is packaged as an `AndroidEnvironment` file in Release (not in
+tracing builds, which need the diagnostics IPC it switches off). Two settings:
+
+- `DOTNET_GCgen0size=0x2000000` — a 32 MB gen0 budget. The default derives from the SoC's
+  cache size, which on Helio G35/G85 and Exynos 850 class phones is sub-MB: a gen0 GC every
+  few hundred KB of allocation, and the Java GC bridge follows every managed GC with a blocking
+  full ART GC (`Runtime.gc`) — the stop-the-world that shows up as `WaitHoldingLocks` under a
+  JNI transition in every user-perceived ANR dump. Fewer managed GCs, fewer of those.
+- `DOTNET_EnableDiagnostics=0` — no `.NET Debugger` / `.NET DebugPipe` threads or IPC socket.
+
+The A/B for the budget is `pwsh scripts/Measure-AndroidGcRate.ps1 -Seconds 60` over the same
+minute of use on the same phone, before and after: it counts the app's ART GC lines by cause
+(`Explicit` is the bridge's share) and sums their pauses. ART tags GC lines with the process
+name, so a `-s art` logcat filter returns nothing.
 
 ## Recording a CPU profile
 

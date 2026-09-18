@@ -98,7 +98,14 @@ public static class FirebaseAnalyticsExt
         }
 
         private void LogEvent(string eventName, IDictionary<string, object> parameters)
-            => _firebaseAnalytics.LogEvent(eventName, parameters);
+        {
+#if ANDROID
+            // Dropped rather than queued: the init only lags this far under memory pressure
+            if (!MauiProgram.IsFirebaseAnalyticsReady)
+                return;
+#endif
+            _firebaseAnalytics.LogEvent(eventName, parameters);
+        }
 
         private Dictionary<string, object> CreateBaseParameters()
         {

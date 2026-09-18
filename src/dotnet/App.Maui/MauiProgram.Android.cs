@@ -17,7 +17,13 @@ namespace ActualChat.App.Maui;
 
 public static partial class MauiProgram
 {
-    private static bool _firebaseAppInitialized;
+    private const int MaxFirebaseInitDelays = 8;
+    private static readonly TimeSpan FirebaseInitDelay = TimeSpan.FromSeconds(15);
+    private static int _isFirebaseInitStarted;
+    private static bool _isFirebaseAnalyticsReady;
+
+    // Plugin.Firebase's LogEvent and IsAnalyticsCollectionEnabled setter NRE before Initialize
+    public static bool IsFirebaseAnalyticsReady => Volatile.Read(ref _isFirebaseAnalyticsReady);
 
     private static partial void ConfigureBlazorWebViewAppPlatformServices(this IServiceCollection services)
     {
@@ -128,10 +134,7 @@ public static partial class MauiProgram
 
     private static void OnCreate(Activity activity, Bundle? savedInstanceState)
     {
-        InitFirebaseApp(activity);
-        var isDataCollectionEnabled = IsDataCollectionEnabled();
-        CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isDataCollectionEnabled;
-        MauiDiagnostics.SetIsAnalyticsCollectionEnabled(isDataCollectionEnabled);
+        StartFirebaseAnalytics(activity);
         AndroidProcessExitReporter.Start();
     }
 
@@ -144,28 +147,29 @@ public static partial class MauiProgram
         ChatAttentionService.Instance.Init();
     }
 
-    private static bool IsDataCollectionEnabled()
-        => MauiPreferences.IsDataCollectionEnabled == true;
-
-    private static void ActivateDataCollectionIfEnabled(Context context)
+    private static void StartFirebaseAnalytics(Context context)
     {
-        if (!IsDataCollectionEnabled())
+        // GMS class loading plus binder calls, which used to run on the main thread inside both
+        // Activity.onCreate and Application.onCreate (so on FCM wakes too) - the two windows the
+        // low-tier phones ANR in. A worker, only once an Activity exists, and not while the OS is
+        // trimming us: the trim that precedes those ANRs is a request for less work, and analytics
+        // can start a couple of minutes late. FirebaseInitProvider has already initialized
+        // FirebaseApp at process start; InitializeApp is a no-op kept for the day that provider goes.
+        if (Interlocked.Exchange(ref _isFirebaseInitStarted, 1) != 0)
             return;
 
-        InitFirebaseApp(context);
-        CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = true;
-        MauiDiagnostics.SetIsAnalyticsCollectionEnabled(true);
-    }
-
-    private static bool InitFirebaseApp(Context context)
-    {
-        if (_firebaseAppInitialized)
-            return true;
-
-        _firebaseAppInitialized = true;
-        FirebaseApp.InitializeApp(context);
-        FirebaseAnalyticsImplementation.Initialize(context);
-        return false;
+        _ = BackgroundTask.Run(async () => {
+            for (var i = 0; i < MaxFirebaseInitDelays && AndroidUtils.IsUnderMemoryPressure(); i++) {
+                Log.LogInformation("Firebase Analytics init deferred: memory pressure");
+                await Task.Delay(FirebaseInitDelay).ConfigureAwait(false);
+            }
+            FirebaseApp.InitializeApp(context);
+            FirebaseAnalyticsImplementation.Initialize(context);
+            var isDataCollectionEnabled = MauiPreferences.IsDataCollectionEnabled == true;
+            CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isDataCollectionEnabled;
+            MauiDiagnostics.SetIsAnalyticsCollectionEnabled(isDataCollectionEnabled);
+            Volatile.Write(ref _isFirebaseAnalyticsReady, true);
+        }, Log, "Firebase Analytics init failed");
     }
 
     private static void SetBackgroundState(bool isBackground)
