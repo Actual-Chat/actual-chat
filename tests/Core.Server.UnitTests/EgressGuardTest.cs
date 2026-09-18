@@ -55,6 +55,29 @@ public class EgressGuardTest
     }
 
     [Fact]
+    public async Task ReturnsRedirectAsIsWhenRedirectsAreOff()
+    {
+        // arrange
+        var handler = new RedirectHandlerMock(_ => new (HttpStatusCode.Redirect) {
+            Headers = {
+                Location = new ("https://public.example/final"),
+            },
+        });
+        var guard = NewGuard();
+        var options = new EgressHttpHandler.Options(guard.IsAllowedUri, guard.IsAllowedAddress) {
+            MaxRedirectCount = 0,
+        };
+        using var client = new HttpClient(new EgressHttpHandler(options, handler));
+
+        // act
+        using var response = await client.PostAsync("https://public.example/start", new StringContent("{}"));
+
+        // assert
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        handler.RequestCount.Should().Be(1);
+    }
+
+    [Fact]
     public async Task ValidatesResolvedAddressBeforeConnecting()
     {
         // arrange

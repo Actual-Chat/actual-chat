@@ -1,4 +1,6 @@
 using ActualChat.Chat.Db;
+using ActualChat.Chat.Flows;
+using ActualChat.Flows;
 using ActualChat.Security;
 using ActualChat.WebHooks;
 using ActualLab.Fusion.EntityFramework;
@@ -15,6 +17,8 @@ public partial class WebHooksBackend(IServiceProvider services)
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IDbEntityResolver<string, DbWebHook> DbWebHookResolver
         => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbWebHook>>();
+    private WebHookDeliverer Deliverer => field ??= Services.GetRequiredService<WebHookDeliverer>();
+    private FlowHub FlowHub => field ??= Services.FlowHub();
     private HostInfo HostInfo => field ??= Services.HostInfo();
 
     // [ComputeMethod]
@@ -124,8 +128,11 @@ public partial class WebHooksBackend(IServiceProvider services)
                 ModifiedAt = now,
                 Version = VersionGenerator.NextVersion(dbWebHook.Version),
             };
-            if (updateDiff.IsEnabled == true)
+            if (updateDiff.IsEnabled == true) {
                 webHook = webHook with { DisabledReason = WebHookDisabledReason.None, ConsecutiveFailures = 0 };
+                // Whatever was left pending by a manual disable resumes
+                context.Operation.AddEvent(FlowHub.NewResumeEvent<WebHookDeliveryFlow>(webHook.Id.Value));
+            }
             if (updateDiff.IsEnabled == false)
                 webHook = webHook with { DisabledReason = WebHookDisabledReason.Manual };
             Validate(webHook);
@@ -180,6 +187,7 @@ public partial class WebHooksBackend(IServiceProvider services)
     public virtual async Task OnEnqueue(WebHooksBackend_Enqueue command, CancellationToken cancellationToken)
     {
         var (id, _, deliveryId, eventType, payload) = command;
+        var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
             _ = ListDeliveries(id, Constants.WebHooks.DeliveryListLimit, default);
             return;
@@ -220,6 +228,9 @@ public partial class WebHooksBackend(IServiceProvider services)
             CreatedAt = now,
         });
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        // An operation event, not a direct Schedule: the flow must not wake up before the row is committed
+        context.Operation.AddEvent(FlowHub.NewResumeEvent<WebHookDeliveryFlow>(id.Value));
     }
 
     // [CommandHandler]
@@ -304,6 +315,7 @@ public partial class WebHooksBackend(IServiceProvider services)
     public virtual async Task OnRedeliver(WebHooksBackend_Redeliver command, CancellationToken cancellationToken)
     {
         var (id, _, deliveryId) = command;
+        var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
             _ = ListDeliveries(id, Constants.WebHooks.DeliveryListLimit, default);
             return;
@@ -336,6 +348,21 @@ public partial class WebHooksBackend(IServiceProvider services)
             CreatedAt = Clocks.SystemClock.Now,
         });
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        context.Operation.AddEvent(FlowHub.NewResumeEvent<WebHookDeliveryFlow>(id.Value));
+    }
+
+    // [CommandHandler]
+    public virtual async Task<WebHookTestResult> OnTest(
+        WebHooksBackend_Test command,
+        CancellationToken cancellationToken)
+    {
+        var (id, _, sentBy) = command;
+        if (Invalidation.IsActive)
+            return default!;
+
+        var webHook = await Get(id, cancellationToken).Require().ConfigureAwait(false);
+        return await Deliverer.SendPing(webHook, sentBy, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods

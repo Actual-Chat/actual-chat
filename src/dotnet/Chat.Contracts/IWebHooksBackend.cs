@@ -29,6 +29,9 @@ public interface IWebHooksBackend : IComputeService, IBackendService
     Task OnDisable(WebHooksBackend_Disable command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRedeliver(WebHooksBackend_Redeliver command, CancellationToken cancellationToken);
+    // In-process ping that never touches the outbox
+    [CommandHandler]
+    Task<WebHookTestResult> OnTest(WebHooksBackend_Test command, CancellationToken cancellationToken);
 
     [EventHandler]
     Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken);
@@ -125,6 +128,18 @@ public sealed partial record WebHooksBackend_Redeliver(
     [property: DataMember, Key(1)] string ScopeId,
     [property: DataMember, Key(2)] string DeliveryId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public ShardKey ShardKey => ShardKey.New(ScopeId);
+}
+
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record WebHooksBackend_Test(
+    [property: DataMember, Key(0)] WebHookId Id,
+    [property: DataMember, Key(1)] string ScopeId,
+    [property: DataMember, Key(2)] string SentBy
+) : ICommand<WebHookTestResult>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => ShardKey.New(ScopeId);

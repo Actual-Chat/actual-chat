@@ -67,6 +67,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<IWebHooksBackend, WebHooksBackend>();
         services.AddSingleton<WebHookSecrets>();
         services.AddSingleton<WebHookPayloads>();
+        services.AddSingleton<WebHookDeliverer>();
+        // A redirect is a delivery failure: a 301/302 would turn the signed POST into a body-less GET
+        services.AddEgressHttpClient(WebHookDeliverer.HttpClientName, maxRedirectCount: 0);
 
         // Aliases
         rpcHost.AddLocalApi<IAliases, Aliases>();
@@ -206,7 +209,8 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             .Add<LiveConversationSummaryFlow>()
             .Add<ConversationRefreshFlow>()
             .Add<CallTailFlow>()
-            .Add<TranslationCleanupFlow>();
+            .Add<TranslationCleanupFlow>()
+            .Add<WebHookDeliveryFlow>();
         if (Settings.IsChatContentItemIndexingEnabled)
             flows
                 .Add<ChatContentIndexingMasterFlow>()

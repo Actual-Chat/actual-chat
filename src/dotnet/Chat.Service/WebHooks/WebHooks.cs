@@ -91,8 +91,10 @@ public class WebHooks(IServiceProvider services) : IWebHooks
 
         var (session, id) = (command.Session, command.Id);
         var webHook = await Backend.Get(id, cancellationToken).Require().ConfigureAwait(false);
-        await RequireManager(session, webHook.Scope, webHook.ScopeId, cancellationToken).ConfigureAwait(false);
-        throw StandardError.NotSupported("Test deliveries arrive with the delivery pipeline.");
+        var account = await RequireManager(session, webHook.Scope, webHook.ScopeId, cancellationToken)
+            .ConfigureAwait(false);
+        var backendCommand = new WebHooksBackend_Test(id, webHook.ScopeId, account.Avatar.Name);
+        return await Commander.Call(backendCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

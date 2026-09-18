@@ -15,6 +15,7 @@ public sealed class EgressHttpHandler : DelegatingHandler
         Func<Uri, bool> IsUriAllowed,
         Func<string, IPAddress, bool> IsAddressAllowed)
     {
+        // 0 returns a redirect response to the caller as-is instead of failing on it
         public int MaxRedirectCount { get; init; } = 10;
         public long MaxResponseContentLength { get; init; } = 10 * 1024 * 1024;
     }
@@ -51,7 +52,7 @@ public sealed class EgressHttpHandler : DelegatingHandler
 
             var response = await base.SendAsync(currentRequest, cancellationToken).ConfigureAwait(false);
             response.RequestMessage ??= currentRequest;
-            if (!TryGetRedirectUri(response, requestUri, out var redirectUri)) {
+            if (Settings.MaxRedirectCount == 0 || !TryGetRedirectUri(response, requestUri, out var redirectUri)) {
                 LimitResponseContent(response);
                 return response;
             }

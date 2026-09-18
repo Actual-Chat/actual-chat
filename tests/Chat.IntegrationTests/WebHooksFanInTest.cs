@@ -2,6 +2,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Testing.Host;
 using ActualChat.WebHooks;
 using ActualLab.Fusion.EntityFramework;
+using ActualLab.Testing.Web;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat.IntegrationTests;
@@ -10,6 +11,9 @@ namespace ActualChat.Chat.IntegrationTests;
 public class WebHooksFanInTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
+    // Nothing listens there: the delivery flow's attempt is refused at once, and the rows stay Pending
+    private static readonly string HookUrl = $"http://localhost:{WebTestHelpers.GetUnusedTcpPort()}/hook";
+
     private WebClientTester Alice => field ??= fixture.AppHost.NewWebClientTester(Out);
     private WebClientTester Bob => field ??= fixture.AppHost.NewWebClientTester(Out);
     private IWebHooksBackend Backend => field ??= AppHost.Services.GetRequiredService<IWebHooksBackend>();
@@ -230,7 +234,7 @@ public class WebHooksFanInTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         Func<WebHookDiff, WebHookDiff>? configure = null)
     {
         var account = await tester.GetOwnAccount();
-        var diff = new WebHookDiff { Name = "CI", Url = "https://example.com/hook", Events = events };
+        var diff = new WebHookDiff { Name = "CI", Url = HookUrl, Events = events };
         diff = configure?.Invoke(diff) ?? diff;
         var hook = (await Commander.Call(new WebHooksBackend_Change(
             scope, scopeId, null, null, Change.Create(diff), account.Id))).WebHook!;

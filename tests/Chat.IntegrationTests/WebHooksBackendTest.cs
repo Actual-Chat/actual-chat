@@ -252,7 +252,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
         var alice = await Alice.GetOwnAccount();
         var webHook = (await Commander.Call(new WebHooksBackend_Change(
             WebHookScope.Chat, chatId.Value, null, null,
-            Change.Create(NewDiff()),
+            Change.Create(NewDiff() with { IsEnabled = false }),
             alice.Id))).WebHook!;
         var deliveryId = $"{webHook.Id}:{RandomStringGenerator.Default.Next()}";
 
@@ -280,7 +280,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
         var alice = await Alice.GetOwnAccount();
         var webHook = (await Commander.Call(new WebHooksBackend_Change(
             WebHookScope.Chat, chatId.Value, null, null,
-            Change.Create(NewDiff()),
+            Change.Create(NewDiff() with { IsEnabled = false }),
             alice.Id))).WebHook!;
         var failedId = $"{webHook.Id}:failed";
         var pendingId = $"{webHook.Id}:pending";
@@ -352,7 +352,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
         var alice = await Alice.GetOwnAccount();
         var webHook = (await Commander.Call(new WebHooksBackend_Change(
             WebHookScope.Chat, chatId.Value, null, null,
-            Change.Create(NewDiff()),
+            Change.Create(NewDiff() with { IsEnabled = false }),
             alice.Id))).WebHook!;
         var deliveryId = $"{webHook.Id}:d1";
         await Commander.Call(NewEnqueue(webHook.Id, chatId, deliveryId));
@@ -384,6 +384,8 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
 
     // Private methods
 
+    // A hook that gets outbox rows is created disabled: the delivery flow then leaves the rows
+    // alone, so the tests see exactly what the backend commands wrote
     private static WebHookDiff NewDiff(
         string name = "CI",
         string url = "https://example.com/hook",
