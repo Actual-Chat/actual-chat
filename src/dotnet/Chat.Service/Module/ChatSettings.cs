@@ -4,6 +4,9 @@ namespace ActualChat.Chat.Module;
 
 public sealed class ChatSettings
 {
+    public int CleanupBatchSize { get; set; } = 100;
+    public TimeSpan CleanupInterval { get; set; } = TimeSpan.FromMinutes(15);
+    public TimeSpan RemovedEntryRetention { get; set; } = TimeSpan.FromHours(1);
     public string OpenAIModel { get; set; } = "gpt-5.6-terra";
     public bool IsTranslationEnabled { get; set; }
     public bool UseFakeLanguageDetection { get; set; }

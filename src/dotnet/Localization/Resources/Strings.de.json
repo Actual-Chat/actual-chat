@@ -1715,6 +1715,10 @@
   "Invite_NewPrivateLink": "Neuer privater Beitrittslink",
   "Invite_UnknownLink": "Unbekannter Link",
 
+  "ChatCleanup_Retention": "Aufbewahrung von Nachrichten",
+  "ChatCleanup_RetentionWarning": "Ältere Nachrichten werden für alle dauerhaft gelöscht. Eine Verlängerung stellt den gelöschten Verlauf nicht wieder her.",
+  "ChatCleanup_Clear": "Chatverlauf löschen",
+  "ChatCleanup_ClearWarning": "Den aktuellen Chatverlauf für alle löschen? Dies kann nicht rückgängig gemacht werden. Neue Nachrichten, die nach dem Öffnen dieser Bestätigung gesendet werden, bleiben erhalten.",
   "ChatSettings_UsePlaceSettingsForMembers": "Mitglieder in den Place-Einstellungen bearbeiten",
   "ChatSettings_LeaveChatAndDelete": "Chat verlassen und löschen",
 

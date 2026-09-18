@@ -1715,6 +1715,10 @@
   "Invite_NewPrivateLink": "Novo link privado de entrada",
   "Invite_UnknownLink": "Link desconhecido",
 
+  "ChatCleanup_Retention": "Retenção de mensagens",
+  "ChatCleanup_RetentionWarning": "As mensagens antigas são removidas permanentemente para todos. Aumentar este período não restaurará o histórico removido.",
+  "ChatCleanup_Clear": "Limpar histórico do chat",
+  "ChatCleanup_ClearWarning": "Limpar o histórico atual do chat para todos? Esta ação não pode ser desfeita. As novas mensagens enviadas após abrir esta confirmação serão mantidas.",
   "ChatSettings_UsePlaceSettingsForMembers": "Use as configurações do Lugar para editar os membros",
   "ChatSettings_LeaveChatAndDelete": "Sair do chat e excluir",
 

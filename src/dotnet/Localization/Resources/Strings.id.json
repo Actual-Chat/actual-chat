@@ -1715,6 +1715,10 @@
   "Invite_NewPrivateLink": "Tautan undangan privat baru",
   "Invite_UnknownLink": "Tautan tidak dikenal",
 
+  "ChatCleanup_Retention": "Masa penyimpanan pesan",
+  "ChatCleanup_RetentionWarning": "Pesan lama dihapus secara permanen untuk semua orang. Memperpanjang masa ini tidak akan memulihkan riwayat yang dihapus.",
+  "ChatCleanup_Clear": "Hapus riwayat chat",
+  "ChatCleanup_ClearWarning": "Hapus riwayat chat saat ini untuk semua orang? Tindakan ini tidak dapat dibatalkan. Pesan baru yang dikirim setelah konfirmasi ini dibuka akan tetap disimpan.",
   "ChatSettings_UsePlaceSettingsForMembers": "Kelola anggota di pengaturan Tempat",
   "ChatSettings_LeaveChatAndDelete": "Keluar dari obrolan & hapus",
 

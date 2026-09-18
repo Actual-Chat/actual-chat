@@ -1715,6 +1715,10 @@
   "Invite_NewPrivateLink": "Nový soukromý odkaz s pozvánkou",
   "Invite_UnknownLink": "Neznámý odkaz",
 
+  "ChatCleanup_Retention": "Doba uchování zpráv",
+  "ChatCleanup_RetentionWarning": "Starší zprávy se trvale odstraní všem. Prodloužení této doby neobnoví odstraněnou historii.",
+  "ChatCleanup_Clear": "Vymazat historii chatu",
+  "ChatCleanup_ClearWarning": "Vymazat současnou historii chatu všem? Tuto akci nelze vrátit zpět. Nové zprávy odeslané po otevření tohoto potvrzení zůstanou zachovány.",
   "ChatSettings_UsePlaceSettingsForMembers": "Členy upravíte v nastavení Místa",
   "ChatSettings_LeaveChatAndDelete": "Opustit chat a smazat",
 

@@ -24,6 +24,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     private MLSearchSettings Settings { get; } = services.GetRequiredService<MLSearchSettings>();
     private OpenSearchNames OpenSearchNames { get; } = services.GetRequiredService<OpenSearchNames>();
     private IOpenSearchClient OpenSearchClient { get; } = services.GetRequiredService<IOpenSearchClient>();
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private OpenSearchConfigurator OpenSearchConfigurator { get; } = services.GetRequiredService<OpenSearchConfigurator>();
     private IndexedDocuments IndexedDocuments { get; } = services.GetRequiredService<IndexedDocuments>();
@@ -202,6 +203,13 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         }
     }
 
+    public virtual Task OnChatEntriesPurgedEvent(
+        ChatEntriesPurgedEvent eventCommand, CancellationToken cancellationToken)
+        => Invalidation.IsActive || !Settings.IsEnabled
+            ? Task.CompletedTask
+            : IndexedDocuments.SaveEntries([], eventCommand.LocalIds
+                .Select(id => ChatEntryId.New(eventCommand.ChatId, id)).ToArray(), cancellationToken);
+
     // [EventHandler]
     public virtual Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
@@ -212,9 +220,14 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         return UpdateIndexedEntries();
 
         Task UpdateIndexedEntries()
-            => entry.IsSystemEntry
-                ? Task.CompletedTask
-                : ResumeIndexingFlow<EntryIndexingFlow>(entry.ChatId.Value, cancellationToken);
+        {
+            if (!Settings.IsEnabled || entry.IsSystemEntry)
+                return Task.CompletedTask;
+            if (entry.IsRemoved)
+                return IndexedDocuments.SaveEntries([], [entry.Id], cancellationToken);
+
+            return ResumeIndexingFlow<EntryIndexingFlow>(entry.ChatId.Value, cancellationToken);
+        }
     }
 
     // [EventHandler]
@@ -471,8 +484,15 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
             return SearchResult<FoundChatEntry>.Empty;
 
+        var visibleHits = new List<FoundChatEntry>();
+        foreach (var hit in searchResponse.Hits) {
+            var entry = await ChatsBackend.GetEntry(hit.Source.Id, cancellationToken).ConfigureAwait(false);
+            if (entry is { IsRemoved: false })
+                visibleHits.Add(ToSearchResult(hit));
+        }
+
         return new SearchResult<FoundChatEntry> {
-            Items = searchResponse.Hits.Select(ToSearchResult).ToArray(),
+            Items = visibleHits.ToArray(),
             Offset = query.Skip,
         };
 

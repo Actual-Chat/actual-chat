@@ -1715,6 +1715,10 @@
   "Invite_NewPrivateLink": "Нови приватни линк позивнице",
   "Invite_UnknownLink": "Непознат линк",
 
+  "ChatCleanup_Retention": "Чување порука",
+  "ChatCleanup_RetentionWarning": "Старије поруке се трајно бришу за све. Продужење овог периода неће вратити избрисану хисторију.",
+  "ChatCleanup_Clear": "Обриши хисторију разговора",
+  "ChatCleanup_ClearWarning": "Обрисати тренутну хисторију разговора за све? Ова радња се не може поништити. Нове поруке послане након отварања ове потврде остат ће сачуване.",
   "ChatSettings_UsePlaceSettingsForMembers": "Чланове уређујете у поставкама Места",
   "ChatSettings_LeaveChatAndDelete": "Напустите чет и обриши",
 

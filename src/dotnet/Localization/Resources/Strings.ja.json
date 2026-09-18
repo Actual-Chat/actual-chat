@@ -1715,6 +1715,10 @@
   "Invite_NewPrivateLink": "新しいプライベート参加リンク",
   "Invite_UnknownLink": "不明なリンク",
 
+  "ChatCleanup_Retention": "メッセージの保存期間",
+  "ChatCleanup_RetentionWarning": "古いメッセージはすべての参加者から完全に削除されます。保存期間を延ばしても、削除済みの履歴は復元されません。",
+  "ChatCleanup_Clear": "チャット履歴を消去",
+  "ChatCleanup_ClearWarning": "現在のチャット履歴をすべての参加者から消去しますか？元に戻すことはできません。この確認画面を開いた後に送信された新しいメッセージは残ります。",
   "ChatSettings_UsePlaceSettingsForMembers": "メンバーの編集にはプレイスの設定を使用します",
   "ChatSettings_LeaveChatAndDelete": "チャットを退出して削除",
 

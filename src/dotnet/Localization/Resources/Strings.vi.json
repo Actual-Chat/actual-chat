@@ -1715,6 +1715,10 @@
   "Invite_NewPrivateLink": "Liên kết tham gia riêng tư mới",
   "Invite_UnknownLink": "Liên kết không xác định",
 
+  "ChatCleanup_Retention": "Thời gian lưu tin nhắn",
+  "ChatCleanup_RetentionWarning": "Tin nhắn cũ sẽ bị xóa vĩnh viễn đối với mọi người. Tăng thời gian này sẽ không khôi phục lịch sử đã xóa.",
+  "ChatCleanup_Clear": "Xóa lịch sử trò chuyện",
+  "ChatCleanup_ClearWarning": "Xóa lịch sử trò chuyện hiện tại đối với mọi người? Không thể hoàn tác. Tin nhắn mới được gửi sau khi mở hộp xác nhận này sẽ được giữ lại.",
   "ChatSettings_UsePlaceSettingsForMembers": "Dùng cài đặt Địa điểm để chỉnh sửa thành viên",
   "ChatSettings_LeaveChatAndDelete": "Rời khỏi và xóa cuộc trò chuyện",
 

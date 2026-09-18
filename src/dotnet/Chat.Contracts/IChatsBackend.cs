@@ -156,7 +156,25 @@ public interface IChatsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<PlaceChatId?> GetPlaceChatIdByAlias(PlaceId placeId, AliasId aliasId, CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<long> GetVisibilityBoundary(ChatId chatId, CancellationToken cancellationToken);
+
+    Task<long[]> ListEntryIdsForCleanup(
+        ChatId chatId, Range<long> idRange, int limit, CancellationToken cancellationToken);
+
     // Commands
+
+    [CommandHandler]
+    Task<int> OnPurgeEntries(ChatsBackend_PurgeEntries command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task OnMarkForRemoval(ChatsBackend_MarkForRemoval command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task<long> OnAdvanceVisibilityBoundary(
+        ChatsBackend_AdvanceVisibilityBoundary command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<int> OnCleanup(ChatsBackend_Cleanup command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Chat> OnChange(ChatsBackend_Change command, CancellationToken cancellationToken);
@@ -391,3 +409,43 @@ public sealed partial record ChatsBackend_UpdateReadPositionsStat(
     public ShardKey ShardKey => ChatId.ShardKey;
 }
 
+
+[DataContract, MessagePackObject]
+public sealed partial record ChatsBackend_AdvanceVisibilityBoundary(
+    [property: DataMember, Key(0)] ChatId ChatId,
+    [property: DataMember, Key(1)] long MinVisibleEntryLid,
+    [property: DataMember, Key(2)] long? ExpectedVersion = null
+) : ICommand<long>, IBackendCommand, IHasShardKey
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public ShardKey ShardKey => ChatId.ShardKey;
+}
+
+[DataContract, MessagePackObject]
+public sealed partial record ChatsBackend_Cleanup(
+    [property: DataMember, Key(0)] ChatId ChatId
+) : ICommand<int>, IBackendCommand, IHasShardKey
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public ShardKey ShardKey => ChatId.ShardKey;
+}
+
+[DataContract, MessagePackObject]
+public sealed partial record ChatsBackend_PurgeEntries(
+    [property: DataMember, Key(0)] ChatId ChatId,
+    [property: DataMember, Key(1)] long[] LocalIds,
+    [property: DataMember, Key(2)] UserId? RemovedUserId = null
+) : ICommand<int>, IBackendCommand, IHasShardKey
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public ShardKey ShardKey => ChatId.ShardKey;
+}
+
+[DataContract, MessagePackObject]
+public sealed partial record ChatsBackend_MarkForRemoval(
+    [property: DataMember, Key(0)] ChatId ChatId
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public ShardKey ShardKey => ChatId.ShardKey;
+}

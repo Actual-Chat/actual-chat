@@ -47,7 +47,9 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     // [ComputeMethod]
     public virtual async Task<Translation?> Get(TranslationId id, bool translateIfMissing, CancellationToken cancellationToken)
     {
-        if (!Settings.IsTranslationEnabled)
+        var visibilityBoundary = await ChatsBackend.GetVisibilityBoundary(id.SourceId.ChatId, cancellationToken)
+            .ConfigureAwait(false);
+        if (id.SourceId.RefLid < visibilityBoundary || !Settings.IsTranslationEnabled)
             return null;
 
         var (translationSource, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
@@ -137,7 +139,14 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             .Take(limit)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbTranslations.Select(x => x.ToModel()).ToApiArray();
+        var translations = new List<Translation>();
+        foreach (var dbTranslation in dbTranslations) {
+            var translation = await Get(TranslationId.Parse(dbTranslation.Id), false, cancellationToken)
+                .ConfigureAwait(false);
+            if (translation is not null)
+                translations.Add(translation);
+        }
+        return translations.ToApiArray();
     }
 
     // [CommandHandler]
@@ -155,6 +164,18 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         change.RequireValid();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
+        if (!change.IsRemove()) {
+            var sourceId = id.SourceId;
+            var dbChat = await dbContext.Chats.ForShare()
+                .FirstOrDefaultAsync(c => c.Id == sourceId.ChatId.Value, cancellationToken).ConfigureAwait(false);
+            var boundary = Math.Max(dbChat?.MinVisibleEntryLid ?? long.MaxValue,
+                await ChatsBackend.GetVisibilityBoundary(sourceId.ChatId, cancellationToken).ConfigureAwait(false));
+            if (sourceId.RefLid < boundary)
+                return null;
+            if (await TryResolveTranslationSource(id, cancellationToken).ConfigureAwait(false) is null)
+                return null;
+        }
 
         var now = Clocks.SystemClock.Now;
 

@@ -41,6 +41,7 @@ public static class ChatExt
             || diff.IsArchived.HasValue
             || diff.IsSummarized.HasValue
             || diff.PttEnabledAt.HasValue
+            || diff.RetentionPeriod.HasValue
             || diff.PlaceId is not null
             || diff.AliasId is not null;
 

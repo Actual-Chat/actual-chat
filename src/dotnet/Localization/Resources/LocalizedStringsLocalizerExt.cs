@@ -1789,6 +1789,10 @@ public static class LocalizedStringsLocalizerExt
         public string Invite_NewPrivateLink => l["Invite_NewPrivateLink"].Value;
         public string Invite_UnknownLink => l["Invite_UnknownLink"].Value;
 
+        public string ChatCleanup_Retention => l["ChatCleanup_Retention"].Value;
+        public string ChatCleanup_RetentionWarning => l["ChatCleanup_RetentionWarning"].Value;
+        public string ChatCleanup_Clear => l["ChatCleanup_Clear"].Value;
+        public string ChatCleanup_ClearWarning => l["ChatCleanup_ClearWarning"].Value;
         public string ChatSettings_UsePlaceSettingsForMembers => l["ChatSettings_UsePlaceSettingsForMembers"].Value;
         public string ChatSettings_LeaveChatAndDelete => l["ChatSettings_LeaveChatAndDelete"].Value;
 

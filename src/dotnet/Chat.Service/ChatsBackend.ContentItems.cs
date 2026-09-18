@@ -1,4 +1,5 @@
 using ActualChat.Chat.Db;
+using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat;
@@ -42,10 +43,12 @@ public partial class ChatsBackend
         int pageIndex,
         CancellationToken cancellationToken)
     {
+        var visibilityBoundary = await GetVisibilityBoundary(chatId, cancellationToken).ConfigureAwait(false);
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var dbItems = await QueryPeriodPage(
-                dbContext.ChatVisualMediaItems, chatId.Value, periodKey, pageIndex, cancellationToken)
+                dbContext.ChatVisualMediaItems.Where(x => x.EntryLocalId >= visibilityBoundary),
+                chatId.Value, periodKey, pageIndex, cancellationToken)
             .ConfigureAwait(false);
         if (dbItems.Count == 0)
             return [];
@@ -62,10 +65,12 @@ public partial class ChatsBackend
         int pageIndex,
         CancellationToken cancellationToken)
     {
+        var visibilityBoundary = await GetVisibilityBoundary(chatId, cancellationToken).ConfigureAwait(false);
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var dbItems = await QueryPeriodPage(
-                dbContext.ChatFileItems, chatId.Value, periodKey, pageIndex, cancellationToken)
+                dbContext.ChatFileItems.Where(x => x.EntryLocalId >= visibilityBoundary),
+                chatId.Value, periodKey, pageIndex, cancellationToken)
             .ConfigureAwait(false);
         return dbItems.Select(x => x.ToModel()).ToArray();
     }
@@ -77,10 +82,12 @@ public partial class ChatsBackend
         int pageIndex,
         CancellationToken cancellationToken)
     {
+        var visibilityBoundary = await GetVisibilityBoundary(chatId, cancellationToken).ConfigureAwait(false);
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var dbItems = await QueryPeriodPage(
-                dbContext.ChatLinkItems, chatId.Value, periodKey, pageIndex, cancellationToken)
+                dbContext.ChatLinkItems.Where(x => x.EntryLocalId >= visibilityBoundary),
+                chatId.Value, periodKey, pageIndex, cancellationToken)
             .ConfigureAwait(false);
         if (dbItems.Count == 0)
             return [];
@@ -159,6 +166,7 @@ public partial class ChatsBackend
         int year,
         CancellationToken cancellationToken)
     {
+        var visibilityBoundary = await GetVisibilityBoundary(chatId, cancellationToken).ConfigureAwait(false);
         var lowerBoundInclusive = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var upperBoundExclusive = new DateTime(year + 1, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
@@ -168,13 +176,16 @@ public partial class ChatsBackend
         var chatSid = chatId.Value;
         var months = kind switch {
             ChatContentKind.Media => await QueryPeriodCounts(
-                dbContext.ChatVisualMediaItems, chatSid, lowerBoundInclusive, upperBoundExclusive, cancellationToken)
+                dbContext.ChatVisualMediaItems.Where(x => x.EntryLocalId >= visibilityBoundary),
+                chatSid, lowerBoundInclusive, upperBoundExclusive, cancellationToken)
                 .ConfigureAwait(false),
             ChatContentKind.File => await QueryPeriodCounts(
-                dbContext.ChatFileItems, chatSid, lowerBoundInclusive, upperBoundExclusive, cancellationToken)
+                dbContext.ChatFileItems.Where(x => x.EntryLocalId >= visibilityBoundary),
+                chatSid, lowerBoundInclusive, upperBoundExclusive, cancellationToken)
                 .ConfigureAwait(false),
             ChatContentKind.Link => await QueryPeriodCounts(
-                dbContext.ChatLinkItems, chatSid, lowerBoundInclusive, upperBoundExclusive, cancellationToken)
+                dbContext.ChatLinkItems.Where(x => x.EntryLocalId >= visibilityBoundary),
+                chatSid, lowerBoundInclusive, upperBoundExclusive, cancellationToken)
                 .ConfigureAwait(false),
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
         };
@@ -197,17 +208,21 @@ public partial class ChatsBackend
         int year,
         CancellationToken cancellationToken)
     {
+        var visibilityBoundary = await GetVisibilityBoundary(chatId, cancellationToken).ConfigureAwait(false);
         var boundary = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var chatSid = chatId.Value;
         return kind switch {
             ChatContentKind.Media => await QueryHasContentBefore(
-                dbContext.ChatVisualMediaItems, chatSid, boundary, cancellationToken).ConfigureAwait(false),
+                dbContext.ChatVisualMediaItems.Where(x => x.EntryLocalId >= visibilityBoundary),
+                chatSid, boundary, cancellationToken).ConfigureAwait(false),
             ChatContentKind.File => await QueryHasContentBefore(
-                dbContext.ChatFileItems, chatSid, boundary, cancellationToken).ConfigureAwait(false),
+                dbContext.ChatFileItems.Where(x => x.EntryLocalId >= visibilityBoundary),
+                chatSid, boundary, cancellationToken).ConfigureAwait(false),
             ChatContentKind.Link => await QueryHasContentBefore(
-                dbContext.ChatLinkItems, chatSid, boundary, cancellationToken).ConfigureAwait(false),
+                dbContext.ChatLinkItems.Where(x => x.EntryLocalId >= visibilityBoundary),
+                chatSid, boundary, cancellationToken).ConfigureAwait(false),
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
         };
     }
@@ -271,6 +286,17 @@ public partial class ChatsBackend
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbChat = await dbContext.Chats.ForShare()
+            .FirstOrDefaultAsync(c => c.Id == chatId.Value, cancellationToken).ConfigureAwait(false);
+        if (items.Length > 0) {
+            var boundary = Math.Max(dbChat?.MinVisibleEntryLid ?? long.MaxValue,
+                await GetVisibilityBoundary(chatId, cancellationToken).ConfigureAwait(false));
+            var visibleIds = await dbContext.ChatEntries
+                .Where(e => entrySids.Contains(e.Id) && e.LocalId >= boundary && !e.IsPurged && !e.IsRemoved)
+                .Select(e => e.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+            items = items.Where(i => visibleIds.Contains(i.EntryId.Value)).ToArray();
+        }
 
         var table = getTable(dbContext);
         var deletedAts = await table

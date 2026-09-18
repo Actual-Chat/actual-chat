@@ -1715,6 +1715,10 @@
   "Invite_NewPrivateLink": "Yeni özel katılma bağlantısı",
   "Invite_UnknownLink": "Bilinmeyen bağlantı",
 
+  "ChatCleanup_Retention": "Mesaj saklama süresi",
+  "ChatCleanup_RetentionWarning": "Eski mesajlar herkes için kalıcı olarak silinir. Bu süreyi uzatmak silinen geçmişi geri getirmez.",
+  "ChatCleanup_Clear": "Sohbet geçmişini temizle",
+  "ChatCleanup_ClearWarning": "Mevcut sohbet geçmişi herkes için temizlensin mi? Bu işlem geri alınamaz. Bu onay açıldıktan sonra gönderilen yeni mesajlar korunur.",
   "ChatSettings_UsePlaceSettingsForMembers": "Üyeleri düzenlemek için Mekân ayarlarını kullanın",
   "ChatSettings_LeaveChatAndDelete": "Sohbetten ayrılın ve silin",
 

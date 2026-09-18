@@ -27,6 +27,9 @@ public interface ISearchBackend : IComputeService, IBackendService
     // Events
 
     [EventHandler]
+    Task OnChatEntriesPurgedEvent(ChatEntriesPurgedEvent eventCommand, CancellationToken cancellationToken);
+
+    [EventHandler]
     Task OnAccountChangedEvent(AccountChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnPlaceMembershipChangedEvent(PlaceMembershipChangedEvent eventCommand, CancellationToken cancellationToken);

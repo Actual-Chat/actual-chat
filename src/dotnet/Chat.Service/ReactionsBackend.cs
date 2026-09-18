@@ -20,6 +20,10 @@ public class ReactionsBackend(IServiceProvider services)
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
+        var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
+        if (entry is null or { IsRemoved: true })
+            return null;
+
         var id = DbReaction.ComposeId(entryId, authorId);
         var dbReaction = await dbContext.Reactions.Get(id, cancellationToken)
             .ConfigureAwait(false);
@@ -33,6 +37,10 @@ public class ReactionsBackend(IServiceProvider services)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
+
+        var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
+        if (entry is null or { IsRemoved: true })
+            return [];
 
         var dbReactionSummaries = await dbContext.ReactionSummaries
             .Where(x => x.EntryId == entryId.Value && x.Count > 0)
