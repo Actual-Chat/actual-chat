@@ -19,16 +19,12 @@ if (-not $pid_) {
     throw "$Package is not running - start the app (and the scenario) first."
 }
 
+# Clear, wait, dump: a streaming logcat stopped mid-flight loses whatever adb hasn't flushed,
+# which at a couple of lines per minute is all of it.
 & $Adb logcat -c
 Write-Host "Recording GC lines of $Package (pid $pid_) for ${Seconds}s..."
-$job = Start-Job -ScriptBlock {
-    param($adb, $processId)
-    & $adb logcat -v threadtime --pid=$processId "*:I"
-} -ArgumentList $Adb, $pid_
 Start-Sleep -Seconds $Seconds
-Stop-Job $job
-$lines = Receive-Job $job | Where-Object { $_ -match ' GC freed ' }
-Remove-Job $job
+$lines = @(& $Adb logcat -d -v threadtime --pid=$pid_ "*:I" | Where-Object { $_ -match ' GC freed ' })
 
 $byCause = @{}
 $pausedMs = 0.0

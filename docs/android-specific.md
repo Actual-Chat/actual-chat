@@ -276,8 +276,8 @@ name, so a `-s art` logcat filter returns nothing.
 Measured 2026-09-18 on a OnePlus CPH2747 (Android 16), launch → 25 s settle → 60 s idle on the
 chat list: dev 2.21.178 without the budget had **119 ART GCs in the minute, all `Explicit`**,
 242 ms of stop-the-world and 2.8 s of GC wall time; 2.21.208 with it had **none** (two during
-startup, then nothing). Idle is the easy case — the number to collect next is the same minute
-during a recording.
+startup, then nothing), and **2** during a 60 s recording (~1.4 ms pause each). For scale, the
+August measurement on the same phone was 35/min over ~75 s of ordinary use.
 
 ## Recording a CPU profile
 
