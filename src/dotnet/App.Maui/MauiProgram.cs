@@ -50,6 +50,7 @@ public static partial class MauiProgram
         MauiStartupBreadcrumbs.Add("CreateMauiApp");
 #if ANDROID
         MauiStartupBreadcrumbs.Add($"Start reason: {AndroidUtils.GetProcessStartReason()}");
+        MauiStartupBreadcrumbs.Add($"Runtime init took {MainApplication.RuntimeInitDuration.ToShortString()}");
 #endif
 
         // Parse -t <seconds> for auto-shutdown (used for AOT testing)
@@ -68,7 +69,6 @@ public static partial class MauiProgram
         MauiExceptionHandlers.Use();
         MauiRuntimeSettings.Apply();
 #if ANDROID
-        ActivateDataCollectionIfEnabled(Android.App.Application.Context);
         AndroidMainThreadMonitor.Activate();
 #endif
         ClientStartup.Initialize();
