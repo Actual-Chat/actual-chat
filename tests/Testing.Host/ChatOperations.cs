@@ -5,6 +5,7 @@ namespace ActualChat.Testing.Host;
 public static class ChatOperations
 {
     private const string DefaultChatTitle = "test chat";
+    private const int JoinEntrySearchLimit = 100;
 
     public static async Task<(Chat.Chat Chat, Symbol InviteId)> CreateAndGetChat(
         this IWebTester tester,
@@ -75,6 +76,30 @@ public static class ChatOperations
             var lidRange = await services.GetRequiredService<IChatsBackend>().GetLidRange(chatId, false, ct);
             lidRange.Start.Should().BePositive("the chat's opening system entry must be written by now");
         }, TimeSpan.FromSeconds(10));
+
+    public static async Task<Author> EnsureJoinedAndSettled(this IWebTester tester, ChatId chatId)
+    {
+        var session = tester.Session;
+        var authors = tester.AppServices.GetRequiredService<IAuthors>();
+        var wasJoined = await authors.GetOwn(session, chatId, CancellationToken.None) is { HasLeft: false };
+        var author = await authors.EnsureJoined(session, chatId, CancellationToken.None);
+        if (wasJoined)
+            return author;
+
+        // The join writes a "member added" entry from an async event handler that waits for the author's
+        // avatar with its own retries, so the entry can land seconds after the join command returned.
+        var chats = tester.AppServices.GetRequiredService<IChats>();
+        await ComputedTest.When(async ct => {
+            var lidRange = await chats.GetIdRange(session, chatId, ct);
+            var reader = chats.NewEntryReader(session, chatId);
+            var entry = await reader.GetLast(lidRange,
+                x => x is MembersChangedEntry { HasLeft: false } e && e.TargetAuthorId == author.Id,
+                JoinEntrySearchLimit,
+                ct);
+            entry.Should().NotBeNull("the join system entry must be written by now");
+        }, TimeSpan.FromSeconds(10));
+        return author;
+    }
 
     public static Task<Chat.Chat> UpdateChat(this IWebTester tester, ChatId chatId, string title)
         => tester.Commander.Call(new Chats_Change {
