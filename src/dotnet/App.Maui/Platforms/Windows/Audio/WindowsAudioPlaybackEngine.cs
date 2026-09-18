@@ -7,6 +7,7 @@ using Windows.Media.MediaProperties;
 using ActualChat.Audio;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Components;
+using ActualChat.UI.Blazor.App.Services;
 using AudioFrame = Windows.Media.AudioFrame;
 
 namespace  ActualChat.App.Maui.Audio;
@@ -46,12 +47,16 @@ internal sealed class WindowsAudioPlaybackEngine(
     private long _nextLagReportAtTicks;
     private int _endedReported;
     private int _decodeCompleted;
+    private int _isFirstAudioTraced;
+    private int _starvedQuantumCount;
 
     private IAudioCodec AudioCodec => field ??= services.GetRequiredService<IAudioCodec>();
 
     private MomentClockSet Clocks => field ??= services.GetRequiredService<MomentClockSet>();
 
     private ILogger Log => field ??= services.LogFor<WindowsAudioPlaybackEngine>();
+
+    private Tracer Tracer => field ??= (info as ChatAudioTrackInfo)?.Tracer ?? Tracer.None;
 
     public async Task Play(CancellationToken cancellationToken)
     {
@@ -87,6 +92,7 @@ internal sealed class WindowsAudioPlaybackEngine(
         }
 
         _graph = graphCreate.Graph;
+        Tracer.Point("engine: AudioGraph created");
 
         var deviceOutputResult = await _graph.CreateDeviceOutputNodeAsync().AsTask(cancellationToken).ConfigureAwait(false);
         if (deviceOutputResult.Status != AudioDeviceNodeCreationStatus.Success || deviceOutputResult.DeviceOutputNode is null) {
@@ -96,6 +102,7 @@ internal sealed class WindowsAudioPlaybackEngine(
                 $"AudioGraph device output creation failed: {deviceOutputResult.Status}");
         }
         _deviceOutput = deviceOutputResult.DeviceOutputNode;
+        Tracer.Point("engine: device output node created");
         _frameInput = _graph.CreateFrameInputNode(encoding);
         _frameInput.AddOutgoingConnection(_deviceOutput);
         _frameInput.QuantumStarted += OnQuantumStarted;
@@ -147,6 +154,10 @@ internal sealed class WindowsAudioPlaybackEngine(
         }
 
         // Abort: stop everything immediately
+        if (Volatile.Read(ref _endedReported) == 0)
+            Tracer.Point(
+                $"engine: stopped, {(double)_playedSamples / Constants.Audio.PlaybackSampleRate:F3}s played, "
+                + $"{_starvedQuantumCount} starved quanta");
         try {
             _frameInput?.Stop();
             _graph?.Stop();
@@ -247,6 +258,7 @@ internal sealed class WindowsAudioPlaybackEngine(
             if (frameInput is null || graph is null)
                 return;
 
+            Tracer.Point($"engine: {_decodeBuffer.Count} samples buffered, starting the graph");
             frameInput.Start();
             graph.Start();
             _isPaused = false;
@@ -303,6 +315,7 @@ internal sealed class WindowsAudioPlaybackEngine(
         }
         finally {
             Interlocked.Exchange(ref _decodeCompleted, 1);
+            Tracer.Point("engine: decode completed");
         }
     }
 
@@ -327,6 +340,11 @@ internal sealed class WindowsAudioPlaybackEngine(
                 if (available < playSampleCount)
                     dst[available..].Clear();
                 hasData = true;
+                if (Tracer.IsEnabled && Interlocked.Exchange(ref _isFirstAudioTraced, 1) == 0) {
+                    // Logging does file I/O, which doesn't belong on the audio thread
+                    var elapsed = Tracer.Elapsed;
+                    _ = Task.Run(() => Tracer.Point("engine: first audio quantum out", elapsed));
+                }
             }
             else {
                 hasData = false;
@@ -335,6 +353,8 @@ internal sealed class WindowsAudioPlaybackEngine(
                     return;
                 }
                 // Starving - report playing state
+                if (_playedSamples > 0)
+                    _starvedQuantumCount++;
                 ReportPlaying();
                 dst.Clear();
             }
