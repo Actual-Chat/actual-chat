@@ -1640,6 +1640,7 @@
   "Call_Entry_Canceled": "已取消的通话",
   "Call_Entry_Ended": "通话",
   "Call_Entry_NoAnswer": "无人接听",
+  "Call_Entry_Busy": "忙线中",
   "Call_Entry_TapToCallBack": "点按回拨",
 
   "LiveConversation_TranslatedVoice": "翻译语音",

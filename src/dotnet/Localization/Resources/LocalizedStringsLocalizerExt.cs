@@ -1696,6 +1696,7 @@ public static class LocalizedStringsLocalizerExt
         public string Call_Entry_Canceled => l["Call_Entry_Canceled"].Value;
         public string Call_Entry_Ended => l["Call_Entry_Ended"].Value;
         public string Call_Entry_NoAnswer => l["Call_Entry_NoAnswer"].Value;
+        public string Call_Entry_Busy => l["Call_Entry_Busy"].Value;
         public string Call_Entry_TapToCallBack => l["Call_Entry_TapToCallBack"].Value;
         public string Call_Join => l["Call_Join"].Value;
         public string Call_JoinMuted => l["Call_JoinMuted"].Value;

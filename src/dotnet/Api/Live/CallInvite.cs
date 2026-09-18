@@ -9,6 +9,7 @@ public enum CallInviteStatus
     Declined = 4,
     Missed = 5,
     Ended = 6,
+    Busy = 7,
 }
 
 [DataContract, MessagePackObject]

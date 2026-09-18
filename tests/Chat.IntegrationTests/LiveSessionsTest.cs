@@ -976,6 +976,136 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task CallToABusyUserShouldNotRingAndShouldTellTheCaller()
+    {
+        // arrange — Alice is already dialing Carol elsewhere
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await using var carol = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        await carol.SignInAsNew("Carol");
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var (busyChatId, busyInviteId) = await carol.CreateChat(false);
+        await alice.JoinChat(busyChatId, busyInviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var aliceBusyAuthor = await alice.GetOwnAuthor(busyChatId);
+        var carolBusyAuthor = await carol.GetOwnAuthor(busyChatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(
+            busyChatId, aliceBusyAuthor!.Id, new[] { carolBusyAuthor!.Id }.ToApiArray(), false, default);
+
+        // act
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // assert — she was never rung, and Bob is told rather than left dialing
+        var callState = await backend.GetCallState(chatId, default);
+        callState!.Status.Should().Be(CallStatus.Busy);
+        (await backend.GetState(chatId, default)).Should().BeNull("a call nobody can answer is closed at once");
+        (await backend.GetState(busyChatId, default)).Should().NotBeNull("Alice's own call is untouched");
+    }
+
+    [Fact]
+    public async Task BusyInviteeShouldNotStopTheCallForTheOthers()
+    {
+        // arrange — Bob rings Alice and Carol; Alice is busy in a chat neither of them is in
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await using var carol = AppHost.NewBlazorTester(Out);
+        await using var dave = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        await carol.SignInAsNew("Carol");
+        await dave.SignInAsNew("Dave");
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        await carol.JoinChat(chatId, inviteId);
+        var (busyChatId, busyInviteId) = await dave.CreateChat(false);
+        await alice.JoinChat(busyChatId, busyInviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var carolAuthor = await carol.GetOwnAuthor(chatId);
+        var aliceBusyAuthor = await alice.GetOwnAuthor(busyChatId);
+        var daveBusyAuthor = await dave.GetOwnAuthor(busyChatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(
+            busyChatId, aliceBusyAuthor!.Id, new[] { daveBusyAuthor!.Id }.ToApiArray(), false, default);
+
+        // act
+        await backend.StartCall(
+            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id, carolAuthor!.Id }.ToApiArray(), false, default);
+
+        // assert
+        var live = await backend.Get(chatId, default);
+        live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Busy);
+        live.Invites.Single(i => i.InviteeId == carolAuthor.Id).Status.Should().Be(CallInviteStatus.Ringing);
+    }
+
+    [Fact]
+    public async Task AnUnansweredRingShouldMakeTheUserBusyForASecondCaller()
+    {
+        // arrange — Bob rings Alice and she hasn't answered yet
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await using var carol = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        await carol.SignInAsNew("Carol");
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var (otherChatId, otherInviteId) = await carol.CreateChat(false);
+        await alice.JoinChat(otherChatId, otherInviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var carolOtherAuthor = await carol.GetOwnAuthor(otherChatId);
+        var aliceOtherAuthor = await alice.GetOwnAuthor(otherChatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // act — Carol calls her while Bob's ring is still going
+        await backend.StartCall(
+            otherChatId, carolOtherAuthor!.Id, new[] { aliceOtherAuthor!.Id }.ToApiArray(), false, default);
+
+        // assert — the first ring wins, so every device agrees which call is hers
+        var firstLive = await backend.Get(chatId, default);
+        firstLive!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Ringing);
+        (await backend.GetCallState(otherChatId, default))!.Status.Should().Be(CallStatus.Busy);
+    }
+
+    [Fact]
+    public async Task EndedCallShouldFreeTheUserForTheNextOne()
+    {
+        // arrange — Alice declines Bob's call, which ends it
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await using var carol = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        await carol.SignInAsNew("Carol");
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var (otherChatId, otherInviteId) = await carol.CreateChat(false);
+        await alice.JoinChat(otherChatId, otherInviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var carolOtherAuthor = await carol.GetOwnAuthor(otherChatId);
+        var aliceOtherAuthor = await alice.GetOwnAuthor(otherChatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await backend.DeclineCall(chatId, aliceAuthor.Id, default);
+
+        // act — Carol calls her right after
+        await backend.StartCall(
+            otherChatId, carolOtherAuthor!.Id, new[] { aliceOtherAuthor!.Id }.ToApiArray(), false, default);
+
+        // assert — the claim was released with the call, so this one rings
+        var live = await backend.Get(otherChatId, default);
+        live!.Invites.Single(i => i.InviteeId == aliceOtherAuthor!.Id).Status.Should().Be(CallInviteStatus.Ringing);
+    }
+
+    [Fact]
     public async Task StartCallShouldSetDialingStatus()
     {
         // arrange

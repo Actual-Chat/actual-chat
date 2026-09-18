@@ -1640,6 +1640,7 @@
   "Call_Entry_Canceled": "キャンセルされた通話",
   "Call_Entry_Ended": "通話",
   "Call_Entry_NoAnswer": "応答なし",
+  "Call_Entry_Busy": "通話中",
   "Call_Entry_TapToCallBack": "タップして折り返す",
 
   "LiveConversation_TranslatedVoice": "翻訳音声",

@@ -1640,6 +1640,7 @@
   "Call_Entry_Canceled": "Cuộc gọi đã hủy",
   "Call_Entry_Ended": "Cuộc gọi",
   "Call_Entry_NoAnswer": "Không trả lời",
+  "Call_Entry_Busy": "Máy bận",
   "Call_Entry_TapToCallBack": "Nhấn để gọi lại",
 
   "LiveConversation_TranslatedVoice": "Giọng nói đã dịch",

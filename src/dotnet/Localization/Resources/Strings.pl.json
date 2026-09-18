@@ -1640,6 +1640,7 @@
   "Call_Entry_Canceled": "Anulowane połączenie",
   "Call_Entry_Ended": "Połączenie",
   "Call_Entry_NoAnswer": "Brak odpowiedzi",
+  "Call_Entry_Busy": "Zajęte",
   "Call_Entry_TapToCallBack": "Dotknij, aby oddzwonić",
 
   "LiveConversation_TranslatedVoice": "Przetłumaczony głos",

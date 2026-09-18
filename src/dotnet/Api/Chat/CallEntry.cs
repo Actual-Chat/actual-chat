@@ -7,6 +7,7 @@ public enum CallOutcome
     Declined = 2,
     Canceled = 3,
     Ended = 4,
+    Busy = 5,
 }
 
 /// <summary>

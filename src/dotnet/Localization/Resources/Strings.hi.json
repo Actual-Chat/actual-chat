@@ -1640,6 +1640,7 @@
   "Call_Entry_Canceled": "रद्द कॉल",
   "Call_Entry_Ended": "कॉल",
   "Call_Entry_NoAnswer": "जवाब नहीं मिला",
+  "Call_Entry_Busy": "व्यस्त",
   "Call_Entry_TapToCallBack": "वापस कॉल करने के लिए टैप करें",
 
   "LiveConversation_TranslatedVoice": "अनूदित आवाज़",
