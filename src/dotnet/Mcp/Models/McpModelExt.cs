@@ -1,3 +1,5 @@
+using ActualChat.External;
+
 namespace ActualChat.Mcp;
 
 public static class McpModelExt
@@ -7,45 +9,21 @@ public static class McpModelExt
             ? new McpIdRange<long>(range.Start, range.Start - 1)
             : new McpIdRange<long>(range.Start, range.End - 1);
 
-    public static McpChatMessage ToMcpModel(
+    public static Task<ExternalMessage> ToMcpModel(
         this ChatEntry entry,
         Dictionary<AuthorId, Author?> authorById,
-        UrlMapper urlMapper)
+        UrlMapper urlMapper,
+        IMarkupParser markupParser,
+        CancellationToken cancellationToken)
     {
-        var authorName = authorById.GetValueOrDefault(entry.AuthorId)?.Avatar?.Name ?? "";
-        var isStreaming = entry.IsContentStreaming;
-        var text = isStreaming ? "" : entry.Content;
-        var attachments = entry.Attachments.Select(a => a.ToMcpModel(urlMapper)).ToArray();
-        return new McpChatMessage(
-            entry.LocalId,
-            entry.Version,
-            entry.BeginsAt.ToMcpMillis(),
-            entry.AuthorId.Value,
-            authorName,
-            entry.IsSystemEntry,
-            isStreaming,
-            entry.HasAudio,
-            entry.IsRemoved,
-            text,
-            attachments,
-            entry.RepliedEntryLid);
-    }
+        // A missing author (e.g. one who left) still needs an ExternalAuthor to fill in
+        var author = authorById.GetValueOrDefault(entry.AuthorId)
+            ?? new Author(entry.AuthorId) { Avatar = new Avatar(Symbol.Empty) };
+        return entry.ToExternalMessage(
+            author, includeText: true, urlMapper, AvatarUrl, markupParser, cancellationToken);
 
-    public static McpAttachment ToMcpModel(this ChatEntryAttachment attachment, UrlMapper urlMapper)
-    {
-        var media = attachment.Media.ToMcpMediaRef(attachment.ThumbnailMedia, urlMapper);
-        return new McpAttachment(
-            attachment.Id.Value,
-            media.MediaId,
-            media.Kind,
-            media.FileName,
-            media.ContentType,
-            media.Length,
-            media.Width,
-            media.Height,
-            media.Url,
-            media.PreviewUrl,
-            media.ThumbnailUrl);
+        Task<string?> AvatarUrl(Avatar avatar, CancellationToken _)
+            => Task.FromResult(avatar.ToMcpPictureUrl(urlMapper));
     }
 
     public static McpMediaRef ToMcpMediaRef(this Media.Media media, Media.Media? thumbnail, UrlMapper urlMapper)
