@@ -212,6 +212,63 @@ public static class LocalizedStringsLocalizerExt
             => l["ConnectedApps_RevokeConfirm_Format", arg0].Value;
         public string ConnectedApps_RevokeTitle => l["ConnectedApps_RevokeTitle"].Value;
 
+        public string Integrations_Title => l["Integrations_Title"].Value;
+        public string Integrations_Add => l["Integrations_Add"].Value;
+        public string Integrations_Empty => l["Integrations_Empty"].Value;
+        public string Integrations_PersonalEmpty => l["Integrations_PersonalEmpty"].Value;
+        public string Integrations_Outgoing => l["Integrations_Outgoing"].Value;
+        public string Integrations_OutgoingHint => l["Integrations_OutgoingHint"].Value;
+        public string Integrations_Disabled => l["Integrations_Disabled"].Value;
+        public string Integrations_FailingSince_Format(object arg0)
+            => l["Integrations_FailingSince_Format", arg0].Value;
+        public string Integrations_LastDelivery_Format(object arg0)
+            => l["Integrations_LastDelivery_Format", arg0].Value;
+        public string Integrations_DisabledAfterFailures => l["Integrations_DisabledAfterFailures"].Value;
+        public string Integrations_DisabledUnsafeUrl => l["Integrations_DisabledUnsafeUrl"].Value;
+        public string Integrations_Hooks_Format(long count, object arg0)
+            => l.Plural("Integrations_Hooks_Format", count, arg0);
+        public string WebHook_Name => l["WebHook_Name"].Value;
+        public string WebHook_Url => l["WebHook_Url"].Value;
+        public string WebHook_Events => l["WebHook_Events"].Value;
+        public string WebHook_Events_Messages => l["WebHook_Events_Messages"].Value;
+        public string WebHook_Events_Reactions => l["WebHook_Events_Reactions"].Value;
+        public string WebHook_Events_Members => l["WebHook_Events_Members"].Value;
+        public string WebHook_Events_Chat => l["WebHook_Events_Chat"].Value;
+        public string WebHook_Events_Place => l["WebHook_Events_Place"].Value;
+        public string WebHook_Events_Notifications => l["WebHook_Events_Notifications"].Value;
+        public string WebHook_IncludeText => l["WebHook_IncludeText"].Value;
+        public string WebHook_Chats => l["WebHook_Chats"].Value;
+        public string WebHook_Chats_All => l["WebHook_Chats_All"].Value;
+        public string WebHook_Chats_Selected => l["WebHook_Chats_Selected"].Value;
+        public string WebHook_CustomHeader => l["WebHook_CustomHeader"].Value;
+        public string WebHook_CustomHeaderName => l["WebHook_CustomHeaderName"].Value;
+        public string WebHook_CustomHeaderValue => l["WebHook_CustomHeaderValue"].Value;
+        public string WebHook_ShowAdvanced => l["WebHook_ShowAdvanced"].Value;
+        public string WebHook_Create => l["WebHook_Create"].Value;
+        public string WebHook_Save => l["WebHook_Save"].Value;
+        public string WebHook_SecretTitle => l["WebHook_SecretTitle"].Value;
+        public string WebHook_SecretCopyWarning => l["WebHook_SecretCopyWarning"].Value;
+        public string WebHook_SendTest => l["WebHook_SendTest"].Value;
+        public string WebHook_TestSucceeded_Format(object arg0, object arg1)
+            => l["WebHook_TestSucceeded_Format", arg0, arg1].Value;
+        public string WebHook_TestFailed_Format(object arg0) => l["WebHook_TestFailed_Format", arg0].Value;
+        public string WebHook_Enabled => l["WebHook_Enabled"].Value;
+        public string WebHook_RecentDeliveries => l["WebHook_RecentDeliveries"].Value;
+        public string WebHook_NoDeliveries => l["WebHook_NoDeliveries"].Value;
+        public string WebHook_DeliveryOutcome_Format(object arg0, object arg1)
+            => l["WebHook_DeliveryOutcome_Format", arg0, arg1].Value;
+        public string WebHook_Redeliver => l["WebHook_Redeliver"].Value;
+        public string WebHook_RotateSecret => l["WebHook_RotateSecret"].Value;
+        public string WebHook_RotateSecretConfirm => l["WebHook_RotateSecretConfirm"].Value;
+        public string WebHook_Delete => l["WebHook_Delete"].Value;
+        public string WebHook_DeleteConfirm_Format(object arg0)
+            => l["WebHook_DeleteConfirm_Format", arg0].Value;
+        public string WebHook_Status_Pending => l["WebHook_Status_Pending"].Value;
+        public string WebHook_Status_Succeeded => l["WebHook_Status_Succeeded"].Value;
+        public string WebHook_Status_Failed => l["WebHook_Status_Failed"].Value;
+        public string WebHook_Status_Abandoned => l["WebHook_Status_Abandoned"].Value;
+        public string Settings_Webhooks => l["Settings_Webhooks"].Value;
+
         public string DevTools_Host => l["DevTools_Host"].Value;
         public string DevTools_EarlyAccess => l["DevTools_EarlyAccess"].Value;
         public string DevTools_EarlyAccessFeatures => l["DevTools_EarlyAccessFeatures"].Value;

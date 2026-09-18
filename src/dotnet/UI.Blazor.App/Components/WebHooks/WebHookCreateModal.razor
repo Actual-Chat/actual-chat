@@ -1,0 +1,22 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.WebHooks
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<WebHookCreateModal.Model>
+
+<DiveInDialogFrame
+    Class="web-hook-modal"
+    HasCloseButton="true"
+    StartPage="@_startPage">
+</DiveInDialogFrame>
+
+@code {
+    private DiveInDialogPage _startPage = null!;
+
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override void OnInitialized()
+        => _startPage = DiveInDialogPage.New<WebHookFormPage>(
+            new WebHookFormPage.Model(ModalModel.Scope, ModalModel.ScopeId, null));
+
+    public sealed record Model(WebHookScope Scope, string ScopeId);
+}
