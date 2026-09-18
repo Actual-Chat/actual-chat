@@ -186,6 +186,7 @@
                 Description = description,
                 Style = style,
                 Kind = ModalModel.MediaKind,
+                IsBackground = ModalModel.HasBlur,
             };
             var (mediaRef, error) = await UICommander.Run(command, cancellationToken).ConfigureAwait(true);
             if (error != null || mediaRef is null) {

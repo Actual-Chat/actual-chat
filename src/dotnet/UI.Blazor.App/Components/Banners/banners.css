@@ -68,6 +68,13 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
     @apply flex-x items-center gap-3;
 }
 
+.chat-picture-suggestion-banner .btn-background-preview {
+    @apply w-20 h-10 shrink-0 overflow-hidden rounded-md;
+}
+.chat-picture-suggestion-banner .btn-background-preview img {
+    @apply w-full h-full object-cover;
+}
+
 /* ── Own-voice sample banner (the prompt card the user reads aloud in Notes) ── */
 
 .own-voice-sample-banner {

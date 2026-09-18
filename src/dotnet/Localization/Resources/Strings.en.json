@@ -867,6 +867,8 @@
   "Banner_OnlyPersonInChat": "You are the only person in this chat!",
   "Banner_AddMembers": "Add members",
   "Banner_SuggestedPicture": "← I generated a picture for this chat!",
+  "Banner_SuggestedPlacePicture": "← I generated a picture for this place!",
+  "Banner_SuggestedPlaceBackground": "← I generated a background for this place!",
   "Banner_UseSuggestedPicture": "Use it",
   "Banner_RegenerateSuggestedPicture": "Try another",
   "Banner_NotInContacts": "This user is not in your contact list yet",

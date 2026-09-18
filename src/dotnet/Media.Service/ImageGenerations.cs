@@ -24,6 +24,7 @@ public sealed record ImageGenerationSpec(string Scope, string Description, Image
     // Null where nothing user-facing owns the result, e.g. the suggestion store's own media.
     public UserId? OwnerId { get; init; }
     public MediaKind MediaKind { get; init; } = MediaKind.ChatPicture;
+    public bool IsBackground { get; init; }
     // FLUX is trained at 1024 and a direct 512 render is visibly worse; the icon processor caps at
     // 1024 anyway and the image proxy serves whatever smaller size the UI asks for.
     public int Width { get; init; } = 1024;
@@ -52,7 +53,7 @@ internal sealed class ImageGenerations(IServiceProvider services) : IImageGenera
         if (!IsAvailable || spec.Description.IsNullOrEmpty())
             return null;
 
-        var prompt = string.Format(spec.Style.GetPromptTemplate(), spec.Description);
+        var prompt = string.Format(spec.Style.GetPromptTemplate(spec.IsBackground), spec.Description);
         var request = new ImageGenerationRequest(prompt) {
             Width = spec.Width,
             Height = spec.Height,

@@ -2,10 +2,7 @@ using ActualChat.Media;
 
 namespace ActualChat.Chat;
 
-// Deliberately not generic over the suggestion store's key. Generation spends money against an
-// external provider, so an endpoint taking a caller-supplied key would need an authorization switch
-// that stays exhaustive forever; per-target methods make the permission check unavoidable at the
-// call site. Adding places later costs a few more methods, which is cheap insurance.
+// Target-specific methods keep authorization out of the opaque-key suggestion store.
 
 public interface IImageSuggestions : IComputeService
 {
@@ -19,6 +16,15 @@ public interface IImageSuggestions : IComputeService
     Task<Moment?> GetGenerationStartedAtForChat(
         Session session, ChatId chatId, ImageSlot slot, CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<ImageSuggestion?> GetForPlace(
+        Session session, PlaceId placeId, ImageSlot slot, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<Moment?> GetDismissedUntilForPlace(
+        Session session, PlaceId placeId, ImageSlot slot, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<bool> CanGenerateForPlace(Session session, PlaceId placeId, CancellationToken cancellationToken);
+
     [CommandHandler]
     Task<ImageSuggestion?> OnGenerateForChat(
         ImageSuggestions_GenerateForChat command, CancellationToken cancellationToken);
@@ -26,6 +32,13 @@ public interface IImageSuggestions : IComputeService
     Task OnAcceptForChat(ImageSuggestions_AcceptForChat command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnDismissForChat(ImageSuggestions_DismissForChat command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<ImageSuggestion?> OnGenerateForPlace(
+        ImageSuggestions_GenerateForPlace command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnAcceptForPlace(ImageSuggestions_AcceptForPlace command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnDismissForPlace(ImageSuggestions_DismissForPlace command, CancellationToken cancellationToken);
 }
 
 // Which image of a piece of content is meant. A chat has a picture; a place has a picture and a
@@ -66,5 +79,31 @@ public sealed partial record ImageSuggestions_AcceptForChat(
 public sealed partial record ImageSuggestions_DismissForChat(
     [property: DataMember, Key(0)] Session Session,
     [property: DataMember, Key(1)] ChatId ChatId,
+    [property: DataMember, Key(2)] ImageSlot Slot
+) : ISessionCommand<Unit>;
+
+[DataContract, MessagePackObject]
+public sealed partial record ImageSuggestions_GenerateForPlace(
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] PlaceId PlaceId,
+    [property: DataMember, Key(2)] ImageSlot Slot,
+    [property: DataMember, Key(3)] string? ImageDescription
+) : ISessionCommand<ImageSuggestion?>
+{
+    [DataMember, Key(4)] public bool IsExplicit { get; init; }
+    [DataMember, Key(5)] public ImageStyle? Style { get; init; }
+}
+
+[DataContract, MessagePackObject]
+public sealed partial record ImageSuggestions_AcceptForPlace(
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] PlaceId PlaceId,
+    [property: DataMember, Key(2)] ImageSlot Slot
+) : ISessionCommand<Unit>;
+
+[DataContract, MessagePackObject]
+public sealed partial record ImageSuggestions_DismissForPlace(
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] PlaceId PlaceId,
     [property: DataMember, Key(2)] ImageSlot Slot
 ) : ISessionCommand<Unit>;

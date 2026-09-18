@@ -716,6 +716,8 @@
   "Banner_OnlyPersonInChat": "Bạn là người duy nhất trong cuộc trò chuyện này!",
   "Banner_AddMembers": "Thêm thành viên",
   "Banner_SuggestedPicture": "← Tôi đã tạo một ảnh cho cuộc trò chuyện này!",
+  "Banner_SuggestedPlacePicture": "← Tôi đã tạo ảnh cho không gian này!",
+  "Banner_SuggestedPlaceBackground": "← Tôi đã tạo ảnh nền cho không gian này!",
   "Banner_UseSuggestedPicture": "Dùng ảnh này",
   "Banner_RegenerateSuggestedPicture": "Thử ảnh khác",
   "Banner_NotInContacts": "Người dùng này chưa có trong danh bạ của bạn",

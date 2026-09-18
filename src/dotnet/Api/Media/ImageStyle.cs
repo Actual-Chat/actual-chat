@@ -161,8 +161,17 @@ public static class ImageStyleExt
         };
 
     // Returns the template the image generator expects: "{0}" is replaced by the description.
-    public static string GetPromptTemplate(this ImageStyle style)
+    public static string GetPromptTemplate(this ImageStyle style, bool isBackground = false)
     {
+        if (isBackground) {
+            style = style == ImageStyle.Default ? ImageStyle.Photo : style.Resolve();
+            var backgroundStyle = style == ImageStyle.FlatVector
+                ? "flat vector illustration, bold shapes, flat colors, crisp edges"
+                : Tails.GetValueOrDefault(style, "");
+            return $"{{0}}. {backgroundStyle}, camera-style scene, spacious composition, natural depth, "
+                + "fills the frame, no text, no watermark, no frame, no border.";
+        }
+
         style = style.Resolve();
         var framing = style == ImageStyle.NeonCyberpunk ? DarkFraming : Framing;
         var tail = Tails.GetValueOrDefault(style, "");

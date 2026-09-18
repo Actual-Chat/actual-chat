@@ -716,6 +716,8 @@
   "Banner_OnlyPersonInChat": "V tomto chatu jste jediní!",
   "Banner_AddMembers": "Přidat členy",
   "Banner_SuggestedPicture": "← Vygeneroval jsem obrázek pro tento chat!",
+  "Banner_SuggestedPlacePicture": "← Vygeneroval jsem obrázek pro toto místo!",
+  "Banner_SuggestedPlaceBackground": "← Vygeneroval jsem pozadí pro toto místo!",
   "Banner_UseSuggestedPicture": "Použít",
   "Banner_RegenerateSuggestedPicture": "Zkusit jiný",
   "Banner_NotInContacts": "Tento uživatel zatím není ve vašich kontaktech",

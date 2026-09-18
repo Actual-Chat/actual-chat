@@ -716,6 +716,8 @@
   "Banner_OnlyPersonInChat": "इस चैट में सिर्फ़ आप ही हैं!",
   "Banner_AddMembers": "सदस्य जोड़ें",
   "Banner_SuggestedPicture": "← मैंने इस चैट के लिए एक तस्वीर बनाई है!",
+  "Banner_SuggestedPlacePicture": "← मैंने इस स्थान के लिए एक तस्वीर बनाई है!",
+  "Banner_SuggestedPlaceBackground": "← मैंने इस स्थान के लिए एक पृष्ठभूमि बनाई है!",
   "Banner_UseSuggestedPicture": "इसे लगाएँ",
   "Banner_RegenerateSuggestedPicture": "दूसरी आज़माएँ",
   "Banner_NotInContacts": "यह उपयोगकर्ता अभी आपकी संपर्क सूची में नहीं है",
