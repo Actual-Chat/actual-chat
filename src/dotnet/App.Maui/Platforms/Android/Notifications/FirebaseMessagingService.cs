@@ -233,7 +233,7 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
             return;
         }
 
-        var scopeAlive = TryGetScopedServices(out var scopedServices);
+        var scopeAlive = TryGetScopedServices(out _);
         var isForeground = AndroidUtils.IsAppForeground();
         DebugLog?.LogInformation(
             "CALL_TRACE: HandleIncomingCall push #{ChatId}, scopeAlive={ScopeAlive}, foreground={Foreground}",
@@ -248,35 +248,17 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
             return;
         }
 
-        // One call at a time: a ring behind another chat's call shows nothing here and doesn't ring. Busy
-        // is the Blazor side's to send once it sees the ring - native does nothing for it at all.
-        if (!IsAnotherCallHeld(chatId, scopedServices)) {
-            // The channel is silent, so the ringtone starts with the notification, or it's a missed call - but
-            // not while notifications are blocked: nothing was posted to answer or silence it.
-            IncomingCallNotifications.Show(data);
-            if (IncomingCallNotifications.CanPostCalls())
-                IncomingCallRinger.Start(Constants.Call.RingTimeout);
-        }
+        // No arbitration here any more: the server owns the user's call, so a ring that shouldn't be
+        // shown is never pushed in the first place - see CallsBackend.
+        // The channel is silent, so the ringtone starts with the notification, or it's a missed call - but
+        // not while notifications are blocked: nothing was posted to answer or silence it.
+        IncomingCallNotifications.Show(data);
+        if (IncomingCallNotifications.CanPostCalls())
+            IncomingCallRinger.Start(Constants.Call.RingTimeout);
         if (scopeAlive)
             _ = DispatchToBlazor(
                 c => c.GetRequiredService<CallScreensUI>().OnRing(chatId),
                 "CallScreensUI.OnRing");
-    }
-
-    private static bool IsAnotherCallHeld(ChatId chatId, IServiceProvider? scopedServices)
-    {
-        // Fail-open like ShouldSuppressForDevice: a check that throws must never hide a call.
-        try {
-            if (IncomingCallNotifications.ListActiveCallChatIds().Any(id => id != chatId))
-                return true;
-
-            var callChatId = scopedServices?.GetRequiredService<CallUI>().GetCallChatIdNonComputed();
-            return callChatId is not null && callChatId != chatId;
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "IsAnotherCallHeld failed for chat #{ChatId}; showing the call", chatId);
-            return false;
-        }
     }
 
     private static bool ShowGetAttentionNotification(NotificationData data, long messageSentTime)

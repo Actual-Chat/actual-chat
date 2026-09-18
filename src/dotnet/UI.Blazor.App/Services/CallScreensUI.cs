@@ -1,3 +1,4 @@
+using ActualChat.Live;
 using ActualChat.Localization;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Diagnostics;
@@ -61,7 +62,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         var call = await CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
         if (call is null)
             return null;
-        if (call.Origin == CallOrigin.Incoming)
+        if (call.Role == CallRole.Callee)
             return call.PeerId;
 
         var live = await Hub.LiveSessionUI.Get(call.ChatId, cancellationToken).ConfigureAwait(false);
@@ -72,7 +73,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     public virtual async Task<IncomingCall?> GetIncomingCall(CancellationToken cancellationToken)
     {
         var call = await CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
-        return call is { Origin: CallOrigin.Incoming, Phase: CallPhase.Ringing, PeerId: { } callerId }
+        return call is { Role: CallRole.Callee, Phase: CallPhase.Ringing, PeerId: { } callerId }
             ? new IncomingCall(call.ChatId, callerId, call.HasVideo)
             : null;
     }
@@ -84,7 +85,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
 
         CallDebugLog?.LogInformation("CALL_TRACE: OnRing #{ChatId}, showOverLockScreen={ShowOverLockScreen}",
             chatId, showOverLockScreen);
-        CallUI.AddCandidate(chatId);
+        CallUI.Touch();
         // A ring that can't hold the slot must not take the screen over the lock: it would swap the held
         // call's screen for its own.
         var slotChatId = CallUI.GetCallChatIdNonComputed();
@@ -197,7 +198,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         => ClearIf(_collapsedChatId, chatId);
 
     public Task HangUp(ChatId chatId)
-        => CallUI.GetActiveCallNonComputed() is { Origin: CallOrigin.Outgoing, Phase: CallPhase.Dialing } call
+        => CallUI.GetActiveCallNonComputed() is { Role: CallRole.Caller, Phase: CallPhase.Dialing } call
             && call.ChatId == chatId
             ? CancelCall(chatId)
             : CallUI.HangUp(chatId);

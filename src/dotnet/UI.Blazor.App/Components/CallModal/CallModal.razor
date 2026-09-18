@@ -81,7 +81,7 @@
         var mutedChatId = await CallScreensUI.MutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
         return new() {
             Author = author,
-            IsIncoming = call.Origin == CallOrigin.Incoming,
+            IsIncoming = call.Role == CallRole.Callee,
             HasVideo = call.HasVideo,
             IsMuted = mutedChatId == chatId,
         };

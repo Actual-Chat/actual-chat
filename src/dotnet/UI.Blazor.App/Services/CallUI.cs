@@ -1,6 +1,5 @@
 using ActualChat.Localization;
 using ActualChat.Live;
-using ActualChat.Notifications;
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Diagnostics;
@@ -9,16 +8,18 @@ using ActualLab.Interception;
 namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
-/// The one call this client is in - incoming or outgoing, ringing, dialing or connected. While the slot
-/// is held every other ring is answered Busy and no new call can start.
+/// The one call this client shows: a projection of the server's <see cref="ILiveSessions.GetMyCall"/>,
+/// plus the intent of a gesture this client just made and the server hasn't confirmed yet.
 /// </summary>
 public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
+    // How long a gesture's own view of the slot survives an answer that doesn't show it yet: the RPC
+    // round trip, and the reconnect after a short disconnect - where the answer is "no call" (#4532).
+    private static readonly TimeSpan IntentGrace = TimeSpan.FromSeconds(10);
+
     private readonly Lock _lock = new();
-    private readonly MutableState<ImmutableList<ChatId>> _ringingChatIds;
     private readonly MutableState<ActiveCall?> _activeCall;
-    // Rings answered Busy while the slot is held - ListActive repeats a ring on every change.
-    private readonly HashSet<ChatId> _busyAckedChatIds = [];
+    private CallIntent? _intent;
 
     private IIncomingCallsBridge? Bridge { get; }
     private ISystemCallUI SystemCallUI => field ??= Hub.Services.GetRequiredService<ISystemCallUI>();
@@ -27,16 +28,12 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private IAuthors Authors => Hub.Authors;
-    private INotifications Notifications => Hub.Notifications;
     private Moment Now => Clocks.CpuClock.Now;
     private ILogger? CallDebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
     public CallUI(AppUIHub hub) : base(hub)
     {
         Bridge = hub.Services.GetService<IIncomingCallsBridge>();
-        _ringingChatIds = StateFactory.NewMutable(
-            ImmutableList<ChatId>.Empty,
-            StateCategories.Get(GetType(), "RingingChatIds"));
         _activeCall = StateFactory.NewMutable(
             (ActiveCall?)null,
             StateCategories.Get(GetType(), "ActiveCall"));
@@ -69,7 +66,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // The slot is claimed before the StartCall RPC, but the outgoing screens read the invitee from the
         // session, and a refused call must not ring back first - so they wait for the server's dialing.
         var call = await GetActiveCall(cancellationToken).ConfigureAwait(false);
-        if (call is not { Origin: CallOrigin.Outgoing, Phase: CallPhase.Dialing })
+        if (call is not { Role: CallRole.Caller, Phase: CallPhase.Dialing })
             return null;
 
         var live = await LiveSessionUI.Get(call.ChatId, cancellationToken).ConfigureAwait(false);
@@ -83,7 +80,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     [ComputeMethod]
     public virtual async Task<IncomingCall?> GetRingingCall(ChatId chatId, CancellationToken cancellationToken)
     {
-        // Straight from the session, for any chat - whether that ring may hold the slot is the search's call.
+        // Straight from the session: this is what Accept re-verifies the ring against.
         var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var call = ownAuthor is null ? null : FindRingingCall(live, ownAuthor.Id);
@@ -123,7 +120,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             Hub.ToastUI.Show(L.Call_NoMicrophoneAccess, "icon-phone-hang-up", ToastDismissDelay.Short);
             return;
         }
-        // The slot is taken before the RPC, so a ring arriving meanwhile is already answered Busy.
+        // Taken before the RPC, so the screens follow the gesture rather than the round trip.
         if (!TryClaimOutgoing(chatId, hasVideo)) {
             Hub.ToastUI.Show(L.Call_AlreadyInCall, "icon-phone-hang-up", ToastDismissDelay.Short);
             return;
@@ -137,7 +134,8 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             if (e is OperationCanceledException)
                 throw;
 
-            // Only StandardError.Constraint (e.g. the peer-call gate) carries user-facing text.
+            // Only StandardError.Constraint carries user-facing text - the peer-call gate, or this
+            // user being in a call already, possibly on another device.
             Log.LogWarning(e, "StartCall failed for chat #{ChatId}", chatId);
             var message = e is InvalidOperationException ? e.Message : L.Call_CouldntStart;
             Hub.ToastUI.Show(message, "icon-phone-hang-up", ToastDismissDelay.Short);
@@ -178,19 +176,11 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public async Task HangUp(ChatId chatId)
     {
         // Leaving the call server-side follows from the stopped audio, through the same SetParticipation
-        // path as any other presence change - see LiveSessionUI.RunParticipationSync.
+        // path as any other presence change - see LiveSessionUI.RunParticipationSync. The server's claim
+        // goes with that presence, on its next read of this call.
         Release(chatId);
         await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(true);
         await ChatAudioUI.SetListeningState(chatId, false).ConfigureAwait(true);
-    }
-
-    public void AddCandidate(ChatId chatId)
-    {
-        lock (_lock) {
-            var chatIds = _ringingChatIds.Value;
-            if (!chatIds.Contains(chatId))
-                _ringingChatIds.Value = chatIds.Add(chatId);
-        }
     }
 
     public bool TryClaimOutgoing(ChatId chatId, bool hasVideo)
@@ -199,23 +189,20 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             if (_activeCall.Value is not null)
                 return false;
 
-            _activeCall.Value = new ActiveCall(chatId, CallOrigin.Outgoing, CallPhase.Dialing, null, hasVideo);
+            SetIntentUnsafe(new ActiveCall(chatId, CallRole.Caller, CallPhase.Dialing, null, hasVideo));
             return true;
         }
     }
 
     public bool TryCommitAccept(IncomingCall call)
     {
-        // From a free slot this claims it too: Answer on a notification can land before the search does.
+        // From a free slot this claims it too: Answer on a notification can land before the projection does.
         var chatId = call.ChatId;
         lock (_lock) {
             if (_activeCall.Value is { } heldCall && heldCall.ChatId != chatId)
                 return false;
 
-            _activeCall.Value = new ActiveCall(
-                chatId, CallOrigin.Incoming, CallPhase.Active, call.Caller, call.HasVideo);
-            RemoveCandidate(chatId);
-            _busyAckedChatIds.Remove(chatId);
+            SetIntentUnsafe(new ActiveCall(chatId, CallRole.Callee, CallPhase.Active, call.Caller, call.HasVideo));
             return true;
         }
     }
@@ -225,13 +212,11 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // Reports whether the slot held the chat, in any phase. The slot goes only while the ring itself holds
         // it: the dismissal push our own accept triggers must not end the call it just started.
         lock (_lock) {
-            RemoveCandidate(chatId);
-            _busyAckedChatIds.Remove(chatId);
             if (_activeCall.Value is not { } call || call.ChatId != chatId)
                 return false;
 
             if (call.Phase == CallPhase.Ringing)
-                ReleaseUnsafe();
+                ReleaseUnsafe(chatId);
             return true;
         }
     }
@@ -240,26 +225,30 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     {
         lock (_lock) {
             if (_activeCall.Value?.ChatId == chatId)
-                ReleaseUnsafe();
+                ReleaseUnsafe(chatId);
         }
     }
 
     // Private methods
 
     // Caller must hold _lock.
-    private void ReleaseUnsafe()
+    private void SetIntentUnsafe(ActiveCall call)
     {
-        if (_activeCall.Value is { } call)
-            RemoveCandidate(call.ChatId);
-        _activeCall.Value = null;
-        _busyAckedChatIds.Clear();
+        _intent = new CallIntent(call, call.ChatId, Now);
+        _activeCall.Value = call;
     }
 
     // Caller must hold _lock.
-    private void RemoveCandidate(ChatId chatId)
+    private void ReleaseUnsafe(ChatId chatId)
     {
-        var chatIds = _ringingChatIds.Value;
-        if (chatIds.Contains(chatId))
-            _ringingChatIds.Value = chatIds.Remove(chatId);
+        // Recorded as an intent of its own: the server keeps naming this call mine until my absence
+        // reaches it, and that answer must not put the screens back up.
+        _intent = new CallIntent(null, chatId, Now);
+        _activeCall.Value = null;
     }
+
+    // Nested types
+
+    // What this client last did to the slot, and when. A null Call means "I just left this chat's call".
+    internal sealed record CallIntent(ActiveCall? Call, ChatId ChatId, Moment At);
 }
