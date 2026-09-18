@@ -616,7 +616,16 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 .Collect(cancellationToken)
                 .ConfigureAwait(false);
             var completeCmd = new AccountsBackend_Update(account with { IsGreetingCompleted = true }, account.Version);
-            await Commander.Call(completeCmd, true, cancellationToken).ConfigureAwait(false);
+            try {
+                await Commander.Call(completeCmd, true, cancellationToken).ConfigureAwait(false);
+            }
+            catch (VersionMismatchException) {
+                // A passkey change rewrites the account's identities and moves its version, and this command
+                // carries the whole account - a stale one would write those identities back. ContactGreeter
+                // re-picks accounts with IsGreetingCompleted == false, so the next pass redoes this greeting.
+                Log.LogWarning("Greet({UserId}): the account changed under us, retrying on the next pass",
+                    account.Id);
+            }
         }
         finally {
             await database.KeyDeleteAsync(alreadyGreetingKey).ConfigureAwait(false);

@@ -99,6 +99,17 @@ public class PasskeysBackend(IServiceProvider services) : DbServiceBase<UsersDbC
                 dbContext.AccountIdentities.Remove(dbIdentity);
         }
 
+        if (!change.IsUpdate(out _)) {
+            // An identity belongs to the account, so changing the set has to move the account's version:
+            // an update built on a model that still lists this identity must lose to RequireVersion rather
+            // than write it back.
+            var dbAccount = await dbContext.Accounts
+                .FirstOrDefaultAsync(x => x.Id == userId.Value, cancellationToken)
+                .ConfigureAwait(false);
+            if (dbAccount is not null)
+                dbAccount.Version = VersionGenerator.NextVersion(dbAccount.Version);
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return change.IsRemove() ? null : dbPasskey.ToModel();
     }
