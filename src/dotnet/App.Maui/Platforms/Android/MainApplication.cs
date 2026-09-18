@@ -28,6 +28,10 @@ public sealed class MainApplication : MauiApplication, AndroidX.Work.Configurati
 
     public override void OnCreate()
     {
+        // First thing, so Firebase (Crashlytics included) initializes on its own thread alongside
+        // CreateMauiApp; the manifest drops FirebaseInitProvider, which used to do it on the main
+        // thread before this method ran. See MauiFirebase.
+        MauiFirebase.Start(this);
         base.OnCreate();
         // The moment the main looper is free to dispatch the broadcast that may have started us;
         // the delta from "CreateMauiApp completed" is pure MAUI framework overhead.

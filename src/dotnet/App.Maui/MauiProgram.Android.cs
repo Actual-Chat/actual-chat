@@ -7,7 +7,6 @@ using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Services;
 using Android.Content;
 using Android.OS;
-using Firebase;
 using Firebase.Messaging;
 using Microsoft.Maui.LifecycleEvents;
 using Plugin.Firebase.Analytics;
@@ -30,7 +29,10 @@ public static partial class MauiProgram
         if (MauiSettings.IsDevApp)
             // Enable delivery data export per instance.
             // https://firebase.google.com/docs/cloud-messaging/understand-delivery?platform=android#enable-message-delivery-data-export
-            FirebaseMessaging.Instance.SetDeliveryMetricsExportToBigQuery(true);
+            _ = BackgroundTask.Run(async () => {
+                await MauiFirebase.WhenReady.ConfigureAwait(false);
+                FirebaseMessaging.Instance.SetDeliveryMetricsExportToBigQuery(true);
+            }, Log, "SetDeliveryMetricsExportToBigQuery failed");
 
         services.AddSingleton<Java.Util.Concurrent.IExecutorService>(_ =>
             Java.Util.Concurrent.Executors.NewWorkStealingPool()!);
@@ -153,17 +155,16 @@ public static partial class MauiProgram
         // Activity.onCreate and Application.onCreate (so on FCM wakes too) - the two windows the
         // low-tier phones ANR in. A worker, only once an Activity exists, and not while the OS is
         // trimming us: the trim that precedes those ANRs is a request for less work, and analytics
-        // can start a couple of minutes late. FirebaseInitProvider has already initialized
-        // FirebaseApp at process start; InitializeApp is a no-op kept for the day that provider goes.
+        // can start a couple of minutes late.
         if (Interlocked.Exchange(ref _isFirebaseInitStarted, 1) != 0)
             return;
 
         _ = BackgroundTask.Run(async () => {
+            await MauiFirebase.WhenReady.ConfigureAwait(false);
             for (var i = 0; i < MaxFirebaseInitDelays && AndroidUtils.IsUnderMemoryPressure(); i++) {
                 Log.LogInformation("Firebase Analytics init deferred: memory pressure");
                 await Task.Delay(FirebaseInitDelay).ConfigureAwait(false);
             }
-            FirebaseApp.InitializeApp(context);
             FirebaseAnalyticsImplementation.Initialize(context);
             var isDataCollectionEnabled = MauiPreferences.IsDataCollectionEnabled == true;
             CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isDataCollectionEnabled;
