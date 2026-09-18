@@ -1353,3 +1353,26 @@ Add one group `// Integrations — chat/place settings and Settings → API & Ap
   `WebHookDeliverer.DeliverNext/SendPing`, `WebHookPayloads.DeliveryId`, `WebHook.Covers`,
   `WebHook.IsActiveOutgoing`, `ListActiveForChat/ListActiveForUser/ListByScope/ListDeliveries`,
   `Constants.WebHooks.*`, `CoreServerSettings.Egress*`.
+
+## Status (2026-09-18)
+
+All 15 tasks implemented on `feat/web-hooks` (ccb1328409..bcff1ffbef, 30 commits), each task reviewed,
+whole-branch review + fix wave done. Deferred to phase 2 / follow-ups (from the reviews):
+
+- Phase 2 as planned: incoming hooks, lifecycle system entries, owner push on auto-disable,
+  `ChatEntry.WebHookId` + loop guard, `origin.kind = "webhook"`, empty-state *Learn more* link.
+- Ops: rename `MediaSettings:Crawling*` → `CoreSettings:Egress{CidrDenylist,DomainDenylist,HostAllowList}`
+  in deployment config in the same release; publish egress IPs (doc placeholder).
+- MCP release note: `McpChatMessage` → `ExternalMessage` (`author {id,name,avatarUrl}`, attachment `id`
+  dropped, `text` null while streaming, new `mentions`/`url`/`origin`/`textTruncated`).
+- Delivery: `previous.text` outside the size-cap loop; `(Status, NextAttemptAt)` index unused (drop via
+  migration); pruner should also delete rows whose hook is gone; flow `SetResult` on hook removal;
+  outbox `Seq` order across concurrent fan-in handlers is best-effort (derive from lid+version?);
+  expired `PrevSecretProtected` never cleared.
+- API: `ListDeliveries`/rotate/test/redeliver throw NotFound vs Unauthorized (weak existence oracle);
+  form canonicalizes `SubscribeNotifications` from the Notification flag; `IsTranscribed` = `HasAudio`.
+- Tests: negative `Verify` cases; pending-cap, version-mismatch, re-enable-clears-failures; same-kind
+  mute pair; `Reaction/Member/ChatChanged/PlaceChanged/Notification` payload unit tests.
+- Misc: `EgressGuard` not sealed; `RedirectHandlerMock` duplicated in two test projects;
+  `EgressGuard.Resolve` logs cancelled lookups at Error; form rejects IP literals while dev instances
+  accept them server-side; pl `WebHook_RotateSecretConfirm` masculine form; `.mibc` not regenerated.
