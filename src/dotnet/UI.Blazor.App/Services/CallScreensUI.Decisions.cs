@@ -1,3 +1,4 @@
+using ActualChat.Live;
 namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class CallScreensUI
@@ -9,7 +10,7 @@ public partial class CallScreensUI
             return CallView.None;
 
         var chatId = call.ChatId;
-        if (call.Origin == CallOrigin.Incoming && flags.OverLockChatId == chatId)
+        if (call.Role == CallRole.Callee && flags.OverLockChatId == chatId)
             return new CallView(call, CallViewKind.FullScreen, true);
 
         var isCollapsed = flags.CollapsedChatId == chatId;

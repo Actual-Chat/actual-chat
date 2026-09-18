@@ -1,3 +1,4 @@
+using ActualChat.Live;
 using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
@@ -7,195 +8,121 @@ public class CallUIDecisionsTest
     private static readonly ChatId ChatA = ChatId.Parse("the-actual-one");
     private static readonly ChatId ChatB = ChatId.Parse("0NYND2MfRb");
     private static readonly AuthorId CallerA = AuthorId.New(ChatA, 1);
-    private static readonly IncomingCall RingA = new(ChatA, CallerA, false);
 
     [Fact]
-    public void SearchShouldClaimFreeSlot()
+    public void NoCallAndNoIntentShouldLeaveTheSlotEmpty()
     {
         // act
-        var outcome = CallUI.DecideSearch(null, ChatA, false);
+        var call = CallUI.Reconcile(null, default);
 
         // assert
-        outcome.Should().Be(SearchOutcome.Claim);
+        call.Should().BeNull();
     }
 
     [Fact]
-    public void SearchShouldIgnoreRingOfClaimedChat()
+    public void ServerCallShouldFillTheSlot()
     {
         // act
-        var outcome = CallUI.DecideSearch(Call(CallOrigin.Incoming, CallPhase.Ringing), ChatA, false);
+        var call = CallUI.Reconcile(MyCall(ChatA, CallRole.Callee, CallPhase.Ringing), default);
 
         // assert
-        outcome.Should().Be(SearchOutcome.None, "the slot already belongs to this very ring");
+        call.Should().NotBeNull();
+        call!.ChatId.Should().Be(ChatA);
+        call.Role.Should().Be(CallRole.Callee);
+        call.Phase.Should().Be(CallPhase.Ringing);
     }
 
     [Fact]
-    public void SearchShouldIgnoreRingOfHeldChat()
+    public void FreshIntentShouldSurviveAnEmptyAnswer()
     {
-        // act
-        var outcome = CallUI.DecideSearch(Call(CallOrigin.Incoming, CallPhase.Active), ChatA, false);
+        // arrange — the answer a disconnected client reads is "no call"
+        var intent = Intent(Call(CallRole.Caller, CallPhase.Dialing), ChatA, isFresh: true);
 
-        // assert
-        outcome.Should().Be(SearchOutcome.None, "an accepted call's invite still reads Ringing for a moment");
+        // act
+        var call = CallUI.Reconcile(null, intent);
+
+        // assert — this is #4532's failure mode: an empty read must not drop a just-started call
+        call.Should().NotBeNull();
+        call!.ChatId.Should().Be(ChatA);
     }
 
     [Fact]
-    public void SearchShouldAnswerBusyForAnotherChat()
-    {
-        // act
-        var outcome = CallUI.DecideSearch(Call(CallOrigin.Incoming, CallPhase.Active), ChatB, false);
-
-        // assert
-        outcome.Should().Be(SearchOutcome.Busy);
-    }
-
-    [Fact]
-    public void SearchShouldAnswerBusyDuringOutgoingCall()
-    {
-        // act
-        var outcome = CallUI.DecideSearch(Call(CallOrigin.Outgoing, CallPhase.Dialing), ChatB, false);
-
-        // assert
-        outcome.Should().Be(SearchOutcome.Busy);
-    }
-
-    [Fact]
-    public void SearchShouldNotRepeatBusy()
-    {
-        // act
-        var outcome = CallUI.DecideSearch(Call(CallOrigin.Incoming, CallPhase.Ringing), ChatB, true);
-
-        // assert
-        outcome.Should().Be(SearchOutcome.None);
-    }
-
-    [Fact]
-    public void HoldingShouldKeepRingingCall()
-    {
-        // act
-        var action = CallUI.DecideHolding(
-            Call(CallOrigin.Incoming, CallPhase.Ringing), Facts(RingA, CallSessionState.Dialing), default);
-
-        // assert
-        action.Should().Be(HoldingAction.Keep);
-    }
-
-    [Fact]
-    public void HoldingShouldReleaseEndedRing()
-    {
-        // act
-        var action = CallUI.DecideHolding(Call(CallOrigin.Incoming, CallPhase.Ringing), Facts(), default);
-
-        // assert
-        action.Should().Be(HoldingAction.Release);
-    }
-
-    [Fact]
-    public void HoldingShouldJoinAnsweredOutgoingCall()
-    {
-        // act
-        var action = CallUI.DecideHolding(
-            Call(CallOrigin.Outgoing, CallPhase.Dialing), Facts(session: CallSessionState.Connected), default);
-
-        // assert
-        action.Should().Be(HoldingAction.Join);
-    }
-
-    [Fact]
-    public void HoldingShouldKeepDialingBeforeSessionAppears()
-    {
-        // act
-        var action = CallUI.DecideHolding(Call(CallOrigin.Outgoing, CallPhase.Dialing), Facts(), default);
-
-        // assert
-        action.Should().Be(HoldingAction.Keep, "the StartCall RPC may still be in flight");
-    }
-
-    [Fact]
-    public void HoldingShouldReleaseDialingThatEnded()
+    public void StaleIntentShouldNotSurviveAnEmptyAnswer()
     {
         // arrange
-        var memory = new HoldingMemory(HasSeenDialing: true, WasInConversation: false, IsDialingWaitOver: false);
+        var intent = Intent(Call(CallRole.Caller, CallPhase.Dialing), ChatA, isFresh: false);
 
         // act
-        var action = CallUI.DecideHolding(Call(CallOrigin.Outgoing, CallPhase.Dialing), Facts(), memory);
+        var call = CallUI.Reconcile(null, intent);
 
         // assert
-        action.Should().Be(HoldingAction.Release);
+        call.Should().BeNull("a call the server doesn't know about is over once the grace lapses");
     }
 
     [Fact]
-    public void HoldingShouldReleaseDialingThatNeverAppeared()
+    public void JustAcceptedRingShouldKeepItsPhaseUntilTheServerCatchesUp()
+    {
+        // arrange — Accept commits Active locally before its RPC lands
+        var intent = Intent(Call(CallRole.Callee, CallPhase.Active), ChatA, isFresh: true);
+
+        // act
+        var call = CallUI.Reconcile(MyCall(ChatA, CallRole.Callee, CallPhase.Ringing), intent);
+
+        // assert — the screens must not blink back to ringing
+        call!.Phase.Should().Be(CallPhase.Active);
+    }
+
+    [Fact]
+    public void JustLeftCallShouldStayGoneWhileTheServerStillNamesIt()
+    {
+        // arrange — hanging up clears the slot before the server sees the presence go
+        var intent = Intent(null, ChatA, isFresh: true);
+
+        // act
+        var call = CallUI.Reconcile(MyCall(ChatA, CallRole.Callee, CallPhase.Active), intent);
+
+        // assert
+        call.Should().BeNull();
+    }
+
+    [Fact]
+    public void ServerShouldWinOverAnIntentForAnotherChat()
+    {
+        // arrange — the local claim lost the arbitration; the server put me in another call
+        var intent = Intent(Call(CallRole.Caller, CallPhase.Dialing), ChatA, isFresh: true);
+
+        // act
+        var call = CallUI.Reconcile(MyCall(ChatB, CallRole.Callee, CallPhase.Ringing), intent);
+
+        // assert
+        call!.ChatId.Should().Be(ChatB);
+    }
+
+    [Fact]
+    public void StaleIntentShouldNotHoldAPhaseTheServerMovedOn()
     {
         // arrange
-        var memory = new HoldingMemory(HasSeenDialing: false, WasInConversation: false, IsDialingWaitOver: true);
+        var intent = Intent(Call(CallRole.Callee, CallPhase.Active), ChatA, isFresh: false);
 
         // act
-        var action = CallUI.DecideHolding(Call(CallOrigin.Outgoing, CallPhase.Dialing), Facts(), memory);
+        var call = CallUI.Reconcile(MyCall(ChatA, CallRole.Callee, CallPhase.Ringing), intent);
 
         // assert
-        action.Should().Be(HoldingAction.Release);
+        call!.Phase.Should().Be(CallPhase.Ringing);
     }
 
-    [Fact]
-    public void HoldingShouldKeepAcceptedCallUntilAudioStarts()
-    {
-        // act
-        var action = CallUI.DecideHolding(
-            Call(CallOrigin.Incoming, CallPhase.Active), Facts(session: CallSessionState.Dialing), default);
+    private static UserCall MyCall(ChatId chatId, CallRole role, CallPhase phase)
+        => new() {
+            ChatId = chatId,
+            AuthorId = AuthorId.New(chatId, 2),
+            Role = role,
+            Phase = phase,
+            PeerId = role == CallRole.Callee ? CallerA : null,
+        };
 
-        // assert
-        action.Should().Be(HoldingAction.Keep, "Accept commits Active before the audio starts");
-    }
+    private static CallUI.CallIntentView Intent(ActiveCall? call, ChatId chatId, bool isFresh)
+        => new(call, chatId, isFresh);
 
-    [Fact]
-    public void HoldingShouldReleaseWhenConversationLeft()
-    {
-        // arrange
-        var memory = new HoldingMemory(HasSeenDialing: false, WasInConversation: true, IsDialingWaitOver: false);
-
-        // act
-        var action = CallUI.DecideHolding(
-            Call(CallOrigin.Incoming, CallPhase.Active), Facts(session: CallSessionState.Connected), memory);
-
-        // assert
-        action.Should().Be(HoldingAction.Release);
-    }
-
-    [Fact]
-    public void HoldingShouldReleaseWhenSessionStopsBeingCall()
-    {
-        // arrange
-        var memory = new HoldingMemory(HasSeenDialing: false, WasInConversation: true, IsDialingWaitOver: false);
-
-        // act
-        var action = CallUI.DecideHolding(
-            Call(CallOrigin.Outgoing, CallPhase.Active), Facts(isInConversation: true), memory);
-
-        // assert
-        action.Should().Be(HoldingAction.Release);
-    }
-
-    [Fact]
-    public void MemoryShouldRememberDialingAndConversation()
-    {
-        // act
-        var memory = default(HoldingMemory)
-            .Observe(Facts(session: CallSessionState.Dialing))
-            .Observe(Facts(session: CallSessionState.Connected, isInConversation: true))
-            .Observe(Facts());
-
-        // assert
-        memory.HasSeenDialing.Should().BeTrue();
-        memory.WasInConversation.Should().BeTrue();
-    }
-
-    private static CallFacts Facts(
-        IncomingCall? ring = null,
-        CallSessionState session = CallSessionState.None,
-        bool isInConversation = false)
-        => new(ring, session, isInConversation);
-
-    private static ActiveCall Call(CallOrigin origin, CallPhase phase)
-        => new(ChatA, origin, phase, origin == CallOrigin.Incoming ? CallerA : null, false);
+    private static ActiveCall Call(CallRole role, CallPhase phase)
+        => new(ChatA, role, phase, role == CallRole.Callee ? CallerA : null, false);
 }

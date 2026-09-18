@@ -52,7 +52,7 @@
         if (await CallScreensUI.GetCallPeerId(cancellationToken).ConfigureAwait(false) is not { } peerId)
             return ComputedModel.None;
 
-        var isIncoming = call.Origin == CallOrigin.Incoming;
+        var isIncoming = call.Role == CallRole.Callee;
         return new ComputedModel { ChatId = call.ChatId, PeerId = peerId, IsIncoming = isIncoming };
     }
 

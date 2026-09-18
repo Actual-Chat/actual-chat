@@ -65,9 +65,6 @@ public sealed class AndroidIncomingCallsBridge : IIncomingCallsBridge, IDisposab
             }
         });
 
-    public Task<ChatId[]> ListActiveCallChatIds(CancellationToken cancellationToken)
-        => Task.FromResult(IncomingCallNotifications.ListActiveCallChatIds());
-
     public void DismissCallNotification(ChatId chatId)
         => IncomingCallNotifications.Dismiss(chatId);
 

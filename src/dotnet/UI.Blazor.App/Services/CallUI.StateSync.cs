@@ -1,220 +1,137 @@
 using ActualChat.Live;
-using ActualChat.Notifications;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class CallUI
 {
-    // Give up on an outgoing call whose session never shows up as dialing.
-    private static readonly TimeSpan DialingWaitTimeout = TimeSpan.FromSeconds(15);
+    private volatile Computed<UserCall?>? _cMyCall;
+    private ChatId? _audioStartedChatId;
+
+    // Public methods
+
+    // A push, a notification list or a native ring is a hint that the answer changed, never the answer
+    // itself: all any of them does is make the projection re-read it now instead of on the next change.
+    public void Touch()
+        => _cMyCall?.Invalidate();
 
     // Protected/internal methods
 
     protected override Task OnRun(CancellationToken cancellationToken)
-    {
-        var baseChains = new[] {
-            AsyncChain.From(HoldCalls),
-            AsyncChain.From(SearchRings),
-            AsyncChain.From(SyncActiveCallNotifications),
-        };
-        var retryDelays = RetryDelaySeq.Exp(0.5, 10);
-        return (
-            from chain in baseChains
-            select chain
-                .Log(LogLevel.Debug, Log)
-                .RetryForever(retryDelays, Log)
-            ).Run(cancellationToken);
-    }
+        => AsyncChain.From(SyncMyCall)
+            .Log(LogLevel.Debug, Log)
+            .RetryForever(RetryDelaySeq.Exp(0.5, 10), Log)
+            .Run(cancellationToken);
 
-    [ComputeMethod]
-    protected virtual async Task<HoldingInput> GetHoldingInput(ChatId chatId, CancellationToken cancellationToken)
+    internal static ActiveCall? Reconcile(UserCall? myCall, CallIntentView intent)
     {
-        var call = await _activeCall.Use(cancellationToken).ConfigureAwait(false);
-        var ring = await GetRingingCall(chatId, cancellationToken).ConfigureAwait(false);
-        var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
-        var session = live switch {
-            { Kind: LiveSessionKind.Call, Conversation: null } => CallSessionState.Dialing,
-            { Kind: LiveSessionKind.Call } => CallSessionState.Connected,
-            _ => CallSessionState.None,
-        };
-        var isInConversation = await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken)
-            .ConfigureAwait(false);
-        return new HoldingInput(call, new CallFacts(ring, session, isInConversation));
-    }
+        if (myCall is null)
+            // "No call" is also what a disconnected client reads, so a fresh gesture outlives it.
+            return intent is { IsFresh: true, Call: { } intended } ? intended : null;
 
-    [ComputeMethod]
-    protected virtual async Task<SearchInput> GetSearchInput(CancellationToken cancellationToken)
-    {
-        var chatIds = await _ringingChatIds.Use(cancellationToken).ConfigureAwait(false);
-        // Read only to wake the search when the slot moves: ApplySearch decides against the live slot.
-        await _activeCall.Use(cancellationToken).ConfigureAwait(false);
-        var rings = ImmutableList.CreateBuilder<IncomingCall>();
-        for (var i = chatIds.Count - 1; i >= 0; i--)
-            if (await GetRingingCall(chatIds[i], cancellationToken).ConfigureAwait(false) is { } ring)
-                rings.Add(ring);
-        return new SearchInput(chatIds, rings.ToImmutable());
+        var server = new ActiveCall(myCall.ChatId, myCall.Role, myCall.Phase, myCall.PeerId, myCall.HasVideo);
+        if (!intent.IsFresh || intent.ChatId != myCall.ChatId)
+            return server;
+        if (intent.Call is null)
+            return null; // Just left this call, and the server hasn't caught up yet
+
+        // A just-accepted ring is Active here before the server says so - keep the phase that went further.
+        return intent.Call.Phase == CallPhase.Active && server.Phase != CallPhase.Active
+            ? intent.Call
+            : server;
     }
 
     // Private methods
 
-    private async Task HoldCalls(CancellationToken cancellationToken)
+    private async Task SyncMyCall(CancellationToken cancellationToken)
     {
-        var cChatId = await Computed
-            .Capture(() => GetCallChatId(cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        await foreach (var c in cChatId.Changes(cancellationToken).ConfigureAwait(false))
-            if (c.Value is { } chatId)
-                await Hold(chatId, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task Hold(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var memory = default(HoldingMemory);
-        var dialingDeadline = Now + DialingWaitTimeout;
-        var cInput = await Computed
-            .Capture(() => GetHoldingInput(chatId, cancellationToken), cancellationToken)
+        var c = await Computed
+            .Capture(() => LiveSessions.GetMyCall(Session, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         while (true) {
-            var input = cInput.Value;
-            if (input.Call is not { } call || call.ChatId != chatId)
-                return;
+            _cMyCall = c;
+            if (!c.HasError)
+                Apply(c.Value);
 
-            memory = memory.Observe(input.Facts) with { IsDialingWaitOver = Now >= dialingDeadline };
-            var action = DecideHolding(call, input.Facts, memory);
-            CallDebugLog?.LogInformation("CALL_TRACE: Hold #{ChatId} {Origin}/{Phase} → {Action}",
-                chatId, call.Origin, call.Phase, action);
-            switch (action) {
-            case HoldingAction.Join:
-                if (TryCommitActive(chatId)) {
-                    // Reported before the join: it is what flips the platform call UI to connected,
-                    // and the join can sit on a permission prompt for as long as it likes.
-                    SystemCallUI.OnOutgoingCallStatusChanged(chatId, CallerStatus.Active);
-                    _ = StartAnsweredCallAudio(chatId, cancellationToken);
-                }
-                break;
-            case HoldingAction.Release:
-                // A dialing call let go here was never picked up - a decline reads the same to the
-                // caller. The user's own cancel never gets here: CancelCall frees the slot first.
-                if (call is { Origin: CallOrigin.Outgoing, Phase: CallPhase.Dialing })
-                    SystemCallUI.OnOutgoingCallStatusChanged(chatId, CallerStatus.NoAnswer);
-                Release(chatId);
-                return;
-            }
-
-            if (call.Phase == CallPhase.Dialing && !memory.HasSeenDialing) {
-                // A session that never shows up as dialing must still time out, with nothing to invalidate it.
+            // An intent outliving the answer has to expire on its own: the answer that ignores it
+            // may never change again, so nothing else would ever re-run the rule.
+            if (IntentExpiryDelay() is { } delay) {
                 using var cts = cancellationToken.CreateLinkedTokenSource();
-                var remaining = dialingDeadline - Now;
-                if (remaining < TimeSpan.Zero)
-                    remaining = TimeSpan.Zero;
                 await Task.WhenAny(
-                        cInput.WhenInvalidated(cts.Token),
-                        Clocks.CpuClock.Delay(remaining, cts.Token))
+                        c.WhenInvalidated(cts.Token),
+                        Clocks.CpuClock.Delay(delay, cts.Token))
                     .ConfigureAwait(false);
                 cts.CancelAndDisposeSilently();
             }
             else
-                await cInput.WhenInvalidated(cancellationToken).ConfigureAwait(false);
-            cInput = await cInput.Update(cancellationToken).ConfigureAwait(false);
+                await c.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+            c = await c.Update(cancellationToken).ConfigureAwait(false);
         }
     }
 
-    private bool TryCommitActive(ChatId chatId)
+    private TimeSpan? IntentExpiryDelay()
     {
         lock (_lock) {
-            if (_activeCall.Value is not { } call || call.ChatId != chatId)
-                return false;
+            if (_intent is not { } intent)
+                return null;
 
-            _activeCall.Value = call with { Phase = CallPhase.Active };
-            return true;
+            var delay = intent.At + IntentGrace - Now;
+            return delay > TimeSpan.Zero ? delay + TimeSpan.FromMilliseconds(50) : TimeSpan.Zero;
         }
     }
 
-    private async Task StartAnsweredCallAudio(ChatId chatId, CancellationToken cancellationToken)
+    private void Apply(UserCall? myCall)
     {
-        // Placing a call is itself the intent to talk, so answering it puts the caller on the line.
+        ChatId? ringingChatId = null;
+        ChatId? joinedChatId = null;
+        ChatId? unansweredChatId = null;
+        lock (_lock) {
+            var held = _activeCall.Value;
+            var intent = CallIntentView.Of(_intent, Now, IntentGrace);
+            var next = Reconcile(myCall, intent);
+            CallDebugLog?.LogInformation(
+                "CALL_TRACE: MyCall #{ChatId} {Role}/{Phase} → slot #{Next}",
+                myCall?.ChatId, myCall?.Role, myCall?.Phase, next?.ChatId);
+            // The intent stops competing once it's been answered - confirmed or overruled - or aged out.
+            if (!intent.IsFresh || myCall?.ChatId == intent.ChatId)
+                _intent = null;
+            if (next == held)
+                return;
+
+            _activeCall.Value = next;
+            if (next is { Role: CallRole.Callee, Phase: CallPhase.Ringing })
+                ringingChatId = next.ChatId;
+            // Placing a call is itself the intent to talk, so an answered one puts the caller on the line.
+            if (next is { Role: CallRole.Caller, Phase: CallPhase.Active } && _audioStartedChatId != next.ChatId) {
+                _audioStartedChatId = next.ChatId;
+                joinedChatId = next.ChatId;
+            }
+            if (next is null)
+                _audioStartedChatId = null;
+            // A dialing call that leaves the slot was never picked up - a decline reads the same to the
+            // caller. The user's own cancel never gets here: CancelCall frees the slot first.
+            if (held is { Role: CallRole.Caller, Phase: CallPhase.Dialing } && next?.ChatId != held.ChatId)
+                unansweredChatId = held.ChatId;
+        }
+        if (ringingChatId is { } chatId)
+            _ = SendRingAck(chatId, RingAck.Ringing);
+        if (unansweredChatId is { } unanswered)
+            SystemCallUI.OnOutgoingCallStatusChanged(unanswered, CallerStatus.NoAnswer);
+        if (joinedChatId is { } joined) {
+            // Reported before the join: it is what flips the platform call UI to connected, and the
+            // join can sit on a permission prompt for as long as it likes.
+            SystemCallUI.OnOutgoingCallStatusChanged(joined, CallerStatus.Active);
+            _ = StartAnsweredCallAudio(joined);
+        }
+    }
+
+    private async Task StartAnsweredCallAudio(ChatId chatId)
+    {
         try {
-            await StartCallAudio(chatId, cancellationToken).ConfigureAwait(false);
+            await StartCallAudio(chatId, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Couldn't join the answered call in chat #{ChatId}", chatId);
             Release(chatId);
-        }
-    }
-
-    private async Task SearchRings(CancellationToken cancellationToken)
-    {
-        if (Bridge is not null) {
-            // A call push may have landed while the app was killed and the user opened it
-            // from the launcher - pick the ring up from the still-active system notification.
-            foreach (var chatId in await Bridge.ListActiveCallChatIds(cancellationToken).ConfigureAwait(false))
-                AddCandidate(chatId);
-        }
-
-        var cInput = await Computed
-            .Capture(() => GetSearchInput(cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        await foreach (var c in cInput.Changes(cancellationToken).ConfigureAwait(false))
-            ApplySearch(c.Value);
-    }
-
-    private void ApplySearch(SearchInput input)
-    {
-        ChatId? claimedChatId = null;
-        var busyChatIds = new List<ChatId>();
-        lock (_lock) {
-            // Checked and not ringing: dropped, or dead candidates would pile up for the scope's lifetime.
-            foreach (var chatId in input.CheckedChatIds)
-                if (!input.Rings.Any(r => r.ChatId == chatId)) {
-                    RemoveCandidate(chatId);
-                    _busyAckedChatIds.Remove(chatId);
-                }
-
-            foreach (var ring in input.Rings) {
-                var chatId = ring.ChatId;
-                // Dropped after the input was read (declined, dismissed, released): a stale read can't reclaim it.
-                if (!_ringingChatIds.Value.Contains(chatId))
-                    continue;
-
-                // Against the live slot, not the input's: a claim earlier in this pass has to count.
-                var outcome = DecideSearch(_activeCall.Value, chatId, _busyAckedChatIds.Contains(chatId));
-                switch (outcome) {
-                case SearchOutcome.Claim:
-                    // The ring was just read from the session, so it takes the slot already confirmed.
-                    _activeCall.Value = new ActiveCall(
-                        chatId, CallOrigin.Incoming, CallPhase.Ringing, ring.Caller, ring.HasVideo);
-                    claimedChatId = chatId;
-                    break;
-                case SearchOutcome.Busy:
-                    _busyAckedChatIds.Add(chatId);
-                    busyChatIds.Add(chatId);
-                    break;
-                }
-            }
-        }
-        if (claimedChatId is { } ringingChatId)
-            _ = SendRingAck(ringingChatId, RingAck.Ringing);
-        foreach (var chatId in busyChatIds) {
-            CallDebugLog?.LogInformation("CALL_TRACE: Busy #{ChatId}", chatId);
-            _ = SendRingAck(chatId, RingAck.Busy);
-            Bridge?.DismissCallNotification(chatId);
-        }
-    }
-
-    private async Task SyncActiveCallNotifications(CancellationToken cancellationToken)
-    {
-        // Off Android the primary ring trigger; on Android the safety net for a push dropped while the
-        // scope is alive. The search confirms each ring against the session.
-        var cNotifications = await Computed
-            .Capture(() => Notifications.ListActive(Session, cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        await foreach (var c in cNotifications.Changes(cancellationToken).ConfigureAwait(false)) {
-            if (c.HasError)
-                continue;
-
-            foreach (var notification in c.Value)
-                if (notification is CallNotification call)
-                    AddCandidate(call.ChatId);
         }
     }
 
@@ -231,7 +148,13 @@ public partial class CallUI
 
     // Nested types
 
-    protected sealed record HoldingInput(ActiveCall? Call, CallFacts Facts);
-
-    protected sealed record SearchInput(ImmutableList<ChatId> CheckedChatIds, ImmutableList<IncomingCall> Rings);
+    // The intent as the pure reconciliation rule sees it: what it wanted, for which chat, and whether it
+    // is still young enough to outrank the server's answer.
+    internal readonly record struct CallIntentView(ActiveCall? Call, ChatId ChatId, bool IsFresh)
+    {
+        public static CallIntentView Of(CallIntent? intent, Moment now, TimeSpan grace)
+            => intent is null
+                ? default
+                : new CallIntentView(intent.Call, intent.ChatId, now - intent.At < grace);
+    }
 }

@@ -13,7 +13,6 @@ public interface IIncomingCallsBridge
         => false;
     void StartRinging();
     void StopRinging();
-    Task<ChatId[]> ListActiveCallChatIds(CancellationToken cancellationToken);
     // Fires on every local ring-end - accepted and declined alike - so it carries no verdict.
     void DismissCallNotification(ChatId chatId);
     // Carries the ring's verdict for chatId: accepted or not. On Android it resolves the
