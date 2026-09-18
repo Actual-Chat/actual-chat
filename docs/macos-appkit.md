@@ -156,7 +156,11 @@ markers:
   state follows focus and window visibility, so a hidden or minimized window stops auto-reading
   chats. Cmd+Q quits as usual.
 - **The web UI extends under the titlebar**, the way Telegram's does. The labs window is a
-  full-size-content-view with a transparent titlebar and no title; only the navbar column reserves
+  full-size-content-view with a transparent titlebar and no title. While an expanded call fills the
+  wide window, `VideoPanel` asks `INativeTitlebar` to inset the traffic lights: `WindowConfigurator`
+  moves them to where a unified toolbar puts them, 19pt from the corner instead of 9pt, clear of the
+  panel's rounded corner, moves them back whenever AppKit relays them out, and reports a 52pt
+  titlebar; on collapse they move back and AppKit lays them out again. Only the navbar column reserves
   the titlebar height (`--titlebar-inset`, the corner with the traffic lights) and lines its buttons
   up under them (the `native-titlebar` class on `html`) at every window width, the chat list, the
   chat header and the right panel run to the top edge. In narrow mode the chat header and full-screen
