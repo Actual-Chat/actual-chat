@@ -253,7 +253,16 @@ public partial class MainActivity : MauiAppCompatActivity
 
     public override void OnTrimMemory(TrimMemory level)
     {
-        Log.LogInformation("OnTrimMemory, Level: {Level}", level);
+        // A trim followed by a main-thread stall is the ANR signature; the counters say whether the
+        // managed side was collecting - and so forcing ART GCs through the bridge - at the time.
+        Log.LogInformation(
+            "OnTrimMemory, Level: {Level}, GC 0/1/2={Gen0}/{Gen1}/{Gen2}, managed heap={ManagedHeapMB}MB",
+            level,
+            GC.CollectionCount(0),
+            GC.CollectionCount(1),
+            GC.CollectionCount(2),
+            GC.GetTotalMemory(false) >> 20);
+        AndroidUtils.NoteTrimMemory(level);
         base.OnTrimMemory(level);
         // Diagnostics only, so run off the UI thread: OnTrimMemory fires under memory pressure -
         // exactly when the managed runtime is busy collecting - and the JNI-heavy dump below blocks
@@ -328,6 +337,12 @@ public partial class MainActivity : MauiAppCompatActivity
                 memoryInfo.TotalMem,
                 memoryInfo.LowMemory,
                 memoryInfo.Threshold);
+            var runtime = Java.Lang.Runtime.GetRuntime()!;
+            Log.LogInformation(
+                "JavaHeap: used={UsedMB}MB, total={TotalMB}MB, max={MaxMB}MB",
+                (runtime.TotalMemory() - runtime.FreeMemory()) >> 20,
+                runtime.TotalMemory() >> 20,
+                runtime.MaxMemory() >> 20);
             var processInfo = new ActivityManager.RunningAppProcessInfo();
             ActivityManager.GetMyMemoryState(processInfo);
             Log.LogInformation(
