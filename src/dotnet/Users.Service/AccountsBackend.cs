@@ -247,8 +247,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         }
         else {
             // Existing user found by identity or desired ID - acquire lock first, then load and update
-            var existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
             await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
+            var existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
             var dbAccount = await dbContext.GetDbAccount(userId, true, cancellationToken).ConfigureAwait(false);
             dbAccount.Require();
 
