@@ -368,6 +368,38 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
     }
 
     [Fact]
+    public async Task RecordDeliveryShouldNotSplitSurrogatePairInError()
+    {
+        // arrange
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Hooks surrogate error" });
+        var alice = await Alice.GetOwnAccount();
+        var webHook = (await Commander.Call(new WebHooksBackend_Change(
+            WebHookScope.Chat, chatId.Value, null, null,
+            Change.Create(NewDiff() with { IsEnabled = false }),
+            alice.Id))).WebHook!;
+        var deliveryId = $"{webHook.Id}:d1";
+        await Commander.Call(NewEnqueue(webHook.Id, chatId, deliveryId));
+        // The emoji's high surrogate sits exactly at the cap, so a plain cut would leave it alone
+        var error = new string('x', Constants.WebHooks.MaxErrorLength - 1) + "\U0001F600 and more";
+
+        // act
+        await Commander.Call(new WebHooksBackend_RecordDelivery(
+            webHook.Id, chatId.Value, deliveryId, WebHookDeliveryStatus.Failed, 500, error, 10, null));
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var hook = (await Backend.Get(webHook.Id, ct))!;
+            var delivery = (await Backend.ListDeliveries(webHook.Id, Constants.WebHooks.DeliveryListLimit, ct))
+                .Single(x => x.Id == deliveryId);
+            foreach (var lastError in new[] { hook.LastError!, delivery.LastError! }) {
+                lastError.Length.Should().BeLessThanOrEqualTo(Constants.WebHooks.MaxErrorLength);
+                char.IsHighSurrogate(lastError[^1]).Should().BeFalse("the cut backs off to a full pair");
+                lastError.Should().Be(new string('x', Constants.WebHooks.MaxErrorLength - 1));
+            }
+        });
+    }
+
+    [Fact]
     public async Task RedeliverShouldCloneDeliveryAsPending()
     {
         // arrange

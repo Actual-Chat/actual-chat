@@ -464,9 +464,14 @@ public partial class WebHooksBackend(IServiceProvider services)
             return error;
 
         var cleaned = new string(error.Where(c => !char.IsControl(c)).ToArray());
-        return cleaned.Length <= Constants.WebHooks.MaxErrorLength
-            ? cleaned
-            : cleaned[..Constants.WebHooks.MaxErrorLength];
+        var maxLength = Constants.WebHooks.MaxErrorLength;
+        if (cleaned.Length <= maxLength)
+            return cleaned;
+
+        // A lone high surrogate is not valid UTF-8, so Npgsql would refuse to store it
+        if (char.IsHighSurrogate(cleaned[maxLength - 1]))
+            maxLength--;
+        return cleaned[..maxLength];
     }
 
     private void ApplyCustomHeader(DbWebHook dbWebHook, WebHookDiff diff)
