@@ -176,6 +176,12 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 ### Contacts
 - `Contact` (record) — contact information
 
+### Web Hooks & External Messages
+- `WebHook` (record) — chat/place/user-scoped hook registration (client-visible; never carries secrets)
+- `WebHookId`, `WebHookScope`, `WebHookKind`, `WebHookEvents`, `WebHookDisabledReason` — hook identity, scope and event-flag/status enums
+- `WebHookDelivery` (record), `WebHookDeliveryStatus` (enum) — one logged delivery attempt and its `Pending`/`Succeeded`/`Failed`/`Abandoned` status
+- `ExternalMessage` (record) — chat entry as exposed to external systems (MCP tools, outgoing web hooks); carries `ExternalAuthor`, `ExternalAttachment[]` and `ExternalOrigin` (`user`/`api`/`webhook`/`bot`)
+
 
 ## Service Contracts (`ActualChat.Api.Contracts`)
 
@@ -208,12 +214,13 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `IInvites` — invite link management
 - `ISearch` — full-text search
 - `IStreamClient` — audio streaming
+- `IWebHooks` — web hook registration (`List`/`Get`), delivery log, secret rotation, redeliver, send-test-event
 
 
 ## Backend Contracts (`*.Contracts`)
 
 Backend interfaces follow the pattern `I{Service}Backend` for internal service communication:
-- `IChatsBackend`, `IAuthorsBackend`, `IPlacesBackend`, `IChatThreadsBackend`, `IChatEntryLanguagesBackend` — chat backends
+- `IChatsBackend`, `IAuthorsBackend`, `IPlacesBackend`, `IChatThreadsBackend`, `IChatEntryLanguagesBackend`, `IWebHooksBackend` — chat backends
 - `IAccountsBackend`, `IAvatarsBackend`, `ISessionTemporalsBackend`, `UserScopedKvasBackend`, `IPasskeysBackend` — user backends
 - `IContactsBackend` — contact backend
 - `IMediaBackend`, `IMediaProgressBackend`, `IUploadsBackend` — media backends

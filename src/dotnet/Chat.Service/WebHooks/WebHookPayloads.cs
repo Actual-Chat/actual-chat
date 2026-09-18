@@ -22,12 +22,16 @@ public sealed class WebHookPayloads(IServiceProvider services)
         var eventKey = $"{entry.LocalId}:{entry.Version}";
         var chat = await ChatBlockFor(entry.ChatId, cancellationToken).ConfigureAwait(false);
         if (e == WebHookEvents.MessageRemoved) {
-            var removedAuthor = await ToExternalAuthor(author, cancellationToken).ConfigureAwait(false);
+            var removedAuthor = await author
+                .ToExternalAuthor(UrlMapper, AvatarUrl, cancellationToken)
+                .ConfigureAwait(false);
             var removedData = new { message = RemovedMessageBlock(entry, removedAuthor) };
             return Serialize(BuildEnvelope(hook, type, eventKey, chat, removedData));
         }
 
-        var message = await ToExternalMessage(entry, author, hook.IncludeText, cancellationToken).ConfigureAwait(false);
+        var message = await entry
+            .ToExternalMessage(author, hook.IncludeText, UrlMapper, AvatarUrl, MarkupParser, cancellationToken)
+            .ConfigureAwait(false);
         var previousBlock = previous is null
             ? null
             : (object)new { version = previous.Version, text = hook.IncludeText ? previous.Content : null };
@@ -41,7 +45,9 @@ public sealed class WebHookPayloads(IServiceProvider services)
         var type = e.ToEventType();
         var eventKey = reaction.Id.Value;
         var chat = await ChatBlockFor(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        var author = await ToExternalAuthor(reactionAuthor, cancellationToken).ConfigureAwait(false);
+        var author = await reactionAuthor
+            .ToExternalAuthor(UrlMapper, AvatarUrl, cancellationToken)
+            .ConfigureAwait(false);
         var data = new { emoji = reaction.Emoji.Symbol, messageId = reaction.EntryId.LocalId, author };
         return Serialize(BuildEnvelope(hook, type, eventKey, chat, data));
     }
@@ -54,7 +60,8 @@ public sealed class WebHookPayloads(IServiceProvider services)
         var chat = type.StartsWith("place.")
             ? null
             : await ChatBlockFor(author.ChatId, cancellationToken).ConfigureAwait(false);
-        var data = new { author = await ToExternalAuthor(author, cancellationToken).ConfigureAwait(false) };
+        var authorBlock = await author.ToExternalAuthor(UrlMapper, AvatarUrl, cancellationToken).ConfigureAwait(false);
+        var data = new { author = authorBlock };
         return Serialize(BuildEnvelope(hook, type, eventKey, chat, data));
     }
 
@@ -96,7 +103,9 @@ public sealed class WebHookPayloads(IServiceProvider services)
         var chat = entry is null ? null : await ChatBlockFor(entry.ChatId, cancellationToken).ConfigureAwait(false);
         var message = entry is null || author is null
             ? null
-            : await ToExternalMessage(entry, author, hook.IncludeText, cancellationToken).ConfigureAwait(false);
+            : await entry
+                .ToExternalMessage(author, hook.IncludeText, UrlMapper, AvatarUrl, MarkupParser, cancellationToken)
+                .ConfigureAwait(false);
         var kind = n.Kind.ToString().ToLowerInvariant();
         var text = hook.IncludeText ? n.Text : null;
         return SerializeCapped(
@@ -166,65 +175,13 @@ public sealed class WebHookPayloads(IServiceProvider services)
             url = UrlMapper.ToAbsolute(Links.Chat(chat.Id).Value),
         };
 
-    private async Task<ExternalMessage> ToExternalMessage(
-        ChatEntry entry, AuthorFull author, bool includeText, CancellationToken cancellationToken)
-    {
-        var authorBlock = await ToExternalAuthor(author, cancellationToken).ConfigureAwait(false);
-        var attachments = entry.Attachments.Select(ToExternalAttachment).ToArray();
-        var url = UrlMapper.ToAbsolute(Links.Chat(entry.ChatId, entry.LocalId).Value);
-        return new ExternalMessage(
-            entry.LocalId,
-            entry.Version,
-            ToUnixMillis(entry.BeginsAt),
-            authorBlock,
-            entry.IsSystemEntry,
-            entry.IsContentStreaming,
-            entry.HasAudio,
-            entry.IsRemoved,
-            includeText ? entry.Content : null,
-            null,
-            attachments,
-            entry.RepliedEntryLid,
-            GetMentions(entry.Content),
-            url,
-            GetOrigin(entry));
-    }
-
     private static object RemovedMessageBlock(ChatEntry entry, ExternalAuthor author)
         => new { id = entry.LocalId, author, isRemoved = true };
 
-    private async Task<ExternalAuthor> ToExternalAuthor(AuthorFull author, CancellationToken cancellationToken)
-    {
-        var avatar = author.Avatar;
-        var avatarUrl = avatar.MediaId is { } mediaId
-            ? await MediaUrl(mediaId, cancellationToken).ConfigureAwait(false)
-            : avatar.PictureUrl.NullIfEmpty();
-        return new ExternalAuthor(author.Id.Value, avatar.Name, avatarUrl);
-    }
-
-    private ExternalAttachment ToExternalAttachment(ChatEntryAttachment attachment)
-    {
-        var media = attachment.Media;
-        var contentType = media.ContentType;
-        var url = UrlMapper.ContentUrl(media.BlobId);
-        var isImage = contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
-        var previewUrl = isImage && UrlMapper.HasImageProxy
-            ? UrlMapper.ImagePreviewUrl(url, Constants.Attachments.MaxResolution)
-            : null;
-        var thumbnailUrl = attachment.ThumbnailMedia is { } thumbnail ? UrlMapper.ContentUrl(thumbnail.BlobId) : null;
-        return new ExternalAttachment(
-            media.Id.Value, GetMediaKind(contentType), media.FileName, contentType, media.Length,
-            media.Width, media.Height, url, previewUrl, thumbnailUrl);
-    }
-
-    private string[] GetMentions(string content)
-    {
-        var markup = MarkupParser.Parse(content);
-        return MentionExtractor.Instance.GetMentionIds(markup)
-            .Where(m => m.Kind == MentionKind.Author)
-            .Select(m => ((AuthorId)m.Target).Value)
-            .ToArray();
-    }
+    private Task<string?> AvatarUrl(Avatar avatar, CancellationToken cancellationToken)
+        => avatar.MediaId is { } mediaId
+            ? MediaUrl(mediaId, cancellationToken)
+            : Task.FromResult(avatar.PictureUrl.NullIfEmpty());
 
     private async Task<object> ChangedBlock(
         string title, string description, MediaId? mediaId,
@@ -251,20 +208,4 @@ public sealed class WebHookPayloads(IServiceProvider services)
         var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
         return media is null ? null : UrlMapper.ContentUrl(media.BlobId);
     }
-
-    private static long ToUnixMillis(Moment moment)
-        => (long)(moment - Moment.EpochStart).TotalMilliseconds;
-
-    private static ExternalOrigin GetOrigin(ChatEntry entry)
-        => Bots.IsBot(entry.AuthorId) ? new ExternalOrigin("bot")
-            : entry.IsViaApi ? new ExternalOrigin("api")
-            : new ExternalOrigin("user");
-
-    private static string GetMediaKind(string contentType)
-        => contentType switch {
-            _ when contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) => "image",
-            _ when contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase) => "video",
-            _ when contentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) => "audio",
-            _ => "file",
-        };
 }
