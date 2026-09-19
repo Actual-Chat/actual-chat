@@ -1730,6 +1730,10 @@
   "Invite_NewPrivateLink": "新的私密加入链接",
   "Invite_UnknownLink": "未知链接",
 
+  "ChatCleanup_Retention": "消息保留时间",
+  "ChatCleanup_RetentionWarning": "较早的消息将为所有人永久删除。延长保留时间不会恢复已删除的记录。",
+  "ChatCleanup_Clear": "清空聊天记录",
+  "ChatCleanup_ClearWarning": "为所有人清空当前聊天记录？此操作无法撤销。打开此确认窗口后发送的新消息将被保留。",
   "ChatSettings_UsePlaceSettingsForMembers": "请在地点设置中编辑成员",
   "ChatSettings_LeaveChatAndDelete": "退出并删除聊天",
 

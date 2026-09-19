@@ -143,8 +143,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         => GetConsolidatedVisibleStartLid(chatId, cancellationToken);
 
     // [ComputeMethod]
-    public virtual Task<Conversation?> GetLiveConversation(ChatId chatId, CancellationToken cancellationToken)
-        => GetConsolidatedLiveConversation(chatId, cancellationToken);
+    public virtual async Task<Conversation?> GetLiveConversation(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var conversation = await GetConsolidatedLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+        var boundary = await ChatsBackend.GetVisibilityBoundary(chatId, cancellationToken).ConfigureAwait(false);
+        return conversation is not null && conversation.Id.StartEntryLid >= boundary ? conversation : null;
+    }
 
     // [ComputeMethod]
     public virtual async Task<LiveSession?> Get(ChatId chatId, CancellationToken cancellationToken)

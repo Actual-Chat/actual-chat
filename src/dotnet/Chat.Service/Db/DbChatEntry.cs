@@ -32,6 +32,11 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public long LocalId { get; set; }
 
     public bool IsRemoved { get; set; }
+    public DateTime? RemovedAt {
+        get => field?.DefaultKind(DateTimeKind.Utc);
+        set => field = value?.DefaultKind(DateTimeKind.Utc);
+    }
+    public bool IsPurged { get; set; }
     public string AuthorId { get; set; } = null!;
     public long? RepliedChatEntryId { get; set; }
     public string? QuotedText { get; set; }

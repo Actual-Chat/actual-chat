@@ -31,11 +31,14 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     // Permissions & Rules
     public bool IsPublic { get; set; }
     public bool IsArchived { get; set; }
+    public bool IsRemoving { get; set; }
     public bool AllowGuestAuthors { get; set; }
     public bool AllowAnonymousAuthors { get; set; }
     public string? SystemTag { get; set; }
     public bool IsPlaceRootChat { get; set; }
     public bool? IsSummarized { get; set; }
+    public long MinVisibleEntryLid { get; set; }
+    public TimeSpan? RetentionPeriod { get; set; }
 
     public DateTime? PttEnabledAt {
         get => field?.DefaultKind(DateTimeKind.Utc);
@@ -69,6 +72,8 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             MediaId = ActualChat.MediaId.ParseNullable(MediaId),
             AliasId = ActualChat.AliasId.ParseNullable(AliasId),
             IsSummarized = IsSummarized,
+            MinVisibleEntryLid = MinVisibleEntryLid,
+            RetentionPeriod = RetentionPeriod,
             PttEnabledAt = PttEnabledAt is { } pttEnabledAt ? new Moment(pttEnabledAt) : null,
         };
 
@@ -98,6 +103,8 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsPlaceRootChat = model.Id is PlaceChatId { IsRoot: true };
         AliasId = model.AliasId?.NormalizedValue ?? "";
         IsSummarized = model.IsSummarized;
+        MinVisibleEntryLid = model.MinVisibleEntryLid;
+        RetentionPeriod = model.RetentionPeriod;
         PttEnabledAt = model.PttEnabledAt?.ToDateTime();
     }
 }
