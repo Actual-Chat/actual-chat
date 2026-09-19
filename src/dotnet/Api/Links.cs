@@ -122,8 +122,10 @@ public static class Links
             };
 
         // Write-review pages, for platforms whose native in-app review flow is missing or fails.
-        // The Mac link points at the Catalyst listing: the AppKit app isn't on the Mac App Store yet.
-        public static readonly string AndroidReview = $"market://details?id={Constants.AppIds.Prod}";
+        // Android takes the https Play page rather than market://, which every installed store
+        // (RuStore etc.) claims and so ends in a chooser; Play owns play.google.com as a verified
+        // app link. The Mac link points at the Catalyst listing: the AppKit app isn't on the Mac
+        // App Store yet.
         public static readonly string iOSReview = "https://apps.apple.com/app/id6450874551?action=write-review";
         public static readonly string MacOSAppReview =
             "macappstore://apps.apple.com/app/id6450874551?action=write-review";
@@ -131,7 +133,7 @@ public static class Links
 
         public static string? Review(AppKind appKind)
             => appKind switch {
-                AppKind.Android => AndroidReview,
+                AppKind.Android => Android,
                 AppKind.Ios => iOSReview,
                 AppKind.MacOS => MacOSAppReview,
                 AppKind.Windows => WindowsAppReview,

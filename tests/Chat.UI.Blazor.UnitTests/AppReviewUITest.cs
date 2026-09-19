@@ -48,7 +48,7 @@ public sealed class AppReviewUITest(ITestOutputHelper @out) : TestBase(@out)
 
         // assert
         outcome.Should().Be(AppReviewOutcome.Requested);
-        urlOpener.OpenedUrls.Should().Equal(Links.Apps.AndroidReview);
+        urlOpener.OpenedUrls.Should().Equal(Links.Apps.Android);
     }
 
     [Fact]

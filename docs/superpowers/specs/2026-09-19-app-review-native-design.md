@@ -68,7 +68,7 @@ Review links are added next to the store links in `Links.Apps` (`src/dotnet/Api/
 | AppKind | Link |
 |---|---|
 | Ios | `https://apps.apple.com/app/id6450874551?action=write-review` |
-| Android | `market://details?id=chat.actual.app` |
+| Android | the https Play page (`Links.Apps.Android`); `market://` ends in a store chooser on phones with RuStore etc. |
 | Windows | `ms-windows-store://review/?ProductId=9N6RWRD9FMS2` |
 | MacOS (Catalyst and AppKit) | `macappstore://apps.apple.com/app/id6450874551?action=write-review` |
 | Wasm / Unknown | null |
