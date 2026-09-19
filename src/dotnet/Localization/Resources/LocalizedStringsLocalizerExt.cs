@@ -68,6 +68,18 @@ public static class LocalizedStringsLocalizerExt
         public string UserInterface_Chats => l["UserInterface_Chats"].Value;
         public string UserInterface_ColorizeAuthorNames => l["UserInterface_ColorizeAuthorNames"].Value;
 
+        public string AppReview_Pitch => l["AppReview_Pitch"].Value;
+        public string AppReview_LeaveReview => l["AppReview_LeaveReview"].Value;
+        public string AppReview_MaybeLater => l["AppReview_MaybeLater"].Value;
+        public string AppReview_ThankYou => l["AppReview_ThankYou"].Value;
+        public string AppReview_ThankYouText => l["AppReview_ThankYouText"].Value;
+        public string AppReview_Done => l["AppReview_Done"].Value;
+        public string AppReview_AreYouSure => l["AppReview_AreYouSure"].Value;
+        public string AppReview_AreYouSureText => l["AppReview_AreYouSureText"].Value;
+        public string AppReview_InviteFriends => l["AppReview_InviteFriends"].Value;
+        public string AppReview_NotRightNow => l["AppReview_NotRightNow"].Value;
+        public string AppReview_FarewellText => l["AppReview_FarewellText"].Value;
+
         public string YourAccount_Information => l["YourAccount_Information"].Value;
         public string YourAccount_Name => l["YourAccount_Name"].Value;
         public string YourAccount_UserLink => l["YourAccount_UserLink"].Value;
@@ -88,6 +100,7 @@ public static class LocalizedStringsLocalizerExt
         public string AppSettings_TelemetryDisallowed => l["AppSettings_TelemetryDisallowed"].Value;
         public string AppSettings_TelemetryDescription_Format(object arg0)
             => l["AppSettings_TelemetryDescription_Format", arg0].Value;
+        public string AppSettings_RateApp_Format(object arg0) => l["AppSettings_RateApp_Format", arg0].Value;
 
         public string ThemeSettings_Light => l["ThemeSettings_Light"].Value;
         public string ThemeSettings_LightLinkWater => l["ThemeSettings_LightLinkWater"].Value;

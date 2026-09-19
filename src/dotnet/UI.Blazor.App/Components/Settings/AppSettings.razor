@@ -35,6 +35,14 @@
     <Content>@L.UserInterface_RestartWalkThrough</Content>
 </ButtonTile>
 
+@if (AppReviewUI.IsAvailable) {
+    <TileTopic Topic="@L.AppSettings_RateApp_Format(CoreConstants.AppName)"/>
+    <ButtonTile Class="btn-primary" Filled="true" Click="@(OnLeaveReview)">
+        <Icon><i class="icon-star text-2xl"></i></Icon>
+        <Content>@L.AppReview_LeaveReview</Content>
+    </ButtonTile>
+}
+
 @if (m.IsAdmin) {
     <TileTopic Topic="@L.UserInterface_Onboarding"/>
     <ButtonTile Class="btn-primary" Filled="true" Click="@(OnRestartOnboarding)">
@@ -49,6 +57,7 @@
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
     private BubbleUI BubbleUI => Hub.BubbleUI;
+    private AppReviewUI AppReviewUI => Hub.AppReviewUI;
 
     protected override void OnInitialized()
         => NativeAppSettings = Hub.Services.GetService<INativeAppSettings>();
@@ -69,6 +78,9 @@
         ToastUI.Show(L.UserInterface_WalkThroughRestarted, "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
+    private Task OnLeaveReview()
+        => AppReviewUI.LeaveReview();
+
     private void OnRestartOnboarding() {
         OnboardingUI.ResetSettings();
         ToastUI.Show(L.UserInterface_OnboardingRestarted, "icon-checkmark-circle", ToastDismissDelay.Short);
@@ -83,7 +95,7 @@
 
     // Nested types
 
-    public record Model(
+    public sealed record Model(
         bool IsDataCollectionEnabled,
         bool IsAdmin)
     {
