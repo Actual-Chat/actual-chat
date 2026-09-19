@@ -121,6 +121,23 @@ public static class Links
                 _ => null,
             };
 
+        // Write-review pages, for platforms whose native in-app review flow is missing or fails.
+        // The Mac link points at the Catalyst listing: the AppKit app isn't on the Mac App Store yet.
+        public static readonly string AndroidReview = $"market://details?id={Constants.AppIds.Prod}";
+        public static readonly string iOSReview = "https://apps.apple.com/app/id6450874551?action=write-review";
+        public static readonly string MacOSAppReview =
+            "macappstore://apps.apple.com/app/id6450874551?action=write-review";
+        public static readonly string WindowsAppReview = "ms-windows-store://review/?ProductId=9N6RWRD9FMS2";
+
+        public static string? Review(AppKind appKind)
+            => appKind switch {
+                AppKind.Android => AndroidReview,
+                AppKind.Ios => iOSReview,
+                AppKind.MacOS => MacOSAppReview,
+                AppKind.Windows => WindowsAppReview,
+                _ => null,
+            };
+
         public static class TestBuilds
         {
             public static readonly string iOS = "https://testflight.apple.com/join/5JP64q4v";

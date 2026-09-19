@@ -80,6 +80,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public HighlightUI HighlightUI => field ??= Services.GetRequiredService<HighlightUI>();
     public new OnboardingUI OnboardingUI => (OnboardingUI)base.OnboardingUI;
     public SearchUI SearchUI => field ??= Services.GetRequiredService<SearchUI>();
+    public AppReviewUI AppReviewUI => field ??= Services.GetRequiredService<AppReviewUI>();
     public LocalSearchUI LocalSearchUI => field ??= Services.GetRequiredService<LocalSearchUI>();
     public TranslationUI TranslationUI => field ??= Services.GetRequiredService<TranslationUI>();
     public TranscriptUI TranscriptUI => field ??= Services.GetRequiredService<TranscriptUI>();

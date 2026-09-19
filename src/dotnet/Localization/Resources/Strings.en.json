@@ -81,6 +81,21 @@
   "UserInterface_Chats": "Chats",
   "UserInterface_ColorizeAuthorNames": "Colorize author names",
 
+  // The rate-the-app modal (AppReviewModal): a four-step pitch that ends in the native store
+  // rating flow, plus the "Rate Voxt" entry in Settings > App settings that opens it directly.
+  "AppReview_Pitch": "We're a tiny team. Our competitors are giants. We believe chat can be so much better—and we've put our hearts into proving it. Please help us grow.",
+  "AppReview_LeaveReview": "Leave a review",
+  "AppReview_MaybeLater": "Maybe later",
+  "AppReview_ThankYou": "Thank you!",
+  "AppReview_ThankYouText": "Your support means a lot to our little team.",
+  "AppReview_Done": "Done",
+  "AppReview_AreYouSure": "Are you sure?",
+  "AppReview_AreYouSureText": "A better chat app needs people willing to give it a chance. Your review—or an invitation to a friend—can help us find them.",
+  "AppReview_InviteFriends": "Invite friends",
+  "AppReview_NotRightNow": "Not right now",
+  "AppReview_FarewellText": "No worries. You can always leave a review from Settings.",
+  "AppSettings_RateApp_Format": "Rate {0}",
+
   // Settings > Your Account - the summary rows. The time zone is the one the digest email is
   // scheduled against, which is why the label says so.
   "YourAccount_Information": "Information",
