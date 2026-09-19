@@ -1,4 +1,5 @@
 @page "/test/app-review"
+@using ActualChat.UI.Blazor.Services
 
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>App Review Test Page</MainHeader>
@@ -8,13 +9,31 @@
     <Button Class="btn-primary" Click="OnShowModal">
         Show review modal
     </Button>
+    <Button Class="btn-primary" IsDisabled="@(!Hub.AppReviewUI.IsAvailable)" Click="OnRequestNativeReview">
+        Request native review
+    </Button>
+    <Button Class="btn-primary" IsDisabled="@(ReviewUrl is null)" Click="OnOpenStoreLink">
+        Open store review link
+    </Button>
 </div>
+<p>Native review: @(Hub.Services.GetService<IAppReviewer>()?.GetType().Name ?? "not registered")</p>
+<p>Store review link: @(ReviewUrl ?? "none")</p>
+<p>Last outcome: @(_lastOutcome?.ToString() ?? "-")</p>
 </div>
 
 @code {
+    private AppReviewOutcome? _lastOutcome;
+
     [Inject] protected AppUIHub Hub { get; init; } = null!;
     private ModalUI ModalUI => Hub.ModalUI;
+    private string? ReviewUrl => Links.Apps.Review(Hub.HostInfo.AppKind);
 
     private void OnShowModal()
         => ModalUI.Show(new AppReviewModal.Model());
+
+    private async Task OnRequestNativeReview()
+        => _lastOutcome = await Hub.AppReviewUI.LeaveReview();
+
+    private Task OnOpenStoreLink()
+        => Hub.ExternalUrlOpener.Open(ReviewUrl!);
 }

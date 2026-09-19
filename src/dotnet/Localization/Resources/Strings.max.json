@@ -81,6 +81,21 @@
   "UserInterface_Chats": "Cuộc trò chuyện",
   "UserInterface_ColorizeAuthorNames": "Colorear los nombres de los autores",
 
+  // The rate-the-app modal (AppReviewModal): a four-step pitch that ends in the native store
+  // rating flow, plus the "Rate Voxt" entry in Settings > App settings that opens it directly.
+  "AppReview_Pitch": "Chúng tôi là một đội ngũ rất nhỏ. Đối thủ của chúng tôi là những gã khổng lồ. Chúng tôi tin rằng ứng dụng chat có thể tốt hơn rất nhiều và đã dồn hết tâm huyết để chứng minh điều đó. Hãy giúp chúng tôi phát triển.",
+  "AppReview_LeaveReview": "Lascia una recensione",
+  "AppReview_MaybeLater": "Може би по-късно",
+  "AppReview_ThankYou": "ありがとうございます！",
+  "AppReview_ThankYouText": "Ваша поддержка очень много значит для нашей маленькой команды.",
+  "AppReview_Done": "Concluído",
+  "AppReview_AreYouSure": "本当によろしいですか？",
+  "AppReview_AreYouSureText": "Aplikasi chat yang lebih baik membutuhkan orang-orang yang bersedia memberinya kesempatan. Ulasan Anda, atau undangan ke teman, bisa membantu kami menemukan mereka.",
+  "AppReview_InviteFriends": "मित्रों को आमंत्रित करें",
+  "AppReview_NotRightNow": "Không phải bây giờ",
+  "AppReview_FarewellText": "Nessun problema. Puoi lasciare una recensione in qualsiasi momento dalle Impostazioni.",
+  "AppSettings_RateApp_Format": "{0} uygulamasını değerlendirin",
+
   // Settings > Your Account - the summary rows. The time zone is the one the digest email is
   // scheduled against, which is why the label says so.
   "YourAccount_Information": "Информације",

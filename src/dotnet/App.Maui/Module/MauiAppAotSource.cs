@@ -80,6 +80,21 @@ internal class MauiAppAotSource : IAotSource
         CodeKeeper.Keep("ABI.Windows.ApplicationModel.IStartupTaskStatics, Microsoft.Windows.SDK.NET");
         CodeKeeper.Keep("ABI.Windows.ApplicationModel.IStartupTaskStaticsMethods, Microsoft.Windows.SDK.NET");
         CodeKeeper.Keep("ABI.Windows.ApplicationModel.StartupTask, Microsoft.Windows.SDK.NET");
+        // WinRT Store API behind WindowsAppReviewer: StoreContext.GetDefault / RequestRateAndReviewAppAsync
+        CodeKeeper.Keep("Windows.Services.Store.StoreContext, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("Windows.Services.Store.IStoreContextStatics, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("Windows.Services.Store.IStoreContext3, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("Windows.Services.Store.StoreRateAndReviewResult, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("Windows.Services.Store.IStoreRateAndReviewResult, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("Windows.Services.Store.StoreRateAndReviewStatus, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("ABI.Windows.Services.Store.IStoreContextStatics, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("ABI.Windows.Services.Store.IStoreContextStaticsMethods, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("ABI.Windows.Services.Store.IStoreContext3, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("ABI.Windows.Services.Store.IStoreContext3Methods, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("ABI.Windows.Services.Store.StoreContext, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("ABI.Windows.Services.Store.StoreRateAndReviewResult, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("ABI.Windows.Services.Store.IStoreRateAndReviewResult, Microsoft.Windows.SDK.NET");
+        CodeKeeper.Keep("ABI.Windows.Services.Store.IStoreRateAndReviewResultMethods, Microsoft.Windows.SDK.NET");
         CodeKeeper.Keep("WinRT.ExceptionHelpers, WinRT.Runtime");
         CodeKeeper.Keep("WinRT.IObjectReference, WinRT.Runtime");
 #endif
