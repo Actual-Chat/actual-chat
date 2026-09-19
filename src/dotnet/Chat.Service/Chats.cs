@@ -78,6 +78,8 @@ public partial class Chats(IServiceProvider services) : IChats
             return null;
 
         var maintenanceMode = await Maintenances.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (await Backend.GetImport(chatId, cancellationToken).ConfigureAwait(false) is { IsActive: true })
+            maintenanceMode = MaintenanceMode.Import;
         chat = chat with { Rules = rules, MaintenanceMode = maintenanceMode };
 
         return chat;
@@ -207,7 +209,8 @@ public partial class Chats(IServiceProvider services) : IChats
                 Permissions = permissions,
             };
         }
-        if (await Maintenances.Get(chatId, cancellationToken).ConfigureAwait(false) != MaintenanceMode.None)
+        if (await Maintenances.Get(chatId, cancellationToken).ConfigureAwait(false) != MaintenanceMode.None
+            || await Backend.GetImport(chatId, cancellationToken).ConfigureAwait(false) is { IsActive: true })
             rules = rules with {
                 Permissions = rules.Permissions & ~(ChatPermissions.Write | ChatPermissions.Upload
                     | ChatPermissions.WriteAudio | ChatPermissions.WriteVideo

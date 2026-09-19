@@ -952,6 +952,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        var importGuardChatId = chatId
+            ?? (change.IsCreate(out var importCreate) ? importCreate.PlaceId?.RootChatId : null);
+        if (importGuardChatId is not null)
+            await ChatImportGuard.RequireAvailable(dbContext, importGuardChatId, cancellationToken)
+                .ConfigureAwait(false);
+
         var dbChat = chatId is null
             ? null
             : await dbContext.Chats.ForUpdate()
@@ -1349,6 +1355,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         bool boundToThreadHasChanged = false;
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using (var __ = dbContext.ConfigureAwait(false)) {
+            await ChatImportGuard.RequireAvailable(dbContext, chatId, cancellationToken).ConfigureAwait(false);
+
             var dbEntry = changeKind == ChangeKind.Create
                 ? null
                 : await dbContext.ChatEntries.ForUpdate()
@@ -1530,7 +1538,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         async Task EnqueueChangedEvent() {
             var authorId = entry.AuthorId;
             var author = await AuthorsBackend.Get(authorId.ChatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
-            context.Operation.AddEvent(new ChatEntryChangedEvent(entry, author!, changeKind, oldEntry));
+            var mode = await Services.GetRequiredService<IMaintenancesBackend>()
+                .Get(chatId, cancellationToken).ConfigureAwait(false);
+            context.Operation.AddEvent(new ChatEntryChangedEvent(entry, author!, changeKind, oldEntry) {
+                SuppressNotifications = mode != MaintenanceMode.None || entry.IsImported,
+            });
         }
 
         async Task StorePreviousAndNextEntryIds(long localEntryLid)
@@ -1580,6 +1592,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        await ChatImportGuard.RequireAvailable(dbContext, entryId.ChatId, cancellationToken).ConfigureAwait(false);
+
         var dbAttachments = new List<DbChatEntryAttachment>();
         foreach (var attachment in attachments) {
             var dbChatEntry = await dbContext.ChatEntries.Get(entryId.Value, cancellationToken)
@@ -1623,6 +1637,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
+        await ChatImportGuard.RequireAvailable(dbContext, entryId.ChatId, cancellationToken).ConfigureAwait(false);
 
         var idPrefix = DbChatEntryAttachment.IdPrefix(entryId);
         await dbContext.ChatEntryAttachments

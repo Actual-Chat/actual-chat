@@ -63,6 +63,7 @@ public class ReactionsBackend(IServiceProvider services)
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+        await ChatImportGuard.RequireAvailable(dbContext, chatId, cancellationToken).ConfigureAwait(false);
 
         var id = DbReaction.ComposeId(entryId, authorId);
         var dbReaction = await dbContext.Reactions.ForUpdate()

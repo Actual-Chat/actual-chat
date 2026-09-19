@@ -133,6 +133,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+        await ChatImportGuard.RequireAvailable(dbContext, chatId, cancellationToken).ConfigureAwait(false);
 
         // Fetching chat: if it doesn't exist, this command can't proceed anyway
         var dbChat = await dbContext.Chats.Get(chatId.Value, cancellationToken).Require().ConfigureAwait(false);

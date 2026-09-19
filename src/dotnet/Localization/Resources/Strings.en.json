@@ -404,6 +404,14 @@
   // either direction, or a chat you have not joined yet. Most of these are fragments wrapped
   // around a Join button, so they end without punctuation.
   "ChatMaintenance_Mode": "Maintenance mode",
+  "ChatImport_Start": "Start import",
+  "ChatImport_Title": "Import in progress",
+  "ChatImport_Consent": "Allow my messages and media to be imported during this session",
+  "ChatImport_Consenting": "Consented",
+  "ChatImport_NonConsenting": "Not consented",
+  "ChatImport_SeeEveryone": "See everyone",
+  "ChatImport_End": "End import",
+  "ChatImport_PlaceScope": "This import includes every chat in this Place.",
   "ChatMaintenance_Title": "Chat temporarily unavailable",
   "ChatFooter_ReadOnly": "This chat is read-only",
   "ChatFooter_YouBlockedUser": "You blocked this user.",

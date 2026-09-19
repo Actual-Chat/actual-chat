@@ -11,4 +11,5 @@ public enum ChatEntryFlags
     HasUploadingAttachments = 1 << 4,
     IsUnsupported = 1 << 5,
     IsViaApi = 1 << 6,
+    IsImported = 1 << 7,
 }

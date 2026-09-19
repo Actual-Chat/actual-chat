@@ -125,6 +125,12 @@ public abstract partial record ChatEntry(
         init => Flags = value ? Flags | ChatEntryFlags.IsViaApi : Flags & ~ChatEntryFlags.IsViaApi;
     }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public bool IsImported {
+        get => Flags.HasFlag(ChatEntryFlags.IsImported);
+        init => Flags = value ? Flags | ChatEntryFlags.IsImported : Flags & ~ChatEntryFlags.IsImported;
+    }
+
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ChatId ChatId => Id.ChatId;

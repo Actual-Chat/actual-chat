@@ -40,6 +40,7 @@
     </FormBlock>
 
     <div class="chat-settings-container">
+        <ChatImportSettings ChatId="@PlaceId.RootChatId" Started="@(() => Context.Close())"/>
         <TileItem Click="OnManagePlaceTypeClick" Class="chat-type-tile-item">
             <Icon>
                 <i class="icon-key text-xl"></i>

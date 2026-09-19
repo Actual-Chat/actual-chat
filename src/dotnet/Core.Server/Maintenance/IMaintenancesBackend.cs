@@ -21,6 +21,8 @@ public sealed partial record MaintenancesBackend_Set(
     [property: DataMember, Key(1)] MaintenanceMode Mode
 ) : IDelegatingCommand<Unit>, IBackendCommand, IHasShardKey
 {
+    [DataMember, Key(2)] public string OwnerId { get; init; } = "";
+
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => Key.ShardKey;
 }

@@ -17,7 +17,7 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20260915112759_Add_ChatEntry_QuotedText";
+    public override string LastMigrationId => "20260918013203_AddChatImports";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -405,6 +405,10 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("boolean")
                     .HasColumnName("has_reactions");
 
+                b.Property<bool>("IsImported")
+                    .HasColumnType("boolean")
+                    .HasColumnName("is_imported");
+
                 b.Property<bool>("IsRemoved")
                     .HasColumnType("boolean")
                     .HasColumnName("is_removed");
@@ -642,6 +646,128 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                     .HasDatabaseName("ix_chat_file_items_chat_id_at_entry_local_id_local_index");
 
                 b.ToTable("chat_file_items");
+            });
+
+        modelBuilder.Entity("ActualChat.Chat.Db.DbChatImport", b =>
+            {
+                b.Property<string>("Id")
+                    .HasColumnType("text")
+                    .HasColumnName("id");
+
+                b.Property<string>("ImportId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("import_id");
+
+                b.Property<bool>("IsActive")
+                    .HasColumnType("boolean")
+                    .HasColumnName("is_active");
+
+                b.Property<DateTime>("StartedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("started_at");
+
+                b.Property<string>("StartedBy")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("started_by");
+
+                b.HasKey("Id")
+                    .HasName("pk_chat_imports");
+
+                b.ToTable("chat_imports");
+            });
+
+        modelBuilder.Entity("ActualChat.Chat.Db.DbChatImportBatch", b =>
+            {
+                b.Property<string>("Id")
+                    .HasColumnType("text")
+                    .HasColumnName("id");
+
+                b.Property<string>("Request")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("request");
+
+                b.Property<string>("Result")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("result");
+
+                b.HasKey("Id")
+                    .HasName("pk_chat_import_batches");
+
+                b.ToTable("chat_import_batches");
+            });
+
+        modelBuilder.Entity("ActualChat.Chat.Db.DbChatImportConsent", b =>
+            {
+                b.Property<string>("Id")
+                    .HasColumnType("text")
+                    .HasColumnName("id");
+
+                b.Property<bool>("HasConsent")
+                    .HasColumnType("boolean")
+                    .HasColumnName("has_consent");
+
+                b.Property<string>("ImportId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("import_id");
+
+                b.Property<string>("UserId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("user_id");
+
+                b.HasKey("Id")
+                    .HasName("pk_chat_import_consents");
+
+                b.HasIndex("ImportId")
+                    .HasDatabaseName("ix_chat_import_consents_import_id");
+
+                b.ToTable("chat_import_consents");
+            });
+
+        modelBuilder.Entity("ActualChat.Chat.Db.DbChatImportUpload", b =>
+            {
+                b.Property<string>("Id")
+                    .HasColumnType("text")
+                    .HasColumnName("id");
+
+                b.Property<string>("ChatId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("chat_id");
+
+                b.Property<string>("EntryId")
+                    .HasColumnType("text")
+                    .HasColumnName("entry_id");
+
+                b.Property<string>("ImportId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("import_id");
+
+                b.Property<string>("MediaJson")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("media_json");
+
+                b.Property<string>("UploadedBy")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("uploaded_by");
+
+                b.Property<string>("UserId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("user_id");
+
+                b.HasKey("Id")
+                    .HasName("pk_chat_import_uploads");
+
+                b.ToTable("chat_import_uploads");
             });
 
         modelBuilder.Entity("ActualChat.Chat.Db.DbChatLinkItem", b =>
