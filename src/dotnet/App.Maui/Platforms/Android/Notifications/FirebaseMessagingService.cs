@@ -4,6 +4,7 @@ using ActualLab.Diagnostics;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using Android.App;
+using Android.Content;
 using AndroidX.Core.App;
 using Firebase.Analytics;
 using Firebase.Messaging;
@@ -20,6 +21,7 @@ namespace ActualChat.App.Maui;
 #pragma warning restore CA1861
 public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingService
 {
+    private static readonly TimeSpan FirebaseReadyTimeout = TimeSpan.FromSeconds(15);
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<FirebaseMessagingService>();
     private static ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
@@ -30,6 +32,24 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
     private FirebaseAnalytics? _firebaseAnalytics;
 #pragma warning restore CA1823
 #pragma warning restore CS0169 // Field is never used
+
+    public override void HandleIntent(Intent? intent)
+    {
+        // FCM's own path calls MessagingAnalytics.logNotificationReceived - FirebaseApp.getInstance
+        // included - for messages carrying an analytics label, which the server sets on dev and for
+        // opted-in users. This process may have been started by this very broadcast, with
+        // MauiFirebase still initializing on its thread; this runs on FCM's executor, so waiting is
+        // fine. On a timeout the message goes through anyway: FCM's exception is the lesser evil
+        // next to a swallowed notification.
+        try {
+            if (!MauiFirebase.WhenReady.Wait(FirebaseReadyTimeout))
+                Log.LogWarning("HandleIntent: Firebase isn't ready after {Timeout}", FirebaseReadyTimeout);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "HandleIntent: Firebase init failed");
+        }
+        base.HandleIntent(intent);
+    }
 
     public override void OnNewToken(string token)
     {

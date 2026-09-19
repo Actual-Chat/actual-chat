@@ -79,6 +79,13 @@ The two things that used to block the main thread and no longer do:
 - **The Chromium provider.** Constructing `BlazorAndroidWebView` loads it on whatever
   thread constructs the view and blocks on Chromium's provider lock. `MainPage` therefore
   does not construct it until the warm-up has already taken that lock.
+- **Firebase Analytics.** `FirebaseAnalytics.getInstance` is GMS class loading plus binder
+  calls; it used to run on the main thread inside `Activity.onCreate` (and again inside
+  `Application.onCreate`). `MauiProgram.StartFirebaseAnalytics` runs it on a worker once the
+  Activity exists, and waits — 15 s steps, two minutes at most — while
+  `AndroidUtils.IsUnderMemoryPressure()` (a `Running*` trim in the last minute, or
+  `MemoryInfo.LowMemory`) says the OS is asking for less work. Until it completes,
+  `MauiProgram.IsFirebaseAnalyticsReady` is false and analytics events are dropped, not queued.
 
 ::: warning
 Nothing may block the main thread on the warm-up task. Chromium posts its native init back
@@ -121,8 +128,9 @@ sequenceDiagram
 
 What the headless path skips is only ever *work*, never a prerequisite:
 `WarmupStaticServices`, `BlazorViewAppPostBuildRoutine`, `LoadingUI.MarkAppBuilt`,
-`EnsureStarted` and the Chromium warm-up. None of it serves the FCM handler, and the
-ThreadPool spin-up alone competes with the broadcast the process was started to deliver.
+`EnsureStarted`, the Chromium warm-up and Firebase Analytics init (nothing headless logs an
+analytics event). None of it serves the FCM handler, and the ThreadPool spin-up alone competes
+with the broadcast the process was started to deliver.
 
 ::: info
 The skip is safe because the container is already built **on demand by whoever needs it** —
@@ -130,6 +138,30 @@ The skip is safe because the container is already built **on demand by whoever n
 calls `BlazorWebViewApp.EnsureStarted()` before touching the scope, and `PttSession` awaits
 `WhenAppReady`. Ordinary notification display touches Android APIs only.
 :::
+
+### Firebase initializes on its own thread
+
+`FirebaseInitProvider` is removed from the manifest. Firebase's own initializer is a content
+provider, so it ran on the main thread *before* `Application.onCreate`, and it eagerly builds
+Crashlytics, whose `AnalyticsDeferredProxy` class-loads GMS measurement on the way — the
+`zzc.<clinit>` / `CustomThreadFactory.newThread` frames under `MainApplication.n_onCreate` in
+the FCM-wake ANRs, and part of the pre-`onCreate` window on user launches.
+[`MauiFirebase.Start`](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Maui/Platforms/Android/MauiFirebase.cs)
+runs `FirebaseApp.InitializeApp` on a dedicated thread (not the pool — see the headless note
+above) from the first line of `MainApplication.OnCreate`; `MauiFirebase.WhenReady` is the gate.
+
+What waits on it, and why:
+
+| Consumer | Why it has to wait |
+|---|---|
+| `FirebaseMessagingService.HandleIntent` | FCM's own `handleIntent` calls `MessagingAnalytics.logNotificationReceived` → `FirebaseApp.getInstance()` for messages carrying an analytics label, which the server sets on dev and for opted-in users. The override waits (on FCM's executor, 15 s cap) and then calls base; a broadcast that started the process would otherwise race the init. Nothing else on FCM's message path references `FirebaseApp` (checked in the 25.0.2 bytecode). |
+| `AndroidFirebaseCrashlyticsSink` | `FirebaseCrashlytics.getInstance` throws before init. The sink buffers up to 256 Information+ lines and replays them once ready, so the startup lines an ANR report needs are kept. |
+| `AndroidDeviceTokenRetriever`, the dev-only `SetDeliveryMetricsExportToBigQuery`, `StartFirebaseAnalytics` | `FirebaseMessaging.getInstance` / analytics need the app. |
+
+`OnNewToken` needs no guard: it's raised by `FirebaseMessaging`, itself a component of the
+initialized app. The cost is that a crash in the first few hundred milliseconds of a start
+reaches Crashlytics only through `ApplicationExitInfo` on the next launch — the same as Sentry,
+which initializes ten seconds after first render.
 
 ### What is awaited, and where
 
@@ -223,6 +255,29 @@ Exactly one `MauiWebView` is created per launch (`Current = #1`). The foreground
 recreates the WebView when it finds `Content: null`, which is also the state during the
 initial attach — so it checks `MainPage.IsWebViewAttachPending` to tell "not attached yet"
 from "went away while backgrounded" and leave the first attach alone.
+
+## Runtime environment of the store build
+
+`android-release-env.txt` is packaged as an `AndroidEnvironment` file in Release (not in
+tracing builds, which need the diagnostics IPC it switches off). Two settings:
+
+- `DOTNET_GCgen0size=0x2000000` — a 32 MB gen0 budget. The default derives from the SoC's
+  cache size, which on Helio G35/G85 and Exynos 850 class phones is sub-MB: a gen0 GC every
+  few hundred KB of allocation, and the Java GC bridge follows every managed GC with a blocking
+  full ART GC (`Runtime.gc`) — the stop-the-world that shows up as `WaitHoldingLocks` under a
+  JNI transition in every user-perceived ANR dump. Fewer managed GCs, fewer of those.
+- `DOTNET_EnableDiagnostics=0` — no `.NET Debugger` / `.NET DebugPipe` threads or IPC socket.
+
+The A/B for the budget is `pwsh scripts/Measure-AndroidGcRate.ps1 -Seconds 60` over the same
+minute of use on the same phone, before and after: it counts the app's ART GC lines by cause
+(`Explicit` is the bridge's share) and sums their pauses. ART tags GC lines with the process
+name, so a `-s art` logcat filter returns nothing.
+
+Measured 2026-09-18 on a OnePlus CPH2747 (Android 16), launch → 25 s settle → 60 s idle on the
+chat list: dev 2.21.178 without the budget had **119 ART GCs in the minute, all `Explicit`**,
+242 ms of stop-the-world and 2.8 s of GC wall time; 2.21.208 with it had **none** (two during
+startup, then nothing), and **2** during a 60 s recording (~1.4 ms pause each). For scale, the
+August measurement on the same phone was 35/min over ~75 s of ordinary use.
 
 ## Recording a CPU profile
 

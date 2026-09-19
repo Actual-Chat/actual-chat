@@ -10,15 +10,28 @@ namespace ActualChat.App.Maui;
 public sealed class MainApplication : MauiApplication, AndroidX.Work.Configuration.IProvider
 {
     private static CpuTimestamp _startedAt;
+
+    // Process start to this constructor: CoreCLR init, assembly decompression, the typemap - main
+    // thread, inside the same 10s broadcast deadline as Application.onCreate, and no [@trace]
+    // region covers it. The breadcrumb store doesn't exist yet, so MauiProgram reports it.
+    public static TimeSpan RuntimeInitDuration { get; private set; }
+
     public MainApplication(IntPtr handle, JniHandleOwnership ownership)
         : base(handle, ownership)
     {
         _startedAt = CpuTimestamp.Now;
-        Android.Util.Log.Info(MauiDiagnostics.LogTag, "---- Started ----");
+        RuntimeInitDuration = TimeSpan.FromMilliseconds(
+            Android.OS.SystemClock.ElapsedRealtime() - Android.OS.Process.StartElapsedRealtime);
+        Android.Util.Log.Info(MauiDiagnostics.LogTag,
+            $"---- Started ---- (runtime init took {RuntimeInitDuration.ToShortString()})");
     }
 
     public override void OnCreate()
     {
+        // First thing, so Firebase (Crashlytics included) initializes on its own thread alongside
+        // CreateMauiApp; the manifest drops FirebaseInitProvider, which used to do it on the main
+        // thread before this method ran. See MauiFirebase.
+        MauiFirebase.Start(this);
         base.OnCreate();
         // The moment the main looper is free to dispatch the broadcast that may have started us;
         // the delta from "CreateMauiApp completed" is pure MAUI framework overhead.

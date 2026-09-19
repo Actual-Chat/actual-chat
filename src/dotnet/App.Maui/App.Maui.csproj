@@ -427,6 +427,11 @@
   <ItemGroup Condition="$(IsTracingEnabled) and $(TargetFramework.Contains('-android'))">
     <AndroidEnvironment Include="android-tracing-env.txt" />
   </ItemGroup>
+  <!-- Not for tracing builds: they need the diagnostics IPC the file switches off. -->
+  <ItemGroup
+    Condition="!$(IsTracingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+    <AndroidEnvironment Include="android-release-env.txt" />
+  </ItemGroup>
 
   <!-- Non-generic ArgumentList variants only: the generic ones cost an instantiation per arity
        in every AOT/R2R image, and the trimmer can drop them entirely once this is off.
