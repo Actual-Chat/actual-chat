@@ -1,7 +1,7 @@
 # App review: native review screens
 
 Status: approved design, 2026-09-19. Working document; delete once shipped.
-Issue: to be linked by `/track-issue`. Related: #4625 (per-user usage stats, which the
+Issue: #4631. Related: #4625 (per-user usage stats, which the
 future trigger depends on).
 
 ## Goal
