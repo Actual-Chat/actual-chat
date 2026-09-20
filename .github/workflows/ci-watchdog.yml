@@ -42,5 +42,4 @@ jobs:
         run: |
           . ./scripts/CiWatchdog.ps1
           $record = Invoke-CiWatchdog -RunId $env:RUN_ID -DryRun:($env:DRY_RUN -eq 'true')
-          $summary = Format-CiJournalNote $record $false
-          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value (Format-CiJournalNote $record)
