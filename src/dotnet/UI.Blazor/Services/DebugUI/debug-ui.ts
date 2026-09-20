@@ -167,6 +167,11 @@ export class DebugUI {
         return this._backendRef.invokeMethodAsync('SetIncompleteUI', enable) as unknown as Promise<void>;
     }
 
+    /** Sets the transcription language of a chat for the signed-in user, e.g. `'ru-RU'`. */
+    public static setChatLanguage(chatId: string, language: string): Promise<void> {
+        return this._backendRef.invokeMethodAsync('SetChatLanguage', chatId, language) as unknown as Promise<void>;
+    }
+
     /** true brings onboarding back with every step uncompleted, false marks every step completed;
      *  resolves once that is persisted. */
     public static resetOnboarding(enable: boolean): Promise<void> {
