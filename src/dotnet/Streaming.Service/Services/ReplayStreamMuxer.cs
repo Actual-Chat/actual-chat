@@ -570,9 +570,8 @@ public sealed class ReplayStreamMuxer : WorkerBase
                 return null;
 
             // Only the original has the VAD's trailing silence to cut: a dub ends where its speech does
-            if (opened.Dub == null && Entry.EndsAt is { } entryEndsAt)
-                _tailCutoff = ReplayTimeline.TailCutoff(
-                    entryEndsAt - Entry.BeginsAt, SkipTo, Constants.Audio.ReplayTailMargin);
+            if (opened.Dub == null)
+                _tailCutoff = ReplayTimeline.TailCutoff(Entry, SkipTo, Constants.Audio.ReplayTailMargin);
             _frames = opened.Source.GetFrames(cancellationToken).GetAsyncEnumerator(cancellationToken);
             return opened;
         }

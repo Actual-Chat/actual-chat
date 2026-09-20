@@ -49,12 +49,33 @@ public class ReplayTimelineTest
     public void TailCutoffShouldBeCountedFromTheSkip()
     {
         // arrange
-        var speech = TimeSpan.FromSeconds(10);
+        var entry = NewEntry(lead: TimeSpan.Zero, speech: TimeSpan.FromSeconds(10));
         var margin = TimeSpan.FromSeconds(0.4);
 
         // act & assert
-        ReplayTimeline.TailCutoff(speech, TimeSpan.Zero, margin).Should().Be(TimeSpan.FromSeconds(10.4));
-        ReplayTimeline.TailCutoff(speech, TimeSpan.FromSeconds(4), margin).Should().Be(TimeSpan.FromSeconds(6.4));
+        ReplayTimeline.TailCutoff(entry, TimeSpan.Zero, margin).Should().Be(TimeSpan.FromSeconds(10.4));
+        ReplayTimeline.TailCutoff(entry, TimeSpan.FromSeconds(4), margin).Should().Be(TimeSpan.FromSeconds(6.4));
+    }
+
+    [Fact]
+    public void TailCutoffShouldKeepTheSpeechOfASpeakerWhoTookTheirTime()
+    {
+        // arrange - the recording ran for a second before the first word
+        var entry = NewEntry(lead: TimeSpan.FromSeconds(1), speech: TimeSpan.FromSeconds(10));
+        var margin = TimeSpan.FromSeconds(0.4);
+
+        // act & assert - the cut sits past the last word, not a second before it
+        ReplayTimeline.TailCutoff(entry, TimeSpan.Zero, margin).Should().Be(TimeSpan.FromSeconds(11.4));
+    }
+
+    [Fact]
+    public void TailCutoffShouldBeUnsetForAnEntryThatDoesntSayWhereItEnds()
+    {
+        // arrange
+        var entry = NewEntry(lead: TimeSpan.Zero, speech: TimeSpan.FromSeconds(10)) with { EndsAt = null };
+
+        // act & assert
+        ReplayTimeline.TailCutoff(entry, TimeSpan.Zero, TimeSpan.FromSeconds(0.4)).Should().BeNull();
     }
 
     [Theory]
@@ -81,4 +102,18 @@ public class ReplayTimelineTest
         // act & assert
         => ReplayTimeline.Deadline(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(2), 2.0)
             .Should().Be(TimeSpan.FromSeconds(6));
+
+    // Private methods
+
+    // lead is how long the recording ran before the first word - the entry begins at that word,
+    // while its audio begins with the recording
+    private static ChatEntry NewEntry(TimeSpan lead, TimeSpan speech)
+    {
+        var recordedAt = new Moment(TimeSpan.FromDays(20_000));
+        return new TextEntry(ChatEntryId.Parse("the-actual-one:0:7")) {
+            BeginsAt = recordedAt + lead,
+            EndsAt = recordedAt + lead + speech,
+            Audio = new ChatEntryAudio { BeginsAt = recordedAt },
+        };
+    }
 }

@@ -44,9 +44,14 @@ public class ReplayStreamTest(
         for (var i = 0; i < entries.Count; i++) {
             var entry = entries[i];
             var start = starts[i];
-            var speech = entry.EndsAt!.Value - entry.BeginsAt;
-            frames.Where(x => x.StreamIndex == start.StreamIndex).Max(x => x.Offset).Should()
-                .BeLessThan(speech + Constants.Audio.ReplayTailMargin, "the silence after the last word is cut");
+            // Frame offsets count from the blob, which starts where the recording did - earlier than
+            // the entry's first word, so the cut is checked against that origin rather than the entry's
+            var speechEnd = entry.EndsAt!.Value - entry.Audio!.BeginsAt;
+            var lastOffset = frames.Where(x => x.StreamIndex == start.StreamIndex).Max(x => x.Offset);
+            lastOffset.Should()
+                .BeLessThan(speechEnd + Constants.Audio.ReplayTailMargin, "the silence after the last word is cut");
+            lastOffset.Should()
+                .BeGreaterThan(speechEnd - TimeSpan.FromMilliseconds(200), "the last word itself is kept");
             if (i == 0)
                 continue;
 
