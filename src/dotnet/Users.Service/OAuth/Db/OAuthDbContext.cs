@@ -23,7 +23,12 @@ public class OAuthDbContext(DbContextOptions<OAuthDbContext> options) : DbContex
         model.UseOpenIddict();
         // CIMD client ids are URLs; OpenIddict's default of 100 is sized for opaque ids
         model.Entity<OpenIddictEntityFrameworkCoreApplication>().Property(a => a.ClientId).HasMaxLength(1024);
-        model.ApplyConfigurationsFromAssembly(typeof(OAuthDbContext).Assembly).UseSnakeCaseNaming();
+        // This assembly is Users.Service, which also holds UsersDbContext's entity configurations -
+        // an unfiltered scan would pull DbAccount & Co. into the OAuth model. Scan OAuth types only.
+        model.ApplyConfigurationsFromAssembly(
+                typeof(OAuthDbContext).Assembly,
+                t => t.Namespace?.StartsWith("ActualChat.OAuth", StringComparison.Ordinal) == true)
+            .UseSnakeCaseNaming();
 
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");
