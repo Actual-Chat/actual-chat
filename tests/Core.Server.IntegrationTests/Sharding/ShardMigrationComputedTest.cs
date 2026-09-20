@@ -16,6 +16,10 @@ public class ShardMigrationComputedTest(ITestOutputHelper @out)
             },
         }, @out)
 {
+    // 10s sat right on the edge of a migrated shard's reconvergence - an instrumented CI run
+    // measured 10.3s. These tests look for a value that never recovers, so the margin is free.
+    private static readonly TimeSpan ReconvergenceTimeout = TimeSpan.FromSeconds(30);
+
     // Reproduces the prod presence freeze (2026-07-01): a value computed locally
     // on the shard's owner must be invalidated when the shard migrates to a newly
     // added node; otherwise it stays consistent-but-stale forever.
@@ -78,7 +82,7 @@ public class ShardMigrationComputedTest(ITestOutputHelper @out)
             var c = computeds[shard];
             try {
                 await c.When(x => x == t1, cancellationToken)
-                    .WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
+                    .WaitAsync(ReconvergenceTimeout, cancellationToken);
                 WriteLine($"Shard {shard.Format()} ({keys[shard]}): updated to t1");
             }
             catch (TimeoutException) {
@@ -213,7 +217,7 @@ public class ShardMigrationComputedTest(ITestOutputHelper @out)
             var c = computeds[shard];
             try {
                 await c.When(x => x == t1, cancellationToken)
-                    .WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
+                    .WaitAsync(ReconvergenceTimeout, cancellationToken);
                 WriteLine($"Shard {shard.Format()} ({keys[shard]}): updated to t1");
             }
             catch (TimeoutException) {
@@ -311,7 +315,7 @@ public class ShardMigrationComputedTest(ITestOutputHelper @out)
                     var c = computeds[shard];
                     try {
                         computeds[shard] = await c.When(x => x == t, cancellationToken)
-                            .WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
+                            .WaitAsync(ReconvergenceTimeout, cancellationToken);
                     }
                     catch (TimeoutException) {
                         var was = survivorShards.Contains(shard)
