@@ -13,6 +13,7 @@ public sealed class ReplayClock(TimeSpan startedAt, TimeSpan maxExtrapolation)
 
     private readonly Lock _lock = new();
     private readonly HashSet<Track> _tracks = new();
+    private readonly List<(TimeSpan Target, TaskCompletionSource WhenReached)> _waiters = new();
     private TimeSpan _position;
     private TimeSpan _idleSince = startedAt;
 
@@ -20,6 +21,20 @@ public sealed class ReplayClock(TimeSpan startedAt, TimeSpan maxExtrapolation)
     {
         lock (_lock)
             return GetPositionUnsafe(now);
+    }
+
+    // Completes once the position reaches the target - which the audio can do sooner than wall
+    // time suggests, when a track that held the clock back ends or catches up
+    public Task WhenReached(TimeSpan target, TimeSpan now)
+    {
+        lock (_lock) {
+            if (GetPositionUnsafe(now) >= target)
+                return Task.CompletedTask;
+
+            var whenReached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _waiters.Add((target, whenReached));
+            return whenReached.Task;
+        }
     }
 
     public Track StartTrack(TimeSpan playsAt, TimeSpan now)
@@ -45,6 +60,7 @@ public sealed class ReplayClock(TimeSpan startedAt, TimeSpan maxExtrapolation)
 
             track.Played = played;
             track.PlayedAt = now;
+            GetPositionUnsafe(now);
         }
     }
 
@@ -54,6 +70,8 @@ public sealed class ReplayClock(TimeSpan startedAt, TimeSpan maxExtrapolation)
             GetPositionUnsafe(now);
             if (_tracks.Remove(track) && _tracks.Count == 0)
                 _idleSince = now;
+            // Dropping the track that lagged behind lets the clock jump to the next one
+            GetPositionUnsafe(now);
         }
     }
 
@@ -68,9 +86,22 @@ public sealed class ReplayClock(TimeSpan startedAt, TimeSpan maxExtrapolation)
             : _tracks.Min(x => x.GetPosition(now, maxExtrapolation));
         if (_tracks.Count == 0)
             _idleSince = now;
-        if (position > _position)
+        if (position > _position) {
             _position = position;
+            ReleaseWaitersUnsafe();
+        }
         return _position;
+    }
+
+    private void ReleaseWaitersUnsafe()
+    {
+        for (var i = _waiters.Count - 1; i >= 0; i--) {
+            if (_waiters[i].Target > _position)
+                continue;
+
+            _waiters[i].WhenReached.TrySetResult();
+            _waiters.RemoveAt(i);
+        }
     }
 
     // Nested types

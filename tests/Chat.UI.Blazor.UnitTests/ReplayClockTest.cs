@@ -109,6 +109,41 @@ public sealed class ReplayClockTest
         clock.GetPosition(Seconds(5.4)).Should().Be(Seconds(2.4));
     }
 
+    [Fact]
+    public void WhenReachedShouldCompleteOnlyOnceTheAudioCarriesThePositionThere()
+    {
+        // arrange
+        var clock = new ReplayClock(TimeSpan.Zero, MaxExtrapolation);
+        var track = clock.StartTrack(TimeSpan.Zero, TimeSpan.Zero);
+
+        // act
+        var whenReached = clock.WhenReached(Seconds(2), TimeSpan.Zero);
+
+        // assert
+        clock.GetPosition(Seconds(9)).Should().Be(TimeSpan.Zero, "the track is still buffering");
+        whenReached.IsCompleted.Should().BeFalse("wall time alone doesn't move a clock a track holds");
+        clock.ReportProgress(track, Seconds(2), false, Seconds(9));
+        whenReached.IsCompleted.Should().BeTrue();
+    }
+
+    [Fact]
+    public void WhenReachedShouldCompleteWhenTheTrackHoldingTheClockEnds()
+    {
+        // arrange - one track lags at its start while another is already 2 s in
+        var clock = new ReplayClock(TimeSpan.Zero, MaxExtrapolation);
+        var lagging = clock.StartTrack(TimeSpan.Zero, TimeSpan.Zero);
+        var playing = clock.StartTrack(TimeSpan.Zero, TimeSpan.Zero);
+        clock.ReportProgress(playing, Seconds(2), false, Seconds(2));
+        var whenReached = clock.WhenReached(Seconds(1.5), Seconds(2));
+        whenReached.IsCompleted.Should().BeFalse("the lagging track holds the clock at its start");
+
+        // act
+        clock.EndTrack(lagging, Seconds(2));
+
+        // assert
+        whenReached.IsCompleted.Should().BeTrue("the clock jumps to the track that is still playing");
+    }
+
     // Private methods
 
     private static TimeSpan Seconds(double value)
