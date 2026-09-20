@@ -139,3 +139,25 @@ services:
       - ACCEPT_EULA=Y
       - SEQ_FIRSTRUN_NOAUTHENTICATION=true
 #    restart: unless-stopped
+  # Network shaping for the debug harness (`npm run harness -- net on`): a latency proxy
+  # between nginx and a slot's Kestrel. Starts only on request, via the "harness" profile.
+  # A slot on port P is proxied on P+5 (HTTP) and P+6 (its HTTP/2 sibling on P+1).
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.12.0
+    profiles:
+      - harness
+    ports:
+      - "8474:8474"
+      - "7085-7086:7085-7086"
+      - "7095-7096:7095-7096"
+      - "7105-7106:7105-7106"
+      - "7115-7116:7115-7116"
+      - "7125-7126:7125-7126"
+      - "7135-7136:7135-7136"
+      - "7145-7146:7145-7146"
+      - "7155-7156:7155-7156"
+      - "7165-7166:7165-7166"
+      - "7175-7176:7175-7176"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    logging: *default-logging
