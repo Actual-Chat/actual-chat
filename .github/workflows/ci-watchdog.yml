@@ -1,0 +1,46 @@
+name: CI watchdog
+
+on:
+  workflow_run:
+    workflows: ["Build test and deploy", "Run slow tests", "Run nightly tests"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run-id:
+        description: "Id of the run to classify"
+        required: true
+      dry-run:
+        description: "Classify and report, but change nothing"
+        type: boolean
+        default: true
+
+permissions:
+  actions: write
+  contents: write
+  issues: write
+
+jobs:
+  triage:
+    name: Triage a red run
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/CiWatchdog.ps1
+          sparse-checkout-cone-mode: false
+          lfs: false
+
+      - name: Triage
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ inputs.run-id || github.event.workflow_run.id }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          . ./scripts/CiWatchdog.ps1
+          $record = Invoke-CiWatchdog -RunId $env:RUN_ID -DryRun:($env:DRY_RUN -eq 'true')
+          $summary = Format-CiJournalNote $record $false
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
