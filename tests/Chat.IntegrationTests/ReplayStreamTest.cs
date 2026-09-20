@@ -20,10 +20,11 @@ public class ReplayStreamTest(
         var (chatId, _) = await Tester.CreateChat(false);
         var entries = new List<ChatEntry>();
         for (var i = 0; i < 3; i++) {
-            // Recording sends its frames faster than real time, so without a pause the entries would overlap
+            // An entry is dated by its audio, not by the wall clock: 100 frames are 2 s of sound
+            // sent in about half of that, so the pause has to outlast the sound for a gap to exist
             if (i > 0)
-                await Task.Delay(TimeSpan.FromSeconds(2));
-            entries.Add(await Tester.RecordVoiceEntry(chatId, Languages.English));
+                await Task.Delay(TimeSpan.FromSeconds(4));
+            entries.Add(await Tester.RecordVoiceEntry(chatId, Languages.English, frameCount: 100));
         }
         var liveStreams = Tester.AppServices.GetRequiredService<ILiveAudioStreams>();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
