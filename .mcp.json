@@ -8,13 +8,6 @@
       "type": "http",
       "url": "http://localhost:8766/mcp"
     },
-    "github": {
-      "type": "http",
-      "url": "https://api.githubcopilot.com/mcp/",
-      "headers": {
-        "Authorization": "Bearer ${AC_GITHUB_TOKEN}"
-      }
-    },
     "figma": {
       "type": "http",
       "url": "https://mcp.figma.com/mcp"
