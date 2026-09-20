@@ -32,7 +32,12 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
 
     protected override void OnModelCreating(ModelBuilder model)
     {
-        model.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly).UseSnakeCaseNaming();
+        // This assembly also holds OAuthDbContext's entity configurations - an unfiltered scan
+        // would pull them into the users model. Scan Users types only. See OAuthDbContext.
+        model.ApplyConfigurationsFromAssembly(
+                typeof(UsersDbContext).Assembly,
+                t => t.Namespace?.StartsWith("ActualChat.Users", StringComparison.Ordinal) == true)
+            .UseSnakeCaseNaming();
 
         model.Entity<DbMaintenance>().Property(e => e.Id).UseCollation("C");
 
