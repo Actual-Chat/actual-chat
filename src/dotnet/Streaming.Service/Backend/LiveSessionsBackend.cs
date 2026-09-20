@@ -661,6 +661,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     public virtual async Task AcceptCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken)
     {
         ConversationId? conversationId = null;
+        AuthorId? callerAuthorId = null;
         var justConnected = false;
         using (Computed.BeginIsolation())
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
@@ -700,9 +701,15 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 justConnected = true;
             }
             conversationId = state?.RingConversationId;
+            callerAuthorId = state?.CallerId ?? state?.Host;
             InvalidateState(chatId);
         }
         await SetUserCallPhase(chatId, inviteeAuthorId, CallPhase.Active, cancellationToken).ConfigureAwait(false);
+        // The answer puts the caller on the line too. Their claim is what the client projects, so left
+        // at Dialing it never reads as the active call: the caller stays outside the call they placed,
+        // looking at a Join button, until the claim lapses on its own.
+        if (callerAuthorId is { } callerId)
+            await SetUserCallPhase(chatId, callerId, CallPhase.Active, cancellationToken).ConfigureAwait(false);
         if (conversationId is { } cid)
             await DismissRing(cid, [inviteeAuthorId], cancellationToken).ConfigureAwait(false);
         if (justConnected)
