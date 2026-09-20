@@ -4,9 +4,18 @@ Describe "CiWatchdog.ps1" {
 
         # `gh run view --log-failed` prefixes every line; the parser has to see past it.
         function New-JobLog {
-            param([string[]]$Lines)
-            $prefix = "Run Slow tests / Slow tests results`tUNKNOWN STEP`t2026-09-20T12:56:27.9516423Z "
+            param([string[]]$Lines, [string]$Job = 'Run Slow tests / Slow tests results')
+            $prefix = "$Job`tUNKNOWN STEP`t2026-09-20T12:56:27.9516423Z "
             return ($Lines | ForEach-Object { "$prefix$_" }) -join "`n"
+        }
+
+        function New-FailureLines {
+            param([string]$Test)
+            return @(
+                "[xUnit.net 00:00:37.78]     $Test [FAIL]"
+                '##[error]Expected 3, but found 4.'
+                "  Failed $Test [11 s]"
+            )
         }
 
         $script:oneFailureLog = New-JobLog @(
@@ -35,6 +44,10 @@ Describe "CiWatchdog.ps1" {
             Get-CiFailureCategory 'Checkout' | Should -Be 'Garbage'
         }
 
+        It "reads the deploy job's checkout too, whatever it is called" {
+            Get-CiFailureCategory 'Checking out refs/heads/dev' | Should -Be 'Garbage'
+        }
+
         It "keeps the configs checkout separate from the repository checkout" {
             Get-CiFailureCategory 'Checkout configs' | Should -Be 'Infra'
         }
@@ -48,10 +61,14 @@ Describe "CiWatchdog.ps1" {
 
         It "does not mistake the test build for a test run" {
             Get-CiFailureCategory 'Debug Build for tests' | Should -Be 'Build'
+            Get-CiFailureCategory 'Debug build of tests' | Should -Be 'Build'
         }
 
-        It "treats the empty report step as noise" {
+        It "treats every report step as noise, whichever suite it reports on" {
             Get-CiFailureCategory 'Report test results' | Should -Be 'Noise'
+            Get-CiFailureCategory 'Report unit test results' | Should -Be 'Noise'
+            Get-CiFailureCategory 'Report TS unit test results' | Should -Be 'Noise'
+            Get-CiFailureCategory 'Report E2E test results' | Should -Be 'Noise'
         }
 
         It "falls back to Unknown" {
@@ -75,6 +92,45 @@ Describe "CiWatchdog.ps1" {
 
         It "returns nothing for no issues" {
             @(Get-CiFlakePatterns @()).Count | Should -Be 0
+        }
+    }
+
+    Context "Get-CiFlakeTitles" {
+        It "reads the titles out of what gh printed" {
+            $json = '[{"title":"Flaky test: `*.TimerFlowTest.*`"},{"title":"Another one"}]'
+            Get-CiFlakeTitles $json | Should -Be @('Flaky test: `*.TimerFlowTest.*`', 'Another one')
+        }
+
+        It "gives up the registry rather than the run when gh prints a warning" {
+            $titles = Get-CiFlakeTitles 'gh: warning: rate limit exceeded' -WarningAction SilentlyContinue
+            @($titles).Count | Should -Be 0
+        }
+
+        It "returns nothing for an empty list" {
+            @(Get-CiFlakeTitles '[]').Count | Should -Be 0
+        }
+    }
+
+    Context "Split-CiLogByJob" {
+        It "keeps each job's lines to itself" {
+            $log = @(
+                (New-JobLog @('alpha one', 'alpha two') -Job 'Run Integration tests (users)')
+                (New-JobLog @('beta one') -Job 'Run Integration tests (chat)')
+            ) -join "`n"
+
+            $sections = Split-CiLogByJob $log
+            $sections.Keys.Count | Should -Be 2
+            $sections['Run Integration tests (users)'] | Should -Match 'alpha two'
+            $sections['Run Integration tests (users)'] | Should -Not -Match 'beta one'
+            $sections['Run Integration tests (chat)'] | Should -Not -Match 'alpha'
+        }
+
+        It "drops a line that belongs to no job" {
+            (Split-CiLogByJob "no prefix here").Keys.Count | Should -Be 0
+        }
+
+        It "returns nothing for an empty log" {
+            (Split-CiLogByJob '').Keys.Count | Should -Be 0
         }
     }
 
@@ -129,6 +185,14 @@ Describe "CiWatchdog.ps1" {
         It "returns nothing for a log without failures" {
             @(Get-CiFailedTests '' @()).Count | Should -Be 0
         }
+
+        It "keeps a theory case together with its assertion text" {
+            $name = 'ActualChat.Chat.IntegrationTests.ReaderTest.ReadTest(kind: "forward", count: 2)'
+            $tests = Get-CiFailedTests (New-JobLog (New-FailureLines $name)) @()
+            $tests.Count | Should -Be 1
+            $tests[0].Name | Should -Be $name
+            $tests[0].Error | Should -Be 'Expected 3, but found 4.'
+        }
     }
 
     Context "Get-CiAssemblyTotals" {
@@ -172,6 +236,17 @@ Describe "CiWatchdog.ps1" {
         It "says Collapse when a whole assembly goes down" {
             $tests = 1..6 | ForEach-Object { New-Test "a.T$_" $true }
             Get-CiRunVerdict @((New-Job 'Test' $tests)) | Should -Be 'Collapse'
+        }
+
+        It "counts the collapse threshold per job, not per run" {
+            $first = New-Job 'Test' @(1..3 | ForEach-Object { New-Test "a.T$_" $true })
+            $second = New-Job 'Test' @(1..3 | ForEach-Object { New-Test "b.T$_" $true })
+            Get-CiRunVerdict @($first, $second) | Should -Be 'KnownFlake'
+        }
+
+        It "does not let a flaky test speak for a broken build" {
+            $tests = New-Job 'Test' @((New-Test 'a.TimerFlowTest.X' $true))
+            Get-CiRunVerdict @((New-Job 'Build'), $tests) | Should -Be 'Mixed'
         }
 
         It "ignores garbage jobs sharing a run with a real failure" {
@@ -250,6 +325,48 @@ Describe "CiWatchdog.ps1" {
             $record.Verdict | Should -Be 'None'
             @($record.Jobs).Count | Should -Be 0
         }
+
+        It "does not credit one shard's failures to another" {
+            $shards = 'users', 'chat'
+            $jobs = @($shards | ForEach-Object {
+                [PSCustomObject]@{
+                    name = "Run Integration tests ($_)"
+                    html_url = "https://example.invalid/job/$_"
+                    steps = @([PSCustomObject]@{ name = 'Run tests'; conclusion = 'failure'; number = 1 })
+                }
+            })
+            $log = @($shards | ForEach-Object {
+                $lines = (New-FailureLines "ActualChat.$_.T1") + (New-FailureLines "ActualChat.$_.T2")
+                New-JobLog $lines -Job "Run Integration tests ($_)"
+            }) -join "`n"
+
+            $record = New-CiRunRecord $script:run $jobs $log @()
+            @($record.Jobs[0].Tests).Count | Should -Be 2
+            @($record.Jobs[1].Tests).Count | Should -Be 2
+            $record.Jobs[0].Tests.Name | Should -Not -Contain 'ActualChat.chat.T1'
+            # Four failures across two shards, not one collapsed fixture.
+            $record.Verdict | Should -Be 'NewFailure'
+        }
+
+        It "leaves a job unparsed when the log has no section for it" {
+            $job = [PSCustomObject]@{
+                name = 'Run Integration tests (mlsearch)'
+                html_url = 'https://example.invalid/job/3'
+                steps = @([PSCustomObject]@{ name = 'Run tests'; conclusion = 'failure'; number = 1 })
+            }
+            $record = New-CiRunRecord $script:run @($job) $script:oneFailureLog @() -WarningAction SilentlyContinue
+            @($record.Jobs[0].Tests).Count | Should -Be 0
+            $record.Verdict | Should -Be 'Unparsed'
+        }
+    }
+
+    Context "Format-CiJournalNote" {
+        It "mentions a re-run only when the record carries one" {
+            $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog $script:knownPatterns
+            Format-CiJournalNote $record | Should -Not -Match 're-run automatically'
+            $record.Rerun = $true
+            Format-CiJournalNote $record | Should -Match 're-run automatically'
+        }
     }
 
     Context "Get-CiRecordPath" {
@@ -273,23 +390,37 @@ Describe "CiWatchdog.ps1" {
     }
 
     Context "Test-CiRerunAllowed" {
+        BeforeAll {
+            $script:tip = '3e9b33af854a289f8f02fea7948df315e9c2a786'
+        }
+
         It "re-runs a known flake on dev" {
-            Test-CiRerunAllowed 'dev' 1 'KnownFlake' | Should -BeTrue
-            Test-CiRerunAllowed 'dev' 1 'Infra' | Should -BeTrue
+            Test-CiRerunAllowed 'dev' 1 'KnownFlake' $script:tip $script:tip | Should -BeTrue
+            Test-CiRerunAllowed 'dev' 1 'Infra' $script:tip $script:tip | Should -BeTrue
         }
 
         It "leaves other branches to their authors" {
-            Test-CiRerunAllowed 'feat/something' 1 'KnownFlake' | Should -BeFalse
+            Test-CiRerunAllowed 'feat/something' 1 'KnownFlake' $script:tip $script:tip | Should -BeFalse
         }
 
         It "never re-runs a re-run" {
-            Test-CiRerunAllowed 'dev' 2 'KnownFlake' | Should -BeFalse
+            Test-CiRerunAllowed 'dev' 2 'KnownFlake' $script:tip $script:tip | Should -BeFalse
         }
 
         It "does not re-run what a re-run cannot fix" {
-            Test-CiRerunAllowed 'dev' 1 'NewFailure' | Should -BeFalse
-            Test-CiRerunAllowed 'dev' 1 'Collapse' | Should -BeFalse
-            Test-CiRerunAllowed 'dev' 1 'Build' | Should -BeFalse
+            Test-CiRerunAllowed 'dev' 1 'NewFailure' $script:tip $script:tip | Should -BeFalse
+            Test-CiRerunAllowed 'dev' 1 'Collapse' $script:tip $script:tip | Should -BeFalse
+            Test-CiRerunAllowed 'dev' 1 'Build' $script:tip $script:tip | Should -BeFalse
+        }
+
+        It "does not re-run red that a newer commit has already superseded" {
+            Test-CiRerunAllowed 'dev' 1 'KnownFlake' $script:tip 'ffffffffffffffffffffffffffffffffffffffff' |
+                Should -BeFalse
+        }
+
+        It "does nothing when the tip could not be read" {
+            Test-CiRerunAllowed 'dev' 1 'KnownFlake' $script:tip '' | Should -BeFalse
+            Test-CiRerunAllowed 'dev' 1 'KnownFlake' '' '' | Should -BeFalse
         }
     }
 }

@@ -10,14 +10,17 @@ $script:Repo = 'Actual-Chat/actual-chat'
 $script:DataBranch = 'ci-watchdog-data'
 $script:JournalLabel = 'ci-watchdog'
 
-# First match wins, so the more specific patterns come first.
+# First match wins, so the more specific patterns come first. The patterns are
+# matched case-insensitively, but they spell out every wording the workflows
+# actually use — `Checkout` and `Checking out`, `for tests` and `of tests` —
+# because a step that matches none of them is reported as unrecognized red.
 $script:StepCategories = @(
     @{ Pattern = '^Checkout configs$'; Category = 'Infra' }
-    @{ Pattern = '^Checkout'; Category = 'Garbage' }
+    @{ Pattern = '^Check(out|ing out)'; Category = 'Garbage' }
     @{ Pattern = '^(Initialize containers|Build OpenSearch configurator image|Configure OpenSearch ML pipeline)$'; Category = 'Infra' }
-    @{ Pattern = '^Report test results$'; Category = 'Noise' }
+    @{ Pattern = '^Report .*test results$'; Category = 'Noise' }
     @{ Pattern = '(Run|Slow|Unit|Integration) tests'; Category = 'Test' }
-    @{ Pattern = '^(Debug Build for tests|Build image|Build app package|Build )'; Category = 'Build' }
+    @{ Pattern = '^(Debug [Bb]uild (for|of) tests|Build image|Build app package|Build )'; Category = 'Build' }
     @{ Pattern = '^(Deploy|Upload to|Validate App)'; Category = 'Deploy' }
 )
 
@@ -64,6 +67,26 @@ function Get-CiFlakePatterns {
     })
 }
 
+function Get-CiFlakeTitles {
+    <#
+    .SYNOPSIS
+        Issue titles out of what `gh issue list --json title` printed.
+    .DESCRIPTION
+        A zero exit code does not promise JSON — `gh` puts its deprecation and
+        rate-limit warnings on the same stream we capture. Losing the registry
+        costs one needless report; throwing here would cost the whole triage.
+    #>
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Json)
+
+    try {
+        return @($Json | ConvertFrom-Json | ForEach-Object { $_.title } | Where-Object { $_ })
+    }
+    catch {
+        Write-Warning "The '$script:FlakeLabel' issue list did not parse, so no test counts as a known flake: $_"
+        return @()
+    }
+}
+
 function Get-CiKnownFlakes {
     <#
     .SYNOPSIS
@@ -79,7 +102,7 @@ function Get-CiKnownFlakes {
         Write-Warning "Could not read the '$script:FlakeLabel' issues, so no test counts as a known flake: $found"
         return @()
     }
-    return Get-CiFlakePatterns @(($found | ConvertFrom-Json).title)
+    return Get-CiFlakePatterns @(Get-CiFlakeTitles ($found -join "`n"))
 }
 
 function Test-CiKnownFlake {
@@ -104,6 +127,40 @@ function ConvertTo-CiPlainText {
     return $text -replace '^\d{4}-\d{2}-\d{2}T[\d:.]+Z\s?', ''
 }
 
+function Split-CiLogByJob {
+    <#
+    .SYNOPSIS
+        Splits one `gh run view --log-failed` dump into a text per job.
+    .DESCRIPTION
+        The command concatenates every failed job of the run, and the only
+        thing separating them is the "job<TAB>" prefix on each line. Reading
+        the whole dump per job would credit one shard's failures to all four,
+        which is enough on its own to read as a collapsed fixture.
+
+        Keys are job names exactly as the API reports them. A line with no
+        prefix belongs to no job and is dropped.
+    #>
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$LogText)
+
+    $lines = @{}
+    foreach ($line in ($LogText -split "`r?`n")) {
+        if (($line -replace "`e\[[0-9;]*m", '') -notmatch '^(?<job>[^\t]*)\t[^\t]*\t') {
+            continue
+        }
+        $job = $Matches.job
+        if (-not $lines.ContainsKey($job)) {
+            $lines[$job] = [System.Collections.Generic.List[string]]::new()
+        }
+        $lines[$job].Add($line)
+    }
+
+    $sections = @{}
+    foreach ($job in $lines.Keys) {
+        $sections[$job] = $lines[$job] -join "`n"
+    }
+    return $sections
+}
+
 function Get-CiFailedTests {
     <#
     .SYNOPSIS
@@ -124,7 +181,10 @@ function Get-CiFailedTests {
     for ($i = 0; $i -lt $lines.Count; $i++) {
         $line = $lines[$i]
 
-        if ($line -match '\[xUnit\.net [\d:.]+\]\s+(?<name>\S+)\s+\[FAIL\]') {
+        # The name is matched lazily rather than as \S+: a [Theory] case carries
+        # its arguments, spaces and all, and losing the marker line loses the
+        # assertion text with it.
+        if ($line -match '\[xUnit\.net [\d:.]+\]\s+(?<name>.+?)\s+\[FAIL\]') {
             $name = $Matches.name
             if (-not $order.Contains($name)) {
                 $order.Add($name)
@@ -194,27 +254,45 @@ function Get-CiRunVerdict {
     if ($real.Count -eq 0) {
         return 'Garbage'
     }
-    if (@($real | Where-Object { @($_.Tests).Count -ge $script:CollapseThreshold }).Count -gt 0) {
-        return 'Collapse'
-    }
 
-    $tests = @($real | ForEach-Object { $_.Tests })
-    if ($tests.Count -gt 0) {
-        if (@($tests | Where-Object { -not $_.KnownFlake }).Count -eq 0) {
-            return 'KnownFlake'
-        }
-        return 'NewFailure'
-    }
-
+    # The categories are reduced before the tests are read. A build that fell
+    # over beside a flaky test is a broken build, and letting the flake name
+    # the verdict would both re-run it and keep it out of the journal.
     $categories = @($real | ForEach-Object { $_.Category } | Sort-Object -Unique)
     if ($categories.Count -gt 1) {
         return 'Mixed'
     }
+    if ($categories[0] -ne 'Test') {
+        return $categories[0]
+    }
+
+    if (@($real | Where-Object { @($_.Tests).Count -ge $script:CollapseThreshold }).Count -gt 0) {
+        return 'Collapse'
+    }
+    $tests = @($real | ForEach-Object { $_.Tests })
     # TS E2E logs carry no [FAIL] markers, so a test job can yield no test names.
-    if ($categories[0] -eq 'Test') {
+    if ($tests.Count -eq 0) {
         return 'Unparsed'
     }
-    return $categories[0]
+    if (@($tests | Where-Object { -not $_.KnownFlake }).Count -eq 0) {
+        return 'KnownFlake'
+    }
+    return 'NewFailure'
+}
+
+function Get-CiBranchSha {
+    <#
+    .SYNOPSIS
+        The commit a branch currently points at, or '' if it cannot be read.
+    #>
+    param([Parameter(Mandatory)][string]$Branch)
+
+    $found = & gh api "repos/$script:Repo/commits/$Branch" --jq .sha 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Could not read the tip of '$Branch': $found"
+        return ''
+    }
+    return ($found | Select-Object -First 1).ToString().Trim()
 }
 
 function Test-CiRerunAllowed {
@@ -224,13 +302,26 @@ function Test-CiRerunAllowed {
     .DESCRIPTION
         Only on the default branch, only for red that a re-run can actually
         clear, and only on the first attempt — so a re-run never re-runs itself.
+
+        The run must also still be testing the tip of the branch. Both CI
+        workflows use `cancel-in-progress` on a group keyed by the ref, and
+        whether a re-run joins that group is undocumented; requiring the tip
+        removes the case that would matter either way, a re-run of stale red
+        racing the run of the commit that superseded it. Stale red needs no
+        re-run in the first place — a newer run is already testing newer code.
+
+        An unreadable tip is no match, so the watchdog does nothing.
     #>
     param(
         [Parameter(Mandatory)][AllowEmptyString()][string]$Branch,
         [Parameter(Mandatory)][int]$RunAttempt,
-        [Parameter(Mandatory)][AllowEmptyString()][string]$Verdict)
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Verdict,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$HeadSha,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$BranchSha)
 
-    return $Branch -eq 'dev' -and $RunAttempt -eq 1 -and $Verdict -in @('KnownFlake', 'Infra')
+    return $Branch -eq 'dev' -and $RunAttempt -eq 1 -and
+        $HeadSha -ne '' -and $HeadSha -eq $BranchSha -and
+        $Verdict -in @('KnownFlake', 'Infra')
 }
 
 function Invoke-CiGh {
@@ -268,6 +359,8 @@ function New-CiRunRecord {
         [Parameter(Mandatory)][AllowEmptyString()][string]$Log,
         [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Patterns)
 
+    $sections = Split-CiLogByJob $Log
+
     $failed = @(foreach ($job in $Jobs) {
         $stepName = Get-CiFailedStepName $job
         $category = Get-CiFailureCategory $stepName
@@ -277,8 +370,13 @@ function New-CiRunRecord {
         $tests = @()
         $totals = @()
         if ($category -eq 'Test') {
-            $tests = @(Get-CiFailedTests $Log $Patterns)
-            $totals = @(Get-CiAssemblyTotals $Log)
+            $jobLog = $sections[$job.name]
+            if ($null -eq $jobLog) {
+                Write-Warning "The log carries no section for job '$($job.name)'; its tests stay unparsed."
+                $jobLog = ''
+            }
+            $tests = @(Get-CiFailedTests $jobLog $Patterns)
+            $totals = @(Get-CiAssemblyTotals $jobLog)
         }
 
         [PSCustomObject]@{
@@ -303,6 +401,8 @@ function New-CiRunRecord {
         Url = $Run.html_url
         Jobs = $failed
         Verdict = Get-CiRunVerdict $failed
+        # Set by Invoke-CiWatchdog once the re-run has actually been asked for.
+        Rerun = $false
     }
 }
 
@@ -317,7 +417,15 @@ function Get-CiRunRecord {
     $log = ''
     $patterns = @()
     if ($needsLog) {
-        $log = (Invoke-CiGh @('run', 'view', $RunId, '--repo', $script:Repo, '--log-failed')) -join "`n"
+        # `workflow_run: completed` arrives while GitHub is often still
+        # archiving the logs, and a download that 404s must not cost the run
+        # its triage: no log degrades to Unparsed, which a human then reads.
+        try {
+            $log = (Invoke-CiGh @('run', 'view', $RunId, '--repo', $script:Repo, '--log-failed')) -join "`n"
+        }
+        catch {
+            Write-Warning "Could not download the log of run ${RunId}: $_"
+        }
         $patterns = @(Get-CiKnownFlakes)
     }
 
@@ -375,7 +483,14 @@ function Get-CiJournalIssue {
 }
 
 function Format-CiJournalNote {
-    param([Parameter(Mandatory)][object]$Record, [Parameter(Mandatory)][bool]$Rerun)
+    <#
+    .SYNOPSIS
+        Renders one record as the note that goes to the journal and the summary.
+    .DESCRIPTION
+        Whether the jobs were re-run is read off the record, so no caller can
+        render a note that contradicts what the watchdog did.
+    #>
+    param([Parameter(Mandatory)][object]$Record)
 
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.Add("**$($Record.Verdict)** — [$($Record.Workflow) #$($Record.RunId)]($($Record.Url)) on ``$($Record.Branch)`` (``$($Record.HeadSha.Substring(0, 9))``)")
@@ -392,7 +507,7 @@ function Format-CiJournalNote {
             }
         }
     }
-    if ($Rerun) {
+    if ($Record.Rerun) {
         $lines.Add('')
         $lines.Add('Failed jobs re-run automatically.')
     }
@@ -411,11 +526,31 @@ function Invoke-CiWatchdog {
         [switch]$DryRun)
 
     $record = Get-CiRunRecord $RunId
-    $rerun = (-not $DryRun) -and (Test-CiRerunAllowed $record.Branch $record.RunAttempt $record.Verdict)
 
     if ($record.Verdict -eq 'Garbage') {
         Write-Host "Run $RunId is garbage (a ref moved while it ran); nothing to do."
         return $record
+    }
+
+    # The re-run happens before the record is stored, so what is stored says
+    # what was actually done rather than what was intended.
+    $rerunFailed = $false
+    # Read the tip only where a re-run is on the table at all: most red is on
+    # somebody's feature branch, and that branch may already be gone.
+    $branchSha = ''
+    if ((-not $DryRun) -and $record.Branch -eq 'dev') {
+        $branchSha = Get-CiBranchSha $record.Branch
+    }
+    if ((-not $DryRun) -and (Test-CiRerunAllowed $record.Branch $record.RunAttempt $record.Verdict `
+            $record.HeadSha $branchSha)) {
+        & gh run rerun $RunId --repo $script:Repo --failed 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            $record.Rerun = $true
+        }
+        else {
+            Write-Warning "Re-run of $RunId failed."
+            $rerunFailed = $true
+        }
     }
 
     if (-not $DryRun) {
@@ -424,22 +559,16 @@ function Invoke-CiWatchdog {
         }
     }
 
-    if ($rerun) {
-        & gh run rerun $RunId --repo $script:Repo --failed 2>&1 | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "Re-run of $RunId failed."
-            $rerun = $false
-        }
-    }
-
-    $notable = $record.Branch -eq 'dev' -and $record.Verdict -in @('NewFailure', 'Collapse', 'Build', 'Mixed', 'Unparsed', 'Unknown')
-    if ((-not $DryRun) -and ($notable -or $rerun)) {
+    # A re-run that could not be started leaves red nobody was told about, so
+    # it is worth a note even though its verdict on its own is not.
+    $notable = $record.Branch -eq 'dev' -and $record.Verdict -in @('NewFailure', 'Collapse', 'Build', 'Deploy', 'Mixed', 'Unparsed', 'Unknown')
+    if ((-not $DryRun) -and ($notable -or $record.Rerun -or $rerunFailed)) {
         $journal = Get-CiJournalIssue
         if ($journal -eq 0) {
             Write-Warning "No open issue labelled '$script:JournalLabel'; skipping the journal note."
         }
         else {
-            $note = Format-CiJournalNote $record $rerun
+            $note = Format-CiJournalNote $record
             $file = Join-Path ([IO.Path]::GetTempPath()) "ci-watchdog-$RunId.md"
             Set-Content -Path $file -Value $note -Encoding utf8
             Invoke-CiGh @('issue', 'comment', "$journal", '--repo', $script:Repo, '--body-file', $file) | Out-Null
@@ -447,6 +576,6 @@ function Invoke-CiWatchdog {
         }
     }
 
-    Write-Host (Format-CiJournalNote $record $rerun)
+    Write-Host (Format-CiJournalNote $record)
     return $record
 }
