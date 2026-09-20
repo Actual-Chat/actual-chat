@@ -131,6 +131,11 @@ export class DebugUI {
         return this._backendRef.invokeMethodAsync('TestLog', count, lineCount) as unknown as Promise<void>;
     }
 
+    /** Sets the transcription language of a chat for the signed-in user, e.g. `'ru-RU'`. */
+    public static setChatLanguage(chatId: string, language: string): Promise<void> {
+        return this._backendRef.invokeMethodAsync('SetChatLanguage', chatId, language) as unknown as Promise<void>;
+    }
+
     public static resetOnboarding(enable: boolean): void {
         void this._backendRef.invokeMethodAsync('ResetOnboarding', enable);
     }

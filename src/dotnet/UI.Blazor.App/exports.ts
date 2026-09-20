@@ -20,6 +20,7 @@ export * from './Components/ChatList/chat-activity-svg.lit';
 export * from './Components/ChatMessageEditor/attachment-web-file-picker';
 export * from './Components/ChatMessageEditor/file-previews';
 export * from './Components/ChatMessageEditor/chat-message-editor';
+export * from './Components/ChatMessageEditor/chat-message-editor-debug';
 export * from './Components/ChatMessageEditor/bell-svg.lit';
 export * from './Components/ChatView/chat-view';
 export * from './Components/ChatView/chat-hover-menu';

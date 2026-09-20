@@ -43,7 +43,7 @@ public static partial class Constants
         public static readonly bool ChatAudioUI = false;
         public static readonly bool AudioRecording = false;
         public static readonly bool AudioRecordingStream = false;
-        public static bool ListenOwnAudio => HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp;
+        public static readonly bool ListenOwnAudio = false;
 
         // Transcription
         public static readonly bool TranscriberAny = false;

@@ -22,6 +22,7 @@ import './src/init';
 import * as ui from '../dotnet/UI.Blazor/exports';
 import * as blazorApp from '../dotnet/UI.Blazor.App/exports';
 import { Kvas } from 'kvas';
+import { initFakeMicrophoneDebugConsole } from 'debug-media/fake-microphone';
 
 declare global {
     interface Window {
@@ -51,9 +52,13 @@ window.blazorApp = blazorApp;
 window.Kvas = Kvas;
 
 blazorApp.initFpsOverlay();
-// After Blazor start: DebugUI.init() creates `globalThis.debugUI`, and this
-// hangs the video debug surface off it.
-void window.App?.whenBlazorReady?.then(() => blazorApp.initVideoDebugConsole());
+// After Blazor start: DebugUI.init() creates `globalThis.debugUI`, and these
+// hang the video, chat-editor and fake-microphone debug surfaces off it.
+void window.App?.whenBlazorReady?.then(() => {
+    blazorApp.initVideoDebugConsole();
+    blazorApp.initChatEditorDebugConsole();
+    initFakeMicrophoneDebugConsole();
+});
 blazorApp.initChatViewScroll();
 ui.initKeyboardUI();
 
