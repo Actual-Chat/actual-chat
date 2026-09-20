@@ -21,13 +21,14 @@
 <DialogFrame
     Title="@Title(m)"
     Class="author-modal modal-sm call-modal"
-    HasCloseButton="false">
-    <Body>
-    <CallModalHeader
-        Author="author"
-        IsOwn="@(!m.IsIncoming)"
-        OnCollapse="@OnCollapseClick"/>
-    </Body>
+    HasCloseButton="false"
+    HeaderMode="HeaderMode.Custom">
+    <Header>
+        <CallModalHeader
+            Author="author"
+            IsOwn="@(!m.IsIncoming)"
+            OnCollapse="@OnCollapseClick"/>
+    </Header>
     <Buttons>
         @if (m.IsIncoming) {
             <ButtonRound Class="btn-call c-decline" Tooltip="@L.Common_Decline" Click="@OnDeclineClick">
