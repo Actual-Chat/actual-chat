@@ -17,9 +17,12 @@ internal static class ReplayTimeline
     public static TimeSpan SkippedGap(TimeSpan gap, TimeSpan maxGap)
         => (gap - maxGap).Positive();
 
-    // The streamed offset (counted from skipTo) past which only the VAD's trailing silence is left
-    public static TimeSpan TailCutoff(TimeSpan speechDuration, TimeSpan skipTo, TimeSpan tailMargin)
-        => speechDuration + tailMargin - skipTo;
+    // The streamed offset (counted from skipTo) past which only the VAD's trailing silence is left.
+    // Frame offsets start at the blob, i.e. the recording - not at BeginsAt, the entry's first word
+    public static TimeSpan? TailCutoff(ChatEntry entry, TimeSpan skipTo, TimeSpan tailMargin)
+        => entry is { EndsAt: { } endsAt, Audio: { } audio }
+            ? endsAt - audio.BeginsAt + tailMargin - skipTo
+            : null;
 
     public static TimeSpan Deadline(TimeSpan playsAt, TimeSpan frameOffset, double speed)
         => playsAt + frameOffset / speed;
