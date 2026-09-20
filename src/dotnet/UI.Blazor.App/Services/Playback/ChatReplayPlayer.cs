@@ -6,8 +6,6 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed class ChatReplayPlayer : ChatPlayer
 {
-    private static readonly TimeSpan ReplayClockPollPeriod = TimeSpan.FromMilliseconds(20);
-
     // Identifies the replay currently being played by this (reused) player.
     // ReplaySubHeader trusts the playback position only once this matches the
     // active ReplayState — otherwise the player is still winding down a previous run.
@@ -77,6 +75,11 @@ public sealed class ChatReplayPlayer : ChatPlayer
         // The clock starts with the first StreamStart rather than before the RPC call: the tracks'
         // PlaysAt are relative to the first one, so the call's latency must not count as played time
         var clockBase = CpuTimestamp.Now;
+        // A pause or a device sleep stops the replay, so neither may count as played time -
+        // and with nothing playing the clock has only wall time to go by
+        var sleepAndPauseAtStart = SleepAndPauseDuration;
+        TimeSpan GetNow() => clockBase.Elapsed - (SleepAndPauseDuration - sleepAndPauseAtStart);
+
         ReplayClock? clock = null;
         var clockTracks = new ConcurrentDictionary<Symbol, (ReplayClock Clock, ReplayClock.Track Track)>();
         var trackTasks = new ConcurrentBag<Task>();
@@ -85,13 +88,13 @@ public sealed class ChatReplayPlayer : ChatPlayer
         streamProcessor.StreamStarted += (info, playsAt, frames) => {
             var trackTracer = ReplayStreamProcessor.GetTrackTracer(tracer, info);
             if (clock == null) {
-                clock = new ReplayClock(clockBase.Elapsed, ReplayClock.DefaultMaxExtrapolation);
+                clock = new ReplayClock(GetNow(), ReplayClock.DefaultMaxExtrapolation);
                 trackTracer.Point("StreamStart: replay clock started");
             }
             trackTracer.Point($"StreamStart: author {info.AuthorId}, playsAt {playsAt.TotalSeconds:F3}s");
             var trackTask = OnStreamStarted(
                 playback, info, playsAt, frames, speed,
-                clock, clockBase, clockTracks,
+                clock, GetNow, clockTracks,
                 lastTrackTasks.GetValueOrDefault(info.AuthorId), trackTracer, cancellationToken);
             lastTrackTasks[info.AuthorId] = trackTask;
             trackTasks.Add(trackTask);
@@ -99,7 +102,7 @@ public sealed class ChatReplayPlayer : ChatPlayer
         Action<TrackInfo, PlayerState> onTrackPlayingChanged = (trackInfo, state) => {
             if (clockTracks.TryGetValue(trackInfo.TrackId, out var clockTrack))
                 clockTrack.Clock.ReportProgress(
-                    clockTrack.Track, state.PlayingAt / speed, state.IsPaused, clockBase.Elapsed);
+                    clockTrack.Track, state.PlayingAt / speed, state.IsPaused, GetNow());
         };
 
         playback.OnTrackPlayingChanged += onTrackPlayingChanged;
@@ -125,7 +128,7 @@ public sealed class ChatReplayPlayer : ChatPlayer
         IAsyncEnumerable<AudioFrame> audioFrames,
         double speed,
         ReplayClock clock,
-        CpuTimestamp clockBase,
+        Func<TimeSpan> getNow,
         ConcurrentDictionary<Symbol, (ReplayClock Clock, ReplayClock.Track Track)> clockTracks,
         Task? previousAuthorTrackTask,
         Tracer tracer,
@@ -134,10 +137,10 @@ public sealed class ChatReplayPlayer : ChatPlayer
             ReplayClock.Track? clockTrack = null;
             Symbol trackId = default;
             try {
-                await WaitForClock(clock, clockBase, playsAt, cancellationToken).ConfigureAwait(false);
+                await WaitForClock(clock, getNow, playsAt, cancellationToken).ConfigureAwait(false);
                 // From here on the track holds the clock until its audio catches up with it
-                clockTrack = clock.StartTrack(playsAt, clockBase.Elapsed);
-                tracer.Point($"due, replay clock at {clock.GetPosition(clockBase.Elapsed).TotalSeconds:F3}s");
+                clockTrack = clock.StartTrack(playsAt, getNow());
+                tracer.Point($"due, replay clock at {clock.GetPosition(getNow()).TotalSeconds:F3}s");
                 // With the clock following the audio, only overlapping recordings of one speaker
                 // still wait here - and one speaker must never talk over themselves
                 if (previousAuthorTrackTask is { IsCompleted: false }) {
@@ -205,29 +208,31 @@ public sealed class ChatReplayPlayer : ChatPlayer
                 if (!trackId.IsEmpty)
                     clockTracks.TryRemove(trackId, out _);
                 if (clockTrack != null)
-                    clock.EndTrack(clockTrack, clockBase.Elapsed);
+                    clock.EndTrack(clockTrack, getNow());
             }
         }, CancellationToken.None);
 
     private async Task WaitForClock(
         ReplayClock clock,
-        CpuTimestamp clockBase,
+        Func<TimeSpan> getNow,
         TimeSpan playsAt,
         CancellationToken cancellationToken)
     {
+        var whenReached = clock.WhenReached(playsAt, getNow());
         while (true) {
             await Playback.IsPaused.Computed
                 .When(x => !x, cancellationToken)
                 .ConfigureAwait(false);
 
-            var remaining = playsAt - clock.GetPosition(clockBase.Elapsed);
+            var remaining = playsAt - clock.GetPosition(getNow());
             if (remaining <= TimeSpan.Zero)
                 return;
 
-            // The clock follows the playing tracks' progress, so it's polled rather than waited on
-            await Clocks.CpuClock
-                .Delay(TimeSpanExt.Min(remaining, ReplayClockPollPeriod), cancellationToken)
+            // The clock never runs faster than wall time, so this is the soonest the position can
+            // arrive on its own; audio that carries it there earlier completes whenReached instead
+            await Task.WhenAny(whenReached, Clocks.CpuClock.Delay(remaining, cancellationToken))
                 .ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
         }
     }
 
