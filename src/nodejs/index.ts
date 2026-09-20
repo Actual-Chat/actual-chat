@@ -23,6 +23,7 @@ import './src/init';
 import * as ui from '../dotnet/UI.Blazor/exports';
 import * as blazorApp from '../dotnet/UI.Blazor.App/exports';
 import { Kvas } from 'kvas';
+import { initFakeMicrophoneDebugConsole } from 'debug-media/fake-microphone';
 
 declare global {
     interface Window {
@@ -52,7 +53,10 @@ window.blazorApp = blazorApp;
 window.Kvas = Kvas;
 
 blazorApp.initFpsOverlay();
-void window.App?.whenBlazorReady?.then(() => blazorApp.initChatEditorDebugConsole());
+void window.App?.whenBlazorReady?.then(() => {
+    blazorApp.initChatEditorDebugConsole();
+    initFakeMicrophoneDebugConsole();
+});
 blazorApp.initChatViewScroll();
 ui.initKeyboardUI();
 

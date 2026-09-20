@@ -7,9 +7,25 @@ export interface DebugUIApi {
     signOut(): Promise<void>;
     getUserId(): Promise<string>;
     setRenderMode(mode: 'a' | 's' | 'w'): Promise<void>;
-    fake: {
+    setChatLanguage(chatId: string, language: string): Promise<void>;    fake: {
         send(text: string): Promise<void>;
         attach(files: DebugAttachment[]): Promise<void>;
+        mic?: FakeMicrophoneApi;
+    };
+}
+
+/** `debugUI.fake.mic` - see src/nodejs/src/debug-media/fake-microphone.ts. */
+export interface FakeMicrophoneApi {
+    enable(): void;
+    load(name: string, base64: string): Promise<number>;
+    say(name: string): Promise<number>;
+    stop(): void;
+    getState(): {
+        isEnabled: boolean;
+        contextState: string;
+        hasStream: boolean;
+        streamRequests: number;
+        clips: string[];
     };
 }
 

@@ -53,7 +53,28 @@ export async function ensureConnected(page: Page, timeoutMs = 30_000): Promise<v
     throw new Error(`ensureConnected: still disconnected after ${timeoutMs}ms.`);
 }
 
+/** Skips the onboarding bubbles - they sit over the editor and swallow clicks meant for it. */
+export async function dismissBubbles(page: Page, timeoutMs = 5_000): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        const skip = page.locator('.btn-bubble:not(.btn-next)').first();
+        const next = page.locator('.btn-bubble.btn-next').first();
+        if (await skip.isVisible())
+            await skip.click();
+        else if (await next.isVisible())
+            await next.click();
+        else
+            return;
+
+        await page.waitForTimeout(300);
+    }
+}
+
 // A real click is what supplies the user activation that resumes suspended AudioContexts.
-export function clickRecorder(page: Page): Promise<void> {
-    return page.click('.rec-btn', { timeout: 8_000 });
+// It's forced because the button pulses while recording and never counts as stable.
+export async function clickRecorder(page: Page): Promise<void> {
+    await dismissBubbles(page);
+    const button = page.locator('.rec-btn');
+    await button.waitFor({ state: 'visible', timeout: 8_000 });
+    await button.click({ force: true });
 }
