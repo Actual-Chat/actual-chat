@@ -40,6 +40,10 @@ so the whole pipeline runs for real - VAD, upload, transcription, entries.
 `--overlap` starts each turn that long before the previous one ends, so the two
 speak at once; without it they're `--gap` ms apart.
 
+Clip lengths differ a lot - `one`/`two`/`three`/`four` run about 1.2 s, `ak` 3.5 s
+and `ay` 22 s. Pick `--clips` accordingly: the default list makes one speaker hold
+the floor for 22 seconds.
+
 The clips are Russian, so the scenario sets the chat's transcription language for
 both users (`--language`): left to auto-detection, short utterances come back in
 whatever language the detector guessed. A peer chat between two fresh users has no
