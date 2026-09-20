@@ -1,0 +1,68 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, PermissionsState>
+@{
+    var m = State.Value;
+    var permission = Permission;
+    var isVisible = permission is not null
+        && m.IsKnown
+        && !m.IsGranted(permission.Kind)
+        && !m.IsDismissed(permission.Kind);
+}
+
+@if (isVisible) {
+    <Banner
+        Severity="BannerSeverity.Info"
+        ShowDismissButton="true"
+        Dismiss="@OnDismiss">
+        <Icon>
+            <i class="icon-phone"></i>
+        </Icon>
+        <Body>
+            @L.Banner_LockScreenCalls_Prefix(CoreConstants.AppName)<strong
+                >@L.Banner_LockScreenCallsTarget</strong>@L.Banner_LockScreenCalls_Suffix
+        </Body>
+        <Buttons>
+            <BannerButton Click="@OnConfigureClick">@L.Common_Settings</BannerButton>
+        </Buttons>
+    </Banner>
+}
+
+@code {
+    private bool _isRequesting;
+
+    private PermissionsUI PermissionsUI => field ??= Hub.Services.GetRequiredService<PermissionsUI>();
+    // Android-only: the catalog has no such row on the other platforms
+    private PermissionDef? Permission
+        => PermissionsUI.Permissions.FirstOrDefault(x => x.Kind == PermissionKind.LockScreenCalls);
+
+    protected override ComputedState<PermissionsState>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<PermissionsState>.Options() {
+                InitialValue = PermissionsState.Unknown,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override Task<PermissionsState> ComputeState(CancellationToken cancellationToken)
+        => PermissionsUI.GetState(cancellationToken);
+
+    // Event handlers
+
+    private Task OnDismiss()
+        => PermissionsUI.Dismiss(PermissionKind.LockScreenCalls);
+
+    private async Task OnConfigureClick() {
+        if (_isRequesting || Permission is not { } permission)
+            return;
+
+        _isRequesting = true;
+        try {
+            // There is no runtime prompt for either gate, so Request just opens the system screen
+            // that owns it - no PermissionGuideModal follow-up, unlike the grants that can be asked for.
+            await PermissionsUI.Request(permission, false, CancellationToken.None).ConfigureAwait(true);
+        }
+        finally {
+            _isRequesting = false;
+        }
+    }
+}
