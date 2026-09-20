@@ -1131,6 +1131,34 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task ALateAnswerShouldStillPutTheCallerOnTheLine()
+    {
+        // arrange — Bob rings Alice, and she takes her time: past ClaimGrace, the window in which a
+        // claim backs itself. After it the caller has neither an invite nor presence yet, so this is
+        // where a claim that leans on either one is dropped and the caller never joins.
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await Task.Delay(TimeSpan.FromSeconds(11)); // CallsBackend.ClaimGrace is 10s
+
+        // act
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // assert — the caller is still in their own call, and it reads as active
+        var callerCall = await callsBackend.GetUserCall(bobAuthor.UserId, default);
+        callerCall.Should().NotBeNull();
+        callerCall!.Phase.Should().Be(CallPhase.Active);
+    }
+
+    [Fact]
     public async Task StartCallShouldSetDialingStatus()
     {
         // arrange
