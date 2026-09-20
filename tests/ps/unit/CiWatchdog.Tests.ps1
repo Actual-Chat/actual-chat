@@ -25,6 +25,9 @@ Describe "CiWatchdog.ps1" {
             'Standard error:'
             '[xUnit.net 00:00:37.78]     ActualChat.Core.Server.IntegrationTests.Flows.FailingThrottledUpdateFlowTest.RetryAndRecoverTest [FAIL]'
         )
+
+        # Stands in for what Get-CiKnownFlakes reads off the open ci-flaky issues.
+        $script:knownPatterns = @('*.FailingThrottledUpdateFlowTest.*')
     }
 
     Context "Get-CiFailureCategory" {
@@ -57,45 +60,74 @@ Describe "CiWatchdog.ps1" {
         }
     }
 
+    Context "Get-CiFlakePatterns" {
+        It "takes the pattern from the backticks, whatever prose surrounds it" {
+            $titles = @(
+                'Flaky test: `*.TimerFlowTest.*`'
+                '`*.ExternalContactsTest.UpdateExternalContactNameTest` fails about once a week'
+            )
+            Get-CiFlakePatterns $titles | Should -Be @('*.TimerFlowTest.*', '*.ExternalContactsTest.UpdateExternalContactNameTest')
+        }
+
+        It "skips a title that names no test" {
+            @(Get-CiFlakePatterns @('Some CI issue with no pattern in it')).Count | Should -Be 0
+        }
+
+        It "returns nothing for no issues" {
+            @(Get-CiFlakePatterns @()).Count | Should -Be 0
+        }
+    }
+
     Context "Test-CiKnownFlake" {
+        BeforeAll {
+            $script:patterns = @(
+                '*.TimerFlowTest.*'
+                '*.ExternalContactsTest.UpdateExternalContactNameTest'
+            )
+        }
+
         It "matches a known offender by wildcard" {
-            Test-CiKnownFlake 'ActualChat.Core.Server.IntegrationTests.Flows.TimerFlowTest.TwoFlowsTest' | Should -BeTrue
+            Test-CiKnownFlake 'ActualChat.Core.Server.IntegrationTests.Flows.TimerFlowTest.TwoFlowsTest' $script:patterns | Should -BeTrue
         }
 
         It "matches a single named test but not its neighbours" {
-            Test-CiKnownFlake 'ActualChat.Contacts.IntegrationTests.ExternalContactsTest.UpdateExternalContactNameTest' | Should -BeTrue
-            Test-CiKnownFlake 'ActualChat.Contacts.IntegrationTests.ExternalContactsTest.DeleteExternalContactTest' | Should -BeFalse
+            Test-CiKnownFlake 'ActualChat.Contacts.IntegrationTests.ExternalContactsTest.UpdateExternalContactNameTest' $script:patterns | Should -BeTrue
+            Test-CiKnownFlake 'ActualChat.Contacts.IntegrationTests.ExternalContactsTest.DeleteExternalContactTest' $script:patterns | Should -BeFalse
         }
 
         It "does not match an unrelated test" {
-            Test-CiKnownFlake 'ActualChat.Users.IntegrationTests.AccountsTest.BasicTest' | Should -BeFalse
+            Test-CiKnownFlake 'ActualChat.Users.IntegrationTests.AccountsTest.BasicTest' $script:patterns | Should -BeFalse
+        }
+
+        It "counts nothing as known when the registry came back empty" {
+            Test-CiKnownFlake 'ActualChat.Core.Server.IntegrationTests.Flows.TimerFlowTest.TwoFlowsTest' @() | Should -BeFalse
         }
     }
 
     Context "Get-CiFailedTests" {
         It "reports each failed test once, however often the log repeats it" {
-            $tests = Get-CiFailedTests $script:oneFailureLog
+            $tests = Get-CiFailedTests $script:oneFailureLog $script:knownPatterns
             $tests.Count | Should -Be 1
             $tests[0].Name | Should -Be 'ActualChat.Core.Server.IntegrationTests.Flows.FailingThrottledUpdateFlowTest.RetryAndRecoverTest'
         }
 
         It "picks up the duration and the error message" {
-            $tests = Get-CiFailedTests $script:oneFailureLog
+            $tests = Get-CiFailedTests $script:oneFailureLog $script:knownPatterns
             $tests[0].Duration | Should -Be '11 s'
             $tests[0].Error | Should -Be 'Expected FailingThrottledUpdateFlow.CallCounts.GetValueOrDefault(target) to be 3, but found 4.'
         }
 
         It "flags a known flake" {
-            (Get-CiFailedTests $script:oneFailureLog)[0].KnownFlake | Should -BeTrue
+            (Get-CiFailedTests $script:oneFailureLog $script:knownPatterns)[0].KnownFlake | Should -BeTrue
         }
 
         It "is not confused by the assembly summary line" {
             $log = New-JobLog @('Failed!  - Failed:     1, Passed:    43, Skipped:     2, Total:    46, Duration: 1 m 24 s - X.dll (net11.0)')
-            @(Get-CiFailedTests $log).Count | Should -Be 0
+            @(Get-CiFailedTests $log @()).Count | Should -Be 0
         }
 
         It "returns nothing for a log without failures" {
-            @(Get-CiFailedTests '').Count | Should -Be 0
+            @(Get-CiFailedTests '' @()).Count | Should -Be 0
         }
     }
 
@@ -182,20 +214,20 @@ Describe "CiWatchdog.ps1" {
         }
 
         It "blames the earliest failed step, not the last one" {
-            $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog
+            $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog $script:knownPatterns
             $record.Jobs[0].FailedStep | Should -Be 'Run tests'
             $record.Jobs[0].Category | Should -Be 'Test'
         }
 
         It "keeps Tests and Totals as arrays even with a single element" {
-            $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog
+            $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog $script:knownPatterns
             $json = $record | ConvertTo-Json -Depth 8 -Compress
             $json | Should -Match '"Tests":\['
             $json | Should -Match '"Totals":\['
         }
 
         It "survives a round trip through JSON" {
-            $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog
+            $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog $script:knownPatterns
             $back = $record | ConvertTo-Json -Depth 8 | ConvertFrom-Json
             @($back.Jobs).Count | Should -Be 1
             @($back.Jobs[0].Tests).Count | Should -Be 1
@@ -208,13 +240,13 @@ Describe "CiWatchdog.ps1" {
                 name = 'Build image for dev'; html_url = 'https://example.invalid/job/2'
                 steps = @([PSCustomObject]@{ name = 'Checkout'; conclusion = 'failure'; number = 1 })
             }
-            $record = New-CiRunRecord $script:run @($job) $script:oneFailureLog
+            $record = New-CiRunRecord $script:run @($job) $script:oneFailureLog $script:knownPatterns
             @($record.Jobs[0].Tests).Count | Should -Be 0
             $record.Verdict | Should -Be 'Garbage'
         }
 
         It "records a run with no failed jobs" {
-            $record = New-CiRunRecord $script:run @() ''
+            $record = New-CiRunRecord $script:run @() '' @()
             $record.Verdict | Should -Be 'None'
             @($record.Jobs).Count | Should -Be 0
         }
