@@ -1106,6 +1106,31 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task AnsweredCallShouldPutTheCallerOnTheLineToo()
+    {
+        // arrange — Bob rings Alice
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+
+        // act — Alice answers
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // assert — the call is active for both. The caller's claim is what their client projects, so one
+        // left at Dialing keeps them outside the call they placed, looking at a Join button.
+        (await callsBackend.GetUserCall(aliceAuthor.UserId, default))!.Phase.Should().Be(CallPhase.Active);
+        (await callsBackend.GetUserCall(bobAuthor.UserId, default))!.Phase.Should().Be(CallPhase.Active);
+    }
+
+    [Fact]
     public async Task StartCallShouldSetDialingStatus()
     {
         // arrange
