@@ -21,26 +21,7 @@ $script:StepCategories = @(
     @{ Pattern = '^(Deploy|Upload to|Validate App)'; Category = 'Deploy' }
 )
 
-# Tests that fail intermittently for reasons unrelated to the change under test.
-# Every one of them waits on a timer instead of on a fact; see
-# tmp/s/2026-09-08-ci-flaky-hunter-probe.md for how the list was derived.
-$script:KnownFlakes = @(
-    '*.FailingThrottledUpdateFlowTest.*'
-    '*.TimerFlowTest.*'
-    '*.ResumeLatencyFlowTest.*'
-    '*.OldAsyncMemoizerTest.BoundedReplay_SlowConsumerUnderCapacityOverflow'
-    '*.OldAsyncMemoizerRaceTest.*'
-    '*.StreamStoreCacheTest.PublishedEntry_ExpiresAfterIdleDelay'
-    '*.ChatEntryReaderTest.Observe*'
-    '*.RateLimiterTest.TokenBucketShouldAllowUpToItsLimit'
-    '*.SessionTemporalsMeshTest.*'
-    '*.PrimedComputeServiceTest.TryLockAndPrepareRechecksAfterTheLock'
-    '*.ShardMigrationComputedTest.*'
-    '*.LiveAudioBackendShardMigrationTest.*'
-    '*.PasskeysBackendTest.RemoveShouldDropIdentityAndPasskey'
-    '*.ExternalContactsTest.UpdateExternalContactNameTest'
-    '*.FileSystemContentHandlerTest.CancellationDuringRead*'
-)
+$script:FlakeLabel = 'ci-flaky'
 
 # A job failing this many tests at once means its fixture or database went down,
 # not that the tests themselves are at fault.
@@ -65,10 +46,48 @@ function Get-CiFailureCategory {
     return 'Unknown'
 }
 
-function Test-CiKnownFlake {
-    param([Parameter(Mandatory)][AllowEmptyString()][string]$TestName)
+function Get-CiFlakePatterns {
+    <#
+    .SYNOPSIS
+        Extracts test-name patterns from the titles of the known-flake issues.
+    .DESCRIPTION
+        The pattern is whatever the title carries inside its first pair of
+        backticks, so prose around it is free: "Flaky test: `*.TimerFlowTest.*`".
+        A title without backticks names no test and is skipped.
+    #>
+    param([Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Titles)
 
-    foreach ($pattern in $script:KnownFlakes) {
+    return @($Titles | ForEach-Object {
+        if ($_ -match '`(?<pattern>[^`]+)`') {
+            $Matches.pattern.Trim()
+        }
+    })
+}
+
+function Get-CiKnownFlakes {
+    <#
+    .SYNOPSIS
+        The known-flake patterns, read from the open issues that carry them.
+    .DESCRIPTION
+        The registry is the open `ci-flaky` issues, so a fix that closes its
+        issue drops the test from the list with no separate step to forget.
+        A failed lookup yields nothing: an extra report costs a reader a minute,
+        while a wrongly silent re-run hides a regression for good.
+    #>
+    $found = & gh issue list --repo $script:Repo --label $script:FlakeLabel --state open --limit 200 --json title 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Could not read the '$script:FlakeLabel' issues, so no test counts as a known flake: $found"
+        return @()
+    }
+    return Get-CiFlakePatterns @(($found | ConvertFrom-Json).title)
+}
+
+function Test-CiKnownFlake {
+    param(
+        [Parameter(Mandatory)][AllowEmptyString()][string]$TestName,
+        [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Patterns)
+
+    foreach ($pattern in $Patterns) {
         if ($TestName -like $pattern) {
             return $true
         }
@@ -93,7 +112,9 @@ function Get-CiFailedTests {
         Each failure appears several times in the log (the xUnit marker, the
         VSTest summary, and again on stderr), so results are unique by name.
     #>
-    param([Parameter(Mandatory)][AllowEmptyString()][string]$LogText)
+    param(
+        [Parameter(Mandatory)][AllowEmptyString()][string]$LogText,
+        [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Patterns)
 
     $lines = @($LogText -split "`r?`n" | ForEach-Object { ConvertTo-CiPlainText $_ })
     $durations = @{}
@@ -135,7 +156,7 @@ function Get-CiFailedTests {
             Name = $_
             Duration = $durations[$_]
             Error = $errors[$_]
-            KnownFlake = Test-CiKnownFlake $_
+            KnownFlake = Test-CiKnownFlake $_ $Patterns
         }
     })
 }
@@ -244,7 +265,8 @@ function New-CiRunRecord {
     param(
         [Parameter(Mandatory)][object]$Run,
         [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Jobs,
-        [Parameter(Mandatory)][AllowEmptyString()][string]$Log)
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Log,
+        [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Patterns)
 
     $failed = @(foreach ($job in $Jobs) {
         $stepName = Get-CiFailedStepName $job
@@ -255,7 +277,7 @@ function New-CiRunRecord {
         $tests = @()
         $totals = @()
         if ($category -eq 'Test') {
-            $tests = @(Get-CiFailedTests $Log)
+            $tests = @(Get-CiFailedTests $Log $Patterns)
             $totals = @(Get-CiAssemblyTotals $Log)
         }
 
@@ -292,9 +314,14 @@ function Get-CiRunRecord {
     $failed = @($jobs | Where-Object { $_.conclusion -eq 'failure' })
 
     $needsLog = @($failed | Where-Object { (Get-CiFailureCategory (Get-CiFailedStepName $_)) -eq 'Test' }).Count -gt 0
-    $log = if ($needsLog) { (Invoke-CiGh @('run', 'view', $RunId, '--repo', $script:Repo, '--log-failed')) -join "`n" } else { '' }
+    $log = ''
+    $patterns = @()
+    if ($needsLog) {
+        $log = (Invoke-CiGh @('run', 'view', $RunId, '--repo', $script:Repo, '--log-failed')) -join "`n"
+        $patterns = @(Get-CiKnownFlakes)
+    }
 
-    return New-CiRunRecord $run $failed $log
+    return New-CiRunRecord $run $failed $log $patterns
 }
 
 function Get-CiRecordPath {
