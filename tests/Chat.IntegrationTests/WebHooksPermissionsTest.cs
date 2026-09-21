@@ -93,6 +93,45 @@ public class WebHooksPermissionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task ListMineShouldReturnOnlyOwnHooksAcrossScopes()
+    {
+        // arrange
+        var aliceAccount = await Alice.Accounts.GetOwn(Alice.Session, CancellationToken.None);
+        var aliceWebHooks = Alice.AppServices.GetRequiredService<IWebHooks>();
+        var bobWebHooks = Bob.AppServices.GetRequiredService<IWebHooks>();
+        var (chatId, _) = await Alice.CreateChat(isPublicChat: true);
+        var diff = new WebHookDiff {
+            Name = "Mine",
+            Url = "https://example.com/hook",
+            Events = WebHookEvents.MessagePosted,
+        };
+
+        // act
+        var chatHook = (await Alice.Commander.Call(new WebHooks_Change {
+            Session = Alice.Session,
+            Scope = WebHookScope.Chat,
+            ScopeId = chatId.Value,
+            Change = Change.Create(diff),
+        })).WebHook!;
+        var userHook = (await Alice.Commander.Call(new WebHooks_Change {
+            Session = Alice.Session,
+            Scope = WebHookScope.User,
+            ScopeId = aliceAccount.Id.Value,
+            Change = Change.Create(diff with { Events = WebHookEvents.Notification, SubscribeNotifications = true }),
+        })).WebHook!;
+
+        // assert
+        await ComputedTest.When(async ct => {
+            var aliceMine = await aliceWebHooks.ListMine(Alice.Session, ct);
+            aliceMine.Should().Contain(x => x.Id == chatHook.Id);
+            aliceMine.Should().Contain(x => x.Id == userHook.Id);
+        });
+        var bobMine = await bobWebHooks.ListMine(Bob.Session, CancellationToken.None);
+        bobMine.Should().NotContain(x => x.Id == chatHook.Id || x.Id == userHook.Id,
+            "ListMine is keyed by creator, not by what the caller can see");
+    }
+
+    [Fact]
     public async Task PlaceHookShouldRequireOwner()
     {
         // arrange

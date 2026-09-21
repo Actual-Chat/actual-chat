@@ -227,6 +227,11 @@ public static class LocalizedStringsLocalizerExt
         public string Integrations_DisabledUnsafeUrl => l["Integrations_DisabledUnsafeUrl"].Value;
         public string Integrations_Hooks_Format(long count, object arg0)
             => l.Plural("Integrations_Hooks_Format", count, arg0);
+        public string Integrations_ChatScope_Format(object arg0)
+            => l["Integrations_ChatScope_Format", arg0].Value;
+        public string Integrations_PlaceScope_Format(object arg0)
+            => l["Integrations_PlaceScope_Format", arg0].Value;
+        public string Integrations_NotManageable => l["Integrations_NotManageable"].Value;
         public string WebHook_Name => l["WebHook_Name"].Value;
         public string WebHook_Url => l["WebHook_Url"].Value;
         public string WebHook_Events => l["WebHook_Events"].Value;

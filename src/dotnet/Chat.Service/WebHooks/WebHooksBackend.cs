@@ -73,6 +73,21 @@ public partial class WebHooksBackend(IServiceProvider services)
     }
 
     // [ComputeMethod]
+    public virtual async Task<ApiArray<WebHook>> ListByCreator(UserId userId, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var createdBy = userId.Value;
+        var dbWebHooks = await dbContext.WebHooks
+            .Where(x => x.CreatedBy == createdBy)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbWebHooks.Select(x => x.ToModel()).ToApiArray();
+    }
+
+    // [ComputeMethod]
     public virtual async Task<bool> HasUserScopedHooks(CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
@@ -397,6 +412,8 @@ public partial class WebHooksBackend(IServiceProvider services)
 
         _ = Get(webHook.Id, default);
         _ = ListByScope(webHook.Scope, webHook.ScopeId, default);
+        if (webHook.CreatedBy is { } createdBy)
+            _ = ListByCreator(createdBy, default);
     }
 
     private static async Task<DbWebHook> GetDbWebHook(

@@ -24,28 +24,11 @@
         </TileItem>
     } else {
         @foreach (var row in m.Rows) {
-            var hook = row.Hook;
-            <TileItem Click="@(() => OnHookClick(hook.Id))">
-                <Icon>
-                    <i class="icon-call-arrow-out"></i>
-                </Icon>
-                <Content>
-                    <span class="c-name">@hook.Name</span>
-                    @if (!hook.IsEnabled) {
-                        <span class="c-disabled">(@L.Integrations_Disabled)</span>
-                    }
-                </Content>
-                <Caption>
-                    <span class="c-host">@row.Host</span>
-                    @if (row.StatusText != null) {
-                        <span class="c-dot">·</span>
-                        <span class="@(row.IsFailing ? "c-failing" : "c-status")">@row.StatusText</span>
-                    }
-                </Caption>
-                <Right>
-                    <i class="icon-chevron-right text-3xl"></i>
-                </Right>
-            </TileItem>
+            @if (row.CanManage) {
+                <WebHookRow Row="@row" Click="@(() => OnHookClick(row.Hook.Id))"/>
+            } else {
+                <WebHookRow Row="@row"/>
+            }
             @if (row != m.Rows[^1]) {
                 <Divider/>
             }
@@ -71,16 +54,40 @@
             return new Model();
 
         var hooks = await Hub.WebHooks.List(Session, scope, scopeId, cancellationToken).ConfigureAwait(false);
-        var rows = new List<Row>(hooks.Count);
-        foreach (var hook in hooks.OrderBy(x => x.Name).ThenBy(x => x.CreatedAt))
-            rows.Add(await ToRow(hook, cancellationToken).ConfigureAwait(false));
+        var rows = new List<WebHookRow.Model>(hooks.Count);
+        foreach (var hook in Sorted(hooks))
+            rows.Add(await WebHookRow.ToModel(hook, L, Hub.LiveTime, cancellationToken).ConfigureAwait(false));
+        if (scope == WebHookScope.User) {
+            // The personal list doubles as "everything I created": chat and place hooks follow the personal ones
+            var mine = await Hub.WebHooks.ListMine(Session, cancellationToken).ConfigureAwait(false);
+            foreach (var hook in Sorted(mine.Where(x => x.Scope != WebHookScope.User)))
+                rows.Add(await ToScopedRow(hook, cancellationToken).ConfigureAwait(false));
+        }
         return new Model { IsEnabled = true, Rows = rows };
     }
 
-    private async Task<Row> ToRow(WebHook hook, CancellationToken cancellationToken) {
-        var (statusText, isFailing) = await hook.GetStatusText(L, Hub.LiveTime, cancellationToken)
-            .ConfigureAwait(false);
-        return new Row(hook, hook.GetHost(), statusText, isFailing);
+    private static IEnumerable<WebHook> Sorted(IEnumerable<WebHook> hooks)
+        => hooks.OrderBy(x => x.Name).ThenBy(x => x.CreatedAt);
+
+    private async Task<WebHookRow.Model> ToScopedRow(WebHook hook, CancellationToken cancellationToken) {
+        var row = await WebHookRow.ToModel(hook, L, Hub.LiveTime, cancellationToken).ConfigureAwait(false);
+        // Get runs the same authorization as the detail page, so null means the hook is view-only here
+        var canManage = await Hub.WebHooks.Get(Session, hook.Id, cancellationToken).ConfigureAwait(false) != null;
+        var scopeText = canManage
+            ? await GetScopeText(hook, cancellationToken).ConfigureAwait(false)
+            : L.Integrations_NotManageable;
+        return row with { ScopeText = scopeText, CanManage = canManage };
+    }
+
+    private async Task<string> GetScopeText(WebHook hook, CancellationToken cancellationToken) {
+        if (hook.Scope == WebHookScope.Place) {
+            var place = await Hub.Places.Get(Session, PlaceId.Parse(hook.ScopeId), cancellationToken)
+                .ConfigureAwait(false);
+            return L.Integrations_PlaceScope_Format(place?.Title ?? "");
+        }
+
+        var chat = await Hub.Chats.Get(Session, ChatId.Parse(hook.ScopeId), cancellationToken).ConfigureAwait(false);
+        return L.Integrations_ChatScope_Format(chat?.Title ?? "");
     }
 
     private Task OnAddClick()
@@ -91,10 +98,8 @@
 
     // Nested types
 
-    public sealed record Row(WebHook Hook, string Host, string? StatusText, bool IsFailing);
-
     public sealed record Model {
         public bool IsEnabled { get; init; }
-        public List<Row> Rows { get; init; } = [];
+        public List<WebHookRow.Model> Rows { get; init; } = [];
     }
 }

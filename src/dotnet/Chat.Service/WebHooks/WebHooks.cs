@@ -34,6 +34,14 @@ public class WebHooks(IServiceProvider services) : IWebHooks
     }
 
     // [ComputeMethod]
+    public virtual async Task<ApiArray<WebHook>> ListMine(Session session, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        account.Require(AccountFull.MustBeActive);
+        return await Backend.ListByCreator(account.Id, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
     public virtual async Task<ApiArray<WebHookDelivery>> ListDeliveries(
         Session session,
         WebHookId id,
