@@ -16,9 +16,9 @@ public sealed partial record NotificationHistoryItem(
     [DataMember(Order = 6), Key(6)] public string Title { get; init; } = "";
     [DataMember(Order = 7), Key(7)] public string Text { get; init; } = "";
 
-    // Message (a row per incoming message in every subscribed chat) and SpeechStarted are
-    // chat traffic, not something addressed to the user, so they never reach the log.
     public static bool IsLoggedKind(NotificationKind kind)
+        // Message (a row per incoming message in every subscribed chat) and SpeechStarted are
+        // chat traffic, not something addressed to the user, so they never reach the log.
         => kind is NotificationKind.Mention
             or NotificationKind.Reply
             or NotificationKind.Reaction
