@@ -2068,6 +2068,10 @@
   "Invite_UnknownLink": "Liên kết không xác định",
 
   // Two more rows in chat settings.
+  "ChatCleanup_Retention": "Срок за съхранение на съобщения",
+  "ChatCleanup_RetentionWarning": "Les anciens messages sont supprimés définitivement pour tout le monde. Allonger cette durée ne restaurera pas l’historique supprimé.",
+  "ChatCleanup_Clear": "Изчистване на историята на чата",
+  "ChatCleanup_ClearWarning": "Den aktuellen Chatverlauf für alle löschen? Dies kann nicht rückgängig gemacht werden. Neue Nachrichten, die nach dem Öffnen dieser Bestätigung gesendet werden, bleiben erhalten.",
   "ChatSettings_UsePlaceSettingsForMembers": "सदस्यों को संपादित करने के लिए प्लेस सेटिंग्स का उपयोग करें",
   "ChatSettings_LeaveChatAndDelete": "Quitter la discussion et la supprimer",
 

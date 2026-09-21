@@ -41,7 +41,30 @@
         </FormSection>
     </FormBlock>
 
+    @if (m.IsOwner && !isThread && m.Chat.Id is not PlaceChatId { IsRoot: true }) {
+        <FormBlock>
+            <FormSection For="() => _form.RetentionDays" Label="@L.ChatCleanup_Retention">
+                <InputSelect @bind-Value="_form.RetentionDays">
+                    <option value="0">@L.RightPanel_Off</option>
+                    <option value="1">@L.Duration_Days_Format(1)</option>
+                    <option value="7">@L.Duration_Days_Format(7)</option>
+                    <option value="30">@L.Duration_Days_Format(30)</option>
+                    @if (_form.RetentionDays is not (0 or 1 or 7 or 30)) {
+                        <option value="@_form.RetentionDays">@L.Duration_Days_Format(_form.RetentionDays)</option>
+                    }
+                </InputSelect>
+            </FormSection>
+            <p>@L.ChatCleanup_RetentionWarning</p>
+        </FormBlock>
+    }
+
     <div class="chat-settings-container">
+        @if (m.IsOwner && !isThread && m.Chat.Id is not PlaceChatId { IsRoot: true }) {
+            <TileItem Class="item-danger" Click="OnCleanupClick">
+                <Icon><i class="icon-trash02"></i></Icon>
+                <Content>@L.ChatCleanup_Clear</Content>
+            </TileItem>
+        }
         @if (canEditChatType) {
             <TileItem Click="OnManageChatTypeClick" Class="chat-type-tile-item">
                 <Icon>
@@ -181,6 +204,7 @@
         _form = new FormModel(ComponentIdGenerator) {
             Title = chat.Title,
             Description = chat.Description,
+            RetentionDays = chat.RetentionPeriod?.TotalDays ?? 0,
             Picture = chat.Picture?.ToPicture(),
             ImageScope = MediaUploadScopes.ForChat(chat.Id),
         };
@@ -247,6 +271,22 @@
     private void OnArchiveChatClick(Chat chat)
         => ChatUI.ArchiveChat(chat);
 
+    private async Task OnCleanupClick() {
+        var chat = await Chats.Get(Session, ChatId, default).Require();
+        var range = await Chats.GetIdRange(Session, ChatId, default);
+        var command = new Chats_Cleanup {
+            Session = Session,
+            ChatId = ChatId,
+            MinVisibleEntryLid = range.End,
+            ExpectedVersion = chat.Version,
+        };
+        _ = await Hub.ModalUI.Show(new ConfirmModal.Model(
+            true, L.ChatCleanup_ClearWarning, () => _ = UICommander.Run(command)) {
+            Title = L.ChatCleanup_Clear,
+            ConfirmButtonText = L.ChatCleanup_Clear,
+        });
+    }
+
     private async Task OnSubmit() {
         if (_formRef == null)
             return;
@@ -262,6 +302,9 @@
             Title = _form!.Title,
             Description = _form!.Description,
             MediaId = _form.Picture?.MediaRef?.MediaId,
+            RetentionPeriod = chat.Rules.IsOwner()
+                ? _form.RetentionDays == 0 ? null : TimeSpan.FromDays(_form.RetentionDays)
+                : chat.RetentionPeriod,
         };
         var command = new Chats_Change {
             Session = Session,
@@ -283,6 +326,7 @@
 
         public string Description { get; set; } = "";
         public Picture? Picture { get; set; }
+        public double RetentionDays { get; set; }
         public string ImageScope { get; init; } = "";
 
         public string FormId { get; }

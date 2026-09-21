@@ -1733,6 +1733,10 @@
   "Invite_NewPrivateLink": "Nowy prywatny link zapraszający",
   "Invite_UnknownLink": "Nieznany link",
 
+  "ChatCleanup_Retention": "Okres przechowywania wiadomości",
+  "ChatCleanup_RetentionWarning": "Starsze wiadomości są trwale usuwane dla wszystkich. Wydłużenie tego okresu nie przywróci usuniętej historii.",
+  "ChatCleanup_Clear": "Wyczyść historię czatu",
+  "ChatCleanup_ClearWarning": "Wyczyścić obecną historię czatu dla wszystkich? Tej czynności nie można cofnąć. Nowe wiadomości wysłane po otwarciu tego potwierdzenia zostaną zachowane.",
   "ChatSettings_UsePlaceSettingsForMembers": "Zmieniaj uczestników w ustawieniach Miejsca",
   "ChatSettings_LeaveChatAndDelete": "Opuść czat i usuń",
 

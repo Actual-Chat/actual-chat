@@ -21,8 +21,10 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        var visibilityBoundary = await ChatsBackend.GetVisibilityBoundary(chatId, cancellationToken)
+            .ConfigureAwait(false);
         var dbMention = await dbContext.Mentions
-            .Where(x => x.ChatId == chatId.Value && x.MentionRef == mentionId.Value)
+            .Where(x => x.ChatId == chatId.Value && x.EntryLid >= visibilityBoundary && x.MentionRef == mentionId.Value)
             .OrderByDescending(x => x.EntryLid)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -49,6 +51,16 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbChat = await dbContext.Chats.ForShare()
+            .FirstOrDefaultAsync(c => c.Id == entry.ChatId.Value, cancellationToken).ConfigureAwait(false);
+        var boundary = Math.Max(dbChat?.MinVisibleEntryLid ?? long.MaxValue,
+            await ChatsBackend.GetVisibilityBoundary(entry.ChatId, cancellationToken).ConfigureAwait(false));
+        var isVisible = entry.LocalId >= boundary && await dbContext.ChatEntries
+            .AnyAsync(e => e.Id == entry.Id.Value && !e.IsRemoved && !e.IsPurged, cancellationToken)
+            .ConfigureAwait(false);
+        if (!isVisible)
+            changeKind = ChangeKind.Remove;
 
         var existingMentions = await dbContext.Mentions
             .Where(x => x.ChatId == entry.ChatId.Value && x.EntryLid == entry.LocalId)

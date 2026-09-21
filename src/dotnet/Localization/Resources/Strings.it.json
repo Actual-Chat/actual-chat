@@ -1733,6 +1733,10 @@
   "Invite_NewPrivateLink": "Nuovo link di invito privato",
   "Invite_UnknownLink": "Link sconosciuto",
 
+  "ChatCleanup_Retention": "Conservazione dei messaggi",
+  "ChatCleanup_RetentionWarning": "I messaggi meno recenti vengono eliminati definitivamente per tutti. Aumentare questo periodo non ripristinerà la cronologia eliminata.",
+  "ChatCleanup_Clear": "Cancella la cronologia della chat",
+  "ChatCleanup_ClearWarning": "Cancellare la cronologia attuale della chat per tutti? L’operazione non può essere annullata. I nuovi messaggi inviati dopo l’apertura di questa conferma verranno conservati.",
   "ChatSettings_UsePlaceSettingsForMembers": "Usa le impostazioni del Luogo per modificare i membri",
   "ChatSettings_LeaveChatAndDelete": "Esci dalla chat ed eliminala",
 

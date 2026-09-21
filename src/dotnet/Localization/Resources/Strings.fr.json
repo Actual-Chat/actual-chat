@@ -1733,6 +1733,10 @@
   "Invite_NewPrivateLink": "Nouveau lien d'invitation privé",
   "Invite_UnknownLink": "Lien inconnu",
 
+  "ChatCleanup_Retention": "Conservation des messages",
+  "ChatCleanup_RetentionWarning": "Les anciens messages sont supprimés définitivement pour tout le monde. Allonger cette durée ne restaurera pas l’historique supprimé.",
+  "ChatCleanup_Clear": "Effacer l’historique du chat",
+  "ChatCleanup_ClearWarning": "Effacer l’historique actuel du chat pour tout le monde ? Cette action est irréversible. Les nouveaux messages envoyés après l’ouverture de cette confirmation seront conservés.",
   "ChatSettings_UsePlaceSettingsForMembers": "Utilisez les paramètres du Lieu pour modifier les membres",
   "ChatSettings_LeaveChatAndDelete": "Quitter la discussion et la supprimer",
 

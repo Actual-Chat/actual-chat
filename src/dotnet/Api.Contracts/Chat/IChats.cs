@@ -152,6 +152,9 @@ public interface IChats : IComputeService
     // Commands
 
     [CommandHandler]
+    Task<long> OnCleanup(Chats_Cleanup command, CancellationToken cancellationToken);
+
+    [CommandHandler]
     Task<Chat> OnChange(Chats_Change command, CancellationToken cancellationToken);
 
     [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
@@ -315,4 +318,12 @@ public sealed partial record Chats_SetMaintenance : ApiCommand<Unit>
 {
     [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
     [DataMember(Order = 3), Key(3)] public bool IsEnabled { get; init; }
+}
+
+[DataContract, MessagePackObject]
+public sealed partial record Chats_Cleanup : ApiCommand<long>
+{
+    [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required long MinVisibleEntryLid { get; init; }
+    [DataMember(Order = 4), Key(4)] public long? ExpectedVersion { get; init; }
 }

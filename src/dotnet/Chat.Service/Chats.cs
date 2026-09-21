@@ -429,7 +429,8 @@ public partial class Chats(IServiceProvider services) : IChats
                 || chatDiff.AliasId is not null
                 || chatDiff.AllowAnonymousAuthors.HasValue
                 || chatDiff.AllowGuestAuthors.HasValue
-                || chatDiff.PttEnabledAt.HasValue;
+                || chatDiff.PttEnabledAt.HasValue
+                || chatDiff.RetentionPeriod.HasValue;
             if (isReadOnlyProperty)
                 throw StandardError.Constraint("It's allowed to change only Title or Description for the thread.");
         }
@@ -467,6 +468,7 @@ public partial class Chats(IServiceProvider services) : IChats
             chatDiff.AllowAnonymousAuthors.HasValue.RequireFalse("AllowAnonymousAuthors");
             chatDiff.AllowGuestAuthors.HasValue.RequireFalse("AllowGuestAuthors");
             chatDiff.PlaceId.RequireNull("PlaceId");
+            chatDiff.RetentionPeriod.HasValue.RequireFalse("RetentionPeriod");
         }
     }
 
@@ -1174,7 +1176,14 @@ public partial class Chats(IServiceProvider services) : IChats
         // Chat-scoped KVAS (prefix "c/{chatId}/") - shared across all members, no migration.
         var chatKvas = ServerKvasBackend.ForChat(chatId);
         var pinned = await chatKvas.Get<ChatPinnedEntries>(cancellationToken).ConfigureAwait(false);
-        return pinned?.EntryIds ?? default;
+        var visibilityBoundary = await Backend.GetVisibilityBoundary(chatId, cancellationToken).ConfigureAwait(false);
+        if (pinned is null)
+            return default;
+
+        var entries = await pinned.EntryIds.Where(id => id.LocalId >= visibilityBoundary)
+            .Select(id => Backend.GetEntry(id, cancellationToken).AsTask())
+            .Collect(cancellationToken).ConfigureAwait(false);
+        return entries.Where(e => e is { IsRemoved: false }).Select(e => e!.Id).ToApiArray();
     }
 
     // [CommandHandler]

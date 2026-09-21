@@ -8,6 +8,7 @@ namespace ActualChat.Chat;
 public class SharedLocationsBackend(IServiceProvider services)
     : DbServiceBase<ChatDbContext>(services), ISharedLocationsBackend
 {
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IDbEntityResolver<string, DbSharedLocation> DbSharedLocationResolver
         => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbSharedLocation>>();
 
@@ -18,6 +19,18 @@ public class SharedLocationsBackend(IServiceProvider services)
         var sharedLocation = dbSharedLocation?.ToModel();
         if (sharedLocation is null)
             return null;
+
+        var boundary = await ChatsBackend.GetVisibilityBoundary(sharedLocation.ChatId, cancellationToken)
+            .ConfigureAwait(false);
+        if (boundary > 0) {
+            var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+            await using var dbContextDisposer = dbContext.ConfigureAwait(false);
+            if (await dbContext.ChatEntries.AnyAsync(e => e.LocationId == id.Value && e.LocalId < boundary,
+                    cancellationToken).ConfigureAwait(false)
+                && !await dbContext.ChatEntries.AnyAsync(e => e.LocationId == id.Value && e.LocalId >= boundary,
+                    cancellationToken).ConfigureAwait(false))
+                return null;
+        }
 
         var now = Clocks.SystemClock.Now;
         if (sharedLocation.IsLive(now) && !sharedLocation.IsUnlimited)
@@ -37,10 +50,13 @@ public class SharedLocationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
 
         var now = Clocks.SystemClock.Now;
-        var result = dbSharedLocations
-            .Select(x => x.ToModel())
-            .Where(x => x.IsLive(now))
-            .ToApiArray();
+        var visibleLocations = new List<SharedLocation>();
+        foreach (var dbLocation in dbSharedLocations) {
+            var location = await Get(SharedLocationId.Parse(dbLocation.Id), cancellationToken).ConfigureAwait(false);
+            if (location is not null && location.IsLive(now))
+                visibleLocations.Add(location);
+        }
+        var result = visibleLocations.ToApiArray();
         var soonestExpiry = result
             .Where(x => !x.IsUnlimited)
             .Min(x => (Moment?)x.LiveUntil);

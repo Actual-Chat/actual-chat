@@ -4,6 +4,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,14 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations;
 
 [DbContext(typeof(ChatDbContext))]
-partial class ChatDbContextModelSnapshot : ModelSnapshot
+[Migration("20260918002808_AddChatCleanup")]
+partial class _20260918002808_AddChatCleanup
 {
-    // If you encounter a merge conflict in the line below, it means you need to
-    // discard one of the migration branches and recreate its migrations on top of
-    // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20260918011310_AddChatRemoval";
-
-    protected override void BuildModel(ModelBuilder modelBuilder)
+    /// <inheritdoc />
+    protected override void BuildTargetModel(ModelBuilder modelBuilder)
     {
 #pragma warning disable 612, 618
         modelBuilder
@@ -192,10 +190,6 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                 b.Property<bool>("IsPublic")
                     .HasColumnType("boolean")
                     .HasColumnName("is_public");
-
-                b.Property<bool>("IsRemoving")
-                    .HasColumnType("boolean")
-                    .HasColumnName("is_removing");
 
                 b.Property<bool?>("IsSummarized")
                     .HasColumnType("boolean")

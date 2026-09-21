@@ -1733,6 +1733,10 @@
   "Invite_NewPrivateLink": "नया निजी जॉइन लिंक",
   "Invite_UnknownLink": "अज्ञात लिंक",
 
+  "ChatCleanup_Retention": "संदेश रखने की अवधि",
+  "ChatCleanup_RetentionWarning": "पुराने संदेश सभी के लिए स्थायी रूप से हटा दिए जाते हैं। यह अवधि बढ़ाने से हटाया गया इतिहास वापस नहीं आएगा।",
+  "ChatCleanup_Clear": "चैट इतिहास मिटाएँ",
+  "ChatCleanup_ClearWarning": "सभी के लिए वर्तमान चैट इतिहास मिटाएँ? इसे वापस नहीं किया जा सकता। यह पुष्टि खुलने के बाद भेजे गए नए संदेश बने रहेंगे।",
   "ChatSettings_UsePlaceSettingsForMembers": "सदस्यों को संपादित करने के लिए प्लेस सेटिंग्स का उपयोग करें",
   "ChatSettings_LeaveChatAndDelete": "चैट छोड़ें और हटाएँ",
 

@@ -32,6 +32,11 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     {
         ArgumentNullException.ThrowIfNull(conversationId);
 
+        var visibilityBoundary = await ChatsBackend.GetVisibilityBoundary(conversationId.ChatId, cancellationToken)
+            .ConfigureAwait(false);
+        if (conversationId.StartEntryLid < visibilityBoundary)
+            return null;
+
         var dbConversation = await DbConversationResolver.Get(conversationId.Value, cancellationToken).ConfigureAwait(false);
         var conversation = dbConversation?.ToModel();
         if (conversation is null)
@@ -63,24 +68,29 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         CancellationToken cancellationToken)
     {
         var range = ConversationIdTiles.AssertIsTileStart(start).Range;
+        var visibilityBoundary = await ChatsBackend.GetVisibilityBoundary(chatId, cancellationToken)
+            .ConfigureAwait(false);
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var conversationRanges = await dbContext.Conversations
-            .Where(c => c.ChatId == chatId.Value && c.StartEntryLid < range.End && c.EndEntryLid >= range.Start)
+            .Where(c => c.ChatId == chatId.Value && c.StartEntryLid >= visibilityBoundary
+                && c.StartEntryLid < range.End && c.EndEntryLid >= range.Start)
             .OrderBy(c => c.StartEntryLid)
             .Select(c => new Range<long>(c.StartEntryLid, c.EndEntryLid + 1))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var previousConversationRange = await dbContext.Conversations
-            .Where(c => c.ChatId == chatId.Value && c.EndEntryLid < range.Start)
+            .Where(c => c.ChatId == chatId.Value && c.StartEntryLid >= visibilityBoundary
+                && c.EndEntryLid < range.Start)
             .OrderByDescending(c => c.StartEntryLid)
             .Select(c => (Range<long>?)new Range<long>(c.StartEntryLid, c.EndEntryLid + 1))
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         var nextConversationRange = await dbContext.Conversations
-            .Where(c => c.ChatId == chatId.Value && c.StartEntryLid >= range.End)
+            .Where(c => c.ChatId == chatId.Value && c.StartEntryLid >= visibilityBoundary
+                && c.StartEntryLid >= range.End)
             .OrderBy(c => c.StartEntryLid)
             .Select(c => (Range<long>?)new Range<long>(c.StartEntryLid, c.EndEntryLid + 1))
             .FirstOrDefaultAsync(cancellationToken)
@@ -93,7 +103,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var liveStartLid = await LiveSessionsBackend.GetVisibleStartLid(chatId, cancellationToken)
             .ConfigureAwait(false);
-        if (liveStartLid is { } liveStart)
+        if (liveStartLid is { } liveStart && liveStart >= visibilityBoundary)
             conversationRanges.Add(new(liveStart, long.MaxValue));
 
         return ConversationRangeTile.NewNormalized(chatId, range, conversationRanges);
@@ -115,7 +125,9 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var liveConversation = await LiveSessionsBackend.GetLiveConversation(chatId, cancellationToken)
             .ConfigureAwait(false);
         var records = conversations.SkipNullItems().Where(c => c.Id != liveConversation?.Id);
-        if (liveConversation != null)
+        var visibilityBoundary = await ChatsBackend.GetVisibilityBoundary(chatId, cancellationToken)
+            .ConfigureAwait(false);
+        if (liveConversation != null && liveConversation.Id.StartEntryLid >= visibilityBoundary)
             records = records.Append(liveConversation);
 
         return conversationRangeTile.ApplyTo(records, range);
@@ -154,6 +166,15 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         change.RequireValid();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
+        if (!change.IsRemove()) {
+            var dbChat = await dbContext.Chats.ForShare()
+                .FirstOrDefaultAsync(c => c.Id == chatId.Value, cancellationToken).ConfigureAwait(false);
+            var boundary = Math.Max(dbChat?.MinVisibleEntryLid ?? long.MaxValue,
+                await ChatsBackend.GetVisibilityBoundary(chatId, cancellationToken).ConfigureAwait(false));
+            if (conversationId.StartEntryLid < boundary)
+                return null!;
+        }
 
         await dbContext.Conversations.Lock(conversationId, cancellationToken).ConfigureAwait(false);
 

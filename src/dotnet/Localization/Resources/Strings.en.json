@@ -2068,6 +2068,10 @@
   "Invite_UnknownLink": "Unknown link",
 
   // Two more rows in chat settings.
+  "ChatCleanup_Retention": "Message retention",
+  "ChatCleanup_RetentionWarning": "Older messages are permanently removed for everyone. Increasing this period will not restore removed history.",
+  "ChatCleanup_Clear": "Clear chat history",
+  "ChatCleanup_ClearWarning": "Clear the current chat history for everyone? This cannot be undone. New messages sent after this confirmation opens will remain.",
   "ChatSettings_UsePlaceSettingsForMembers": "Use place settings to edit members",
   "ChatSettings_LeaveChatAndDelete": "Leave chat & delete",
 
