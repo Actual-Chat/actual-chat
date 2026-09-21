@@ -354,7 +354,11 @@ Hooks live under three entry points, depending on scope:
 - **Place settings → Integrations tab** (place owners) — place-scoped hooks,
   with an optional chat allow-list.
 - **Settings → API & Apps → Webhooks** — your personal hooks, next to API
-  keys and connected apps.
+  keys and connected apps. The same list continues with every chat and place
+  hook you created, each captioned with its chat or place, so one page shows
+  everything that calls out on your behalf. A hook in a chat you no longer
+  moderate stays listed, read-only, so you still know your endpoint is being
+  called.
 
 Creating an outgoing hook walks through a name, the URL, which events to
 subscribe to (grouped as Messages / Reactions / Members / Chat / Place / My

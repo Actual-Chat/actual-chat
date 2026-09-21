@@ -143,6 +143,42 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
     }
 
     [Fact]
+    public async Task ListByCreatorShouldSpanScopesAndFollowChanges()
+    {
+        // arrange
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Mine" });
+        var alice = await Alice.GetOwnAccount();
+
+        // act
+        var chatHook = (await Commander.Call(new WebHooksBackend_Change(
+            WebHookScope.Chat, chatId.Value, null, null,
+            Change.Create(NewDiff("Chat hook")),
+            alice.Id))).WebHook!;
+        var userHook = (await Commander.Call(new WebHooksBackend_Change(
+            WebHookScope.User, alice.Id.Value, null, null,
+            Change.Create(NewDiff("Personal", events: WebHookEvents.Notification) with {
+                SubscribeNotifications = true,
+            }),
+            alice.Id))).WebHook!;
+
+        // assert - both scopes show up under the creator, and a removal drops out
+        await ComputedTest.When(async ct => {
+            var mine = await Backend.ListByCreator(alice.Id, ct);
+            mine.Should().Contain(x => x.Id == chatHook.Id);
+            mine.Should().Contain(x => x.Id == userHook.Id);
+        });
+        await Commander.Call(new WebHooksBackend_Change(
+            WebHookScope.Chat, chatId.Value, chatHook.Id, chatHook.Version,
+            Change.Remove<WebHookDiff>(),
+            alice.Id));
+        await ComputedTest.When(async ct => {
+            var mine = await Backend.ListByCreator(alice.Id, ct);
+            mine.Should().NotContain(x => x.Id == chatHook.Id);
+            mine.Should().Contain(x => x.Id == userHook.Id);
+        });
+    }
+
+    [Fact]
     public async Task RotateSecretShouldKeepOldOneForOverlap()
     {
         // arrange

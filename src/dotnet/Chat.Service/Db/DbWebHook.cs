@@ -8,6 +8,7 @@ namespace ActualChat.Chat.Db;
 
 [Table("WebHooks")]
 [Index(nameof(ScopeId))]
+[Index(nameof(CreatedBy))]
 [Index(nameof(TokenHash), IsUnique = true)]
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbWebHook : IHasId<string>, IHasVersion<long>, IRequirementTarget

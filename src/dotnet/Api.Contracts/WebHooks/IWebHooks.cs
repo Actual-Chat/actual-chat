@@ -7,6 +7,9 @@ public interface IWebHooks : IComputeService
     [ComputeMethod]
     Task<ApiArray<WebHook>> List(
         Session session, WebHookScope scope, string scopeId, CancellationToken cancellationToken);
+    // Hooks the caller created in any scope, including ones they can no longer manage
+    [ComputeMethod]
+    Task<ApiArray<WebHook>> ListMine(Session session, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<WebHookDelivery>> ListDeliveries(Session session, WebHookId id, CancellationToken cancellationToken);
 

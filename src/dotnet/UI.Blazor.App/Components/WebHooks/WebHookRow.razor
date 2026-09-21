@@ -1,0 +1,57 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.WebHooks
+@inherits ComponentBase<AppUIHub>
+@{
+    var row = Row;
+    var hook = row.Hook;
+}
+
+<TileItem Click="@Click" IsHoverable="@Click.HasDelegate">
+    <Icon>
+        <i class="icon-call-arrow-out"></i>
+    </Icon>
+    <Content>
+        <span class="c-name">@hook.Name</span>
+        @if (!hook.IsEnabled) {
+            <span class="c-disabled">(@L.Integrations_Disabled)</span>
+        }
+    </Content>
+    <Caption>
+        @if (row.ScopeText != null) {
+            <span class="c-scope">@row.ScopeText</span>
+        }
+        <span class="c-line">
+            <span class="c-host">@row.Host</span>
+            @if (row.StatusText != null) {
+                <span class="c-dot">·</span>
+                <span class="@(row.IsFailing ? "c-failing" : "c-status")">@row.StatusText</span>
+            }
+        </span>
+    </Caption>
+    <Right>
+        @if (Click.HasDelegate) {
+            <i class="icon-chevron-right text-3xl"></i>
+        }
+    </Right>
+</TileItem>
+
+@code {
+    [Parameter, EditorRequired] public Model Row { get; set; } = null!;
+    [Parameter] public EventCallback Click { get; set; }
+
+    public static async Task<Model> ToModel(
+        WebHook hook,
+        IStringLocalizer l,
+        LiveTime liveTime,
+        CancellationToken cancellationToken) {
+        var (statusText, isFailing) = await hook.GetStatusText(l, liveTime, cancellationToken).ConfigureAwait(false);
+        return new Model(hook, hook.GetHost(), statusText, isFailing);
+    }
+
+    // Nested types
+
+    public sealed record Model(WebHook Hook, string Host, string? StatusText, bool IsFailing) {
+        public string? ScopeText { get; init; }
+        public bool CanManage { get; init; } = true;
+    }
+}
