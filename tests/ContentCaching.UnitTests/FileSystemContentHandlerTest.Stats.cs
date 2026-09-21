@@ -55,10 +55,11 @@ public sealed partial class FileSystemContentHandlerTest
     [Fact]
     public async Task StatsShouldCountReadersThatJoinAnActiveFill()
     {
-        // arrange
-        using var stream = new ContentHandlerTest.CountingStream("streaming body");
-        var content = new StreamContent(stream);
-        content.Headers.ContentLength = 14;
+        // arrange - the source parks after its head, so the fill is still active when the second
+        // reader arrives; a body that downloads at once is published before it, and that's a hit
+        using var source = new GatedContentStream();
+        var content = new StreamContent(source);
+        content.Headers.ContentLength = 8;
         var upstream = new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
         var handler = Create(new TestSource(_ => upstream));
         var request = Request();
@@ -66,6 +67,7 @@ public sealed partial class FileSystemContentHandlerTest
         // act
         using var first = await handler.Handle(request);
         using var second = await handler.Handle(request);
+        source.Release();
 
         // assert
         first.Should().NotBeNull();
