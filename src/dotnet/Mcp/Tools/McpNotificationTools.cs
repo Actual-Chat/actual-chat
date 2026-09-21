@@ -24,6 +24,8 @@ public sealed class McpNotificationTools(IServiceProvider services)
         "thread and conversation pings, invitations and incoming calls addressed to them - oldest first. " +
         "Plain chat traffic is not logged; rows older than 30 days are gone. " +
         "Persist `nextAfterSeq` and pass it back as `afterSeq` on the next call to see only what is new. " +
+        "An empty page has a null `nextAfterSeq`: keep the cursor you already have, since omitting " +
+        "`afterSeq` restarts the walk from the beginning. " +
         "`limit` is capped at 256.")]
     public async Task<McpListNotificationsResult> ListNotifications(
         [Description("Kinds to include, e.g. [\"mention\", \"reaction\"]; empty = all. " +
@@ -95,9 +97,12 @@ public sealed class McpNotificationTools(IServiceProvider services)
 
         var result = new List<NotificationKind>(kinds.Length);
         foreach (var name in kinds) {
-            if (!Enum.TryParse<NotificationKind>(name, ignoreCase: true, out var kind)
-                || !NotificationHistoryItem.IsLoggedKind(kind))
+            // Only an McpException's message reaches the caller - the MCP SDK masks every other
+            // exception as a generic error, so the rejected kind has to be named here.
+            if (!Enum.TryParse<NotificationKind>(name, ignoreCase: true, out var kind))
                 throw new McpException($"Unknown notification kind: '{name}'.");
+            if (!NotificationHistoryItem.IsLoggedKind(kind))
+                throw new McpException($"Notification kind '{name}' is not logged.");
 
             result.Add(kind);
         }

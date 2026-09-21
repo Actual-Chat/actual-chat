@@ -59,9 +59,12 @@ public class McpNotificationToolsTest(McpCollection.AppHostFixture fixture, ITes
 
         // act
         var error = await CallToolExpectingError(client, "list_notifications", new { kinds = new[] { "bogus" } });
+        var unlogged = await CallToolExpectingError(client, "list_notifications",
+            new { kinds = new[] { "message" } });
 
         // assert
         error.Should().Contain("bogus");
+        unlogged.Should().Contain("message", "a kind that exists but is never logged is rejected by name");
     }
 
     [Fact]
@@ -84,6 +87,7 @@ public class McpNotificationToolsTest(McpCollection.AppHostFixture fixture, ITes
             var result = await CallTool<McpListNotificationsResult>(client, "list_notifications", new { });
             var item = result.Items.Should().ContainSingle().Subject;
             item.Text.Should().Be("@you");
+            item.EntryId.Should().Be(entry.LocalId);
             item.Message.Should().BeNull("the caller cannot read the chat the row anchors at");
         }, WaitTimeout);
     }
