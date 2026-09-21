@@ -12,18 +12,17 @@ namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 public sealed class LiveBlockProjectionDelayTest(ITestOutputHelper @out)
     : AppHostTestBase("live-block-projection-delay", @out)
 {
-    [Fact]
+    [Fact(Timeout = 90_000)]
     public async Task ConversationShouldKeepLivePresentationBeforeBlockStateArrives()
     {
-        // arrange
+        // arrange - the host is this test's own, so the first sign-in pays its cold start
         await using var appHost = await NewAppHost(o => o with {
             ConfigureServices = (_, services) =>
                 services.AddFusion().AddService<LiveSessionUI, DelayedLiveSessionUI>(ServiceLifetime.Scoped),
         });
         await using var tester = appHost.NewBlazorTester(Out);
-        await tester.SignInAsUniqueBob().WaitAsync(TimeSpan.FromSeconds(5));
-        var (chat, _) = await tester.CreateAndGetChat(true, "pending-live-block-state-test")
-            .WaitAsync(TimeSpan.FromSeconds(5));
+        await tester.SignInAsUniqueBob();
+        var (chat, _) = await tester.CreateAndGetChat(true, "pending-live-block-state-test");
         await ComputedTest.When(async ct => {
             var range = await tester.Chats.GetIdRange(tester.Session, chat.Id, ct);
             range.Start.Should().BePositive();
