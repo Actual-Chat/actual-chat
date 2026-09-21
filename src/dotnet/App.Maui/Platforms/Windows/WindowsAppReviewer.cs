@@ -16,7 +16,7 @@ public sealed class WindowsAppReviewer : IAppReviewer
             // GetDefault throws in an unpackaged build; AppReviewUI turns that into the store link
             var storeContext = StoreContext.GetDefault();
             InitializeWithWindow.Initialize(storeContext, WindowNative.GetWindowHandle(window));
-            var result = await storeContext.RequestRateAndReviewAppAsync().ConfigureAwait(false);
+            var result = await storeContext.RequestRateAndReviewAppAsync();
             return result.Status switch {
                 StoreRateAndReviewStatus.Succeeded => AppReviewOutcome.Completed,
                 StoreRateAndReviewStatus.CanceledByUser => AppReviewOutcome.Cancelled,
