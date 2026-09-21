@@ -9,7 +9,7 @@ public static class UsageEventSource
 {
     // A voice entry longer than this is a broken row, not a talk
     public static readonly TimeSpan MaxSpeechDuration = TimeSpan.FromHours(4);
-    public static readonly TimeSpan MinLiveSessionParticipation = TimeSpan.FromMinutes(1);
+    public static readonly TimeSpan DefaultMinLiveSessionParticipation = TimeSpan.FromMinutes(1);
 
     public static UsageEvent? FromEntryChange(ChatEntry entry, ChatEntry? oldEntry, ChangeKind changeKind)
     {
@@ -41,10 +41,11 @@ public static class UsageEventSource
             UsageEventKind.Speech, entry.BeginsAt, entry.Id.Value, (long)duration.TotalMilliseconds, attributes);
     }
 
-    public static UsageEvent? FromLiveSessionEnd(LiveSessionEndedEvent ended, LiveSessionEndedMember member)
+    public static UsageEvent? FromLiveSessionEnd(
+        LiveSessionEndedEvent ended, LiveSessionEndedMember member, TimeSpan? minParticipation = null)
     {
         var participation = ended.EndedAt - (member.JoinedAt > ended.StartedAt ? member.JoinedAt : ended.StartedAt);
-        if (participation < MinLiveSessionParticipation)
+        if (participation < (minParticipation ?? DefaultMinLiveSessionParticipation))
             return null;
 
         var attributes = new UsageEventAttributes {

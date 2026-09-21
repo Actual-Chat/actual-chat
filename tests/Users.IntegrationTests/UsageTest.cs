@@ -1,5 +1,6 @@
 using ActualChat.Live;
 using ActualChat.Queues;
+using ActualChat.Streaming;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
 
@@ -89,6 +90,53 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
         });
         await Task.Delay(500);
         (await Backend.GetSummary(account.Id, default)).LiveSessions.Should().Be(1, "the second delivery is a no-op");
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task ARealCallShouldEarnThePromptForItsParticipants()
+    {
+        // arrange - nothing is enqueued by hand here: the call closes through LiveSessionsBackend
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var bob = await tester.SignInAsUniqueBob();
+        await using var otherTester = AppHost.NewWebClientTester(Out);
+        var alice = await otherTester.SignInAsUniqueAlice();
+        var chatId = (ChatId)PeerChatId.New(bob.Id, alice.Id);
+        var authors = AppHost.Services.GetRequiredService<IAuthorsBackend>();
+        var bobAuthor = await authors.EnsureJoined(chatId, bob.Id, default);
+        var aliceAuthor = await authors.EnsureJoined(chatId, alice.Id, default);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+
+        // act
+        await liveBackend.StartCall(chatId, bobAuthor.Id, ApiArray.New(aliceAuthor.Id), false, default);
+        await liveBackend.AcceptCall(chatId, aliceAuthor.Id, default);
+        await liveBackend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, true, default);
+        await liveBackend.SetParticipation(chatId, bobAuthor.Id, ParticipationKind.Record, true, default);
+        await liveBackend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, false, default);
+        await liveBackend.SetParticipation(chatId, bobAuthor.Id, ParticipationKind.Record, false, default);
+
+        // assert - the close counted the session for both and decided the prompt in the same handler
+        var pending = await ComputedTest.When(async ct => {
+            var p = await Usage.GetPendingReviewPrompt(tester.Session, ct);
+            p.Should().NotBeNull();
+            return p!;
+        }, TimeSpan.FromSeconds(20));
+        pending.ChatId.Should().Be(chatId);
+        (await Backend.GetSummary(bob.Id, default)).LiveSessions.Should().Be(1);
+        await ComputedTest.When(async ct => {
+            (await Backend.GetSummary(alice.Id, ct)).LiveSessions.Should().Be(1);
+            (await Usage.GetPendingReviewPrompt(otherTester.Session, ct)).Should().NotBeNull();
+        });
+
+        // act - recording the outcome on one device clears it everywhere
+        await tester.Commander.Call(new Usage_RecordReviewPrompt {
+            Session = tester.Session,
+            Outcome = ReviewPromptOutcome.Asked,
+        });
+
+        // assert
+        (await Usage.GetPendingReviewPrompt(tester.Session, default)).Should().BeNull();
+        (await Usage.GetPendingReviewPrompt(otherTester.Session, default)).Should().NotBeNull(
+            "Alice's prompt is her own");
     }
 
     [Fact(Timeout = 60_000)]

@@ -19,6 +19,20 @@ public class AppReviewPromptUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICom
     private BackgroundStateTracker BackgroundStateTracker
         => field ??= Services.GetRequiredService<BackgroundStateTracker>();
 
+    [ComputeMethod]
+    public virtual async Task<PendingReviewPrompt?> GetShowablePrompt(CancellationToken cancellationToken)
+    {
+        // Foreground and "no modal open" are device facts, so they stay here; the decision itself is the server's
+        var pending = await Usage.GetPendingReviewPrompt(Session, cancellationToken).ConfigureAwait(false);
+        if (pending is null)
+            return null;
+        if (await BackgroundStateTracker.IsBackground.Use(cancellationToken).ConfigureAwait(false))
+            return null;
+
+        var activeModals = await ModalUI.ActiveModals.Use(cancellationToken).ConfigureAwait(false);
+        return activeModals.Count > 0 ? null : pending;
+    }
+
     // Protected/internal methods
 
     protected override Task OnRun(CancellationToken cancellationToken)
@@ -30,20 +44,6 @@ public class AppReviewPromptUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICom
             .Log(LogLevel.Debug, Log)
             .RetryForever(RetryDelaySeq.Exp(0.5, 8), Log)
             .RunIsolated(cancellationToken);
-    }
-
-    [ComputeMethod]
-    protected virtual async Task<PendingReviewPrompt?> GetShowablePrompt(CancellationToken cancellationToken)
-    {
-        // Foreground and "no modal open" are device facts, so they stay here; the decision itself is the server's
-        var pending = await Usage.GetPendingReviewPrompt(Session, cancellationToken).ConfigureAwait(false);
-        if (pending is null)
-            return null;
-        if (await BackgroundStateTracker.IsBackground.Use(cancellationToken).ConfigureAwait(false))
-            return null;
-
-        var activeModals = await ModalUI.ActiveModals.Use(cancellationToken).ConfigureAwait(false);
-        return activeModals.Count > 0 ? null : pending;
     }
 
     // Private methods

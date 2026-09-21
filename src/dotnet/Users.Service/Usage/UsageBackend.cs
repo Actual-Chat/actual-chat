@@ -45,7 +45,8 @@ public class UsageBackend(IServiceProvider services)
         return days.Where(d => d.Day >= range.Start && d.Day < range.End).ToApiArray();
     }
 
-    public virtual async Task<ReviewPromptState> GetReviewPromptState(UserId userId, CancellationToken cancellationToken)
+    public virtual async Task<ReviewPromptState> GetReviewPromptState(
+        UserId userId, CancellationToken cancellationToken)
     {
         var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         if (account.IsGuestOrNull())
@@ -183,8 +184,9 @@ public class UsageBackend(IServiceProvider services)
             return; // It just spawns other commands, so nothing to do here
 
         var chatId = eventCommand.ChatId;
+        var minParticipation = Settings.Usage.MinLiveSessionParticipation;
         foreach (var member in eventCommand.Members) {
-            var usageEvent = UsageEventSource.FromLiveSessionEnd(eventCommand, member);
+            var usageEvent = UsageEventSource.FromLiveSessionEnd(eventCommand, member, minParticipation);
             if (usageEvent is null)
                 continue;
 
