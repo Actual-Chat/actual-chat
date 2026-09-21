@@ -98,7 +98,10 @@ call: each call then returns only what is new. When a page comes back empty,
 `nextAfterSeq` is `null` — keep the cursor you already have rather than
 overwriting it with `null`, since an absent `afterSeq` restarts the walk from
 the beginning. Walk oldest-first for this; `newestFirst` is for "what happened
-lately", where `afterSeq` continues towards older rows.
+lately", where `afterSeq` continues towards older rows. Very rarely a poll can
+miss a row written concurrently with it — a row becomes visible at commit,
+after its `seq` was assigned — so a client that must not miss anything re-reads
+a short window behind its cursor.
 
 Web hooks ([`web-hooks.md`](./web-hooks.md)) push the same events; the history
 is for agents that would rather poll.
