@@ -42,6 +42,7 @@
     </FormBlock>
 
     <div class="chat-settings-container">
+        <ChatImportSettings ChatId="@ChatId" Started="@(() => Context.Close())"/>
         @if (canEditChatType) {
             <TileItem Click="OnManageChatTypeClick" Class="chat-type-tile-item">
                 <Icon>

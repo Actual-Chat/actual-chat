@@ -340,6 +340,14 @@ public static class LocalizedStringsLocalizerExt
         public string SystemEntry_CallEnded => l["SystemEntry_CallEnded"].Value;
 
         public string ChatMaintenance_Mode => l["ChatMaintenance_Mode"].Value;
+        public string ChatImport_Start => l["ChatImport_Start"].Value;
+        public string ChatImport_Title => l["ChatImport_Title"].Value;
+        public string ChatImport_Consent => l["ChatImport_Consent"].Value;
+        public string ChatImport_Consenting => l["ChatImport_Consenting"].Value;
+        public string ChatImport_NonConsenting => l["ChatImport_NonConsenting"].Value;
+        public string ChatImport_SeeEveryone => l["ChatImport_SeeEveryone"].Value;
+        public string ChatImport_End => l["ChatImport_End"].Value;
+        public string ChatImport_PlaceScope => l["ChatImport_PlaceScope"].Value;
         public string ChatMaintenance_Title => l["ChatMaintenance_Title"].Value;
         public string ChatFooter_ReadOnly => l["ChatFooter_ReadOnly"].Value;
         public string ChatFooter_YouBlockedUser => l["ChatFooter_YouBlockedUser"].Value;

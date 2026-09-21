@@ -79,6 +79,9 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
         change.RequireValid();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+        if (placeId is not null)
+            await ChatImportGuard.RequireAvailable(dbContext, placeId.RootChatId, cancellationToken)
+                .ConfigureAwait(false);
 
         var dbPlace = placeId is null
             ? null

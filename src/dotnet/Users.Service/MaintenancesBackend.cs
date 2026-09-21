@@ -35,12 +35,15 @@ public class MaintenancesBackend(IServiceProvider services)
         await dbContext.Maintenances.Lock(id, cancellationToken).ConfigureAwait(false);
         var row = await dbContext.Maintenances
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken).ConfigureAwait(false);
+        if (row is not null && row.OwnerId != command.OwnerId)
+            throw StandardError.Constraint("Maintenance belongs to another operation.");
+
         if (mode == MaintenanceMode.None) {
             if (row is not null)
                 dbContext.Remove(row);
         }
         else if (row is null)
-            dbContext.Add(new DbMaintenance { Id = id, Mode = mode });
+            dbContext.Add(new DbMaintenance { Id = id, Mode = mode, OwnerId = command.OwnerId });
         else
             row.Mode = mode;
 

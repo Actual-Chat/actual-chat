@@ -1,7 +1,7 @@
 .chat-maintenance-view {
-    @apply flex-y items-center justify-center gap-4;
+    @apply flex-y items-center gap-4;
     @apply w-full h-full min-h-0;
-    @apply p-6;
+    @apply p-6 overflow-y-auto;
     @apply text-center text-01;
 }
 .chat-maintenance-view h2 {
@@ -9,4 +9,14 @@
 }
 .chat-maintenance-view .kitty {
     @apply w-60 max-w-full;
+}
+
+.chat-maintenance-view .c-counts {
+    @apply grid grid-cols-2 gap-x-4 gap-y-1;
+}
+.chat-maintenance-view .c-members {
+    @apply flex-y gap-2;
+}
+.chat-maintenance-view .c-pages {
+    @apply flex-x gap-4;
 }
