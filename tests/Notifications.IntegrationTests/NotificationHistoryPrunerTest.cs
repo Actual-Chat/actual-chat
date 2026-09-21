@@ -9,7 +9,8 @@ namespace ActualChat.Notifications.IntegrationTests;
 public sealed class NotificationHistoryPrunerTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private NotificationHistoryPruner Pruner => field ??= AppHost.Services.GetRequiredService<NotificationHistoryPruner>();
+    private NotificationHistoryPruner Pruner
+        => field ??= AppHost.Services.GetRequiredService<NotificationHistoryPruner>();
 
     [Fact]
     public async Task RunOnceShouldPruneOnlyRowsPastRetention()
@@ -19,7 +20,7 @@ public sealed class NotificationHistoryPrunerTest(AppHostFixture fixture, ITestO
         var chatId = ChatId.Parse("the-actual-one");
         var dbHub = AppHost.Services.DbHub<NotificationDbContext>();
         var now = Clocks.SystemClock.Now;
-        var oldId = await Insert(dbHub, userId, chatId, 1, now - TimeSpan.FromDays(31));
+        await Insert(dbHub, userId, chatId, 1, now - TimeSpan.FromDays(31));
         var freshId = await Insert(dbHub, userId, chatId, 2, now - TimeSpan.FromMinutes(1));
 
         // act
@@ -32,7 +33,6 @@ public sealed class NotificationHistoryPrunerTest(AppHostFixture fixture, ITestO
             .Select(x => x.Id)
             .ToListAsync();
         remainingIds.Should().Equal([freshId], "only rows older than HistoryRetention are pruned");
-        remainingIds.Should().NotContain(oldId);
     }
 
     // Private methods

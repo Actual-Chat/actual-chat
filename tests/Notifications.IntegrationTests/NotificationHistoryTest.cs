@@ -71,9 +71,67 @@ public sealed class NotificationHistoryTest(AppHostFixture fixture, ITestOutputH
             var items = await Backend.ListHistory(alice.Id, new NotificationHistoryQuery(), CancellationToken.None);
             items.Should().ContainSingle(x => x.Kind == NotificationKind.Mention);
         }, WaitTimeout);
-        await Task.Delay(500);
+        await Queues.WhenProcessing();
         var all = await Backend.ListHistory(alice.Id, new NotificationHistoryQuery(), CancellationToken.None);
         all.Should().NotContain(x => x.Kind == NotificationKind.Message, "per-chat traffic is not addressed to anyone");
+    }
+
+    [Fact]
+    public async Task ConversationShouldBeLoggedWithItsStartEntry()
+    {
+        // arrange
+        var alice = await Tester.SignInAsUniqueAlice();
+        var chatId = ChatId.Parse("the-actual-one");
+        var conversationId = ConversationId.New(chatId, 11);
+        var conversation = ConversationNotification.New(alice.Id, conversationId, 15) with {
+            SentAt = Clocks.SystemClock.Now, Title = "Chat", Text = "live talk",
+        };
+
+        // act
+        await Queues.Enqueue(new UserNotifiedEvent(conversation));
+
+        // assert
+        NotificationHistoryItem item = null!;
+        await TestExt.When(async () => {
+            var items = await Backend.ListHistory(alice.Id, new NotificationHistoryQuery(), CancellationToken.None);
+            item = items.Should().ContainSingle(x => x.Kind == NotificationKind.Conversation).Subject;
+        }, WaitTimeout);
+        item.ChatId.Should().Be(chatId);
+        item.EntryId.Should().Be(ChatEntryId.New(chatId, 11),
+            "a conversation carries no entry of its own, so its row anchors where it started");
+    }
+
+    [Fact]
+    public async Task ListHistoryShouldBeScopedToOneUser()
+    {
+        // arrange
+        var alice = await Tester.SignInAsUniqueAlice();
+        var bob = await Tester.SignInAsUniqueBob();
+        var chatId = ChatId.Parse("the-actual-one");
+        var authorId = AuthorId.New(chatId, 1);
+        var now = Clocks.SystemClock.Now;
+        var aliceMention = MentionNotification.New(alice.Id, ChatEntryId.New(chatId, 21), authorId) with {
+            SentAt = now, Title = "Chat", Text = "@alice",
+        };
+        var bobMention = MentionNotification.New(bob.Id, ChatEntryId.New(chatId, 22), authorId) with {
+            SentAt = now, Title = "Chat", Text = "@bob",
+        };
+
+        // act
+        await Queues.Enqueue(new UserNotifiedEvent(aliceMention));
+        await Queues.Enqueue(new UserNotifiedEvent(bobMention));
+
+        // assert
+        await TestExt.When(async () => {
+            var mine = await Backend.ListHistory(alice.Id, new NotificationHistoryQuery(), CancellationToken.None);
+            var theirs = await Backend.ListHistory(bob.Id, new NotificationHistoryQuery(), CancellationToken.None);
+            mine.Should().ContainSingle();
+            theirs.Should().ContainSingle();
+        }, WaitTimeout);
+        var aliceItems = await Backend.ListHistory(alice.Id, new NotificationHistoryQuery(), CancellationToken.None);
+        var bobItems = await Backend.ListHistory(bob.Id, new NotificationHistoryQuery(), CancellationToken.None);
+        aliceItems.Select(x => x.Text).Should().Equal(["@alice"], "the log is scoped to its own user");
+        bobItems.Select(x => x.Text).Should().Equal(["@bob"], "the log is scoped to its own user");
     }
 
     [Fact]
@@ -95,7 +153,7 @@ public sealed class NotificationHistoryTest(AppHostFixture fixture, ITestOutputH
             var items = await Backend.ListHistory(alice.Id, new NotificationHistoryQuery(), CancellationToken.None);
             items.Should().ContainSingle();
         }, WaitTimeout);
-        await Task.Delay(500);
+        await Queues.WhenProcessing();
         var all = await Backend.ListHistory(alice.Id, new NotificationHistoryQuery(), CancellationToken.None);
         all.Should().ContainSingle(
             "the same notification with the same SentAt is one row however often it is delivered");

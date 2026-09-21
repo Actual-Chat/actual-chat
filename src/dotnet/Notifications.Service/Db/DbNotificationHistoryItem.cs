@@ -45,11 +45,7 @@ public class DbNotificationHistoryItem : IHasId<string>, IRequirementTarget
         UserId = notification.UserId.Value;
         Kind = notification.Kind;
         ChatId = (notification as ChatNotification)?.ChatId.Value ?? "";
-        EntryLid = notification switch {
-            ChatEntryNotification n => n.EntryLid,
-            ChatEntryRelatedNotification n => n.EntryLid,
-            _ => 0,
-        };
+        EntryLid = notification.GetAnchorEntryId()?.LocalId ?? 0;
         AuthorId = (notification as ChatNotification)?.AuthorId?.Value ?? "";
         Title = notification.Title;
         Text = notification.Text;

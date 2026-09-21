@@ -472,6 +472,10 @@ public class NotificationsBackend(IServiceProvider services)
             .Where(a => a.Id == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
+        await dbContext.NotificationHistory
+            .Where(a => a.UserId == userId.Value)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
 
         context.Operation.AddCompletionHandler(scope => {
             using (Invalidation.Begin()) {
