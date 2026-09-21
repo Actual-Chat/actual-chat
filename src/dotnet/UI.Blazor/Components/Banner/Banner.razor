@@ -10,15 +10,17 @@
 
 <div class="banner @BannerCls @WrapCls @DismissCls @Class @_animator.Class">
     <div class="c-content">
-        @if (!ScreenSize.IsNarrow()) {
-            @if (Icon != null) {
-                @Icon
-            } else {
-                <SeverityIcon Severity="@Severity"/>
+        <div class="banner-lead">
+            @if (!ScreenSize.IsNarrow()) {
+                @if (Icon != null) {
+                    @Icon
+                } else {
+                    <SeverityIcon Severity="@Severity"/>
+                }
             }
-        }
-        <div class="banner-body">
-            @Body
+            <div class="banner-body">
+                @Body
+            </div>
         </div>
         @if (Buttons != null || (ShowDismissButton && NoWrap)) {
             <div class="banner-buttons">

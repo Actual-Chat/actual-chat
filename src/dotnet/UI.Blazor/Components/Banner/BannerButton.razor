@@ -1,8 +1,9 @@
 @namespace ActualChat.UI.Blazor.Components
 
-@* Standard banner action button: applies the shared banner-button classes so each banner doesn't repeat them *@
+@* Standard banner action button: one primary per banner carries the tinted fill under the banner's
+   severity, every other action is text-only. A danger action is always text-only and red. *@
 <Button
-    Class="@($"btn-transparent unhovered btn-modal {Class}")"
+    Class="@ButtonCls"
     IsDisabled="@IsDisabled"
     Click="@Click"
     Rendered="@Rendered"
@@ -12,9 +13,13 @@
 
 @code {
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool Primary { get; set; } = true;
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
     [Parameter] public EventCallback<ElementReference> Rendered { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? Attributes { get; set; }
+
+    private bool IsFilled => Primary && !Class.Contains("btn-danger", StringComparison.Ordinal);
+    private string ButtonCls => $"btn-sm {(IsFilled ? "btn-banner-primary" : "btn-banner-secondary")} {Class}";
 }
