@@ -229,6 +229,7 @@
   "WebHook_RecentDeliveries": "最近の配信",
   "WebHook_NoDeliveries": "まだ配信はありません",
   "WebHook_DeliveryOutcome_Format": "{0} · {1} ms",
+  "WebHook_DeliveryRepeats_Format": "×{0}",
   "WebHook_Redeliver": "再送信",
   "WebHook_RotateSecret": "シークレットを更新",
   "WebHook_RotateSecretConfirm": "現在のシークレットは、受信側を更新できるよう24時間はそのまま使用できます。続行しますか？",

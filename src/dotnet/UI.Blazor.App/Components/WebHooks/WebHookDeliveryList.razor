@@ -10,13 +10,18 @@
             <Content><span class="c-empty">@L.WebHook_NoDeliveries</span></Content>
         </TileItem>
     } else {
-        @foreach (var delivery in Deliveries) {
+        var runs = GroupRuns(Deliveries);
+        @foreach (var run in runs) {
+            var delivery = run.Latest;
             var (statusText, statusClass) = GetStatus(delivery.Status);
             <TileItem IsHoverable="false" @key="@delivery.Id">
                 <Content>
                     <LiveTimeDeltaText Class="c-time" Moment="@delivery.CreatedAt"/>
                     <span class="c-event">@delivery.EventType</span>
                     <span class="c-status @statusClass">@statusText</span>
+                    @if (run.Count > 1) {
+                        <span class="c-repeats">@L.WebHook_DeliveryRepeats_Format(run.Count)</span>
+                    }
                 </Content>
                 <Caption>
                     @if (delivery.LastError is { } error) {
@@ -32,13 +37,13 @@
                         <ButtonRound
                             Class="btn-sm btn-transparent"
                             Tooltip="@L.WebHook_Redeliver"
-                            Click="@(() => OnRedeliverClick(delivery.Id))">
+                            Click="@(() => OnRedeliverClick(run))">
                             <i class="icon-refresh text-xl"></i>
                         </ButtonRound>
                     }
                 </Right>
             </TileItem>
-            @if (delivery != Deliveries[^1]) {
+            @if (run != runs[^1]) {
                 <Divider/>
             }
         }
@@ -62,6 +67,38 @@
     private static string Truncate(string text)
         => text.Length <= MaxErrorLength ? text : text[..MaxErrorLength] + "…";
 
-    private Task OnRedeliverClick(string deliveryId)
-        => UICommander.Run(new WebHooks_Redeliver { Session = Session, Id = WebHookId, DeliveryId = deliveryId });
+    // A broken receiver fails every event the same way; one row per run keeps the log readable
+    private static List<Run> GroupRuns(ApiArray<WebHookDelivery> deliveries) {
+        var runs = new List<Run>();
+        foreach (var delivery in deliveries) {
+            if (runs.Count > 0 && runs[^1].Matches(delivery))
+                runs[^1].Ids.Add(delivery.Id);
+            else
+                runs.Add(new Run(delivery));
+        }
+        return runs;
+    }
+
+    private async Task OnRedeliverClick(Run run) {
+        foreach (var deliveryId in run.Ids) {
+            var result = await UICommander.Run(
+                new WebHooks_Redeliver { Session = Session, Id = WebHookId, DeliveryId = deliveryId });
+            if (result.HasError)
+                return;
+        }
+    }
+
+    // Nested types
+
+    private sealed class Run(WebHookDelivery latest) {
+        public WebHookDelivery Latest { get; } = latest;
+        public List<string> Ids { get; } = [latest.Id];
+        public int Count => Ids.Count;
+
+        public bool Matches(WebHookDelivery delivery)
+            => delivery.EventType == Latest.EventType
+                && delivery.Status == Latest.Status
+                && delivery.LastStatusCode == Latest.LastStatusCode
+                && delivery.LastError == Latest.LastError;
+    }
 }

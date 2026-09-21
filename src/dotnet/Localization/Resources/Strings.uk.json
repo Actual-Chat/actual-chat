@@ -229,6 +229,7 @@
   "WebHook_RecentDeliveries": "Останні доставки",
   "WebHook_NoDeliveries": "Поки що немає доставок",
   "WebHook_DeliveryOutcome_Format": "{0} · {1} мс",
+  "WebHook_DeliveryRepeats_Format": "×{0}",
   "WebHook_Redeliver": "Доставити знову",
   "WebHook_RotateSecret": "Змінити секрет",
   "WebHook_RotateSecretConfirm": "Поточний секрет працюватиме ще 24 години, щоб ви встигли оновити отримувача. Продовжити?",

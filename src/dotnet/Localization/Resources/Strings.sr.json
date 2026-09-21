@@ -229,6 +229,7 @@
   "WebHook_RecentDeliveries": "Недавне испоруке",
   "WebHook_NoDeliveries": "Још нема испорука",
   "WebHook_DeliveryOutcome_Format": "{0} · {1} мс",
+  "WebHook_DeliveryRepeats_Format": "×{0}",
   "WebHook_Redeliver": "Поново испоручите",
   "WebHook_RotateSecret": "Замијените тајну",
   "WebHook_RotateSecretConfirm": "Тренутна тајна ће радити још 24 сата како бисте могли ажурирати примаоца. Наставити?",

@@ -229,6 +229,7 @@
   "WebHook_RecentDeliveries": "Son teslimatlar",
   "WebHook_NoDeliveries": "Henüz teslimat yok",
   "WebHook_DeliveryOutcome_Format": "{0} · {1} ms",
+  "WebHook_DeliveryRepeats_Format": "×{0}",
   "WebHook_Redeliver": "Yeniden gönderin",
   "WebHook_RotateSecret": "Gizli anahtarı yenileyin",
   "WebHook_RotateSecretConfirm": "Mevcut gizli anahtar, alıcıyı güncelleyebilmeniz için 24 saat daha çalışmaya devam eder. Devam edilsin mi?",

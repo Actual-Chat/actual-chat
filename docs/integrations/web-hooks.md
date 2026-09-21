@@ -301,7 +301,9 @@ Source:
 ## Delivery log
 
 The last **20** deliveries are visible on a hook's detail page (time, event,
-status, latency, and a *Redeliver* action for a completed one), and the
+status, latency, and a *Redeliver* action for a completed one). A run of
+consecutive deliveries with the same event, status and error collapses into one
+row with a `×N` count, and *Redeliver* on that row redelivers the whole run. The
 underlying log is kept for **30 days** before an hourly sweep prunes it — a
 still-`Pending` row is never pruned.
 
