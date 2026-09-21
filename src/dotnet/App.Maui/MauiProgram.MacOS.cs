@@ -21,6 +21,7 @@ public static partial class MauiProgram
         services.AddScoped<INotificationsPermission>(c => new MacOSNotificationsPermission(c.AppUIHub()));
         services.AddScoped<IDeviceNotifications>(c => new MacOSDeviceNotifications(c));
         services.AddTransient<IAppIconBadge>(_ => new MacOSAppIconBadge());
+        services.AddScoped<WindowUI>(c => new MacWindowUI(c.AppUIHub()));
         services.AddScoped<IFileSaver>(c => new MacOSFileSaver(c.UIHub()));
         services.AddScoped<IPasskeyClient>(_ => new ApplePasskeyClient());
     }

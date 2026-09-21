@@ -14,12 +14,15 @@ namespace ActualChat.App.Maui;
 /// </summary>
 internal static partial class WindowConfigurator
 {
+    private const string TrafficLightsToolbarId = "TrafficLights";
+
     private static NSWindow? _window;
     private static WindowDelegate? _windowDelegate;
     private static WKWebView? _webView;
     private static bool _isFullScreen;
     private static NSObject? _mouseMonitor;
     private static NSEvent? _lastMouseEvent;
+    private static bool _hasInsetTrafficLights;
 
     public static IWKScriptMessageHandler WindowDragHandler { get; } = new WindowDragMessageHandler();
     private static NSWindow? Window
@@ -83,17 +86,10 @@ internal static partial class WindowConfigurator
 
     public static void ExtendContentUnderTitlebar(WKWebView webView)
     {
-        // The labs handler insets the page by the titlebar height (setObscuredContentInsets) once the
-        // WebView joins its window, and keeps the inset in full screen where the titlebar auto-hides,
-        // so the strip under the transparent titlebar stays blank on every screen. With zero insets
-        // the page paints edge to edge and reserves the traffic lights' corner itself, the way it
-        // reserves the notch on iOS: the titlebar height goes out as --titlebar-inset.
-        // TODO(maui-labs): delete once MacOSBlazorWebView.ContentInsets can opt out of the auto inset.
-        if (OperatingSystem.IsMacOSVersionAtLeast(26))
-            webView.ObscuredContentInsets = default;
-        else
-            objc_msgSend(webView.Handle, Selector.GetHandle("_setTopContentInset:"), 0);
+        // With zero insets the page paints edge to edge and reserves the traffic lights' corner itself,
+        // the way it reserves the notch on iOS: the titlebar height goes out as --titlebar-inset.
         _webView = webView;
+        ZeroWebViewInsets();
         PushTitlebarInset();
     }
 
@@ -104,6 +100,26 @@ internal static partial class WindowConfigurator
         => "document.documentElement.classList.add('native-titlebar');"
             + $"document.documentElement.style.setProperty('--titlebar-inset', '{GetTitlebarInset():0.##}px')";
 
+    // A panel filling the window (the expanded call) would run its rounded corner under the traffic
+    // lights, so while one is open the window takes an empty unified toolbar: that is how AppKit itself
+    // puts the buttons 19pt from the corner instead of 9pt, and it keeps them there through resizes.
+    // Moving the buttons never did - AppKit lays the zoom button out again without announcing it.
+    public static void SetInsetTrafficLights(bool mustInset)
+    {
+        if (Window is not { } window || mustInset == _hasInsetTrafficLights)
+            return;
+
+        _hasInsetTrafficLights = mustInset;
+        window.Toolbar = mustInset ? new NSToolbar(TrafficLightsToolbarId) : null;
+        if (mustInset) {
+            window.ToolbarStyle = NSWindowToolbarStyle.Unified;
+            window.TitlebarSeparatorStyle = NSTitlebarSeparatorStyle.None;
+        }
+        // The toolbar makes the labs handler inset the page again
+        ZeroWebViewInsets();
+        PushTitlebarInset();
+    }
+
     // Private methods
 
     private static void PushTitlebarInset()
@@ -113,8 +129,27 @@ internal static partial class WindowConfigurator
     {
         if (Window is not { } window || _isFullScreen)
             return 0;
+        // The page only has to clear the buttons, which sit as far from the corner as their own
+        // offset - the unified toolbar's own height leaves far more room above them than that
+        if (_hasInsetTrafficLights && window.StandardWindowButton(NSWindowButton.CloseButton) is { } close)
+            return (close.Frame.X * 2) + close.Frame.Height;
 
         return window.Frame.Height - window.ContentLayoutRect.Height;
+    }
+
+    private static void ZeroWebViewInsets()
+    {
+        // The labs handler insets the page by the titlebar height (setObscuredContentInsets) once the
+        // WebView joins its window, and keeps the inset in full screen where the titlebar auto-hides,
+        // so the strip under the transparent titlebar would stay blank on every screen.
+        // TODO(maui-labs): delete once MacOSBlazorWebView.ContentInsets can opt out of the auto inset.
+        if (_webView is not { } webView)
+            return;
+
+        if (OperatingSystem.IsMacOSVersionAtLeast(26))
+            webView.ObscuredContentInsets = default;
+        else
+            objc_msgSend(webView.Handle, Selector.GetHandle("_setTopContentInset:"), 0);
     }
 
     [LibraryImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")]

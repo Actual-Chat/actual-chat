@@ -311,6 +311,11 @@ body.wide .video-panel.expanded .video-panel-footer {
     @apply pt-4 px-4;
     top: var(--vp-safe-top);
 }
+/* Under the AppKit titlebar the video still runs to the top edge, but the buttons keep clear of the
+   traffic lights: they sit the usual 1rem below the titlebar instead of below the panel's 0.5rem inset. */
+html.native-titlebar body.wide .video-panel.expanded .video-panel-header {
+    padding-top: calc(var(--titlebar-inset) + 0.5rem);
+}
 .video-panel.expanded .video-panel-footer {
     @apply justify-center gap-4;
     bottom: var(--vp-safe-bottom);
