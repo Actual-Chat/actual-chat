@@ -42,8 +42,8 @@
 @code {
     private readonly List<IStep> _steps = new();
     private readonly HashSet<IStep> _skippedSteps = new();
+    private readonly HashSet<IStep> _leftSteps = new();
     private IStep? _currentStep;
-    private bool _initialSkipDone;
 
     [Parameter] public RenderFragment<Stepper>? Header { get; set; }
     [Parameter] public RenderFragment<Stepper>? Footer { get; set; }
@@ -72,7 +72,7 @@
         if (stepIndex <= CurrentStepIndex)
             return true;
         // Future steps are visible only if not pre-completed
-        return !step.IsCompleted;
+        return !IsCompletedBeforeRun(step);
     }
     public bool CanMoveForward => CurrentStepIndex is var i and >= 0 && i < LastStepIndex;
     public bool CanMoveBack => SkipCompletedSteps
@@ -81,14 +81,16 @@
 
     private bool IsReturnTarget(IStep step)
         => step.CanReturnTo && !_skippedSteps.Contains(step);
+
+    private bool IsCompletedBeforeRun(IStep step)
+        => step.IsCompleted && !_leftSteps.Contains(step);
     public bool CanSkip => _currentStep is { CanSkip: true };
     public string SkipTitle => _currentStep?.SkipTitle ?? L.Common_Skip;
     public string NextTitle => _currentStep?.NextTitle ?? L.Common_Next;
     public IStep? CurrentStep => _currentStep;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (SkipCompletedSteps && !_initialSkipDone && _currentStep?.IsCompleted == true) {
-            _initialSkipDone = true;
+        if (SkipCompletedSteps && _leftSteps.Count == 0 && _currentStep?.IsCompleted == true) {
             _skippedSteps.Add(_currentStep);
             await Move(1);
         }
@@ -123,13 +125,14 @@
         if (_currentStep == null)
             return false;
 
+        _leftSteps.Add(_currentStep);
         var newStepIndex = CurrentStepIndex + offset;
 
         if (SkipCompletedSteps) {
             var direction = Math.Sign(offset);
             if (direction > 0) {
                 // Forward: skip steps already completed before this run, remembering them
-                while (newStepIndex >= 0 && newStepIndex < StepCount && _steps[newStepIndex].IsCompleted) {
+                while (newStepIndex >= 0 && newStepIndex < StepCount && IsCompletedBeforeRun(_steps[newStepIndex])) {
                     _skippedSteps.Add(_steps[newStepIndex]);
                     newStepIndex += direction;
                 }
