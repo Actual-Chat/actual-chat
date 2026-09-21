@@ -339,6 +339,40 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         return await VoiceActivityUI.HasIncomingVoice(chatId, cancellationToken).ConfigureAwait(false);
     }
 
+    [ComputeMethod]
+    public virtual async Task<bool> HasRecordingActivity(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // The server's HasActivity ends at the live edge of every utterance, but what this device
+        // plays lags that edge - a wake catch-up plays past it, or entirely after it - and the
+        // user's own voice reaches the server only once its stream registers. Anyone audibly
+        // speaking, on either side, holds the recording idle countdown.
+        if (await LiveStreamUI.HasActivity(chatId, cancellationToken).ConfigureAwait(false))
+            return true;
+        if (await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false))
+            return true;
+        if (await ChatVideoUI.GetOwnSourceKind(chatId, cancellationToken).ConfigureAwait(false) is not null)
+            return true;
+
+        var recorderState = await AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
+        if (recorderState.ChatId == chatId && recorderState.IsVoiceActive)
+            return true;
+
+        return await IsPlaying(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> IsPlaying(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var listeningPlayer = await GetListeningPlayer(chatId, cancellationToken).ConfigureAwait(false);
+        if (listeningPlayer is not null
+            && await listeningPlayer.Playback.IsPlaying.Use(cancellationToken).ConfigureAwait(false))
+            return true;
+
+        var replayPlayer = await GetReplayPlayer(chatId, cancellationToken).ConfigureAwait(false);
+        return replayPlayer is not null
+            && await replayPlayer.Playback.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
+    }
+
     [ComputeMethod] // Synced
     public virtual Task<ImmutableHashSet<ChatId>> GetListeningChatIds()
         => Task.FromResult(ActiveChatsUI.ActiveChats.Value

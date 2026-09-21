@@ -1094,40 +1094,24 @@ public partial class ChatAudioUI
         yield return null;
 
         var cHasActivity = await Computed
-            .Capture(() => LiveStreamUI.HasActivity(chatId, cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        var cIsWatching = await Computed
-            .Capture(() => ChatVideoUI.IsWatching(chatId, cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        var cOwnSourceKind = await Computed
-            .Capture(() => ChatVideoUI.GetOwnSourceKind(chatId, cancellationToken), cancellationToken)
+            .Capture(() => HasRecordingActivity(chatId, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var lastActivityAt = ServerNow;
         while (!cancellationToken.IsCancellationRequested) {
-            // The holds are observed by invalidation rather than polled: HasActivity is a level
-            // that clears at the end of every VAD utterance, so a sampled reading anchors the
-            // countdown to whichever pause the sample landed in, not to the end of the conversation.
+            // The hold is observed by invalidation rather than polled: HasRecordingActivity is a level
+            // that clears at the end of every utterance, so a sampled reading anchors the countdown
+            // to whichever pause the sample landed in, not to the end of the conversation.
             // HasError first: reading an errored dependency would end this method, which
             // RecordChat takes for an idle timeout. Unreadable counts as held.
-            var isHeld = cHasActivity.HasError || cHasActivity.Value
-                || cIsWatching.HasError || cIsWatching.Value
-                || cOwnSourceKind.HasError || cOwnSourceKind.Value is not null;
+            var isHeld = cHasActivity.HasError || cHasActivity.Value;
             if (isHeld) {
                 yield return null; // No countdown
 
-                using var holdCts = cancellationToken.CreateLinkedTokenSource();
-                await Task.WhenAny(
-                    cHasActivity.WhenInvalidated(holdCts.Token),
-                    cIsWatching.WhenInvalidated(holdCts.Token),
-                    cOwnSourceKind.WhenInvalidated(holdCts.Token)
-                    ).ConfigureAwait(false);
-                holdCts.CancelAndDisposeSilently();
+                await cHasActivity.WhenInvalidated(cancellationToken).ConfigureAwait(false);
                 // The hold spanned this whole wait, so the countdown counts from its end - keeping
                 // the pre-wait timestamp would backdate the stop by the length of the last activity.
                 lastActivityAt = ServerNow;
                 cHasActivity = await cHasActivity.Update(cancellationToken).ConfigureAwait(false);
-                cIsWatching = await cIsWatching.Update(cancellationToken).ConfigureAwait(false);
-                cOwnSourceKind = await cOwnSourceKind.Update(cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
@@ -1142,14 +1126,10 @@ public partial class ChatAudioUI
             using var waitCts = cancellationToken.CreateLinkedTokenSource();
             await Task.WhenAny(
                 cHasActivity.WhenInvalidated(waitCts.Token),
-                cIsWatching.WhenInvalidated(waitCts.Token),
-                cOwnSourceKind.WhenInvalidated(waitCts.Token),
                 Task.Delay(wait, waitCts.Token)
                 ).ConfigureAwait(false);
             waitCts.CancelAndDisposeSilently();
             cHasActivity = await cHasActivity.Update(cancellationToken).ConfigureAwait(false);
-            cIsWatching = await cIsWatching.Update(cancellationToken).ConfigureAwait(false);
-            cOwnSourceKind = await cOwnSourceKind.Update(cancellationToken).ConfigureAwait(false);
         }
     }
 

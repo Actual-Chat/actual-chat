@@ -594,8 +594,15 @@ waits for the first `IsVoiceActive` on the target chat; if
 `ShouldColdClose(false, elapsed, PttReplyColdStartTimeout)` (15 s)
 fires first, it closes the mic with the "nothing heard" cue. Phase 2 just
 follows `GetRecordingChatId` until the recording ends — the hot phase's close is
-owned by `RecordChat`'s own idle logic (`HotWindow`, incoming-voice reset,
-manual stop). `CloseFromWatcher` re-checks `ReferenceEquals(_coldStartCts, cts)`
+owned by `RecordChat`'s own idle logic (`HotWindow`, manual stop). Its countdown
+is held by `ChatAudioUI.HasRecordingActivity`, which is true while **anyone is
+audibly speaking**: the server's `HasActivity` (a live stream in the chat), this
+device's own playback of the chat (`IsPlaying` — a wake catch-up plays past the
+server's live edge, or entirely after it), or the user's own recorder reporting
+voice. The server signal alone is not enough: it clears at the live edge of the
+other party's utterance while their voice is still coming out of the speaker,
+and with the 15 s background hot window the countdown would show 5 s later.
+`CloseFromWatcher` re-checks `ReferenceEquals(_coldStartCts, cts)`
 so a superseded watcher can never close a reply that displaced its own.
 
 `PttMicCapability` is the reference-counted host hook behind all of
