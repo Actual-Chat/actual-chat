@@ -94,7 +94,8 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public IPlaybackFactory PlaybackFactory => field ??= Services.GetRequiredService<IPlaybackFactory>();
     public ActivePlaybackInfo ActivePlaybackInfo => field ??= Services.GetRequiredService<ActivePlaybackInfo>();
     public ActivitiesBackend ActivitiesBackend => field ??= Services.GetRequiredService<ActivitiesBackend>();
-    public AudioAttachmentPlayer AudioAttachmentPlayer => field ??= Services.GetRequiredService<AudioAttachmentPlayer>();
+    public AudioAttachmentPlayer AudioAttachmentPlayer
+        => field ??= Services.GetRequiredService<AudioAttachmentPlayer>();
     public OptimisticReactions OptimisticReactions => field ??= Services.GetRequiredService<OptimisticReactions>();
 
     public KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory

@@ -16,7 +16,8 @@ public static class UserScopedKvasBackendExt
     public static KvasAccessor<UserAppSettings> UserAppSettings(this UserScopedKvasBackend kvas)
         => kvas.AccessorFor<UserAppSettings>();
 
-    public static KvasAccessor<UserTranscriptionEngineSettings> UserTranscriptionEngineSettings(this UserScopedKvasBackend kvas)
+    public static KvasAccessor<UserTranscriptionEngineSettings> UserTranscriptionEngineSettings(
+        this UserScopedKvasBackend kvas)
         => kvas.AccessorFor<UserTranscriptionEngineSettings>();
 
     public static KvasAccessor<UserListeningSettings> UserListeningSettings(this UserScopedKvasBackend kvas)
@@ -28,7 +29,8 @@ public static class UserScopedKvasBackendExt
     public static KvasAccessor<UserAvatarSettings> UserAvatarSettings(this UserScopedKvasBackend kvas)
         => kvas.AccessorFor<UserAvatarSettings>();
 
-    public static KvasAccessor<UserChatRecordingDetectedLanguage> UserChatRecordingDetectedLanguage(this UserScopedKvasBackend kvas)
+    public static KvasAccessor<UserChatRecordingDetectedLanguage> UserChatRecordingDetectedLanguage(
+        this UserScopedKvasBackend kvas)
         => kvas.AccessorFor<UserChatRecordingDetectedLanguage>();
 
     public static KvasAccessor<UserReactionSettings> UserReactionSettings(this UserScopedKvasBackend kvas)
