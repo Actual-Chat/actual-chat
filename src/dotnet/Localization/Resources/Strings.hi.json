@@ -229,6 +229,7 @@
   "WebHook_RecentDeliveries": "हाल की डिलीवरी",
   "WebHook_NoDeliveries": "अभी तक कोई डिलीवरी नहीं",
   "WebHook_DeliveryOutcome_Format": "{0} · {1} ms",
+  "WebHook_DeliveryRepeats_Format": "×{0}",
   "WebHook_Redeliver": "फिर से डिलीवर करें",
   "WebHook_RotateSecret": "सीक्रेट बदलें",
   "WebHook_RotateSecretConfirm": "मौजूदा सीक्रेट अगले 24 घंटों तक काम करता रहेगा, ताकि आप रिसीवर अपडेट कर सकें। जारी रखें?",

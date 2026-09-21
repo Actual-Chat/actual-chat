@@ -229,6 +229,7 @@
   "WebHook_RecentDeliveries": "Letzte Zustellungen",
   "WebHook_NoDeliveries": "Noch keine Zustellungen",
   "WebHook_DeliveryOutcome_Format": "{0} · {1} ms",
+  "WebHook_DeliveryRepeats_Format": "×{0}",
   "WebHook_Redeliver": "Erneut zustellen",
   "WebHook_RotateSecret": "Geheimnis erneuern",
   "WebHook_RotateSecretConfirm": "Das aktuelle Geheimnis funktioniert noch 24 Stunden, damit Sie den Empfänger aktualisieren können. Fortfahren?",

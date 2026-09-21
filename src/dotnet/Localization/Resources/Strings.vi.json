@@ -229,6 +229,7 @@
   "WebHook_RecentDeliveries": "Lượt gửi gần đây",
   "WebHook_NoDeliveries": "Chưa có lượt gửi nào",
   "WebHook_DeliveryOutcome_Format": "{0} · {1} ms",
+  "WebHook_DeliveryRepeats_Format": "×{0}",
   "WebHook_Redeliver": "Gửi lại",
   "WebHook_RotateSecret": "Đổi khóa bí mật",
   "WebHook_RotateSecretConfirm": "Khóa bí mật hiện tại vẫn hoạt động trong 24 giờ để bạn cập nhật bên nhận. Tiếp tục?",

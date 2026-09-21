@@ -229,6 +229,7 @@
   "WebHook_RecentDeliveries": "Ostatnie dostawy",
   "WebHook_NoDeliveries": "Brak dostaw",
   "WebHook_DeliveryOutcome_Format": "{0} · {1} ms",
+  "WebHook_DeliveryRepeats_Format": "×{0}",
   "WebHook_Redeliver": "Dostarcz ponownie",
   "WebHook_RotateSecret": "Zmień sekret",
   "WebHook_RotateSecretConfirm": "Obecny sekret będzie działać jeszcze 24 godziny, abyś mógł zaktualizować odbiorcę. Kontynuować?",

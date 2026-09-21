@@ -201,6 +201,9 @@ body.hoverable .web-hook-chat-picker .c-item:hover,
     @apply bg-banner-info;
     @apply text-banner-info;
 }
+.web-hook-delivery-tile .c-repeats {
+    @apply text-xs text-03;
+}
 .web-hook-delivery-tile .c-outcome {
     @apply font-mono text-xs;
 }

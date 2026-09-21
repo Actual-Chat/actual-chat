@@ -229,6 +229,7 @@
   "WebHook_RecentDeliveries": "近期投递记录",
   "WebHook_NoDeliveries": "暂无投递记录",
   "WebHook_DeliveryOutcome_Format": "{0} · {1} 毫秒",
+  "WebHook_DeliveryRepeats_Format": "×{0}",
   "WebHook_Redeliver": "重新投递",
   "WebHook_RotateSecret": "更换密钥",
   "WebHook_RotateSecretConfirm": "当前密钥在接下来 24 小时内仍然有效，以便你更新接收方。是否继续？",

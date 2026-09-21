@@ -281,6 +281,7 @@
   "WebHook_RecentDeliveries": "Последние доставки",
   "WebHook_NoDeliveries": "Aucune livraison pour l'instant",
   "WebHook_DeliveryOutcome_Format": "{0} · {1} 毫秒",
+  "WebHook_DeliveryRepeats_Format": "×{0}",
   "WebHook_Redeliver": "Поново испоручите",
   "WebHook_RotateSecret": "Gizli anahtarı yenileyin",
   "WebHook_RotateSecretConfirm": "Le secret actuel continue de fonctionner pendant 24 heures afin que vous puissiez mettre à jour le récepteur. Continuer ?",
