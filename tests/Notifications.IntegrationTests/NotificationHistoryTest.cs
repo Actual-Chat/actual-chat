@@ -71,6 +71,7 @@ public sealed class NotificationHistoryTest(AppHostFixture fixture, ITestOutputH
             var items = await Backend.ListHistory(alice.Id, new NotificationHistoryQuery(), CancellationToken.None);
             items.Should().ContainSingle(x => x.Kind == NotificationKind.Mention);
         }, WaitTimeout);
+        await Task.Delay(500);
         var all = await Backend.ListHistory(alice.Id, new NotificationHistoryQuery(), CancellationToken.None);
         all.Should().NotContain(x => x.Kind == NotificationKind.Message, "per-chat traffic is not addressed to anyone");
     }
@@ -98,5 +99,64 @@ public sealed class NotificationHistoryTest(AppHostFixture fixture, ITestOutputH
         var all = await Backend.ListHistory(alice.Id, new NotificationHistoryQuery(), CancellationToken.None);
         all.Should().ContainSingle(
             "the same notification with the same SentAt is one row however often it is delivered");
+    }
+
+    [Fact]
+    public async Task ListHistoryShouldFilterByKindAndWalkByCursor()
+    {
+        // arrange
+        var alice = await Tester.SignInAsUniqueAlice();
+        var notifications = AppHost.Services.GetRequiredService<INotifications>();
+        var chatId = ChatId.Parse("the-actual-one");
+        var authorId = AuthorId.New(chatId, 1);
+        var now = Clocks.SystemClock.Now;
+        var expectedKinds = new List<NotificationKind>();
+        for (var lid = 1; lid <= 5; lid++) {
+            var entryId = ChatEntryId.New(chatId, lid);
+            Notification n = lid % 2 == 0
+                ? ReactionNotification.New(alice.Id, entryId, authorId)
+                : MentionNotification.New(alice.Id, entryId, authorId);
+            n = n with { SentAt = now + TimeSpan.FromMilliseconds(lid), Title = "Chat", Text = $"#{lid}" };
+            expectedKinds.Add(n.Kind);
+            await Queues.Enqueue(new UserNotifiedEvent(n));
+        }
+        await TestExt.When(async () => {
+            var items = await notifications.ListHistory(Tester.Session,
+                new NotificationHistoryQuery(), CancellationToken.None);
+            items.Should().HaveCount(5);
+        }, WaitTimeout);
+
+        // act
+        var all = await notifications.ListHistory(Tester.Session,
+            new NotificationHistoryQuery(), CancellationToken.None);
+        var reactions = await notifications.ListHistory(Tester.Session,
+            new NotificationHistoryQuery { Kinds = ApiArray.New(NotificationKind.Reaction) }, CancellationToken.None);
+        var unlogged = await notifications.ListHistory(Tester.Session,
+            new NotificationHistoryQuery { Kinds = ApiArray.New(NotificationKind.Message) }, CancellationToken.None);
+        var page1 = await notifications.ListHistory(Tester.Session,
+            new NotificationHistoryQuery { Limit = 2 }, CancellationToken.None);
+        var page2 = await notifications.ListHistory(Tester.Session,
+            new NotificationHistoryQuery { Limit = 2, AfterSeq = page1[^1].Seq }, CancellationToken.None);
+        var page3 = await notifications.ListHistory(Tester.Session,
+            new NotificationHistoryQuery { Limit = 2, AfterSeq = page2[^1].Seq }, CancellationToken.None);
+        var newest = await notifications.ListHistory(Tester.Session,
+            new NotificationHistoryQuery { IsNewestFirst = true }, CancellationToken.None);
+        var olderThanNewest = await notifications.ListHistory(Tester.Session,
+            new NotificationHistoryQuery { IsNewestFirst = true, AfterSeq = newest[0].Seq }, CancellationToken.None);
+
+        // assert
+        all.Select(x => x.Text).Should().BeEquivalentTo(["#1", "#2", "#3", "#4", "#5"],
+            "all five notifications are logged, though insertion order can race with enqueue order "
+            + "since the queue processes one shard's events concurrently");
+        all.Select(x => x.Kind).Should().BeEquivalentTo(expectedKinds);
+        all.Select(x => x.Seq).Should().BeInAscendingOrder().And.OnlyHaveUniqueItems();
+        reactions.Should().HaveCount(2).And.OnlyContain(x => x.Kind == NotificationKind.Reaction);
+        unlogged.Should().BeEmpty("Message is never logged, so filtering on it matches nothing");
+        page1.Concat(page2).Concat(page3).Select(x => x.Seq).Should().Equal(all.Select(x => x.Seq),
+            "cursor pages tile the log without overlap or gaps");
+        page3.Should().ContainSingle();
+        newest.Select(x => x.Seq).Should().Equal(all.Select(x => x.Seq).Reverse());
+        olderThanNewest.Select(x => x.Seq).Should().Equal(newest.Skip(1).Select(x => x.Seq),
+            "with newest-first the cursor continues to older rows");
     }
 }

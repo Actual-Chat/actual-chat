@@ -187,12 +187,12 @@ public class NotificationsBackend(IServiceProvider services)
 
         var info = await GetUserNotificationInfo(userId, cancellationToken).ConfigureAwait(false);
         if (notification.SentAt == default) {
-            // Reuse an already-items notification's SentAt so a SentAt-less redelivery stays a
+            // Reuse an already-active notification's SentAt so a SentAt-less redelivery stays a
             // no-op (MergeWith treats an equal SentAt as a duplicate) instead of re-alerting; only a
             // genuinely first-seen notification is stamped Now. Stamped before the event below so
             // the history row's id (which embeds SentAt) is stable across redeliveries.
-            var items = info.Items.FirstOrDefault(n => n.Id == notification.Id);
-            notification = notification with { SentAt = items?.SentAt ?? Clocks.SystemClock.Now };
+            var existing = info.Items.FirstOrDefault(n => n.Id == notification.Id);
+            notification = notification with { SentAt = existing?.SentAt ?? Clocks.SystemClock.Now };
         }
 
         // A hook wants every notification, even one the recipient's own dormant/active-reader
