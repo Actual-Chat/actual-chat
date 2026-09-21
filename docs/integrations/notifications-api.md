@@ -21,15 +21,18 @@ Every notification of an *addressed* kind, at the moment it fires:
 | `reply` | Someone replies to your message |
 | `reaction` | Someone reacts to your message |
 | `attention` | Someone pings you or the whole chat ("notify members") |
-| `thread` | A thread is started on your message |
+| `thread` | A thread is started in a chat you follow |
 | `invitation` | You are added to a chat |
 | `conversation` | A voice conversation in a chat you follow starts, gets a title, or ends |
 | `incomingcall` | You are rung |
 
 `message` (a row per incoming message in every chat you are in) and
 `speechstarted` are chat traffic, not something addressed to you, and are never
-logged. Muted chats do not notify, so they do not log either; a chat in
-"important only" mode logs mentions but not replies.
+logged. `attention` and `incomingcall` are ringers (`NotificationHelper.GetImportance`)
+and log regardless of the chat's notification mode, muted included. Every other
+logged kind follows the chat's mode exactly as a push would: a muted chat logs
+none of them, and "important only" mode logs the Important kinds (`mention`,
+`invitation`) but not the Ordinary ones (`reaction`, `thread`, `conversation`).
 
 A row is what the notification looked like when it fired: the kind, the chat,
 the entry it anchors at, the author, and the title and text of the banner. It is
@@ -61,7 +64,7 @@ invalidate every cursor variant.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `kinds` | `string[]` | all | Any of the `kind` values above, case-insensitive; an unknown value is an error |
+| `kinds` | `string[]` | all | Any of the `kind` values above, case-insensitive; an unrecognized name, or a kind that exists but is never logged (`message`, `speechstarted`), is an error |
 | `afterSeq` | `long` | none | Cursor, see below |
 | `limit` | `int` | 64 | Capped at 256 |
 | `newestFirst` | `bool` | false | Newest first |
