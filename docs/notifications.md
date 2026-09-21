@@ -26,6 +26,7 @@ driven by the iOS app-icon badge never updating while backgrounded.
 | `FirebaseMessagingClient` | `Notifications.Service/FirebaseMessagingClient.cs` (`IFirebaseMessagingClient`) | Sends FCM pushes; every push carries `aps.badge`; silent-push path for dismissals. |
 | `MentionReminderFlow` | `Notifications.Service/Flows/MentionReminderFlow.cs` | Re-reminder for unread mentions. |
 | Persistence | `Notifications.Service/Db/DbUserNotifications.cs` | One row per user (`Data` blob = committed `UserNotificationInfo`). No Redis. |
+| History | `Notifications.Service/Db/DbNotificationHistoryItem.cs`, `NotificationHistoryPruner.cs` | Append-only per-user log of addressed notifications (`NotificationHistory` table), fed by `UserNotifiedEvent`, read by `INotifications.ListHistory` and the `list_notifications` MCP tool, pruned after 30 days. See [integrations/notifications-api.md](./integrations/notifications-api.md). |
 
 Data model (`src/dotnet/Api/Notifications/`): `Notification` is a MessagePack
 `[Union]` (one concrete record per `NotificationKind` — Message, Reply,
@@ -40,6 +41,14 @@ alone would leave the notification on the device with nothing scheduled to close
 it. Every removal appends to `PendingDismissals` in the same commit, and an entry
 is cleared only once its dismissal push has actually gone out, so a failed send
 is retried rather than lost.
+
+**History.** Removal is final for the active set but not for the record:
+`OnNotify` enqueues `UserNotifiedEvent` for every notification before the
+dormant and active-reader checks, and `NotificationsBackend.OnUserNotifiedEvent`
+appends the addressed kinds (`NotificationHistoryItem.IsLoggedKind`) to
+`NotificationHistory`. The row id embeds `SentAt`, which is why `OnNotify`
+stamps `SentAt` before the event goes out. `ListActive` is not a history and
+must not be read as one.
 
 **Throttling.** Hard vs. soft updates: the first/urgent notification for a key
 commits + pushes; similar low-urgency ones during the silence window accumulate
