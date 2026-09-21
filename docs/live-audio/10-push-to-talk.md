@@ -859,18 +859,19 @@ auto-arms the owner; other authors get `PttJoinBanner` (dismissal stored per
 chat in `PttJoinBannerUserSettings`, expiring with the epoch) or the Voice
 settings row, which is disabled while the chat's PTT is off.
 
-**Gating.** The PTT UI is admin-only preview surface, hidden behind
-`Features_EnableIncompleteUI` (which returns `false` for any non-admin account
-and otherwise reads `UserAppSettings.IsIncompleteUIEnabled`). `SettingsModal`
-shows the Push-to-Talk page only when `HostInfo.HostKind.IsMauiApp() && EnableIncompleteUI`;
-the right-panel toggle and the join banner check the same flag. There is no
-on-screen reply button — replies are triggered only through the native paths
-below.
+**Gating.** PTT is available to every user on every host. The only surface
+that is not universal is the Settings page: `SettingsModal` shows it in the
+MAUI apps, and on the web only to an admin on a `BaseUrlKind.Local` host, since
+its device sections (gestures, Lock Screen, practice, shake sensitivity) need a
+real accelerometer. The right-panel owner toggle, the join banner and the Voice
+settings row are unconditional. There is no on-screen reply button — replies
+are triggered only through the native paths below.
 
-The **runtime paths are deliberately ungated**: the server wake fan-out, the
-wake handlers, the gesture and headset triggers, and the heard-receipt path all
-key off the armed predicate alone. A chat armed while the flag was on keeps
-working if the flag is later turned off; only the UI for changing it goes away.
+On iOS the `com.apple.developer.push-to-talk` entitlement and the
+`push-to-talk` background mode are declared by both the dev and the prod app,
+and `IosPtt.Initialize` runs in both; the two halves must stay together, since
+an entitlement-less app that still declares the background mode is what App
+Store review guideline 2.5.4 targets.
 
 ## Constants
 

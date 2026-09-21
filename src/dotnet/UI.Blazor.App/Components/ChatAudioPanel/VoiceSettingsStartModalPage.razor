@@ -7,6 +7,13 @@
         : m.MustStreamVoice
             ? L.VoiceSettings_On
             : L.VoiceSettings_Off;
+    var pttCaption = m.PttEnabledAt is null
+        ? L.VoiceSettings_PttNotEnabled
+        : m.IsPtt
+            ? L.VoiceSettings_PttOn
+            : m.IsAtPttCapacity
+                ? L.VoiceSettings_PttAtCapacity_Format(UserPttSettings.MaxChatCount)
+                : L.VoiceSettings_Off;
 }
 
 <FormBlock Class="first last">
@@ -24,27 +31,17 @@
         </Right>
     </TileItem>
 
-    @if (m.ShowPtt) {
-        var pttCaption = m.PttEnabledAt is null
-            ? L.VoiceSettings_PttNotEnabled
-            : m.IsPtt
-                ? L.VoiceSettings_PttOn
-                : m.IsAtPttCapacity
-                    ? L.VoiceSettings_PttAtCapacity_Format(UserPttSettings.MaxChatCount)
-                    : L.VoiceSettings_Off;
-        <TileItem Click="@OnPttClick">
-            <Icon><i class="icon-push-to-talk text-2xl"></i></Icon>
-            <Content>@L.VoiceSettings_Ptt</Content>
-            <Caption>@pttCaption</Caption>
-            <Right>
-                <Toggle
-                    IsDisabled="@(m.PttEnabledAt is null || m.IsAtPttCapacity)"
-                    IsChecked="@m.IsPtt"
-                    IsCheckedChanged="@(_ => OnPttClick())"/>
-            </Right>
-        </TileItem>
-    }
-
+    <TileItem Click="@OnPttClick">
+        <Icon><i class="icon-push-to-talk text-2xl"></i></Icon>
+        <Content>@L.VoiceSettings_Ptt</Content>
+        <Caption>@pttCaption</Caption>
+        <Right>
+            <Toggle
+                IsDisabled="@(m.PttEnabledAt is null || m.IsAtPttCapacity)"
+                IsChecked="@m.IsPtt"
+                IsCheckedChanged="@(_ => OnPttClick())"/>
+        </Right>
+    </TileItem>
 </FormBlock>
 
 @code {
@@ -60,7 +57,7 @@
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<ComputedModel>.Options() {
-                InitialValue = new(false, false, false, false, null, false),
+                InitialValue = new(false, false, false, false, null),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -75,15 +72,12 @@
         var pttChatIds = await Hub.ChatAudioUI.GetConsentedPttChatIds(cancellationToken).ConfigureAwait(false);
         var isPtt = pttChatIds.Contains(chatId);
         var mustStreamVoice = settings.VoiceMode.HasVoice();
-        var isIncompleteUIEnabled = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
-        var showPtt = Ptt.IsUIVisible(Hub.HostInfo, isIncompleteUIEnabled);
         return new (
             mustStreamVoice,
             settings.CanChange,
             isPtt,
             !isPtt && pttChatIds.Count >= UserPttSettings.MaxChatCount,
-            pttEnabledAt,
-            showPtt);
+            pttEnabledAt);
     }
 
     private Task OnVoiceStreamingClick()
@@ -126,6 +120,5 @@
         bool CanChangeMustStreamVoice,
         bool IsPtt,
         bool IsAtPttCapacity,
-        Moment? PttEnabledAt,
-        bool ShowPtt);
+        Moment? PttEnabledAt);
 }
