@@ -29,7 +29,13 @@ public class AndroidAudioCapture(IServiceProvider services) : IAudioCapture
         // captureThread.Start() - an exception here (e.g. OperationCanceledException on a quick PTT
         // tap-and-release) must not leave an opened AudioRecord stranded with nothing to release it.
         var route = await ChatAudioUI.GetCarAudioRoute(cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("Capture: car route {Route}", route);
+        // VoiceCommunication is the handset-call source: in Mode.Normal with no speakerphone the
+        // HAL records the phone mic at near-ear gain, too quiet from a cradle. VoiceRecognition
+        // is the far-field source, and the one an HFP voice-recognition session is opened for.
+        var audioSource = route == CarAudioRoute.Default || route.UseCallLink
+            ? AudioSource.VoiceCommunication
+            : AudioSource.VoiceRecognition;
+        Log.LogInformation("Capture: car route {Route}, source {AudioSource}", route, audioSource);
 
         // We'll read at least VAD frame size per push
         var frameSamples = Constants.Audio.OpusFrameLength; // 20 ms at 16 kHz = 320 samples
@@ -46,7 +52,7 @@ public class AndroidAudioCapture(IServiceProvider services) : IAudioCapture
         AudioRecord? recorder = null;
         try {
             recorder = new AudioRecord(
-                /* audioSource: */ AudioSource.VoiceCommunication,
+                /* audioSource: */ audioSource,
                 /* sampleRateInHz: */ sampleRate,
                 /* channelConfig: */ channelConfig,
                 /* audioFormat: */ encoding,
