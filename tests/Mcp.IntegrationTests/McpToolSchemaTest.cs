@@ -23,6 +23,7 @@ public class McpToolSchemaTest(McpCollection.AppHostFixture fixture, ITestOutput
         "get_me", "list_avatars", "create_avatar", "update_avatar", "set_default_avatar",
         "list_conversations", "get_conversation",
         "search_messages", "search_contacts",
+        "list_notifications",
     ];
 
     [Fact]
