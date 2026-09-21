@@ -1,0 +1,9 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="playback-running-border@(IsPlaying ? "" : " paused")" aria-hidden="true">
+    <div class="c-spinner"></div>
+</div>
+
+@code {
+    [Parameter] public bool IsPlaying { get; set; }
+}

@@ -33,6 +33,7 @@ document.addEventListener('pointercancel', endScrub, true);
 export class AudioAttachmentPlayer {
     private readonly audio: HTMLAudioElement;
     private disposed = false;
+    private rate = 1;
 
     static create(blazorRef: DotNet.DotNetObject): AudioAttachmentPlayer {
         return new AudioAttachmentPlayer(blazorRef);
@@ -70,6 +71,7 @@ export class AudioAttachmentPlayer {
         if (this.audio.src !== url)
             this.audio.src = url;
         this.audio.currentTime = 0;
+        this.audio.playbackRate = this.rate;
         try {
             await this.audio.play();
         }
@@ -106,6 +108,14 @@ export class AudioAttachmentPlayer {
             return;
 
         this.audio.currentTime = positionSec;
+    }
+
+    public setSpeed(rate: number): void {
+        if (!isFinite(rate) || rate <= 0)
+            return;
+
+        this.rate = rate;
+        this.audio.playbackRate = rate;
     }
 
     // Private methods

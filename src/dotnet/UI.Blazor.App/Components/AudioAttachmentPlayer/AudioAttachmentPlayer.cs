@@ -18,6 +18,7 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
     private DotNetObjectReference<AudioAttachmentPlayer>? _blazorRef;
     private Task<IJSObjectReference>? _jsRefTask;
     private volatile bool _isDisposed;
+    private double _speed = 1.0;
     private ImmutableHashSet<ChatId> _listeningChatsBeforeAudio = ImmutableHashSet<ChatId>.Empty;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
@@ -78,6 +79,7 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
             FileName = fileName,
             IsLoading = true,
             IsPlaying = true,
+            Speed = _speed,
         };
         try {
             ChatAudioUI.StopReplay();
@@ -154,6 +156,24 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
         if (current.Duration is { } d && target > d)
             target = d;
         return Seek(target);
+    }
+
+    public async ValueTask SetSpeed(double speed)
+    {
+        if (_isDisposed)
+            return;
+
+        _speed = speed;
+        var current = _state.Value;
+        if (current is not null)
+            _state.Value = current with { Speed = speed };
+
+        var jsRef = TryGetJSRef();
+        if (jsRef is null)
+            return;
+
+        try { await jsRef.InvokeVoidAsync("setSpeed", speed).ConfigureAwait(true); }
+        catch (ObjectDisposedException) { }
     }
 
     // JS callbacks
@@ -319,4 +339,5 @@ public sealed record PlaybackState
     public TimeSpan? Duration { get; init; }
     public bool IsPlaying { get; init; }
     public bool IsLoading { get; init; }
+    public double Speed { get; init; } = 1.0;
 }

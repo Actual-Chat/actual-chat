@@ -8,50 +8,51 @@
     var fraction = m?.Duration is { } dur && dur.TotalSeconds > 0
         ? Math.Clamp(m.Position.TotalSeconds / dur.TotalSeconds, 0, 1)
         : 0;
+    var speed = m?.Speed ?? 1.0;
 }
 
 @if (m is not null) {
 <div class="audio-attachment-subheader">
-    <div class="c-icon">
-        <i class="icon-note text-xl"></i>
-    </div>
-    <div class="c-info">
-        <div class="c-title"><span class="c-title-inner">@m?.FileName</span></div>
-        <div class="c-time">@positionLabel / @durationLabel</div>
-    </div>
-    <div class="c-playback">
-        @if (ScreenSize.IsWide()) {
-            <ButtonRound Tooltip="@L.AudioPlayer_Backward" Click="@OnBackward" Class="btn-xs btn-transparent hover-primary-icon">
-                <i class="icon-media-backward-10 text-xl"></i>
-            </ButtonRound>
-        }
+    <PlaybackRunningBorder IsPlaying="@m.IsPlaying"/>
+    <div class="c-row-main">
         <ButtonRound Tooltip="@(m?.IsPlaying == true ? L.Common_Pause : L.MessageMenu_Play)"
                      Click="@OnToggle"
-                     Class="btn-xs btn-transparent btn-primary">
-            <i class="@iconCls text-2xl"></i>
+                     Class="c-play-btn btn-xs">
+            <i class="@iconCls text-xl"></i>
         </ButtonRound>
-        @if (ScreenSize.IsWide()) {
-            <ButtonRound Tooltip="@L.AudioPlayer_Forward" Click="@OnForward" Class="btn-xs btn-transparent hover-primary-icon">
-                <i class="icon-media-forward-10 text-xl"></i>
-            </ButtonRound>
-        }
+        <div class="c-info">
+            <div class="c-title"><span class="c-title-inner">@m?.FileName</span></div>
+        </div>
+        <div class="c-actions">
+            <PlaybackSpeedButton Speed="@speed" Menu="@(MenuRef.New<AudioAttachmentSpeedMenu>())"/>
+            @if (ScreenSize.IsWide()) {
+                <HeaderButton Tooltip="@L.AudioPlayer_Backward" Click="@OnBackward">
+                    <i class="icon-media-backward-10"></i>
+                </HeaderButton>
+                <HeaderButton Tooltip="@L.AudioPlayer_Forward" Click="@OnForward">
+                    <i class="icon-media-forward-10"></i>
+                </HeaderButton>
+            }
+            <HeaderButton Click="@OnStop">
+                <i class="icon-close-fill text-2xl"></i>
+            </HeaderButton>
+        </div>
     </div>
-    <div class="c-actions">
-        <HeaderButton Click="@OnStop">
-            <i class="icon-close-fill text-2xl"></i>
-        </HeaderButton>
-    </div>
-    <div class="c-progress" style="--progress: @fraction.ToString("0.######")">
-        <div class="c-progress-track"></div>
-        <div class="c-progress-fill"></div>
-        <div class="c-progress-thumb"></div>
-        <input type="range"
-               class="c-progress-input"
-               min="0" max="1" step="0.001"
-               value="@fraction.ToString("0.######")"
-               disabled="@(m?.Duration is null)"
-               aria-label="@L.AudioPlayer_Seek"
-               @oninput="OnSeek" />
+    <div class="c-row-scrubber">
+        <span class="c-elapsed">@positionLabel</span>
+        <div class="c-progress" style="--progress: @fraction.ToString("0.######")">
+            <div class="c-progress-track"></div>
+            <div class="c-progress-fill"></div>
+            <div class="c-progress-thumb"></div>
+            <input type="range"
+                   class="c-progress-input"
+                   min="0" max="1" step="0.001"
+                   value="@fraction.ToString("0.######")"
+                   disabled="@(m?.Duration is null)"
+                   aria-label="@L.AudioPlayer_Seek"
+                   @oninput="OnSeek" />
+        </div>
+        <span class="c-total">@durationLabel</span>
     </div>
 </div>
 }
@@ -83,6 +84,7 @@
             IsPlaying = state.IsPlaying,
             Position = state.Position,
             Duration = state.Duration,
+            Speed = state.Speed,
         };
     }
 
@@ -130,5 +132,6 @@
         public bool IsPlaying { get; init; }
         public TimeSpan Position { get; init; }
         public TimeSpan? Duration { get; init; }
+        public double Speed { get; init; } = 1.0;
     }
 }

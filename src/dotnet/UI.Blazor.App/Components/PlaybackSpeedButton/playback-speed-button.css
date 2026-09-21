@@ -1,0 +1,11 @@
+.playback-speed-btn {
+    @apply flex-none;
+    @apply min-w-14 max-w-14;
+    @apply p-0;
+    @apply rounded-lg border border-replay;
+    @apply bg-transparent;
+}
+.playback-speed-btn .c-speed-label {
+    @apply px-1.5 py-0.5;
+    @apply text-caption-500 whitespace-nowrap;
+}

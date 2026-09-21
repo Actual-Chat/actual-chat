@@ -1,0 +1,31 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits Menu<AppUIHub>
+
+@{
+    var currentSpeed = Player.State.Value?.Speed ?? 1.0;
+}
+
+<div class="replay-speed-menu">
+    <div>@L.Replay_SpeedMenuTitle</div>
+    <Divider/>
+    @foreach (var speed in Speeds) {
+        var isSelected = Math.Abs(currentSpeed - speed) < 0.01;
+        <MenuEntry
+            Text="@FormatSpeed(speed)"
+            Class="@(isSelected ? "selected" : "")"
+            Click="@(() => OnSpeedSelected(speed))">
+        </MenuEntry>
+    }
+</div>
+
+@code {
+    private static readonly double[] Speeds = [1.0, 1.25, 1.33, 1.5, 1.75, 2.0];
+
+    private AudioAttachmentPlayer Player => Hub.AudioAttachmentPlayer;
+
+    private static string FormatSpeed(double speed)
+        => Math.Abs(speed - 1.0) < 0.01 ? "1x" : $"{speed:0.##}x";
+
+    private Task OnSpeedSelected(double speed)
+        => Player.SetSpeed(speed).AsTask();
+}

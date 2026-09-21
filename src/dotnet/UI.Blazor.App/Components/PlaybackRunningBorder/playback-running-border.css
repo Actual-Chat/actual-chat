@@ -1,0 +1,41 @@
+.playback-running-border {
+    @apply absolute inset-0 z-0;
+    @apply p-0.5;
+    @apply rounded-lg;
+    @apply overflow-hidden;
+    @apply pointer-events-none;
+    @apply opacity-30;
+    -webkit-mask: linear-gradient(white 0 0) content-box, linear-gradient(white 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(white 0 0) content-box, linear-gradient(white 0 0);
+    mask-composite: exclude;
+    contain: layout paint style;
+}
+.playback-running-border .c-spinner {
+    @apply absolute top-1/2 left-1/2;
+    @apply aspect-square;
+    width: 150%;
+    background: conic-gradient(
+        from 0deg,
+        var(--recorder-off-bottom),
+        var(--recorder-off-middle),
+        var(--recorder-off-top),
+        var(--recorder-off-middle),
+        var(--recorder-off-bottom));
+    transform: translate(-50%, -50%) rotate(0deg);
+    animation: playback-border-spin 6s linear infinite;
+    will-change: transform;
+}
+.playback-running-border.paused .c-spinner {
+    animation-play-state: paused;
+}
+@keyframes playback-border-spin {
+    to {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .playback-running-border .c-spinner {
+        animation: none;
+    }
+}
