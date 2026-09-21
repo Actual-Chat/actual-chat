@@ -40,6 +40,7 @@ public sealed class PermissionStepModel(IServiceProvider services)
 
 public sealed class PermissionRow(PermissionsUI permissionsUI, PermissionDef definition)
 {
+    public PermissionKind Kind { get; } = definition.Kind;
     public string Title { get; } = definition.Title;
     public string Rationale { get; } = definition.Rationale;
     public string Icon { get; } = definition.Icon;
