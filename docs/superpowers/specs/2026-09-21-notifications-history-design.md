@@ -72,9 +72,12 @@ on `INotificationsBackend`, implemented in `NotificationsBackend`. It sits next 
   message in every subscribed chat) and `SpeechStarted` are skipped. The set is
   a static predicate, `NotificationHistory.IsLogged(NotificationKind)`, so the
   backend, the read query default and the docs agree.
-- Pre-suppression by design: the event fires before the dormant, active-reader
-  and mute checks, so a mention in a muted chat is still logged. That matches
-  what the web hook sends.
+- Pre-suppression by design: the event fires before the dormant and
+  active-reader checks and before the active-set mode re-check, so what is
+  logged is what the web hook sends. A chat's mute setting applies earlier, at
+  fan-out (`ListSubscribedUserIds` / the mention filter with `Important`
+  importance), so a mention in a muted chat never becomes an event and is not
+  logged either.
 - Insert uses an operation DbContext, `Operation.MustStore(false)`, and relies
   on `ConflictStrategy.DoNothing` for the idempotent redelivery case.
 - `NotificationsBackend.OnNotify` today enqueues the event before stamping
