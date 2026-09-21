@@ -269,7 +269,6 @@
     private bool _lastCollapsed;
     private bool _lastHidden;
     private bool _lastExpanded;
-    private bool _areWindowButtonsInset;
     private VideoPanelLayoutCalculator? _layoutCalculator;
     private HistoryStepRef? _expandStepRef;
 
@@ -280,7 +279,6 @@
     private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
     private IAuthors Authors => Hub.Authors;
     private HistoryStepper HistoryStepper => field ??= Hub.Services.GetRequiredService<HistoryStepper>();
-    private INativeTitlebar? NativeTitlebar => field ??= Hub.Services.GetService<INativeTitlebar>();
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private ElementReference Ref { get; set; }
@@ -294,7 +292,6 @@
 
     public override async ValueTask DisposeAsync() {
         CloseExpandStep();
-        SetWindowButtonsInset(false);
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
@@ -349,9 +346,6 @@
             if (JSRef is not null)
                 await JSRef.InvokeVoidAsync(isExpanded ? "expand" : "collapse");
         }
-        // Only the wide expanded panel runs its rounded corner under the window buttons; the narrow one
-        // starts below the titlebar
-        SetWindowButtonsInset(isExpanded && !ScreenSize.IsNarrow());
     }
 
     [JSInvokable]
@@ -413,14 +407,6 @@
 
         _expandStepRef = null;
         stepRef.Close();
-    }
-
-    private void SetWindowButtonsInset(bool mustInset) {
-        if (mustInset == _areWindowButtonsInset)
-            return;
-
-        _areWindowButtonsInset = mustInset;
-        NativeTitlebar?.SetInsetWindowButtons(mustInset);
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
