@@ -1,3 +1,4 @@
+using ActualChat.Streaming.Diagnostics;
 using ActualChat.Comparison;
 using ActualChat.Flows;
 using ActualChat.Live;
@@ -1673,6 +1674,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                     await Commander.Call(materialize, true, CancellationToken.None).ConfigureAwait(false);
                     await WakeCallTailFlow(conversation.Id).ConfigureAwait(false);
                 }
+                await EnqueueSessionEnded(state).ConfigureAwait(false);
             }
             finally {
                 // Having won the claim, this is the session's only closer: nothing retries a torn-down
@@ -1699,7 +1701,41 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             await Commander
                 .Call(new ConversationBackend_Materialize(state.ToMaterializedConversation()), true, cancellationToken)
                 .ConfigureAwait(false);
+        await EnqueueSessionEnded(state).ConfigureAwait(false);
         await Close(state.ChatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task EnqueueSessionEnded(LiveSessionState state)
+    {
+        // Best-effort, like SpeechStartedEvent: a lost event costs the participants one counted
+        // session, never the close. Runs before Close, which drops the participant map it reads.
+        if (state.SessionStartedAt is not { } startedAt)
+            return;
+
+        try {
+            var participants = await SafeGetHashMap(state.ChatId).ConfigureAwait(false);
+            var members = new Dictionary<AuthorId, Moment>();
+            foreach (var authorId in state.AuthorIds)
+                members[authorId] = startedAt;
+            foreach (var (authorIdValue, info) in participants) {
+                if (info is null || !AuthorId.TryParse(authorIdValue, out var authorId))
+                    continue;
+
+                var joinedAt = info.JoinedAt == default ? info.RegisteredAt : info.JoinedAt;
+                members[authorId] = members.TryGetValue(authorId, out var known) && known < joinedAt ? known : joinedAt;
+            }
+            var ended = new LiveSessionEndedEvent(
+                state.ChatId,
+                startedAt,
+                Clocks.SystemClock.Now,
+                state.Kind,
+                members.Select(kv => new LiveSessionEndedMember(kv.Key, kv.Value)).ToApiArray());
+            await Services.Queues().Enqueue(ended, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            StreamingMeters.LiveSessionEndedDropped.Add(1);
+            Log.LogError(e, "Failed to enqueue LiveSessionEndedEvent for chat '{ChatId}'", state.ChatId);
+        }
     }
 
     private async Task<long?> WriteCallEntry(

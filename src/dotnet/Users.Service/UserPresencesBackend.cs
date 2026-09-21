@@ -38,6 +38,8 @@ public class UserPresencesBackend(IServiceProvider services)
         var dbUserPresence = await dbContext.UserPresences.ForUpdate()
             .FirstOrDefaultAsync(x => x.UserId == command.UserId.Value, cancellationToken)
             .ConfigureAwait(false);
+        var isNewActiveDay = isActive
+            && (dbUserPresence == null || UsageDay.DayOf(dbUserPresence.CheckInAt) < UsageDay.DayOf(now));
         if (dbUserPresence == null) {
             dbUserPresence = new DbUserPresence {
                 UserId = userId.Value,
@@ -65,5 +67,10 @@ public class UserPresencesBackend(IServiceProvider services)
             return Task.CompletedTask;
         });
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        if (isNewActiveDay) {
+            var record = new UsageBackend_Record(userId, ApiArray.New(UsageEventSource.ActiveDay(now)));
+            await Commander.Call(record, true, cancellationToken).ConfigureAwait(false);
+        }
     }
 }
