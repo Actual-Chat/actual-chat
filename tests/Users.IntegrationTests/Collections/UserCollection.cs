@@ -16,10 +16,12 @@ public class AppHostFixture(IMessageSink messageSink)
                 (x => x.PasskeyOrigins, "https://localhost"));
             // Every review-prompt threshold but the live-session one is lowered, so UsageTest can reach eligibility
             var reviewPrompt = $"{nameof(UsersSettings)}:{nameof(UsersSettings.ReviewPrompt)}";
+            var usage = $"{nameof(UsersSettings)}:{nameof(UsersSettings.Usage)}";
             cfg.AddInMemoryCollection(
                 ($"{reviewPrompt}:{nameof(ReviewPromptSettings.MinAccountAge)}", "00:00:00"),
                 ($"{reviewPrompt}:{nameof(ReviewPromptSettings.MinActiveDays)}", "1"),
-                ($"{reviewPrompt}:{nameof(ReviewPromptSettings.MinSpeechDuration)}", "00:00:00"));
+                ($"{reviewPrompt}:{nameof(ReviewPromptSettings.MinSpeechDuration)}", "00:00:00"),
+                ($"{usage}:{nameof(UsageSettings.MinLiveSessionParticipation)}", "00:00:00"));
         },
         ConfigureServices = (_, services) => {
             var handler = new AppleTokenEndpointHandlerMock();

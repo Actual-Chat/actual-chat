@@ -37,6 +37,7 @@ public sealed class UsersSettings
     public IReadOnlyDictionary<string, int> PredefinedEmailTotps { get; set; } = ImmutableDictionary<string, int>.Empty;
     public AppUpdateSettings AppUpdates { get; set; } = new();
     public ReviewPromptSettings ReviewPrompt { get; set; } = new();
+    public UsageSettings Usage { get; set; } = new();
     // A kill switch: MauiAuthController.Start assumes every browser component the app can reach
     // reports Sec-Fetch-Site: none. Turn this off if some platform turns out not to.
     public bool IsMauiAuthFetchSiteCheckEnabled { get; set; } = true;
@@ -81,6 +82,15 @@ public sealed class UsersSettings
 
         return origins;
     }
+}
+
+/// <summary>
+/// How usage events are derived from what the other services report.
+/// </summary>
+public sealed class UsageSettings
+{
+    // A live-session member who stayed shorter than this is not counted as having taken part
+    public TimeSpan MinLiveSessionParticipation { get; set; } = UsageEventSource.DefaultMinLiveSessionParticipation;
 }
 
 /// <summary>
