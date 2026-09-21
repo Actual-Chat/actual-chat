@@ -47,7 +47,9 @@ public partial class MigrationFlow : Flow<Unit>, IMasterFlow
         if (dependsOn is { Length: > 0 }) {
             foreach (var dependencyType in dependsOn) {
                 var dependencyId = Hub.NewId(dependencyType, "");
-                var dependencyData = await Hub.Backend.TryGetData(dependencyId, cancellationToken).ConfigureAwait(false);
+                var dependencyData = await Hub.Backend
+                    .TryGetData(dependencyId, cancellationToken)
+                    .ConfigureAwait(false);
                 if (dependencyData is not { IsCompleted: true })
                     throw new DependencyNotMetException(typeof(TFlow), dependencyType);
             }
