@@ -62,9 +62,6 @@
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
     private IRecordingPermissionRequester RecordingPermissionRequester
         => field ??= Services.GetRequiredService<IRecordingPermissionRequester>();
-    private INotificationsPermission NotificationsPermission
-        => field ??= Services.GetRequiredService<INotificationsPermission>();
-    private SystemSettingsUI SystemSettingsUI => field ??= Services.GetRequiredService<SystemSettingsUI>();
 
     public override bool IsCompleted => OnboardingUI.LocalSettings.Value.IsPermissionsStepCompleted;
 
@@ -87,15 +84,9 @@
         _isRequesting = true;
         StateHasChanged();
         try {
-            // The OS won't prompt for a denied permission again, only its settings can grant it now
-            if (await IsNotificationsDenied(row)) {
-                await SystemSettingsUI.Open(SystemSettingsPane.Notifications);
-                return;
-            }
-
             row.IsGranted = await row.Request();
-            // Android refuses a blocked microphone without a prompt, and reports it just like
-            // a never-requested one, so a refusal is the only signal there
+            // A denied microphone is refused without a prompt, and on Android it can't be told apart
+            // from a never-requested one up front; notifications open their settings on their own
             if (!row.IsGranted && row.Kind == PermissionKind.Microphone && RecordingPermissionRequester.CanRequest)
                 await RecordingPermissionRequester.TryRequest();
         }
@@ -104,12 +95,6 @@
             StateHasChanged();
         }
     }
-
-    private async Task<bool> IsNotificationsDenied(PermissionRow row)
-        // Android reports a never-requested notifications permission as denied too
-        => row.Kind == PermissionKind.Notifications
-            && HostInfo.AppKind != AppKind.Android
-            && await NotificationsPermission.IsGranted() == false;
 
     private Task OnDocumentClick(string tabId)
         => ModalUI.Show(new DocumentsModal.Model(tabId));
