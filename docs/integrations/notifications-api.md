@@ -26,13 +26,18 @@ Every notification of an *addressed* kind, at the moment it fires:
 | `conversation` | A voice conversation in a chat you follow starts, gets a title, or ends |
 | `incomingcall` | You are rung |
 
+`reply` and `invitation` are defined `kind`s and valid `kinds` filter values, but
+no current server code path emits either one, so neither will appear in history
+until the server starts producing them.
+
 `message` (a row per incoming message in every chat you are in) and
 `speechstarted` are chat traffic, not something addressed to you, and are never
 logged. `attention` and `incomingcall` are ringers (`NotificationHelper.GetImportance`)
 and log regardless of the chat's notification mode, muted included. Every other
 logged kind follows the chat's mode exactly as a push would: a muted chat logs
-none of them, and "important only" mode logs the Important kinds (`mention`,
-`invitation`) but not the Ordinary ones (`reaction`, `thread`, `conversation`).
+none of them, and "important only" mode logs the Important kinds (`mention` is
+the only one currently live) but not the Ordinary ones (`reaction`, `thread`,
+`conversation`).
 
 A row is what the notification looked like when it fired: the kind, the chat,
 the entry it anchors at, the author, and the title and text of the banner. It is
