@@ -48,6 +48,16 @@ public class NotificationsService(IServiceProvider services) : INotifications
         return notification is not null;
     }
 
+    public virtual async Task<ApiArray<NotificationHistoryItem>> ListHistory(
+        Session session, NotificationHistoryQuery query, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull())
+            return ApiArray<NotificationHistoryItem>.Empty;
+
+        return await Backend.ListHistory(account.Id, query, cancellationToken).ConfigureAwait(false);
+    }
+
     // [CommandHandler]
     public virtual async Task OnDismiss(
         Notifications_Dismiss command, CancellationToken cancellationToken)

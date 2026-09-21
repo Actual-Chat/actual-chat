@@ -10,6 +10,10 @@ public interface INotifications : IComputeService
     [ComputeMethod(MinCacheDuration = 10)]
     Task<bool> HasNotifiedMentionedMembers(
         Session session, ChatEntryId chatEntryId, CancellationToken cancellationToken);
+    // Not a compute method on purpose: every logged notification would otherwise invalidate every
+    // cursor variant, and nothing reactive reads it - agents poll it with a cursor.
+    Task<ApiArray<NotificationHistoryItem>> ListHistory(
+        Session session, NotificationHistoryQuery query, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task OnDismiss(Notifications_Dismiss command, CancellationToken cancellationToken);

@@ -140,6 +140,10 @@ public class NotificationsBackend(IServiceProvider services)
         };
     }
 
+    public virtual Task<ApiArray<NotificationHistoryItem>> ListHistory(
+        UserId userId, NotificationHistoryQuery query, CancellationToken cancellationToken)
+        => Task.FromResult(ApiArray<NotificationHistoryItem>.Empty);
+
     // [CommandHandler]
     public virtual async Task OnNotify(
         NotificationsBackend_Notify command,
@@ -836,6 +840,10 @@ public class NotificationsBackend(IServiceProvider services)
         var command = new NotificationsBackend_RemoveDevices(devices.Select(c => c.DeviceId).ToArray());
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
+
+    // [EventHandler]
+    public virtual Task OnUserNotifiedEvent(UserNotifiedEvent eventCommand, CancellationToken cancellationToken)
+        => Task.CompletedTask;
 
     [EventHandler]
     public virtual async Task OnSpeechStartedEvent(SpeechStartedEvent eventCommand, CancellationToken cancellationToken)
