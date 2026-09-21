@@ -15,6 +15,7 @@ public class AppLocalizationTest
     // Strings.*.json is formatted by string.Format ({0}), Messages.*.json by
     // MessageIndex.Format ({field}) - both forms must survive translation.
     private static readonly Regex PlaceholderRe = new(@"\{(?:\d+|[A-Za-z_]\w*)\}");
+    private static readonly Regex HtmlEntityRe = new(@"&(?:[A-Za-z]+|#\d+|#x[0-9A-Fa-f]+);");
 
     [Theory]
     [InlineData(Strings)]
@@ -116,6 +117,25 @@ public class AppLocalizationTest
         missing.Should().BeEmpty(
             "every supported UI language must ship a '{0}' resource",
             StringCatalogs.ResourceName(kind, "<subtag>"));
+    }
+
+    [Theory]
+    [InlineData(Strings)]
+    [InlineData(Messages)]
+    public void NoValueShouldContainHtmlEntity(StringCatalogs.Kind kind)
+    {
+        // Razor HTML-encodes every catalog value, so "&nbsp;" renders as those six characters.
+
+        // act
+        var errors = ShippedLanguages(kind)
+            .SelectMany(l => Load(l, kind)!
+                .Where(kv => HtmlEntityRe.IsMatch(kv.Value))
+                .Select(kv => $"'{l.IsoCode}.{kv.Key}': {kv.Value}"))
+            .ToList();
+
+        // assert
+        errors.Should().BeEmpty(
+            "a value must use the character itself, not an HTML entity:\n{0}", string.Join("\n", errors));
     }
 
     [Fact]
