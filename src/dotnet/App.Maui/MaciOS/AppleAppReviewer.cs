@@ -1,12 +1,22 @@
 using ActualChat.UI.Blazor.Services;
+using Foundation;
 using StoreKit;
 
 namespace ActualChat.App.Maui;
 
 public sealed class AppleAppReviewer : IAppReviewer
 {
+    // StoreKit denies the prompt for every TestFlight build (itunesstored: "isBeta: YES ...
+    // Review request denied") and never tells the app; the sandbox receipt is what marks one.
+#pragma warning disable CA1422
+    private static bool IsBetaBuild
+        => NSBundle.MainBundle.AppStoreReceiptUrl?.LastPathComponent == "sandboxReceipt";
+#pragma warning restore CA1422
+
     public Task<AppReviewOutcome> RequestReview(CancellationToken cancellationToken)
         => MainThread.InvokeOnMainThreadAsync(() => {
+            if (IsBetaBuild)
+                return AppReviewOutcome.Failed;
             if (WindowStateManager.Default.GetCurrentUIWindow()?.WindowScene is not { } windowScene)
                 return AppReviewOutcome.Failed;
 
