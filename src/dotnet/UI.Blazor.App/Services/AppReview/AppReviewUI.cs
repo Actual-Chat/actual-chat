@@ -22,6 +22,7 @@ public sealed class AppReviewUI(UIHub hub) : UIServiceBase<UIHub>(hub)
         if (ReviewUrl is not { } reviewUrl)
             return AppReviewOutcome.Failed;
 
+        Log.LogInformation("Native review unavailable, opening the store link instead");
         await Hub.ExternalUrlOpener.Open(reviewUrl).ConfigureAwait(false);
         return AppReviewOutcome.Requested;
     }
