@@ -44,10 +44,11 @@
 
 @code {
     private static readonly CarAudioMode[] Modes =
-        [CarAudioMode.Car, CarAudioMode.CarSpeakers, CarAudioMode.Phone];
+        [CarAudioMode.Car, CarAudioMode.CarAssistant, CarAudioMode.CarSpeakers, CarAudioMode.Phone];
 
     private FormModel _formModel = null!;
 
+    private ICarConnection CarConnection => field ??= Hub.Services.GetRequiredService<ICarConnection>();
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     protected override void OnInitialized() {
@@ -69,6 +70,14 @@
 
     private async Task OnModeChanged(CarAudioMode mode) {
         Log.LogInformation("CarAudioSettings: Mode -> {Mode}", mode);
+        if (mode == CarAudioMode.CarAssistant) {
+            var isGranted = await CarConnection.RequestAssistantLinkPermission(CancellationToken.None);
+            if (!isGranted) {
+                ToastUI.Show(L.CarAudio_AssistantPermissionDenied, "icon-alert-circle", ToastDismissDelay.Long);
+                await State.Recompute(); // Puts the radio back on the stored mode
+                return;
+            }
+        }
         await UserSettingsUI.UserCarAudioSettings().Update(x => x.WithCarAudioMode(mode), CancellationToken.None);
         await State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
     }
@@ -84,6 +93,7 @@
 
     private string ModeTitle(CarAudioMode mode)
         => mode switch {
+            CarAudioMode.CarAssistant => L.CarAudio_CarAssistant,
             CarAudioMode.CarSpeakers => L.CarAudio_CarSpeakers,
             CarAudioMode.Phone => L.CarAudio_Phone,
             _ => L.CarAudio_Car,
@@ -91,6 +101,7 @@
 
     private string ModeCaption(CarAudioMode mode)
         => mode switch {
+            CarAudioMode.CarAssistant => L.CarAudio_CarAssistantCaption,
             CarAudioMode.CarSpeakers => L.CarAudio_CarSpeakersCaption,
             CarAudioMode.Phone => L.CarAudio_PhoneCaption,
             _ => L.CarAudio_CarCaption,

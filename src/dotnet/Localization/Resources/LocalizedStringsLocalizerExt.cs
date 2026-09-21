@@ -110,6 +110,9 @@ public static class LocalizedStringsLocalizerExt
         public string CarAudio_Mode => l["CarAudio_Mode"].Value;
         public string CarAudio_Car => l["CarAudio_Car"].Value;
         public string CarAudio_CarCaption => l["CarAudio_CarCaption"].Value;
+        public string CarAudio_CarAssistant => l["CarAudio_CarAssistant"].Value;
+        public string CarAudio_CarAssistantCaption => l["CarAudio_CarAssistantCaption"].Value;
+        public string CarAudio_AssistantPermissionDenied => l["CarAudio_AssistantPermissionDenied"].Value;
         public string CarAudio_CarSpeakers => l["CarAudio_CarSpeakers"].Value;
         public string CarAudio_CarSpeakersCaption => l["CarAudio_CarSpeakersCaption"].Value;
         public string CarAudio_Phone => l["CarAudio_Phone"].Value;

@@ -96,6 +96,7 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
             mode, _handle, carAudioRoute, kind);
         var success = await Task.Run(() => kind switch {
                 FocusRequestKind.Call => _focusHelper.RequestFocusForCall(true),
+                FocusRequestKind.AssistantLink => _focusHelper.RequestFocusForAssistantLink(),
                 FocusRequestKind.ProjectedMedia => _focusHelper.RequestFocusForProjectedMedia(),
                 FocusRequestKind.Playback => _focusHelper.RequestFocusForPlayback(),
                 FocusRequestKind.Listening => _focusHelper.RequestFocusForListening(),
@@ -135,6 +136,7 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
         var isProjecting = route != CarAudioRoute.Default;
         return mode switch {
             AudioFocusMode.Tune => FocusRequestKind.Notification,
+            _ when route.UseAssistantLink => FocusRequestKind.AssistantLink,
             _ when route.UseCallLink => FocusRequestKind.Call,
             AudioFocusMode.Recording when isProjecting => FocusRequestKind.ProjectedMedia,
             AudioFocusMode.Listening when isProjecting => FocusRequestKind.ProjectedMedia,
@@ -216,6 +218,7 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     private enum FocusRequestKind
     {
         Call,
+        AssistantLink,
         ProjectedMedia,
         Playback,
         Listening,

@@ -86,14 +86,14 @@ internal sealed class AndroidAudioPlaybackEngine(
             // usage is what pins playback to the phone. Outside a car it's right only while a comm
             // focus is held: a Media-usage recording focus leaves no comm route, i.e. the earpiece.
             var usage = route.Output switch {
-                _ when route.UseCallLink => AudioUsageKind.VoiceCommunication,
+                _ when route.UseHandsFreeLink => AudioUsageKind.VoiceCommunication,
                 AudioEndpoint.External => AudioUsageKind.Media,
                 AudioEndpoint.Builtin => AudioUsageKind.VoiceCommunication,
                 _ => AudioFocusUI.IsCommunicationFocus
                     ? AudioUsageKind.VoiceCommunication
                     : AudioUsageKind.Media,
             };
-            _gain = route.Output == AudioEndpoint.External && !route.UseCallLink
+            _gain = route.Output == AudioEndpoint.External && !route.UseHandsFreeLink
                 ? Constants.Audio.ProjectionMediaGain
                 : 1f;
             Log.LogInformation(

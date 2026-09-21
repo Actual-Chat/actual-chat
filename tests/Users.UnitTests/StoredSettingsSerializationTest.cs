@@ -495,6 +495,7 @@ public partial class StoredSettingsSerializationTest
             Origin = "union-car-audio-test",
             Microphone = CarAudioDevice.Phone,
             Output = CarAudioDevice.Car,
+            Link = CarLink.Assistant,
         };
 
         // act
@@ -508,6 +509,7 @@ public partial class StoredSettingsSerializationTest
         typed.Origin.Should().Be(settings.Origin);
         typed.Microphone.Should().Be(CarAudioDevice.Phone);
         typed.Output.Should().Be(CarAudioDevice.Car);
+        typed.Link.Should().Be(CarLink.Assistant);
     }
 
     [Fact]
@@ -519,6 +521,7 @@ public partial class StoredSettingsSerializationTest
         // assert
         settings.Microphone.Should().Be(CarAudioDevice.Auto);
         settings.Output.Should().Be(CarAudioDevice.Auto);
+        settings.Link.Should().Be(CarLink.Call);
     }
 
     private static void AssertBaseTypeRoundTrip<T>(T value)
