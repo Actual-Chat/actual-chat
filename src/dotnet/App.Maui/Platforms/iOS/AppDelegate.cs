@@ -1,6 +1,5 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.Maui.Services;
-using CoreSpotlight;
 using Firebase.CloudMessaging;
 using Foundation;
 using UIKit;
@@ -181,21 +180,7 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
 
     private static void CheckForAppLink(NSUserActivity userActivity)
     {
-        var url = "";
-        switch (userActivity.ActivityType) {
-        case "NSUserActivityTypeBrowsingWeb":
-            url = userActivity.WebPageUrl!.AbsoluteString;
-            break;
-        case "com.apple.corespotlightitem":
-            if (userActivity.UserInfo?.ContainsKey(CSSearchableItem.ActivityIdentifier) == true)
-                url = userActivity.UserInfo.ObjectForKey(CSSearchableItem.ActivityIdentifier)!.ToString();
-            break;
-        default:
-            if (userActivity.UserInfo?.ContainsKey(new NSString("link")) == true)
-                url = userActivity.UserInfo[new NSString("link")]!.ToString();
-            break;
-        }
-
+        var url = userActivity.GetAppLinkUrl();
         if (!url.IsNullOrEmpty())
             App.Current.SendOnAppLinkRequestReceived(url.ToUri());
     }

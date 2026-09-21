@@ -24,6 +24,20 @@ public class AppDelegate : MacOSMauiApplication
     public override bool ApplicationShouldHandleReopen(NSApplication sender, bool hasVisibleWindows)
         => hasVisibleWindows || !WindowConfigurator.TryShowWindow();
 
+    // Universal links (applinks: in the entitlements) arrive here, not in OpenUrls
+    public override bool ContinueUserActivity(
+        NSApplication application,
+        NSUserActivity userActivity,
+        ContinueUserActivityRestorationHandler restorationHandler)
+    {
+        var url = userActivity.GetAppLinkUrl();
+        if (url.IsNullOrEmpty())
+            return false;
+
+        App.Current.SendOnAppLinkRequestReceived(url.ToUri());
+        return true;
+    }
+
     public override void OpenUrls(NSApplication application, NSUrl[] urls)
     {
         foreach (var url in urls)
