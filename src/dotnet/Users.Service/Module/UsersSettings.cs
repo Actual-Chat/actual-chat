@@ -36,6 +36,7 @@ public sealed class UsersSettings
     // Unlike PredefinedTotps, these are never honored on production.
     public IReadOnlyDictionary<string, int> PredefinedEmailTotps { get; set; } = ImmutableDictionary<string, int>.Empty;
     public AppUpdateSettings AppUpdates { get; set; } = new();
+    public ReviewPromptSettings ReviewPrompt { get; set; } = new();
     // A kill switch: MauiAuthController.Start assumes every browser component the app can reach
     // reports Sec-Fetch-Site: none. Turn this off if some platform turns out not to.
     public bool IsMauiAuthFetchSiteCheckEnabled { get; set; } = true;
@@ -80,4 +81,21 @@ public sealed class UsersSettings
 
         return origins;
     }
+}
+
+/// <summary>
+/// When the app may ask for a store review: the usage a user must have behind them, and how
+/// prompts are spaced once one was shown.
+/// </summary>
+public sealed class ReviewPromptSettings
+{
+    public TimeSpan MinAccountAge { get; set; } = TimeSpan.FromDays(3);
+    public int MinActiveDays { get; set; } = 3;
+    public TimeSpan MinSpeechDuration { get; set; } = TimeSpan.FromMinutes(5);
+    public int MinLiveSessions { get; set; } = 1;
+    public TimeSpan RetryAfter { get; set; } = TimeSpan.FromDays(60);
+    public TimeSpan MinInterval { get; set; } = TimeSpan.FromDays(30);
+    public int MaxDeclines { get; set; } = 2;
+    // A pending prompt older than this is dropped: a backgrounded app must not pop it up hours later
+    public TimeSpan PendingTtl { get; set; } = TimeSpan.FromMinutes(10);
 }

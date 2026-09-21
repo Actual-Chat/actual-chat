@@ -36,4 +36,7 @@ public static class UserScopedKvasBackendExt
 
     public static KvasAccessor<UserPttSettings> UserPttSettings(this UserScopedKvasBackend kvas)
         => kvas.AccessorFor<UserPttSettings>();
+
+    public static KvasAccessor<AppReviewPromptState> AppReviewPromptState(this UserScopedKvasBackend kvas)
+        => kvas.AccessorFor<AppReviewPromptState>();
 }
