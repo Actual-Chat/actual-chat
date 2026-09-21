@@ -1336,6 +1336,7 @@
 
   // The share sheet.
   "Share_ShareExternally": "इसके ज़रिए साझा करें…",
+  "Share_Preparing_Format": "तैयार किया जा रहा है… {0}%",
   "Share_CopyLink": "Копіювати посилання",
   "Share_LinkCopied": "リンクをコピーしました!",
   "Share_WhoToShareWith": "Com quem você quer compartilhar?",

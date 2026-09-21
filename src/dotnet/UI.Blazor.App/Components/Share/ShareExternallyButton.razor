@@ -10,9 +10,15 @@
 
 <div class="btn-share-action share-externally-button @Class">
     @if (MauiShare != null) {
-        <Button Class="@ButtonClass" Click="OnMauiShareClick">
-            <Icon><i class="icon-share-external"></i></Icon>
-            <Title>@(Title ?? L.Share_ShareExternally)</Title>
+        <Button Class="@ButtonClass" Click="OnMauiShareClick" IsDisabled="@_isSharing">
+            <Icon>
+                @if (_isSharing) {
+                    <Spinner/>
+                } else {
+                    <i class="icon-share-external"></i>
+                }
+            </Icon>
+            <Title>@(_isSharing ? L.Share_Preparing_Format(_percent) : Title ?? L.Share_ShareExternally)</Title>
         </Button>
     } else if (hasMedia) {
         <Button Class="@ButtonClass"
@@ -59,6 +65,8 @@
     private bool _canUseWebShare;
     private bool _canShareFile;
     private bool _mustRegisterHandler;
+    private bool _isSharing;
+    private int _percent;
 
     private IMauiShare? MauiShare { get; set; }
 
@@ -70,8 +78,12 @@
 
     protected override async Task OnInitializedAsync() {
         MauiShare = Hub.Services.GetService<IMauiShare>();
-        if (MauiShare != null)
+        if (MauiShare != null) {
+            // The file is what's shared, so it's fetched while the user is still picking
+            if (Request.HasMedia())
+                _ = MauiShare.Prefetch(Request);
             return;
+        }
 
         var webShareInfo = Hub.Services.GetRequiredService<WebShareInfo>();
         _canUseWebShare = await webShareInfo.CanShare();
@@ -88,6 +100,22 @@
         await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.Share.registerHandler");
     }
 
-    private Task OnMauiShareClick()
-        => MauiShare!.Share(Request);
+    private async Task OnMauiShareClick() {
+        _isSharing = true;
+        _percent = 0;
+        var progress = new Progress<double>(x => _ = InvokeAsync(() => {
+            var percent = (int)x;
+            if (percent == _percent)
+                return;
+
+            _percent = percent;
+            StateHasChanged();
+        }));
+        try {
+            await MauiShare!.Share(Request, progress);
+        }
+        finally {
+            _isSharing = false;
+        }
+    }
 }

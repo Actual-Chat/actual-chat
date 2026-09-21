@@ -1136,6 +1136,7 @@
   "Uploads_Pending": "대기 중인 파일 업로드가 있습니다.",
   "Uploads_Resume": "재개",
   "Share_ShareExternally": "다른 앱으로 공유…",
+  "Share_Preparing_Format": "준비 중… {0}%",
   "Share_CopyLink": "링크 복사",
   "Share_LinkCopied": "링크가 복사되었습니다!",
   "Share_WhoToShareWith": "누구와 공유할까요",

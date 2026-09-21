@@ -1136,6 +1136,7 @@
   "Uploads_Pending": "Есть незавершённые загрузки файлов.",
   "Uploads_Resume": "Продолжить",
   "Share_ShareExternally": "Поделиться через…",
+  "Share_Preparing_Format": "Подготовка… {0}%",
   "Share_CopyLink": "Копировать ссылку",
   "Share_LinkCopied": "Ссылка скопирована!",
   "Share_WhoToShareWith": "С кем поделиться",

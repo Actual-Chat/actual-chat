@@ -1136,6 +1136,7 @@
   "Uploads_Pending": "Има фајлова који чекају отпремање.",
   "Uploads_Resume": "Настави",
   "Share_ShareExternally": "Поделите путем…",
+  "Share_Preparing_Format": "Припрема… {0}%",
   "Share_CopyLink": "Копирајте линк",
   "Share_LinkCopied": "Линк је копиран!",
   "Share_WhoToShareWith": "С ким желите поделити",

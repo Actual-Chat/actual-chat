@@ -1136,6 +1136,7 @@
   "Uploads_Pending": "कुछ फ़ाइल अपलोड लंबित हैं।",
   "Uploads_Resume": "जारी रखें",
   "Share_ShareExternally": "इसके ज़रिए साझा करें…",
+  "Share_Preparing_Format": "तैयार किया जा रहा है… {0}%",
   "Share_CopyLink": "लिंक कॉपी करें",
   "Share_LinkCopied": "लिंक कॉपी हो गया!",
   "Share_WhoToShareWith": "आप किसके साथ साझा करना चाहेंगे",

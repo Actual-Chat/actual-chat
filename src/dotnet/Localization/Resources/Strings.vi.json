@@ -1136,6 +1136,7 @@
   "Uploads_Pending": "Có tệp đang chờ tải lên.",
   "Uploads_Resume": "Tiếp tục",
   "Share_ShareExternally": "Chia sẻ qua…",
+  "Share_Preparing_Format": "Đang chuẩn bị… {0}%",
   "Share_CopyLink": "Sao chép liên kết",
   "Share_LinkCopied": "Đã sao chép liên kết!",
   "Share_WhoToShareWith": "Bạn muốn chia sẻ với ai",

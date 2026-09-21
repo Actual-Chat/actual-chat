@@ -1136,6 +1136,7 @@
   "Uploads_Pending": "Há uploads de arquivos pendentes.",
   "Uploads_Resume": "Retomar",
   "Share_ShareExternally": "Compartilhar via…",
+  "Share_Preparing_Format": "Preparando… {0}%",
   "Share_CopyLink": "Copiar link",
   "Share_LinkCopied": "Link copiado!",
   "Share_WhoToShareWith": "Com quem você quer compartilhar?",

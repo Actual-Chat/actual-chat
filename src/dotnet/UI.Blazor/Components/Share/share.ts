@@ -35,11 +35,12 @@ export class Share {
                 return;
 
             btn.dataset.shareHandlerRegistered = 'true';
-            // The download starts on pointerdown to keep the gap between the click and
-            // navigator.share short - Safari drops the share() call once the user
-            // activation that the click granted expires.
+            // The download starts as soon as the button appears, and again on pointerdown for
+            // whatever it missed: Safari drops the share() call once the user activation the
+            // click granted expires, which a download still running would outlast.
             btn.addEventListener('pointerdown', Share.onPointerDown);
             btn.addEventListener('click', (event) => { void Share.onClick(event); });
+            Share.getFileRefs(btn)?.forEach(ref => { void Share.getFile(ref); });
         });
     }
 

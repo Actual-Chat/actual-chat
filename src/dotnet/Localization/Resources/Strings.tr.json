@@ -1136,6 +1136,7 @@
   "Uploads_Pending": "Bekleyen dosya yüklemeleri var.",
   "Uploads_Resume": "Devam edin",
   "Share_ShareExternally": "Şununla paylaşın…",
+  "Share_Preparing_Format": "Hazırlanıyor… {0}%",
   "Share_CopyLink": "Bağlantıyı kopyalayın",
   "Share_LinkCopied": "Bağlantı kopyalandı!",
   "Share_WhoToShareWith": "Kiminle paylaşmak istersiniz",
