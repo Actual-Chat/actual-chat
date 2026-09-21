@@ -86,6 +86,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<IUserPresences>();
         fusion.AddClient<IChatPositions>();
         fusion.AddClient<IChatUsages>();
+        fusion.AddClient<IUsage>();
 
         // Auth-related
         rpc.AddClient<ISecureTokens>();

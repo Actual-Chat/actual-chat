@@ -180,6 +180,10 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<IChatUsages, ChatUsages>();
         rpcHost.AddBackend<IChatUsagesBackend, ChatUsagesBackend>();
 
+        // Usage
+        rpcHost.AddApi<IUsage, Usage>();
+        rpcHost.AddBackend<IUsageBackend, UsageBackend>();
+
         // UserVoices
         rpcHost.AddBackend<IUserVoicesBackend, UserVoicesBackend>();
 
@@ -242,7 +246,8 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             services.AddFlows()
                 .Add<UserSignInFlow>()
                 .Add<DigestFlow>()
-                .Add<AccountMigrationFlow>();
+                .Add<AccountMigrationFlow>()
+                .Add<UsageContactsBackfillFlow>();
         }
 
         // TOTP codes - used by IPhoneAuth & IEmailAuth (API)

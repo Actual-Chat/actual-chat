@@ -27,6 +27,9 @@ public static class StreamingMeters
     public static readonly Counter<long> VideoBytesReceived;
     public static readonly Counter<long> VideoBytesSent;
 
+    // Live-session-ended events that could not be enqueued (the session still closes)
+    public static readonly Counter<long> LiveSessionEndedDropped;
+
     static StreamingMeters()
     {
         var m = StreamingInstruments.Meter;
@@ -69,5 +72,7 @@ public static class StreamingMeters
         VideoBytesSent = m.CreateCounter<long>(
             "streaming.video.bytes_sent", "By",
             "Total video bytes sent to consumers");
+        LiveSessionEndedDropped = m.CreateCounter<long>(
+            "live_session.ended.dropped", null, "LiveSessionEndedEvent enqueue failures");
     }
 }

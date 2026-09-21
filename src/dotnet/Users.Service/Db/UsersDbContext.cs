@@ -19,6 +19,8 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
     public DbSet<DbChatUsage> ChatUsages { get; protected set; } = null!;
     public DbSet<DbPasskey> Passkeys { get; protected set; } = null!;
     public DbSet<DbUserVoice> UserVoices { get; protected set; } = null!;
+    public DbSet<DbUsageEvent> UsageEvents { get; protected set; } = null!;
+    public DbSet<DbUsageDay> UsageDays { get; protected set; } = null!;
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
@@ -82,6 +84,15 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
 
         var userVoice = model.Entity<DbUserVoice>();
         userVoice.Property(e => e.Id).UseCollation("C");
+
+        var usageEvent = model.Entity<DbUsageEvent>();
+        usageEvent.HasKey(e => new { e.UserId, e.OccurredAt, e.Kind, e.SourceId });
+        usageEvent.Property(e => e.UserId).UseCollation("C");
+        usageEvent.Property(e => e.SourceId).UseCollation("C");
+
+        var usageDay = model.Entity<DbUsageDay>();
+        usageDay.HasKey(e => new { e.UserId, e.Day });
+        usageDay.Property(e => e.UserId).UseCollation("C");
 
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");

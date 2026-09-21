@@ -21,6 +21,9 @@ public partial class MigrationFlow : Flow<Unit>, IMasterFlow
             await Apply<IconSvgToPngMigrationFlow>().ConfigureAwait(false);
             await Apply<ChatEntryEndsAtFixupFlow>(
                 dependsOn: [typeof(ChatEntryMigrationFixupFlow)]).ConfigureAwait(false);
+            await Apply<UsageBackfillFlow>(
+                dependsOn: [typeof(ChatEntryEndsAtFixupFlow)]).ConfigureAwait(false);
+            await Apply<UsageContactsBackfillFlow>().ConfigureAwait(false);
         }
         catch (DependencyNotMetException e) {
             var dependencyCheckPeriod = DependencyCheckPeriod;
