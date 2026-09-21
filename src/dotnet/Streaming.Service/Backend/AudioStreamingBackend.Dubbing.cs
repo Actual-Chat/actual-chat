@@ -64,6 +64,7 @@ public partial class AudioStreamingBackend
         AsyncMemoizer<AudioFrame>? original;
         VoiceOverMix mix;
         Task mixTask;
+        AsyncMemoizer<AudioFrame> memoizer;
         try {
             language = dubStreamId.Language!;
             latencyTrace = _recordedAtByStream.TryGetValue(sourceStreamId, out var recordedAt)
@@ -79,7 +80,7 @@ public partial class AudioStreamingBackend
                 mix.Mixed += latencyTrace.OnMixed;
                 mix.Ducked += latencyTrace.OnDucked;
             }
-            mixTask = PublishMix(dubStreamId, mix, out var memoizer, cancellationToken);
+            mixTask = PublishMix(dubStreamId, mix, out memoizer, cancellationToken);
             // A listener joining mid-utterance pins its live edge on the published stream as soon as
             // EnsureDub returns: the frames the original had already buffered must be behind that edge
             // by then, or the burst replaying them would be served as live audio
@@ -237,6 +238,9 @@ public partial class AudioStreamingBackend
             // and every path that never started one completes it here
             mix.DubPcm.TryComplete();
             await mixTask.SilentAwait(false);
+            // The published memoizer reads the mix's frames a moment after they're written, on this
+            // worker's token: returning before it has taken the last ones would cancel it and drop them
+            await (memoizer.WhenRunning ?? Task.CompletedTask).SilentAwait(false);
             latencyTrace?.Report(Log);
         }
     }
