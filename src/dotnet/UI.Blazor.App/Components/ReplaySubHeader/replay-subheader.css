@@ -1,10 +1,10 @@
 .replay-subheader {
     --subheader-height: 3rem;
     @apply relative z-10;
-    @apply flex items-center;
+    @apply flex items-center gap-x-1 md:gap-x-2;
     @apply w-full min-h-12;
     @apply pl-2 md:pl-1 pr-3 md:pr-1;
-    @apply rounded-lg border-2 border-replay;
+    @apply rounded-lg;
     @apply bg-replay;
     @apply text-replay;
 }
@@ -54,13 +54,6 @@
 .replay-subheader .replay-skeleton:nth-child(4) {
     opacity: 0.12;
 }
-.replay-subheader .c-divider {
-    @apply flex-none;
-    @apply h-8 w-[2px];
-    @apply m-0;
-    @apply rounded-full;
-    background-color: var(--border-replay);
-}
 .replay-subheader .c-info {
     @apply flex-1 flex-y justify-center;
     @apply min-w-0;
@@ -78,10 +71,13 @@ a.c-title {
     @apply text-caption text-03;
 }
 .replay-subheader .c-playback {
-    @apply flex-none flex-x items-center gap-x-0.5 md:gap-x-1;
-    @apply p-0.5;
-    @apply rounded-full;
-    @apply bg-cancel;
+    @apply flex-none flex-x items-center gap-x-1 md:gap-x-2;
+    @apply p-1;
+    @apply rounded-lg border border-replay;
+    @apply bg-transparent;
+}
+.replay-subheader .c-playback .c-play-btn {
+    @apply text-primary;
 }
 .replay-subheader .spinner {
     @apply m-1;
@@ -91,13 +87,6 @@ a.c-title {
 .replay-subheader .c-actions {
     @apply flex-none flex-x items-center gap-x-2;
 }
-.replay-subheader .c-speed-btn {
-    @apply flex-none;
-}
-.replay-subheader .c-speed-btn .c-speed-label {
-    @apply text-caption whitespace-nowrap;
-}
-
 /* Speed menu */
 .replay-speed-menu {
     @apply min-w-32;

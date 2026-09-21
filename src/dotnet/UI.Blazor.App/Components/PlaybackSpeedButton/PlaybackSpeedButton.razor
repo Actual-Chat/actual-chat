@@ -1,0 +1,23 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    var speedLabel = Math.Abs(Speed - 1.0) < 0.01 ? "1x" : $"{Speed:0.##}x";
+    var sizeCls = ScreenSize.IsNarrow() ? "btn-xs" : "btn-sm";
+}
+
+<Button
+    Class="@($"playback-speed-btn {sizeCls}")"
+    Tooltip="@L.Replay_Speed"
+    data-menu="@Menu"
+    data-menu-trigger="@MenuTrigger.Primary"
+    data-menu-placement="@(FloatingPosition.TopEnd.ToPositionString())">
+    <span class="c-speed-label">@speedLabel</span>
+</Button>
+
+@code {
+    [Inject] protected AppUIHub Hub { get; init; } = null!;
+    private IStringLocalizer L => Hub.StringLocalizer;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter] public double Speed { get; set; } = 1.0;
+    [Parameter, EditorRequired] public MenuRef Menu { get; set; }
+}
