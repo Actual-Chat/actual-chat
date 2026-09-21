@@ -140,9 +140,36 @@ public class NotificationsBackend(IServiceProvider services)
         };
     }
 
-    public virtual Task<ApiArray<NotificationHistoryItem>> ListHistory(
+    public virtual async Task<ApiArray<NotificationHistoryItem>> ListHistory(
         UserId userId, NotificationHistoryQuery query, CancellationToken cancellationToken)
-        => Task.FromResult(ApiArray<NotificationHistoryItem>.Empty);
+    {
+        var kinds = query.Kinds.Where(NotificationHistoryItem.IsLoggedKind).Distinct().ToArray();
+        if (!query.Kinds.IsEmpty && kinds.Length == 0)
+            return ApiArray<NotificationHistoryItem>.Empty;
+
+        var limit = query.Limit <= 0
+            ? Constants.Notification.HistoryDefaultLimit
+            : Math.Min(query.Limit, Constants.Notification.HistoryMaxLimit);
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var sUserId = userId.Value;
+        var afterSeq = query.AfterSeq;
+        var items = dbContext.NotificationHistory.Where(x => x.UserId == sUserId);
+        if (kinds.Length > 0)
+            items = items.Where(x => kinds.Contains(x.Kind));
+        if (query.IsNewestFirst) {
+            if (afterSeq > 0)
+                items = items.Where(x => x.Seq < afterSeq);
+            items = items.OrderByDescending(x => x.Seq);
+        }
+        else {
+            items = items.Where(x => x.Seq > afterSeq).OrderBy(x => x.Seq);
+        }
+
+        var dbItems = await items.Take(limit).ToListAsync(cancellationToken).ConfigureAwait(false);
+        return dbItems.Select(x => x.ToModel()).ToApiArray();
+    }
 
     // [CommandHandler]
     public virtual async Task OnNotify(
@@ -158,6 +185,16 @@ public class NotificationsBackend(IServiceProvider services)
         DebugLog?.LogDebug("-> OnNotify. UserId={UserId}, NotificationId={NotificationId}",
             userId, notification.Id);
 
+        var info = await GetUserNotificationInfo(userId, cancellationToken).ConfigureAwait(false);
+        if (notification.SentAt == default) {
+            // Reuse an already-items notification's SentAt so a SentAt-less redelivery stays a
+            // no-op (MergeWith treats an equal SentAt as a duplicate) instead of re-alerting; only a
+            // genuinely first-seen notification is stamped Now. Stamped before the event below so
+            // the history row's id (which embeds SentAt) is stable across redeliveries.
+            var items = info.Items.FirstOrDefault(n => n.Id == notification.Id);
+            notification = notification with { SentAt = items?.SentAt ?? Clocks.SystemClock.Now };
+        }
+
         // A hook wants every notification, even one the recipient's own dormant/active-reader
         // filters would suppress, so this fires before those checks. Web hook fan-out is
         // best-effort relative to push, so a queue outage here must not cost the push below.
@@ -169,19 +206,10 @@ public class NotificationsBackend(IServiceProvider services)
                 userId, notification.Id);
         }
 
-        var info = await GetUserNotificationInfo(userId, cancellationToken).ConfigureAwait(false);
         if (info.IsDormant) {
             DebugLog?.LogDebug("OnNotify: skipped (dormant). UserId={UserId}, NotificationId={NotificationId}",
                 userId, notification.Id);
             return;
-        }
-
-        if (notification.SentAt == default) {
-            // Reuse an already-items notification's SentAt so a SentAt-less redelivery stays a
-            // no-op (MergeWith treats an equal SentAt as a duplicate) instead of re-alerting; only a
-            // genuinely first-seen notification is stamped Now.
-            var items = info.Items.FirstOrDefault(n => n.Id == notification.Id);
-            notification = notification with { SentAt = items?.SentAt ?? Clocks.SystemClock.Now };
         }
 
         if (IsSoftUpdate(info, notification)) {
@@ -842,8 +870,29 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [EventHandler]
-    public virtual Task OnUserNotifiedEvent(UserNotifiedEvent eventCommand, CancellationToken cancellationToken)
-        => Task.CompletedTask;
+    public virtual async Task OnUserNotifiedEvent(UserNotifiedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // The log is read by a plain method, nothing to invalidate
+
+        var notification = eventCommand.Notification;
+        if (!NotificationHistoryItem.IsLoggedKind(notification.Kind))
+            return;
+
+        var context = CommandContext.GetCurrent();
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+        context.Operation.MustStore(false);
+
+        var item = new DbNotificationHistoryItem(notification, VersionGenerator.NextVersion(), Clocks.SystemClock.Now);
+        dbContext.NotificationHistory.Add(item);
+        try {
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateConcurrencyException e) when (e.Entries.All(en => en.State == EntityState.Added)) {
+            // A redelivered event maps to the same id: INSERT ... ON CONFLICT DO NOTHING affected 0 rows
+        }
+    }
 
     [EventHandler]
     public virtual async Task OnSpeechStartedEvent(SpeechStartedEvent eventCommand, CancellationToken cancellationToken)
