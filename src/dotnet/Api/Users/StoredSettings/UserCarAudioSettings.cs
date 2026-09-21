@@ -18,6 +18,8 @@ public sealed partial record UserCarAudioSettings
     public CarAudioDevice Microphone { get; init; } = CarAudioDevice.Auto;
     [DataMember, Key(2)]
     public CarAudioDevice Output { get; init; } = CarAudioDevice.Auto;
+    [DataMember, Key(3)]
+    public CarLink Link { get; init; } = CarLink.Call;
 }
 
 // Auto is the zero default on both axes and reads as the car's call route: car microphone and
@@ -27,4 +29,12 @@ public enum CarAudioDevice
     Auto = 0,
     Phone = 1,
     Car = 2,
+}
+
+// What the car is told its hands-free channel carries when the car records. Both are the same
+// Bluetooth SCO link; only Call makes the head unit show its phone screen.
+public enum CarLink
+{
+    Call = 0,
+    Assistant = 1,
 }

@@ -35,6 +35,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AppReviewModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AttachmentItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AttachmentListView>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioAttachmentSpeedMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioAttachmentSubHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioFileAttachment>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioFileAttachmentMenu>();
@@ -357,6 +358,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceSettingsOwnerModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceSettingsStartModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlacesTutorialStep>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaybackRunningBorder>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaybackSpeedButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttAnswerWindowSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttHushDurationSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttJoinBanner>();
@@ -494,8 +497,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookEventsPicker>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookFormPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookList>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookRow>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookRevealPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookRow>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookTestButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebSafariGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebSafariLocationGuideContent>();
@@ -855,6 +858,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.AppReviewModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AttachmentItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AttachmentListView), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.AudioAttachmentSpeedMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AudioAttachmentSubHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AudioFileAttachment), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AudioFileAttachmentMenu), AotTypeKind.Component),
@@ -1177,6 +1181,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceSettingsOwnerModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceSettingsStartModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlacesTutorialStep), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PlaybackRunningBorder), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PlaybackSpeedButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttAnswerWindowSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttHushDurationSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttJoinBanner), AotTypeKind.Component),
@@ -1314,8 +1320,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookEventsPicker), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookFormPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookList), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookRow), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookRevealPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookRow), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookTestButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebSafariGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebSafariLocationGuideContent), AotTypeKind.Component),

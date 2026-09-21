@@ -17,10 +17,13 @@ public sealed class AndroidAudioFocusHelper : IDisposable
     private readonly DeviceCallback _deviceCallback;
     private readonly ILogger _log;
     private readonly IAudioDeviceRouter _deviceRouter;
+    private readonly AndroidVoiceRecognitionLink _voiceRecognitionLink;
     private AudioFocusRequestClass? _focusRequest;
     private bool _hasFocus;
     private bool _isCommunicationFocus;
     private bool _isCommunicationModeYielded;
+    private bool _isVoiceRecognitionLinkYielded;
+    private bool _isVoiceRecognitionLinkRefused;
     private bool _isSilentStart;
     // _hasFocus minus the focus we lost to another app - i.e. is the session we measured still ours
     private bool _isFocusSessionOpen;
@@ -41,6 +44,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         // Chooses the implementation based on API level
         // API 31 (Android 12) introduced SetCommunicationDevice
         _deviceRouter = CreateDeviceRouter(_audioManager, context, log);
+        _voiceRecognitionLink = new AndroidVoiceRecognitionLink(context, log);
     }
 
     public void Dispose()
@@ -51,6 +55,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         catch (Exception e) {
             _log.LogError(e, "Failed to abandon audio focus during disposal");
         }
+        _voiceRecognitionLink.Dispose();
         _deviceRouter.Dispose();
         _audioFocusChangeListener.Dispose();
         _audioManager.UnregisterAudioDeviceCallback(_deviceCallback);
@@ -60,8 +65,16 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         // Without the communication route we never open SCO - and opening SCO outside a real
         // call is an HFP virtual call, which makes a car head unit take over its screen.
         => useCommunicationRoute
-            ? RequestFocus(AudioFocus.GainTransient, AudioUsageKind.VoiceCommunication, AudioContentType.Speech)
+            ? RequestFocus(AudioFocus.GainTransient, AudioUsageKind.VoiceCommunication, AudioContentType.Speech,
+                ScoLink.VirtualCall)
             : RequestFocus(AudioFocus.GainTransient, AudioUsageKind.Media, AudioContentType.Speech);
+
+    public Task<bool> RequestFocusForAssistantLink()
+        // The car's hands-free channel opened as a voice-recognition session: same SCO link as the
+        // call, but the head unit gets no call indicators. The mode stays Normal - an externally
+        // opened SCO already routes communication tracks and the capture to the car.
+        => RequestFocus(AudioFocus.GainTransient, AudioUsageKind.VoiceCommunication, AudioContentType.Speech,
+            ScoLink.VoiceRecognition);
 
     public Task<bool> RequestFocusForPlayback()
         // Playback needs no microphone, and the communication route drops a BT peer to SCO - a virtual call.
@@ -144,6 +157,12 @@ public sealed class AndroidAudioFocusHelper : IDisposable
     public void YieldCommunicationMode()
     {
         LogAudioState();
+        if (_voiceRecognitionLink.IsActive) {
+            // A call the user answers rides the same SCO channel; the session must be gone by then.
+            _log.LogInformation("Yielding the voice-recognition link to the incoming ring");
+            _voiceRecognitionLink.Stop();
+            _isVoiceRecognitionLinkYielded = true;
+        }
 
         // An armed session holds InCommunication with no call in sight, so the ring borrows Normal back.
         if (_isCommunicationModeYielded || _audioManager.Mode != Mode.InCommunication)
@@ -156,6 +175,13 @@ public sealed class AndroidAudioFocusHelper : IDisposable
 
     public async Task RestoreCommunicationMode()
     {
+        if (_isVoiceRecognitionLinkYielded) {
+            _isVoiceRecognitionLinkYielded = false;
+            if (_hasFocus) {
+                _log.LogInformation("Restoring the voice-recognition link after the incoming ring");
+                await EnsureVoiceRecognitionLink().ConfigureAwait(false);
+            }
+        }
         if (!_isCommunicationModeYielded)
             return;
 
@@ -175,6 +201,9 @@ public sealed class AndroidAudioFocusHelper : IDisposable
 
         _log.LogInformation("Abandon audio focus");
         _sessionEndedAt = CpuTimestamp.Now;
+        _voiceRecognitionLink.Stop();
+        _isVoiceRecognitionLinkYielded = false;
+        _isVoiceRecognitionLinkRefused = false;
         _deviceRouter.ClearCommunicationDevice();
         _audioManager.AbandonAudioFocusRequest(_focusRequest);
         _audioManager.Mode = Mode.Normal;
@@ -202,12 +231,20 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         AudioFocus audioFocus,
         AudioUsageKind audioUsageKind,
         AudioContentType audioContentType,
+        ScoLink scoLink = ScoLink.None,
         bool canEscalateGain = true)
     {
         LogAudioState();
         // Resolved ahead of the mode change below, which is what the silence check reads.
         var gain = ResolveGain(audioFocus, canEscalateGain);
-        var isCommunication = audioUsageKind == AudioUsageKind.VoiceCommunication;
+        // A refused voice-recognition link stays on the call link for the rest of the focus
+        // session: a renewal that retried it would drop SCO, wait out the refusal and reopen it.
+        var isCommunication = scoLink == ScoLink.VirtualCall
+            || (scoLink == ScoLink.VoiceRecognition && _isVoiceRecognitionLinkRefused);
+        if (scoLink != ScoLink.VoiceRecognition && _voiceRecognitionLink.IsActive) {
+            _log.LogInformation("Leaving the voice-recognition link");
+            _voiceRecognitionLink.Stop();
+        }
 
         // For voice communication, we need to set Mode.InCommunication to enable proper audio routing.
         // Note: This mode defaults to earpiece on many devices, but the device router will handle
@@ -259,8 +296,25 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         // After gaining focus, apply routing preference (handles external devices like Bluetooth)
         if (_hasFocus && isCommunication)
             await _deviceRouter.SelectCommunicationDevice(CancellationToken.None).ConfigureAwait(false);
+        else if (_hasFocus && scoLink == ScoLink.VoiceRecognition)
+            await EnsureVoiceRecognitionLink().ConfigureAwait(false);
 
         return _hasFocus;
+    }
+
+    private async Task EnsureVoiceRecognitionLink()
+    {
+        if (await _voiceRecognitionLink.Start(CancellationToken.None).ConfigureAwait(false))
+            return;
+
+        // Whatever refused the session - permission, a car without the feature - the user asked
+        // for the car's microphone, and a communication-usage track with no SCO up plays into the
+        // earpiece. The virtual call is the route that is known to work.
+        _log.LogWarning("Voice-recognition link unavailable, falling back to the call link");
+        _isVoiceRecognitionLinkRefused = true;
+        _audioManager.Mode = Mode.InCommunication;
+        _isCommunicationFocus = true;
+        await _deviceRouter.SelectCommunicationDevice(CancellationToken.None).ConfigureAwait(false);
     }
 
     private AudioFocus ResolveGain(AudioFocus gain, bool canEscalateGain)
@@ -351,6 +405,13 @@ public sealed class AndroidAudioFocusHelper : IDisposable
     }
 
     // Nested types
+
+    private enum ScoLink
+    {
+        None,
+        VirtualCall,
+        VoiceRecognition,
+    }
 
     private interface IAudioDeviceRouter : IDisposable
     {

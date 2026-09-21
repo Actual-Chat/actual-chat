@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.App.Services;
+using Android;
 using Android.Content;
 using Android.Database;
 using Uri = Android.Net.Uri;
@@ -80,6 +81,33 @@ public class AndroidCarConnection : SafeDisposableBase, ICarConnection
         _log.LogInformation("InvalidateProjectionState");
         using (Invalidation.Begin())
             _ = IsProjectionActive(default);
+    }
+
+    public Task<bool> RequestAssistantLinkPermission(CancellationToken cancellationToken)
+    {
+        if (AndroidVoiceRecognitionLink.HasPermission(Platform.AppContext))
+            return Task.FromResult(true);
+        if (Platform.CurrentActivity is not MainActivity activity) {
+            _log.LogWarning("RequestAssistantLinkPermission: no activity to prompt from");
+            return Task.FromResult(false);
+        }
+
+        var whenAnsweredSource = TaskCompletionSourceExt.New<bool>();
+        _ = Task.Delay(MainActivity.MaxPermissionRequestDuration, cancellationToken)
+            .ContinueWith(_ => whenAnsweredSource.TrySetResult(false), TaskScheduler.Default);
+        MainThread.BeginInvokeOnMainThread(() => {
+            try {
+                activity.RequestPermission(Manifest.Permission.BluetoothConnect, isGranted => {
+                    _log.LogInformation("RequestAssistantLinkPermission: granted = {IsGranted}", isGranted);
+                    whenAnsweredSource.TrySetResult(isGranted);
+                });
+            }
+            catch (Exception e) {
+                _log.LogWarning(e, "RequestAssistantLinkPermission failed");
+                whenAnsweredSource.TrySetResult(false);
+            }
+        });
+        return whenAnsweredSource.Task;
     }
 
     // Private methods

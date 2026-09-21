@@ -66,23 +66,78 @@ over SCO - is what every VoIP app does in a car, and the head units tested
 cooperate with it: no focus games, echo cancellation in the car's DSP, music
 paused for the duration. That is why it is the default.
 
+## The assistant channel: SCO without a call
+
+The virtual call is Android's doing, not ours: outside telephony,
+`AudioManager` has exactly one way to open SCO, and
+`HeadsetService.startScoUsingVirtualVoiceCall` presents it to the head unit as
+a complete outgoing call - dialing, alerting, active, to an empty number.
+Newer head units ignore that under projection; older ones switch to their
+phone screen for as long as the "call" lasts, and nothing passed through
+`AudioManager` changes the indicators.
+
+HFP has a second reason to open SCO: **voice recognition** (`+BVRA`), the
+channel a headset button opens for the phone's assistant. It carries the same
+mono audio both ways and sends the head unit no call state at all. It is
+reachable from an app through `BluetoothHeadset.startVoiceRecognition`, which
+needs the `BLUETOOTH_CONNECT` runtime permission on Android 12+ and a bound
+headset profile proxy. `AndroidVoiceRecognitionLink` owns both, and the audio
+helper takes it for the `CarLink.Assistant` route
+(`RequestFocusForAssistantLink`):
+
+- The audio mode stays `Normal`. An SCO the platform did not open itself is
+  still tracked by `BtHelper` (`SCO_STATE_ACTIVE_EXTERNAL`), which forces the
+  communication and record routes to Bluetooth - so `USAGE_VOICE_COMMUNICATION`
+  tracks and the capture reach the car exactly as under the call link.
+- The capture opens `AudioSource.VoiceRecognition`, the source the session is
+  defined for.
+- A refusal - no permission, a car without the feature, a session the car
+  accepts but never connects audio to - falls back to the call link for the
+  rest of the focus session (`_isVoiceRecognitionLinkRefused`), because a
+  communication track with no SCO up plays into the earpiece. A renewal that
+  retried it would drop SCO, wait out the refusal and reopen it.
+- An incoming ring stops the session the way it yields the communication mode;
+  the restore after the ring reopens it. `AbandonFocus` stops it as well - a
+  session left open keeps the car "listening" and the phone on the SCO mic.
+
+What is not known until measured on a real head unit: whether the car pops its
+own "listening" overlay, whether it keeps the session open for minutes, and
+whether it lets Android Auto's media channel live alongside it. The mode ships
+as a choice, not the default, for that reason.
+
 ## The settings
 
-The Android Auto tab offers **one choice with three values**, stored as the
-two axes of `UserCarAudioSettings` (`Microphone`, `Output`) so nothing had to
-migrate:
+The Android Auto tab offers **one choice with four values**, stored as the
+axes of `UserCarAudioSettings` (`Microphone`, `Output`, and `Link` added later
+at key 3, whose zero value is the call link) so nothing had to migrate:
 
 | Choice | Stored as | Effect while projecting |
 |---|---|---|
-| **Car** (default) | `Microphone` ≠ Phone; `Output` ignored | The car's microphone and speakers over Bluetooth HFP, like a phone call. Recording, listening and replay all take a communication focus, playback tracks use `USAGE_VOICE_COMMUNICATION` so they ride the same SCO link the car opened. Music pauses while anyone talks. Some head units show their phone screen instead of navigation for the duration. |
+| **Car** (default) | `Microphone` ≠ Phone; `Link` = Call; `Output` ignored | The car's microphone and speakers over Bluetooth HFP, like a phone call. Recording, listening and replay all take a communication focus, playback tracks use `USAGE_VOICE_COMMUNICATION` so they ride the same SCO link the car opened. Music pauses while anyone talks. Some head units show their phone screen instead of navigation for the duration. |
+| **Car, assistant channel** | `Microphone` ≠ Phone; `Link` = Assistant | The same SCO link opened as an HFP voice-recognition session, so the head unit sees no call. Needs the Nearby devices (`BLUETOOTH_CONNECT`) permission, asked for when the choice is made; falls back to the call link when the car refuses the session. |
 | **Car speakers, phone microphone** | `Microphone` = Phone, `Output` ≠ Phone | Media focus held as a permanent `GAIN`, capture pinned to the built-in mic, playback over the projection link. SCO is never opened. Music pauses while someone is talking. No echo cancellation against the car speakers. |
 | **Phone only** | `Microphone` = Phone, `Output` = Phone | Phone microphone and phone speaker; the car is not used for audio. |
 
 `CarAudioRoute.For` turns (projection active, settings) into the route:
-`UseCallLink` for Car, otherwise `Input = Builtin` with `Output = External` or
-`Builtin`. `CarAudioMode` and its `GetCarAudioMode` / `WithCarAudioMode`
-helpers are the only place the two axes and the three choices meet. The zero
-default of both axes (`Auto`) reads as Car.
+`Link` = `Call` or `Assistant` for the two car modes, otherwise `Input =
+Builtin` with `Output = External` or `Builtin`. `CarAudioMode` and its
+`GetCarAudioMode` / `WithCarAudioMode` helpers are the only place the axes and
+the four choices meet. The zero default of every axis reads as Car over the
+call link.
+
+### The capture source when the phone records
+
+Every route with the phone microphone - the two phone-mic modes - opens
+`AudioSource.VoiceRecognition`, not `VoiceCommunication`. The latter is the
+handset-call source: in `Mode.Normal` with no speakerphone selected, which is
+exactly the state the media route leaves the phone in, the HAL applies the
+near-ear voice tuning - low gain, aggressive noise suppression - and a driver
+half a metre away in a cradle records far too quietly. `VoiceRecognition` is
+the far-field source. It also gives up the hardware echo canceller, which
+never had a usable reference against the car speakers anyway. Outside a car
+and on the call link the capture stays on `VoiceCommunication`, where
+`InCommunication` plus a speakerphone or Bluetooth device selects the
+far-field tuning on its own.
 
 ### When the settings apply
 
