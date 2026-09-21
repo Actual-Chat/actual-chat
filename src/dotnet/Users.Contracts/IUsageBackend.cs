@@ -14,6 +14,11 @@ public interface IUsageBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ApiArray<UsageDay>> ListDays(UserId userId, Range<Moment> range, CancellationToken cancellationToken);
 
+    // Non-compute methods
+
+    // Not a compute method: the summary behind it changes on every recorded entry
+    Task<ReviewPromptState> GetReviewPromptState(UserId userId, CancellationToken cancellationToken);
+
     // Commands
 
     [CommandHandler]

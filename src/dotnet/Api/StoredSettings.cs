@@ -52,6 +52,7 @@ namespace ActualChat;
 [Union(17, typeof(UserPttSettings))]
 [Union(19, typeof(UserCarAudioSettings))]
 [Union(20, typeof(UserImageStyleSettings))]
+[Union(21, typeof(AppReviewPromptState))]
 // Chat-User settings
 [Union(50, typeof(ChatUserSettings))]
 [Union(51, typeof(ChatInviteSettings))]

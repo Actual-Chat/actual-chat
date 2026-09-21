@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
 @implements IModalView<AppReviewModal.Model>
+@implements IDisposable
 
 <DialogFrame Class="app-review-modal modal-sm" HasHeader="false">
     <Body>
@@ -37,7 +38,7 @@
                     <Button Class="btn-modal btn-w-full" Click="@InviteFriends">
                         @L.AppReview_InviteFriends
                     </Button>
-                    <Button Class="btn-transparent btn-w-full" Click="@(() => SetStep(Step.Farewell))">
+                    <Button Class="btn-transparent btn-w-full" Click="@Decline">
                         @L.AppReview_NotRightNow
                     </Button>
                 </div>
@@ -57,14 +58,23 @@
 @code {
     private Step _step = Step.OpeningRequest;
     private bool _isBusy;
+    private ReviewPromptOutcome _outcome = ReviewPromptOutcome.Dismissed;
 
     private AppReviewUI AppReviewUI => Hub.AppReviewUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
+    public void Dispose()
+        => ModalModel.OnOutcome?.Invoke(_outcome);
+
     private void SetStep(Step step)
         => _step = step;
+
+    private void Decline() {
+        _outcome = ReviewPromptOutcome.Declined;
+        _step = Step.Farewell;
+    }
 
     private async Task LeaveReview() {
         if (_isBusy)
@@ -73,6 +83,11 @@
         _isBusy = true;
         try {
             var outcome = await AppReviewUI.LeaveReview();
+            _outcome = outcome switch {
+                AppReviewOutcome.Completed => ReviewPromptOutcome.Reviewed,
+                AppReviewOutcome.Requested => ReviewPromptOutcome.Asked,
+                _ => ReviewPromptOutcome.Dismissed,
+            };
             _step = outcome == AppReviewOutcome.Cancelled ? Step.Farewell : Step.ThankYou;
         }
         finally {
@@ -89,5 +104,5 @@
 
     public enum Step { OpeningRequest, ThankYou, AreYouSure, Farewell }
 
-    public sealed record Model;
+    public sealed record Model(Action<ReviewPromptOutcome>? OnOutcome = null);
 }

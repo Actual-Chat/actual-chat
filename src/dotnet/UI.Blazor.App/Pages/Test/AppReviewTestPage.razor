@@ -19,14 +19,40 @@
 <p>Native review: @(Hub.Services.GetService<IAppReviewer>()?.GetType().Name ?? "not registered")</p>
 <p>Store review link: @(ReviewUrl ?? "none")</p>
 <p>Last outcome: @(_lastOutcome?.ToString() ?? "-")</p>
+<div class="test-page-btn-group">
+    <Button Class="btn-primary" Click="OnCheckEligibility">
+        Check eligibility
+    </Button>
+    <Button Class="btn-primary" Click="OnResetPromptHistory">
+        Reset prompt history
+    </Button>
+    <Button Class="btn-primary" Click="OnRebuildUsageDays">
+        Rebuild usage days
+    </Button>
+</div>
+<p>Eligibility: @(_promptState is null ? "-" : $"{_promptState.CanPrompt} ({_promptState.Reason})")</p>
+<p>Prompt history: @PromptHistoryText</p>
+<p>Usage: @SummaryText</p>
 </div>
 
 @code {
     private AppReviewOutcome? _lastOutcome;
+    private ReviewPromptState? _promptState;
+    private AppReviewPromptState? _promptHistory;
+    private UsageSummary? _summary;
 
     [Inject] protected AppUIHub Hub { get; init; } = null!;
     private ModalUI ModalUI => Hub.ModalUI;
     private string? ReviewUrl => Links.Apps.Review(Hub.HostInfo.AppKind);
+    private string PromptHistoryText => _promptHistory is null
+        ? "-"
+        : $"{_promptHistory.Outcome}, prompted {_promptHistory.PromptCount}x, "
+        + $"declined {_promptHistory.DeclineCount}x, last at {_promptHistory.LastPromptedAt?.ToString() ?? "never"}";
+    private string SummaryText => _summary is null
+        ? "-"
+        : $"{_summary.ActiveDays} active days, {TimeSpan.FromMilliseconds(_summary.SpeechMs):g} speech "
+        + $"in {_summary.SpeechEntries} entries, {_summary.Messages} messages, "
+        + $"{_summary.LiveSessions} live sessions, {_summary.Friends} friends";
 
     private void OnShowModal()
         => ModalUI.Show(new AppReviewModal.Model());
@@ -36,4 +62,20 @@
 
     private Task OnOpenStoreLink()
         => Hub.ExternalUrlOpener.Open(ReviewUrl!);
+
+    private async Task OnCheckEligibility() {
+        _promptState = await Hub.Usage.GetReviewPromptState(Hub.Session, default);
+        _promptHistory = await Hub.Usage.GetOwnReviewPromptHistory(Hub.Session, default);
+        _summary = await Hub.Usage.GetOwnSummary(Hub.Session, default);
+    }
+
+    private async Task OnResetPromptHistory() {
+        await Hub.Commander.Call(new Usage_ResetReviewPrompt { Session = Hub.Session });
+        await OnCheckEligibility();
+    }
+
+    private async Task OnRebuildUsageDays() {
+        await Hub.Commander.Call(new Usage_RebuildOwnDays { Session = Hub.Session });
+        await OnCheckEligibility();
+    }
 }

@@ -108,4 +108,58 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
             summary.ActiveDays.Should().Be(1);
         });
     }
+
+    [Fact(Timeout = 60_000)]
+    public async Task ReviewPromptShouldFollowUsageAndHistory()
+    {
+        // arrange - the fixture lowers every threshold except the live-session one
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueAlice();
+        var (chatId, _) = await tester.CreateChat(false);
+        var author = await tester.Authors.GetOwn(tester.Session, chatId, default);
+        var startedAt = Clocks.SystemClock.Now - TimeSpan.FromMinutes(10);
+
+        // act
+        var before = await Usage.GetReviewPromptState(tester.Session, default);
+        await Queues.Enqueue(new LiveSessionEndedEvent(
+            chatId,
+            startedAt,
+            startedAt + TimeSpan.FromMinutes(5),
+            LiveSessionKind.Call,
+            ApiArray.New(new LiveSessionEndedMember(author!.Id, startedAt))));
+
+        // assert - the session is the first activity, so it also supplies the one active day,
+        // and the handler that counts it also decides the prompt
+        before.CanPrompt.Should().BeFalse();
+        var pending = await ComputedTest.When(async ct => {
+            var p = await Usage.GetPendingReviewPrompt(tester.Session, ct);
+            p.Should().NotBeNull();
+            return p!;
+        });
+        pending.ChatId.Should().Be(chatId);
+        var eligible = await Usage.GetReviewPromptState(tester.Session, default);
+        eligible.CanPrompt.Should().BeTrue(eligible.Reason);
+
+        // act - an unconfirmed ask clears the pending prompt and defers, a confirmed review ends it
+        await tester.Commander.Call(new Usage_RecordReviewPrompt {
+            Session = tester.Session,
+            Outcome = ReviewPromptOutcome.Asked,
+        });
+        var afterAsk = await Usage.GetReviewPromptState(tester.Session, default);
+        var pendingAfterAsk = await Usage.GetPendingReviewPrompt(tester.Session, default);
+        var history = await Usage.GetOwnReviewPromptHistory(tester.Session, default);
+        await tester.Commander.Call(new Usage_RecordReviewPrompt {
+            Session = tester.Session,
+            Outcome = ReviewPromptOutcome.Reviewed,
+        });
+        var afterReview = await Usage.GetReviewPromptState(tester.Session, default);
+
+        // assert
+        afterAsk.CanPrompt.Should().BeFalse();
+        afterAsk.Reason.Should().StartWith("Prompted recently");
+        pendingAfterAsk.Should().BeNull();
+        history.PromptCount.Should().Be(1);
+        history.Outcome.Should().Be(ReviewPromptOutcome.Asked);
+        afterReview.Reason.Should().Be("Already reviewed");
+    }
 }

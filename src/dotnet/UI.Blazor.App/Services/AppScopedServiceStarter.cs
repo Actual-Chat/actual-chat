@@ -147,6 +147,7 @@ public sealed class AppScopedServiceStarter
             await Task.Delay(baseDelay * 2, cancellationToken).ConfigureAwait(false);
             Hub.AudioInitializer.StartInitialization();
             Hub.Services.GetRequiredService<AppPresenceReporter>().Start();
+            Hub.AppReviewPromptUI.Start();
             Hub.Services.GetRequiredService<LiveLocationReporter>().Start();
             Hub.Services.GetRequiredService<AppIconBadgeUpdater>().Start();
             Hub.Services.GetService<WindowUI>()?.Start(); // The AppKit app registers one; nobody else does
