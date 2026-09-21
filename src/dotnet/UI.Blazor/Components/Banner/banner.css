@@ -17,6 +17,10 @@
     @apply lg:max-w-192;
     @apply md:px-2;
 }
+.banner-lead {
+    @apply flex-1 min-w-0;
+    @apply flex-x items-center gap-x-2;
+}
 .banner-body {
     @apply flex-1;
     @apply ml-1;
@@ -59,6 +63,11 @@ body.wide .banner.banner-wrap .close-banner-abs {
     @apply top-1/2 right-2;
     transform: translateY(-50%);
 }
+/* Desktop: the lead (icon + message) keeps its natural width, so a long message pushes the action
+   buttons onto their own row - like mobile - instead of squeezing the text into a narrow column. */
+body.wide .banner.banner-wrap .banner-lead {
+    flex: 1 1 auto;
+}
 /* The query sees the content box, 20px narrower than the banner, so 22rem still fired up to a 380px
    viewport and cost English a row on every phone. A translation that doesn't fit wraps regardless -
    .banner-body's min-w-44 floor sees to that, from a 362px viewport down. */
@@ -94,22 +103,19 @@ body.narrow .banner.banner-wrap .banner-buttons {
     @apply justify-end basis-auto;
     @apply ml-0;
 }
-/* Banner action buttons are default style, but capped at 2rem tall and half-width */
-.banner .banner-buttons .btn.btn-transparent {
-    @apply min-h-8 max-h-8;
-}
 body.hoverable .banner .btn:hover,
 body.hoverable .banner .btn-h:hover {
-    @apply brightness-125 ;
-}
-/* Touch tap keeps only the blur from .btn:active — no background fill */
-.touch-capable .banner .btn.btn-transparent:active::after {
-    @apply hidden;
+    @apply brightness-110;
 }
 .severity-icon {
     @apply flex items-center justify-center;
     @apply rounded-full;
-    @apply text-01;
+}
+/* The severity icon and the dismiss button take the banner's severity text colour (inherited from
+   the root), matching the rest of the banner text instead of the neutral grey they'd get otherwise. */
+.banner .close-banner,
+body.hoverable .banner .close-banner:hover {
+    color: inherit;
 }
 
 .banner-success {
@@ -133,23 +139,61 @@ body.hoverable .banner .btn-h:hover {
     @apply text-banner-error;
 }
 
-.bg-banner-info .btn .btn-content,
-.bg-banner-info i {
+/* Banner action buttons: one primary per banner carries a tinted fill under the banner's accent;
+   secondary and danger actions are text-only. Labels take the banner's severity colour, since the
+   .banner-buttons default of text-03 would otherwise wash them neutral. */
+.banner .btn.btn-banner-primary,
+.banner .btn.btn-banner-secondary {
+    @apply no-sheen;
+}
+.banner .btn.btn-banner-secondary {
+    @apply bg-transparent;
+}
+/* Only the filled primary shows the neutral press wash; text variants shift their label instead. */
+.banner .btn.btn-banner-secondary::after,
+.banner .btn.btn-danger::after {
+    @apply hidden;
+}
+
+.banner .btn.btn-banner-primary {
+    @apply bg-banner-default-btn;
+    @apply text-banner-default;
+}
+.banner-info .btn.btn-banner-primary {
+    @apply bg-banner-info-btn;
+}
+.banner-success .btn.btn-banner-primary {
+    @apply bg-banner-success-btn;
+}
+.banner-warning .btn.btn-banner-primary {
+    @apply bg-banner-warning-btn;
+}
+.banner-error .btn.btn-banner-primary {
+    @apply bg-banner-error-btn;
+}
+
+.banner .btn.btn-banner-secondary {
+    @apply text-banner-default;
+}
+.banner-info .btn.btn-banner-primary,
+.banner-info .btn.btn-banner-secondary {
     @apply text-banner-info;
 }
-.bg-banner-success .btn .btn-content,
-.bg-banner-success i {
+.banner-success .btn.btn-banner-primary,
+.banner-success .btn.btn-banner-secondary {
     @apply text-banner-success;
 }
-.bg-banner-warning .btn .btn-content,
-.bg-banner-warning i {
+.banner-warning .btn.btn-banner-primary,
+.banner-warning .btn.btn-banner-secondary {
     @apply text-banner-warning;
 }
-.bg-banner-error .btn .btn-content,
-.bg-banner-error i {
+.banner-error .btn.btn-banner-primary,
+.banner-error .btn.btn-banner-secondary {
     @apply text-banner-error;
 }
+
 /* A danger action stays red even inside a severity-tinted banner */
+.banner .btn.btn-danger,
 .banner .btn.btn-danger .btn-content,
 .banner .btn.btn-danger i {
     @apply text-danger;

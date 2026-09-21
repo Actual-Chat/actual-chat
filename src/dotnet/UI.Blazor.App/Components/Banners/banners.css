@@ -56,7 +56,7 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
 .banner.reconnect-banner .banner-body .reconnect-countdown {
     @apply text-caption;
 }
-.banner.reconnect-banner .btn.btn-transparent {
+.banner.reconnect-banner .btn.btn-banner-primary {
     @apply text-caption-500;
 }
 .left-panel .reconnect-banner {
