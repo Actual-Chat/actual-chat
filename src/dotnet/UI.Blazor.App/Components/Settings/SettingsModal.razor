@@ -11,8 +11,7 @@
     var showQuit = HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Windows;
     // Push-to-talk is a device feature; on the web it's an admin-only preview, local hosts only.
     var isPttPreview = account.IsAdmin && HostInfo.BaseUrlKind == BaseUrlKind.Local;
-    var showPtt = Ptt.IsUIVisible(HostInfo, m.EnableIncompleteUI)
-        && (HostInfo.HostKind.IsMauiApp() || isPttPreview);
+    var showPtt = HostInfo.HostKind.IsMauiApp() || isPttPreview;
     // The tab only exists where a car connection is detectable at all, i.e. Android alone.
     var showCarAudio = Hub.Services.GetService<ICarConnection>() != null;
     var quitTitle = L.Settings_Quit_Format(CoreConstants.AppName);
@@ -153,13 +152,11 @@
         // Hide the Log Viewer in SSB — it can't capture/show local logs there.
         var showLogViewer = Hub.LogUI.CanCapture
             && await Hub.LogUI.IsEnabled.Use(cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var permissions = await PermissionsUI.GetState(cancellationToken).ConfigureAwait(false);
         var canUsePasskey = await Hub.PasskeyUI.CanUse(cancellationToken).ConfigureAwait(false);
         var passkeyCount = (await Hub.PasskeyUI.ListOwn(cancellationToken).ConfigureAwait(false)).Count;
         return new ComputedModel(account, tabId) {
             ShowLogViewer = showLogViewer,
-            EnableIncompleteUI = enableIncompleteUI,
             Permissions = permissions,
             ShowPasskeys = canUsePasskey || passkeyCount > 0,
             NeedsPasskey = canUsePasskey && passkeyCount == 0,
@@ -192,7 +189,6 @@
 
     public sealed record ComputedModel(AccountFull AccountFull, string? TabId) {
         public bool ShowLogViewer { get; init; }
-        public bool EnableIncompleteUI { get; init; }
         public PermissionsState Permissions { get; init; } = PermissionsState.Unknown;
         public bool ShowPasskeys { get; init; }
         public bool NeedsPasskey { get; init; }

@@ -142,12 +142,6 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod(MinCacheDuration = 300)] // Synced
     public virtual async Task<List<ChatId>> GetPttChatIds(CancellationToken cancellationToken)
     {
-        // Every PTT consumer - gestures, replies, the wake activity, the chat-list badge - reads
-        // this, so an unsupported host is disarmed everywhere by answering here. Deliberately
-        // dependency-free: support is a property of the build and can't change under us.
-        if (!Ptt.IsSupported(HostInfo))
-            return [];
-
         // PTT is per-device opt-in: a disabled device is fully inert whatever the account consents
         // say. Consent-driven UI (the settings roster, the join banner) must use
         // GetConsentedPttChatIds instead, or it would misread "device off" as "no consent".
@@ -162,8 +156,6 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     {
         // The consented chats GetPttChatIds leaves out only because they're muted: still listed in
         // Active Chats (with the muted badge), still inert for every other consumer.
-        if (!Ptt.IsSupported(HostInfo))
-            return [];
         if (!await IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false))
             return [];
 
@@ -177,8 +169,6 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         // now. The iOS channel and the Android armed foreground service key off this, so a mute
         // neither leaves the channel nor drops the service - both are unrecoverable from the
         // background once the mute lapses.
-        if (!Ptt.IsSupported(HostInfo))
-            return [];
         if (!await IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false))
             return [];
 

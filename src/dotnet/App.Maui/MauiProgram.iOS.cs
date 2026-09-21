@@ -62,12 +62,9 @@ public static partial class MauiProgram
             var isDataCollectionEnabled = MauiPreferences.IsDataCollectionEnabled == true;
             CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isDataCollectionEnabled;
             FirebaseCloudMessagingImplementation.Initialize();
-#if IS_DEV_MAUI
-            // Push to Talk is dev-only until it's tested: Entitlements.prod.plist doesn't grant
-            // com.apple.developer.push-to-talk, and PTChannelManager.Create reports that as an
-            // error every launch. Keyed on the property that picks the entitlements file.
             IosPtt.Initialize();
-            // Same dev-only gate as PTT: prod entitlements and App Review are a separate task.
+#if IS_DEV_MAUI
+            // Calls are dev-only: prod entitlements and App Review are a separate task.
             IosVoipPushes.Instance.Initialize();
 #endif
 #endif

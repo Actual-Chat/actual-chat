@@ -64,7 +64,6 @@
             return new();
 
         var isOwner = chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer;
-        var isIncompleteUIEnabled = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var isSummarized = chat.IsSummarized ?? false;
         var isPttEnabled = chat.PttEnabledAt != null;
         // Non-owners see turned-on settings as read-only facts; turned-off ones are hidden entirely.
@@ -72,8 +71,7 @@
             IsOwner = isOwner,
             ShowSummarizationToggle = isOwner || isSummarized,
             IsSummarized = isSummarized,
-            ShowPttToggle = Ptt.IsUIVisible(Hub.HostInfo, isIncompleteUIEnabled)
-                && !chat.Id.IsThread() && (isOwner || isPttEnabled),
+            ShowPttToggle = !chat.Id.IsThread() && (isOwner || isPttEnabled),
             IsPttEnabled = isPttEnabled,
         };
     }

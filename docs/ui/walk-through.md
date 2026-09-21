@@ -332,7 +332,7 @@ the single densest surface in the app.
 | Your account | `YourAccount_*`, `AccountEditor_*`, `Account_*`, `Avatar_*`, `Email_*`, `Alias_*`, `DeleteAccount_*`, `TimeZone_*`, `Share_*` |
 | User interface | `UserInterface_*`, `ThemeSettings_*`, `Settings_UILanguage*`, `NotificationsPanel_*` |
 | Voice &amp; transcription | `Transcription_*`, `VoiceSettings_*`, `ListeningLinger_*` |
-| Push-to-talk | `Ptt_*` (36 keys; needs `EnableIncompleteUI` + MAUI or a local admin) |
+| Push-to-talk | `Ptt_*` (36 keys; needs MAUI or a local admin) |
 | Application | `AppSettings_*`, `NativeApp_*`, `Download_*`, `LocationAccuracy_*` |
 | Permissions | `Permissions_*`, `Permission_*` (the native-only rows need the MAUI app) |
 | Sessions | `Sessions_*` |
