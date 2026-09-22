@@ -166,13 +166,13 @@ public static class IncomingCallNotifications
         // off) shows the full-screen call view instead of the modal; a plain tap shows the modal.
         var overLockScreen = intent.GetBooleanExtra(FullScreenExtraKey, false);
         if (overLockScreen && GetBlockedCallScreenGate() is var gate and not CallScreenGate.None) {
-            // Android launches the full-screen intent's activity either way; the gate only decides
-            // whether the keyguard lets it show. Asking for the over-lock screen it can't give
-            // leaves the request standing, and the unlock that follows honours it - putting the
-            // ring screen up long after the ring.
+            // Android launches the activity either way; the gate only decides whether the keyguard
+            // shows it. NotificationHandler already asked natively on a cold start, and that request
+            // outlives the ring - it has to be taken back here, along with the cover it put up.
             DebugLog?.LogInformation(
                 "CALL_TRACE: HandleViewIntent #{ChatId} - the over-lock screen is gated off ({Gate})",
                 chatId, gate);
+            MainActivity.Current?.DisableShowWhenLocked();
             overLockScreen = false;
         }
         DebugLog?.LogInformation(
