@@ -2,7 +2,8 @@ namespace ActualChat;
 
 /// <summary>
 /// A geographic position: WGS84 latitude/longitude with optional horizontal
-/// <see cref="Accuracy"/> (meters) and movement <see cref="Bearing"/> (degrees).
+/// <see cref="Accuracy"/> (meters) and <see cref="Bearing"/> (degrees clockwise from north): the compass
+/// heading where the device reads it, otherwise the GPS course, which exists only while moving.
 /// </summary>
 [DataContract, MessagePackObject]
 public sealed partial record GeoPoint(

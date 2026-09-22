@@ -6,10 +6,12 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
 {
     private static readonly string JSStartMethod = $"{BlazorUIAppModule.ImportName}.LocationTracker.start";
     private static readonly string JSGetCurrentMethod = $"{BlazorUIAppModule.ImportName}.LocationTracker.getCurrent";
+    private static readonly string JSStartHeadingMethod = $"{BlazorUIAppModule.ImportName}.HeadingTracker.start";
+    private static readonly string JSStopHeadingMethod = $"{BlazorUIAppModule.ImportName}.HeadingTracker.stop";
 
-    private readonly AppUIHub _hub = hub;
     private DotNetObjectReference<WebLocationTracker>? _blazorRef;
     private IJSObjectReference? _jsRef;
+    private DotNetObjectReference<WebLocationTracker>? _headingBlazorRef;
 
     public override async Task Start(CancellationToken cancellationToken)
     {
@@ -20,7 +22,7 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
         SetError(null);
         _blazorRef = DotNetObjectReference.Create(this);
         try {
-            _jsRef = await _hub.JS
+            _jsRef = await JS
                 .InvokeAsync<IJSObjectReference>(JSStartMethod, cancellationToken, _blazorRef)
                 .ConfigureAwait(false);
         }
@@ -58,11 +60,25 @@ public sealed class WebLocationTracker(AppUIHub hub) : LocationTrackerBase(hub)
         SetError(error);
     }
 
+    [JSInvokable]
+    public void OnHeading(double heading)
+        => SetHeading((float)heading);
+
     // Protected/internal methods
+
+    protected override Task StartHeadingUpdates()
+    {
+        _headingBlazorRef ??= DotNetObjectReference.Create(this);
+        return JS.InvokeVoidAsync(JSStartHeadingMethod, Hub.StopToken, _headingBlazorRef).AsTask();
+    }
+
+    protected override Task StopHeadingUpdates()
+        // Not StopToken: the last stop runs while the hub is stopping, and must still remove the listener.
+        => JS.InvokeVoidAsync(JSStopHeadingMethod, CancellationToken.None).AsTask();
 
     protected override async Task<GeoFix?> Fetch(bool mustBeFresh, CancellationToken cancellationToken)
     {
-        var jsFix = await _hub.JS
+        var jsFix = await JS
             .InvokeAsync<JsGeoFix?>(JSGetCurrentMethod, cancellationToken, mustBeFresh)
             .ConfigureAwait(false);
         return jsFix?.ToGeoFix();

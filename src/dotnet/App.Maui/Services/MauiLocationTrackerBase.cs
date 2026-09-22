@@ -33,6 +33,15 @@ public abstract class MauiLocationTrackerBase(AppUIHub hub) : LocationTrackerBas
             _ => GeolocationAccuracy.Medium,
         };
 
+    // Clockwise, i.e. what to add to a device-top heading to get the screen-top one.
+    protected static float GetScreenRotation()
+        => DeviceDisplay.Current.MainDisplayInfo.Rotation switch {
+            DisplayRotation.Rotation90 => 90,
+            DisplayRotation.Rotation180 => 180,
+            DisplayRotation.Rotation270 => 270,
+            _ => 0,
+        };
+
     protected static GeoTrackingError ToTrackingError(Exception error)
         => error is PermissionException
             ? GeoTrackingError.PermissionDenied

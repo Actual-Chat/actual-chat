@@ -206,6 +206,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         await Tracker.Start(cancellationToken).ConfigureAwait(false);
         var timeout = activeShares.Max(x => x.ExpiresAt) - ServerNow;
         using var cts = cancellationToken.CreateLinkedTokenSource(timeout < MaxReportLoopTimeout ? timeout : null);
+        await using var _ = FuncWorker.Start(Tracker.WatchHeading, cts.Token).ConfigureAwait(false);
         try {
             // Waits for the first live fix, so the cycle below doesn't re-post the cached one as fresh.
             await Tracker.Get(true, cts.Token).ConfigureAwait(false);
@@ -256,7 +257,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         if (Tracker.Error.Value is not null)
             return;
 
-        if (await Tracker.Get(false, cancellationToken).ConfigureAwait(false) is not { Point: var point })
+        if (await GetPoint(cancellationToken).ConfigureAwait(false) is not { } point)
             return;
 
         // Not initialized yet (InitializeShares failed to get a point or to post); next cycle retries
@@ -281,7 +282,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         if (activeShares.All(x => x.LocationId is not null))
             return activeShares;
 
-        if (await Tracker.Get(false, cancellationToken).ConfigureAwait(false) is not { Point: var point })
+        if (await GetPoint(cancellationToken).ConfigureAwait(false) is not { } point)
             return activeShares;
 
         return await activeShares.Select(x => InitializeShare(x, point, cancellationToken))
@@ -315,6 +316,17 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         SetSharedLocationId(share.ChatId, sharedLocation.Id);
         return share with { LocationId = sharedLocation.Id };
+    }
+
+    private async Task<GeoPoint?> GetPoint(CancellationToken cancellationToken)
+    {
+        if (await Tracker.Get(false, cancellationToken).ConfigureAwait(false) is not { Point: var point })
+            return null;
+
+        // Read rather than used: this runs in a worker, and the next cycle picks the newer heading up anyway.
+        return Tracker.Heading.Value is { } heading
+            ? point with { Bearing = heading }
+            : point;
     }
 
     private void SetSharedLocationId(ChatId chatId, SharedLocationId locationId)
