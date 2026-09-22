@@ -58,7 +58,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         entries[0].Outcome.Should().Be(CallOutcome.Declined);
     }
 
-    [Fact(Skip = "Flaky on CI: status reads Declined, not NoAnswer")]
+    [Fact]
     public async Task AFailedCallShouldLeaveNoLiveActivityBehind()
     {
         // The caller is registered as a recorder the moment they dial, so that the ring keeps the
@@ -81,7 +81,9 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         (await backend.GetState(chatId, default)).Should().BeNull();
         (await front.HasRecorder(session, chatId, default)).Should().BeFalse();
         (await front.GetAudioStreamingAuthorIds(session, chatId, default)).Should().BeEmpty();
-        (await backend.GetCallState(chatId, default))!.Status.Should().Be(CallStatus.NoAnswer);
+        // Declined, not NoAnswer: the retired caller-facing enum had no "declined" and collapsed it
+        // into NoAnswer - CallState keeps the two apart, and Alice did answer, with a no.
+        (await backend.GetCallState(chatId, default))!.Status.Should().Be(CallStatus.Declined);
 
         // act - the caller's own hang-up has to leave the same clean slate
         await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
