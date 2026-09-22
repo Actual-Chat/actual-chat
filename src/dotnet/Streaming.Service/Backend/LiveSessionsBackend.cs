@@ -384,8 +384,13 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 // independent streams for the same author (e.g. a recorder stopping while a separate
                 // listening stream stays open) would otherwise let the ending one delete the record the
                 // still-open one relies on - _participants holds one record per author, not per kind.
+                // Nor is such an ending a departure: the author is still here under the newer kind, so
+                // the leave handling below (which closes a session nobody streams in) must not run.
                 var existing = await SafeGetParticipant(chatId, authorId).ConfigureAwait(false);
-                if (existing is { } info && info.Kind == kind)
+                if (existing is { } info && info.Kind != kind)
+                    return;
+
+                if (existing is not null)
                     await _participants.Remove(chatId.Value, authorId.Value).ConfigureAwait(false);
             }
             InvalidateListParticipants(chatId);
