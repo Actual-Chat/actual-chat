@@ -105,7 +105,11 @@
             <span class="c-streaming-ellipsis">…</span>
         }
         @if (streamingMarkup is not null) {
-            <MarkupView Markup="@streamingMarkup"/>
+            @* Same entry cascade the settled branch supplies: every markup view reads Entry, and
+               without it PlainTextMarkupView throws on the first streamed character. *@
+            <CascadingValue Value="@entry" IsFixed="true">
+                <MarkupView Markup="@streamingMarkup"/>
+            </CascadingValue>
         } else {
             @if (!sm.RetainedText.IsNullOrEmpty()) {
                 <span class="retained">@sm.RetainedText</span>
