@@ -9,7 +9,6 @@ public partial class CallUI
     private static readonly ComputedSynchronizer Synchronizer = ComputedSynchronizer.Safe.Instance;
 
     private volatile Computed<UserCall?>? _cMyCall;
-    private ChatId? _audioStartedChatId;
 
     // Public methods
 
@@ -43,6 +42,13 @@ public partial class CallUI
             ? intent.Call
             : server;
     }
+
+    // Placing a call is itself the intent to talk, so an answered one puts the caller on the line - once.
+    // Read from the slot it replaced, not latched: a latch outlives a slot this client frees itself, and
+    // the next call to that chat then connects with no audio.
+    internal static bool ShouldStartCallAudio(ActiveCall? held, [NotNullWhen(true)] ActiveCall? next)
+        => next is { Role: CallRole.Caller, Phase: CallPhase.Active }
+            && (held is not { Role: CallRole.Caller, Phase: CallPhase.Active } || held.ChatId != next.ChatId);
 
     // Private methods
 
@@ -110,13 +116,8 @@ public partial class CallUI
             _activeCall.Value = next;
             if (next is { Role: CallRole.Callee, Phase: CallPhase.Ringing })
                 ringingChatId = next.ChatId;
-            // Placing a call is itself the intent to talk, so an answered one puts the caller on the line.
-            if (next is { Role: CallRole.Caller, Phase: CallPhase.Active } && _audioStartedChatId != next.ChatId) {
-                _audioStartedChatId = next.ChatId;
+            if (ShouldStartCallAudio(held, next))
                 joinedChatId = next.ChatId;
-            }
-            if (next is null)
-                _audioStartedChatId = null;
             // A dialing call that leaves the slot was never picked up - a decline reads the same to the
             // caller. The user's own cancel never gets here: CancelCall frees the slot first.
             if (held is { Role: CallRole.Caller, Phase: CallPhase.Dialing } && next?.ChatId != held.ChatId)

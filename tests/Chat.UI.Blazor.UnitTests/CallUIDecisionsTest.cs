@@ -111,6 +111,55 @@ public class CallUIDecisionsTest
         call!.Phase.Should().Be(CallPhase.Ringing);
     }
 
+    [Fact]
+    public void AnsweredOutgoingCallShouldPutTheCallerOnTheLine()
+    {
+        // act
+        var shouldStart = CallUI.ShouldStartCallAudio(
+            Call(CallRole.Caller, CallPhase.Dialing), Call(CallRole.Caller, CallPhase.Active));
+
+        // assert
+        shouldStart.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AnAlreadyAnsweredCallShouldNotStartItsAudioAgain()
+    {
+        // arrange — the same call, with the peer the server has now named
+        var held = new ActiveCall(ChatA, CallRole.Caller, CallPhase.Active, null, false);
+        var next = new ActiveCall(ChatA, CallRole.Caller, CallPhase.Active, CallerA, false);
+
+        // act
+        var shouldStart = CallUI.ShouldStartCallAudio(held, next);
+
+        // assert
+        shouldStart.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ASecondCallToTheSameChatShouldStartItsAudio()
+    {
+        // arrange — the first one ended with this client freeing the slot, so nothing is held
+        var next = Call(CallRole.Caller, CallPhase.Active);
+
+        // act
+        var shouldStart = CallUI.ShouldStartCallAudio(null, next);
+
+        // assert — a latch left over from the first call is what left the second one silent
+        shouldStart.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AnAnsweredRingShouldNotStartTheCallerSideAudio()
+    {
+        // act
+        var shouldStart = CallUI.ShouldStartCallAudio(
+            Call(CallRole.Callee, CallPhase.Ringing), Call(CallRole.Callee, CallPhase.Active));
+
+        // assert — the callee joins through Accept, not through the slot
+        shouldStart.Should().BeFalse();
+    }
+
     private static UserCall MyCall(ChatId chatId, CallRole role, CallPhase phase)
         => new() {
             ChatId = chatId,
