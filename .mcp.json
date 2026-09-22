@@ -40,6 +40,13 @@
       "headers": {
         "Authorization": "Bearer ${ActualChat_RoboKitty_Dev_API_Key}"
       }
+    },
+    "voxt-local": {
+      "type": "http",
+      "url": "https://local.voxt.ai/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${ActualChat_Local_API_Key}"
+      }
     }
   }
 }
