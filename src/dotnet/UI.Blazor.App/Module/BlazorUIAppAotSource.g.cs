@@ -318,6 +318,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NewThreadModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NoChatSelected>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NoResults>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationHistoryListItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsNavbarWidget>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsPermissionBanner>();
@@ -372,6 +373,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.QrScanView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionAuthorsMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionBadge>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionNotificationHistoryItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionNotificationItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionNotificationList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionSelect>();
@@ -1143,6 +1145,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.NewThreadModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NoChatSelected), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NoResults), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationHistoryListItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsNavbarWidget), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsPermissionBanner), AotTypeKind.Component),
@@ -1197,6 +1200,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.QrScanView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionAuthorsMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionBadge), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionNotificationHistoryItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionNotificationItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionNotificationList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionSelect), AotTypeKind.Component),
