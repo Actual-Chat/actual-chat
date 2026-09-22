@@ -20,6 +20,8 @@ public static class WebHookStatusExt
             ? await liveTime.GetDeltaText(lastActivityAt, cancellationToken).ConfigureAwait(false)
             : null;
         return hook switch {
+            { Kind: WebHookKind.Incoming } when activityText != null
+                => (l.Integrations_LastPost_Format(activityText), false),
             { DisabledReason: WebHookDisabledReason.DeliveryFailures } => (l.Integrations_DisabledAfterFailures, true),
             { DisabledReason: WebHookDisabledReason.UnsafeUrl } => (l.Integrations_DisabledUnsafeUrl, true),
             { ConsecutiveFailures: > 0 } when activityText != null

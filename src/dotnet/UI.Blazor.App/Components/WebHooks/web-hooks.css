@@ -33,6 +33,9 @@
 .web-hook-tile .c-host {
     @apply font-mono;
 }
+.web-hook-tile .c-host.c-bot {
+    @apply font-sans;
+}
 .web-hook-tile .c-failing,
 .web-hook-detail .c-failing {
     @apply text-danger;

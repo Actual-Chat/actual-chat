@@ -1,0 +1,46 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.WebHooks
+@inherits ComponentBase<AppUIHub>
+
+<div class="web-hook-kind">
+    <Tile>
+        <TileItem Click="@(() => OnPick(WebHookKind.Outgoing))">
+            <Icon><i class="icon-link-2"></i></Icon>
+            <Content>@L.Integrations_Outgoing</Content>
+            <Caption>@L.Integrations_OutgoingHint</Caption>
+            <Right><i class="icon-chevron-right text-3xl"></i></Right>
+        </TileItem>
+        <Divider/>
+        <TileItem Click="@(() => OnPick(WebHookKind.Incoming))">
+            <Icon><i class="icon-message-ellipse"></i></Icon>
+            <Content>@L.Integrations_Incoming</Content>
+            <Caption>@L.Integrations_IncomingHint</Caption>
+            <Right><i class="icon-chevron-right text-3xl"></i></Right>
+        </TileItem>
+    </Tile>
+</div>
+
+@code {
+    private Model _model = null!;
+
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _model = Context.GetModel<Model>();
+        Context.Title = L.Integrations_Add;
+        Context.Buttons = [];
+    }
+
+    private void OnPick(WebHookKind kind) {
+        var page = kind == WebHookKind.Incoming
+            ? DiveInDialogPage.New<WebHookIncomingFormPage>(
+                new WebHookIncomingFormPage.Model(_model.ScopeId, null))
+            : DiveInDialogPage.New<WebHookFormPage>(
+                new WebHookFormPage.Model(_model.Scope, _model.ScopeId, null));
+        Context.StepIn(page);
+    }
+
+    // Nested types
+
+    public sealed record Model(WebHookScope Scope, string ScopeId);
+}

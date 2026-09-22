@@ -3,26 +3,34 @@
 @inherits ComponentBase<AppUIHub>
 
 <FormBlock Class="web-hook-reveal">
-    <p class="c-title">@L.WebHook_SecretCopyWarning</p>
+    <p class="c-title">@(_isIncoming ? L.WebHook_UrlCopyWarning : L.WebHook_SecretCopyWarning)</p>
     <div class="c-secret">
-        <code>@_model.Secret</code>
+        <code>@_text</code>
         <CopyToClipboard
             Kind="CopyButtonKind.Square"
             ButtonClass="btn-sm btn-transparent"
-            Text="@_model.Secret"/>
+            Text="@_text"/>
     </div>
-    <WebHookTestButton WebHookId="@_model.WebHook.Id"/>
+    <WebHookTestButton WebHookId="@_model.WebHook.Id" IsIncoming="@_isIncoming"/>
 </FormBlock>
 
 @code {
     private Model _model = null!;
+    private bool _isIncoming;
+    private string _text = "";
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
     protected override void OnInitialized() {
         _model = Context.GetModel<Model>();
-        Context.Title = L.WebHook_SecretTitle;
+        _isIncoming = _model.WebHook.Kind == WebHookKind.Incoming;
+        // An incoming hook's secret is the token addressing it, so it's revealed as the full URL
+        // (the route template lives in WebHookInboundEndpointExt)
+        _text = _isIncoming
+            ? Hub.UrlMapper.ToAbsolute($"/hooks/in/{_model.Secret}")
+            : _model.Secret;
+        Context.Title = _isIncoming ? L.WebHook_UrlTitle : L.WebHook_SecretTitle;
         Context.Buttons = [DialogButtonInfo.CreateSubmitButton(L.Common_Close, OnClose)];
     }
 
