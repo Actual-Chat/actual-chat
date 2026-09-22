@@ -25,6 +25,25 @@
     filter: invert(100%);
 }
 
+/* A long provider label (the passkey one) wraps on narrow widths; in the default flex row a wrapped title
+   fills the line, so justify-center can't keep the icon beside it and the flex-none icon pins to the
+   button's left edge (the "icon flew off" bug - width-driven, so it shows in MAUI and narrow web alike).
+   Lay these buttons out as centered inline flow instead: the icon stays next to the (possibly two-line)
+   centered label, matching the Google/Apple buttons. Scoped to the three .sign-in-with provider buttons. */
+.btn.sign-in.sign-in-with > .btn-content {
+    @apply block w-full;
+    @apply text-center whitespace-normal;
+}
+.btn.sign-in.sign-in-with > .btn-content > i,
+.btn.sign-in.sign-in-with > .btn-content > img {
+    @apply inline-block align-middle;
+    @apply mr-2;
+}
+.btn.sign-in.sign-in-with > .btn-content > span {
+    @apply inline align-middle;
+    @apply whitespace-normal;
+}
+
 /* Sign-in step */
 
 .sign-in-step {
