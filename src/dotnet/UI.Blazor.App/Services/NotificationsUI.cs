@@ -10,6 +10,10 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public class NotificationsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
+    // The reactions tab has no ChatListFilter: its rows are notifications, not chats
+    public const string ReactionsFilterId = "@reactions";
+    public const int MaxHistoryGroups = 30;
+
     private INotifications Notifications => field ??= Hub.Notifications;
 
     [ComputeMethod]
@@ -22,6 +26,48 @@ public class NotificationsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComp
             .OrderByDescending(x => x.SentAt)
             .ToApiArray();
     }
+
+    [ComputeMethod]
+    public virtual async Task<ApiArray<NotificationHistoryGroup>> ListHistory(
+        Symbol filterId, CancellationToken cancellationToken = default)
+    {
+        // One group per chat: the newest past notification of the tab's kinds and how many older
+        // ones it stands for. Notifications still in the active set are the active rows' business.
+        var items = await ListHistoryItems(filterId, cancellationToken).ConfigureAwait(false);
+        var active = await Notifications.ListActive(Session, cancellationToken).ConfigureAwait(false);
+        var activeIds = active.Select(x => x.Id).ToHashSet();
+        var isPeopleOnly = filterId == ChatListFilter.UnreadPeople.Id;
+        return items
+            .Where(x => x.ChatId is not null
+                && (x.NotificationId is null || !activeIds.Contains(x.NotificationId))
+                && (!isPeopleOnly || x.ChatId.Kind == ChatKind.Peer))
+            .GroupBy(x => x.ChatId!)
+            .Select(g => new NotificationHistoryGroup(g.Key, g.First(), g.Count() - 1))
+            .OrderByDescending(g => g.Newest.Seq)
+            // The panel renders the whole block at once, so it's bounded here rather than per tab
+            .Take(MaxHistoryGroups)
+            .ToApiArray();
+    }
+
+    [ComputeMethod]
+    public virtual async Task<ApiArray<NotificationHistoryItem>> ListHistoryItems(
+        Symbol filterId, CancellationToken cancellationToken = default)
+    {
+        // Separate from ListHistory so an active-set change only regroups what's already in
+        // memory; the version is the only reactive seam over the plain ListHistory read.
+        _ = await Notifications.GetHistoryVersion(Session, cancellationToken).ConfigureAwait(false);
+        var query = new NotificationHistoryQuery {
+            Kinds = GetHistoryKinds(filterId),
+            Limit = Constants.Notification.HistoryMaxLimit,
+            IsNewestFirst = true,
+        };
+        return await Notifications.ListHistory(Session, query, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> HasAnyHistory(CancellationToken cancellationToken = default)
+        // The version alone answers this, so the bell never pulls the rows to learn it exists
+        => await Notifications.GetHistoryVersion(Session, cancellationToken).ConfigureAwait(false) > 0;
 
     // Projected to a value-compared record, not handed out as the notification: a Notification's
     // ApiArray members compare by reference, so an unchanged one would re-render every bound row.
@@ -101,6 +147,18 @@ public class NotificationsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComp
             .Distinct()
             .ToApiArray();
     }
+
+    // Private methods
+
+    private static ApiArray<NotificationKind> GetHistoryKinds(Symbol filterId)
+    {
+        if (filterId == ChatListFilter.UnreadMentions.Id)
+            return ApiArray.New(NotificationKind.Mention, NotificationKind.Attention);
+        if (filterId == ReactionsFilterId)
+            return ApiArray.New(NotificationKind.Reaction);
+
+        return ApiArray<NotificationKind>.Empty;
+    }
 }
 
 public readonly record struct ChatReactionState(Emoji? Emoji, Moment SentAt);
@@ -115,3 +173,9 @@ public sealed record ChatNotificationTarget(
     NotificationDismissMode DismissMode,
     ChatEntryId EntryId,
     Emoji? Emoji);
+
+/// <summary>
+/// A notifications-panel history row: a chat, its newest past notification of the tab's kinds,
+/// and how many older ones the row stands for.
+/// </summary>
+public sealed record NotificationHistoryGroup(ChatId ChatId, NotificationHistoryItem Newest, int OlderCount);
