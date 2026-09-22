@@ -1,0 +1,120 @@
+@using TimeZone = ActualChat.Users.TimeZone
+@using AccountField = ActualChat.UI.Blazor.App.Components.OwnAccountEditorModal.AccountField
+@inherits ComputedStateComponent<AppUIHub, DigestSettings.Model>
+@{
+    var m = State.Value;
+    var isChecked = m.IsEmailVerified && m.IsEnabled;
+}
+
+<TileTopic Topic="@L.YourAccount_DigestTopic"/>
+
+<Tile Class="your-account-tile">
+    <TileItem Click="@OnDigestClick">
+        <Icon>
+            <i class="icon-email"></i>
+        </Icon>
+        <Content>
+            @L.YourAccount_Digest
+        </Content>
+        <Caption>
+            @(m.IsEmailVerified ? L.YourAccount_DigestCaption : L.YourAccount_DigestVerifyEmail)
+        </Caption>
+        <Right>
+            <div class="c-actions" @onclick:stopPropagation="true">
+                <Toggle
+                    IsChecked="@isChecked"
+                    IsDisabled="@(!m.IsEmailVerified)"
+                    IsCheckedChanged="@OnToggle"/>
+            </div>
+        </Right>
+    </TileItem>
+
+    <TileItem Click="@OnTimeClick">
+        <Icon>
+            <i class="icon-clock"></i>
+        </Icon>
+        <Content>
+            @((DateTime.Today + m.DigestTime).ToString("t", DateFormatter))
+        </Content>
+        <Caption>
+            @L.YourAccount_DigestTime
+        </Caption>
+    </TileItem>
+
+    <TileItem Click="@OnTimeZoneClick">
+        <Icon>
+            <i class="icon-globe"></i>
+        </Icon>
+        <Content>
+            @if (m.TimeZone is not null) {
+                <span>@m.TimeZone.City</span>
+                <span class="text-micro-500 text-03 ml-1">@m.TimeZone.GetUtcOffsetText()</span>
+            }
+            else {
+                @L.YourAccount_TimeZoneNotSet
+            }
+        </Content>
+        <Caption>
+            @L.YourAccount_TimeZone
+        </Caption>
+    </TileItem>
+</Tile>
+
+@code {
+    private Task _whenUpdatedTask = Task.CompletedTask;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var account = await AccountUI.OwnAccount.Use(cancellationToken);
+        var settings = await UserSettingsUI.UserEmailsSettings().Get(cancellationToken);
+        var timeZones = await Hub.TimeZones.List("en-US", cancellationToken);
+        var timeZone = timeZones.FirstOrDefault(z => z.Id == account.TimeZone);
+        return new(
+            account.IsEmailVerified(), settings.IsDigestEnabled, settings.DigestTime, timeZone, timeZones);
+    }
+
+    private void OnDigestClick() {
+        var m = State.Value;
+        if (!m.IsEmailVerified)
+            ModalUI.Show(new OwnAccountEditorModal.Model(AccountField.Email));
+        else
+            _ = OnToggle(!m.IsEnabled);
+    }
+
+    private Task OnToggle(bool isEnabled) {
+        // Chained so rapid clicks apply in click order (last click wins)
+        var prevUpdateTask = _whenUpdatedTask;
+        _whenUpdatedTask = UpdateSettings();
+        return _whenUpdatedTask;
+
+        async Task UpdateSettings() {
+            await prevUpdateTask.SilentAwait();
+            await UserSettingsUI.UserEmailsSettings()
+                .Update(x => x with { IsDigestEnabled = isEnabled }, CancellationToken.None);
+            await State.Recompute();
+        }
+    }
+
+    private void OnTimeClick()
+        => ModalUI.Show(new DigestTimeEditorModal.Model(State.Value.DigestTime));
+
+    private void OnTimeZoneClick()
+        => ModalUI.Show(new TimeZoneEditorModal.Model(State.Value.TimeZones));
+
+    // Nested types
+
+    public sealed record Model(
+        bool IsEmailVerified,
+        bool IsEnabled,
+        TimeSpan DigestTime,
+        TimeZone? TimeZone,
+        IReadOnlyCollection<TimeZone> TimeZones)
+    {
+        public static readonly Model None = new(false, false, TimeSpan.Zero, null, []);
+    }
+}

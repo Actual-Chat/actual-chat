@@ -102,8 +102,13 @@
   "YourAccount_Name": "Name",
   "YourAccount_UserLink": "User link",
   "YourAccount_Email": "Email",
+  "YourAccount_Digest": "Daily email digest",
+  "YourAccount_DigestTopic": "Email digest",
+  "YourAccount_DigestCaption": "On days you have unread chats and were away",
+  "YourAccount_DigestTime": "Delivery time",
+  "YourAccount_DigestVerifyEmail": "Add and verify your email to receive the digest",
   "YourAccount_Phone": "Phone",
-  "YourAccount_TimeZone": "Time zone (for digest)",
+  "YourAccount_TimeZone": "Time zone",
   "YourAccount_TimeZoneNotSet": "Not set",
   "YourAccount_EditOrDelete": "Edit or Delete",
   "YourAccount_EditOrDeleteCaption": "Edit name, email, phone, or delete account",
@@ -371,10 +376,6 @@
   "NativeApp_AutoStartEnabledByPolicy": "Auto-start is enabled by group/machine policy.",
   "NativeApp_AutoStartDisabledByPolicy": "Auto-start is disabled by group/machine policy or is not supported on this device.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "{0} auto-start is disabled in Task Manager. You can re-enable it in its Startup tab.",
-
-  // The email editor page in Settings > Your Account.
-  "Email_Title": "Email",
-  "Email_Label": "Email",
 
   // The API key creation form. ApiKeyCreate_Placeholder is the example text inside the empty
   // Name field, not a value.

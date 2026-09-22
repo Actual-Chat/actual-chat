@@ -84,6 +84,11 @@ public static class LocalizedStringsLocalizerExt
         public string YourAccount_Name => l["YourAccount_Name"].Value;
         public string YourAccount_UserLink => l["YourAccount_UserLink"].Value;
         public string YourAccount_Email => l["YourAccount_Email"].Value;
+        public string YourAccount_Digest => l["YourAccount_Digest"].Value;
+        public string YourAccount_DigestTopic => l["YourAccount_DigestTopic"].Value;
+        public string YourAccount_DigestCaption => l["YourAccount_DigestCaption"].Value;
+        public string YourAccount_DigestTime => l["YourAccount_DigestTime"].Value;
+        public string YourAccount_DigestVerifyEmail => l["YourAccount_DigestVerifyEmail"].Value;
         public string YourAccount_Phone => l["YourAccount_Phone"].Value;
         public string YourAccount_TimeZone => l["YourAccount_TimeZone"].Value;
         public string YourAccount_TimeZoneNotSet => l["YourAccount_TimeZoneNotSet"].Value;
@@ -343,9 +348,6 @@ public static class LocalizedStringsLocalizerExt
         public string NativeApp_AutoStartDisabledByPolicy => l["NativeApp_AutoStartDisabledByPolicy"].Value;
         public string NativeApp_AutoStartDisabledInTaskManager_Format(object arg0)
             => l["NativeApp_AutoStartDisabledInTaskManager_Format", arg0].Value;
-
-        public string Email_Title => l["Email_Title"].Value;
-        public string Email_Label => l["Email_Label"].Value;
 
         public string ApiKeyCreate_Title => l["ApiKeyCreate_Title"].Value;
         public string ApiKeyCreate_Name => l["ApiKeyCreate_Name"].Value;
