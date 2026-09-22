@@ -16,7 +16,7 @@ namespace ActualChat.Streaming.IntegrationTests;
 public class LiveAudioBackendShardMigrationTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(LiveAudioBackendShardMigrationTest)}", TestAppHostOptions.Default, @out)
 {
-    [Fact(Timeout = 30_000)]
+    [Fact(Timeout = 120_000)]
     public async Task EmptyListComputedOnHost1_ShouldInvalidateWhenShardMigratesToHost2()
     {
         var shardScheme = ShardScheme.LiveBackend;

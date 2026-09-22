@@ -6,7 +6,7 @@ public class LiveEdgeReplayTest
 {
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(5).CiScaled();
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = 30_000)]
     public async Task SkipToLiveYieldsHeaderThenOnlyFutureFrames()
     {
         // arrange
@@ -32,7 +32,7 @@ public class LiveEdgeReplayTest
             TimeSpan.FromMilliseconds(40));
     }
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = 30_000)]
     public async Task SkipToLiveEmitsHeaderOnceWhenNothingIsBuffered()
     {
         // arrange

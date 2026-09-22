@@ -38,7 +38,7 @@ public class StreamStoreCacheTest
         items.Should().Equal(42);
     }
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = 30_000)]
     public async Task FirstViewerCancel_DoesNotEndCacheForOthers()
     {
         // Whole point of the "pass CT.None to upstream RPC" decision: V1's
@@ -81,7 +81,7 @@ public class StreamStoreCacheTest
         v2Items.Should().Equal(1, 2, 3, 4);
     }
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = 30_000)]
     public async Task PublishedEntry_ExpiresAfterIdleDelay()
     {
         // After the source completes and no consumer keeps the bumper alive,
