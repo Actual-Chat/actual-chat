@@ -33,6 +33,11 @@ public partial class AccountUI
 
             if (!TryChangeAccount(newAccount, out var oldAccount))
                 continue;
+            // A guest will see the sign-in modal: warm passkey availability in the background now, so the
+            // modal shows/hides the passkey button from its first frame instead of resolving on open (see
+            // ProviderSelectStep). Fires on the first resolution and on logout; cached, so repeats are cheap.
+            if (newAccount.IsGuestOrNull())
+                _ = WarmPasskeyAvailability(cancellationToken);
             if (oldAccount is null) {
                 MarkReady();
                 continue; // Very first account change
@@ -47,6 +52,20 @@ public partial class AccountUI
             await Hub.Dispatcher
                 .InvokeSafeAsync(() => ProcessLoginLogout(newAccount, oldAccount), Log)
                 .ConfigureAwait(false);
+        }
+    }
+
+    // Best-effort background warm-up of passkey availability. Waits for interactivity (the JS/native probe
+    // needs a live circuit), then resolves PasskeyUI.CanUse, which caches the sticky answer. If it misses,
+    // the sign-in modal still resolves it on demand - it just may briefly gate its first render.
+    private async Task WarmPasskeyAvailability(CancellationToken cancellationToken)
+    {
+        try {
+            await Hub.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await Hub.PasskeyUI.CanUse(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            // Intended: warm-up is optional
         }
     }
 
