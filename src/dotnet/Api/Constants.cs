@@ -509,6 +509,9 @@ public static partial class Constants
         // (not pushed) for this grace period instead of alerting immediately. If the user reads it
         // within the window it's dropped silently on every device; otherwise it alerts as usual.
         public static readonly TimeSpan ActiveReaderGrace = TimeSpan.FromSeconds(10);
+        public const int HistoryDefaultLimit = 64;
+        public const int HistoryMaxLimit = 256;
+        public static readonly TimeSpan HistoryRetention = TimeSpan.FromDays(30);
     }
 
     public static class Media
