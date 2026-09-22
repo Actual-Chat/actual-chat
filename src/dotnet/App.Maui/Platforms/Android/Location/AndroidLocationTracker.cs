@@ -65,11 +65,11 @@ public sealed class AndroidLocationTracker : MauiLocationTrackerBase, IDisposabl
 
     // Protected/internal methods
 
-    protected override void StartHeadingUpdates()
-        => BeginDispatchToMainThread(StartHeadingSensor);
+    protected override Task StartHeadingUpdates()
+        => DispatchToMainThread(StartHeadingSensor);
 
-    protected override void StopHeadingUpdates()
-        => BeginDispatchToMainThread(StopHeadingSensor);
+    protected override Task StopHeadingUpdates()
+        => DispatchToMainThread(StopHeadingSensor);
 
     // Private methods
 

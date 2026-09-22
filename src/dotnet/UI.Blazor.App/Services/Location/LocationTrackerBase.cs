@@ -1,3 +1,5 @@
+using ActualLab.Locking;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 public abstract class LocationTrackerBase : UIServiceBase<AppUIHub>, ILocationTracker
@@ -7,7 +9,8 @@ public abstract class LocationTrackerBase : UIServiceBase<AppUIHub>, ILocationTr
     private readonly MutableState<GeoFix?> _cachedFix;
     private readonly MutableState<GeoTrackingError?> _error;
     private readonly MutableState<float?> _heading;
-    private readonly Lock _headingLock = new();
+    // CheckedPass: a platform hook may run inline on the main thread and re-enter this.
+    private readonly AsyncLock _headingLock = new(LockReentryMode.CheckedPass);
     private int _headingWatcherCount;
 
     private BackgroundStateTracker BackgroundStateTracker
@@ -64,12 +67,12 @@ public abstract class LocationTrackerBase : UIServiceBase<AppUIHub>, ILocationTr
                     continue;
 
                 isWatching = !isWatching;
-                UpdateHeadingWatcherCount(isWatching ? 1 : -1);
+                await UpdateHeadingWatcherCount(isWatching ? 1 : -1).ConfigureAwait(false);
             }
         }
         finally {
             if (isWatching)
-                UpdateHeadingWatcherCount(-1);
+                await UpdateHeadingWatcherCount(-1).ConfigureAwait(false);
         }
     }
 
@@ -77,11 +80,11 @@ public abstract class LocationTrackerBase : UIServiceBase<AppUIHub>, ILocationTr
 
     protected abstract Task<GeoFix?> Fetch(bool mustBeFresh, CancellationToken cancellationToken);
 
-    protected virtual void StartHeadingUpdates()
-    { }
+    protected virtual Task StartHeadingUpdates()
+        => Task.CompletedTask;
 
-    protected virtual void StopHeadingUpdates()
-    { }
+    protected virtual Task StopHeadingUpdates()
+        => Task.CompletedTask;
 
     protected Task<GeoTrackingAccuracy> GetAccuracy(CancellationToken cancellationToken)
         => Hub.LocalSettings.LocalAppSettings().Get(x => x.LocationAccuracyOrDefault, cancellationToken);
@@ -98,33 +101,40 @@ public abstract class LocationTrackerBase : UIServiceBase<AppUIHub>, ILocationTr
 
     protected void SetHeading(float? heading)
     {
+        // Unlocked: platform callbacks are already serialized (the main thread, or the JS interop
+        // one), and the count is read here only to drop the ones still in flight past a stop.
+        if (Volatile.Read(ref _headingWatcherCount) == 0)
+            return;
+
+        if (heading is { } h)
+            heading = ((h % 360) + 360) % 360;
         // Drops sub-threshold changes: each accepted one re-renders every map showing the own marker.
-        lock (_headingLock) {
-            if (_headingWatcherCount == 0)
-                return;
+        if (heading is { } newHeading && _heading.Value is { } oldHeading
+            && GetAngleDistance(newHeading, oldHeading) < MinHeadingChange)
+            return;
 
-            if (heading is { } h)
-                heading = ((h % 360) + 360) % 360;
-            if (heading is { } newHeading && _heading.Value is { } oldHeading
-                && GetAngleDistance(newHeading, oldHeading) < MinHeadingChange)
-                return;
-
-            _heading.Value = heading;
-        }
+        _heading.Value = heading;
     }
 
     // Private methods
 
-    private void UpdateHeadingWatcherCount(int delta)
+    private async Task UpdateHeadingWatcherCount(int delta)
     {
-        lock (_headingLock) {
-            _headingWatcherCount += delta;
-            if (delta > 0 && _headingWatcherCount == 1)
-                StartHeadingUpdates();
-            else if (delta < 0 && _headingWatcherCount == 0) {
-                StopHeadingUpdates();
+        // The lock orders the platform calls, so a stop can't overtake the start it ends.
+        using var _ = await _headingLock.Lock(CancellationToken.None).ConfigureAwait(false);
+        var count = _headingWatcherCount + delta;
+        Volatile.Write(ref _headingWatcherCount, count);
+        try {
+            if (delta > 0 && count == 1)
+                await StartHeadingUpdates().ConfigureAwait(false);
+            else if (delta < 0 && count == 0) {
+                await StopHeadingUpdates().ConfigureAwait(false);
                 _heading.Value = null;
             }
+        }
+        catch (Exception e) {
+            // Best-effort extra: a dead compass mustn't take the share reporting down with it.
+            Log.LogWarning(e, "Failed to toggle heading updates");
         }
     }
 

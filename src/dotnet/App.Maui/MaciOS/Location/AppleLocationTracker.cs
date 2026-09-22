@@ -64,8 +64,8 @@ public sealed class AppleLocationTracker(AppUIHub hub) : MauiLocationTrackerBase
 
     // Protected/internal methods
 
-    protected override void StartHeadingUpdates()
-        => MainThread.BeginInvokeOnMainThread(() => {
+    protected override Task StartHeadingUpdates()
+        => DispatchToMainThread(() => {
             if (!CLLocationManager.HeadingAvailable)
                 return;
 
@@ -73,8 +73,8 @@ public sealed class AppleLocationTracker(AppUIHub hub) : MauiLocationTrackerBase
             _manager.StartUpdatingHeading();
         });
 
-    protected override void StopHeadingUpdates()
-        => MainThread.BeginInvokeOnMainThread(() => _manager?.StopUpdatingHeading());
+    protected override Task StopHeadingUpdates()
+        => DispatchToMainThread(() => _manager?.StopUpdatingHeading());
 
     // Private methods
 

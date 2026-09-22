@@ -67,16 +67,28 @@ interface OrientationPermissionApi {
     requestPermission?: () => Promise<PermissionState>;
 }
 
-/** Streams the compass heading of the screen's top edge to .NET via `OnHeading`. */
+/**
+ * Streams the compass heading of the screen's top edge to .NET via `OnHeading`.
+ * A page-level singleton: unlike a geolocation watch there's only ever one, so
+ * .NET starts and stops it by name and needs no handle to hold on to.
+ */
 export class HeadingTracker {
+    private static current: HeadingTracker | null = null;
+
     private readonly eventName: 'deviceorientationabsolute' | 'deviceorientation';
     private lastHeading: number | null = null;
 
-    public static start(blazorRef: DotNet.DotNetObject): HeadingTracker {
-        return new HeadingTracker(blazorRef);
+    public static start(blazorRef: DotNet.DotNetObject): void {
+        HeadingTracker.stop();
+        HeadingTracker.current = new HeadingTracker(blazorRef);
     }
 
-    constructor(private readonly blazorRef: DotNet.DotNetObject) {
+    public static stop(): void {
+        HeadingTracker.current?.dispose();
+        HeadingTracker.current = null;
+    }
+
+    private constructor(private readonly blazorRef: DotNet.DotNetObject) {
         // Chrome's plain deviceorientation is relative to wherever the page loaded, so only the
         // absolute event is a compass there; Safari has no such event but adds webkitCompassHeading.
         this.eventName = 'ondeviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation';
@@ -86,11 +98,11 @@ export class HeadingTracker {
         permissionApi.requestPermission?.().catch((e: unknown) => warnLog?.log('requestPermission error', e));
     }
 
-    public stop(): void {
+    // Private methods
+
+    private dispose(): void {
         window.removeEventListener(this.eventName, this.onOrientation);
     }
-
-    // Private methods
 
     private readonly onOrientation = (event: Event): void => {
         const heading = HeadingTracker.getHeading(event as CompassOrientationEvent);
