@@ -3,9 +3,12 @@
     @apply flex-1 flex-x;
     @apply overflow-hidden;
 }
+/* min-w-0: a flex item's default min-width is its content, so the admin-only startup-time diagnostics
+   (one long unbreakable token) would otherwise widen this column past the overflow-hidden panel and
+   clip everything on the right - the version footer and the account row's Share button. */
 .settings-panel > .c-tabs {
     @apply flex-1 md:flex-none flex-y;
-    @apply md:w-80 lg:w-110;
+    @apply min-w-0 md:w-80 lg:w-110;
     @apply p-0 md:pl-10 lg:pl-30;
     @apply bg-03;
 }
@@ -112,9 +115,12 @@ body.narrow .settings-panel > .c-tabs .c-footer {
     @apply text-sm;
 }
 .settings-panel > .c-tabs .c-footer > .c-content > .c-version {
-    @apply flex-1;
+    @apply flex-1 min-w-0;
     @apply truncate;
-    @apply text-03 font-medium;
+    @apply text-micro-500 text-03;
+}
+.settings-panel > .c-tabs .c-footer .startup-time-bar {
+    @apply text-micro-500;
 }
 
 /* Tab content */
