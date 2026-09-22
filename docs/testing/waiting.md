@@ -73,13 +73,42 @@ A generous budget costs nothing while the test passes: a successful wait ends on
 the event it waits for, not on its budget. It costs only on failure, and a
 failed wait is a red test either way.
 
-**Do not raise `[Fact(Timeout = N)]` reflexively.** Those numbers were mostly
-chosen with CI in mind already. The attribute takes a constant and cannot scale,
-so it is the ceiling every internal budget lives under: raise an internal budget
-past it and the failure arrives as a useless "Test execution timed out" instead
-of the assertion that would have named the problem. #4654 was exactly that —
-`LiveAudioBackendShardMigrationTest` had `Timeout = 30_000` around a single 30 s
-internal wait.
+## Guards fire in order, and the ceiling does not scale
+
+A test can carry three guards. They have to fire in this order, because that is
+the order of how much they tell you when they do:
+
+| Guard | What its failure says |
+|---|---|
+| The wait budget | which assertion did not converge — the useful one |
+| A `CancellationTokenSource` in the test | cancelled here, with a stack |
+| `[Fact(Timeout = N)]` | "Test execution timed out". Nothing else. |
+
+`[Fact(Timeout = N)]` takes a constant, so it **cannot scale**. That makes it the
+ceiling every other number in the test lives under, and gives the rule:
+
+> Scale a timeout only when nothing above it is a constant ceiling.
+
+A budget passed to `TestWait` is scaled for you, so the ceiling above it has to be
+checked by hand. A CTS inside the test sits under that same ceiling, so scaling it
+is wrong twice over: unscaled it fires before the budget it was meant to outlive,
+and scaled it overshoots the ceiling and never fires at all.
+
+**Do not raise `[Fact(Timeout = N)]` reflexively** — most were chosen with CI in
+mind already. Raise it when it cannot cover **the largest single budget in the
+body, scaled, plus what the test does besides waiting** — starting two app hosts
+costs about 30 s on an agent. The largest single budget, not their sum: six uses
+of one 30 s budget are still 30 s of waiting in the worst case.
+
+Both halves of this have drawn blood. #4654: `LiveAudioBackendShardMigrationTest`
+had `Timeout = 30_000` around a single 30 s wait. And `TimerFlowTest` reddened
+`dev` the day the scaling landed — a 60 s ceiling over a budget that had just
+grown to 45 s, plus two app hosts, which turned a clear assertion failure into an
+opaque timeout.
+
+To check a test rather than guess, read the budgets out of the wait report: it
+records the budget of every call site, so the ceiling can be compared against what
+the test actually waits on.
 
 ## The most common flake: asserting without waiting
 
