@@ -21,6 +21,8 @@ public interface IMediaBackend : IComputeService, IBackendService
     Task<MediaFull?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnCopyChat(MediaBackend_CopyChat command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<MediaId?> OnGrabImage(MediaBackend_GrabImage command, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -51,4 +53,17 @@ public sealed partial record MediaBackend_CopyChat(
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => ChatId.ShardKey;
+}
+
+/// <summary>
+/// Command to fetch and store an image from an external URL.
+/// </summary>
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record MediaBackend_GrabImage(
+    [property: DataMember, Key(0)] string Url
+) : ICommand<MediaId?>, IBackendCommand, IHasShardKey
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public ShardKey ShardKey => ShardKey.New(Url);
 }

@@ -14,6 +14,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         = services.GetRequiredService<IDbEntityResolver<string, DbMedia>>();
     private IBlobStorage BlobStorage { get; }
         = services.BlobStorages()[BlobScope.ContentRecord];
+    private ImageGrabber ImageGrabber => field ??= Services.GetRequiredService<ImageGrabber>();
 
     // [ComputeMethod]
     public virtual async Task<Media?> Get(MediaId? mediaId, CancellationToken cancellationToken)
@@ -203,5 +204,21 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
 
         Log.LogInformation("<- OnCopyChat({CorrelationId}) inserted {Count} media records",
             correlationId, updateCount);
+    }
+
+    // [CommandHandler]
+    public virtual async Task<MediaId?> OnGrabImage(MediaBackend_GrabImage command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return default!; // ImageGrabber runs MediaBackend_Change, which invalidates on its own
+
+        try {
+            return await ImageGrabber.GetOrGrab(command.Url, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            // A sender's bad URL must not fail the post; the caller drops the image
+            Log.LogWarning(e, "GrabImage failed for {Url}", command.Url);
+            return null;
+        }
     }
 }
