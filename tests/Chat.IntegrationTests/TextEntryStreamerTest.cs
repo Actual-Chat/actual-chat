@@ -227,6 +227,31 @@ public class TextEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestO
         wasStreaming.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task ShouldRejectStreamingIntoAMaintainedChat()
+    {
+        // arrange
+        var (chatId, _) = await NewChat();
+        await using var admin = AppHost.NewWebClientTester(Out);
+        await admin.SignInAsUniqueBobAdmin();
+        await admin.Commander.Call(new Chats_SetMaintenance {
+            Session = admin.Session, ChatId = chatId, IsEnabled = true,
+        });
+
+        try {
+            // act
+            var streamEntry = () => StreamViaApi(chatId, null, "Blocked");
+
+            // assert
+            await streamEntry.Should().ThrowAsync<Exception>();
+        }
+        finally {
+            await admin.Commander.Call(new Chats_SetMaintenance {
+                Session = admin.Session, ChatId = chatId, IsEnabled = false,
+            });
+        }
+    }
+
     // Private methods
 
     private async Task<(ChatId ChatId, AuthorId AuthorId)> NewChat(bool isPublic = false)

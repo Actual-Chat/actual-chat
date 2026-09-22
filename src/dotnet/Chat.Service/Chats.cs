@@ -22,7 +22,10 @@ public partial class Chats(IServiceProvider services) : IChats
     private IMaintenancesBackend Maintenances { get; } = services.GetRequiredService<IMaintenancesBackend>();
 
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
-    private TextEntryStreamer TextEntryStreamer { get; } = services.GetRequiredService<TextEntryStreamer>();
+    // Lazy: it's registered only on hosts that run the chat backend, and only these two paths need it
+    private TextEntryStreamer TextEntryStreamer => field ??= services.GetRequiredService<TextEntryStreamer>();
+    private IChatEntryStreamsBackend EntryStreamsBackend
+        => field ??= services.GetRequiredService<IChatEntryStreamsBackend>();
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
@@ -480,45 +483,75 @@ public partial class Chats(IServiceProvider services) : IChats
         RpcStream<string> textChunks,
         CancellationToken cancellationToken)
     {
-        ThrowIfPlaceRootChat(chatId);
-        var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
-        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
-        chat.Rules.Permissions.Require(ChatPermissions.Write);
-
-        if (localId is not { } vLocalId)
-            return await TextEntryStreamer
-                .Stream(chatId, author.Id, textChunks, cancellationToken)
-                .ConfigureAwait(false);
-
-        var entry = await this
-            .GetEntry(session, ChatEntryId.New(chatId, vLocalId), cancellationToken)
-            .Require(ChatEntry.MustNotBeRemoved)
+        var (author, entryToUpdate) = await PrepareEntryStream(session, chatId, localId, cancellationToken)
             .ConfigureAwait(false);
-        if (entry.AuthorId != author.Id)
-            throw StandardError.Unauthorized("You can edit only your own messages.");
-        if (entry.IsContentStreaming)
-            throw StandardError.Constraint("Streaming messages cannot be edited.");
-        if (entry.Forwarded is not null)
-            throw StandardError.Constraint("Forwarded messages cannot be edited.");
-
-        var age = Clocks.SystemClock.Now - entry.BeginsAt;
-        if (age <= Constants.Chat.MaxStreamingEditAge)
+        var isViaApi = GetIsViaApi(session);
+        // Re-checked per chunk rather than once: a stream can outlive the start of a maintenance window.
+        var checkedChunks = textChunks.RequireAvailable(Maintenances, chatId, cancellationToken);
+        if (!IsTooOldToStreamInto(entryToUpdate))
             return await TextEntryStreamer
-                .Stream(chatId, author.Id, entry, textChunks, cancellationToken)
+                .Stream(chatId, author.Id, entryToUpdate, checkedChunks, cancellationToken, isViaApi: isViaApi)
                 .ConfigureAwait(false);
 
         // Too old to animate: collect everything, then apply it through the ordinary edit path so
         // the audio, markup and attachment handling there still applies.
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
-        await foreach (var chunk in textChunks.WithCancellation(cancellationToken).ConfigureAwait(false))
+        await foreach (var chunk in checkedChunks.WithCancellation(cancellationToken).ConfigureAwait(false))
             sb.Append(chunk);
         var upsertCommand = new Chats_UpsertEntry {
             Session = session,
             ChatId = chatId,
-            LocalId = vLocalId,
+            LocalId = localId,
             Text = sb.ToStringAndRelease(),
         };
         return await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    public virtual async Task<ChatEntryStream> StartEntryStream(
+        Session session,
+        ChatId chatId,
+        long? localId,
+        CancellationToken cancellationToken)
+    {
+        var (author, entryToUpdate) = await PrepareEntryStream(session, chatId, localId, cancellationToken)
+            .ConfigureAwait(false);
+        // StreamEntry can still fold a stale edit into one update because it holds the whole stream;
+        // here the text arrives across calls, with nothing to fold it into.
+        if (IsTooOldToStreamInto(entryToUpdate))
+            throw StandardError.Constraint(
+                "This message is too old to stream into - edit it in a single call instead.");
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        return await EntryStreamsBackend
+            .Start(chatId, author.Id, account.Id, localId, GetIsViaApi(session), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public virtual async Task<ChatEntryStream> AppendEntryStream(
+        Session session,
+        StreamId streamId,
+        int offset,
+        string text,
+        CancellationToken cancellationToken)
+    {
+        if (offset < 0)
+            throw StandardError.Constraint("Offset cannot be negative.");
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        return await EntryStreamsBackend
+            .Append(streamId, account.Id, offset, text, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public virtual async Task<ChatEntryStream> FinishEntryStream(
+        Session session,
+        StreamId streamId,
+        CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        return await EntryStreamsBackend
+            .Finish(streamId, account.Id, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -545,9 +578,7 @@ public partial class Chats(IServiceProvider services) : IChats
             && command is { HasUploadingAttachments: false, LocationId: null })
             throw StandardError.Constraint("Sorry, you can't post empty messages.");
 
-        // Null rather than false for a regular session: an entry an API key wrote or rewrote
-        // stays marked after the author edits it by hand.
-        var isViaApi = session.Kind is SessionKind.ApiKey or SessionKind.OAuth ? true : (bool?)null;
+        var isViaApi = GetIsViaApi(session);
         ChatEntry textEntry;
         if (localId is { } vLocalId) {
             // Update
@@ -1313,6 +1344,44 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // Private methods
+
+    private async Task<(Author Author, ChatEntry? EntryToUpdate)> PrepareEntryStream(
+        Session session,
+        ChatId chatId,
+        long? localId,
+        CancellationToken cancellationToken)
+    {
+        ThrowIfPlaceRootChat(chatId);
+        var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Permissions.Require(ChatPermissions.Write);
+        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
+
+        if (localId is not { } vLocalId)
+            return (author, null);
+
+        var entry = await this
+            .GetEntry(session, ChatEntryId.New(chatId, vLocalId), cancellationToken)
+            .Require(ChatEntry.MustNotBeRemoved)
+            .ConfigureAwait(false);
+        if (entry.AuthorId != author.Id)
+            throw StandardError.Unauthorized("You can edit only your own messages.");
+        if (entry.IsContentStreaming)
+            throw StandardError.Constraint("Streaming messages cannot be edited.");
+        if (entry.Forwarded is not null)
+            throw StandardError.Constraint("Forwarded messages cannot be edited.");
+
+        return (author, entry);
+    }
+
+    private bool IsTooOldToStreamInto(ChatEntry? entryToUpdate)
+        => entryToUpdate is { } entry
+            && Clocks.SystemClock.Now - entry.BeginsAt > Constants.Chat.MaxStreamingEditAge;
+
+    private static bool? GetIsViaApi(Session session)
+        // Null rather than false for a regular session: an entry an API key wrote or rewrote
+        // stays marked after the author edits it by hand.
+        => session.Kind is SessionKind.ApiKey or SessionKind.OAuth ? true : null;
 
     private static void ThrowIfPlaceRootChat(ChatId chatId)
     {

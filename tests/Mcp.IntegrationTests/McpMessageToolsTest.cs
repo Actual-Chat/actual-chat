@@ -28,6 +28,117 @@ public class McpMessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutp
     }
 
     [Fact]
+    public async Task MessageStreamShouldFillTheEntryAcrossCalls()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
+        var client = await CreateClient();
+
+        // act
+        var stream = await CallTool<McpMessageStream>(client, "start_message_stream",
+            new { chatId = chatId.Value });
+
+        // assert - the message is in the chat before any text arrives, and is marked as streaming
+        var streaming = await Tester.Chats.GetEntry(Tester.Session, ChatEntryId.New(chatId, stream.EntryId));
+        streaming.Should().NotBeNull();
+        streaming!.IsContentStreaming.Should().BeTrue();
+
+        // act
+        stream = await CallTool<McpMessageStream>(client, "append_message_stream",
+            new { streamId = stream.StreamId, offset = stream.Offset, text = "Hello, " });
+        stream = await CallTool<McpMessageStream>(client, "append_message_stream",
+            new { streamId = stream.StreamId, offset = stream.Offset, text = "world!" });
+        var finished = await CallTool<McpMessageStream>(client, "finish_message_stream",
+            new { streamId = stream.StreamId });
+
+        // assert
+        finished.IsFinished.Should().BeTrue();
+        finished.Offset.Should().Be("Hello, world!".Length);
+        var entry = await Tester.Chats.GetEntry(Tester.Session, ChatEntryId.New(chatId, finished.EntryId));
+        entry!.Content.Should().Be("Hello, world!");
+        entry.IsContentStreaming.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AppendMessageStreamShouldReportItsOffsetOnARetry()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
+        var client = await CreateClient();
+        var stream = await CallTool<McpMessageStream>(client, "start_message_stream",
+            new { chatId = chatId.Value });
+        await CallTool<McpMessageStream>(client, "append_message_stream",
+            new { streamId = stream.StreamId, offset = 0, text = "Once" });
+
+        // act - the same call again, as a client that lost the response would make it
+        var retried = await CallTool<McpMessageStream>(client, "append_message_stream",
+            new { streamId = stream.StreamId, offset = 0, text = "Once" });
+        var finished = await CallTool<McpMessageStream>(client, "finish_message_stream",
+            new { streamId = stream.StreamId });
+
+        // assert
+        retried.Offset.Should().Be(4);
+        var entry = await Tester.Chats.GetEntry(Tester.Session, ChatEntryId.New(chatId, finished.EntryId));
+        entry!.Content.Should().Be("Once");
+    }
+
+    [Fact]
+    public async Task MessageStreamShouldRejectAnotherUsersStream()
+    {
+        // arrange
+        var alice = await Tester.SignInAsUniqueAlice();
+        var aliceKey = await IssueApiKey("alice");
+        var bob = await Tester.SignInAsUniqueBob();
+        var bobKey = await IssueApiKey("bob");
+        await Tester.SignIn(alice);
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
+        await Tester.SignIn(bob);
+        await Tester.JoinChat(chatId, Symbol.Empty);
+
+        await using var aliceMcp = await CreateClientWithRawKey(aliceKey);
+        await using var bobMcp = await CreateClientWithRawKey(bobKey);
+        var stream = await CallTool<McpMessageStream>(aliceMcp, "start_message_stream",
+            new { chatId = chatId.Value });
+
+        // act, assert
+        await CallToolExpectingError(bobMcp, "append_message_stream",
+            new { streamId = stream.StreamId, offset = 0, text = "Hijacked" });
+        await CallToolExpectingError(bobMcp, "finish_message_stream", new { streamId = stream.StreamId });
+
+        await Tester.SignIn(alice);
+        var finished = await CallTool<McpMessageStream>(aliceMcp, "finish_message_stream",
+            new { streamId = stream.StreamId });
+        var entry = await Tester.Chats.GetEntry(Tester.Session, ChatEntryId.New(chatId, finished.EntryId));
+        entry!.Content.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task StartMessageStreamShouldFailInAMaintainedChat()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
+        var client = await CreateClient();
+        await using var admin = AppHost.NewWebClientTester(Out);
+        await admin.SignInAsUniqueBobAdmin();
+        await admin.Commander.Call(new Chats_SetMaintenance {
+            Session = admin.Session, ChatId = chatId, IsEnabled = true,
+        });
+
+        try {
+            // act, assert
+            await CallToolExpectingError(client, "start_message_stream", new { chatId = chatId.Value });
+        }
+        finally {
+            await admin.Commander.Call(new Chats_SetMaintenance {
+                Session = admin.Session, ChatId = chatId, IsEnabled = false,
+            });
+        }
+    }
+
+    [Fact]
     public async Task PostMessageWithReplyToShouldLinkEntries()
     {
         // arrange

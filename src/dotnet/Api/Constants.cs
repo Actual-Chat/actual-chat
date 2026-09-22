@@ -82,6 +82,12 @@ public static partial class Constants
         // Past this age an entry is settled enough that re-animating it would read as a glitch,
         // so a streamed edit still succeeds but lands as one ordinary update.
         public static readonly TimeSpan MaxStreamingEditAge = TimeSpan.FromMinutes(15);
+        // A producer that stops calling append is assumed dead, and its entry is finalized with
+        // whatever arrived. Generous: an LLM behind a slow first token still has to beat it.
+        public static readonly TimeSpan EntryStreamIdleTimeout = TimeSpan.FromSeconds(90);
+        // The cap a lease can live under even while it keeps being fed, so a stuck producer
+        // can't hold an entry open forever.
+        public static readonly TimeSpan MaxEntryStreamDuration = TimeSpan.FromMinutes(30);
         // 2x the editor's large-paste threshold, which is per paste rather than per message
         public const int MaxEntryTextLength = 64 * 1024;
         public const int MaxQuotedTextLength = 1024;

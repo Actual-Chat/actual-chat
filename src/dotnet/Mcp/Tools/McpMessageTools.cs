@@ -66,6 +66,54 @@ public sealed class McpMessageTools(IServiceProvider services)
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
+    [McpServerTool(Name = "start_message_stream", UseStructuredContent = true)]
+    [Description("Opens a message whose text you send in pieces: it appears in the chat right away " +
+        "and fills in live for everyone watching, the way a transcript grows while someone is speaking. " +
+        "Then call append_message_stream for each piece and finish_message_stream once. " +
+        "Pass `entryId` to stream into one of your own recent messages instead of posting a new one. " +
+        "Use post_message when you already have the whole text.")]
+    public async Task<McpMessageStream> StartMessageStream(
+        [Description("The chat id.")] string chatId,
+        [Description("LID of your own recent message to stream into; omit to post a new one.")] long? entryId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var stream = await Chats
+            .StartEntryStream(Session, ChatId.Parse(chatId), entryId, cancellationToken)
+            .ConfigureAwait(false);
+        return stream.ToMcpModel();
+    }
+
+    [McpServerTool(Name = "append_message_stream", UseStructuredContent = true)]
+    [Description("Appends text at `offset`, the number of characters the server already has. " +
+        "Returns the offset after the call; if `offset` did not match the server's, nothing is " +
+        "written and the current offset comes back, so a retried or lost call can resume from there. " +
+        "A stream with no append for 90 seconds is finished for you with whatever arrived.")]
+    public async Task<McpMessageStream> AppendMessageStream(
+        [Description("Stream id from start_message_stream.")] string streamId,
+        [Description("Character offset this piece starts at.")] int offset,
+        [Description("The text to append.")] string text,
+        CancellationToken cancellationToken = default)
+    {
+        var stream = await Chats
+            .AppendEntryStream(Session, StreamId.Parse(streamId), offset, text, cancellationToken)
+            .ConfigureAwait(false);
+        return stream.ToMcpModel();
+    }
+
+    [McpServerTool(Name = "finish_message_stream", UseStructuredContent = true)]
+    [Description("Closes the stream and settles the message on the text received so far. " +
+        "Calling it again within 90 seconds returns the same result. To discard the message " +
+        "instead, finish the stream and then remove_message.")]
+    public async Task<McpMessageStream> FinishMessageStream(
+        [Description("Stream id from start_message_stream.")] string streamId,
+        CancellationToken cancellationToken = default)
+    {
+        var stream = await Chats
+            .FinishEntryStream(Session, StreamId.Parse(streamId), cancellationToken)
+            .ConfigureAwait(false);
+        return stream.ToMcpModel();
+    }
+
     [McpServerTool(Name = "remove_message", UseStructuredContent = true)]
     [Description("Soft-remove a message by its local id.")]
     public async Task RemoveMessage(

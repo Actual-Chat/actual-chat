@@ -29,12 +29,16 @@ public class TextEntryStreamer(IServiceProvider services)
         CancellationToken cancellationToken = default)
         => Stream(chatId, authorId, null, textChunks, cancellationToken);
 
+    // entryCreatedSource fires as soon as the entry exists, which is long before this method
+    // returns - a lease-driven producer needs the entry id to hand back from its "start" call.
     public virtual async Task<ChatEntry> Stream(
         ChatId chatId,
         AuthorId authorId,
         ChatEntry? entryToUpdate,
         IAsyncEnumerable<string> textChunks,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool? isViaApi = null,
+        TaskCompletionSource<ChatEntry>? entryCreatedSource = null)
     {
         var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
         using var stream = ToTranscriptDiffs(textChunks, cancellationToken)
@@ -44,9 +48,18 @@ public class TextEntryStreamer(IServiceProvider services)
 
         // The entry has to exist before the stream is drained: readers find the stream through
         // its ContentStreamId, so anything published earlier has no subscriber to reach.
-        var entry = entryToUpdate is null
-            ? await CreateEntry().ConfigureAwait(false)
-            : await StartStreamingInto(entryToUpdate).ConfigureAwait(false);
+        ChatEntry entry;
+        try {
+            entry = entryToUpdate is null
+                ? await CreateEntry().ConfigureAwait(false)
+                : await StartStreamingInto(entryToUpdate).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            entryCreatedSource?.TrySetException(e);
+            throw;
+        }
+        entryCreatedSource?.TrySetResult(entry);
+
         var transcript = Transcript.Empty;
         try {
             await foreach (var diff in stream.Replay(cancellationToken).ConfigureAwait(false))
@@ -65,6 +78,7 @@ public class TextEntryStreamer(IServiceProvider services)
                 Content = "",
                 ContentStreamId = streamId.Value,
                 BeginsAt = Clocks.SystemClock.Now,
+                IsViaApi = isViaApi,
             };
             var command = new ChatsBackend_ChangeEntry(
                 ChatEntryId.New(chatId, 0),
@@ -78,6 +92,7 @@ public class TextEntryStreamer(IServiceProvider services)
             // it still sees the previous text rather than an empty message.
             var diff = new ChatEntryDiff {
                 ContentStreamId = streamId.Value,
+                IsViaApi = isViaApi,
             };
             var command = new ChatsBackend_ChangeEntry(entry1.Id, null, Change.Update(diff));
             return Commander.Call(command, true, cancellationToken);
