@@ -1,7 +1,6 @@
 using ActualChat.Localization;
 using ActualChat.Live;
 using ActualChat.Streaming;
-using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 
@@ -20,9 +19,6 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     // peer's own mute lift to come back from the server, short enough to feel immediate.
     private static readonly TimeSpan MuteEnforcementDelay = TimeSpan.FromSeconds(1);
 
-    private static readonly string JSStartRingback = $"{BlazorUIAppModule.ImportName}.OutgoingCallRingback.start";
-    private static readonly string JSStopRingback = $"{BlazorUIAppModule.ImportName}.OutgoingCallRingback.stop";
-
     private readonly ConcurrentDictionary<ChatId, Conversation?> _lastConversations = new();
     private readonly ConcurrentDictionary<ChatId, LiveBlockState?> _lastBlockStates = new();
 
@@ -30,7 +26,6 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
-    private CallUI CallUI => Hub.CallUI;
 
     void INotifyInitialized.Initialized()
         => this.Start();
@@ -129,7 +124,6 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         var baseChains = new[] {
             AsyncChain.From(RunParticipationSync),
             AsyncChain.From(RunMuteEnforcement),
-            AsyncChain.From(SyncRingback),
         };
         var retryDelays = RetryDelaySeq.Exp(0.5, 8);
         return (
@@ -282,42 +276,6 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             catch (Exception e) {
                 Log.LogWarning(e, "Couldn't clear participation in chat #{ChatId}", chatId);
             }
-    }
-
-    private async Task SyncRingback(CancellationToken cancellationToken)
-    {
-        // Follows the server's dialing, not the slot's: the slot is claimed before the StartCall RPC, and a
-        // refused call must not ring back first.
-        var cDialing = await Computed
-            .Capture(() => CallUI.GetDialingOutChatId(cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        var isRingbackOn = false;
-        try {
-            while (!cancellationToken.IsCancellationRequested) {
-                var mustPlay = cDialing.Value is not null;
-                if (mustPlay != isRingbackOn) {
-                    isRingbackOn = mustPlay;
-                    _ = PlayRingback(mustPlay);
-                }
-
-                await cDialing.WhenInvalidated(cancellationToken).ConfigureAwait(false);
-                cDialing = await cDialing.Update(cancellationToken).ConfigureAwait(false);
-            }
-        }
-        finally {
-            if (isRingbackOn)
-                _ = PlayRingback(false);
-        }
-    }
-
-    private async Task PlayRingback(bool start)
-    {
-        try {
-            await Hub.JS.InvokeVoidAsync(start ? JSStartRingback : JSStopRingback).ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "Outgoing-call ringback {Action} failed", start ? "start" : "stop");
-        }
     }
 
     private static Task<T?> UseOrLastKnown<T>(
