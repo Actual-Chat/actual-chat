@@ -221,6 +221,10 @@ public static class LocalizedStringsLocalizerExt
         public string Integrations_PersonalEmpty => l["Integrations_PersonalEmpty"].Value;
         public string Integrations_Outgoing => l["Integrations_Outgoing"].Value;
         public string Integrations_OutgoingHint => l["Integrations_OutgoingHint"].Value;
+        public string Integrations_Incoming => l["Integrations_Incoming"].Value;
+        public string Integrations_IncomingHint => l["Integrations_IncomingHint"].Value;
+        public string Integrations_LastPost_Format(object arg0)
+            => l["Integrations_LastPost_Format", arg0].Value;
         public string Integrations_Disabled => l["Integrations_Disabled"].Value;
         public string Integrations_FailingSince_Format(object arg0)
             => l["Integrations_FailingSince_Format", arg0].Value;
@@ -236,6 +240,8 @@ public static class LocalizedStringsLocalizerExt
             => l["Integrations_PlaceScope_Format", arg0].Value;
         public string Integrations_NotManageable => l["Integrations_NotManageable"].Value;
         public string WebHook_Name => l["WebHook_Name"].Value;
+        public string WebHook_DisplayName => l["WebHook_DisplayName"].Value;
+        public string WebHook_Avatar => l["WebHook_Avatar"].Value;
         public string WebHook_Url => l["WebHook_Url"].Value;
         public string WebHook_Events => l["WebHook_Events"].Value;
         public string WebHook_Events_Messages => l["WebHook_Events_Messages"].Value;
@@ -256,6 +262,14 @@ public static class LocalizedStringsLocalizerExt
         public string WebHook_Save => l["WebHook_Save"].Value;
         public string WebHook_SecretTitle => l["WebHook_SecretTitle"].Value;
         public string WebHook_SecretCopyWarning => l["WebHook_SecretCopyWarning"].Value;
+        public string WebHook_UrlTitle => l["WebHook_UrlTitle"].Value;
+        public string WebHook_UrlCopyWarning => l["WebHook_UrlCopyWarning"].Value;
+        public string WebHook_PostTest => l["WebHook_PostTest"].Value;
+        public string WebHook_PostTestDone => l["WebHook_PostTestDone"].Value;
+        public string WebHook_RotateUrl => l["WebHook_RotateUrl"].Value;
+        public string WebHook_RotateUrlConfirm => l["WebHook_RotateUrlConfirm"].Value;
+        public string WebHook_DeleteIncomingConfirm_Format(object arg0)
+            => l["WebHook_DeleteIncomingConfirm_Format", arg0].Value;
         public string WebHook_SendTest => l["WebHook_SendTest"].Value;
         public string WebHook_TestSucceeded_Format(object arg0, object arg1)
             => l["WebHook_TestSucceeded_Format", arg0, arg1].Value;
