@@ -140,6 +140,21 @@ public class NotificationsBackend(IServiceProvider services)
         };
     }
 
+    // [ComputeMethod]
+    public virtual async Task<long> GetHistoryVersion(UserId userId, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var sUserId = userId.Value;
+        var maxSeq = await dbContext.NotificationHistory
+            .Where(x => x.UserId == sUserId)
+            .Select(x => (long?)x.Seq)
+            .MaxAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return maxSeq ?? 0;
+    }
+
     public virtual async Task<ApiArray<NotificationHistoryItem>> ListHistory(
         UserId userId, NotificationHistoryQuery query, CancellationToken cancellationToken)
     {
@@ -481,6 +496,7 @@ public class NotificationsBackend(IServiceProvider services)
             using (Invalidation.Begin()) {
                 _ = GetUserNotificationInfo(userId, default);
                 _ = ListDevices(userId, default);
+                _ = GetHistoryVersion(userId, default);
             }
             return Task.CompletedTask;
         });
@@ -877,15 +893,16 @@ public class NotificationsBackend(IServiceProvider services)
     public virtual async Task OnUserNotifiedEvent(UserNotifiedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return; // The log is read by a plain method, nothing to invalidate
+            return; // GetHistoryVersion is invalidated by the completion handler below
 
         var notification = eventCommand.Notification;
         if (!NotificationHistoryItem.IsLoggedKind(notification.Kind))
             return;
 
+        var userId = notification.UserId;
         var context = CommandContext.GetCurrent();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
         context.Operation.MustStore(false);
 
         var item = new DbNotificationHistoryItem(notification, VersionGenerator.NextVersion(), Clocks.SystemClock.Now);
@@ -895,7 +912,17 @@ public class NotificationsBackend(IServiceProvider services)
         }
         catch (DbUpdateConcurrencyException e) when (e.Entries.All(en => en.State == EntityState.Added)) {
             // A redelivered event maps to the same id: INSERT ... ON CONFLICT DO NOTHING affected 0 rows
+            return;
         }
+
+        context.Operation.AddCompletionHandler(scope => {
+            if (scope.IsCommitted != true)
+                return Task.CompletedTask;
+
+            using (Invalidation.Begin())
+                _ = GetHistoryVersion(userId, default);
+            return Task.CompletedTask;
+        });
     }
 
     [EventHandler]

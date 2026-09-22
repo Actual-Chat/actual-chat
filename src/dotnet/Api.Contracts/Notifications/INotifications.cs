@@ -10,6 +10,10 @@ public interface INotifications : IComputeService
     [ComputeMethod(MinCacheDuration = 10)]
     Task<bool> HasNotifiedMentionedMembers(
         Session session, ChatEntryId chatEntryId, CancellationToken cancellationToken);
+    // Bumped by every logged notification and by account removal: the reactive seam over
+    // ListHistory, which itself is a plain method.
+    [ComputeMethod]
+    Task<long> GetHistoryVersion(Session session, CancellationToken cancellationToken);
     // Not a compute method on purpose: every logged notification would otherwise invalidate every
     // cursor variant, and nothing reactive reads it - agents poll it with a cursor.
     Task<ApiArray<NotificationHistoryItem>> ListHistory(

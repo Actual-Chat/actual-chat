@@ -217,4 +217,33 @@ public sealed class NotificationHistoryTest(AppHostFixture fixture, ITestOutputH
         olderThanNewest.Select(x => x.Seq).Should().Equal(newest.Skip(1).Select(x => x.Seq),
             "with newest-first the cursor continues to older rows");
     }
+
+    [Fact]
+    public async Task HistoryVersionShouldGrowOnInsertAndNotOnRedelivery()
+    {
+        // arrange
+        var alice = await Tester.SignInAsUniqueAlice();
+        var chatId = ChatId.Parse("the-actual-one");
+        var mention = MentionNotification.New(alice.Id, ChatEntryId.New(chatId, 21), AuthorId.New(chatId, 1)) with {
+            SentAt = Clocks.SystemClock.Now, Title = "Chat", Text = "@you",
+        };
+        var before = await Backend.GetHistoryVersion(alice.Id, CancellationToken.None);
+
+        // act
+        await Queues.Enqueue(new UserNotifiedEvent(mention));
+        long afterFirst = 0;
+        await TestExt.When(async () => {
+            afterFirst = await Backend.GetHistoryVersion(alice.Id, CancellationToken.None);
+            afterFirst.Should().BeGreaterThan(before, "a logged notification bumps the version");
+        }, WaitTimeout);
+        await Queues.Enqueue(new UserNotifiedEvent(mention));
+        await Queues.WhenProcessing();
+
+        // assert
+        var afterSecond = await Backend.GetHistoryVersion(alice.Id, CancellationToken.None);
+        afterSecond.Should().Be(afterFirst, "a redelivered event inserts nothing, so nothing to invalidate");
+        var items = await Backend.ListHistory(alice.Id, new NotificationHistoryQuery(), CancellationToken.None);
+        items.Should().ContainSingle().Which.NotificationId.Should().Be(mention.Id);
+        afterFirst.Should().Be(items[0].Seq, "the version is the newest row's Seq");
+    }
 }

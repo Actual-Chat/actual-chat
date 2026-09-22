@@ -16,6 +16,8 @@ public interface INotificationsBackend : IComputeService, IBackendService
         ChatId chatId, NotificationImportance importance, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<UserNotificationInfo> GetUserNotificationInfo(UserId userId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<long> GetHistoryVersion(UserId userId, CancellationToken cancellationToken);
     // Not a compute method on purpose - see INotifications.ListHistory
     Task<ApiArray<NotificationHistoryItem>> ListHistory(
         UserId userId, NotificationHistoryQuery query, CancellationToken cancellationToken);

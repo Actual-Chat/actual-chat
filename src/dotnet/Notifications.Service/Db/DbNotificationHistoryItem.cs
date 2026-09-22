@@ -56,6 +56,7 @@ public class DbNotificationHistoryItem : IHasId<string>, IRequirementTarget
     public NotificationHistoryItem ToModel()
     {
         var chatId = ChatId.IsNullOrEmpty() ? null : ActualChat.ChatId.Parse(ChatId);
+        var separatorIndex = Id.LastIndexOf(':');
         return new NotificationHistoryItem(Seq, Kind) {
             SentAt = SentAt.ToMoment(),
             ChatId = chatId,
@@ -63,6 +64,7 @@ public class DbNotificationHistoryItem : IHasId<string>, IRequirementTarget
             AuthorId = AuthorId.IsNullOrEmpty() ? null : ActualChat.AuthorId.Parse(AuthorId),
             Title = Title,
             Text = Text,
+            NotificationId = separatorIndex > 0 ? ActualChat.NotificationId.TryParse(Id[..separatorIndex]) : null,
         };
     }
 
