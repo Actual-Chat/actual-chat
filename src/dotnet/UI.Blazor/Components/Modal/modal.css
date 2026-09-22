@@ -36,9 +36,11 @@ body.device-android .modal-overlay {
     /* The keyboard pans the visual viewport instead of resizing the layout one, and a fixed overlay
        anchors to the layout viewport - so without this it sits offsetTop above the visible band. */
     top: var(--vv-top, 0px);
-    /* The overlay is only as tall as the visible band, so when the WebView briefly pans the viewport on
-       focus a strip of the content behind it would show through. The full-screen dim keeps it covered. */
-    @apply shadow-modal-dim;
+    /* The overlay is only as tall as the visible band; a full-screen shadow in the modal's own colour
+       fills the strip below the sheet (between it and the keyboard) that the WebView briefly exposes when
+       it pans the viewport, so it reads as the sheet reaching the keyboard rather than a gap onto the
+       content behind. Device-only, and opaque (the modal colour) - a translucent dim would show through. */
+    @apply shadow-modal-fill;
 }
 body.device-ios .modal-overlay.hide,
 body.device-android .modal-overlay.hide {
@@ -184,8 +186,7 @@ body.device-android .modal-frame {
     max-height: calc(var(--modal-vh, 1dvh) * 100);
 }
 /* On focus the WebView pans the visual viewport to reveal the field, dragging the fixed modal with it.
-   Giving the body its own scroll-padding lets that reveal happen inside the form's scroll instead, and
-   containing overscroll stops the gesture chaining out to the viewport - together they keep the modal put. */
+   overscroll-behavior contains the gesture; scroll-padding-bottom sets where a revealed field lands. */
 body.device-ios .dialog-body,
 body.device-android .dialog-body {
     scroll-padding-bottom: 6rem;

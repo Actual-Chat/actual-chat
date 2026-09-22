@@ -656,9 +656,9 @@ module.exports = {
       'up': '0px -6px 8px 2px rgba(200, 200, 200, 0.2);',
       'modal-wide': '0 3px 3px 0 rgba(0, 0, 0, .15)',
       'modal-narrow': '0 10px 20px 0 rgba(0, 0, 0, .75)',
-      // Full-screen dim behind a narrow modal, matching the overlay's bg-pal-black-70: keeps the content
-      // behind covered when the on-screen keyboard briefly pans the visual viewport - see modal.css.
-      'modal-dim': '0 0 0 100vh var(--black-70)',
+      // Opaque full-screen fill in the modal's own colour, behind a narrow modal on device: covers the
+      // strip between the sheet and the keyboard the WebView exposes while panning - see modal.css.
+      'modal-fill': '0 0 0 100vh var(--modal-background)',
       'modal-header-btn': '0px 2px 8px 0 var(--shadow-modal-header-button)',
     },
     boxShadowColor: ({ theme }) => theme('colors'),
