@@ -25,6 +25,7 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
         var placeId = PlaceId;
         var usePlaceChatListSettings = UsePlaceChatListSettings;
         var settings = Settings;
+        var notificationsFilterId = NotificationsFilterId;
         var visibility = _visibility;
         await ThreadPoolExt.Yield();
 
@@ -58,6 +59,11 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
         var separatorIndexesTask = ChatListUI.GetSeparatorIndexes(placeId, chatListSettings, cancellationToken);
         var chatIndex = await chatIndexTask.ConfigureAwait(false);
         var chatCount = await chatCountTask.ConfigureAwait(false);
+        // The notifications panel shows the tab's history under its active rows - one small block,
+        // always fully loaded, so only the chat window above it is virtualized by range
+        var history = notificationsFilterId.IsEmpty
+            ? ApiArray<NotificationHistoryGroup>.Empty
+            : await NotificationsUI.ListHistory(notificationsFilterId, cancellationToken).ConfigureAwait(false);
 
         DebugLog?.LogDebug(
             "GetData: {PlaceId}/{UsePlaceChatListSettings}/{ChatId} (#{ChatIndex}/{ChatCount})",
@@ -131,20 +137,25 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
             }
         }
 
-        var hasVeryFirstItem = range.Start == 0;
-        var hasVeryLastItem = range.End >= chatCount;
+        var hasAllChats = range.End >= chatCount;
+        var separatorIndexes = await separatorIndexesTask.ConfigureAwait(false);
+        var totalCount = chatCount + history.Count;
+        if (hasAllChats)
+            (separatorIndexes, totalCount) = AppendHistory(resultItems, chatCount, history, separatorIndexes);
 
-        // Console.WriteLine(Computed.Current.DebugDump());
+        var hasVeryFirstItem = range.Start == 0;
+        var hasVeryLastItem = hasAllChats;
+
         var firstItemPosition = resultItems.FirstOrDefault()?.Position ?? 0;
-        var lastItemPosition = resultItems.LastOrDefault()?.Position ?? chatCount;
+        var lastItemPosition = resultItems.LastOrDefault()?.Position ?? totalCount;
         var mustShowInviteFriendsBanner = await mustShowInviteFriendsBannerTask.ConfigureAwait(false);
         if (hasVeryLastItem && mustShowInviteFriendsBanner)
-            resultItems.Add(ChatListItemModel.NewInviteFriendsBanner(chatCount));
+            resultItems.Add(ChatListItemModel.NewInviteFriendsBanner(totalCount));
         var result = new VirtualListData<ChatListItemModel>(resultItems) {
             Index = renderedData.Index + 1,
             BeforeCount = firstItemPosition,
-            AfterCount = (chatCount - lastItemPosition - 1).Clamp(0, chatCount),
-            SeparatorIndexes = await separatorIndexesTask.ConfigureAwait(false),
+            AfterCount = (totalCount - lastItemPosition - 1).Clamp(0, totalCount),
+            SeparatorIndexes = separatorIndexes,
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
             ScrollToKey = scrollToKey,
@@ -155,6 +166,32 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
         var data = result.IsSimilarTo(renderedData) ? renderedData : result;
         Volatile.Write(ref _items, data.Items);
         return data;
+    }
+
+    // Protected/internal methods
+
+    // It's internal to be accessible from tests
+    internal static (IReadOnlyList<int> SeparatorIndexes, int TotalCount) AppendHistory(
+        List<ChatListItemModel> items,
+        int chatCount,
+        ApiArray<NotificationHistoryGroup> history,
+        IReadOnlyList<int> separatorIndexes)
+    {
+        if (history.Count == 0)
+            return (separatorIndexes, chatCount);
+
+        // GetCount and the tiles are separate reads, so the window can already hold a row the count
+        // doesn't know about - the history starts below whichever of the two reaches further.
+        var basePosition = Math.Max(chatCount, (items.LastOrDefault()?.Position ?? -1) + 1);
+        if (items.Count > 0 && items[^1].Chat is not null) {
+            // The last active row renders the divider, exactly as the last pinned chat does
+            items[^1] = items[^1] with { IsLastItemInBlock = true };
+            separatorIndexes = separatorIndexes.Append(basePosition - 1).Order().Distinct().ToList();
+        }
+        for (var i = 0; i < history.Count; i++)
+            items.Add(ChatListItemModel.NewHistory(basePosition + i, history[i]));
+
+        return (separatorIndexes, basePosition + history.Count);
     }
 
     // Private methods

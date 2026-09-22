@@ -392,6 +392,21 @@ body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on {
     @apply h-5 w-5;
 }
 
+/* Notification history rows under the active section of a notifications-panel tab */
+.chat-list .navbar-item.c-history {
+    @apply opacity-60;
+}
+.chat-list .navbar-item.c-history .message-counter-badge.c-history-count {
+    @apply text-03;
+}
+/* A chat row drops its time and badge on hover to make room for the Ending slot; a history row
+   has no Ending, and the time and the "+N" are what it exists to show - so they stay. Both
+   selectors have to outweigh the hover rules that hide them, hence the extra ancestors. */
+body.hoverable .chat-list .navbar-item.c-history:hover .c-container .c-description .c-chat-title .c-timestamp,
+body.hoverable .chat-list .navbar-item.c-history:hover .c-container .c-description .c-last-message .c-history-count {
+    @apply flex;
+}
+
 /* Hoverable slot */
 .chat-list .navbar-item .navbar-item-ending .slot {
     @apply flex items-center gap-x-1;

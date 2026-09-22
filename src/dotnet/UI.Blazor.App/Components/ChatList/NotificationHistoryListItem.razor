@@ -1,0 +1,55 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedRenderStateComponent<AppUIHub, Chat?>
+@{
+    var isInitial = State.IsInitial(out var chat);
+    var newest = Group.Newest;
+    var link = newest.EntryId is { } entryId ? Links.Chat(entryId) : Links.Chat(Group.ChatId);
+    // An empty Url makes NavbarItem render plain content: a chat the reader can no longer open
+    // keeps its stored title but stops navigating, while a still-loading row stays clickable.
+    var url = isInitial || chat is not null ? link.Value : "";
+}
+
+<NavbarItem
+    Url="@url"
+    ReplaceOnPrefix="/chat/"
+    IsSelected="false"
+    Class="c-history">
+    <ChildContent>
+        <div class="c-container">
+            <ChatIcon Chat="@chat" ShowPresence="false"/>
+            <div class="c-description">
+                <span class="c-chat-title">
+                    <span>@(chat?.Title ?? newest.Title)</span>
+                    <span class="c-incut"></span>
+                    <LiveTimeDeltaText Class="c-timestamp" Moment="@newest.SentAt"/>
+                </span>
+                <div class="c-last-message">
+                    <span class="c-text">@newest.Text</span>
+                    <div class="c-incut"></div>
+                    @if (Group.OlderCount > 0) {
+                        <Badge
+                            Class="message-counter-badge c-history-count"
+                            Color="bg-counter">+@Group.OlderCount</Badge>
+                    }
+                </div>
+            </div>
+        </div>
+    </ChildContent>
+</NavbarItem>
+
+@code {
+    private IChats Chats => Hub.Chats;
+
+    [Parameter, EditorRequired] public NotificationHistoryGroup Group { get; set; } = null!;
+
+    protected override ComputedState<Chat?>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Chat?>.Options {
+                InitialValue = null,
+                UpdateDelayer = FixedDelayer.Get(0.1),
+                Category = GetStateCategory(t),
+            });
+
+    protected override Task<Chat?> ComputeState(CancellationToken cancellationToken)
+        => Chats.Get(Session, Group.ChatId, cancellationToken);
+}
