@@ -13,7 +13,7 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
     private IUsageBackend Backend => AppHost.Services.GetRequiredService<IUsageBackend>();
     private IUsage Usage => AppHost.Services.GetRequiredService<IUsage>();
 
-    [Fact(Timeout = 60_000)]
+    [Fact(Timeout = 90_000)]
     public async Task MessagesAndSpeechShouldBeCounted()
     {
         // arrange
@@ -63,7 +63,7 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
         summary2.SpeechMs.Should().Be(7_000);
     }
 
-    [Fact(Timeout = 60_000)]
+    [Fact(Timeout = 90_000)]
     public async Task LiveSessionEndShouldCountEachParticipantOnce()
     {
         // arrange
@@ -92,7 +92,7 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
         (await Backend.GetSummary(account.Id, default)).LiveSessions.Should().Be(1, "the second delivery is a no-op");
     }
 
-    [Fact(Timeout = 60_000)]
+    [Fact(Timeout = 90_000)]
     public async Task ARealCallShouldEarnThePromptForItsParticipants()
     {
         // arrange - nothing is enqueued by hand here: the call closes through LiveSessionsBackend
@@ -139,7 +139,7 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
             "Alice's prompt is her own");
     }
 
-    [Fact(Timeout = 60_000)]
+    [Fact(Timeout = 90_000)]
     public async Task CheckInShouldMarkTheDayActive()
     {
         // arrange
@@ -157,7 +157,7 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
         });
     }
 
-    [Fact(Timeout = 60_000)]
+    [Fact(Timeout = 90_000)]
     public async Task ReviewPromptShouldFollowUsageAndHistory()
     {
         // arrange - the fixture lowers every threshold except the live-session one

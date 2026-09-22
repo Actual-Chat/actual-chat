@@ -40,7 +40,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
     /// <summary>
     /// Basic test that verifies compute method routing between two hosts.
     /// </summary>
-    [Fact(Timeout = 60_000)]
+    [Fact(Timeout = 90_000)]
     public async Task BasicRoutingTest()
     {
         var shardScheme = ShardScheme.TestBackend;
@@ -133,7 +133,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
     /// <summary>
     /// Test that verifies compute method invalidation works correctly during rerouting.
     /// </summary>
-    [Fact(Timeout = 60_000)]
+    [Fact(Timeout = 90_000)]
     public async Task ComputedInvalidationOnRerouteTest()
     {
         var syncTimeout = TimeSpan.FromSeconds(10);

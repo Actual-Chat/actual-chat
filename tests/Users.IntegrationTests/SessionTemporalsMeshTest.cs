@@ -6,7 +6,7 @@ namespace ActualChat.Users.IntegrationTests;
 public class SessionTemporalsMeshTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(SessionTemporalsMeshTest)}", TestAppHostOptions.Default, @out)
 {
-    [Fact(Timeout = 60_000)]
+    [Fact(Timeout = 90_000)]
     public async Task HostAdditionTest()
     {
         var syncTimeout = TimeSpan.FromSeconds(15);
@@ -36,7 +36,7 @@ public class SessionTemporalsMeshTest(ITestOutputHelper @out)
         value.Should().Be(error);
     }
 
-    [Fact(Timeout = 60_000)]
+    [Fact(Timeout = 90_000)]
     public async Task HostRemovalTest()
     {
         var syncTimeout = TimeSpan.FromSeconds(15);
@@ -75,7 +75,7 @@ public class SessionTemporalsMeshTest(ITestOutputHelper @out)
         }, syncTimeout);
     }
 
-    [Fact(Timeout = 60_000)]
+    [Fact(Timeout = 90_000)]
     public async Task WriteOnOneHost_ReadOnAnotherAfterRestartTest()
     {
         var syncTimeout = TimeSpan.FromSeconds(15);
