@@ -305,7 +305,7 @@ export class MapView {
         return own;
     }
 
-    // Heading is only known while moving; hide the fan when it's absent so a stale
+    // Heading is absent without a compass while standing still; hide the fan then so a stale
     // direction isn't shown, and otherwise rotate it (0° = north) around the dot.
     private static applyHeading(element: HTMLElement, bearing?: number | null): void {
         const heading = element.querySelector<HTMLElement>('.c-own-heading');

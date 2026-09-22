@@ -150,11 +150,16 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         return locations.FirstOrDefault(x => x.AuthorId == authorId);
     }
 
-    [ComputeMethod]
+    [ComputeMethod(ConsolidationDelay = 0.25)]
     public virtual async Task<MapMarker?> GetOwnMarker(ChatId chatId, CancellationToken cancellationToken)
     {
+        // Consolidated: the compass turns far faster than this marker needs to move.
         if (await GetOwnCurrentOrSharedLocation(chatId, cancellationToken).ConfigureAwait(false) is not { } point)
             return null;
+
+        // GPS course exists only while moving, so the compass, while it's watched, wins.
+        if (await Tracker.Heading.Use(cancellationToken).ConfigureAwait(false) is { } heading)
+            point = point with { Bearing = heading };
 
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         return ownAuthor is null
@@ -304,14 +309,17 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
-    public Task RunLocationRefreshLoop(bool mustTroubleshootOnFirstRun, CancellationToken cancellationToken)
+    public async Task RunLocationRefreshLoop(bool mustTroubleshootOnFirstRun, CancellationToken cancellationToken)
     {
-        return AsyncChain.From(Refresh)
+        await using var _ = FuncWorker.Start(Tracker.WatchHeading, cancellationToken).ConfigureAwait(false);
+        await AsyncChain.From(Refresh)
             .Log(LogLevel.Debug, Log)
             .RetryForever(RetryDelaySeq.Exp(0.5, 10), Log)
             .AppendDelay(CurrentLocationRefreshPeriod)
             .CycleForever()
-            .RunIsolated(cancellationToken);
+            .RunIsolated(cancellationToken)
+            .ConfigureAwait(false);
+        return;
 
         async Task Refresh(CancellationToken cancellationToken1) {
             await RefreshCurrentLocation(mustTroubleshootOnFirstRun, cancellationToken1).ConfigureAwait(false);
