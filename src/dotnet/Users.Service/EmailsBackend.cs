@@ -18,6 +18,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
     private IEmailSender EmailSender { get; } = services.GetRequiredService<IEmailSender>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private IChatDigestSummarizer ChatDigestSummarizer { get; } = services.GetRequiredService<IChatDigestSummarizer>();
+    private DigestUnsubscribeTokens UnsubscribeTokens { get; } = services.GetRequiredService<DigestUnsubscribeTokens>();
     private MomentClockSet Clocks { get; } = services.Clocks();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
     private ILogger Log { get; } = services.LogFor<EmailsBackend>();
@@ -26,17 +27,20 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         UserId userId, ChatId[] chatIds, DateTime? asOf, CancellationToken cancellationToken)
     {
         var userLanguage = await GetUserLanguage(userId, cancellationToken).ConfigureAwait(false);
+        var unsubscribeLink = GetUnsubscribeLink(userId);
         DigestParameters digestParameters;
         if (chatIds.Length > 0) {
             var now = asOf ?? Clocks.SystemClock.Now;
-            digestParameters = await BuildSpecificChatsDigest(chatIds, now, userLanguage, cancellationToken).ConfigureAwait(false);
+            digestParameters = await BuildSpecificChatsDigest(
+                chatIds, now, userLanguage, unsubscribeLink, cancellationToken).ConfigureAwait(false);
         }
         else {
             var account = await AccountsBackend
                 .Get(userId, cancellationToken)
                 .Require()
                 .ConfigureAwait(false);
-            digestParameters = await BuildUnreadChatsDigest(account, userLanguage, cancellationToken).ConfigureAwait(false);
+            digestParameters = await BuildUnreadChatsDigest(account, userLanguage, unsubscribeLink, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         var html = "";
@@ -78,7 +82,9 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         }
 
         var userLanguage = await GetUserLanguage(account.Id, cancellationToken).ConfigureAwait(false);
-        var digestParameters = await BuildUnreadChatsDigest(account, userLanguage, cancellationToken).ConfigureAwait(false);
+        var unsubscribeLink = GetUnsubscribeLink(account.Id);
+        var digestParameters = await BuildUnreadChatsDigest(account, userLanguage, unsubscribeLink, cancellationToken)
+            .ConfigureAwait(false);
         if (digestParameters.UnreadChats.Count == 0) {
             diagLog?.LogInformation("<- OnSendDigest. No unread chats");
             return default;
@@ -86,14 +92,15 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
 
         var html = await RenderDigest(digestParameters, cancellationToken).ConfigureAwait(false);
         await EmailSender
-            .Send("", account.Email, $"{CoreConstants.AppName}: digest", html, cancellationToken)
+            .Send("", account.Email, $"{CoreConstants.AppName}: digest", html, unsubscribeLink, cancellationToken)
             .ConfigureAwait(false);
 
         diagLog?.LogInformation("<- OnSendDigest. Completed");
         return default;
     }
 
-    private async Task<DigestParameters> BuildUnreadChatsDigest(AccountFull account, Language userLanguage, CancellationToken cancellationToken)
+    private async Task<DigestParameters> BuildUnreadChatsDigest(
+        AccountFull account, Language userLanguage, string unsubscribeLink, CancellationToken cancellationToken)
     {
         const int takeChats = 5;
         var totalUnreadCount = 0;
@@ -118,6 +125,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             UnreadChats = unreadChats,
             OtherUnreadCount = totalUnreadCount - unreadChats.Count,
             OtherUnreadLink = UrlMapper.BaseUrl,
+            UnsubscribeLink = unsubscribeLink,
         };
 
         async Task<DigestParameters.DigestChat?> BuildUnreadDigestChat(ContactId contactId)
@@ -166,6 +174,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         IEnumerable<ChatId> chatIds,
         DateTime asOf,
         Language userLanguage,
+        string unsubscribeLink,
         CancellationToken cancellationToken)
     {
         var unreadChats = new List<DigestParameters.DigestChat>();
@@ -178,6 +187,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             UnreadChats = unreadChats,
             OtherUnreadCount = 0,
             OtherUnreadLink = UrlMapper.BaseUrl,
+            UnsubscribeLink = unsubscribeLink,
         };
     }
 
@@ -264,6 +274,9 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             .Select(g => g.Key)
             .FirstOrDefault();
     }
+
+    private string GetUnsubscribeLink(UserId userId)
+        => UrlMapper.ToAbsolute(DigestEmailEndpointExt.GetUnsubscribePath(UnsubscribeTokens.Create(userId)));
 
     private async Task<Language> GetUserLanguage(UserId userId, CancellationToken cancellationToken)
     {
