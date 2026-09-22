@@ -22,6 +22,10 @@ namespace ActualChat.App.Maui;
 public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingService
 {
     private static readonly TimeSpan FirebaseReadyTimeout = TimeSpan.FromSeconds(15);
+    // Twice the ring, so a device clock a few seconds off can't drop a live one: this exists to
+    // catch a push held back for minutes, not to be precise about the ring's own deadline.
+    private static readonly TimeSpan MaxRingPushAge = Constants.Call.RingTimeout * 2;
+
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<FirebaseMessagingService>();
     private static ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
@@ -127,7 +131,7 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
         }
 
         if (data.NotificationKind == NotificationKind.IncomingCall) {
-            HandleIncomingCall(data);
+            HandleIncomingCall(data, message.SentTime);
             return;
         }
 
@@ -244,12 +248,21 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
             IncomingCallRinger.Stop();
     }
 
-    private static void HandleIncomingCall(NotificationData data)
+    private static void HandleIncomingCall(NotificationData data, long sentTime)
     {
         var chatId = data.ChatId;
         if (chatId is null) {
             Log.LogWarning("Can't handle incoming-call push. Invalid ChatId. Ref messageId: '{MessageId}'",
                 data.MessageId);
+            return;
+        }
+
+        // The TTL keeps most stale rings out, but FCM may still deliver one right at its edge -
+        // and a ring that outlived its call rings the phone for a call nobody can answer.
+        var age = SystemClock.Instance.Now - new Moment(sentTime * 10_000);
+        if (age > MaxRingPushAge) {
+            Log.LogWarning("Dropping an incoming-call push for chat #{ChatId}: it is {Age} old",
+                chatId, age.ToShortString());
             return;
         }
 

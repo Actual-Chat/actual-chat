@@ -8,15 +8,18 @@ public class FirebaseMessagingClient(
     UrlMapper urlMapper,
     FirebaseMessaging firebaseMessaging,
     ICommander commander,
+    MomentClockSet clocks,
     ILogger<FirebaseMessagingClient> log)
     : IFirebaseMessagingClient
 {
     private const int MaxFcmPayloadBytes = 4096;
     private const int FcmPayloadMargin = 512;
+    private static readonly TimeSpan DefaultTimeToLive = TimeSpan.FromDays(10);
 
     private UrlMapper UrlMapper { get; } = urlMapper;
     private FirebaseMessaging FirebaseMessaging { get; } = firebaseMessaging;
     private ICommander Commander { get; } = commander;
+    private MomentClockSet Clocks { get; } = clocks;
     private ILogger Log { get; } = log;
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Notifications);
 
@@ -28,7 +31,9 @@ public class FirebaseMessagingClient(
         bool isSilent,
         CancellationToken cancellationToken)
     {
-        var badgeCount = info.Items.Count;
+        // A ring is in the active set to be delivered and dismissed, not because anything is
+        // unread: counting it takes the badge up for the ring's lifetime and back down after it.
+        var badgeCount = info.Items.Where(x => x.Kind != NotificationKind.IncomingCall).Count();
         var notificationId = notification.Id;
         var kind = notification.Kind;
         var title = notification.Title;
@@ -137,7 +142,7 @@ public class FirebaseMessagingClient(
                 Data = renderData,
                 Priority = Priority.High,
                 // CollapseKey = default, /* We don't use collapsible messages */
-                TimeToLive = TimeSpan.FromDays(10),
+                TimeToLive = GetTimeToLive(notification),
             },
             Apns = new ApnsConfig {
                 Headers = new Dictionary<string, string>() {
@@ -342,6 +347,19 @@ public class FirebaseMessagingClient(
     }
 
     // Private methods
+
+    private TimeSpan GetTimeToLive(Notification notification)
+    {
+        // A push outliving the notification it carries is worse than a lost one: FCM holds it
+        // through a Doze window and delivers it whenever the device next wakes, so a ring queued
+        // this way arrives to a call that ended minutes ago - and rings the phone for it. The
+        // server already drops an expired notification from the active set; the push follows suit.
+        if (notification.ExpiresAt is not { } expiresAt)
+            return DefaultTimeToLive;
+
+        var timeToLive = expiresAt - Clocks.SystemClock.Now;
+        return timeToLive > TimeSpan.Zero ? timeToLive : TimeSpan.Zero;
+    }
 
     private async Task HandleBatchResponse(
         BatchResponse batchResponse,

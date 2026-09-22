@@ -13,6 +13,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 //   banner (which doesn't change the active set) never resurrects it. iOS is prune-only.
 public sealed class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
 {
+    private static readonly ComputedSynchronizer Synchronizer = ComputedSynchronizer.Safe.Instance;
+
     private HashSet<string> _lastActiveTags = new();
     private bool _isInitialized;
 
@@ -47,7 +49,14 @@ public sealed class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub
             if (c.HasError)
                 continue;
 
-            var infos = ToInfos(c.Value);
+            // Pruning acts on absence, so it must never run on a value the server didn't send:
+            // ListActive is client-cached (ComputedOptions.ClientDefault), and a client that just
+            // woke up reads the disk cache first - an empty one closes every banner on the device.
+            var cSynced = await c.Synchronize(Synchronizer, cancellationToken).ConfigureAwait(false);
+            if (cSynced.HasError || !cSynced.IsSynchronized(Synchronizer))
+                continue;
+
+            var infos = ToInfos(cSynced.Value);
             var currentTags = infos.Select(x => x.Tag).ToHashSet();
             // First observation seeds the baseline without creating, so existing unread chats
             // don't all pop as banners on startup.
@@ -81,8 +90,15 @@ public sealed class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub
             // alive while backgrounded); re-creating here could resurrect a banner read elsewhere.
             if (wasBackground && !isBackground) {
                 try {
-                    var active = await Hub.Notifications.ListActive(Hub.Session, cancellationToken).ConfigureAwait(false);
-                    await deviceNotifications.Reconcile(ToInfos(active), [], cancellationToken).ConfigureAwait(false);
+                    // A resume is exactly when the cached active set is stale, and this path only
+                    // prunes - so acting on a stale one can only ever close a live banner.
+                    var cActive = await Computed
+                        .Capture(() => Hub.Notifications.ListActive(Hub.Session, cancellationToken), cancellationToken)
+                        .ConfigureAwait(false);
+                    cActive = await cActive.Synchronize(Synchronizer, cancellationToken).ConfigureAwait(false);
+                    if (!cActive.HasError && cActive.IsSynchronized(Synchronizer))
+                        await deviceNotifications.Reconcile(ToInfos(cActive.Value), [], cancellationToken)
+                            .ConfigureAwait(false);
                 }
                 catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                     // A transient ListActive/reconcile failure on one resume must not kill the loop.
