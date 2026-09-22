@@ -23,7 +23,10 @@
         </NoComponent>
     }
     <NotificationsPermissionBanner/>
-    <LockScreenCallsBanner/>
+    @* The lock-screen grant buys nothing until there are calls: it only lets an incoming one show there *@
+    @if (m.EnableIncompleteUI) {
+        <LockScreenCallsBanner/>
+    }
 </BannerStack>
 
 @code {
@@ -45,12 +48,13 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var bannerRefs = await BannerUI.Banners.Use(cancellationToken).ConfigureAwait(false);
-        return new(bannerRefs);
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        return new(bannerRefs, enableIncompleteUI);
     }
 
     // Nested types
 
-    public sealed record ComputedModel(ImmutableList<BannerDef> Banners) {
-        public static readonly ComputedModel None = new(ImmutableList<BannerDef>.Empty);
+    public sealed record ComputedModel(ImmutableList<BannerDef> Banners, bool EnableIncompleteUI) {
+        public static readonly ComputedModel None = new(ImmutableList<BannerDef>.Empty, false);
     }
 }

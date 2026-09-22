@@ -8,7 +8,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
 /// Everything that shows the call <see cref="CallUI"/> holds: the modal, the island, the full-screen view,
-/// the ringtone. <see cref="GetCallView"/> alone decides which of them shows it.
+/// the ringtone and the ringback. <see cref="GetCallView"/> alone decides which of them shows it.
 /// </summary>
 public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {

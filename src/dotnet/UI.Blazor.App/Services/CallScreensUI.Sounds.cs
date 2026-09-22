@@ -6,6 +6,8 @@ public partial class CallScreensUI
 {
     private static readonly string JSStartRingtone = $"{BlazorUIAppModule.ImportName}.IncomingCallRingtone.start";
     private static readonly string JSStopRingtone = $"{BlazorUIAppModule.ImportName}.IncomingCallRingtone.stop";
+    private static readonly string JSStartRingback = $"{BlazorUIAppModule.ImportName}.OutgoingCallRingback.start";
+    private static readonly string JSStopRingback = $"{BlazorUIAppModule.ImportName}.OutgoingCallRingback.stop";
 
     private int _ringGeneration;
 
@@ -15,7 +17,7 @@ public partial class CallScreensUI
     {
         // Fire-and-forget, so SyncRingtone's finally can stop the ring synchronously.
         if (Bridge is null) {
-            _ = InvokeWebRingtone(JSStartRingtone);
+            _ = InvokeSound(JSStartRingtone);
             return;
         }
 
@@ -30,7 +32,7 @@ public partial class CallScreensUI
     private void StopRinging(bool mustEndOwnedRing = true)
     {
         if (Bridge is null) {
-            _ = InvokeWebRingtone(JSStopRingtone);
+            _ = InvokeSound(JSStopRingtone);
             return;
         }
 
@@ -82,13 +84,37 @@ public partial class CallScreensUI
             .Select(c => c.ChatId)
             .ToList();
 
-    private async Task InvokeWebRingtone(string jsMethod)
+    private async Task SyncRingback(CancellationToken cancellationToken)
+    {
+        // Follows the server's dialing, not the slot's: the slot is claimed before the StartCall RPC, and a
+        // refused call must not ring back first.
+        var cDialing = await Computed
+            .Capture(() => CallUI.GetDialingOutChatId(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        var isRingbackOn = false;
+        try {
+            await foreach (var c in cDialing.Changes(cancellationToken).ConfigureAwait(false)) {
+                var mustPlay = c.Value is not null;
+                if (mustPlay == isRingbackOn)
+                    continue;
+
+                isRingbackOn = mustPlay;
+                _ = InvokeSound(mustPlay ? JSStartRingback : JSStopRingback);
+            }
+        }
+        finally {
+            if (isRingbackOn)
+                _ = InvokeSound(JSStopRingback);
+        }
+    }
+
+    private async Task InvokeSound(string jsMethod)
     {
         try {
             await Hub.JS.InvokeVoidAsync(jsMethod).ConfigureAwait(false);
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Web ringtone call {Method} failed", jsMethod);
+            Log.LogWarning(e, "Call sound {Method} failed", jsMethod);
         }
     }
 }

@@ -12,6 +12,7 @@ public partial class CallScreensUI
     {
         var baseChains = new[] {
             AsyncChain.From(SyncRingtone),
+            AsyncChain.From(SyncRingback),
             AsyncChain.From(SyncCallView),
         };
         var retryDelays = RetryDelaySeq.Exp(0.5, 10);
