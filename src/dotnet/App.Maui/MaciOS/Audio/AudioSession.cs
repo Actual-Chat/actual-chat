@@ -280,6 +280,17 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             => $"{port.PortName} ({port.PortType})";
     }
 
+    public AudioOutputKind? GetCurrentOutputKind()
+    {
+        try {
+            return AVAudioSession.SharedInstance().CurrentRoute.Outputs.FirstOrDefault()?.GetOutputKind();
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to read the audio output kind");
+            return null;
+        }
+    }
+
     public static string Describe(AVAudioSession session)
     {
         var route = session.CurrentRoute;

@@ -83,6 +83,9 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
         await _focusHelper.SelectBuiltinSpeaker(cancellationToken).ConfigureAwait(false);
     }
 
+    public override AudioOutputKind? GetCurrentOutputKind()
+        => _focusHelper.GetCurrentOutputKind();
+
     // Protected/internal methods
 
     protected override async Task<MauiAudioFocusHandle?> RequestAudioFocus(AudioFocusMode mode)

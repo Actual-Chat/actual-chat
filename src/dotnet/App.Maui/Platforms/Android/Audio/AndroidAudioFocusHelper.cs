@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Services;
 using Android.Content;
 using Android.Media;
 using OperationCanceledException = System.OperationCanceledException;
@@ -153,6 +154,39 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         // Deliberately bypasses the priority list in SelectCommunicationDevice: a Bluetooth device
         // here would raise an HFP virtual call, which is what pinning playback to the phone avoids.
         => _deviceRouter.SelectBuiltinSpeaker(cancellationToken);
+
+    public AudioOutputKind? GetCurrentOutputKind()
+    {
+        // Read-only, so it runs outside the serialized calls. A connected external device counts
+        // even when Android hasn't routed to it yet: the user has it on, and that's what matters.
+        try {
+            foreach (var output in _audioManager.GetDevices(GetDevicesTargets.Outputs) ?? [])
+                if (GetExternalKind(output.Type) is { } externalKind)
+                    return externalKind;
+
+            if (_audioManager.Mode != Mode.InCommunication)
+                return AudioOutputKind.Speaker;
+
+            var isEarpiece = OperatingSystem.IsAndroidVersionAtLeast(31)
+                ? _audioManager.CommunicationDevice?.Type == AudioDeviceType.BuiltinEarpiece
+                : !_audioManager.SpeakerphoneOn;
+            return isEarpiece ? AudioOutputKind.Phone : AudioOutputKind.Speaker;
+        }
+        catch (Exception e) {
+            _log.LogWarning(e, "Failed to read the audio output kind");
+            return null;
+        }
+
+        static AudioOutputKind? GetExternalKind(AudioDeviceType type)
+            => type switch {
+                AudioDeviceType.BluetoothSco or AudioDeviceType.BluetoothA2dp
+                    or AudioDeviceType.BleHeadset or AudioDeviceType.BleSpeaker => AudioOutputKind.Bluetooth,
+                AudioDeviceType.WiredHeadset or AudioDeviceType.WiredHeadphones
+                    or AudioDeviceType.UsbHeadset => AudioOutputKind.Headphones,
+                AudioDeviceType.HearingAid => AudioOutputKind.Other,
+                _ => null,
+            };
+    }
 
     public void YieldCommunicationMode()
     {
