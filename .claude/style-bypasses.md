@@ -222,6 +222,13 @@ edited. The reason can be as short as whose decision it was.
   deviation: `new (` appears throughout (AudioSource.cs:33, OggOpusWriter.cs:12,
   ShareUIExt.cs), and neither CODING_STYLE.md nor this file mandates `new(`
 
+## tests/Chat.UI.Blazor.UnitTests/NotificationsUIProjectionTest.cs
+
+- `.OnlyContain(k => k == NotificationKind.Mention || k == NotificationKind.Attention);`
+  — `==`/`||` instead of `k is NotificationKind.Mention or NotificationKind.Attention`
+  — required: FluentAssertions' `OnlyContain` takes an `Expression<Func<T, bool>>`, and an
+  `is` pattern-matching operator inside an expression tree is CS8122
+
 ## src/dotnet/Users.Service/AppUpdates/AppUpdates.cs
 
 - `[Key(0)] Info`, `[Key(1)] PreviousInfo`, `[Key(2)] NextCheckAt`

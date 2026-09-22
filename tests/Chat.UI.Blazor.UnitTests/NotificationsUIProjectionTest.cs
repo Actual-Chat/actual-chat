@@ -13,6 +13,7 @@ public sealed class NotificationsUIProjectionTest(ITestOutputHelper @out) : Test
     private static readonly UserId TestUserId = UserId.New();
     private static readonly ChatId ChatA = ChatId.Parse("the-actual-one");
     private static readonly ChatId ChatB = ChatId.Parse(GroupChatId.New().Value);
+    private static readonly ChatId PeerChat = PeerChatId.New(TestUserId, UserId.New());
 
     [Fact]
     public async Task ListByKindShouldFilterAndSortNewestFirst()
@@ -218,16 +219,127 @@ public sealed class NotificationsUIProjectionTest(ITestOutputHelper @out) : Test
         attentionAt.Should().BeNull();
     }
 
+    [Fact]
+    public async Task ListHistoryShouldGroupPerChatNewestFirstWithOlderCount()
+    {
+        // arrange
+        var a1 = NewHistory(NotificationKind.Mention, ChatA, 1, 1);
+        var b1 = NewHistory(NotificationKind.Reaction, ChatB, 1, 2);
+        var a2 = NewHistory(NotificationKind.Attention, ChatA, 2, 3);
+        var a3 = NewHistory(NotificationKind.Mention, ChatA, 3, 4);
+        await using var scope = NewScope([], [a1, b1, a2, a3]);
+        var notificationsUI = scope.ServiceProvider.GetRequiredService<NotificationsUI>();
+
+        // act
+        var groups = await notificationsUI.ListHistory(ChatListFilter.Unread.Id);
+
+        // assert
+        groups.Select(g => g.ChatId).Should().Equal([ChatA, ChatB], "newest group first");
+        groups[0].Newest.Should().Be(a3);
+        groups[0].OlderCount.Should().Be(2);
+        groups[1].Newest.Should().Be(b1);
+        groups[1].OlderCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ListHistoryShouldMapTabsToKinds()
+    {
+        // arrange
+        var mention = NewHistory(NotificationKind.Mention, ChatA, 1, 1);
+        var attention = NewHistory(NotificationKind.Attention, ChatB, 1, 2);
+        var reaction = NewHistory(NotificationKind.Reaction, ChatA, 2, 3);
+        var peerReply = NewHistory(NotificationKind.Reply, PeerChat, 1, 4);
+        await using var scope = NewScope([], [mention, attention, reaction, peerReply]);
+        var notificationsUI = scope.ServiceProvider.GetRequiredService<NotificationsUI>();
+
+        // act
+        var all = await notificationsUI.ListHistory(ChatListFilter.Unread.Id);
+        var people = await notificationsUI.ListHistory(ChatListFilter.UnreadPeople.Id);
+        var mentions = await notificationsUI.ListHistory(ChatListFilter.UnreadMentions.Id);
+        var reactions = await notificationsUI.ListHistory(NotificationsUI.ReactionsFilterId);
+
+        // assert
+        all.Select(g => g.ChatId).Should().BeEquivalentTo([ChatA, ChatB, PeerChat]);
+        people.Select(g => g.ChatId).Should().Equal([PeerChat], "People keeps peer chats only");
+        mentions.Select(g => g.Newest.Kind).Should()
+            .OnlyContain(k => k == NotificationKind.Mention || k == NotificationKind.Attention);
+        mentions.Should().HaveCount(2);
+        reactions.Should().ContainSingle().Which.Newest.Should().Be(reaction);
+    }
+
+    [Fact]
+    public async Task ListHistoryShouldHideNotificationsThatAreStillActive()
+    {
+        // arrange
+        var activeMention = MentionNotification.New(TestUserId, ChatEntryId.New(ChatA, 5));
+        var stillActive = NewHistory(NotificationKind.Mention, ChatA, 5, 2);
+        var older = NewHistory(NotificationKind.Mention, ChatA, 4, 1);
+        await using var scope = NewScope([activeMention], [older, stillActive]);
+        var notificationsUI = scope.ServiceProvider.GetRequiredService<NotificationsUI>();
+
+        // act
+        var groups = await notificationsUI.ListHistory(ChatListFilter.UnreadMentions.Id);
+
+        // assert
+        var group = groups.Should().ContainSingle().Subject;
+        group.Newest.Should().Be(older, "the active mention is shown in the active section, not in history");
+        group.OlderCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ListHistoryShouldCapGroupsToTheNewestOnes()
+    {
+        // arrange - one chat per notification, one chat more than the cap, oldest first
+        var history = Enumerable
+            .Range(1, NotificationsUI.MaxHistoryGroups + 1)
+            .Select(seq => NewHistory(NotificationKind.Mention, ChatId.Parse(GroupChatId.New().Value), 1, seq))
+            .ToArray();
+        await using var scope = NewScope([], history);
+        var notificationsUI = scope.ServiceProvider.GetRequiredService<NotificationsUI>();
+
+        // act
+        var groups = await notificationsUI.ListHistory(ChatListFilter.UnreadMentions.Id);
+
+        // assert
+        groups.Should().HaveCount(NotificationsUI.MaxHistoryGroups);
+        groups.Select(g => g.Newest.Seq).Should()
+            .BeInDescendingOrder("newest first")
+            .And.NotContain(1, "the oldest chat is the one the cap drops");
+    }
+
     // Private methods
 
     // A scoped container around a NotificationsUI whose INotifications.ListActive returns exactly
     // the given set, so the tests go through the public compute methods rather than their internals.
     private AsyncServiceScope NewScope(params Notification[] active)
+        => NewScope(active, []);
+
+    private AsyncServiceScope NewScope(Notification[] active, NotificationHistoryItem[] history)
     {
         var notifications = new Mock<INotifications>();
         notifications
             .Setup(x => x.ListActive(It.IsAny<Session>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiArray.New(active));
+        notifications
+            .Setup(x => x.GetHistoryVersion(It.IsAny<Session>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(history.Length == 0 ? 0 : history.Max(x => x.Seq));
+        notifications
+            .Setup(x => x.ListHistory(
+                It.IsAny<Session>(),
+                It.IsAny<NotificationHistoryQuery>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Session _, NotificationHistoryQuery q, CancellationToken _) => {
+                // The walk order and the limit are the query's, so dropping either from the
+                // production query changes what the tests see
+                var items = history.Where(x => q.Kinds.IsEmpty || q.Kinds.Contains(x.Kind));
+                items = q.IsNewestFirst
+                    ? items.OrderByDescending(x => x.Seq)
+                    : items.OrderBy(x => x.Seq);
+                if (q.Limit > 0)
+                    items = items.Take(q.Limit);
+
+                return items.ToApiArray();
+            });
         var hostInfo = new HostInfo {
             HostKind = HostKind.MauiApp,
             AppKind = AppKind.Ios,
@@ -259,4 +371,20 @@ public sealed class NotificationsUIProjectionTest(ITestOutputHelper @out) : Test
 
     private static AttentionNotification NewAttention(ChatId chatId, long entryLid, Moment sentAt)
         => AttentionNotification.New(TestUserId, ChatEntryId.New(chatId, entryLid)) with { SentAt = sentAt };
+
+    private static NotificationHistoryItem NewHistory(NotificationKind kind, ChatId chatId, long entryLid, long seq)
+    {
+        var entryId = ChatEntryId.New(chatId, entryLid);
+        var similarityKey = kind is NotificationKind.Mention or NotificationKind.Attention or NotificationKind.Reaction
+            ? entryId.Value
+            : chatId.Value;
+        return new NotificationHistoryItem(seq, kind) {
+            SentAt = Moment.EpochStart + TimeSpan.FromSeconds(seq),
+            ChatId = chatId,
+            EntryId = entryId,
+            Title = "Chat",
+            Text = $"#{seq}",
+            NotificationId = NotificationId.New(TestUserId, kind, similarityKey),
+        };
+    }
 }
