@@ -288,3 +288,14 @@ jobs:
           path: tmp/*.png
           if-no-files-found: ignore
           retention-days: 7
+
+      # What TestWait measured: how long each wait really took against the budget it was given.
+      # The numbers are what decides whether those budgets are right - see #4709
+      - name: Upload test wait report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-waits-${{ inputs.report-name }}
+          path: artifacts/tests/bin/**/test-waits-*.log
+          if-no-files-found: ignore
+          retention-days: 7
