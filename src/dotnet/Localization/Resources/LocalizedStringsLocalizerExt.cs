@@ -242,6 +242,8 @@ public static class LocalizedStringsLocalizerExt
         public string WebHook_Name => l["WebHook_Name"].Value;
         public string WebHook_DisplayName => l["WebHook_DisplayName"].Value;
         public string WebHook_Avatar => l["WebHook_Avatar"].Value;
+        public string WebHook_AvatarPrompt_Format(object arg0)
+            => l["WebHook_AvatarPrompt_Format", arg0].Value;
         public string WebHook_Url => l["WebHook_Url"].Value;
         public string WebHook_Events => l["WebHook_Events"].Value;
         public string WebHook_Events_Messages => l["WebHook_Events_Messages"].Value;

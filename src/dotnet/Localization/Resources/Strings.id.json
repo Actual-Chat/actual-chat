@@ -210,6 +210,7 @@
   "WebHook_Name": "Nama",
   "WebHook_DisplayName": "Nama tampilan",
   "WebHook_Avatar": "Avatar",
+  "WebHook_AvatarPrompt_Format": "Avatar bot bernama {0}",
   "WebHook_Url": "URL",
   "WebHook_Events": "Peristiwa",
   "WebHook_Events_Messages": "Pesan",

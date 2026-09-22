@@ -262,6 +262,7 @@
   "WebHook_Name": "Name",
   "WebHook_DisplayName": "Display name",
   "WebHook_Avatar": "Avatar",
+  "WebHook_AvatarPrompt_Format": "Avatar of a bot named {0}",
   "WebHook_Url": "URL",
   "WebHook_Events": "Events",
   "WebHook_Events_Messages": "Messages",

@@ -210,6 +210,7 @@
   "WebHook_Name": "名称",
   "WebHook_DisplayName": "显示名称",
   "WebHook_Avatar": "头像",
+  "WebHook_AvatarPrompt_Format": "名为 {0} 的机器人头像",
   "WebHook_Url": "URL",
   "WebHook_Events": "事件",
   "WebHook_Events_Messages": "消息",

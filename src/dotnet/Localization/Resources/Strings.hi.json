@@ -210,6 +210,7 @@
   "WebHook_Name": "नाम",
   "WebHook_DisplayName": "प्रदर्शित नाम",
   "WebHook_Avatar": "अवतार",
+  "WebHook_AvatarPrompt_Format": "{0} नाम के बॉट का अवतार",
   "WebHook_Url": "URL",
   "WebHook_Events": "इवेंट",
   "WebHook_Events_Messages": "संदेश",

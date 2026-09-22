@@ -210,6 +210,7 @@
   "WebHook_Name": "이름",
   "WebHook_DisplayName": "표시 이름",
   "WebHook_Avatar": "아바타",
+  "WebHook_AvatarPrompt_Format": "{0}(이)라는 봇의 아바타",
   "WebHook_Url": "URL",
   "WebHook_Events": "이벤트",
   "WebHook_Events_Messages": "메시지",

@@ -262,6 +262,7 @@
   "WebHook_Name": "Nombre",
   "WebHook_DisplayName": "Отображаемое имя",
   "WebHook_Avatar": "Ảnh đại diện",
+  "WebHook_AvatarPrompt_Format": "{0} という名前のボットのアバター",
   "WebHook_Url": "URL",
   "WebHook_Events": "Événements",
   "WebHook_Events_Messages": "Повідомлення",
