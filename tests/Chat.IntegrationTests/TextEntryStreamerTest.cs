@@ -45,7 +45,7 @@ public class TextEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestO
         // arrange
         var (chatId, authorId) = await NewChat();
         var chunks = Channel.CreateUnbounded<string>();
-        var cts = new CancellationTokenSource(WaitTimeout.Debuggable());
+        var cts = NewTestCts(WaitTimeout.Debuggable());
 
         // act
         var streamTask = Streamer.Stream(chatId, authorId, chunks.Reader.ReadAllAsync(cts.Token), cts.Token);
@@ -72,7 +72,7 @@ public class TextEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestO
         // arrange
         var (chatId, authorId) = await NewChat();
         var chunks = Channel.CreateUnbounded<string>();
-        var cts = new CancellationTokenSource(WaitTimeout.Debuggable());
+        var cts = NewTestCts(WaitTimeout.Debuggable());
         var streamTask = Streamer.Stream(chatId, authorId, chunks.Reader.ReadAllAsync(cts.Token), cts.Token);
         await chunks.Writer.WriteAsync("One ", cts.Token);
         var streaming = await WhenEntryAppears(chatId, authorId, cts.Token);
@@ -128,7 +128,7 @@ public class TextEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestO
 
         // arrange
         var (chatId, authorId) = await NewChat();
-        var cts = new CancellationTokenSource(WaitTimeout.Debuggable());
+        var cts = NewTestCts(WaitTimeout.Debuggable());
 
         // act
         var streamTask = Streamer.Stream(chatId, authorId, FailingChunks(), cts.Token);
@@ -264,13 +264,13 @@ public class TextEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestO
 
     private Task<ChatEntry> Stream(ChatId chatId, AuthorId authorId, params string[] chunks)
     {
-        var cts = new CancellationTokenSource(WaitTimeout.Debuggable());
+        var cts = NewTestCts(WaitTimeout.Debuggable());
         return Streamer.Stream(chatId, authorId, chunks.ToAsyncEnumerable(), cts.Token);
     }
 
     private Task<ChatEntry> StreamViaApi(ChatId chatId, long? localId, params string[] chunks)
     {
-        var cts = new CancellationTokenSource(WaitTimeout.Debuggable());
+        var cts = NewTestCts(WaitTimeout.Debuggable());
         var stream = RpcStream.New(chunks.ToAsyncEnumerable());
         return Tester.Chats.StreamEntry(Tester.Session, chatId, localId, stream, cts.Token);
     }
