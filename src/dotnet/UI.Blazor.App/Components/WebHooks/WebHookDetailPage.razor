@@ -10,6 +10,7 @@
     }
 
     Context.Title = hook.Name;
+    var isIncoming = hook.Kind == WebHookKind.Incoming;
 }
 
 <div class="web-hook-detail">
@@ -17,14 +18,14 @@
         <TileItem Click="@(() => OnEditClick(hook))">
             <Icon><i class="icon-edit"></i></Icon>
             <Content>@hook.Name</Content>
-            <Caption>@hook.GetHost()</Caption>
+            <Caption>@(m.BotName ?? hook.GetHost())</Caption>
             <Right><i class="icon-chevron-right text-3xl"></i></Right>
         </TileItem>
     </Tile>
 
     <Tile Class="c-status-tile">
         <TileItem IsHoverable="false">
-            <Icon><i class="icon-link-2"></i></Icon>
+            <Icon><i class="@(isIncoming ? "icon-message-ellipse" : "icon-link-2")"></i></Icon>
             <Content>@L.WebHook_Enabled</Content>
             <Caption>
                 @if (m.StatusText != null) {
@@ -37,14 +38,16 @@
         </TileItem>
     </Tile>
 
-    <WebHookTestButton WebHookId="@hook.Id"/>
+    <WebHookTestButton WebHookId="@hook.Id" IsIncoming="@isIncoming"/>
 
-    <WebHookDeliveryList WebHookId="@hook.Id" Deliveries="@m.Deliveries"/>
+    @if (!isIncoming) {
+        <WebHookDeliveryList WebHookId="@hook.Id" Deliveries="@m.Deliveries"/>
+    }
 
     <Tile>
         <TileItem Class="item-danger" Click="@(() => OnRotateSecretClick(hook))">
             <Icon><i class="icon-key"></i></Icon>
-            <Content>@L.WebHook_RotateSecret</Content>
+            <Content>@(isIncoming ? L.WebHook_RotateUrl : L.WebHook_RotateSecret)</Content>
         </TileItem>
         <Divider/>
         <TileItem Class="item-danger" Click="@(() => OnDeleteClick(hook))">
@@ -77,20 +80,32 @@
         if (hook == null)
             return new Model();
 
-        var deliveries = await Hub.WebHooks.ListDeliveries(Session, id, cancellationToken).ConfigureAwait(false);
+        var isIncoming = hook.Kind == WebHookKind.Incoming;
+        var deliveries = isIncoming
+            ? default
+            : await Hub.WebHooks.ListDeliveries(Session, id, cancellationToken).ConfigureAwait(false);
+        var bot = isIncoming
+            ? await Hub.Accounts.Get(Session, hook.Id.ToBotUserId(), cancellationToken).ConfigureAwait(false)
+            : null;
         var (statusText, isFailing) = await hook.GetStatusText(L, Hub.LiveTime, cancellationToken)
             .ConfigureAwait(false);
         return new Model {
             Hook = hook,
             Deliveries = deliveries,
+            BotName = bot?.Avatar.Name,
             StatusText = statusText,
             IsFailing = isFailing,
         };
     }
 
-    private void OnEditClick(WebHook hook)
-        => Context.StepIn(DiveInDialogPage.New<WebHookFormPage>(
-            new WebHookFormPage.Model(hook.Scope, hook.ScopeId, hook)));
+    private void OnEditClick(WebHook hook) {
+        var page = hook.Kind == WebHookKind.Incoming
+            ? DiveInDialogPage.New<WebHookIncomingFormPage>(
+                new WebHookIncomingFormPage.Model(hook.ScopeId, hook))
+            : DiveInDialogPage.New<WebHookFormPage>(
+                new WebHookFormPage.Model(hook.Scope, hook.ScopeId, hook));
+        Context.StepIn(page);
+    }
 
     private Task OnEnabledChanged(WebHook hook, bool isEnabled)
         => UICommander.Run(new WebHooks_Change {
@@ -103,7 +118,10 @@
         });
 
     private async Task OnRotateSecretClick(WebHook hook) {
-        if (!await Confirm(L.WebHook_RotateSecret, L.WebHook_RotateSecretConfirm, false).ConfigureAwait(true))
+        var isIncoming = hook.Kind == WebHookKind.Incoming;
+        var title = isIncoming ? L.WebHook_RotateUrl : L.WebHook_RotateSecret;
+        var text = isIncoming ? L.WebHook_RotateUrlConfirm : L.WebHook_RotateSecretConfirm;
+        if (!await Confirm(title, text, false).ConfigureAwait(true))
             return;
 
         var result = await UICommander.Run(new WebHooks_RotateSecret { Session = Session, Id = hook.Id });
@@ -114,7 +132,10 @@
     }
 
     private async Task OnDeleteClick(WebHook hook) {
-        if (!await Confirm(L.WebHook_Delete, L.WebHook_DeleteConfirm_Format(hook.Name), true).ConfigureAwait(true))
+        var confirmText = hook.Kind == WebHookKind.Incoming
+            ? L.WebHook_DeleteIncomingConfirm_Format(hook.Name)
+            : L.WebHook_DeleteConfirm_Format(hook.Name);
+        if (!await Confirm(L.WebHook_Delete, confirmText, true).ConfigureAwait(true))
             return;
 
         var result = await UICommander.Run(new WebHooks_Change {
@@ -150,6 +171,7 @@
     public sealed record Model {
         public WebHook? Hook { get; init; }
         public ApiArray<WebHookDelivery> Deliveries { get; init; }
+        public string? BotName { get; init; }
         public string? StatusText { get; init; }
         public bool IsFailing { get; init; }
     }

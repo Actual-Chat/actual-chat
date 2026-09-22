@@ -15,8 +15,12 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override void OnInitialized()
-        => _startPage = DiveInDialogPage.New<WebHookFormPage>(
-            new WebHookFormPage.Model(ModalModel.Scope, ModalModel.ScopeId, null));
+        // Incoming hooks are chat-scoped, so only a chat gets the kind chooser
+        => _startPage = ModalModel.Scope == WebHookScope.Chat
+            ? DiveInDialogPage.New<WebHookKindPage>(
+                new WebHookKindPage.Model(ModalModel.Scope, ModalModel.ScopeId))
+            : DiveInDialogPage.New<WebHookFormPage>(
+                new WebHookFormPage.Model(ModalModel.Scope, ModalModel.ScopeId, null));
 
     public sealed record Model(WebHookScope Scope, string ScopeId);
 }

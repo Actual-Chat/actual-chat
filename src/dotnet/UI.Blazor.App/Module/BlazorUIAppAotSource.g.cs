@@ -496,6 +496,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookDetailPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookEventsPicker>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookFormPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookIncomingFormPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookKindPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookRevealPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookRow>();
@@ -1319,6 +1321,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookDetailPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookEventsPicker), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookFormPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookIncomingFormPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookKindPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookRevealPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookRow), AotTypeKind.Component),

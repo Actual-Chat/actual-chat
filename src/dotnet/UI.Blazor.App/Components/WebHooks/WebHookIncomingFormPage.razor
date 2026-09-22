@@ -1,0 +1,188 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Media
+@using ActualChat.WebHooks
+@inherits ComponentBase<AppUIHub>
+@{
+    _submitButtonInfo.CanExecute = _isSeeded && IsValid();
+}
+
+<Form Class="web-hook-form" Model="@_form">
+    <FormBlock>
+        <FormSection
+            For="() => _form.Name"
+            InputId="@_form.NameId"
+            IsLabelInsideInput="true"
+            Label="@L.WebHook_Name">
+            <TextBox
+                Id="@_form.NameId"
+                Value="@_form.Name"
+                ValueExpression="@(() => _form.Name)"
+                ValueChanged="@OnNameChanged"
+                ClearButton="true"/>
+        </FormSection>
+        <FormSection
+            For="() => _form.DisplayName"
+            InputId="@_form.DisplayNameId"
+            IsLabelInsideInput="true"
+            Label="@L.WebHook_DisplayName">
+            <TextBox
+                Id="@_form.DisplayNameId"
+                Value="@_form.DisplayName"
+                ValueExpression="@(() => _form.DisplayName)"
+                ValueChanged="@OnDisplayNameChanged"
+                ClearButton="true"/>
+        </FormSection>
+    </FormBlock>
+
+    <FormBlock Title="@L.WebHook_Avatar">
+        <PicUpload
+            Scope="@_form.ImageScope"
+            MediaKind="@MediaKind.UserPicture"
+            Size="@SquareSize.Size24"
+            Title="@BotTitle"
+            Picture="@_form.Picture"
+            AvatarKey="@_form.AvatarKey"
+            Picked="@OnImagePicked"/>
+    </FormBlock>
+</Form>
+
+@code {
+    private Model _model = null!;
+    private FormModel _form = null!;
+    private DialogButtonInfo _submitButtonInfo = null!;
+    private bool _isSeeded;
+
+    private string BotTitle => _form.DisplayName.Trim().NullIfEmpty() ?? _form.Name.Trim();
+
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _model = Context.GetModel<Model>();
+        var existing = _model.Existing;
+        _form = new FormModel(ComponentIdGenerator) {
+            Name = existing?.Name ?? "",
+            // A brand new bot has no user id yet, so its picture is uploaded into the creator's scope
+            ImageScope = existing is null
+                ? MediaUploadScopes.ForAccount(AccountUI.OwnAccount.Value)
+                : MediaUploadScopes.ForUser(existing.Id.ToBotUserId()),
+        };
+        // An existing hook stays unsaveable until its bot account is read: submitting before that
+        // would send the seeded fields as empty and rename the bot
+        _isSeeded = existing is null;
+        Context.Title = existing?.Name ?? L.Integrations_Incoming;
+        _submitButtonInfo = DialogButtonInfo.CreateSubmitButton(
+            existing == null ? L.WebHook_Create : L.WebHook_Save,
+            OnSubmit);
+        Context.Buttons = [_submitButtonInfo];
+    }
+
+    protected override async Task OnInitializedAsync() {
+        if (_model.Existing is not { } existing)
+            return;
+
+        // The display name and the avatar live on the bot account, never on the hook
+        var account = await Hub.Accounts.Get(Session, existing.Id.ToBotUserId(), CancellationToken.None)
+            .ConfigureAwait(true);
+        if (account == null)
+            return;
+
+        var avatar = account.Avatar;
+        _form.DisplayName = avatar.Name;
+        _form.SeededDisplayName = avatar.Name;
+        _form.IsDisplayNameEdited = true;
+        _form.Picture = avatar.Picture;
+        if (_form.Picture == null)
+            _form.AvatarKey = DefaultUserPicture.GetAvatarKey(avatar.Id.Value);
+        _isSeeded = true;
+    }
+
+    private void OnNameChanged(string? name) {
+        _form.Name = name ?? "";
+        // Until the owner writes one, the bot is named after the hook
+        if (!_form.IsDisplayNameEdited)
+            _form.DisplayName = _form.Name;
+    }
+
+    private void OnDisplayNameChanged(string? displayName) {
+        _form.DisplayName = displayName ?? "";
+        _form.IsDisplayNameEdited = true;
+    }
+
+    private void OnImagePicked(MediaRef mediaRef) {
+        _form.Picture = new Picture(mediaRef);
+        _form.IsPictureChanged = true;
+    }
+
+    private bool IsValid() {
+        var name = _form.Name.Trim();
+        return !name.IsNullOrEmpty()
+            && name.Length <= Constants.WebHooks.MaxNameLength
+            && _form.DisplayName.Trim().Length <= Constants.WebHooks.MaxNameLength;
+    }
+
+    private async Task OnSubmit() {
+        if (!_isSeeded || !IsValid())
+            return;
+
+        var existing = _model.Existing;
+        var name = _form.Name.Trim();
+        var displayName = _form.DisplayName.Trim().NullIfEmpty() ?? name;
+        var diff = new WebHookDiff {
+            Name = name,
+            Kind = existing == null ? WebHookKind.Incoming : null,
+            // Both of these rename or repaint the bot, so on update they travel only when they changed
+            DisplayName = existing == null || displayName != _form.SeededDisplayName ? displayName : null,
+            AvatarMediaId = _form.IsPictureChanged
+                ? Option.Some<MediaId?>(_form.Picture?.MediaRef?.MediaId)
+                : default,
+        };
+        var command = new WebHooks_Change {
+            Session = Session,
+            Scope = WebHookScope.Chat,
+            ScopeId = _model.ScopeId,
+            Id = existing?.Id,
+            ExpectedVersion = existing?.Version,
+            Change = existing == null ? Change.Create(diff) : Change.Update(diff),
+        };
+        var result = await UICommander.Run(command);
+        if (result.HasError)
+            return;
+
+        if (existing != null || result.Value.WebHook is not { } webHook || result.Value.Secret is not { } token) {
+            Context.Close();
+            return;
+        }
+
+        Context.StepIn(DiveInDialogPage.New<WebHookRevealPage>(new WebHookRevealPage.Model(webHook, token)));
+    }
+
+    // Nested types
+
+    public sealed record Model(string ScopeId, WebHook? Existing);
+
+    public sealed class FormModel {
+        public string NameId { get; }
+        public string DisplayNameId { get; }
+
+        // The annotations only drive the label, same as in WebHookFormPage: the submit button
+        // gates on IsValid instead
+        [Required]
+        public string Name { get; set; } = "";
+        [Required]
+        public string DisplayName { get; set; } = "";
+        public string SeededDisplayName { get; set; } = "";
+        public bool IsDisplayNameEdited { get; set; }
+        public Picture? Picture { get; set; }
+        public string AvatarKey { get; set; }
+        public string ImageScope { get; set; } = "";
+        public bool IsPictureChanged { get; set; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            var formId = componentIdGenerator.Next("web-hook-incoming-form");
+            NameId = $"{formId}-name";
+            DisplayNameId = $"{formId}-display-name";
+            // A stand-in for the generated avatar the bot gets when no picture is uploaded
+            AvatarKey = DefaultUserPicture.GetAvatarKey(formId);
+        }
+    }
+}

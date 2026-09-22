@@ -5,12 +5,14 @@
 <div class="web-hook-test-button">
     <Button Class="btn-modal btn-outline" IsDisabled="@_isRunning" Click="@OnClick">
         <Icon><i class="icon-paper-plane text-xl"></i></Icon>
-        <Title>@L.WebHook_SendTest</Title>
+        <Title>@(IsIncoming ? L.WebHook_PostTest : L.WebHook_SendTest)</Title>
     </Button>
     @if (_result is { } result) {
         <span class="@(result.IsSuccess ? "c-result success" : "c-result failure")">
             @(result.IsSuccess
-                ? L.WebHook_TestSucceeded_Format(result.StatusCode?.ToString() ?? "", result.LatencyMs)
+                ? (IsIncoming
+                    ? L.WebHook_PostTestDone
+                    : L.WebHook_TestSucceeded_Format(result.StatusCode?.ToString() ?? "", result.LatencyMs))
                 : L.WebHook_TestFailed_Format(result.Error ?? result.StatusCode?.ToString() ?? ""))
         </span>
     }
@@ -21,6 +23,7 @@
     private WebHookTestResult? _result;
 
     [Parameter, EditorRequired] public WebHookId WebHookId { get; set; } = null!;
+    [Parameter] public bool IsIncoming { get; set; }
 
     private async Task OnClick() {
         _isRunning = true;

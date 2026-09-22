@@ -56,7 +56,7 @@
         var hooks = await Hub.WebHooks.List(Session, scope, scopeId, cancellationToken).ConfigureAwait(false);
         var rows = new List<WebHookRow.Model>(hooks.Count);
         foreach (var hook in Sorted(hooks))
-            rows.Add(await WebHookRow.ToModel(hook, L, Hub.LiveTime, cancellationToken).ConfigureAwait(false));
+            rows.Add(await ToRow(hook, cancellationToken).ConfigureAwait(false));
         if (scope == WebHookScope.User) {
             // The personal list doubles as "everything I created": chat and place hooks follow the personal ones
             var mine = await Hub.WebHooks.ListMine(Session, cancellationToken).ConfigureAwait(false);
@@ -69,8 +69,19 @@
     private static IEnumerable<WebHook> Sorted(IEnumerable<WebHook> hooks)
         => hooks.OrderBy(x => x.Name).ThenBy(x => x.CreatedAt);
 
-    private async Task<WebHookRow.Model> ToScopedRow(WebHook hook, CancellationToken cancellationToken) {
+    private async Task<WebHookRow.Model> ToRow(WebHook hook, CancellationToken cancellationToken) {
         var row = await WebHookRow.ToModel(hook, L, Hub.LiveTime, cancellationToken).ConfigureAwait(false);
+        if (!row.IsIncoming)
+            return row;
+
+        // An incoming hook has no URL: the row shows the bot it posts as
+        var account = await Hub.Accounts.Get(Session, hook.Id.ToBotUserId(), cancellationToken)
+            .ConfigureAwait(false);
+        return row with { BotName = account?.Avatar.Name };
+    }
+
+    private async Task<WebHookRow.Model> ToScopedRow(WebHook hook, CancellationToken cancellationToken) {
+        var row = await ToRow(hook, cancellationToken).ConfigureAwait(false);
         // Get runs the same authorization as the detail page, so null means the hook is view-only here
         var canManage = await Hub.WebHooks.Get(Session, hook.Id, cancellationToken).ConfigureAwait(false) != null;
         var scopeText = canManage
