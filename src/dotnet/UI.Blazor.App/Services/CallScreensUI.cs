@@ -119,6 +119,11 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         var isOverLock = _overLockRingChatId.Value == chatId;
         Log.LogInformation("Accept: chat #{ChatId}, overLock={IsOverLock}", chatId, isOverLock);
 
+        // Read before the commit, which makes the slot Active either way: a stale Answer - a second tap,
+        // or a notification action the user hits again - must not end the call it is already holding.
+        var wasInCall = CallUI.GetActiveCallNonComputed() is { Phase: CallPhase.Active } held
+            && held.ChatId == chatId;
+
         // The answer ends the ring for the user right here, but the slot stays Ringing until the accept
         // round trip lands - and on Android the notification's own ringer has already stopped by then,
         // so a ringtone driven by the slot reads as the ring starting over.
@@ -142,12 +147,20 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         catch (Exception e) {
             // Also where "there was no ring left" lands: the server decides that under its change
             // lock, and it's the only reading of it that can't race the session it came from.
+            Log.LogWarning(e, "AcceptCall failed for chat #{ChatId}", chatId);
+            if (wasInCall)
+                return;
+
             CallUI.Release(chatId);
             _ = Bridge?.OnCallHandled(chatId, false);
-            Log.LogWarning(e, "AcceptCall failed for chat #{ChatId}", chatId);
             ShowToast(L.Call_Ended);
             return;
         }
+
+        // Already on the line: this answer was the duplicate it looked like, and joining again would
+        // ask for the keyguard a second time over a call that is running.
+        if (wasInCall)
+            return;
 
         try {
             await JoinAcceptedCall(chatId, isOverLock).ConfigureAwait(true);
