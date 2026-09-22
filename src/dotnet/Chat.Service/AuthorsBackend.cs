@@ -112,7 +112,8 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         else {
             if (authorId.ChatId != chatId)
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid AuthorId.");
-            if (Bots.IsBot(authorId))
+            // Wall-E (-1) and Sherlock (-2) are immutable; hook bots (-3 and below) are real author rows
+            if (Bots.IsBot(authorId) && authorId.LocalId >= Constants.User.Sherlock.AuthorLocalId)
                 throw new ArgumentOutOfRangeException(nameof(command), "System authors cannot be modified.");
         }
 
@@ -183,7 +184,9 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
                 throw new ArgumentOutOfRangeException(nameof(command), "UserId is required to create a new author.");
 
             await dbContext.Authors.Lock(chatId, userId, cancellationToken).ConfigureAwait(false);
-            var skipSingleAuthorCheck = userId == Constants.User.Sherlock.UserId;
+            var account = await AccountsBackend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
+            var isBot = account.IsBot;
+            var skipSingleAuthorCheck = isBot || userId == Constants.User.Sherlock.UserId;
             if (!skipSingleAuthorCheck) {
                 // Get chat directly in transaction instead of calling Backend
                 // var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
@@ -200,11 +203,11 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
                         throw StandardError.Constraint($"There can be only one author in this chat '{chat?.Id}:{userId}'.");
                 }
             }
-            var account = await AccountsBackend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
-
             long localId;
             if (userId == Constants.User.Sherlock.UserId)
                 localId = Constants.User.Sherlock.AuthorLocalId;
+            else if (isBot)
+                localId = await NextBotLocalId(dbContext, chatId, cancellationToken).ConfigureAwait(false);
             else if (chatId is PlaceChatId { IsRoot: false } placeChatId1) {
                 var placeId = placeChatId1;
                 var placeAuthor = await GetByUserId(placeId.RootChatId, userId, RequestedAuthorKind.Default, cancellationToken)
@@ -640,6 +643,17 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     }
 
     // Private / internal methods
+
+    // Bots live below Sherlock (-2); Wall-E is -1 and has no row
+    private static async Task<long> NextBotLocalId(ChatDbContext dbContext, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var minLocalId = await dbContext.Authors
+            .Where(a => a.ChatId == chatId.Value && a.LocalId < 0)
+            .Select(a => (long?)a.LocalId)
+            .MinAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return Math.Min(minLocalId ?? 0, Constants.User.Sherlock.AuthorLocalId) - 1;
+    }
 
     private async Task<AuthorFull?> GetPlaceChatAuthor(PlaceChatId chatId, PrincipalId principalId, CancellationToken cancellationToken)
     {
