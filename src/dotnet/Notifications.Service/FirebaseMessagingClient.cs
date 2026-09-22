@@ -31,9 +31,7 @@ public class FirebaseMessagingClient(
         bool isSilent,
         CancellationToken cancellationToken)
     {
-        // A ring is in the active set to be delivered and dismissed, not because anything is
-        // unread: counting it takes the badge up for the ring's lifetime and back down after it.
-        var badgeCount = info.Items.Where(x => x.Kind != NotificationKind.IncomingCall).Count();
+        var badgeCount = info.BadgeCount;
         var notificationId = notification.Id;
         var kind = notification.Kind;
         var title = notification.Title;

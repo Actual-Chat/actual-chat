@@ -1201,11 +1201,11 @@ public class NotificationsBackend(IServiceProvider services)
                     .Select(d => d.DeviceId)
                     .ToList();
                 await FirebaseMessagingClient
-                    .SendBadge(iosDeviceIds, info.Items.Count, cancellationToken)
+                    .SendBadge(iosDeviceIds, info.BadgeCount, cancellationToken)
                     .ConfigureAwait(false);
                 // Badge recomputed from current state at delivery (see OnPush).
                 var sent = await FirebaseMessagingClient
-                    .SendDismissal(sendable, deviceIds, info.Items.Count, cancellationToken)
+                    .SendDismissal(sendable, deviceIds, info.BadgeCount, cancellationToken)
                     .ConfigureAwait(false);
                 doneIds.AddRange(sent.Select(x => x.Id));
             }
