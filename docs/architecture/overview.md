@@ -241,9 +241,12 @@ Tests use a shared `AppHostFixture` that provides:
 - Unique user creation for test isolation
 
 Key patterns:
-- `ComputedTest.When()` - Wait for computed values to satisfy conditions
+- `TestWait.When()` - Wait for computed values to satisfy conditions
 - `services.Queues().WhenProcessing()` - Wait for event queue processing
 - Tests must call `WhenProcessing()` before assertions that depend on events
+
+See [Waiting in tests](../testing/waiting.md) for the wait helpers, the
+build-agent budget scale, and the flake patterns to avoid.
 
 ### Test Infrastructure
 
@@ -263,7 +266,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         // Wait for queue processing before assertions
         await services.Queues().WhenProcessing();
 
-        await ComputedTest.When(services, async ct => {
+        await TestWait.When(services, async ct => {
             var chat = await chats.Get(session, chatId, ct);
             chat.Should().NotBeNull();
         });
