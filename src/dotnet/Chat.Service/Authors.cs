@@ -22,6 +22,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     private IRoles Roles => field ??= Services.GetRequiredService<IRoles>();
     private IRolesBackend RolesBackend => field ??= Services.GetRequiredService<IRolesBackend>();
     private IAuthorsBackend Backend => field ??= Services.GetRequiredService<IAuthorsBackend>();
+    private IWebHooksBackend WebHooksBackend => field ??= Services.GetRequiredService<IWebHooksBackend>();
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
 
     // [ComputeMethod]
@@ -336,6 +337,8 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
 
         if (authorId.LocalId == Constants.User.Sherlock.AuthorLocalId)
             throw StandardError.Constraint("You can't remove an AI search bot from chat members.");
+        if (Bots.IsBot(authorId) && !await IsOrphanedHookBot(author, cancellationToken).ConfigureAwait(false))
+            throw StandardError.Constraint("Delete the integration to remove its bot.");
 
         var upsertCommand = new AuthorsBackend_Upsert(
             chatId, author.Id, null, author.Version,
@@ -359,6 +362,9 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         var author = await Get(session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (author is not { HasLeft: true })
             return;
+
+        if (Bots.IsBot(authorId))
+            throw StandardError.Constraint("A bot can't be restored to chat members.");
 
         await RestoreAuthorMembership(author, cancellationToken).ConfigureAwait(false);
     }
@@ -469,6 +475,16 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
             return author;
 
         return author with { Avatar = author.Avatar with { Name = preferredPeerName } };
+    }
+
+    // A hook bot outlives its hook only when the hook row failed to commit; then it's a member nobody can remove
+    private async Task<bool> IsOrphanedHookBot(AuthorFull author, CancellationToken cancellationToken)
+    {
+        if (!WebHookId.TryParseBotUserId(author.UserId, out var hookId))
+            return false;
+
+        var webHook = await WebHooksBackend.Get(hookId, cancellationToken).ConfigureAwait(false);
+        return webHook is null;
     }
 
     private async Task ChangeSystemRoleMembership(
