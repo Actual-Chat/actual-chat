@@ -61,6 +61,7 @@ public sealed class NotificationServiceModule(IServiceProvider moduleServices)
             db => {
                 db.AddEntityResolver<string, DbExplicitNotification>();
             });
-
+        services.AddSingleton<NotificationHistoryPruner>()
+            .AddHostedService(c => c.GetRequiredService<NotificationHistoryPruner>());
     }
 }
