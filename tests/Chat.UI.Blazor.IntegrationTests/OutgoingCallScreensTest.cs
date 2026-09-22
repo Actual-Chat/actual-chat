@@ -46,8 +46,7 @@ public sealed class OutgoingCallScreensTest(ChatAppHostFixture fixture, ITestOut
     [Fact]
     public async Task TheRingbackShouldWaitForTheServerToConfirm()
     {
-        // arrange - CallUI.StartCall can't run here: it asks for the microphone first, and there is no
-        // browser to answer that, so the gesture and the server's side are driven apart
+        // arrange
         await Bob.SignInAsUniqueBob();
         await Alice.SignInAsUniqueAlice();
         var (chatId, inviteId) = await Bob.CreateChat(false);
@@ -57,7 +56,8 @@ public sealed class OutgoingCallScreensTest(ChatAppHostFixture fixture, ITestOut
         var backend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
         var hub = Bob.ScopedAppServices.AppUIHub();
 
-        // act - the claim alone must not open the gate
+        // act - the claim alone must not open the gate. CallUI.StartCall can't drive this: it asks for
+        // the microphone over JS interop, which nothing answers here, so the server's side goes direct
         hub.CallUI.TryClaimOutgoing(chatId, aliceAuthor!.Id, false).Should().BeTrue();
         (await hub.CallUI.GetDialingOutChatId(CancellationToken.None)).Should().BeNull();
         await backend.StartCall(

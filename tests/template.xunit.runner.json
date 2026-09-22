@@ -1,7 +1,7 @@
 {
   "$schema": "http://json.schemastore.org/xunit.runner.schema",
   "appDomain": "denied",
-  "diagnosticMessages": false,
+  "diagnosticMessages": true,
   "longRunningTestSeconds": 30,
   "methodDisplay": "classAndMethod",
   "parallelizeAssembly": true,

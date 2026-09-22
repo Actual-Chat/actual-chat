@@ -2182,9 +2182,11 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // act - Alice genuinely accepts
         await backend.AcceptCall(chatId, aliceAuthor.Id, default);
 
-        // assert - accepting still works, and the call latches
+        // assert - accepting still works, and the call latches. Active passes too: a sync left queued on
+        // this chat's lock by GetState's self-heal promotes a present invitee the moment the call latches.
         var accepted = await backend.Get(chatId, default);
-        accepted!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Accepted);
+        accepted!.Invites.Single(i => i.InviteeId == aliceAuthor.Id)
+            .Status.Should().BeOneOf(CallInviteStatus.Accepted, CallInviteStatus.Active);
         (await backend.GetState(chatId, default))!.SessionStartedAt.Should().NotBeNull();
 
         // act - a further presence-sync tick, now that the call has latched and she's still present
@@ -2208,8 +2210,8 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
 
         // arrange - Bob starts a call with no invitees at all. Deliberately not observed via GetState
         // or GetCallState before the act below - either one fires GetState's own self-heal (this call
-        // qualifies as IsDialing with no fresh ring), which would race a second, concurrent ExpireRings
-        // against the one driven directly below, through the same non-reentrant per-chat lock.
+        // qualifies as IsDialing with no fresh ring), adding another concurrent ExpireRings on top of
+        // the ones a live client scope already drives through the same non-reentrant per-chat lock.
         await using var bob = AppHost.NewBlazorTester(Out);
         await bob.SignInAsUniqueBob();
         var (chatId, _) = await bob.CreateChat(false);
@@ -2220,10 +2222,14 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // act - drive the abandon-check directly: nobody was ever rung, and only the caller is present
         await backend.ExpireRings(chatId);
 
-        // assert - the session is torn down, but CallState explains why: NoAnswer, not stuck at Dialing
-        (await backend.GetState(chatId, default)).Should().BeNull();
-        var callState = await backend.GetCallState(chatId, default);
-        callState!.Status.Should().Be(CallStatus.NoAnswer);
+        // assert - the session is torn down, but CallState explains why: NoAnswer, not stuck at Dialing.
+        // Polled: the self-heal fires its own ExpireRings, and when that one wins the lock, the call
+        // awaited above returns while the winner's CloseCall is still tearing the session down.
+        await ComputedTest.When(async ct => {
+            (await backend.GetState(chatId, ct)).Should().BeNull();
+            var callState = await backend.GetCallState(chatId, ct);
+            callState!.Status.Should().Be(CallStatus.NoAnswer);
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]
