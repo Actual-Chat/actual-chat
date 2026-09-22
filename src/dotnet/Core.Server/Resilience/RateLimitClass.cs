@@ -13,4 +13,5 @@ public enum RateLimitClass
     UploadCreation,
     UploadBytes,
     ImageGeneration,
+    WebHookInbound,
 }
