@@ -75,4 +75,23 @@ public sealed partial class WebHookId : ContentId, IStringIdentifier<WebHookId>
         result = Cache.AddOrGet(s, result);
         return true;
     }
+
+    // Bot account
+
+    public UserId ToBotUserId()
+        => UserId.Parse(Constants.WebHooks.BotUserIdPrefix + Value);
+
+    public static bool TryParseBotUserId(UserId? userId, [NotNullWhen(true)] out WebHookId? hookId)
+    {
+        hookId = null;
+        if (userId is null)
+            return false;
+
+        var value = userId.Value;
+        var prefix = Constants.WebHooks.BotUserIdPrefix;
+        if (value.Length <= prefix.Length || !value.StartsWith(prefix))
+            return false;
+
+        return TryParse(value[prefix.Length..], out hookId);
+    }
 }

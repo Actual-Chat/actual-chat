@@ -65,7 +65,17 @@ public class WebHooks(IServiceProvider services) : IWebHooks
             (command.Session, command.Scope, command.ScopeId, command.Id, command.Change);
         change.RequireValid();
         var account = await RequireManager(session, scope, scopeId, cancellationToken).ConfigureAwait(false);
-        if (!change.IsCreate(out _)) {
+        if (change.IsCreate(out _)) {
+            // A hook id picks the bot account's user id, so letting a client choose one would let it
+            // point at an existing account
+            if (id is not null)
+                throw StandardError.Constraint("Id must be empty on create.");
+
+            // Minted here rather than in the handler, so an operation retry reuses it instead of
+            // creating a second hook and a second bot account
+            id = WebHookId.New();
+        }
+        else {
             var hookId = id ?? throw StandardError.Constraint("Web hook id is required.");
             var existing = await Backend.Get(hookId, cancellationToken).Require().ConfigureAwait(false);
             if (existing.Scope != scope || existing.ScopeId != scopeId)

@@ -17,6 +17,9 @@ public interface IWebHooksBackend : IComputeService, IBackendService
     // Every scope, so Settings can show what a user created in chats and places too
     [ComputeMethod]
     Task<ApiArray<WebHook>> ListByCreator(UserId userId, CancellationToken cancellationToken);
+    // Incoming hooks are addressed by the SHA-256 of their URL token
+    [ComputeMethod]
+    Task<WebHook?> GetByTokenHash(string tokenHash, CancellationToken cancellationToken);
     // Cheap gate in front of the per-member scan chat events do for personal "selected chats" hooks
     [ComputeMethod]
     Task<bool> HasUserScopedHooks(CancellationToken cancellationToken);
@@ -31,6 +34,8 @@ public interface IWebHooksBackend : IComputeService, IBackendService
     Task OnEnqueue(WebHooksBackend_Enqueue command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRecordDelivery(WebHooksBackend_RecordDelivery command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnRecordPost(WebHooksBackend_RecordPost command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnDisable(WebHooksBackend_Disable command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -108,6 +113,17 @@ public sealed partial record WebHooksBackend_RecordDelivery(
     [property: DataMember, Key(5)] string? Error,
     [property: DataMember, Key(6)] int? LatencyMs,
     [property: DataMember, Key(7)] Moment? NextAttemptAt
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public ShardKey ShardKey => ShardKey.New(ScopeId);
+}
+
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record WebHooksBackend_RecordPost(
+    [property: DataMember, Key(0)] WebHookId Id,
+    [property: DataMember, Key(1)] string ScopeId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
