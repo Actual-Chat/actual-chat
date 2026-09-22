@@ -249,6 +249,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             // Existing user found by identity or desired ID - acquire lock first, then load and update
             await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
             var existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
+            if (existingAccount is { IsBot: true })
+                throw StandardError.Unauthorized("Bot accounts cannot sign in.");
+
             var dbAccount = await dbContext.GetDbAccount(userId, true, cancellationToken).ConfigureAwait(false);
             dbAccount.Require();
 

@@ -30,6 +30,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool IsGreetingCompleted { get; set; }
     public string TimeZone { get; set; } = "";
     public string AliasId { get; set; } = "";
+    public bool IsBot { get; set; }
     public DateTime CreatedAt {
         get => field.DefaultKind(DateTimeKind.Utc);
         set => field = value.DefaultKind(DateTimeKind.Utc);
@@ -69,6 +70,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             AliasId = AliasId.IsNullOrEmpty() ? null : ActualChat.AliasId.Parse(AliasId),
             Identities = identities,
             Claims = Claims.ToApiMap(),
+            IsBot = IsBot,
         };
     }
 
@@ -88,6 +90,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             AliasId = AliasId.IsNullOrEmpty() ? null : ActualChat.AliasId.Parse(AliasId),
             Identities = identities,
             Claims = claims,
+            IsBot = IsBot,
         };
 
     public void UpdateFrom(AccountFull model, ApiMap<UserIdentity, string> originalIdentities)
@@ -110,6 +113,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         TimeZone = model.TimeZone;
         AliasId = model.AliasId?.NormalizedValue ?? "";
         Claims = model.Claims.ToImmutableDictionary();
+        IsBot = model.IsBot;
 
         // Add + update identities
         var identities = Identities.ToDictionary(ai => ai.Id);
@@ -143,6 +147,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             builder.HasIndex(a => new { a.AliasId })
                 .HasFilter("alias_id <> ''")
                 .IsUnique();
+            builder.HasIndex(a => a.IsBot);
         }
     }
 }

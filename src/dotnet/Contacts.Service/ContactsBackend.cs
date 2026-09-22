@@ -587,7 +587,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             return; // It just spawns other commands, so nothing to do here
 
         var account = await AccountsBackend.Get(command.UserId, cancellationToken).ConfigureAwait(false);
-        if (account is null || account.IsGreetingCompleted)
+        if (account is null || account.IsGreetingCompleted || account.IsBot)
             return;
 
         var h = await GreetLocks.TryLock(account.Id.Value, null, cancellationToken).ConfigureAwait(false);

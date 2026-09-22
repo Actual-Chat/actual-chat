@@ -10,6 +10,7 @@ public class UserPresences(IServiceProvider services) : IUserPresences
 
     private IUserPresencesBackend Backend { get; } = services.GetRequiredService<IUserPresencesBackend>();
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private ICommander Commander { get; } = services.Commander();
     private MomentClockSet Clocks { get; } = services.Clocks();
     private Moment SystemNow => Clocks.SystemClock.Now;
@@ -19,6 +20,10 @@ public class UserPresences(IServiceProvider services) : IUserPresences
     {
         if (Constants.User.Sherlock.UserId.Equals(userId))
             return Presence.Online;
+
+        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        if (account is { IsBot: true })
+            return Presence.Offline;
 
         var now = SystemNow;
         var lastCheckIn = await GetLastCheckIn(userId, cancellationToken).ConfigureAwait(false);
