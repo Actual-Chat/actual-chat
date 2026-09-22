@@ -1,4 +1,5 @@
 using ActualChat.App.Server.Flows;
+using System.Collections.Concurrent;
 using ActualChat.Testing.Host;
 using ActualChat.Users.Flows;
 
@@ -137,41 +138,174 @@ public class DigestFlowTest(ITestOutputHelper @out)
     {
         using var cts = NewTestCts();
         var ct = cts.Token;
-        var emailsBackend = new Mock<IEmailsBackend>(MockBehavior.Loose);
-
+        var spy = new SendDigestSpy();
         await using var h = await NewAppHost(options => options with  {
             ConfigureServices = (_, services) => {
-                services.AddSingleton(emailsBackend.Object);
+                services.AddSingleton(spy);
+                services.AddCommander().AddHandlers<SendDigestSpy>();
             },
         });
+        await using var tester = h.NewWebClientTester(Out);
 
         var flowHub = h.Services.FlowHub();
-        var commander = h.Services.Commander();
-        var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
         var serverKvasBackend = h.Services.GetRequiredService<IServerKvasBackend>();
-
-        var userId = Constants.User.Admin.UserId;
+        var account = await tester.SignInAsNew("Digest", ct);
+        var userId = account.Id;
         await flowHub.Get<DigestFlow>(userId.Value, ct);
-
-        var kvas = serverKvasBackend.ForUser(userId);
-        await kvas.UserEmailsSettings()
+        await serverKvasBackend.ForUser(userId).UserEmailsSettings()
             .Update(x => x with {
                 DigestTime = DateTime.Now.TimeOfDay.Add(new TimeSpan(0, 0, 10)),
             }, ct);
-        var account = await accountsBackend.Get(userId, ct).Require();
-        var email = ActualChat.Email.Parse($"admin{Constants.Team.EmailSuffix}");
-        var updateCmd = new AccountsBackend_Update(
-            account
-                .WithEmailIdentity(email) with {
-                TimeZone = TimeZoneInfo.Local.Id,
-            },
-            null);
-        await commander.Call(updateCmd, true, ct);
+        await UpdateAccount(h, userId, TimeZoneInfo.Local.Id, true, ct);
 
         await ComputedTest.When(async innerCt => {
             var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
             flow.Should().NotBeNull();
             flow.RunCount.Should().BeGreaterThan(0);
         }, TimeSpan.FromSeconds(30));
+        await spy.WaitFor(userId, ct);
+    }
+
+    [Fact]
+    public async Task ShouldSkipDigestForRecentlyActiveUser()
+    {
+        using var cts = NewTestCts();
+        var ct = cts.Token;
+        var spy = new SendDigestSpy();
+        await using var h = await NewAppHost(options => options with  {
+            ConfigureServices = (_, services) => {
+                services.AddSingleton(spy);
+                services.AddCommander().AddHandlers<SendDigestSpy>();
+            },
+        });
+        await using var tester = h.NewWebClientTester(Out);
+
+        var flowHub = h.Services.FlowHub();
+        var commander = h.Services.Commander();
+        var serverKvasBackend = h.Services.GetRequiredService<IServerKvasBackend>();
+        var account = await tester.SignInAsNew("Digest", ct);
+        var userId = account.Id;
+        await flowHub.Get<DigestFlow>(userId.Value, ct);
+        var checkIn = new UserPresencesBackend_CheckIn(userId, h.Services.Clocks().SystemClock.Now, true);
+        await commander.Call(checkIn, true, ct);
+        await serverKvasBackend.ForUser(userId).UserEmailsSettings()
+            .Update(x => x with {
+                DigestTime = DateTime.Now.TimeOfDay.Add(new TimeSpan(0, 0, 10)),
+            }, ct);
+        await UpdateAccount(h, userId, TimeZoneInfo.Local.Id, true, ct);
+
+        await ComputedTest.When(async innerCt => {
+            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
+            flow.Should().NotBeNull();
+            flow.RunCount.Should().BeGreaterThan(0);
+        }, TimeSpan.FromSeconds(30));
+        await Task.Delay(TimeSpan.FromSeconds(2), ct);
+        spy.UserIds.Should().NotContain(userId,
+            "a user who was in the app within the last day has seen what the digest would summarize");
+    }
+
+    [Fact]
+    public async Task ShouldResumeDigestFlowOnEmailVerification()
+    {
+        using var cts = NewTestCts();
+        var ct = cts.Token;
+        await using var h = await NewAppHost();
+        await using var tester = h.NewWebClientTester(Out);
+
+        var flowHub = h.Services.FlowHub();
+        var account = await tester.SignInAsNew("Digest", ct);
+        var userId = account.Id;
+        await flowHub.Get<DigestFlow>(userId.Value, ct);
+        await UpdateAccount(h, userId, "America/New_York", false, ct);
+        await ComputedTest.When(async innerCt => {
+            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
+            flow.Should().NotBeNull();
+            flow.LastReadiness.SuspensionReason.Should().Contain("verified email");
+        }, TimeSpan.FromSeconds(30));
+
+        // act
+        await UpdateAccount(h, userId, "America/New_York", true, ct);
+
+        // assert
+        await ComputedTest.When(async innerCt => {
+            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
+            flow.Should().NotBeNull();
+            flow.LastReadiness.IsSuspended.Should().BeFalse("verifying the email must wake the flow up");
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public async Task ShouldResumeDigestFlowOnSettingsChange()
+    {
+        using var cts = NewTestCts();
+        var ct = cts.Token;
+        await using var h = await NewAppHost();
+        await using var tester = h.NewWebClientTester(Out);
+
+        var flowHub = h.Services.FlowHub();
+        var serverKvasBackend = h.Services.GetRequiredService<IServerKvasBackend>();
+        var account = await tester.SignInAsNew("Digest", ct);
+        var userId = account.Id;
+        await serverKvasBackend.ForUser(userId).UserEmailsSettings()
+            .Update(x => x with { IsDigestEnabled = false }, ct);
+        await flowHub.Get<DigestFlow>(userId.Value, ct);
+        await UpdateAccount(h, userId, "America/New_York", true, ct);
+        await ComputedTest.When(async innerCt => {
+            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
+            flow.Should().NotBeNull();
+            flow.LastReadiness.SuspensionReason.Should().Contain("disabled");
+        }, TimeSpan.FromSeconds(30));
+
+        // act
+        await tester.AppServices.UserSettingsUI(tester.Session).UserEmailsSettings()
+            .Update(x => x with { IsDigestEnabled = true }, ct);
+
+        // assert
+        await ComputedTest.When(async innerCt => {
+            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
+            flow.Should().NotBeNull();
+            flow.LastReadiness.IsSuspended.Should().BeFalse("turning the digest on must wake the flow up");
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    // Sign-in keeps neither the time zone nor a verified email, and the team gate wants a team address
+    private static async Task UpdateAccount(
+        TestAppHost h, UserId userId, string timeZone, bool isEmailVerified, CancellationToken ct)
+    {
+        var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
+        var account = await accountsBackend.Get(userId, ct).Require();
+        if (isEmailVerified) {
+            var email = ActualChat.Email.Parse($"digest-{UniqueNames.Random()}{Constants.Team.EmailSuffix}");
+            account = account.WithEmailIdentity(email);
+        }
+        var updateCmd = new AccountsBackend_Update(account with { TimeZone = timeZone }, null);
+        await h.Services.Commander().Call(updateCmd, true, ct);
+    }
+
+    // Nested types
+
+    // The real handler runs after it (a fresh user has no unread chats, so nothing is sent)
+    public sealed class SendDigestSpy
+    {
+        public ConcurrentQueue<UserId> UserIds { get; } = new();
+
+        // Priority 1 puts it above the final handler, which sits at 0 and ends the chain
+        [CommandFilter(Priority = 1)]
+        public Task OnSendDigest(EmailsBackend_SendDigest command, CommandContext context, CancellationToken ct)
+        {
+            UserIds.Enqueue(command.UserId);
+            return context.InvokeRemainingHandlers(ct);
+        }
+
+        public async Task WaitFor(UserId userId, CancellationToken ct)
+        {
+            var deadline = CpuTimestamp.Now + TimeSpan.FromSeconds(30);
+            while (!UserIds.Contains(userId)) {
+                if (CpuTimestamp.Now > deadline)
+                    throw new TimeoutException("EmailsBackend_SendDigest was not queued.");
+
+                await Task.Delay(200, ct);
+            }
+        }
     }
 }
