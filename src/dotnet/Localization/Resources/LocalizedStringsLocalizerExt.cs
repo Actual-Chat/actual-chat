@@ -85,10 +85,10 @@ public static class LocalizedStringsLocalizerExt
         public string YourAccount_UserLink => l["YourAccount_UserLink"].Value;
         public string YourAccount_Email => l["YourAccount_Email"].Value;
         public string YourAccount_Digest => l["YourAccount_Digest"].Value;
-        public string YourAccount_DigestCaption_Format(object arg0, object arg1)
-            => l["YourAccount_DigestCaption_Format", arg0, arg1].Value;
+        public string YourAccount_DigestTopic => l["YourAccount_DigestTopic"].Value;
+        public string YourAccount_DigestCaption => l["YourAccount_DigestCaption"].Value;
+        public string YourAccount_DigestTime => l["YourAccount_DigestTime"].Value;
         public string YourAccount_DigestVerifyEmail => l["YourAccount_DigestVerifyEmail"].Value;
-        public string YourAccount_DigestTimeZoneNotSet => l["YourAccount_DigestTimeZoneNotSet"].Value;
         public string YourAccount_Phone => l["YourAccount_Phone"].Value;
         public string YourAccount_TimeZone => l["YourAccount_TimeZone"].Value;
         public string YourAccount_TimeZoneNotSet => l["YourAccount_TimeZoneNotSet"].Value;

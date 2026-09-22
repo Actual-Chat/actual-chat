@@ -1,0 +1,39 @@
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<DigestTimeEditorModal.Model>
+
+<DialogFrame
+    Class="digest-time-editor-modal"
+    Title="@L.YourAccount_DigestTime"
+    HasCloseButton="true"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
+    <Body>
+        <div class="c-list" role="listbox">
+            @for (var hour = 0; hour < 24; hour++) {
+                var time = TimeSpan.FromHours(hour);
+                var isSelected = time == ModalModel.DigestTime;
+                <div class="c-item @(isSelected ? "selected" : "")"
+                     role="option"
+                     tabindex="0"
+                     aria-selected="@(isSelected ? "true" : "false")"
+                     @onclick="@(() => OnTimeSelected(time))">
+                    @((DateTime.Today + time).ToString("t", DateFormatter))
+                </div>
+            }
+        </div>
+    </Body>
+</DialogFrame>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private async Task OnTimeSelected(TimeSpan time) {
+        await UserSettingsUI.UserEmailsSettings()
+            .Update(x => x with { DigestTime = time }, CancellationToken.None);
+        Modal.Close();
+    }
+
+    // Nested types
+
+    public sealed record Model(TimeSpan DigestTime);
+}

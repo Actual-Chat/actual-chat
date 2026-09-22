@@ -162,7 +162,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.DataCollectionStep>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.DateVisor>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.DeleteAccountModal>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.DigestSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Discover.CreationButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Discover.CreationButtons>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Discover.DiscoverCenter>();
@@ -413,6 +412,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.AppSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.ConnectedAppsSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DeveloperTools>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DigestSettings>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DigestTimeEditorModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.LanguageSettings>();
@@ -987,7 +988,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.DataCollectionStep), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.DateVisor), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.DeleteAccountModal), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.DigestSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Discover.CreationButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Discover.CreationButtons), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Discover.DiscoverCenter), AotTypeKind.Component),
@@ -1238,6 +1238,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.AppSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.ConnectedAppsSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DeveloperTools), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DigestSettings), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DigestTimeEditorModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.LanguageSettings), AotTypeKind.Component),
