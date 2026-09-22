@@ -15,6 +15,7 @@ public sealed partial record NotificationHistoryItem(
     [DataMember(Order = 5), Key(5)] public AuthorId? AuthorId { get; init; }
     [DataMember(Order = 6), Key(6)] public string Title { get; init; } = "";
     [DataMember(Order = 7), Key(7)] public string Text { get; init; } = "";
+    [DataMember(Order = 8), Key(8)] public NotificationId? NotificationId { get; init; }
 
     public static bool IsLoggedKind(NotificationKind kind)
         // Message (a row per incoming message in every subscribed chat) and SpeechStarted are
