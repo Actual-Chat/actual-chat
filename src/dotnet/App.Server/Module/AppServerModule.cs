@@ -185,6 +185,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         }
         app.MapControllers();
         app.MapMcp();
+        app.MapWebHookInbound();
 
         // Diagnostic endpoints
         // app.UseOpenTelemetryPrometheusScrapingEndpoint();
@@ -469,6 +470,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                     "/backend/rpc/ws",
                     "/rpc/http",
                     "/backend/rpc/http",
+                    "/hooks/in",
                 };
                 opt.Filter = httpContext =>
                     !excludedPaths.Any(x

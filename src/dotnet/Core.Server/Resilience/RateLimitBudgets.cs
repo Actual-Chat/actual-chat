@@ -36,6 +36,11 @@ public sealed record RateLimitBudgets
             // anything else here: ~10 pictures a day is a few tenths of a cent per user.
             [(RateLimitClass.ImageGeneration, RateLimitIdentityKind.UserId)] = new(10, TimeSpan.FromDays(1)),
             [(RateLimitClass.ImageGeneration, RateLimitIdentityKind.IP)] = new(100, TimeSpan.FromDays(1)),
+
+            // Charged by the incoming web hook endpoint itself: it's a minimal-API route, so the
+            // controller-only HTTP rate limit middleware never sees it.
+            [(RateLimitClass.WebHookInbound, RateLimitIdentityKind.Target)] = new(60, TimeSpan.FromMinutes(1)),
+            [(RateLimitClass.WebHookInbound, RateLimitIdentityKind.UserId)] = new(600, TimeSpan.FromHours(1)),
         };
 
     public SlidingWindowBudget? Get(RateLimitClass rateLimitClass, RateLimitIdentityKind kind)

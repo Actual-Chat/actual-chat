@@ -12,6 +12,9 @@ public sealed class WebHookReceiver : IAsyncDisposable
 {
     public sealed record Received(int Index, IReadOnlyDictionary<string, string> Headers, string Body);
 
+    private static readonly byte[] OnePixelPng = Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==");
+
     private readonly HttpListener _listener = new();
     private readonly Channel<Received> _received = Channel.CreateUnbounded<Received>();
     private readonly CancellationTokenSource _stopCts = new();
@@ -21,6 +24,7 @@ public sealed class WebHookReceiver : IAsyncDisposable
     public Uri BaseUri { get; }
     public string HookUrl => new Uri(BaseUri, "/hook").ToString();
     public Func<int, HttpStatusCode> StatusFor { get; set; } = _ => HttpStatusCode.OK;
+    public bool ServeImage { get; set; }
 
     public WebHookReceiver()
     {
@@ -55,6 +59,15 @@ public sealed class WebHookReceiver : IAsyncDisposable
             }
             catch (Exception) when (_stopCts.IsCancellationRequested) {
                 return;
+            }
+
+            if (ServeImage && context.Request.HttpMethod == "GET") {
+                var imageResponse = context.Response;
+                imageResponse.ContentType = "image/png";
+                imageResponse.ContentLength64 = OnePixelPng.Length;
+                await imageResponse.OutputStream.WriteAsync(OnePixelPng);
+                imageResponse.Close();
+                continue;
             }
 
             var index = Interlocked.Increment(ref _requestCount) - 1;
