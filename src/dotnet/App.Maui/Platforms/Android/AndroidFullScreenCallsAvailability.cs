@@ -23,15 +23,20 @@ public sealed class AndroidFullScreenCallsAvailability(ILogger log) : IFullScree
     private const int ModeAllowed = 0;
 
     public Task<CallScreenGate> GetBlockedGate(CancellationToken cancellationToken = default)
+        => Task.FromResult(ReadBlockedGate());
+
+    // The push path reads this without a DI scope and off the notification thread, and both checks
+    // are plain platform reads - so it gets the value directly rather than through the Task.
+    public CallScreenGate ReadBlockedGate()
     {
         // The stock gate goes first where it exists: its settings screen is the standard one, and
         // MIUI's own gate is only worth surfacing once that one is open. Below 34 only MIUI is left.
         if (OperatingSystem.IsAndroidVersionAtLeast(34) && !CanUseFullScreenIntent())
-            return Task.FromResult(CallScreenGate.FullScreenIntent);
+            return CallScreenGate.FullScreenIntent;
         if (IsMiui() && !IsLockScreenWindowAllowed())
-            return Task.FromResult(CallScreenGate.LockScreenWindow);
+            return CallScreenGate.LockScreenWindow;
 
-        return Task.FromResult(CallScreenGate.None);
+        return CallScreenGate.None;
     }
 
     public Task OpenSettings(CallScreenGate gate, CancellationToken cancellationToken = default)

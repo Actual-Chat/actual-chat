@@ -19,6 +19,7 @@ public class CallActionReceiver : BroadcastReceiver
         if (chatId is null)
             return;
 
+        IncomingCallNotifications.MarkRingHandled(chatId);
         IncomingCallNotifications.Dismiss(chatId);
         IncomingCallRinger.Stop();
 
