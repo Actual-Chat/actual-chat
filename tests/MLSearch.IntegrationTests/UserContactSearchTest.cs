@@ -4,6 +4,7 @@ using ActualChat.MLSearch.Engine;
 using ActualChat.Search;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
+using ActualChat.Users;
 using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.IntegrationTests;
@@ -427,6 +428,29 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
             response.Found.Should()
                 .BeFalse("system user {0} must not be indexed in OpenSearch", systemUserId);
         }
+    }
+
+    [Fact]
+    public async Task ShouldNotIndexBotAccounts()
+    {
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var bot = await CreateAccount("Bot");
+        await Tester.Commander.Call(new AccountsBackend_Update(bot with { IsBot = true }, null));
+        var sentinel = await CreateAccount("Sentinel");
+
+        // Wait until the sentinel account is indexed — that proves AccountIndexingFlow processed
+        // every account changed before it, including the bot one.
+        await TestsExt.When(async () => {
+                var response = await GetIndexedUser(sentinel.Id);
+                response.Found.Should().BeTrue();
+                return response;
+            },
+            TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20));
+
+        // assert
+        var botResponse = await GetIndexedUser(bot.Id);
+        botResponse.Found.Should().BeFalse("bot account {0} must not be indexed in OpenSearch", bot.Id);
     }
 
     // Private methods

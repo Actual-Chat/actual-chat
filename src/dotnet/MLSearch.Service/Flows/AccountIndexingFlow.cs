@@ -35,7 +35,7 @@ public partial class AccountIndexingFlow : BatchedIndexingFlow<AccountFull, User
     {
         await WhenReady.ConfigureAwait(false);
 
-        var updated = batch.Select(x => x.ToIndexedUser()).ToArray();
+        var updated = batch.Where(x => !x.IsBot).Select(x => x.ToIndexedUser()).ToArray();
         await IndexedDocuments
             .UpsertPartially<IndexedUser, IIndexedUserUpsertWithoutPlaces, UserId>(x => x.UserIndexName,
                 updated,

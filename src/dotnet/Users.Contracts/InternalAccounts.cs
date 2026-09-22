@@ -20,6 +20,7 @@ public sealed record InternalUserInfo(
     public MediaId? AvatarMediaId { get; init; }
     public string AvatarPictureUrl { get; init; } = "";
     public bool HasGeneratedPicture { get; init; } = true;
+    public bool IsBot { get; init; }
 
     public string UserNameOrDefault
         => !UserName.IsNullOrEmpty() ? UserName : $"{FirstName.ToLower()}_{LastName.ToLower()}";
@@ -53,10 +54,14 @@ public static class InternalAccounts
         if (!userInfo.Email.IsNullOrEmpty())
             claims = claims.With(ClaimTypes.Email, userInfo.Email);
 
-        var userIdentity = new UserIdentity(UserIdentity.InternalSchema, userId.Value);
-        var signInCommand = new AccountsBackend_SignIn(
-            Session.New(), userIdentity, identities, claims, AutoCreate: true);
-        await commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
+        var existingAccount = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        // A bot account can never sign in, so re-running Create for one must skip the sign-in
+        if (existingAccount is not { IsBot: true }) {
+            var userIdentity = new UserIdentity(UserIdentity.InternalSchema, userId.Value);
+            var signInCommand = new AccountsBackend_SignIn(
+                Session.New(), userIdentity, identities, claims, AutoCreate: true);
+            await commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
+        }
 
         var account = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         account.Require();
@@ -68,9 +73,21 @@ public static class InternalAccounts
         }
         account.Require(isAdmin ? AccountFull.MustBeAdmin : AccountFull.MustBeActive);
 
+        if (userInfo.IsBot && !account.IsBot) {
+            var botUpdate = new AccountsBackend_Update(account with { IsBot = true }, account.Version);
+            await commander.Call(botUpdate, true, cancellationToken).ConfigureAwait(false);
+            account = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+            account.Require();
+        }
+
+        // Re-creating the avatar on a get-or-create call would orphan the old one and repoint the default
+        if (account.Avatar is { Id.IsEmpty: false })
+            return account;
+
         var avatarMediaId = userInfo.AvatarMediaId;
         var avatarPictureUrl = "";
-        if (avatarMediaId == null && userInfo.HasGeneratedPicture)
+        // A bot's identity comes from its integration, so it gets neither a generated picture nor a stand-in bio
+        if (avatarMediaId == null && userInfo.HasGeneratedPicture && !userInfo.IsBot)
             avatarPictureUrl = userInfo.AvatarPictureUrl.NullIfEmpty()
                 ?? $"https://api.dicebear.com/7.x/bottts/svg?seed={userId.Value.GetDjb2HashCode()}";
 
@@ -78,14 +95,17 @@ public static class InternalAccounts
             Change.Create(new AvatarDiff {
                 UserId = userId,
                 Name = userInfo.AvatarNameOrDefault,
-                Bio = userInfo.AvatarBio.NullIfEmpty() ?? $"I'm just a {userInfo.UserNameOrDefault} test bot",
+                Bio = userInfo.IsBot
+                    ? userInfo.AvatarBio
+                    : userInfo.AvatarBio.NullIfEmpty() ?? $"I'm just a {userInfo.UserNameOrDefault} test bot",
                 MediaId = Option.Some(avatarMediaId),
                 PictureUrl = avatarPictureUrl,
             }));
         var avatar = await commander.Call(changeAvatarCommand, true, cancellationToken).ConfigureAwait(false);
 
         var serverKvasBackend = services.GetRequiredService<IServerKvasBackend>();
-        var userKvas = serverKvasBackend.ForUser(account);
+        // Callers may run inside another service's DbOperationScope, so this write must be outermost
+        var userKvas = serverKvasBackend.ForUser(account, isOutermost: true);
         var userAvatarSettings = new UserAvatarSettings() {
             DefaultAvatarId = avatar.Id,
             AvatarIds = [avatar.Id],

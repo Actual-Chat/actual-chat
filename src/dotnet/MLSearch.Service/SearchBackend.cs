@@ -109,14 +109,21 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         if (!Settings.IsEnabled)
             return Task.CompletedTask;
 
-        var (_, old, changeKind) = eventCommand;
+        var (account, old, changeKind) = eventCommand;
         return UpdateIndexedUsers();
 
         Task UpdateIndexedUsers()
-            // NOTE: we don't have any other chance to process removed items
-            => changeKind == ChangeKind.Remove
-                ? IndexedDocuments.SaveUsers([], [old!.Id], cancellationToken)
-                : ResumeIndexingFlow<AccountIndexingFlow>("", cancellationToken);
+        {
+            if (changeKind == ChangeKind.Remove)
+                // NOTE: we don't have any other chance to process removed items
+                return IndexedDocuments.SaveUsers([], [old!.Id], cancellationToken);
+            if (account.IsBot)
+                // A bot may have been indexed before it was flagged, so drop it rather than
+                // rely on AccountIndexingFlow, which only skips bots - it never deletes them.
+                return IndexedDocuments.SaveUsers([], [account.Id], cancellationToken);
+
+            return ResumeIndexingFlow<AccountIndexingFlow>("", cancellationToken);
+        }
     }
 
     // [EventHandler]

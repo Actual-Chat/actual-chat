@@ -46,6 +46,7 @@ public sealed partial record AccountFull : Account
     public ApiMap<UserIdentity, string> Identities { get; init; }
 
     [DataMember, Key(19)] public ApiMap<string, string> Claims { get; init; }
+    [DataMember, Key(22)] public bool IsBot { get; init; }
 
     // Computed properties
 

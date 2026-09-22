@@ -28,7 +28,7 @@ public partial class MentionReminderFlow : PeriodicFlow
         var userId = UserId.Parse(Id.Arguments);
         var accounts = Services.GetRequiredService<IAccountsBackend>();
         var account = await accounts.Get(userId, cancellationToken).ConfigureAwait(false);
-        if (account?.IsGuestOrNull() != false)
+        if (account?.IsGuestOrNull() != false || account.IsBot)
             return "No account";
 
         return FlowReadiness.Ready;
