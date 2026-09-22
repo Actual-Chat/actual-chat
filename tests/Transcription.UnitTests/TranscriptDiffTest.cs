@@ -114,6 +114,29 @@ public class TranscriptDiffTest(ITestOutputHelper @out) : TestBase(@out)
         collapsed.IsSegmentEnd.Should().BeTrue("a late reader's collapsed diff keeps the fold's flag");
     }
 
+    [Fact]
+    public async Task ToTranscriptsStopsOnCancellationOfAnEndlessSource()
+    {
+        // A remote RpcStream enumerator ends only with the stream, so the token passed to
+        // ToTranscripts is what lets a reader leave a stream that is still being produced.
+        var diffs = Channel.CreateUnbounded<TranscriptDiff>();
+        var hello = new Transcript("Hello", LinearMap.Zero.Append(new Vector2(5, 5)), []);
+        diffs.Writer.TryWrite(hello - Transcript.Empty);
+        using var cts = new CancellationTokenSource();
+        var transcripts = new List<Transcript>();
+
+        var readTask = Task.Run(async () => {
+            await foreach (var t in diffs.Reader.ReadAllAsync().ToTranscripts(cts.Token))
+                transcripts.Add(t);
+        });
+        await TestExt.When(() => transcripts.Should().HaveCount(1), TimeSpan.FromSeconds(5));
+        cts.Cancel();
+
+        await FluentActions.Awaiting(() => readTask.WaitAsync(TimeSpan.FromSeconds(5)))
+            .Should().ThrowAsync<OperationCanceledException>();
+        transcripts.Single().Text.Should().Be("Hello");
+    }
+
     // Private methods
 
     private async Task CheckDiff(string title, IReadOnlyList<Transcript> transcripts)

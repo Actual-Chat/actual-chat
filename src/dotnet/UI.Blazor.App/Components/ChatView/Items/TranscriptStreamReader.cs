@@ -108,7 +108,10 @@ public sealed class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : Worke
 
         var projection = new TranscriptStreamProjection(content, isTranslation);
         try {
-            await foreach (var transcript in rpcStream.ToTranscripts().ConfigureAwait(false))
+            // ProcessStreamingState cancels this token when the entry switches streams (translation
+            // turned off mid-transcript). A remote RpcStream enumerator ends only with the stream
+            // unless the token reaches it, and this loop would then keep writing the old stream's text.
+            await foreach (var transcript in rpcStream.ToTranscripts(cancellationToken).ConfigureAwait(false))
                 if (projection.Next(transcript) is { } state)
                     _state.Value = state;
         }
