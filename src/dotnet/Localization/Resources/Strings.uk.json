@@ -1356,7 +1356,7 @@
   "Ptt_ChatAtCapacity_Format": "Push-to-talk увімкнено для цього чату, але ви вже в {0} — дозвольте його в Налаштуваннях.",
   "Transcription_MicrophoneTopic": "Мікрофон",
   "Transcription_FaceDownStop": "Зупиняти запис, коли телефон екраном донизу",
-  "Transcription_FaceDownStopCaption": "Якщо покласти телефон екраном донизу, мікрофон вимикається",
+  "Transcription_FaceDownStopCaption": "Якщо покласти телефон екраном донизу або в кишеню, мікрофон вимикається",
   "Privacy_BlockedUsers": "Заблоковані користувачі",
   "LocationAccuracy_High": "Висока",
   "LocationAccuracy_HighCaption": "Максимальна точність; витрачає більше заряду.",

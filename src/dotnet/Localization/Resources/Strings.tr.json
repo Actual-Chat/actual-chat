@@ -1356,7 +1356,7 @@
   "Ptt_ChatAtCapacity_Format": "Bu sohbet için bas-konuş açık, ancak zaten {0} sohbettesiniz - Ayarlar'dan izin verin.",
   "Transcription_MicrophoneTopic": "Mikrofon",
   "Transcription_FaceDownStop": "Yüzü aşağı çevrilince kaydı durdur",
-  "Transcription_FaceDownStopCaption": "Telefonu yüzü aşağı çevirmek mikrofonu kapatır",
+  "Transcription_FaceDownStopCaption": "Telefonu yüzü aşağı çevirmek ya da cebe koymak mikrofonu kapatır",
   "Privacy_BlockedUsers": "Engellenen kullanıcılar",
   "LocationAccuracy_High": "Yüksek",
   "LocationAccuracy_HighCaption": "En yüksek hassasiyet; daha fazla pil harcar.",

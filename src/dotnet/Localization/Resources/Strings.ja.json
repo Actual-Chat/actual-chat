@@ -1356,7 +1356,7 @@
   "Ptt_ChatAtCapacity_Format": "このチャットではプッシュトゥトークが有効ですが、すでに {0} 件に参加しています。設定で許可してください。",
   "Transcription_MicrophoneTopic": "マイク",
   "Transcription_FaceDownStop": "画面を下にしたら録音を停止",
-  "Transcription_FaceDownStopCaption": "端末を伏せるとマイクが閉じます",
+  "Transcription_FaceDownStopCaption": "端末を伏せたりポケットに入れたりするとマイクが閉じます",
   "Privacy_BlockedUsers": "ブロック中のユーザー",
   "LocationAccuracy_High": "高",
   "LocationAccuracy_HighCaption": "最高精度。バッテリー消費が増えます。",

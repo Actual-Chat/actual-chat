@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.App.Services.Gestures;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
@@ -274,6 +275,20 @@ public class GestureActivationPolicyTest
             .Should().Be(GestureRoute.None);
     }
 
+    [Theory]
+    [InlineData(AudioOutputKind.Speaker, false, true)]
+    [InlineData(null, false, true)]
+    [InlineData(AudioOutputKind.Phone, false, false)]
+    [InlineData(AudioOutputKind.Headphones, false, false)]
+    [InlineData(AudioOutputKind.Bluetooth, false, false)]
+    [InlineData(AudioOutputKind.Car, false, false)]
+    [InlineData(AudioOutputKind.Other, false, false)]
+    [InlineData(AudioOutputKind.Speaker, true, false)]
+    [InlineData(null, true, false)]
+    public void PocketIsPlausibleOnlyOnTheSpeakerOutsideACar(
+        AudioOutputKind? outputKind, bool isCarProjectionActive, bool expected)
+        => GestureActivationPolicy.IsPocketPlausible(outputKind, isCarProjectionActive).Should().Be(expected);
+
     [Fact]
     public void PocketNeverHushesAndPatOnlyHushes()
     {
@@ -286,7 +301,7 @@ public class GestureActivationPolicyTest
             .Should().Be(GestureRoute.StopReply);
         GestureActivationPolicy
             .Route(GestureKind.Pocket, false, isMicOpen: true, isStopArmed: true, isHushArmed: false)
-            .Should().Be(GestureRoute.None, "the phone held to the ear reads as pocketed");
+            .Should().Be(GestureRoute.StopReply);
         GestureActivationPolicy
             .Route(GestureKind.DoublePat, false, isMicOpen: false, isStopArmed: false, isHushArmed: true)
             .Should().Be(GestureRoute.Hush);

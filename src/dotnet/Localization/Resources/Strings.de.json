@@ -1356,7 +1356,7 @@
   "Ptt_ChatAtCapacity_Format": "Push-to-talk ist für diesen Chat aktiviert, aber Sie sind bereits in {0} - erlauben Sie es in den Einstellungen.",
   "Transcription_MicrophoneTopic": "Mikrofon",
   "Transcription_FaceDownStop": "Aufnahme stoppen, wenn umgedreht",
-  "Transcription_FaceDownStopCaption": "Das Telefon umzudrehen schließt das Mikrofon",
+  "Transcription_FaceDownStopCaption": "Das Telefon umzudrehen oder einzustecken schließt das Mikrofon",
   "Privacy_BlockedUsers": "Blockierte Nutzer",
   "LocationAccuracy_High": "Hoch",
   "LocationAccuracy_HighCaption": "Höchste Genauigkeit; verbraucht mehr Akku.",

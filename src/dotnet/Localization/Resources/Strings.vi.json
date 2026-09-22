@@ -1356,7 +1356,7 @@
   "Ptt_ChatAtCapacity_Format": "Nhấn để nói đang bật cho cuộc trò chuyện này, nhưng bạn đã ở trong {0} - hãy cho phép trong Cài đặt.",
   "Transcription_MicrophoneTopic": "Micrô",
   "Transcription_FaceDownStop": "Dừng ghi âm khi úp máy",
-  "Transcription_FaceDownStopCaption": "Úp máy xuống sẽ tắt micrô",
+  "Transcription_FaceDownStopCaption": "Úp máy xuống hoặc cho vào túi sẽ tắt micrô",
   "Privacy_BlockedUsers": "Người dùng bị chặn",
   "LocationAccuracy_High": "Cao",
   "LocationAccuracy_HighCaption": "Độ chính xác cao nhất; tốn pin hơn.",

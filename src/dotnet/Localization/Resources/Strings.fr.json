@@ -1356,7 +1356,7 @@
   "Ptt_ChatAtCapacity_Format": "Le push-to-talk est activé pour ce chat, mais vous êtes déjà dans {0} - autorisez-le dans les Paramètres.",
   "Transcription_MicrophoneTopic": "Microphone",
   "Transcription_FaceDownStop": "Arrêter l'enregistrement en retournant l'appareil",
-  "Transcription_FaceDownStopCaption": "Retourner le téléphone coupe le micro",
+  "Transcription_FaceDownStopCaption": "Retourner le téléphone ou le mettre en poche coupe le micro",
   "Privacy_BlockedUsers": "Utilisateurs bloqués",
   "LocationAccuracy_High": "Élevée",
   "LocationAccuracy_HighCaption": "Précision maximale ; consomme plus de batterie.",

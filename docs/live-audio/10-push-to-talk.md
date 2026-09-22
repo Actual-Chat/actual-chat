@@ -660,7 +660,7 @@ and the resolver special-cases it to `Moment.EpochStart` rather than computing
 | Trigger | Path |
 |---|---|
 | Flip-to-talk, double-shake | `GestureUI.OnSample` → `GestureRecognizer` → `GestureActivationPolicy.Route` → `PttMicCapability.HoldWhile(RequestReply)` |
-| Put the phone away (face-down; pocket only with the mic closed) | same, routed to `StopReply` |
+| Put the phone away (face-down, top-down pocket) | same, routed to `StopReply` |
 | Double-shake with the mic open | same, routed to `StopReply` |
 | Android screen locked | `AndroidActivitiesForegroundService.ScreenOffReceiver` → `PttReplyUI.StopReply` |
 | Android headset button | `AndroidActivitiesForegroundService` media session → `HeadsetButtonPolicy.Decide` |
@@ -687,17 +687,21 @@ rather than waiting for the next tick.
 the start one: a stop that fires by mistake ends your utterance early, which you
 notice, while a stop that fails to fire leaves the mic open until the hot window
 expires. `FaceDownDetector` reports `GestureKind.FaceDown` (Z ≤ −0.85) or
-`GestureKind.Pocket` (covered and near-vertical, either way up), and **both now
+`GestureKind.Pocket` (covered, near-vertical and top down), and **both now
 require the proximity sensor to be covered** — a phone put down or pocketed covers
 it, one flipped in mid-air doesn't, which is the false stop the requirement
 removes. The dwell keeps running while uncovered, so a phone flipped over in the
 hand fires the moment it lands rather than restarting its 700 ms on the surface.
-The pocket branch stays orientation-agnostic on purpose: narrowing it to the
-taught inverted insert would leave a camera or screencast running in a pocket
-entered the other way up. `Route` never lets `Pocket` close an open mic, though:
-the phone held to the ear is covered and near-vertical too, and that is how
-people talk into it (#4711). A pocketed open mic is closed by face-down, shake,
-the power button, or the hot window expiring. A slow entry (a recline, not a flip) additionally needs `StillDwell`.
+The pocket branch is top-down only: the phone held to the ear is covered and
+near-vertical too, but top up, and that is how people talk into it (#4711). An
+upright pocket insert is left to face-down, shake, the power button or the hot
+window. `GestureUI` also drops a `Pocket` fire when
+`GestureActivationPolicy.IsPocketPlausible` says no: audio on the earpiece
+(`AudioOutputKind.Phone` — the phone is at the ear), on any external device
+(headphones, Bluetooth, car, other), or car projection active in any car audio
+mode — with a headset or in a car the phone can rest anywhere while the user
+keeps talking. The kind comes from `AudioFocusUI.GetCurrentOutputKind`, read at
+fire time. A slow entry (a recline, not a flip) additionally needs `StillDwell`.
 
 `ShouldSenseShake(isDoubleShakeEnabled, mustSenseStart, mustSenseStop, isMicOpen)`
 arms the shake detector for either side, and `Route` reads `isMicOpen` to decide

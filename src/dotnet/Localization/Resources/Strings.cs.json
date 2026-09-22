@@ -1356,7 +1356,7 @@
   "Ptt_ChatAtCapacity_Format": "Push-to-talk je pro tento chat zapnutý, ale už jste v {0} - povolte jej v Nastavení.",
   "Transcription_MicrophoneTopic": "Mikrofon",
   "Transcription_FaceDownStop": "Zastavit nahrávání displejem dolů",
-  "Transcription_FaceDownStopCaption": "Otočením telefonu displejem dolů se mikrofon vypne",
+  "Transcription_FaceDownStopCaption": "Otočením telefonu displejem dolů nebo vložením do kapsy se mikrofon vypne",
   "Privacy_BlockedUsers": "Zablokovaní uživatelé",
   "LocationAccuracy_High": "Vysoká",
   "LocationAccuracy_HighCaption": "Nejvyšší přesnost; spotřebuje víc baterie.",

@@ -1356,7 +1356,7 @@
   "Ptt_ChatAtCapacity_Format": "O push-to-talk está ativado neste chat, mas você já está em {0} - permita nas Configurações.",
   "Transcription_MicrophoneTopic": "Microfone",
   "Transcription_FaceDownStop": "Parar a gravação ao virar para baixo",
-  "Transcription_FaceDownStopCaption": "Virar o telefone para baixo fecha o microfone",
+  "Transcription_FaceDownStopCaption": "Virar o telefone para baixo ou guardá-lo no bolso fecha o microfone",
   "Privacy_BlockedUsers": "Usuários bloqueados",
   "LocationAccuracy_High": "Alta",
   "LocationAccuracy_HighCaption": "Precisão máxima; consome mais bateria.",
