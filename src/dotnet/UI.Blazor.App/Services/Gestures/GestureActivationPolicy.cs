@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.UI.Blazor.App.Services.Gestures;
 
 public static class GestureActivationPolicy
@@ -91,6 +93,11 @@ public static class GestureActivationPolicy
         // hush from the settings page would silently mute every chat. The window half keeps the
         // gesture available for the seconds after the utterance, while the user is still reacting.
         => isHushGestureEnabled && !isPracticeMode && hasArmedChats && (hasLiveIncoming || hasIncomingAnswerWindow);
+
+    public static bool IsPocketPlausible(AudioOutputKind? outputKind, bool isCarProjectionActive)
+        // The earpiece (Phone) means the phone is at the ear, which covers the sensor like a pocket.
+        // A headset or a car means the phone can rest anywhere while the user keeps talking.
+        => outputKind is null or AudioOutputKind.Speaker && !isCarProjectionActive;
 
     public static GestureRoute Route(
         GestureKind kind,

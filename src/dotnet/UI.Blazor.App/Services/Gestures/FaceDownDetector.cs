@@ -1,7 +1,7 @@
 namespace ActualChat.UI.Blazor.App.Services.Gestures;
 
 /// <summary>
-/// Detects "the phone was put away" - held face-down, or covered and near-vertical (pocket) -
+/// Detects "the phone was put away" - held face-down, or covered, near-vertical and top down (pocket) -
 /// for <see cref="Dwell"/>, and reports which of the two fired.
 /// A slow drift into face-down (reclining with the phone overhead) must also rest still for
 /// <see cref="StillDwell"/>; only a fast flip fires on dwell alone. Either way the proximity
@@ -17,6 +17,8 @@ public sealed class FaceDownDetector
     // MAUI reports Z ≈ +1 face-up on both platforms, so face-down is the negative end.
     private const float FaceDownZ = -0.85f;
     private const float PocketMaxZ = 0.5f;
+    // MAUI reports Y ≈ +1 for an upright portrait, so top-down is the negative end.
+    private const float PocketMaxY = -0.5f;
     private const float NotFaceDownZ = -0.3f;
     private const float StillTolerance = 0.04f;
 
@@ -44,7 +46,8 @@ public sealed class FaceDownDetector
             _lastNotFaceDownAt = sample.At;
 
         var isFaceDown = sample.Z <= FaceDownZ;
-        var isPocketed = _isCovered && MathF.Abs(sample.Z) <= PocketMaxZ;
+        // Top down only: the phone held to the ear is covered and near-vertical too, but top up.
+        var isPocketed = _isCovered && MathF.Abs(sample.Z) <= PocketMaxZ && sample.Y <= PocketMaxY;
         if (!isFaceDown && !isPocketed) {
             _heldSince = null;
             _stillSince = null;
