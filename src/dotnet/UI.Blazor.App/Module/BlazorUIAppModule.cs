@@ -226,6 +226,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped<AppScopedServiceStarter>(c => new AppScopedServiceStarter(c.AppUIHub()));
         services.AddSingleton<AppNonScopedServiceStarter>(c => new AppNonScopedServiceStarter(c));
         services.AddScoped<AppIconBadgeUpdater>(c => new AppIconBadgeUpdater(c.AppUIHub()));
+        services.AddScoped<AccountTimeZoneSyncer>(c => new AccountTimeZoneSyncer(c.AppUIHub()));
         services.AddScoped<NotificationReconciler>(c => new NotificationReconciler(c.AppUIHub()));
         services.AddScoped<SeenNotificationDismisser>(c => new SeenNotificationDismisser(c.AppUIHub()));
 
