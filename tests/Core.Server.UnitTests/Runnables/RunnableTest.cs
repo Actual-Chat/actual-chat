@@ -2,7 +2,7 @@ namespace ActualChat.Core.Server.UnitTests.Runnables;
 
 public class RunnableTests
 {
-    private static readonly TimeSpan DefaultWaitTime = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan DefaultWaitTime = TimeSpan.FromSeconds(5).CiScaled();
 
     [Fact]
     public async Task Runnable_New_Starts_And_Cancels_On_Runner()

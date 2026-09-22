@@ -101,7 +101,7 @@ public class ChatBlockTest(ChatCollection.AppHostFixture fixture, ITestOutputHel
         await BlockUser(aliceTester, alice.Id, bob.Id);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var ids = await contacts.ListIds(aliceTester.Session, null, ct);
             ids.Should().NotContain(bobContactId);
 
@@ -126,7 +126,7 @@ public class ChatBlockTest(ChatCollection.AppHostFixture fixture, ITestOutputHel
         await BlockUser(aliceTester, alice.Id, bob.Id);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var bobContactForAlice = await bobContacts.GetForChat(bobTester.Session, chatId, ct);
             bobContactForAlice.Should().NotBeNull();
             bobContactForAlice.IsBlocked.Should().BeFalse();

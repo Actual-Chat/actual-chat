@@ -2,7 +2,7 @@ namespace ActualChat.Core.Server.UnitTests.Runnables;
 
 public class RunnableDispatcherTests
 {
-    private static readonly TimeSpan DefaultWaitTime = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan DefaultWaitTime = TimeSpan.FromSeconds(5).CiScaled();
 
     [Fact]
     public async Task Add_Runnable_Starts_On_All_Runners()

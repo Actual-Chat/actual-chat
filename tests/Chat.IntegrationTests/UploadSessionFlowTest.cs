@@ -52,7 +52,7 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
         uploadSession.MediaRef!.BlobId.Should().NotBeNullOrEmpty();
 
         // Verify media exists on server with Ready stage (may need to wait for server processing)
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var progress = await mediaProgressBackend.Get(mediaId, default);
             progress.Should().NotBeNull();
             progress.Stage.Should().Be(MediaProcessingStage.Ready);

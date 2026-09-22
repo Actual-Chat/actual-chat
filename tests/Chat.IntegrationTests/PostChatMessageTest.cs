@@ -421,7 +421,7 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         });
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var position = await chatPositions.GetOwn(session, chatId, ChatPositionKind.Read, ct);
             position.EntryLid.Should().Be(entry2.LocalId);
         });
@@ -491,7 +491,7 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         });
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var targetNews = await chats.GetNews(session, targetChatId, ct);
             var lastLid = targetNews.TextEntryLidRange.End - 1;
             lastLid.Should().BeGreaterThan(0);
@@ -510,7 +510,7 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         // otherwise the position is set to 0 and the author is "behind" the moment the entry lands.
         var chats = tester.AppServices.GetRequiredService<IChats>();
         var lastLid = 0L;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var news = await chats.GetNews(tester.Session, chatId, ct);
             lastLid = news.TextEntryLidRange.End - 1;
             lastLid.Should().BeGreaterThan(0);

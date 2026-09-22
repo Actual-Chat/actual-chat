@@ -55,7 +55,7 @@ public class StreamingEntryNetworkLossTest(
         var entryId = streamingEntry.Id;
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var entry = await chatsBackend.GetEntry(entryId, ct);
             entry.Should().NotBeNull();
             entry!.IsRemoved.Should().BeFalse();
@@ -73,7 +73,7 @@ public class StreamingEntryNetworkLossTest(
     // Private methods
 
     private static Task<ChatEntry> WhenStreamingEntry(IChatsBackend chatsBackend, ChatId chatId, StreamId segmentStreamId)
-        => ComputedTest.When(async ct => {
+        => TestWait.When(async ct => {
             var range = await chatsBackend.GetLidRange(chatId, true, ct);
             var idTile = Constants.Chat.EntryIdTiles.GetTile(Math.Max(range.End - 1, 0));
             var tile = await chatsBackend.GetTile(chatId, idTile.Range, false, ct);

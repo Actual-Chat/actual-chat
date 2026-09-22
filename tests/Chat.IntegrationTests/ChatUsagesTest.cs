@@ -26,7 +26,7 @@ public class ChatUsagesTest(ChatCollection.AppHostFixture fixture, ITestOutputHe
         var cmd = new Chats_UpsertEntry { Session = session, ChatId = peerChatId, LocalId = null, Text = "Hello!" };
         _ = await commander.Call(cmd);
 
-        await ComputedTest.When(async _ => {
+        await TestWait.When(async _ => {
             list = await chatUsages.GetRecencyList(session, ChatUsageListKind.PeerChatsWroteTo, default);
             list.Should().HaveCount(1).And.Contain(peerChatId);
         });

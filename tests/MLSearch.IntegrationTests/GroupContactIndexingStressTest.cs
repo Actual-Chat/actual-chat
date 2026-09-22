@@ -61,11 +61,11 @@ public class GroupContactIndexingStressTest(SlowAppHostFixture fixture, ITestOut
     private async Task<FoundContact[]> Find(string criteria, int expected = 50)
     {
         FoundContact[] results = [];
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
                 results = await Tester.FindGroups($"{IsolationKey} {criteria}", true, null, expected);
                 results.Should().HaveCount(expected, "for criteria '{0}'", criteria);
             },
-            TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(90) : TimeSpan.FromSeconds(30));
+            TimeSpan.FromSeconds(30));
         return results;
     }
 }

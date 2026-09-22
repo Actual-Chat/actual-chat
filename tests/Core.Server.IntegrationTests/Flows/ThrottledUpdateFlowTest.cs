@@ -24,7 +24,7 @@ public sealed class ThrottledUpdateFlowTest(ThrottledUpdateFlowFixture fixture, 
 
         // assert
         scheduled.Should().BeTrue("the flow doesn't exist yet");
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var flow = await FlowHub.TryGet<SimpleThrottledUpdateFlow>(args, ct);
             flow.Should().NotBeNull("the scheduled update must create the flow");
             flow!.Console.ToString().Should().Contain("Run() #1 completed", "the scheduled update must run");
@@ -38,7 +38,7 @@ public sealed class ThrottledUpdateFlowTest(ThrottledUpdateFlowFixture fixture, 
         var target = $"test-{RandomStringGenerator.Default.Next()}";
         var args = ThrottledUpdateFlow.GetArguments(target);
         await FlowHub.TryScheduleUpdate<LongThrottledUpdateFlow>(target);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var flow = await FlowHub.TryGet<LongThrottledUpdateFlow>(args, ct);
             flow!.Console.ToString().Should().Contain("Run() #1 completed", "the scheduled update must run");
         }, DefaultTimeout);
@@ -63,7 +63,7 @@ public sealed class ThrottledUpdateFlowTest(ThrottledUpdateFlowFixture fixture, 
         // act
         var mustUpdateBeforeRun = await FlowHub.MustUpdate<LongThrottledUpdateFlow>(target);
         await FlowHub.TryScheduleUpdate<LongThrottledUpdateFlow>(target);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var flow = await FlowHub.TryGet<LongThrottledUpdateFlow>(args, ct);
             flow!.Console.ToString().Should().Contain("Run() #1 completed", "the scheduled update must run");
         }, DefaultTimeout);
@@ -81,7 +81,7 @@ public sealed class ThrottledUpdateFlowTest(ThrottledUpdateFlowFixture fixture, 
         var target = $"test-{RandomStringGenerator.Default.Next()}";
         var args = ThrottledUpdateFlow.GetArguments(target);
         await FlowHub.TryScheduleUpdate<LongThrottledUpdateFlow>(target);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var flow = await FlowHub.TryGet<LongThrottledUpdateFlow>(args, ct);
             flow!.Console.ToString().Should().Contain("Run() #1 completed", "the scheduled update must run");
         }, DefaultTimeout);
@@ -104,7 +104,7 @@ public sealed class ThrottledUpdateFlowTest(ThrottledUpdateFlowFixture fixture, 
         var target = $"test-{RandomStringGenerator.Default.Next()}";
         var args = ThrottledUpdateFlow.GetArguments(target);
         await FlowHub.TryScheduleUpdate<SimpleThrottledUpdateFlow>(target);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var flow = await FlowHub.TryGet<SimpleThrottledUpdateFlow>(args, ct);
             flow!.Console.ToString().Should().Contain("Run() #1 completed", "the scheduled update must run");
         }, DefaultTimeout);
@@ -115,7 +115,7 @@ public sealed class ThrottledUpdateFlowTest(ThrottledUpdateFlowFixture fixture, 
 
         // assert
         scheduled.Should().BeTrue("the throttle period has elapsed");
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var flow = await FlowHub.TryGet<SimpleThrottledUpdateFlow>(args, ct);
             flow!.Console.ToString().Should().Contain("Run() #2 completed", "the second update must run");
         }, DefaultTimeout);
@@ -132,7 +132,7 @@ public sealed class ThrottledUpdateFlowTest(ThrottledUpdateFlowFixture fixture, 
         await FlowHub.TryScheduleUpdate<SimpleThrottledUpdateFlow>(target);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var flow = await FlowHub.TryGet<SimpleThrottledUpdateFlow>(args, ct);
             flow.Should().NotBeNull("the scheduled update must create the flow");
             flow!.Console.ToString().Should().Contain("Run() #1 completed", "the scheduled update must run");

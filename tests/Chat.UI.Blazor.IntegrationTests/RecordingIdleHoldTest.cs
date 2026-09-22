@@ -33,7 +33,7 @@ public sealed class RecordingIdleHoldTest(ChatAppHostFixture fixture, ITestOutpu
         recorderState.Set(new AudioRecorderState(chat.Id) { IsRecording = true, IsVoiceActive = true });
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             (await chatAudioUI.HasRecordingActivity(chat.Id, ct)).Should().BeTrue(
                 "the user's own voice must hold the countdown before the server sees the stream");
         }, Timeout);
@@ -42,7 +42,7 @@ public sealed class RecordingIdleHoldTest(ChatAppHostFixture fixture, ITestOutpu
         recorderState.Set(new AudioRecorderState(chat.Id) { IsRecording = true });
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             (await chatAudioUI.HasRecordingActivity(chat.Id, ct)).Should().BeFalse();
         }, Timeout);
     }
@@ -57,7 +57,7 @@ public sealed class RecordingIdleHoldTest(ChatAppHostFixture fixture, ITestOutpu
         chatAudioUI.Enable();
         await chatAudioUI.SetListeningState(chat.Id, true);
         ChatListeningPlayer? player = null;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             player = await chatAudioUI.GetListeningPlayer(chat.Id, ct);
             player.Should().NotBeNull();
         }, Timeout);
@@ -68,7 +68,7 @@ public sealed class RecordingIdleHoldTest(ChatAppHostFixture fixture, ITestOutpu
         isPlaying.Set(true);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             (await chatAudioUI.HasRecordingActivity(chat.Id, ct)).Should().BeTrue(
                 "what this device still plays is audible speech, whatever the server's live edge says");
         }, Timeout);
@@ -77,7 +77,7 @@ public sealed class RecordingIdleHoldTest(ChatAppHostFixture fixture, ITestOutpu
         isPlaying.Set(false);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             (await chatAudioUI.HasRecordingActivity(chat.Id, ct)).Should().BeFalse();
         }, Timeout);
     }

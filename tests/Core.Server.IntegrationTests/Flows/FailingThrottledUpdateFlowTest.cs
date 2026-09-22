@@ -29,7 +29,7 @@ public class FailingThrottledUpdateFlowTest(FailingThrottledUpdateFlowFixture fi
         await FlowHub.TryScheduleUpdate<FailingThrottledUpdateFlow>(target);
 
         // Assert - should eventually succeed after retries
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var flow = await FlowHub.TryGet<FailingThrottledUpdateFlow>(args, ct);
             flow.Should().NotBeNull();
             flow!.SuccessCount.Should().Be(1);
@@ -52,7 +52,7 @@ public class FailingThrottledUpdateFlowTest(FailingThrottledUpdateFlowFixture fi
         await FlowHub.TryScheduleUpdate<FailingThrottledUpdateFlow>(target);
 
         // Assert - should give up after MaxFailCount (3) and advance NextRunAt
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var flow = await FlowHub.TryGet<FailingThrottledUpdateFlow>(args, ct);
             flow.Should().NotBeNull();
             flow!.SuccessCount.Should().Be(0);
@@ -77,7 +77,7 @@ public class FailingThrottledUpdateFlowTest(FailingThrottledUpdateFlowFixture fi
         await FlowHub.TryScheduleUpdate<FailingThrottledUpdateFlow>(target);
 
         // Assert - should succeed after 1 retry, FailCount reset to 0
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var flow = await FlowHub.TryGet<FailingThrottledUpdateFlow>(args, ct);
             flow.Should().NotBeNull();
             flow!.SuccessCount.Should().Be(1);

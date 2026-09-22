@@ -110,7 +110,7 @@ public class SameLanguageTranslationTest(
             })));
 
     private Task<Translation> WhenTranslated(ChatEntryId id, Language language)
-        => ComputedTest.When(async ct => {
+        => TestWait.When(async ct => {
                 var translation = await Translations.Get(Tester.Session, TranslationId.New(id, language), true, ct).Require();
                 translation.IsStreaming.Should().BeFalse();
                 return translation;

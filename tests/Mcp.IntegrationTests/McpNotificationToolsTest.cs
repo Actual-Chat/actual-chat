@@ -26,7 +26,7 @@ public class McpNotificationToolsTest(McpCollection.AppHostFixture fixture, ITes
 
         // assert
         McpListNotificationsResult mentions = null!;
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             mentions = await CallTool<McpListNotificationsResult>(client, "list_notifications",
                 new { kinds = new[] { "mention" } });
             mentions.Items.Should().ContainSingle();
@@ -83,7 +83,7 @@ public class McpNotificationToolsTest(McpCollection.AppHostFixture fixture, ITes
         await using var client = await CreateClientWithRawKey(aliceKey);
 
         // act & assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var result = await CallTool<McpListNotificationsResult>(client, "list_notifications", new { });
             var item = result.Items.Should().ContainSingle().Subject;
             item.Text.Should().Be("@you");

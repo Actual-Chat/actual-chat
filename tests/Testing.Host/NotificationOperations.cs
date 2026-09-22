@@ -11,7 +11,7 @@ public static class NotificationOperations
         TimeSpan? timeout = null)
     {
         ChatEntryRelatedNotification notification = null!;
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await tester.NotificationsBackend.GetUserNotificationInfo(userId, CancellationToken.None);
             var notifications = info.Items
                 .OfType<ChatEntryRelatedNotification>()

@@ -34,7 +34,7 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
         await using var h2 = await NewAppHost();
         var o2 = h2.Services.ShardOwner(shardScheme);
         var s2 = h2.Services.GetRequiredService<TestShardComputeService>();
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var bits1 = await o1.BitmapState.Use(ct).ConfigureAwait(false);
             bits1.SetBitCount().Should().Be(shardScheme.ShardCount / 2);
             var bits2 = await o2.BitmapState.Use(ct).ConfigureAwait(false);
@@ -46,7 +46,7 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
         WriteLine($"!!!! Shard: {o1.ShardScheme.GetShardIndex(key)}");
         WriteLine($"- o1.NodeId: {o1.Host.ThisNode.Ref.Value}");
         WriteLine($"- o2.NodeId: {o2.Host.ThisNode.Ref.Value}");
-        await ComputedTest.When(_ => {
+        await TestWait.When(_ => {
             var c1 = o1.GetShardStateComputed(key, addDependency: true);
             var c2 = o2.GetShardStateComputed(key, addDependency: true);
             c1.Value.Version.Should().NotBe(0); // Waiting for the first update

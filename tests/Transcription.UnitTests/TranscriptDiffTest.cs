@@ -129,7 +129,7 @@ public class TranscriptDiffTest(ITestOutputHelper @out) : TestBase(@out)
             await foreach (var t in diffs.Reader.ReadAllAsync().ToTranscripts(cts.Token))
                 transcripts.Add(t);
         });
-        await TestExt.When(() => transcripts.Should().HaveCount(1), TimeSpan.FromSeconds(5));
+        await TestWait.WhenPolled(() => transcripts.Should().HaveCount(1), TimeSpan.FromSeconds(5));
         cts.Cancel();
 
         await FluentActions.Awaiting(() => readTask.WaitAsync(TimeSpan.FromSeconds(5)))

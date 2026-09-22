@@ -47,7 +47,7 @@ public class ReportPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         read.EntryLid.Should().Be(0);
 
         var chatsBackend = services.GetRequiredService<IChatsBackend>();
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var stat = await chatsBackend.GetReadPositionsStat(chat.Id, ct);
             stat.Should().NotBeNull();
             stat!.TopReadPositions.Should()

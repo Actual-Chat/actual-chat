@@ -18,7 +18,7 @@ public class SessionTemporalsMeshTest(ITestOutputHelper @out)
         await using var h1 = await NewAppHost();
         var w1 = h1.Services.GetRequiredService<MeshWatcher>();
         var commander1 = h1.Services.Commander();
-        await w1.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout);
+        await w1.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout.CiScaled());
 
         await commander1.Call(new SessionTemporalsBackend_Set(session, key, error));
         var s1 = h1.Services.GetRequiredService<ISessionTemporalsBackend>();
@@ -27,8 +27,8 @@ public class SessionTemporalsMeshTest(ITestOutputHelper @out)
         // Add h2, wait for mesh sync
         await using var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
         var w2 = h2.Services.GetRequiredService<MeshWatcher>();
-        await w1.State.Computed.When(x => x.LiveNodes.Length == 2).WaitAsync(syncTimeout);
-        await w2.State.Computed.When(x => x.LiveNodes.Length == 2).WaitAsync(syncTimeout);
+        await w1.State.Computed.When(x => x.LiveNodes.Length == 2).WaitAsync(syncTimeout.CiScaled());
+        await w2.State.Computed.When(x => x.LiveNodes.Length == 2).WaitAsync(syncTimeout.CiScaled());
 
         // h2 should be able to read the value (Redis-backed)
         var s2 = h2.Services.GetRequiredService<ISessionTemporalsBackend>();
@@ -47,12 +47,12 @@ public class SessionTemporalsMeshTest(ITestOutputHelper @out)
         // Start two hosts
         await using var h1 = await NewAppHost();
         var w1 = h1.Services.GetRequiredService<MeshWatcher>();
-        await w1.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout);
+        await w1.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout.CiScaled());
 
         await using var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
         var w2 = h2.Services.GetRequiredService<MeshWatcher>();
-        await w1.State.Computed.When(x => x.LiveNodes.Length == 2).WaitAsync(syncTimeout);
-        await w2.State.Computed.When(x => x.LiveNodes.Length == 2).WaitAsync(syncTimeout);
+        await w1.State.Computed.When(x => x.LiveNodes.Length == 2).WaitAsync(syncTimeout.CiScaled());
+        await w2.State.Computed.When(x => x.LiveNodes.Length == 2).WaitAsync(syncTimeout.CiScaled());
 
         // Set value via h1
         var commander1 = h1.Services.Commander();
@@ -66,10 +66,10 @@ public class SessionTemporalsMeshTest(ITestOutputHelper @out)
 
         // Remove h1
         await h1.DisposeAsync();
-        await w2.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout);
+        await w2.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout.CiScaled());
 
         // h2 should still read the value from Redis after shard takeover
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var value = await s2.Get(session, key, ct);
             value.Should().Be(error);
         }, syncTimeout);
@@ -85,7 +85,7 @@ public class SessionTemporalsMeshTest(ITestOutputHelper @out)
         // Start h1, set a value, then shut it down
         var h1 = await NewAppHost();
         var w1 = h1.Services.GetRequiredService<MeshWatcher>();
-        await w1.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout);
+        await w1.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout.CiScaled());
 
         var commander1 = h1.Services.Commander();
         await commander1.Call(new SessionTemporalsBackend_Set(session, key, "persisted"));
@@ -94,7 +94,7 @@ public class SessionTemporalsMeshTest(ITestOutputHelper @out)
         // Start h2 from scratch — it should read the value from Redis
         await using var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
         var w2 = h2.Services.GetRequiredService<MeshWatcher>();
-        await w2.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout);
+        await w2.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout.CiScaled());
 
         var s2 = h2.Services.GetRequiredService<ISessionTemporalsBackend>();
         var value = await s2.Get(session, key, default);

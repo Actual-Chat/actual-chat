@@ -243,7 +243,7 @@ public class McpChatToolsTest(McpCollection.AppHostFixture fixture, ITestOutputH
     {
         var contacts = Tester.AppServices.GetRequiredService<IContacts>();
         var placeId = contactId.ChatId is PlaceChatId placeChatId ? placeChatId.PlaceId : (PlaceId?)null;
-        return ComputedTest.When(async ct => {
+        return TestWait.When(async ct => {
             var ids = await contacts.ListIds(Tester.Session, placeId, ct);
             ids.Should().Contain(contactId);
         }, WaitTimeout);
@@ -252,7 +252,7 @@ public class McpChatToolsTest(McpCollection.AppHostFixture fixture, ITestOutputH
     private Task WaitForPlaceContact(PlaceId placeId)
     {
         var contacts = Tester.AppServices.GetRequiredService<IContacts>();
-        return ComputedTest.When(async ct => {
+        return TestWait.When(async ct => {
             var ids = await contacts.ListPlaceIds(Tester.Session, ct);
             ids.Should().Contain(placeId);
         }, WaitTimeout);

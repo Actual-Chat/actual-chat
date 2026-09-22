@@ -47,7 +47,7 @@ public sealed class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
         await FlowHub.NewResumeEvent<SimpleIndexingFlow>(id).Schedule();
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             Context.ListRemaining(id).Should().BeEmpty("every batch must be consumed");
             var processed = Context.ListProcessed(id);
             processed.Should().HaveCount(batchCount + 1, "every batch must be processed");
@@ -81,7 +81,7 @@ public sealed class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
         await FlowHub.NewResumeEvent<SimpleIndexingFlow>(id).Schedule();
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var flow = await FlowHub.TryGet<SimpleIndexingFlow>(id);
             flow.Should().NotBeNull("the scheduled resume must create the flow");
             flow.Result.Should().Be(Result.New("Done."), "the completion reason must end the flow");
@@ -118,7 +118,7 @@ public sealed class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
         ];
         Context.Add(id, batches);
         await FlowHub.NewResumeEvent<SimpleIndexingFlow>(id).Schedule();
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var flow = await FlowHub.TryGet<SimpleIndexingFlow>(id).Require();
             flow.DataVersion.Should().Be(1, "the flow must run at its current data version");
         }, GetTimeout(batches.Length));
@@ -127,7 +127,7 @@ public sealed class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
         await FlowHub.NewResumeEvent<SimpleIndexingFlow>(id).WithReset().Schedule();
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var flow = await FlowHub.TryGet<SimpleIndexingFlow>(id).Require();
             flow.Console.ToString().Should().Contain("explicit", "the reset must restart the indexing");
         }, GetTimeout(batches.Length));

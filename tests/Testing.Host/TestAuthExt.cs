@@ -211,7 +211,7 @@ public static class TestAuthExt
         IAccounts accounts,
         Session session,
         CancellationToken cancellationToken)
-        => ComputedTest.When(
+        => TestWait.When(
             async ct => {
                 try {
                     var account = await accounts.GetOwn(session, ct);

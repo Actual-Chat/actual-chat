@@ -188,7 +188,7 @@ public class PasskeyAuthTest(AppHostFixture fixture, ITestOutputHelper @out)
         using var authenticator = new SoftwareAuthenticator(RpId, Origin);
         var passkey = await Register(tester.Session, authenticator);
         (await SignIn(await NewSession(), authenticator)).Should().BeTrue();
-        var storedBefore = await ComputedTest.When(async ct => {
+        var storedBefore = await TestWait.When(async ct => {
             var stored = await PasskeysBackend.Get(account.Id, passkey.Id, ct);
             stored!.SignCount.Should().Be(authenticator.SignCount, "the first sign-in persists the counter");
             return stored;

@@ -463,14 +463,14 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         ClearVisibleItems(chatId);
 
         // assert
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
                 queued.Should().AllSatisfy(x => ThrottledTranslations.GetWorkItem(x.Id).Should().BeNull());
                 queued.Should().AllSatisfy(x => x.Task.IsCompleted.Should().BeTrue());
             },
             TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 20 : 10));
         // A started translation isn't cancelled on dequeue - it holds its concurrency slot, and so
         // its queue entry, until it completes, which is why this waits rather than asserting at once
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             ThrottledTranslations.ListQueued().Should().BeEmpty();
             ThrottledTranslations.ListRunning().Should().BeEmpty();
         }, TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 60 : 30));
@@ -487,7 +487,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         await TranslationUI.SetTargetLanguage(chatId, Languages.German, cancellationToken);
         // Without this GetTranslationVisibilityState stays null and nothing is ever dequeued
         await TranslationUI.SetIsOn(chatId, true, cancellationToken);
-        await ComputedTest.When(async ct => (await TranslationUI.IsEnabled(chatId, ct)).Should().BeTrue(),
+        await TestWait.When(async ct => (await TranslationUI.IsEnabled(chatId, ct)).Should().BeTrue(),
             TimeSpan.FromSeconds(10).Debuggable());
 
         var threadStartLids = new List<long>();
@@ -527,7 +527,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         ClearVisibleItems(chatId);
 
         // assert - a thread card's key is the only visible key that maps to these entries
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
                 queued.Should().AllSatisfy(x => ThrottledTranslations.GetWorkItem(x.Id).Should().BeNull());
                 queued.Should().AllSatisfy(x => x.Task.IsCanceled.Should().BeTrue());
             },
@@ -595,19 +595,19 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         => ChatUI.ReportItemVisibility(new ChatViewItemVisibility(chatId, ReadOnlySet<ChatMessageKey>.Empty, true, true));
 
     private Task AssertIsSubHeaderVisible(ChatId chatId, bool expected)
-        => ComputedTest.When(async ct => {
+        => TestWait.When(async ct => {
             var isVisible = await TranslationUI.IsSubHeaderVisible(chatId, ct);
             isVisible.Should().Be(expected);
         });
 
     private Task AssertMustTranslate(ChatEntry entry, bool expected)
-        => ComputedTest.When(async ct => {
+        => TestWait.When(async ct => {
             var mustTranslate = await TranslationUI.MustTranslate(entry, entry.IsContentStreaming, ct);
             mustTranslate.Should().Be(expected);
         }, TimeSpan.FromSeconds(10).Debuggable());
 
     private Task<TranscriptUI.StreamingState?> AssertIsStreaming(ChatEntry entry, bool expected)
-        => ComputedTest.When(async ct => {
+        => TestWait.When(async ct => {
             var streamingState = await TranscriptUI.GetStreamingState(entry.Id, ct);
             var isStreaming = streamingState?.IsTranslation;
             isStreaming.Should().Be(expected);
@@ -616,7 +616,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
     private Task<TranscriptStreamReaderState> AssertTranscriptState(
         ChatEntry entry, bool isTranslating, Func<TranscriptStreamReaderState, bool> predicate)
-        => ComputedTest.When(async ct => {
+        => TestWait.When(async ct => {
             var state = await TranscriptUI.GetTranscriptState(entry.Id, ct);
             state.IsTranslating.Should().Be(isTranslating);
             predicate(state).Should().BeTrue("state = {0}", state);
@@ -624,7 +624,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         }, TimeSpan.FromSeconds(30).Debuggable());
 
     private Task<Translation> AssertTranslation(ChatEntry entry, string expected, double similarity = 0.7)
-        => ComputedTest.When(async ct => {
+        => TestWait.When(async ct => {
             var translation = await TranslationUI.Get(entry.Id, ct).Require();
             if (expected.IsNullOrEmpty())
                 translation.Content.Should().Be(expected);

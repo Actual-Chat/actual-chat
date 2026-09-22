@@ -98,7 +98,7 @@ public sealed class ConversationCollapseTest(ChatAppHostFixture fixture, ITestOu
         var conversationId = await Materialize(chat.Id, entries[0], entries[9], isExpandedByDefault: false);
 
         // assert: the entries stay rendered - the conversation is auto-expanded, not swallowed
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var built = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             built.Items.SelectMany(i => i.GetLeafMessages())
                 .Should().Contain(m => m.Id == entries[5].LocalId, "witnessed entries must not collapse in place");
@@ -172,7 +172,7 @@ public sealed class ConversationCollapseTest(ChatAppHostFixture fixture, ITestOu
         };
         await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None); // witnesses the entries
         var conversationId = await Materialize(chat.Id, entries[0], entries[9], isExpandedByDefault: false);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var built = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             built.Items.SelectMany(i => i.GetLeafMessages())
                 .Should().Contain(m => m.Id == entries[5].LocalId, "witnessed entries must not collapse in place");

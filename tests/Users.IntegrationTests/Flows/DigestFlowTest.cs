@@ -40,13 +40,13 @@ public class DigestFlowTest(ITestOutputHelper @out)
         var userId = Constants.User.Admin.UserId;
 
         // MigrationFlow should start AccountMigrationFlow
-        await ComputedTest.When(async innerCt => {
+        await TestWait.When(async innerCt => {
             var flow = await flowHub.TryGet<AccountMigrationFlow>("", innerCt);
             flow.Should().NotBeNull();
         }, TimeSpan.FromSeconds(30));
 
         // AccountMigrationFlow should start DigestFlow(admin)
-        await ComputedTest.When(async innerCt => {
+        await TestWait.When(async innerCt => {
             var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
             flow.Should().NotBeNull();
         }, TimeSpan.FromSeconds(30));
@@ -64,7 +64,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         var userId = Constants.User.Admin.UserId.Value;
         var f0 = await flowHub.Get<DigestFlow>(userId, ct);
 
-        await ComputedTest.When(async innerCt => {
+        await TestWait.When(async innerCt => {
             var flow = await flowHub.TryGet<DigestFlow>(f0.Id.Arguments, innerCt);
             flow.Should().NotBeNull();
             flow.LastReadiness.IsSuspended.Should().BeTrue();
@@ -95,7 +95,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
             null);
         await commander.Call(updateCmd, true, ct);
 
-        await ComputedTest.When(async innerCt => {
+        await TestWait.When(async innerCt => {
             var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
             flow.Should().NotBeNull();
             flow.LastReadiness.IsSuspended.Should().BeFalse();
@@ -126,7 +126,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
             null);
         await commander.Call(updateCmd, true, ct);
 
-        await ComputedTest.When(async innerCt => {
+        await TestWait.When(async innerCt => {
             var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
             flow.Should().NotBeNull();
             flow.LastReadiness.IsSuspended.Should().BeFalse();
@@ -158,12 +158,12 @@ public class DigestFlowTest(ITestOutputHelper @out)
             }, ct);
         await UpdateAccount(h, userId, TimeZoneInfo.Local.Id, true, ct);
 
-        await ComputedTest.When(async innerCt => {
+        await TestWait.When(async innerCt => {
             var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
             flow.Should().NotBeNull();
             flow.RunCount.Should().BeGreaterThan(0);
         }, TimeSpan.FromSeconds(30));
-        await spy.WaitFor(userId, ct);
+        await spy.WaitFor(userId);
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
             }, ct);
         await UpdateAccount(h, userId, TimeZoneInfo.Local.Id, true, ct);
 
-        await ComputedTest.When(async innerCt => {
+        await TestWait.When(async innerCt => {
             var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
             flow.Should().NotBeNull();
             flow.RunCount.Should().BeGreaterThan(0);
@@ -217,7 +217,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         var userId = account.Id;
         await flowHub.Get<DigestFlow>(userId.Value, ct);
         await UpdateAccount(h, userId, "America/New_York", false, ct);
-        await ComputedTest.When(async innerCt => {
+        await TestWait.When(async innerCt => {
             var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
             flow.Should().NotBeNull();
             flow.LastReadiness.SuspensionReason.Should().Contain("verified email");
@@ -227,7 +227,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await UpdateAccount(h, userId, "America/New_York", true, ct);
 
         // assert
-        await ComputedTest.When(async innerCt => {
+        await TestWait.When(async innerCt => {
             var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
             flow.Should().NotBeNull();
             flow.LastReadiness.IsSuspended.Should().BeFalse("verifying the email must wake the flow up");
@@ -250,7 +250,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
             .Update(x => x with { IsDigestEnabled = false }, ct);
         await flowHub.Get<DigestFlow>(userId.Value, ct);
         await UpdateAccount(h, userId, "America/New_York", true, ct);
-        await ComputedTest.When(async innerCt => {
+        await TestWait.When(async innerCt => {
             var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
             flow.Should().NotBeNull();
             flow.LastReadiness.SuspensionReason.Should().Contain("disabled");
@@ -261,7 +261,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
             .Update(x => x with { IsDigestEnabled = true }, ct);
 
         // assert
-        await ComputedTest.When(async innerCt => {
+        await TestWait.When(async innerCt => {
             var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
             flow.Should().NotBeNull();
             flow.LastReadiness.IsSuspended.Should().BeFalse("turning the digest on must wake the flow up");
@@ -297,15 +297,10 @@ public class DigestFlowTest(ITestOutputHelper @out)
             return context.InvokeRemainingHandlers(ct);
         }
 
-        public async Task WaitFor(UserId userId, CancellationToken ct)
-        {
-            var deadline = CpuTimestamp.Now + TimeSpan.FromSeconds(30);
-            while (!UserIds.Contains(userId)) {
-                if (CpuTimestamp.Now > deadline)
-                    throw new TimeoutException("EmailsBackend_SendDigest was not queued.");
-
-                await Task.Delay(200, ct);
-            }
-        }
+        public Task WaitFor(UserId userId)
+            => TestWait.WhenPolled(
+                () => UserIds.Should().Contain(userId, "EmailsBackend_SendDigest was not queued"),
+                Intervals.Fixed(TimeSpan.FromMilliseconds(200)),
+                TimeSpan.FromSeconds(30));
     }
 }

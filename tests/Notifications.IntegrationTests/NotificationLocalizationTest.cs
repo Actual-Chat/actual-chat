@@ -129,7 +129,7 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
 
         // assert
         var expectedText = LanguageStringLocalizer.Get(Language.Parse(expected)).Call_Incoming;
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(callee.Id, CancellationToken.None);
             var ring = info.Items.OfType<CallNotification>().Should().ContainSingle().Subject;
             ring.Text.Should().Be(expectedText);
@@ -137,7 +137,7 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
 
         // The stored text is what the in-app list renders; this is the same value leaving for
         // the device, which is what every platform's banner shows.
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             Sink.Messages
                 .Where(m => !m.IsDismissal && m.DeviceIds.Contains(deviceId))
                 .Select(m => m.Notification!.Text)
@@ -198,7 +198,7 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
         // assert
         var l = LanguageStringLocalizer.Get(Language.Parse(expected));
         var expectedText = l.Notification_Reaction_Format(Emojis.Love, l.EmptyEntry_YourLocation);
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(author.Id, CancellationToken.None);
             var reaction = info.Items.OfType<ReactionNotification>().Should().ContainSingle().Subject;
             reaction.Text.Should().Be(expectedText);
@@ -226,7 +226,7 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
         // A mention banner is headlined with the sender on every platform, so its text must not
         // repeat it: author lines belong only to message banners, which can hold several authors.
         var expectedText = content.Render(l);
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(mentioned.Id, CancellationToken.None);
             var mention = info.Items.OfType<MentionNotification>().Should().ContainSingle().Subject;
             mention.Text.Should().Be(expectedText);
@@ -265,7 +265,7 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
             (englishCallee, english.Call_Incoming),
         };
         foreach (var (callee, expectedText) in expectations)
-            await TestExt.When(async () => {
+            await TestWait.WhenPolled(async () => {
                 var info = await Tester.NotificationsBackend
                     .GetUserNotificationInfo(callee.Id, CancellationToken.None);
                 var ring = info.Items.OfType<CallNotification>().Should().ContainSingle().Subject;

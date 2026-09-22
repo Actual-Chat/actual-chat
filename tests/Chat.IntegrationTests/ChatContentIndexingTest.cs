@@ -44,7 +44,7 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
 
         await TriggerIndexing(chatId);
 
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var visualMedia = await ListAllVisualMedia(chats, session, chatId);
             visualMedia.Should().HaveCount(2);
             var files = await ListAllFiles(chats, session, chatId);
@@ -86,7 +86,7 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
 
         await TriggerIndexing(chatId);
 
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var visualMedia = await ListAllVisualMedia(chats, session, chatId);
             visualMedia.Should().ContainSingle().Which.ContentType.Should().Be("image/gif");
             var files = await ListAllFiles(chats, session, chatId);
@@ -121,7 +121,7 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         });
 
         await TriggerIndexing(chatId);
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var files = await ListAllFiles(chats, session, chatId);
             files.Should().ContainSingle();
             var links = await ListAllLinks(chats, session, chatId);
@@ -132,7 +132,7 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         await commander.Call(new Chats_RemoveEntry { Session = session, ChatId = chatId, LocalId = linkEntry.LocalId });
 
         await TriggerIndexing(chatId);
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             (await ListAllFiles(chats, session, chatId)).Should().BeEmpty();
             (await ListAllLinks(chats, session, chatId)).Should().BeEmpty();
             (await chats.GetContentPeriods(session, chatId, ChatContentKind.File, null, CancellationToken.None))
@@ -165,7 +165,7 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         await FlowHub.NewResumeEvent<ChatMediaIndexingFlow>(chatId.Value).Schedule();
 
         // The flow runs but parks the entry as pending — nothing is indexed.
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var flow = await FlowHub.TryGet<ChatMediaIndexingFlow>(chatId.Value);
             flow.Should().NotBeNull();
             flow!.PendingEntryLids.Should().Contain(entry.LocalId);
@@ -197,7 +197,7 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
 
         // On the next run the pending entry is rechecked and indexed.
         await FlowHub.NewResumeEvent<ChatMediaIndexingFlow>(chatId.Value).Schedule();
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var files = await ListAllFiles(chats, session, chatId);
             files.Should().ContainSingle().Which.FileName.Should().Be("doc.txt");
         }, TimeSpan.FromSeconds(30));
@@ -230,7 +230,7 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         });
 
         await TriggerIndexing(chatId);
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             (await ListAllFiles(chats, session, chatId)).Should().ContainSingle();
             (await ListAllLinks(chats, session, chatId)).Should().ContainSingle();
         }, TimeSpan.FromSeconds(30));
@@ -278,7 +278,7 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         await Task.Delay(TimeSpan.FromSeconds(4));
         await FlowHub.NewResumeEvent<ChatContentIndexingMasterFlow>("").WithReset(true).Schedule();
 
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             (await ListAllFiles(chats, session, chatId)).Should().ContainSingle();
             (await ListAllLinks(chats, session, chatId)).Should().ContainSingle();
         }, TimeSpan.FromSeconds(60));

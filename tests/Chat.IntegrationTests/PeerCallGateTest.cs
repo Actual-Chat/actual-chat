@@ -41,7 +41,7 @@ public class PeerCallGateTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var liveSessions = bobTester.AppServices.GetRequiredService<ILiveSessions>();
 
         // The reply stores the contact via an event, so wait for the call gate to lift.
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var chat = await chats.Get(bobTester.Session, chatId, ct);
             chat!.Rules.CanWriteAudio().Should().BeTrue();
         }, TimeSpan.FromSeconds(10));
@@ -66,7 +66,7 @@ public class PeerCallGateTest(ChatCollection.AppHostFixture fixture, ITestOutput
         await aliceTester.CreateTextEntry(chatId, "hey");
         var chats = bobTester.AppServices.GetRequiredService<IChats>();
         var liveSessions = bobTester.AppServices.GetRequiredService<ILiveSessions>();
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var chat = await chats.Get(bobTester.Session, chatId, ct);
             chat!.Rules.CanWriteAudio().Should().BeTrue();
         }, TimeSpan.FromSeconds(10));
@@ -78,7 +78,7 @@ public class PeerCallGateTest(ChatCollection.AppHostFixture fixture, ITestOutput
             Id = blockContactId,
             IsBlocked = true,
         });
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var chat = await chats.Get(bobTester.Session, chatId, ct);
             chat!.Rules.CanWriteAudio().Should().BeFalse();
         }, TimeSpan.FromSeconds(10));

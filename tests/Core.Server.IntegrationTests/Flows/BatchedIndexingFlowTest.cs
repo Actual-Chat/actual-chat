@@ -28,7 +28,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
         await FlowHub.NewResumeEvent<SimpleBatchedIndexingFlow>(id).Schedule();
 
         // assert
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             Context.ListProcessed(id).Should().BeEmpty();
             Context.ListRemaining(id).Should().BeEmpty();
         }, TimeSpan.FromSeconds(10));
@@ -59,7 +59,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
         await FlowHub.NewResumeEvent<SimpleBatchedIndexingFlow>(id).Schedule();
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             Context.ListProcessed(id).Should();
             Context.ListRemaining(id).Should().BeEmpty();
             var flow = await FlowHub.TryGet<SimpleBatchedIndexingFlow>(id);

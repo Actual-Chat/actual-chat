@@ -25,7 +25,7 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
         var items = ids.Select(id => sut.Enqueue(id)).ToList();
 
         // assert - all items enqueued, first batch started
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             sut.QueueSize.Should().Be(itemCount);
             sut.Queue.Count(x => x.IsStarted).Should().Be(concurrencyLevel);
             sut.Queue.Count(x => !x.IsStarted).Should().Be(itemCount - concurrencyLevel);
@@ -38,14 +38,14 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
         sut.QueueSize.Should().Be(cancel ? 0 : concurrencyLevel);
 
         // not-started items are always cancelled on remove
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             items.Skip(concurrencyLevel).Should().AllSatisfy(
                 x => x.ResultTask.IsCanceled.Should().BeTrue());
         }, TimeSpan.FromSeconds(5));
 
         if (cancel) {
             // started items should be cancelled too
-            await TestExt.When(() => {
+            await TestWait.WhenPolled(() => {
                 items.Take(concurrencyLevel).Should().AllSatisfy(
                     x => x.ResultTask.IsCanceled.Should().BeTrue());
             }, TimeSpan.FromSeconds(5));
@@ -53,7 +53,7 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
         else {
             // started items continue running - resolve them
             fetcher.SetDefaultResults(ids);
-            await TestExt.When(() => {
+            await TestWait.WhenPolled(() => {
                 items.Take(concurrencyLevel).Should().AllSatisfy(
                     x => x.ResultTask.IsCompletedSuccessfully.Should().BeTrue());
                 sut.QueueSize.Should().Be(0);
@@ -79,7 +79,7 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
         var items = ids.Select(id => sut.Enqueue(id)).ToList();
 
         // assert - all items enqueued
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             sut.QueueSize.Should().Be(itemCount);
             sut.Queue.Count(x => x.IsStarted).Should().Be(concurrencyLevel);
         }, TimeSpan.FromSeconds(5));
@@ -88,7 +88,7 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
         fetcher.SetDefaultResults(ids);
 
         // assert - all drained
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             sut.QueueSize.Should().Be(0);
         }, TimeSpan.FromSeconds(5));
         items.Should().AllSatisfy(x => x.ResultTask.IsCompletedSuccessfully.Should().BeTrue());
@@ -112,7 +112,7 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
         sut.QueueSize.Should().Be(1);
 
         fetcher.SetResult("a");
-        await TestExt.When(() => sut.QueueSize.Should().Be(0), TimeSpan.FromSeconds(5));
+        await TestWait.WhenPolled(() => sut.QueueSize.Should().Be(0), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
             sut.Enqueue(id);
 
         // assert - only concurrencyLevel items should be started
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             sut.Queue.Count(x => x.IsStarted).Should().Be(concurrencyLevel);
             sut.Queue.Count(x => !x.IsStarted).Should().Be(ids.Length - concurrencyLevel);
         }, TimeSpan.FromSeconds(5));
@@ -141,14 +141,14 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
         fetcher.SetResult("b");
 
         // assert - next items should start
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             sut.Queue.Count(x => x.IsStarted).Should().Be(concurrencyLevel);
             sut.Queue.Where(x => x.IsStarted).Select(x => x.Key).Should().BeEquivalentTo("c", "d");
         }, TimeSpan.FromSeconds(5));
 
         fetcher.SetResult("c");
         fetcher.SetResult("d");
-        await TestExt.When(() => sut.QueueSize.Should().Be(0), TimeSpan.FromSeconds(5));
+        await TestWait.WhenPolled(() => sut.QueueSize.Should().Be(0), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
@@ -185,7 +185,7 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => item.ResultTask.WaitAsync(TimeSpan.FromSeconds(5)));
         ex.Should().BeSameAs(error);
-        await TestExt.When(() => sut.QueueSize.Should().Be(0), TimeSpan.FromSeconds(5));
+        await TestWait.WhenPolled(() => sut.QueueSize.Should().Be(0), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
@@ -198,14 +198,14 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
             log: Out.ToLogger<ConcurrentProcessor<string, string>>());
 
         var item = sut.Enqueue("a");
-        await TestExt.When(() => item.IsStarted.Should().BeTrue(), TimeSpan.FromSeconds(5));
+        await TestWait.WhenPolled(() => item.IsStarted.Should().BeTrue(), TimeSpan.FromSeconds(5));
 
         // act
         sut.Remove("a", true);
 
         // assert
         sut.QueueSize.Should().Be(0);
-        await TestExt.When(() => item.ResultTask.IsCanceled.Should().BeTrue(), TimeSpan.FromSeconds(5));
+        await TestWait.WhenPolled(() => item.ResultTask.IsCanceled.Should().BeTrue(), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
@@ -218,7 +218,7 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
             log: Out.ToLogger<ConcurrentProcessor<string, string>>());
 
         var item = sut.Enqueue("a");
-        await TestExt.When(() => item.IsStarted.Should().BeTrue(), TimeSpan.FromSeconds(5));
+        await TestWait.WhenPolled(() => item.IsStarted.Should().BeTrue(), TimeSpan.FromSeconds(5));
 
         // act
         sut.Remove("a", false);
@@ -228,7 +228,7 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
         ReferenceEquals(sut.Enqueue("a"), item).Should().BeTrue();
 
         fetcher.SetResult("a");
-        await TestExt.When(() => sut.QueueSize.Should().Be(0), TimeSpan.FromSeconds(5));
+        await TestWait.WhenPolled(() => sut.QueueSize.Should().Be(0), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
@@ -246,10 +246,10 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
 
         // assert - the timed out item frees its slot, so the next one gets to start
         await Assert.ThrowsAsync<TimeoutException>(() => item.ResultTask.WaitAsync(TimeSpan.FromSeconds(5)));
-        await TestExt.When(() => next.IsStarted.Should().BeTrue(), TimeSpan.FromSeconds(5));
+        await TestWait.WhenPolled(() => next.IsStarted.Should().BeTrue(), TimeSpan.FromSeconds(5));
 
         fetcher.SetResult("b");
-        await TestExt.When(() => sut.QueueSize.Should().Be(0), TimeSpan.FromSeconds(5));
+        await TestWait.WhenPolled(() => sut.QueueSize.Should().Be(0), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
@@ -277,7 +277,7 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
         ReferenceEquals(found, enqueued).Should().BeTrue();
 
         fetcher.SetResult("a");
-        await TestExt.When(() => sut.QueueSize.Should().Be(0), TimeSpan.FromSeconds(5));
+        await TestWait.WhenPolled(() => sut.QueueSize.Should().Be(0), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
@@ -298,7 +298,7 @@ public class ConcurrentProcessorTest(ITestOutputHelper @out) : TestBase(@out)
         sut.ProcessedCount.Should().Be(0);
 
         fetcher.SetDefaultResults(["a", "b"]);
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             sut.ProcessedCount.Should().Be(2);
             sut.QueueSize.Should().Be(0);
         }, TimeSpan.FromSeconds(5));

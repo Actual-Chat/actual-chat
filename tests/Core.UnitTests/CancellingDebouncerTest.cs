@@ -18,7 +18,7 @@ public class CancellingDebouncerTest
         sut.Enqueue(default);
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
                 count.Should().Be(1);
                 await Task.Delay(interval + TimeSpan.FromMilliseconds(10));
                 count.Should().Be(1);
@@ -48,7 +48,7 @@ public class CancellingDebouncerTest
             sut.Enqueue(i);
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
                 callCount.Should().Be(1);
                 last.Should().Be(count);
                 await Task.Delay(interval + TimeSpan.FromMilliseconds(10));
@@ -84,7 +84,7 @@ public class CancellingDebouncerTest
         }
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
                 callCount.Should().Be(count);
                 last.Should().Be(count);
                 await Task.Delay(interval + TimeSpan.FromMilliseconds(10));
@@ -120,7 +120,7 @@ public class CancellingDebouncerTest
         }
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
                 startedCount.Should().Be(count);
                 completedCount.Should().Be(1);
                 await Task.Delay(interval + TimeSpan.FromMilliseconds(10));

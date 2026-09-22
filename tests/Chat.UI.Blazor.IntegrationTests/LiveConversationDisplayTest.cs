@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using ActualChat.Hashing;
 using ActualChat.Live;
 using ActualChat.Streaming;
@@ -49,7 +49,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         if (mustLeave) {
             await chatAudioUI.SetListeningState(chat.Id, false);
             InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
-            await ComputedTest.When(async ct => {
+            await TestWait.When(async ct => {
                 var liveSessionUI = Tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
                 (await liveSessionUI.AmIInLiveConversation(chat.Id, ct)).Should().BeFalse();
                 var block = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
@@ -77,7 +77,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             var expectedIds = isRecording
                 ? new[] { range.End, range.End + 1, long.MaxValue }
                 : new[] { range.End, range.End + 1 };
-            await ComputedTest.When(async ct => {
+            await TestWait.When(async ct => {
                 var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
                 if (mustLeave) {
                     var openBlock = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
@@ -309,7 +309,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
         List<long> joinedLeafLids = null!;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
             joinedLeafLids = LeafEntryLids(items);
@@ -321,14 +321,14 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // assert - wait for attendance to be retained after leaving, not just for a render
         // that still coincidentally looks unchanged before the leave propagates
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var liveSessionUI = Tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
             (await liveSessionUI.AmIInLiveConversation(chat.Id, ct)).Should().BeFalse();
             var blockState = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             blockState.Should().BeOfType<OpenLiveBlock>();
             blockState.HasAttended.Should().BeTrue();
         }, TimeSpan.FromSeconds(10));
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             LeafEntryLids(items).Should().Equal(joinedLeafLids);
             var block = items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle().Subject;
@@ -375,7 +375,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
 
         // act + assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             var block = items.Items.OfType<ExpandedConversationMessage>().Single();
             block.Items.OfType<LiveConversationFooter>().Should().ContainSingle();
@@ -417,7 +417,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
 
         // assert - the block leads with a header item then the description card, in that order
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             var block = items.Items.OfType<ExpandedConversationMessage>().Single();
             block.Items.OfType<LiveConversationHeader>().Should().ContainSingle();
@@ -467,7 +467,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await CollapseJoinedLiveBlock(chatUI, chat.Id, live.ToConversation());
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
         }, TimeSpan.FromSeconds(10));
@@ -476,7 +476,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
         // Wait for attendance to be retained after leaving - a render that still
         // coincidentally looks unchanged before the leave propagates would snapshot too early.
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var liveSessionUI = Tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
             (await liveSessionUI.AmIInLiveConversation(chat.Id, ct)).Should().BeFalse();
             var blockState = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
@@ -484,7 +484,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             blockState.HasAttended.Should().BeTrue();
         }, TimeSpan.FromSeconds(10));
         List<long> frozenLeafLids = null!;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
             frozenLeafLids = LeafEntryLids(items);
@@ -542,7 +542,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
         List<long> frozenLeafLids = null!;
         string frozenRenderKey = null!;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             var block = items.Items.OfType<ExpandedConversationMessage>().Single();
             frozenLeafLids = LeafEntryLids(items);
@@ -561,7 +561,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var liveState = await liveBackend.GetState(chat.Id, ct);
             liveState.Should().BeNull();
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
@@ -613,7 +613,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SelectChatOnNavigation(chat.Id);
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
         }, TimeSpan.FromSeconds(10));
@@ -621,7 +621,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
         List<long> preCloseLeafLids = null!;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             var lids = LeafEntryLids(items);
             lids.Should().Contain(v + 3);
@@ -651,7 +651,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
 
         // assert - same leaf lids (context + fold + tail), one block, same live-era render key
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var liveState = await liveBackend.GetState(chat.Id, ct);
             liveState.Should().BeNull();
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
@@ -694,7 +694,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SelectChatOnNavigation(chat.Id);
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
         }, TimeSpan.FromSeconds(10));
@@ -702,7 +702,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
         await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
         ConversationId blockConversationId = null!;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var liveState = await liveBackend.GetState(chat.Id, ct);
             liveState.Should().BeNull();
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
@@ -719,7 +719,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // assert
         closedBlock.IsConsistent().Should().BeFalse("dismissal changes the block even when its fold does not move");
         (await liveBlockUI.GetBlock(chat.Id)).Should().BeNull();
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             items.Items.OfType<ExpandedConversationMessage>().Should().BeEmpty();
             items.Items.OfType<ConversationMessage>().Should().ContainSingle();
@@ -759,7 +759,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SelectChatOnNavigation(chat.Id);
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
         }, TimeSpan.FromSeconds(10));
@@ -767,7 +767,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
         await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
         ConversationId blockConversationId = null!;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var liveState = await liveBackend.GetState(chat.Id, ct);
             liveState.Should().BeNull();
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
@@ -778,7 +778,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // act - dismiss the retained block and collapse its materialized conversation
         chatUI.ToggleExpandConversation(blockConversationId);
         ConversationId materializedId = null!;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             items.Items.OfType<ExpandedConversationMessage>().Should().BeEmpty();
             var collapsed = items.Items.OfType<ConversationMessage>().Single();
@@ -789,7 +789,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.ToggleExpandConversation(materializedId);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
         }, TimeSpan.FromSeconds(10));
@@ -842,7 +842,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // Baseline first, so act 1 is compared against the state it actually acts on - and v+3/v+4
         // being here at all is the guard already holding the fold at the viewport top.
         List<long> beforeLids = null!;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             var lids = LeafEntryLids(items);
             lids.Should().Contain(v + 3);
@@ -872,7 +872,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             false));
 
         // assert - the boundary advances past v+3/v+4, folding them
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var lids = LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, ct));
             lids.Should().NotContain(v + 3);
             lids.Should().NotContain(v + 4);
@@ -911,7 +911,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await chatAudioUI.SetListeningState(chat.Id, true);
         chatUI.SelectChatOnNavigation(chat.Id);
         // Establish attendance before leaving.
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             s.Should().BeOfType<OpenLiveBlock>();
             s.HasAttended.Should().BeTrue();
@@ -934,7 +934,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // The recomputed open block retains attendance (re-invalidate each poll to defeat the
         // non-reactive ChatAudioUI.GetState lag - see InvalidateAmIInLiveConversation).
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
             var liveSessionUI = Tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
             (await liveSessionUI.AmIInLiveConversation(chat.Id, ct)).Should().BeFalse();
@@ -977,7 +977,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
         // while live the block leads with the live header
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             var block = items.Items.OfType<ExpandedConversationMessage>().Single();
             block.Items.OfType<LiveConversationHeader>().Should().ContainSingle();
@@ -990,7 +990,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // assert - the completed block drops the live header + footer; the card renders its own
         // regular header (HasSplitHeader == false)
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var liveState = await liveBackend.GetState(chat.Id, ct);
             liveState.Should().BeNull();
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
@@ -1044,7 +1044,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SelectChatOnNavigation(chat.Id);
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
         }, TimeSpan.FromSeconds(10));
@@ -1127,7 +1127,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SelectChatOnNavigation(chat.Id);
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
         }, TimeSpan.FromSeconds(10));
@@ -1196,7 +1196,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SelectChatOnNavigation(chat.Id);
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
         }, TimeSpan.FromSeconds(10));
@@ -1229,7 +1229,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var liveState = await liveBackend.GetState(chat.Id, ct);
             liveState.Should().BeNull();
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
@@ -1325,7 +1325,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
         chatUI.SelectChatOnNavigation(chat.Id);
         // Let the governor latch WasAttending + the template (HadSummary == false).
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             s.Should().BeOfType<OpenLiveBlock>();
             s.HasAttended.Should().BeTrue();
@@ -1359,7 +1359,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
 
         // assert - the block is held, dissolving, rather than dropping to null immediately
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var block = (await liveBlockUI.GetBlock(chat.Id, ct)) as ClosedLiveBlock;
             block.Should().NotBeNull("a tier-1 close dissolves the block before removing it");
             block!.IsDissolving.Should().BeTrue();
@@ -1398,7 +1398,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
                 header.FindAll(".c-lc-join").Should().BeEmpty();
             });
         }
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             (await liveBlockUI.GetBlock(chat.Id, ct)).Should().BeNull();
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct).WaitAsync(TimeSpan.FromSeconds(5));
             items.Items.OfType<ExpandedConversationMessage>().Should().BeEmpty();
@@ -1439,7 +1439,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             var block = items.Items.OfType<ExpandedConversationMessage>().Single();
             // HasSplitHeader gates the description box off (Task 3); the structural guard here is that
@@ -1465,7 +1465,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await chatAudioUI.SetRecordingChatId(chat.Id);
 
         // assert - Bob is now recording in this chat
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var s = await chatAudioUI.GetState(chat.Id).ConfigureAwait(true);
             s.IsRecording.Should().BeTrue("Join from the live block starts recording");
         }, TimeSpan.FromSeconds(10));
@@ -1490,7 +1490,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // act + assert - no UpdateSummary => no title => HasSummary must be false on the rendered live conversation
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             var card = items.Items.SelectMany(i => i.GetLeafMessages())
                 .OfType<ConversationMessage>().SingleOrDefault(c => c.Conversation!.Title.IsNullOrEmpty());
@@ -1522,7 +1522,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
 
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             items.Items.SelectMany(i => i.GetLeafMessages())
                 .OfType<LiveConversationHeader>().Should().ContainSingle(
@@ -1564,7 +1564,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
         // latch the fold boundary at the first summary's end; the summarized live entries are hidden
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             items.Items.SelectMany(i => i.GetLeafMessages())
                 .OfType<LiveConversationHeader>().Should().ContainSingle();
@@ -1631,7 +1631,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // assert - the governed boundary (not just the summary-covered range) advances to the viewport
         // top, so un-summarised rows above it are swallowed too
         var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var blockState = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             blockState.FoldEndLid.Should().BeGreaterThanOrEqualTo(viewportTop,
                 "the boundary tracks the viewport top, folding un-summarised rows above it");
@@ -1642,7 +1642,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // everything below it still render normally
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var renderedLids = LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, ct));
             renderedLids.Should().NotContain(lids.Take(5),
                 "un-summarised rows above the viewport top must fold, not render as individual messages");
@@ -1675,7 +1675,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var streamingLid = streaming.ChatEntrySlim.LocalId;
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var s = await chatUI.GetStreamingTail(chat.Id, ownAuthor.Id, ct);
             s.FloorLid.Should().Be(streamingLid);
             s.IsSuppressed.Should().BeTrue("the placeholder stands down for my own running transcript");
@@ -1698,7 +1698,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         graced.IsSuppressed.Should().BeTrue();
 
         // assert - and lapses on its own
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var s = await chatUI.GetStreamingTail(chat.Id, ownAuthor.Id, ct);
             s.FloorLid.Should().Be(long.MaxValue);
             s.IsSuppressed.Should().BeFalse();
@@ -1747,7 +1747,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             false));
 
         // assert - the fold stops below the streaming entry
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var streamingTail = await chatUI.GetStreamingTail(chat.Id, author.Id, ct);
             streamingTail.FloorLid.Should().Be(streamingLid);
             var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
@@ -1761,7 +1761,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // assert - the block re-compacts past it, without waiting on a fresh viewport signal: the
         // governor re-runs on the streaming tail's own invalidation and re-advances against the
         // viewport top it already holds
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var streamingTail = await chatUI.GetStreamingTail(chat.Id, author.Id, ct);
             streamingTail.FloorLid.Should().Be(long.MaxValue);
             var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
@@ -1817,7 +1817,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // and only the streaming floor holds it there
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         SetViewportTop(idRange.End - 1);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             s.FoldEndLid.Should().Be(streamingLid, "the streaming entry is what stops the fold");
         }, TimeSpan.FromSeconds(15));
@@ -1826,7 +1826,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         SetViewportTop(streamingLid);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
         List<long> beforeLeaveLids = null!;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             s.FoldEndLid.Should().Be(streamingLid, "the streaming entry still stops the fold");
             beforeLeaveLids = LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, ct));
@@ -1835,7 +1835,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // act - the reader leaves
         await chatAudioUI.SetListeningState(chat.Id, false);
         InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var liveSessionUI = Tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
             (await liveSessionUI.AmIInLiveConversation(chat.Id, ct)).Should().BeFalse();
             var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
@@ -1849,7 +1849,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // act - the transcript closes under the block, so its floor lapses to "no cap"
         await Tester.FinalizeStreamingEntry(streaming, "done");
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var streamingTail = await chatUI.GetStreamingTail(chat.Id, author.Id, ct);
             streamingTail.FloorLid.Should().Be(long.MaxValue, "the floor has to actually lapse");
         }, TimeSpan.FromSeconds(15));
@@ -1903,7 +1903,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             false));
 
         long foldedBoundary = 0;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             s.FoldEndLid.Should().BeGreaterThan(v + 5);
             foldedBoundary = s.FoldEndLid;
@@ -1913,7 +1913,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBlockUI.RevealMore(chat.Id);
 
         // assert - the effective fold boundary retreats below where the governor had it
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             s.FoldEndLid.Should().BeLessThan(foldedBoundary,
                 "revealing a batch retreats the effective fold boundary");
@@ -1927,7 +1927,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // act - reset clears the reveal
         liveBlockUI.ResetReveal(chat.Id);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             s.FoldEndLid.Should().BeGreaterThanOrEqualTo(foldedBoundary, "reset restores the governed fold");
         }, TimeSpan.FromSeconds(10));
@@ -1975,7 +1975,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var tailTop = idRange.End - 1;
         SetViewportTop(tailTop);
         long boundary = 0;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             s.FoldEndLid.Should().BeGreaterThan(v + 5);
             boundary = s.FoldEndLid;
@@ -1984,7 +1984,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // reveal a batch
         await liveBlockUI.RevealMore(chat.Id);
         long revealed = 0;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             s.FoldEndLid.Should().BeLessThan(boundary, "reveal retreats below the boundary");
             revealed = s.FoldEndLid;
@@ -1999,7 +1999,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // Reset the reveal without advancing the governed fold, which cannot notify consumers itself.
         SetViewportTop(boundary);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             s.FoldEndLid.Should().Be(boundary,
                 "returning to the governed boundary re-swallows the revealed batch without moving the fold");
@@ -2046,7 +2046,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             false));
 
         long foldedBoundary = 0;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             s.FoldEndLid.Should().BeGreaterThan(v + 5);
             foldedBoundary = s.FoldEndLid;
@@ -2055,7 +2055,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // act - reveal one batch, retreating the effective boundary below the raw governed one
         await liveBlockUI.RevealMore(chat.Id);
         long revealedEffectiveBoundary = 0;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             revealedEffectiveBoundary = s.FoldEndLid;
             revealedEffectiveBoundary.Should().BeLessThan(foldedBoundary);
@@ -2066,7 +2066,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
 
         // assert - leaving preserves the effective boundary established by the reveal
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var liveSessionUI = Tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
             (await liveSessionUI.AmIInLiveConversation(chat.Id, ct)).Should().BeFalse();
             var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
@@ -2136,7 +2136,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             false));
 
         // assert - the count is the true number of folded messages, not a lid-span approximation
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var count = await liveBlockUI.GetSwallowedCount(chat.Id, ct);
             count.Should().Be(5, "exactly the 5 rows above the viewport top are folded");
         }, TimeSpan.FromSeconds(15));
@@ -2145,7 +2145,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBlockUI.RevealMore(chat.Id);
 
         // assert - the count drops to 0 once every folded row has been revealed
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var count = await liveBlockUI.GetSwallowedCount(chat.Id, ct);
             count.Should().Be(0, "revealing the whole backlog leaves nothing swallowed");
         }, TimeSpan.FromSeconds(15));
@@ -2209,7 +2209,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.SelectChatOnNavigation(chat.Id);
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
         }, TimeSpan.FromSeconds(10));
@@ -2222,7 +2222,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
         await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
         var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var liveSessionUI = Tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
             (await liveSessionUI.AmIInLiveConversation(chat.Id, ct)).Should().BeFalse();
             var blockState = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
@@ -2255,7 +2255,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // The restart reaches the block through the fold governor, and the block state through its own
         // refetch - which stands in with the last known value while it's in flight, so a one-shot read
         // can land on the closed session's null.
-        var afterRestart = await ComputedTest.When(async ct => {
+        var afterRestart = await TestWait.When(async ct => {
             var block = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             block.Should().BeOfType<OpenLiveBlock>();
             block.HasAttended.Should().BeFalse();
@@ -2328,7 +2328,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             var cardIds = items.Items
                 .SelectMany(i => i.GetLeafMessages())
@@ -2374,7 +2374,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         cached.Value.ConversationRanges.Single(r => r.Start == live.EffectiveVisibleStartLid)
             .IsOpenEnded.Should().BeTrue();
         cached.IsConsistent().Should().BeTrue("growing the summary does not move the open-ended boundary");
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var tile = await backend.GetTile(chat.Id, tileRange, ct);
             tile.Single(c => c.Id == live.ConversationId).EndEntryLid.Should().Be(last.LocalId);
             var metadata = await Tester.Chats.GetChatRangeTile(Tester.Session, chat.Id, tileRange.Start, ct);
@@ -2419,7 +2419,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // assert
         v.Should().Be(expectedLiveStart);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var tile = await backend.GetTile(chat.Id, tileRange, ct);
             tile.Single(c => c.Id == earlier.Id).EndEntryLid.Should().Be(v - 1);
             tile.Should().Contain(c => c.Id == live.ConversationId);
@@ -2470,7 +2470,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // assert
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             var threadLids = items.Items
                 .SelectMany(i => i.GetLeafMessages())
@@ -2521,7 +2521,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // act + assert
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             chatUI.IsConversationExpanded(live.ToConversation()).Should().BeTrue();
             items.Items.OfType<ThreadMessage>().Should().BeEmpty(
@@ -2591,7 +2591,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var typedTail = new List<long> { typed };
         for (var i = 1; i < LiveFoldMath.MinTailEntryCount; i++)
             typedTail.Add((await Tester.CreateTextEntry(chat.Id, $"typed-{i}")).LocalId);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             chatUI.IsConversationExpanded(liveConversation).Should().BeTrue("joining expands the block");
             var lids = LeafEntryLids(items);
@@ -2610,7 +2610,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // assert - expanded auto-swallows: the rows above the viewport fold, the tail stays, inside the block
         var folded = spoken.Where(l => l < viewportTop).ToList();
         var tail = spoken.Where(l => l >= viewportTop).ToList();
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var blockState = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             blockState.FoldEndLid.Should().Be(viewportTop, "the fold tracks the viewport top");
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
@@ -2629,7 +2629,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // assert - the card alone: every spoken row is behind it, the typed one renders below, and the
         // preview is the latest spoken rows of all participants
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             chatUI.IsConversationExpanded(liveConversation).Should().BeFalse();
             var lids = LeafEntryLids(items);
@@ -2658,7 +2658,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         chatUI.ToggleExpandConversation(liveConversation.Id);
 
         // assert - the swallow mode again, with the same fold and the tail back on screen
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             chatUI.IsConversationExpanded(liveConversation).Should().BeTrue();
             var lids = LeafEntryLids(items);
@@ -2670,7 +2670,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBlockUI.RevealMore(chat.Id);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var lids = LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, ct));
             lids.Should().Contain(folded, "a reveal must actually show the rows it walked back");
             lids.Should().Contain(tail);
@@ -2786,7 +2786,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     {
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chatId, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             await chatUI.GetChatItems(chatId, query, 0, ct);
             chatUI.IsConversationExpanded(conversation).Should().BeTrue();
         }, TimeSpan.FromSeconds(15));
@@ -2800,7 +2800,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chatId, CancellationToken.None);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
         chatUI.ToggleExpandConversation(conversation.Id);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             await chatUI.GetChatItems(chatId, query, 0, ct);
             chatUI.IsConversationExpanded(conversation).Should().BeFalse();
         }, TimeSpan.FromSeconds(15));

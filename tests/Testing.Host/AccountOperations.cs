@@ -62,7 +62,7 @@ public static class AccountOperations
         await tester.Commander.Call(cmd, cancellationToken);
         AccountFull result = null!;
 
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             result = await tester.Accounts.GetOwn(tester.Session, ct);
             result.Version.Should().BeGreaterThan(account.Version);
         }).WaitAsync(cancellationToken);

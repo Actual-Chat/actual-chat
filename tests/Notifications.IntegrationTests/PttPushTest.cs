@@ -9,7 +9,7 @@ namespace ActualChat.Notifications.IntegrationTests;
 public class PttPushTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private static readonly TimeSpan WakeTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan WakeTimeout = TimeSpan.FromSeconds(10).CiScaled();
     private static readonly TimeSpan NoWakeDelay = TimeSpan.FromSeconds(3);
     // Must match NotificationCollection.AppHostFixture's PttWakeTtl override.
     private static readonly TimeSpan WakeTtl = TimeSpan.FromSeconds(2);

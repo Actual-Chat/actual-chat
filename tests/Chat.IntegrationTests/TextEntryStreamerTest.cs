@@ -136,7 +136,7 @@ public class TextEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestO
 
         // assert
         var entry = await WhenEntryAppears(chatId, authorId, cts.Token);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var current = await ChatsBackend.GetEntry(entry.Id, ct);
             current!.IsContentStreaming.Should().BeFalse();
         }, WaitTimeout);
@@ -291,7 +291,7 @@ public class TextEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestO
         CancellationToken cancellationToken)
     {
         ChatEntry entry = null!;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var maxLid = await ChatsBackend.GetMaxLid(chatId, false, ct);
             var found = await ChatsBackend.GetEntry(ChatEntryId.New(chatId, maxLid), ct);
             found.Should().NotBeNull();

@@ -48,7 +48,7 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         entryLinkPreview.Title.Should().Be("Title 1");
         entryLinkPreview.Description.Should().Be("Description 1");
         entryLinkPreview.PreviewMedia.Should().NotBeNull();
-        var linkPreview1 = await ComputedTest.When(ct => Previews.Get(id1, ct).Require());
+        var linkPreview1 = await TestWait.When(ct => Previews.Get(id1, ct).Require());
         linkPreview1.Should().BeEquivalentTo(entryLinkPreview);
 
         // act
@@ -60,13 +60,13 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         updatedEntryLinkPreviews[0].Title.Should().Be("Title 2");
         updatedEntryLinkPreviews[0].Description.Should().Be("Description 2");
         updatedEntryLinkPreviews[0].PreviewMedia.Should().NotBeNull().And.NotBe(linkPreview1.PreviewMedia);
-        var linkPreview2 = await ComputedTest.When(ct => Previews.Get(id2, ct).Require());
+        var linkPreview2 = await TestWait.When(ct => Previews.Get(id2, ct).Require());
         linkPreview2.Should().BeEquivalentTo(updatedEntryLinkPreviews[0]);
         updatedEntryLinkPreviews[1].Url.Should().Be(url1);
         updatedEntryLinkPreviews[1].Title.Should().Be("Title 1");
         updatedEntryLinkPreviews[1].Description.Should().Be("Description 1");
         updatedEntryLinkPreviews[1].PreviewMedia.Should().NotBeNull().And.Be(linkPreview1.PreviewMedia);
-        linkPreview1 = await ComputedTest.When(ct => Previews.Get(id1, ct).Require());
+        linkPreview1 = await TestWait.When(ct => Previews.Get(id1, ct).Require());
         linkPreview1.Should().BeEquivalentTo(updatedEntryLinkPreviews[1]);
 
         // act
@@ -116,7 +116,7 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
             entryLinkPreview.Description.Should().Be($"Description {i + 1}");
             entryLinkPreview.PreviewMedia.Should().NotBeNull();
 
-            var linkPreview = await ComputedTest.When(ct => Previews.Get(id, ct).Require());
+            var linkPreview = await TestWait.When(ct => Previews.Get(id, ct).Require());
             linkPreview.Should().BeEquivalentTo(entryLinkPreview);
         }
     }
@@ -143,7 +143,7 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         entryLinkPreview.Title.Should().Be("Title 1");
         entryLinkPreview.Description.Should().Be("Description 1");
         entryLinkPreview.PreviewMedia.Should().NotBeNull();
-        var linkPreview = await ComputedTest.When(ct => Previews.Get(id1, ct).Require());
+        var linkPreview = await TestWait.When(ct => Previews.Get(id1, ct).Require());
         linkPreview.Should().BeEquivalentTo(entryLinkPreview);
     }
 
@@ -169,7 +169,7 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         entryLinkPreview.Title.Should().Be("Title 1");
         entryLinkPreview.Description.Should().Be("Description 1");
         entryLinkPreview.PreviewMedia.Should().NotBeNull();
-        var linkPreview = await ComputedTest.When(ct => Previews.Get(id1, ct).Require());
+        var linkPreview = await TestWait.When(ct => Previews.Get(id1, ct).Require());
         linkPreview.Should().BeEquivalentTo(entryLinkPreview);
     }
 
@@ -182,7 +182,7 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     private async Task<LinkPreview[]> GetEntryLinkPreviews(ChatEntryId entryId, params IReadOnlyList<Symbol> expectedIds)
-        => await ComputedTest.When(async ct => {
+        => await TestWait.When(async ct => {
             var chatEntry = await Chats.GetEntry(Session, entryId, ct).Require();
             chatEntry.LinkPreviewIds.Should().BeEquivalentTo(expectedIds);
             chatEntry.LinkPreviews.Select(x => x.Id).Should().BeEquivalentTo(expectedIds);

@@ -41,7 +41,7 @@ public class ApiKeyTest(AppHostFixture fixture, ITestOutputHelper @out, ILogger<
         apiKeyId[0].Should().Be(CoreConstants.Session.ApiKeyPrefix);
 
         // Assert — ListOwnSessions should now include the new key
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var keys = await _accounts.ListOwnSessions(session, SessionKind.ApiKey, ct);
             keys.Count.Should().Be(1);
             keys[0].Description.Should().Be("Test Key");
@@ -65,7 +65,7 @@ public class ApiKeyTest(AppHostFixture fixture, ITestOutputHelper @out, ILogger<
         var apiKeyId = await Commander.Call(createCommand, default);
 
         // Wait for it to appear
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var keys = await _accounts.ListOwnSessions(session, SessionKind.ApiKey, ct);
             keys.Count.Should().Be(1);
         });
@@ -76,7 +76,7 @@ public class ApiKeyTest(AppHostFixture fixture, ITestOutputHelper @out, ILogger<
         await Commander.Call(deactivateCommand, default);
 
         // Assert — should disappear from active list
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var keys = await _accounts.ListOwnSessions(session, SessionKind.ApiKey, ct);
             keys.Count.Should().Be(0); // Inactive keys are filtered out
         });
@@ -101,7 +101,7 @@ public class ApiKeyTest(AppHostFixture fixture, ITestOutputHelper @out, ILogger<
         sessionsAfter.Count.Should().Be(sessionsBefore.Count);
 
         // But API keys list should have one entry
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var keys = await _accounts.ListOwnSessions(session, SessionKind.ApiKey, ct);
             keys.Count.Should().Be(1);
         });

@@ -154,7 +154,7 @@ public class IconSvgToPngMigrationFlowStressTest(AppHostFixture fixture, ITestOu
     // full backend command pipeline (and the chats phase additionally walks
     // the place root chats that PlacesBackend cascades MediaId into).
     private Task AssertFlow(Func<CancellationToken, Task> assertion)
-        => ComputedTest.When(async ct => {
+        => TestWait.When(async ct => {
             var flow = await FlowHub.TryGet<IconSvgToPngMigrationFlow>("", ct);
             flow.Should().NotBeNull();
             flow.UntypedResult.Should().NotBeNull();

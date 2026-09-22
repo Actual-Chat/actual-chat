@@ -26,7 +26,7 @@ public class ReactionDeduplicationTest(ChatCollection.AppHostFixture fixture, IT
         await commander.Call(new Reactions_React { Uuid = uuid, Session = session, Reaction = NewReaction(entryId, Emojis.Cool) });
 
         // assert — the duplicate never ran; the reaction stays Lol (Cool was not applied)
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var reaction = await Reactions.Get(session, entryId, ct);
             reaction.Should().NotBeNull();
             reaction!.Emoji.Should().Be(Emojis.Lol);
@@ -34,7 +34,7 @@ public class ReactionDeduplicationTest(ChatCollection.AppHostFixture fixture, IT
 
         // control — a fresh (auto-generated) Uuid does change the reaction to Cool
         await commander.Call(new Reactions_React { Session = session, Reaction = NewReaction(entryId, Emojis.Cool) });
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var reaction = await Reactions.Get(session, entryId, ct);
             reaction!.Emoji.Should().Be(Emojis.Cool);
         });

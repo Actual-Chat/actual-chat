@@ -29,7 +29,7 @@ public class StreamingEntryFixupTest(ChatCollection.AppHostFixture fixture, ITes
         await RunFixupFlow(tester);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var current = await tester.Chats.GetEntry(tester.Session, streaming.ChatEntrySlim.Id, ct);
             current.Should().Match<ChatEntry?>(e => e == null || e.IsRemoved);
         }, WaitTimeout);
@@ -52,7 +52,7 @@ public class StreamingEntryFixupTest(ChatCollection.AppHostFixture fixture, ITes
         await RunFixupFlow(tester);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var current = await tester.Chats.GetEntry(tester.Session, streaming.ChatEntrySlim.Id, ct);
             current.Should().NotBeNull();
             current!.IsRemoved.Should().BeFalse();
@@ -102,7 +102,7 @@ public class StreamingEntryFixupTest(ChatCollection.AppHostFixture fixture, ITes
         await RunFixupFlow(tester);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var current = await tester.Chats.GetEntry(tester.Session, stale.ChatEntrySlim.Id, ct);
             current.Should().NotBeNull();
             current!.IsContentStreaming.Should().BeFalse();
@@ -154,7 +154,7 @@ public class StreamingEntryFixupTest(ChatCollection.AppHostFixture fixture, ITes
 
         // assert
         await remove.Should().NotThrowAsync();
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var current = await tester.Chats.GetEntry(tester.Session, streaming.ChatEntrySlim.Id, ct);
             current.Should().Match<ChatEntry?>(e => e == null || e.IsRemoved);
         }, WaitTimeout);

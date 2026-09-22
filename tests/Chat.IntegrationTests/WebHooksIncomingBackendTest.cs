@@ -72,7 +72,7 @@ public class WebHooksIncomingBackendTest(ChatCollection.AppHostFixture fixture, 
 
         // assert
         newToken.Should().NotBe(oldToken);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             (await Backend.GetByTokenHash(WebHookTokens.Hash(oldToken), ct)).Should().BeNull();
             (await Backend.GetByTokenHash(WebHookTokens.Hash(newToken), ct))!.Id.Should().Be(hook.Id);
         });
@@ -97,14 +97,14 @@ public class WebHooksIncomingBackendTest(ChatCollection.AppHostFixture fixture, 
         var updated = (await Commander.Call(new WebHooksBackend_Change(
             WebHookScope.Chat, chatId.Value, hook.Id, hook.Version,
             Change.Update(new WebHookDiff { DisplayName = "New bot" }), alice.Id))).WebHook!;
-        await ComputedTest.When(async ct
+        await TestWait.When(async ct
             => (await AccountsBackend.Get(botUserId, ct))!.Avatar.Name.Should().Be("New bot"));
         await Commander.Call(new WebHooksBackend_Change(
             WebHookScope.Chat, chatId.Value, hook.Id, updated.Version,
             Change.Remove<WebHookDiff>(), alice.Id));
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             (await Backend.Get(hook.Id, ct)).Should().BeNull();
             (await Backend.GetByTokenHash(WebHookTokens.Hash(created.Secret!), ct)).Should().BeNull();
             var author = await AuthorsBackend.GetByUserId(chatId, botUserId, RequestedAuthorKind.Full, ct);
@@ -204,7 +204,7 @@ public class WebHooksIncomingBackendTest(ChatCollection.AppHostFixture fixture, 
             created.WebHook!.Id, chatId.Value, WebHookDisabledReason.Manual, null));
 
         // assert
-        await ComputedTest.When(async ct
+        await TestWait.When(async ct
             => (await Backend.GetByTokenHash(tokenHash, ct))!.IsEnabled.Should().BeFalse());
     }
 
@@ -276,7 +276,7 @@ public class WebHooksIncomingBackendTest(ChatCollection.AppHostFixture fixture, 
 
         // assert
         await recreate.Should().ThrowAsync<InvalidOperationException>().WithMessage("*already taken*");
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var account = await AccountsBackend.Get(id.ToBotUserId(), ct);
             account!.Status.Should().Be(AccountStatus.Suspended, "the deleted hook's bot must stay retired");
             account.Avatar.Name.Should().Be("Gone", "its history in the old chat keeps the original name");
@@ -330,7 +330,7 @@ public class WebHooksIncomingBackendTest(ChatCollection.AppHostFixture fixture, 
         await Alice.Commander.Call(new Authors_Exclude { Session = Alice.Session, AuthorId = author.Id });
 
         // assert
-        await ComputedTest.When(async ct
+        await TestWait.When(async ct
             => (await AuthorsBackend.GetByUserId(chatId, botUserId, RequestedAuthorKind.Full, ct))!
                 .HasLeft.Should().BeTrue("a bot whose hook is gone is an ordinary stuck member"));
     }
@@ -374,7 +374,7 @@ public class WebHooksIncomingBackendTest(ChatCollection.AppHostFixture fixture, 
         await Commander.Call(new WebHooksBackend_RecordPost(hook.Id, chatId.Value));
 
         // assert
-        await ComputedTest.When(async ct
+        await TestWait.When(async ct
             => (await Backend.Get(hook.Id, ct))!.LastActivityAt.Should().NotBeNull());
     }
 

@@ -7,7 +7,7 @@ namespace ActualChat.Core.UnitTests;
 public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private const int TestTimeoutMs = 30_000;
-    private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(10).CiScaled();
 
     [Fact]
     public async Task PoolShouldShareResourceAndDisposeItAfterLastRent()

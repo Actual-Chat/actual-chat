@@ -49,12 +49,12 @@ public class NotificationModeTest(AppHostFixture fixture, ITestOutputHelper @out
         await Tester.CreateTextEntry(chatId, $"ping @u:{alice.Id} !");
 
         // The in-text mention arrives as a personal Mention notification...
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             var notification = info.Items.Should().ContainSingle().Subject;
             notification.Kind.Should().Be(NotificationKind.Mention);
         }, TimeSpan.FromSeconds(10));
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             Sink.Messages.Should().Contain(m =>
                 !m.IsDismissal && m.Notification!.Kind == NotificationKind.Mention && m.DeviceIds.Contains(deviceId));
             return Task.CompletedTask;
@@ -83,11 +83,11 @@ public class NotificationModeTest(AppHostFixture fixture, ITestOutputHelper @out
 
         // The explicit "notify all" action is a ringer: it breaks through the mute.
         await Commander.Call(new NotificationsBackend_NotifyMembers(bob.Id, chatId, entry.LocalId));
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             info.Items.Should().Contain(n => n.Kind == NotificationKind.Attention);
         }, TimeSpan.FromSeconds(10));
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             Sink.Messages.Should().Contain(m =>
                 !m.IsDismissal && m.Notification!.Kind == NotificationKind.Attention && m.DeviceIds.Contains(deviceId));
             return Task.CompletedTask;
@@ -96,7 +96,7 @@ public class NotificationModeTest(AppHostFixture fixture, ITestOutputHelper @out
         // So does the explicit "notify mentioned members" action.
         Sink.Clear();
         await Commander.Call(new NotificationsBackend_NotifyMentionedMembers(bob.Id, entry.Id, [alice.Id]));
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             Sink.Messages.Should().Contain(m =>
                 !m.IsDismissal && m.Notification!.Kind == NotificationKind.Attention && m.DeviceIds.Contains(deviceId));
             return Task.CompletedTask;
@@ -128,7 +128,7 @@ public class NotificationModeTest(AppHostFixture fixture, ITestOutputHelper @out
         await Tester.CreateTextEntry(mutedChatId, $"hey @u:{alice.Id} !");
         await Tester.CreateTextEntry(sentinelChatId, "sentinel");
 
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             var notification = info.Items.Should().ContainSingle().Subject;
             notification.Text.Should().Be("Bobby: sentinel");
@@ -163,7 +163,7 @@ public class NotificationModeTest(AppHostFixture fixture, ITestOutputHelper @out
         await Tester.SignIn(bob);
         await Tester.React(entry2.Id, Emojis.Love);
 
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             var notification = info.Items.Should().ContainSingle().Subject
                 .Should().BeOfType<ReactionNotification>().Subject;

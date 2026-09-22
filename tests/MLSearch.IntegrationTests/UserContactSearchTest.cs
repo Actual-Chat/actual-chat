@@ -415,12 +415,11 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         // Wait until the sentinel contact is indexed — that proves UserContactIndexingFlow
         // processed every peer contact created before it, including the system-user ones.
-        await TestsExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
                 var response = await GetIndexedUser(sentinel.Id);
                 response.Found.Should().BeTrue();
-                return response;
             },
-            TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20));
+            TimeSpan.FromSeconds(20));
 
         // assert
         foreach (var systemUserId in Constants.User.SystemUserIds) {
@@ -441,12 +440,11 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         // Wait until the sentinel account is indexed — that proves AccountIndexingFlow processed
         // every account changed before it, including the bot one.
-        await TestsExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
                 var response = await GetIndexedUser(sentinel.Id);
                 response.Found.Should().BeTrue();
-                return response;
             },
-            TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20));
+            TimeSpan.FromSeconds(20));
 
         // assert
         var botResponse = await GetIndexedUser(bot.Id);
@@ -479,11 +477,11 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         bool own,
         PlaceId? placeId = null,
         int expectedCount = 1)
-        => TestsExt.When(async () => {
+        => TestWait.WhenPolled<FoundContact[]>(async () => {
                 var people = await Tester.FindPeople($"{IsolationKey} {criteria}", own, placeId);
                 people.Should().HaveCount(expectedCount);
                 return people;
             },
             Intervals.Fixed(TimeSpan.FromSeconds(0.5)),
-            TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20));
+            TimeSpan.FromSeconds(20));
 }

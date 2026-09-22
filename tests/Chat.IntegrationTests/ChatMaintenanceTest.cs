@@ -118,7 +118,7 @@ public sealed class ChatMaintenanceTest(ChatCollection.AppHostFixture fixture, I
 
         // act
         await Admin.Commander.Call(new MaintenancesBackend_Set(first, MaintenanceMode.System));
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             (await backend.Get(first, ct)).Should().Be(MaintenanceMode.System);
         });
 
@@ -163,7 +163,7 @@ public sealed class ChatMaintenanceTest(ChatCollection.AppHostFixture fixture, I
     }
 
     private Task WaitMode(ChatId chatId, MaintenanceMode expected)
-        => ComputedTest.When(async ct => {
+        => TestWait.When(async ct => {
             var chat = await Owner.Chats.Get(Owner.Session, chatId, ct);
             chat.Should().NotBeNull();
             chat!.MaintenanceMode.Should().Be(expected);

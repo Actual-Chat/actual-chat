@@ -8,7 +8,7 @@ namespace ActualChat.Streaming.IntegrationTests;
 public class LiveActivityTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10).CiScaled();
 
     [Fact]
     public async Task HasActivityShouldFollowStreamRegistration()

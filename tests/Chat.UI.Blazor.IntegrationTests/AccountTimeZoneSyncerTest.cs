@@ -31,7 +31,7 @@ public class AccountTimeZoneSyncerTest(ChatAppHostFixture fixture, ITestOutputHe
         Tester.ScopedAppServices.GetRequiredService<AccountTimeZoneSyncer>().Start();
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var own = await Tester.Accounts.GetOwn(Tester.Session, ct);
             own.TimeZone.Should().Be(expectedTimeZone);
         }, TimeSpan.FromSeconds(15));

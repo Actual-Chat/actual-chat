@@ -54,7 +54,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         await Tester.React(entry1.Id, Emojis.Love);
         var notification = await GetNotification(alice, entry1.Id);
         await Commander.Call(new NotificationsBackend_Dismiss(notification.Id));
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             info.Items.Should().BeEmpty();
         }, TimeSpan.FromSeconds(10));
@@ -166,7 +166,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         // The same entry yields both banners, and only the message one is titled with the chat.
         AttentionNotification attention = null!;
         MessageNotification message = null!;
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             attention = info.Items.OfType<AttentionNotification>().Should().ContainSingle().Subject;
             message = info.Items.OfType<MessageNotification>().Should().ContainSingle().Subject;
@@ -322,7 +322,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
     private async Task<ChatNotification> GetNotification(AccountFull user, ChatEntryId entryId)
     {
         ChatNotification notification = null!;
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(user.Id, CancellationToken.None);
             var notifications = info.Items
                 .OfType<ChatNotification>()

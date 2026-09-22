@@ -42,7 +42,7 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
     // machine. Lower numbers expose nothing — race scheduling is rare enough that
     // the original AsyncMemoizer bug needed thousands of attempts under CPU
     // contention to reproduce reliably.
-    private static readonly TimeSpan ReplayTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan ReplayTimeout = TimeSpan.FromSeconds(5).CiScaled();
 
     protected abstract IAsyncMemoizer<T> Memoize<T>(
         IAsyncEnumerable<T> source,

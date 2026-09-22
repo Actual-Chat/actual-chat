@@ -47,7 +47,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
         webHook.IsEnabled.Should().BeTrue();
         webHook.CreatedBy.Should().Be(alice.Id);
         webHook.Events.Should().Be(WebHookEvents.Messages);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var hooks = await Backend.ListByScope(WebHookScope.Chat, chatId.Value, ct);
             hooks.Should().ContainSingle(x => x.Id == webHook.Id);
         });
@@ -65,7 +65,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
             WebHookScope.Chat, chatId.Value, null, null,
             Change.Create(NewDiff()),
             alice.Id))).WebHook!;
-        await ComputedTest.When(async ct
+        await TestWait.When(async ct
             => (await Backend.ListActiveForChat(chatId, ct)).Should().ContainSingle(x => x.Id == created.Id));
 
         // act - update
@@ -79,14 +79,14 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
         updated.IsEnabled.Should().BeFalse();
         updated.DisabledReason.Should().Be(WebHookDisabledReason.Manual);
         updated.Version.Should().BeGreaterThan(created.Version);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             (await Backend.ListActiveForChat(chatId, ct)).Should().BeEmpty();
             (await Backend.Get(created.Id, ct))!.Name.Should().Be("CI 2");
         });
 
         // act - remove, with a delivery in the outbox
         await Commander.Call(NewEnqueue(created.Id, chatId, $"{created.Id}:d1"));
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var deliveries = await Backend.ListDeliveries(created.Id, Constants.WebHooks.DeliveryListLimit, ct);
             deliveries.Should().ContainSingle();
         });
@@ -95,7 +95,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // assert
         removed.WebHook.Should().BeNull();
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             (await Backend.Get(created.Id, ct)).Should().BeNull();
             (await Backend.ListByScope(WebHookScope.Chat, chatId.Value, ct)).Should().BeEmpty();
             (await Backend.ListDeliveries(created.Id, Constants.WebHooks.DeliveryListLimit, ct))
@@ -120,7 +120,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // assert
         created.Scope.Should().Be(WebHookScope.Place);
-        await ComputedTest.When(async ct
+        await TestWait.When(async ct
             => (await Backend.ListActiveForChat(chatId, ct)).Should().ContainSingle(x => x.Id == created.Id));
         (await Backend.ListActiveForChat(otherChatId, default)).Should().NotContain(x => x.Id == created.Id);
     }
@@ -138,7 +138,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
             alice.Id))).WebHook!;
 
         // assert
-        await ComputedTest.When(async ct
+        await TestWait.When(async ct
             => (await Backend.ListActiveForUser(alice.Id, ct)).Should().ContainSingle(x => x.Id == created.Id));
     }
 
@@ -162,7 +162,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
             alice.Id))).WebHook!;
 
         // assert - both scopes show up under the creator, and a removal drops out
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var mine = await Backend.ListByCreator(alice.Id, ct);
             mine.Should().Contain(x => x.Id == chatHook.Id);
             mine.Should().Contain(x => x.Id == userHook.Id);
@@ -171,7 +171,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
             WebHookScope.Chat, chatId.Value, chatHook.Id, chatHook.Version,
             Change.Remove<WebHookDiff>(),
             alice.Id));
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var mine = await Backend.ListByCreator(alice.Id, ct);
             mine.Should().NotContain(x => x.Id == chatHook.Id);
             mine.Should().Contain(x => x.Id == userHook.Id);
@@ -318,7 +318,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
         await Commander.Call(NewEnqueue(webHook.Id, chatId, deliveryId + "-2"));
 
         // assert
-        var deliveries = await ComputedTest.When(async ct => {
+        var deliveries = await TestWait.When(async ct => {
             var items = await Backend.ListDeliveries(webHook.Id, Constants.WebHooks.DeliveryListLimit, ct);
             items.Should().HaveCount(2);
             return items;
@@ -351,7 +351,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
             webHook.Id, chatId.Value, failedId, WebHookDeliveryStatus.Pending, 503, longError, 120, nextAttemptAt));
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var hook = (await Backend.Get(webHook.Id, ct))!;
             hook.ConsecutiveFailures.Should().Be(1);
             hook.LastStatusCode.Should().Be(503);
@@ -374,7 +374,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
             webHook.Id, chatId.Value, failedId, WebHookDeliveryStatus.Succeeded, 200, null, 80, null));
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var hook = (await Backend.Get(webHook.Id, ct))!;
             hook.ConsecutiveFailures.Should().Be(0);
             hook.LastStatusCode.Should().Be(200);
@@ -391,7 +391,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
             webHook.Id, chatId.Value, WebHookDisabledReason.DeliveryFailures, "too many failures"));
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var hook = (await Backend.Get(webHook.Id, ct))!;
             hook.IsEnabled.Should().BeFalse();
             hook.DisabledReason.Should().Be(WebHookDisabledReason.DeliveryFailures);
@@ -423,7 +423,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
             webHook.Id, chatId.Value, deliveryId, WebHookDeliveryStatus.Failed, 500, error, 10, null));
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var hook = (await Backend.Get(webHook.Id, ct))!;
             var delivery = (await Backend.ListDeliveries(webHook.Id, Constants.WebHooks.DeliveryListLimit, ct))
                 .Single(x => x.Id == deliveryId);
@@ -457,7 +457,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
         await Commander.Call(new WebHooksBackend_Redeliver(webHook.Id, chatId.Value, deliveryId));
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var deliveries = await Backend.ListDeliveries(webHook.Id, Constants.WebHooks.DeliveryListLimit, ct);
             deliveries.Should().HaveCount(2);
             var original = deliveries.Single(x => x.Id == deliveryId);

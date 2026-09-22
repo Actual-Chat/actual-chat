@@ -103,7 +103,7 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
             default);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var conversation = await live.GetLiveConversation(chatId, ct);
             conversation!.Title.Should().Be("after");
         });

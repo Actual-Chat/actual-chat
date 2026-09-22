@@ -121,7 +121,7 @@ public class WebHooksPermissionsTest(ChatCollection.AppHostFixture fixture, ITes
         })).WebHook!;
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var aliceMine = await aliceWebHooks.ListMine(Alice.Session, ct);
             aliceMine.Should().Contain(x => x.Id == chatHook.Id);
             aliceMine.Should().Contain(x => x.Id == userHook.Id);

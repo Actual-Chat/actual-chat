@@ -22,7 +22,7 @@ public sealed class GrantsTest(OAuthCollection.AppHostFixture fixture, ITestOutp
 
         // act
         var authorizationId = await Approve(clientId, "mcp", "offline_access");
-        var grants = await ComputedTest.When(async ct => {
+        var grants = await TestWait.When(async ct => {
             var list = await Grants.List(Tester.Session, ct);
             list.Should().ContainSingle(g => g.Id == authorizationId, because: "consent must show up as a grant");
             return list;
@@ -82,7 +82,7 @@ public sealed class GrantsTest(OAuthCollection.AppHostFixture fixture, ITestOutp
             if ((await SessionsBackend.Get(session, default))?.IsActive == true)
                 activeSessions.Add(session);
         activeSessions.Should().ContainSingle(because: "losing consents must give up their backing sessions");
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var grants = await Grants.List(Tester.Session, ct);
             grants.Where(g => g.ClientId == clientId).Should().ContainSingle(because: "duplicates are revoked")
                 .Which.Id.Should().Be(ids[0]);
@@ -107,7 +107,7 @@ public sealed class GrantsTest(OAuthCollection.AppHostFixture fixture, ITestOutp
         var newSession = (await ListOAuthSessions(alice.Id)).Should()
             .ContainSingle(because: "the dead session is gone and the new grant has its own").Which;
         newSession.Should().NotBe(oldSession);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var grants = await Grants.List(Tester.Session, ct);
             grants.Select(g => g.Id).Should().Equal([newId], because: "the replaced grant is revoked");
         }, TimeSpan.FromSeconds(10));
@@ -156,7 +156,7 @@ public sealed class GrantsTest(OAuthCollection.AppHostFixture fixture, ITestOutp
         });
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var grants = await Grants.List(Tester.Session, ct);
             grants.Should().NotContain(g => g.Id == authorizationId, because: "a revoked grant is gone");
         }, TimeSpan.FromSeconds(10));

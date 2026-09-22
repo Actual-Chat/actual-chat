@@ -74,12 +74,12 @@ public class RoutingStressTest(ITestOutputHelper @out)
 
         // Wait for both hosts to see each other
         var syncTimeout = TimeSpan.FromSeconds(10);
-        await w1.State.Computed.When(x => x.AllNodes.Count >= 2).WaitAsync(syncTimeout);
-        await w2.State.Computed.When(x => x.AllNodes.Count >= 2).WaitAsync(syncTimeout);
+        await w1.State.Computed.When(x => x.AllNodes.Count >= 2).WaitAsync(syncTimeout.CiScaled());
+        await w2.State.Computed.When(x => x.AllNodes.Count >= 2).WaitAsync(syncTimeout.CiScaled());
         WriteLine($"Both hosts see each other: h1 sees {w1.State.Value.AllNodes.Count}, h2 sees {w2.State.Value.AllNodes.Count}");
 
         // Wait for shard redistribution
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var bits1 = await o1.BitmapState.Use(ct).ConfigureAwait(false);
             var bits2 = await o2.BitmapState.Use(ct).ConfigureAwait(false);
             var count1 = bits1.SetBitCount();
@@ -159,8 +159,8 @@ public class RoutingStressTest(ITestOutputHelper @out)
         var s2 = h2.Services.GetRequiredService<IRoutingTestService>();
 
         await w2.WhenAnnounced;
-        await w1.State.Computed.When(x => x.AllNodes.Count >= 2).WaitAsync(syncTimeout);
-        await w2.State.Computed.When(x => x.AllNodes.Count >= 2).WaitAsync(syncTimeout);
+        await w1.State.Computed.When(x => x.AllNodes.Count >= 2).WaitAsync(syncTimeout.CiScaled());
+        await w2.State.Computed.When(x => x.AllNodes.Count >= 2).WaitAsync(syncTimeout.CiScaled());
         WriteLine($"Host2 joined: {w2.ThisNode.Ref}");
 
         // Update value on h2 for the same key (different shard)
@@ -169,7 +169,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
         // The computed should eventually update (either same value or rerouted)
         // Note: If shard 0 moves to h2, the value will be empty because h2's storage is empty.
         // We verify that the computed mechanism works (gets a response), not that the value persists.
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var v = await computed.Use(ct);
             WriteLine($"Computed update check: {v.Value} from {v.HostNodeRef}");
             // Verify we get a valid response - if still on h1, value is "initial"; if rerouted to h2, value may be empty
@@ -183,7 +183,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
         await h1.DisposeAsync();
 
         // Wait for h2 to detect h1 is gone
-        await w2.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout);
+        await w2.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout.CiScaled());
         WriteLine("H2 detected h1 is gone");
 
         // Now calling s2 should work and return values from h2
@@ -202,7 +202,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(80));
         var cancellationToken = cts.Token;
-        var perCallTimeout = TimeSpan.FromSeconds(10);
+        var perCallTimeout = TimeSpan.FromSeconds(10).CiScaled();
 
         // Start with one host using faster mesh lock options
         await using var h1 = await NewAppHost(o => o with { MeshLockOptionsPreset = "Fast" });

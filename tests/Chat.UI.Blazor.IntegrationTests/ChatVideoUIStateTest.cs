@@ -120,7 +120,7 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
         var chatVideoUI = tester.ScopedAppServices.GetRequiredService<ChatVideoUI>();
         Chat? notesChat = null;
 
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var chats = await (await contacts.ListIds(tester.Session, null, ct).ConfigureAwait(false))
                 .Select(x => chatsBackend.Get(x.ChatId, ct))
                 .Collect(ct)

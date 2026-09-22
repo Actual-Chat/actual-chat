@@ -16,29 +16,29 @@ public class MeshWatcherTest(ITestOutputHelper @out)
         var s = w1.State.Value.GetShardMap(ShardScheme.TestBackend);
         WriteLine(s.ToString());
 
-        await w1.State.Computed.When(x => x.AllNodes.Count == 1).WaitAsync(syncTimeout);
-        await w1.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout);
+        await w1.State.Computed.When(x => x.AllNodes.Count == 1).WaitAsync(syncTimeout.CiScaled());
+        await w1.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout.CiScaled());
         s = w1.State.Value.GetShardMap(ShardScheme.TestBackend);
         WriteLine(s.ToString());
         s.IsEmpty.Should().BeFalse();
 
         await using var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
         var w2 = h2.Services.GetRequiredService<MeshWatcher>();
-        await w1.State.Computed.When(x => x.AllNodes.Count == 2).WaitAsync(syncTimeout);
-        await w1.State.Computed.When(x => x.LiveNodes.Length == 2).WaitAsync(syncTimeout);
-        await w2.State.Computed.When(x => x.AllNodes.Count == 2).WaitAsync(syncTimeout);
-        await w2.State.Computed.When(x => x.LiveNodes.Length == 2).WaitAsync(syncTimeout);
+        await w1.State.Computed.When(x => x.AllNodes.Count == 2).WaitAsync(syncTimeout.CiScaled());
+        await w1.State.Computed.When(x => x.LiveNodes.Length == 2).WaitAsync(syncTimeout.CiScaled());
+        await w2.State.Computed.When(x => x.AllNodes.Count == 2).WaitAsync(syncTimeout.CiScaled());
+        await w2.State.Computed.When(x => x.LiveNodes.Length == 2).WaitAsync(syncTimeout.CiScaled());
         s = w1.State.Value.GetShardMap(ShardScheme.TestBackend);
         WriteLine(s.ToString());
         s.IsEmpty.Should().BeFalse();
 
         _ = w1.DisposeAsync();
-        await w1.State.Computed.When(x => x.IsFinal).WaitAsync(syncTimeout);
-        await w2.State.Computed.When(x => x.AllNodes.Count == 1).WaitAsync(syncTimeout);
-        await w2.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout);
+        await w1.State.Computed.When(x => x.IsFinal).WaitAsync(syncTimeout.CiScaled());
+        await w2.State.Computed.When(x => x.AllNodes.Count == 1).WaitAsync(syncTimeout.CiScaled());
+        await w2.State.Computed.When(x => x.LiveNodes.Length == 1).WaitAsync(syncTimeout.CiScaled());
 
         _ = w2.DisposeAsync();
-        await w2.State.Computed.When(x => x.IsFinal).WaitAsync(syncTimeout);
+        await w2.State.Computed.When(x => x.IsFinal).WaitAsync(syncTimeout.CiScaled());
     }
 
     [Fact(Timeout = 30_000)]

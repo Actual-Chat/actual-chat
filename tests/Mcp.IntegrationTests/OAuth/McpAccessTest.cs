@@ -78,7 +78,7 @@ public class McpAccessTest(OAuthCollection.AppHostFixture fixture, ITestOutputHe
         await Tester.Commander.Call(new OAuthGrants_Revoke { Session = Tester.Session, AuthorizationId = grant.Id });
 
         // assert
-        await ComputedTest.When(async _ => {
+        await TestWait.When(async _ => {
             var response = await SendInitialize("Bearer " + accessToken);
             response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }, TimeSpan.FromSeconds(10));
@@ -103,7 +103,7 @@ public class McpAccessTest(OAuthCollection.AppHostFixture fixture, ITestOutputHe
         });
 
         // assert
-        await ComputedTest.When(async _ => {
+        await TestWait.When(async _ => {
             var response = await SendInitialize("Bearer " + accessToken);
             response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }, TimeSpan.FromSeconds(10));

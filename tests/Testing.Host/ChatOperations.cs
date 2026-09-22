@@ -72,7 +72,7 @@ public static class ChatOperations
     public static Task WaitForOpeningEntry(this IServiceProvider services, ChatId chatId)
         // A new chat's "member added" entry is written by an async event handler, so an entry created right
         // after the chat can take a lower lid than it. Start, not size: an empty chat's range is (0, 1).
-        => ComputedTest.When(async ct => {
+        => TestWait.When(async ct => {
             var lidRange = await services.GetRequiredService<IChatsBackend>().GetLidRange(chatId, false, ct);
             lidRange.Start.Should().BePositive("the chat's opening system entry must be written by now");
         }, TimeSpan.FromSeconds(10));
@@ -89,7 +89,7 @@ public static class ChatOperations
         // The join writes a "member added" entry from an async event handler that waits for the author's
         // avatar with its own retries, so the entry can land seconds after the join command returned.
         var chats = tester.AppServices.GetRequiredService<IChats>();
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var lidRange = await chats.GetIdRange(session, chatId, ct);
             var reader = chats.NewEntryReader(session, chatId);
             var entry = await reader.GetLast(lidRange,

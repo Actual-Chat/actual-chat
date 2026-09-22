@@ -1,6 +1,5 @@
 using ActualChat.Testing.Host;
 using ActualChat.Users.Module;
-using ActualLab.Fusion.Testing;
 
 namespace ActualChat.Users.IntegrationTests;
 
@@ -27,17 +26,17 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         var probe = Probes.Script(appKind, new(olderTrain, null));
 
         // act
-        var behindTrain = await ComputedTest.When(async ct => {
+        var behindTrain = await When(async ct => {
             var info = await Service.GetLatestUpdateInfo(appKind, ct);
             info!.VersionString.Should().Be(olderTrain);
             return info;
-        }, TestTimeout);
+        });
         probe.Result = new(OwnVersion.ToString(), null);
-        var published = await ComputedTest.When(async ct => {
+        var published = await When(async ct => {
             var info = await Service.GetLatestUpdateInfo(appKind, ct);
             info!.VersionString.Should().Be(OwnVersion.ToString());
             return info;
-        }, TestTimeout);
+        });
         var callCountWhenSettled = probe.CallCount;
         await Task.Delay(TimeSpan.FromSeconds(2));
 
@@ -59,16 +58,16 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         var probe = Probes.Script(appKind, new(firstBuild, null));
 
         // act
-        await ComputedTest.When(async ct => {
+        await When(async ct => {
             var info = await Service.GetLatestUpdateInfo(appKind, ct);
             info!.VersionString.Should().Be(firstBuild);
-        }, TestTimeout);
+        });
         probe.Result = new(hotfixBuild, null);
-        var hotfix = await ComputedTest.When(async ct => {
+        var hotfix = await When(async ct => {
             var info = await Service.GetLatestUpdateInfo(appKind, ct);
             info!.VersionString.Should().Be(hotfixBuild);
             return info;
-        }, TestTimeout);
+        });
 
         // assert
         hotfix.Should().NotBeNull("the stores publish more than one build per train");
@@ -111,11 +110,11 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         Probes.Script(appKind, new(storeBuild, null));
 
         // act
-        var published = await ComputedTest.When(async ct => {
+        var published = await When(async ct => {
             var info = await Service.GetLatestUpdateInfo(appKind, ct);
             info!.VersionString.Should().Be(storeBuild);
             return info;
-        }, TestTimeout);
+        });
         await SettleAndroid(playProbe);
 
         // assert
@@ -137,20 +136,20 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         var probe = Probes.Script(appKind, new(OwnVersion.ToString(), null));
 
         // act
-        await ComputedTest.When(async ct => {
+        await When(async ct => {
             var info = await Service.GetLatestUpdateInfo(AppKind.Android, ct);
             info.Should().NotBeNull("Play has to be probed regardless");
-        }, TestTimeout);
+        });
         await Task.Delay(TimeSpan.FromSeconds(2));
         Service.Invalidate(appKind);
         _ = await Service.GetLatestUpdateInfo(appKind, default);
         var callCountWhilePlayHasNothingNewer = probe.CallCount;
         playProbe.Result = new(OwnVersion.ToString(), null);
-        var published = await ComputedTest.When(async ct => {
+        var published = await When(async ct => {
             var info = await Service.GetLatestUpdateInfo(appKind, ct);
             info!.VersionString.Should().Be(OwnVersion.ToString());
             return info;
-        }, TestTimeout);
+        });
 
         // assert
         callCountWhilePlayHasNothingNewer.Should()
@@ -168,11 +167,11 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         Probes.Script(appKind, new(storeBuild, null));
 
         // act
-        var info = await ComputedTest.When(async ct => {
+        var info = await When(async ct => {
             var current = await Service.GetLatestUpdateInfo(appKind, ct);
             current.Should().NotBeNull();
             return current!;
-        }, TestTimeout);
+        });
 
         // assert
         info.VersionString.Should().Be(storeBuild,
@@ -225,11 +224,11 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
                 .Be(OwnVersion.ToString(), "the release must be detected first");
             whilePending = await Service.GetLatestUpdateInfo(appKind, default);
         });
-        var afterDelay = await ComputedTest.When(async ct => {
+        var afterDelay = await When(async ct => {
             var info = await Service.GetLatestUpdateInfo(appKind, ct);
             info!.VersionString.Should().Be(OwnVersion.ToString());
             return info;
-        }, TestTimeout);
+        });
 
         // assert
         whilePending!.VersionString.Should().Be("1.0.0", "a detected release is held back for AnnounceDelay");
@@ -372,21 +371,31 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         });
     }
 
+    private static Task When(
+        Func<CancellationToken, Task> assertion,
+        [CallerFilePath] string callerFilePath = "",
+        [CallerLineNumber] int callerLine = 0)
+        => TestWait.When(assertion, TestTimeout, callerFilePath: callerFilePath, callerLine: callerLine);
+
+    private static Task<T> When<T>(
+        Func<CancellationToken, Task<T>> assertion,
+        [CallerFilePath] string callerFilePath = "",
+        [CallerLineNumber] int callerLine = 0)
+        => TestWait.When(assertion, TestTimeout, callerFilePath: callerFilePath, callerLine: callerLine);
+
     // ConsolidationDelay = 0 holds an invalidation back until the recomputed value actually differs,
-    // so ComputedTest.When can't wait for a side effect or for a value that ends up unchanged
-    private static async Task WhenPolled(Func<Task> assertion)
-    {
-        var startedAt = CpuTimestamp.Now;
-        while (true) {
-            try {
-                await assertion.Invoke();
-                return;
-            }
-            catch (Exception) when (startedAt.Elapsed < TestTimeout) {
-                await Task.Delay(TimeSpan.FromMilliseconds(100));
-            }
-        }
-    }
+    // so When can't wait for a side effect or for a value that ends up unchanged
+    // The 100ms interval is the one this suite polled at before: it counts the calls its polling
+    // makes, so how often it polls is part of what the tests here assert.
+    private static Task WhenPolled(
+        Func<Task> assertion,
+        [CallerFilePath] string callerFilePath = "",
+        [CallerLineNumber] int callerLine = 0)
+        => TestWait.WhenPolled(assertion,
+            Intervals.Fixed(TimeSpan.FromMilliseconds(100)),
+            TestTimeout,
+            callerFilePath: callerFilePath,
+            callerLine: callerLine);
 
     private static string NewBuildBehindOwn(int buildOffset)
         => new Version(OwnVersion.Major, OwnVersion.Minor, Math.Max(OwnVersion.Build - buildOffset, 0))

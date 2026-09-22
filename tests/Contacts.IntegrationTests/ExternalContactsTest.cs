@@ -314,7 +314,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         var contactId = BuildContactId(bob, jack);
         bobContacts.Should().BeEquivalentTo([contactId]);
 
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var contact1 = await _contacts.Get(sessionBob, contactId, ct);
             contact1.Should().NotBeNull();
             contact1.ExternalContactName.Should().Be(contactDisplayName);
@@ -348,7 +348,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         var contactId = BuildContactId(bob, jack);
         bobContacts.Should().BeEquivalentTo([contactId]);
 
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var contact1 = await _contacts.Get(sessionBob, contactId, ct);
             contact1.Should().NotBeNull();
             contact1.ExternalContactName.Should().Be(contactDisplayName);
@@ -364,7 +364,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         await _tester.SaveExternalContacts(externalContact);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var contact1 = await _contacts.Get(sessionBob, contactId, ct);
             contact1.Should().NotBeNull();
             contact1.ExternalContactName.Should().Be(contactDisplayName2);
@@ -375,7 +375,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         await _tester.DeleteExternalContacts(externalContact.Id);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var contact1 = await _contacts.Get(sessionBob, contactId, ct);
             contact1.Should().NotBeNull();
             contact1.ExternalContactName.Should().BeEmpty();
@@ -457,7 +457,7 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         => ListContactIds(_tester.Session, expectedCount);
 
     private Task<List<ContactId>> ListContactIds(Session session,int expectedCount)
-        => ComputedTest.When(async ct => {
+        => TestWait.When(async ct => {
             var contactIds = await ListContactIds(session, ct);
             contactIds.Should().HaveCountGreaterThanOrEqualTo(expectedCount);
             return contactIds;

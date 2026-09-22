@@ -84,7 +84,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         author.Avatar.Should().NotBeNull();
 
         var contacts = services.GetRequiredService<IContacts>();
-        await ComputedTest.When(services, async ct => {
+        await TestWait.When(services, async ct => {
             var contactIds = await contacts.ListIds(session, null, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
             chatIds.Should().Contain(chat.Id);
@@ -234,7 +234,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         // pre-assert wait
         await services.Queues().WhenProcessing();
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var chats = (await (await contacts.ListIds(session, null, ct))
                 .Select(x => chatsBackend.Get(x.ChatId, ct))
                 .Collect(ct))
@@ -244,7 +244,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         });
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var dbHub = services.DbHub<ChatDbContext>();
             await using var dbContext = await dbHub.CreateDbContext();
             var dbChat = await dbContext.Chats
@@ -422,7 +422,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         await otherTester.Commander.Call(new Invites_Use { Session = otherTester.Session, InviteId = inviteId }, true);
 
         var services = ownerTester.AppServices;
-        await ComputedTest.When(services, async ct => {
+        await TestWait.When(services, async ct => {
             var rules = await otherTester.Chats.GetRules(otherTester.Session, chatId, ct);
             rules.CanRead().Should().BeTrue();
         });
@@ -433,7 +433,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var otherChatKvas = serverKvasBackend.ForUser(otherAccount.Id, isOutermost: true);
         var otherChatKey = ChatInviteSettings.GetKey(otherChatId);
         await otherChatKvas.Set(otherChatKey, new ChatInviteSettings { InviteId = inviteId }, default);
-        await ComputedTest.When(services, async ct => {
+        await TestWait.When(services, async ct => {
             var settings = await otherChatKvas.Get<ChatInviteSettings>(otherChatKey, ct);
             settings!.InviteId.Should().Be(inviteId.Value);
         });
@@ -471,7 +471,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var leaveCommand = new Authors_Leave { Session = session, ChatId = chatId };
         await commander.Call(leaveCommand);
 
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var permissions = await chats.GetRules(session, chatId, ct);
             permissions.CanRead().Should().Be(isPublicChat);
             permissions.CanWrite().Should().BeFalse();
@@ -550,7 +550,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         ownerIds = await roles.ListOwnerIds(otherTester.Session, chatId, default);
         ownerIds.Should().Contain(author.Id);
 
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             chat = await chats.Get(otherTester.Session, chatId, ct);
             chat.Should().NotBeNull();
             chat!.Rules.IsOwner().Should().BeTrue();
@@ -650,7 +650,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         await ownerTester.JoinChat(chatId, inviteId);
 
         var chats = ownerTester.AppServices.GetRequiredService<IChats>();
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var chat = await chats.Get(ownerTester.Session, chatId, ct);
             chat.Should().NotBeNull();
             chat!.Rules.IsOwner().Should().BeFalse();
@@ -669,7 +669,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         var (chatId, _) = await ownerTester.CreateChat(true);
         await services.Queues().WhenProcessing();
-        await ComputedTest.When(services, async ct => {
+        await TestWait.When(services, async ct => {
             var contactIds = await contacts.ListIds(session, null, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
             chatIds.Should().Contain(chatId);
@@ -689,7 +689,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         chat.Should().BeNull();
 
         await services.Queues().WhenProcessing();
-        await ComputedTest.When(services, async ct => {
+        await TestWait.When(services, async ct => {
             var contactIds = await contacts.ListIds(session, null, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
             chatIds.Should().NotContain(chatId);
@@ -707,7 +707,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var session = ownerTester.Session;
 
         var (chatId, inviteId) = await ownerTester.CreateChat(true);
-        await ComputedTest.When(services, async ct => {
+        await TestWait.When(services, async ct => {
             var contactIds = await contacts.ListIds(session, null, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
             chatIds.Should().Contain(chatId);
@@ -718,7 +718,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var session2 = otherTester.Session;
 
         var author2 = await otherTester.JoinChat(chatId, inviteId);
-        await ComputedTest.When(services, async ct => {
+        await TestWait.When(services, async ct => {
             var contactIds = await contacts.ListIds(session2, null, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
             chatIds.Should().Contain(chatId);
@@ -738,7 +738,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         // Owner should still see the chat (e.g. with direct link)
         var chats = services.GetRequiredService<IChats>();
         Chat? chat = null;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             chat = await chats.Get(session, chatId, ct);
             chat.Should().NotBeNull();
             chat!.IsArchived.Should().BeTrue();
@@ -747,19 +747,19 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         });
 
         // But even the owner should not see in its contacts
-        await ComputedTest.When(services, async ct => {
+        await TestWait.When(services, async ct => {
             var contactIds = await contacts.ListIds(session, null, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
             chatIds.Should().NotContain(chatId);
         });
 
         // Other participants should not see the chat
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             chat = await chats.Get(session2, chatId, ct);
             chat.Should().BeNull();
         });
 
-        await ComputedTest.When(services, async ct => {
+        await TestWait.When(services, async ct => {
             var contactIds = await contacts.ListIds(session2, null, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
             chatIds.Should().NotContain(chatId);

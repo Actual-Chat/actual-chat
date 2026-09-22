@@ -23,7 +23,7 @@ public sealed class LiveBlockProjectionDelayTest(ITestOutputHelper @out)
         await using var tester = appHost.NewBlazorTester(Out);
         await tester.SignInAsUniqueBob();
         var (chat, _) = await tester.CreateAndGetChat(true, "pending-live-block-state-test");
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var range = await tester.Chats.GetIdRange(tester.Session, chat.Id, ct);
             range.Start.Should().BePositive();
         }, TimeSpan.FromSeconds(10));
@@ -39,7 +39,7 @@ public sealed class LiveBlockProjectionDelayTest(ITestOutputHelper @out)
         var liveSessionUI = (DelayedLiveSessionUI)tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
         var liveBlockUI = tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
         Conversation live = null!;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             live = (await liveSessionUI.GetConversation(chat.Id, ct)).Require();
         }, TimeSpan.FromSeconds(5));
         var chatAudioUI = tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
@@ -56,7 +56,7 @@ public sealed class LiveBlockProjectionDelayTest(ITestOutputHelper @out)
             Guid.NewGuid().ToString(), "", chat.Id, null, tester.AppServices.Clocks().SystemClock.Now,
             "pending tail", HashString.None, null, () => { }));
 
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             (await liveSessionUI.AmIInLiveConversation(chat.Id, ct)).Should().BeTrue();
 
             // act
@@ -85,7 +85,7 @@ public sealed class LiveBlockProjectionDelayTest(ITestOutputHelper @out)
 
         // act
         liveSessionUI.IsBlockStateDelayed.Value = false;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             (await liveSessionUI.GetBlockState(chat.Id, ct)).Should().NotBeNull();
             (await liveBlockUI.GetBlock(chat.Id, ct)).Should().BeOfType<OpenLiveBlock>()
                 .Which.HasAttended.Should().BeTrue();
@@ -95,7 +95,7 @@ public sealed class LiveBlockProjectionDelayTest(ITestOutputHelper @out)
             _ = chatAudioUI.GetState(chat.Id);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             (await liveSessionUI.AmIInLiveConversation(chat.Id, ct)).Should().BeFalse();
             (await liveBlockUI.GetBlock(chat.Id, ct)).Should().BeOfType<OpenLiveBlock>()
                 .Which.HasAttended.Should().BeTrue();

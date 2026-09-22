@@ -241,7 +241,7 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
         }, cts.Token);
 
         // assert - presence is registered while the stream is open
-        await ComputedTest.When(async ct =>
+        await TestWait.When(async ct =>
             (await liveSessionsBackend.ListParticipants(chat.Id, ct)).Should().Contain(author!.Id));
 
         // act - the caller stops consuming (cancellation unwinds the async iterator's finally block)
@@ -249,7 +249,7 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
         await consumeTask.SilentAwait(false);
 
         // assert - presence goes with it, not with the 90s ParticipantStaleness backstop
-        await ComputedTest.When(async ct =>
+        await TestWait.When(async ct =>
             (await liveSessionsBackend.ListParticipants(chat.Id, ct)).Should().NotContain(author!.Id));
     }
 
@@ -315,7 +315,7 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
 
         // assert - Alice's utterance ending must not have torn the session down before Bob's utterance
         // could join it: the session must still exist, with both authors present and latched.
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var live = await liveSessionsBackend.GetState(chat.Id, ct);
             live.Should().NotBeNull("Alice's stream ending must not tear down the session before Bob joins it");
             live!.AuthorIds.Should().Contain(author1!.Id);

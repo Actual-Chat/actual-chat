@@ -89,7 +89,7 @@ public class RetranscribeTranslationFlowTest(
         // assert
         // The stored translation must upgrade to the refined transcript's translation on its own
         // (translateIfMissing: false — no reader pulls it).
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var translation = await Translations.Get(session, TranslationId.New(entryId, targetLanguage), false, ct);
             translation.Should().NotBeNull();
             translation!.IsStreaming.Should().BeFalse();
@@ -99,7 +99,7 @@ public class RetranscribeTranslationFlowTest(
     }
 
     private static Task<ChatEntry> WhenStreamingEntry(IChatsBackend chatsBackend, ChatId chatId, StreamId segmentStreamId)
-        => ComputedTest.When(async ct => {
+        => TestWait.When(async ct => {
             var range = await chatsBackend.GetLidRange(chatId, true, ct);
             var idTile = Constants.Chat.EntryIdTiles.GetTile(Math.Max(range.End - 1, 0));
             var tile = await chatsBackend.GetTile(chatId, idTile.Range, false, ct);

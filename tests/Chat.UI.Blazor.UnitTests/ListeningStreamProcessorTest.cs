@@ -7,7 +7,7 @@ namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
 public sealed class ListeningStreamProcessorTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    private static readonly TimeSpan ReconnectWaitTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan ReconnectWaitTimeout = TimeSpan.FromSeconds(10).CiScaled();
     private static readonly ChatId TestChatId = ChatId.Parse("aaaaaaaaaaaaaaaaaaaa");
     private static readonly Session TestSession = Session.New();
     private static readonly AuthorId TestAuthorId = AuthorId.New(TestChatId, 1);

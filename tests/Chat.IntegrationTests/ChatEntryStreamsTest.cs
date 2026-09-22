@@ -140,7 +140,7 @@ public class ChatEntryStreamsTest(ChatCollection.AppHostFixture fixture, ITestOu
             await Append(stream, "Half a thought");
 
             // assert
-            await ComputedTest.When(async ct => {
+            await TestWait.When(async ct => {
                 var entry = await ChatsBackend.GetEntry(stream.EntryId, ct);
                 entry!.IsContentStreaming.Should().BeFalse();
                 entry.Content.Should().Be("Half a thought");

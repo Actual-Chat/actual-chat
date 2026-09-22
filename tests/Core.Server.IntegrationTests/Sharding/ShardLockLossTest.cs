@@ -23,7 +23,7 @@ public class ShardLockLossTest(ITestOutputHelper @out)
         await using var h1 = await NewAppHost();
         var owner = h1.Services.ShardOwner(shardScheme);
         var shardState = owner.States[shard];
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var state = await shardState.Use(ct).ConfigureAwait(false);
             state.OwnershipStatus.Should().Be(ShardOwnershipStatus.OwnedByThisNode);
         }, TimeSpan.FromSeconds(30));
@@ -47,7 +47,7 @@ public class ShardLockLossTest(ITestOutputHelper @out)
             WriteLine("The lock loss is detected by the holder");
 
             // assert
-            await ComputedTest.When(async ct => {
+            await TestWait.When(async ct => {
                 var state = await shardState.Use(ct).ConfigureAwait(false);
                 WriteLine($"ShardState: {state.OwnershipStatus}, lock cancelled: "
                     + $"{state.Ownership?.LockToken.IsCancellationRequested.ToString() ?? "no ownership"}");
@@ -69,7 +69,7 @@ public class ShardLockLossTest(ITestOutputHelper @out)
         }
 
         // Recovery: once the lock is available again, h1 must re-acquire it
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var state = await shardState.Use(ct).ConfigureAwait(false);
             state.OwnershipStatus.Should().Be(ShardOwnershipStatus.OwnedByThisNode);
             state.Ownership!.LockToken.IsCancellationRequested.Should().BeFalse();

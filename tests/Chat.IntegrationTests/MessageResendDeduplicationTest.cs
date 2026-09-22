@@ -38,7 +38,7 @@ public class MessageResendDeduplicationTest(ChatCollection.AppHostFixture fixtur
         var third = await commander.Call(command with { Uuid = ApiCommand.NewUuid(), Text = "Sent twice" });
         third.LocalId.Should().BeGreaterThan(first.LocalId);
 
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var idRange = await Chats.GetIdRange(session, chat.Id, ct);
             var entries = new List<ChatEntry>();
             await foreach (var entry in Chats.NewEntryReader(session, chat.Id).Read(idRange, ct).ConfigureAwait(false))

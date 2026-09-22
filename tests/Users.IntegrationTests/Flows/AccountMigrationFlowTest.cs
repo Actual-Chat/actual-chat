@@ -18,7 +18,7 @@ public class AccountMigrationFlowTest(ITestOutputHelper @out)
         await flowHub.Get<MigrationFlow>("", ct); // We need to manually start it in this test
 
         // MigrationFlow should start AccountMigrationFlow
-        await ComputedTest.When(async innerCt => {
+        await TestWait.When(async innerCt => {
             var flow = await flowHub.TryGet<AccountMigrationFlow>("", innerCt);
             flow.Should().NotBeNull();
         }, TimeSpan.FromSeconds(30));
@@ -41,7 +41,7 @@ public class AccountMigrationFlowTest(ITestOutputHelper @out)
         await flowHub.NewResumeEvent<AccountMigrationFlow>().WithReset().Schedule(ct);
 
         // Wait for AccountMigrationFlow to process the account
-        await ComputedTest.When(async innerCt => {
+        await TestWait.When(async innerCt => {
             var flow = await flowHub.TryGet<AccountMigrationFlow>("", innerCt);
             flow.Should().NotBeNull();
             // Flow should have processed at least one account
@@ -60,7 +60,7 @@ public class AccountMigrationFlowTest(ITestOutputHelper @out)
         await flowHub.Get<MigrationFlow>("", ct);
 
         // Wait for AccountMigrationFlow to complete (in test environment with few accounts, it should complete quickly)
-        await ComputedTest.When(async innerCt => {
+        await TestWait.When(async innerCt => {
             var flow = await flowHub.TryGet<AccountMigrationFlow>("", innerCt);
             flow.Should().NotBeNull();
             // Flow should complete with a result when all accounts are processed

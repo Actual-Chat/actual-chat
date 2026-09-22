@@ -4,7 +4,7 @@ namespace ActualChat.Streaming.UnitTests;
 
 public class LiveEdgeReplayTest
 {
-    private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(5).CiScaled();
 
     [Fact(Timeout = 10_000)]
     public async Task SkipToLiveYieldsHeaderThenOnlyFutureFrames()

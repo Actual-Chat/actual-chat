@@ -302,10 +302,10 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         PlaceId? placeId = null,
         ChatId chatId = null!,
         int expected = 1)
-        => TestsExt.When(async () => {
+        => TestWait.WhenPolled<FoundChatEntry[]>(async () => {
                 var results = await Tester.FindEntries($"{IsolationKey} {criteria}", placeId, chatId);
                 results.Should().HaveCount(expected);
                 return results;
             },
-            TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20));
+            TimeSpan.FromSeconds(20));
 }
