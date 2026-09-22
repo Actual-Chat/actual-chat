@@ -212,7 +212,7 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `IMediaLinkPreviews` — link preview generation
 
 ### Other Services
-- `INotifications` — push notifications
+- `INotifications` — push notifications; `ListHistory` reads the per-user log of addressed notifications by kind and cursor
 - `IInvites` — invite link management
 - `ISearch` — full-text search
 - `IStreamClient` — audio streaming
@@ -227,7 +227,7 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 - `IContactsBackend` — contact backend
 - `IMediaBackend`, `IMediaProgressBackend`, `IUploadsBackend` — media backends
 - `IImageSuggestionsBackend` — one pending generated image per opaque key, plus its dismissal
-- `INotificationsBackend` — notification backend
+- `INotificationsBackend` — notification backend; also owns the `NotificationHistory` log (`ListHistory`, `OnUserNotifiedEvent`)
 - `IStreamingBackend`, `ILiveBackend`, `ILiveAudioBackend`, `ILiveVideoBackend`, `IVideoStreamingBackend` — streaming backends
 
 
