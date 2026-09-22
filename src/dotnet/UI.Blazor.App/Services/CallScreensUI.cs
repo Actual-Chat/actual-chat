@@ -46,13 +46,12 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         if (call is null)
             return CallView.None;
 
-        var dialingOutChatId = await CallUI.GetDialingOutChatId(cancellationToken).ConfigureAwait(false);
         var screenSize = await Hub.BrowserInfo.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
         var flags = new CallScreenFlags(
             await _collapsedChatId.Use(cancellationToken).ConfigureAwait(false),
             await _inChatChatId.Use(cancellationToken).ConfigureAwait(false),
             await _overLockRingChatId.Use(cancellationToken).ConfigureAwait(false));
-        return DecideView(call, dialingOutChatId == call.ChatId, screenSize.IsNarrow(), flags);
+        return DecideView(call, screenSize.IsNarrow(), flags);
     }
 
     [ComputeMethod]
@@ -62,8 +61,11 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         var call = await CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
         if (call is null)
             return null;
+        // A ring carries its caller, and a call placed to one invitee carries them from the gesture.
+        if (call.PeerId is { } peerId)
+            return peerId;
         if (call.Role == CallRole.Callee)
-            return call.PeerId;
+            return null;
 
         var live = await Hub.LiveSessionUI.Get(call.ChatId, cancellationToken).ConfigureAwait(false);
         return live is { Invites.Count: > 0 } ? live.Invites[0].InviteeId : null;
