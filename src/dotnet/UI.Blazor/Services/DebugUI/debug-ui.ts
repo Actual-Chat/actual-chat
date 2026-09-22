@@ -8,6 +8,7 @@ import { WebCodecsCompat, type WebCodecsLevelOverride } from 'web-codecs-compat/
 import { getWebCodecsLevelOverride, setWebCodecsLevelOverride } from 'web-codecs-compat/settings';
 import { SvgCache } from '../../Components/Avatar/svg-cache';
 import { VirtualListOverlay } from '../../Components/VirtualList/virtual-list-overlay';
+import { isEditable } from 'keyboard-visibility';
 
 const { infoLog } = getLogs('DebugUI');
 
@@ -53,6 +54,18 @@ export class DebugUI {
     private static _eventSnifferInstalled = false;
     private static _audioRecorderOffsetHandler: ((offsetMs: number) => void) | null = null;
     private static _rotateTimer: number | null = null;
+    // Keyboard heights as a fraction of the full viewport, matching a real S23 Ultra (~45% text, ~40%
+    // numeric) so content compression tests realistically; pass px to showKeyboard for an exact height.
+    private static readonly _textKeyboardRatio = 0.45;
+    private static readonly _numberKeyboardRatio = 0.40;
+    // Slide duration for the simulated keyboard - a real one animates in ~0.25s, so the modal reflows
+    // progressively rather than snapping. Override per-call via showKeyboard's durationMs.
+    private static readonly _keyboardAnimMs = 250;
+    private static _kbTweenRaf: number | null = null;
+    private static _kbOpenness = 0;
+    private static _kbHeight = 0;
+    private static _kbEl: HTMLElement | null = null;
+    private static _keyboardAutoHandlers: { focusin: (e: FocusEvent) => void; focusout: (e: FocusEvent) => void } | null = null;
 
     public static init(backendRef1: DotNet.DotNetObject): void {
         infoLog?.log(`init`);
@@ -305,6 +318,80 @@ export class DebugUI {
         this.showSafeAreas(document.body.classList.contains('show-safe-areas') ? null : true);
     }
 
+    /** Simulates the on-screen keyboard on desktop (e.g. Chrome device toolbar): slides up a visible bottom
+     *  overlay (with a collapse button) AND shrinks the vars modals read (--vh, --modal-vh) + sets
+     *  body.keyboard-open, so modals collapse just as on a device. The overlay is what makes it visible even
+     *  where nothing sizes to --modal-vh - e.g. the left-panel search, which isn't a modal. `heightPx` is the
+     *  keyboard height in CSS px; omit for the text default. `debug-keyboard-forced` makes the real
+     *  visualViewport listeners stand down so a stray scroll can't clobber the override. Call hideKeyboard. */
+    public static showKeyboard(heightPx?: number, durationMs = DebugUI._keyboardAnimMs): void {
+        const full = window.innerHeight;
+        const height = Math.max(0, Math.min(heightPx ?? Math.round(full * this._textKeyboardRatio), full));
+        document.body.classList.add('keyboard-open', 'debug-keyboard-forced');
+        this.animateKeyboard(height, 1, durationMs);
+        infoLog?.log(`showKeyboard: height=${height}px, ${durationMs}ms`);
+    }
+
+    public static showTextKeyboard(): void {
+        this.showKeyboard(Math.round(window.innerHeight * this._textKeyboardRatio));
+    }
+
+    public static showNumberKeyboard(): void {
+        this.showKeyboard(Math.round(window.innerHeight * this._numberKeyboardRatio));
+    }
+
+    /** Reverts showKeyboard: slides the overlay back down, hands --vh/--modal-vh back to the live viewport,
+     *  and drops the flags - all once the slide lands. Also the collapse button's action. */
+    public static hideKeyboard(durationMs = DebugUI._keyboardAnimMs): void {
+        const height = this._kbHeight || Math.round(window.innerHeight * this._textKeyboardRatio);
+        // Keep debug-keyboard-forced set through the slide so init.ts's listener can't snap --vh mid-motion;
+        // drop it (and keyboard-open) and hide the overlay only once it's fully retracted.
+        this.animateKeyboard(height, 0, durationMs, () => {
+            document.body.classList.remove('keyboard-open', 'debug-keyboard-forced');
+            if (this._kbEl)
+                this._kbEl.style.display = 'none';
+        });
+        infoLog?.log(`hideKeyboard: ${durationMs}ms`);
+    }
+
+    /** Auto-keyboard mode for desktop mobile-emulation: while on, focusing any input/textarea/
+     *  contenteditable pops the simulated keyboard (numeric fields get the shorter numeric height) and
+     *  blurring to a non-editable hides it - so the page behaves like a real device without manual
+     *  show/hide calls. Reuses keyboard-visibility's isEditable; editable→editable focus keeps it up. */
+    public static enableMobileKeyboard(): void {
+        if (this._keyboardAutoHandlers)
+            return;
+        const focusin = (e: FocusEvent): void => {
+            if (!isEditable(e.target))
+                return;
+            const ratio = DebugUI.isNumericField(e.target)
+                ? DebugUI._numberKeyboardRatio
+                : DebugUI._textKeyboardRatio;
+            DebugUI.showKeyboard(Math.round(window.innerHeight * ratio));
+        };
+        const focusout = (e: FocusEvent): void => {
+            // Editable→editable keeps the keyboard up; only leaving to a non-editable tears it down.
+            if (isEditable(e.relatedTarget))
+                return;
+            DebugUI.hideKeyboard();
+        };
+        document.addEventListener('focusin', focusin);
+        document.addEventListener('focusout', focusout);
+        this._keyboardAutoHandlers = { focusin, focusout };
+        infoLog?.log(`enableMobileKeyboard: on`);
+    }
+
+    public static disableMobileKeyboard(): void {
+        const handlers = this._keyboardAutoHandlers;
+        if (handlers) {
+            document.removeEventListener('focusin', handlers.focusin);
+            document.removeEventListener('focusout', handlers.focusout);
+            this._keyboardAutoHandlers = null;
+        }
+        this.hideKeyboard();
+        infoLog?.log(`disableMobileKeyboard: off`);
+    }
+
     /** On-demand: makes every live InfiniteList compare its geometry model against the DOM after each
      *  render and layout, warning when an item has drifted from where the model says it is. */
     public static virtualListDebug(enable = true): void {
@@ -497,6 +584,102 @@ export class DebugUI {
     }
 
     // Private methods
+
+    // Drives both the modal viewport vars (--vh/--modal-vh, so modals reflow) and the visible on-screen
+    // keyboard overlay from one 0..1 "openness" value, easeOutCubic over durationMs - fast-then-settling
+    // like a real keyboard. A new run cancels the previous; onDone fires when it lands.
+    private static animateKeyboard(kbHeight: number, target: number, durationMs: number, onDone?: () => void): void {
+        if (this._kbTweenRaf !== null) {
+            cancelAnimationFrame(this._kbTweenRaf);
+            this._kbTweenRaf = null;
+        }
+        const full = window.innerHeight;
+        this._kbHeight = kbHeight;
+        const el = this.ensureKeyboardEl();
+        el.style.height = `${kbHeight}px`;
+        el.style.display = '';
+        const from = this._kbOpenness;
+        const apply = (o: number): void => {
+            this._kbOpenness = o;
+            this.setViewport(full - kbHeight * o);
+            el.style.transform = `translateY(${(1 - o) * 100}%)`;
+        };
+        if (durationMs <= 0 || Math.abs(from - target) < 0.001) {
+            apply(target);
+            onDone?.();
+            return;
+        }
+        const startedAt = performance.now();
+        const step = (now: number): void => {
+            const t = Math.min(1, (now - startedAt) / durationMs);
+            const eased = 1 - (1 - t) ** 3;
+            apply(from + (target - from) * eased);
+            if (t < 1) {
+                this._kbTweenRaf = requestAnimationFrame(step);
+            } else {
+                this._kbTweenRaf = null;
+                onDone?.();
+            }
+        };
+        this._kbTweenRaf = requestAnimationFrame(step);
+    }
+
+    private static setViewport(visiblePx: number): void {
+        const value = `${visiblePx * 0.01}px`;
+        const style = document.documentElement.style;
+        style.setProperty('--vh', value);
+        style.setProperty('--modal-vh', value);
+    }
+
+    // Builds (once) the fake keyboard overlay: a bottom-pinned panel with a collapse button in its
+    // bottom-right corner, mirroring Android's hide-keyboard affordance. Sits above modals (a real keyboard
+    // is above everything), so the keyboard is visible even where nothing sizes to --modal-vh.
+    private static ensureKeyboardEl(): HTMLElement {
+        if (this._kbEl)
+            return this._kbEl;
+        const el = document.createElement('div');
+        el.setAttribute('aria-hidden', 'true');
+        Object.assign(el.style, {
+            position: 'fixed', left: '0', right: '0', bottom: '0',
+            zIndex: '2147483000',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '8px',
+            boxSizing: 'border-box', padding: '8px 12px',
+            background: '#26262b', borderTop: '1px solid rgba(255,255,255,0.15)',
+            color: 'rgba(255,255,255,0.5)', font: '12px/1.2 system-ui, sans-serif',
+            transform: 'translateY(100%)', pointerEvents: 'auto', userSelect: 'none',
+        } as Partial<CSSStyleDeclaration>);
+        const label = document.createElement('span');
+        label.textContent = 'Simulated keyboard';
+        label.style.alignSelf = 'center';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.title = 'Collapse keyboard';
+        btn.textContent = '⌄';
+        Object.assign(btn.style, {
+            width: '40px', height: '40px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: 'none', borderRadius: '8px',
+            background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.85)',
+            fontSize: '22px', lineHeight: '1', cursor: 'pointer',
+        } as Partial<CSSStyleDeclaration>);
+        btn.addEventListener('click', () => DebugUI.hideKeyboard());
+        el.append(label, btn);
+        document.body.appendChild(el);
+        this._kbEl = el;
+        return el;
+    }
+
+    // Picks the numeric keyboard for fields that would raise it on a device - <input type=number|tel>
+    // or any editable with a numeric inputmode.
+    private static isNumericField(node: EventTarget | null): boolean {
+        const el = node as HTMLElement | null;
+        if (!el?.getAttribute)
+            return false;
+        const type = (el.getAttribute('type') ?? '').toLowerCase();
+        const mode = (el.getAttribute('inputmode') ?? '').toLowerCase();
+        return type === 'number' || type === 'tel'
+            || mode === 'numeric' || mode === 'tel' || mode === 'decimal';
+    }
 
     private static setVideoTraceKill(
         kind: VideoTraceKillKind,

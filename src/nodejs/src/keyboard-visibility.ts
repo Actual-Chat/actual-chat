@@ -10,7 +10,7 @@ const MinShrinkPx = 100;
 let baseline: number | null = null;
 let lastWidth = 0;
 
-function isEditable(node: EventTarget | null): boolean {
+export function isEditable(node: EventTarget | null): boolean {
     const el = node as HTMLElement | null;
     return !!el && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
 }
@@ -20,6 +20,10 @@ function viewportHeight(): number {
 }
 
 function update(): void {
+    // debugUI.showKeyboard() forces the keyboard state on desktop; stand down so a stray viewport
+    // event doesn't toggle body.keyboard-open back off under it.
+    if (document.body.classList.contains('debug-keyboard-forced'))
+        return;
     const width = window.visualViewport?.width ?? window.innerWidth;
     if (width !== lastWidth) {
         // Orientation/window resize: re-baseline so a stale reference doesn't misreport the keyboard.
