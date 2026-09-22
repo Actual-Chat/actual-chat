@@ -138,8 +138,9 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         }
 
         // Cleared only once committed: on a ring still in the slot, dropping collapsed would bring the modal back.
+        // The ring mute is NOT cleared here - it has to outlast the accept round trip, which can put the
+        // slot back to Ringing for a beat; the release teardown clears it through ClearCallFlags.
         ClearIf(_collapsedChatId, chatId);
-        ClearIf(_mutedRingChatId, chatId);
         Bridge?.DismissCallNotification(chatId);
         try {
             await CallUI.AcceptCall(chatId, CancellationToken.None).ConfigureAwait(true);

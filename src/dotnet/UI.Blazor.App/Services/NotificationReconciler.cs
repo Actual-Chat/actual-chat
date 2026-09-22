@@ -13,7 +13,12 @@ namespace ActualChat.UI.Blazor.App.Services;
 //   banner (which doesn't change the active set) never resurrects it. iOS is prune-only.
 public sealed class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
 {
-    private static readonly ComputedSynchronizer Synchronizer = ComputedSynchronizer.Safe.Instance;
+    // Safe's own assumptions - a disconnected peer, a cache-delayed read - name exactly the cases
+    // where the server sent nothing; its duration cap stays, so an unreachable server skips a prune.
+    private static readonly ComputedSynchronizer Synchronizer = new ComputedSynchronizer.Safe {
+        AssumeSynchronizedWhenDisconnected = false,
+        AssumeSynchronizedWhenRemoteComputedCacheHasHitToCallDelayer = false,
+    };
 
     private HashSet<string> _lastActiveTags = new();
     private bool _isInitialized;
