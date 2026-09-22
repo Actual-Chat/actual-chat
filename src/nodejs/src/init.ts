@@ -48,6 +48,7 @@ void (async () => {
         const rootStyle = window.document.documentElement.style;
         let vhRafId = 0;
         let vvTopTimer = 0;
+        let lastOffsetTop = 0;
         const commitModalVh = () => {
             const viewport = window.visualViewport;
             // debugUI.showKeyboard() owns --vh/--modal-vh while forcing a simulated keyboard.
@@ -68,10 +69,30 @@ void (async () => {
                 return;
             rootStyle.setProperty('--vh', `${viewport.height * 0.01}px`);
         };
-        const commitOffsetTop = () => {
+        const updateVvTop = () => {
             const viewport = window.visualViewport;
-            if (viewport)
-                rootStyle.setProperty('--vv-top', `${viewport.offsetTop}px`);
+            if (!viewport)
+                return;
+            const offset = viewport.offsetTop;
+            // A height-only event (offsetTop unchanged) must not reschedule the confirm timer below.
+            if (offset === lastOffsetTop)
+                return;
+            lastOffsetTop = offset;
+            clearTimeout(vvTopTimer);
+            if (offset === 0) {
+                // Un-pan (rest, or the keyboard closing): apply at once so the overlay doesn't linger
+                // shifted down and hide the sheet's footer while a stale offset drains.
+                rootStyle.setProperty('--vv-top', '0px');
+                return;
+            }
+            // A live pan: iOS holds it and top: var(--vv-top) must follow it; Android's focus bounce keeps
+            // changing until it snaps back to 0 (handled above), so it never reaches this timer. Follow the
+            // pan only once it has held briefly, so a transient bounce never moves the overlay.
+            vvTopTimer = window.setTimeout(() => {
+                const vp = window.visualViewport;
+                if (vp)
+                    rootStyle.setProperty('--vv-top', `${vp.offsetTop}px`);
+            }, 150);
         };
         const updateViewportVars = () => {
             // --modal-vh drives modal layout and must be fresh the instant the keyboard opens: a one-frame
@@ -80,13 +101,10 @@ void (async () => {
             commitModalVh();
             if (vhRafId === 0)
                 vhRafId = window.requestAnimationFrame(commitHeight);
-            // Focusing a field the keyboard would cover makes the WebView pan the visual viewport up and
-            // back to 0 in a ~200ms burst (offsetTop). The modal overlay anchors to --vv-top, so tracking
-            // that burst live makes it jerk and briefly reveal the content behind it. Commit only the
-            // settled value: reset the timer on every event, so it lands ~150ms after panning stops - a
-            // transient bounce is ignored, a real persistent pan (e.g. iOS) still applies.
-            clearTimeout(vvTopTimer);
-            vvTopTimer = window.setTimeout(commitOffsetTop, 150);
+            // Focusing a field the keyboard would cover makes the WebView pan the visual viewport (offsetTop).
+            // The overlay's top follows --vv-top; updateVvTop applies a return-to-0 at once but only follows a
+            // pan once it holds, so Android's transient bounce is skipped while a persistent iOS pan applies.
+            updateVvTop();
         };
         window.visualViewport.addEventListener('resize', updateViewportVars);
         // The keyboard panning the visual viewport changes offsetTop, and that fires scroll, not resize
