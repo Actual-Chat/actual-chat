@@ -70,6 +70,10 @@
   "YourAccount_Name": "Imię",
   "YourAccount_UserLink": "Link użytkownika",
   "YourAccount_Email": "E-mail",
+  "YourAccount_Digest": "Codzienne podsumowanie e-mailem",
+  "YourAccount_DigestCaption_Format": "Codziennie o {0}, {1}",
+  "YourAccount_DigestVerifyEmail": "Dodaj i zweryfikuj swój e-mail, aby otrzymywać podsumowanie",
+  "YourAccount_DigestTimeZoneNotSet": "Wysyłane, gdy poznamy Twoją strefę czasową",
   "YourAccount_Phone": "Telefon",
   "YourAccount_TimeZone": "Strefa czasowa (do podsumowań)",
   "YourAccount_TimeZoneNotSet": "Nie ustawiono",
@@ -305,9 +309,6 @@
   "NativeApp_AutoStartEnabledByPolicy": "Autostart jest włączony przez zasady grupy lub komputera.",
   "NativeApp_AutoStartDisabledByPolicy": "Autostart jest wyłączony przez zasady grupy lub komputera albo nie jest obsługiwany na tym urządzeniu.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Autostart aplikacji {0} jest wyłączony w Menedżerze zadań. Możesz go ponownie włączyć na karcie Uruchamianie.",
-
-  "Email_Title": "E-mail",
-  "Email_Label": "E-mail",
 
   "ApiKeyCreate_Title": "Utwórz klucz API",
   "ApiKeyCreate_Name": "Nazwa",

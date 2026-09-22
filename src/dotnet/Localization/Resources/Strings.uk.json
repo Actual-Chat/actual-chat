@@ -70,6 +70,10 @@
   "YourAccount_Name": "Ім'я",
   "YourAccount_UserLink": "Посилання на профіль",
   "YourAccount_Email": "Електронна пошта",
+  "YourAccount_Digest": "Щоденний дайджест на пошту",
+  "YourAccount_DigestCaption_Format": "Щодня о {0}, {1}",
+  "YourAccount_DigestVerifyEmail": "Додайте й підтвердьте електронну пошту, щоб отримувати дайджест",
+  "YourAccount_DigestTimeZoneNotSet": "Надсилається, коли стане відомий ваш часовий пояс",
   "YourAccount_Phone": "Телефон",
   "YourAccount_TimeZone": "Часовий пояс (для дайджесту)",
   "YourAccount_TimeZoneNotSet": "Не задано",
@@ -305,9 +309,6 @@
   "NativeApp_AutoStartEnabledByPolicy": "Автозапуск увімкнено груповою політикою або політикою пристрою.",
   "NativeApp_AutoStartDisabledByPolicy": "Автозапуск вимкнено груповою політикою або політикою пристрою чи не підтримується на цьому пристрої.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Автозапуск {0} вимкнено в Диспетчері завдань. Увімкнути його знову можна на вкладці «Автозавантаження».",
-
-  "Email_Title": "Електронна пошта",
-  "Email_Label": "Електронна пошта",
 
   "ApiKeyCreate_Title": "Створити API-ключ",
   "ApiKeyCreate_Name": "Назва",

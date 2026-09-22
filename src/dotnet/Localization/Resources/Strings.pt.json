@@ -70,6 +70,10 @@
   "YourAccount_Name": "Nome",
   "YourAccount_UserLink": "Link do usuário",
   "YourAccount_Email": "E-mail",
+  "YourAccount_Digest": "Resumo diário por e-mail",
+  "YourAccount_DigestCaption_Format": "Todos os dias às {0}, {1}",
+  "YourAccount_DigestVerifyEmail": "Adicione e verifique seu e-mail para receber o resumo",
+  "YourAccount_DigestTimeZoneNotSet": "Enviado assim que seu fuso horário for conhecido",
   "YourAccount_Phone": "Telefone",
   "YourAccount_TimeZone": "Fuso horário (para o resumo)",
   "YourAccount_TimeZoneNotSet": "Não definido",
@@ -305,9 +309,6 @@
   "NativeApp_AutoStartEnabledByPolicy": "A inicialização automática está ativada por política de grupo ou do dispositivo.",
   "NativeApp_AutoStartDisabledByPolicy": "A inicialização automática está desativada por política de grupo ou do dispositivo, ou não é compatível com este dispositivo.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "A inicialização automática do {0} está desativada no Gerenciador de Tarefas. Você pode reativá-la na aba Inicializar.",
-
-  "Email_Title": "E-mail",
-  "Email_Label": "E-mail",
 
   "ApiKeyCreate_Title": "Criar chave de API",
   "ApiKeyCreate_Name": "Nome",

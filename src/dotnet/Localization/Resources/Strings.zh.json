@@ -70,6 +70,10 @@
   "YourAccount_Name": "姓名",
   "YourAccount_UserLink": "用户链接",
   "YourAccount_Email": "电子邮箱",
+  "YourAccount_Digest": "每日邮件摘要",
+  "YourAccount_DigestCaption_Format": "每天 {0}，{1}",
+  "YourAccount_DigestVerifyEmail": "添加并验证您的电子邮箱以接收摘要",
+  "YourAccount_DigestTimeZoneNotSet": "确定您的时区后发送",
   "YourAccount_Phone": "电话",
   "YourAccount_TimeZone": "时区(用于摘要)",
   "YourAccount_TimeZoneNotSet": "未设置",
@@ -305,9 +309,6 @@
   "NativeApp_AutoStartEnabledByPolicy": "自动启动已由组策略或设备策略启用。",
   "NativeApp_AutoStartDisabledByPolicy": "自动启动已由组策略或设备策略禁用，或此设备不支持。",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "{0} 的自动启动已在任务管理器中禁用。你可以在“启动”选项卡中重新启用。",
-
-  "Email_Title": "电子邮件",
-  "Email_Label": "电子邮件",
 
   "ApiKeyCreate_Title": "创建 API 密钥",
   "ApiKeyCreate_Name": "名称",

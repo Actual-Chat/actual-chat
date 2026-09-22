@@ -102,6 +102,10 @@
   "YourAccount_Name": "Nombre",
   "YourAccount_UserLink": "Посилання на профіль",
   "YourAccount_Email": "Электронная почта",
+  "YourAccount_Digest": "Tägliche Zusammenfassung per E-Mail",
+  "YourAccount_DigestCaption_Format": "Setiap hari pukul {0}, {1}",
+  "YourAccount_DigestVerifyEmail": "Fügen Sie Ihre E-Mail hinzu und bestätigen Sie sie, um die Zusammenfassung zu erhalten",
+  "YourAccount_DigestTimeZoneNotSet": "Изпраща се, след като часовата ви зона стане известна",
   "YourAccount_Phone": "Téléphone",
   "YourAccount_TimeZone": "Zeitzone (für die Zusammenfassung)",
   "YourAccount_TimeZoneNotSet": "Није постављена",
@@ -371,10 +375,6 @@
   "NativeApp_AutoStartEnabledByPolicy": "Le démarrage automatique est activé par une stratégie de groupe ou de l'appareil.",
   "NativeApp_AutoStartDisabledByPolicy": "Le démarrage automatique est désactivé par une stratégie de groupe ou de l'appareil, ou n'est pas pris en charge sur cet appareil.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Аутоматско покретање апликације {0} искључено је у Управитељу задатака. Можете га поново укључити на картици Покретање.",
-
-  // The email editor page in Settings > Your Account.
-  "Email_Title": "Электронная почта",
-  "Email_Label": "Электронная почта",
 
   // The API key creation form. ApiKeyCreate_Placeholder is the example text inside the empty
   // Name field, not a value.

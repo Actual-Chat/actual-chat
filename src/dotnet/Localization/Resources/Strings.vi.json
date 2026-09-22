@@ -70,6 +70,10 @@
   "YourAccount_Name": "Tên",
   "YourAccount_UserLink": "Liên kết người dùng",
   "YourAccount_Email": "Email",
+  "YourAccount_Digest": "Bản tóm tắt email hàng ngày",
+  "YourAccount_DigestCaption_Format": "Hàng ngày lúc {0}, {1}",
+  "YourAccount_DigestVerifyEmail": "Thêm và xác minh email để nhận bản tóm tắt",
+  "YourAccount_DigestTimeZoneNotSet": "Gửi khi đã biết múi giờ của bạn",
   "YourAccount_Phone": "Điện thoại",
   "YourAccount_TimeZone": "Múi giờ (cho bản tóm tắt)",
   "YourAccount_TimeZoneNotSet": "Chưa đặt",
@@ -305,9 +309,6 @@
   "NativeApp_AutoStartEnabledByPolicy": "Tự động khởi động đã được bật bởi chính sách nhóm hoặc thiết bị.",
   "NativeApp_AutoStartDisabledByPolicy": "Tự động khởi động đã bị tắt bởi chính sách nhóm hoặc thiết bị, hoặc không được hỗ trợ trên thiết bị này.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Tự động khởi động {0} đang bị tắt trong Trình quản lý tác vụ. Bạn có thể bật lại ở thẻ Khởi động.",
-
-  "Email_Title": "Email",
-  "Email_Label": "Email",
 
   "ApiKeyCreate_Title": "Tạo khóa API",
   "ApiKeyCreate_Name": "Tên",

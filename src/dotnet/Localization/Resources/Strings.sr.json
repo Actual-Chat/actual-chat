@@ -70,6 +70,10 @@
   "YourAccount_Name": "Име",
   "YourAccount_UserLink": "Кориснички линк",
   "YourAccount_Email": "Емаил",
+  "YourAccount_Digest": "Дневни сажетак путем емаила",
+  "YourAccount_DigestCaption_Format": "Сваки дан у {0}, {1}",
+  "YourAccount_DigestVerifyEmail": "Додајте и потврдите емаил да бисте примали сажетак",
+  "YourAccount_DigestTimeZoneNotSet": "Шаље се кад ваша временска зона буде позната",
   "YourAccount_Phone": "Телефон",
   "YourAccount_TimeZone": "Временска зона (за сажетке)",
   "YourAccount_TimeZoneNotSet": "Није постављена",
@@ -305,9 +309,6 @@
   "NativeApp_AutoStartEnabledByPolicy": "Аутоматско покретање је укључено правилима групе или рачунара.",
   "NativeApp_AutoStartDisabledByPolicy": "Аутоматско покретање је искључено правилима групе или рачунара, или није подржано на овом уређају.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Аутоматско покретање апликације {0} искључено је у Управитељу задатака. Можете га поново укључити на картици Покретање.",
-
-  "Email_Title": "Емаил",
-  "Email_Label": "Емаил",
 
   "ApiKeyCreate_Title": "Креирајте API кључ",
   "ApiKeyCreate_Name": "Назив",

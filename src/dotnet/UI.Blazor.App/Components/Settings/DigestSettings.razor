@@ -1,0 +1,85 @@
+@using TimeZone = ActualChat.Users.TimeZone
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, DigestSettings.Model>
+@{
+    var m = State.Value;
+    var isChecked = m.IsEmailVerified && m.IsEnabled;
+}
+
+<TileItem Click="@OnClick">
+    <Icon>
+        <i class="icon-email"></i>
+    </Icon>
+    <Content>
+        @L.YourAccount_Digest
+    </Content>
+    <Caption>
+        @GetCaption(m)
+    </Caption>
+    <Right>
+        <div class="c-actions" @onclick:stopPropagation="true">
+            <Toggle
+                IsChecked="@isChecked"
+                IsDisabled="@(!m.IsEmailVerified)"
+                IsCheckedChanged="@OnToggle"/>
+        </div>
+    </Right>
+</TileItem>
+
+@code {
+    private Task _whenUpdatedTask = Task.CompletedTask;
+
+    [Parameter] public Action? VerifyEmail { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var account = await AccountUI.OwnAccount.Use(cancellationToken);
+        var settings = await UserSettingsUI.UserEmailsSettings().Get(cancellationToken);
+        var timeZones = await Hub.TimeZones.List("en-US", cancellationToken);
+        var timeZone = timeZones.FirstOrDefault(z => z.Id == account.TimeZone);
+        return new(account.IsEmailVerified(), settings.IsDigestEnabled, settings.DigestTime, timeZone);
+    }
+
+    private string GetCaption(Model m) {
+        if (!m.IsEmailVerified)
+            return L.YourAccount_DigestVerifyEmail;
+        if (m.TimeZone is null)
+            return L.YourAccount_DigestTimeZoneNotSet;
+
+        var time = (DateTime.Today + m.DigestTime).ToString("t", DateFormatter);
+        return L.YourAccount_DigestCaption_Format(time, $"{m.TimeZone.City} {m.TimeZone.GetUtcOffsetText()}");
+    }
+
+    private void OnClick() {
+        var m = State.Value;
+        if (!m.IsEmailVerified)
+            VerifyEmail?.Invoke();
+        else
+            _ = OnToggle(!m.IsEnabled);
+    }
+
+    private Task OnToggle(bool isEnabled) {
+        // Chained so rapid clicks apply in click order (last click wins)
+        var prevUpdateTask = _whenUpdatedTask;
+        _whenUpdatedTask = UpdateSettings();
+        return _whenUpdatedTask;
+
+        async Task UpdateSettings() {
+            await prevUpdateTask.SilentAwait();
+            await UserSettingsUI.UserEmailsSettings()
+                .Update(x => x with { IsDigestEnabled = isEnabled }, CancellationToken.None);
+            await State.Recompute();
+        }
+    }
+
+    // Nested types
+
+    public sealed record Model(bool IsEmailVerified, bool IsEnabled, TimeSpan DigestTime, TimeZone? TimeZone) {
+        public static readonly Model None = new(false, false, TimeSpan.Zero, null);
+    }
+}

@@ -70,6 +70,10 @@
   "YourAccount_Name": "Ad",
   "YourAccount_UserLink": "Kullanıcı bağlantısı",
   "YourAccount_Email": "E-posta",
+  "YourAccount_Digest": "Günlük e-posta özeti",
+  "YourAccount_DigestCaption_Format": "Her gün {0}, {1}",
+  "YourAccount_DigestVerifyEmail": "Özeti almak için e-postanızı ekleyin ve doğrulayın",
+  "YourAccount_DigestTimeZoneNotSet": "Saat diliminiz belirlendiğinde gönderilir",
   "YourAccount_Phone": "Telefon",
   "YourAccount_TimeZone": "Saat dilimi (özet için)",
   "YourAccount_TimeZoneNotSet": "Ayarlanmadı",
@@ -305,9 +309,6 @@
   "NativeApp_AutoStartEnabledByPolicy": "Otomatik başlatma grup/makine ilkesiyle etkinleştirildi.",
   "NativeApp_AutoStartDisabledByPolicy": "Otomatik başlatma grup/makine ilkesiyle devre dışı bırakıldı veya bu cihazda desteklenmiyor.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "{0} otomatik başlatma Görev Yöneticisi'nde devre dışı. Başlangıç sekmesinden yeniden etkinleştirebilirsiniz.",
-
-  "Email_Title": "E-posta",
-  "Email_Label": "E-posta",
 
   "ApiKeyCreate_Title": "API Anahtarı Oluşturun",
   "ApiKeyCreate_Name": "Ad",

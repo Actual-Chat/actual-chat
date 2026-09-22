@@ -70,6 +70,10 @@
   "YourAccount_Name": "Jméno",
   "YourAccount_UserLink": "Odkaz uživatele",
   "YourAccount_Email": "E-mail",
+  "YourAccount_Digest": "Denní souhrn e-mailem",
+  "YourAccount_DigestCaption_Format": "Denně v {0}, {1}",
+  "YourAccount_DigestVerifyEmail": "Přidejte a ověřte svůj e-mail, abyste dostávali souhrn",
+  "YourAccount_DigestTimeZoneNotSet": "Odesílá se, jakmile bude známo vaše časové pásmo",
   "YourAccount_Phone": "Telefon",
   "YourAccount_TimeZone": "Časové pásmo (pro souhrny)",
   "YourAccount_TimeZoneNotSet": "Nenastaveno",
@@ -305,9 +309,6 @@
   "NativeApp_AutoStartEnabledByPolicy": "Automatické spouštění je zapnuto zásadami skupiny nebo počítače.",
   "NativeApp_AutoStartDisabledByPolicy": "Automatické spouštění je vypnuto zásadami skupiny nebo počítače, případně není na tomto zařízení podporováno.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Automatické spouštění aplikace {0} je vypnuto ve Správci úloh. Znovu ho zapnete na kartě Po spuštění.",
-
-  "Email_Title": "E-mail",
-  "Email_Label": "E-mail",
 
   "ApiKeyCreate_Title": "Vytvořit klíč API",
   "ApiKeyCreate_Name": "Název",

@@ -70,6 +70,10 @@
   "YourAccount_Name": "Nama",
   "YourAccount_UserLink": "Tautan pengguna",
   "YourAccount_Email": "Email",
+  "YourAccount_Digest": "Ringkasan email harian",
+  "YourAccount_DigestCaption_Format": "Setiap hari pukul {0}, {1}",
+  "YourAccount_DigestVerifyEmail": "Tambahkan dan verifikasi email Anda untuk menerima ringkasan",
+  "YourAccount_DigestTimeZoneNotSet": "Dikirim setelah zona waktu Anda diketahui",
   "YourAccount_Phone": "Telepon",
   "YourAccount_TimeZone": "Zona waktu (untuk ringkasan)",
   "YourAccount_TimeZoneNotSet": "Belum diatur",
@@ -305,9 +309,6 @@
   "NativeApp_AutoStartEnabledByPolicy": "Jalan otomatis diaktifkan oleh kebijakan grup atau perangkat.",
   "NativeApp_AutoStartDisabledByPolicy": "Jalan otomatis dinonaktifkan oleh kebijakan grup atau perangkat, atau tidak didukung di perangkat ini.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Jalan otomatis {0} dinonaktifkan di Task Manager. Anda bisa mengaktifkannya lagi di tab Startup.",
-
-  "Email_Title": "Email",
-  "Email_Label": "Email",
 
   "ApiKeyCreate_Title": "Buat kunci API",
   "ApiKeyCreate_Name": "Nama",

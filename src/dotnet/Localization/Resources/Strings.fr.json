@@ -70,6 +70,10 @@
   "YourAccount_Name": "Nom",
   "YourAccount_UserLink": "Lien utilisateur",
   "YourAccount_Email": "E-mail",
+  "YourAccount_Digest": "Résumé quotidien par e-mail",
+  "YourAccount_DigestCaption_Format": "Chaque jour à {0}, {1}",
+  "YourAccount_DigestVerifyEmail": "Ajoutez et vérifiez votre e-mail pour recevoir le résumé",
+  "YourAccount_DigestTimeZoneNotSet": "Envoyé dès que votre fuseau horaire est connu",
   "YourAccount_Phone": "Téléphone",
   "YourAccount_TimeZone": "Fuseau horaire (pour le résumé)",
   "YourAccount_TimeZoneNotSet": "Non défini",
@@ -305,9 +309,6 @@
   "NativeApp_AutoStartEnabledByPolicy": "Le démarrage automatique est activé par une stratégie de groupe ou de l'appareil.",
   "NativeApp_AutoStartDisabledByPolicy": "Le démarrage automatique est désactivé par une stratégie de groupe ou de l'appareil, ou n'est pas pris en charge sur cet appareil.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Le démarrage automatique de {0} est désactivé dans le Gestionnaire des tâches. Vous pouvez le réactiver dans l'onglet Démarrage.",
-
-  "Email_Title": "E-mail",
-  "Email_Label": "E-mail",
 
   "ApiKeyCreate_Title": "Créer une clé API",
   "ApiKeyCreate_Name": "Nom",

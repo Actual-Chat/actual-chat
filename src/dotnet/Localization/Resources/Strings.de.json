@@ -70,6 +70,10 @@
   "YourAccount_Name": "Name",
   "YourAccount_UserLink": "Benutzerlink",
   "YourAccount_Email": "E-Mail",
+  "YourAccount_Digest": "Tägliche Zusammenfassung per E-Mail",
+  "YourAccount_DigestCaption_Format": "Täglich um {0}, {1}",
+  "YourAccount_DigestVerifyEmail": "Fügen Sie Ihre E-Mail hinzu und bestätigen Sie sie, um die Zusammenfassung zu erhalten",
+  "YourAccount_DigestTimeZoneNotSet": "Wird gesendet, sobald Ihre Zeitzone bekannt ist",
   "YourAccount_Phone": "Telefon",
   "YourAccount_TimeZone": "Zeitzone (für die Zusammenfassung)",
   "YourAccount_TimeZoneNotSet": "Nicht festgelegt",
@@ -305,9 +309,6 @@
   "NativeApp_AutoStartEnabledByPolicy": "Der Autostart ist durch eine Gruppen- oder Geräterichtlinie aktiviert.",
   "NativeApp_AutoStartDisabledByPolicy": "Der Autostart ist durch eine Gruppen- oder Geräterichtlinie deaktiviert oder wird auf diesem Gerät nicht unterstützt.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Der Autostart von {0} ist im Task-Manager deaktiviert. Sie können ihn auf der Registerkarte „Autostart“ wieder aktivieren.",
-
-  "Email_Title": "E-Mail",
-  "Email_Label": "E-Mail",
 
   "ApiKeyCreate_Title": "API-Schlüssel erstellen",
   "ApiKeyCreate_Name": "Name",

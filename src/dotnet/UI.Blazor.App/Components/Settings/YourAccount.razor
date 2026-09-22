@@ -66,6 +66,8 @@
         </Right>
     </TileItem>
 
+    <DigestSettings VerifyEmail="@(() => OnEditClick(AccountField.Email))"/>
+
     <TileItem Click="@(() => OnEditClick(AccountField.Phone))">
         <Icon>
             <i class="icon-phone"></i>

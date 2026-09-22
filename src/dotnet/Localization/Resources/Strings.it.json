@@ -70,6 +70,10 @@
   "YourAccount_Name": "Nome",
   "YourAccount_UserLink": "Link utente",
   "YourAccount_Email": "Email",
+  "YourAccount_Digest": "Riepilogo giornaliero via email",
+  "YourAccount_DigestCaption_Format": "Ogni giorno alle {0}, {1}",
+  "YourAccount_DigestVerifyEmail": "Aggiungi e verifica la tua email per ricevere il riepilogo",
+  "YourAccount_DigestTimeZoneNotSet": "Inviato quando il tuo fuso orario sarà noto",
   "YourAccount_Phone": "Telefono",
   "YourAccount_TimeZone": "Fuso orario (per il riepilogo)",
   "YourAccount_TimeZoneNotSet": "Non impostato",
@@ -305,9 +309,6 @@
   "NativeApp_AutoStartEnabledByPolicy": "L'avvio automatico è abilitato da criteri di gruppo o del dispositivo.",
   "NativeApp_AutoStartDisabledByPolicy": "L'avvio automatico è disabilitato da criteri di gruppo o del dispositivo, oppure non è supportato su questo dispositivo.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "L'avvio automatico di {0} è disabilitato in Gestione attività. Puoi riabilitarlo nella scheda Avvio.",
-
-  "Email_Title": "Email",
-  "Email_Label": "Email",
 
   "ApiKeyCreate_Title": "Crea chiave API",
   "ApiKeyCreate_Name": "Nome",
