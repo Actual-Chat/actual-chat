@@ -313,6 +313,10 @@ class DismissKeyboardOnDragGesture extends Gesture {
                 return;
             if (target.closest(this.BottomPanelSelector))
                 return;
+            // Inside a modal the keyboard belongs to the form being filled in; scrolling the body to
+            // reach a field further down must not dismiss it.
+            if (target.closest('.modal-frame'))
+                return;
             dismissSystemKeyboard();
         });
     }

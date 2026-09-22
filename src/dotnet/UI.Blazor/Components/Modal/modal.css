@@ -27,10 +27,22 @@ body.narrow .modal-overlay {
 
 body.device-ios .modal-overlay,
 body.device-android .modal-overlay {
-    @apply has-viewport-height;
+    /* Size to --modal-vh - the live height of the band above the keyboard, committed synchronously in
+       init.ts - rather than the rAF'd --vh, so a bottom-pinned sheet reaches the keyboard the instant it
+       opens instead of flashing full-height (and a strip of the content behind it) for a frame. */
+    height: calc(var(--modal-vh, 1dvh) * 100);
+    min-height: calc(var(--modal-vh, 1dvh) * 100);
+    max-height: calc(var(--modal-vh, 1dvh) * 100);
     /* The keyboard pans the visual viewport instead of resizing the layout one, and a fixed overlay
        anchors to the layout viewport - so without this it sits offsetTop above the visible band. */
     top: var(--vv-top, 0px);
+    /* The overlay is only as tall as the visible band, so when the WebView briefly pans the viewport on
+       focus a strip of the content behind it would show through. The full-screen dim keeps it covered. */
+    @apply shadow-modal-dim;
+}
+body.device-ios .modal-overlay.hide,
+body.device-android .modal-overlay.hide {
+    @apply shadow-none;
 }
 
 .modal-focus-trap {
@@ -91,6 +103,19 @@ body.narrow .modal-frame.modal-sm:not(.full-bleed) {
 .narrow .narrow-view__modal__position-stretch {
     @apply rounded-none;
     padding-top: var(--safe-area-top);
+}
+
+/* On a device the keyboard shrinks the visible band (--modal-vh); cap floating sheets so their top can't
+   rise past the safe area (status bar / notch) - the header stops there and the body scrolls, instead of
+   the sheet being pushed off the top edge. Off-device --modal-vh is the full height, so this stays at 80vh.
+   Docked sheets sit at the band bottom, so their budget is the band minus the top inset. */
+body.narrow .modal-frame.modal-md,
+.narrow .narrow-view__modal__position-bottom {
+    max-height: min(80vh, calc(var(--modal-vh, 1dvh) * 100 - var(--safe-area-top-narrow) - 1rem));
+}
+/* modal-sm floats above the home indicator via its bottom offset, so its top budget is smaller by it. */
+body.narrow .modal-frame.modal-sm {
+    max-height: min(80vh, calc(var(--modal-vh, 1dvh) * 100 - var(--safe-area-top-narrow) - 4vh - var(--safe-area-bottom) - 1rem));
 }
 
 .modal-frame .safe-area-bottom-overlay {
@@ -155,7 +180,22 @@ body.wide .modal-overlay-fullscreen .modal .modal-content {
 }
 body.device-ios .modal-frame,
 body.device-android .modal-frame {
-    @apply has-viewport-height;
+    min-height: calc(var(--modal-vh, 1dvh) * 100);
+    max-height: calc(var(--modal-vh, 1dvh) * 100);
+}
+/* On focus the WebView pans the visual viewport to reveal the field, dragging the fixed modal with it.
+   Giving the body its own scroll-padding lets that reveal happen inside the form's scroll instead, and
+   containing overscroll stops the gesture chaining out to the viewport - together they keep the modal put. */
+body.device-ios .dialog-body,
+body.device-android .dialog-body {
+    scroll-padding-bottom: 6rem;
+    overscroll-behavior: contain;
+}
+body.device-ios .modal-overlay,
+body.device-android .modal-overlay,
+body.device-ios .modal-frame,
+body.device-android .modal-frame {
+    overscroll-behavior: contain;
 }
 @supports (transition-behavior: allow-discrete) {
     .modal-overlay .modal-frame {

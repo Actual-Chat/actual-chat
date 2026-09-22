@@ -45,21 +45,48 @@ void ServiceWorker.init();
 
 void (async () => {
     if (window.visualViewport) {
+        const rootStyle = window.document.documentElement.style;
         let vhRafId = 0;
-        const updateViewportVars = () => {
-            if (vhRafId !== 0)
+        let vvTopTimer = 0;
+        const commitModalVh = () => {
+            const viewport = window.visualViewport;
+            // debugUI.showKeyboard() owns --vh/--modal-vh while forcing a simulated keyboard.
+            if (!viewport || document.body.classList.contains('debug-keyboard-forced'))
                 return;
-
-            vhRafId = window.requestAnimationFrame(() => {
-                vhRafId = 0;
-                const viewport = window.visualViewport;
-                if (!viewport)
-                    return;
-
-                const style = window.document.documentElement.style;
-                style.setProperty('--vh', `${viewport.height * 0.01}px`);
-                style.setProperty('--vv-top', `${viewport.offsetTop}px`);
-            });
+            // Modals size to --modal-vh - the live height of the band above the keyboard - committed
+            // synchronously (unlike the rAF'd --vh) so a bottom-pinned sheet reaches the keyboard the instant
+            // it opens: a one-frame lag would flash a strip of the content behind it below the sheet, or hide
+            // its footer under the keyboard. A shorter keyboard (numeric) simply lets the sheet grow to it.
+            rootStyle.setProperty('--modal-vh', `${viewport.height * 0.01}px`);
+        };
+        commitModalVh();
+        const commitHeight = () => {
+            vhRafId = 0;
+            const viewport = window.visualViewport;
+            // debugUI.showKeyboard() owns --vh/--modal-vh while forcing a simulated keyboard.
+            if (!viewport || document.body.classList.contains('debug-keyboard-forced'))
+                return;
+            rootStyle.setProperty('--vh', `${viewport.height * 0.01}px`);
+        };
+        const commitOffsetTop = () => {
+            const viewport = window.visualViewport;
+            if (viewport)
+                rootStyle.setProperty('--vv-top', `${viewport.offsetTop}px`);
+        };
+        const updateViewportVars = () => {
+            // --modal-vh drives modal layout and must be fresh the instant the keyboard opens: a one-frame
+            // lag leaves a bottom-pinned sheet briefly full-height, hiding its footer under the keyboard. So
+            // commit it synchronously here; --vh only feeds the app shell, so it can wait for the rAF.
+            commitModalVh();
+            if (vhRafId === 0)
+                vhRafId = window.requestAnimationFrame(commitHeight);
+            // Focusing a field the keyboard would cover makes the WebView pan the visual viewport up and
+            // back to 0 in a ~200ms burst (offsetTop). The modal overlay anchors to --vv-top, so tracking
+            // that burst live makes it jerk and briefly reveal the content behind it. Commit only the
+            // settled value: reset the timer on every event, so it lands ~150ms after panning stops - a
+            // transient bounce is ignored, a real persistent pan (e.g. iOS) still applies.
+            clearTimeout(vvTopTimer);
+            vvTopTimer = window.setTimeout(commitOffsetTop, 150);
         };
         window.visualViewport.addEventListener('resize', updateViewportVars);
         // The keyboard panning the visual viewport changes offsetTop, and that fires scroll, not resize
