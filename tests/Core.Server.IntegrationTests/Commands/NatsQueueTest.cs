@@ -101,6 +101,8 @@ public class NatsQueueTest(ITestOutputHelper @out)
         await queues.Enqueue(command);
         await queues.WhenProcessing();
 
-        testService.ProcessedEvents.Count.Should().Be(2);
+        // WhenProcessing() covers the default queue, not the custom one's own reader
+        await ComputedTest.When(async ct =>
+            (await testService.GetProcessedEventCount(ct)).Should().Be(2));
     }
 }
