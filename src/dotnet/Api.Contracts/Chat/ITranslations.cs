@@ -1,3 +1,5 @@
+using ActualLab.Rpc;
+
 namespace ActualChat.Chat;
 
 /// <summary>
@@ -15,6 +17,9 @@ public interface ITranslations : IComputeService
         Range<long> lidTileRange,
         CancellationToken cancellationToken);
 
+    // Without it the call parks until the reconnect, and an error toast waits out its own 10s timeout;
+    // a cached translation is served before this ever applies.
+    [RpcMethod(ConnectTimeout = 5)]
     [ComputeMethod(MinCacheDuration = 300), RemoteComputeMethod(MinCacheDuration = 300)]
     Task<string?> GetTranslatedUIText(
         Session session,
