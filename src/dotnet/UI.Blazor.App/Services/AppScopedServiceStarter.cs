@@ -150,6 +150,7 @@ public sealed class AppScopedServiceStarter
             Hub.AppReviewPromptUI.Start();
             Hub.Services.GetRequiredService<LiveLocationReporter>().Start();
             Hub.Services.GetRequiredService<AppIconBadgeUpdater>().Start();
+            Hub.Services.GetRequiredService<AccountTimeZoneSyncer>().Start();
             Hub.Services.GetService<WindowUI>()?.Start(); // The AppKit app registers one; nobody else does
             Hub.Services.GetRequiredService<NotificationReconciler>().Start();
             Hub.Services.GetRequiredService<SeenNotificationDismisser>().Start();
