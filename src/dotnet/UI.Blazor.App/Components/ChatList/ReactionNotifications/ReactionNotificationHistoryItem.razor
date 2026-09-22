@@ -1,0 +1,59 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedRenderStateComponent<AppUIHub, Chat?>
+@{
+    var isInitial = State.IsInitial(out var chat);
+    var newest = Group.Newest;
+}
+
+<div class="reaction-notification-item c-history" @onclick="@OnClick">
+    @if (newest.AuthorId is { } authorId) {
+        <AuthorCircleGroup
+            Class="c-authors"
+            AuthorIds="@ApiArray.New(authorId)"
+            MaxCount="1"
+            Size="@SquareSize.Size8"
+            ShowRing="false"/>
+    } else {
+        <div class="c-authors c-authors-placeholder"></div>
+    }
+    <div class="c-body">
+        <div class="c-line">
+            @* The stored text is the composed "{emoji} to {quote}" line, so the emoji stays visible *@
+            <span class="c-text">@newest.Text</span>
+            @if (Group.OlderCount > 0) {
+                <Badge Class="message-counter-badge c-history-count" Color="bg-counter">+@Group.OlderCount</Badge>
+            }
+        </div>
+        <div class="c-meta">
+            <span class="c-chat">@(chat?.Title ?? newest.Title)</span>
+            <LiveTimeDeltaText Moment="@newest.SentAt"/>
+        </div>
+    </div>
+</div>
+
+@code {
+    private IChats Chats => Hub.Chats;
+
+    [Parameter, EditorRequired] public NotificationHistoryGroup Group { get; set; } = null!;
+
+    protected override ComputedState<Chat?>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Chat?>.Options() {
+                InitialValue = null,
+                UpdateDelayer = FixedDelayer.Get(0.1),
+                Category = GetStateCategory(t),
+            });
+
+    protected override Task<Chat?> ComputeState(CancellationToken cancellationToken)
+        => Chats.Get(Session, Group.ChatId, cancellationToken);
+
+    private void OnClick() {
+        // Nothing to dismiss: a history row stands for notifications that are already gone - and a
+        // chat the state has settled to null on is one the reader can no longer open.
+        if (!State.IsInitial(out var chat) && chat is null)
+            return;
+
+        var url = Group.Newest.EntryId is { } entryId ? Links.Chat(entryId) : Links.Chat(Group.ChatId);
+        _ = History.NavigateTo(url);
+    }
+}

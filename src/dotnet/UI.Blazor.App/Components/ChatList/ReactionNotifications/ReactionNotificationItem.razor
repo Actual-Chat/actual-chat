@@ -30,10 +30,14 @@
         </div>
     </div>
 </div>
+@if (IsLastItemInBlock) {
+    <Divider Class="mx-1 my-1.5"/>
+}
 
 @code {
     private IChats Chats => Hub.Chats;
     [Parameter, EditorRequired] public ReactionNotification Notification { get; set; } = null!;
+    [Parameter] public bool IsLastItemInBlock { get; set; }
 
     protected override ComputedState<string>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

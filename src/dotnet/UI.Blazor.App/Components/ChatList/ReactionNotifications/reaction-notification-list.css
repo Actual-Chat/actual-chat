@@ -1,7 +1,25 @@
-.reaction-notification-list {
+/* The list root is a FiniteList, so .virtual-list owns the scroller and the height - which is
+   why these mirror the chat tabs' rules down to the scope: a single-class rule would lose. */
+.navbar-chats .reaction-notification-list {
     @apply flex-1 flex-y;
-    @apply overflow-y-auto;
+    @apply overflow-y-auto custom-scrollbar;
 }
+
+.navbar-chats .reaction-notification-list.virtual-list::-webkit-scrollbar {
+    display: block;
+    width: 0.25rem;
+    height: 0.25rem;
+}
+body.narrow .navbar-chats .reaction-notification-list.virtual-list::-webkit-scrollbar {
+    width: 0.125rem;
+    height: 0.125rem;
+}
+
+/* FiniteList marks the last row, which is what has to clear the home indicator */
+.reaction-notification-list .c-last {
+    padding-bottom: var(--safe-area-bottom);
+}
+
 .reaction-notification-item {
     @apply flex-x items-start gap-x-2;
     @apply px-3 py-2;
@@ -28,4 +46,18 @@
 }
 .reaction-notification-item .c-chat {
     @apply truncate;
+}
+
+/* Notification history rows under the active reactions */
+.reaction-notification-item.c-history {
+    @apply opacity-60;
+}
+.reaction-notification-item .c-authors-placeholder {
+    @apply w-8 h-8;
+    @apply rounded-full;
+    @apply bg-counter;
+}
+.reaction-notification-item .c-line .message-counter-badge.c-history-count {
+    @apply ml-auto;
+    @apply text-03;
 }

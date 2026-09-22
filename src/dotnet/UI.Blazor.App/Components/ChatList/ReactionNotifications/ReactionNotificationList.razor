@@ -1,40 +1,80 @@
 @using ActualChat.Notifications
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, ReactionNotificationList.Model>
-@{
-    if (State.IsInitial(out var m))
-        return;
-}
+@inherits FusionComponentBase<AppUIHub>
+@implements IVirtualListDataSource<ReactionNotificationList.ReactionListItemModel>
 
-<div class="reaction-notification-list">
-    @foreach (var notification in m.Notifications) {
-        <ReactionNotificationItem @key="@notification.Id.Value" Notification="@notification"/>
-    }
-</div>
-<ContentSwapDisplay/>
+<FiniteList
+    Class="reaction-notification-list"
+    DataSource="@this"
+    IsContentSwapDependency="true"
+    ExpandMultiplier="3"
+    SkeletonCount="5">
+    <Item>
+        @if (context.Active is { } active) {
+            <ReactionNotificationItem Notification="@active" IsLastItemInBlock="@context.IsLastItemInBlock"/>
+        } else if (context.History is { } history) {
+            <ReactionNotificationHistoryItem Group="@history"/>
+        }
+    </Item>
+    <SkeletonBatch>
+        <chat-list-skeleton count="@context"/>
+    </SkeletonBatch>
+    <Separator>
+        <Divider Class="mx-1 my-1.5"/>
+    </Separator>
+</FiniteList>
 
 @code {
     private NotificationsUI NotificationsUI => Hub.NotificationsUI;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = new(),
-                UpdateDelayer = FixedDelayer.Get(0.1),
-                Category = GetStateCategory(t),
-            });
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var notifications = await NotificationsUI
+    public async Task<VirtualListData<ReactionListItemModel>> GetData(
+        VirtualListDataQuery query,
+        VirtualListData<ReactionListItemModel> renderedData,
+        CancellationToken cancellationToken) {
+        await ThreadPoolExt.Yield();
+        var active = await NotificationsUI
             .ListByKind(ActualChat.NotificationKind.Reaction, cancellationToken)
             .ConfigureAwait(false);
+        var history = await NotificationsUI
+            .ListHistory(NotificationsUI.ReactionsFilterId, cancellationToken)
+            .ConfigureAwait(false);
 
-        return new(notifications.OfType<ReactionNotification>().ToList());
+        // Both blocks are in memory and bounded, so the whole list is one loaded window
+        var activeReactions = active.OfType<ReactionNotification>().ToList();
+        var items = new List<ReactionListItemModel>(activeReactions.Count + history.Count);
+        for (var i = 0; i < activeReactions.Count; i++) {
+            // The last active row is the one that renders the divider, as in ChatList
+            var isLastItemInBlock = i == activeReactions.Count - 1 && history.Count > 0;
+            items.Add(new ReactionListItemModel(i, activeReactions[i], null, isLastItemInBlock));
+        }
+        for (var i = 0; i < history.Count; i++)
+            items.Add(new ReactionListItemModel(activeReactions.Count + i, null, history[i], false));
+
+        var result = new VirtualListData<ReactionListItemModel>(items) {
+            Index = renderedData.Index + 1,
+            BeforeCount = 0,
+            AfterCount = 0,
+            SeparatorIndexes = activeReactions.Count > 0 && history.Count > 0
+                ? [activeReactions.Count - 1]
+                : null,
+            HasVeryFirstItem = true,
+            HasVeryLastItem = true,
+        };
+
+        return result.IsSimilarTo(renderedData) ? renderedData : result;
     }
 
     // Nested types
 
-    public sealed record Model(IReadOnlyList<ReactionNotification>? Notifications = null) {
-        public IReadOnlyList<ReactionNotification> Notifications { get; init; } = Notifications ?? [];
+    public sealed record ReactionListItemModel(
+        int Position,
+        ReactionNotification? Active,
+        NotificationHistoryGroup? History,
+        bool IsLastItemInBlock) : IVirtualListItem {
+        public string Key { get; } = Position.ToString();
+        public string RenderKey => Active?.Id.Value ?? $"history:{History!.ChatId.Value}";
+        public bool IsGroup => false;
+        public bool ShouldSkipKey => false;
+        public bool HasRegularSize => !IsLastItemInBlock;
     }
 }
