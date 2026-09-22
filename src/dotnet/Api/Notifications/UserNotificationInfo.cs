@@ -30,6 +30,12 @@ public sealed partial record UserNotificationInfo(
     [DataMember(Order = 7), Key(7)]
     public ApiArray<BeepMemory> BeepMemories { get; init; }
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public int BadgeCount
+        // A ring is in the active set to be delivered and dismissed, not because anything is
+        // unread: counting it takes the badge up for the ring's lifetime and back down after it.
+        => Items.Where(x => x.Kind != NotificationKind.IncomingCall).Count();
+
     public UserNotificationInfo WithPendingDismissals(IEnumerable<PendingDismissal> dismissals)
     {
         var pending = PendingDismissals;
