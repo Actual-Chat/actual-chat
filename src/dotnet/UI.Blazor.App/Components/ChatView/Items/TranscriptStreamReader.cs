@@ -108,7 +108,10 @@ public sealed class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : Worke
 
         var lastText = "";
         try {
-            var transcripts = rpcStream.ToTranscripts();
+            // ProcessStreamingState cancels this token when the entry switches streams (translation
+            // turned off mid-transcript). A remote RpcStream enumerator ends only with the stream
+            // unless the token reaches it, and this loop would then keep writing the old stream's text.
+            var transcripts = rpcStream.ToTranscripts(cancellationToken);
 
             var stablePrefixLength = 0;
             var lastWordIndex = isTranslation

@@ -60,18 +60,19 @@ public static class ChatEntryOperations
         Language language,
         Moment? beginsAt = null,
         string content = "",
+        StreamId? streamId = null,
         CancellationToken cancellationToken = default)
     {
         var clocks = tester.AppServices.Clocks();
         var effectiveBeginsAt = beginsAt ?? clocks.SystemClock.Now;
         var author = await tester.GetOwnAuthor(chatId, cancellationToken).Require();
-        var streamId = StreamId.New(NodeRef.ThisNodeAlias).Value;
+        var streamIdValue = (streamId ?? StreamId.New(NodeRef.ThisNodeAlias)).Value;
         var textEntry = await tester.Commander.Call(new ChatsBackend_ChangeEntry(ChatEntryId.New(chatId, 0),
                 null,
                 Change.Create(new ChatEntryDiff {
                     AuthorId = author.Id,
-                    ContentStreamId = streamId,
-                    Audio = new ChatEntryAudio { StreamId = streamId },
+                    ContentStreamId = streamIdValue,
+                    Audio = new ChatEntryAudio { StreamId = streamIdValue },
                     Content = content,
                     BeginsAt = effectiveBeginsAt,
                 })),
