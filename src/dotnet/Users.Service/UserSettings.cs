@@ -1,4 +1,6 @@
+using ActualChat.Flows;
 using ActualChat.Kvas;
+using ActualChat.Users.Flows;
 using CommunityToolkit.HighPerformance.Buffers;
 
 namespace ActualChat.Users;
@@ -37,6 +39,7 @@ public class UserSettings(IServiceProvider services) : IUserSettings
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IServerKvasBackend KvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private ICommander Commander { get; } = services.Commander();
+    private FlowHub FlowHub => field ??= services.FlowHub();
     private ILogger Log { get; } = services.LogFor<UserSettings>();
 
     // [ComputeMethod]
@@ -71,6 +74,15 @@ public class UserSettings(IServiceProvider services) : IUserSettings
         var data = Serialize(value);
         var setManyCommand = new ServerKvasBackend_SetMany(prefix, (key, data));
         await Commander.Call(setManyCommand, true, cancellationToken).ConfigureAwait(false);
+
+        if (key == nameof(UserEmailsSettings)) {
+            // Otherwise a re-enabled digest waits for the flow's next scheduled check, up to 2 days away
+            var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+            if (!account.IsGuest)
+                await FlowHub.NewResumeEvent<DigestFlow>(account.Id.Value)
+                    .Schedule(cancellationToken)
+                    .ConfigureAwait(false);
+        }
     }
 
     // Private methods
