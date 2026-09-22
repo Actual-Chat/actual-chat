@@ -123,6 +123,7 @@
                                  alt=""/>
                         </a>
                     </MjmlText>
+                    @Footer
                 </MjmlColumn>
             </MjmlSection>
         </MjmlWrapper>
@@ -131,4 +132,5 @@
 
 @code {
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
 }

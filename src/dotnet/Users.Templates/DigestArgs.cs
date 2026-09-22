@@ -5,6 +5,7 @@ public record DigestParameters
     public required IReadOnlyCollection<DigestChat> UnreadChats { get; init; }
     public required int OtherUnreadCount { get; init; }
     public required string OtherUnreadLink { get; init; }
+    public required string UnsubscribeLink { get; init; }
 
     public record DigestChat
     {

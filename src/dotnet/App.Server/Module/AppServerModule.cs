@@ -21,6 +21,7 @@ using ActualChat.Streaming.Diagnostics;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.Users.Email;
 using ActualLab.CommandR.Diagnostics;
 using ActualLab.Fusion.Diagnostics;
 using ActualLab.Fusion.EntityFramework.Internal;
@@ -186,6 +187,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         app.MapControllers();
         app.MapMcp();
         app.MapWebHookInbound();
+        app.MapDigestEmail();
 
         // Diagnostic endpoints
         // app.UseOpenTelemetryPrometheusScrapingEndpoint();
