@@ -211,6 +211,40 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 }
 ```
 
+### Which node a backend call lands on
+
+A command carries its own routing through `IHasShardKey`. A plain backend RPC method has no
+command to carry it, so the router looks at the method's **first argument** and nothing else
+(`Core.Server/Rpc/Internal/RpcBackendHelpers.cs` → `GetTypedRouter`, which reads `args.Get0<T>()`).
+The argument is turned into a `MeshRef` by `MeshRefResolvers`; a type with no registered resolver
+falls back to its shard key.
+
+The registrations that matter (`Core.Server/Sharding/MeshRefResolvers.cs`):
+
+| First argument | Lands on |
+|---|---|
+| `IHasShardKey`, or anything with no registered resolver | the shard that owns that key |
+| `NodeRef`, `IHasNodeRef` | that one node |
+| `StreamId` | the node named by its `NodeRef` |
+| `ThisNodeRef` / `IRequiresThisNode` | the calling node |
+| `ZeroShardRef`, `RandomShardRef` | shard 0 / a random shard |
+
+`StreamId` is the interesting one, because it makes **node-local state addressable from any pod**:
+a `StreamId` is a `NodeRef` plus a Ulid, so a node that holds something in memory — an open stream,
+a producer waiting for more input — can mint a handle, hand it to a client, and have every later
+call arrive back at itself no matter which pod the load balancer picked. `LiveAudioStreams.PushStream`,
+`TextEntryStreamer` and `ChatEntryStreams` are all built on this.
+
+Two consequences worth knowing before you use it:
+
+- **It pins to a node, not to a role.** The call reaches that node and fails if the node doesn't
+  host the service. These paths mint the handle with `MeshWatcher.ThisNode.Ref` on whichever node
+  is serving the frontend call, so they assume the node hosts the backend too — true under the
+  default `OneServer` role set, not under a split `OneApiServer` / `OneBackendServer` deployment.
+- **The state dies with the node.** A pod restart takes every lease and open stream with it, so
+  anything addressed this way needs its own expiry and a finalization path — see
+  `ExpiringEntry<TKey,TValue>` and how `StreamStore` and `ChatEntryStreams` use it.
+
 ## Computed Methods
 
 ### Basic Pattern
