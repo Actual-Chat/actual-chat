@@ -30,8 +30,9 @@ public class AsyncValidationTest(ITestOutputHelper @out) : TestBase(@out)
     [Theory]
     [InlineData("someone@example.com", null)]
     [InlineData("foo@", ValidationKeys.EmailInvalid)]
+    [InlineData("andrey@e", ValidationKeys.EmailInvalid)]
     [InlineData("12345", ValidationKeys.PhoneTooShort)]
-    [InlineData("abc", ValidationKeys.PhoneOrEmailRequired)]
+    [InlineData("abc", ValidationKeys.EmailInvalid)]
     public async Task PhoneOrEmailIsValidated(string input, string? expectedError)
     {
         // arrange

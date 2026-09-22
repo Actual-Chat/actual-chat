@@ -14,16 +14,18 @@ public class ValidationMessageLocalizationTest
     private const string LongEmail = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     public static TheoryData<string, string?, string> AppAttributeKeys
-        // The branch label keeps the rows distinct: three email branches share one key,
+        // The branch label keeps the rows distinct: several branches share one key,
         // and xUnit would otherwise collapse them into a single case.
         => new() {
             { "email: too long", Validators.Email.Validate(TooLongEmail()), ValidationKeys.EmailInvalid },
             { "email: unparsable", Validators.Email.Validate("not-an-email"), ValidationKeys.EmailInvalid },
+            { "email: no tld", Validators.Email.Validate("andrey@e"), ValidationKeys.EmailInvalid },
             { "email: display name", Validators.Email.Validate("N <n@x.com>"), ValidationKeys.EmailInvalid },
             { "phone: bad chars", Validators.Phone.Validate("+1abc2345678"), ValidationKeys.PhoneInvalidCharacters },
             { "phone: too short", Validators.Phone.Validate("+1234567"), ValidationKeys.PhoneTooShort },
             { "phone: too long", Validators.Phone.Validate("+1234567890123456"), ValidationKeys.PhoneTooLong },
-            { "phone or email", Error(new PhoneOrEmailAttribute(), "hello"), ValidationKeys.PhoneOrEmailRequired },
+            { "phone or email: letters", Error(new PhoneOrEmailAttribute(), "hello"), ValidationKeys.EmailInvalid },
+            { "phone or email: digits", Error(new PhoneOrEmailAttribute(), "12345"), ValidationKeys.PhoneTooShort },
             { "alias: too short", Error(new AliasIdAttribute(), "abc"), ValidationKeys.AliasTooShort },
             { "alias: bad chars", Error(new AliasIdAttribute(), "abcde!"), ValidationKeys.AliasInvalidCharacters },
         };
