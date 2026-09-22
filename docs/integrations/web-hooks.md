@@ -1,6 +1,6 @@
 # Integrations: web hooks
 
-**Status: phase 1 (outgoing) — incoming hooks are phase 2.**
+**Status: phase 1 (outgoing) and phase 2 (incoming, chat scope).**
 
 Voxt can call a URL you choose whenever something happens in a chat, a place, or
 your own notifications — no API key required on the receiving end, just a plain
@@ -187,7 +187,7 @@ Source:
 | `user` | Typed by a person in a client |
 | `api` | Posted through the API (MCP, an API key, `post_message`, …) |
 | `bot` | Posted by a bot author (negative local author id) |
-| `webhook` *(reserved)* | Posted through an incoming web hook — phase 2; no entry sets this yet |
+| `webhook` | Posted through an incoming web hook; `origin.webHookId` is that hook's id |
 
 ### `message.removed`
 
@@ -348,11 +348,58 @@ Source:
 [WebHooksBackend.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Chat.Service/WebHooks/WebHooksBackend.cs),
 [IWebHooks.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Api.Contracts/WebHooks/IWebHooks.cs).
 
+## Incoming hooks
+
+An incoming hook is a secret URL bound to one chat. Any `POST` to it posts a
+message into that chat under the hook's own bot, which has the display name
+and avatar you set on the hook and appears in the member list.
+
+### URL and auth
+
+`POST https://<host>/hooks/in/<token>`, where `token` is `whin_` followed by 43 characters.
+The token is shown once at creation and again on *Rotate URL*; Voxt stores
+only its hash. Rotation replaces it immediately — there is no overlap window.
+
+### Body
+
+`Content-Type: application/json`, or `application/x-www-form-urlencoded`
+with a `payload` field holding the same JSON (the Slack and Mattermost
+legacy form). Body cap 64 KB.
+
+| Field | Meaning |
+|---|---|
+| `text` | Voxt markup. Optional when a card yields text |
+| `replyTo` | Local id of the message to reply to |
+| `attachments` | Slack legacy cards: `pretext`, `title`, `title_link`, `text`, `fields[{title,value}]`, `image_url`, `thumb_url`, `footer`. `color`, `ts`, `author_*`, `fallback`, `mrkdwn_in`, `username`, `icon_*` and `channel` are ignored |
+
+Each card folds into the message in the order pretext, **title** with its
+link, text, one `Title: value` line per field, footer, separated from `text`
+and from each other by a blank line. `image_url` and `thumb_url` are fetched
+through the egress guard and attached as images, at most 4 per message; a
+failed fetch drops that image and posts the rest.
+
+### Responses
+
+| Status | When |
+|---|---|
+| `200 {"ok":true,"id":<local id>}` | Posted |
+| `400 {"ok":false,"error":"…"}` | Unparseable body, nothing to post, unknown `replyTo`, text over the message cap |
+| `404` | Unknown or malformed token |
+| `410 {"ok":false,"error":"This web hook is no longer available."}` | Hook disabled, chat archived or deleted, or the bot removed from the chat |
+| `413` | Body over 64 KB |
+| `429 {"ok":false,"error":"Too many posts. Please retry later."}` + `Retry-After` | More than 60 posts in a minute for this hook, or 600 in an hour |
+| `503 {"ok":false,"error":"Temporarily unavailable, retry later."}` | Backend failure; safe to retry |
+
+The bot cannot sign in, read anything or be addressed; the URL is the only
+way it acts, and nothing in the payload can change its name or picture.
+Messages it posts carry `origin.kind = "webhook"` with the hook's id in
+outgoing payloads and MCP.
+
 ## Managing hooks
 
 Hooks live under three entry points, depending on scope:
 
-- **Chat settings → Integrations** (visible to moderators) — chat-scoped hooks.
+- **Chat settings → Integrations** (visible to moderators) — chat-scoped hooks. *Add integration* offers an outgoing or an incoming webhook; an incoming hook's detail page has *Post test message*, *Rotate URL* and *Delete* (the bot leaves the chat, its messages stay).
 - **Place settings → Integrations tab** (place owners) — place-scoped hooks,
   with an optional chat allow-list.
 - **Settings → API & Apps → Webhooks** — your personal hooks, next to API
