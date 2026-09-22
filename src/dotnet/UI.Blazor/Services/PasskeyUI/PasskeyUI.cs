@@ -6,14 +6,21 @@ public class PasskeyUI(UIHub hub) : UIServiceBase<UIHub>(hub), IComputeService
 
     private Task<bool?>? _whenClientAvailable;
 
+    // Last resolved CanUse answer, for synchronously seeding a modal's initial render so the passkey button
+    // is present/absent from the first frame and never pops in later. Null until the first real answer (a
+    // probe failure is "unknown", not a "no", so it isn't cached).
+    public bool? CanUseCached { get; private set; }
+
     private IPasskeyAuth PasskeyAuth => field ??= Services.GetRequiredService<IPasskeyAuth>();
     private IPasskeyClient Client => field ??= Services.GetRequiredService<IPasskeyClient>();
 
     [ComputeMethod]
     public virtual async Task<bool> CanUse(CancellationToken cancellationToken)
     {
-        if (!await PasskeyAuth.IsEnabled(cancellationToken).ConfigureAwait(false))
+        if (!await PasskeyAuth.IsEnabled(cancellationToken).ConfigureAwait(false)) {
+            CanUseCached = false;
             return false;
+        }
 
         var isAvailable = await IsClientAvailable(cancellationToken).ConfigureAwait(false);
         if (isAvailable is null) {
@@ -21,6 +28,7 @@ public class PasskeyUI(UIHub hub) : UIServiceBase<UIHub>(hub), IComputeService
             return false;
         }
 
+        CanUseCached = isAvailable.Value;
         return isAvailable.Value;
     }
 

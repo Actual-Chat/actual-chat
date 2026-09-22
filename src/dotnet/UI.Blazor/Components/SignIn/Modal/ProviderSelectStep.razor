@@ -8,6 +8,11 @@
         return;
 
     var m = State.Value;
+    // Don't paint until passkey availability is resolved: otherwise the passkey button resolves async and
+    // inserts at the top, reflowing everything below it. Seeded from cache in GetStateOptions, so once the
+    // device has been probed once this is already true on the first frame.
+    if (!m.IsPasskeyResolved)
+        return;
     ProcessSignInError(m.SignInError);
 }
 
@@ -188,8 +193,9 @@
     }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
+        var cachedCanUsePasskey = PasskeyUI.CanUseCached;
         return new() {
-            InitialValue = new (),
+            InitialValue = new(CanUsePasskey: cachedCanUsePasskey ?? false, IsPasskeyResolved: cachedCanUsePasskey is not null),
             UpdateDelayer = FixedDelayer.MinDelay,
             Category = GetStateCategory(GetType()),
         };
@@ -200,7 +206,7 @@
         var signInError = await SessionTemporals.Get(Session, SessionTemporals_SignInErrorKey, cancellationToken)
             ?? "";
         var canUsePasskey = await PasskeyUI.CanUse(cancellationToken);
-        return new(hasSentCodeRecently, signInError, canUsePasskey);
+        return new(hasSentCodeRecently, signInError, canUsePasskey, IsPasskeyResolved: true);
     }
 
     protected override async Task<bool> Validate() {
@@ -367,7 +373,11 @@
         public string Class { get; init; } = null!;
     }
 
-    public sealed record Model(bool HasSentCodeRecently = false, string SignInError = "", bool CanUsePasskey = false);
+    public sealed record Model(
+        bool HasSentCodeRecently = false,
+        string SignInError = "",
+        bool CanUsePasskey = false,
+        bool IsPasskeyResolved = false);
 
     public sealed class StepModel(ComponentIdGenerator? componentIdGenerator = null)
         : FormModel<StepModel>("phone-signin", componentIdGenerator) {
