@@ -4,6 +4,10 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class CallUI
 {
+    // Safe rather than Precise: a disconnected client counts as synchronized, so an offline read still
+    // frees the slot - the intent grace in Reconcile is what covers a short disconnect.
+    private static readonly ComputedSynchronizer Synchronizer = ComputedSynchronizer.Safe.Instance;
+
     private volatile Computed<UserCall?>? _cMyCall;
     private ChatId? _audioStartedChatId;
 
@@ -49,7 +53,10 @@ public partial class CallUI
             .ConfigureAwait(false);
         while (true) {
             _cMyCall = c;
-            if (!c.HasError)
+            // GetMyCall is ReturnDefault, so every re-read answers "no call" before the server's real
+            // answer lands - and Touch() re-reads on every ring push. Applying that would drop the slot
+            // mid-ring, taking the call screen and the ringtone with it, until the answer put it back.
+            if (!c.HasError && (c.Value is not null || c.IsSynchronized(Synchronizer)))
                 Apply(c.Value);
 
             // An intent outliving the answer has to expire on its own: the answer that ignores it
