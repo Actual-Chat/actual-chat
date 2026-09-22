@@ -563,6 +563,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `TrackPlayer` (abstract class) - Base class for playing audio tracks from a media source.
 - `DeviceType` (enum) - Specifies the type of push notification device.
 - `Notification` (record) - Represents a push notification to be sent to a user device.
+- `NotificationHistoryItem` (record) - One row of a user's notification log; `IsLoggedKind` says which kinds are recorded.
+- `NotificationHistoryQuery` (record) - Kind filter, cursor and limit for `INotifications.ListHistory`.
 - `ContactSearchQuery` (record) - Query parameters for searching contacts.
 - `ContactIdExt` (static class) - Extension methods for ContactId.
 - `ContactSearchResult` - Represents a contact match from a search query.
@@ -875,6 +877,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 
 - `Notifications` - Implementation of INotifications for push notifications.
 - `NotificationsBackend` - Implementation of INotificationsBackend.
+- `NotificationHistoryPruner` - Hourly worker deleting notification history rows past the 30-day retention.
 - `NotificationFlow` - Flow for sending notifications.
 - `NotificationHelper` - Helper utilities for notifications.
 - `FirebaseMessagingClient` - Firebase Cloud Messaging client.

@@ -98,6 +98,9 @@ features:
 - [Integrations: outgoing web hooks](./integrations/web-hooks.md) — scopes, the
   event catalog, the signed envelope and every `data` shape, Standard Webhooks
   verification, retry/disable rules, and the settings walkthrough.
+- [Integrations: notification history](./integrations/notifications-api.md) — the
+  per-user log of addressed notifications, `INotifications.ListHistory`, the
+  `list_notifications` MCP tool, and cursor polling.
 
 ## Related Projects
 
