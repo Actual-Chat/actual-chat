@@ -15,7 +15,9 @@
     ItemVisibilityChanged="@OnItemVisibilityChanged"
 >
     <Item>
-        @if (context.Chat is { } chat) {
+        @if (context.History is { } history) {
+            <NotificationHistoryListItem Group="@history"/>
+        } else if (context.Chat is { } chat) {
             <ChatListItem
                 ListKind="@ChatListKind.All"
                 Chat="@chat"
@@ -40,6 +42,7 @@
 
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
+    private NotificationsUI NotificationsUI => Hub.NotificationsUI;
 
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListRelated ? Log : null;
