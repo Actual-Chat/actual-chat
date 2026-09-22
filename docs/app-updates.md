@@ -124,9 +124,9 @@ isn't a cached field — see [The contract](#the-contract).
 
 Consolidation also makes invalidation **asynchronous** — an invalidated value
 is replaced only once the recompute has finished and differed. Tests therefore
-can't read right after `Invalidate()`, and `ComputedTest.When` can't be used to
+can't read right after `Invalidate()`, and `TestWait.When` can't be used to
 wait for a side effect or for a value that ends up unchanged; `AppUpdatesTest`
-polls instead (`WhenPolled`).
+polls instead (`WhenPolled`) — see [Waiting in tests](./testing/waiting.md).
 
 Every node runs this loop, so the cluster is kept to one store hit per period by
 an **`IMeshLocks` lock per app kind** (`StoreLocks`, prefix `AppUpdates`) plus

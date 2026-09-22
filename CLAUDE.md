@@ -76,6 +76,18 @@ simulcast, RPC fan-out, playback, quality control, A/V sync) and
 publish/persist/transcribe, fan-out, replay, playback). Both are written
 from current source.
 
+## Writing tests
+
+Naming, FluentAssertions and the AAA layout are in
+[docs/CODING_STYLE.md → Test Conventions](docs/CODING_STYLE.md#test-conventions).
+
+**Before adding or changing a wait in a test, read
+[docs/testing/waiting.md](docs/testing/waiting.md).** `ActualChat.Testing.TestWait`
+is the only entry point — never call `ComputedTest.When` or `TestExt.When`
+directly. That page covers `When` vs `WhenPolled`, how budgets scale on a build
+agent, why `[Fact(Timeout = N)]` is a ceiling rather than a knob, and the flake
+patterns the CI watchdog keeps finding.
+
 ## TypeScript Validation
 
 When modifying TypeScript files under `src/nodejs/` or `src/dotnet/UI.Blazor.App/`, always validate changes by running:
