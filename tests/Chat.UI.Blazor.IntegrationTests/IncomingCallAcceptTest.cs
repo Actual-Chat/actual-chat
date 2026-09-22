@@ -49,6 +49,32 @@ public sealed class IncomingCallAcceptTest(ChatAppHostFixture fixture, ITestOutp
     }
 
     [Fact]
+    public async Task AcceptShouldNotFailWhenTheCallIsAlreadyOurs()
+    {
+        // arrange - an RPC resend after a reconnect, a second tap on the notification, and the server's
+        // own Ringing -> Active promotion all reach the server as a second answer
+        await Bob.SignInAsUniqueBob();
+        await Alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await Bob.CreateChat(false);
+        await Alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await Bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await Alice.GetOwnAuthor(chatId);
+        var backend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // act
+        var again = async () => await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // assert - the same answer, not an error: CallScreensUI.Accept hangs the call up on a throw
+        await again.Should().NotThrowAsync();
+        var live = await backend.Get(chatId, default);
+        live!.Invites.Single(x => x.InviteeId == aliceAuthor.Id)
+            .Status.Should().BeOneOf(CallInviteStatus.Accepted, CallInviteStatus.Active);
+        (await backend.GetState(chatId, default))!.SessionStartedAt.Should().NotBeNull();
+    }
+
+    [Fact]
     public async Task AcceptShouldRejectARingThatIsNotThere()
     {
         // arrange - the tap a stale notification produces: nothing is ringing in this chat

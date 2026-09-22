@@ -1,4 +1,4 @@
-using ActualChat.Streaming.Diagnostics;
+﻿using ActualChat.Streaming.Diagnostics;
 using ActualChat.Comparison;
 using ActualChat.Flows;
 using ActualChat.Live;
@@ -675,6 +675,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         using (Computed.BeginIsolation())
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
             var invite = await SafeGetInvite(chatId, inviteeAuthorId).ConfigureAwait(false);
+            // Answering a call that is already ours is the same answer, not an error: an RPC resend
+            // after a reconnect, a second tap, and SyncInviteeActivity's own Ringing -> Active promotion
+            // all land here. The caller tears its call down on a throw, so this has to stay idempotent.
+            if (invite is { Status: CallInviteStatus.Accepted or CallInviteStatus.Active })
+                return;
+
             // Runs under the change lock, so it's the answer - a client-side check races the
             // session it reads. Returning quietly let a client join a call that never was.
             if (!EnsureValidTransition(chatId, inviteeAuthorId, nameof(AcceptCall),
