@@ -24,7 +24,7 @@
         <div class="c-buttons">
             <NavbarButtons/>
         </div>
-        @if (m.IsActive && (m.HasUnread || m.HasRetained || m.HasReactions)) {
+        @if (m.IsActive && (m.HasUnread || m.HasRetained || m.HasReactions || m.HasHistory)) {
             <NavbarGroupSelectionButton
                 Class="create-btn"
                 Id="@NavbarGroupIds.Unread"
@@ -66,25 +66,27 @@
         if (account.IsGuest || !account.IsActive())
             return new();
 
-        // Three independent lookups behind one badge row
+        // Four independent lookups behind one badge row
         var chatByIdTask = ChatListUI.ListUnordered(null, ChatListFilter.Unread, cancellationToken);
         var expiringTask = NotificationsPanelUI.GetExpiring(ChatListFilter.Unread.Id, cancellationToken);
         var reactedChatIdsTask = NotificationsUI.ListReactedChatIds(cancellationToken);
+        var hasHistoryTask = NotificationsUI.HasAnyHistory(cancellationToken);
         var chatById = await chatByIdTask.ConfigureAwait(false);
         var expiring = await expiringTask.ConfigureAwait(false);
         var reactedChatIds = await reactedChatIdsTask.ConfigureAwait(false);
-        return new(true, chatById.Count > 0, expiring.Count > 0, reactedChatIds.Count > 0);
+        var hasHistory = await hasHistoryTask.ConfigureAwait(false);
+        return new(true, chatById.Count > 0, expiring.Count > 0, reactedChatIds.Count > 0, hasHistory);
     }
 
     protected override void OnAfterRender(bool firstRender) {
         var m = State.Value;
         // The Unread group stays selected while the panel still retains recently-read chats;
-        // once there's nothing unread, retained, or reacted, we fall back to Chats.
-        if (_hadAny && !m.HasUnread && !m.HasRetained && !m.HasReactions
+        // once there's nothing unread, retained, reacted or logged, we fall back to Chats.
+        if (_hadAny && !m.HasUnread && !m.HasRetained && !m.HasReactions && !m.HasHistory
             && NavbarUI.SelectedGroupId == NavbarGroupIds.Unread)
             NavbarUI.SelectGroup(NavbarGroupIds.Chats, false);
 
-        _hadAny = m.IsActive && (m.HasUnread || m.HasRetained || m.HasReactions);
+        _hadAny = m.IsActive && (m.HasUnread || m.HasRetained || m.HasReactions || m.HasHistory);
     }
 
     // Nested types
@@ -93,5 +95,6 @@
         bool IsActive = false,
         bool HasUnread = false,
         bool HasRetained = false,
-        bool HasReactions = false);
+        bool HasReactions = false,
+        bool HasHistory = false);
 }

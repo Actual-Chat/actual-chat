@@ -19,7 +19,7 @@
     if (m.HasMentions)
         tabs.Add(NewTab(ChatListFilter.UnreadMentions, L.ChatList_TabMentions));
     if (m.HasReactions)
-        tabs.Add(new TabDef(ReactionsTabId, L.ChatList_TabReactions) {
+        tabs.Add(new TabDef(NotificationsUI.ReactionsFilterId, L.ChatList_TabReactions) {
             Class = "chats-tab",
             TitleContent = @<text><span>@L.ChatList_TabReactions</span></text>,
         });
@@ -45,7 +45,7 @@
                 Effect="@_swapDirection.Swipe(GetTabIndex(_settings.FilterId))"
                 MustPropagateDisplay="true">
                 <ChildContent>
-                    @if (_settings.FilterId == ReactionsTabId) {
+                    @if (_settings.FilterId == NotificationsUI.ReactionsFilterId) {
                         <ReactionNotificationList/>
                     } else {
                         <ChatList
@@ -62,7 +62,6 @@
 </div>
 
 @code {
-    private const string ReactionsTabId = "@reactions";
     private static readonly ChatListFilter[] Filters =
         [ChatListFilter.Unread, ChatListFilter.UnreadPeople, ChatListFilter.UnreadMentions];
 
@@ -86,7 +85,10 @@
         var hasPeople = await HasTab(ChatListFilter.UnreadPeople, cancellationToken).ConfigureAwait(false);
         var hasMentions = await HasTab(ChatListFilter.UnreadMentions, cancellationToken).ConfigureAwait(false);
         var reactedChatIds = await NotificationsUI.ListReactedChatIds(cancellationToken).ConfigureAwait(false);
-        return new(hasAll, hasPeople, hasMentions, reactedChatIds.Count > 0);
+        var reactionHistory = await NotificationsUI
+            .ListHistory(NotificationsUI.ReactionsFilterId, cancellationToken)
+            .ConfigureAwait(false);
+        return new(hasAll, hasPeople, hasMentions, reactedChatIds.Count > 0 || reactionHistory.Count > 0);
     }
 
     // Private methods
@@ -99,6 +101,10 @@
 
         var count = await ChatListUI.GetUnreadChatCount(null, filter, cancellationToken).ConfigureAwait(false);
         if (count > 0)
+            return true;
+
+        var history = await NotificationsUI.ListHistory(filter.Id, cancellationToken).ConfigureAwait(false);
+        if (history.Count > 0)
             return true;
         if (filter == ChatListFilter.UnreadMentions)
             return false;
@@ -118,7 +124,7 @@
         for (var i = 0; i < Filters.Length; i++)
             if (Filters[i].Id == filterId)
                 return i;
-        if (filterId == ReactionsTabId)
+        if (filterId == NotificationsUI.ReactionsFilterId)
             return Filters.Length;
 
         return 0;
