@@ -305,7 +305,7 @@ export class MapView {
         return own;
     }
 
-    // Heading is only known while moving; hide the fan when it's absent so a stale
+    // Heading is absent without a compass while standing still; hide the fan then so a stale
     // direction isn't shown, and otherwise rotate it (0° = north) around the dot.
     private static applyHeading(element: HTMLElement, bearing?: number | null): void {
         const heading = element.querySelector<HTMLElement>('.c-own-heading');
@@ -314,11 +314,18 @@ export class MapView {
 
         if (bearing == null) {
             heading.style.display = 'none';
+            delete heading.dataset.angle;
             return;
         }
 
+        // The CSS transition animates between updates, so the angle is kept unwrapped (it may leave
+        // 0..360) and moved by the shortest delta: otherwise 350° -> 10° would spin the long way round.
+        const previous = heading.dataset.angle == null ? null : Number(heading.dataset.angle);
+        const shortestDelta = previous == null ? 0 : ((((bearing - previous) % 360) + 540) % 360) - 180;
+        const angle = previous == null ? bearing : previous + shortestDelta;
+        heading.dataset.angle = String(angle);
         heading.style.display = '';
-        heading.style.transform = `rotate(${bearing}deg)`;
+        heading.style.transform = `rotate(${angle}deg)`;
     }
 
     // The circle covers the area the position may actually be in, so it's sized in meters.

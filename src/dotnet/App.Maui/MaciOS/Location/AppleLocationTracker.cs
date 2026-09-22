@@ -53,12 +53,28 @@ public sealed class AppleLocationTracker(AppUIHub hub) : MauiLocationTrackerBase
 
         await MainThread.InvokeOnMainThreadAsync(() => {
                 manager.LocationsUpdated -= OnLocationsUpdated;
+                manager.UpdatedHeading -= OnHeadingUpdated;
                 manager.Failed -= OnFailed;
                 manager.StopUpdatingLocation();
+                manager.StopUpdatingHeading();
                 manager.DisposeSilently();
             })
             .ConfigureAwait(false);
     }
+
+    // Protected/internal methods
+
+    protected override Task StartHeadingUpdates()
+        => DispatchToMainThread(() => {
+            if (!CLLocationManager.HeadingAvailable)
+                return;
+
+            _manager ??= CreateManager();
+            _manager.StartUpdatingHeading();
+        });
+
+    protected override Task StopHeadingUpdates()
+        => DispatchToMainThread(() => _manager?.StopUpdatingHeading());
 
     // Private methods
 
@@ -67,8 +83,10 @@ public sealed class AppleLocationTracker(AppUIHub hub) : MauiLocationTrackerBase
         var manager = new CLLocationManager {
             AllowsBackgroundLocationUpdates = true,
             PausesLocationUpdatesAutomatically = true,
+            HeadingFilter = MinHeadingChange,
         };
         manager.LocationsUpdated += OnLocationsUpdated;
+        manager.UpdatedHeading += OnHeadingUpdated;
         manager.Failed += OnFailed;
         return manager;
     }
@@ -79,14 +97,35 @@ public sealed class AppleLocationTracker(AppUIHub hub) : MauiLocationTrackerBase
             SetCached(location.ToGeoFix());
     }
 
+    private void OnHeadingUpdated(object? sender, CLHeadingUpdatedEventArgs e)
+    {
+        // HeadingOrientation stays Portrait, so the heading is the device top's - rotated to the screen's here.
+        // TrueHeading is negative until there's a location to correct the magnetic one with.
+        var heading = e.NewHeading;
+        if (heading.HeadingAccuracy < 0) {
+            SetHeading(null);
+            return;
+        }
+
+        var deviceHeading = heading.TrueHeading >= 0 ? heading.TrueHeading : heading.MagneticHeading;
+        SetHeading((float)deviceHeading + GetScreenRotation());
+    }
+
     private void OnFailed(object? sender, NSErrorEventArgs e)
     {
-        Log.LogError(e.Error.ToException(), "Failed to track location");
         var code = e.Error is { } error ? (CLError)error.Code : CLError.LocationUnknown;
+        if (code == CLError.HeadingFailure) {
+            // Magnetic interference: the position is still fine, so only the heading is dropped.
+            Log.LogWarning(e.Error.ToException(), "Failed to track heading");
+            SetHeading(null);
+            return;
+        }
+
+        Log.LogError(e.Error.ToException(), "Failed to track location");
         var trackingError = code switch {
             CLError.Denied or CLError.RegionMonitoringDenied or CLError.PromptDeclined
                 => GeoTrackingError.PermissionDenied,
-            CLError.LocationUnknown or CLError.Network or CLError.HeadingFailure
+            CLError.LocationUnknown or CLError.Network
                 or CLError.RegionMonitoringFailure or CLError.RegionMonitoringSetupDelayed
                 or CLError.RegionMonitoringResponseDelayed or CLError.GeocodeFoundNoResult
                 or CLError.GeocodeFoundPartialResult or CLError.GeocodeCanceled
