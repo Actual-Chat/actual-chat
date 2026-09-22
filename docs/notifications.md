@@ -106,10 +106,14 @@ re-shows it.
   `ChatUI.ItemVisibility` *and* `ListActive`: a reaction to an entry the reader is
   already looking at changes nothing the visibility state depends on. The reactions
   tab dismisses on tap too — a tap doesn't guarantee the entry ends up visible.
-- **In-app feed** — only the reactions tab of the notifications panel
-  (`ChatList/ReactionNotifications/`) renders part of the active set. Everything else
-  surfaces as OS notifications, the app-icon badge, and incoming-call rings.
-  `/test/notifications` dumps the whole set as JSON for diagnostics.
+- **In-app feed** — every tab of the bell panel lists its active rows and, under a
+  divider, the tab's notification history from `INotifications.ListHistory` (via
+  `NotificationsUI.ListHistory`: per-tab kinds, one dimmed row per chat with a "+N"
+  count, active notifications excluded). The divider appears only where the tab has
+  active rows above the history — a tab that is nothing but history starts with it. The chat tabs append the section inside
+  `ChatList`'s `FiniteList`; the Reactions tab is its own `FiniteList`. Tabs stay
+  visible while they have history, and `GetHistoryVersion` is what makes the section
+  reactive. `/test/notifications` dumps the whole set as JSON for diagnostics.
 
   Note what this set is *not*: unread counts on chats and places drive the navbar
   and the bell panel, and are deliberately a different calculation. `ListActive`

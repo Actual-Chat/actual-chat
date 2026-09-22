@@ -9,7 +9,9 @@ An agent that talks to Voxt through the MCP server needs to know when it was
 addressed: mentioned, replied to, reacted to, pinged. The active notification
 set (`INotifications.ListActive`) cannot answer that — it is the converged set
 of banners on the user's devices, and a banner is gone the moment the chat is
-read on any device. The notification history is the log behind it.
+read on any device. The notification history is the log behind it. The in-app
+notifications panel's history section (the dimmed rows under each tab's divider)
+is backed by the same log.
 
 ## What is logged
 
@@ -61,9 +63,23 @@ Task<ApiArray<NotificationHistoryItem>> INotifications.ListHistory(
 | `IsNewestFirst` | false | Walk from the newest row towards older ones |
 
 `NotificationHistoryItem` carries `Seq` (the cursor), `Kind`, `SentAt`, `ChatId`,
-`EntryId`, `AuthorId`, `Title` and `Text`. It is not a compute method: nothing
-reactive depends on it, and every logged notification would otherwise
-invalidate every cursor variant.
+`EntryId`, `AuthorId`, `Title`, `Text` and `NotificationId`. It is not a compute
+method: nothing reactive depends on it, and every logged notification would
+otherwise invalidate every cursor variant.
+
+```csharp
+Task<long> INotifications.GetHistoryVersion(Session session, CancellationToken cancellationToken);
+```
+
+`GetHistoryVersion` is the reactive seam `ListHistory` lacks: a compute method
+returning the `Seq` of the caller's newest logged row (0 when the log is empty),
+bumped by every logged notification and by account removal. A UI depends on it
+and re-reads `ListHistory` when it changes; a polling agent has the cursor and
+needs neither.
+
+Several reactions on the same entry coalesce into one notification, so they share
+one `NotificationId` — the in-app panel hides all of them while any is still in
+the active set.
 
 ## MCP tool: `list_notifications`
 
