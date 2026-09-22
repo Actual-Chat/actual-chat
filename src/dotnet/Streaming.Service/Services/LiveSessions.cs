@@ -97,26 +97,11 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     }
 
     // [ComputeMethod]
-    public virtual async Task<CallerStatus?> GetCallStatus(
+    public virtual Task<CallStatus> GetCallStatus(
         Session session, ChatId chatId, CancellationToken cancellationToken)
-    {
-        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        chat.Require();
-        var callState = await Backend.GetCallState(chatId, cancellationToken).ConfigureAwait(false);
-        // Only the caller sees the status of their outgoing call.
-        if (callState is null || callState.CallerId != chat.Rules.Author?.Id)
-            return null;
-        return callState.Status switch {
-            CallStatus.Connecting => CallerStatus.Dialing,
-            CallStatus.Declined => CallerStatus.NoAnswer,
-            CallStatus.Active => CallerStatus.Active,
-            CallStatus.Canceled => CallerStatus.Canceled,
-            CallStatus.NoAnswer => CallerStatus.NoAnswer,
-            CallStatus.Ended => CallerStatus.Ended,
-            CallStatus.Busy => CallerStatus.Busy,
-            _ => CallerStatus.Dialing,   // Dialing (None can't reach here - callState is null then)
-        };
-    }
+        // None rather than a throwing stub, unlike LeaveCall: this one is a compute method an old
+        // client subscribes to, and "no status" retires its banner instead of faulting its state.
+        => Task.FromResult(CallStatus.None);
 
     // [ComputeMethod]
     public virtual async Task<UserCall?> GetMyCall(Session session, CancellationToken cancellationToken)
@@ -125,11 +110,10 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         return await CallsBackend.GetUserCall(account.Id, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task DismissCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken)
-    {
-        if (await GetCallStatus(session, chatId, cancellationToken).ConfigureAwait(false) is not null)
-            await Backend.DismissCallStatus(chatId, cancellationToken).ConfigureAwait(false);
-    }
+    public Task DismissCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken)
+        // The status it dismissed is gone with the banner that showed it - see GetCallStatus.
+        => throw StandardError.NotSupported<ILiveSessions>(
+            $"{nameof(DismissCallStatus)} is obsolete and no longer available.");
 
     public async Task SetParticipation(
         Session session,

@@ -74,10 +74,6 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     [ComputeMethod]
-    public virtual Task<CallerStatus?> GetCallStatus(ChatId chatId, CancellationToken cancellationToken)
-        => LiveSessions.GetCallStatus(Session, chatId, cancellationToken);
-
-    [ComputeMethod]
     public virtual async Task<IncomingCall?> GetRingingCall(ChatId chatId, CancellationToken cancellationToken)
     {
         // Straight from the session: this is what Accept re-verifies the ring against.

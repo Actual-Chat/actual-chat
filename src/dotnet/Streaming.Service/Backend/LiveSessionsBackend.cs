@@ -817,9 +817,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         await CloseNow(chatId).ConfigureAwait(false);
     }
 
-    public virtual Task DismissCallStatus(ChatId chatId, CancellationToken cancellationToken)
-        => SetCallState(chatId, null);
-
     // Legacy methods
 
     public Task LegacyOnStreamRegistered(

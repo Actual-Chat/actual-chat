@@ -64,7 +64,6 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         bool hasVideo,
         CancellationToken cancellationToken);
     Task CancelCall(ChatId chatId, AuthorId callerAuthorId, CancellationToken cancellationToken);
-    Task DismissCallStatus(ChatId chatId, CancellationToken cancellationToken);
     // Callee methods
     Task AcceptCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken);
     Task DeclineCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken);

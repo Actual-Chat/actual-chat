@@ -41,11 +41,15 @@ public interface ILiveSessions : IComputeService
     [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<ConversationStats?> GetConversationStats(Session session, ChatId chatId, CancellationToken cancellationToken);
-    // Consolidated server-side, so a GetCallState or chat-rules change that leaves the status alone
-    // isn't pushed to the caller. Zero delay - this is a ring/accept path.
-    [ComputeMethod(ConsolidationDelay = 0)]
+    // Obsolete: the outgoing-call banner it fed is gone - the caller's own status now follows the
+    // call slot (see CallUI.Apply / ISystemCallUI). The result type must stay the bare CallStatus
+    // enum v2.20 clients read it as: they subscribe to this compute method, and a nil where they
+    // expect an enum faults their state and takes the whole chat page down with it. Only None is
+    // ever returned, and None is 0 in both numberings, so the renumbering never reaches the wire.
+    [Obsolete("2026.09: Old clients only. Always None. Remove once no installed app version calls it.")]
+    [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
-    Task<CallerStatus?> GetCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<CallStatus> GetCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
     // The one call this user is in, whichever device they're on and whoever started it. Null means
     // free - which is also what a disconnected client reads, so it is "unknown" until it reconnects.
     [ComputeMethod(ConsolidationDelay = 0)]
@@ -59,7 +63,12 @@ public interface ILiveSessions : IComputeService
         bool isActive,
         CancellationToken cancellationToken);
     Task SetRules(Session session, ChatId chatId, SessionRules rules, CancellationToken cancellationToken);
-    Task MutePeer(Session session, ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken);
+    Task MutePeer(
+        Session session,
+        ChatId chatId,
+        AuthorId targetAuthorId,
+        bool muted,
+        CancellationToken cancellationToken);
     Task MuteAll(Session session, ChatId chatId, bool muted, CancellationToken cancellationToken);
     Task SetHost(Session session, ChatId chatId, AuthorId targetAuthorId, CancellationToken cancellationToken);
 
@@ -72,6 +81,9 @@ public interface ILiveSessions : IComputeService
         bool hasVideo,
         CancellationToken cancellationToken);
     Task CancelCall(Session session, ChatId chatId, CancellationToken cancellationToken);
+    // Obsolete: there is no caller-visible status left to dismiss - see GetCallStatus. Kept as a
+    // throwing stub rather than removed, in case a stale client build still calls it.
+    [Obsolete("2026.09: Old MAUI clients only. Throws. Remove once no installed app version calls it.")]
     Task DismissCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
     // Callee methods
     Task AcceptCall(Session session, ChatId chatId, CancellationToken cancellationToken);
