@@ -73,35 +73,6 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         return live is { Kind: LiveSessionKind.Call, Conversation: null } ? call.ChatId : null;
     }
 
-    [ComputeMethod]
-    public virtual async Task<IncomingCall?> GetRingingCall(ChatId chatId, CancellationToken cancellationToken)
-    {
-        // Straight from the session: this is what Accept re-verifies the ring against.
-        var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var call = ownAuthor is null ? null : FindRingingCall(live, ownAuthor.Id);
-        CallDebugLog?.LogInformation(
-            "CALL_TRACE: GetRingingCall #{ChatId} → hasCall={HasCall}; liveNull={LiveNull}, "
-            + "liveKind={Kind}, host={Host}, ownNull={OwnNull}, own={Own}, invites=[{Invites}]",
-            chatId, call is not null, live is null, live?.Kind, live?.Host, ownAuthor is null, ownAuthor?.Id,
-            live is null ? "" : live.Invites.Select(i => $"{i.InviteeId}:{i.Status}").ToDelimitedString(","));
-        return call;
-    }
-
-    public static IncomingCall? FindRingingCall(LiveSession? live, AuthorId ownAuthorId)
-    {
-        // Only my own invite decides: the caller is never invited, someone else answering leaves mine Ringing,
-        // and my own answer on another device moves it past Ringing.
-        if (live is not { Kind: LiveSessionKind.Call })
-            return null;
-
-        var invite = live.Invites.FirstOrDefault(i => i.InviteeId == ownAuthorId);
-        if (invite is not { Status: CallInviteStatus.Ringing })
-            return null;
-
-        return new IncomingCall(live.ChatId, live.Host, live.Rules.VideoAllowed);
-    }
-
     public async Task StartCall(
         ChatId chatId,
         ApiArray<AuthorId> invitees,
@@ -190,15 +161,18 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
     }
 
-    public bool TryCommitAccept(IncomingCall call)
+    public bool TryCommitAccept(ChatId chatId)
     {
         // From a free slot this claims it too: Answer on a notification can land before the projection does.
-        var chatId = call.ChatId;
         lock (_lock) {
-            if (_activeCall.Value is { } heldCall && heldCall.ChatId != chatId)
+            var heldCall = _activeCall.Value;
+            if (heldCall is not null && heldCall.ChatId != chatId)
                 return false;
 
-            SetIntentUnsafe(new ActiveCall(chatId, CallRole.Callee, CallPhase.Active, call.Caller, call.HasVideo));
+            // Caller and video ride along from the ring when the slot already holds it; answering
+            // before the projection lands leaves them unknown until the server's own answer does.
+            SetIntentUnsafe(new ActiveCall(chatId, CallRole.Callee, CallPhase.Active,
+                heldCall?.PeerId, heldCall?.HasVideo ?? false));
             return true;
         }
     }

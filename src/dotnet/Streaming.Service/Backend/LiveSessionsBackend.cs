@@ -672,9 +672,11 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         using (Computed.BeginIsolation())
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
             var invite = await SafeGetInvite(chatId, inviteeAuthorId).ConfigureAwait(false);
+            // Runs under the change lock, so it's the answer - a client-side check races the
+            // session it reads. Returning quietly let a client join a call that never was.
             if (!EnsureValidTransition(chatId, inviteeAuthorId, nameof(AcceptCall),
                     invite?.Status ?? CallInviteStatus.New, invite is { Status: CallInviteStatus.Ringing }))
-                return;
+                throw StandardError.Constraint("There's no ring left to accept in this chat.");
 
             var now = Clocks.SystemClock.Now;
             await _invites.Set(chatId.Value, inviteeAuthorId.Value,
@@ -935,7 +937,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     }
 
     private Task ScheduleCallConnectGraceCheck(ChatId chatId)
+        // Logged as the pair to EnforceCallConnectGrace's verdict: the two lines bracket the window
+        // a client has to get its listening stream up, which is what a slow accept loses.
         => BackgroundTask.Run(async () => {
+            Log.LogInformation(
+                nameof(ScheduleCallConnectGraceCheck) + ": chat #{ChatId} - checking back in {Grace}",
+                chatId, CallConnectGrace.ToShortString());
             await Task.Delay(CallConnectGrace).ConfigureAwait(false);
             await EnforceCallConnectGrace(chatId).ConfigureAwait(false);
         }, Log, $"Call-connect grace check failed for chat #{chatId}");
@@ -956,7 +963,20 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                         shouldClose = true;
                     else
                         await RecomputeCallStatus(chatId, state, CancellationToken.None).ConfigureAwait(false);
+
+                    // The verdict this method exists for, and the one thing that tells a closed call
+                    // apart from one the callee left: a slow client registers its presence through a
+                    // listening stream, so the count here is what the race actually turns on.
+                    Log.LogInformation(
+                        nameof(EnforceCallConnectGrace) + ": chat #{ChatId} - {ParticipantCount} participant(s)"
+                        + " after {Grace}, {Verdict}",
+                        chatId, participants.Count, CallConnectGrace.ToShortString(),
+                        shouldClose ? "closing the call" : "connected");
                 }
+                else
+                    Log.LogInformation(
+                        nameof(EnforceCallConnectGrace) + ": chat #{ChatId} - no call to check (kind: {Kind})",
+                        chatId, state?.Kind);
             }
             if (shouldClose)
                 await CloseCall(chatId).ConfigureAwait(false);

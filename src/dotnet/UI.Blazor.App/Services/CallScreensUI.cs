@@ -17,7 +17,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     private readonly MutableState<ChatId?> _collapsedChatId;
     // The active call whose full-screen view gave way to its chat.
     private readonly MutableState<ChatId?> _inChatChatId;
-    // The ring whose ringtone the user silenced; the ring itself keeps going.
+    // The ring that must not sound while it keeps going: silenced by the user, or already answered.
     private readonly MutableState<ChatId?> _mutedRingChatId;
     private int _overLockRingGeneration;
 
@@ -116,19 +116,16 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     {
         var isOverLock = _overLockRingChatId.Value == chatId;
         Log.LogInformation("Accept: chat #{ChatId}, overLock={IsOverLock}", chatId, isOverLock);
-        // Straight from the session, not the slot: Answer on an Android notification can land before the
-        // search claimed the ring.
-        var call = await CallUI.GetRingingCall(chatId, CancellationToken.None).ConfigureAwait(true);
-        if (call is null) {
-            EndRing(chatId);
-            _ = Bridge?.OnCallHandled(chatId, false);
-            ShowToast(L.Call_Ended);
-            return;
-        }
+
+        // The answer ends the ring for the user right here, but the slot stays Ringing until the accept
+        // round trip lands - and on Android the notification's own ringer has already stopped by then,
+        // so a ringtone driven by the slot reads as the ring starting over.
+        _mutedRingChatId.Value = chatId;
 
         // Committed before the ring is dropped and before the accept RPC starts: the view, derived from
         // the slot, must not blink off between "ring ended" and "audio started".
-        if (!CallUI.TryCommitAccept(call)) {
+        if (!CallUI.TryCommitAccept(chatId)) {
+            ClearIf(_mutedRingChatId, chatId);
             ShowToast(L.Call_AlreadyInCall);
             return;
         }
@@ -141,6 +138,8 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
             await CallUI.AcceptCall(chatId, CancellationToken.None).ConfigureAwait(true);
         }
         catch (Exception e) {
+            // Also where "there was no ring left" lands: the server decides that under its change
+            // lock, and it's the only reading of it that can't race the session it came from.
             CallUI.Release(chatId);
             _ = Bridge?.OnCallHandled(chatId, false);
             Log.LogWarning(e, "AcceptCall failed for chat #{ChatId}", chatId);
