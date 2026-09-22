@@ -167,6 +167,30 @@ public interface IChats : IComputeService
         RpcStream<string> textChunks,
         CancellationToken cancellationToken);
 
+    // StreamEntry call-by-call, for callers that can't hold an RpcStream open - MCP tools, plain
+    // HTTP. Mirrors IUploads: AppendEntryStream writes nothing unless offset matches the server's,
+    // and reports where the server is so a retried or lost call can resume.
+    [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
+    Task<ChatEntryStream> StartEntryStream(
+        Session session,
+        ChatId chatId,
+        long? localId,
+        CancellationToken cancellationToken);
+
+    [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
+    Task<ChatEntryStream> AppendEntryStream(
+        Session session,
+        StreamId streamId,
+        int offset,
+        string text,
+        CancellationToken cancellationToken);
+
+    [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
+    Task<ChatEntryStream> FinishEntryStream(
+        Session session,
+        StreamId streamId,
+        CancellationToken cancellationToken);
+
     [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity), LegacyName("OnRemoveTextEntry")]
     Task OnRemoveEntry(Chats_RemoveEntry command, CancellationToken cancellationToken);
 

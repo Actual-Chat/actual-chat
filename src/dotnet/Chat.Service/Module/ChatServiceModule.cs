@@ -36,6 +36,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddLocalApi<IChats, Chats>(); // Used by many
         rpcHost.AddBackend<IChatsBackend, ChatsBackend>();
         rpcHost.AddBackend<IChatsUpgradeBackend, ChatsUpgradeBackend>();
+        rpcHost.AddBackend<IChatEntryStreamsBackend, ChatEntryStreams>();
 
         // Places
         rpcHost.AddLocalApi<IPlaces, Places>(); // Used by Chats

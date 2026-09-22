@@ -9,6 +9,9 @@ public static class McpModelExt
             ? new McpIdRange<long>(range.Start, range.Start - 1)
             : new McpIdRange<long>(range.Start, range.End - 1);
 
+    public static McpMessageStream ToMcpModel(this ChatEntryStream stream)
+        => new(stream.Id.Value, stream.EntryId.LocalId, stream.Offset, stream.IsCompleted);
+
     public static Task<ExternalMessage> ToMcpModel(
         this ChatEntry entry,
         Dictionary<AuthorId, Author?> authorById,
