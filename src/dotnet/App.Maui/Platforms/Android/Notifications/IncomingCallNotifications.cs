@@ -23,6 +23,11 @@ public static class IncomingCallNotifications
     private static readonly TimeSpan RingTimeout = Constants.Call.RingTimeout;
     private static ILogger? _log;
 
+    // The chat whose ring the user has already answered or declined. A full-screen intent
+    // dispatches with whenRendered: true, and on a cold start the render is seconds away - so one
+    // queued before the answer runs after it and puts the ring screen back over a settled call.
+    private static ChatId? _handledRingChatId;
+
     private static Context Context => Application.Context;
     private static IStringLocalizer L => AppStrings.L;
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger(typeof(IncomingCallNotifications));
@@ -61,6 +66,10 @@ public static class IncomingCallNotifications
         string? imageUrl)
     {
         EnsureChannelExists();
+        // A fresh ring is a call of its own: whatever the user did to the last one in this chat
+        // must not silence its screen.
+        if (Volatile.Read(ref _handledRingChatId) == chatId)
+            Volatile.Write(ref _handledRingChatId, null);
 
         var contentIntent = NotificationHelper.CreateViewIntent(Context, link)!;
         contentIntent.PutExtra(ChatIdExtraKey, chatId.Value);
@@ -128,6 +137,11 @@ public static class IncomingCallNotifications
     public static void Dismiss(ChatId chatId)
         => NotificationManagerCompat.From(Context)!.Cancel(CallTag(chatId), 0);
 
+    public static void MarkRingHandled(ChatId chatId)
+        // Call before dispatching the answer or the decline, not after: a full-screen intent
+        // already waiting for the render has to find the ring spoken for by the time it runs.
+        => Volatile.Write(ref _handledRingChatId, chatId);
+
     public static void HandleViewIntent(Intent intent)
     {
         var chatId = ChatId.TryParse(intent.GetStringExtra(ChatIdExtraKey), allowNull: true);
@@ -135,6 +149,7 @@ public static class IncomingCallNotifications
             return;
 
         if (intent.GetBooleanExtra(AcceptExtraKey, false)) {
+            MarkRingHandled(chatId);
             Dismiss(chatId);
             // Blazor starting up sees the call already Active and would never stop a ring it didn't start.
             IncomingCallRinger.Stop();
@@ -150,11 +165,29 @@ public static class IncomingCallNotifications
         // take over once the app is up. The full-screen-intent path (over the lock screen / screen
         // off) shows the full-screen call view instead of the modal; a plain tap shows the modal.
         var overLockScreen = intent.GetBooleanExtra(FullScreenExtraKey, false);
+        if (overLockScreen && GetBlockedCallScreenGate() is var gate and not CallScreenGate.None) {
+            // Android launches the full-screen intent's activity either way; the gate only decides
+            // whether the keyguard lets it show. Asking for the over-lock screen it can't give
+            // leaves the request standing, and the unlock that follows honours it - putting the
+            // ring screen up long after the ring.
+            DebugLog?.LogInformation(
+                "CALL_TRACE: HandleViewIntent #{ChatId} - the over-lock screen is gated off ({Gate})",
+                chatId, gate);
+            overLockScreen = false;
+        }
         DebugLog?.LogInformation(
             "CALL_TRACE: HandleViewIntent → dispatch OnRing #{ChatId}, overLockScreen={OverLockScreen}",
             chatId, overLockScreen);
         _ = AppServicesAccessor.DispatchToBlazor(
-            c => c.GetRequiredService<CallScreensUI>().OnRing(chatId, overLockScreen),
+            c => {
+                if (Volatile.Read(ref _handledRingChatId) == chatId) {
+                    DebugLog?.LogInformation(
+                        "CALL_TRACE: dropping a stale OnRing #{ChatId} - the ring is already handled", chatId);
+                    return;
+                }
+
+                c.GetRequiredService<CallScreensUI>().OnRing(chatId, overLockScreen);
+            },
             "CallScreensUI.OnRing", whenRendered: true);
     }
 
@@ -195,6 +228,20 @@ public static class IncomingCallNotifications
     }
 
     // Private methods
+
+    private static CallScreenGate GetBlockedCallScreenGate()
+    {
+        // Uncached on purpose: it's one read per incoming call, and a cached "blocked" would
+        // outlive the moment the user grants the permission, for the rest of the process.
+        try {
+            return new AndroidFullScreenCallsAvailability(Log).ReadBlockedGate();
+        }
+        catch (Exception e) {
+            // Fails open, like the gate checks themselves: a wrong "blocked" costs the call screen.
+            Log.LogWarning(e, "Couldn't read the call-screen gate");
+            return CallScreenGate.None;
+        }
+    }
 
     private static void EnsureChannelExists()
     {
