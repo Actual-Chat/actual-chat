@@ -19,6 +19,9 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     private readonly Lock _lock = new();
     private readonly MutableState<ActiveCall?> _activeCall;
+    // The call the server last named as mine. The slot blends this with a gesture it hasn't answered
+    // yet, so it can't tell the two apart - and a screen that must wait for the server needs to.
+    private readonly MutableState<ChatId?> _serverCallChatId;
     private CallIntent? _intent;
 
     private IIncomingCallsBridge? Bridge { get; }
@@ -37,6 +40,9 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _activeCall = StateFactory.NewMutable(
             (ActiveCall?)null,
             StateCategories.Get(GetType(), "ActiveCall"));
+        _serverCallChatId = StateFactory.NewMutable(
+            (ChatId?)null,
+            StateCategories.Get(GetType(), "ServerCallChatId"));
     }
 
     void INotifyInitialized.Initialized()
@@ -63,15 +69,22 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     [ComputeMethod]
     public virtual async Task<ChatId?> GetDialingOutChatId(CancellationToken cancellationToken)
     {
-        // The slot is claimed before the StartCall RPC, but the outgoing screens read the invitee from the
-        // session, and a refused call must not ring back first - so they wait for the server's dialing.
+        // The ringback follows this rather than the slot: the slot is claimed before the StartCall RPC,
+        // and a refused call must not ring back first. The screens don't wait - they show on the click.
         var call = await GetActiveCall(cancellationToken).ConfigureAwait(false);
         if (call is not { Role: CallRole.Caller, Phase: CallPhase.Dialing })
             return null;
 
-        var live = await LiveSessionUI.Get(call.ChatId, cancellationToken).ConfigureAwait(false);
-        return live is { Kind: LiveSessionKind.Call, Conversation: null } ? call.ChatId : null;
+        var serverChatId = await _serverCallChatId.Use(cancellationToken).ConfigureAwait(false);
+        return serverChatId == call.ChatId ? call.ChatId : null;
     }
+
+    public static AuthorId? GetPeerAuthorId(ChatId chatId, UserId ownUserId)
+        // A peer chat's author ids follow from its user ids, so the one invitee the header's call
+        // button leaves to the server is already known on the client - no read, nothing to wait for.
+        => chatId is PeerChatId peerChatId && peerChatId.HasUser(ownUserId)
+            ? peerChatId.AnotherAuthorId(ownUserId)
+            : null;
 
     public async Task StartCall(
         ChatId chatId,
@@ -87,8 +100,12 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             Hub.ToastUI.Show(L.Call_NoMicrophoneAccess, "icon-phone-hang-up", ToastDismissDelay.Short);
             return;
         }
-        // Taken before the RPC, so the screens follow the gesture rather than the round trip.
-        if (!TryClaimOutgoing(chatId, hasVideo)) {
+        // Taken before the RPC, so the screens follow the gesture rather than the round trip. A single
+        // invitee is the peer the screens name; for a group the server's invites decide, so it waits.
+        var peerId = invitees.Count == 1
+            ? invitees[0]
+            : GetPeerAuthorId(chatId, Hub.AccountUI.OwnAccount.Value.Id);
+        if (!TryClaimOutgoing(chatId, peerId, hasVideo)) {
             Hub.ToastUI.Show(L.Call_AlreadyInCall, "icon-phone-hang-up", ToastDismissDelay.Short);
             return;
         }
@@ -150,13 +167,13 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         await ChatAudioUI.SetListeningState(chatId, false).ConfigureAwait(true);
     }
 
-    public bool TryClaimOutgoing(ChatId chatId, bool hasVideo)
+    public bool TryClaimOutgoing(ChatId chatId, AuthorId? peerId, bool hasVideo)
     {
         lock (_lock) {
             if (_activeCall.Value is not null)
                 return false;
 
-            SetIntentUnsafe(new ActiveCall(chatId, CallRole.Caller, CallPhase.Dialing, null, hasVideo));
+            SetIntentUnsafe(new ActiveCall(chatId, CallRole.Caller, CallPhase.Dialing, peerId, hasVideo));
             return true;
         }
     }

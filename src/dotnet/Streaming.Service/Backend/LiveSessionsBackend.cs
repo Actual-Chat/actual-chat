@@ -589,8 +589,11 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         invitees = invitees.Where(id => id != callerAuthorId).Distinct().ToApiArray();
         // Claimed before the lock, since these are RPCs to the users' own shards. A claim the call
         // then fails to justify is dropped by the first CallsBackend.GetUserCall that reads it.
+        // A one-invitee call names its peer in the claim, so the caller's screens don't have to read
+        // the invites to know who they're calling; a group call has no single peer to name.
+        var callerPeerId = invitees.Count == 1 ? invitees[0] : null;
         if (!await ClaimUserCall(chatId, callerAuthorId, CallRole.Caller, CallPhase.Dialing,
-                null, hasVideo, cancellationToken).ConfigureAwait(false))
+                callerPeerId, hasVideo, cancellationToken).ConfigureAwait(false))
             throw StandardError.Constraint("You're already in a call.");
 
         var ringing = new List<AuthorId>();

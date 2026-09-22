@@ -101,6 +101,9 @@ public partial class CallUI
             // The intent stops competing once it's been answered - confirmed or overruled - or aged out.
             if (!intent.IsFresh || myCall?.ChatId == intent.ChatId)
                 _intent = null;
+            // Set before the early return below: the slot can stay put while the server's answer for it
+            // arrives, and that arrival is exactly what the outgoing screens wait for.
+            _serverCallChatId.Value = myCall?.ChatId;
             if (next == held)
                 return;
 

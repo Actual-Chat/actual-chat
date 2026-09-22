@@ -43,30 +43,17 @@ public class CallScreensUIDecisionsTest
     }
 
     [Fact]
-    public void UnconfirmedDialingShouldShowNothingButKeepCall()
+    public void DialingShouldShowOnTheGestureAlone()
     {
-        // arrange
+        // arrange - the slot is claimed before the StartCall RPC, and the screens follow it
         var call = Call(CallRole.Caller, CallPhase.Dialing);
 
         // act
-        var view = Decide(call, isNarrow: true, isDialingConfirmed: false);
+        var view = Decide(call, isNarrow: true);
 
         // assert
-        view.Kind.Should().Be(CallViewKind.None, "there's no invitee to show before the server's dialing");
+        view.Kind.Should().Be(CallViewKind.FullScreen, "the invitee is known from the click, so nothing is waited for");
         view.Call.Should().Be(call, "the view loop tells a released slot by the call going away");
-    }
-
-    [Fact]
-    public void UnconfirmedDialingShouldIgnoreCollapse()
-    {
-        // arrange
-        var call = Call(CallRole.Caller, CallPhase.Dialing);
-
-        // act
-        var view = Decide(call, isNarrow: true, Flags(collapsed: ChatA), isDialingConfirmed: false);
-
-        // assert
-        view.Kind.Should().Be(CallViewKind.None, "the island names the invitee too, so it waits as well");
     }
 
     [Theory]
@@ -195,12 +182,8 @@ public class CallScreensUIDecisionsTest
         isFlagStale.Should().BeTrue("only the slot holding the ring's own chat keeps its flag");
     }
 
-    private static CallView Decide(
-        ActiveCall? call,
-        bool isNarrow,
-        CallScreenFlags flags = default,
-        bool isDialingConfirmed = true)
-        => CallScreensUI.DecideView(call, isDialingConfirmed, isNarrow, flags);
+    private static CallView Decide(ActiveCall? call, bool isNarrow, CallScreenFlags flags = default)
+        => CallScreensUI.DecideView(call, isNarrow, flags);
 
     private static CallScreenFlags Flags(ChatId? collapsed = null, ChatId? inChat = null, ChatId? overLock = null)
         => new(collapsed, inChat, overLock);
