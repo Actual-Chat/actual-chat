@@ -7,7 +7,8 @@ public static partial class Validators
 
     public static bool IsPhoneLike(string? input)
     {
-        input ??= "";
-        return input.StartsWith('+') || input.Any(char.IsDigit);
+        // A leading '+' or digit picks the phone branch; a leading letter falls through to email.
+        var s = (input ?? "").TrimStart();
+        return s.Length > 0 && (s[0] == '+' || char.IsDigit(s[0]));
     }
 }

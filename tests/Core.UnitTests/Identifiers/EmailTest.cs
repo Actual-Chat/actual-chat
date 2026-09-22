@@ -18,6 +18,8 @@ public class EmailTest(ITestOutputHelper @out) : StringIdentifierTestBase<Email>
         "user@@example.com",
         "user name@example.com",
         "user@exam ple.com",
+        "user@localhost",
+        "a@b",
     ];
 
     [Fact]

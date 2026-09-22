@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Net.Mail;
 using ActualChat.Internal;
+using ActualChat.Validation;
 using ActualLab.Fusion.Blazor;
 
 namespace ActualChat;
@@ -106,7 +107,8 @@ public sealed partial class Email : StringIdentifier, IStringIdentifier<Email>
     // Helpers
 
     private static bool IsValidEmail(string email)
-        => MailAddress.TryCreate(email, out var mailAddress) &&
-            // Ensure that the parsed address matches the original input
-            mailAddress.Address == email;
+        => MailAddress.TryCreate(email, out var mailAddress)
+            // Ensure that the parsed address matches the original input, and the host is a real domain
+            && mailAddress.Address == email
+            && Validators.Email.HasValidDomain(mailAddress.Host);
 }
