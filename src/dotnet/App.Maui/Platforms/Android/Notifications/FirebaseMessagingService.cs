@@ -22,8 +22,8 @@ namespace ActualChat.App.Maui;
 public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingService
 {
     private static readonly TimeSpan FirebaseReadyTimeout = TimeSpan.FromSeconds(15);
-    // Twice the ring, so a device clock a few seconds off can't drop a live one: this exists to
-    // catch a push held back for minutes, not to be precise about the ring's own deadline.
+    // Twice the ring: this exists to catch a push held back for minutes, not to be precise about
+    // the ring's own deadline - and it is only ever judged against a server-synced clock.
     private static readonly TimeSpan MaxRingPushAge = Constants.Call.RingTimeout * 2;
 
     private static ILogger? _log;
@@ -156,6 +156,14 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
 
     // Private methods
 
+    private static ServerClock? GetSyncedServerClock()
+    {
+        // Null until the offset lands, and on a cold start there are no app services at all: the
+        // device wall clock can be hours off, and a ring it drops is a call that never rings.
+        var clocks = IPlatformApplication.Current?.Services?.GetService<MomentClockSet>();
+        return clocks?.ServerClock is { WhenReady.IsCompleted: true } serverClock ? serverClock : null;
+    }
+
     private static bool ShouldSuppressForDevice(ChatId chatId, long entryLid, NotificationKind kind)
     {
         // Fail-open: this runs on background deliveries too, where the Blazor scope may be disposed
@@ -259,11 +267,13 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
 
         // The TTL keeps most stale rings out, but FCM may still deliver one right at its edge -
         // and a ring that outlived its call rings the phone for a call nobody can answer.
-        var age = SystemClock.Instance.Now - new Moment(sentTime * 10_000);
-        if (age > MaxRingPushAge) {
-            Log.LogWarning("Dropping an incoming-call push for chat #{ChatId}: it is {Age} old",
-                chatId, age.ToShortString());
-            return;
+        if (sentTime > 0 && GetSyncedServerClock() is { } serverClock) {
+            var age = serverClock.Now - new Moment(sentTime * 10_000);
+            if (age > MaxRingPushAge) {
+                Log.LogWarning("Dropping an incoming-call push for chat #{ChatId}: it is {Age} old",
+                    chatId, age.ToShortString());
+                return;
+            }
         }
 
         var scopeAlive = TryGetScopedServices(out _);
