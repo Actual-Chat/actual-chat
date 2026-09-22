@@ -1,4 +1,5 @@
 using ActualLab.Resilience;
+using Notification = ActualChat.Notifications.Notification;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -41,7 +42,7 @@ public class AppIconBadgeUpdater(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
             if (c.HasError)
                 continue;
 
-            var count = c.Value.Count;
+            var count = GetBadgeCount(c.Value);
             if (count == lastCount)
                 continue;
 
@@ -78,7 +79,7 @@ public class AppIconBadgeUpdater(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
                         .ConfigureAwait(false);
                     cActive = await cActive.Update(cancellationToken).ConfigureAwait(false);
                     if (!cActive.HasError)
-                        badge.SetBadgeCount(cActive.Value.Count);
+                        badge.SetBadgeCount(GetBadgeCount(cActive.Value));
                 }
                 catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                     // A transient ListActive failure on one resume must not kill the loop.
@@ -88,4 +89,11 @@ public class AppIconBadgeUpdater(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
             wasBackground = isBackground;
         }
     }
+
+    // Private methods
+
+    private static int GetBadgeCount(ApiArray<Notification> active)
+        // A ring is in the active set to be delivered and dismissed, not because anything is
+        // unread: counting it takes the badge up for the ring's ~20s and back down after it.
+        => active.Where(x => x.Kind != NotificationKind.IncomingCall).Count();
 }

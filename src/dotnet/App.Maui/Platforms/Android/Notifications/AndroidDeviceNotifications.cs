@@ -5,7 +5,7 @@ using ActualChat.UI.Blazor.App.Services;
 namespace ActualChat.App.Maui;
 
 // Android IDeviceNotifications:
-// - prune: closes shown notifications whose tag is no longer active;
+// - prune: closes shown notifications whose tag is no longer active, rings excepted;
 // - create: re-shows a newly-active notification that isn't currently shown (heals a dropped push).
 // Only newly-added tags are passed as create candidates, so a user-swiped banner (active set
 // unchanged) is never resurrected — no dismissal tracking needed.
@@ -29,10 +29,17 @@ public class AndroidDeviceNotifications : IDeviceNotifications
                 var tag = NotificationHelper.GetPushBannerTag(statusBarNotification.Notification!);
                 if (tag.IsNullOrEmpty())
                     continue;
-                if (!activeTags.Contains(tag))
-                    notificationManager?.Cancel(tag, statusBarNotification.Id);
-                else
+
+                // A ring is never the active set's to close, even when the set doesn't list it:
+                // the set read here can be older than the push that posted the banner, and the
+                // full-screen intent brings the app forward - which is what triggers this prune.
+                // Closing it costs the only way to answer wherever that intent is gated off.
+                // The ring ends on its own SetTimeoutAfter(RingTimeout), on the dismissal push,
+                // or when the call screen takes over.
+                if (activeTags.Contains(tag) || IncomingCallNotifications.TryParseCallTag(tag) is not null)
                     shownTags.Add(tag);
+                else
+                    notificationManager?.Cancel(tag, statusBarNotification.Id);
             }
 
         foreach (var tag in createTags) {
