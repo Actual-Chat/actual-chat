@@ -1356,7 +1356,7 @@
   "Ptt_ChatAtCapacity_Format": "Пусх-то-талк је укључен за овај чет, али већ сте у {0} - дозволите га у Поставкама.",
   "Transcription_MicrophoneTopic": "Микрофон",
   "Transcription_FaceDownStop": "Зауставите снимање кад је екран окренут надоље",
-  "Transcription_FaceDownStopCaption": "Окретање телефона екраном надоље или стављање у џеп искључује микрофон",
+  "Transcription_FaceDownStopCaption": "Окретање телефона екраном надоље искључује микрофон",
   "Privacy_BlockedUsers": "Блокирани корисници",
   "LocationAccuracy_High": "Висока",
   "LocationAccuracy_HighCaption": "Највећа прецизност; троши више батерије.",

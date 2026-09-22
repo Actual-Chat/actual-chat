@@ -1356,7 +1356,7 @@
   "Ptt_ChatAtCapacity_Format": "इस चैट के लिए पुश-टू-टॉक चालू है, लेकिन आप पहले से ही {0} में हैं - इसे सेटिंग्स में अनुमति दें।",
   "Transcription_MicrophoneTopic": "माइक्रोफ़ोन",
   "Transcription_FaceDownStop": "फ़ोन उल्टा रखने पर रिकॉर्डिंग रोकें",
-  "Transcription_FaceDownStopCaption": "फ़ोन को उल्टा रखने या जेब में डालने पर माइक बंद हो जाता है",
+  "Transcription_FaceDownStopCaption": "फ़ोन को उल्टा रखने पर माइक बंद हो जाता है",
   "Privacy_BlockedUsers": "ब्लॉक किए गए उपयोगकर्ता",
   "LocationAccuracy_High": "उच्च",
   "LocationAccuracy_HighCaption": "सर्वोच्च सटीकता; अधिक बैटरी खर्च होती है।",

@@ -1356,7 +1356,7 @@
   "Ptt_ChatAtCapacity_Format": "Push-to-talk aktif untuk obrolan ini, tetapi Anda sudah berada di {0} - izinkan di Pengaturan.",
   "Transcription_MicrophoneTopic": "Mikrofon",
   "Transcription_FaceDownStop": "Hentikan perekaman saat ditelungkupkan",
-  "Transcription_FaceDownStopCaption": "Menelungkupkan ponsel atau memasukkannya ke saku akan menutup mikrofon",
+  "Transcription_FaceDownStopCaption": "Menelungkupkan ponsel akan menutup mikrofon",
   "Privacy_BlockedUsers": "Pengguna yang diblokir",
   "LocationAccuracy_High": "Tinggi",
   "LocationAccuracy_HighCaption": "Presisi tertinggi; memakai lebih banyak baterai.",

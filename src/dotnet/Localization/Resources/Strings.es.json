@@ -1356,7 +1356,7 @@
   "Ptt_ChatAtCapacity_Format": "Push-to-talk está activado en este chat, pero ya estás en {0}: permítelo en Ajustes.",
   "Transcription_MicrophoneTopic": "Micrófono",
   "Transcription_FaceDownStop": "Detener la grabación al ponerlo boca abajo",
-  "Transcription_FaceDownStopCaption": "Poner el teléfono boca abajo o guardarlo en el bolsillo cierra el micrófono",
+  "Transcription_FaceDownStopCaption": "Poner el teléfono boca abajo cierra el micrófono",
   "Privacy_BlockedUsers": "Usuarios bloqueados",
   "LocationAccuracy_High": "Alta",
   "LocationAccuracy_HighCaption": "Máxima precisión; consume más batería.",

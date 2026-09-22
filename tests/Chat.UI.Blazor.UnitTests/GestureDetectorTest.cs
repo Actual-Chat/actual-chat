@@ -282,7 +282,7 @@ public class GestureDetectorTest
     {
         // The taught pocket gesture - turn the phone over and slide it away. Deliberately the
         // same branch as the upright insert above: narrowing it to inverted-only would leave
-        // the mic open in a pocket the user entered the other way up.
+        // a camera running in a pocket the user entered the other way up.
         var d = new FaceDownDetector();
         d.SetProximityCovered(true);
         // act + assert

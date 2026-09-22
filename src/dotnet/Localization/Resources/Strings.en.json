@@ -1566,7 +1566,7 @@
   // Back on Settings > Voice & Transcription.
   "Transcription_MicrophoneTopic": "Microphone",
   "Transcription_FaceDownStop": "Stop recording when face down",
-  "Transcription_FaceDownStopCaption": "Turning the phone face down or pocketing it closes the mic",
+  "Transcription_FaceDownStopCaption": "Turning the phone face down closes the mic",
 
   // Settings > Privacy.
   "Privacy_BlockedUsers": "Blocked users",

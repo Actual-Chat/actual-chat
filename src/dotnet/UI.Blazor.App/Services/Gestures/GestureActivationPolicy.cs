@@ -107,8 +107,10 @@ public static class GestureActivationPolicy
             // Stop sensing is on only while something outgoing is live (mic, camera, screencast),
             // and closing that always wins. With nothing outgoing, a face-down hushes the other
             // side; being pocketed is never a hush - the pat is, so a wake reaching a pocketed
-            // phone doesn't hush itself.
-            GestureKind.FaceDown or GestureKind.Pocket when isStopArmed => GestureRoute.StopReply,
+            // phone doesn't hush itself. Pocket never closes an open mic: the sensors can't tell
+            // an upright pocket from the phone held to the ear, which is how people talk into it.
+            GestureKind.FaceDown when isStopArmed => GestureRoute.StopReply,
+            GestureKind.Pocket when isStopArmed && !isMicOpen => GestureRoute.StopReply,
             GestureKind.FaceDown => !isMicOpen && isHushArmed ? GestureRoute.Hush : GestureRoute.None,
             GestureKind.Pocket => GestureRoute.None,
             GestureKind.DoublePat => !isMicOpen && isHushArmed ? GestureRoute.Hush : GestureRoute.None,

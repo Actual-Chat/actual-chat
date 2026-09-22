@@ -285,6 +285,9 @@ public class GestureActivationPolicyTest
             .Route(GestureKind.Pocket, false, isMicOpen: false, isStopArmed: true, isHushArmed: true)
             .Should().Be(GestureRoute.StopReply);
         GestureActivationPolicy
+            .Route(GestureKind.Pocket, false, isMicOpen: true, isStopArmed: true, isHushArmed: false)
+            .Should().Be(GestureRoute.None, "the phone held to the ear reads as pocketed");
+        GestureActivationPolicy
             .Route(GestureKind.DoublePat, false, isMicOpen: false, isStopArmed: false, isHushArmed: true)
             .Should().Be(GestureRoute.Hush);
         GestureActivationPolicy
