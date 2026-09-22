@@ -1,4 +1,3 @@
-@using TimeZone = ActualChat.Users.TimeZone
 @using AccountField = ActualChat.UI.Blazor.App.Components.OwnAccountEditorModal.AccountField
 @inherits ComputedStateComponent<AppUIHub, AccountFull>
 @implements IDisposable
@@ -109,24 +108,6 @@
         </TileItem>
     }
 
-    <TileItem Click="@OnTimeZoneClick">
-        <Icon>
-            <i class="icon-globe"></i>
-        </Icon>
-        <Content>
-            @if (_selectedTimeZone is not null) {
-                <span>@_selectedTimeZone.City</span>
-                <span class="text-micro-500 text-03 ml-1">@_selectedTimeZone.GetUtcOffsetText()</span>
-            }
-            else {
-                @L.YourAccount_TimeZoneNotSet
-            }
-        </Content>
-        <Caption>
-            @L.YourAccount_TimeZone
-        </Caption>
-    </TileItem>
-
     <TileItem Class="tile-item-edit" Click="@(() => OnEditClick(AccountField.Name))">
         <Icon>
             <i class="icon-edit"></i>
@@ -152,17 +133,15 @@
     </TileItem>
 </Tile>
 
+<DigestSettings/>
+
 <TileTopic Topic="@L.YourAccount_MyAvatars"/>
 
 <OwnAvatarList Account="@account"/>
 
 @code {
-    private TimeZone? _selectedTimeZone;
-    private IReadOnlyCollection<TimeZone>? _timeZones;
     private int _passkeyCount;
     private bool _showPasskeys;
-
-    private ITimeZones TimeZones => Hub.TimeZones;
 
     [Parameter] public Action? OpenPasskeys { get; set; }
 
@@ -174,8 +153,6 @@
 
     protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken) {
         var account = await AccountUI.OwnAccount.Use(cancellationToken);
-        _timeZones = await TimeZones.List("en-US", cancellationToken);
-        _selectedTimeZone = _timeZones.FirstOrDefault(z => z.Id == account.TimeZone);
         var canUsePasskey = await Hub.PasskeyUI.CanUse(cancellationToken);
         var passkeys = await Hub.PasskeyUI.ListOwn(cancellationToken);
         _passkeyCount = passkeys.Count;
@@ -190,7 +167,4 @@
 
     private void OnShareClick()
         => _ = ShareUI.ShareOwnAccount();
-
-    private void OnTimeZoneClick()
-        => ModalUI.Show(new TimeZoneEditorModal.Model(_timeZones ?? []));
 }

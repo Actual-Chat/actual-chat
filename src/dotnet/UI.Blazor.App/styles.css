@@ -94,6 +94,7 @@
 @import './Components/SearchPanel/search-panel.css';
 @import './Components/Settings/settings-modal.css';
 @import './Components/Settings/time-zone-editor-modal.css';
+@import './Components/Settings/digest-time-editor-modal.css';
 @import './Components/Settings/documents-modal.css';
 @import './Components/DubVoiceModal/dub-voice-modal.css';
 @import './Components/Selection/selection-header.css';

@@ -414,9 +414,10 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.AppSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.ConnectedAppsSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DeveloperTools>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DigestSettings>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DigestTimeEditorModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsPage>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.EmailSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.LanguageSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.LanguageShortcut>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.NativeAppSettingsView>();
@@ -1241,9 +1242,10 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.AppSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.ConnectedAppsSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DeveloperTools), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DigestSettings), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DigestTimeEditorModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsPage), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.EmailSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.LanguageSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.LanguageShortcut), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.NativeAppSettingsView), AotTypeKind.Component),
