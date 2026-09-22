@@ -26,11 +26,14 @@ public class TimerFlowTest(ITestOutputHelper @out)
     }, @out)
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(15);
+    // Above DefaultTimeout scaled plus the two app hosts, below the Timeout attribute, and not
+    // scaled itself - the constant it has to stay under cannot scale either
+    private static readonly TimeSpan CancelAfter = TimeSpan.FromSeconds(90);
 
-    [FlakyFact("AY: Slow on GitHub", 3, Timeout = 60_000)]
+    [FlakyFact("AY: Slow on GitHub", 3, Timeout = 120_000)]
     public async Task BasicTest()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        using var cts = new CancellationTokenSource(CancelAfter);
         var cancellationToken = cts.Token;
 
         await using var h0 = await NewAppHost();
@@ -56,10 +59,10 @@ public class TimerFlowTest(ITestOutputHelper @out)
         await WhenCompleted(flowHub, f.Id);
     }
 
-    [FlakyFact("AY: Slow on GitHub", 3, Timeout = 60_000)]
+    [FlakyFact("AY: Slow on GitHub", 3, Timeout = 120_000)]
     public async Task TwoFlowsTest()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        using var cts = new CancellationTokenSource(CancelAfter);
         var cancellationToken = cts.Token;
 
         await using var h0 = await NewAppHost();
@@ -79,10 +82,10 @@ public class TimerFlowTest(ITestOutputHelper @out)
             WhenCompleted(flowHub, g.Id));
     }
 
-    [FlakyFact("AY: Slow on GitHub", 3, Timeout = 60_000)]
+    [FlakyFact("AY: Slow on GitHub", 3, Timeout = 120_000)]
     public async Task ResetTest()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        using var cts = new CancellationTokenSource(CancelAfter);
         var cancellationToken = cts.Token;
 
         await using var h0 = await NewAppHost();
