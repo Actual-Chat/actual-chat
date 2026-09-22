@@ -124,13 +124,13 @@ public class WebHooksFanInTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         await Bob.JoinPlace(place.Id);
 
         // assert
-        var bobAuthor = await ComputedTest.When(async ct => {
+        var bobAuthor = await TestWait.When(async ct => {
             var author = await AppHost.Services.GetRequiredService<IAuthorsBackend>()
                 .GetByUserId(place.Id.RootChatId, bob.Id, RequestedAuthorKind.Full, ct);
             author.Should().NotBeNull();
             return author!;
         });
-        var delivery = await ComputedTest.When(async ct => {
+        var delivery = await TestWait.When(async ct => {
             var deliveries = await Backend.ListDeliveries(hook.Id, Constants.WebHooks.DeliveryListLimit, ct);
             return deliveries.Single(x => x.EventType == "place.member.joined" && x.Id.Contains(bobAuthor.Id.Value));
         }, TimeSpan.FromSeconds(10));
@@ -226,7 +226,7 @@ public class WebHooksFanInTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         // act - Bob joins
         await Bob.JoinChat(chatId, inviteId);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var userIds = await AppHost.Services.GetRequiredService<IAuthorsBackend>().ListUserIds(chatId, ct);
             userIds.Should().Contain(bob.Id);
         });
@@ -269,14 +269,14 @@ public class WebHooksFanInTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         diff = configure?.Invoke(diff) ?? diff;
         var hook = (await Commander.Call(new WebHooksBackend_Change(
             scope, scopeId, null, null, Change.Create(diff), account.Id))).WebHook!;
-        await ComputedTest.When(async ct
+        await TestWait.When(async ct
             => (await Backend.ListByScope(scope, scopeId, ct)).Should().Contain(x => x.Id == hook.Id));
         _createdHooks.Add(hook);
         return hook;
     }
 
     private Task<ApiArray<WebHookDelivery>> WaitForDeliveries(WebHookId hookId, int count)
-        => ComputedTest.When(async ct => {
+        => TestWait.When(async ct => {
             var deliveries = await Backend.ListDeliveries(hookId, Constants.WebHooks.DeliveryListLimit, ct);
             deliveries.Should().HaveCount(count);
             return deliveries;

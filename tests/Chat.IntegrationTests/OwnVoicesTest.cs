@@ -52,7 +52,7 @@ public sealed class OwnVoicesTest(
 
         // assert
         before.IsEnabled.Should().BeFalse();
-        var status = await ComputedTest.When(async ct1 => {
+        var status = await TestWait.When(async ct1 => {
             var s = await OwnVoices.GetOwnVoiceStatus(Tester.Session, ct1);
             s.IsEnabled.Should().BeTrue("the compute method must pick up the settings change");
             return s;
@@ -78,7 +78,7 @@ public sealed class OwnVoicesTest(
 
         // act - opt in with an explicit sample, then let a dub acquire the clone
         await Tester.OptInOwnVoice(chatId, Languages.English, EntryFrameCount);
-        var withSample = await ComputedTest.When(async ct1 => {
+        var withSample = await TestWait.When(async ct1 => {
             var s = await OwnVoices.GetOwnVoiceStatus(Tester.Session, ct1);
             s.HasExplicitSample.Should().BeTrue();
             return s;
@@ -91,7 +91,7 @@ public sealed class OwnVoicesTest(
         withSample.MissingDuration.Should().BeNull("an explicit sample has no auto-selection shortfall");
         withSample.Status.Should().Be(UserVoiceStatus.None);
         voiceId.Should().NotBeNullOrEmpty();
-        await ComputedTest.When(async ct1 => {
+        await TestWait.When(async ct1 => {
             var s = await OwnVoices.GetOwnVoiceStatus(Tester.Session, ct1);
             s.Status.Should().Be(UserVoiceStatus.Ready, "the status depends on the UserVoice record");
         });
@@ -103,7 +103,7 @@ public sealed class OwnVoicesTest(
         await SetSettings(x => x with { OwnVoiceSampleEntryId = null });
 
         // assert
-        await ComputedTest.When(async ct1 => {
+        await TestWait.When(async ct1 => {
             var s = await OwnVoices.GetOwnVoiceStatus(Tester.Session, ct1);
             s.HasExplicitSample.Should().BeFalse();
             s.Failure.Should().Be(VoiceSampleFailure.NotEnoughRecordings);

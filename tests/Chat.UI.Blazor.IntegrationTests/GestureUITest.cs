@@ -60,7 +60,7 @@ public sealed class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper 
         GestureUI.IsPracticeMode = true;
 
         // assert
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             GestureUI.RecognizerOptions.IsFlipToTalkEnabled.Should().BeTrue();
             GestureUI.RecognizerOptions.IsDoubleShakeEnabled.Should().BeTrue();
         }, WaitTimeout.Debuggable());
@@ -69,7 +69,7 @@ public sealed class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper 
         GestureUI.IsPracticeMode = false;
 
         // assert: converges back to disarmed and stays there - no PTT chat is armed
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             GestureUI.RecognizerOptions.IsFlipToTalkEnabled.Should().BeFalse();
             GestureUI.RecognizerOptions.IsDoubleShakeEnabled.Should().BeFalse();
             GestureUI.RecognizerOptions.IsStopGestureEnabled.Should().BeFalse();
@@ -85,7 +85,7 @@ public sealed class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper 
         // arrange
         var pttSettings = await ArmPttChat();
         GestureUI.Start();
-        await TestExt.When(
+        await TestWait.WhenPolled(
             () => GestureUI.RecognizerOptions.IsFlipToTalkEnabled.Should().BeTrue(),
             WaitTimeout.Debuggable());
 
@@ -95,7 +95,7 @@ public sealed class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper 
         await pttSettings.Update(x => x with { IsFlipToTalkEnabled = false });
 
         // assert
-        await TestExt.When(
+        await TestWait.WhenPolled(
             () => GestureUI.RecognizerOptions.IsFlipToTalkEnabled.Should().BeFalse(),
             TimeSpan.FromSeconds(6).Debuggable());
     }
@@ -116,7 +116,7 @@ public sealed class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper 
         Hub.ChatAudioUI.SetIsPttEnabledOnDevice(true);
 
         // assert
-        await TestExt.When(
+        await TestWait.WhenPolled(
             () => GestureUI.RecognizerOptions.IsFlipToTalkEnabled.Should().BeTrue(),
             WaitTimeout.Debuggable());
     }
@@ -128,18 +128,18 @@ public sealed class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper 
         await ArmPttChat();
         var chatId = (await Hub.ChatAudioUI.GetPttChatIds(CancellationToken.None)).Single();
         GestureUI.Start();
-        await TestExt.When(
+        await TestWait.WhenPolled(
             () => GestureUI.RecognizerOptions.IsFlipToTalkEnabled.Should().BeTrue(),
             WaitTimeout.Debuggable());
         GestureUI.IsHushArmed.Should().BeFalse("nobody has spoken yet");
 
         // act: an own utterance ends - the reply window opens, the hush window must not
         await Hub.ChatAudioUI.SetRecordingChatId(chatId);
-        await TestExt.When(
+        await TestWait.WhenPolled(
             () => GestureUI.RecognizerOptions.IsMicOpen.Should().BeTrue(),
             WaitTimeout.Debuggable());
         await Hub.ChatAudioUI.SetRecordingChatId(null);
-        await TestExt.When(
+        await TestWait.WhenPolled(
             () => GestureUI.RecognizerOptions.IsMicOpen.Should().BeFalse(),
             WaitTimeout.Debuggable());
 
@@ -153,20 +153,20 @@ public sealed class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper 
         Hub.VoiceActivityUI.NoteIncomingVoice(chatId, Hub.Clocks.ServerClock.Now);
 
         // assert
-        await TestExt.When(
+        await TestWait.WhenPolled(
             () => GestureUI.IsHushArmed.Should().BeTrue("an incoming utterance opens the hush window"),
             WaitTimeout.Debuggable());
 
         // act: you answer it
         await Hub.ChatAudioUI.SetRecordingChatId(chatId);
-        await TestExt.When(
+        await TestWait.WhenPolled(
             () => GestureUI.RecognizerOptions.IsMicOpen.Should().BeTrue(),
             WaitTimeout.Debuggable());
         await Hub.ChatAudioUI.SetRecordingChatId(null);
 
         // assert: the reply closes the window the incoming utterance opened - well before the
         // 15s answer window would have lapsed by itself
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             GestureUI.RecognizerOptions.IsMicOpen.Should().BeFalse();
             GestureUI.IsHushArmed.Should().BeFalse("your reply answers the utterance");
         }, TimeSpan.FromSeconds(5).Debuggable());
@@ -186,7 +186,7 @@ public sealed class GestureUITest(ChatAppHostFixture fixture, ITestOutputHelper 
         GestureUI.IsPracticeMode = true;
 
         // assert
-        await TestExt.When(
+        await TestWait.WhenPolled(
             () => GestureUI.RecognizerOptions.IsFlipToTalkEnabled.Should().BeTrue(),
             WaitTimeout.Debuggable());
     }

@@ -49,7 +49,7 @@ public static class UserOperations
         await tester.Commander.Call(new UserPresencesBackend_CheckIn(
             user.Id, clocks.SystemClock.Now - TimeSpan.FromMinutes(15), true));
         var presences = tester.AppServices.GetRequiredService<IUserPresences>();
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var presence = await presences.Get(user.Id, CancellationToken.None);
             presence.Should().Be(Presence.Offline);
         }, TimeSpan.FromSeconds(5));
@@ -62,7 +62,7 @@ public static class UserOperations
         await tester.Commander.Call(new UserPresencesBackend_CheckIn(
             user.Id, clocks.SystemClock.Now, true));
         var presences = tester.AppServices.GetRequiredService<IUserPresences>();
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var presence = await presences.Get(user.Id, CancellationToken.None);
             presence.Should().Be(Presence.Online);
         }, TimeSpan.FromSeconds(5));

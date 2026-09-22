@@ -33,8 +33,8 @@ public class SessionTemporalsShardMigrationTest(ITestOutputHelper @out)
                 var o1 = h1.Services.ShardOwner(shardScheme);
                 var s1 = h1.Services.GetRequiredService<ISessionTemporalsBackend>();
                 var commander1 = h1.Services.Commander();
-                await w1.WhenAnnounced.WaitAsync(SyncTimeout);
-                await ComputedTest.When(async ct => {
+                await w1.WhenAnnounced.WaitAsync(SyncTimeout.CiScaled());
+                await TestWait.When(async ct => {
                     var bits = await o1.BitmapState.Use(ct).ConfigureAwait(false);
                     bits.SetBitCount().Should().Be(shardScheme.ShardCount);
                 }, SyncTimeout);
@@ -56,15 +56,16 @@ public class SessionTemporalsShardMigrationTest(ITestOutputHelper @out)
 
                     // Wait for the new node's announcement and for everyone to see N nodes.
                     var wN = hN.Services.GetRequiredService<MeshWatcher>();
-                    await wN.WhenAnnounced.WaitAsync(SyncTimeout);
+                    await wN.WhenAnnounced.WaitAsync(SyncTimeout.CiScaled());
                     var nodeCount = i;
                     foreach (var h in hosts) {
                         var w = h.Services.GetRequiredService<MeshWatcher>();
-                        await w.State.Computed.When(x => x.AllNodes.Count >= nodeCount).WaitAsync(SyncTimeout);
+                        await w.State.Computed.When(x => x.AllNodes.Count >= nodeCount)
+                            .WaitAsync(SyncTimeout.CiScaled());
                     }
 
                     // Wait for the cluster's shard map to stabilize (every shard owned by exactly one node).
-                    await ComputedTest.When(async ct => {
+                    await TestWait.When(async ct => {
                         var sum = 0;
                         foreach (var h in hosts) {
                             var bits = await h.Services.ShardOwner(shardScheme).BitmapState.Use(ct).ConfigureAwait(false);
@@ -88,7 +89,7 @@ public class SessionTemporalsShardMigrationTest(ITestOutputHelper @out)
 
                 // The captured Get computed must be invalidated as a result of shard migration,
                 // and recomputing it must yield the same value (Redis-backed).
-                await c1.WhenInvalidated(CancellationToken.None).WaitAsync(SyncTimeout);
+                await c1.WhenInvalidated(CancellationToken.None).WaitAsync(SyncTimeout.CiScaled());
                 c1.IsConsistent().Should().BeFalse();
 
                 var c2 = await Computed.Capture(() => s1.Get(session, key, CancellationToken.None));

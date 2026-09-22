@@ -132,7 +132,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         IReadOnlyCollection<ChatEntry> expectedEntries,
         IReadOnlyCollection<Place>? expectedJoinedPlaces = null,
         IReadOnlyCollection<Place>? expectedOtherPlaces = null)
-        => TestExt.When(async () => {
+        => TestWait.WhenPolled(async () => {
                 var uniqueCriteria = $"{criteria} {IsolationKey}";
                 var owner = await Tester.GetOwnAccount();
                 var friends = await Tester.FindPeople(uniqueCriteria, true, placeId);
@@ -162,7 +162,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
             TimeSpan.FromSeconds(30));
 
     private Task<IReadOnlyList<FoundItem>> GetSearchResults(int expectedCount)
-        => TestsExt.When(async () => {
+        => TestWait.WhenPolled<IReadOnlyList<FoundItem>>(async () => {
                 var results = await SearchUI.GetSearchResults();
                 results.Should().HaveCount(expectedCount);
                 return results;

@@ -64,8 +64,8 @@ public sealed class OutgoingCallScreensTest(ChatAppHostFixture fixture, ITestOut
             chatId, bobAuthor!.Id, new[] { aliceAuthor.Id }.ToApiArray(), false, default);
 
         // assert - the ringback gate opens on its own, from the server answer rather than the gesture
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             (await hub.CallUI.GetDialingOutChatId(ct)).Should().Be(chatId);
-        }, TimeSpan.FromSeconds(10));
+        });
     }
 }

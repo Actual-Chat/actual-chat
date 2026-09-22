@@ -134,7 +134,7 @@ public class VersionedComputeMethodPrimerTest(ITestOutputHelper @out) : TestBase
         // The empty entry keeps the version floor until it self-evicts after EntryLifetime.
         // Eviction runs on the shared timer set with no upper-bound firing guarantee, so poll:
         // a lower version is accepted only once the slot is fresh.
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             await primer.Prime("a", 1, 7);
             primer.TryUsePrimed("a", out var v2).Should().BeTrue();
             v2.Should().Be(7);

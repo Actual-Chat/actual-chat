@@ -105,7 +105,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
         var entry = await Tester.CreateTextEntry(chatId, sourceText);
         var targetLang = Language.Parse(targetLanguage);
 
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             // act
             var translation = await Translations.Get(Tester.Session, TranslationId.New((ChatEntryId)entry.Id, targetLang), true, ct);
 
@@ -128,7 +128,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
         var targetLang = Languages.Russian;
 
         // act
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
                 // act
                 var translation = await Translations.Get(Tester.Session, TranslationId.New((ChatEntryId)entry.Id, targetLang), true, ct);
 
@@ -221,7 +221,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
     }
 
     private Task<Translation> WhenTranslated(ChatEntryId id, Language language)
-        => ComputedTest.When(async ct => {
+        => TestWait.When(async ct => {
                 var translation = await Translations.Get(Tester.Session, TranslationId.New(id, language), true, ct).Require();
                 translation.IsStreaming.Should().BeFalse();
                 return translation;
@@ -231,19 +231,19 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
     private Task<Language[]> WhenDetected(ChatEntryId id, string sExpectedLanguages, TimeSpan? timeout = null)
     {
         var expectedLanguages = sExpectedLanguages.Split([',']).Select(Language.Parse).ToList();
-        return ComputedTest.When(async ct => {
+        return TestWait.When(async ct => {
                 var language = await Translations.GetLanguage(Tester.Session, (ChatEntryId)id, ct).Require();
                 language.Languages.Should().BeEquivalentTo(expectedLanguages, "expected {0} for #{1}", sExpectedLanguages, id);
                 return language.Languages;
             },
-            (timeout ?? (TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20)))
+            (timeout ?? TimeSpan.FromSeconds(20))
             .Debuggable());
     }
 
     // DB query avoids triggering translation
     private Task WhenNotDetected(ChatEntryId id, TimeSpan? timeout = null)
-        => TestsExt.When(() => LanguageEntityResolver.Get(id.Value).RequireNull(),
+        => TestWait.WhenPolled(() => LanguageEntityResolver.Get(id.Value).RequireNull(),
             Intervals.Fixed(TimeSpan.FromSeconds(0.5)),
-            (timeout ?? (TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20)))
+            (timeout ?? TimeSpan.FromSeconds(20))
             .Debuggable());
 }

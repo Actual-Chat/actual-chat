@@ -149,10 +149,10 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
     }
 
     private Task<FoundContact[]> Find(string criteria, bool own, PlaceId? placeId, int expectedCount)
-        => TestsExt.When(async () => {
+        => TestWait.WhenPolled<FoundContact[]>(async () => {
                 var groups = await Tester.FindGroups($"{IsolationKey} {criteria}", own, placeId, 50);
                 groups.Should().HaveCount(expectedCount);
                 return groups;
             },
-            TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20));
+            TimeSpan.FromSeconds(20));
 }

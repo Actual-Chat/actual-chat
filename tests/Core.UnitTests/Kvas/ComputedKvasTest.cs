@@ -208,7 +208,8 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         await state.Computed.When(x => x.Value, cancellationToken);
 
         // assert
-        await TestExt.When(() => (state.ValueOrDefault?.Value ?? false).Should().BeTrue(), TimeSpan.FromSeconds(10));
+        await TestWait.WhenPolled(() => (state.ValueOrDefault?.Value ?? false).Should().BeTrue(),
+            TimeSpan.FromSeconds(10));
     }
 }
 

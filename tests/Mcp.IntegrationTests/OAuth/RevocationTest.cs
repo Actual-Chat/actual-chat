@@ -31,7 +31,7 @@ public sealed class RevocationTest(OAuthCollection.AppHostFixture fixture, ITest
         sessionInfo.Should().NotBeNull();
         sessionInfo!.IsActive.Should().BeFalse(because: "the last refresh token is gone, so the grant is dead");
         (await SendInitialize("Bearer " + accessToken)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var grants = await Grants.List(Tester.Session, ct);
             grants.Should().NotContain(g => g.ClientId == clientId, because: "a dead grant must leave the list");
         }, TimeSpan.FromSeconds(10));

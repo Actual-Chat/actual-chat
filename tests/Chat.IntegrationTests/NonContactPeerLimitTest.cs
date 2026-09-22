@@ -77,7 +77,7 @@ public class NonContactPeerLimitTest(ChatCollection.AppHostFixture fixture, ITes
         await bobTester.CreateTextEntry(peerChatId, "Hi back");
 
         // act, assert - Alice's restrictions should have lifted.
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var rules = await chats.GetRules(aliceTester.Session, peerChatId, ct);
             rules.CanUpload().Should().BeTrue();
             rules.CanWriteAudio().Should().BeTrue();
@@ -151,8 +151,8 @@ public class NonContactPeerLimitTest(ChatCollection.AppHostFixture fixture, ITes
         await bobTester.CreateTextEntry(peerChatId, "Replying");
 
         // act, assert - Alice can now post freely. The rules read is both the gate the cap check
-        // uses and the dependency ComputedTest.When retries on - a lone command captures none.
-        await ComputedTest.When(async ct => {
+        // uses and the dependency TestWait.When retries on - a lone command captures none.
+        await TestWait.When(async ct => {
             var peerChat = await aliceTester.Chats.Get(aliceTester.Session, peerChatId, ct);
             peerChat!.Rules.Has(ChatPermissions.WriteAudio).Should().BeTrue();
 
@@ -210,7 +210,7 @@ public class NonContactPeerLimitTest(ChatCollection.AppHostFixture fixture, ITes
         var bobContactAfter = await contactsBackend.Get(bob.Id, ContactId.NewUser(bob.Id, alice.Id), CancellationToken.None);
         bobContactAfter.IsRegular.Should().BeTrue();
         // The rules read is the cap check's gate - see the sibling test.
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var peerChat = await aliceTester.Chats.Get(aliceTester.Session, peerChatId, ct);
             peerChat!.Rules.Has(ChatPermissions.WriteAudio).Should().BeTrue();
 

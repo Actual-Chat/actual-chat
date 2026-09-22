@@ -26,5 +26,5 @@ public static class VoicePoolOperations
     }
 
     public static Task WhenSettled(this VoicePool pool)
-        => TestExt.When(() => pool.InFlightCount.Should().Be(0), SettleTimeout);
+        => TestWait.WhenPolled(() => pool.InFlightCount.Should().Be(0), SettleTimeout);
 }

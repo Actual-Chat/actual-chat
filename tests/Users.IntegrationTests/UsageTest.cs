@@ -40,7 +40,7 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
             Change.Update(new ChatEntryDiff { EndsAt = now + TimeSpan.FromSeconds(7) })));
 
         // assert
-        var summary = await ComputedTest.When(async ct => {
+        var summary = await TestWait.When(async ct => {
             var s = await Backend.GetSummary(account.Id, ct);
             s.Messages.Should().Be(1);
             s.SpeechEntries.Should().Be(1);
@@ -84,7 +84,7 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Queues.Enqueue(ended);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var summary = await Backend.GetSummary(account.Id, ct);
             summary.LiveSessions.Should().Be(1);
         });
@@ -115,14 +115,14 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
         await liveBackend.SetParticipation(chatId, bobAuthor.Id, ParticipationKind.Record, false, default);
 
         // assert - the close counted the session for both and decided the prompt in the same handler
-        var pending = await ComputedTest.When(async ct => {
+        var pending = await TestWait.When(async ct => {
             var p = await Usage.GetPendingReviewPrompt(tester.Session, ct);
             p.Should().NotBeNull();
             return p!;
         }, TimeSpan.FromSeconds(20));
         pending.ChatId.Should().Be(chatId);
         (await Backend.GetSummary(bob.Id, default)).LiveSessions.Should().Be(1);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             (await Backend.GetSummary(alice.Id, ct)).LiveSessions.Should().Be(1);
             (await Usage.GetPendingReviewPrompt(otherTester.Session, ct)).Should().NotBeNull();
         });
@@ -151,7 +151,7 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
         await tester.Commander.Call(new UserPresences_CheckIn { Session = tester.Session, IsActive = true });
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var summary = await Backend.GetSummary(account.Id, ct);
             summary.ActiveDays.Should().Be(1);
         });
@@ -179,7 +179,7 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
         // assert - the session is the first activity, so it also supplies the one active day,
         // and the handler that counts it also decides the prompt
         before.CanPrompt.Should().BeFalse();
-        var pending = await ComputedTest.When(async ct => {
+        var pending = await TestWait.When(async ct => {
             var p = await Usage.GetPendingReviewPrompt(tester.Session, ct);
             p.Should().NotBeNull();
             return p!;

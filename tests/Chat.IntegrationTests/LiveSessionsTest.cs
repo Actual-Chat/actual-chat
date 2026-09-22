@@ -82,21 +82,21 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.OnStreamRegistered(chatId, authorId, null, false, true, default);
 
         // assert — it is auto-registered as a participant (recorders join the registry)
-        await ComputedTest.When(async ct =>
+        await TestWait.When(async ct =>
             (await backend.ListParticipants(chatId, ct)).Contains(authorId).Should().BeTrue());
 
         // act — an explicit leave
         await backend.SetParticipation(chatId, authorId, ParticipationKind.Record, false, default);
 
         // assert — it removes them
-        await ComputedTest.When(async ct =>
+        await TestWait.When(async ct =>
             (await backend.ListParticipants(chatId, ct)).Contains(authorId).Should().BeFalse());
 
         // act — a re-join as a listener
         await backend.SetParticipation(chatId, authorId, ParticipationKind.AudioListen, true, default);
 
         // assert — they are back
-        await ComputedTest.When(async ct =>
+        await TestWait.When(async ct =>
             (await backend.ListParticipants(chatId, ct)).Contains(authorId).Should().BeTrue());
     }
 
@@ -121,14 +121,14 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await liveSessions.SetParticipation(session, chatId, ParticipationKind.AudioListen, true, default);
 
         // assert
-        await ComputedTest.When(async ct =>
+        await TestWait.When(async ct =>
             (await backend.ListParticipants(chatId, ct)).Contains(author!.Id).Should().BeTrue());
 
         // act - the client vanishes without a leave (a killed app sends none)
         await tester.DisposeAsync();
 
         // assert - released after the disconnect grace, not after the 90s staleness
-        await ComputedTest.When(async ct =>
+        await TestWait.When(async ct =>
             (await backend.ListParticipants(chatId, ct)).Contains(author!.Id).Should().BeFalse(
                 "a gone peer must not keep its author present, or its PTT wakes stay suppressed"),
             TimeSpan.FromSeconds(20));
@@ -155,7 +155,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
             .SetParticipation(phone.Session, chatId, ParticipationKind.AudioListen, true, default);
         await laptop.ClientServices.GetRequiredService<ILiveSessions>()
             .SetParticipation(laptop.Session, chatId, ParticipationKind.AudioListen, true, default);
-        await ComputedTest.When(async ct =>
+        await TestWait.When(async ct =>
             (await backend.ListParticipants(chatId, ct)).Contains(author!.Id).Should().BeTrue());
 
         // act - the phone vanishes, the laptop keeps listening
@@ -170,7 +170,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await laptop.DisposeAsync();
 
         // assert
-        await ComputedTest.When(async ct =>
+        await TestWait.When(async ct =>
             (await backend.ListParticipants(chatId, ct)).Contains(author!.Id).Should().BeFalse(),
             TimeSpan.FromSeconds(20));
     }
@@ -194,7 +194,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         (await backend.GetState(chatId, default)).Should().BeNull();
         // Unlike GetState, ListParticipants is consolidated: an already-observed value keeps serving
         // the pre-leave registry until the consolidation delay elapses.
-        await ComputedTest.When(async ct => (await backend.ListParticipants(chatId, ct)).Should().BeEmpty());
+        await TestWait.When(async ct => (await backend.ListParticipants(chatId, ct)).Should().BeEmpty());
     }
 
     [Fact]
@@ -557,7 +557,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         latched!.SessionStartedAt.Should().NotBeNull();
         var liveStartLid = latched.EffectiveVisibleStartLid;
         var liveTileStart = Constants.Chat.ConversationIdTiles.GetTile(liveStartLid).Range.Start;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var metaAfter = await conversations.GetConversationRangeTile(chatId, liveTileStart, ct);
             metaAfter.ConversationRanges.Should().Contain(r => r.Contains(liveStartLid));
         });
@@ -590,7 +590,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // assert — the live block is now present, re-keyed by the latch to the chat end (VisibleStartLid)
         var latched = await backend.GetState(chatId, default);
         latched.Should().NotBeNull();
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var tileAfter = await conversations.GetTile(chatId, tileRange, ct);
             tileAfter.Should().Contain(c => c.Id == latched!.ConversationId);
         });
@@ -667,7 +667,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.SetParticipation(chatId, author.Id, ParticipationKind.Record, false, default);
 
         // assert - the listening registration survives; only a same-kind removal may clear it
-        await ComputedTest.When(async ct =>
+        await TestWait.When(async ct =>
             (await backend.ListParticipants(chatId, ct)).Should().Contain(author.Id));
     }
 
@@ -686,13 +686,13 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
 
         // assert — it counts as a recorder
-        await ComputedTest.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeTrue());
+        await TestWait.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeTrue());
 
         // act — recording stops
         await backend.SetParticipation(chatId, author!.Id, ParticipationKind.Record, false, default);
 
         // assert — no recorder is left
-        await ComputedTest.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeFalse());
+        await TestWait.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeFalse());
     }
 
     [Fact]
@@ -708,17 +708,17 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
 
         // recording starts (auto-registers as a recorder)
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
-        await ComputedTest.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeTrue());
+        await TestWait.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeTrue());
 
         // the user stops recording but keeps listening
         await backend.SetParticipation(chatId, author!.Id, ParticipationKind.AudioListen, true, default);
-        await ComputedTest.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeFalse());
+        await TestWait.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeFalse());
 
         // act — a trailing utterance arrives after the switch; it must NOT flip the listener back to a recorder
         await backend.OnStreamRegistered(chatId, author.Id, null, true, true, default);
 
         // assert
-        await ComputedTest.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeFalse());
+        await TestWait.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeFalse());
     }
 
     [Fact]
@@ -2225,11 +2225,11 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // assert - the session is torn down, but CallState explains why: NoAnswer, not stuck at Dialing.
         // Polled: the self-heal fires its own ExpireRings, and when that one wins the lock, the call
         // awaited above returns while the winner's CloseCall is still tearing the session down.
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             (await backend.GetState(chatId, ct)).Should().BeNull();
             var callState = await backend.GetCallState(chatId, ct);
             callState!.Status.Should().Be(CallStatus.NoAnswer);
-        }, TimeSpan.FromSeconds(10));
+        });
     }
 
     [Fact]

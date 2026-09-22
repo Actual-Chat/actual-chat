@@ -35,7 +35,7 @@ public sealed class AppReviewPromptUITest(ChatAppHostFixture fixture, ITestOutpu
 
         // assert
         beforePending.Should().BeNull();
-        var showable = await ComputedTest.When(async ct => {
+        var showable = await TestWait.When(async ct => {
             var p = await promptUI.GetShowablePrompt(ct);
             p.Should().NotBeNull();
             return p!;
@@ -44,15 +44,15 @@ public sealed class AppReviewPromptUITest(ChatAppHostFixture fixture, ITestOutpu
 
         // act - background hides it, foreground brings it back
         browserInfo.OnIsVisibleChanged(false);
-        await ComputedTest.When(async ct => (await promptUI.GetShowablePrompt(ct)).Should().BeNull());
+        await TestWait.When(async ct => (await promptUI.GetShowablePrompt(ct)).Should().BeNull());
         browserInfo.OnIsVisibleChanged(true);
-        await ComputedTest.When(async ct => (await promptUI.GetShowablePrompt(ct)).Should().NotBeNull());
+        await TestWait.When(async ct => (await promptUI.GetShowablePrompt(ct)).Should().NotBeNull());
 
         // act - an open modal hides it too, without consuming it
         var otherModal = await hub.ModalUI.Show(new AppReviewModal.Model());
-        await ComputedTest.When(async ct => (await promptUI.GetShowablePrompt(ct)).Should().BeNull());
+        await TestWait.When(async ct => (await promptUI.GetShowablePrompt(ct)).Should().BeNull());
         await host.InvokeAsync(() => otherModal.Close(true));
-        await ComputedTest.When(async ct => (await promptUI.GetShowablePrompt(ct)).Should().NotBeNull());
+        await TestWait.When(async ct => (await promptUI.GetShowablePrompt(ct)).Should().NotBeNull());
     }
 
     [Fact(Timeout = 60_000)]

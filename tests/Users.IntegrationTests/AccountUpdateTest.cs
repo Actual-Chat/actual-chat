@@ -25,7 +25,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
     private Task<AccountFull> WhenOwnAccountUpdated(Func<AccountFull, bool> predicate)
     {
         AccountFull result = null!;
-        return ComputedTest.When(async ct => {
+        return TestWait.When(async ct => {
             result = await Accounts.GetOwn(Tester.Session, ct);
             predicate(result).Should().BeTrue();
         }).ContinueWith(_ => result, TaskScheduler.Current);
@@ -145,7 +145,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var account = await Tester.SignInAsUniqueBob();
         await Commander.Call(new AccountsBackend_Update(account with { IsGreetingCompleted = true }, null));
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var a = await Accounts.GetOwn(Tester.Session, ct);
             a.IsGreetingCompleted.Should().BeTrue();
         });
@@ -187,7 +187,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Commander.Call(updateCommand);
 
         // Assert - claims should be updated
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var updatedAccount = await AccountsBackend.Get(account.Id, ct);
             updatedAccount.Should().NotBeNull();
             updatedAccount!.Claims["custom_claim"].Should().Be(newClaimValue);
@@ -207,7 +207,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Commander.Call(updateCommand);
 
         // Assert - identities should be updated
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var updatedAccount = await AccountsBackend.Get(account.Id, ct);
             updatedAccount.Should().NotBeNull();
             updatedAccount!.Identities.ContainsKey(newIdentity).Should().BeTrue();
@@ -225,7 +225,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Commander.Call(setupCommand);
 
         // Verify claim exists
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var a = await AccountsBackend.Get(account.Id, ct);
             a!.Claims.ContainsKey("custom_claim").Should().BeTrue();
         });
@@ -237,7 +237,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Commander.Call(updateCommand);
 
         // Assert - claims should be empty
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var updatedAccount = await AccountsBackend.Get(account.Id, ct);
             updatedAccount.Should().NotBeNull();
             updatedAccount!.Claims.Should().BeEmpty();
@@ -297,7 +297,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Tester.Commander.Call(updateCommand);
 
         // Assert - claims and identities should remain unchanged (original values preserved)
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var updatedAccount = await Accounts.GetOwn(Tester.Session, ct);
             updatedAccount.Claims.Should().BeEquivalentTo(originalClaims);
             updatedAccount.Identities.Should().BeEquivalentTo(originalIdentities);
@@ -324,7 +324,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Tester.Commander.Call(updateCommand);
 
         // Assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var updatedAccount = await Accounts.GetOwn(Tester.Session, ct);
             updatedAccount.Version.Should().BeGreaterThan(originalVersion);
         });
@@ -556,7 +556,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         var backendUpdateCommand = new AccountsBackend_Update(accountWithGreeting, null);
         await Commander.Call(backendUpdateCommand);
 
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var a = await Accounts.GetOwn(Tester.Session, ct);
             a.IsGreetingCompleted.Should().BeTrue();
         });

@@ -203,7 +203,7 @@ public class ConversationSummarizationTest(ChatCollection.AppHostFixture fixture
         await tester.RemoveTextEntry(entries[1].Id);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var updated = await conversationsBackend.Get(conversation.Id, ct);
             updated.Should().NotBeNull();
             updated!.MessageCount.Should().Be(baselineCount - 1);
@@ -248,7 +248,7 @@ public class ConversationSummarizationTest(ChatCollection.AppHostFixture fixture
             target.Id, null, Change.Update(new ChatEntryDiff { IsRemoved = true })));
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var updated = await conversationsBackend.Get(conversation.Id, ct);
             updated.Should().NotBeNull();
             updated!.MessageCount.Should().Be(baselineCount - 1);

@@ -97,14 +97,14 @@ public class TimerFlowTest(ITestOutputHelper @out)
         f.Should().NotBeNull();
 
         // Waiting for the RemainingCount to hit 3
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var flow = await GetFlow<TimerFlow>(flowHub, f.Id, ct);
             flow!.RemainingCount.Should().Be(3);
         }, DefaultTimeout);
 
         await queues.Enqueue(flowHub.NewResumeEvent(f.Id).WithReset(), cancellationToken);
 
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var flow = await GetFlow<TimerFlow>(flowHub, f.Id, ct);
             flow!.RemainingCount.Should().BeGreaterThan(3);
         }, DefaultTimeout);
@@ -169,7 +169,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
     }
 
     private Task WhenCompleted(FlowHub hub, FlowId flowId)
-        => ComputedTest.When(async ct => {
+        => TestWait.When(async ct => {
             var c = await GetFlowDataComputed(hub, flowId, ct);
             _ = c.UseUntyped(allowInconsistent: true, ct);
             var flow = c.Value?.GetFlow(hub);

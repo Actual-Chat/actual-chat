@@ -12,7 +12,7 @@ namespace ActualChat.Chat.IntegrationTests;
 public class WebHookDeliveryTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private static readonly TimeSpan ReceiveTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan ReceiveTimeout = TimeSpan.FromSeconds(30).CiScaled();
     private static readonly TimeSpan SignatureTolerance = TimeSpan.FromMinutes(5);
 
     private WebClientTester Alice => field ??= fixture.AppHost.NewWebClientTester(Out);
@@ -64,7 +64,7 @@ public class WebHookDeliveryTest(ChatCollection.AppHostFixture fixture, ITestOut
             messageIds.Add(doc.RootElement.GetProperty("data").GetProperty("message").GetProperty("id").GetInt64());
         }
         messageIds.Should().BeEquivalentTo(entries.Select(x => x.LocalId), "every posted message gets delivered once");
-        var deliveries = await ComputedTest.When(async ct => {
+        var deliveries = await TestWait.When(async ct => {
             var items = await Backend.ListDeliveries(hook.Id, Constants.WebHooks.DeliveryListLimit, ct);
             items.Should().HaveCount(3);
             items.Should().OnlyContain(x => x.Status == WebHookDeliveryStatus.Succeeded);
@@ -92,7 +92,7 @@ public class WebHookDeliveryTest(ChatCollection.AppHostFixture fixture, ITestOut
         await Receiver.Next(ReceiveTimeout);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var delivery = (await Backend.ListDeliveries(hook.Id, Constants.WebHooks.DeliveryListLimit, ct)).Single();
             delivery.Status.Should().Be(WebHookDeliveryStatus.Pending);
             delivery.Attempts.Should().Be(1);
@@ -128,7 +128,7 @@ public class WebHookDeliveryTest(ChatCollection.AppHostFixture fixture, ITestOut
         await Receiver.Next(ReceiveTimeout);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var updatedHook = (await Backend.Get(hook.Id, ct))!;
             updatedHook.IsEnabled.Should().BeFalse();
             updatedHook.DisabledReason.Should().Be(WebHookDisabledReason.DeliveryFailures);
@@ -155,7 +155,7 @@ public class WebHookDeliveryTest(ChatCollection.AppHostFixture fixture, ITestOut
         first.Body.Should().Contain("first, fails");
         var second = await Receiver.Next(ReceiveTimeout);
         second.Body.Should().Contain("second, lands", "a terminal failure doesn't block the ones behind it");
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var deliveries = await Backend.ListDeliveries(hook.Id, Constants.WebHooks.DeliveryListLimit, ct);
             deliveries.Should().HaveCount(2);
             var failed = deliveries.Single(x => x.LastStatusCode == 404);
@@ -202,7 +202,7 @@ public class WebHookDeliveryTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // assert
         received.Headers["webhook-id"].Should().Be(staleId, "the head of the line goes first");
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var updatedHook = (await Backend.Get(hook.Id, ct))!;
             updatedHook.IsEnabled.Should().BeFalse();
             updatedHook.DisabledReason.Should().Be(WebHookDisabledReason.DeliveryFailures);
@@ -279,7 +279,7 @@ public class WebHookDeliveryTest(ChatCollection.AppHostFixture fixture, ITestOut
         await Alice.CreateTextEntry(chatId, "try again");
         var first = await Receiver.Next(ReceiveTimeout);
         var deliveryId = first.Headers["webhook-id"];
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var deliveries = await Backend.ListDeliveries(hook.Id, Constants.WebHooks.DeliveryListLimit, ct);
             deliveries.Single().Status.Should().Be(WebHookDeliveryStatus.Failed);
         }, ReceiveTimeout);
@@ -293,7 +293,7 @@ public class WebHookDeliveryTest(ChatCollection.AppHostFixture fixture, ITestOut
         var second = await Receiver.Next(ReceiveTimeout);
         second.Headers["webhook-id"].Should().Be($"{deliveryId}:r1");
         second.Body.Should().Be(first.Body, "a redelivery carries the original payload");
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var deliveries = await Backend.ListDeliveries(hook.Id, Constants.WebHooks.DeliveryListLimit, ct);
             deliveries.Should().HaveCount(2);
             deliveries.Single(x => x.Id == $"{deliveryId}:r1").Status.Should().Be(WebHookDeliveryStatus.Succeeded);
@@ -310,7 +310,7 @@ public class WebHookDeliveryTest(ChatCollection.AppHostFixture fixture, ITestOut
         var result = await Commander.Call(new WebHooksBackend_Change(
             WebHookScope.Chat, chatId.Value, null, null, Change.Create(diff), alice.Id));
         var hook = result.WebHook!;
-        await ComputedTest.When(async ct
+        await TestWait.When(async ct
             => (await Backend.ListActiveForChat(chatId, ct)).Should().Contain(x => x.Id == hook.Id));
         return (hook, result.Secret!);
     }

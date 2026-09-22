@@ -54,7 +54,7 @@ public class PeerChatThreadTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var threadRange = await chats.GetIdRange(session, threadChatId, cancellationToken);
         threadRange.IsEmpty.Should().BeFalse();
 
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var threadIds = await chatThreads.ListIdsForChat(session, peerChatId, cancellationToken);
             threadIds.Select(x => (ChatId)x).Should().Contain(threadChatId);
         }, TimeSpan.FromSeconds(10));

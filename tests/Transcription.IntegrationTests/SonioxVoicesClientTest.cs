@@ -11,7 +11,7 @@ namespace ActualChat.Transcription.IntegrationTests;
 public sealed class SonioxVoicesClientTest(ITestOutputHelper @out, ILogger<SonioxVoicesClientTest> log)
     : TranscriberTestBase(@out, log)
 {
-    private static readonly TimeSpan ReadyTimeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan ReadyTimeout = TimeSpan.FromSeconds(60).CiScaled();
     private static readonly TimeSpan PollPeriod = TimeSpan.FromMilliseconds(500);
 
     // Creates a real voice against the org's 20-voice quota with the shared dev key.

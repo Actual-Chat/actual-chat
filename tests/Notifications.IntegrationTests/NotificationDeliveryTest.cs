@@ -22,7 +22,7 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         await Tester.CreateTextEntry(chatId, "Hi Alice");
 
         await Tester.SignIn(alice);
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var active = await Notifications.ListActive(Tester.Session, CancellationToken.None);
             var notification = active.Should().ContainSingle().Subject;
             notification.Should().BeOfType<MessageNotification>();
@@ -44,11 +44,11 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
 
         // The notification is created and a delivery push is enqueued (through NATS) + sent.
         Notification notification = null!;
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             notification = info.Items.Should().ContainSingle().Subject;
         }, TimeSpan.FromSeconds(10));
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             Sink.Messages.Should().Contain(m => !m.IsDismissal && m.DeviceIds.Contains(deviceId));
             return Task.CompletedTask;
         }, TimeSpan.FromSeconds(10));
@@ -56,7 +56,7 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         // Alice handles the notification -> it's dropped and a silent dismissal push goes out.
         await Commander.Call(new NotificationsBackend_Dismiss(notification.Id));
 
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             var dismissals = Sink.Messages
                 .Where(m => m.IsDismissal && m.DeviceIds.Contains(deviceId))
                 .ToList();
@@ -85,7 +85,7 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         // chat1 notifies Alice while unmuted.
         await Tester.SignIn(bob);
         await Tester.CreateTextEntry(chat1, "First in chat1");
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             info.Items.Should().ContainSingle();
         }, TimeSpan.FromSeconds(10));
@@ -101,14 +101,14 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
 
         // The muted chat1 is excluded from the active set (single source of truth), so only
         // chat2 remains items...
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             var items = info.Items.Should().ContainSingle().Subject;
             items.Text.Should().Be("Bobby: First in chat2");
         }, TimeSpan.FromSeconds(10));
 
         // ...and the chat2 delivery push carries a badge of 1 (chat1 is muted, so excluded).
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             var chat2Push = Sink.Messages
                 .Where(m => !m.IsDismissal && m.DeviceIds.Contains(deviceId) && m.Notification!.Text == "Bobby: First in chat2")
                 .ToList();
@@ -131,11 +131,11 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         await Tester.SignIn(bob);
         var entry = await Tester.CreateTextEntry(chatId, "Hi Alice");
 
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             info.Items.Should().ContainSingle();
         }, TimeSpan.FromSeconds(10));
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             Sink.Messages.Should().Contain(m => !m.IsDismissal && m.DeviceIds.Contains(deviceId));
             return Task.CompletedTask;
         }, TimeSpan.FromSeconds(10));
@@ -147,7 +147,7 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         // The read alone triggers reconciliation: a silent dismissal push goes out and the
         // notification leaves the items set. The read-reconcile event is delay-collapsed
         // (Constants.Notification.ReadReconcileWindow), so allow for that window.
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             var dismissals = Sink.Messages
                 .Where(m => m.IsDismissal && m.DeviceIds.Contains(deviceId))
                 .ToList();
@@ -177,7 +177,7 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         // Multi-message coalescing/aggregation is covered deterministically by the unit tests;
         // here a single message keeps the anchor + link assertions free of coalescing timing.
         MessageNotification notification = null!;
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             notification = info.Items.Should().ContainSingle().Subject
                 .Should().BeOfType<MessageNotification>().Subject;
@@ -187,7 +187,7 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         notification.GetChatLink().Value.Should().Contain($"n={first.LocalId}");
 
         // The first message alerts audibly (later coalesced updates back off to silent).
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             Sink.Messages.Should().Contain(m => !m.IsDismissal && !m.IsSilent && m.DeviceIds.Contains(deviceId));
             return Task.CompletedTask;
         }, TimeSpan.FromSeconds(10));
@@ -211,11 +211,11 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
 
         // The mention is items and delivered audibly (mentions never coalesce into silence).
         await Commander.Call(new NotificationsBackend_Notify(mention));
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             info.Items.Should().ContainSingle(n => n.Id == mention.Id);
         }, TimeSpan.FromSeconds(10));
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             Sink.Messages.Should().Contain(m =>
                 !m.IsDismissal && !m.IsSilent && m.Notification!.Id == mention.Id && m.DeviceIds.Contains(deviceId));
             return Task.CompletedTask;
@@ -224,7 +224,7 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         // The reminder flow re-alerts by re-pushing the still-unread mention audibly.
         Sink.Clear();
         await Commander.Call(new NotificationsBackend_Push(mention));
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             Sink.Messages.Should().Contain(m =>
                 !m.IsDismissal && !m.IsSilent && m.Notification!.Id == mention.Id && m.DeviceIds.Contains(deviceId));
             return Task.CompletedTask;
@@ -250,7 +250,7 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
             SentAt = Clocks.SystemClock.Now,
         };
         await Commander.Call(new NotificationsBackend_Notify(notification));
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             var n = info.Items.Should().ContainSingle().Subject.Should().BeOfType<MessageNotification>().Subject;
             n.StartEntryLid.Should().Be(5);
@@ -261,7 +261,7 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         await Commander.Call(new ChatPositionsBackend_Set(
             alice.Id, chatId, ChatPositionKind.Read, new ChatPosition(7)));
 
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             var n = info.Items.Should().ContainSingle().Subject.Should().BeOfType<MessageNotification>().Subject;
             n.StartEntryLid.Should().Be(8);
@@ -269,7 +269,7 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         }, Constants.Notification.ReadReconcileWindow + TimeSpan.FromSeconds(10));
 
         // The re-anchor refreshes the banner silently (a reduction, not a new alert).
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             Sink.Messages.Should().Contain(m => !m.IsDismissal && m.IsSilent && m.Notification!.Id == notification.Id);
             return Task.CompletedTask;
         }, TimeSpan.FromSeconds(10));
@@ -287,7 +287,7 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         var n2 = NewFeedNotification(alice.Id, chat2, 4, "hi 2");
         await Commander.Call(new NotificationsBackend_Notify(n1));
         await Commander.Call(new NotificationsBackend_Notify(n2));
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             info.Items.Count.Should().Be(2);
         }, TimeSpan.FromSeconds(10));
@@ -296,11 +296,11 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         // "Mark all read" clears the whole feed in one round-trip.
         await Commander.Call(new Notifications_DismissAll { Session = Tester.Session });
 
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             info.Items.Should().BeEmpty();
         }, TimeSpan.FromSeconds(10));
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             Sink.Messages.Should().Contain(m => m.IsDismissal && m.DeviceIds.Contains(deviceId));
             return Task.CompletedTask;
         }, TimeSpan.FromSeconds(10));
@@ -342,7 +342,7 @@ public class NotificationDeliveryTest(AppHostFixture fixture, ITestOutputHelper 
         // assert
         // The snapshot is what lets a client close banners for chats this push isn't about, so it
         // has to name every active tag - not just the one being rendered.
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             var push = Sink.Messages
                 .LastOrDefault(m => !m.IsDismissal && m.DeviceIds.Contains(deviceId)
                     && m.ActiveTags.Count > 1);

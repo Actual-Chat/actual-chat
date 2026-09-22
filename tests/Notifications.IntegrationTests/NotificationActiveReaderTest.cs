@@ -60,7 +60,7 @@ public class NotificationActiveReaderTest(AppHostFixture fixture, ITestOutputHel
         early.Items.Should().BeEmpty("the message must be deferred, not pushed immediately");
 
         // After the grace window the unread message surfaces and a real push goes out.
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             info.Items.Should().ContainSingle().Which.Id.Should().Be(notification.Id);
             Sink.Messages.Should().Contain(m =>

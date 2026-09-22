@@ -94,7 +94,7 @@ public class ChatTypingActivitiesTest(AppHostFixture fixture, ITestOutputHelper 
         using var cts = new CancellationTokenSource();
         var renewTask = KeepTyping(chatId, persistent, cts.Token);
         try {
-            await ComputedTest.When(async ct => {
+            await TestWait.When(async ct => {
                 var current = await Backend.ListTypingAuthorIds(chatId, ct);
                 current.Should().Equal(persistent);
             }, TimeSpan.FromSeconds(20));
@@ -165,7 +165,7 @@ public class ChatTypingActivitiesTest(AppHostFixture fixture, ITestOutputHelper 
     }
 
     private Task WhenNobodyIsTyping(ChatId chatId, TimeSpan timeout)
-        => ComputedTest.When(async ct => {
+        => TestWait.When(async ct => {
             var authorIds = await Backend.ListTypingAuthorIds(chatId, ct);
             authorIds.Should().BeEmpty();
         }, timeout);

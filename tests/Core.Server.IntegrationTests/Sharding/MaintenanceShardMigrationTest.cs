@@ -20,7 +20,7 @@ public class MaintenanceShardMigrationTest(ITestOutputHelper @out)
 
         await using var h1 = await NewAppHost();
         var o1 = h1.Services.ShardOwner(shardScheme);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var bits = await o1.BitmapState.Use(ct).ConfigureAwait(false);
             bits.SetBitCount().Should().Be(shardCount);
         }, TimeSpan.FromSeconds(15));
@@ -43,7 +43,7 @@ public class MaintenanceShardMigrationTest(ITestOutputHelper @out)
         // Half of the shards move to h2
         var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
         var o2 = h2.Services.ShardOwner(shardScheme);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var bits1 = await o1.BitmapState.Use(ct).ConfigureAwait(false);
             var bits2 = await o2.BitmapState.Use(ct).ConfigureAwait(false);
             bits1.SetBitCount().Should().Be(shardCount / 2);
@@ -65,7 +65,7 @@ public class MaintenanceShardMigrationTest(ITestOutputHelper @out)
                 await commander1
                     .Call(new MaintenancesBackend_Set(keys[shard], MaintenanceMode.System), true, cancellationToken)
                     .ConfigureAwait(false);
-                await ComputedTest.When(async ct => {
+                await TestWait.When(async ct => {
                     (await backend2.Get(keys[shard], ct)).Should().Be(MaintenanceMode.System);
                     (await backend1.Get(keys[shard], ct)).Should().Be(MaintenanceMode.System);
                 }, TimeSpan.FromSeconds(20));
@@ -73,13 +73,13 @@ public class MaintenanceShardMigrationTest(ITestOutputHelper @out)
 
             // h2 dies, so its shards return to h1 - whose partition caches predate every write above
             await h2.DisposeAsync();
-            await ComputedTest.When(async ct => {
+            await TestWait.When(async ct => {
                 var bits1 = await o1.BitmapState.Use(ct).ConfigureAwait(false);
                 bits1.SetBitCount().Should().Be(shardCount);
             }, TimeSpan.FromSeconds(30));
 
             foreach (var shard in movedShards)
-                await ComputedTest.When(async ct => {
+                await TestWait.When(async ct => {
                     (await backend1.Get(keys[shard], ct)).Should().Be(MaintenanceMode.System);
                 }, TimeSpan.FromSeconds(20));
 

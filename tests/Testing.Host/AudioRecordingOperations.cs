@@ -145,7 +145,7 @@ public static class AudioRecordingOperations
     {
         var chatsBackend = tester.AppServices.GetRequiredService<IChatsBackend>();
         ChatEntry? found = null;
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var range = await chatsBackend.GetLidRange(chatId, true, cancellationToken).ConfigureAwait(false);
             range.End.Should().BeGreaterThan(minLid);
             var idTile = Constants.Chat.EntryIdTiles.GetTile(range.End - 1);

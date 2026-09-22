@@ -89,7 +89,7 @@ public class SendingMessagesDisplayTest(ChatAppHostFixture fixture, ITestOutputH
         accessor.ChatSendingMessages.AddSendingMessage(sendingMessage);
 
         // act
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var sending = await GetSendingContents(chatUI, chat.Id, ct);
             sending.Should().Equal("CONFIRM_RACE");
         }, TimeSpan.FromSeconds(10));
@@ -97,7 +97,7 @@ public class SendingMessagesDisplayTest(ChatAppHostFixture fixture, ITestOutputH
         accessor.ChatSendingMessages.ConfirmMessageWasSent(sendingMessage, entry, now, true);
 
         // assert: the optimistic twin is gone
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var sending = await GetSendingContents(chatUI, chat.Id, ct);
             sending.Should().BeEmpty();
         }, TimeSpan.FromSeconds(10));
@@ -141,7 +141,7 @@ public class SendingMessagesDisplayTest(ChatAppHostFixture fixture, ITestOutputH
 
         // act + assert: loading the tail retires the copy, though ConfirmMessageWasSent never ran and
         // PostedChatEntry is still null - the entry's ClientId is what retires it
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             await GetSendingContents(chatUI, chat.Id, ct);
             sendingMessage.PostedChatEntry.Should().BeNull();
             sendingMessage.LoadedForDisplay.Should().BeTrue();

@@ -18,7 +18,7 @@ public class ShardMigrationComputedTest(ITestOutputHelper @out)
 {
     // 10s sat right on the edge of a migrated shard's reconvergence - an instrumented CI run
     // measured 10.3s. These tests look for a value that never recovers, so the margin is free.
-    private static readonly TimeSpan ReconvergenceTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan ReconvergenceTimeout = TimeSpan.FromSeconds(30).CiScaled();
 
     // Reproduces the prod presence freeze (2026-07-01): a value computed locally
     // on the shard's owner must be invalidated when the shard migrates to a newly
@@ -33,7 +33,7 @@ public class ShardMigrationComputedTest(ITestOutputHelper @out)
 
         await using var h1 = await NewAppHost();
         var o1 = h1.Services.ShardOwner(shardScheme);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var bits = await o1.BitmapState.Use(ct).ConfigureAwait(false);
             bits.SetBitCount().Should().Be(shardCount);
         }, TimeSpan.FromSeconds(15));
@@ -58,7 +58,7 @@ public class ShardMigrationComputedTest(ITestOutputHelper @out)
 
         await using var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
         var o2 = h2.Services.ShardOwner(shardScheme);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var bits1 = await o1.BitmapState.Use(ct).ConfigureAwait(false);
             var bits2 = await o2.BitmapState.Use(ct).ConfigureAwait(false);
             bits1.SetBitCount().Should().Be(shardCount / 2);
@@ -117,7 +117,7 @@ public class ShardMigrationComputedTest(ITestOutputHelper @out)
         var o1 = h1.Services.ShardOwner(shardScheme);
         var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
         var o2 = h2.Services.ShardOwner(shardScheme);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var bits1 = await o1.BitmapState.Use(ct).ConfigureAwait(false);
             var bits2 = await o2.BitmapState.Use(ct).ConfigureAwait(false);
             bits1.SetBitCount().Should().Be(shardCount / 2);
@@ -169,7 +169,7 @@ public class ShardMigrationComputedTest(ITestOutputHelper @out)
                 }
             }
         }
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var bits1 = await o1.BitmapState.Use(ct).ConfigureAwait(false);
             bits1.SetBitCount().Should().Be(shardCount);
         }, TimeSpan.FromSeconds(30));
@@ -184,7 +184,7 @@ public class ShardMigrationComputedTest(ITestOutputHelper @out)
         // Wave 2: h3 comes up -> takes half of the shards from h1
         await using var h3 = await NewAppHost(o => o with { MustInitializeDb = false });
         var o3 = h3.Services.ShardOwner(shardScheme);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var bits1 = await o1.BitmapState.Use(ct).ConfigureAwait(false);
             var bits3 = await o3.BitmapState.Use(ct).ConfigureAwait(false);
             bits1.SetBitCount().Should().Be(shardCount / 2);
@@ -290,7 +290,7 @@ public class ShardMigrationComputedTest(ITestOutputHelper @out)
                         }
                     }
                 }
-                await ComputedTest.When(async ct => {
+                await TestWait.When(async ct => {
                     var bits = await oSurvivor.BitmapState.Use(ct).ConfigureAwait(false);
                     bits.SetBitCount().Should().Be(shardCount);
                 }, TimeSpan.FromSeconds(30));
@@ -343,7 +343,7 @@ public class ShardMigrationComputedTest(ITestOutputHelper @out)
         return;
 
         async Task WaitForBalance(List<TestAppHost> currentHosts)
-            => await ComputedTest.When(async ct => {
+            => await TestWait.When(async ct => {
                 foreach (var host in currentHosts) {
                     var owner = host.Services.ShardOwner(shardScheme);
                     var bits = await owner.BitmapState.Use(ct).ConfigureAwait(false);

@@ -19,7 +19,7 @@ public class ShardRoutingMonitorTest(ITestOutputHelper @out)
         var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
         var o1 = h1.Services.ShardOwner(shardScheme);
         var o2 = h2.Services.ShardOwner(shardScheme);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var bits1 = await o1.BitmapState.Use(ct).ConfigureAwait(false);
             var bits2 = await o2.BitmapState.Use(ct).ConfigureAwait(false);
             bits1.SetBitCount().Should().Be(shardCount / 2);
@@ -35,7 +35,7 @@ public class ShardRoutingMonitorTest(ITestOutputHelper @out)
 
         // The dead host's shards migrate to h1; monitor1's probe computeds must follow
         await h2.DisposeAsync();
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var bits1 = await o1.BitmapState.Use(ct).ConfigureAwait(false);
             bits1.SetBitCount().Should().Be(shardCount);
         }, TimeSpan.FromSeconds(30));

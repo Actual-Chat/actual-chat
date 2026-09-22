@@ -2148,7 +2148,7 @@ code
 
     // Helpers
 
-    private static readonly TimeSpan WatchdogTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan WatchdogTimeout = TimeSpan.FromSeconds(5).CiScaled();
 
     private static Markup ParseWithWatchdog(MarkupParser parser, string text)
     {

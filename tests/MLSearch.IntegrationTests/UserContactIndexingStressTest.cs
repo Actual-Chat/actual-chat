@@ -90,11 +90,11 @@ public class UserContactIndexingStressTest(SlowAppHostFixture fixture, ITestOutp
         => Tester.CreatePlace(false, $"{IsolationKey} {title}", usersToInvite);
 
     private Task<FoundContact[]> Find(string criteria, PlaceId? placeId = null, int expected = 50)
-        => TestsExt.When(async () => {
+        => TestWait.WhenPolled<FoundContact[]>(async () => {
                 var results = await Tester.FindPeople($"{IsolationKey} {criteria}", false, placeId, expected);
                 results.Should().HaveCount(expected, "for place #{0} and criteria '{1}'", placeId, criteria);
                 return results;
             },
             Intervals.Fixed(TimeSpan.FromSeconds(0.5)),
-            TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(90) : TimeSpan.FromSeconds(30));
+            TimeSpan.FromSeconds(30));
 }

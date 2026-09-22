@@ -50,7 +50,7 @@ public class PeerChatPropertiesTest(ChatCollection.AppHostFixture fixture, ITest
         // assert
         afterAlice.IsSummarized.Should().BeTrue();
         afterBob.IsSummarized.Should().BeFalse();
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var chat = await chats.Get(bobTester.Session, peerChatId, cancellationToken).Require();
             chat.IsSummarized.Should().BeFalse();
         }, TimeSpan.FromSeconds(10));

@@ -245,7 +245,7 @@ public sealed class AuthorizationFlowTest(OAuthCollection.AppHostFixture fixture
         await Refresh(clientId, tokens.GetProperty("refresh_token").GetString()!);
 
         // assert
-        var after = await ComputedTest.When(async ct => {
+        var after = await TestWait.When(async ct => {
             var sessionInfo = (await sessionsBackend.Get(new Session(sid), ct))!;
             sessionInfo.LastSeenAt.Should().BeGreaterThan(before.LastSeenAt,
                 because: "a refresh is activity on the backing session");

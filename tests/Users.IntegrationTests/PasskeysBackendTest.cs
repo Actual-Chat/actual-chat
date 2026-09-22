@@ -23,7 +23,7 @@ public class PasskeysBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // assert
         var identity = UserIdentityExt.NewPasskeyIdentity(credential.Id);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var listed = await Backend.List(account.Id, ct);
             listed.Should().ContainSingle(x => x.Id == credential.Id);
             (await AccountsBackend.GetIdByUserIdentity(identity, ct)).Should().Be(account.Id);
@@ -46,7 +46,7 @@ public class PasskeysBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // assert
         var identity = UserIdentityExt.NewPasskeyIdentity(credential.Id);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             (await Backend.Get(account.Id, credential.Id, ct)).Should().BeNull();
             (await Backend.List(account.Id, ct)).Should().BeEmpty();
             (await AccountsBackend.GetIdByUserIdentity(identity, ct)).Should().BeNull();
@@ -67,7 +67,7 @@ public class PasskeysBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Commander.Call(new PasskeysBackend_Change(account.Id, credential.Id, Change.Update(updated)));
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var stored = await Backend.Get(account.Id, credential.Id, ct);
             stored.Should().NotBeNull();
             stored!.SignCount.Should().Be(7);

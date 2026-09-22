@@ -28,7 +28,7 @@ public sealed class NotificationDismissModeTest(AppHostFixture fixture, ITestOut
 
         // assert
         await Tester.SignIn(alice);
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             var notification = info.Items.Should()
                 .ContainSingle("a read own-entry must not clear an OnView reaction").Subject
@@ -73,7 +73,7 @@ public sealed class NotificationDismissModeTest(AppHostFixture fixture, ITestOut
         await Commander.Call(new Notifications_NotifyMembers { Session = Tester.Session, ChatId = chatId });
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             info.Items.Should().ContainSingle(n => n is AttentionNotification,
                 "an explicit ping is a ringer, so having read the chat beforehand must not swallow it");
@@ -94,7 +94,7 @@ public sealed class NotificationDismissModeTest(AppHostFixture fixture, ITestOut
         await Commander.Call(new Notifications_NotifyMembers { Session = Tester.Session, ChatId = chatId });
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             info.Items.Should().ContainSingle(n => n is AttentionNotification);
         }, TimeSpan.FromSeconds(10));
@@ -124,7 +124,7 @@ public sealed class NotificationDismissModeTest(AppHostFixture fixture, ITestOut
         });
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             var notification = info.Items.Should()
                 .ContainSingle(n => n is ThreadNotification, "a read anchor entry must not clear an OnView thread ping")

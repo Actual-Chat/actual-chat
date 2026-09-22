@@ -102,7 +102,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
         await queues.WhenProcessing();
 
         // WhenProcessing() covers the default queue, not the custom one's own reader
-        await ComputedTest.When(async ct =>
+        await TestWait.When(async ct =>
             (await testService.GetProcessedEventCount(ct)).Should().Be(2));
     }
 }

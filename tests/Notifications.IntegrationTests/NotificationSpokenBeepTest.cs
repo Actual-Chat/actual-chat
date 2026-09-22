@@ -27,7 +27,7 @@ public class NotificationSpokenBeepTest(AppHostFixture fixture, ITestOutputHelpe
             var streaming = await Tester.CreateStreamingEntry(chatId, Languages.English);
             await Tester.FinalizeStreamingEntry(streaming, $"utterance {i}");
             var expectedCount = i + 1;
-            await TestExt.When(() => {
+            await TestWait.WhenPolled(() => {
                 PushesTo(deviceId).Should().HaveCount(expectedCount);
                 return Task.CompletedTask;
             }, TimeSpan.FromSeconds(15));
@@ -59,7 +59,7 @@ public class NotificationSpokenBeepTest(AppHostFixture fixture, ITestOutputHelpe
 
         var first = await Tester.CreateStreamingEntry(chatId, Languages.English);
         first = await Tester.FinalizeStreamingEntry(first, "first utterance");
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             PushesTo(deviceId).Should().ContainSingle().Which.IsSilent.Should().BeFalse();
             return Task.CompletedTask;
         }, TimeSpan.FromSeconds(15));
@@ -67,7 +67,7 @@ public class NotificationSpokenBeepTest(AppHostFixture fixture, ITestOutputHelpe
         // act: alice reads it on another device, which removes the notification...
         await Commander.Call(new ChatPositionsBackend_Set(
             alice.Id, chatId, ChatPositionKind.Read, new ChatPosition(first.ChatEntrySlim.LocalId)));
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             info.Items.Should().BeEmpty();
         }, TimeSpan.FromSeconds(10));
@@ -78,7 +78,7 @@ public class NotificationSpokenBeepTest(AppHostFixture fixture, ITestOutputHelpe
         await Tester.FinalizeStreamingEntry(second, "second utterance");
 
         // assert
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             PushesTo(deviceId).Should().HaveCount(2);
             return Task.CompletedTask;
         }, TimeSpan.FromSeconds(15));

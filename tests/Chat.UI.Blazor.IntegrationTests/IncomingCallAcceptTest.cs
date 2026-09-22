@@ -40,12 +40,12 @@ public sealed class IncomingCallAcceptTest(ChatAppHostFixture fixture, ITestOutp
         await callScreensUI.Accept(chatId).SilentAwait();
 
         // assert - the ring was answered rather than called over
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var live = await backend.Get(chatId, ct);
             var invite = live?.Invites.FirstOrDefault(x => x.InviteeId == aliceAuthor.Id);
             invite.Should().NotBeNull();
             invite!.Status.Should().Be(CallInviteStatus.Accepted);
-        }, TimeSpan.FromSeconds(10));
+        });
     }
 
     [Fact]

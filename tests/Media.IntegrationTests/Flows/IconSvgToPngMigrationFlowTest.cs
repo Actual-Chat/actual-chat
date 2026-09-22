@@ -358,7 +358,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
 
     // Waits until the flow completes and `assertion` passes, or times out.
     private Task AssertFlow(Func<CancellationToken, Task> assertion)
-        => ComputedTest.When(async ct => {
+        => TestWait.When(async ct => {
             var flow = await FlowHub.TryGet<IconSvgToPngMigrationFlow>("", ct);
             flow.Should().NotBeNull();
             flow.UntypedResult.Should().NotBeNull();

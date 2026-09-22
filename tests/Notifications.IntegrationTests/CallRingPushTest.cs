@@ -6,7 +6,7 @@ namespace ActualChat.Notifications.IntegrationTests;
 public class CallRingPushTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private static readonly TimeSpan RingTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan RingTimeout = TimeSpan.FromSeconds(10).CiScaled();
     private static readonly TimeSpan NoPushDelay = TimeSpan.FromSeconds(3);
 
     private IWebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);

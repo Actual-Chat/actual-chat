@@ -8,7 +8,7 @@ namespace ActualChat.Chat.IntegrationTests;
 public class WebHookNotificationTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private static readonly TimeSpan ReceiveTimeout = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan ReceiveTimeout = TimeSpan.FromSeconds(15).CiScaled();
     private static readonly TimeSpan SilenceTimeout = TimeSpan.FromSeconds(5);
 
     private readonly List<WebHook> _createdHooks = [];
@@ -85,7 +85,7 @@ public class WebHookNotificationTest(ChatCollection.AppHostFixture fixture, ITes
         var result = await Commander.Call(new WebHooksBackend_Change(
             WebHookScope.User, userId.Value, null, null, Change.Create(diff), userId));
         var hook = result.WebHook!;
-        await ComputedTest.When(async ct
+        await TestWait.When(async ct
             => (await Backend.ListActiveForUser(userId, ct)).Should().Contain(x => x.Id == hook.Id));
         _createdHooks.Add(hook);
         return hook;

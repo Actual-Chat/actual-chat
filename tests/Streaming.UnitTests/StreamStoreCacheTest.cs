@@ -5,7 +5,7 @@ namespace ActualChat.Streaming.UnitTests;
 public class StreamStoreCacheTest
 {
     private static readonly TimeSpan ShortExpiration = TimeSpan.FromMilliseconds(500);
-    private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(5).CiScaled();
 
     [Fact(Timeout = 10_000)]
     public async Task Publish_WinnerKeepsRegistration_LoserCanDispose()

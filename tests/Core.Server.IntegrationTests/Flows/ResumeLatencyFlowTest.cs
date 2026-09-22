@@ -32,7 +32,7 @@ public sealed class ResumeLatencyFlowTest(ResumeLatencyFlowFixture fixture, ITes
 
         // act
         await FlowHub.NewResumeEvent<ResumeLatencyFlow>(args).Schedule();
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var flow = await FlowHub.TryGet<ResumeLatencyFlow>(args, ct);
             flow.Should().NotBeNull("the scheduled resume must create the flow");
             flow.UntypedResult.Should().NotBeNull("the flow must complete all 5 resumes");

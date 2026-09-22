@@ -39,7 +39,7 @@ public class UserSignInFlowTest(ITestOutputHelper @out)
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
         var mediaBackend = h.Services.GetRequiredService<IMediaBackend>();
 
-        await ComputedTest.When(async innerCt => {
+        await TestWait.When(async innerCt => {
             var flow = await flowHub.TryGet<UserSignInFlow>(account.Id.Value, innerCt);
             flow.Should().NotBeNull();
             flow!.IsAvatarUpdated.Should().BeTrue();

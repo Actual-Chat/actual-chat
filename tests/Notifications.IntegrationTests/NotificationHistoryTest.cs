@@ -26,7 +26,7 @@ public sealed class NotificationHistoryTest(AppHostFixture fixture, ITestOutputH
 
         // assert
         NotificationHistoryItem item = null!;
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var items = await Backend.ListHistory(alice.Id, new NotificationHistoryQuery(), CancellationToken.None);
             item = items.Should().ContainSingle(x => x.Kind == NotificationKind.Mention).Subject;
         }, WaitTimeout);
@@ -37,7 +37,7 @@ public sealed class NotificationHistoryTest(AppHostFixture fixture, ITestOutputH
 
         await Commander.Call(new ChatPositionsBackend_Set(
             alice.Id, chatId, ChatPositionKind.Read, new ChatPosition(entry.LocalId)));
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Backend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             info.Items.Should().NotContain(n => n.Kind == NotificationKind.Mention,
                 "reading the chat clears the active mention");
@@ -67,7 +67,7 @@ public sealed class NotificationHistoryTest(AppHostFixture fixture, ITestOutputH
         await Queues.Enqueue(new UserNotifiedEvent(mention));
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var items = await Backend.ListHistory(alice.Id, new NotificationHistoryQuery(), CancellationToken.None);
             items.Should().ContainSingle(x => x.Kind == NotificationKind.Mention);
         }, WaitTimeout);
@@ -92,7 +92,7 @@ public sealed class NotificationHistoryTest(AppHostFixture fixture, ITestOutputH
 
         // assert
         NotificationHistoryItem item = null!;
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var items = await Backend.ListHistory(alice.Id, new NotificationHistoryQuery(), CancellationToken.None);
             item = items.Should().ContainSingle(x => x.Kind == NotificationKind.Conversation).Subject;
         }, WaitTimeout);
@@ -122,7 +122,7 @@ public sealed class NotificationHistoryTest(AppHostFixture fixture, ITestOutputH
         await Queues.Enqueue(new UserNotifiedEvent(bobMention));
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var mine = await Backend.ListHistory(alice.Id, new NotificationHistoryQuery(), CancellationToken.None);
             var theirs = await Backend.ListHistory(bob.Id, new NotificationHistoryQuery(), CancellationToken.None);
             mine.Should().ContainSingle();
@@ -149,7 +149,7 @@ public sealed class NotificationHistoryTest(AppHostFixture fixture, ITestOutputH
         await Queues.Enqueue(new UserNotifiedEvent(mention));
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var items = await Backend.ListHistory(alice.Id, new NotificationHistoryQuery(), CancellationToken.None);
             items.Should().ContainSingle();
         }, WaitTimeout);
@@ -178,7 +178,7 @@ public sealed class NotificationHistoryTest(AppHostFixture fixture, ITestOutputH
             expectedKinds.Add(n.Kind);
             await Queues.Enqueue(new UserNotifiedEvent(n));
         }
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var items = await notifications.ListHistory(Tester.Session,
                 new NotificationHistoryQuery(), CancellationToken.None);
             items.Should().HaveCount(5);
@@ -232,7 +232,7 @@ public sealed class NotificationHistoryTest(AppHostFixture fixture, ITestOutputH
         // act
         await Queues.Enqueue(new UserNotifiedEvent(mention));
         long afterFirst = 0;
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             afterFirst = await Backend.GetHistoryVersion(alice.Id, CancellationToken.None);
             afterFirst.Should().BeGreaterThan(before, "a logged notification bumps the version");
         }, WaitTimeout);

@@ -286,7 +286,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         // assert - the next call in this chat starts with its caller alone, not with the ghosts of
         // the one that was torn down
         await backend.StartCall(chatId, bob.Id, ApiArray<AuthorId>.Empty, false, default);
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var participants = await backend.ListParticipants(chatId, ct);
             participants.Should().Equal(bob.Id);
         }, TimeSpan.FromSeconds(5));
@@ -419,7 +419,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         await RunCallTailFlow(tester, conversationId);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var grown = await conversations.Get(conversationId, ct);
             grown.Should().NotBeNull();
             grown!.EntryLidRange.Contains(late.ChatEntrySlim.LocalId).Should()
@@ -456,7 +456,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         await RunCallTailFlow(tester, conversationId);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var refreshed = await conversations.Get(conversationId, ct);
             refreshed.Should().NotBeNull();
             refreshed!.EndEntryLid.Should().Be(backdated.EndEntryLid);
@@ -497,7 +497,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         await RunCallTailFlow(tester, conversationId);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var resized = await conversations.Get(conversationId, ct);
             resized.Should().NotBeNull();
             resized!.MessageCount.Should().Be(settings.MinConversationEntries);

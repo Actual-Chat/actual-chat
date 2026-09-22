@@ -31,7 +31,7 @@ public class LiveAudioBackendShardMigrationTest(ITestOutputHelper @out)
         WriteLine($"h1 announced: {w1.ThisNode.Ref}");
 
         // Wait until h1 owns all shards (it's alone in the mesh).
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var bits = await o1.BitmapState.Use(ct).ConfigureAwait(false);
             bits.SetBitCount().Should().Be(shardScheme.ShardCount);
         }, syncTimeout);
@@ -69,11 +69,11 @@ public class LiveAudioBackendShardMigrationTest(ITestOutputHelper @out)
         WriteLine($"h2 announced: {w2.ThisNode.Ref}");
 
         // Wait for both nodes to see each other.
-        await w1.State.Computed.When(x => x.AllNodes.Count >= 2).WaitAsync(syncTimeout);
-        await w2.State.Computed.When(x => x.AllNodes.Count >= 2).WaitAsync(syncTimeout);
+        await w1.State.Computed.When(x => x.AllNodes.Count >= 2).WaitAsync(syncTimeout.CiScaled());
+        await w2.State.Computed.When(x => x.AllNodes.Count >= 2).WaitAsync(syncTimeout.CiScaled());
 
         // Wait for shard redistribution: h1 must give up at least one shard to h2.
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var bits1 = await o1.BitmapState.Use(ct).ConfigureAwait(false);
             var bits2 = await o2.BitmapState.Use(ct).ConfigureAwait(false);
             WriteLine($"Shard bitmap: h1={bits1.Format()} ({bits1.SetBitCount()}) h2={bits2.Format()} ({bits2.SetBitCount()})");
@@ -98,7 +98,7 @@ public class LiveAudioBackendShardMigrationTest(ITestOutputHelper @out)
             var computed = capturedPerShard[shardIndex];
             var chatId = chatIdPerShard[shardIndex];
             await computed.WhenInvalidated(CancellationToken.None)
-                .WaitAsync(syncTimeout);
+                .WaitAsync(syncTimeout.CiScaled());
             computed.IsConsistent().Should().BeFalse(
                 $"computed for chat {chatId} (shard {shardIndex}) must invalidate after losing ownership");
         }

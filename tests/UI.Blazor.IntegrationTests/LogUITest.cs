@@ -98,7 +98,7 @@ public class LogUITest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
      private Task<IReadOnlyList<LogTile>> GetTiles(int minExpectedEntryCount, bool mustPrintTiles = false)
-         => ComputedTest.When(async ct => {
+         => TestWait.When(async ct => {
              var idRange = await LogUI.GetIdRange(ct);
              var tiles = await LogUI.GetTiles(idRange, ct);
              if (mustPrintTiles) {
@@ -119,6 +119,6 @@ public class LogUITest(AppHostFixture fixture, ITestOutputHelper @out)
      {
          await LocalSettings.LocalAppSettings().Update(x => x with { IsLogViewerEnabled = value });
          LogUI.IsEnabled.Invalidate();
-         await TestExt.When(() => LogUI.IsEnabled.Value.Should().Be(value), TimeSpan.FromSeconds(10));
+         await TestWait.WhenPolled(() => LogUI.IsEnabled.Value.Should().Be(value), TimeSpan.FromSeconds(10));
      }
 }

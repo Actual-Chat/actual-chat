@@ -34,7 +34,7 @@ public class CallNotificationFlowTest(ChatCollection.AppHostFixture fixture, ITe
 
         // assert — the ring lands in Alice's active set (StartCall → NotifyCall → Notify → Items)
         CallNotification ring = null!;
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var active = await notifications.ListActive(alice.Session, ct);
             ring = active.OfType<CallNotification>().Should().ContainSingle(n => n.ChatId == chatId).Subject;
         }, TimeSpan.FromSeconds(15));
@@ -44,14 +44,14 @@ public class CallNotificationFlowTest(ChatCollection.AppHostFixture fixture, ITe
         await backend.CancelCall(chatId, bobAuthor.Id, default);
 
         // assert — a cancelled ring should leave the active set, not just get an on-device dismissal
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
             var active = await notifications.ListActive(alice.Session, ct);
             active.OfType<CallNotification>().Should().BeEmpty();
         }, TimeSpan.FromSeconds(15));
 
         // assert — handling it must still push the dismissal that closes the banner on the device,
         // which is what makes NotificationsBackend_Dismiss a valid replacement for a raw PushDismissal
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             Sink.Messages
                 .Where(m => m.IsDismissal && m.DeviceIds.Contains(deviceId))
                 .Should().Contain(m => m.DismissedIds.Contains(ring.Id));

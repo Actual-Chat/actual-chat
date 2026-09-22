@@ -72,10 +72,10 @@ public class EntryIndexingStressTest(SlowAppHostFixture fixture, ITestOutputHelp
         PlaceId? placeId = null,
         ChatId? chatId = null,
         int expected = 50)
-        => TestsExt.When(async () => {
+        => TestWait.WhenPolled<FoundChatEntry[]>(async () => {
                 var results = await Tester.FindEntries($"{IsolationKey} {criteria}", placeId, chatId);
                 results.Should().HaveCount(expected, "for chat #{0} and criteria '{1}'", chatId, criteria);
                 return results;
             },
-            TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(90) : TimeSpan.FromSeconds(30));
+            TimeSpan.FromSeconds(30));
 }

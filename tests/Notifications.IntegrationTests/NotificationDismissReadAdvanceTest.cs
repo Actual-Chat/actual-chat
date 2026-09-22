@@ -27,7 +27,7 @@ public sealed class NotificationDismissReadAdvanceTest(AppHostFixture fixture, I
         await Tester.Commander.Call(new Notifications_DismissAll { Session = Tester.Session });
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var position = await GetReadPosition(alice.Id, chatId);
             position.Should().BeGreaterThanOrEqualTo(entry.LocalId,
                 "dismissing an OnRead notification must satisfy its mode, not just drop it");
@@ -54,7 +54,7 @@ public sealed class NotificationDismissReadAdvanceTest(AppHostFixture fixture, I
         });
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var position = await GetReadPosition(alice.Id, chatId);
             position.Should().BeGreaterThanOrEqualTo(entry.LocalId,
                 "a single dismissal owes the same read advance as Dismiss all");
@@ -77,7 +77,7 @@ public sealed class NotificationDismissReadAdvanceTest(AppHostFixture fixture, I
         await Tester.SignIn(alice);
         await Tester.AppServices.UserSettingsUI(Tester.Session).ChatUserSettings(chatId)
             .Update(x => x with { NotificationMode = ChatNotificationMode.Muted }, CancellationToken.None);
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             info.Items.Should().BeEmpty("a muted chat's notification leaves the active set");
         }, TimeSpan.FromSeconds(10));
@@ -95,7 +95,7 @@ public sealed class NotificationDismissReadAdvanceTest(AppHostFixture fixture, I
     private async Task<Notification> WhenNotified(UserId userId)
     {
         Notification? notification = null;
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(userId, CancellationToken.None);
             notification = info.Items.Should().ContainSingle().Subject;
         }, TimeSpan.FromSeconds(10));

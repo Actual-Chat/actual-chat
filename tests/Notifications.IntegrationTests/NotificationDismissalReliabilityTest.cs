@@ -19,7 +19,7 @@ public sealed class NotificationDismissalReliabilityTest(AppHostFixture fixture,
         await Commander.Call(new NotificationsBackend_Dismiss(notification.Id));
 
         // assert
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             Sink.Messages.Should().Contain(m => m.IsDismissal && m.DeviceIds.Contains(deviceId));
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             info.PendingDismissals.Should().BeEmpty("a sent dismissal is no longer owed");
@@ -39,7 +39,7 @@ public sealed class NotificationDismissalReliabilityTest(AppHostFixture fixture,
         // assert
         // The notification is gone from Items, so nothing but PendingDismissals can re-derive the
         // dismissal - which is the whole reason it is committed alongside the removal.
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             info.Items.Should().BeEmpty();
             info.PendingDismissals.Should().ContainSingle(
@@ -69,7 +69,7 @@ public sealed class NotificationDismissalReliabilityTest(AppHostFixture fixture,
         // FCM reports a rejected push in the batch response instead of throwing, so the send
         // completes normally. Waiting on the observed rejection (rather than polling the blob)
         // keeps this off the race with the converge event the dismissal queues.
-        await TestExt.When(() => Sink.RejectedDismissals.Should().BeGreaterThan(0),
+        await TestWait.WhenPolled(() => Sink.RejectedDismissals.Should().BeGreaterThan(0),
             TimeSpan.FromSeconds(10));
 
         // act 2 — the retry NotificationConvergeFlow performs
@@ -104,7 +104,7 @@ public sealed class NotificationDismissalReliabilityTest(AppHostFixture fixture,
         await Tester.SignIn(bob);
         await Tester.CreateTextEntry(chatId, "Hi Alice");
         Notification notification = null!;
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             notification = info.Items.Should().ContainSingle().Subject;
         }, TimeSpan.FromSeconds(10));
@@ -115,7 +115,7 @@ public sealed class NotificationDismissalReliabilityTest(AppHostFixture fixture,
         // assert
         // The badge rides an alert push so it lands even when the background push carrying the
         // removal is held - and only iOS has one, so nothing else should be woken for it.
-        await TestExt.When(() => {
+        await TestWait.WhenPolled(() => {
             var badge = Sink.Badges.Should().ContainSingle().Subject;
             badge.DeviceIds.Should().Equal([iosDeviceId]);
             badge.BadgeCount.Should().Be(0);
@@ -141,7 +141,7 @@ public sealed class NotificationDismissalReliabilityTest(AppHostFixture fixture,
         await Tester.CreateTextEntry(chatId, "Hi Alice");
 
         Notification notification = null!;
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             notification = info.Items.Should().ContainSingle().Subject;
         }, TimeSpan.FromSeconds(10));

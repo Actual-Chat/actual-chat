@@ -40,7 +40,7 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // assert
         var expected = chats.JoinedGroups1();
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
                 var chatIds = await ListChatsForContactSearch(SearchScope.Groups, ct);
                 chatIds.Should().BeEquivalentTo(expected, o => o.IdTitle());
             },
@@ -61,7 +61,7 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
         await _tester.SignIn(bob);
 
         // assert
-        await ComputedTest.When(async ct => {
+        await TestWait.When(async ct => {
                 var foundPeerChats = await ListChatsForContactSearch(SearchScope.People, ct);
                 var expected = accounts[..5]
                     .Select(x => new Chat.Chat(PeerChatId.New(bob.Id, x.Id)) {
@@ -140,7 +140,7 @@ public class ContactsBackendTest(AppHostFixture fixture, ITestOutputHelper @out)
     private async Task<List<ContactId>> ListIdsForSearch(ContactSubset contactSubset, bool includePublic, int expectedCount)
     {
         var account = await _accounts.GetOwn(_tester.Session, CancellationToken.None);
-        return await ComputedTest.When(async ct => {
+        return await TestWait.When(async ct => {
                 var contactIds =
                     await _contactsBackend.ListIdsForSearch(account.Id, contactSubset, includePublic, ct);
                 var result = contactIds.Where(x => !Constants.Chat.SystemChatIds.Contains(x.ChatId))

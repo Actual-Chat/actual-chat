@@ -56,7 +56,7 @@ public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out, ILog
             Log.LogInformation("Updated Status to '{NewStatus}'", newStatus);
 
             // assert
-            await ComputedTest.When(async ct => {
+            await TestWait.When(async ct => {
                 account = await _accounts.GetOwn(_tester.Session, ct);
                 account.Status.Should().Be(newStatus);
             });

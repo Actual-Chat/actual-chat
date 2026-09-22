@@ -22,7 +22,7 @@ public class TranslationDubTest(
         var mediaBackend = services.GetRequiredService<IMediaBackend>();
         var entry = await Tester.CreateTextEntry(chatId, "Привет");
         var id = TranslationId.New(entry.Id, Languages.English);
-        var translation = await ComputedTest.When(
+        var translation = await TestWait.When(
             ct => translations.Get(id, translateIfMissing: true, ct).Require(),
             TimeSpan.FromSeconds(10));
         var mediaId = await Tester.SaveTextFile(chatId, "dub.webm", "fake dub audio");

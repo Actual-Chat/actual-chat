@@ -123,11 +123,11 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
     }
 
     private Task<FoundContact[]> Find(string criteria, bool own, int expected)
-        => TestsExt.When(async () => {
+        => TestWait.WhenPolled<FoundContact[]>(async () => {
                 var results = await Tester.FindPlaces($"{IsolationKey} {criteria}", own);
                 results.Should().HaveCount(expected);
                 return results;
             },
             Intervals.Fixed(TimeSpan.FromSeconds(0.5)),
-            TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20));
+            TimeSpan.FromSeconds(20));
 }

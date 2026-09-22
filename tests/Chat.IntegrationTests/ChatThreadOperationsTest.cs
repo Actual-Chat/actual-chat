@@ -54,7 +54,7 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         resultChatEntries[1].Content.Should().Be(parentChatEntries[2].Content);
 
         var chatThreads = services.GetRequiredService<IChatThreads>();
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var availableThreads = await chatThreads.ListIdsForChat(session, parentChat.Id, cancellationToken);
             availableThreads.Should().HaveCount(1);
             availableThreads[0].Should().Be(chat.Id);
@@ -112,7 +112,7 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         var threadChatId = (ThreadChatId)threadChat.Id;
         var bobChatThreads = bobTester.AppServices.GetRequiredService<IChatThreads>();
         var aliceChatThreads = aliceTester.AppServices.GetRequiredService<IChatThreads>();
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var isBobFollowing = await bobChatThreads
                 .GetThreadFollowStatus(bobTester.Session, threadChatId, cancellationToken);
             isBobFollowing.Should().BeTrue("the starter follows a thread even when its start message isn't theirs");
@@ -172,7 +172,7 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         resultChatEntries[1].Content.Should().Be(threadChatEntries[1].Content);
 
         var chatThreads = services.GetRequiredService<IChatThreads>();
-        await TestExt.When(async () => {
+        await TestWait.WhenPolled(async () => {
             var availableThreads = await chatThreads.ListIdsForChat(session, parentChat.Id, cancellationToken);
             availableThreads.Should().HaveCount(2);
             availableThreads[0].Should().Be(chat2.Id);

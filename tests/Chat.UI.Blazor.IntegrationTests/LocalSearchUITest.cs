@@ -68,7 +68,7 @@ public class LocalSearchUITest(ChatAppHostFixture fixture, ITestOutputHelper @ou
         PlaceId? placeId,
         string criteria,
         int expectedCount)
-        => TestsExt.When(async () => {
+        => TestWait.WhenPolled<IReadOnlyList<FoundContact>>(async () => {
             var localSearch = Tester.ScopedAppServices.GetRequiredService<LocalSearchUI>();
             var found = await localSearch.FindContacts(scope, placeId, criteria, 10, CancellationToken.None);
             found.Should().HaveCount(expectedCount);
