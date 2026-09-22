@@ -84,6 +84,9 @@ public class AudioFocusUI : ProcessorBase
     public virtual AudioFocusDiagnostics GetDiagnostics()
         => AudioFocusDiagnostics.Unsupported;
 
+    public virtual AudioOutputKind? GetCurrentOutputKind()
+        => null;
+
     // Nested types
 
     private sealed class FakeScope : AudioFocusScope
@@ -93,6 +96,16 @@ public class AudioFocusUI : ProcessorBase
         public override void Dispose()
         { }
     }
+}
+
+public enum AudioOutputKind
+{
+    Phone,
+    Speaker,
+    Headphones,
+    Bluetooth,
+    Car,
+    Other,
 }
 
 /// <summary>
