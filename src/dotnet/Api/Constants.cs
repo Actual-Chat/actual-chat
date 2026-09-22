@@ -549,6 +549,10 @@ public static partial class Constants
         public const int MaxPayloadLength = 256 * 1024;
         public const int MaxPendingDeliveries = 10_000;
         public const int DeliveryListLimit = 20;
+        public const string BotUserIdPrefix = "whin";
+        public const string TokenPrefix = "whin_";
+        public const int InboundBodyLimit = 64 * 1024;
+        public const int InboundImageLimit = 4;
         public static readonly TimeSpan DeliveryTimeout = TimeSpan.FromSeconds(10);
         public static readonly TimeSpan DisableAfter = TimeSpan.FromHours(72);
         public static readonly TimeSpan SecretOverlap = TimeSpan.FromHours(24);

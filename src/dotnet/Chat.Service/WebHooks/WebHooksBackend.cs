@@ -20,10 +20,12 @@ public partial class WebHooksBackend(IServiceProvider services)
     private WebHookSecrets Secrets => field ??= Services.GetRequiredService<WebHookSecrets>();
     private WebHookPayloads Payloads => field ??= Services.GetRequiredService<WebHookPayloads>();
     private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
+    private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IDbEntityResolver<string, DbWebHook> DbWebHookResolver
         => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbWebHook>>();
     private WebHookDeliverer Deliverer => field ??= Services.GetRequiredService<WebHookDeliverer>();
+    private WebHookInbox WebHookInbox => field ??= Services.GetRequiredService<WebHookInbox>();
     private EgressGuard EgressGuard => field ??= Services.GetRequiredService<EgressGuard>();
     private FlowHub FlowHub => field ??= Services.FlowHub();
     private HostInfo HostInfo => field ??= Services.HostInfo();
@@ -88,6 +90,21 @@ public partial class WebHooksBackend(IServiceProvider services)
     }
 
     // [ComputeMethod]
+    public virtual async Task<WebHook?> GetByTokenHash(string tokenHash, CancellationToken cancellationToken)
+    {
+        if (tokenHash.IsNullOrEmpty())
+            return null;
+
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbWebHook = await dbContext.WebHooks
+            .FirstOrDefaultAsync(x => x.TokenHash == tokenHash && x.Kind == WebHookKind.Incoming, cancellationToken)
+            .ConfigureAwait(false);
+        return dbWebHook?.ToModel();
+    }
+
+    // [ComputeMethod]
     public virtual async Task<bool> HasUserScopedHooks(CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
@@ -144,22 +161,54 @@ public partial class WebHooksBackend(IServiceProvider services)
                 .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
                 .ConfigureAwait(false);
         if (change.IsCreate(out var createDiff)) {
-            var webHook = new WebHook(WebHookId.New(), VersionGenerator.NextVersion()) {
+            if (dbWebHook is not null)
+                throw StandardError.Constraint("A web hook with this id already exists.");
+
+            var kind = createDiff.Kind ?? WebHookKind.Outgoing;
+            if (kind == WebHookKind.Incoming && scope != WebHookScope.Chat)
+                throw StandardError.Constraint("Incoming web hooks are chat-scoped.");
+
+            var webHookId = id ?? WebHookId.New();
+            if (kind == WebHookKind.Incoming) {
+                // The bot's user id is derived from the hook id, so a create may only mint a new bot
+                // or pick up a live one left by its own earlier attempt. Anything else - the retired
+                // bot of a deleted hook, or an unrelated account whose id happens to match - is off
+                // limits: EnsureBot would otherwise turn that account into this chat's bot.
+                var botAccount = await AccountsBackend
+                    .Get(webHookId.ToBotUserId(), cancellationToken)
+                    .ConfigureAwait(false);
+                if (botAccount is not (null or { IsBot: true, Status: AccountStatus.Active }))
+                    throw StandardError.Constraint("This web hook id is already taken.");
+            }
+
+            var webHook = new WebHook(webHookId, VersionGenerator.NextVersion()) {
                 Scope = scope,
                 ScopeId = scopeId,
-                Kind = WebHookKind.Outgoing,
+                Kind = kind,
                 CreatedBy = changedBy,
                 CreatedAt = now,
                 ModifiedAt = now,
             }.ApplyDiff(createDiff);
             Validate(webHook, createDiff);
-            secret = StandardWebhookSigner.NewSecret();
-            dbWebHook = new DbWebHook(webHook) { SecretProtected = Secrets.Protect(secret) };
-            ApplyCustomHeader(dbWebHook, createDiff);
+            if (kind == WebHookKind.Incoming) {
+                secret = WebHookTokens.New();
+                dbWebHook = new DbWebHook(webHook) { TokenHash = WebHookTokens.Hash(secret) };
+                await EnsureBot(webHook, ChatId.Parse(scopeId), createDiff, cancellationToken).ConfigureAwait(false);
+                AddInvalidatedTokenHash(context, dbWebHook.TokenHash);
+            }
+            else {
+                secret = StandardWebhookSigner.NewSecret();
+                dbWebHook = new DbWebHook(webHook) { SecretProtected = Secrets.Protect(secret) };
+                ApplyCustomHeader(dbWebHook, createDiff);
+            }
             dbContext.Add(dbWebHook);
         }
         else if (change.IsUpdate(out var updateDiff)) {
-            var webHook = dbWebHook.Require().ToModel().RequireVersion(expectedVersion).ApplyDiff(updateDiff) with {
+            var existing = dbWebHook.Require().ToModel().RequireVersion(expectedVersion);
+            if (updateDiff.Kind is { } newKind && newKind != existing.Kind)
+                throw StandardError.Constraint("Web hook kind cannot be changed.");
+
+            var webHook = existing.ApplyDiff(updateDiff) with {
                 ModifiedAt = now,
                 Version = VersionGenerator.NextVersion(dbWebHook.Version),
             };
@@ -172,7 +221,11 @@ public partial class WebHooksBackend(IServiceProvider services)
                 webHook = webHook with { DisabledReason = WebHookDisabledReason.Manual };
             Validate(webHook, updateDiff);
             dbWebHook.UpdateFrom(webHook);
-            ApplyCustomHeader(dbWebHook, updateDiff);
+            if (webHook.Kind == WebHookKind.Incoming)
+                await UpdateBot(webHook, updateDiff, cancellationToken).ConfigureAwait(false);
+            else
+                ApplyCustomHeader(dbWebHook, updateDiff);
+            AddInvalidatedTokenHash(context, dbWebHook.TokenHash);
         }
         else {
             dbWebHook.Require().RequireVersion(expectedVersion);
@@ -182,6 +235,11 @@ public partial class WebHooksBackend(IServiceProvider services)
                 .Where(x => x.WebHookId == dbWebHook.Id)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
+            var removed = dbWebHook.ToModel();
+            if (removed.Kind == WebHookKind.Incoming) {
+                await RetireBot(removed, cancellationToken).ConfigureAwait(false);
+                AddInvalidatedTokenHash(context, dbWebHook.TokenHash);
+            }
         }
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
@@ -206,6 +264,20 @@ public partial class WebHooksBackend(IServiceProvider services)
 
         var dbWebHook = await GetDbWebHook(dbContext, command.Id, cancellationToken).ConfigureAwait(false);
         var now = Clocks.SystemClock.Now;
+        if (dbWebHook.Kind == WebHookKind.Incoming) {
+            // A token has no overlap window: the old one stops working the moment the new one is minted
+            var token = WebHookTokens.New();
+            AddInvalidatedTokenHash(context, dbWebHook.TokenHash);
+            dbWebHook.TokenHash = WebHookTokens.Hash(token);
+            AddInvalidatedTokenHash(context, dbWebHook.TokenHash);
+            dbWebHook.ModifiedAt = now;
+            dbWebHook.Version = VersionGenerator.NextVersion(dbWebHook.Version);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            context.Operation.Items.KeylessSet(dbWebHook.ToModel());
+            return token;
+        }
+
         var secret = StandardWebhookSigner.NewSecret();
         dbWebHook.PrevSecretProtected = dbWebHook.SecretProtected;
         dbWebHook.PrevSecretExpiresAt = now + Constants.WebHooks.SecretOverlap;
@@ -310,6 +382,28 @@ public partial class WebHooksBackend(IServiceProvider services)
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         context.Operation.Items.KeylessSet(dbWebHook.ToModel());
+        AddInvalidatedTokenHash(context, dbWebHook.TokenHash);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnRecordPost(WebHooksBackend_RecordPost command, CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+        if (Invalidation.IsActive) {
+            InvalidateHook(context);
+            return;
+        }
+
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbWebHook = await GetDbWebHook(dbContext, command.Id, cancellationToken).ConfigureAwait(false);
+        dbWebHook.LastActivityAt = Clocks.SystemClock.Now;
+        dbWebHook.ConsecutiveFailures = 0;
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        context.Operation.Items.KeylessSet(dbWebHook.ToModel());
+        AddInvalidatedTokenHash(context, dbWebHook.TokenHash);
     }
 
     // [CommandHandler]
@@ -346,6 +440,7 @@ public partial class WebHooksBackend(IServiceProvider services)
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         context.Operation.Items.KeylessSet(dbWebHook.ToModel());
+        AddInvalidatedTokenHash(context, dbWebHook.TokenHash);
     }
 
     // [CommandHandler]
@@ -399,6 +494,12 @@ public partial class WebHooksBackend(IServiceProvider services)
             return default!;
 
         var webHook = await Get(id, cancellationToken).Require().ConfigureAwait(false);
+        if (webHook.Kind == WebHookKind.Incoming) {
+            var startedAt = CpuTimestamp.Now;
+            var posted = await WebHookInbox.PostTest(webHook, sentBy, cancellationToken).ConfigureAwait(false);
+            return new WebHookTestResult(posted.IsOk, posted.StatusCode, posted.Error, LatencyMs(startedAt));
+        }
+
         return await Deliverer.SendPing(webHook, sentBy, cancellationToken).ConfigureAwait(false);
     }
 
@@ -414,6 +515,72 @@ public partial class WebHooksBackend(IServiceProvider services)
         _ = ListByScope(webHook.Scope, webHook.ScopeId, default);
         if (webHook.CreatedBy is { } createdBy)
             _ = ListByCreator(createdBy, default);
+        foreach (var tokenHash in context.Operation.Items.KeylessGet<InvalidatedTokenHashes>()?.Hashes ?? [])
+            _ = GetByTokenHash(tokenHash, default);
+    }
+
+    // Any write to a hook row must invalidate its token lookup, not just the ones changing the token
+    private static void AddInvalidatedTokenHash(CommandContext context, string? tokenHash)
+    {
+        if (tokenHash.IsNullOrEmpty())
+            return;
+
+        var hashes = context.Operation.Items.KeylessGet<InvalidatedTokenHashes>()?.Hashes ?? [];
+        if (hashes.Contains(tokenHash))
+            return;
+
+        context.Operation.Items.KeylessSet(new InvalidatedTokenHashes([..hashes, tokenHash]));
+    }
+
+    private async Task EnsureBot(WebHook webHook, ChatId chatId, WebHookDiff diff, CancellationToken cancellationToken)
+    {
+        var botUserId = webHook.Id.ToBotUserId();
+        var displayName = diff.DisplayName?.Trim().NullIfEmpty() ?? webHook.Name;
+        var info = new InternalUserInfo(botUserId, displayName, AvatarName: displayName) {
+            AvatarMediaId = diff.AvatarMediaId.IsSome(out var mediaId) ? mediaId : null,
+            IsBot = true,
+        };
+        await InternalAccounts.Create(Services, info, cancellationToken).ConfigureAwait(false);
+        // HasLeft = false: an earlier attempt's bot may have been excluded as an orphan meanwhile
+        var upsert = new AuthorsBackend_Upsert(
+            chatId, null, botUserId, null, new AuthorDiff { HasLeft = false }, DoNotNotify: true);
+        await Commander.Call(upsert, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task UpdateBot(WebHook webHook, WebHookDiff diff, CancellationToken cancellationToken)
+    {
+        if (diff.DisplayName is null && !diff.AvatarMediaId.HasValue)
+            return;
+
+        var account = await AccountsBackend.Get(webHook.Id.ToBotUserId(), cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
+        var avatar = account.Avatar;
+        var change = new AvatarsBackend_Change(avatar.Id, avatar.Version, Change.Update(new AvatarDiff {
+            Name = diff.DisplayName?.Trim().NullIfEmpty(),
+            MediaId = diff.AvatarMediaId,
+        }));
+        await Commander.Call(change, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task RetireBot(WebHook webHook, CancellationToken cancellationToken)
+    {
+        var botUserId = webHook.Id.ToBotUserId();
+        var chatId = ChatId.Parse(webHook.ScopeId);
+        var author = await AuthorsBackend
+            .GetByUserId(chatId, botUserId, RequestedAuthorKind.Full, cancellationToken)
+            .ConfigureAwait(false);
+        if (author is { HasLeft: false }) {
+            var leave = new AuthorsBackend_Upsert(chatId, author.Id, null, author.Version,
+                new AuthorDiff { HasLeft = true }, DoNotNotify: true);
+            await Commander.Call(leave, true, cancellationToken).ConfigureAwait(false);
+        }
+        var account = await AccountsBackend.Get(botUserId, cancellationToken).ConfigureAwait(false);
+        if (account is { Status: not AccountStatus.Suspended }) {
+            var suspend = new AccountsBackend_Update(
+                account with { Status = AccountStatus.Suspended }, account.Version);
+            await Commander.Call(suspend, true, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private static async Task<DbWebHook> GetDbWebHook(
@@ -434,6 +601,22 @@ public partial class WebHooksBackend(IServiceProvider services)
         if (webHook.Name.Length > Constants.WebHooks.MaxNameLength)
             throw StandardError.Constraint(
                 $"Web hook name can't be longer than {Constants.WebHooks.MaxNameLength} characters.");
+        // An incoming hook is addressed by its token: it carries none of the delivery settings
+        if (webHook.Kind == WebHookKind.Incoming) {
+            if (!webHook.Url.IsNullOrEmpty())
+                throw StandardError.Constraint("An incoming web hook can't have a URL.");
+            if (webHook.Events != WebHookEvents.None)
+                throw StandardError.Constraint("An incoming web hook can't subscribe to events.");
+            if (webHook.ChatIds.Count != 0)
+                throw StandardError.Constraint("An incoming web hook posts to its own chat only.");
+            if (webHook.SubscribeNotifications)
+                throw StandardError.Constraint("An incoming web hook can't subscribe to notifications.");
+            if (!webHook.CustomHeaderName.IsNullOrEmpty() || !diff.CustomHeaderValue.IsNullOrEmpty())
+                throw StandardError.Constraint("An incoming web hook can't have a custom header.");
+
+            return;
+        }
+
         if (!IsSchemeAllowed(webHook.Url, HostInfo, out var uri))
             throw StandardError.Constraint("Web hook URL must be an absolute https:// URL.");
         if (!EgressGuard.IsAllowedUri(uri))
@@ -498,4 +681,15 @@ public partial class WebHooksBackend(IServiceProvider services)
         if (dbWebHook.CustomHeaderName.IsNullOrEmpty())
             dbWebHook.CustomHeaderValueProtected = null;
     }
+
+    private static int LatencyMs(CpuTimestamp startedAt)
+        => (int)Math.Min(startedAt.Elapsed.TotalMilliseconds, int.MaxValue);
+
+    // Nested types
+
+    // Read back during the invalidation phase, possibly on another node: Operation.Items round-trips
+    // through _Operations.ItemsJson, so the serialization attributes are what makes it survive
+    [DataContract, MessagePackObject(AllowPrivate = true)]
+    internal sealed partial record InvalidatedTokenHashes(
+        [property: DataMember(Order = 0), Key(0)] string[] Hashes);
 }
