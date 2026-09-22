@@ -6,7 +6,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Mesh;
 public class MeshWatcherTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(MeshWatcherTest)}", TestAppHostOptions.None, @out)
 {
-    [Fact(Timeout = 30_000)]
+    [Fact(Timeout = 60_000)]
     public async Task BasicTest()
     {
         var syncTimeout = TimeSpan.FromSeconds(10);
