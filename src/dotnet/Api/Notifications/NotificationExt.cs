@@ -43,15 +43,25 @@ public static class NotificationExt
     public static ChatId? GetChatId(this Notification notification)
         => ChatId.TryParse(notification.GetChatTag() ?? "", out var chatId) ? chatId : null;
 
+    public static ChatEntryId? GetAnchorEntryId(this Notification notification)
+        // The entry a notification is about; null for the kinds that anchor at a chat.
+        // A conversation carries no entry of its own, so it anchors where it started.
+        => notification switch {
+            ConversationNotification n when n.StartEntryLid > 0 => ChatEntryId.New(n.ChatId, n.StartEntryLid),
+            ChatEntryRelatedNotification n when n.EntryLid > 0 => n.EntryId,
+            ChatEntryNotification n => n.EntryId,
+            _ => null,
+        };
+
     public static LocalUrl GetChatLink(this Notification notification)
     {
         // Mirrors the link the FCM send path builds, so a notification the client reconciler
         // re-creates gets the same tap target: its entry if it has one, else the chat.
+        // A coalescing kind taps to its first unread entry rather than the newest one it covers -
+        // the one place the tap target differs from the anchor.
         var entryId = notification switch {
-            ConversationNotification n => (ChatEntryId?)ChatEntryId.New(n.ChatId, n.StartEntryLid),
             ChatEntryRelatedNotification n when n.EntryLid > 0 => (ChatEntryId?)n.StartEntryId,
-            ChatEntryNotification n => n.EntryId,
-            _ => null,
+            _ => notification.GetAnchorEntryId(),
         };
         if (entryId is { } e)
             return Links.Chat(e);

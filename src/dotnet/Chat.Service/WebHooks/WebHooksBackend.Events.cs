@@ -190,7 +190,7 @@ public partial class WebHooksBackend
         if (hooks.Count == 0)
             return;
 
-        var entryId = cn is ChatEntryNotification en ? en.EntryId : (ChatEntryId?)null;
+        var entryId = cn.GetAnchorEntryId();
         var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
         var author = entry is null
             ? null
