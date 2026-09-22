@@ -395,6 +395,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         var mustGreet = !account.IsGreetingCompleted && dbAccount.IsGreetingCompleted;
         var mustResetDigestFlow = dbAccount.TimeZone != account.TimeZone;
+        var mustResumeDigestFlow = !dbAccount.IsEmailVerified && account.IsEmailVerified();
         account = account with {
             Version = VersionGenerator.NextVersion(dbAccount.Version),
             Name = AccountNameValidator.Normalize(account.Name),
@@ -423,6 +424,11 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             Log.LogInformation("Scheduling DigestFlow reset for {AccountId}", account.Id);
             var flowId = FlowHub.NewId<DigestFlow>(account.Id.Value);
             context.Operation.AddEvent(FlowHub.NewResumeEvent(flowId).WithReset());
+        }
+        else if (mustResumeDigestFlow) {
+            // The flow is parked on "no verified email" for up to 2 days otherwise
+            var flowId = FlowHub.NewId<DigestFlow>(account.Id.Value);
+            context.Operation.AddEvent(FlowHub.NewResumeEvent(flowId));
         }
     }
 

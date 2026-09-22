@@ -10,6 +10,8 @@ namespace ActualChat.Users.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class DigestFlow : PeriodicFlow
 {
+    private static readonly TimeSpan MinInactivity = TimeSpan.FromHours(24);
+
     protected override TimeSpan MaxResumeDelay => TimeSpan.FromDays(2);
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -49,12 +51,26 @@ public partial class DigestFlow : PeriodicFlow
 
     protected override async ValueTask<Moment> Run(CancellationToken cancellationToken)
     {
-        if (!await IsSystemOrBot(Account.Id, cancellationToken).ConfigureAwait(false)) {
-            var sendDigestCommand = new EmailsBackend_SendDigest(Account.Id);
-            var queues = Services.Queues();
-            await queues.Enqueue(sendDigestCommand, cancellationToken).ConfigureAwait(false);
+        var nextRunAt = TimeZoneInfo.NextTimeOfDay(DigestTime, Hub.SystemNow);
+        if (await IsSystemOrBot(Account.Id, cancellationToken).ConfigureAwait(false))
+            return nextRunAt;
+        if (await IsRecentlyActive(cancellationToken).ConfigureAwait(false)) {
+            Console.Log("Skipped: the user was active recently");
+            return nextRunAt;
         }
-        return TimeZoneInfo.NextTimeOfDay(DigestTime, Hub.SystemNow);
+
+        var sendDigestCommand = new EmailsBackend_SendDigest(Account.Id);
+        var queues = Services.Queues();
+        await queues.Enqueue(sendDigestCommand, cancellationToken).ConfigureAwait(false);
+        return nextRunAt;
+    }
+
+    private async Task<bool> IsRecentlyActive(CancellationToken cancellationToken)
+    {
+        // Someone who used the app since the last digest has already seen what it would summarize
+        var userPresences = Services.GetRequiredService<IUserPresencesBackend>();
+        var lastCheckIn = await userPresences.GetLastCheckIn(Account.Id, cancellationToken).ConfigureAwait(false);
+        return lastCheckIn is { } at && Hub.SystemNow - at < MinInactivity;
     }
 
     private async Task<bool> IsSystemOrBot(UserId userId, CancellationToken cancellationToken)
