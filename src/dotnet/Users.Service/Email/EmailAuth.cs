@@ -118,7 +118,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var html = renderResult.Html;
 
         await EmailSender
-            .Send("", email, subject, html, cancellationToken)
+            .Send("", email, subject, html, null, cancellationToken)
             .ConfigureAwait(false);
         return nextSendAt;
 

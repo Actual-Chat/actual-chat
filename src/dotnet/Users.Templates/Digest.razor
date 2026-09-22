@@ -1,18 +1,34 @@
+@using ActualChat.Mjml.Blazor.Components
+@using ActualChat.Mjml.Blazor.Enums
 @namespace ActualChat.Users.Templates
 
 <EmailBody>
-    @if (Parameters.UnreadChats.Any()) {
-        @foreach (var chat in Parameters.UnreadChats) {
-            <DigestChat Chat="chat" />
+    <ChildContent>
+        @if (Parameters.UnreadChats.Any()) {
+            @foreach (var chat in Parameters.UnreadChats) {
+                <DigestChat Chat="chat" />
+            }
+            @if (Parameters.OtherUnreadCount > 0) {
+                <DigestButton
+                    Link="@Parameters.OtherUnreadLink"
+                    WithGradient="true">
+                    Discover other @(Parameters.OtherUnreadCount) new
+                </DigestButton>
+            }
         }
-        @if (Parameters.OtherUnreadCount > 0) {
-            <DigestButton
-                Link="@Parameters.OtherUnreadLink"
-                WithGradient="true">
-                Discover other @(Parameters.OtherUnreadCount) new
-            </DigestButton>
-        }
-    }
+    </ChildContent>
+    <Footer>
+        <MjmlText
+            Align="MjmlTextAlign.Center"
+            FontSize="12px"
+            FontWeight="400"
+            FontFamily="Arial"
+            LineHeight="14px"
+            Color="#A0A0A0">
+            You receive this daily digest because you have unread chats in @CoreConstants.AppName.
+            <a href="@Parameters.UnsubscribeLink" style="color: #A0A0A0;">Turn off digest emails</a>
+        </MjmlText>
+    </Footer>
 </EmailBody>
 
 @code {

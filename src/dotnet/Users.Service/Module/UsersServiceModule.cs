@@ -255,6 +255,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // Email sender - used by IEmailAuth (API) & Emails
         services.AddSingleton<IEmailSender, EmailSender>();
+        services.AddSingleton<DigestUnsubscribeTokens>(); // Used by EmailsBackend & the digest unsubscribe endpoint
 
         // Verification code channels: each available one is registered under its own key,
         // the composite picks among them at send time
