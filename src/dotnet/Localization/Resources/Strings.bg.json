@@ -210,6 +210,7 @@
   "WebHook_Name": "Име",
   "WebHook_DisplayName": "Показвано име",
   "WebHook_Avatar": "Аватар",
+  "WebHook_AvatarPrompt_Format": "Аватар на бот на име {0}",
   "WebHook_Url": "URL",
   "WebHook_Events": "Събития",
   "WebHook_Events_Messages": "Съобщения",

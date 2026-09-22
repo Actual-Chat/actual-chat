@@ -26,6 +26,13 @@ body:not(.hoverable) .pic-upload .pic-upload-picker {
     @apply cursor-pointer;
 }
 
+.pic-upload .c-busy {
+    @apply absolute top-0 z-20;
+    @apply flex-y items-center justify-center;
+    @apply rounded-full;
+    @apply backdrop-brightness-50;
+}
+
 .pic-upload-drop-zone {
     @apply flex-wrap justify-center;
     @apply border-primary;

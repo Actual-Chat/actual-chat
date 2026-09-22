@@ -210,6 +210,7 @@
   "WebHook_Name": "Název",
   "WebHook_DisplayName": "Zobrazované jméno",
   "WebHook_Avatar": "Avatar",
+  "WebHook_AvatarPrompt_Format": "Avatar bota jménem {0}",
   "WebHook_Url": "URL",
   "WebHook_Events": "Události",
   "WebHook_Events_Messages": "Zprávy",

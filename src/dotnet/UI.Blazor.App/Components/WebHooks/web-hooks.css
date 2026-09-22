@@ -83,6 +83,9 @@
 .web-hook-form .c-advanced {
     @apply flex-y gap-y-2;
 }
+.web-hook-form .c-generation-error {
+    @apply text-danger text-sm;
+}
 
 .web-hook-events-picker {
     @apply flex-y gap-y-1;

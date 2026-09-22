@@ -210,6 +210,7 @@
   "WebHook_Name": "名前",
   "WebHook_DisplayName": "表示名",
   "WebHook_Avatar": "アバター",
+  "WebHook_AvatarPrompt_Format": "{0} という名前のボットのアバター",
   "WebHook_Url": "URL",
   "WebHook_Events": "イベント",
   "WebHook_Events_Messages": "メッセージ",

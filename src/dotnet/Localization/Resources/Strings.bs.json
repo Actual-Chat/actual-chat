@@ -210,6 +210,7 @@
   "WebHook_Name": "Naziv",
   "WebHook_DisplayName": "Prikazano ime",
   "WebHook_Avatar": "Avatar",
+  "WebHook_AvatarPrompt_Format": "Avatar bota po imenu {0}",
   "WebHook_Url": "URL",
   "WebHook_Events": "Događaji",
   "WebHook_Events_Messages": "Poruke",

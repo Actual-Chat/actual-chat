@@ -2,6 +2,7 @@
 @using ActualChat.Media
 @using ActualChat.WebHooks
 @inherits ComponentBase<AppUIHub>
+@implements IAsyncDisposable
 @{
     _submitButtonInfo.CanExecute = _isSeeded && IsValid();
 }
@@ -42,7 +43,12 @@
             Title="@BotTitle"
             Picture="@_form.Picture"
             AvatarKey="@_form.AvatarKey"
-            Picked="@OnImagePicked"/>
+            IsBusy="@_isGenerating"
+            Picked="@OnImagePicked"
+            GenerateAvatar="@OnOpenGeneration"/>
+        @if (_hasGenerationError) {
+            <div class="c-generation-error">@L.PicCrop_GenerationFailed</div>
+        }
     </FormBlock>
 </Form>
 
@@ -51,6 +57,11 @@
     private FormModel _form = null!;
     private DialogButtonInfo _submitButtonInfo = null!;
     private bool _isSeeded;
+    private CancellationTokenSource? _generateCts;
+    private bool _isGenerating;
+    private bool _hasGenerationError;
+    private ImageStyle? _style;
+    private MediaId? _generatedMediaId;
 
     private string BotTitle => _form.DisplayName.Trim().NullIfEmpty() ?? _form.Name.Trim();
 
@@ -74,6 +85,16 @@
             existing == null ? L.WebHook_Create : L.WebHook_Save,
             OnSubmit);
         Context.Buttons = [_submitButtonInfo];
+    }
+
+    public async ValueTask DisposeAsync() {
+        // Cancel first, or an in-flight generation lands after this and leaks the media it saved
+        _generateCts.CancelAndDisposeSilently();
+        _generateCts = null;
+        if (_generatedMediaId is { } generatedMediaId) {
+            _generatedMediaId = null;
+            await RemoveMedia(generatedMediaId).SilentAwait(false);
+        }
     }
 
     protected override async Task OnInitializedAsync() {
@@ -108,9 +129,69 @@
         _form.IsDisplayNameEdited = true;
     }
 
-    private void OnImagePicked(MediaRef mediaRef) {
+    private Task OnImagePicked(MediaRef mediaRef)
+        => SetPicture(mediaRef, null);
+
+    private void OnOpenGeneration() {
+        var description = BotTitle.IsNullOrEmpty() ? "" : L.WebHook_AvatarPrompt_Format(BotTitle);
+        ModalUI.Show(new ImageGenerationModal.Model(description, _style, OnGenerate));
+    }
+
+    private void OnGenerate(string description, ImageStyle style) {
+        _style = style;
+        _ = Generate(description, style);
+    }
+
+    private async Task Generate(string description, ImageStyle style) {
+        if (_isGenerating)
+            return;
+
+        _isGenerating = true;
+        _hasGenerationError = false;
+        _generateCts = new CancellationTokenSource();
+        var cancellationToken = _generateCts.Token;
+        StateHasChanged();
+        try {
+            var command = new Media_Generate {
+                Session = Session,
+                Scope = _form.ImageScope,
+                Description = description,
+                Style = style,
+                Kind = MediaKind.UserPicture,
+            };
+            var (mediaRef, error) = await UICommander.Run(command, cancellationToken).ConfigureAwait(true);
+            if (error != null || mediaRef is null) {
+                _hasGenerationError = true;
+                return;
+            }
+
+            await SetPicture(mediaRef, mediaRef.MediaId).ConfigureAwait(true);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            _hasGenerationError = true;
+        }
+        finally {
+            _isGenerating = false;
+            StateHasChanged();
+        }
+    }
+
+    // A generated picture that gets replaced - by an upload or by another generation - is nobody's
+    // to keep, so it goes away right here rather than on dispose
+    private async Task SetPicture(MediaRef mediaRef, MediaId? generatedMediaId) {
         _form.Picture = new Picture(mediaRef);
         _form.IsPictureChanged = true;
+        var replaced = _generatedMediaId;
+        _generatedMediaId = generatedMediaId;
+        await RemoveMedia(replaced).ConfigureAwait(true);
+    }
+
+    private async Task RemoveMedia(MediaId? mediaId) {
+        if (mediaId is null)
+            return;
+
+        var command = new Media_RemoveMedia { Session = Session, MediaId = mediaId };
+        await UICommander.Run(command).ConfigureAwait(true);
     }
 
     private bool IsValid() {
@@ -148,6 +229,8 @@
         if (result.HasError)
             return;
 
+        // The bot owns the generated picture now
+        _generatedMediaId = null;
         if (existing != null || result.Value.WebHook is not { } webHook || result.Value.Secret is not { } token) {
             Context.Close();
             return;

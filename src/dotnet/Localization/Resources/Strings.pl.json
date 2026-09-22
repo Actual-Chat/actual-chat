@@ -210,6 +210,7 @@
   "WebHook_Name": "Nazwa",
   "WebHook_DisplayName": "Wyświetlana nazwa",
   "WebHook_Avatar": "Awatar",
+  "WebHook_AvatarPrompt_Format": "Awatar bota o nazwie {0}",
   "WebHook_Url": "URL",
   "WebHook_Events": "Zdarzenia",
   "WebHook_Events_Messages": "Wiadomości",

@@ -210,6 +210,7 @@
   "WebHook_Name": "Tên",
   "WebHook_DisplayName": "Tên hiển thị",
   "WebHook_Avatar": "Ảnh đại diện",
+  "WebHook_AvatarPrompt_Format": "Ảnh đại diện của bot tên {0}",
   "WebHook_Url": "URL",
   "WebHook_Events": "Sự kiện",
   "WebHook_Events_Messages": "Tin nhắn",
