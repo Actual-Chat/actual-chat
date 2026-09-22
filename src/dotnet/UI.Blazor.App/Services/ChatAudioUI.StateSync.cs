@@ -8,6 +8,8 @@ public partial class ChatAudioUI
 {
     private static readonly TimeSpan Epsilon = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan MinListeningPlayerPlayDurationToConsiderHealthy = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan MinRecordingDurationToConsiderHealthy = TimeSpan.FromSeconds(10);
+    private static readonly int MaxRecordingRestartCount = 5;
     // Long enough to bridge the gap between consecutive utterances of one conversation, so music
     // isn't bounced on every pause in speech; short enough that it comes back in a real lull.
     private static readonly TimeSpan ListeningFocusLinger = TimeSpan.FromSeconds(4);
@@ -164,6 +166,7 @@ public partial class ChatAudioUI
                 Log.LogInformation(
                     nameof(PushRecordingState) + ": retrying recorder for chat #{ChatId} (attempt {Attempt})",
                     intendedChatId, restartAttempt);
+            var startedAt = CpuTimestamp.Now;
             await BackgroundTask.Run(
                 () => RecordChat(cRecordingState, restartAttempt > 0, cancellationToken),
                 Log, $"{nameof(RecordChat)} failed",
@@ -174,7 +177,24 @@ public partial class ChatAudioUI
             // (recorder died, mic permission failure, etc.). Back off before re-entering.
             var latest = await cRecordingStateBase.Update(cancellationToken).ConfigureAwait(false);
             if (latest.Value.ChatId == intendedChatId) {
+                // A session that ran long enough is healthy, so the budget starts fresh on its exit
+                if (startedAt.Elapsed >= MinRecordingDurationToConsiderHealthy)
+                    restartAttempt = 0;
+
                 restartAttempt++;
+                if (restartAttempt > MaxRecordingRestartCount) {
+                    // A capture pipeline that never opens fails the same way on every attempt, and
+                    // retrying it forever keeps the microphone foreground service alive for as long
+                    // as the intent stands - long past the point the user left the chat or the call.
+                    Log.LogError(
+                        nameof(PushRecordingState)
+                        + ": recorder for chat #{ChatId} failed {Attempt} times in a row, giving up",
+                        intendedChatId, MaxRecordingRestartCount);
+                    restartAttempt = 0;
+                    await SetRecordingChatId(null).ConfigureAwait(false);
+                    continue;
+                }
+
                 var delay = restartDelays[restartAttempt];
                 Log.LogWarning(
                     nameof(PushRecordingState)
