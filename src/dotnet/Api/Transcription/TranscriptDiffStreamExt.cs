@@ -36,10 +36,12 @@ public static class TranscriptStreamExt
         }
     }
 
-    public static async IAsyncEnumerable<Transcript> ToTranscripts(this IAsyncEnumerable<TranscriptDiff> diffs)
+    public static async IAsyncEnumerable<Transcript> ToTranscripts(
+        this IAsyncEnumerable<TranscriptDiff> diffs,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var transcript = Transcript.Empty;
-        await foreach (var diff in diffs.ConfigureAwait(false)) {
+        await foreach (var diff in diffs.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             transcript += diff;
             yield return transcript;
         }
