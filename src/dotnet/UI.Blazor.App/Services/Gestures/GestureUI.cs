@@ -25,6 +25,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
     private bool _isHushArmed;
     private bool _hasAnswerWindow;
     private bool _hasArmedChats;
+    private bool _isCarProjectionActive;
     private bool _isStartGestureReady;
     private int _sampleCount;
     private long _lastSampleAtTicks;
@@ -132,6 +133,9 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
             var cIsAnyOwnStreaming = await Computed
                 .Capture(() => ChatVideoUI.IsAnyOwnStreaming(cancellationToken), cancellationToken)
                 .ConfigureAwait(false);
+            var cCarAudioRoute = await Computed
+                .Capture(() => ChatAudioUI.GetCarAudioRoute(cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
 
             var minPeriod = Constants.Audio.PttGestureCheckMinPeriod;
             var lastCheckAt = Clocks.CpuClock.Now - minPeriod;
@@ -144,6 +148,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                 cPttChatIds = await cPttChatIds.Update(cancellationToken).ConfigureAwait(false);
                 cRecordingChatId = await cRecordingChatId.Update(cancellationToken).ConfigureAwait(false);
                 cIsAnyOwnStreaming = await cIsAnyOwnStreaming.Update(cancellationToken).ConfigureAwait(false);
+                cCarAudioRoute = await cCarAudioRoute.Update(cancellationToken).ConfigureAwait(false);
 
                 // Every wake source is subscribed before the state it guards is read: a change
                 // landing in between must complete a signal this iteration still awaits.
@@ -153,6 +158,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                 var whenPttChatIdsChanged = cPttChatIds.WhenInvalidated(waitCts.Token);
                 var whenRecordingChanged = cRecordingChatId.WhenInvalidated(waitCts.Token);
                 var whenStreamingChanged = cIsAnyOwnStreaming.WhenInvalidated(waitCts.Token);
+                var whenCarAudioRouteChanged = cCarAudioRoute.WhenInvalidated(waitCts.Token);
                 var whenAppSettingsChanged = cAppSettings.WhenInvalidated(waitCts.Token);
 
                 var isPracticeMode = _isPracticeMode;
@@ -187,6 +193,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                 Volatile.Write(ref _isHeadsetButtonEnabled, buttonState.IsEnabled);
                 Volatile.Write(ref _hasAnswerWindow, buttonState.HasAnswerWindow);
                 Volatile.Write(ref _hasArmedChats, pttChatIds.Count > 0);
+                Volatile.Write(ref _isCarProjectionActive, cCarAudioRoute.Value != CarAudioRoute.Default);
                 // Availability is a device fact rather than a policy one, so it's ANDed here:
                 // a host without a working accelerometer can never fire a start gesture, and
                 // promising one in the notification is the exact lie this signal exists to stop.
@@ -242,6 +249,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                         whenPttChatIdsChanged,
                         whenRecordingChanged,
                         whenStreamingChanged,
+                        whenCarAudioRouteChanged,
                         whenAppSettingsChanged)
                     .ConfigureAwait(false);
                 waitCts.CancelAndDisposeSilently();
@@ -294,6 +302,16 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
         if (gesture.Kind is GestureKind.FaceDown or GestureKind.Pocket)
             Log.LogWarning("{Kind} fired: {Info}; samples: {Samples}",
                 gesture.Kind, _recognizer.FaceDownLastFireInfo, FormatRecentSamples());
+        if (gesture.Kind == GestureKind.Pocket) {
+            // Read at fire time rather than tracked: the route is a native query, too costly per sample
+            var outputKind = Hub.AudioFocusUI.GetCurrentOutputKind();
+            var isCarProjectionActive = Volatile.Read(ref _isCarProjectionActive);
+            if (!GestureActivationPolicy.IsPocketPlausible(outputKind, isCarProjectionActive)) {
+                Log.LogInformation("Pocket ignored: output={OutputKind}, car={IsCarProjectionActive}",
+                    outputKind, isCarProjectionActive);
+                return;
+            }
+        }
         var route = GestureActivationPolicy.Route(
             gesture.Kind, isPracticeMode, isMicOpen,
             isStopArmed: recognizerOptions.IsStopGestureEnabled, isHushArmed: Volatile.Read(ref _isHushArmed));

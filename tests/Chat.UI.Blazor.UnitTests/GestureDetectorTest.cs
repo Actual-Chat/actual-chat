@@ -268,21 +268,21 @@ public class GestureDetectorTest
     }
 
     [Fact]
-    public void PocketShouldFireWhenCoveredAndUpright()
+    public void PocketShouldNotFireWhenCoveredAndUpright()
     {
+        // The phone held to the ear: covered and near-vertical, but top up (#4711).
         var d = new FaceDownDetector();
         d.SetProximityCovered(true);
         // act + assert
         d.Process(Portrait(0)).Should().Be(GestureKind.None);
-        d.Process(Portrait(1200)).Should().Be(GestureKind.Pocket);
+        d.Process(Portrait(1200)).Should().Be(GestureKind.None);
+        d.Process(new SensorSample(At(2400), 0.5f, 0.8f, 0.2f)).Should().Be(GestureKind.None);
     }
 
     [Fact]
     public void PocketShouldFireWhenCoveredAndUpsideDown()
     {
-        // The taught pocket gesture - turn the phone over and slide it away. Deliberately the
-        // same branch as the upright insert above: narrowing it to inverted-only would leave
-        // the mic open in a pocket the user entered the other way up.
+        // The taught pocket gesture - turn the phone over and slide it away.
         var d = new FaceDownDetector();
         d.SetProximityCovered(true);
         // act + assert
@@ -513,7 +513,7 @@ public class GestureDetectorTest
         r.Process(new SensorSample(At(0), 0f, 0f, 1f)).Should().BeNull();
         r.Process(new SensorSample(At(200), 0f, 0f, -3f)).Should().BeNull();
         r.Process(new SensorSample(At(800), 0f, 0f, -1f)).Should().BeNull();
-        r.Process(new SensorSample(At(850), 0f, 0f, -0.2f)).Should().BeNull();
+        r.Process(new SensorSample(At(850), 0f, -0.6f, -0.2f)).Should().BeNull();
         var e = r.Process(new SensorSample(At(900), 0f, 0f, -3f));
         e!.Value.Kind.Should().Be(GestureKind.FaceDown);
     }
@@ -733,8 +733,8 @@ public class GestureDetectorTest
         var r = new GestureRecognizer(options);
         r.SetProximityCovered(true);
         // act + assert
-        r.Process(Portrait(0)).Should().BeNull();
-        var e = r.Process(Portrait(1200));
+        r.Process(UpsideDown(0)).Should().BeNull();
+        var e = r.Process(UpsideDown(1200));
         e!.Value.Kind.Should().Be(GestureKind.Pocket, "the pocket stop branch is never suppressed");
     }
 
