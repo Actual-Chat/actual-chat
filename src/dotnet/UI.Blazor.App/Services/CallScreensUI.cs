@@ -154,7 +154,8 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
 
             CallUI.Release(chatId);
             _ = Bridge?.OnCallHandled(chatId, false);
-            ShowToast(L.Call_Ended);
+            // The server's refusal is a StandardError.Constraint: the ring ran out, or the caller hung up.
+            ShowToast(e is InvalidOperationException ? L.Call_Entry_Missed : L.Call_Ended);
             return;
         }
 

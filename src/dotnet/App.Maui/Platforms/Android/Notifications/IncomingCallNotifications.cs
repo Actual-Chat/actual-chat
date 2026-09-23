@@ -45,7 +45,7 @@ public static class IncomingCallNotifications
     // in-app looping ringer (foreground) so both play the same sound: the system default ringtone.
     public static Android.Net.Uri? RingtoneUri => RingtoneManager.GetDefaultUri(RingtoneType.Ringtone);
 
-    public static void Show(NotificationData data)
+    public static void Show(NotificationData data, TimeSpan timeout)
     {
         var chatId = data.ChatId;
         if (chatId is null) {
@@ -55,7 +55,7 @@ public static class IncomingCallNotifications
 
         var tag = data.Tag ?? CallTag(chatId);
         var link = data.Link ?? (string)Links.Chat(chatId);
-        Show(chatId, tag, link, data.Title, data.ImageUrl);
+        Show(chatId, tag, link, data.Title, data.ImageUrl, timeout);
     }
 
     public static void Show(
@@ -63,7 +63,8 @@ public static class IncomingCallNotifications
         string tag,
         string link,
         string? title,
-        string? imageUrl)
+        string? imageUrl,
+        TimeSpan? timeout = null)
     {
         EnsureChannelExists();
         // A fresh ring is a call of its own: whatever the user did to the last one in this chat
@@ -128,7 +129,7 @@ public static class IncomingCallNotifications
             // Surfaces the ring over the lock screen / when the screen is off, and launches the
             // app's call UI there; on an unlocked screen it degrades to a heads-up banner.
             .SetFullScreenIntent(fullScreenPendingIntent, true)!
-            .SetTimeoutAfter((long)RingTimeout.TotalMilliseconds)!
+            .SetTimeoutAfter((long)(timeout ?? RingTimeout).TotalMilliseconds)!
             .SetStyle(callStyle)!;
         NotificationHelper.MarkAsPushBanner(builder, tag);
         NotificationManagerCompat.From(Context)!.Notify(tag, 0, builder.Build());

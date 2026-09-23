@@ -316,19 +316,32 @@ On the callee's side two paths race, and either one ends the ring:
 While someone observes the session, `GetState`'s self-heal runs `ExpireRings`. Once a ringing
 invite is older than `RingTimeout`:
 
-1. The invite becomes `Missed`, and `DismissRing` is called.
-2. If the call is abandoned and still dialing, it gets the `NoAnswer` status and outcome, and
-   the call closes.
+1. The invite becomes `Missed`, and `DismissRing` is called: the callee's ring stops on time.
+2. For `AnswerGrace` (10 s) after that the call stays open, and the caller keeps dialing. An
+   Answer tapped at the very end of the ring reaches the server only after a cold start and the
+   RPC connect, and `AcceptCall` still takes it: a `Missed` invite within
+   `RingTimeout + AnswerGrace` of its ring counts as answerable, as long as the call is still
+   dialing and wasn't canceled. The callee's user call, released with the missed ring, is
+   claimed again as `Active`.
+3. `ExpireRings` runs once more when the grace is over (`ScheduleAnswerGraceEnd`). If the call
+   is abandoned and still dialing by then, it gets the `NoAnswer` status and outcome, and the
+   call closes.
 
 A dialing call with no fresh ring left is finalized the same way. When nobody observes the
 session, two backstops remain: the Redis TTL on the invite (`RingTtl`) and the Android
-notification's own `SetTimeoutAfter(RingTimeout)`.
+notification's own `SetTimeoutAfter`. That timeout counts from the moment the push was sent, not
+from when it was shown, so the Answer button doesn't outlive the server's ring by the delivery
+time. Before the server clock is synced (a cold start) the device clock is used, and the ring
+never shrinks below half of `RingTimeout`.
+
+A refused answer - past the grace, or after a cancel - shows the "Missed call" toast.
 
 ## Timers
 
 | Constant | Value | Role |
 |---|---|---|
 | `Constants.Call.RingTimeout` | 20 s | How long an invite rings before it becomes `Missed`. |
+| `AnswerGrace` | 10 s | How long past `RingTimeout` a `Missed` invite can still be answered, and the call stays open for it. |
 | `Constants.Call.RingTtl` | 60 s | Redis field TTL on a ringing invite: the backstop when nobody observes the session. |
 | `CallConnectGrace` | 3 s | After the first accept, both sides must be present by then, or the call closes. |
 | `CallsBackend.ClaimTtl` | 2 min | Redis TTL on a user call, refreshed while the call lives. |
