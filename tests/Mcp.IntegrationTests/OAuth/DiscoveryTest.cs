@@ -35,7 +35,7 @@ public class DiscoveryTest(OAuthCollection.AppHostFixture fixture, ITestOutputHe
     {
         // act
         var authorizationServer = await GetJson("/.well-known/oauth-authorization-server");
-        var protectedResource = await GetJson("/.well-known/oauth-protected-resource/api/mcp");
+        var protectedResource = await GetJson("/.well-known/oauth-protected-resource/mcp");
 
         // assert
         protectedResource.GetProperty("authorization_servers")[0].GetString().Should().Be(

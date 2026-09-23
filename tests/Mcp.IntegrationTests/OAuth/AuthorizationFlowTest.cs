@@ -147,21 +147,23 @@ public sealed class AuthorizationFlowTest(OAuthCollection.AppHostFixture fixture
         jwt.Claims.Should().Contain(c => c.Type == "sid" && c.Value.StartsWith("@"),
             because: "the token must carry its OAuth backing session id");
         jwt.Claims.Should().Contain(c => c.Type == "client_id" && c.Value == clientId);
-        jwt.Audiences.Should().Contain(new Uri(BaseUri, "/api/mcp").ToString(),
+        jwt.Audiences.Should().Contain(new Uri(BaseUri, "/mcp").ToString(),
             because: "the MCP endpoint is the default audience");
         string.Join(' ', jwt.Claims.Where(c => c.Type == "scope").Select(c => c.Value)).Should().Contain("mcp");
         (jwt.ValidTo - jwt.IssuedAt).Should().BeLessThan(TimeSpan.FromSeconds(10),
             because: "the test fixture sets a 3s access token lifetime");
     }
 
-    [Fact]
-    public async Task ResourceParameterShouldBecomeAudience()
+    [Theory]
+    [InlineData("/mcp")]
+    [InlineData("/api/mcp")]
+    public async Task ResourceParameterShouldBecomeAudience(string route)
     {
         // arrange
         await Tester.SignInAsUniqueAlice();
         var clientId = await RegisterClient(RedirectUri);
         var pkce = NewPkce();
-        var resource = new Uri(BaseUri, "/api/mcp").ToString();
+        var resource = new Uri(BaseUri, route).ToString();
         var code = GetQueryValue(
             (await Authorize(clientId, RedirectUri, pkce, resource: resource)).Headers.Location!, "code");
 

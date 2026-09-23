@@ -16,15 +16,14 @@ public sealed class OAuthBearerAuthenticator(IServiceProvider services)
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
 
     public async Task<Session?> TryGetSession(
-        HttpContext httpContext, string resourcePath, CancellationToken cancellationToken)
+        HttpContext httpContext, IEnumerable<string> resourcePaths, CancellationToken cancellationToken)
     {
         var result = await httpContext.AuthenticateAsync(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)
             .ConfigureAwait(false);
         if (!result.Succeeded || result.Principal is not { } principal)
             return null;
 
-        var resource = UrlMapper.ToAbsolute(resourcePath);
-        if (!principal.HasAudience(resource))
+        if (!resourcePaths.Any(path => principal.HasAudience(UrlMapper.ToAbsolute(path))))
             return null;
 
         var session = SessionExt.NewValidOrNull(principal.GetClaim(OAuthConstants.SessionIdClaim));
