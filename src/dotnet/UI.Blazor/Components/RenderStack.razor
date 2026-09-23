@@ -19,11 +19,11 @@
             continue;  // It seems sometimes Blazor disposes the component way too late
 
         <NoComponent @key="@item.Key">
-            @(Item?.Invoke(item.ChildContent) ?? item.ChildContent)
+            @(Item?.Invoke(item) ?? item.ChildContent)
         </NoComponent>
     } else {
         <NoComponent>
-            @(Item?.Invoke(item.ChildContent) ?? item.ChildContent)
+            @(Item?.Invoke(item) ?? item.ChildContent)
         </NoComponent>
     }
 }
@@ -36,7 +36,7 @@
 
     [Parameter, EditorRequired] public string Name { get; set; } = "";
     [Parameter] public bool IsReversed { get; set; }
-    [Parameter] public RenderFragment<RenderFragment?>? Item { get; set; }
+    [Parameter] public RenderFragment<RenderIntoStack>? Item { get; set; }
 
     protected override void OnInitialized() {
         _onStackChanged = OnStackChanged;
