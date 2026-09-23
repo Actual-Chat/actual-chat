@@ -13,8 +13,9 @@ namespace ActualChat.Streaming;
 /// </summary>
 public class CallsBackend : ShardComputeService, ICallsBackend
 {
-    // Long enough to outlive a ring (RingTtl) and the gap between presence ticks, short enough
-    // that a claim left by a crashed host can't outlive the call by much.
+    // Counts from the last GetUserCall that found the claim backed, so it lapses only once nobody reads
+    // it any more. Long enough to outlive a ring (RingTtl), short enough that a claim left by a crashed
+    // host can't outlive the call by much.
     private static readonly TimeSpan ClaimTtl = TimeSpan.FromMinutes(2);
     // A claim is taken before the call it stands for exists - StartCall has to know who is free
     // before it writes the session and the invites. Until this lapses, the claim backs itself.
@@ -51,6 +52,8 @@ public class CallsBackend : ShardComputeService, ICallsBackend
 
         var phase = await GetPhase(call, cancellationToken).ConfigureAwait(false);
         if (phase is { } p) {
+            // Nothing rewrites a claim once its call connects (#4766)
+            await SafeRefresh(userId).ConfigureAwait(false);
             computed.Invalidate(ClaimSelfHeal);
             return call with { Phase = p };
         }
@@ -163,6 +166,16 @@ public class CallsBackend : ShardComputeService, ICallsBackend
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to read the call of user #{UserId} from Redis", userId);
             return null;
+        }
+    }
+
+    private async Task SafeRefresh(UserId userId)
+    {
+        try {
+            await _userCalls.Refresh(userId.Value).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to extend the call claim of user #{UserId}", userId);
         }
     }
 

@@ -2,7 +2,9 @@ using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.Streaming.Module;
 using ActualChat.Testing.Host;
+using ActualLab.Redis;
 using Microsoft.JSInterop;
+using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -1975,15 +1977,40 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         aliceCall.Should().NotBeNull("the client hangs up an answered call its claim no longer shows");
         aliceCall!.Phase.Should().Be(CallPhase.Active);
         bobCall!.Phase.Should().Be(CallPhase.Active);
+    }
 
-        static async Task ObserveUserCall(ICallsBackend callsBackend, UserId userId, CancellationToken ct)
-        {
-            var c = await Computed.Capture(() => callsBackend.GetUserCall(userId, ct), ct);
-            while (!ct.IsCancellationRequested) {
-                await c.WhenInvalidated(ct);
-                c = await c.Update(ct);
-            }
-        }
+    [Fact]
+    public async Task ConnectedCallShouldOutliveClaimTtl()
+    {
+        // arrange - the claim's TTL cut short stands in for ClaimTtl running out mid-call (#4766)
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+        await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, true, default);
+        using var cts = new CancellationTokenSource();
+        var aliceObserver = ObserveUserCall(callsBackend, aliceAuthor.UserId, cts.Token);
+        var claims = bob.AppServices.GetRequiredService<RedisDb<StreamingContext>>()
+            .WithKeyPrefix("live-session:user-call");
+        var redis = await claims.Database.Get();
+        await redis.KeyExpireAsync(aliceAuthor.UserId.Value, TimeSpan.FromSeconds(15));
+
+        // act - two ClaimSelfHeal re-checks, the second one past the TTL
+        await Task.Delay(TimeSpan.FromSeconds(25));
+
+        // assert
+        var aliceCall = await callsBackend.GetUserCall(aliceAuthor.UserId, default);
+        await cts.CancelAsync();
+        await aliceObserver.SilentAwait();
+        aliceCall.Should().NotBeNull("the client hangs up a call its claim no longer shows");
     }
 
     [Fact]
@@ -2515,6 +2542,15 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
             if (participants.Contains(authorId) == isPresent)
                 return;
             await Task.Delay(100);
+        }
+    }
+
+    private static async Task ObserveUserCall(ICallsBackend callsBackend, UserId userId, CancellationToken ct)
+    {
+        var c = await Computed.Capture(() => callsBackend.GetUserCall(userId, ct), ct);
+        while (!ct.IsCancellationRequested) {
+            await c.WhenInvalidated(ct);
+            c = await c.Update(ct);
         }
     }
 
