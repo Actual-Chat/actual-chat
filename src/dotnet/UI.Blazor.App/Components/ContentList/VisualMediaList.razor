@@ -51,7 +51,8 @@
                         <a class="image-attachment" @key="@media.Id"
                            href="@url" role="button" data-menu="@menuRef"
                            @onclick="@(() => OnMediaClick(item.Key, media))" @onclick:preventDefault="true">
-                            <image-skeleton initial-state="skeleton" src="@url" thumbnailSrc="@previewUrl"/>
+                            <image-skeleton initial-state="skeleton"
+                                src="@UrlMapper.ImageOriginalUrl(url)" thumbnailSrc="@previewUrl"/>
                         </a>
                     }
                 }

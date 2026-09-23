@@ -42,4 +42,37 @@ public class UrlMapperTest
         var styleUrl = $"{mapper.MapTilesBaseUrl}styles/liberty";
         styleUrl.Should().Be("https://maps.local.voxt.ai/styles/liberty");
     }
+
+    [Theory]
+    [InlineData("media/abc/photo.heic")]
+    [InlineData("media/abc/photo.HEIF")]
+    public void ImageOriginalUrlShouldRouteHeifThroughProxyPassthrough(string contentId)
+    {
+        // arrange
+        var mapper = new UrlMapper("https://dev.voxt.ai/");
+        var url = mapper.ContentUrl(contentId);
+
+        // act
+        var originalUrl = mapper.ImageOriginalUrl(url);
+
+        // assert
+        originalUrl.Should().Be($"https://media.dev.voxt.ai/0/https://cdn.dev.voxt.ai/{contentId}");
+    }
+
+    [Theory]
+    [InlineData("https://dev.voxt.ai/", "media/abc/photo.jpg")]
+    [InlineData("https://dev.voxt.ai/", "media/abc/anim.gif")]
+    [InlineData("https://localhost:7080/", "media/abc/photo.heic")]
+    public void ImageOriginalUrlShouldKeepUrlWhenNoConversionIsNeeded(string baseUrl, string contentId)
+    {
+        // arrange
+        var mapper = new UrlMapper(baseUrl);
+        var url = mapper.ContentUrl(contentId);
+
+        // act
+        var originalUrl = mapper.ImageOriginalUrl(url);
+
+        // assert
+        originalUrl.Should().Be(url, "only a HEIF behind an image proxy needs the passthrough URL");
+    }
 }

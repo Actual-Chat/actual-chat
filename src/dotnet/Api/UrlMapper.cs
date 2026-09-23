@@ -19,6 +19,7 @@ public sealed partial class UrlMapper
     private static readonly Regex IsAbsoluteUrlRegex = IsAbsoluteUrlRegexFactory();
     private static readonly char[] UriPathEndChar = ['#', '?'];
     private static readonly string[] ExtensionsToExclude = [".gif"];
+    private static readonly string[] HeifExtensions = [".heic", ".heif"];
 
     // Trusted hosts whose GIFs we auto-render as <img>. Anything else falls back to
     // a plain link to avoid turning arbitrary URLs into tracking pixels.
@@ -216,8 +217,8 @@ public sealed partial class UrlMapper
     }
 
     // Returns absolute URL routed through the image proxy in passthrough mode (no resize).
-    // Used for GIFs where animation must be preserved — willnorris/imageproxy treats "0"
-    // as "no transformation", so the original bytes are streamed as-is.
+    // Used for GIFs where animation must be preserved — the proxy treats "0" as "no
+    // transformation", so every frame survives.
     // Returns "" if image proxy is not available — caller should fall back to a plain link.
     public string GifProxyUrl(string gifUrl)
     {
@@ -226,6 +227,18 @@ public sealed partial class UrlMapper
             return "";
 
         return ToCacheUrl($"{ImageProxyBaseUrl}0/{gifUrl}");
+    }
+
+    // Returns absolute URL of a full-size image any browser can paint: a HEIC/HEIF goes through the
+    // proxy's "0" passthrough, which hands it over as is when Accept lists image/heic, else as JPEG
+    public string ImageOriginalUrl(string imageUrl)
+    {
+        var originUrl = ToOrigin(imageUrl);
+        var extension = Path.GetExtension(originUrl);
+        if (!HasImageProxy || !HeifExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+            return imageUrl;
+
+        return ToCacheUrl($"{ImageProxyBaseUrl}0/{originUrl}");
     }
 
     // Returns absolute URL

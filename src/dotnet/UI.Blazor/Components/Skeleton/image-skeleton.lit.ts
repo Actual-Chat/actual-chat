@@ -164,8 +164,12 @@ export class ImageSkeleton extends LitElement {
         let attempt = this._attemptsBySrc.get(this.src) ?? 0;
         this._attemptsBySrc.clear();
         this._isRetrying = true;
-        this._imageState = 'skeleton';
-        this.applyState();
+        // An original the browser can't decode (a HEIC outside Safari) keeps failing, so it must not
+        // take down the thumbnail already showing in its place
+        if (this._imageState !== 'thumbnail') {
+            this._imageState = 'skeleton';
+            this.applyState();
+        }
         const isOwnContent = this.isOwnContent(this.src);
         try {
             for (; attempt < RetryCount; attempt++) {

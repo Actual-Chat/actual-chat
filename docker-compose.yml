@@ -45,8 +45,8 @@ services:
       - PORT=8080
       - IMAGOR_UNSAFE=1
       - IMAGOR_CACHE_HEADER_TTL=24h
-      # No IMAGOR_AUTO_WEBP: its "Vary: Accept" stops Cloud CDN from caching any image. imagor
-      # keeps the input format, so nginx adds filters:format(jpeg) for HEIC/HEIF sources instead.
+      # No IMAGOR_AUTO_WEBP: it would put "Vary: Accept" on every image. imagor keeps the input
+      # format, so nginx converts HEIC/HEIF sources to JPEG unless the browser accepts image/heic.
       - SSL_CERT_DIR=/usr/local/share/ca-certificates/
     volumes:
       - ./.config/local.voxt.ai/ssl/local.voxt.ai.crt:/usr/local/share/ca-certificates/local.voxt.ai.crt

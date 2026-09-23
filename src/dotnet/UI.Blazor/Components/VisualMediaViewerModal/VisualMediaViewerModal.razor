@@ -40,7 +40,7 @@
                     : null;
                 <swiper-slide @key="@attachment.Id.Value" lazy="true" lazyPreloaderClass="hidden">
                     <div class="swiper-zoom-container image-container" data-menu="@imageMenuRef">
-                        <img src="@url"
+                        <img src="@UrlMapper.ImageOriginalUrl(url)"
                              alt=""
                              loading="lazy"
                              class="image-original"/>

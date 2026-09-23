@@ -38,7 +38,7 @@
         } else {
             <image-skeleton
                 initial-state="skeleton"
-                src="@url"
+                src="@UrlMapper.ImageOriginalUrl(url)"
                 thumbnailSrc="@previewUrl"
                 placeholderSrc="@placeholderUrl"
                 width="@(hasDims ? mediaW : 0)"
