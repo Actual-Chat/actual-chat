@@ -111,14 +111,16 @@
 
     private void OnEdit() {
         var target = State.Value;
-        if (target is not { Suggestion: { } suggestion, Picture: { } picture })
+        if (target is not { Suggestion: { Media: { } media } suggestion })
             return;
 
         var scope = target.PlaceId is { } placeId
             ? MediaUploadScopes.ForPlace(placeId)
             : MediaUploadScopes.ForChat(target.ChatId!);
+        // Not a preview URL: the crop canvas loads it cross-origin, and the image proxy
+        // sends no CORS headers while the content origin does
         var model = new PicCropModal.Model(
-            UrlMapper.AvatarFullSizePreviewUrl(picture),
+            UrlMapper.ContentUrl(media.BlobId),
             scope,
             mediaRef => OnCropped(target, mediaRef),
             IsSquare: target.PlaceId != null,
