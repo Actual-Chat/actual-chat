@@ -1,3 +1,5 @@
+using ActualChat.Audio;
+using ActualChat.Live;
 using ActualChat.Mesh;
 using ActualChat.Streaming;
 using ActualChat.Transcription;
@@ -18,6 +20,7 @@ public class TextEntryStreamer(IServiceProvider services)
 
     private ICommander Commander => field ??= Services.Commander();
     private IAudioStreamingBackend StreamingBackend => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
+    private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     protected ILogger Log => field ??= Services.LogFor(GetType());
@@ -64,6 +67,12 @@ public class TextEntryStreamer(IServiceProvider services)
         }
         entryCreatedSource?.TrySetResult(entry);
 
+        // Announce it as live audio so a listener's client discovers something to play: that
+        // request is what makes the server speak the text. Without it nothing ever asks, and a
+        // bot is silent to someone who is listening to everyone else in the room.
+        var beginsAt = Clocks.ServerClock.Now;
+        await RegisterSpeech(entry, beginsAt).ConfigureAwait(false);
+
         var transcript = Transcript.Empty;
         try {
             await foreach (var diff in stream.Replay(cancellationToken).ConfigureAwait(false))
@@ -71,6 +80,9 @@ public class TextEntryStreamer(IServiceProvider services)
             await publishStreamTask.ConfigureAwait(false);
         }
         finally {
+            await LiveAudioBackend
+                .Unregister(chatId, streamId.Value, CancellationToken.None)
+                .SilentAwait(false);
             // Finalized even on failure, otherwise the entry stays empty and streaming forever.
             entry = await FinalizeEntry(entry, transcript.Text).ConfigureAwait(false);
         }
@@ -117,6 +129,22 @@ public class TextEntryStreamer(IServiceProvider services)
     }
 
     // Private methods
+
+    private Task RegisterSpeech(ChatEntry entry, Moment beginsAt)
+    {
+        // IsTextOnly false on purpose: there is no recording, but there is audio to be had - the
+        // synthesis - and GetStream refuses to serve a stream marked text-only.
+        var streamInfo = new LiveAudioStreamInfo {
+            ChatId = entry.ChatId,
+            AuthorId = entry.AuthorId,
+            StreamId = entry.ContentStreamId,
+            BeginsAt = beginsAt,
+            SourceBeginsAt = beginsAt,
+            Format = AudioSource.DefaultFormat,
+            IsTextOnly = false,
+        };
+        return LiveAudioBackend.Register(entry.ChatId, streamInfo, CancellationToken.None);
+    }
 
     private async IAsyncEnumerable<TranscriptDiff> ToTranscriptDiffs(
         IAsyncEnumerable<string> textChunks,

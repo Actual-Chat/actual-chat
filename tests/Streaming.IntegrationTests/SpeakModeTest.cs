@@ -85,4 +85,25 @@ public class SpeakModeTest(AppHostFixture fixture, ITestOutputHelper @out)
         }
         return frames;
     }
+
+    [Fact]
+    public async Task ShouldAnnounceATextStreamAsSomethingToListenTo()
+    {
+        // The registration is what makes a listener's client discover the stream and ask for it -
+        // without it nothing ever requests speech, so the bot is silent to someone who is
+        // listening to everyone else in the room.
+
+        // arrange
+        var (chatId, stream) = await StreamBotText("Announce me to the listeners please.");
+
+        // act, assert
+        var live = AppHost.Services.GetRequiredService<ILiveAudioStreams>();
+        await TestWait.When(async ct => {
+            var streams = await live.List(Tester.Session, chatId, ct);
+            streams.Should().Contain(x => !x.IsTextOnly,
+                "a text stream that can be spoken must be offered as audio, not marked text-only");
+        }, WaitTimeout);
+
+        await Tester.Chats.FinishEntryStream(Tester.Session, stream.Id, default);
+    }
 }
