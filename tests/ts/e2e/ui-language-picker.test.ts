@@ -11,7 +11,6 @@ const Spanish = 'es-ES';
 describe('UI language picker', () => {
     let connection: BrowserConnection;
     let page: Page;
-    let originalLanguage = English;
 
     beforeAll(async () => {
         connection = await connectBrowser();
@@ -19,11 +18,17 @@ describe('UI language picker', () => {
         await ensureSignedIn(page);
         await page.goto(`${BASE_URL}/fusion/renderMode/s`, { waitUntil: 'domcontentloaded' });
         await waitForAppReady(page);
-        originalLanguage = await setUILanguage(page, English);
+        await setUILanguage(page, English);
     }, 180_000);
 
     afterAll(async () => {
-        await setUILanguage(page, originalLanguage).catch(() => undefined);
+        // The language lives on the shared account, so a failed restore fails every later spec.
+        await page.keyboard.press('Escape').catch(() => { /* ignore */ });
+        try {
+            await setUILanguage(page, English);
+        } catch (e) {
+            console.log('Failed to restore the UI language to English:', e instanceof Error ? e.message : String(e));
+        }
         await page.close();
         if (connection.ownsBrowser) {
             await connection.context.close();

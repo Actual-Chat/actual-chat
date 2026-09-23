@@ -12,9 +12,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
-    BASE_URL, connectBrowser, dismissCookieConsent, skipOnboarding,
-    isSignedIn, signIn, screenshot, waitForAppReady, waitForChatReady,
-    waitForEditor, type BrowserConnection,
+    BASE_URL, DEFAULT_CHAT_URL, connectBrowser, dismissCookieConsent, skipOnboarding,
+    isSignedIn, openChat, signIn, screenshot, waitForAppReady, waitForChatReady,
+    withUILanguage, type BrowserConnection,
 } from './helpers';
 
 describe('sign-in and send message', () => {
@@ -52,30 +52,15 @@ describe('sign-in and send message', () => {
     }, 60_000);
 
     it('should navigate to a chat and see the message input', async () => {
-        await page.goto(`${BASE_URL}/chat/the-actual-one`, { waitUntil: 'domcontentloaded' });
-        await waitForChatReady(page);
-        await skipOnboarding(page);
-
-        // Join if needed
-        const joinButton = page.locator('button:has-text("Join this chat")');
-        if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await joinButton.click();
-            await page.waitForTimeout(2000);
-        }
-
+        await openChat(page);
         await page.screenshot({ path: screenshot('e2e', 'chat') });
-
-        await waitForEditor(page);
     }, 45_000);
 
     it('should send a message and see it appear', async () => {
         // Earlier test files in the suite can leave the chat panel unmounted; re-navigate
         // here so the editor is reliably present even when the previous test mid-suite
         // unmounted the chat-view.
-        await page.goto(`${BASE_URL}/chat/the-actual-one`, { waitUntil: 'domcontentloaded' });
-        await waitForChatReady(page);
-        await skipOnboarding(page);
-        await waitForEditor(page);
+        await openChat(page);
         const messageInput = page.locator('#message-input .editor-content[contenteditable="true"]').first();
         await messageInput.click({ force: true });
         await page.waitForTimeout(200);
@@ -101,7 +86,7 @@ describe('sign-in and send message', () => {
 
         // The chat panel unmounts briefly after a post (transcription tutorial
         // and chat-list rerender). Re-navigate so the chat view re-mounts.
-        await page.goto(`${BASE_URL}/chat/the-actual-one`, { waitUntil: 'domcontentloaded' });
+        await page.goto(withUILanguage(DEFAULT_CHAT_URL), { waitUntil: 'domcontentloaded' });
         await waitForChatReady(page);
         await skipOnboarding(page);
         await page.screenshot({ path: screenshot('e2e', 'after-send') });

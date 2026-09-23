@@ -22,6 +22,16 @@ export function loadBaseUrl(): string {
 }
 
 export const BASE_URL = loadBaseUrl();
+/** The seeded public chat with members and messages — where tests that need a chat go. */
+export const DEFAULT_CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
+
+/** Pins the UI language for one navigation: the override beats the account's stored language
+ *  and the browser's, and is never persisted, so no spec inherits another's language. */
+export function withUILanguage(url: string, language = 'en-US'): string {
+    const parsed = new URL(url);
+    parsed.searchParams.set('ui-language', language);
+    return parsed.toString();
+}
 
 const tmpDir = path.join(process.cwd(), 'tmp');
 if (!fs.existsSync(tmpDir)) {
@@ -109,7 +119,9 @@ async function launchHeadless(): Promise<BrowserConnection> {
                 ...(hostResolverRules ? [`--host-resolver-rules=${hostResolverRules}`] : []),
             ],
         });
-        const context = await browser.newContext({ ignoreHTTPSErrors: true });
+        // Pinned locale: the UI follows the browser's when the account has no language set,
+        // and a developer machine's own locale would then break every English selector.
+        const context = await browser.newContext({ ignoreHTTPSErrors: true, locale: 'en-US' });
         console.log('Launched headless Chromium');
         return { browser, context, ownsBrowser: true };
     } catch (e: unknown) {
@@ -148,15 +160,35 @@ export async function waitForAppReady(page: Page, timeout = 30_000) {
     ].join(', ')).first().waitFor({ state: 'visible', timeout });
 }
 
-/** Wait for a chat page to settle: editable input, Join button, or sign-in prompt. */
+/** Wait for a chat page to settle: editable input, Join button, or sign-in prompt.
+ *  Footers are matched by class, not by their text, so this works in any UI language. */
 export async function waitForChatReady(page: Page, timeout = 20_000) {
     await page.locator([
         '#message-input .editor-content[contenteditable="true"]',
-        'button:has-text("Join this chat")',
-        'button:has-text("Join anonymously")',
-        '.signin-footer button.signin-button',
+        '.join-footer button',
         '.signin-footer button',
     ].join(', ')).first().waitFor({ state: 'visible', timeout });
+}
+
+/** Open a chat and leave it ready to post in — a test account has to join a seeded chat
+ *  before its editor renders. */
+export async function openChat(page: Page, chatUrl: string = withUILanguage(DEFAULT_CHAT_URL)) {
+    await page.goto(chatUrl, { waitUntil: 'domcontentloaded' });
+    await waitForChatReady(page);
+    await skipOnboarding(page);
+    await joinChat(page);
+    await waitForEditor(page);
+}
+
+// Call it after waitForChatReady: isVisible doesn't wait, so the footer has to have
+// rendered by now - and that's exactly what waitForChatReady waited for.
+export async function joinChat(page: Page) {
+    const joinButton = page.locator('.join-footer button').first();
+    if (!await joinButton.isVisible().catch(() => false))
+        return;
+
+    await joinButton.click({ force: true });
+    await page.waitForTimeout(1_500);
 }
 
 // Re-runs skipOnboarding between waitFor attempts because an OnboardingModal
@@ -338,7 +370,8 @@ export async function signIn(page: Page, email: string = TEST_EMAIL, otp: string
 }
 
 export async function ensureSignedIn(page: Page, email: string = TEST_EMAIL, otp: string = TEST_OTP) {
-    await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
+    // English for the sign-in flow itself: signIn clicks "Register" by its text.
+    await page.goto(withUILanguage(BASE_URL), { waitUntil: 'domcontentloaded' });
     await waitForAppReady(page);
     await dismissCookieConsent(page);
     if (!await isSignedIn(page))
@@ -355,7 +388,7 @@ export async function newUserContext(
     email: string,
     geo?: { latitude: number; longitude: number; accuracy?: number },
 ): Promise<{ context: BrowserContext; page: Page }> {
-    const context = await conn.browser.newContext({ ignoreHTTPSErrors: true });
+    const context = await conn.browser.newContext({ ignoreHTTPSErrors: true, locale: 'en-US' });
     if (geo) {
         await context.grantPermissions(['geolocation'], { origin: BASE_URL });
         await context.setGeolocation(geo);

@@ -12,13 +12,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
-    BASE_URL, clearBrowserCache, connectBrowser, ensureSignedIn, screenshot, skipOnboarding,
-    waitForChatReady, waitForEditor, type BrowserConnection,
+    BASE_URL, clearBrowserCache, connectBrowser, ensureSignedIn, openChat, screenshot,
+    type BrowserConnection,
 } from './helpers';
 
 const shot = (name: string) => screenshot('e2e', name);
 
-const CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
 const START = { latitude: 51.5074, longitude: -0.1278, accuracy: 12 };
 const PHONE_VIEWPORT = { width: 390, height: 844 };
 
@@ -47,16 +46,7 @@ describe('location sharing (narrow)', () => {
         // arrange — go narrow BEFORE navigating: resizing after load flips PanelsUI to the
         // left panel, leaving the chat (and its editor) off screen
         await page.setViewportSize(PHONE_VIEWPORT);
-        await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
-        await waitForChatReady(page);
-        await skipOnboarding(page);
-
-        const joinButton = page.locator('button:has-text("Join this chat")');
-        if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await joinButton.click();
-            await page.waitForTimeout(1500);
-        }
-        await waitForEditor(page);
+        await openChat(page);
 
         // act — start a live share with no call activity
         await page.locator('.chat-message-editor .attach-btn').first().click({ force: true });

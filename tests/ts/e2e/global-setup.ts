@@ -23,7 +23,9 @@ function loadEnvFile(): Record<string, string> {
     const envPath = path.resolve(process.cwd(), '.env');
     const result: Record<string, string> = {};
     if (fs.existsSync(envPath)) {
-        for (const line of fs.readFileSync(envPath, 'utf-8').split('\n')) {
+        // Split on CRLF too: `.` doesn't match the \r a Windows-written .env leaves behind,
+        // so every line would fail to parse and the base URL would fall back to the default.
+        for (const line of fs.readFileSync(envPath, 'utf-8').split(/\r?\n/)) {
             const m = /^([^#=]+)=(.+)$/.exec(line);
             if (m) result[m[1].trim()] = m[2].trim();
         }

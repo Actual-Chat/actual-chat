@@ -13,24 +13,15 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
-    BASE_URL, connectBrowser, ensureSignedIn, skipOnboarding,
-    screenshot, waitForChatReady, waitForEditor, type BrowserConnection,
+    connectBrowser, ensureSignedIn, openChat, screenshot, type BrowserConnection,
 } from './helpers';
 
-const CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
 const stamp = Date.now();
 const sourceText = `quote source ${stamp} keep this part out`;
 const fragment = `source ${stamp} keep`;
 const replyText = `quoting ${stamp}`;
 
-async function openChat(page: Page) {
-    await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
-    await waitForChatReady(page);
-    await skipOnboarding(page);
-}
-
 async function typeAndSend(page: Page, text: string) {
-    await waitForEditor(page);
     const messageInput = page.locator('#message-input .editor-content[contenteditable="true"]').first();
     await messageInput.click({ force: true });
     await page.waitForTimeout(200);
@@ -76,13 +67,6 @@ describe('quote selected text', () => {
 
     it('posts the source message', async () => {
         await openChat(page);
-
-        const joinButton = page.locator('button:has-text("Join this chat")');
-        if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await joinButton.click();
-            await page.waitForTimeout(2000);
-        }
-
         await typeAndSend(page, sourceText);
         await openChat(page);
         const source = page.locator(`.chat-message-markup:has-text("${sourceText}")`).first();
