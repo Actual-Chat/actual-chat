@@ -16,8 +16,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
-    BASE_URL, connectBrowser, ensureSignedIn, screenshot, setUILanguage, skipOnboarding,
-    waitForAppReady, type BrowserConnection,
+    BASE_URL, DEFAULT_CHAT_URL, connectBrowser, ensureSignedIn, openChat, openLanguageSelect,
+    screenshot, setUILanguage, skipOnboarding, waitForAppReady, withUILanguage,
+    type BrowserConnection,
 } from './helpers';
 import {
     ENGLISH, UI_LANGUAGES, findProbeMatches, getEnglishProbes, getTranslatedValues,
@@ -30,6 +31,9 @@ const shot = (name: string) => screenshot('e2e-l10n', name);
 const MinTranslatedPerScreen = 3;
 // This many unreachable screens in a row means the page is wedged, not that one screen is missing.
 const MaxEmptySteps = 2;
+// A navigation that fails even on its own retry: the page is wedged, so the attempt ends
+// there rather than spending the tour's whole budget timing out one screen at a time.
+class PageWedgedError extends Error {}
 const NavigationTimeout = 20_000;
 
 // Subtrees the scan skips: content rather than UI. The legal documents are written in English
@@ -72,14 +76,11 @@ const TOUR: TourStep[] = [
     { name: 'create-menu', run: page => openMenu(page, '.chat-list-fab') },
     {
         name: 'chat-view',
-        // The last chat rather than the first: Notes is pinned first and has no members, so the
-        // right panel would open on its Threads tab and never render a member list.
+        // A named chat rather than whatever the list opens on: the steps below need one with
+        // members, messages and an editor, and the list's own order isn't ours to control.
         run: async page => {
             await closePopups(page);
-            await page.locator('.chat-list .navbar-item-content[data-href^="/chat/"]').last()
-                .click({ force: true, timeout: 15_000 });
-            await page.locator('.chat-view, .chat-message-editor').first()
-                .waitFor({ state: 'visible', timeout: 20_000 });
+            await openChat(page, withUILanguage(DEFAULT_CHAT_URL, tourLanguage));
         },
     },
     { name: 'message-editor-menu', run: page => openMenu(page, '.chat-message-editor .attach-btn') },
@@ -88,17 +89,25 @@ const TOUR: TourStep[] = [
         name: 'chat-side-panel',
         run: async page => {
             await closePopups(page);
-            // The panel's open state is remembered per user, and its toggle is rendered only
-            // while the panel is closed — so open it just when it isn't already open.
-            const panel = page.locator('.chat-side-panel').first();
-            if (!await panel.isVisible().catch(() => false))
-                await click(page, '.chat-header-control-panel button:has(i.icon-layout)');
+            // A closed panel is parked just past the right edge and still reports itself
+            // visible, so what says whether to open it is the toggle - rendered only while
+            // the panel is closed, and gone once it slides in. Wait for it rather than ask
+            // isVisible: the header renders a beat after the chat, and reading too early
+            // leaves the panel closed, where every click lands outside the viewport.
+            const toggle = page.locator('.chat-header-control-panel button:has(i.icon-layout)').first();
+            const isClosed = await toggle.waitFor({ state: 'visible', timeout: 5_000 })
+                .then(() => true, () => false);
+            if (isClosed) {
+                await toggle.click({ force: true });
+                await toggle.waitFor({ state: 'hidden', timeout: 10_000 });
+            }
 
+            const panel = page.locator('.chat-side-panel').first();
             await panel.waitFor({ state: 'visible', timeout: 10_000 });
-            // Members is where presence text renders. Only a chat that has members offers the
-            // tab, so this is best-effort — which chat the list opens on isn't ours to pick.
+            // Members is where presence text renders. It's the default tab, so click it only
+            // when something else is selected.
             const members = panel.locator('[data-tab-id="members"]').first();
-            if (await members.isVisible().catch(() => false)) {
+            if (await members.getAttribute('aria-selected') !== 'True') {
                 await members.click({ force: true });
                 await page.waitForTimeout(500);
             }
@@ -131,28 +140,28 @@ const UnknownChatSid = 's-0000000000-0000000000';
 
 describe('UI localization smoke', () => {
     let conn: BrowserConnection;
-    let originalLanguage = ENGLISH.code;
 
     beforeAll(async () => {
         conn = await connectBrowser();
         const page = await conn.context.newPage();
         await ensureSignedIn(page);
 
-        // This test explicitly reloads after changing the language. Use server render mode because
-        // reloading under WASM re-boots MONO against whatever the service worker cached, which
-        // double-faults after a server rebuild.
+        // Server render mode: the tour reloads on every step, and reloading under WASM re-boots
+        // MONO against whatever the service worker cached, which double-faults after a rebuild.
         await goto(page, '/fusion/renderMode/s');
         await page.close();
     }, 180_000);
 
     afterAll(async () => {
+        // The account language outlives this file, and the picker spec asserts it starts English.
         const page = await conn.context.newPage();
         try {
-            await setUILanguage(page, originalLanguage);
+            await setUILanguage(page, ENGLISH.code);
         } catch (e) {
-            console.log('Failed to restore UI language:', e instanceof Error ? e.message : String(e));
+            console.log('Failed to restore the account language to English:',
+                e instanceof Error ? e.message : String(e));
         }
-        await page.close();
+        await page.close().catch(() => { /* ignore */ });
         if (conn.ownsBrowser) {
             await conn.context.close();
             await conn.browser.close();
@@ -178,10 +187,6 @@ describe('UI localization smoke', () => {
                 const page = await conn.context.newPage();
                 page.setDefaultNavigationTimeout(NavigationTimeout);
                 try {
-                    const previous = await setUILanguage(page, language.code);
-                    if (originalLanguage === ENGLISH.code)
-                        originalLanguage = previous;
-
                     tour = await runTour(page, language, probes, translatedValues);
                 } catch (e) {
                     lastError = e;
@@ -203,12 +208,21 @@ describe('UI localization smoke', () => {
 
 // Private methods
 
+// The tour's own language, applied per navigation through ?ui-language. The settings route
+// would write it to the shared test account instead, where every later spec inherits it.
+let tourLanguage = ENGLISH.code;
+
 async function runTour(
     page: Page,
     language: UILanguage,
     probes: EnglishProbe[],
     translatedValues: Set<string>
 ): Promise<TourResult> {
+    tourLanguage = language.code;
+    // ?ui-language only reaches the client. A system chat's title is localized on the server,
+    // from the account's own language (Chats.Get → UserLocalizers), so the tour has to set that
+    // too or Notes and Announcements stay English on every screen that lists them.
+    await setUILanguage(page, language.code);
     const findings = new Map<string, Finding>();
     const problems: string[] = [];
     let emptyStepCount = 0;
@@ -235,6 +249,14 @@ async function runTour(
             problems.push(`[unreached] ${step.name} (${translatedCount} localized strings)`);
     }
     await page.screenshot({ path: shot(`${language.subtag}-final`) }).catch(() => { /* ignore */ });
+    // Server-composed text (system chat titles) follows the account, so an account that lost
+    // its language mid-tour shows up as English on a localized screen - a confusing way to
+    // learn it. Name it instead.
+    const accountLanguage = await openLanguageSelect(page)
+        .then(x => x.inputValue())
+        .catch(() => 'unreadable');
+    if (accountLanguage !== language.code)
+        problems.push(`[language lost] the account ended the tour in "${accountLanguage}"`);
     return { findings, problems, isComplete: true };
 }
 
@@ -257,6 +279,9 @@ async function runStep(page: Page, step: TourStep): Promise<ScannedText[]> {
         await step.run(page);
     } catch (e) {
         console.log(`Step "${step.name}" failed: ${e instanceof Error ? e.message : String(e)}`);
+        if (e instanceof PageWedgedError)
+            throw e;
+
         return [];
     }
     await page.waitForTimeout(500);
@@ -268,7 +293,8 @@ async function goto(page: Page, route: string) {
     // occasional load that just hangs.
     let lastError: unknown;
     for (let attempt = 0; attempt < 2; attempt++) {
-        const isNavigated = await page.goto(`${BASE_URL}${route}`, { waitUntil: 'domcontentloaded' })
+        const url = withUILanguage(`${BASE_URL}${route}`, tourLanguage);
+        const isNavigated = await page.goto(url, { waitUntil: 'domcontentloaded' })
             .then(() => true, (e: unknown) => {
                 lastError = e;
                 return false;
@@ -280,7 +306,8 @@ async function goto(page: Page, route: string) {
         }
         await page.waitForTimeout(1_000);
     }
-    throw lastError;
+    throw new PageWedgedError(
+        `navigation to ${route} failed twice: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
 }
 
 async function openSettings(page: Page) {
@@ -326,10 +353,7 @@ async function pickFilter(page: Page, sectionIndex: number) {
 }
 
 async function openMentionList(page: Page) {
-    await goto(page, '/chat');
-    await page.locator('.chat-list .navbar-item-content[data-href^="/chat/"]').last()
-        .click({ force: true, timeout: 15_000 });
-    await page.locator('.chat-message-editor').first().waitFor({ state: 'visible', timeout: 20_000 });
+    await openChat(page, withUILanguage(DEFAULT_CHAT_URL, tourLanguage));
     await page.locator('.chat-message-editor [contenteditable]').first().click({ force: true });
     await page.keyboard.type('@');
     await page.locator('.mention-list').first().waitFor({ state: 'visible', timeout: 10_000 });
@@ -396,7 +420,7 @@ async function scanVisibleText(page: Page): Promise<ScannedText[]> {
                 return;
 
             const where = describe(el);
-            const id = `${text} ${where}`;
+            const id = `${text}\0${where}`;
             if (seen.has(id))
                 return;
 
