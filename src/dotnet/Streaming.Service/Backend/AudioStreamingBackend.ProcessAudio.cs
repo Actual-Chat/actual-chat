@@ -46,7 +46,50 @@ public partial class AudioStreamingBackend
         }
     }
 
+    public virtual async Task ProcessAudioWithTranscript(
+        AudioRecord record,
+        int preSkip,
+        RpcStream<AudioFrame> frames,
+        RpcStream<ExternalTranscriptChunk> transcriptChunks,
+        CancellationToken cancellationToken)
+    {
+        // The builder needs to know how much audio has arrived to derive an offset for a chunk
+        // that carries none, so the frame stream is tapped on its way through.
+        var builder = new ExternalTranscriptBuilder();
+        var ingestedDuration = TimeSpan.Zero;
+        var trackedFrames = frames.Select(frame => {
+            var end = frame.Offset + frame.Duration;
+            if (end > ingestedDuration)
+                ingestedDuration = end;
+            return frame;
+        });
+        var transcripts = ToTranscripts(builder, transcriptChunks, () => ingestedDuration, cancellationToken);
+        _externalTranscripts[record.StreamId] = transcripts;
+        try {
+            await ProcessAudio(record, preSkip, RpcStream.New(trackedFrames), cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally {
+            _externalTranscripts.TryRemove(record.StreamId, out _);
+            transcriptChunks.Disconnect();
+        }
+    }
+
     // Private methods
+
+    private static async IAsyncEnumerable<Transcript> ToTranscripts(
+        ExternalTranscriptBuilder builder,
+        IAsyncEnumerable<ExternalTranscriptChunk> chunks,
+        Func<TimeSpan> getIngestedDuration,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await foreach (var chunk in chunks.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            if (builder.Append(chunk, getIngestedDuration.Invoke()) is not null)
+                yield return builder.Transcript;
+        }
+        if (builder.Transcript.Text.Length != 0)
+            yield return builder.Finalize(getIngestedDuration.Invoke());
+    }
 
     private async Task ProcessAudio(
         AudioRecord record,
@@ -511,7 +554,9 @@ public partial class AudioStreamingBackend
     {
         // The producer supplied its own transcript, so no transcriber is selected and no
         // transcription context is built - everything below this is the same either way.
-        var externalTranscripts = _externalTranscripts.GetValueOrDefault(audioSegment.StreamId);
+        // Keyed by the record's id, not the segment's: OpenAudioSegment derives its own
+        // ("{localId}-0000"), and the producer only ever knows the record's
+        var externalTranscripts = _externalTranscripts.GetValueOrDefault(audioSegment.Record.StreamId);
         ITranscriber? transcriber = null;
         if (externalTranscripts is null) {
             var preferredId = await GetPreferredTranscriberId(audioSegment.Record, cancellationToken)
