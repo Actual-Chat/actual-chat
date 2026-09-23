@@ -1,7 +1,7 @@
 name: Build test and deploy
 concurrency:
-  group: "${{ github.workflow }}-${{ github.ref }}"
-  cancel-in-progress: true
+  group: "${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'auto' }}"
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/dev' && !startsWith(github.ref, 'refs/heads/release/') }}
 
 on:
   workflow_dispatch:
@@ -470,6 +470,9 @@ jobs:
       - unit-tests
       - integration-tests
     environment: dev
+    concurrency:
+      group: deploy-dev
+      cancel-in-progress: false
     steps:
       - name: Checking out ${{ github.ref }}
         uses: actions/checkout@v4
@@ -539,6 +542,9 @@ jobs:
       - build
       - deploy-dev
     environment: prod
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
