@@ -100,12 +100,11 @@
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            t => new ComputedState<Model>.Options() {
-                InitialValue = Chat is null ? Model.Skeletons : Model.Loading(Chat),
-                UpdateDelayer = FixedDelayer.NextTick,
-                Category = GetStateCategory(t),
-            });
+        => new() {
+            InitialValue = Chat is null ? Model.Skeletons : Model.Loading(Chat),
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(GetType()),
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;

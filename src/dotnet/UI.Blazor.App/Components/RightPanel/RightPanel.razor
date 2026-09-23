@@ -15,12 +15,11 @@
 
 @code {
     protected override ComputedState<bool>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            t => new ComputedState<bool>.Options {
-                InitialValue = PanelsUI.Right.IsVisible.Value,
-                UpdateDelayer = FixedDelayer.NextTick,
-                Category = GetStateCategory(t),
-            });
+        => new() {
+            InitialValue = PanelsUI.Right.IsVisible.Value,
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(GetType()),
+        };
 
     protected override Task<bool> ComputeState(CancellationToken cancellationToken)
         => PanelsUI.Right.IsVisible.Use(cancellationToken);
