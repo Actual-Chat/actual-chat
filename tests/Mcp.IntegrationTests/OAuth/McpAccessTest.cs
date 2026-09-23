@@ -9,8 +9,6 @@ namespace ActualChat.Mcp.IntegrationTests;
 public class McpAccessTest(OAuthCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : OAuthTestBase<OAuthCollection.AppHostFixture>(fixture, @out)
 {
-    private const string RedirectUri = "https://c.example/cb";
-
     [Fact]
     public async Task JwtShouldListToolsAndPostAsUser()
     {
@@ -35,28 +33,6 @@ public class McpAccessTest(OAuthCollection.AppHostFixture fixture, ITestOutputHe
         entry.IsViaApi.Should().BeTrue();
         var author = await Tester.Authors.GetAccount(Tester.Session, chatId, entry.AuthorId, default);
         author!.Id.Should().Be(alice.Id);
-    }
-
-    [Theory]
-    [InlineData("/mcp", "/api/mcp")]
-    [InlineData("/api/mcp", "/mcp")]
-    public async Task JwtShouldWorkOnEitherRoute(string resourceRoute, string route)
-    {
-        // arrange
-        await Tester.SignInAsUniqueAlice();
-        var clientId = await RegisterClient(RedirectUri);
-        var pkce = NewPkce();
-        var resource = new Uri(BaseUri, resourceRoute).ToString();
-        var code = GetQueryValue(
-            (await Authorize(clientId, RedirectUri, pkce, resource: resource)).Headers.Location!, "code");
-        var (_, tokens) = await ExchangeCode(clientId, RedirectUri, code, pkce.Verifier, resource);
-
-        // act
-        await using var client = await CreateMcpClient(tokens.GetProperty("access_token").GetString()!, route);
-        var tools = await client.ListToolsAsync();
-
-        // assert
-        tools.Should().NotBeEmpty(because: "both routes are one resource server, so a token for either works on both");
     }
 
     [Fact]

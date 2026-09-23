@@ -154,16 +154,14 @@ public sealed class AuthorizationFlowTest(OAuthCollection.AppHostFixture fixture
             because: "the test fixture sets a 3s access token lifetime");
     }
 
-    [Theory]
-    [InlineData("/mcp")]
-    [InlineData("/api/mcp")]
-    public async Task ResourceParameterShouldBecomeAudience(string route)
+    [Fact]
+    public async Task ResourceParameterShouldBecomeAudience()
     {
         // arrange
         await Tester.SignInAsUniqueAlice();
         var clientId = await RegisterClient(RedirectUri);
         var pkce = NewPkce();
-        var resource = new Uri(BaseUri, route).ToString();
+        var resource = new Uri(BaseUri, "/mcp").ToString();
         var code = GetQueryValue(
             (await Authorize(clientId, RedirectUri, pkce, resource: resource)).Headers.Location!, "code");
 

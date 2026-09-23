@@ -7,18 +7,20 @@ namespace ActualChat.Mcp;
 
 public static class McpApplicationBuilderExt
 {
-    public static void MapMcp(this WebApplication app)
+    public static IEndpointConventionBuilder? MapMcp(this WebApplication app)
     {
         var hostInfo = app.Services.HostInfo();
         if (!hostInfo.HasRole(HostRole.Api))
-            return;
+            return null;
 
         var settings = app.Services.GetRequiredService<McpSettings>();
-        foreach (var route in settings.Routes) {
-            app.UseWhen(
-                ctx => ctx.Request.Path.StartsWithSegments(route, StringComparison.OrdinalIgnoreCase),
-                branch => branch.UseMiddleware<McpAuthMiddleware>(route));
-            Microsoft.AspNetCore.Builder.McpEndpointRouteBuilderExtensions.MapMcp(app, route);
-        }
+        var route = settings.Route;
+        if (route.IsNullOrEmpty())
+            return null;
+
+        app.UseWhen(
+            ctx => ctx.Request.Path.StartsWithSegments(route, StringComparison.OrdinalIgnoreCase),
+            branch => branch.UseMiddleware<McpAuthMiddleware>());
+        return Microsoft.AspNetCore.Builder.McpEndpointRouteBuilderExtensions.MapMcp(app, route);
     }
 }
