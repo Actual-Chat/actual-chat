@@ -1904,6 +1904,42 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task AnswerAfterObservedRingTimeoutShouldKeepCalleeClaim()
+    {
+        // Same real ~21s ring timeout as ExpireRingsRecomputesStatusToNoAnswer - no clock-injection seam.
+
+        // arrange - Alice's client watches her call while it rings past RingTimeout: that read alone
+        // expires the ring (GetState's self-heal) and drops her claim before her Answer lands
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        (await callsBackend.GetUserCall(aliceAuthor.UserId, default))!.Phase.Should().Be(CallPhase.Ringing);
+        await Task.Delay(TimeSpan.FromSeconds(21));
+        await TestWait.WhenPolled(async () =>
+            (await callsBackend.GetUserCall(aliceAuthor.UserId, default)).Should().BeNull());
+
+        // act
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // assert
+        var live = await backend.Get(chatId, default);
+        live!.Invites.Single().Status.Should().Be(CallInviteStatus.Accepted);
+        await TestWait.When(async ct => {
+            var aliceCall = await callsBackend.GetUserCall(aliceAuthor.UserId, ct);
+            aliceCall.Should().NotBeNull("the client drops an answered call its server claim doesn't show");
+            aliceCall!.Phase.Should().Be(CallPhase.Active);
+        });
+    }
+
+    [Fact]
     public async Task AcceptCallShouldRestartClaimGraceOfBothSides()
     {
         // arrange - a claim past ClaimGrace is checked against the session, and across pods the answer's
