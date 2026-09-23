@@ -2,7 +2,8 @@ namespace ActualChat.Mcp;
 
 public sealed record McpVoiceStream(
     string StreamId,
-    long EntryId,
+    long? EntryId,
     int TextOffset,
     long AudioBytes,
+    double AudioDuration,
     bool IsFinished);

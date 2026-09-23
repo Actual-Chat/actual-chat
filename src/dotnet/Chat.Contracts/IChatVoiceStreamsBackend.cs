@@ -20,6 +20,7 @@ public interface IChatVoiceStreamsBackend : IComputeService, IBackendService
         Session session,
         UserId userId,
         long? repliedEntryLid,
+        Language? language,
         CancellationToken cancellationToken);
 
     Task<ChatVoiceStream> Append(

@@ -568,6 +568,7 @@ public partial class Chats(IServiceProvider services) : IChats
         Session session,
         ChatId chatId,
         long? repliedEntryLid,
+        Language? language,
         CancellationToken cancellationToken)
     {
         ThrowIfPlaceRootChat(chatId);
@@ -578,8 +579,10 @@ public partial class Chats(IServiceProvider services) : IChats
         await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var resolvedLanguage = await ResolveStreamLanguage(session, chatId, language, cancellationToken)
+            .ConfigureAwait(false);
         return await VoiceStreamsBackend
-            .Start(chatId, session, account.Id, repliedEntryLid, cancellationToken)
+            .Start(chatId, session, account.Id, repliedEntryLid, resolvedLanguage, cancellationToken)
             .ConfigureAwait(false);
     }
 

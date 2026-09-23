@@ -22,9 +22,12 @@ public sealed class McpModule(IServiceProvider moduleServices)
         var serializerOptions = new JsonSerializerOptions(SystemJsonSerializer.Default.Options);
         serializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
         services
-            .AddMcpServer(o => o.ServerInfo = new Implementation {
-                Name = ServerName,
-                Version = ApiConstants.VersionString,
+            .AddMcpServer(o => {
+                o.ServerInfo = new Implementation {
+                    Name = ServerName,
+                    Version = ApiConstants.VersionString,
+                };
+                o.ServerInstructions = McpServerInstructions.Text;
             })
             .WithHttpTransport(o => o.Stateless = true)
             .WithTools<McpMessageTools>(serializerOptions)
@@ -34,7 +37,8 @@ public sealed class McpModule(IServiceProvider moduleServices)
             .WithTools<McpMediaTools>(serializerOptions)
             .WithTools<McpConversationTools>(serializerOptions)
             .WithTools<McpSearchTools>(serializerOptions)
-            .WithTools<McpNotificationTools>(serializerOptions);
+            .WithTools<McpNotificationTools>(serializerOptions)
+            .WithToolErrorFilter();
         services.AddEgressHttpClient(McpMediaTools.HttpClientName, Constants.Attachments.FileSizeLimit);
     }
 }

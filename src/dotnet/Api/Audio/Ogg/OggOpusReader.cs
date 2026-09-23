@@ -198,7 +198,10 @@ public sealed class OggOpusReader
             if (duration != Constants.Audio.OpusFrameDuration)
                 throw StandardError.Format(
                     $"Opus packet #{_packetIndex - HeaderPacketCount} is {duration.TotalMilliseconds} ms long, "
-                    + $"only {Constants.Audio.OpusFrameDurationMs} ms single-frame packets are supported.");
+                    + $"and only {Constants.Audio.OpusFrameDurationMs} ms single-frame packets can be played "
+                    + "live without re-encoding. Re-encode with "
+                    + $"'ffmpeg -c:a libopus -frame_duration {Constants.Audio.OpusFrameDurationMs}' or "
+                    + $"'opusenc --framesize {Constants.Audio.OpusFrameDurationMs}'.");
 
             _frames.Enqueue(new AudioFrame {
                 Data = packet.ToArray(),

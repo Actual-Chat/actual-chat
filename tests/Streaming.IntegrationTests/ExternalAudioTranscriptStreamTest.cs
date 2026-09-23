@@ -8,7 +8,7 @@ using ActualLab.Rpc;
 namespace ActualChat.Streaming.IntegrationTests;
 
 [Collection(nameof(StreamingCollection))]
-public class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, ITestOutputHelper @out)
+public sealed class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(30);
@@ -38,6 +38,7 @@ public class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, ITestOutp
                 new ExternalTranscriptChunk("Hello ", true, 0.5, true),
                 new ExternalTranscriptChunk("world", true, 1.0, true),
             }.ToAsyncEnumerable()),
+            null,
             CancellationToken.None);
 
         // assert
@@ -61,6 +62,7 @@ public class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, ITestOutp
             0,
             new RpcStream<AudioFrame>(await ReadFrames()),
             new RpcStream<ExternalTranscriptChunk>(AsyncEnumerable.Empty<ExternalTranscriptChunk>()),
+            null,
             CancellationToken.None);
 
         // assert - the audio is the message even with no words. Only a real voice entry has
@@ -93,6 +95,7 @@ public class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, ITestOutp
             new RpcStream<ExternalTranscriptChunk>(new[] {
                 new ExternalTranscriptChunk("Slow but spoken", true, null, true),
             }.ToAsyncEnumerable()),
+            null,
             CancellationToken.None);
 
         // assert
@@ -114,6 +117,7 @@ public class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, ITestOutp
             new RpcStream<AudioFrame>(await ReadFrames()),
             new RpcStream<ExternalTranscriptChunk>(
                 new[] { new ExternalTranscriptChunk("Only this", true, 0.2, true) }.ToAsyncEnumerable()),
+            null,
             CancellationToken.None);
 
         // assert

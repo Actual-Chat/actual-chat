@@ -26,6 +26,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     private readonly ConcurrentDictionary<StreamId, ChatId> _chatIdByStream = new();
     private readonly ConcurrentDictionary<StreamId, AuthorId> _authorIdByStream = new();
     private readonly ConcurrentDictionary<StreamId, Moment> _recordedAtByStream = new();
+    private readonly ConcurrentDictionary<StreamId, ChatEntryId> _entryIdByStream = new();
     // Set by ProcessAudioWithTranscript before the stream is processed: its presence is what
     // makes TranscribeAudio skip the transcriber entirely
     private readonly ConcurrentDictionary<StreamId, IAsyncEnumerable<Transcript>> _externalTranscripts = new();
@@ -93,6 +94,11 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
 
     public virtual Task<ChatId?> GetChatId(StreamId streamId, CancellationToken cancellationToken)
         => Task.FromResult(_chatIdByStream.GetValueOrDefault(streamId.BaseStreamId));
+
+    public virtual Task<ChatEntryId?> GetStreamedEntryId(StreamId streamId, CancellationToken cancellationToken)
+        => Task.FromResult(_entryIdByStream.TryGetValue(streamId.BaseStreamId, out var entryId)
+            ? entryId
+            : (ChatEntryId?)null);
 
     public virtual async Task<RpcStream<AudioFrame>?> GetAudio(
         StreamId streamId,
@@ -214,6 +220,9 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     internal void RememberRecordedAt(StreamId streamId, Moment recordedAt)
         => _recordedAtByStream[streamId.BaseStreamId] = recordedAt;
 
+    internal void RememberEntryId(StreamId streamId, ChatEntryId entryId)
+        => _entryIdByStream[streamId.BaseStreamId] = entryId;
+
     // internal for tests: a synthesis failure one test provokes must not skip the next test's dubs
     internal void ForgetSynthesizerFailure()
         => Volatile.Write(ref _synthesizerDownUntilTicks, 0);
@@ -324,6 +333,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             _chatIdByStream.TryRemove(baseStreamId, out _);
             _authorIdByStream.TryRemove(baseStreamId, out _);
             _recordedAtByStream.TryRemove(baseStreamId, out _);
+            _entryIdByStream.TryRemove(baseStreamId, out _);
         }
     }
 
