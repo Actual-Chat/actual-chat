@@ -164,7 +164,9 @@
         _pickedPoint = StateFactory.NewMutable(
             (GeoPoint?)null,
             StateCategories.Get(GetType(), nameof(_pickedPoint)));
-        _refreshWorker = FuncWorker.Start(ct => LocationUI.RunLocationRefreshLoop(true, ct), Hub.StopToken);
+        // No troubleshooting on the automatic pass: opening the modal is not the user asking for
+        // a position, and its own prompt already covers a permission that isn't granted yet.
+        _refreshWorker = FuncWorker.Start(ct => LocationUI.RunLocationRefreshLoop(false, ct), Hub.StopToken);
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
