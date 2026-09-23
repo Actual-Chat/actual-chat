@@ -13,31 +13,17 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { BrowserContext, Page } from 'playwright';
 import {
-    BASE_URL, TEST_EMAIL, TEST_EMAIL_2, connectBrowser, newUserContext, screenshot,
-    skipOnboarding, waitForChatReady, waitForEditor, type BrowserConnection,
+    DEFAULT_CHAT_URL, TEST_EMAIL, TEST_EMAIL_2, connectBrowser, newUserContext, openChat,
+    screenshot, withUILanguage, type BrowserConnection,
 } from './helpers';
 
 const shot = (name: string) => screenshot('e2e-reaction-nav', name);
 
-const CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
 // A 720px viewport shows ~22 one-line messages: the two reacted messages must sit more than
 // a screen apart from each other and from the tail, or one of them is on screen at the moment
 // it's expected to be a jump target - and gets dismissed as seen instead.
 const FILLER_COUNT = 60;
 const SECOND_INDEX = 28;
-
-async function openChat(page: Page, url: string = CHAT_URL) {
-    await page.goto(url, { waitUntil: 'domcontentloaded' });
-    await waitForChatReady(page);
-    await skipOnboarding(page);
-
-    const joinButton = page.locator('button:has-text("Join this chat")');
-    if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await joinButton.click();
-        await page.waitForTimeout(1500);
-    }
-    await waitForEditor(page);
-}
 
 async function post(page: Page, text: string) {
     const messageInput = page.locator('#message-input .editor-content[contenteditable="true"]').first();
@@ -66,7 +52,11 @@ async function waitInViewport(page: Page, entryLid: number) {
 async function drainReactions(page: Page) {
     const button = page.locator('.navigate-to-reaction .btn-round').first();
     for (let i = 0; i < 20; i++) {
-        if (!await button.isVisible({ timeout: 3_000 }).catch(() => false))
+        // waitFor, not isVisible: isVisible ignores its timeout and answers for this instant,
+        // which on a chat that has just opened is always "no" - so nothing ever got drained.
+        const shown = await button.waitFor({ state: 'visible', timeout: i === 0 ? 5_000 : 2_000 })
+            .then(() => true, () => false);
+        if (!shown)
             return;
 
         await button.click({ force: true }).catch(() => { /* ignore */ });
@@ -80,6 +70,22 @@ async function entryLidOf(page: Page, text: string): Promise<number> {
         .getAttribute('data-chat-entry-id');
     expect(entryId).toBeTruthy();
     return Number(entryId!.split(':').pop());
+}
+
+// "The button never appeared" has two very different causes: the reaction never reached this
+// page, or it did and its entry is on screen - SelectClosest skips those, because
+// SeenNotificationDismisser is about to dismiss them. Say which.
+async function describeReactedEntries(page: Page, lids: number[]): Promise<string> {
+    const lines = await page.evaluate(ids => ids.map(id => {
+        const el = document.querySelector(`[data-chat-entry-id$=":${id}"]`);
+        if (!el)
+            return `${id}: not rendered`;
+
+        const r = el.getBoundingClientRect();
+        const where = r.top < window.innerHeight && r.bottom > 0 ? 'on screen' : 'off screen';
+        return `${id}: ${where}, reaction ${el.querySelector('.message-reactions') ? 'shown' : 'absent'}`;
+    }), lids);
+    return lines.join('; ');
 }
 
 // The hover menu's first button reacts with a thumbs-up right away.
@@ -133,9 +139,9 @@ describe('navigate to unread reaction', () => {
         }
         const secondLid = await entryLidOf(alice, secondText);
 
-        await openChat(bob, `${CHAT_URL}?n=${targetLid}`);
+        await openChat(bob, withUILanguage(`${DEFAULT_CHAT_URL}?n=${targetLid}`));
         await reactTo(bob, targetLid);
-        await openChat(bob, `${CHAT_URL}?n=${secondLid}`);
+        await openChat(bob, withUILanguage(`${DEFAULT_CHAT_URL}?n=${secondLid}`));
         await reactTo(bob, secondLid);
         await bob.screenshot({ path: shot('bob-reacted') });
 
@@ -143,7 +149,11 @@ describe('navigate to unread reaction', () => {
         await openChat(alice);
         const button = alice.locator('.navigate-to-reaction .btn-round').first();
         const badge = alice.locator('.navigate-to-reaction .unread-counter').first();
-        await button.waitFor({ state: 'visible', timeout: 30_000 });
+        await button.waitFor({ state: 'visible', timeout: 30_000 }).catch(async (e: unknown) => {
+            const state = await describeReactedEntries(alice, [targetLid, secondLid])
+                .catch(() => 'unavailable');
+            throw new Error(`the reaction button never appeared - ${state}`, { cause: e });
+        });
         await expect.poll(() => badge.textContent(), { timeout: 15_000 }).toMatch(/2/);
         await alice.screenshot({ path: shot('alice-badge-2') });
 
