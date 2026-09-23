@@ -191,6 +191,31 @@ public interface IChats : IComputeService
         StreamId streamId,
         CancellationToken cancellationToken);
 
+    // The voice equivalent: an append carries a text delta, an Ogg Opus chunk, or both. Audio is
+    // append-only, so its position is implicit in arrival order on the media timeline.
+    [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
+    Task<ChatVoiceStream> StartVoiceStream(
+        Session session,
+        ChatId chatId,
+        long? repliedEntryLid,
+        CancellationToken cancellationToken);
+
+    [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
+    Task<ChatVoiceStream> AppendVoiceStream(
+        Session session,
+        StreamId streamId,
+        int textOffset,
+        string? text,
+        byte[]? audio,
+        double? audioOffset,
+        CancellationToken cancellationToken);
+
+    [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
+    Task<ChatVoiceStream> FinishVoiceStream(
+        Session session,
+        StreamId streamId,
+        CancellationToken cancellationToken);
+
     [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity), LegacyName("OnRemoveTextEntry")]
     Task OnRemoveEntry(Chats_RemoveEntry command, CancellationToken cancellationToken);
 

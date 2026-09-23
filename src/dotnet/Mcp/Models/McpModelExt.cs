@@ -12,6 +12,10 @@ public static class McpModelExt
     public static McpMessageStream ToMcpModel(this ChatEntryStream stream)
         => new(stream.Id.Value, stream.EntryId.LocalId, stream.Offset, stream.IsCompleted);
 
+    public static McpVoiceStream ToMcpModel(this ChatVoiceStream stream)
+        => new(stream.Id.Value, stream.EntryId?.LocalId ?? 0, stream.TextOffset,
+            stream.AudioBytes, stream.IsCompleted);
+
     public static Task<ExternalMessage> ToMcpModel(
         this ChatEntry entry,
         Dictionary<AuthorId, Author?> authorById,

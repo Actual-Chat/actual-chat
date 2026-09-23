@@ -17,6 +17,7 @@ public class McpToolSchemaTest(McpCollection.AppHostFixture fixture, ITestOutput
         "create_place_invite_link", "list_place_invite_links",
         "post_message", "edit_message", "remove_message", "get_id_range", "list_messages",
         "start_message_stream", "append_message_stream", "finish_message_stream",
+        "start_voice_stream", "append_voice_stream", "finish_voice_stream",
         "pin_message", "unpin_message", "list_pinned_messages",
         "react", "list_reactions", "notify_members", "notify_mentioned",
         "begin_upload", "append_upload", "finish_upload", "abort_upload", "upload_from_url",
