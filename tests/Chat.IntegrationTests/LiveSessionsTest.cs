@@ -1904,12 +1904,12 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task AnswerAfterObservedRingTimeoutShouldKeepCalleeClaim()
+    public async Task LateAnswerShouldBeRefusedWhileCalleeHoldsAnotherCall()
     {
         // Same real ~21s ring timeout as ExpireRingsRecomputesStatusToNoAnswer - no clock-injection seam.
 
-        // arrange - Alice's client watches her call while it rings past RingTimeout: that read alone
-        // expires the ring (GetState's self-heal) and drops her claim before her Answer lands
+        // arrange - Alice's ring is missed, which frees her, and another call claims her before her
+        // late Answer lands
         await using var bob = AppHost.NewBlazorTester(Out);
         await using var alice = AppHost.NewBlazorTester(Out);
         await bob.SignInAsUniqueBob();
@@ -1921,29 +1921,33 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
         var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
         await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
-        (await callsBackend.GetUserCall(aliceAuthor.UserId, default))!.Phase.Should().Be(CallPhase.Ringing);
         await Task.Delay(TimeSpan.FromSeconds(21));
-        await TestWait.WhenPolled(async () =>
-            (await callsBackend.GetUserCall(aliceAuthor.UserId, default)).Should().BeNull());
+        await backend.ExpireRings(chatId);
+        var otherChatId = ChatId.Parse(GroupChatId.New().Value);
+        var otherCall = new UserCall {
+            ChatId = otherChatId,
+            AuthorId = AuthorId.New(otherChatId, 2),
+            Role = CallRole.Callee,
+            Phase = CallPhase.Ringing,
+        };
+        (await callsBackend.TryClaim(aliceAuthor.UserId, otherCall, default)).Should().BeTrue();
 
         // act
-        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+        var accept = () => backend.AcceptCall(chatId, aliceAuthor.Id, default);
 
         // assert
+        await accept.Should().ThrowAsync<InvalidOperationException>();
         var live = await backend.Get(chatId, default);
-        live!.Invites.Single().Status.Should().Be(CallInviteStatus.Accepted);
-        await TestWait.When(async ct => {
-            var aliceCall = await callsBackend.GetUserCall(aliceAuthor.UserId, ct);
-            aliceCall.Should().NotBeNull("the client drops an answered call its server claim doesn't show");
-            aliceCall!.Phase.Should().Be(CallPhase.Active);
-        });
+        live!.Invites.Single().Status.Should().Be(CallInviteStatus.Missed);
+        (await callsBackend.GetUserCall(aliceAuthor.UserId, default))!.ChatId.Should().Be(otherChatId);
     }
 
     [Fact]
-    public async Task AcceptCallShouldRestartClaimGraceOfBothSides()
+    public async Task AnswerPastClaimGraceShouldKeepCalleeClaim()
     {
-        // arrange - a claim past ClaimGrace is checked against the session, and across pods the answer's
-        // recompute can read it before the accept does (#4749); a fresh SinceAt is what covers that
+        // arrange - past ClaimGrace the callee's claim is checked against the session, and the client
+        // re-reads it the moment AcceptCall's invite write invalidates the session: the claim still
+        // reads Ringing there, the invite already Accepted (#4749)
         await using var bob = AppHost.NewBlazorTester(Out);
         await using var alice = AppHost.NewBlazorTester(Out);
         await bob.SignInAsUniqueBob();
@@ -1955,21 +1959,31 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
         var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
         await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
-        var ringing = await callsBackend.GetUserCall(aliceAuthor.UserId, default);
-        var dialing = await callsBackend.GetUserCall(bobAuthor.UserId, default);
-        await Task.Delay(TimeSpan.FromMilliseconds(100));
+        using var cts = new CancellationTokenSource();
+        var aliceObserver = ObserveUserCall(callsBackend, aliceAuthor.UserId, cts.Token);
+        await Task.Delay(TimeSpan.FromSeconds(11));
 
         // act
         await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+        await Task.Delay(TimeSpan.FromMilliseconds(500));
 
-        // assert - read at once: AcceptCall awaits both claims, and with nobody streaming the call closes
-        // at CallConnectGrace, taking the claims with it
+        // assert - before CallConnectGrace: with nobody streaming, the call closes then, claims and all
         var aliceCall = await callsBackend.GetUserCall(aliceAuthor.UserId, default);
         var bobCall = await callsBackend.GetUserCall(bobAuthor.UserId, default);
+        await cts.CancelAsync();
+        await aliceObserver.SilentAwait();
+        aliceCall.Should().NotBeNull("the client hangs up an answered call its claim no longer shows");
         aliceCall!.Phase.Should().Be(CallPhase.Active);
-        aliceCall.SinceAt.Should().BeGreaterThan(ringing!.SinceAt);
         bobCall!.Phase.Should().Be(CallPhase.Active);
-        bobCall.SinceAt.Should().BeGreaterThan(dialing!.SinceAt);
+
+        static async Task ObserveUserCall(ICallsBackend callsBackend, UserId userId, CancellationToken ct)
+        {
+            var c = await Computed.Capture(() => callsBackend.GetUserCall(userId, ct), ct);
+            while (!ct.IsCancellationRequested) {
+                await c.WhenInvalidated(ct);
+                c = await c.Update(ct);
+            }
+        }
     }
 
     [Fact]
@@ -2027,6 +2041,47 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await secondAccept.Should().NotThrowAsync();
         var callState = await backend.GetCallState(chatId, default);
         callState!.Status.Should().Be(CallStatus.Connecting);
+    }
+
+    [Theory]
+    [InlineData(CallInviteStatus.Ringing, CallPhase.Ringing)]
+    [InlineData(CallInviteStatus.Accepted, CallPhase.Active)]
+    [InlineData(CallInviteStatus.Active, CallPhase.Active)]
+    [InlineData(CallInviteStatus.Missed, null)]
+    [InlineData(CallInviteStatus.Declined, null)]
+    public void CalleePhaseShouldFollowTheInvite(CallInviteStatus inviteStatus, CallPhase? expected)
+    {
+        // arrange - the claim's stored phase is Ringing throughout: only the invite may decide
+        var (claim, _, calleeId) = NewPeerCallClaims();
+        var live = NewCallSession(claim.ChatId, isConnected: inviteStatus != CallInviteStatus.Ringing) with {
+            Invites = [new CallInvite { InviteeId = calleeId, Status = inviteStatus }],
+        };
+
+        // act
+        var phase = CallsBackend.GetPhase(claim, live, callState: null);
+
+        // assert
+        phase.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(CallStatus.Dialing, false, CallPhase.Dialing)]
+    [InlineData(CallStatus.Connecting, true, CallPhase.Active)]
+    [InlineData(CallStatus.Active, true, CallPhase.Active)]
+    [InlineData(CallStatus.NoAnswer, false, null)]
+    [InlineData(CallStatus.Declined, false, null)]
+    public void CallerPhaseShouldFollowTheCallState(CallStatus status, bool isConnected, CallPhase? expected)
+    {
+        // arrange
+        var (_, claim, _) = NewPeerCallClaims();
+        var live = NewCallSession(claim.ChatId, isConnected);
+        var callState = new CallState { CallerId = claim.AuthorId, Status = status };
+
+        // act
+        var phase = CallsBackend.GetPhase(claim, live, callState);
+
+        // assert
+        phase.Should().Be(expected);
     }
 
     [Fact]
@@ -2475,4 +2530,25 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         var aliceAuthor = await authors.EnsureJoined(chatId, alice.Id, default);
         return (chatId, bobAuthor, aliceAuthor);
     }
+
+    private static (UserCall Callee, UserCall Caller, AuthorId CalleeId) NewPeerCallClaims()
+    {
+        var chatId = ChatId.Parse(GroupChatId.New().Value);
+        var callerId = AuthorId.New(chatId, 1);
+        var calleeId = AuthorId.New(chatId, 2);
+        var callee = new UserCall {
+            ChatId = chatId, AuthorId = calleeId, Role = CallRole.Callee, Phase = CallPhase.Ringing, PeerId = callerId,
+        };
+        var caller = new UserCall {
+            ChatId = chatId, AuthorId = callerId, Role = CallRole.Caller, Phase = CallPhase.Dialing, PeerId = calleeId,
+        };
+        return (callee, caller, calleeId);
+    }
+
+    private static LiveSession NewCallSession(ChatId chatId, bool isConnected)
+        => new() {
+            ChatId = chatId,
+            Kind = LiveSessionKind.Call,
+            Conversation = isConnected ? new Conversation(ConversationId.New(chatId, 1)) : null,
+        };
 }
