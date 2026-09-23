@@ -100,8 +100,11 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         CancellationToken cancellationToken)
     {
         // A mix is published before it has caught up with its original, so a request that finds the
-        // stream must still wait for its dub entry; Has is the fast path only once the entry is gone
-        if (streamId.Language != null
+        // stream must still wait for its dub entry; Has is the fast path only once the entry is gone.
+        // A text-only stream is served speech on its own id: a listener asks for the stream it was
+        // told about, and there is no original to serve instead.
+        var isSpeech = streamId.Language == null && _textOnlyStreams.ContainsKey(streamId.BaseStreamId);
+        if ((streamId.Language != null || isSpeech)
             && (_dubs.ContainsKey(streamId) || !_audioStreams.Has(streamId))
             && !await EnsureDub(streamId, cancellationToken).ConfigureAwait(false))
             return null;

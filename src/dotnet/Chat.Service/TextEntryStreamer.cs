@@ -71,7 +71,7 @@ public class TextEntryStreamer(IServiceProvider services)
         // request is what makes the server speak the text. Without it nothing ever asks, and a
         // bot is silent to someone who is listening to everyone else in the room.
         var beginsAt = Clocks.ServerClock.Now;
-        await RegisterSpeech(entry, beginsAt).ConfigureAwait(false);
+        await RegisterSpeech(entry, beginsAt, language).ConfigureAwait(false);
 
         var transcript = Transcript.Empty;
         try {
@@ -130,7 +130,7 @@ public class TextEntryStreamer(IServiceProvider services)
 
     // Private methods
 
-    private Task RegisterSpeech(ChatEntry entry, Moment beginsAt)
+    private Task RegisterSpeech(ChatEntry entry, Moment beginsAt, Language? language)
     {
         // IsTextOnly false on purpose: there is no recording, but there is audio to be had - the
         // synthesis - and GetStream refuses to serve a stream marked text-only.
@@ -142,6 +142,9 @@ public class TextEntryStreamer(IServiceProvider services)
             SourceBeginsAt = beginsAt,
             Format = AudioSource.DefaultFormat,
             IsTextOnly = false,
+            // Empty would mean "never dub" - and the dub request is exactly what makes the
+            // server speak this. Declaring the language is what makes a listener ask.
+            Languages = language is { } l ? new ApiArray<Language>([l]) : ApiArray<Language>.Empty,
         };
         return LiveAudioBackend.Register(entry.ChatId, streamInfo, CancellationToken.None);
     }
