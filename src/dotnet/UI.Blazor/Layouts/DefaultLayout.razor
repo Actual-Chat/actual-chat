@@ -6,10 +6,18 @@
             <PageWithHeaderAndFooter @key="@Key"
                 Class="@MiddlePanelClass" Child="@MiddlePanelChild" BodyClass="@BodyClass">
                 <LeftDrawer><RenderSlot Name="@LayoutSlots.MainLeftDrawer"/></LeftDrawer>
-                <Header><RenderSlot Name="@LayoutSlots.MainHeader"/></Header>
-                <SubHeader><RenderStack Name="@LayoutSlots.SubHeader"/></SubHeader>
-                <Footer><RenderSlot Name="@LayoutSlots.MainFooter"/></Footer>
-                <SubFooter><RenderStack Name="@LayoutSlots.SubFooter"/></SubFooter>
+                <Header>
+                    <ErrorBarrier Name="Header" Kind="@ErrorBarrierKind.Compact">
+                        <RenderSlot Name="@LayoutSlots.MainHeader"/>
+                    </ErrorBarrier>
+                </Header>
+                <SubHeader><RenderStack Name="@LayoutSlots.SubHeader" Item="@SubHeaderItem"/></SubHeader>
+                <Footer>
+                    <ErrorBarrier Name="Footer" Kind="@ErrorBarrierKind.Compact">
+                        <RenderSlot Name="@LayoutSlots.MainFooter"/>
+                    </ErrorBarrier>
+                </Footer>
+                <SubFooter><RenderStack Name="@LayoutSlots.SubFooter" Item="@SubFooterItem"/></SubFooter>
                 <Body><RerenderRegion>@Body</RerenderRegion>
                 </Body>
                 <BodyOverlay><RenderSlot Name="@LayoutSlots.MainBodyOverlay"/></BodyOverlay>
@@ -21,8 +29,17 @@
 
 @code {
     private static readonly object Key = new();
+    private static readonly RenderFragment<RenderIntoStack> SubHeaderItem = IsolatedItem("SubHeader");
+    private static readonly RenderFragment<RenderIntoStack> SubFooterItem = IsolatedItem("SubFooter");
 
     public string MiddlePanelClass { get; set; } = "default-layout";
     public string MiddlePanelChild { get; set; } = "";
     public string BodyClass { get; set; } = "";
+
+    private static RenderFragment<RenderIntoStack> IsolatedItem(string stackName)
+        // Stack items render here, not where they're declared, so the nearest barrier above them is the one
+        // around the whole middle region: one failing banner would take down the chat view with it.
+        => item => @<ErrorBarrier Name="@($"{stackName}-{item.Key}")" Kind="@ErrorBarrierKind.Compact">
+               @item.ChildContent
+           </ErrorBarrier>;
 }
