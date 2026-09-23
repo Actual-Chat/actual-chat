@@ -1234,7 +1234,7 @@
   "Translation_TranslatedVoiceOffInChat": "在此聊天中关闭",
   "Uploads_Pending": "有待完成的文件上传。",
   "Uploads_Resume": "继续",
-  "Share_ShareExternally": "分享到其他应用",
+  "Share_Preparing_Format": "正在准备… {0}%",
   "Share_CopyLink": "复制链接",
   "Share_LinkCopied": "链接已复制！",
   "Share_WhoToShareWith": "你想与谁分享",

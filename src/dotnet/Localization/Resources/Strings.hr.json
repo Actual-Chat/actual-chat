@@ -1234,7 +1234,7 @@
   "Translation_TranslatedVoiceOffInChat": "Isključeno u ovom razgovoru",
   "Uploads_Pending": "Ima datoteka koji čekaju prijenos.",
   "Uploads_Resume": "Nastavi",
-  "Share_ShareExternally": "Podijelite izvan aplikacije",
+  "Share_Preparing_Format": "Priprema… {0}%",
   "Share_CopyLink": "Kopirajte link",
   "Share_LinkCopied": "Link je kopiran!",
   "Share_WhoToShareWith": "S kim želite podijeliti",

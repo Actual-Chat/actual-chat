@@ -1234,7 +1234,7 @@
   "Translation_TranslatedVoiceOffInChat": "Выключено в этом чате",
   "Uploads_Pending": "Есть незавершённые загрузки файлов.",
   "Uploads_Resume": "Продолжить",
-  "Share_ShareExternally": "Поделиться вне приложения",
+  "Share_Preparing_Format": "Подготовка… {0}%",
   "Share_CopyLink": "Копировать ссылку",
   "Share_LinkCopied": "Ссылка скопирована!",
   "Share_WhoToShareWith": "С кем поделиться",

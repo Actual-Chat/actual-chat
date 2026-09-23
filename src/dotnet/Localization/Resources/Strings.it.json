@@ -1234,7 +1234,7 @@
   "Translation_TranslatedVoiceOffInChat": "Disattivato in questa chat",
   "Uploads_Pending": "Ci sono caricamenti di file in sospeso.",
   "Uploads_Resume": "Riprendi",
-  "Share_ShareExternally": "Condividi all'esterno",
+  "Share_Preparing_Format": "Preparazione… {0}%",
   "Share_CopyLink": "Copia link",
   "Share_LinkCopied": "Link copiato!",
   "Share_WhoToShareWith": "Con chi vuoi condividere?",

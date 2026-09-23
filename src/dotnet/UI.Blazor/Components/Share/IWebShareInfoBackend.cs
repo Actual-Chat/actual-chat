@@ -4,5 +4,6 @@ public interface IWebShareInfoBackend
 {
     public sealed record InitResult(
         bool CanShareText,
-        bool CanShareLink);
+        bool CanShareLink,
+        bool CanShareFile);
 }

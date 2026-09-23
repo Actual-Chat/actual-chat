@@ -1234,7 +1234,7 @@
   "Translation_TranslatedVoiceOffInChat": "Vypnuto v tomto chatu",
   "Uploads_Pending": "Některé soubory čekají na nahrání.",
   "Uploads_Resume": "Pokračovat",
-  "Share_ShareExternally": "Sdílet mimo aplikaci",
+  "Share_Preparing_Format": "Příprava… {0}%",
   "Share_CopyLink": "Kopírovat odkaz",
   "Share_LinkCopied": "Odkaz zkopírován!",
   "Share_WhoToShareWith": "Komu chcete sdílet",

@@ -1234,7 +1234,7 @@
   "Translation_TranslatedVoiceOffInChat": "In diesem Chat aus",
   "Uploads_Pending": "Es stehen noch Datei-Uploads aus.",
   "Uploads_Resume": "Fortsetzen",
-  "Share_ShareExternally": "Extern teilen",
+  "Share_Preparing_Format": "Wird vorbereitet… {0}%",
   "Share_CopyLink": "Link kopieren",
   "Share_LinkCopied": "Link kopiert!",
   "Share_WhoToShareWith": "Mit wem möchten Sie teilen?",
