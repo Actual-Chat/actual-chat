@@ -17,6 +17,8 @@ public class CallsBackend : ShardComputeService, ICallsBackend
     private static readonly TimeSpan ClaimTtl = TimeSpan.FromMinutes(2);
     // A claim is taken before the call it stands for exists - StartCall has to know who is free
     // before it writes the session and the invites. Until this lapses, the claim backs itself.
+    // SetPhase restarts it: the session that backs the new phase lives on the chat's shard, and its
+    // invalidation can reach this shard after the recompute SetPhase triggers (#4749).
     private static readonly TimeSpan ClaimGrace = TimeSpan.FromSeconds(10);
     // Nothing invalidates a claim that lapsed with its Redis TTL, or one whose call ended without
     // reaching Release - so a live claim re-checks itself on this period.
@@ -89,7 +91,9 @@ public class CallsBackend : ShardComputeService, ICallsBackend
                 return;
             }
 
-            await _userCalls.Set(userId.Value, call with { Phase = phase }).ConfigureAwait(false);
+            await _userCalls
+                .Set(userId.Value, call with { Phase = phase, SinceAt = Clocks.SystemClock.Now })
+                .ConfigureAwait(false);
             Invalidate(userId);
         }
     }
