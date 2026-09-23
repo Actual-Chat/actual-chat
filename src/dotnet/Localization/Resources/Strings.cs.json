@@ -1518,6 +1518,7 @@
   "LeaveConfirm_LastOwnerQuestion": "Jste jediný vlastník tohoto chatu. Nastavte vlastníkem jiného člena, jinak bude chat po vašem odchodu smazán.",
   "LeaveConfirm_LastMemberQuestion": "Jste jediný člen tohoto chatu. Přidejte někoho a nastavte ho vlastníkem, jinak bude chat po vašem odchodu smazán.",
   "LeaveConfirm_DeleteAnyway": "Přesto smazat",
+  "LeaveConfirm_PickNewOwnerTitle": "Vyberte nového vlastníka",
   "LeaveConfirm_LastPlaceOwnerQuestion": "Jste jediný vlastník tohoto Místa. Nastavte vlastníkem jiného člena, jinak bude Místo i všechny jeho chaty po vašem odchodu smazáno.",
   "LeaveConfirm_LastPlaceMemberQuestion": "Jste jediný člen tohoto Místa. Přidejte někoho a nastavte ho vlastníkem, jinak bude Místo i všechny jeho chaty po vašem odchodu smazáno.",
 

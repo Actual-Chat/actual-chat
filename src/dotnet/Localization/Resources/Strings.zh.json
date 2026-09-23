@@ -1518,6 +1518,7 @@
   "LeaveConfirm_LastOwnerQuestion": "你是此聊天的唯一所有者。请将其他成员设为所有者，否则你退出后此聊天将被删除。",
   "LeaveConfirm_LastMemberQuestion": "你是此聊天的唯一成员。请添加他人并将其设为所有者，否则你退出后此聊天将被删除。",
   "LeaveConfirm_DeleteAnyway": "仍然删除",
+  "LeaveConfirm_PickNewOwnerTitle": "选择新的所有者",
   "LeaveConfirm_LastPlaceOwnerQuestion": "你是此地点的唯一所有者。请将其他成员设为所有者，否则你退出后此地点及其所有聊天将被删除。",
   "LeaveConfirm_LastPlaceMemberQuestion": "你是此地点的唯一成员。请添加他人并将其设为所有者，否则你退出后此地点及其所有聊天将被删除。",
 

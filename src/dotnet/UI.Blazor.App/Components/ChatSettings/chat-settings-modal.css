@@ -344,6 +344,12 @@ body.narrow.keyboard-open .edit-settings-modal .chat-settings-header > .c-top .r
     @apply flex-x;
     @apply min-h-12;
 }
+.member-list > li.candidate {
+    @apply cursor-pointer rounded-lg;
+}
+.member-list > li.candidate:hover {
+    @apply bg-02;
+}
 .member-list > li .menu {
     @apply flex items-center justify-center;
     @apply min-w-4;

@@ -1518,6 +1518,7 @@
   "LeaveConfirm_LastOwnerQuestion": "Jesteś jedynym właścicielem tego czatu. Ustaw właścicielem innego uczestnika, w przeciwnym razie czat zostanie usunięty po Twoim wyjściu.",
   "LeaveConfirm_LastMemberQuestion": "Jesteś jedynym uczestnikiem tego czatu. Dodaj kogoś i ustaw go właścicielem, w przeciwnym razie czat zostanie usunięty po Twoim wyjściu.",
   "LeaveConfirm_DeleteAnyway": "Usuń mimo to",
+  "LeaveConfirm_PickNewOwnerTitle": "Wybierz nowego właściciela",
   "LeaveConfirm_LastPlaceOwnerQuestion": "Jesteś jedynym właścicielem tego Miejsca. Ustaw właścicielem innego uczestnika, w przeciwnym razie Miejsce i wszystkie jego czaty zostaną usunięte po Twoim wyjściu.",
   "LeaveConfirm_LastPlaceMemberQuestion": "Jesteś jedynym uczestnikiem tego Miejsca. Dodaj kogoś i ustaw go właścicielem, w przeciwnym razie Miejsce i wszystkie jego czaty zostaną usunięte po Twoim wyjściu.",
 

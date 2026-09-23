@@ -1518,6 +1518,7 @@
   "LeaveConfirm_LastOwnerQuestion": "Você é o único proprietário deste chat. Promova outro membro a proprietário, caso contrário o chat será excluído quando você sair.",
   "LeaveConfirm_LastMemberQuestion": "Você é o único membro deste chat. Adicione alguém e promova essa pessoa a proprietário, caso contrário o chat será excluído quando você sair.",
   "LeaveConfirm_DeleteAnyway": "Excluir mesmo assim",
+  "LeaveConfirm_PickNewOwnerTitle": "Escolha um novo proprietário",
   "LeaveConfirm_LastPlaceOwnerQuestion": "Você é o único proprietário deste Lugar. Promova outro membro a proprietário, caso contrário o Lugar e todos os seus chats serão excluídos quando você sair.",
   "LeaveConfirm_LastPlaceMemberQuestion": "Você é o único membro deste Lugar. Adicione alguém e promova essa pessoa a proprietário, caso contrário o Lugar e todos os seus chats serão excluídos quando você sair.",
 

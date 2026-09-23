@@ -3,7 +3,9 @@
 @inherits ComputedStateComponent<AppUIHub, PlaceSettingsEditMembersModalPage.ComputedModel>
 @{
     var m = State.Value;
-    Context.Title = L.Place_Members(m.MemberCount, m.MemberCount);
+    Context.Title = _isOwnerHandover
+        ? L.LeaveConfirm_PickNewOwnerTitle
+        : L.Place_Members(m.MemberCount, m.MemberCount);
     Context.ContextItems.Set(nameof(PlaceSettingsStartModalPage.ComputedModel.MemberCount), m.MemberCount);
 }
 
@@ -19,11 +21,14 @@
         var isOwner = m.IsOwner(authorId);
         var statusText = FormatStatusText(isOwner, m.IsModerator(authorId), isOwn);
         /* At the moment there is no available actions for owners and own membership hence do not show menu  */
-        var showMenu = !(isOwn || isOwner);
+        /* Handing the place over is a single choice, so the row itself takes it and the menu only distracts */
+        var showMenu = !_isOwnerHandover && !(isOwn || isOwner);
         var dataMenuAttr = showMenu ? MenuRef.New<EditPlaceMemberMenu>(authorId.Value).ToString() : null;
         <li @key="@authorId"
+            class="@(_isOwnerHandover ? "candidate" : null)"
             data-menu="@dataMenuAttr"
-            data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+            data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())"
+            @onclick="@(() => OnCandidateClick(authorId))">
             <AuthorBadge
                 AuthorId="@authorId"
                 ShowPresence="true"
@@ -45,6 +50,7 @@
 
 @code {
     private SearchQuery _searchQuery;
+    private bool _isOwnerHandover;
     private PlaceId PlaceId { get; set; } = null!;
 
     private IPlaces Places => Hub.Places;
@@ -52,7 +58,9 @@
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     protected override void OnInitialized() {
-        PlaceId = Context.GetModel<PlaceId>();
+        var model = Context.GetModel<Model>();
+        PlaceId = model.PlaceId;
+        _isOwnerHandover = model.IsOwnerHandover;
         Context.Class = "edit-members";
         Context.Buttons = [DialogButtonInfo.CreateSubmitButton(L.Place_AddMembers, OnInviteClick)];
     }
@@ -77,7 +85,12 @@
         var ownerIds = await Places.ListOwnerIds(Session, placeId, cancellationToken).ConfigureAwait(false);
         var moderatorIds = await Places.ListModeratorIds(Session, placeId, cancellationToken).ConfigureAwait(false);
         var ownAuthor = await Places.GetOwn(Session, placeId, cancellationToken).ConfigureAwait(false);
-        var authors = (await allAuthorIds
+        // Opened to hand the place over, the list is the candidates - and the Owner being replaced isn't one.
+        // The count in the header still counts them, since it's the place's size rather than the list's.
+        var listedAuthorIds = _isOwnerHandover && ownAuthor != null
+            ? allAuthorIds.Where(c => c != ownAuthor.Id)
+            : allAuthorIds;
+        var authors = (await listedAuthorIds
             .Select(async authorId => {
                 var authorTask = Places.Get(Session, placeId, authorId, cancellationToken);
                 var author = await authorTask.ConfigureAwait(false);
@@ -111,6 +124,16 @@
         };
     }
 
+    private async Task OnCandidateClick(AuthorId authorId) {
+        // Promoting closes this page, which resumes the leave that sent the user here
+        if (!_isOwnerHandover)
+            return;
+
+        var author = await Places.Get(Session, PlaceId, authorId, default).ConfigureAwait(true);
+        if (author != null)
+            await EditPlaceMemberCommands.OnPromoteToOwnerClick(Hub, author, Context.Close).ConfigureAwait(true);
+    }
+
     private void OnInviteClick()
         => Context.StepIn(DiveInDialogPage.New<AddMemberModalPage>(PlaceId));
 
@@ -124,6 +147,10 @@
     }
 
     // Nested types
+
+    public sealed record Model(PlaceId PlaceId) {
+        public bool IsOwnerHandover { get; init; }
+    }
 
     public sealed record ComputedModel {
         public int MemberCount { get; init; }

@@ -1518,6 +1518,7 @@
   "LeaveConfirm_LastOwnerQuestion": "あなたはこのチャットの唯一のオーナーです。他のメンバーをオーナーにしてください。そうしないと、退出時にチャットは削除されます。",
   "LeaveConfirm_LastMemberQuestion": "あなたはこのチャットの唯一のメンバーです。誰かを追加してオーナーにしてください。そうしないと、退出時にチャットは削除されます。",
   "LeaveConfirm_DeleteAnyway": "それでも削除",
+  "LeaveConfirm_PickNewOwnerTitle": "新しいオーナーを選択",
   "LeaveConfirm_LastPlaceOwnerQuestion": "あなたはこのプレイスの唯一のオーナーです。他のメンバーをオーナーにしてください。そうしないと、退出時にプレイスとそのすべてのチャットは削除されます。",
   "LeaveConfirm_LastPlaceMemberQuestion": "あなたはこのプレイスの唯一のメンバーです。誰かを追加してオーナーにしてください。そうしないと、退出時にプレイスとそのすべてのチャットは削除されます。",
 

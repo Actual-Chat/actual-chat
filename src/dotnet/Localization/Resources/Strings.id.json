@@ -1518,6 +1518,7 @@
   "LeaveConfirm_LastOwnerQuestion": "Anda satu-satunya pemilik obrolan ini. Jadikan anggota lain sebagai pemilik, jika tidak obrolan akan dihapus saat Anda keluar.",
   "LeaveConfirm_LastMemberQuestion": "Anda satu-satunya anggota obrolan ini. Tambahkan seseorang dan jadikan dia pemilik, jika tidak obrolan akan dihapus saat Anda keluar.",
   "LeaveConfirm_DeleteAnyway": "Tetap hapus",
+  "LeaveConfirm_PickNewOwnerTitle": "Pilih pemilik baru",
   "LeaveConfirm_LastPlaceOwnerQuestion": "Anda satu-satunya pemilik Tempat ini. Jadikan anggota lain sebagai pemilik, jika tidak Tempat ini dan semua obrolannya akan dihapus saat Anda keluar.",
   "LeaveConfirm_LastPlaceMemberQuestion": "Anda satu-satunya anggota Tempat ini. Tambahkan seseorang dan jadikan dia pemilik, jika tidak Tempat ini dan semua obrolannya akan dihapus saat Anda keluar.",
 
