@@ -119,7 +119,7 @@ from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 from openai import AsyncOpenAI
 
-VOXT_MCP = "https://voxt.ai/api/mcp"
+VOXT_MCP = "https://voxt.ai/mcp"
 CHAT_ID = os.environ["VOXT_CHAT_ID"]
 HEADERS = {"Authorization": f"Bearer {os.environ['VOXT_API_KEY']}"}
 

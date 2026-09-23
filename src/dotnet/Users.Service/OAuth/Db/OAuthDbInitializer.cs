@@ -15,7 +15,7 @@ public class OAuthDbInitializer(IServiceProvider services) : DbInitializer<OAuth
         await scopes.CreateAsync(new OpenIddictScopeDescriptor {
             Name = OAuthConstants.McpScope,
             DisplayName = "Read and post in your chats via MCP",
-            Resources = { OAuthConstants.McpResourcePath, OAuthConstants.LegacyMcpResourcePath },
+            Resources = { OAuthConstants.McpResourcePath },
         }, cancellationToken).ConfigureAwait(false);
     }
 }
