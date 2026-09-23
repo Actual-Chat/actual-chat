@@ -72,7 +72,7 @@ public sealed class IosCalls : CXProviderDelegate
 
         _provider.ReportNewIncomingCall(new NSUuid(callId.ToString()), update, error => {
             if (error.ToException() is { } exc) {
-                // Untracked again, or ListActiveCallChatIds hands SyncRings a phantom ring.
+                // Untracked again, or ListActiveCallChatIds hands the bridge a phantom ring.
                 _calls.TryRemove(callId, out _);
                 Log.LogError(exc, "Failed to report incoming call {ConversationId}", conversationId);
             }
@@ -82,6 +82,7 @@ public sealed class IosCalls : CXProviderDelegate
         // reactive state can end it.
         _ = DispatchToBlazor(c => {
             c.GetRequiredService<CallScreensUI>().OnRing(conversationId.ChatId);
+            c.GetRequiredService<IosCallsBridge>().WatchRing(conversationId.ChatId);
             c.GetRequiredService<IosCallIntents>()
                 .Donate(conversationId.ChatId, hasVideo, INInteractionDirection.Incoming);
         }, "ReportIncomingCall");
@@ -235,8 +236,8 @@ public sealed class IosCalls : CXProviderDelegate
     }
 
     public ChatId[] ListActiveCallChatIds()
-        // Rings only: SyncRings turns these into OnRing, and a call the user already answered
-        // is not a ring.
+        // Rings only: a replaced scope's bridge re-watches these, and a call the user already
+        // answered is not a ring.
         => _calls.Values
             .Where(x => !x.IsOutgoing && !x.IsAnswered)
             .Select(x => x.ChatId)
