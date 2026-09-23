@@ -33,7 +33,6 @@ export const UI_LANGUAGES: UILanguage[] = [
     { code: 'pl-PL', subtag: 'pl', nativeName: 'Polski' },
     { code: 'id-ID', subtag: 'id', nativeName: 'Bahasa Indonesia' },
     { code: 'cs-CZ', subtag: 'cs', nativeName: 'Čeština' },
-    { code: 'cs-CZ', subtag: 'cs', nativeName: 'Čeština' },
     { code: 'bg-BG', subtag: 'bg', nativeName: 'Български' },
     { code: 'bs-BA', subtag: 'bs', nativeName: 'Bosanski' },
     { code: 'hr-HR', subtag: 'hr', nativeName: 'Hrvatski' },
