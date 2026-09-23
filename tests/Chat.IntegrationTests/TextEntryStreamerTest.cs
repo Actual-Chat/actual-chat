@@ -192,7 +192,7 @@ public class TextEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestO
         // act
         var stream = RpcStream.New(new[] { "Hijacked" }.ToAsyncEnumerable());
         var streamEntry = () => bob.Chats.StreamEntry(
-            bob.Session, chatId, posted.Id.LocalId, stream, CancellationToken.None);
+            bob.Session, chatId, posted.Id.LocalId, null, stream, CancellationToken.None);
 
         // assert
         await streamEntry.Should().ThrowAsync<Exception>();
@@ -272,7 +272,7 @@ public class TextEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestO
     {
         var cts = NewTestCts(WaitTimeout.Debuggable());
         var stream = RpcStream.New(chunks.ToAsyncEnumerable());
-        return Tester.Chats.StreamEntry(Tester.Session, chatId, localId, stream, cts.Token);
+        return Tester.Chats.StreamEntry(Tester.Session, chatId, localId, null, stream, cts.Token);
     }
 
     private async Task BackdateEntry(ChatEntryId entryId, TimeSpan age)

@@ -164,6 +164,7 @@ public interface IChats : IComputeService
         Session session,
         ChatId chatId,
         long? localId,
+        Language? language,
         RpcStream<string> textChunks,
         CancellationToken cancellationToken);
 
@@ -171,10 +172,14 @@ public interface IChats : IComputeService
     // HTTP. Mirrors IUploads: AppendEntryStream writes nothing unless offset matches the server's,
     // and reports where the server is so a retried or lost call can resume.
     [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
+    // The producer declares the language it is writing in: a transcript with no audio has no other
+    // way to say, and without it the text can be neither spoken nor translated. Null = the author's
+    // primary spoken language.
     Task<ChatEntryStream> StartEntryStream(
         Session session,
         ChatId chatId,
         long? localId,
+        Language? language,
         CancellationToken cancellationToken);
 
     [RpcMethod(ConnectTimeout = double.PositiveInfinity)]

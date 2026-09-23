@@ -482,6 +482,7 @@ public partial class Chats(IServiceProvider services) : IChats
         Session session,
         ChatId chatId,
         long? localId,
+        Language? language,
         RpcStream<string> textChunks,
         CancellationToken cancellationToken)
     {
@@ -492,7 +493,10 @@ public partial class Chats(IServiceProvider services) : IChats
         var checkedChunks = textChunks.RequireAvailable(Maintenances, chatId, cancellationToken);
         if (!IsTooOldToStreamInto(entryToUpdate))
             return await TextEntryStreamer
-                .Stream(chatId, author.Id, entryToUpdate, checkedChunks, cancellationToken, isViaApi: isViaApi)
+                .Stream(chatId, author.Id, entryToUpdate, checkedChunks, cancellationToken,
+                    isViaApi: isViaApi,
+                    language: await ResolveStreamLanguage(session, chatId, language, cancellationToken)
+                        .ConfigureAwait(false))
                 .ConfigureAwait(false);
 
         // Too old to animate: collect everything, then apply it through the ordinary edit path so
@@ -513,6 +517,7 @@ public partial class Chats(IServiceProvider services) : IChats
         Session session,
         ChatId chatId,
         long? localId,
+        Language? language,
         CancellationToken cancellationToken)
     {
         var (author, entryToUpdate) = await PrepareEntryStream(session, chatId, localId, cancellationToken)
@@ -524,8 +529,11 @@ public partial class Chats(IServiceProvider services) : IChats
                 "This message is too old to stream into - edit it in a single call instead.");
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var resolvedLanguage = await ResolveStreamLanguage(session, chatId, language, cancellationToken)
+            .ConfigureAwait(false);
         return await EntryStreamsBackend
-            .Start(chatId, author.Id, account.Id, localId, GetIsViaApi(session), cancellationToken)
+            .Start(chatId, author.Id, account.Id, localId, GetIsViaApi(session), resolvedLanguage,
+                cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -1422,6 +1430,28 @@ public partial class Chats(IServiceProvider services) : IChats
             throw StandardError.Constraint("Forwarded messages cannot be edited.");
 
         return (author, entry);
+    }
+
+    private async Task<Language> ResolveStreamLanguage(
+        Session session,
+        ChatId chatId,
+        Language? declared,
+        CancellationToken cancellationToken)
+    {
+        if (declared is { } l)
+            return l;
+
+        // Undeclared falls back to what the author speaks - the chat's language if it names one,
+        // otherwise their primary. The same two sources ProcessAudio reads for a recording.
+        var userSettingsUI = services.UserSettingsUI(session);
+        var chatSettings = await userSettingsUI.ChatUserSettings(chatId).Get(cancellationToken)
+            .ConfigureAwait(false);
+        if (chatSettings.Language is { } chatLanguage)
+            return chatLanguage;
+
+        var languageSettings = await userSettingsUI.UserLanguageSettings().Get(cancellationToken)
+            .ConfigureAwait(false);
+        return languageSettings.Primary;
     }
 
     private bool IsTooOldToStreamInto(ChatEntry? entryToUpdate)

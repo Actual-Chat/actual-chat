@@ -163,6 +163,18 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         return transcript;
     }
 
+    public async Task PushTextTranscript(
+        StreamId streamId,
+        ChatId chatId,
+        AuthorId authorId,
+        RpcStream<TranscriptDiff> diffStream,
+        CancellationToken cancellationToken)
+    {
+        RememberChatId(streamId, chatId);
+        RememberAuthorId(streamId, authorId);
+        await PushTranscript(streamId, diffStream, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task PushTranscript(
         StreamId streamId,
         RpcStream<TranscriptDiff> diffStream,

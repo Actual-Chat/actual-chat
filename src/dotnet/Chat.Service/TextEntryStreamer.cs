@@ -38,13 +38,17 @@ public class TextEntryStreamer(IServiceProvider services)
         IAsyncEnumerable<string> textChunks,
         CancellationToken cancellationToken = default,
         bool? isViaApi = null,
-        TaskCompletionSource<ChatEntry>? entryCreatedSource = null)
+        TaskCompletionSource<ChatEntry>? entryCreatedSource = null,
+        Language? language = null)
     {
         var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
-        using var stream = ToTranscriptDiffs(textChunks, cancellationToken)
+        using var stream = ToTranscriptDiffs(textChunks, language, cancellationToken)
             .Memoize(cancellationToken);
         var rpcStream = RpcStream.New(stream.Replay(cancellationToken));
-        var publishStreamTask = StreamingBackend.PushTranscript(streamId, rpcStream, cancellationToken);
+        // PushTextTranscript rather than PushTranscript: nothing else registers the speaker for a
+        // transcript with no audio, and without it the text cannot be spoken aloud later.
+        var publishStreamTask = StreamingBackend.PushTextTranscript(
+            streamId, chatId, authorId, rpcStream, cancellationToken);
 
         // The entry has to exist before the stream is drained: readers find the stream through
         // its ContentStreamId, so anything published earlier has no subscriber to reach.
@@ -116,6 +120,7 @@ public class TextEntryStreamer(IServiceProvider services)
 
     private async IAsyncEnumerable<TranscriptDiff> ToTranscriptDiffs(
         IAsyncEnumerable<string> textChunks,
+        Language? language,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         // Producers may push at any rate - an LLM emits a token at a time - but every diff costs a
@@ -131,8 +136,11 @@ public class TextEntryStreamer(IServiceProvider services)
             if (newText == text)
                 continue;
 
+            // The producer declares its language, so a transcript with no audio still says what
+            // it is - which is what lets it be spoken, and translated, later
             yield return new TranscriptDiff(StringDiff.New(newText, text), LinearMapDiff.None) {
                 IsStable = true,
+                Languages = language is { } l ? [l] : null,
             };
 
             text = newText;
