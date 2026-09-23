@@ -9,13 +9,11 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Locator, Page } from 'playwright';
 import {
-    BASE_URL, connectBrowser, ensureSignedIn, screenshot, skipOnboarding,
-    waitForChatReady, waitForEditor, type BrowserConnection,
+    connectBrowser, ensureSignedIn, openChat, screenshot, type BrowserConnection,
 } from './helpers';
 
 const shot = (name: string) => screenshot('e2e', `4486-language-setup-${name}`);
 
-const CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
 const TRANSCRIPTION_TAB = 'transcription';
 
 describe('language "(setup)" link opens the Voice & Transcription settings tab', () => {
@@ -46,9 +44,9 @@ describe('language "(setup)" link opens the Voice & Transcription settings tab',
         await openChat(page);
 
         // The language options button: a round button on a wide screen, a text button on a narrow one.
-        await page.locator('.transcription-options-btn, .volume-settings-btn').first().click({ force: true });
+        const optionsButton = page.locator('.transcription-options-btn, .volume-settings-btn').first();
         const modal = page.locator('.transcription-options-modal').first();
-        await modal.waitFor({ state: 'visible', timeout: 10_000 });
+        await openModal(page, optionsButton, modal, 'voice-modal');
         await page.screenshot({ path: shot('voice-modal') });
 
         // "(setup)" shows with 2+ languages; with one, the hint's "Settings" link opens the same tab.
@@ -68,10 +66,9 @@ describe('language "(setup)" link opens the Voice & Transcription settings tab',
             mustHideTranslationSubHeader = true;
         }
         await subHeader.waitFor({ state: 'visible', timeout: 10_000 });
-        await subHeader.locator('.c-language').first().click({ force: true });
 
         const modal = page.locator('.translation-language-modal').first();
-        await modal.waitFor({ state: 'visible', timeout: 10_000 });
+        await openModal(page, subHeader.locator('.c-language').first(), modal, 'translation-modal');
         await page.screenshot({ path: shot('translation-modal') });
         await modal.locator('.language-btn-group .c-edit').first().click({ force: true });
 
@@ -80,11 +77,18 @@ describe('language "(setup)" link opens the Voice & Transcription settings tab',
     }, 60_000);
 });
 
-async function openChat(page: Page) {
-    await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
-    await waitForChatReady(page);
-    await skipOnboarding(page);
-    await waitForEditor(page);
+// Both triggers sit in a panel that has just slid in, and force: true aims at the box as it
+// was measured - a single click can land beside the button and be lost with no trace at all.
+async function openModal(page: Page, trigger: Locator, modal: Locator, shotName: string) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+        await trigger.click({ force: true }).catch(() => { /* ignore */ });
+        const opened = await modal.waitFor({ state: 'visible', timeout: 5_000 })
+            .then(() => true).catch(() => false);
+        if (opened)
+            return;
+    }
+    await page.screenshot({ path: shot(`${shotName}-missing`) });
+    throw new Error(`The modal never opened: ${shotName}`);
 }
 
 async function expectTranscriptionTabSelected(page: Page, shotName: string) {

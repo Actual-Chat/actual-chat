@@ -18,14 +18,11 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import type { Page } from 'playwright';
 import {
-    BASE_URL, clearBrowserCache, connectBrowser, ensureSignedIn, skipOnboarding, screenshot,
-    waitForChatReady, waitForEditor, type BrowserConnection,
+    BASE_URL, clearBrowserCache, connectBrowser, ensureSignedIn, openChat, screenshot,
+    type BrowserConnection,
 } from './helpers';
 
 const shot = (name: string) => screenshot('e2e', name);
-
-// A shared chat the test user can join, so it has an editor + a panel host to share from.
-const CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
 
 // London -> Paris, to prove the marker tracks position updates.
 const START = { latitude: 51.5074, longitude: -0.1278, accuracy: 12 };
@@ -88,17 +85,7 @@ describe('location sharing', () => {
 
     it('shares location, shows the inline map panel + map marker, then stops', async () => {
         // arrange — open a chat we can post in
-        await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
-        await waitForChatReady(page);
-        await skipOnboarding(page);
-
-        const joinButton = page.locator('button:has-text("Join this chat")');
-        if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await joinButton.click();
-            await page.waitForTimeout(1500);
-        }
-
-        await waitForEditor(page);
+        await openChat(page);
 
         // act — open the "+" menu and start a share (arm the tile listener BEFORE the share
         // starts: the inline panel begins fetching tiles the moment it mounts)
@@ -204,17 +191,7 @@ describe('location sharing', () => {
 
     it('sends current location once as a message with an inline map', async () => {
         // arrange — open a chat we can post in
-        await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
-        await waitForChatReady(page);
-        await skipOnboarding(page);
-
-        const joinButton = page.locator('button:has-text("Join this chat")');
-        if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await joinButton.click();
-            await page.waitForTimeout(1500);
-        }
-
-        await waitForEditor(page);
+        await openChat(page);
         await conn.context.setGeolocation(START);
 
         // act — open the "+" menu and send the current location once
@@ -229,6 +206,9 @@ describe('location sharing', () => {
             r => TILE_URL_RE.test(r.url()) && r.ok(),
             { timeout: 20_000 });
         await modal.locator('.c-send-current').first().click();
+        // Sending dismisses the modal, and until it does ModalHost keeps everything outside it
+        // inert - so a click below would land on .layout-body instead of the message.
+        await modal.waitFor({ state: 'hidden', timeout: 15_000 });
 
         // assert — a one-shot location message appears in the chat stream with an inline map marker
         const locationMessage = page.locator('.location-message').last();
@@ -264,7 +244,25 @@ describe('location sharing', () => {
         expect(await locationMessage.locator('.maplibregl-interactive').count()).toBe(0);
 
         // act — clicking the message opens the interactive map modal
-        await locationMessage.click();
+        await locationMessage.click({ timeout: 30_000 }).catch(async (e: unknown) => {
+            const diag = await locationMessage.evaluate(el => {
+                const r = el.getBoundingClientRect();
+                const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+                const chain: string[] = [];
+                for (let n: Element | null = el; n; n = n.parentElement)
+                    chain.push(`${n.tagName}.${n.className}`
+                        + (n.hasAttribute('inert') ? ' [INERT]' : '')
+                        + (getComputedStyle(n).pointerEvents === 'none' ? ' [NO-PE]' : ''));
+                return {
+                    hit: at ? `${at.tagName}.${at.className}` : 'null',
+                    modals: document.querySelectorAll('[data-modal]').length,
+                    menus: document.querySelectorAll('.ac-menu-host .ac-menu').length,
+                    chain,
+                };
+            });
+            console.log('DIAG click intercepted:', JSON.stringify(diag, null, 1));
+            throw e;
+        });
         const mapModal = page.locator('.location-map-modal').first();
         await mapModal.waitFor({ state: 'visible', timeout: 10_000 });
 
@@ -284,17 +282,7 @@ describe('location sharing', () => {
 
     it('shows the stop-sharing button in the chat activity panel while sharing (#4088)', async () => {
         // arrange — open a chat we can post in
-        await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
-        await waitForChatReady(page);
-        await skipOnboarding(page);
-
-        const joinButton = page.locator('button:has-text("Join this chat")');
-        if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await joinButton.click();
-            await page.waitForTimeout(1500);
-        }
-
-        await waitForEditor(page);
+        await openChat(page);
         await conn.context.setGeolocation(START);
 
         // arrange — start recording (fake mic): the chat activity panel (the hang-up row
@@ -346,17 +334,7 @@ describe('location sharing', () => {
         ['8 hours', /^8h$/],
     ] as const) {
         it(`starts a live share for "${label}"`, async () => {
-            await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
-            await waitForChatReady(page);
-            await skipOnboarding(page);
-
-            const joinButton = page.locator('button:has-text("Join this chat")');
-            if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-                await joinButton.click();
-                await page.waitForTimeout(1500);
-            }
-
-            await waitForEditor(page);
+            await openChat(page);
             await conn.context.setGeolocation(START);
 
             await page.locator('.chat-message-editor .attach-btn').first().click({ force: true });
