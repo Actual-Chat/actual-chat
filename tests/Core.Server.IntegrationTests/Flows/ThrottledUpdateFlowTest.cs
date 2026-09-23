@@ -122,6 +122,70 @@ public sealed class ThrottledUpdateFlowTest(ThrottledUpdateFlowFixture fixture, 
     }
 
     [Fact]
+    public async Task ScheduledUpdateShouldNotStoreABlankFlowAhead()
+    {
+        // arrange
+        var target = $"test-{RandomStringGenerator.Default.Next()}";
+        var args = ThrottledUpdateFlow.GetArguments(target);
+        using var gate = GatedThrottledUpdateFlow.Close(target);
+
+        // act
+        await FlowHub.TryScheduleUpdate<GatedThrottledUpdateFlow>(target);
+        await WhenRunEntered(gate);
+        var flowWhileRunning = await FlowHub.TryGet<GatedThrottledUpdateFlow>(args);
+        gate.Open();
+
+        // assert
+        // A blank stored ahead of the first resume comes with a resume of its own - a second chain
+        flowWhileRunning.Should().BeNull("the first resume stores the flow, nothing stores it before that");
+        await WhenFirstRunCompleted(args);
+    }
+
+    [Fact]
+    public async Task ResumeOfMissingFlowShouldNotStoreABlankFlowAhead()
+    {
+        // arrange
+        var target = $"test-{RandomStringGenerator.Default.Next()}";
+        var args = ThrottledUpdateFlow.GetArguments(target);
+        using var gate = GatedThrottledUpdateFlow.Close(target);
+
+        // act
+        await FlowHub.NewResumeEvent<GatedThrottledUpdateFlow>(args).Schedule();
+        await WhenRunEntered(gate);
+        var flowWhileRunning = await FlowHub.TryGet<GatedThrottledUpdateFlow>(args);
+        gate.Open();
+
+        // assert
+        flowWhileRunning.Should().BeNull("the resume stores the flow on commit, nothing stores it before that");
+        await WhenFirstRunCompleted(args);
+    }
+
+    [Fact]
+    public async Task NewFlowShouldResumeOnlyWhenAsked()
+    {
+        // arrange
+        var target = $"test-{RandomStringGenerator.Default.Next()}";
+        var args = ThrottledUpdateFlow.GetArguments(target);
+        await FlowHub.TryScheduleUpdate<GatedThrottledUpdateFlow>(target);
+        await WhenFirstRunCompleted(args);
+
+        // act
+        var markerScheduledAt = FlowHub.SystemNow;
+        await FlowHub.NewResumeEvent<GatedThrottledUpdateFlow>(args).Schedule();
+
+        // assert
+        // A second chain's resume is sent with the first commit, well ahead of the marker.
+        // Polled: the resume times are a plain in-memory list, nothing invalidates on it
+        await TestWait.WhenPolled(
+            () => GatedThrottledUpdateFlow.GetResumeTimes(target)
+                .Should().Contain(x => x >= markerScheduledAt, "the marker resume must be handled"),
+            DefaultTimeout);
+
+        GatedThrottledUpdateFlow.GetResumeTimes(target)
+            .Should().HaveCount(2, "the first resume and the marker are the only ones asked for");
+    }
+
+    [Fact]
     public async Task TargetShouldSurviveArgumentsEncoding()
     {
         // arrange
@@ -153,6 +217,27 @@ public sealed class ThrottledUpdateFlowTest(ThrottledUpdateFlowFixture fixture, 
         args.Should().NotBe(target, "the target must be encoded");
         args.FromBase64().Should().Be(target, "the encoding must be reversible");
     }
+
+    // Private methods
+
+    private static Task WhenRunEntered(
+        GatedThrottledUpdateFlow.Gate gate,
+        [CallerFilePath] string callerFilePath = "",
+        [CallerLineNumber] int callerLine = 0)
+        // Polled: the gate is a plain task, nothing invalidates on it
+        => TestWait.WhenPolled(
+            () => gate.Entered.Task.IsCompleted.Should().BeTrue("the first resume must reach Run()"),
+            DefaultTimeout, callerFilePath: callerFilePath, callerLine: callerLine);
+
+    private Task WhenFirstRunCompleted(
+        string args,
+        [CallerFilePath] string callerFilePath = "",
+        [CallerLineNumber] int callerLine = 0)
+        => TestWait.When(async ct => {
+            var flow = await FlowHub.TryGet<GatedThrottledUpdateFlow>(args, ct);
+            flow.Should().NotBeNull("the first resume must store the flow");
+            flow!.SuccessCount.Should().Be(1, "the first run must complete once the gate opens");
+        }, DefaultTimeout, callerFilePath: callerFilePath, callerLine: callerLine);
 }
 
 [CollectionDefinition(nameof(ThrottledUpdateFlowCollection))]
@@ -165,6 +250,7 @@ public sealed class ThrottledUpdateFlowFixture(IMessageSink messageSink) : Actua
         ConfigureServices = (_, services) => {
             services.AddFlows()
                 .Add<SimpleThrottledUpdateFlow>()
-                .Add<LongThrottledUpdateFlow>();
+                .Add<LongThrottledUpdateFlow>()
+                .Add<GatedThrottledUpdateFlow>();
         },
     });

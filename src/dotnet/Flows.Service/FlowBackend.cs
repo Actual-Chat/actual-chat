@@ -1,6 +1,7 @@
 using ActualChat.Db;
 using ActualChat.Flows.Db;
 using ActualChat.Flows.Infrastructure;
+using ActualLab.CommandR.Operations;
 using ActualLab.Diagnostics;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Locking;
@@ -68,9 +69,13 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
             var flow = (IFlowImpl)flowDef.Type.CreateInstance();
             var console = new FlowConsole(flow);
             flow.SetProperties(flowId, 0, 0, null, console);
+            // A blank comes to life only through this resume, so it's stored along with the blank's insert
+            var resumeEvent = (IOperationEventSource)FlowHub.NewResumeEvent(flowId);
+            var resumeOperationEvent = resumeEvent.ToOperationEvent(Services);
             do {
                 var storeCommand = new Flows_Store(flow.Id, existingVersion) {
                     Flow = (Flow)flow,
+                    Events = [resumeOperationEvent],
                 };
                 existingVersion = await Commander.Call(storeCommand, ct).ConfigureAwait(false);
             }
@@ -188,7 +193,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 
             Flow originalFlow;
             using (Computed.BeginIsolation()) // Not needed inside a command handler, but let's be safe
-                originalFlow = await FlowHub.Get(flowId, ct).ConfigureAwait(false);
+                originalFlow = await GetOrNewFlow(flowId, flowDef, ct).ConfigureAwait(false);
             if (originalFlow.UntypedResult is not null && !resumeEvent.MustReset)
                 return originalFlow.Version; // The flow has already completed, so all subsequent events are ignored
 
@@ -250,11 +255,6 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                 dbFlow = new DbFlow(flow);
                 dbFlow.Version = VersionGenerator.NextVersion(dbFlow.Version);
                 dbContext.Add(dbFlow);
-
-                // Any new flow requires a resume event.
-                // NOTE(2026-08): OnResume creates a missing flow through this same path, so one
-                // created while resuming gets an extra resume - it splits a DelayQuanta=0 chain in two.
-                context.Operation.AddEvent(FlowHub.NewResumeEvent(flowId));
             }
             else { // Update
                 if (!VersionChecker.IsExpected(dbFlow.Version, expectedVersion))
@@ -328,6 +328,28 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
     }
 
     // Private methods
+
+    private async Task<Flow> GetOrNewFlow(FlowId flowId, FlowDef flowDef, CancellationToken cancellationToken)
+    {
+        // A cached miss can predate a Start that has just stored the flow, and a new instance committed
+        // over it would fail the version check - so a miss is rechecked in the DB before it's trusted.
+        var flowData = await TryGetData(flowId, cancellationToken).ConfigureAwait(false);
+        if (flowData is null) {
+            var dbFlow = await EntityResolver.Get(flowId.Value, cancellationToken).ConfigureAwait(false);
+            if (dbFlow is not null) {
+                flowData = dbFlow.ToFlowData(flowDef.Type, flowId);
+                // Otherwise the miss stays cached if this resume exits without a commit (completed flow)
+                await _flowDataPrimer.Prime(flowId, dbFlow.Version, flowData, CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+        }
+        if (flowData is not null)
+            return flowData.GetFlow(FlowHub);
+
+        var flow = (IFlowImpl)flowDef.Type.CreateInstance();
+        flow.SetProperties(flowId, 0, 0, null, new FlowConsole(flow));
+        return (Flow)flow;
+    }
 
     // A PeriodicFlow always reschedules itself, so a non-completed one without a pending
     // resume event has lost its wake-up = genuinely stuck. Other flow types legitimately
