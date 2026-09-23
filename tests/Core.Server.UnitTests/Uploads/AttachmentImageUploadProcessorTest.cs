@@ -75,6 +75,27 @@ public class AttachmentImageUploadProcessorTest : IDisposable
         result.File.Should().BeSameAs(upload);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShouldStoreHeicAsImageSizedFromItsBoxes(bool keepMetadata)
+    {
+        // arrange - ImageSharp can't open HEIC, which used to turn every original HEIC into a file
+        var data = TestImages.CreateHeif(4032, 3024, 270, HeifReaderTest.Exif("GPSSECRET"));
+        var upload = TestImages.CreateUploadedFile("photo.heic", "image/heic", data) with {
+            KeepMetadata = keepMetadata,
+        };
+
+        // act
+        var result = await Process(upload);
+        var stored = await ReadAll(result.File);
+
+        // assert
+        result.File.ContentType.Should().Be("image/heic");
+        result.Size.Should().Be(new Size2D(3024, 4032));
+        stored.Should().Equal(keepMetadata ? data : ImageMetadataStripper.Strip(data));
+    }
+
     [Fact]
     public async Task ShouldReportDisplayDimensionsForRotatedPhotos()
     {

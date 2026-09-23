@@ -151,6 +151,38 @@ public class ImageMetadataStripperTest
         result.Should().Equal(Concat(Ascii("RIFF"), BitConverter.GetBytes((uint)expectedBody.Length), expectedBody));
     }
 
+    [Fact]
+    public void HeifShouldBlankExifAndXmpInPlaceWithoutMovingImageData()
+    {
+        // arrange
+        var input = TestImages.CreateHeif(
+            4032, 3024, 270, HeifReaderTest.Exif("GPSSECRET"), Ascii("<x:xmpmeta>creator</x:xmpmeta>"));
+
+        // act
+        var result = ImageMetadataStripper.Strip(input);
+
+        // assert
+        result.Should().HaveCount(input.Length, "HEIF items are found by absolute offsets, so nothing may move");
+        Contains(result, "GPSSECRET").Should().BeFalse();
+        Contains(result, "creator").Should().BeFalse();
+        result.AsSpan().IndexOf(TestImages.HeifImageData).Should().Be(input.AsSpan().IndexOf(TestImages.HeifImageData));
+        HeifReader.ReadDisplaySize(result).Should().Be(new Size2D(3024, 4032));
+        ImageMetadataStripper.Strip(result).Should().BeSameAs(result, "stripping twice must change nothing");
+    }
+
+    [Fact]
+    public void HeifShouldKeepHdrGainMapXmp()
+    {
+        // arrange
+        var input = TestImages.CreateHeif(640, 480, xmp: Ascii("<x hdrgm:Version=\"1.0\"/>"));
+
+        // act
+        var result = ImageMetadataStripper.Strip(input);
+
+        // assert
+        result.Should().BeSameAs(input);
+    }
+
     // Private methods
 
     private static byte[] ExifPayload(byte orientation)

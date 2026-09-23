@@ -345,7 +345,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `IMediaSaver` - Media saver.
 - `IUploadProcessor` - Upload processor.
 - `AttachmentImageUploadProcessor` - Stores a client-prepared attachment image as-is, reading its size and stripping metadata.
-- `ImageMetadataStripper` (static class) - Lossless EXIF/XMP/IPTC/text metadata removal from JPEG, PNG and WebP.
+- `ImageMetadataStripper` (static class) - Lossless EXIF/XMP/IPTC/text metadata removal from JPEG, PNG, WebP and HEIF.
+- `HeifReader` (static class) - Reads a HEIC/HEIF's display size and Exif/XMP item locations from its boxes (ImageSharp can't open HEIF).
 - `ProcessedFile` (record) - Processed file.
 - `UploadedFile` (record) - Uploaded file.
 - `UploadedStreamFile` - Uploaded stream file.

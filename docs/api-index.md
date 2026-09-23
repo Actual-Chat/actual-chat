@@ -264,7 +264,8 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 ### Media Processing
 - `IUploadProcessor` — processes uploaded files
 - `AttachmentImageUploadProcessor` — stores a client-prepared attachment image as-is: reads its size and strips metadata
-- `ImageMetadataStripper` — lossless EXIF/XMP/IPTC/text metadata removal from JPEG, PNG and WebP
+- `ImageMetadataStripper` — lossless EXIF/XMP/IPTC/text metadata removal from JPEG, PNG, WebP and HEIF
+- `HeifReader` — HEIC/HEIF display size and Exif/XMP item locations, read from the boxes (ImageSharp can't open HEIF)
 - `IMediaProcessor` — processes media content
 - `IContentSaver` — saves content to blob storage
 

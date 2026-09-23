@@ -3,8 +3,8 @@ using System.Buffers.Binary;
 namespace ActualChat.Uploads;
 
 /// <summary>
-/// Removes EXIF, XMP, IPTC and text metadata from JPEG, PNG and WebP files without touching image data.
-/// Same rules as <c>src/nodejs/src/image-processing/metadata-stripper.ts</c>.
+/// Removes EXIF, XMP, IPTC and text metadata from JPEG, PNG, WebP and HEIF files without touching image data.
+/// Same rules as <c>src/nodejs/src/image-processing/metadata-stripper.ts</c>, which has no HEIF branch.
 /// </summary>
 public static class ImageMetadataStripper
 {
@@ -15,13 +15,16 @@ public static class ImageMetadataStripper
     private static ReadOnlySpan<byte> XmpHeader => "http://ns.adobe.com/xap/1.0/\0"u8;
     private static ReadOnlySpan<byte> HdrGainMapNamespace => "hdrgm"u8;
     private static ReadOnlySpan<byte> MpfHeader => "MPF\0"u8;
+    // Big-endian TIFF with an IFD0 of zero entries and no next IFD
+    private static ReadOnlySpan<byte> EmptyTiff => [0x4D, 0x4D, 0x00, 0x2A, 0, 0, 0, 0x08, 0, 0, 0, 0, 0, 0];
 
     public static byte[] Strip(byte[] data)
-        // Returns data itself when nothing changes, the format isn't JPEG/PNG/WebP, or the file is malformed
+        // Returns data itself when nothing changes, the format isn't supported, or the file is malformed
         => BlobContentTypeDetector.Detect(data) switch {
             "image/jpeg" => StripJpeg(data),
             "image/png" => StripPng(data),
             "image/webp" => StripWebp(data),
+            "image/heic" or "image/heif" => StripHeif(data),
             _ => data,
         };
 
@@ -185,6 +188,40 @@ public static class ImageMetadataStripper
         if (result.Length > 20 && result.AsSpan(12, 4).SequenceEqual("VP8X"u8))
             result[20] &= unchecked((byte)~WebpMetadataFlags);
         return result;
+    }
+
+    private static byte[] StripHeif(byte[] data)
+    {
+        // HEIF items are addressed by absolute file offsets, so metadata is blanked in place rather than
+        // cut out: Exif becomes an empty TIFF, XMP becomes whitespace, and no byte of the image moves.
+        // Orientation lives in the irot/imir properties here, never in Exif, so nothing needs keeping.
+        var ranges = HeifReader.GetMetadataRanges(data, mustKeepHdrXmp: true);
+        if (ranges is null || ranges.Count == 0)
+            return data;
+
+        var result = (byte[])data.Clone();
+        foreach (var (range, isExif) in ranges) {
+            var item = result.AsSpan(range);
+            if (isExif)
+                BlankExifItem(item);
+            else
+                item.Fill((byte)' ');
+        }
+        return result.AsSpan().SequenceEqual(data) ? data : result;
+    }
+
+    private static void BlankExifItem(Span<byte> item)
+    {
+        // The item starts with the offset of the TIFF header behind it (usually past "Exif\0\0")
+        var tiffStart = item.Length >= 4 ? 4L + BinaryPrimitives.ReadUInt32BigEndian(item) : long.MaxValue;
+        if (tiffStart + EmptyTiff.Length > item.Length) {
+            item.Clear();
+            return;
+        }
+
+        var tiff = item[(int)tiffStart..];
+        tiff.Clear();
+        EmptyTiff.CopyTo(tiff);
     }
 
     private static bool IsDroppedPngChunk(ReadOnlySpan<byte> type)

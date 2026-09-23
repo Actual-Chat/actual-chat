@@ -24,27 +24,30 @@ public sealed class AttachmentImageUploadProcessor(IServiceProvider services) : 
     {
         progress?.Report(0);
         var isGif = MediaTypeExt.IsGif(upload.ContentType);
-        // A strippable upload is read once here: every Open() is another full download from blob storage
-        var mustStrip = !isGif && !upload.KeepMetadata && upload.Length <= MaxStrippableLength;
-        var (imageInfo, data) = await Read(upload, mustStrip, cancellationToken).ConfigureAwait(false);
-        if (imageInfo is null)
+        var isHeif = MediaTypeExt.IsHeif(upload.ContentType);
+        var isStrippableLength = upload.Length <= MaxStrippableLength;
+        // A strippable upload is read once here: every Open() is another full download from blob storage.
+        // A HEIF is always buffered too - ImageSharp can't open it, so its size comes from its boxes.
+        var mustStrip = !isGif && !upload.KeepMetadata && isStrippableLength;
+        var mustBuffer = mustStrip || (isHeif && isStrippableLength);
+        var (readSize, data) = await Read(upload, isHeif, mustBuffer, cancellationToken).ConfigureAwait(false);
+        if (readSize is not { } size)
             return new ProcessedFile(upload.AsBinaryFile(), null);
 
         // Nothing is decoded here, so the bound is the stored-image limit rather than the decode limit
-        var isWithinBounds = imageInfo.Width <= Constants.Attachments.MaxImageSize
-            && imageInfo.Height <= Constants.Attachments.MaxImageSize
-            && (long)imageInfo.Width * imageInfo.Height <= Constants.Attachments.MaxImagePixelCount;
+        var isWithinBounds = size.Width <= Constants.Attachments.MaxImageSize
+            && size.Height <= Constants.Attachments.MaxImageSize
+            && (long)size.Width * size.Height <= Constants.Attachments.MaxImagePixelCount;
         if (!isWithinBounds) {
             // Storing it as a file keeps the bytes the sender chose; rejecting after Send would not
             Log.LogInformation("'{FileName}': {Width}x{Height} exceeds the stored-image bounds, keeping it as a file",
-                upload.FileName, imageInfo.Width, imageInfo.Height);
-            var oversizedFile = data is null
+                upload.FileName, size.Width, size.Height);
+            var oversizedFile = data is null || upload.KeepMetadata
                 ? upload
                 : await StripMetadata(upload, data, cancellationToken).ConfigureAwait(false);
             return new ProcessedFile(oversizedFile.AsBinaryFile(), null);
         }
 
-        var size = GetDisplaySize(imageInfo);
         if (isGif)
             return new ProcessedFile(upload, size);
         if (upload.KeepMetadata)
@@ -61,25 +64,34 @@ public sealed class AttachmentImageUploadProcessor(IServiceProvider services) : 
 
     // Private methods
 
-    private async Task<(ImageInfo? ImageInfo, byte[]? Data)> Read(
+    private async Task<(Size2D? Size, byte[]? Data)> Read(
         UploadedFile upload,
-        bool mustStrip,
+        bool isHeif,
+        bool mustBuffer,
         CancellationToken cancellationToken)
     {
         try {
             var stream = await upload.Open().ConfigureAwait(false);
             await using var _ = stream.ConfigureAwait(false);
-            if (!mustStrip) {
+            if (!mustBuffer) {
+                if (isHeif) {
+                    Log.LogWarning("'{FileName}' is too large to read as HEIF ({Length} bytes)",
+                        upload.FileName, upload.Length);
+                    return (null, null);
+                }
+
                 var streamed = await Image
                     .IdentifyAsync(ImageLimits.DecoderOptions, stream, cancellationToken)
                     .ConfigureAwait(false);
-                return (streamed, null);
+                return (GetDisplaySize(streamed), null);
             }
 
             using var buffer = new MemoryStream();
             await stream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
             var data = buffer.ToArray();
-            return (Image.Identify(ImageLimits.DecoderOptions, data), data);
+            // The content type is only what the sender claimed, so a mislabelled file still gets identified
+            var heifSize = isHeif ? HeifReader.ReadDisplaySize(data) : null;
+            return (heifSize ?? GetDisplaySize(Image.Identify(ImageLimits.DecoderOptions, data)), data);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to extract image info from '{FileName}'", upload.FileName);

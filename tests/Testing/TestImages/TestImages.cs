@@ -113,7 +113,83 @@ public static class TestImages
     public static UploadedStreamFile CreateUploadedFile(string fileName, string contentType, byte[] data)
         => new(fileName, contentType, data.Length, () => Task.FromResult<Stream>(new MemoryStream(data)));
 
+    // A structurally valid HEIC with no decodable picture: the primary item's bytes are a fixed marker,
+    // so a test can tell whether they moved. An item stored in idat uses iloc construction method 1.
+    public static byte[] CreateHeif(
+        int width,
+        int height,
+        int rotation = 0,
+        byte[]? exif = null,
+        byte[]? xmp = null,
+        bool isXmpInIdat = false)
+    {
+        var items = new List<(ushort Id, string Type, byte[] Data, bool IsInIdat)> {
+            (1, "hvc1", HeifImageData.ToArray(), false),
+        };
+        if (exif is not null)
+            items.Add((2, "Exif", exif, false));
+        if (xmp is not null)
+            items.Add((3, "mime", xmp, isXmpInIdat));
+
+        var ftyp = HeifBox("ftyp", [.."heic"u8, 0, 0, 0, 0, .."mif1"u8, .."heic"u8]);
+        var idat = items.Where(i => i.IsInIdat).SelectMany(i => i.Data).ToArray();
+        // iloc offsets depend on the meta box size, which doesn't depend on the offsets' values
+        var meta = CreateHeifMeta(items, rotation, width, height, idat, 0);
+        var mdatStart = ftyp.Length + meta.Length + 8;
+        meta = CreateHeifMeta(items, rotation, width, height, idat, mdatStart);
+        var mdat = HeifBox("mdat", items.Where(i => !i.IsInIdat).SelectMany(i => i.Data).ToArray());
+        return [..ftyp, ..meta, ..mdat];
+    }
+
+    public static ReadOnlySpan<byte> HeifImageData => "HEVC-IMAGE-DATA-MARKER"u8;
+
     // Private methods
+
+    private static byte[] CreateHeifMeta(
+        List<(ushort Id, string Type, byte[] Data, bool IsInIdat)> items,
+        int rotation,
+        int width,
+        int height,
+        byte[] idat,
+        int mdatStart)
+    {
+        var hdlr = HeifBox("hdlr", [0, 0, 0, 0, 0, 0, 0, 0, .."pict"u8, .. new byte[12], 0]);
+        var pitm = HeifBox("pitm", [0, 0, 0, 0, 0, 1]);
+        var infos = items.SelectMany(i => HeifBox("infe", [
+            2, 0, 0, 0, 0, (byte)i.Id, 0, 0, ..System.Text.Encoding.ASCII.GetBytes(i.Type), 0,
+            ..(i.Type == "mime" ? [.."application/rdf+xml"u8, 0] : Array.Empty<byte>()),
+        ])).ToArray();
+        var iinf = HeifBox("iinf", [0, 0, 0, 0, 0, (byte)items.Count, ..infos]);
+        var ispe = HeifBox("ispe", [0, 0, 0, 0, ..BigEndian(width), ..BigEndian(height)]);
+        var irot = HeifBox("irot", [(byte)(rotation / 90 & 3)]);
+        var ipco = HeifBox("ipco", [..ispe, ..irot]);
+        var ipma = HeifBox("ipma", [0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 2, 0x81, 0x02]);
+        var iprp = HeifBox("iprp", [..ipco, ..ipma]);
+        var locations = new List<byte>();
+        int mdatOffset = mdatStart, idatOffset = 0;
+        foreach (var item in items) {
+            var offset = item.IsInIdat ? idatOffset : mdatOffset;
+            locations.AddRange([0, (byte)item.Id, 0, (byte)(item.IsInIdat ? 1 : 0), 0, 0, 0, 1]);
+            locations.AddRange([..BigEndian(offset), ..BigEndian(item.Data.Length)]);
+            if (item.IsInIdat)
+                idatOffset += item.Data.Length;
+            else
+                mdatOffset += item.Data.Length;
+        }
+        var iloc = HeifBox("iloc", [1, 0, 0, 0, 0x44, 0x00, 0, (byte)items.Count, ..locations]);
+        var idatBox = idat.Length > 0 ? HeifBox("idat", idat) : [];
+        return HeifBox("meta", [0, 0, 0, 0, ..hdlr, ..pitm, ..iinf, ..iprp, ..idatBox, ..iloc]);
+    }
+
+    private static byte[] HeifBox(string type, byte[] body)
+        => [..BigEndian(8 + body.Length), ..System.Text.Encoding.ASCII.GetBytes(type), ..body];
+
+    private static byte[] BigEndian(int value)
+    {
+        var result = new byte[4];
+        BinaryPrimitives.WriteInt32BigEndian(result, value);
+        return result;
+    }
 
     private static uint Crc32(ReadOnlySpan<byte> data)
     {
