@@ -270,13 +270,21 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
 
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
-        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var aliceAccount = await tester.SignInAsUniqueAlice();
+        var carolAccount = await tester.SignInAsNew("Carol");
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(false);
+        var authors = tester.AppServices.GetRequiredService<IAuthorsBackend>();
+        var bob = (await tester.GetOwnAuthor(chatId))!;
+        var alice = await authors.EnsureJoined(chatId, aliceAccount.Id, default);
+        var carol = await authors.EnsureJoined(chatId, carolAccount.Id, default);
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
         await backend.AcceptCall(chatId, alice.Id, default);
-        // Nobody is recording any more, so FinalizeSession gets past its own liveness guard.
+        // Nobody records, and Bob is the call's only party present - Carol is in the chat, not in the
+        // call - so FinalizeSession gets past its own liveness guard. Carol is the ghost to clear.
         await backend.SetParticipation(chatId, bob.Id, ParticipationKind.AudioListen, true, default);
-        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.AudioListen, true, default);
+        await backend.SetParticipation(chatId, carol.Id, ParticipationKind.AudioListen, true, default);
 
         // act
         using var cts = new CancellationTokenSource();
