@@ -1904,6 +1904,39 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task AcceptCallShouldRestartClaimGraceOfBothSides()
+    {
+        // arrange - a claim past ClaimGrace is checked against the session, and across pods the answer's
+        // recompute can read it before the accept does (#4749); a fresh SinceAt is what covers that
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        var ringing = await callsBackend.GetUserCall(aliceAuthor.UserId, default);
+        var dialing = await callsBackend.GetUserCall(bobAuthor.UserId, default);
+        await Task.Delay(TimeSpan.FromMilliseconds(100));
+
+        // act
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // assert - read at once: AcceptCall awaits both claims, and with nobody streaming the call closes
+        // at CallConnectGrace, taking the claims with it
+        var aliceCall = await callsBackend.GetUserCall(aliceAuthor.UserId, default);
+        var bobCall = await callsBackend.GetUserCall(bobAuthor.UserId, default);
+        aliceCall!.Phase.Should().Be(CallPhase.Active);
+        aliceCall.SinceAt.Should().BeGreaterThan(ringing!.SinceAt);
+        bobCall!.Phase.Should().Be(CallPhase.Active);
+        bobCall.SinceAt.Should().BeGreaterThan(dialing!.SinceAt);
+    }
+
+    [Fact]
     public async Task AnswerAfterCancelShouldBeRejected()
     {
         // arrange - CancelCall marks the ring Missed too, well inside AnswerGrace
