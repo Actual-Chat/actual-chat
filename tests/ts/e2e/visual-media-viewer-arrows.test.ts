@@ -11,8 +11,8 @@ import type { Page } from 'playwright';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-    BASE_URL, connectBrowser, ensureSignedIn, skipOnboarding, screenshot,
-    waitForChatReady, waitForEditor, type BrowserConnection,
+    DEFAULT_CHAT_URL, connectBrowser, ensureSignedIn, openChat, skipOnboarding, screenshot,
+    waitForChatReady, withUILanguage, type BrowserConnection,
 } from './helpers';
 
 // Real 32x32 JPEG from the .NET test fixtures — small but valid enough that
@@ -23,8 +23,6 @@ const BASE_IMAGE_PATH = path.resolve(
 );
 
 const shot = (name: string) => screenshot('e2e', name);
-
-const CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
 
 // Reads the main media Swiper's activeIndex directly off the web component.
 async function activeIndex(page: Page): Promise<number> {
@@ -80,17 +78,7 @@ describe('visual media viewer arrow navigation', () => {
 
     it('switches between media items with Left/Right arrows', async () => {
         // arrange — open a chat we can post in
-        await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
-        await waitForChatReady(page);
-        await skipOnboarding(page);
-
-        const joinButton = page.locator('button:has-text("Join this chat")');
-        if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await joinButton.click();
-            await page.waitForTimeout(1500);
-        }
-
-        await waitForEditor(page);
+        await openChat(page);
 
         // act — attach three images and post a message with a unique marker tag
         const fileInput = page.locator('input.attachment-web-file-picker').first();
@@ -119,7 +107,7 @@ describe('visual media viewer arrow navigation', () => {
 
         // The chat-view unmounts briefly after a post; re-navigate to re-render it.
         await page.waitForTimeout(2_000);
-        await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
+        await page.goto(withUILanguage(DEFAULT_CHAT_URL), { waitUntil: 'domcontentloaded' });
         await waitForChatReady(page);
         await skipOnboarding(page);
 

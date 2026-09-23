@@ -14,18 +14,10 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
-    BASE_URL, connectBrowser, ensureSignedIn, skipOnboarding,
-    screenshot, waitForChatReady, waitForEditor, type BrowserConnection,
+    connectBrowser, ensureSignedIn, openChat, screenshot, type BrowserConnection,
 } from './helpers';
 
-const CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
 const tag = `#e2etag${Date.now()}`;
-
-async function openChat(page: Page) {
-    await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
-    await waitForChatReady(page);
-    await skipOnboarding(page);
-}
 
 describe('hashtag click-to-search', () => {
     let conn: BrowserConnection;
@@ -51,13 +43,6 @@ describe('hashtag click-to-search', () => {
     it('posts a message with a hashtag and renders it as hashtag markup', async () => {
         await openChat(page);
 
-        const joinButton = page.locator('button:has-text("Join this chat")');
-        if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await joinButton.click();
-            await page.waitForTimeout(2000);
-        }
-
-        await waitForEditor(page);
         const messageInput = page.locator('#message-input .editor-content[contenteditable="true"]').first();
         await messageInput.click({ force: true });
         await page.waitForTimeout(200);

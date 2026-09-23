@@ -9,8 +9,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
-    BASE_URL, connectBrowser, ensureSignedIn, screenshot,
-    skipOnboarding, waitForChatReady, type BrowserConnection,
+    BASE_URL, connectBrowser, ensureSignedIn, openChat, screenshot, type BrowserConnection,
 } from './helpers';
 
 const shot = (name: string) => screenshot('e2e', `preformatted-${name}`);
@@ -36,15 +35,7 @@ describe('preformatted text markup copy-on-click', () => {
     });
 
     it('sends a chat message containing preformatted text', async () => {
-        await page.goto(`${BASE_URL}/chat/the-actual-one`, { waitUntil: 'domcontentloaded' });
-        await waitForChatReady(page);
-        await skipOnboarding(page);
-
-        const joinButton = page.locator('button:has-text("Join this chat")');
-        if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await joinButton.click();
-            await page.waitForTimeout(2000);
-        }
+        await openChat(page);
 
         const messageInput = page.locator('#message-input .editor-content[contenteditable="true"]').first();
         await messageInput.waitFor({ state: 'visible', timeout: 15_000 });

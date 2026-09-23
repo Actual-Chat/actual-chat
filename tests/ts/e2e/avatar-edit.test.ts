@@ -14,7 +14,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
     BASE_URL, connectBrowser, dismissCookieConsent, skipOnboarding,
-    isSignedIn, signIn, screenshot, waitForAppReady, type BrowserConnection,
+    isSignedIn, signIn, screenshot, waitForAppReady, withUILanguage, type BrowserConnection,
 } from './helpers';
 
 const shot = (name: string) => screenshot('e2e', name);
@@ -25,7 +25,7 @@ const shot = (name: string) => screenshot('e2e', name);
 async function openSettings(page: Page) {
     const settingsModal = page.locator('.settings-modal');
     for (let attempt = 0; attempt < 3; attempt++) {
-        await page.goto(`${BASE_URL}/settings`, { waitUntil: 'domcontentloaded' });
+        await page.goto(withUILanguage(`${BASE_URL}/settings`), { waitUntil: 'domcontentloaded' });
         await skipOnboarding(page);
         const visible = await settingsModal.waitFor({ state: 'visible', timeout: 15_000 })
             .then(() => true).catch(() => false);
@@ -62,7 +62,7 @@ describe('avatar editing', () => {
         conn = await connectBrowser();
         page = await conn.context.newPage();
 
-        await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        await page.goto(withUILanguage(BASE_URL), { waitUntil: 'domcontentloaded', timeout: 15000 });
         await waitForAppReady(page);
         await dismissCookieConsent(page);
 

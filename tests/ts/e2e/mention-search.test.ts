@@ -15,8 +15,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
-    BASE_URL, connectBrowser, ensureSignedIn, skipOnboarding,
-    screenshot, waitForChatReady, type BrowserConnection,
+    DEFAULT_CHAT_URL, connectBrowser, ensureSignedIn, joinChat, skipOnboarding,
+    screenshot, waitForChatReady, withUILanguage, type BrowserConnection,
 } from './helpers';
 
 async function clearEditor(page: Page) {
@@ -37,7 +37,7 @@ async function clearEditor(page: Page) {
 async function ensureEditorReady(page: Page) {
     const editor = page.locator('#message-input .editor-content[contenteditable="true"]').first();
     if (!await editor.isVisible({ timeout: 1500 }).catch(() => false)) {
-        await page.goto(`${BASE_URL}/chat/the-actual-one`, { waitUntil: 'domcontentloaded' });
+        await page.goto(withUILanguage(DEFAULT_CHAT_URL), { waitUntil: 'domcontentloaded' });
         await waitForChatReady(page);
         await editor.waitFor({ state: 'visible', timeout: 15_000 });
     }
@@ -56,16 +56,11 @@ describe('mention search', () => {
         await ensureSignedIn(page);
 
         // Navigate to a chat with multiple members
-        await page.goto(`${BASE_URL}/chat/the-actual-one`, { waitUntil: 'domcontentloaded' });
+        await page.goto(withUILanguage(DEFAULT_CHAT_URL), { waitUntil: 'domcontentloaded' });
         await waitForChatReady(page);
         await skipOnboarding(page);
 
-        // Join if needed
-        const joinButton = page.locator('button:has-text("Join this chat")');
-        if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await joinButton.click();
-            await waitForChatReady(page);
-        }
+        await joinChat(page);
 
         // Wait for editor without skipOnboarding-on-failure — once the chat panel
         // is mounted, calling skipOnboarding again can unmount it via resetOnboarding's

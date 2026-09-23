@@ -21,13 +21,11 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import type { BrowserContext, Page } from 'playwright';
 import {
-    BASE_URL, TEST_EMAIL, TEST_EMAIL_2, connectBrowser, newUserContext, screenshot,
-    skipOnboarding, waitForChatReady, waitForEditor, type BrowserConnection,
+    TEST_EMAIL, TEST_EMAIL_2, connectBrowser, newUserContext, openChat, screenshot,
+    type BrowserConnection,
 } from './helpers';
 
 const shot = (name: string) => screenshot('e2e-multi', name);
-
-const CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
 
 // Distinct positions so each user's marker is unmistakably their own.
 const ALICE_START = { latitude: 51.5074, longitude: -0.1278, accuracy: 12 }; // London
@@ -40,19 +38,6 @@ const TILE_URL_RE = /maps[.-][^/]*\.(?:voxt\.ai|actual\.chat)\/(?:planet\/.*\.pb
 const tileLoaded = (page: Page) => page.waitForResponse(
     r => TILE_URL_RE.test(r.url()) && r.ok(),
     { timeout: 30_000 });
-
-async function openChat(page: Page) {
-    await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
-    await waitForChatReady(page);
-    await skipOnboarding(page);
-
-    const joinButton = page.locator('button:has-text("Join this chat")');
-    if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await joinButton.click();
-        await page.waitForTimeout(1500);
-    }
-    await waitForEditor(page);
-}
 
 // A failed test must not leak its live share into the next run: re-sharing over an
 // active share mints a NEW SharedLocation and orphans the old row server-side, where

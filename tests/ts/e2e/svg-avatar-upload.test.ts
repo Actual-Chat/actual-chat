@@ -21,7 +21,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {
     BASE_URL, connectBrowser, ensureSignedIn, skipOnboarding,
-    screenshot, waitForAppReady, type BrowserConnection,
+    screenshot, waitForAppReady, withUILanguage, type BrowserConnection,
 } from './helpers';
 
 // Simple SVG test file — a colored circle with text
@@ -94,7 +94,7 @@ describe('SVG avatar upload', () => {
     }, 30_000);
 
     it('should upload SVG avatar through the settings UI and convert to PNG', async () => {
-        await page.goto(`${BASE_URL}/settings`, { waitUntil: 'domcontentloaded' });
+        await page.goto(withUILanguage(`${BASE_URL}/settings`), { waitUntil: 'domcontentloaded' });
         await waitForAppReady(page);
         await skipOnboarding(page);
 
@@ -162,7 +162,7 @@ describe('SVG avatar upload', () => {
     }, 60_000);
 
     it('should upload SVG picture in New Chat modal and convert to PNG', async () => {
-        await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
+        await page.goto(withUILanguage(BASE_URL), { waitUntil: 'domcontentloaded' });
         await waitForAppReady(page);
         await skipOnboarding(page);
 

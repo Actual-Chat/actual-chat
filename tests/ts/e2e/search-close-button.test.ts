@@ -11,7 +11,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import type { Page } from 'playwright';
 import {
     BASE_URL, connectBrowser, ensureSignedIn, skipOnboarding,
-    screenshot, type BrowserConnection,
+    screenshot, withUILanguage, type BrowserConnection,
 } from './helpers';
 
 const searchRoot = (page: Page) => page.locator('.left-chat-search-input').first();
@@ -50,7 +50,7 @@ describe('search close button', () => {
         conn = await connectBrowser();
         page = await conn.context.newPage();
         await ensureSignedIn(page);
-        await page.goto(`${BASE_URL}/chat`, { waitUntil: 'domcontentloaded' });
+        await page.goto(withUILanguage(`${BASE_URL}/chat`), { waitUntil: 'domcontentloaded' });
         await skipOnboarding(page);
         await searchInput(page).waitFor({ state: 'visible', timeout: 30_000 });
     }, 90_000);
