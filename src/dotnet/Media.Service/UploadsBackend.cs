@@ -59,7 +59,9 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             return;
         }
         var upload = new Upload(uploadId, command.UserId, command.Length, command.Tag, command.Metadata);
-        var contentType = upload.ContentType.NullIfEmpty() ?? MediaMimeTypes.GetMimeType(upload.FileName);
+        // Clients can't be trusted to type a HEIC: Chrome on Windows and Android's picker send octet-stream
+        var contentType = MediaTypeExt.NormalizeContentType(upload.ContentType, upload.FileName)
+            .NullIfEmpty() ?? MediaMimeTypes.GetMimeType(upload.FileName);
         upload = upload with { ContentType = contentType };
         if (IsGoogleStorage) {
             var location = await InitiateUploadSession(upload, cancellationToken).ConfigureAwait(false);

@@ -8,12 +8,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.App.Server.Flows;
 
+// DataVersion 2: uploads typed application/octet-stream by the client never reached the HEIF sizing,
+// so rows kept appearing after the first pass
+
 /// <summary>
 /// Turns HEIC/HEIF attachments that were stored as <c>application/octet-stream</c> - before
 /// <see cref="HeifReader"/>, the server couldn't size them - back into images, and re-indexes the Media tab
 /// of every chat they're in. Blobs stay untouched: those files were downloadable as-is all along.
 /// </summary>
-[Flow(DataVersion = 1, DelayQuanta = 0)]
+[Flow(DataVersion = 2, DelayQuanta = 0)]
 [DataContract, MessagePackObject(true)]
 public sealed partial class HeicAttachmentRepairFlow : Flow<(Moment, long)>
 {
