@@ -1,19 +1,18 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.Localization;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
-using ActualLab.Generators;
 using ActualLab.IO;
 using Foundation;
 using Photos;
 using UIKit;
-using DataTransfer = Microsoft.Maui.ApplicationModel.DataTransfer;
 
 namespace ActualChat.App.Maui;
 
 public sealed class AppleFileSaver(UIHub hub) : UIServiceBase<UIHub>(hub), IFileSaver
 {
-    private HttpClient HttpClient
-        => field ??= Hub.Services.HttpClientFactory().CreateClient(GetType().Name);
+    private MauiTempFileDownloader TempFileDownloader
+        => field ??= new MauiTempFileDownloader(Hub.Services);
     private AddPhotoPermissionHandler PermissionHandler
         => field ??= Hub.Services.GetRequiredService<AddPhotoPermissionHandler>();
 
@@ -47,8 +46,8 @@ public sealed class AppleFileSaver(UIHub hub) : UIServiceBase<UIHub>(hub), IFile
             throw StandardError.Unauthorized("No permission to add photos/videos to library");
 
         foreach (var file in files) {
-            var tempFilePath = await DownloadToTempFile(file).ConfigureAwait(false);
-            await DispatchToBlazor(_ => Save(tempFilePath, GetResourceType(file.ContentType))).ConfigureAwait(false);
+            var tempFilePath = await Download(file).ConfigureAwait(false);
+            await Save(tempFilePath, GetResourceType(file.ContentType)).ConfigureAwait(false);
         }
 
         ToastUI.Show(L.FileSaver_SavedToLibrary(files.Count, files.Count),
@@ -57,14 +56,14 @@ public sealed class AppleFileSaver(UIHub hub) : UIServiceBase<UIHub>(hub), IFile
 
     private async Task SaveViaShareSheet(IReadOnlyList<FileToSave> files)
     {
-        var shareFiles = new List<DataTransfer.ShareFile>(files.Count);
+        var shareFiles = new List<ShareFile>(files.Count);
         foreach (var file in files)
-            shareFiles.Add(new DataTransfer.ShareFile(await DownloadToTempFile(file).ConfigureAwait(false)));
+            shareFiles.Add(new ShareFile(await Download(file).ConfigureAwait(false)));
 
         // The share sheet is a UIViewController presentation, so it must happen on the main
         // thread - off it, iOS drops it silently. The await above lands us on a pool thread.
         await MainThread.InvokeOnMainThreadAsync(
-            () => DataTransfer.Share.Default.RequestAsync(new DataTransfer.ShareMultipleFilesRequest {
+            () => Share.Default.RequestAsync(new ShareMultipleFilesRequest {
                 Title = files.Count == 1 ? files[0].FileName : L.Editor_Files(files.Count, files.Count),
                 Files = shareFiles,
             })).ConfigureAwait(false);
@@ -100,35 +99,8 @@ public sealed class AppleFileSaver(UIHub hub) : UIServiceBase<UIHub>(hub), IFile
         return completedSource.Task;
     }
 
-    private async Task<FilePath> DownloadToTempFile(FileToSave file)
-    {
-        var response = await HttpClient.GetAsync(file.Url).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-        var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-        await using var _ = stream.ConfigureAwait(false);
-
-        // A per-download subfolder keeps the real file name - which the share sheet shows and
-        // "Save to Files" reuses - without colliding with earlier downloads.
-        var cacheDirectory = (FilePath)FileSystem.Current.CacheDirectory;
-        var downloadsFolder = Directory.CreateDirectory(
-            cacheDirectory & "downloads" & RandomStringGenerator.Default.Next());
-        var tempFilePath = (FilePath)downloadsFolder.FullName & GetFileName(file.FileName, file.ContentType);
-        var fs = File.OpenWrite(tempFilePath);
-        await using var __ = fs.ConfigureAwait(false);
-        await stream.CopyToAsync(fs).ConfigureAwait(false);
-
-        return tempFilePath;
-    }
-
-    private static FilePath GetFileName(string fileName, string contentType)
-    {
-        if (!fileName.IsNullOrEmpty())
-            return fileName;
-
-        var extension = MediaTypeExt.GetFileExtension(contentType)
-            ?? throw StandardError.Constraint("Not supported media type.");
-        return "download" + extension;
-    }
+    private Task<FilePath> Download(FileToSave file)
+        => TempFileDownloader.Download(file.Url, file.FileName, file.ContentType, null, Hub.StopToken);
 
     private static PHAssetResourceType GetResourceType(string contentType)
     {

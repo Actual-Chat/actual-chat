@@ -1,15 +1,42 @@
 ﻿@using ActualChat.UI.Blazor.Module
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
-@if (HideWhenCopyLink && MauiShare is null && !_canUseWebShare)
+@implements IDisposable
+@{
+    var hasMedia = Request.HasMedia();
+    var canShareExternally = MauiShare != null || (hasMedia ? _canShareFile : _canUseWebShare);
+}
+@if (!canShareExternally && (HideWhenCopyLink || hasMedia))
     return;
 
 <div class="btn-share-action share-externally-button @Class">
     @if (MauiShare != null) {
-        <Button Class="@ButtonClass" Click="OnMauiShareClick">
-            <Icon><i class="icon-share-external"></i></Icon>
-            <Title>@(Title ?? L.Share_ShareExternally)</Title>
+        <Button Class="@ButtonClass" Click="OnMauiShareClick" IsDisabled="@_isSharing">
+            <Icon>
+                @if (_isSharing) {
+                    <Spinner/>
+                } else {
+                    <i class="icon-share-external"></i>
+                }
+            </Icon>
+            <Title>@(_isSharing ? L.Share_Preparing_Format(_percent) : Title ?? L.Common_Share)</Title>
         </Button>
+    } else if (hasMedia) {
+        <Button Class="@ButtonClass"
+                data-share-title="@Request.Text"
+                data-share-text="@Request.Text"
+                >
+            <Icon><i class="icon-share-external text-2xl"></i></Icon>
+            <Title>@(Title ?? L.Common_Share)</Title>
+        </Button>
+        @* The files to share, picked up by share.ts on click *@
+        @foreach (var media in Request.Media) {
+            <span class="c-share-file"
+                  hidden
+                  data-url="@UrlMapper.ContentUrl(media.Ref.BlobId)"
+                  data-file-name="@media.GetFileName()"
+                  data-content-type="@media.ContentType"></span>
+        }
     } else if (_canUseWebShare) {
         var textAndLink = Request.GetShareTextAndLink(UrlMapper);
         var link = Request.GetShareLink(UrlMapper);
@@ -19,7 +46,7 @@
                 data-share-link="@link"
                 >
             <Icon><i class="icon-share-external text-2xl"></i></Icon>
-            <Title>@(Title ?? L.Share_ShareExternally)</Title>
+            <Title>@(Title ?? L.Common_Share)</Title>
         </Button>
     } else {
         var text = Request.HasAnyLink() ? L.MessageMenu_CopyLink : L.LogView_CopyToClipboard;
@@ -37,7 +64,11 @@
 
 @code {
     private bool _canUseWebShare;
+    private bool _canShareFile;
     private bool _mustRegisterHandler;
+    private bool _isSharing;
+    private int _percent;
+    private FuncWorker? _prefetchWorker;
 
     private IMauiShare? MauiShare { get; set; }
 
@@ -47,13 +78,22 @@
     [Parameter] public string? Title { get; set; }
     [Parameter, EditorRequired] public ShareRequest Request { get; set; } = null!;
 
+    public void Dispose()
+        => _prefetchWorker.DisposeSilently();
+
     protected override async Task OnInitializedAsync() {
         MauiShare = Hub.Services.GetService<IMauiShare>();
-        if (MauiShare == null) {
-            var webShareInfo = Hub.Services.GetRequiredService<WebShareInfo>();
-            _canUseWebShare = await webShareInfo.CanShare();
-            _mustRegisterHandler = _canUseWebShare;
+        if (MauiShare != null) {
+            // The file is what's shared, so it's fetched while the user is still picking
+            if (Request.HasMedia())
+                _prefetchWorker = FuncWorker.Start(ct => MauiShare.Prefetch(Request, ct));
+            return;
         }
+
+        var webShareInfo = Hub.Services.GetRequiredService<WebShareInfo>();
+        _canUseWebShare = await webShareInfo.CanShare();
+        _canShareFile = await webShareInfo.CanShareFile();
+        _mustRegisterHandler = _canUseWebShare || _canShareFile;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -65,6 +105,24 @@
         await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.Share.registerHandler");
     }
 
-    private Task OnMauiShareClick()
-        => MauiShare!.Share(Request);
+    private async Task OnMauiShareClick() {
+        _isSharing = true;
+        _percent = 0;
+        // ForkableProgress, not Progress<double>: the latter hops to this context on its own,
+        // and the download reports every whole percent - which is a render each.
+        var progress = new ForkableProgress(x => _ = InvokeAsync(() => {
+            var percent = (int)x;
+            if (percent == _percent)
+                return;
+
+            _percent = percent;
+            StateHasChanged();
+        }));
+        try {
+            await MauiShare!.Share(Request, progress);
+        }
+        finally {
+            _isSharing = false;
+        }
+    }
 }

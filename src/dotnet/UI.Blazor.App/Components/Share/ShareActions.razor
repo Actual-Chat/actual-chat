@@ -7,7 +7,7 @@
 
 <div class="share-actions">
     @if (_canShareExternally) {
-        <ShareExternallyButton Title="@L.Common_Share" ButtonClass="btn-square" Request="@request"/>
+        <ShareExternallyButton ButtonClass="btn-square" Request="@request"/>
         <CopyTrigger Tooltip="@L.Share_CopyLink" CopyText="@link">
             <ButtonSquare>
                 <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>

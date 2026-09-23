@@ -1302,7 +1302,7 @@ public static class LocalizedStringsLocalizerExt
         public string Translation_TranslatedVoiceOffInChat => l["Translation_TranslatedVoiceOffInChat"].Value;
         public string Uploads_Pending => l["Uploads_Pending"].Value;
         public string Uploads_Resume => l["Uploads_Resume"].Value;
-        public string Share_ShareExternally => l["Share_ShareExternally"].Value;
+        public string Share_Preparing_Format(object arg0) => l["Share_Preparing_Format", arg0].Value;
         public string Share_CopyLink => l["Share_CopyLink"].Value;
         public string Share_LinkCopied => l["Share_LinkCopied"].Value;
         public string Share_WhoToShareWith => l["Share_WhoToShareWith"].Value;

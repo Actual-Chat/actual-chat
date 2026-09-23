@@ -92,7 +92,7 @@
             ShareKind.Media,
             L.Share_Media,
             targetTitle,
-            new ShareRequest("") { Media = [Attachment.ToMediaRef()] },
+            new ShareRequest("") { Media = [SharedMedia.New(Attachment)] },
             null);
         return ShareUI.Share(model);
     }

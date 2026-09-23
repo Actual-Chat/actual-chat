@@ -4,7 +4,7 @@ public sealed record ShareRequest(
     string Text,
     LocalUrl? Link = null)
 {
-    public IReadOnlyList<MediaRef> Media { get; init; } = [];
+    public IReadOnlyList<SharedMedia> Media { get; init; } = [];
 
     // An absolute, off-origin URL with no LocalUrl form (e.g. a link preview's external target)
     public string? ExternalLink { get; init; }
