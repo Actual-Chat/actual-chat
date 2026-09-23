@@ -207,11 +207,10 @@
             TranslatedText.From(title),
             TranslatedMarkup.From(descriptionMarkup),
             TranslatedMarkup.From(summaryMarkup));
-        return ComputedStateComponent.GetStateOptions(GetType(),
-            t => new ComputedState<ConversationLiveState>.Options() {
-                InitialValue = new ConversationLiveState(translated, false, false),
-                Category = GetStateCategory(t),
-            });
+        return new() {
+            InitialValue = new ConversationLiveState(translated, false, false),
+            Category = GetStateCategory(GetType()),
+        };
     }
 
     protected override void OnParametersSet() {

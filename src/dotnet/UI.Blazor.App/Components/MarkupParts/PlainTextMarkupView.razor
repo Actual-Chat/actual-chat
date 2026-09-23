@@ -19,11 +19,10 @@
 
 @code {
     protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            t => new ComputedState<Model>.Options() {
-                InitialValue = new(Markup.Text, SearchMatch.Empty, Entry.Content),
-                Category = GetStateCategory(t),
-            });
+        => new() {
+            InitialValue = new(Markup.Text, SearchMatch.Empty, Entry.Content),
+            Category = GetStateCategory(GetType()),
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var entryId = Entry.Id;

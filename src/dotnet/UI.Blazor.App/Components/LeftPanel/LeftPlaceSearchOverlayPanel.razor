@@ -51,12 +51,13 @@
     [Parameter] public Place? Place { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            t => new ComputedState<Model>.Options() {
-                InitialValue = new Model(SearchUI.IsSearchModeOn.ValueOrDefault || SearchUI.IsShowRecentOn.ValueOrDefault, false),
-                UpdateDelayer = FixedDelayer.NextTick,
-                Category = GetStateCategory(t),
-            });
+        => new() {
+            InitialValue = new Model(
+                SearchUI.IsSearchModeOn.ValueOrDefault || SearchUI.IsShowRecentOn.ValueOrDefault,
+                false),
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(GetType()),
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var isOpen = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false)

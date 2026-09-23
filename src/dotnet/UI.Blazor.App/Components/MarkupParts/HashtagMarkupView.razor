@@ -9,11 +9,10 @@
     private SearchUI SearchUI => Hub.SearchUI;
 
     protected override ComputedState<SearchMatch>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            t => new ComputedState<SearchMatch>.Options {
-                InitialValue = SearchMatch.Matchless(Markup.Text),
-                Category = GetStateCategory(t),
-            });
+        => new() {
+            InitialValue = SearchMatch.Matchless(Markup.Text),
+            Category = GetStateCategory(GetType()),
+        };
 
     protected override async Task<SearchMatch> ComputeState(CancellationToken cancellationToken) {
         var markupText = Markup.Text;

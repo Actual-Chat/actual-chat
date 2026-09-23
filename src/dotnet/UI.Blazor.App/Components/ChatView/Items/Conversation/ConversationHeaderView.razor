@@ -28,11 +28,10 @@
     protected override ComputedState<Model>.Options GetStateOptions() {
         var conversation = Header.Conversation!;
         var title = conversation.Title;
-        return ComputedStateComponent.GetStateOptions(GetType(),
-            t => new ComputedState<Model>.Options() {
-                InitialValue = new Model(TranslatedText.From(title)),
-                Category = GetStateCategory(t),
-            });
+        return new() {
+            InitialValue = new Model(TranslatedText.From(title)),
+            Category = GetStateCategory(GetType()),
+        };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
