@@ -88,3 +88,14 @@ public class IconSvgToPngMigrationFlowSerializationTest(ITestOutputHelper @out)
         FailedCount = 2,
     };
 }
+
+public class HeicAttachmentRepairFlowSerializationTest(ITestOutputHelper @out)
+    : FlowSerializationTestBase<HeicAttachmentRepairFlow>(@out)
+{
+    protected override HeicAttachmentRepairFlow CreatePopulated() => new() {
+        LastProcessedMediaId = "chat-42:media-7",
+        RepairedCount = 12,
+        SkippedCount = 3,
+        FailedCount = 1,
+    };
+}

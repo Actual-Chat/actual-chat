@@ -298,7 +298,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // Flows
         services.AddFlows()
             .Add<MigrationFlow>()
-            .Add<IconSvgToPngMigrationFlow>();
+            .Add<IconSvgToPngMigrationFlow>()
+            .Add<HeicAttachmentRepairFlow>();
 
         // Web
         var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;

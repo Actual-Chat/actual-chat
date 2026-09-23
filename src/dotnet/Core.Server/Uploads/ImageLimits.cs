@@ -24,6 +24,12 @@ public static class ImageLimits
         MaxFrames = MaxFrameCount + 1,
     };
 
+    public static bool IsWithinStoredImageBounds(Size2D size)
+        // Nothing is decoded against this, so it's the stored-image limit rather than the decode limit
+        => size.Width <= Constants.Attachments.MaxImageSize
+            && size.Height <= Constants.Attachments.MaxImageSize
+            && (long)size.Width * size.Height <= Constants.Attachments.MaxImagePixelCount;
+
     public static ImageInfo RequireWithinLimits(this ImageInfo imageInfo, long maxPixelCount = MaxPixelCount)
     {
         var pixelCount = (long)imageInfo.Width * imageInfo.Height;

@@ -34,11 +34,7 @@ public sealed class AttachmentImageUploadProcessor(IServiceProvider services) : 
         if (readSize is not { } size)
             return new ProcessedFile(upload.AsBinaryFile(), null);
 
-        // Nothing is decoded here, so the bound is the stored-image limit rather than the decode limit
-        var isWithinBounds = size.Width <= Constants.Attachments.MaxImageSize
-            && size.Height <= Constants.Attachments.MaxImageSize
-            && (long)size.Width * size.Height <= Constants.Attachments.MaxImagePixelCount;
-        if (!isWithinBounds) {
+        if (!ImageLimits.IsWithinStoredImageBounds(size)) {
             // Storing it as a file keeps the bytes the sender chose; rejecting after Send would not
             Log.LogInformation("'{FileName}': {Width}x{Height} exceeds the stored-image bounds, keeping it as a file",
                 upload.FileName, size.Width, size.Height);
