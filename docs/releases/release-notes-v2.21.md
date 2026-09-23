@@ -2,10 +2,11 @@
 
 A big one: hear translations spoken as people talk, passkey sign-in, and push-to-talk for everyone — plus notification history and a fresh look across the app.
 
-**🌍 Translated voice**
+**🌍 Translated voice (alpha)**
 - Turn on "Hear translations spoken" and Voxt voices the translation over the original as people talk — in near real time
 - Pick a voice with previews; replays play the translated voice too
 - Live translation now works in shorter phrases, so it keeps up with the speaker
+- Live translation is an alpha-quality feature — expect rough edges, and please tell us what you hear
 
 **🎙️ Push-to-talk for everyone**
 - Push-to-talk is now available to all users
