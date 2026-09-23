@@ -44,9 +44,13 @@ async function typeAndBlur(input: Locator, value: string) {
     await input.press('Tab');
 }
 
+// FormSection renders the error inside the field box when the label sits there
+// (.form-section-inline-error, which replaces the label) and under the section otherwise.
+const ValidationSelector = '.form-section-inline-error, .form-section-validation';
+
 async function expectError(formSection: Locator, expected: string, timeout = 10_000) {
     await expect.poll(
-        () => formSection.locator('.form-section-validation').innerText().catch(() => ''),
+        () => formSection.locator(ValidationSelector).first().innerText({ timeout: 1_000 }).catch(() => ''),
         { timeout, interval: 200 },
     ).toContain(expected);
 }
@@ -141,7 +145,7 @@ describe('validation message localization', () => {
 
         // assert
         await expectError(nameSection, 'Заполните поле');
-        const message = (await nameSection.locator('.form-section-validation').innerText()).trim();
+        const message = (await nameSection.locator(ValidationSelector).first().innerText()).trim();
         await page.screenshot({ path: shot('required') });
         console.log(`Label: "${label}" | message: "${message}"`);
 

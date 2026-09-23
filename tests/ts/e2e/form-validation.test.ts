@@ -15,7 +15,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { BrowserContext, Locator, Page } from 'playwright';
 import {
     BASE_URL, connectBrowser, dismissCookieConsent, ensureSignedIn, screenshot,
-    skipOnboarding, waitForAppReady, type BrowserConnection,
+    skipOnboarding, waitForAppReady, withUILanguage, type BrowserConnection,
 } from './helpers';
 
 const shot = (name: string) => screenshot('e2e-validation', name);
@@ -26,8 +26,12 @@ function section(root: Locator | Page, property: string): Locator {
     return root.locator(`section.form-section[data-control-id$="-${property}"]`).first();
 }
 
+// FormSection renders the error inside the field box when the label sits there
+// (.form-section-inline-error, which replaces the label) and under the section otherwise.
+const ValidationSelector = '.form-section-inline-error, .form-section-validation';
+
 function validationMessage(formSection: Locator): Locator {
-    return formSection.locator('.form-section-validation');
+    return formSection.locator(ValidationSelector).first();
 }
 
 // TextBox debounces its input listener, so type + blur (Tab fires Blazor's
@@ -44,14 +48,14 @@ async function typeAndBlur(input: Locator, value: string) {
 
 async function expectError(formSection: Locator, expected: string, timeout = 10_000) {
     await expect.poll(
-        () => validationMessage(formSection).innerText().catch(() => ''),
+        () => validationMessage(formSection).innerText({ timeout: 1_000 }).catch(() => ''),
         { timeout, interval: 200 },
     ).toContain(expected);
 }
 
 async function expectNoError(formSection: Locator, timeout = 10_000) {
     await expect.poll(
-        () => validationMessage(formSection).innerText().catch(() => ''),
+        () => validationMessage(formSection).innerText({ timeout: 1_000 }).catch(() => ''),
         { timeout, interval: 200 },
     ).toBe('');
 }
@@ -80,7 +84,7 @@ describe('form validation', () => {
             // A signed-out context: the sign-in modal is the only place PhoneOrEmailAttribute runs.
             context = await conn.browser.newContext({ ignoreHTTPSErrors: true });
             page = await context.newPage();
-            await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
+            await page.goto(withUILanguage(BASE_URL), { waitUntil: 'domcontentloaded' });
             await waitForAppReady(page);
             await dismissCookieConsent(page);
 
@@ -98,12 +102,14 @@ describe('form validation', () => {
             await context.close();
         });
 
-        it('should reject input that is neither a phone nor an email', async () => {
+        // 523bf16e3b judges anything that doesn't start as a phone by the email rules, so the
+        // field names the concrete problem instead of the generic "phone or email".
+        it('should reject a letter-leading input as an email', async () => {
             // act
             await typeAndBlur(phoneOrEmail, 'abc');
 
             // assert
-            await expectError(field, 'Enter a phone number or email address.');
+            await expectError(field, 'Email address is invalid.');
         }, 60_000);
 
         it('should reject a too-short phone number', async () => {
@@ -159,7 +165,7 @@ describe('form validation', () => {
 
             modal = page.locator('.own-account-editor-modal');
             for (let attempt = 0; attempt < 3; attempt++) {
-                await page.goto(`${BASE_URL}/settings/account`, { waitUntil: 'domcontentloaded' });
+                await page.goto(withUILanguage(`${BASE_URL}/settings/account`), { waitUntil: 'domcontentloaded' });
                 await skipOnboarding(page);
                 const tile = page.locator('.your-account-tile .first-tile-item').first();
                 const shown = await tile.waitFor({ state: 'visible', timeout: 15_000 })
