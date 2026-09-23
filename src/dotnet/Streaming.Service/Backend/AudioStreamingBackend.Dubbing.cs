@@ -44,10 +44,10 @@ public partial class AudioStreamingBackend
 #pragma warning disable CA2016 // Pass cancellationToken
         var stopTokenSource = HostLifetime.CreateStopTokenSource();
 #pragma warning restore CA2016
-        // A source that was never registered as a recording has no audio and never will: it is a
-        // text entry, so it is spoken rather than dubbed. RememberRecordedAt is ProcessAudio's
-        // first act, so this is true from before any audio arrives.
-        var isSpeech = !_recordedAtByStream.ContainsKey(dubStreamId.BaseStreamId);
+        // Only a producer that declared its stream text-only gets spoken. Inferring it from a
+        // missing recording would also catch a dub whose audio has not arrived yet, or a
+        // transcript-only dub source, both of which must still be dubbed.
+        var isSpeech = _textOnlyStreams.ContainsKey(dubStreamId.BaseStreamId);
         var worker = isSpeech
             ? FuncWorker.New(
                 static (arg, ct) => arg.self.RunSpeak(arg.dubStreamId, arg.whenPublishedSource, ct),

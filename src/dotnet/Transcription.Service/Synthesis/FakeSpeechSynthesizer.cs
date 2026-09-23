@@ -20,17 +20,16 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
     // What DubVoiceAccents.ResolveVoice picks from Voices for a speaker who chose nothing (en-US → american)
     public const string DefaultVoiceId = "Adrian";
 
-    private static int _synthesizeCallCount;
+    private static readonly ConcurrentDictionary<string, Unit> SynthesizedStreamIds = new();
 
-    // Test hook: lets a test assert that nothing was spoken, which is the only way to tell
-    // "declined to speak" from "spoke silence"
-    public static int SynthesizeCallCount => Volatile.Read(ref _synthesizeCallCount);
+    // Test hook, keyed by stream: lets a test assert that one particular stream was never spoken,
+    // which is the only way to tell "declined to speak" from "spoke silence" - and unlike a global
+    // counter it is not disturbed by another test's dub running in the background.
+    public static bool WasSynthesized(string streamId)
+        => SynthesizedStreamIds.ContainsKey(streamId);
 
     private MomentClockSet Clocks { get; } = services.Clocks();
     private ILogger Log { get; } = services.LogFor<FakeSpeechSynthesizer>();
-
-    public static void ResetCallCount()
-        => Volatile.Write(ref _synthesizeCallCount, 0);
 
     public Task Synthesize(
         string streamId,
@@ -39,7 +38,7 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
         ChannelWriter<byte[]> pcm,
         CancellationToken cancellationToken = default)
     {
-        Interlocked.Increment(ref _synthesizeCallCount);
+        SynthesizedStreamIds[streamId] = default;
         return Push(text, pcm, options.Listener, cancellationToken);
     }
 

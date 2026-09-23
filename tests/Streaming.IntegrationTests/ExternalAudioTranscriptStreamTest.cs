@@ -42,6 +42,7 @@ public class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, ITestOutp
         var entry = await WhenEntryFinalized(chatsBackend, record);
         entry.Content.Should().Be("Hello world");
         entry.IsContentStreaming.Should().BeFalse();
+        entry.HasAudio.Should().BeTrue("the entry must be playable, not just readable");
     }
 
     [Fact]
@@ -60,9 +61,15 @@ public class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, ITestOutp
             new RpcStream<ExternalTranscriptChunk>(AsyncEnumerable.Empty<ExternalTranscriptChunk>()),
             CancellationToken.None);
 
-        // assert - no exception, and nothing is left streaming
-        var entries = await ListEntries(chatsBackend, record.ChatId);
-        entries.Should().OnlyContain(e => !e.IsContentStreaming);
+        // assert - the audio is the message even with no words. Only a real voice entry has
+        // Audio, so a system "joined the chat" notice cannot satisfy this.
+        // Only a real voice entry has Audio, so a system "joined the chat" notice cannot satisfy
+        // this - and it is polled, because finalization attaches the audio after the entry exists.
+        await TestWait.When(async ct => {
+            var entries = await ListEntries(chatsBackend, record.ChatId, ct);
+            entries.Should().Contain(e => e.HasAudio,
+                "a producer that sent audio meant to post something playable");
+        }, WaitTimeout);
     }
 
     [Fact]
@@ -110,12 +117,14 @@ public class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, ITestOutp
         return audio.GetFrames(CancellationToken.None);
     }
 
-    private static async Task<ChatEntry> WhenEntryFinalized(IChatsBackend chatsBackend, AudioRecord record)
+    private static async Task<ChatEntry> WhenEntryFinalized(
+        IChatsBackend chatsBackend, AudioRecord record, bool mustHaveContent = true)
     {
         ChatEntry entry = null!;
         await TestWait.When(async ct => {
             var entries = await ListEntries(chatsBackend, record.ChatId, ct);
-            var found = entries.LastOrDefault(e => !e.IsContentStreaming && !e.Content.IsNullOrEmpty());
+            var found = entries.LastOrDefault(e =>
+                !e.IsContentStreaming && (!mustHaveContent || !e.Content.IsNullOrEmpty()));
             found.Should().NotBeNull();
             entry = found!;
         }, WaitTimeout);

@@ -87,8 +87,9 @@ public partial class AudioStreamingBackend
             if (builder.Append(chunk, getIngestedDuration.Invoke()) is not null)
                 yield return builder.Transcript;
         }
-        if (builder.Transcript.Text.Length != 0)
-            yield return builder.Finalize(getIngestedDuration.Invoke());
+        // Yielded even when empty: a producer that sent audio and no transcript still meant to
+        // post, and the entry is only ever created from inside the transcript loop.
+        yield return builder.Finalize(getIngestedDuration.Invoke());
     }
 
     private async Task ProcessAudio(
@@ -622,7 +623,9 @@ public partial class AudioStreamingBackend
                             entryLanguage = await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
                 if (textEntry != null)
                     continue;
-                if (EmptyRegex.IsMatch(transcript.Text))
+                // An empty ASR transcript means silence, which should not post. An empty external
+                // one means the producer chose not to send words - the audio is still the message.
+                if (externalTranscripts is null && EmptyRegex.IsMatch(transcript.Text))
                     continue;
 
                 // Got first non-empty transcript -> create text entry, so the code below is performed only once
@@ -763,7 +766,9 @@ public partial class AudioStreamingBackend
                 }
             }
 
-            var change = EmptyRegex.IsMatch(realtimeText)
+            // Same rule as entry creation: a silent recording is removed, but an external producer
+            // that sent audio and no words still meant to post - the audio is the message.
+            var change = externalTranscripts is null && EmptyRegex.IsMatch(realtimeText)
                 ? Change.Remove<ChatEntryDiff>()
                 : Change.Update(new ChatEntryDiff {
                     Content = finalText,

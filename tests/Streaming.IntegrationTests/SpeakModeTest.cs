@@ -53,17 +53,14 @@ public class SpeakModeTest(AppHostFixture fixture, ITestOutputHelper @out)
         var (chatId, _) = await Tester.CreateChat(false);
         var streamId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref);
 
-        // act - register it as a recording the way ProcessAudio does, before any audio arrives
-        var backend = (AudioStreamingBackend)StreamingBackend;
-        backend.RememberRecordedAt(streamId, AppHost.Services.Clocks().SystemClock.Now);
-        FakeSpeechSynthesizer.ResetCallCount();
+        // act - a stream the producer never declared text-only, i.e. anything with audio
         var dubStreamId = StreamId.New(streamId, Languages.Russian);
         await StreamingBackend.GetAudio(dubStreamId, TimeSpan.Zero, CancellationToken.None);
         await Task.Delay(TimeSpan.FromSeconds(2));
 
-        // assert - it was routed to the dub path, which has nothing to dub, so nothing was spoken
-        FakeSpeechSynthesizer.SynthesizeCallCount.Should().Be(0,
-            "an entry with its own audio is never spoken for");
+        // assert - routed to the dub path, so this stream was never spoken for
+        FakeSpeechSynthesizer.WasSynthesized(dubStreamId.Value).Should().BeFalse(
+            "only a producer that declared its stream text-only is spoken for");
     }
 
     // Private methods

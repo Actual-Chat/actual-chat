@@ -29,6 +29,10 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     // Set by ProcessAudioWithTranscript before the stream is processed: its presence is what
     // makes TranscribeAudio skip the transcriber entirely
     private readonly ConcurrentDictionary<StreamId, IAsyncEnumerable<Transcript>> _externalTranscripts = new();
+    // Streams whose producer said there is no audio and never will be. Speech is opt-in on that
+    // statement rather than inferred from absence: a dub source can also have no audio yet, or
+    // never - and must still be dubbed, not spoken.
+    private readonly ConcurrentDictionary<StreamId, Unit> _textOnlyStreams = new();
 
     private ILogger Log => field ??= Services.LogFor(GetType());
     private ILogger OpenAudioSegmentLog => field ??= Services.LogFor<OpenAudioSegment>();
@@ -172,6 +176,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     {
         RememberChatId(streamId, chatId);
         RememberAuthorId(streamId, authorId);
+        _textOnlyStreams[streamId.BaseStreamId] = default;
         await PushTranscript(streamId, diffStream, cancellationToken).ConfigureAwait(false);
     }
 
