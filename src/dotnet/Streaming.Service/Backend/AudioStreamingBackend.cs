@@ -26,6 +26,9 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     private readonly ConcurrentDictionary<StreamId, ChatId> _chatIdByStream = new();
     private readonly ConcurrentDictionary<StreamId, AuthorId> _authorIdByStream = new();
     private readonly ConcurrentDictionary<StreamId, Moment> _recordedAtByStream = new();
+    // Set by ProcessAudioWithTranscript before the stream is processed: its presence is what
+    // makes TranscribeAudio skip the transcriber entirely
+    private readonly ConcurrentDictionary<StreamId, IAsyncEnumerable<Transcript>> _externalTranscripts = new();
 
     private ILogger Log => field ??= Services.LogFor(GetType());
     private ILogger OpenAudioSegmentLog => field ??= Services.LogFor<OpenAudioSegment>();

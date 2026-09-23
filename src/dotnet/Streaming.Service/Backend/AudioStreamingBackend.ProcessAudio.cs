@@ -509,21 +509,27 @@ public partial class AudioStreamingBackend
         Task<Transcript?> refinedTranscriptTask,
         CancellationToken cancellationToken)
     {
-        var preferredId = await GetPreferredTranscriberId(audioSegment.Record, cancellationToken)
-            .ConfigureAwait(false);
-        var transcriber = TranscriberSelector.GetStream(transcriptionOptions, preferredId);
-        if (transcriber == null) {
-            Log.LogError("No transcriber supports {Language} for stream #{StreamId}",
-                transcriptionOptions.Language, audioSegment.StreamId);
-            return null;
-        }
+        // The producer supplied its own transcript, so no transcriber is selected and no
+        // transcription context is built - everything below this is the same either way.
+        var externalTranscripts = _externalTranscripts.GetValueOrDefault(audioSegment.StreamId);
+        ITranscriber? transcriber = null;
+        if (externalTranscripts is null) {
+            var preferredId = await GetPreferredTranscriberId(audioSegment.Record, cancellationToken)
+                .ConfigureAwait(false);
+            transcriber = TranscriberSelector.GetStream(transcriptionOptions, preferredId);
+            if (transcriber == null) {
+                Log.LogError("No transcriber supports {Language} for stream #{StreamId}",
+                    transcriptionOptions.Language, audioSegment.StreamId);
+                return null;
+            }
 
-        transcriptionOptions = await WithContext(
-                transcriptionOptions,
-                audioSegment.Record.ChatId,
-                transcriber.Info,
-                cancellationToken)
-            .ConfigureAwait(false);
+            transcriptionOptions = await WithContext(
+                    transcriptionOptions,
+                    audioSegment.Record.ChatId,
+                    transcriber.Info,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         // Providers can fail to complete the transcript stream (e.g. a lost Deepgram finalize ack),
         // which would strand the entry in the streaming state - so transcription gets a deadline,
@@ -540,8 +546,10 @@ public partial class AudioStreamingBackend
             CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         var latencyTrace = new TranscriptLatencyTrace(
             audioSegment.StreamId.Value, audioSegment.Source.CreatedAt, Clocks.ServerClock);
-        IAsyncEnumerable<Transcript> tracedTranscripts = transcriber
-            .Transcribe(audioSegment.StreamId.Value, audioSegment.Source, transcriptionOptions, deadlineCts.Token)
+        var rawTranscripts = externalTranscripts
+            ?? transcriber!.Transcribe(
+                audioSegment.StreamId.Value, audioSegment.Source, transcriptionOptions, deadlineCts.Token);
+        IAsyncEnumerable<Transcript> tracedTranscripts = rawTranscripts
             .ThrottleTranscript(Constants.Transcription.ThrottlePeriod, Clocks.CpuClock, cancellationToken);
         tracedTranscripts = WithLatencyTrace(tracedTranscripts, latencyTrace, Log, cancellationToken);
         using var transcripts = tracedTranscripts.Memoize(CancellationToken.None);
