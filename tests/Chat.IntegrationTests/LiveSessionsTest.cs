@@ -2013,6 +2013,41 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         aliceCall.Should().NotBeNull("the client hangs up a call its claim no longer shows");
     }
 
+    [Theory]
+    [InlineData("bob,alice", false)]
+    [InlineData("bob", true)]
+    [InlineData("bob,carol", true)]
+    public async Task ConnectedCallShouldHoldOnlyWhileTwoOfItsPartiesListen(string listeners, bool mustClose)
+    {
+        // arrange - a connected call where nobody records: both mics idle, or denied. Carol is in the
+        // chat but not in the call
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await using var carol = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        await carol.SignInAsNew("Carol");
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        await carol.JoinChat(chatId, inviteId);
+        var authors = new Dictionary<string, AuthorId> {
+            ["bob"] = (await bob.GetOwnAuthor(chatId))!.Id,
+            ["alice"] = (await alice.GetOwnAuthor(chatId))!.Id,
+            ["carol"] = (await carol.GetOwnAuthor(chatId))!.Id,
+        };
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, authors["bob"], new[] { authors["alice"] }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, authors["alice"], default);
+
+        // act - the caller's Record registration from StartCall turns into listening
+        foreach (var name in listeners.Split(','))
+            await backend.SetParticipation(chatId, authors[name], ParticipationKind.AudioListen, true, default);
+
+        // assert - SetParticipation re-evaluates liveness under its lock, so the verdict is already in
+        var state = await backend.GetState(chatId, default);
+        state!.IsClosing.Should().Be(mustClose);
+    }
+
     [Fact]
     public async Task AnswerAfterCancelShouldBeRejected()
     {

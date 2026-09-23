@@ -1565,13 +1565,29 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     // participant; OnStreamRegistered registers every streamer as one). Pure listeners/watchers
     // don't keep it alive. A still-ringing call is kept alive until it connects or IsCallAbandoned
     // times it out, so a call that hasn't started streaming yet isn't torn down mid-ring.
+    // A connected call is the exception: it ends with a hang-up, not with silence, so two of its own
+    // parties present - the caller and whoever answered, listening counts - hold it.
     private async Task<bool> IsSessionLive(ChatId chatId)
     {
         if (await HasFreshRecorder(chatId).ConfigureAwait(false))
             return true;
 
         var invites = await SafeGetInvites(chatId).ConfigureAwait(false);
-        return invites.Values.Any(i => i is { Status: CallInviteStatus.Ringing });
+        if (invites.Values.Any(i => i is { Status: CallInviteStatus.Ringing }))
+            return true;
+
+        var state = await SafeGet(chatId).ConfigureAwait(false);
+        if (state is not { Kind: LiveSessionKind.Call, SessionStartedAt: not null })
+            return false;
+
+        var parties = invites.Values
+            .Where(i => i is { Status: CallInviteStatus.Accepted or CallInviteStatus.Active })
+            .Select(i => i!.InviteeId.Value)
+            .Append((state.CallerId ?? state.Host)?.Value)
+            .ToHashSet();
+        var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
+        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
+        return participants.Count(p => parties.Contains(p.Key) && IsFreshParticipant(p.Value, cutoff)) >= 2;
     }
 
     private async Task<bool> IsCallAbandoned(ChatId chatId)
@@ -1597,7 +1613,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             return false;
 
         // A streamer (recording audio or video) keeps the session alive; it closes once nobody is
-        // streaming, even if listeners/watchers remain.
+        // streaming, even if listeners/watchers remain - except in a connected call, see IsSessionLive.
         var isActive = await IsSessionLive(chatId).ConfigureAwait(false);
         if (isActive == !state.IsClosing)
             return false; // already active+open or inactive+closing
