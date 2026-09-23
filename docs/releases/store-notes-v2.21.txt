@@ -1,5 +1,5 @@
 Hear translations spoken, sign in with passkeys, and push-to-talk for everyone.
-• Translated voice: hear the translation spoken over the original
+• Translated voice (alpha): hear translations spoken aloud
 • Quote: reply with just the text you selected
 • Sign in with a passkey
 • Push-to-talk available to all users
