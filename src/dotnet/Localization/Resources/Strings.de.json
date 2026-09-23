@@ -1508,13 +1508,18 @@
   "LeaveConfirm_LeaveChatTitle": "Chat verlassen",
   "LeaveConfirm_LeaveChatQuestion": "Möchten Sie diesen Chat wirklich verlassen?",
   "LeaveConfirm_DeleteChatTitle": "Chat löschen",
-  "LeaveConfirm_DeleteChatQuestion": "Möchten Sie diesen Chat wirklich löschen?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "Dieser Chat wird für alle seine Mitglieder gelöscht. Diese Aktion lässt sich nicht rückgängig machen.",
   "LeaveConfirm_DeleteThreadTitle": "Thread löschen",
   "LeaveConfirm_DeleteThreadQuestion": "Möchten Sie diesen Thread wirklich löschen?",
   "LeaveConfirm_LeavePlaceTitle": "Place verlassen",
   "LeaveConfirm_LeavePlaceQuestion": "Möchten Sie diesen Place wirklich verlassen?",
   "LeaveConfirm_DeletePlaceTitle": "Place löschen",
-  "LeaveConfirm_DeletePlaceQuestion": "Möchten Sie diesen Place wirklich löschen?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "Dieser Place und alle seine Chats werden für alle seine Mitglieder gelöscht. Diese Aktion lässt sich nicht rückgängig machen.",
+  "LeaveConfirm_LastOwnerQuestion": "Sie sind der einzige Inhaber dieses Chats. Machen Sie ein anderes Mitglied zum Inhaber, sonst wird der Chat beim Verlassen gelöscht.",
+  "LeaveConfirm_LastMemberQuestion": "Sie sind das einzige Mitglied dieses Chats. Fügen Sie jemanden hinzu und machen Sie ihn zum Inhaber, sonst wird der Chat beim Verlassen gelöscht.",
+  "LeaveConfirm_DeleteAnyway": "Trotzdem löschen",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "Sie sind der einzige Inhaber dieses Place. Machen Sie ein anderes Mitglied zum Inhaber, sonst werden der Place und alle seine Chats beim Verlassen gelöscht.",
+  "LeaveConfirm_LastPlaceMemberQuestion": "Sie sind das einzige Mitglied dieses Place. Fügen Sie jemanden hinzu und machen Sie ihn zum Inhaber, sonst werden der Place und alle seine Chats beim Verlassen gelöscht.",
 
   "Common_Continue": "Weiter",
   "Common_Verify": "Bestätigen",
@@ -1819,9 +1824,7 @@
   "Invite_UnknownLink": "Unbekannter Link",
 
   "ChatSettings_UsePlaceSettingsForMembers": "Mitglieder in den Place-Einstellungen bearbeiten",
-  "ChatSettings_LeaveChatAndDelete": "Chat verlassen und löschen",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Place verlassen und löschen",
   "Call_OutgoingTo": "Ausgehender Anruf an ",
   "Call_Outgoing": "Ausgehender Anruf"
 }

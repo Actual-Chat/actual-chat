@@ -59,13 +59,9 @@
         var place = await Places.Get(session, _placeId, default).ConfigureAwait(false);
         _isOwner = place?.Rules.IsOwner() ?? false;
         _canShare = place != null && (place.IsPublic || place.Rules.CanInvite());
-        var canLeave = place != null && place.Rules.CanLeave();
-        if (canLeave && _isOwner) {
-            var ownerIds = await Places.ListOwnerIds(session, _placeId, default).ConfigureAwait(false);
-            _canLeave = ownerIds.Any(id => id != place!.Rules.Author!.Id);
-        } else {
-            _canLeave = canLeave;
-        }
+        // The last Owner keeps the entry: ChatUI.LeavePlace offers them the way out - hand the place
+        // over, or delete it - instead of the menu hiding the action with no explanation.
+        _canLeave = place != null && place.Rules.CanLeave();
     }
 
     private void OnCreateChatClick()

@@ -1508,13 +1508,18 @@
   "LeaveConfirm_LeaveChatTitle": "Salir del chat",
   "LeaveConfirm_LeaveChatQuestion": "¿Seguro que quieres salir de este chat?",
   "LeaveConfirm_DeleteChatTitle": "Eliminar chat",
-  "LeaveConfirm_DeleteChatQuestion": "¿Seguro que quieres eliminar este chat?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "Este chat se eliminará para todos sus miembros. Esta acción es irreversible.",
   "LeaveConfirm_DeleteThreadTitle": "Eliminar hilo",
   "LeaveConfirm_DeleteThreadQuestion": "¿Seguro que quieres eliminar este hilo?",
   "LeaveConfirm_LeavePlaceTitle": "Salir del Lugar",
   "LeaveConfirm_LeavePlaceQuestion": "¿Seguro que quieres salir de este Lugar?",
   "LeaveConfirm_DeletePlaceTitle": "Eliminar Lugar",
-  "LeaveConfirm_DeletePlaceQuestion": "¿Seguro que quieres eliminar este Lugar?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "Este Lugar y todos sus chats se eliminarán para todos sus miembros. Esta acción es irreversible.",
+  "LeaveConfirm_LastOwnerQuestion": "Eres el único propietario de este chat. Nombra propietario a otro miembro; de lo contrario, el chat se eliminará cuando salgas.",
+  "LeaveConfirm_LastMemberQuestion": "Eres el único miembro de este chat. Añade a alguien y nómbralo propietario; de lo contrario, el chat se eliminará cuando salgas.",
+  "LeaveConfirm_DeleteAnyway": "Eliminar de todos modos",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "Eres el único propietario de este Lugar. Nombra propietario a otro miembro; de lo contrario, el Lugar y todos sus chats se eliminarán cuando salgas.",
+  "LeaveConfirm_LastPlaceMemberQuestion": "Eres el único miembro de este Lugar. Añade a alguien y nómbralo propietario; de lo contrario, el Lugar y todos sus chats se eliminarán cuando salgas.",
 
   "Common_Continue": "Continuar",
   "Common_Verify": "Verificar",
@@ -1819,9 +1824,7 @@
   "Invite_UnknownLink": "Enlace desconocido",
 
   "ChatSettings_UsePlaceSettingsForMembers": "Usa los ajustes del Lugar para editar los miembros",
-  "ChatSettings_LeaveChatAndDelete": "Salir del chat y eliminarlo",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Salir del Lugar y eliminarlo",
   "Call_OutgoingTo": "Llamada saliente a ",
   "Call_Outgoing": "Llamada saliente"
 }

@@ -1508,13 +1508,18 @@
   "LeaveConfirm_LeaveChatTitle": "Sohbetten ayrılın",
   "LeaveConfirm_LeaveChatQuestion": "Bu sohbetten ayrılmak istediğinize emin misiniz?",
   "LeaveConfirm_DeleteChatTitle": "Sohbeti silin",
-  "LeaveConfirm_DeleteChatQuestion": "Bu sohbeti silmek istediğinize emin misiniz?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "Bu sohbet tüm üyeleri için silinecek. Bu işlem geri alınamaz.",
   "LeaveConfirm_DeleteThreadTitle": "Konuyu silin",
   "LeaveConfirm_DeleteThreadQuestion": "Bu konuyu silmek istediğinize emin misiniz?",
   "LeaveConfirm_LeavePlaceTitle": "Mekândan ayrılın",
   "LeaveConfirm_LeavePlaceQuestion": "Bu Mekândan ayrılmak istediğinize emin misiniz?",
   "LeaveConfirm_DeletePlaceTitle": "Mekânı silin",
-  "LeaveConfirm_DeletePlaceQuestion": "Bu Mekânı silmek istediğinize emin misiniz?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "Bu Mekân ve tüm sohbetleri tüm üyeleri için silinecek. Bu işlem geri alınamaz.",
+  "LeaveConfirm_LastOwnerQuestion": "Bu sohbetin tek sahibi sizsiniz. Başka bir üyeyi sahip yapın, aksi halde ayrıldığınızda sohbet silinecek.",
+  "LeaveConfirm_LastMemberQuestion": "Bu sohbetin tek üyesi sizsiniz. Birini ekleyip sahip yapın, aksi halde ayrıldığınızda sohbet silinecek.",
+  "LeaveConfirm_DeleteAnyway": "Yine de sil",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "Bu Mekânın tek sahibi sizsiniz. Başka bir üyeyi sahip yapın, aksi halde ayrıldığınızda Mekân ve tüm sohbetleri silinecek.",
+  "LeaveConfirm_LastPlaceMemberQuestion": "Bu Mekânın tek üyesi sizsiniz. Birini ekleyip sahip yapın, aksi halde ayrıldığınızda Mekân ve tüm sohbetleri silinecek.",
 
   "Common_Continue": "Devam",
   "Common_Verify": "Doğrulayın",
@@ -1819,9 +1824,7 @@
   "Invite_UnknownLink": "Bilinmeyen bağlantı",
 
   "ChatSettings_UsePlaceSettingsForMembers": "Üyeleri düzenlemek için Mekân ayarlarını kullanın",
-  "ChatSettings_LeaveChatAndDelete": "Sohbetten ayrılın ve silin",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Mekândan ayrılın ve silin",
   "Call_OutgoingTo": "Giden arama: ",
   "Call_Outgoing": "Giden arama"
 }

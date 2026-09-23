@@ -1579,13 +1579,18 @@ public static class LocalizedStringsLocalizerExt
         public string LeaveConfirm_LeaveChatTitle => l["LeaveConfirm_LeaveChatTitle"].Value;
         public string LeaveConfirm_LeaveChatQuestion => l["LeaveConfirm_LeaveChatQuestion"].Value;
         public string LeaveConfirm_DeleteChatTitle => l["LeaveConfirm_DeleteChatTitle"].Value;
-        public string LeaveConfirm_DeleteChatQuestion => l["LeaveConfirm_DeleteChatQuestion"].Value;
+        public string LeaveConfirm_DeleteChatForAllQuestion => l["LeaveConfirm_DeleteChatForAllQuestion"].Value;
         public string LeaveConfirm_DeleteThreadTitle => l["LeaveConfirm_DeleteThreadTitle"].Value;
         public string LeaveConfirm_DeleteThreadQuestion => l["LeaveConfirm_DeleteThreadQuestion"].Value;
         public string LeaveConfirm_LeavePlaceTitle => l["LeaveConfirm_LeavePlaceTitle"].Value;
         public string LeaveConfirm_LeavePlaceQuestion => l["LeaveConfirm_LeavePlaceQuestion"].Value;
         public string LeaveConfirm_DeletePlaceTitle => l["LeaveConfirm_DeletePlaceTitle"].Value;
-        public string LeaveConfirm_DeletePlaceQuestion => l["LeaveConfirm_DeletePlaceQuestion"].Value;
+        public string LeaveConfirm_DeletePlaceForAllQuestion => l["LeaveConfirm_DeletePlaceForAllQuestion"].Value;
+        public string LeaveConfirm_LastOwnerQuestion => l["LeaveConfirm_LastOwnerQuestion"].Value;
+        public string LeaveConfirm_LastMemberQuestion => l["LeaveConfirm_LastMemberQuestion"].Value;
+        public string LeaveConfirm_DeleteAnyway => l["LeaveConfirm_DeleteAnyway"].Value;
+        public string LeaveConfirm_LastPlaceOwnerQuestion => l["LeaveConfirm_LastPlaceOwnerQuestion"].Value;
+        public string LeaveConfirm_LastPlaceMemberQuestion => l["LeaveConfirm_LastPlaceMemberQuestion"].Value;
 
         public string Common_Continue => l["Common_Continue"].Value;
         public string Common_Verify => l["Common_Verify"].Value;
@@ -1908,8 +1913,6 @@ public static class LocalizedStringsLocalizerExt
         public string Invite_UnknownLink => l["Invite_UnknownLink"].Value;
 
         public string ChatSettings_UsePlaceSettingsForMembers => l["ChatSettings_UsePlaceSettingsForMembers"].Value;
-        public string ChatSettings_LeaveChatAndDelete => l["ChatSettings_LeaveChatAndDelete"].Value;
 
-        public string PlaceSettings_LeavePlaceAndDelete => l["PlaceSettings_LeavePlaceAndDelete"].Value;
     }
 }

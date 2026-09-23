@@ -1508,13 +1508,18 @@
   "LeaveConfirm_LeaveChatTitle": "Keluar dari obrolan",
   "LeaveConfirm_LeaveChatQuestion": "Yakin ingin keluar dari obrolan ini?",
   "LeaveConfirm_DeleteChatTitle": "Hapus obrolan",
-  "LeaveConfirm_DeleteChatQuestion": "Yakin ingin menghapus obrolan ini?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "Obrolan ini akan dihapus untuk semua anggotanya. Tindakan ini tidak dapat dibatalkan.",
   "LeaveConfirm_DeleteThreadTitle": "Hapus utas",
   "LeaveConfirm_DeleteThreadQuestion": "Yakin ingin menghapus utas ini?",
   "LeaveConfirm_LeavePlaceTitle": "Keluar dari Tempat",
   "LeaveConfirm_LeavePlaceQuestion": "Yakin ingin keluar dari Tempat ini?",
   "LeaveConfirm_DeletePlaceTitle": "Hapus Tempat",
-  "LeaveConfirm_DeletePlaceQuestion": "Yakin ingin menghapus Tempat ini?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "Tempat ini dan semua obrolannya akan dihapus untuk semua anggotanya. Tindakan ini tidak dapat dibatalkan.",
+  "LeaveConfirm_LastOwnerQuestion": "Anda satu-satunya pemilik obrolan ini. Jadikan anggota lain sebagai pemilik, jika tidak obrolan akan dihapus saat Anda keluar.",
+  "LeaveConfirm_LastMemberQuestion": "Anda satu-satunya anggota obrolan ini. Tambahkan seseorang dan jadikan dia pemilik, jika tidak obrolan akan dihapus saat Anda keluar.",
+  "LeaveConfirm_DeleteAnyway": "Tetap hapus",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "Anda satu-satunya pemilik Tempat ini. Jadikan anggota lain sebagai pemilik, jika tidak Tempat ini dan semua obrolannya akan dihapus saat Anda keluar.",
+  "LeaveConfirm_LastPlaceMemberQuestion": "Anda satu-satunya anggota Tempat ini. Tambahkan seseorang dan jadikan dia pemilik, jika tidak Tempat ini dan semua obrolannya akan dihapus saat Anda keluar.",
 
   "Common_Continue": "Lanjutkan",
   "Common_Verify": "Verifikasi",
@@ -1819,9 +1824,7 @@
   "Invite_UnknownLink": "Tautan tidak dikenal",
 
   "ChatSettings_UsePlaceSettingsForMembers": "Kelola anggota di pengaturan Tempat",
-  "ChatSettings_LeaveChatAndDelete": "Keluar dari obrolan & hapus",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Keluar dari Tempat & hapus",
   "Call_OutgoingTo": "Panggilan keluar ke ",
   "Call_Outgoing": "Panggilan keluar"
 }

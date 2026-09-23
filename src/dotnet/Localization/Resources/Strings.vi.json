@@ -1508,13 +1508,18 @@
   "LeaveConfirm_LeaveChatTitle": "Rời cuộc trò chuyện",
   "LeaveConfirm_LeaveChatQuestion": "Bạn có chắc muốn rời cuộc trò chuyện này?",
   "LeaveConfirm_DeleteChatTitle": "Xóa cuộc trò chuyện",
-  "LeaveConfirm_DeleteChatQuestion": "Bạn có chắc muốn xóa cuộc trò chuyện này?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "Cuộc trò chuyện này sẽ bị xóa với tất cả thành viên. Hành động này không thể hoàn tác.",
   "LeaveConfirm_DeleteThreadTitle": "Xóa chủ đề",
   "LeaveConfirm_DeleteThreadQuestion": "Bạn có chắc muốn xóa chủ đề này?",
   "LeaveConfirm_LeavePlaceTitle": "Rời Địa điểm",
   "LeaveConfirm_LeavePlaceQuestion": "Bạn có chắc muốn rời Địa điểm này?",
   "LeaveConfirm_DeletePlaceTitle": "Xóa Địa điểm",
-  "LeaveConfirm_DeletePlaceQuestion": "Bạn có chắc muốn xóa Địa điểm này?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "Địa điểm này và mọi cuộc trò chuyện của nó sẽ bị xóa với tất cả thành viên. Hành động này không thể hoàn tác.",
+  "LeaveConfirm_LastOwnerQuestion": "Bạn là chủ sở hữu duy nhất của cuộc trò chuyện này. Hãy đặt một thành viên khác làm chủ sở hữu, nếu không cuộc trò chuyện sẽ bị xóa khi bạn rời đi.",
+  "LeaveConfirm_LastMemberQuestion": "Bạn là thành viên duy nhất của cuộc trò chuyện này. Hãy thêm ai đó và đặt họ làm chủ sở hữu, nếu không cuộc trò chuyện sẽ bị xóa khi bạn rời đi.",
+  "LeaveConfirm_DeleteAnyway": "Vẫn xóa",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "Bạn là chủ sở hữu duy nhất của Địa điểm này. Hãy đặt một thành viên khác làm chủ sở hữu, nếu không Địa điểm và mọi cuộc trò chuyện của nó sẽ bị xóa khi bạn rời đi.",
+  "LeaveConfirm_LastPlaceMemberQuestion": "Bạn là thành viên duy nhất của Địa điểm này. Hãy thêm ai đó và đặt họ làm chủ sở hữu, nếu không Địa điểm và mọi cuộc trò chuyện của nó sẽ bị xóa khi bạn rời đi.",
 
   "Common_Continue": "Tiếp tục",
   "Common_Verify": "Xác minh",
@@ -1819,9 +1824,7 @@
   "Invite_UnknownLink": "Liên kết không xác định",
 
   "ChatSettings_UsePlaceSettingsForMembers": "Dùng cài đặt Địa điểm để chỉnh sửa thành viên",
-  "ChatSettings_LeaveChatAndDelete": "Rời khỏi và xóa cuộc trò chuyện",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Rời khỏi và xóa Địa điểm",
   "Call_OutgoingTo": "Cuộc gọi đi tới ",
   "Call_Outgoing": "Cuộc gọi đi"
 }

@@ -1771,13 +1771,21 @@
   "LeaveConfirm_LeaveChatTitle": "Leave chat",
   "LeaveConfirm_LeaveChatQuestion": "Are you sure you want to leave this chat?",
   "LeaveConfirm_DeleteChatTitle": "Delete chat",
-  "LeaveConfirm_DeleteChatQuestion": "Are you sure you want to delete this chat?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "This chat will be deleted for everyone in it. This action cannot be undone.",
   "LeaveConfirm_DeleteThreadTitle": "Delete thread",
   "LeaveConfirm_DeleteThreadQuestion": "Are you sure you want to delete this thread?",
   "LeaveConfirm_LeavePlaceTitle": "Leave place",
   "LeaveConfirm_LeavePlaceQuestion": "Are you sure you want to leave this place?",
   "LeaveConfirm_DeletePlaceTitle": "Delete place",
-  "LeaveConfirm_DeletePlaceQuestion": "Are you sure you want to delete this place?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "This place and all its chats will be deleted for everyone in it. This action cannot be undone.",
+
+  // The last Owner leaving is offered a way out first - hand the chat or place over, or add
+  // someone to hand it to; refusing it confirms with the matching delete question above.
+  "LeaveConfirm_LastOwnerQuestion": "You are the only Owner of this chat. Promote another member to Owner, or the chat will be deleted when you leave.",
+  "LeaveConfirm_LastMemberQuestion": "You are the only member of this chat. Add someone and promote them to Owner, or the chat will be deleted when you leave.",
+  "LeaveConfirm_DeleteAnyway": "Delete anyway",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "You are the only Owner of this place. Promote another member to Owner, or the place and all its chats will be deleted when you leave.",
+  "LeaveConfirm_LastPlaceMemberQuestion": "You are the only member of this place. Add someone and promote them to Owner, or the place and all its chats will be deleted when you leave.",
 
   // Shared labels once more, then the download page and the error pages.
   "Common_Continue": "Continue",
@@ -2155,10 +2163,6 @@
   "Invite_NewPrivateLink": "New private join link",
   "Invite_UnknownLink": "Unknown link",
 
-  // Two more rows in chat settings.
-  "ChatSettings_UsePlaceSettingsForMembers": "Use place settings to edit members",
-  "ChatSettings_LeaveChatAndDelete": "Leave chat & delete",
-
-  // The destructive action at the bottom of place settings.
-  "PlaceSettings_LeavePlaceAndDelete": "Leave place & delete"
+  // One more row in chat settings.
+  "ChatSettings_UsePlaceSettingsForMembers": "Use place settings to edit members"
 }

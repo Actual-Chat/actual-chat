@@ -1508,13 +1508,18 @@
   "LeaveConfirm_LeaveChatTitle": "Напуснете чата",
   "LeaveConfirm_LeaveChatQuestion": "Наистина ли искате да напуснете този чат?",
   "LeaveConfirm_DeleteChatTitle": "Изтрийте чата",
-  "LeaveConfirm_DeleteChatQuestion": "Наистина ли искате да изтриете този чат?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "Този чат ще бъде изтрит за всичките му участници. Това действие е необратимо.",
   "LeaveConfirm_DeleteThreadTitle": "Изтрийте нишката",
   "LeaveConfirm_DeleteThreadQuestion": "Наистина ли искате да изтриете тази нишка?",
   "LeaveConfirm_LeavePlaceTitle": "Напуснете Мястото",
   "LeaveConfirm_LeavePlaceQuestion": "Наистина ли искате да напуснете това Място?",
   "LeaveConfirm_DeletePlaceTitle": "Изтрийте Мястото",
-  "LeaveConfirm_DeletePlaceQuestion": "Наистина ли искате да изтриете това Място?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "Това Място и всички негови чатове ще бъдат изтрити за всичките му участници. Това действие е необратимо.",
+  "LeaveConfirm_LastOwnerQuestion": "Вие сте единственият собственик на този чат. Направете друг участник собственик, иначе чатът ще бъде изтрит, когато излезете.",
+  "LeaveConfirm_LastMemberQuestion": "Вие сте единственият участник в този чат. Добавете някого и го направете собственик, иначе чатът ще бъде изтрит, когато излезете.",
+  "LeaveConfirm_DeleteAnyway": "Изтриване въпреки това",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "Вие сте единственият собственик на това Място. Направете друг участник собственик, иначе Мястото и всички негови чатове ще бъдат изтрити, когато излезете.",
+  "LeaveConfirm_LastPlaceMemberQuestion": "Вие сте единственият участник в това Място. Добавете някого и го направете собственик, иначе Мястото и всички негови чатове ще бъдат изтрити, когато излезете.",
 
   "Common_Continue": "Продължете",
   "Common_Verify": "Потвърдете",
@@ -1819,9 +1824,7 @@
   "Invite_UnknownLink": "Неизвестен линк",
 
   "ChatSettings_UsePlaceSettingsForMembers": "Управлявайте участниците от настройките на Мястото",
-  "ChatSettings_LeaveChatAndDelete": "Напуснете чата и изтрий",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Напуснете Мястото и изтрий",
   "Call_OutgoingTo": "Изходящо обаждане към ",
   "Call_Outgoing": "Изходящо обаждане"
 }

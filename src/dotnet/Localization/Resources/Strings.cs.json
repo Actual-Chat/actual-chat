@@ -1508,13 +1508,18 @@
   "LeaveConfirm_LeaveChatTitle": "Opustit chat",
   "LeaveConfirm_LeaveChatQuestion": "Opravdu chcete opustit tento chat?",
   "LeaveConfirm_DeleteChatTitle": "Smazat chat",
-  "LeaveConfirm_DeleteChatQuestion": "Opravdu chcete smazat tento chat?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "Tento chat bude smazán pro všechny jeho členy. Tuto akci nelze vrátit zpět.",
   "LeaveConfirm_DeleteThreadTitle": "Smazat vlákno",
   "LeaveConfirm_DeleteThreadQuestion": "Opravdu chcete smazat toto vlákno?",
   "LeaveConfirm_LeavePlaceTitle": "Opustit Místo",
   "LeaveConfirm_LeavePlaceQuestion": "Opravdu chcete opustit toto Místo?",
   "LeaveConfirm_DeletePlaceTitle": "Smazat Místo",
-  "LeaveConfirm_DeletePlaceQuestion": "Opravdu chcete smazat toto Místo?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "Toto Místo a všechny jeho chaty budou smazány pro všechny jeho členy. Tuto akci nelze vrátit zpět.",
+  "LeaveConfirm_LastOwnerQuestion": "Jste jediný vlastník tohoto chatu. Nastavte vlastníkem jiného člena, jinak bude chat po vašem odchodu smazán.",
+  "LeaveConfirm_LastMemberQuestion": "Jste jediný člen tohoto chatu. Přidejte někoho a nastavte ho vlastníkem, jinak bude chat po vašem odchodu smazán.",
+  "LeaveConfirm_DeleteAnyway": "Přesto smazat",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "Jste jediný vlastník tohoto Místa. Nastavte vlastníkem jiného člena, jinak bude Místo i všechny jeho chaty po vašem odchodu smazáno.",
+  "LeaveConfirm_LastPlaceMemberQuestion": "Jste jediný člen tohoto Místa. Přidejte někoho a nastavte ho vlastníkem, jinak bude Místo i všechny jeho chaty po vašem odchodu smazáno.",
 
   "Common_Continue": "Pokračovat",
   "Common_Verify": "Ověřit",
@@ -1819,9 +1824,7 @@
   "Invite_UnknownLink": "Neznámý odkaz",
 
   "ChatSettings_UsePlaceSettingsForMembers": "Členy upravíte v nastavení Místa",
-  "ChatSettings_LeaveChatAndDelete": "Opustit chat a smazat",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Opustit Místo a smazat",
   "Call_OutgoingTo": "Odchozí hovor pro ",
   "Call_Outgoing": "Odchozí hovor"
 }

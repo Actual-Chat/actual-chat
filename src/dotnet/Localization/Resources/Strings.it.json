@@ -1508,13 +1508,18 @@
   "LeaveConfirm_LeaveChatTitle": "Esci dalla chat",
   "LeaveConfirm_LeaveChatQuestion": "Vuoi davvero uscire da questa chat?",
   "LeaveConfirm_DeleteChatTitle": "Elimina la chat",
-  "LeaveConfirm_DeleteChatQuestion": "Vuoi davvero eliminare questa chat?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "Questa chat verrà eliminata per tutti i suoi membri. Questa azione è irreversibile.",
   "LeaveConfirm_DeleteThreadTitle": "Elimina il thread",
   "LeaveConfirm_DeleteThreadQuestion": "Vuoi davvero eliminare questo thread?",
   "LeaveConfirm_LeavePlaceTitle": "Esci dal Luogo",
   "LeaveConfirm_LeavePlaceQuestion": "Vuoi davvero uscire da questo Luogo?",
   "LeaveConfirm_DeletePlaceTitle": "Elimina il Luogo",
-  "LeaveConfirm_DeletePlaceQuestion": "Vuoi davvero eliminare questo Luogo?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "Questo Luogo e tutte le sue chat verranno eliminati per tutti i suoi membri. Questa azione è irreversibile.",
+  "LeaveConfirm_LastOwnerQuestion": "Sei l’unico proprietario di questa chat. Nomina proprietario un altro membro, altrimenti la chat verrà eliminata quando la lascerai.",
+  "LeaveConfirm_LastMemberQuestion": "Sei l’unico membro di questa chat. Aggiungi qualcuno e nominalo proprietario, altrimenti la chat verrà eliminata quando la lascerai.",
+  "LeaveConfirm_DeleteAnyway": "Elimina comunque",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "Sei l’unico proprietario di questo Luogo. Nomina proprietario un altro membro, altrimenti il Luogo e tutte le sue chat verranno eliminati quando lo lascerai.",
+  "LeaveConfirm_LastPlaceMemberQuestion": "Sei l’unico membro di questo Luogo. Aggiungi qualcuno e nominalo proprietario, altrimenti il Luogo e tutte le sue chat verranno eliminati quando lo lascerai.",
 
   "Common_Continue": "Continua",
   "Common_Verify": "Verifica",
@@ -1819,9 +1824,7 @@
   "Invite_UnknownLink": "Link sconosciuto",
 
   "ChatSettings_UsePlaceSettingsForMembers": "Usa le impostazioni del Luogo per modificare i membri",
-  "ChatSettings_LeaveChatAndDelete": "Esci dalla chat ed eliminala",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Esci dal Luogo ed eliminalo",
   "Call_OutgoingTo": "Chiamata in uscita a ",
   "Call_Outgoing": "Chiamata in uscita"
 }
