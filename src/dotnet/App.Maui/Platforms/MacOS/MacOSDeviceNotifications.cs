@@ -1,10 +1,13 @@
+using ActualChat.Localization;
 using ActualChat.Maui.Services;
+using ActualChat.Notifications;
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Generators;
 using ActualLab.IO;
 using CoreGraphics;
 using Foundation;
 using ImageIO;
+using Microsoft.Extensions.Localization;
 using Microsoft.Maui.Storage;
 using UniformTypeIdentifiers;
 using UserNotifications;
@@ -37,6 +40,7 @@ public class MacOSDeviceNotifications(IServiceProvider services) : IDeviceNotifi
     private static UNUserNotificationCenter NotificationCenter => UNUserNotificationCenter.Current;
 
     private IconUI IconUI => field ??= services.GetRequiredService<IconUI>();
+    private IStringLocalizer L => field ??= services.GetRequiredService<IStringLocalizer>();
 
     public async Task Reconcile(
         IReadOnlyList<ActiveNotificationInfo> active,
@@ -97,17 +101,22 @@ public class MacOSDeviceNotifications(IServiceProvider services) : IDeviceNotifi
 
     private async Task<bool> Post(ActiveNotificationInfo info)
     {
+        var isCall = NotificationExt.TryParseCallTag(info.Tag) is not null;
         using var content = new UNMutableNotificationContent {
             Title = info.Title,
             Body = info.Text,
             ThreadIdentifier = info.Tag,
             // Unlike the other platforms, this is delivery rather than healing a dropped
-            // push, so it alerts.
-            Sound = UNNotificationSound.Default,
+            // push, so it alerts - except a ring, which the app's own ringtone already sounds.
+            Sound = isCall ? null : UNNotificationSound.Default,
             UserInfo = NSDictionary.FromObjectAndKey(
                 new NSString(info.Url),
                 new NSString(Constants.Notification.MessageDataKeys.Link)),
         };
+        if (isCall) {
+            SetCallCategory();
+            content.CategoryIdentifier = MacOSNotificationDelegate.CallCategoryId;
+        }
         using var icon = await GetIconAttachment(info).ConfigureAwait(false);
         if (icon is not null)
             content.Attachments = [icon];
@@ -116,6 +125,18 @@ public class MacOSDeviceNotifications(IServiceProvider services) : IDeviceNotifi
         var request = UNNotificationRequest.FromIdentifier(info.Tag, content, null);
         await NotificationCenter.AddNotificationRequestAsync(request).ConfigureAwait(false);
         return icon is not null;
+    }
+
+    private void SetCallCategory()
+    {
+        // Set before every ring rather than once, so the buttons follow a UI language switch
+        var accept = UNNotificationAction.FromIdentifier(
+            MacOSNotificationDelegate.AcceptCallActionId, L.Common_Accept, UNNotificationActionOptions.Foreground);
+        var decline = UNNotificationAction.FromIdentifier(
+            MacOSNotificationDelegate.DeclineCallActionId, L.Common_Decline, UNNotificationActionOptions.Destructive);
+        var category = UNNotificationCategory.FromIdentifier(
+            MacOSNotificationDelegate.CallCategoryId, [accept, decline], [], UNNotificationCategoryOptions.None);
+        NotificationCenter.SetNotificationCategories(new NSSet<UNNotificationCategory>(category));
     }
 
     private async Task<UNNotificationAttachment?> GetIconAttachment(ActiveNotificationInfo info)

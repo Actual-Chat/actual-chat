@@ -11,6 +11,7 @@ using Microsoft.Extensions.Localization;
 using Application = Android.App.Application;
 using Person = AndroidX.Core.App.Person;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
+using NotificationExt = ActualChat.Notifications.NotificationExt;
 
 namespace ActualChat.App.Maui;
 
@@ -192,11 +193,6 @@ public static class IncomingCallNotifications
             "CallScreensUI.OnRing", whenRendered: true);
     }
 
-    public static ChatId? TryParseCallTag(string? tag)
-        => tag is null || !tag.StartsWith(Constants.Notification.CallTagPrefix)
-            ? null
-            : ChatId.TryParse(tag[Constants.Notification.CallTagPrefix.Length..], allowNull: true);
-
     public static ChatId[] ListActiveCallChatIds()
     {
         var notificationManager = NotificationManagerCompat.From(Context)!;
@@ -205,7 +201,7 @@ public static class IncomingCallNotifications
             return [];
 
         return active
-            .Select(n => TryParseCallTag(n.Tag))
+            .Select(n => NotificationExt.TryParseCallTag(n.Tag))
             .Where(chatId => chatId is not null)
             .Select(chatId => chatId!)
             .ToArray();
