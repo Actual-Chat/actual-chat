@@ -12,6 +12,8 @@ public class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, ITestOutp
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(30);
+    // Comfortably past Constants.Audio.FrameSilenceTimeout, which governs a microphone
+    private static readonly TimeSpan FirstFrameDelay = TimeSpan.FromSeconds(4);
 
     private WebClientTester Tester => field ??= AppHost.NewWebClientTester(Out);
 
@@ -73,6 +75,33 @@ public class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, ITestOutp
     }
 
     [Fact]
+    public async Task ShouldWaitWhileAProducerFillsItsNextOggPage()
+    {
+        // A producer hands over whole Ogg pages, so nothing decodes until a page completes - and
+        // an LLM may think for seconds between them. The microphone-grade silence watchdog would
+        // end the stream mid-word and save a message with no sound in it.
+
+        // arrange
+        var (backend, chatsBackend, record) = await NewRecording();
+        var frames = WithLeadingSilence(await ReadFrames(), FirstFrameDelay);
+
+        // act
+        await backend.ProcessAudioWithTranscript(
+            record,
+            0,
+            new RpcStream<AudioFrame>(frames),
+            new RpcStream<ExternalTranscriptChunk>(new[] {
+                new ExternalTranscriptChunk("Slow but spoken", true, null, true),
+            }.ToAsyncEnumerable()),
+            CancellationToken.None);
+
+        // assert
+        var entry = await WhenEntryFinalized(chatsBackend, record);
+        entry.Content.Should().Be("Slow but spoken");
+        entry.Audio!.Duration.Should().BeGreaterThan(1, "the audio must survive the producer's pause");
+    }
+
+    [Fact]
     public async Task ShouldFinalizeWhenTheTranscriptEndsBeforeTheAudio()
     {
         // arrange
@@ -106,6 +135,15 @@ public class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, ITestOutp
             streamId, Tester.Session, chatId,
             CpuClock.Instance.Now.EpochOffset.TotalSeconds, null);
         return (backend, chatsBackend, record);
+    }
+
+    private static async IAsyncEnumerable<AudioFrame> WithLeadingSilence(
+        IAsyncEnumerable<AudioFrame> frames,
+        TimeSpan delay)
+    {
+        await Task.Delay(delay).ConfigureAwait(false);
+        await foreach (var frame in frames.ConfigureAwait(false))
+            yield return frame;
     }
 
     private async Task<IAsyncEnumerable<AudioFrame>> ReadFrames()

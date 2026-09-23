@@ -14,10 +14,18 @@ public partial class AudioStreamingBackend
     // Snippets shorter than this are often misclassified, so detection waits for more context.
     private const int MinLanguageDetectionLength = 15;
 
-    public virtual async Task ProcessAudio(
+    public virtual Task ProcessAudio(
         AudioRecord record,
         int preSkip,
         RpcStream<AudioFrame> frames,
+        CancellationToken cancellationToken)
+        => ProcessAudio(record, preSkip, frames, Constants.Audio.FrameSilenceTimeout, cancellationToken);
+
+    private async Task ProcessAudio(
+        AudioRecord record,
+        int preSkip,
+        RpcStream<AudioFrame> frames,
+        TimeSpan frameSilenceTimeout,
         CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug(nameof(ProcessAudio) + ": record #{StreamId} = {Record}", record.StreamId, record);
@@ -28,7 +36,8 @@ public partial class AudioStreamingBackend
             IAsyncEnumerable<AudioFrame> augmentedFrames = frames;
             if (Constants.DebugMode.AudioRecordingStream)
                 augmentedFrames = augmentedFrames.WithLog(Log, nameof(ProcessAudio), cancellationToken);
-            await ProcessAudio(record, preSkip, augmentedFrames, delayedCancellationToken).ConfigureAwait(false);
+            await ProcessAudio(record, preSkip, augmentedFrames, frameSilenceTimeout, delayedCancellationToken)
+                .ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "Error processing audio stream #{StreamId}", record.StreamId);
@@ -66,7 +75,13 @@ public partial class AudioStreamingBackend
         var transcripts = ToTranscripts(builder, transcriptChunks, () => ingestedDuration, cancellationToken);
         _externalTranscripts[record.StreamId] = transcripts;
         try {
-            await ProcessAudio(record, preSkip, RpcStream.New(trackedFrames), cancellationToken)
+            // A producer appends whole Ogg pages: the first frames surface only once a page is
+            // complete, and an LLM may think for seconds between them. The microphone-grade
+            // silence timeout cuts that off mid-word; the lease's own idle timeout is the one
+            // that governs an abandoned stream here.
+            await ProcessAudio(
+                    record, preSkip, RpcStream.New(trackedFrames),
+                    Constants.Chat.EntryStreamIdleTimeout, cancellationToken)
                 .ConfigureAwait(false);
         }
         finally {
@@ -96,6 +111,7 @@ public partial class AudioStreamingBackend
         AudioRecord record,
         int preSkip,
         IAsyncEnumerable<AudioFrame> frames,
+        TimeSpan frameSilenceTimeout,
         CancellationToken cancellationToken)
     {
         using var watchdogCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -105,7 +121,7 @@ public partial class AudioStreamingBackend
         frames = WithIngressCadenceLog(record.StreamId.Value, frames, Log, cancellationToken);
         frames = WithFrameSilenceWatchdog(
             record.StreamId.Value,
-            Constants.Audio.FrameSilenceTimeout,
+            frameSilenceTimeout,
             frames,
             watchdogCts,
             requestToken,
@@ -779,7 +795,7 @@ public partial class AudioStreamingBackend
                             TimeMap = finalTimeMap,
                         }
                         : null,
-                    EndsAt = beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
+                    EndsAt = beginsAt + EndOfContent(),
                 });
 
             var command = new ChatsBackend_ChangeEntry(
@@ -787,6 +803,21 @@ public partial class AudioStreamingBackend
                 null, // do not perform version check there - it might have already been changed and it's OK
                 change);
             await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
+        }
+
+        TimeSpan EndOfContent()
+        {
+            var transcriptEnd = TimeSpan.FromSeconds(lastTranscript.TimeRange.End);
+            if (externalTranscripts is null)
+                return transcriptEnd;
+
+            // An external producer's time map spans its words, and with no words there is no map
+            // at all - a LinearMap cannot hold two points at the same character. The entry still
+            // lasts as long as the audio it carries, and a zero-length one gets no player.
+            var audioEnd = audioSegment.Source.WhenDurationAvailable.IsCompletedSuccessfully
+                ? audioSegment.Source.Duration
+                : TimeSpan.Zero;
+            return audioEnd > transcriptEnd ? audioEnd : transcriptEnd;
         }
 
         Task<ChatEntryLanguage> CreateLanguages(Language[] languages)

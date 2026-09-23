@@ -1,3 +1,5 @@
+using ActualChat.Chat;
+using ActualChat.Testing;
 using ActualChat.Testing.Host;
 using ActualLab.IO;
 
@@ -7,6 +9,10 @@ namespace ActualChat.Mcp.IntegrationTests;
 public class McpVoiceStreamToolsTest(McpCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : McpTestBase<McpCollection.AppHostFixture>(fixture, @out)
 {
+    private const int ChunkSize = 4 * 1024;
+    private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan MinAudioDuration = TimeSpan.FromSeconds(1);
+
     [Fact]
     public async Task ShouldReassembleAnOggPageSplitAcrossTwoAppends()
     {
@@ -61,6 +67,40 @@ public class McpVoiceStreamToolsTest(McpCollection.AppHostFixture fixture, ITest
         // assert
         appended.TextOffset.Should().Be("Spoken words".Length);
         final.IsFinished.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ShouldPostAnEntryThatCarriesTheAudioItWasGiven()
+    {
+        // The whole point of a voice stream: what a listener plays back is the producer's own
+        // audio. An entry that arrives with the right words but no sound is not the feature.
+
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
+        var client = await CreateClient();
+        var ogg = await ReadOggBytes();
+        var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();
+
+        // act - chunked the way a producer streams it, rather than in one call
+        var stream = await CallTool<McpVoiceStream>(client, "start_voice_stream",
+            new { chatId = chatId.Value });
+        for (var offset = 0; offset < ogg.Length; offset += ChunkSize) {
+            var chunk = ogg[offset..Math.Min(offset + ChunkSize, ogg.Length)];
+            await CallTool<McpVoiceStream>(client, "append_voice_stream", new {
+                streamId = stream.StreamId, textOffset = 0,
+                audioBase64 = Convert.ToBase64String(chunk),
+            });
+        }
+        await CallTool<McpVoiceStream>(client, "finish_voice_stream", new { streamId = stream.StreamId });
+
+        // assert
+        await TestWait.When(async ct => {
+            var entries = await ListEntries(chatsBackend, chatId, ct);
+            entries.Should().Contain(
+                e => e.HasAudio && e.Duration > MinAudioDuration.TotalSeconds,
+                "the entry must carry the audio, not just be marked as having some");
+        }, WaitTimeout);
     }
 
     [Fact]
@@ -131,6 +171,15 @@ public class McpVoiceStreamToolsTest(McpCollection.AppHostFixture fixture, ITest
     }
 
     // Private methods
+
+    private static async Task<List<ChatEntry>> ListEntries(
+        IChatsBackend chatsBackend, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var maxLid = await chatsBackend.GetMaxLid(chatId, false, cancellationToken);
+        var tile = Constants.Chat.EntryIdTiles.GetTile(maxLid);
+        var chatTile = await chatsBackend.GetTile(chatId, tile.Range, false, cancellationToken);
+        return chatTile.Entries.ToList();
+    }
 
     private static async Task<byte[]> ReadOggBytes()
     {
