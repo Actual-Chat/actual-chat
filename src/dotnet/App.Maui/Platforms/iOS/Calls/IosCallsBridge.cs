@@ -17,6 +17,7 @@ public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDispo
     private readonly CancellationTokenSource _stopTokenSource = new();
     private readonly CancellationToken _stopToken;
     private readonly ConcurrentDictionary<ChatId, Unit> _watchedChatIds = new();
+    private readonly ConcurrentDictionary<ChatId, Unit> _watchedRingChatIds = new();
     private AppUIHub Hub { get; }
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private IosCallIntents CallIntents => field ??= Hub.Services.GetRequiredService<IosCallIntents>();
@@ -35,6 +36,8 @@ public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDispo
         // call is skipped by EndRingingCalls, so nothing else would ever take it down.
         foreach (var chatId in IosCalls.Instance.ListCallsNeedingWatch())
             StartCallEndWatch(chatId);
+        foreach (var chatId in IosCalls.Instance.ListActiveCallChatIds())
+            WatchRing(chatId);
         _ = BackgroundTask.Run(
             () => IosVoipPushes.Instance.RegisterToken(Hub.Services, _stopToken),
             Log,
@@ -80,6 +83,18 @@ public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDispo
         // No keyguard on iOS: the call screen is CallKit's, and the app is never brought over
         // a lock screen to show one. True means "go ahead and start audio".
         return Task.FromResult(true);
+    }
+
+    public void WatchRing(ChatId chatId)
+    {
+        // The slot-driven StopRinging only ends a ring the slot has shown: an app woken by the push
+        // reconnects slowly, and a ring answered on another device by then never reads as Ringing here.
+        if (!_watchedRingChatIds.TryAdd(chatId, default))
+            return;
+
+        _ = BackgroundTask.Run(
+            () => WatchRingEnd(chatId, _stopToken),
+            Log, $"Ring-end watch failed for chat #{chatId}", _stopToken);
     }
 
     public void RevealCallScreen()
@@ -203,4 +218,51 @@ public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDispo
             .When((x, error) => error is null && !x, cancellationToken)
             .ConfigureAwait(false);
     }
+
+    private async Task WatchRingEnd(ChatId chatId, CancellationToken cancellationToken)
+    {
+        try {
+            await AsyncChain.From(Watch, $"Ring-end watch for chat #{chatId}")
+                .Log(LogLevel.Debug, Log)
+                .RetryForever(RetryDelaySeq.Exp(0.5, 10), Log)
+                .Run(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally {
+            _watchedRingChatIds.TryRemove(chatId, out _);
+        }
+        return;
+
+        async Task Watch(CancellationToken ct) {
+            await WhenRingEnded(chatId, ct).ConfigureAwait(false);
+            // Rings only: an answer made here holds the CallKit call past its ring, and the server
+            // reports that answer exactly as it reports one made on another device.
+            IosCalls.Instance.EndRingingCall(chatId);
+        }
+    }
+
+    private async Task WhenRingEnded(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var cMyCall = await Computed
+            .Capture(() => Hub.LiveSessions.GetMyCall(Hub.Session, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        while (true) {
+            // Precise, because Safe reads a disconnected client as synchronized - and its "no call"
+            // then would end a ring that is still going.
+            cMyCall = await cMyCall
+                .Synchronize(ComputedSynchronizer.Precise.Instance, cancellationToken)
+                .ConfigureAwait(false);
+            // Synchronize swallows the cancellation and hands back the unsynchronized computed.
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (cMyCall.IsConsistent() && cMyCall is { HasError: false, Value: var myCall } && !IsRing(myCall, chatId))
+                return;
+
+            await cMyCall.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+            cMyCall = await cMyCall.Update(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static bool IsRing(UserCall? call, ChatId chatId)
+        => call is { Role: CallRole.Callee, Phase: CallPhase.Ringing } && call.ChatId == chatId;
 }
