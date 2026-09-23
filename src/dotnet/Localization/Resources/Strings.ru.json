@@ -1508,13 +1508,18 @@
   "LeaveConfirm_LeaveChatTitle": "Покинуть чат",
   "LeaveConfirm_LeaveChatQuestion": "Вы уверены, что хотите покинуть этот чат?",
   "LeaveConfirm_DeleteChatTitle": "Удалить чат",
-  "LeaveConfirm_DeleteChatQuestion": "Вы уверены, что хотите удалить этот чат?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "Этот чат будет удалён у всех его участников. Это действие необратимо.",
   "LeaveConfirm_DeleteThreadTitle": "Удалить тред",
   "LeaveConfirm_DeleteThreadQuestion": "Вы уверены, что хотите удалить этот тред?",
   "LeaveConfirm_LeavePlaceTitle": "Покинуть Место",
   "LeaveConfirm_LeavePlaceQuestion": "Вы уверены, что хотите покинуть это Место?",
   "LeaveConfirm_DeletePlaceTitle": "Удалить Место",
-  "LeaveConfirm_DeletePlaceQuestion": "Вы уверены, что хотите удалить это Место?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "Это Место и все его чаты будут удалены у всех его участников. Это действие необратимо.",
+  "LeaveConfirm_LastOwnerQuestion": "Вы единственный владелец этого чата. Назначьте владельцем другого участника, иначе при выходе чат будет удалён.",
+  "LeaveConfirm_LastMemberQuestion": "Вы единственный участник этого чата. Добавьте кого-нибудь и назначьте владельцем, иначе при выходе чат будет удалён.",
+  "LeaveConfirm_DeleteAnyway": "Всё равно удалить",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "Вы единственный владелец этого Места. Назначьте владельцем другого участника, иначе при выходе Место и все его чаты будут удалены.",
+  "LeaveConfirm_LastPlaceMemberQuestion": "Вы единственный участник этого Места. Добавьте кого-нибудь и назначьте владельцем, иначе при выходе Место и все его чаты будут удалены.",
 
   "Common_Continue": "Продолжить",
   "Common_Verify": "Подтвердить",
@@ -1819,9 +1824,7 @@
   "Invite_UnknownLink": "Неизвестная ссылка",
 
   "ChatSettings_UsePlaceSettingsForMembers": "Редактируйте участников в настройках Места",
-  "ChatSettings_LeaveChatAndDelete": "Покинуть и удалить чат",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Покинуть и удалить Место",
   "Call_OutgoingTo": "Исходящий звонок: ",
   "Call_Outgoing": "Исходящий звонок"
 }

@@ -1508,13 +1508,18 @@
   "LeaveConfirm_LeaveChatTitle": "退出聊天",
   "LeaveConfirm_LeaveChatQuestion": "确定要退出此聊天吗？",
   "LeaveConfirm_DeleteChatTitle": "删除聊天",
-  "LeaveConfirm_DeleteChatQuestion": "确定要删除此聊天吗？",
+  "LeaveConfirm_DeleteChatForAllQuestion": "此聊天将对其所有成员删除。此操作无法撤销。",
   "LeaveConfirm_DeleteThreadTitle": "删除话题",
   "LeaveConfirm_DeleteThreadQuestion": "确定要删除此话题吗？",
   "LeaveConfirm_LeavePlaceTitle": "退出地点",
   "LeaveConfirm_LeavePlaceQuestion": "确定要退出此地点吗？",
   "LeaveConfirm_DeletePlaceTitle": "删除地点",
-  "LeaveConfirm_DeletePlaceQuestion": "确定要删除此地点吗？",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "此地点及其所有聊天将对其所有成员删除。此操作无法撤销。",
+  "LeaveConfirm_LastOwnerQuestion": "你是此聊天的唯一所有者。请将其他成员设为所有者，否则你退出后此聊天将被删除。",
+  "LeaveConfirm_LastMemberQuestion": "你是此聊天的唯一成员。请添加他人并将其设为所有者，否则你退出后此聊天将被删除。",
+  "LeaveConfirm_DeleteAnyway": "仍然删除",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "你是此地点的唯一所有者。请将其他成员设为所有者，否则你退出后此地点及其所有聊天将被删除。",
+  "LeaveConfirm_LastPlaceMemberQuestion": "你是此地点的唯一成员。请添加他人并将其设为所有者，否则你退出后此地点及其所有聊天将被删除。",
 
   "Common_Continue": "继续",
   "Common_Verify": "验证",
@@ -1819,9 +1824,7 @@
   "Invite_UnknownLink": "未知链接",
 
   "ChatSettings_UsePlaceSettingsForMembers": "请在地点设置中编辑成员",
-  "ChatSettings_LeaveChatAndDelete": "退出并删除聊天",
 
-  "PlaceSettings_LeavePlaceAndDelete": "退出并删除地点",
   "Call_OutgoingTo": "去电：",
   "Call_Outgoing": "去电"
 }

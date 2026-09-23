@@ -1508,13 +1508,18 @@
   "LeaveConfirm_LeaveChatTitle": "Покинути чат",
   "LeaveConfirm_LeaveChatQuestion": "Ви впевнені, що хочете покинути цей чат?",
   "LeaveConfirm_DeleteChatTitle": "Видалити чат",
-  "LeaveConfirm_DeleteChatQuestion": "Ви впевнені, що хочете видалити цей чат?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "Цей чат буде видалено для всіх його учасників. Цю дію не можна скасувати.",
   "LeaveConfirm_DeleteThreadTitle": "Видалити тред",
   "LeaveConfirm_DeleteThreadQuestion": "Ви впевнені, що хочете видалити цей тред?",
   "LeaveConfirm_LeavePlaceTitle": "Покинути Місце",
   "LeaveConfirm_LeavePlaceQuestion": "Ви впевнені, що хочете покинути це Місце?",
   "LeaveConfirm_DeletePlaceTitle": "Видалити Місце",
-  "LeaveConfirm_DeletePlaceQuestion": "Ви впевнені, що хочете видалити це Місце?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "Це Місце й усі його чати буде видалено для всіх його учасників. Цю дію не можна скасувати.",
+  "LeaveConfirm_LastOwnerQuestion": "Ви єдиний власник цього чату. Призначте власником іншого учасника, інакше під час виходу чат буде видалено.",
+  "LeaveConfirm_LastMemberQuestion": "Ви єдиний учасник цього чату. Додайте когось і призначте власником, інакше під час виходу чат буде видалено.",
+  "LeaveConfirm_DeleteAnyway": "Усе одно видалити",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "Ви єдиний власник цього Місця. Призначте власником іншого учасника, інакше під час виходу Місце й усі його чати буде видалено.",
+  "LeaveConfirm_LastPlaceMemberQuestion": "Ви єдиний учасник цього Місця. Додайте когось і призначте власником, інакше під час виходу Місце й усі його чати буде видалено.",
 
   "Common_Continue": "Продовжити",
   "Common_Verify": "Підтвердити",
@@ -1819,9 +1824,7 @@
   "Invite_UnknownLink": "Невідоме посилання",
 
   "ChatSettings_UsePlaceSettingsForMembers": "Редагуйте учасників у налаштуваннях Місця",
-  "ChatSettings_LeaveChatAndDelete": "Покинути й видалити чат",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Покинути й видалити Місце",
   "Call_OutgoingTo": "Вихідний дзвінок: ",
   "Call_Outgoing": "Вихідний дзвінок"
 }

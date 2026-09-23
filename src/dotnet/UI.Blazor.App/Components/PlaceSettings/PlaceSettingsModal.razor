@@ -5,10 +5,16 @@
     HasCloseButton="true"
     Class="edit-settings-modal edit-place-settings-modal fixed-height"
     BodyClass="no-scrollbar"
-    StartPage="@(DiveInDialogPage.New<PlaceSettingsStartModalPage>(ModalModel.PlaceId))" />
+    StartPage="@StartPage" />
 
 @code {
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    public sealed record Model(PlaceId PlaceId);
+    private DiveInDialogPage StartPage => ModalModel.IsOwnerHandover
+        ? DiveInDialogPage.New<PlaceSettingsEditMembersModalPage>(ModalModel.PlaceId)
+        : DiveInDialogPage.New<PlaceSettingsStartModalPage>(ModalModel.PlaceId);
+
+    public sealed record Model(PlaceId PlaceId) {
+        public bool IsOwnerHandover { get; init; }
+    }
 }

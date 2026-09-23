@@ -1508,13 +1508,18 @@
   "LeaveConfirm_LeaveChatTitle": "Opuść czat",
   "LeaveConfirm_LeaveChatQuestion": "Czy na pewno chcesz opuścić ten czat?",
   "LeaveConfirm_DeleteChatTitle": "Usuń czat",
-  "LeaveConfirm_DeleteChatQuestion": "Czy na pewno chcesz usunąć ten czat?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "Ten czat zostanie usunięty dla wszystkich jego uczestników. Tej operacji nie można cofnąć.",
   "LeaveConfirm_DeleteThreadTitle": "Usuń wątek",
   "LeaveConfirm_DeleteThreadQuestion": "Czy na pewno chcesz usunąć ten wątek?",
   "LeaveConfirm_LeavePlaceTitle": "Opuść Miejsce",
   "LeaveConfirm_LeavePlaceQuestion": "Czy na pewno chcesz opuścić to Miejsce?",
   "LeaveConfirm_DeletePlaceTitle": "Usuń Miejsce",
-  "LeaveConfirm_DeletePlaceQuestion": "Czy na pewno chcesz usunąć to Miejsce?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "To Miejsce i wszystkie jego czaty zostaną usunięte dla wszystkich jego uczestników. Tej operacji nie można cofnąć.",
+  "LeaveConfirm_LastOwnerQuestion": "Jesteś jedynym właścicielem tego czatu. Ustaw właścicielem innego uczestnika, w przeciwnym razie czat zostanie usunięty po Twoim wyjściu.",
+  "LeaveConfirm_LastMemberQuestion": "Jesteś jedynym uczestnikiem tego czatu. Dodaj kogoś i ustaw go właścicielem, w przeciwnym razie czat zostanie usunięty po Twoim wyjściu.",
+  "LeaveConfirm_DeleteAnyway": "Usuń mimo to",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "Jesteś jedynym właścicielem tego Miejsca. Ustaw właścicielem innego uczestnika, w przeciwnym razie Miejsce i wszystkie jego czaty zostaną usunięte po Twoim wyjściu.",
+  "LeaveConfirm_LastPlaceMemberQuestion": "Jesteś jedynym uczestnikiem tego Miejsca. Dodaj kogoś i ustaw go właścicielem, w przeciwnym razie Miejsce i wszystkie jego czaty zostaną usunięte po Twoim wyjściu.",
 
   "Common_Continue": "Kontynuuj",
   "Common_Verify": "Zweryfikuj",
@@ -1819,9 +1824,7 @@
   "Invite_UnknownLink": "Nieznany link",
 
   "ChatSettings_UsePlaceSettingsForMembers": "Zmieniaj uczestników w ustawieniach Miejsca",
-  "ChatSettings_LeaveChatAndDelete": "Opuść czat i usuń",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Opuść Miejsce i usuń",
   "Call_OutgoingTo": "Połączenie wychodzące do ",
   "Call_Outgoing": "Połączenie wychodzące"
 }

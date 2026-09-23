@@ -1508,13 +1508,18 @@
   "LeaveConfirm_LeaveChatTitle": "चैट छोड़ें",
   "LeaveConfirm_LeaveChatQuestion": "क्या आप वाकई यह चैट छोड़ना चाहते हैं?",
   "LeaveConfirm_DeleteChatTitle": "चैट हटाएँ",
-  "LeaveConfirm_DeleteChatQuestion": "क्या आप वाकई यह चैट हटाना चाहते हैं?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "यह चैट इसके सभी सदस्यों के लिए हटा दी जाएगी। यह क्रिया पूर्ववत नहीं की जा सकती।",
   "LeaveConfirm_DeleteThreadTitle": "थ्रेड हटाएँ",
   "LeaveConfirm_DeleteThreadQuestion": "क्या आप वाकई यह थ्रेड हटाना चाहते हैं?",
   "LeaveConfirm_LeavePlaceTitle": "प्लेस छोड़ें",
   "LeaveConfirm_LeavePlaceQuestion": "क्या आप वाकई यह प्लेस छोड़ना चाहते हैं?",
   "LeaveConfirm_DeletePlaceTitle": "प्लेस हटाएँ",
-  "LeaveConfirm_DeletePlaceQuestion": "क्या आप वाकई यह प्लेस हटाना चाहते हैं?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "यह स्थान और इसकी सभी चैट इसके सभी सदस्यों के लिए हटा दी जाएँगी। यह क्रिया पूर्ववत नहीं की जा सकती।",
+  "LeaveConfirm_LastOwnerQuestion": "आप इस चैट के एकमात्र स्वामी हैं। किसी अन्य सदस्य को स्वामी बनाएँ, अन्यथा आपके छोड़ने पर चैट हटा दी जाएगी।",
+  "LeaveConfirm_LastMemberQuestion": "आप इस चैट के एकमात्र सदस्य हैं। किसी को जोड़ें और उसे स्वामी बनाएँ, अन्यथा आपके छोड़ने पर चैट हटा दी जाएगी।",
+  "LeaveConfirm_DeleteAnyway": "फिर भी हटाएँ",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "आप इस स्थान के एकमात्र स्वामी हैं। किसी अन्य सदस्य को स्वामी बनाएँ, अन्यथा आपके छोड़ने पर यह स्थान और इसकी सभी चैट हटा दी जाएँगी।",
+  "LeaveConfirm_LastPlaceMemberQuestion": "आप इस स्थान के एकमात्र सदस्य हैं। किसी को जोड़ें और उसे स्वामी बनाएँ, अन्यथा आपके छोड़ने पर यह स्थान और इसकी सभी चैट हटा दी जाएँगी।",
 
   "Common_Continue": "जारी रखें",
   "Common_Verify": "सत्यापित करें",
@@ -1819,9 +1824,7 @@
   "Invite_UnknownLink": "अज्ञात लिंक",
 
   "ChatSettings_UsePlaceSettingsForMembers": "सदस्यों को संपादित करने के लिए प्लेस सेटिंग्स का उपयोग करें",
-  "ChatSettings_LeaveChatAndDelete": "चैट छोड़ें और हटाएँ",
 
-  "PlaceSettings_LeavePlaceAndDelete": "प्लेस छोड़ें और हटाएँ",
   "Call_OutgoingTo": "आउटगोइंग कॉल: ",
   "Call_Outgoing": "आउटगोइंग कॉल"
 }

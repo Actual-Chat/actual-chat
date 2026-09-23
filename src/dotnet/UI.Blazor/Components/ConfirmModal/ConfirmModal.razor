@@ -22,7 +22,10 @@
     var cancelText = ModalModel.CancelButtonText;
     if (cancelText.IsNullOrEmpty())
         cancelText = L.Common_Cancel;
-    var cls = $"confirm-modal modal-sm {ModalModel.Class}";
+    var altText = ModalModel.AltButtonText;
+    var hasAlt = ModalModel.Alt != null && !altText.IsNullOrEmpty();
+    // Three buttons don't fit one modal-sm row - they clip their labels, so stack them instead
+    var cls = $"confirm-modal modal-sm {(hasAlt ? "wide-dialog-buttons " : "")}{ModalModel.Class}";
 }
 
 <DialogFrame Class="@cls" Title="@title">
@@ -47,6 +50,10 @@
     <Buttons>
         <Button Class="btn-modal" Click="@(_ => Modal.Close())">@cancelText</Button>
         <Button Class="@btnCls" Click="OnConfirm">@btnText</Button>
+        @* Stacked, the footer is column-reverse, so the alternative sits on top - it's the way out we recommend *@
+        @if (hasAlt) {
+            <Button Class="btn-modal btn-primary" Click="OnAlt">@altText</Button>
+        }
     </Buttons>
 </DialogFrame>
 
@@ -59,10 +66,19 @@
         Modal.Close();
     }
 
+    private void OnAlt() {
+        ModalModel.Alt!();
+        Modal.Close();
+    }
+
     public sealed record Model(bool IsDestructive, string Text, Action Confirm) {
         public string Title { get; init; } = "";
         public string ConfirmButtonText { get; init; } = "";
         public string CancelButtonText { get; init; } = "";
+        // Renders a third button - an escape from the choice rather than a second way to take it.
+        // It stacks the footer, since three buttons don't fit a row. Requires AltButtonText too.
+        public Action? Alt { get; init; }
+        public string AltButtonText { get; init; } = "";
         public RenderFragment? MarkupTitle { get; init; }
         public RenderFragment? AdditionalContent { get; init; }
         public string Class { get; init; } = "";

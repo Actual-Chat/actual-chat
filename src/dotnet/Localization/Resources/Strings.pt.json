@@ -1508,13 +1508,18 @@
   "LeaveConfirm_LeaveChatTitle": "Sair do chat",
   "LeaveConfirm_LeaveChatQuestion": "Tem certeza de que deseja sair deste chat?",
   "LeaveConfirm_DeleteChatTitle": "Excluir chat",
-  "LeaveConfirm_DeleteChatQuestion": "Tem certeza de que deseja excluir este chat?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "Este chat será excluído para todos os seus membros. Esta ação não pode ser desfeita.",
   "LeaveConfirm_DeleteThreadTitle": "Excluir tópico",
   "LeaveConfirm_DeleteThreadQuestion": "Tem certeza de que deseja excluir este tópico?",
   "LeaveConfirm_LeavePlaceTitle": "Sair do Lugar",
   "LeaveConfirm_LeavePlaceQuestion": "Tem certeza de que deseja sair deste Lugar?",
   "LeaveConfirm_DeletePlaceTitle": "Excluir Lugar",
-  "LeaveConfirm_DeletePlaceQuestion": "Tem certeza de que deseja excluir este Lugar?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "Este Lugar e todos os seus chats serão excluídos para todos os seus membros. Esta ação não pode ser desfeita.",
+  "LeaveConfirm_LastOwnerQuestion": "Você é o único proprietário deste chat. Promova outro membro a proprietário, caso contrário o chat será excluído quando você sair.",
+  "LeaveConfirm_LastMemberQuestion": "Você é o único membro deste chat. Adicione alguém e promova essa pessoa a proprietário, caso contrário o chat será excluído quando você sair.",
+  "LeaveConfirm_DeleteAnyway": "Excluir mesmo assim",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "Você é o único proprietário deste Lugar. Promova outro membro a proprietário, caso contrário o Lugar e todos os seus chats serão excluídos quando você sair.",
+  "LeaveConfirm_LastPlaceMemberQuestion": "Você é o único membro deste Lugar. Adicione alguém e promova essa pessoa a proprietário, caso contrário o Lugar e todos os seus chats serão excluídos quando você sair.",
 
   "Common_Continue": "Continuar",
   "Common_Verify": "Verificar",
@@ -1819,9 +1824,7 @@
   "Invite_UnknownLink": "Link desconhecido",
 
   "ChatSettings_UsePlaceSettingsForMembers": "Use as configurações do Lugar para editar os membros",
-  "ChatSettings_LeaveChatAndDelete": "Sair do chat e excluir",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Sair do Lugar e excluir",
   "Call_OutgoingTo": "Chamada efetuada para ",
   "Call_Outgoing": "Chamada efetuada"
 }

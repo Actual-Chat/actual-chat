@@ -105,14 +105,14 @@
                     <Content>@L.Chat_ArchiveTitle</Content>
                 </TileItem>
 
-                <TileItem Class="item-leave-group item-danger" Click="@(() => OnDeleteChatClick(m.Chat))">
-                    <Icon><i class="icon-log-out"></i></Icon>
-                    <Content>@L.ChatSettings_LeaveChatAndDelete</Content>
+                <TileItem Class="item-danger" Click="@(() => OnDeleteChatClick(m.Chat))">
+                    <Icon><i class="icon-trash02"></i></Icon>
+                    <Content>@L.LeaveConfirm_DeleteChatTitle</Content>
                 </TileItem>
             }
         }
         else if (m.CanRemoveThread) {
-            <TileItem Class="item-leave-group item-danger" Click="@(() => OnDeleteThreadClick(m.Chat))">
+            <TileItem Class="item-danger" Click="@(() => OnDeleteThreadClick(m.Chat))">
                 <Icon><i class="icon-trash02"></i></Icon>
                 <Content>@L.LeaveConfirm_DeleteThreadTitle</Content>
             </TileItem>

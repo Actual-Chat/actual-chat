@@ -430,8 +430,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     // Chat: leave, archive, delete
 
     public void LeaveChat(Chat.Chat chat)
-        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, LeaveChatConfirmationModal.TargetKind.Chat,
-            m => _ = DeleteOrLeaveChatInternal(chat, false, m)));
+        => _ = LeaveChatInternal(chat);
 
     public void ArchiveChat(Chat.Chat chat)
     {
@@ -482,8 +481,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     public void LeavePlace(PlaceId placeId)
-        => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(false, LeaveChatConfirmationModal.TargetKind.Place,
-            m => _ = DeleteOrLeavePlaceInternal(placeId, false, () => Task.CompletedTask, m)));
+        => _ = LeavePlaceInternal(placeId);
 
     public void DeletePlace(PlaceId placeId, Func<Task> onBeforeExecuteCommand)
         => _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true, LeaveChatConfirmationModal.TargetKind.Place,
@@ -1007,21 +1005,94 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
     }
 
-    private async Task DeleteOrLeaveChatInternal(Chat.Chat chat, bool isDelete, Modal modal)
+    private async Task LeaveChatInternal(
+        Chat.Chat chat, bool isHandoverExpected = false, bool mustStackButtons = false)
     {
-        if (!isDelete) {
-            var isOwner = chat.Rules.IsOwner();
-            if (isOwner) {
-                var authorId = chat.Rules.Author?.Id;
-                var ownerIds = await Hub.Roles.ListOwnerIds(Session, chat.Id, default).ConfigureAwait(true); // Continue on Blazor context.
-                var hasAnotherOwner = ownerIds.Any(c => c != authorId);
-                if (!hasAnotherOwner) {
-                    const string message =
-                        "You can't leave this chat because you are its only owner. Please add another chat owner first.";
-                    UICommander.ShowError(StandardError.Constraint(message));
-                }
+        var authorId = chat.Rules.Author?.Id;
+        var isLastOwner = chat.Rules.IsOwner();
+        if (isLastOwner) {
+            var ownerIds = await Hub.Roles.ListOwnerIds(Session, chat.Id, default).ConfigureAwait(true);
+            isLastOwner = !ownerIds.Any(c => c != authorId);
+        }
+        if (!isLastOwner) {
+            ShowLeaveChatConfirmation(chat, mustStackButtons);
+            return;
+        }
+
+        // A chat without an Owner can never be managed again, so the last one either hands it over or deletes it.
+        var authorIds = await Authors.ListAuthorIds(Session, chat.Id, default).ConfigureAwait(true);
+        var hasOtherMembers = authorIds.Any(c => c != authorId);
+        // An archived chat keeps Owner but loses Invite and EditMembers, so the way out isn't always open
+        var altButtonText = "";
+        Action? alt = null;
+        if (hasOtherMembers && EditMembersUI.CanEditMembers(chat)) {
+            altButtonText = L.Account_PromoteToOwner;
+            alt = () => _ = ResumeLeaveChat(
+                () => ModalUI.Show(new ChatSettingsModal.Model(chat.Id) { IsOwnerHandover = true }),
+                chat.Id);
+            // Members were just added for this very purpose, so skip asking again and let them pick one
+            if (isHandoverExpected) {
+                alt();
+                return;
             }
         }
+        else if (!hasOtherMembers && EditMembersUI.CanAddMembers(chat)) {
+            altButtonText = L.ChatMenu_AddMembers;
+            alt = () => _ = ResumeLeaveChat(
+                () => ModalUI.Show(new AddMemberModal.Model(chat.Id)),
+                chat.Id,
+                true);
+        }
+        // Both last-owner questions tell the user to hand the chat over, so without that button they'd
+        // promise what this modal can't do - an archived chat has deleting as its only way out.
+        var question = alt == null
+            ? L.LeaveConfirm_DeleteChatForAllQuestion
+            : hasOtherMembers
+                ? L.LeaveConfirm_LastOwnerQuestion
+                : L.LeaveConfirm_LastMemberQuestion;
+        // This modal already carries the delete warning in full, so it confirms the deletion itself -
+        // DeleteChat would only ask the very same question a second time.
+        _ = ModalUI.Show(new ConfirmModal.Model(
+            true,
+            question,
+            () => _ = DeleteOrLeaveChatInternal(chat, true, null)) {
+            Title = L.LeaveConfirm_LeaveChatTitle,
+            ConfirmButtonText = L.LeaveConfirm_DeleteAnyway,
+            AltButtonText = altButtonText,
+            Alt = alt,
+        });
+    }
+
+    private async Task ResumeLeaveChat(
+        Func<Task<ModalRef>> showAlternative, ChatId chatId, bool isHandoverExpected = false)
+    {
+        // The alternative replaces the confirmation, so the leave it interrupted is decided again once
+        // the user is done - otherwise adding a member ends with nothing left to press. Every resumed
+        // step keeps the stacked footer the three-button modal started with.
+        var modalRef = await showAlternative().ConfigureAwait(true);
+        await modalRef.WhenClosed.ConfigureAwait(true);
+        var chat = await Chats.Get(Session, chatId, default).ConfigureAwait(true);
+        if (chat != null)
+            await LeaveChatInternal(chat, isHandoverExpected, true).ConfigureAwait(true);
+    }
+
+    private void ShowLeaveChatConfirmation(Chat.Chat chat, bool mustStackButtons = false)
+    {
+        // The same modal the last Owner sees, minus the way out - handing the chat over leads here,
+        // and swapping the dialog under the user mid-flow reads as a different question.
+        _ = ModalUI.Show(new ConfirmModal.Model(
+            true,
+            L.LeaveConfirm_LeaveChatQuestion,
+            () => _ = DeleteOrLeaveChatInternal(chat, false, null)) {
+            Title = L.LeaveConfirm_LeaveChatTitle,
+            ConfirmButtonText = L.Common_Leave,
+            Class = mustStackButtons ? "wide-dialog-buttons" : "",
+        });
+    }
+
+    private async Task DeleteOrLeaveChatInternal(Chat.Chat chat, bool isDelete, Modal? modal)
+    {
+        // A null modal means the caller's own modal is already closing - ConfirmModal closes on confirm.
         var isSelectedChat = chat.Id.Equals(SelectedChatId.Value);
         var command = isDelete
             ? (ICommand)new Chats_Change {
@@ -1035,17 +1106,96 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (result.HasError)
             return;
 
-        modal.Close();
+        modal?.Close();
         // If a chat was selected and we no longer can see a chat, navigate to another visible chat
         if (isSelectedChat && !(chat.IsPublic && !isDelete))
             _ = NavigateToVisibleChat((chat.Id as PlaceChatId)?.PlaceId).SuppressExceptions();
     }
 
-    private async Task DeleteOrLeavePlaceInternal(PlaceId placeId, bool isDelete, Func<Task> onBeforeExecuteCommand, Modal modal)
+    private async Task LeavePlaceInternal(
+        PlaceId placeId, bool isHandoverExpected = false, bool mustStackButtons = false)
     {
+        var place = await Places.Get(Session, placeId, default).ConfigureAwait(true); // Continue on Blazor context.
+        if (place == null)
+            return;
+
+        var authorId = place.Rules.Author?.Id;
+        var isLastOwner = place.Rules.IsOwner();
+        if (isLastOwner) {
+            var ownerIds = await Places.ListOwnerIds(Session, placeId, default).ConfigureAwait(true);
+            isLastOwner = !ownerIds.Any(c => c != authorId);
+        }
+        if (!isLastOwner) {
+            ShowLeavePlaceConfirmation(placeId, mustStackButtons);
+            return;
+        }
+
+        // A place without an Owner can never be managed again, so the last one either hands it over or deletes it.
+        var authorIds = await Places.ListAuthorIds(Session, placeId, default).ConfigureAwait(true);
+        var hasOtherMembers = authorIds.Any(c => c != authorId);
+        var altButtonText = "";
+        Action? alt = null;
+        if (hasOtherMembers && place.Rules.CanEditMembers()) {
+            altButtonText = L.Account_PromoteToOwner;
+            alt = () => _ = ResumeLeavePlace(
+                () => ModalUI.Show(new PlaceSettingsModal.Model(placeId) { IsOwnerHandover = true }),
+                placeId);
+            // Members were just added for this very purpose, so skip asking again and let them pick one
+            if (isHandoverExpected) {
+                alt();
+                return;
+            }
+        }
+        else if (!hasOtherMembers && place.Rules.CanInvite()) {
+            altButtonText = L.Place_AddMembers;
+            alt = () => _ = ResumeLeavePlace(
+                () => ModalUI.Show(new AddMemberModal.Model(placeId)),
+                placeId,
+                true);
+        }
+        var question = alt == null
+            ? L.LeaveConfirm_DeletePlaceForAllQuestion
+            : hasOtherMembers
+                ? L.LeaveConfirm_LastPlaceOwnerQuestion
+                : L.LeaveConfirm_LastPlaceMemberQuestion;
+        _ = ModalUI.Show(new ConfirmModal.Model(
+            true,
+            question,
+            () => _ = DeleteOrLeavePlaceInternal(placeId, true, () => Task.CompletedTask, null)) {
+            Title = L.LeaveConfirm_LeavePlaceTitle,
+            ConfirmButtonText = L.LeaveConfirm_DeleteAnyway,
+            AltButtonText = altButtonText,
+            Alt = alt,
+        });
+    }
+
+    private async Task ResumeLeavePlace(
+        Func<Task<ModalRef>> showAlternative, PlaceId placeId, bool isHandoverExpected = false)
+    {
+        var modalRef = await showAlternative().ConfigureAwait(true);
+        await modalRef.WhenClosed.ConfigureAwait(true);
+        await LeavePlaceInternal(placeId, isHandoverExpected, true).ConfigureAwait(true);
+    }
+
+    private void ShowLeavePlaceConfirmation(PlaceId placeId, bool mustStackButtons = false)
+    {
+        _ = ModalUI.Show(new ConfirmModal.Model(
+            true,
+            L.LeaveConfirm_LeavePlaceQuestion,
+            () => _ = DeleteOrLeavePlaceInternal(placeId, false, () => Task.CompletedTask, null)) {
+            Title = L.LeaveConfirm_LeavePlaceTitle,
+            ConfirmButtonText = L.Common_Leave,
+            Class = mustStackButtons ? "wide-dialog-buttons" : "",
+        });
+    }
+
+    private async Task DeleteOrLeavePlaceInternal(
+        PlaceId placeId, bool isDelete, Func<Task> onBeforeExecuteCommand, Modal? modal)
+    {
+        // A null modal means the caller's own modal is already closing - ConfirmModal closes on confirm.
         var isSelectedPlace = placeId.Equals(SelectedPlaceId.Value)
             || (NavbarUI.IsPlaceSelected(out var selectedPlaceId) && placeId == selectedPlaceId);
-        modal.Close();
+        modal?.Close();
         await onBeforeExecuteCommand().ConfigureAwait(true);
         var command = isDelete
             ? (ICommand)new Places_Change {

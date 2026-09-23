@@ -1508,13 +1508,18 @@
   "LeaveConfirm_LeaveChatTitle": "チャットを退出",
   "LeaveConfirm_LeaveChatQuestion": "このチャットを退出してもよろしいですか?",
   "LeaveConfirm_DeleteChatTitle": "チャットを削除",
-  "LeaveConfirm_DeleteChatQuestion": "このチャットを削除してもよろしいですか?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "このチャットはすべてのメンバーから削除されます。この操作は取り消せません。",
   "LeaveConfirm_DeleteThreadTitle": "スレッドを削除",
   "LeaveConfirm_DeleteThreadQuestion": "このスレッドを削除してもよろしいですか?",
   "LeaveConfirm_LeavePlaceTitle": "プレイスを退出",
   "LeaveConfirm_LeavePlaceQuestion": "このプレイスを退出してもよろしいですか?",
   "LeaveConfirm_DeletePlaceTitle": "プレイスを削除",
-  "LeaveConfirm_DeletePlaceQuestion": "このプレイスを削除してもよろしいですか?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "このプレイスとそのすべてのチャットは、すべてのメンバーから削除されます。この操作は取り消せません。",
+  "LeaveConfirm_LastOwnerQuestion": "あなたはこのチャットの唯一のオーナーです。他のメンバーをオーナーにしてください。そうしないと、退出時にチャットは削除されます。",
+  "LeaveConfirm_LastMemberQuestion": "あなたはこのチャットの唯一のメンバーです。誰かを追加してオーナーにしてください。そうしないと、退出時にチャットは削除されます。",
+  "LeaveConfirm_DeleteAnyway": "それでも削除",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "あなたはこのプレイスの唯一のオーナーです。他のメンバーをオーナーにしてください。そうしないと、退出時にプレイスとそのすべてのチャットは削除されます。",
+  "LeaveConfirm_LastPlaceMemberQuestion": "あなたはこのプレイスの唯一のメンバーです。誰かを追加してオーナーにしてください。そうしないと、退出時にプレイスとそのすべてのチャットは削除されます。",
 
   "Common_Continue": "続ける",
   "Common_Verify": "確認",
@@ -1819,9 +1824,7 @@
   "Invite_UnknownLink": "不明なリンク",
 
   "ChatSettings_UsePlaceSettingsForMembers": "メンバーの編集にはプレイスの設定を使用します",
-  "ChatSettings_LeaveChatAndDelete": "チャットを退出して削除",
 
-  "PlaceSettings_LeavePlaceAndDelete": "プレイスを退出して削除",
   "Call_OutgoingTo": "発信: ",
   "Call_Outgoing": "発信"
 }

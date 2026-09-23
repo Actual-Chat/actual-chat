@@ -1508,13 +1508,18 @@
   "LeaveConfirm_LeaveChatTitle": "Napustite chat",
   "LeaveConfirm_LeaveChatQuestion": "Sigurno želite napustiti ovaj chat?",
   "LeaveConfirm_DeleteChatTitle": "Obrišite chat",
-  "LeaveConfirm_DeleteChatQuestion": "Sigurno želite obrisati ovaj chat?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "Ovaj chat će biti obrisan za sve njegove članove. Ova radnja se ne može poništiti.",
   "LeaveConfirm_DeleteThreadTitle": "Obrišite nit",
   "LeaveConfirm_DeleteThreadQuestion": "Sigurno želite obrisati ovu nit?",
   "LeaveConfirm_LeavePlaceTitle": "Napustite Mjesto",
   "LeaveConfirm_LeavePlaceQuestion": "Sigurno želite napustiti ovo Mjesto?",
   "LeaveConfirm_DeletePlaceTitle": "Obrišite Mjesto",
-  "LeaveConfirm_DeletePlaceQuestion": "Sigurno želite obrisati ovo Mjesto?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "Ovo Mjesto i svi njegovi chatovi će biti obrisani za sve njegove članove. Ova radnja se ne može poništiti.",
+  "LeaveConfirm_LastOwnerQuestion": "Vi ste jedini vlasnik ovog chata. Postavite drugog člana za vlasnika, inače će chat biti obrisan kada ga napustite.",
+  "LeaveConfirm_LastMemberQuestion": "Vi ste jedini član ovog chata. Dodajte nekoga i postavite ga za vlasnika, inače će chat biti obrisan kada ga napustite.",
+  "LeaveConfirm_DeleteAnyway": "Ipak obriši",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "Vi ste jedini vlasnik ovog Mjesta. Postavite drugog člana za vlasnika, inače će Mjesto i svi njegovi chatovi biti obrisani kada ga napustite.",
+  "LeaveConfirm_LastPlaceMemberQuestion": "Vi ste jedini član ovog Mjesta. Dodajte nekoga i postavite ga za vlasnika, inače će Mjesto i svi njegovi chatovi biti obrisani kada ga napustite.",
 
   "Common_Continue": "Nastavite",
   "Common_Verify": "Potvrdite",
@@ -1819,9 +1824,7 @@
   "Invite_UnknownLink": "Nepoznat link",
 
   "ChatSettings_UsePlaceSettingsForMembers": "Članove uređujete u postavkama Mjesta",
-  "ChatSettings_LeaveChatAndDelete": "Napustite chat i obriši",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Napustite Mjesto i obriši",
   "Call_OutgoingTo": "Odlazni poziv prema ",
   "Call_Outgoing": "Odlazni poziv"
 }

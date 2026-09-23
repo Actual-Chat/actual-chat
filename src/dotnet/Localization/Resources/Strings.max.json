@@ -1771,13 +1771,21 @@
   "LeaveConfirm_LeaveChatTitle": "Quitter la discussion",
   "LeaveConfirm_LeaveChatQuestion": "Bu sohbetten ayrılmak istediğinize emin misiniz?",
   "LeaveConfirm_DeleteChatTitle": "Supprimer la discussion",
-  "LeaveConfirm_DeleteChatQuestion": "Voulez-vous vraiment supprimer cette discussion ?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "Dieser Chat wird für alle seine Mitglieder gelöscht. Diese Aktion lässt sich nicht rückgängig machen.",
   "LeaveConfirm_DeleteThreadTitle": "Изтрийте нишката",
   "LeaveConfirm_DeleteThreadQuestion": "Tem certeza de que deseja excluir este tópico?",
   "LeaveConfirm_LeavePlaceTitle": "Напуснете Мястото",
   "LeaveConfirm_LeavePlaceQuestion": "Наистина ли искате да напуснете това Място?",
   "LeaveConfirm_DeletePlaceTitle": "Изтрийте Мястото",
-  "LeaveConfirm_DeletePlaceQuestion": "Наистина ли искате да изтриете това Място?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "Dieser Place und alle seine Chats werden für alle seine Mitglieder gelöscht. Diese Aktion lässt sich nicht rückgängig machen.",
+
+  // The last Owner leaving is offered a way out first - hand the chat or place over, or add
+  // someone to hand it to; refusing it confirms with the matching delete question above.
+  "LeaveConfirm_LastOwnerQuestion": "Vous êtes le seul propriétaire de cette discussion. Promouvez un autre membre propriétaire, sinon la discussion sera supprimée lorsque vous la quitterez.",
+  "LeaveConfirm_LastMemberQuestion": "Vous êtes le seul membre de cette discussion. Ajoutez quelqu’un et promouvez-le propriétaire, sinon la discussion sera supprimée lorsque vous la quitterez.",
+  "LeaveConfirm_DeleteAnyway": "Изтриване въпреки това",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "あなたはこのプレイスの唯一のオーナーです。他のメンバーをオーナーにしてください。そうしないと、退出時にプレイスとそのすべてのチャットは削除されます。",
+  "LeaveConfirm_LastPlaceMemberQuestion": "あなたはこのプレイスの唯一のメンバーです。誰かを追加してオーナーにしてください。そうしないと、退出時にプレイスとそのすべてのチャットは削除されます。",
 
   // Shared labels once more, then the download page and the error pages.
   "Common_Continue": "Продовжити",
@@ -2155,10 +2163,6 @@
   "Invite_NewPrivateLink": "Нове приватне посилання-запрошення",
   "Invite_UnknownLink": "Liên kết không xác định",
 
-  // Two more rows in chat settings.
-  "ChatSettings_UsePlaceSettingsForMembers": "सदस्यों को संपादित करने के लिए प्लेस सेटिंग्स का उपयोग करें",
-  "ChatSettings_LeaveChatAndDelete": "Quitter la discussion et la supprimer",
-
-  // The destructive action at the bottom of place settings.
-  "PlaceSettings_LeavePlaceAndDelete": "Напуснете Мястото и изтрий"
+  // One more row in chat settings.
+  "ChatSettings_UsePlaceSettingsForMembers": "सदस्यों को संपादित करने के लिए प्लेस सेटिंग्स का उपयोग करें"
 }

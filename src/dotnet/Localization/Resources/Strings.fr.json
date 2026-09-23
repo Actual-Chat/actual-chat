@@ -1508,13 +1508,18 @@
   "LeaveConfirm_LeaveChatTitle": "Quitter la discussion",
   "LeaveConfirm_LeaveChatQuestion": "Voulez-vous vraiment quitter cette discussion ?",
   "LeaveConfirm_DeleteChatTitle": "Supprimer la discussion",
-  "LeaveConfirm_DeleteChatQuestion": "Voulez-vous vraiment supprimer cette discussion ?",
+  "LeaveConfirm_DeleteChatForAllQuestion": "Cette discussion sera supprimée pour tous ses membres. Cette action est irréversible.",
   "LeaveConfirm_DeleteThreadTitle": "Supprimer le fil",
   "LeaveConfirm_DeleteThreadQuestion": "Voulez-vous vraiment supprimer ce fil ?",
   "LeaveConfirm_LeavePlaceTitle": "Quitter le Lieu",
   "LeaveConfirm_LeavePlaceQuestion": "Voulez-vous vraiment quitter ce Lieu ?",
   "LeaveConfirm_DeletePlaceTitle": "Supprimer le Lieu",
-  "LeaveConfirm_DeletePlaceQuestion": "Voulez-vous vraiment supprimer ce Lieu ?",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "Ce Lieu et toutes ses discussions seront supprimés pour tous ses membres. Cette action est irréversible.",
+  "LeaveConfirm_LastOwnerQuestion": "Vous êtes le seul propriétaire de cette discussion. Promouvez un autre membre propriétaire, sinon la discussion sera supprimée lorsque vous la quitterez.",
+  "LeaveConfirm_LastMemberQuestion": "Vous êtes le seul membre de cette discussion. Ajoutez quelqu’un et promouvez-le propriétaire, sinon la discussion sera supprimée lorsque vous la quitterez.",
+  "LeaveConfirm_DeleteAnyway": "Supprimer quand même",
+  "LeaveConfirm_LastPlaceOwnerQuestion": "Vous êtes le seul propriétaire de ce Lieu. Promouvez un autre membre propriétaire, sinon le Lieu et toutes ses discussions seront supprimés lorsque vous le quitterez.",
+  "LeaveConfirm_LastPlaceMemberQuestion": "Vous êtes le seul membre de ce Lieu. Ajoutez quelqu’un et promouvez-le propriétaire, sinon le Lieu et toutes ses discussions seront supprimés lorsque vous le quitterez.",
 
   "Common_Continue": "Continuer",
   "Common_Verify": "Vérifier",
@@ -1819,9 +1824,7 @@
   "Invite_UnknownLink": "Lien inconnu",
 
   "ChatSettings_UsePlaceSettingsForMembers": "Utilisez les paramètres du Lieu pour modifier les membres",
-  "ChatSettings_LeaveChatAndDelete": "Quitter la discussion et la supprimer",
 
-  "PlaceSettings_LeavePlaceAndDelete": "Quitter le Lieu et le supprimer",
   "Call_OutgoingTo": "Appel sortant vers ",
   "Call_Outgoing": "Appel sortant"
 }
