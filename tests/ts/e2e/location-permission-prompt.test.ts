@@ -20,13 +20,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { BrowserContext, Page } from 'playwright';
 import {
-    BASE_URL, TEST_EMAIL, connectBrowser, newUserContext, screenshot, skipOnboarding,
-    waitForChatReady, waitForEditor, type BrowserConnection,
+    BASE_URL, TEST_EMAIL, connectBrowser, newUserContext, openChat, screenshot,
+    type BrowserConnection,
 } from './helpers';
 
 const shot = (name: string) => screenshot('e2e', name);
 
-const CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
 const START = { latitude: 51.5074, longitude: -0.1278, accuracy: 12 };
 
 describe('share location modal without the location permission', () => {
@@ -50,16 +49,7 @@ describe('share location modal without the location permission', () => {
 
     it('prompts to enable the permission, then shows the map once it is granted', async () => {
         // arrange — open a chat we can share from
-        await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
-        await waitForChatReady(page);
-        await skipOnboarding(page);
-
-        const joinButton = page.locator('button:has-text("Join this chat")');
-        if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await joinButton.click();
-            await page.waitForTimeout(1500);
-        }
-        await waitForEditor(page);
+        await openChat(page);
 
         // arrange — a live share leaked by an earlier run would put an own marker on the
         // map area, and the prompt only replaces a map that has nothing to show
@@ -89,10 +79,12 @@ describe('share location modal without the location permission', () => {
         await modal.locator('.c-share-live').first().waitFor({ state: 'visible', timeout: 5_000 });
         await page.screenshot({ path: shot('loc-permission-prompt') });
 
-        // act — grant the permission and click the prompt
+        // act — grant the permission and click the prompt. The modal refreshes its fix every
+        // 10s, so the refresh can pick the permission up first and swap the prompt for the map
+        // before the click lands; either way the map is what has to show up.
         await context.grantPermissions(['geolocation'], { origin: BASE_URL });
         await context.setGeolocation(START);
-        await prompt.click();
+        await prompt.click({ timeout: 5_000 }).catch(() => { /* the refresh got there first */ });
 
         // assert — the open modal swaps the prompt for a real map with the own marker
         await prompt.waitFor({ state: 'hidden', timeout: 30_000 });

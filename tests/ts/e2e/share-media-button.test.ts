@@ -7,11 +7,11 @@
  */
 
 import { describe, it, beforeAll, afterAll } from 'vitest';
-import type { Page } from 'playwright';
+import type { Locator, Page } from 'playwright';
 import * as path from 'path';
 import {
-    BASE_URL, connectBrowser, ensureSignedIn, skipOnboarding, screenshot,
-    waitForChatReady, waitForEditor, type BrowserConnection,
+    DEFAULT_CHAT_URL, connectBrowser, ensureSignedIn, openChat, skipOnboarding, screenshot,
+    waitForChatReady, withUILanguage, type BrowserConnection,
 } from './helpers';
 
 // Real 32x32 JPEG from the .NET test fixtures — small but valid enough that
@@ -23,7 +23,26 @@ const TEST_IMAGE_PATH = path.resolve(
 
 const shot = (name: string) => screenshot('e2e', name);
 
-const CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
+/** Types the tag and confirms it landed: the editor re-renders around a freshly attached file,
+ *  and keystrokes sent while it does are lost - the message then posts with the attachment but
+ *  no text, and nothing downstream can tell that apart from a failed post. */
+async function typeTag(page: Page, editor: Locator, tag: string) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+        await editor.click({ force: true });
+        // Clear any stale draft (ChatMessageEditor persists per-chat drafts).
+        await editor.evaluate(el => {
+            el.innerHTML = '';
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        await editor.click({ force: true });
+        await page.keyboard.type(tag);
+        if ((await editor.innerText()).includes(tag))
+            return;
+
+        await page.waitForTimeout(1_000);
+    }
+    throw new Error(`typeTag: "${tag}" never landed in the editor`);
+}
 
 describe('share media as a new message', () => {
     let conn: BrowserConnection;
@@ -46,17 +65,7 @@ describe('share media as a new message', () => {
 
     it('sends a media-only message from the visual viewer to Notes', async () => {
         // arrange — open a chat we can post in
-        await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
-        await waitForChatReady(page);
-        await skipOnboarding(page);
-
-        const joinButton = page.locator('button:has-text("Join this chat")');
-        if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await joinButton.click();
-            await page.waitForTimeout(1500);
-        }
-
-        await waitForEditor(page);
+        await openChat(page);
 
         // act — attach an image and post a message with a unique marker tag
         const fileInput = page.locator('input.attachment-web-file-picker').first();
@@ -70,14 +79,7 @@ describe('share media as a new message', () => {
         await page.waitForTimeout(2_000);
 
         const messageInput = page.locator('#message-input .editor-content[contenteditable="true"]').first();
-        await messageInput.click({ force: true });
-        // Clear any stale draft (ChatMessageEditor persists per-chat drafts).
-        await messageInput.evaluate(el => {
-            el.innerHTML = '';
-            el.dispatchEvent(new Event('input', { bubbles: true }));
-        });
-        await messageInput.click({ force: true });
-        await page.keyboard.type(tag);
+        await typeTag(page, messageInput, tag);
         await page.screenshot({ path: shot('share-before-post') });
 
         await messageInput.dispatchEvent('keypress', {
@@ -86,7 +88,7 @@ describe('share media as a new message', () => {
 
         // The chat-view unmounts briefly after a post; re-navigate to re-render it.
         await page.waitForTimeout(2_000);
-        await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
+        await page.goto(withUILanguage(DEFAULT_CHAT_URL), { waitUntil: 'domcontentloaded' });
         await waitForChatReady(page);
         await skipOnboarding(page);
 

@@ -13,7 +13,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Page, ConsoleMessage } from 'playwright';
 import {
     BASE_URL, connectBrowser, ensureSignedIn, skipOnboarding,
-    screenshot, type BrowserConnection,
+    screenshot, withUILanguage, type BrowserConnection,
 } from './helpers';
 
 const shot = (name: string) => screenshot('add-place-members', name);
@@ -44,6 +44,13 @@ function attachErrorListeners(page: Page): CapturedError[] {
     return errors;
 }
 
+// The root serves the landing page to a signed-in account; the chat list - and with it
+// the create button - lives under /chat.
+async function openChatList(page: Page): Promise<void> {
+    await page.goto(withUILanguage(`${BASE_URL}/chat`), { waitUntil: 'domcontentloaded' });
+    await skipOnboarding(page);
+}
+
 async function ensurePlaceExists(page: Page, title: string): Promise<void> {
     // `.place-plus-btn` only renders for the currently-selected Place. Wait
     // generously (Blazor SPA boot + Fusion's "restore last selected place"
@@ -65,16 +72,18 @@ async function ensurePlaceExists(page: Page, title: string): Promise<void> {
         if (visible) return;
     }
 
-    // Open the navbar "+" → CreateMenu. The menu-host listens for
-    // document-level click events with a matching `data-menu` ancestor;
-    // dispatch a synthetic click on the inner <button> so we don't depend on
-    // pixel-precise hit-testing (the wrapper div + onboarding overlay can
-    // both intercept Playwright's real click).
-    await page.locator('[data-menu*="CreateMenu"] button').first()
+    // The loop above leaves the panel inside the last place tried, which has no create
+    // button of its own - go back to the chat list before looking for it.
+    await openChatList(page);
+
+    // Open the chat list's "+" → CreateMenu. ButtonRound carries data-menu on the <button>
+    // itself, so that attribute is the trigger rather than a wrapper around one. The menu-host
+    // listens for document-level clicks, and a synthetic one doesn't depend on pixel-precise
+    // hit-testing (the onboarding overlay can land on top of the button).
+    await page.locator('button[data-menu*="CreateMenu"]').first()
         .waitFor({ state: 'visible', timeout: 15_000 });
     await page.evaluate(() => {
-        const btn = document.querySelector<HTMLButtonElement>('[data-menu*="CreateMenu"] button');
-        btn?.click();
+        document.querySelector<HTMLButtonElement>('button[data-menu*="CreateMenu"]')?.click();
     });
 
     const newPlaceEntry = page.locator('li.ac-menu-item:has-text("New Place")').first();
@@ -153,8 +162,7 @@ describe('Add members to a Place — CopyTrigger jsObjectReference NRE (#3864)',
         errors = attachErrorListeners(page);
 
         await ensureSignedIn(page);
-        await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
-        await skipOnboarding(page);
+        await openChatList(page);
 
         await ensurePlaceExists(page, `E2E #3864 ${Date.now().toString(36)}`);
         await skipOnboarding(page);
