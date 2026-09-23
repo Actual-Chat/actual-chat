@@ -526,7 +526,7 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-ios|AnyCPU'">
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">App Store Dev</CodesignProvision>
-    <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store 2</CodesignProvision>
+    <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store</CodesignProvision>
     <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
     <ArchiveOnBuild>true</ArchiveOnBuild>
     <CreatePackage>false</CreatePackage>
