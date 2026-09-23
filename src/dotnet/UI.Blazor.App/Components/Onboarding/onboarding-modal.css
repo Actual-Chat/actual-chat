@@ -363,7 +363,7 @@ body.hoverable .stepper-skip-filler .btn-h:hover {
     @apply text-heading-500 text-center wrap-anywhere;
 }
 .step-subtitle {
-    @apply text-title-500 text-center wrap-anywhere;
+    @apply text-title text-center wrap-anywhere;
 }
 .step-comment {
     @apply text-caption mt-2;
