@@ -1,3 +1,4 @@
+using ActualChat.Live;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Resilience;
@@ -308,6 +309,8 @@ public partial class ChatAudioUI
                     .ConfigureAwait(false),
                 abortToken);
             whenIdle = ForegroundTask.Run(async () => {
+                // A call ends with a hang-up, not with a pause: its mic doesn't idle out.
+                await WhenNotInCall(chatId, abortToken).ConfigureAwait(false);
                 // Paired with the publication in SetRecordingChatId.
                 var idleDuration = (TimeSpan?)Volatile.Read(ref _recordingIdleDurationBox);
                 var options = GetRecordingIdleOptions(idleDuration, AudioSettings);
@@ -721,16 +724,21 @@ public partial class ChatAudioUI
             var cSetting = await Computed
                 .Capture(() => GetListeningLinger(ct), ct)
                 .ConfigureAwait(false);
+            var cIsInCall = await Computed
+                .Capture(() => IsInCall(chatId, ct), ct)
+                .ConfigureAwait(false);
 
             while (!ct.IsCancellationRequested) {
                 // The conversation holds: anyone's speech, anyone's open mic (a hot mic is a
                 // conversation even mid-pause), peers' video/screencast, own video/screencast,
-                // or watching the chat's video. The timer runs only when all of them clear.
+                // watching the chat's video, or being in a call there. The timer runs only when all of
+                // them clear.
                 var isHeld = cHasActivity.Value
                     || cHasRecorder.Value
                     || cIsWatching.Value
                     || cHasRemoteStreams.Value
-                    || cOwnSourceKind.Value is not null;
+                    || cOwnSourceKind.Value is not null
+                    || cIsInCall.Value;
                 if (isHeld) {
                     lastActivityAt = serverClock.Now;
                     SetStopListeningAt(chatId, null);
@@ -740,7 +748,8 @@ public partial class ChatAudioUI
                         cHasRecorder.WhenInvalidated(waitCts.Token),
                         cIsWatching.WhenInvalidated(waitCts.Token),
                         cHasRemoteStreams.WhenInvalidated(waitCts.Token),
-                        cOwnSourceKind.WhenInvalidated(waitCts.Token)
+                        cOwnSourceKind.WhenInvalidated(waitCts.Token),
+                        cIsInCall.WhenInvalidated(waitCts.Token)
                         ).ConfigureAwait(false);
                     waitCts.CancelAndDisposeSilently();
                     // The hold spanned this whole wait, so the timer counts from its end -
@@ -752,6 +761,7 @@ public partial class ChatAudioUI
                     cIsWatching = await cIsWatching.Update(ct).ConfigureAwait(false);
                     cHasRemoteStreams = await cHasRemoteStreams.Update(ct).ConfigureAwait(false);
                     cOwnSourceKind = await cOwnSourceKind.Update(ct).ConfigureAwait(false);
+                    cIsInCall = await cIsInCall.Update(ct).ConfigureAwait(false);
                     continue;
                 }
 
@@ -773,6 +783,7 @@ public partial class ChatAudioUI
                     cIsWatching.WhenInvalidated(delayCts.Token),
                     cHasRemoteStreams.WhenInvalidated(delayCts.Token),
                     cOwnSourceKind.WhenInvalidated(delayCts.Token),
+                    cIsInCall.WhenInvalidated(delayCts.Token),
                     cSetting.WhenInvalidated(delayCts.Token),
                     whenTimeout
                     ).ConfigureAwait(false);
@@ -786,6 +797,7 @@ public partial class ChatAudioUI
                 cIsWatching = await cIsWatching.Update(ct).ConfigureAwait(false);
                 cHasRemoteStreams = await cHasRemoteStreams.Update(ct).ConfigureAwait(false);
                 cOwnSourceKind = await cOwnSourceKind.Update(ct).ConfigureAwait(false);
+                cIsInCall = await cIsInCall.Update(ct).ConfigureAwait(false);
                 cSetting = await cSetting.Update(ct).ConfigureAwait(false);
             }
         }
@@ -1050,6 +1062,21 @@ public partial class ChatAudioUI
     }
 
     // Helpers
+
+    [ComputeMethod]
+    protected virtual async Task<bool> IsInCall(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var call = await Hub.CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
+        return call is { Phase: CallPhase.Active } && call.ChatId == chatId;
+    }
+
+    private async Task WhenNotInCall(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var cIsInCall = await Computed
+            .Capture(() => IsInCall(chatId, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        await cIsInCall.When(isInCall => !isInCall, cancellationToken).ConfigureAwait(false);
+    }
 
     [ComputeMethod]
     protected virtual async Task<RecordingState> GetRecordingState(CancellationToken cancellationToken)
