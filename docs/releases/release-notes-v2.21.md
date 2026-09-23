@@ -7,10 +7,6 @@ A big one: hear translations spoken as people talk, passkey sign-in, and push-to
 - Pick a voice with previews; replays play the translated voice too
 - Live translation now works in shorter phrases, so it keeps up with the speaker
 
-**📞 Calls**
-- One call at a time, a clear outgoing-call screen, and answers that land right as the ring times out still connect
-- The lock-screen calls banner is back
-
 **🎙️ Push-to-talk for everyone**
 - Push-to-talk is now available to all users
 - Pocket detection only stops the mic when it should — never on the earpiece, a headset or in the car
