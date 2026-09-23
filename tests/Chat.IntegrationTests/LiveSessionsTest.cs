@@ -1856,12 +1856,74 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await Task.Delay(TimeSpan.FromSeconds(21));
         await backend.ExpireRings(chatId);
 
-        // assert - the call is fully abandoned (nobody ever answered), so RecomputeCallStatus inside
-        // ExpireRings' abandon-check block lands NoAnswer - the session itself is gone (CloseCall),
-        // but the caller-facing CallState survives to explain why
-        (await backend.GetState(chatId, default)).Should().BeNull();
-        var callState = await backend.GetCallState(chatId, default);
-        callState!.Status.Should().Be(CallStatus.NoAnswer);
+        // assert - the ring is missed, but the call stays open for a late answer (AnswerGrace)
+        var live = await backend.Get(chatId, default);
+        live!.Invites.Single().Status.Should().Be(CallInviteStatus.Missed);
+        (await backend.GetCallState(chatId, default))?.Status.Should().NotBe(CallStatus.NoAnswer);
+
+        // assert - once the grace is over, the call is fully abandoned (nobody ever answered), so
+        // RecomputeCallStatus inside ExpireRings' abandon-check block lands NoAnswer - the session itself
+        // is gone (CloseCall), but the caller-facing CallState survives to explain why. Polled: the
+        // closing ExpireRings is a background task, and nothing it reads here is invalidated by a timer.
+        await TestWait.WhenPolled(async () => {
+            (await backend.GetState(chatId, default)).Should().BeNull();
+            var callState = await backend.GetCallState(chatId, default);
+            callState!.Status.Should().Be(CallStatus.NoAnswer);
+        }, TimeSpan.FromSeconds(20));
+    }
+
+    [Fact]
+    public async Task AnswerWithinAnswerGraceShouldConnectTheMissedCall()
+    {
+        // Same real ~21s ring timeout as ExpireRingsRecomputesStatusToNoAnswer - no clock-injection seam.
+
+        // arrange - Bob rings Alice, and the ring times out before her Answer reaches the server
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await Task.Delay(TimeSpan.FromSeconds(21));
+        await backend.ExpireRings(chatId);
+
+        // act
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // assert - the call connects, and the callee's claim, released with the missed ring, is back
+        var live = await backend.Get(chatId, default);
+        live!.Invites.Single().Status.Should().Be(CallInviteStatus.Accepted);
+        (await backend.GetState(chatId, default))!.SessionStartedAt.Should().NotBeNull();
+        (await callsBackend.GetUserCall(aliceAuthor.UserId, default))!.Phase.Should().Be(CallPhase.Active);
+        (await callsBackend.GetUserCall(bobAuthor.UserId, default))!.Phase.Should().Be(CallPhase.Active);
+    }
+
+    [Fact]
+    public async Task AnswerAfterCancelShouldBeRejected()
+    {
+        // arrange - CancelCall marks the ring Missed too, well inside AnswerGrace
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await backend.CancelCall(chatId, bobAuthor.Id, default);
+
+        // act
+        var accept = () => backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // assert
+        await accept.Should().ThrowAsync<InvalidOperationException>();
     }
 
     [Fact]

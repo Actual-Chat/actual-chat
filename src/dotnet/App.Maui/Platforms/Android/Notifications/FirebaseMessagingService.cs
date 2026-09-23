@@ -25,6 +25,7 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
     // Twice the ring: this exists to catch a push held back for minutes, not to be precise about
     // the ring's own deadline - and it is only ever judged against a server-synced clock.
     private static readonly TimeSpan MaxRingPushAge = Constants.Call.RingTimeout * 2;
+    private static readonly TimeSpan MinRingTime = Constants.Call.RingTimeout / 2;
 
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<FirebaseMessagingService>();
@@ -267,7 +268,8 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
 
         // The TTL keeps most stale rings out, but FCM may still deliver one right at its edge -
         // and a ring that outlived its call rings the phone for a call nobody can answer.
-        if (sentTime > 0 && GetSyncedServerClock() is { } serverClock) {
+        var serverClock = GetSyncedServerClock();
+        if (sentTime > 0 && serverClock is not null) {
             var age = serverClock.Now - new Moment(sentTime * 10_000);
             if (age > MaxRingPushAge) {
                 Log.LogWarning("Dropping an incoming-call push for chat #{ChatId}: it is {Age} old",
@@ -275,6 +277,8 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
                 return;
             }
         }
+
+        var ringTimeout = GetRemainingRingTime(sentTime, serverClock);
 
         var scopeAlive = TryGetScopedServices(out _);
         var isForeground = AndroidUtils.IsAppForeground();
@@ -295,13 +299,27 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
         // shown is never pushed in the first place - see CallsBackend.
         // The channel is silent, so the ringtone starts with the notification, or it's a missed call - but
         // not while notifications are blocked: nothing was posted to answer or silence it.
-        IncomingCallNotifications.Show(data);
+        IncomingCallNotifications.Show(data, ringTimeout);
         if (IncomingCallNotifications.CanPostCalls())
-            IncomingCallRinger.Start(Constants.Call.RingTimeout);
+            IncomingCallRinger.Start(ringTimeout);
         if (scopeAlive)
             _ = DispatchToBlazor(
                 c => c.GetRequiredService<CallScreensUI>().OnRing(chatId),
                 "CallScreensUI.OnRing");
+    }
+
+    private static TimeSpan GetRemainingRingTime(long sentTime, ServerClock? serverClock)
+    {
+        // The server's ring ends RingTimeout after this push was sent, however long the delivery took.
+        // A cold start has only the device clock, whose skew MinRingTime bounds: a clock running ahead
+        // can shorten the ring, never take it away.
+        var ringTimeout = Constants.Call.RingTimeout;
+        if (sentTime <= 0)
+            return ringTimeout;
+
+        var now = serverClock?.Now ?? Moment.Now;
+        var age = now - new Moment(sentTime * 10_000);
+        return (ringTimeout - age).Clamp(MinRingTime, ringTimeout);
     }
 
     private static bool ShowGetAttentionNotification(NotificationData data, long messageSentTime)

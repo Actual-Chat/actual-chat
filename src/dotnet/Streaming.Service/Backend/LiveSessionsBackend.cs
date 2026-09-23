@@ -29,6 +29,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     private static readonly TimeSpan RecordingCloseGrace = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan RingTimeout = Constants.Call.RingTimeout;
     private static readonly TimeSpan RingTtl = Constants.Call.RingTtl;
+    // How long past RingTimeout a missed ring can still be answered. The callee's ring stops on time,
+    // but an Answer tapped at its very end reaches us only after a cold start and the RPC connect.
+    private static readonly TimeSpan AnswerGrace = TimeSpan.FromSeconds(10);
     // How long an in-progress (Dialing/Connecting/Active) call state lingers with no observer before
     // its Redis key lapses; a terminal transition overwrites it sooner.
     private static readonly TimeSpan DialingStateTtl = TimeSpan.FromSeconds(60);
@@ -672,6 +675,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         ConversationId? conversationId = null;
         AuthorId? callerAuthorId = null;
         var justConnected = false;
+        var isLate = false;
+        var hasVideo = false;
         using (Computed.BeginIsolation())
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
             var invite = await SafeGetInvite(chatId, inviteeAuthorId).ConfigureAwait(false);
@@ -681,18 +686,24 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             if (invite is { Status: CallInviteStatus.Accepted or CallInviteStatus.Active })
                 return;
 
+            var state = await SafeGet(chatId).ConfigureAwait(false);
+            var now = Clocks.SystemClock.Now;
+            isLate = IsAnswerableMissedRing(invite, state, now);
             // Runs under the change lock, so it's the answer - a client-side check races the
             // session it reads. Returning quietly let a client join a call that never was.
             if (!EnsureValidTransition(chatId, inviteeAuthorId, nameof(AcceptCall),
-                    invite?.Status ?? CallInviteStatus.New, invite is { Status: CallInviteStatus.Ringing }))
+                    invite?.Status ?? CallInviteStatus.New, invite is { Status: CallInviteStatus.Ringing } || isLate))
                 throw StandardError.Constraint("There's no ring left to accept in this chat.");
 
-            var now = Clocks.SystemClock.Now;
+            if (isLate)
+                Log.LogInformation(
+                    "AcceptCall: chat #{ChatId}, author #{AuthorId} answered a missed ring {Delay} after it began",
+                    chatId, inviteeAuthorId, (now - invite!.RingingAt).ToShortString());
             await _invites.Set(chatId.Value, inviteeAuthorId.Value,
                     invite! with { Status = CallInviteStatus.Accepted, RespondedAt = now })
                 .ConfigureAwait(false);
 
-            var state = await SafeGet(chatId).ConfigureAwait(false);
+            hasVideo = state?.HasVideo ?? false;
             if (state is { SessionStartedAt: null }) {
                 // The first answer latches a dialing call to Connected: it's now a live conversation, so
                 // surface the block from the chat end at answer time and make it genuinely two-party.
@@ -721,7 +732,16 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             callerAuthorId = state?.CallerId ?? state?.Host;
             InvalidateState(chatId);
         }
-        await SetUserCallPhase(chatId, inviteeAuthorId, CallPhase.Active, cancellationToken).ConfigureAwait(false);
+        // ExpireRings released a missed ring's claim, and SetPhase can't raise one that's gone.
+        if (isLate) {
+            if (!await ClaimUserCall(chatId, inviteeAuthorId, CallRole.Callee, CallPhase.Active,
+                    callerAuthorId, hasVideo, cancellationToken).ConfigureAwait(false))
+                Log.LogWarning(
+                    "AcceptCall: chat #{ChatId}, author #{AuthorId} answered late while holding another call",
+                    chatId, inviteeAuthorId);
+        }
+        else
+            await SetUserCallPhase(chatId, inviteeAuthorId, CallPhase.Active, cancellationToken).ConfigureAwait(false);
         // The answer puts the caller on the line too. Their claim is what the client projects, so left
         // at Dialing it never reads as the active call: the caller stays outside the call they placed,
         // looking at a Join button, until the claim lapses on its own.
@@ -955,6 +975,14 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             await Task.Delay(CallConnectGrace).ConfigureAwait(false);
             await EnforceCallConnectGrace(chatId).ConfigureAwait(false);
         }, Log, $"Call-connect grace check failed for chat #{chatId}");
+
+    private Task ScheduleAnswerGraceEnd(ChatId chatId)
+        // A missed ring holds the call open for a late answer, and GetState's self-heal that would close it
+        // otherwise is SelfHealDelay away - the caller would keep dialing that much longer.
+        => BackgroundTask.Run(async () => {
+            await Task.Delay(AnswerGrace).ConfigureAwait(false);
+            await ExpireRings(chatId).ConfigureAwait(false);
+        }, Log, $"Answer-grace check failed for chat #{chatId}");
 
     // AcceptCall schedules this once, fire-and-forget, CallConnectGrace after promoting Kind to Call.
     // Internal so a test can drive it directly, without a real wait - mirrors ExpireRings.
@@ -1406,13 +1434,22 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         return invites.Values.Any(i => i is { Status: CallInviteStatus.Ringing } && i.RingingAt > cutoff);
     }
 
+    private static bool IsAnswerableMissedRing(CallInvite? invite, LiveSessionState? state, Moment now)
+        // A cancel marks the rings Missed too, and a closing or resolved call has nobody left to answer.
+        => IsInAnswerGrace(invite, now)
+            && state is { IsDialing: true, IsClosing: false, Outcome: CallOutcome.None or CallOutcome.Declined };
+
+    private static bool IsInAnswerGrace(CallInvite? invite, Moment now)
+        => invite is { Status: CallInviteStatus.Missed } && now - invite.RingingAt < RingTimeout + AnswerGrace;
+
     private Task DismissRing(
         ConversationId conversationId, IReadOnlyList<AuthorId> invitees, CancellationToken cancellationToken)
         => Services.Queues()
             .Enqueue(new NotificationsBackend_CancelCall(conversationId, invitees), cancellationToken);
 
     // An unanswered invitee rang past RingTimeout: mark Missed and stop the ring (the caller still
-    // sees "missed" and can hang up). Fired observation-independently from GetState's self-heal.
+    // sees "missed" and can hang up); the call closes as NoAnswer only once AnswerGrace is over too.
+    // Fired observation-independently from GetState's self-heal.
     // A dialing call is finalized here even when no invite is left to expire — a ring can vanish via
     // its RingTtl before this catches it, and the call must still reach an outcome rather than linger.
     // Internal rather than private so a test can drive it directly, without a real ring timeout.
@@ -1447,6 +1484,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             await ReleaseUserCalls(chatId, expired, CancellationToken.None).ConfigureAwait(false);
             if (expired.Count > 0 && conversationId is { } cid)
                 await DismissRing(cid, expired, CancellationToken.None).ConfigureAwait(false);
+            if (expired.Count > 0)
+                _ = ScheduleAnswerGraceEnd(chatId);
             if ((expired.Count > 0 || wasDialing) && await IsCallAbandoned(chatId).ConfigureAwait(false)) {
                 // The lock is retaken here because SetOutcome rewrites the whole state from the snapshot
                 // read right above it: an AcceptCall latching in between would be silently reverted, and
@@ -1529,10 +1568,11 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
     private async Task<bool> IsCallAbandoned(ChatId chatId)
     {
-        // No invite is still ringing and nobody joined (only the caller, if that): the call can't become
-        // two-party, so it's abandoned - the whole thing should close.
+        // No invite is still ringing or answerable late, and nobody joined (only the caller, if that): the
+        // call can't become two-party, so it's abandoned - the whole thing should close.
         var invites = await SafeGetInvites(chatId).ConfigureAwait(false);
-        if (invites.Values.Any(i => i is { Status: CallInviteStatus.Ringing }))
+        var now = Clocks.SystemClock.Now;
+        if (invites.Values.Any(i => i is { Status: CallInviteStatus.Ringing } || IsInAnswerGrace(i, now)))
             return false;
 
         var participants = await GetConsolidatedParticipants(
