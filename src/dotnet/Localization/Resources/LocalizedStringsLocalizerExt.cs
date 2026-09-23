@@ -1589,6 +1589,7 @@ public static class LocalizedStringsLocalizerExt
         public string LeaveConfirm_LastOwnerQuestion => l["LeaveConfirm_LastOwnerQuestion"].Value;
         public string LeaveConfirm_LastMemberQuestion => l["LeaveConfirm_LastMemberQuestion"].Value;
         public string LeaveConfirm_DeleteAnyway => l["LeaveConfirm_DeleteAnyway"].Value;
+        public string LeaveConfirm_PickNewOwnerTitle => l["LeaveConfirm_PickNewOwnerTitle"].Value;
         public string LeaveConfirm_LastPlaceOwnerQuestion => l["LeaveConfirm_LastPlaceOwnerQuestion"].Value;
         public string LeaveConfirm_LastPlaceMemberQuestion => l["LeaveConfirm_LastPlaceMemberQuestion"].Value;
 

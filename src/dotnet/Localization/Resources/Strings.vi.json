@@ -1518,6 +1518,7 @@
   "LeaveConfirm_LastOwnerQuestion": "Bạn là chủ sở hữu duy nhất của cuộc trò chuyện này. Hãy đặt một thành viên khác làm chủ sở hữu, nếu không cuộc trò chuyện sẽ bị xóa khi bạn rời đi.",
   "LeaveConfirm_LastMemberQuestion": "Bạn là thành viên duy nhất của cuộc trò chuyện này. Hãy thêm ai đó và đặt họ làm chủ sở hữu, nếu không cuộc trò chuyện sẽ bị xóa khi bạn rời đi.",
   "LeaveConfirm_DeleteAnyway": "Vẫn xóa",
+  "LeaveConfirm_PickNewOwnerTitle": "Chọn chủ sở hữu mới",
   "LeaveConfirm_LastPlaceOwnerQuestion": "Bạn là chủ sở hữu duy nhất của Địa điểm này. Hãy đặt một thành viên khác làm chủ sở hữu, nếu không Địa điểm và mọi cuộc trò chuyện của nó sẽ bị xóa khi bạn rời đi.",
   "LeaveConfirm_LastPlaceMemberQuestion": "Bạn là thành viên duy nhất của Địa điểm này. Hãy thêm ai đó và đặt họ làm chủ sở hữu, nếu không Địa điểm và mọi cuộc trò chuyện của nó sẽ bị xóa khi bạn rời đi.",
 

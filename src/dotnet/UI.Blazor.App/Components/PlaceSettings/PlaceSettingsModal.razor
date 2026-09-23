@@ -11,7 +11,8 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     private DiveInDialogPage StartPage => ModalModel.IsOwnerHandover
-        ? DiveInDialogPage.New<PlaceSettingsEditMembersModalPage>(ModalModel.PlaceId)
+        ? DiveInDialogPage.New<PlaceSettingsEditMembersModalPage>(
+            new PlaceSettingsEditMembersModalPage.Model(ModalModel.PlaceId) { IsOwnerHandover = true })
         : DiveInDialogPage.New<PlaceSettingsStartModalPage>(ModalModel.PlaceId);
 
     public sealed record Model(PlaceId PlaceId) {

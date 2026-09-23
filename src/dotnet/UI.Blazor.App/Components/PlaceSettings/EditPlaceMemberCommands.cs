@@ -54,14 +54,14 @@ public static class EditPlaceMemberCommands
         }
     }
 
-    public static async Task OnPromoteToOwnerClick(AppUIHub hub, Author author)
+    public static async Task OnPromoteToOwnerClick(AppUIHub hub, Author author, Action? onPromoted = null)
     {
         var l = hub.StringLocalizer;
         var authorName = author.Avatar.Name;
         _ = await hub.ModalUI.Show(new ConfirmModal.Model(
             false,
             l.Members_PromoteConfirm_Format(authorName),
-            () => _ = OnPromoteToOwnerConfirmed(hub, author.Id, authorName)) {
+            () => _ = OnPromoteToOwnerConfirmed(hub, author.Id, authorName, onPromoted)) {
             Title = l.Account_PromoteToOwner
         });
     }
@@ -88,7 +88,8 @@ public static class EditPlaceMemberCommands
 
     // Private methods
 
-    private static async Task OnPromoteToOwnerConfirmed(AppUIHub hub, AuthorId authorId, string authorName)
+    private static async Task OnPromoteToOwnerConfirmed(
+        AppUIHub hub, AuthorId authorId, string authorName, Action? onPromoted)
     {
         var command = new Places_ChangeRole {
             Session = hub.Session,
@@ -104,5 +105,6 @@ public static class EditPlaceMemberCommands
             hub.StringLocalizer.Members_PromotedToOwner_Format(authorName),
             "icon-crown",
             ToastDismissDelay.Short);
+        onPromoted?.Invoke();
     }
 }

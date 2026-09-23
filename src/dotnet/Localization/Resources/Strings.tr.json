@@ -1518,6 +1518,7 @@
   "LeaveConfirm_LastOwnerQuestion": "Bu sohbetin tek sahibi sizsiniz. Başka bir üyeyi sahip yapın, aksi halde ayrıldığınızda sohbet silinecek.",
   "LeaveConfirm_LastMemberQuestion": "Bu sohbetin tek üyesi sizsiniz. Birini ekleyip sahip yapın, aksi halde ayrıldığınızda sohbet silinecek.",
   "LeaveConfirm_DeleteAnyway": "Yine de sil",
+  "LeaveConfirm_PickNewOwnerTitle": "Yeni bir sahip seçin",
   "LeaveConfirm_LastPlaceOwnerQuestion": "Bu Mekânın tek sahibi sizsiniz. Başka bir üyeyi sahip yapın, aksi halde ayrıldığınızda Mekân ve tüm sohbetleri silinecek.",
   "LeaveConfirm_LastPlaceMemberQuestion": "Bu Mekânın tek üyesi sizsiniz. Birini ekleyip sahip yapın, aksi halde ayrıldığınızda Mekân ve tüm sohbetleri silinecek.",
 

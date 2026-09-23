@@ -222,7 +222,7 @@
         => Context.StepIn(DiveInDialogPage.New<PlaceSettingsCopyChatModalPage>(PlaceId));
 
     private void OnManageMembersClick()
-        => Context.StepIn(DiveInDialogPage.New<PlaceSettingsEditMembersModalPage>(PlaceId));
+        => Context.StepIn(DiveInDialogPage.New<PlaceSettingsEditMembersModalPage>(new PlaceSettingsEditMembersModalPage.Model(PlaceId)));
 
     private async Task OnSubmit() {
         if (_formRef == null)

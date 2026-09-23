@@ -3,7 +3,9 @@
 @inherits ComputedStateComponent<AppUIHub, EditChatMembersModalPage.ComputedModel>
 @{
     var m = State.Value;
-    Context.Title = L.Place_Members(m.MemberCount, m.MemberCount);
+    Context.Title = _isOwnerHandover
+        ? L.LeaveConfirm_PickNewOwnerTitle
+        : L.Place_Members(m.MemberCount, m.MemberCount);
     Context.ContextItems.Set(nameof(ChatSettingsStartModalPage.ComputedModel.MemberCount), m.MemberCount);
 }
 
@@ -19,11 +21,14 @@
         var isOwner = m.IsOwner(authorId);
         var statusText = FormatStatusText(isOwner, m.IsModerator(authorId), isOwn);
         /* At the moment there is no available actions for owners and own membership hence do not show menu  */
-        var showMenu = !(isOwn || isOwner);
+        /* Handing the chat over is a single choice, so the row itself takes it and the menu only distracts */
+        var showMenu = !_isOwnerHandover && !(isOwn || isOwner);
         var dataMenuAttr = showMenu ? MenuRef.New<EditChatMemberMenu>(authorId.Value).ToString() : null;
         <li @key="@authorId"
+            class="@(_isOwnerHandover ? "candidate" : null)"
             data-menu="@dataMenuAttr"
-            data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+            data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())"
+            @onclick="@(() => OnCandidateClick(authorId))">
             <AuthorBadge
                 AuthorId="@authorId"
                 ShowPresence="true"
@@ -47,6 +52,7 @@
 
 @code {
     private SearchQuery _searchQuery;
+    private bool _isOwnerHandover;
     private ChatId ChatId { get; set; } = null!;
 
     private IAuthors Authors => Hub.Authors;
@@ -55,7 +61,9 @@
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     protected override void OnInitialized() {
-        ChatId = Context.GetModel<ChatId>();
+        var model = Context.GetModel<Model>();
+        ChatId = model.ChatId;
+        _isOwnerHandover = model.IsOwnerHandover;
         if (ChatId is PeerChatId)
             throw StandardError.NotSupported("Peer chat id should not be provided.");
         Context.Class = "edit-members";
@@ -84,7 +92,12 @@
         var ownerIds = await Roles.ListOwnerIds(Session, chatId, cancellationToken).ConfigureAwait(false);
         var moderatorIds = await Roles.ListModeratorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var authors = (await allAuthorIds
+        // Opened to hand the chat over, the list is the candidates - and the Owner being replaced isn't one.
+        // The count in the header still counts them, since it's the chat's size rather than the list's.
+        var listedAuthorIds = _isOwnerHandover && ownAuthor != null
+            ? allAuthorIds.Where(c => c != ownAuthor.Id)
+            : allAuthorIds;
+        var authors = (await listedAuthorIds
             .Select(async authorId => {
                 var authorTask = Authors.Get(Session, chatId, authorId, cancellationToken);
                 var author = await authorTask.ConfigureAwait(false);
@@ -118,6 +131,16 @@
             => string.Compare(info1.Item2, info2.Item2);
     }
 
+    private async Task OnCandidateClick(AuthorId authorId) {
+        // Promoting closes this page, which resumes the leave that sent the user here
+        if (!_isOwnerHandover)
+            return;
+
+        var author = await Authors.Get(Session, ChatId, authorId, default).ConfigureAwait(true);
+        if (author != null)
+            await EditChatMemberCommands.OnPromoteToOwnerClick(Hub, author, Context.Close).ConfigureAwait(true);
+    }
+
     private void OnInviteClick()
         => Context.StepIn(DiveInDialogPage.New<AddMemberModalPage>(ChatId));
 
@@ -131,6 +154,10 @@
     }
 
     // Nested types
+
+    public sealed record Model(ChatId ChatId) {
+        public bool IsOwnerHandover { get; init; }
+    }
 
     public sealed record ComputedModel {
         public int MemberCount { get; init; }

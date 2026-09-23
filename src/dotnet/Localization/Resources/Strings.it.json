@@ -1518,6 +1518,7 @@
   "LeaveConfirm_LastOwnerQuestion": "Sei l’unico proprietario di questa chat. Nomina proprietario un altro membro, altrimenti la chat verrà eliminata quando la lascerai.",
   "LeaveConfirm_LastMemberQuestion": "Sei l’unico membro di questa chat. Aggiungi qualcuno e nominalo proprietario, altrimenti la chat verrà eliminata quando la lascerai.",
   "LeaveConfirm_DeleteAnyway": "Elimina comunque",
+  "LeaveConfirm_PickNewOwnerTitle": "Scegli un nuovo proprietario",
   "LeaveConfirm_LastPlaceOwnerQuestion": "Sei l’unico proprietario di questo Luogo. Nomina proprietario un altro membro, altrimenti il Luogo e tutte le sue chat verranno eliminati quando lo lascerai.",
   "LeaveConfirm_LastPlaceMemberQuestion": "Sei l’unico membro di questo Luogo. Aggiungi qualcuno e nominalo proprietario, altrimenti il Luogo e tutte le sue chat verranno eliminati quando lo lascerai.",
 

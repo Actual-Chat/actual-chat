@@ -1784,6 +1784,7 @@
   "LeaveConfirm_LastOwnerQuestion": "Vous êtes le seul propriétaire de cette discussion. Promouvez un autre membre propriétaire, sinon la discussion sera supprimée lorsque vous la quitterez.",
   "LeaveConfirm_LastMemberQuestion": "Vous êtes le seul membre de cette discussion. Ajoutez quelqu’un et promouvez-le propriétaire, sinon la discussion sera supprimée lorsque vous la quitterez.",
   "LeaveConfirm_DeleteAnyway": "Изтриване въпреки това",
+  "LeaveConfirm_PickNewOwnerTitle": "Choisissez un nouveau propriétaire",
   "LeaveConfirm_LastPlaceOwnerQuestion": "あなたはこのプレイスの唯一のオーナーです。他のメンバーをオーナーにしてください。そうしないと、退出時にプレイスとそのすべてのチャットは削除されます。",
   "LeaveConfirm_LastPlaceMemberQuestion": "あなたはこのプレイスの唯一のメンバーです。誰かを追加してオーナーにしてください。そうしないと、退出時にプレイスとそのすべてのチャットは削除されます。",
 

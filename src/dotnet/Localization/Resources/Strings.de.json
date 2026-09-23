@@ -1518,6 +1518,7 @@
   "LeaveConfirm_LastOwnerQuestion": "Sie sind der einzige Inhaber dieses Chats. Machen Sie ein anderes Mitglied zum Inhaber, sonst wird der Chat beim Verlassen gelöscht.",
   "LeaveConfirm_LastMemberQuestion": "Sie sind das einzige Mitglied dieses Chats. Fügen Sie jemanden hinzu und machen Sie ihn zum Inhaber, sonst wird der Chat beim Verlassen gelöscht.",
   "LeaveConfirm_DeleteAnyway": "Trotzdem löschen",
+  "LeaveConfirm_PickNewOwnerTitle": "Neuen Inhaber wählen",
   "LeaveConfirm_LastPlaceOwnerQuestion": "Sie sind der einzige Inhaber dieses Place. Machen Sie ein anderes Mitglied zum Inhaber, sonst werden der Place und alle seine Chats beim Verlassen gelöscht.",
   "LeaveConfirm_LastPlaceMemberQuestion": "Sie sind das einzige Mitglied dieses Place. Fügen Sie jemanden hinzu und machen Sie ihn zum Inhaber, sonst werden der Place und alle seine Chats beim Verlassen gelöscht.",
 

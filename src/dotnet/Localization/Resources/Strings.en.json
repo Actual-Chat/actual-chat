@@ -1784,6 +1784,7 @@
   "LeaveConfirm_LastOwnerQuestion": "You are the only Owner of this chat. Promote another member to Owner, or the chat will be deleted when you leave.",
   "LeaveConfirm_LastMemberQuestion": "You are the only member of this chat. Add someone and promote them to Owner, or the chat will be deleted when you leave.",
   "LeaveConfirm_DeleteAnyway": "Delete anyway",
+  "LeaveConfirm_PickNewOwnerTitle": "Choose a new Owner",
   "LeaveConfirm_LastPlaceOwnerQuestion": "You are the only Owner of this place. Promote another member to Owner, or the place and all its chats will be deleted when you leave.",
   "LeaveConfirm_LastPlaceMemberQuestion": "You are the only member of this place. Add someone and promote them to Owner, or the place and all its chats will be deleted when you leave.",
 

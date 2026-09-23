@@ -260,7 +260,7 @@
         => Context.StepIn(DiveInDialogPage.New<EditChatTypeModalPage>(ChatId));
 
     private void OnManageMembersClick()
-        => Context.StepIn(DiveInDialogPage.New<EditChatMembersModalPage>(ChatId));
+        => Context.StepIn(DiveInDialogPage.New<EditChatMembersModalPage>(new EditChatMembersModalPage.Model(ChatId)));
 
     private void OnIntegrationsClick()
         => Context.StepIn(DiveInDialogPage.New<ChatIntegrationsModalPage>(ChatId));
