@@ -251,7 +251,7 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
         // The ringtone that started with a shown call notification goes with it. A ring Blazor drives is stopped
         // by CallScreensUI too; a double stop is harmless.
         var isShownCallDismissed = dismissedTags
-            .Select(IncomingCallNotifications.TryParseCallTag)
+            .Select(NotificationExt.TryParseCallTag)
             .Any(chatId => chatId is not null && shownCallChatIds.Contains(chatId));
         if (isShownCallDismissed)
             IncomingCallRinger.Stop();

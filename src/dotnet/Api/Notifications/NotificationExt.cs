@@ -18,6 +18,11 @@ public static class NotificationExt
             _ => notification.GetChatTag(),
         };
 
+    public static ChatId? TryParseCallTag(string? tag)
+        => tag is null || !tag.StartsWith(Constants.Notification.CallTagPrefix, StringComparison.Ordinal)
+            ? null
+            : ChatId.TryParse(tag[Constants.Notification.CallTagPrefix.Length..], allowNull: true);
+
     public static NotificationDismissMode GetDismissMode(NotificationKind kind)
         // What Notification.DismissMode says, for a caller holding only a kind - a push payload on
         // a client. NotificationDismissModeTest asserts the two agree for every kind.
