@@ -672,84 +672,18 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
     public virtual async Task AcceptCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken)
     {
-        ConversationId? conversationId = null;
-        AuthorId? callerAuthorId = null;
-        var justConnected = false;
-        var isLate = false;
-        var hasVideo = false;
-        using (Computed.BeginIsolation())
-        using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
-            var invite = await SafeGetInvite(chatId, inviteeAuthorId).ConfigureAwait(false);
-            // Answering a call that is already ours is the same answer, not an error: an RPC resend
-            // after a reconnect, a second tap, and SyncInviteeActivity's own Ringing -> Active promotion
-            // all land here. The caller tears its call down on a throw, so this has to stay idempotent.
-            if (invite is { Status: CallInviteStatus.Accepted or CallInviteStatus.Active })
-                return;
-
-            var state = await SafeGet(chatId).ConfigureAwait(false);
-            var now = Clocks.SystemClock.Now;
-            isLate = IsAnswerableMissedRing(invite, state, now);
-            // Runs under the change lock, so it's the answer - a client-side check races the
-            // session it reads. Returning quietly let a client join a call that never was.
-            if (!EnsureValidTransition(chatId, inviteeAuthorId, nameof(AcceptCall),
-                    invite?.Status ?? CallInviteStatus.New, invite is { Status: CallInviteStatus.Ringing } || isLate))
-                throw StandardError.Constraint("There's no ring left to accept in this chat.");
-
-            if (isLate)
-                Log.LogInformation(
-                    "AcceptCall: chat #{ChatId}, author #{AuthorId} answered a missed ring {Delay} after it began",
-                    chatId, inviteeAuthorId, (now - invite!.RingingAt).ToShortString());
-            await _invites.Set(chatId.Value, inviteeAuthorId.Value,
-                    invite! with { Status = CallInviteStatus.Accepted, RespondedAt = now })
-                .ConfigureAwait(false);
-
-            hasVideo = state?.HasVideo ?? false;
-            if (state is { SessionStartedAt: null }) {
-                // The first answer latches a dialing call to Connected: it's now a live conversation, so
-                // surface the block from the chat end at answer time and make it genuinely two-party.
-                // The invitee's own presence is NOT registered here (unlike before) - it now comes only
-                // from a real listening/recording stream, so EnforceCallConnectGrace below can actually
-                // tell "accepted" apart from "accepted and connected".
-                var visibleStartLid = (await ChatsBackend
-                    .GetLidRange(chatId, false, cancellationToken)
-                    .ConfigureAwait(false)).End;
-                var authorIds = state.AuthorIds.Contains(inviteeAuthorId)
-                    ? state.AuthorIds
-                    : [..state.AuthorIds, inviteeAuthorId];
-                state = state with {
-                    Kind = LiveSessionKind.Call,
-                    SessionStartedAt = now,
-                    VisibleStartLid = visibleStartLid,
-                    AuthorIds = authorIds,
-                    Version = VersionGenerator.NextVersion(state.Version),
-                };
-                await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
-                // The latch is the caller's "accepted" moment - a brief confirmation before this fades.
-                await RecomputeCallStatus(chatId, state, cancellationToken).ConfigureAwait(false);
-                justConnected = true;
-            }
-            conversationId = state?.RingConversationId;
-            callerAuthorId = state?.CallerId ?? state?.Host;
-            InvalidateState(chatId);
+        var isReclaimed = await ReclaimMissedRing(chatId, inviteeAuthorId, cancellationToken).ConfigureAwait(false);
+        (ConversationId? ConversationId, bool JustConnected) accepted;
+        try {
+            accepted = await AcceptInvite(chatId, inviteeAuthorId, cancellationToken).ConfigureAwait(false);
         }
-        // ExpireRings released a missed ring's claim, and SetPhase can't raise one that's gone.
-        if (isLate) {
-            if (!await ClaimUserCall(chatId, inviteeAuthorId, CallRole.Callee, CallPhase.Active,
-                    callerAuthorId, hasVideo, cancellationToken).ConfigureAwait(false))
-                Log.LogWarning(
-                    "AcceptCall: chat #{ChatId}, author #{AuthorId} answered late while holding another call",
-                    chatId, inviteeAuthorId);
+        catch when (isReclaimed) {
+            await ReleaseUserCall(chatId, inviteeAuthorId, CancellationToken.None).ConfigureAwait(false);
+            throw;
         }
-        else
-            await SetUserCallPhase(chatId, inviteeAuthorId, CallPhase.Active, cancellationToken).ConfigureAwait(false);
-        // The answer puts the caller on the line too. Their claim is what the client projects, so left
-        // at Dialing it never reads as the active call: the caller stays outside the call they placed,
-        // looking at a Join button, until the claim lapses on its own.
-        if (callerAuthorId is { } callerId)
-            await SetUserCallPhase(chatId, callerId, CallPhase.Active, cancellationToken).ConfigureAwait(false);
-        if (conversationId is { } cid)
+        if (accepted.ConversationId is { } cid)
             await DismissRing(cid, [inviteeAuthorId], cancellationToken).ConfigureAwait(false);
-        if (justConnected)
+        if (accepted.JustConnected)
             _ = ScheduleCallConnectGraceCheck(chatId);
     }
 
@@ -1186,11 +1120,85 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         return await CallsBackend.TryClaim(userId, call, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task SetUserCallPhase(
-        ChatId chatId, AuthorId authorId, CallPhase phase, CancellationToken cancellationToken)
+    // Reports the conversation to stop the ring in and whether this answer connected the call; nothing
+    // for an answer that was already given.
+    private async Task<(ConversationId? ConversationId, bool JustConnected)> AcceptInvite(
+        ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken)
     {
-        if (await GetUserId(chatId, authorId, cancellationToken).ConfigureAwait(false) is { } userId)
-            await CallsBackend.SetPhase(userId, chatId, phase, cancellationToken).ConfigureAwait(false);
+        var justConnected = false;
+        using (Computed.BeginIsolation())
+        using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
+            var invite = await SafeGetInvite(chatId, inviteeAuthorId).ConfigureAwait(false);
+            // Answering a call that is already ours is the same answer, not an error: an RPC resend
+            // after a reconnect, a second tap, and SyncInviteeActivity's own Ringing -> Active promotion
+            // all land here. The caller tears its call down on a throw, so this has to stay idempotent.
+            if (invite is { Status: CallInviteStatus.Accepted or CallInviteStatus.Active })
+                return (null, false);
+
+            var state = await SafeGet(chatId).ConfigureAwait(false);
+            var now = Clocks.SystemClock.Now;
+            var isLate = IsAnswerableMissedRing(invite, state, now);
+            // Runs under the change lock, so it's the answer - a client-side check races the
+            // session it reads. Returning quietly let a client join a call that never was.
+            if (!EnsureValidTransition(chatId, inviteeAuthorId, nameof(AcceptCall),
+                    invite?.Status ?? CallInviteStatus.New, invite is { Status: CallInviteStatus.Ringing } || isLate))
+                throw StandardError.Constraint("There's no ring left to accept in this chat.");
+
+            if (isLate)
+                Log.LogInformation(
+                    "AcceptCall: chat #{ChatId}, author #{AuthorId} answered a missed ring {Delay} after it began",
+                    chatId, inviteeAuthorId, (now - invite!.RingingAt).ToShortString());
+            await _invites.Set(chatId.Value, inviteeAuthorId.Value,
+                    invite! with { Status = CallInviteStatus.Accepted, RespondedAt = now })
+                .ConfigureAwait(false);
+
+            if (state is { SessionStartedAt: null }) {
+                // The first answer latches a dialing call to Connected: it's now a live conversation, so
+                // surface the block from the chat end at answer time and make it genuinely two-party.
+                // The invitee's own presence is NOT registered here (unlike before) - it now comes only
+                // from a real listening/recording stream, so EnforceCallConnectGrace below can actually
+                // tell "accepted" apart from "accepted and connected".
+                var visibleStartLid = (await ChatsBackend
+                    .GetLidRange(chatId, false, cancellationToken)
+                    .ConfigureAwait(false)).End;
+                var authorIds = state.AuthorIds.Contains(inviteeAuthorId)
+                    ? state.AuthorIds
+                    : [..state.AuthorIds, inviteeAuthorId];
+                state = state with {
+                    Kind = LiveSessionKind.Call,
+                    SessionStartedAt = now,
+                    VisibleStartLid = visibleStartLid,
+                    AuthorIds = authorIds,
+                    Version = VersionGenerator.NextVersion(state.Version),
+                };
+                await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
+                // The latch is the caller's "accepted" moment - a brief confirmation before this fades.
+                await RecomputeCallStatus(chatId, state, cancellationToken).ConfigureAwait(false);
+                justConnected = true;
+            }
+            // Both claims turn Active on their own: CallsBackend reads the phase off the invite and the
+            // call state this has just written.
+            InvalidateState(chatId);
+            return (state?.RingConversationId, justConnected);
+        }
+    }
+
+    // ExpireRings released a missed ring's claim, so a late answer takes it again - before the answer is
+    // written: a callee who took another call meanwhile can't also connect this one. Reports whether it
+    // took one, for the caller to release it if the answer is refused after all.
+    private async Task<bool> ReclaimMissedRing(
+        ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken)
+    {
+        var invite = await SafeGetInvite(chatId, inviteeAuthorId).ConfigureAwait(false);
+        if (invite is not { Status: CallInviteStatus.Missed })
+            return false;
+
+        var state = await SafeGet(chatId).ConfigureAwait(false);
+        if (!await ClaimUserCall(chatId, inviteeAuthorId, CallRole.Callee, CallPhase.Active,
+                state?.CallerId ?? state?.Host, state?.HasVideo ?? false, cancellationToken).ConfigureAwait(false))
+            throw StandardError.Constraint("You're already in another call.");
+
+        return true;
     }
 
     private async Task ReleaseUserCall(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)

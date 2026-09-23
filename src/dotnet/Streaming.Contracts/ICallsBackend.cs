@@ -13,13 +13,12 @@ namespace ActualChat.Streaming;
 public interface ICallsBackend : IComputeService, IBackendService
 {
     // Null when the user is free, or when their claim no longer matches the chat's live session -
-    // a stale claim is released rather than reported.
+    // a stale claim is released rather than reported. The phase is the session's, not the stored one.
     [ComputeMethod]
     Task<UserCall?> GetUserCall(UserId userId, CancellationToken cancellationToken);
 
     // Reports whether the user's call is this one now: true when it was free, held by this chat
     // already, or held by a claim the chat's session no longer backs.
     Task<bool> TryClaim(UserId userId, UserCall call, CancellationToken cancellationToken);
-    Task SetPhase(UserId userId, ChatId chatId, CallPhase phase, CancellationToken cancellationToken);
     Task Release(UserId userId, ChatId chatId, CancellationToken cancellationToken);
 }

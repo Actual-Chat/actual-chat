@@ -7,8 +7,9 @@ using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 namespace ActualChat.Streaming;
 
 /// <summary>
-/// Owns the one call each user is in. The record is a claim: <see cref="GetUserCall"/> answers
-/// with it only while the chat's live session still backs it.
+/// Owns the one call each user is in. The record is a claim - which call, in which role - and
+/// <see cref="GetUserCall"/> reads its phase off the chat's live session, answering only while that
+/// session still backs it.
 /// </summary>
 public class CallsBackend : ShardComputeService, ICallsBackend
 {
@@ -17,8 +18,6 @@ public class CallsBackend : ShardComputeService, ICallsBackend
     private static readonly TimeSpan ClaimTtl = TimeSpan.FromMinutes(2);
     // A claim is taken before the call it stands for exists - StartCall has to know who is free
     // before it writes the session and the invites. Until this lapses, the claim backs itself.
-    // SetPhase restarts it: the session that backs the new phase lives on the chat's shard, and its
-    // invalidation can reach this shard after the recompute SetPhase triggers (#4749).
     private static readonly TimeSpan ClaimGrace = TimeSpan.FromSeconds(10);
     // Nothing invalidates a claim that lapsed with its Redis TTL, or one whose call ended without
     // reaching Release - so a live claim re-checks itself on this period.
@@ -49,14 +48,18 @@ public class CallsBackend : ShardComputeService, ICallsBackend
         var call = await SafeGet(userId).ConfigureAwait(false);
         if (call is null)
             return null;
-        if (await IsBacked(call, cancellationToken).ConfigureAwait(false)) {
+
+        var phase = await GetPhase(call, cancellationToken).ConfigureAwait(false);
+        if (phase is { } p) {
             computed.Invalidate(ClaimSelfHeal);
-            return call;
+            return call with { Phase = p };
         }
 
         // The session that justified this claim is gone (the client crashed mid-call, a host died
         // before releasing it): drop it rather than keep the user busy until the TTL lapses.
-        _ = Release(userId, call.ChatId, CancellationToken.None);
+        Log.LogWarning("GetUserCall: dropping the {Role} claim of user #{UserId} in chat #{ChatId}, {Age} old",
+            call.Role, userId, call.ChatId, (Clocks.SystemClock.Now - call.SinceAt).ToShortString());
+        _ = ReleaseIfUnchanged(userId, call);
         return null;
     }
 
@@ -67,7 +70,7 @@ public class CallsBackend : ShardComputeService, ICallsBackend
             var existing = await SafeGet(userId).ConfigureAwait(false);
             if (existing is not null
                 && existing.ChatId != call.ChatId
-                && await IsBacked(existing, cancellationToken).ConfigureAwait(false))
+                && await GetPhase(existing, cancellationToken).ConfigureAwait(false) is not null)
                 return false;
 
             await _userCalls
@@ -75,26 +78,6 @@ public class CallsBackend : ShardComputeService, ICallsBackend
                 .ConfigureAwait(false);
             Invalidate(userId);
             return true;
-        }
-    }
-
-    public virtual async Task SetPhase(
-        UserId userId, ChatId chatId, CallPhase phase, CancellationToken cancellationToken)
-    {
-        using (Computed.BeginIsolation())
-        using (await _claimLocks.Lock(userId, cancellationToken).ConfigureAwait(false)) {
-            var call = await SafeGet(userId).ConfigureAwait(false);
-            if (call is null || call.ChatId != chatId)
-                return;
-            if (call.Phase == phase) {
-                await _userCalls.Refresh(userId.Value).ConfigureAwait(false);
-                return;
-            }
-
-            await _userCalls
-                .Set(userId.Value, call with { Phase = phase, SinceAt = Clocks.SystemClock.Now })
-                .ConfigureAwait(false);
-            Invalidate(userId);
         }
     }
 
@@ -113,31 +96,63 @@ public class CallsBackend : ShardComputeService, ICallsBackend
 
     // Private methods
 
-    private async Task<bool> IsBacked(UserCall call, CancellationToken cancellationToken)
+    // Null when the chat's live session no longer backs the claim. The phase stored with the claim
+    // is only its initial one, and holds only for ClaimGrace, before the session exists.
+    private async Task<CallPhase?> GetPhase(UserCall call, CancellationToken cancellationToken)
     {
-        if (Clocks.SystemClock.Now - call.SinceAt < ClaimGrace)
-            return true;
-
         var live = await LiveSessionsBackend.Get(call.ChatId, cancellationToken).ConfigureAwait(false);
-        if (live is not { Kind: LiveSessionKind.Call })
-            return false;
+        var callState = call.Role == CallRole.Caller
+            ? await LiveSessionsBackend.GetCallState(call.ChatId, cancellationToken).ConfigureAwait(false)
+            : null;
+        var phase = GetPhase(call, live, callState);
+        if (phase is null && Clocks.SystemClock.Now - call.SinceAt < ClaimGrace)
+            return call.Phase;
 
-        var invite = live.Invites.FirstOrDefault(i => i.InviteeId == call.AuthorId);
-        if (call.Phase == CallPhase.Ringing)
-            return invite is { Status: CallInviteStatus.Ringing };
-        if (call.Phase == CallPhase.Dialing) {
-            // The status matters as much as the caller: a resolved one (no answer, declined, busy)
-            // lingers past the call, and would otherwise keep the caller busy for as long as it lives.
-            var callState = await LiveSessionsBackend
-                .GetCallState(call.ChatId, cancellationToken)
-                .ConfigureAwait(false);
-            return callState is { Status: CallStatus.Dialing or CallStatus.Connecting }
-                && callState.CallerId == call.AuthorId;
+        return phase;
+    }
+
+    internal static CallPhase? GetPhase(UserCall call, LiveSession? live, CallState? callState)
+    {
+        if (live is not { Kind: LiveSessionKind.Call })
+            return null;
+
+        var isConnected = live.Conversation is not null;
+        var isPresent = live.Members.Any(m => m.AuthorId == call.AuthorId && (m.IsMicOpen || m.IsListening));
+        if (call.Role == CallRole.Callee) {
+            var invite = live.Invites.FirstOrDefault(i => i.InviteeId == call.AuthorId);
+            return invite?.Status switch {
+                CallInviteStatus.Ringing => CallPhase.Ringing,
+                CallInviteStatus.Accepted or CallInviteStatus.Active => CallPhase.Active,
+                _ => isConnected && isPresent ? CallPhase.Active : null,
+            };
         }
 
-        // Active: answered, or present in the conversation - the caller has no invite of their own.
-        return invite is { Status: CallInviteStatus.Accepted or CallInviteStatus.Active }
-            || live.Members.Any(m => m.AuthorId == call.AuthorId && (m.IsMicOpen || m.IsListening));
+        // A resolved status (no answer, declined, busy) outlives the call, so it backs nothing.
+        var isOwnCall = callState?.CallerId == call.AuthorId;
+        if (isOwnCall && callState!.Status == CallStatus.Dialing)
+            return CallPhase.Dialing;
+
+        var isAnswered = isOwnCall && callState!.Status is CallStatus.Connecting or CallStatus.Active;
+        return isConnected && (isAnswered || isPresent) ? CallPhase.Active : null;
+    }
+
+    // The claim was judged from a read that a TryClaim may have overtaken since: whatever is there now
+    // is another call's claim, not this stale one.
+    private async Task ReleaseIfUnchanged(UserId userId, UserCall call)
+    {
+        try {
+            using (Computed.BeginIsolation())
+            using (await _claimLocks.Lock(userId, CancellationToken.None).ConfigureAwait(false)) {
+                if (await SafeGet(userId).ConfigureAwait(false) != call)
+                    return;
+
+                await _userCalls.Remove(userId.Value).ConfigureAwait(false);
+                Invalidate(userId);
+            }
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to drop the stale call claim of user #{UserId}", userId);
+        }
     }
 
     private async Task<UserCall?> SafeGet(UserId userId)
