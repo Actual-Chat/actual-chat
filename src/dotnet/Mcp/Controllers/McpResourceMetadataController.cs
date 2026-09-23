@@ -1,4 +1,5 @@
 using ActualChat.Mcp.Module;
+using ActualChat.OAuth;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Mcp.Controllers;
@@ -11,21 +12,15 @@ public sealed class McpResourceMetadataController(IServiceProvider services) : C
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
     private McpSettings Settings { get; } = services.GetRequiredService<McpSettings>();
 
-    [HttpGet(Route), HttpGet(Route + "/{**resourcePath}")]
-    public ActionResult Get(string? resourcePath)
+    [HttpGet(Route), HttpGet(Route + OAuthConstants.McpResourcePath)]
+    public ActionResult Get()
     {
-        // RFC 9728 §3.3: "resource" must match the URL the client connected to, so each MCP route
-        // gets its own document; the bare well-known URL describes the canonical route
-        var route = resourcePath.IsNullOrEmpty()
-            ? Settings.Routes.FirstOrDefault()
-            : Settings.Routes.FirstOrDefault(r => string.Equals(
-                r.Trim('/'), resourcePath.Trim('/'), StringComparison.OrdinalIgnoreCase));
-        if (route is null)
+        if (Settings.Route.IsNullOrEmpty())
             return NotFound();
 
         Response.Headers.CacheControl = "public, max-age=3600";
         return Ok(new {
-            resource = UrlMapper.ToAbsolute(route),
+            resource = UrlMapper.ToAbsolute(Settings.Route),
             // Must be byte-identical to the issuer OpenIddict derives from the request base URL,
             // which keeps the trailing slash (RFC 8414 §3.3 makes clients compare the two)
             authorization_servers = new[] { UrlMapper.BaseUrl },

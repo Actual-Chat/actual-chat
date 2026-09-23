@@ -30,5 +30,5 @@ url = "https://voxt.ai/api/mcp"
 bearer_token_env_var = "ActualChat_RoboKitty_API_Key"
 
 [mcp_servers.voxt-robokitty-dev]
-url = "https://dev.voxt.ai/api/mcp"
+url = "https://dev.voxt.ai/mcp"
 bearer_token_env_var = "ActualChat_RoboKitty_Dev_API_Key"

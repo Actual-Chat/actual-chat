@@ -11,8 +11,6 @@ public static class OAuthConstants
     public const string ConsentPath = "/oauth/consent";
     public const string DenyParameter = "voxt_deny";
     public const string McpResourcePath = "/mcp";
-    public const string LegacyMcpResourcePath = "/api/mcp";
-    public static readonly string[] McpResourcePaths = [McpResourcePath, LegacyMcpResourcePath];
 
     public static class Properties
     {

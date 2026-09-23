@@ -78,9 +78,8 @@ public sealed class OAuthModule(IServiceProvider moduleServices)
                 o.DisableAccessTokenEncryption();
                 o.UseReferenceRefreshTokens();
                 o.SetRefreshTokenReuseLeeway(Settings.RefreshTokenReuseLeeway);
-                // The MCP endpoint (under both of its paths) is the only resource (registered below,
-                // once UrlMapper is resolvable), and every client gets it, so per-client rsrc: permissions
-                // would only duplicate that
+                // The MCP endpoint is the only resource (registered below, once UrlMapper is resolvable),
+                // and every client gets it, so per-client rsrc: permissions would only duplicate that
                 o.IgnoreResourcePermissions();
                 AddCredentials(o);
                 var aspNetCore = o.UseAspNetCore()
@@ -108,10 +107,8 @@ public sealed class OAuthModule(IServiceProvider moduleServices)
                 c.MaxResponseContentBufferSize = CimdClientResolver.MaxDocumentLength;
             })
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
-        services.AddOptions<OpenIddictServerOptions>().Configure<UrlMapper>((o, urlMapper) => {
-            foreach (var path in OAuthConstants.McpResourcePaths)
-                o.Resources.Add(new Uri(urlMapper.ToAbsolute(path)));
-        });
+        services.AddOptions<OpenIddictServerOptions>().Configure<UrlMapper>((o, urlMapper)
+            => o.Resources.Add(new Uri(urlMapper.ToAbsolute(OAuthConstants.McpResourcePath))));
     }
 
     // Internal methods

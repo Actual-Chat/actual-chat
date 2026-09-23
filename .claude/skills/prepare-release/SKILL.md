@@ -259,7 +259,7 @@ curl -s -X POST "https://voxt.ai/api/mcp" \
 
 The response is an SSE `data:` line; success looks like
 `"structuredContent":{"result":<LID>}`. Report that LID. (Use the prod key/URL
-above; `ActualChat_RoboKitty_Dev_API_Key` + `https://dev.voxt.ai/api/mcp` target
+above; `ActualChat_RoboKitty_Dev_API_Key` + `https://dev.voxt.ai/mcp` target
 the dev instance.) Only if neither the tool nor the key is available, print the
 notes for the user to paste manually.
 

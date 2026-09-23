@@ -157,10 +157,9 @@ public abstract class OAuthTestBase<TFixture>(TFixture fixture, ITestOutputHelpe
     protected static JwtSecurityToken ReadJwt(string token)
         => new JwtSecurityTokenHandler().ReadJwtToken(token);
 
-    protected async Task<McpClient> CreateMcpClient(
-        string token, string route = OAuthConstants.McpResourcePath, CancellationToken cancellationToken = default)
+    protected async Task<McpClient> CreateMcpClient(string token, CancellationToken cancellationToken = default)
     {
-        var endpoint = new Uri(BaseUri, route);
+        var endpoint = new Uri(BaseUri, "/mcp");
         var transport = new HttpClientTransport(new HttpClientTransportOptions {
             Endpoint = endpoint,
             AdditionalHeaders = new Dictionary<string, string> { ["Authorization"] = $"Bearer {token}" },
@@ -171,7 +170,7 @@ public abstract class OAuthTestBase<TFixture>(TFixture fixture, ITestOutputHelpe
     protected async Task<HttpResponseMessage> SendInitialize(string? authorization)
     {
         using var http = Tester.AppHost.NewHttpClient();
-        var request = new HttpRequestMessage(HttpMethod.Post, new Uri(BaseUri, OAuthConstants.McpResourcePath));
+        var request = new HttpRequestMessage(HttpMethod.Post, new Uri(BaseUri, "/mcp"));
         request.Content = new StringContent(
             """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}""");
         request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
