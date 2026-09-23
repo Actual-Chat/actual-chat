@@ -1109,7 +1109,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         modal?.Close();
         // If a chat was selected and we no longer can see a chat, navigate to another visible chat
         if (isSelectedChat && !(chat.IsPublic && !isDelete))
-            _ = NavigateToVisibleChat((chat.Id as PlaceChatId)?.PlaceId).SuppressExceptions();
+            _ = NavigateToVisibleChat((chat.Id as PlaceChatId)?.PlaceId, chat.Id).SuppressExceptions();
     }
 
     private async Task LeavePlaceInternal(
@@ -1225,7 +1225,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         await UICommander.Call(archiveCommand).ConfigureAwait(true);
     }
 
-    private async Task NavigateToVisibleChat(PlaceId? preferredPlaceId)
+    private async Task NavigateToVisibleChat(PlaceId? preferredPlaceId, ChatId leftChatId)
     {
         var chatIdToNavigate = (ChatId?)null;
         if (preferredPlaceId is not null)
@@ -1237,9 +1237,12 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
         async Task<ChatId?> GetFirstChatId(PlaceId? placeId)
         {
-            var chatListSettings = new ChatListSettings { FilterId = ChatListFilter.None.Id }; // TODO(DF): better use stored sorting settings for the place.
+            // The list is still the pre-command one here, and the chat just left heads it as the most
+            // recently active - navigating back to it would leave the user on "Chat not found".
+            // TODO(DF): better use stored sorting settings for the place.
+            var chatListSettings = new ChatListSettings { FilterId = ChatListFilter.None.Id };
             var chats = await ChatListUI.List(placeId, chatListSettings, default).ConfigureAwait(false);
-            return chats.Count > 0 ? chats[0].Id : null;
+            return chats.FirstOrDefault(c => c.Id != leftChatId)?.Id;
         }
     }
 
