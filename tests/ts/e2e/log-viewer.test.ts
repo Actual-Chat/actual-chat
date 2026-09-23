@@ -9,7 +9,7 @@ import { describe, it, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
     BASE_URL, connectBrowser, dismissCookieConsent, ensureSignedIn,
-    screenshot, waitForAppReady, type BrowserConnection,
+    screenshot, waitForAppReady, withUILanguage, type BrowserConnection,
 } from './helpers';
 
 const shot = (name: string) => screenshot('e2e', `log-viewer-${name}`);
@@ -36,7 +36,7 @@ describe('Log Viewer tab is reachable on narrow screens', () => {
     });
 
     it('enables Log Viewer via Developer tools and opens the tab', async () => {
-        await page.goto(`${BASE_URL}/settings`, { waitUntil: 'domcontentloaded' });
+        await page.goto(withUILanguage(`${BASE_URL}/settings`), { waitUntil: 'domcontentloaded' });
         await waitForAppReady(page);
         await dismissCookieConsent(page);
 
@@ -50,10 +50,13 @@ describe('Log Viewer tab is reachable on narrow screens', () => {
         await enableLogViewer.waitFor({ state: 'visible', timeout: 10_000 });
         // Initial render is OFF (Model.None); settles to ON (default true).
         // Poll so we don't click during the transition and flip it back to OFF.
+        // aria-checked, not data-input-checked: the latter holds a bool, and Blazor renders a
+        // bool attribute the HTML way — present but empty when set, absent when not.
         const toggle = enableLogViewer.locator('label.toggle').first();
         for (let i = 0; i < 8; i++) {
-            const checked = await toggle.getAttribute('data-input-checked');
-            if (checked === 'True') break;
+            if (await toggle.getAttribute('aria-checked') === 'true')
+                break;
+
             await enableLogViewer.click({ force: true });
             await page.waitForTimeout(800);
         }
