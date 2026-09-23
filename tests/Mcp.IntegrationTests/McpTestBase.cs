@@ -1,3 +1,4 @@
+using ActualChat.OAuth;
 using ActualChat.Testing.Host;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
@@ -25,13 +26,14 @@ public abstract class McpTestBase<TFixture>(TFixture fixture, ITestOutputHelper 
     protected async Task<McpClient> CreateClient(string? apiKey = null, CancellationToken ct = default)
     {
         apiKey ??= await IssueApiKey(ct: ct).ConfigureAwait(false);
-        return await CreateClientWithRawKey(apiKey, ct).ConfigureAwait(false);
+        return await CreateClientWithRawKey(apiKey, ct: ct).ConfigureAwait(false);
     }
 
-    protected async Task<McpClient> CreateClientWithRawKey(string sessionId, CancellationToken ct = default)
+    protected async Task<McpClient> CreateClientWithRawKey(
+        string sessionId, string route = OAuthConstants.McpResourcePath, CancellationToken ct = default)
     {
         var baseUri = Tester.UrlMapper.BaseUri;
-        var endpoint = new Uri(baseUri, "/api/mcp");
+        var endpoint = new Uri(baseUri, route);
         var transport = new HttpClientTransport(new HttpClientTransportOptions {
             Endpoint = endpoint,
             AdditionalHeaders = new Dictionary<string, string> { ["Authorization"] = $"Bearer {sessionId}" },

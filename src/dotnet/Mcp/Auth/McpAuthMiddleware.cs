@@ -6,7 +6,7 @@ using Microsoft.Net.Http.Headers;
 
 namespace ActualChat.Mcp.Auth;
 
-public sealed class McpAuthMiddleware(RequestDelegate next, IServiceProvider services)
+public sealed class McpAuthMiddleware(RequestDelegate next, IServiceProvider services, string route)
 {
     private const string BearerPrefix = "Bearer ";
     private const string Realm = "Voxt";
@@ -15,6 +15,7 @@ public sealed class McpAuthMiddleware(RequestDelegate next, IServiceProvider ser
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
     private McpSettings Settings { get; } = services.GetRequiredService<McpSettings>();
     private OAuthBearerAuthenticator? BearerAuthenticator { get; } = services.GetService<OAuthBearerAuthenticator>();
+    private string Route { get; } = route;
 
     public async Task Invoke(HttpContext httpContext)
     {
@@ -36,7 +37,7 @@ public sealed class McpAuthMiddleware(RequestDelegate next, IServiceProvider ser
         else
             session = BearerAuthenticator is null
                 ? null
-                : await BearerAuthenticator.TryGetSession(httpContext, Settings.Route, httpContext.RequestAborted)
+                : await BearerAuthenticator.TryGetSession(httpContext, Settings.Routes, httpContext.RequestAborted)
                     .ConfigureAwait(false);
 
         if (session is null) {
@@ -63,7 +64,7 @@ public sealed class McpAuthMiddleware(RequestDelegate next, IServiceProvider ser
 
     private Task Reject(HttpContext httpContext, string? error, string description)
     {
-        var metadataUrl = UrlMapper.ToAbsolute(McpResourceMetadataController.Route + Settings.Route);
+        var metadataUrl = UrlMapper.ToAbsolute(McpResourceMetadataController.Route + Route);
         var header = $"Bearer realm=\"{Realm}\", resource_metadata=\"{metadataUrl}\", scope=\"mcp offline_access\"";
         if (error is not null)
             header += $", error=\"{error}\", error_description=\"{description}\"";
