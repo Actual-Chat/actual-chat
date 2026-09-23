@@ -80,14 +80,8 @@ public class MultiUserAccessTest(McpCollection.AppHostFixture fixture, ITestOutp
         chat!.Title.Should().Be("AliceOnly");
     }
 
-    private static async Task AssertCanPost(McpClient mcp, ChatId chatId)
-    {
-        var result = await mcp.CallToolAsync("post_message", new Dictionary<string, object?> {
-            ["chatId"] = chatId.Value,
-            ["text"] = $"post into {chatId.Value}",
-        });
-        result.IsError.Should().NotBe(true, $"post_message into {chatId} should succeed");
-    }
+    private static Task AssertCanPost(McpClient mcp, ChatId chatId)
+        => CallTool(mcp, "post_message", new { chatId = chatId.Value, text = $"post into {chatId.Value}" });
 
     private static async Task AssertCannotPost(McpClient mcp, ChatId chatId)
     {
@@ -98,11 +92,6 @@ public class MultiUserAccessTest(McpCollection.AppHostFixture fixture, ITestOutp
         result.IsError.Should().Be(true, $"post_message into {chatId} should be denied");
     }
 
-    private static async Task AssertCanRead(McpClient mcp, ChatId chatId)
-    {
-        var result = await mcp.CallToolAsync("get_id_range", new Dictionary<string, object?> {
-            ["chatId"] = chatId.Value,
-        });
-        result.IsError.Should().NotBe(true, $"get_id_range for {chatId} should succeed");
-    }
+    private static Task AssertCanRead(McpClient mcp, ChatId chatId)
+        => CallTool(mcp, "get_id_range", new { chatId = chatId.Value });
 }
