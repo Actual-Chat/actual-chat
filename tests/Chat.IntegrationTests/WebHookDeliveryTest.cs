@@ -147,23 +147,28 @@ public class WebHookDeliveryTest(ChatCollection.AppHostFixture fixture, ITestOut
         Receiver.StatusFor = index => index == 0 ? HttpStatusCode.NotFound : HttpStatusCode.OK;
 
         // act
-        await Alice.CreateTextEntry(chatId, "first, fails");
-        await Alice.CreateTextEntry(chatId, "second, lands");
+        await Alice.CreateTextEntry(chatId, "hook message A");
+        await Alice.CreateTextEntry(chatId, "hook message B");
 
         // assert
+        // The event queue fans the posts in concurrently, so either one can head the outbox and get the 404
         var first = await Receiver.Next(ReceiveTimeout);
-        first.Body.Should().Contain("first, fails");
         var second = await Receiver.Next(ReceiveTimeout);
-        second.Body.Should().Contain("second, lands", "a terminal failure doesn't block the ones behind it");
+        new[] { first.Body, second.Body }.Should()
+            .ContainSingle(x => x.Contains("hook message A")).And
+            .ContainSingle(x => x.Contains("hook message B"), "a terminal failure doesn't block the one behind it");
         await TestWait.When(async ct => {
             var deliveries = await Backend.ListDeliveries(hook.Id, Constants.WebHooks.DeliveryListLimit, ct);
             deliveries.Should().HaveCount(2);
-            var failed = deliveries.Single(x => x.LastStatusCode == 404);
+            var (failed, landed) = (deliveries.MinBy(x => x.Seq)!, deliveries.MaxBy(x => x.Seq)!);
+            failed.Id.Should().Be(first.Headers["webhook-id"], "the head of the outbox goes out first");
+            failed.LastStatusCode.Should().Be(404);
             failed.Status.Should().Be(WebHookDeliveryStatus.Failed);
             failed.Attempts.Should().Be(1);
             failed.NextAttemptAt.Should().BeNull();
             failed.CompletedAt.Should().NotBeNull();
-            deliveries.Single(x => x.Id != failed.Id).Status.Should().Be(WebHookDeliveryStatus.Succeeded);
+            landed.Id.Should().Be(second.Headers["webhook-id"], "the one behind the failed head goes out next");
+            landed.Status.Should().Be(WebHookDeliveryStatus.Succeeded);
             (await Backend.Get(hook.Id, ct))!.IsEnabled.Should().BeTrue();
         }, ReceiveTimeout);
     }
