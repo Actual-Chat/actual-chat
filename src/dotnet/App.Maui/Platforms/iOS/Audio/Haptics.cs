@@ -87,6 +87,10 @@ public class Haptics(AppUIHub hub) : IDisposable
             try {
                 var engine = new CHHapticEngine(out var error);
                 error.Assert();
+                // Without this the engine needs an audio session of its own, and a call's session
+                // outranks it: every pattern played into silence for the whole call. Our patterns
+                // carry no audio events, so the engine has no use for a session anyway.
+                engine.PlaysHapticsOnly = true;
 
                 engine.Start(out error);
                 error.Assert();
