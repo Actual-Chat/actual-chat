@@ -154,7 +154,8 @@
                 Picture="@_form.Picture"
                 Size="@SquareSize.Size16"
                 AvatarKind="@_avatarKind"
-                AvatarKey="@_avatarKey"/>
+                AvatarKey="@_avatarKey"
+                Click="@(() => _avatarPicker!.Pick())"/>
 
             <div class="c-buttons">
                 <ButtonRound Class="btn-sm btn-tinted" Click="@(() => _avatarPicker!.Pick())">
@@ -163,6 +164,10 @@
                 <ImageCropPicker @ref="_avatarPicker"
                     Scope="@_form!.ImageScope"
                     Title="@L.PicCrop_ChatPictureTitle"
+                    CurrentPicture="@_form.Picture"
+                    CurrentAvatarKey="@(_avatarKey ?? "")"
+                    CurrentAvatarTitle="@_form.Title"
+                    AvatarKind="@_avatarKind"
                     OnCropped="@OnImagePicked" />
             </div>
         </div>

@@ -1,4 +1,5 @@
 @using ActualChat.Media
+@using ActualChat.Users
 @using ActualChat.UI.Blazor.App.Module
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
@@ -9,9 +10,12 @@
     Class="@("pic-crop-modal"
         + (ModalModel.IsSquare ? " square" : "")
         + (ModalModel.HasBlur ? " has-blur" : "")
+        + (_hasSource ? "" : " empty")
+        + (IsMarbleState ? " marble" : "")
         + (_isSaving ? " saving" : ""))"
     Title="@Title"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default"
+    BodyClass="no-scrollbar"
     HasCloseButton="true">
     <Body>
         @if (_hasError) {
@@ -22,67 +26,93 @@
         } else {
             <div class="c-content">
                 <div class="c-canvas-container">
+                    @if (IsMarbleState) {
+                        <div class="c-marble">@GeneratedAvatar</div>
+                    }
                     <canvas @ref="_canvasRef" width="400" height="400"></canvas>
+                    @if (_hasSource) {
+                        <div class="c-angle" hidden></div>
+                        <div class="c-hint">@L.PicCrop_DragHint</div>
+                    } else if (IsMarbleState) {
+                        <div class="c-hint">@L.PicCrop_MarbleHint</div>
+                    } else {
+                        <div class="c-placeholder">
+                            <i class="icon-upload text-3xl"></i>
+                            <span>@L.PicCrop_UploadHint</span>
+                        </div>
+                    }
                     @if (_isGenerating) {
                         <div class="c-generating">
                             <Spinner/>
                         </div>
                     }
                 </div>
+            </div>
+            <div class="c-preview">
                 @if (ModalModel.ViewportAspectRatio > 0) {
-                    <div class="c-preview">
-                        <canvas @ref="_previewRef"
-                                width="120"
-                                height="@((int)(120 / ModalModel.ViewportAspectRatio))"></canvas>
-                        <span class="c-preview-label">@L.PicCrop_Preview</span>
-                    </div>
+                    <canvas width="120" height="@((int)(120 / ModalModel.ViewportAspectRatio))"></canvas>
                 } else {
-                    <div class="c-preview">
-                        <canvas @ref="_previewRef" width="40" height="40"></canvas>
-                        <span class="c-preview-label">@L.PicCrop_Preview</span>
-                    </div>
+                    <canvas width="48" height="48"></canvas>
+                    <canvas width="40" height="40"></canvas>
+                    <canvas width="32" height="32"></canvas>
+                    @* The canvases stay in the DOM (JS captures them once); a marble has no crop source,
+                       so it's shown as its own elements and the empty canvases are hidden via CSS. *@
+                    @if (IsMarbleState) {
+                        <div class="c-marble-preview w-[48px] h-[48px]">@GeneratedAvatar</div>
+                        <div class="c-marble-preview w-[40px] h-[40px]">@GeneratedAvatar</div>
+                        <div class="c-marble-preview w-[32px] h-[32px]">@GeneratedAvatar</div>
+                    }
                 }
+                <span class="c-preview-label">@L.PicCrop_SizesPreview</span>
             </div>
             <div class="c-controls">
                 @if (ModalModel.HasBlur) {
                     <div class="c-blur-slider">
-                        <input type="range" class="blur-range" min="0" max="16" step="1" value="0" />
+                        <div class="c-slider">
+                            <div class="c-track"></div>
+                            <div class="c-fill"></div>
+                            <div class="c-thumb"></div>
+                            <input type="range" class="blur-range dialog-unstyled" min="0" max="16" step="1" value="0" />
+                        </div>
                         <span class="c-blur-label">@L.PicCrop_Blur</span>
                     </div>
                 }
-                <div class="c-buttons-row">
-                    <div class="c-group">
-                        <ButtonRound Class="btn-zoom-out" Tooltip="@L.PicCrop_ZoomOut" IsDisabled="@_isSaving">
-                            <i class="icon-minus-circle text-2xl"></i>
-                        </ButtonRound>
-                        <ButtonRound Class="btn-zoom-in" Tooltip="@L.PicCrop_ZoomIn" IsDisabled="@_isSaving">
-                            <i class="icon-plus-circle text-2xl"></i>
-                        </ButtonRound>
-                    </div>
-                    <ButtonRound Class="btn-confirm"
-                                 Click="@OnConfirm"
-                                 Tooltip="@L.PicCrop_Apply"
-                                 IsDisabled="@_isSaving">
-                        @if (_isSaving) {
-                            <Spinner/>
-                        } else {
-                            <i class="icon-checkmark-simple text-2xl"></i>
-                        }
+                <div class="c-slider">
+                    <div class="c-track"></div>
+                    <div class="c-fill"></div>
+                    <div class="c-thumb"></div>
+                    <input type="range" class="zoom-range dialog-unstyled" min="100" max="400" step="1" value="100"
+                           disabled="@(!_hasSource || _isSaving)" />
+                </div>
+                <div class="c-zoom-readout">
+                    <span class="c-zoom-value">100%</span>
+                </div>
+                <div class="c-tools-row">
+                    <ButtonRound Class="btn-rotate-ccw btn-sm" Tooltip="@L.PicCrop_RotateLeft" IsDisabled="@(!_hasSource || _isSaving)">
+                        <i class="icon-refresh text-xl c-flip"></i>
                     </ButtonRound>
-                    <div class="c-group">
-                        <ButtonRound Class="btn-rotate-ccw" Tooltip="@L.PicCrop_RotateLeft" IsDisabled="@_isSaving">
-                            <i class="icon-refresh text-2xl c-flip"></i>
-                        </ButtonRound>
-                        <ButtonRound Class="btn-rotate-cw" Tooltip="@L.PicCrop_RotateRight" IsDisabled="@_isSaving">
-                            <i class="icon-refresh text-2xl"></i>
-                        </ButtonRound>
-                    </div>
-                    <ButtonRound Class="btn-generate"
-                                 Click="@OnOpenGeneration"
-                                 Tooltip="@L.ImageGeneration_Title"
-                                 IsDisabled="@(_isSaving || _isGenerating)">
-                        <i class="icon-ai-stars text-2xl"></i>
+                    <ButtonRound Class="btn-rotate-cw btn-sm" Tooltip="@L.PicCrop_RotateRight" IsDisabled="@(!_hasSource || _isSaving)">
+                        <i class="icon-refresh text-xl"></i>
                     </ButtonRound>
+                    <ButtonRound Class="btn-mirror btn-sm" Click="@OnMirror" Tooltip="@L.PicCrop_Mirror" IsDisabled="@(!_hasSource || _isSaving)">
+                        <i class="icon-mirror-video text-xl"></i>
+                    </ButtonRound>
+                    <ButtonRound Class="btn-reset btn-sm" Click="@OnReset" Tooltip="@L.PicCrop_Reset" IsDisabled="@(!_hasSource || _isSaving)">
+                        <i class="icon-sync text-xl"></i>
+                    </ButtonRound>
+                    <ButtonRound Class="btn-revert btn-sm" Click="@OnRevert" Tooltip="@L.PicCrop_RevertPrevious" IsDisabled="@(!_hasSource || _isSaving)">
+                        <i class="icon-forward text-xl c-flip"></i>
+                    </ButtonRound>
+                </div>
+                <div class="c-actions-row">
+                    <Button Class="btn-modal btn-sm" Click="@OnOpenGeneration" IsDisabled="@(_isSaving || _isGenerating)">
+                        <i class="icon-ai-stars text-xl"></i>
+                        <span>@L.PicCrop_Create</span>
+                    </Button>
+                    <Button Class="btn-modal btn-sm" Click="@OnUploadClick" IsDisabled="@_isSaving">
+                        <i class="icon-upload text-xl"></i>
+                        <span>@L.PicCrop_Upload</span>
+                    </Button>
                 </div>
                 @if (_hasGenerationError) {
                     <div class="c-status c-generation-error">@L.PicCrop_GenerationFailed</div>
@@ -91,11 +121,25 @@
                 }
             </div>
         }
+        <input @ref="_fileInputRef" type="file" accept="image/*" @onchange="@OnFileSelected" hidden />
     </Body>
+    <Buttons>
+        <Button Class="btn-modal" Click="@OnCancel" IsDisabled="@_isSaving">@L.Common_Cancel</Button>
+        <Button Class="btn-modal btn-primary" Click="@OnSave" IsDisabled="@(!_hasSource || _isSaving)">
+            @if (_isSaving) {
+                <Spinner/>
+            } else {
+                @L.Common_Save
+            }
+        </Button>
+    </Buttons>
 </DialogFrame>
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.PicCropModal.create";
+    private static readonly string JSClickFileInput = $"{BlazorUIAppModule.ImportName}.clickFileInput";
+    private static readonly string JSCreateBlobUrl = $"{BlazorUIAppModule.ImportName}.createBlobUrlFromInput";
+    private static readonly string JSClearFileInput = $"{BlazorUIAppModule.ImportName}.clearFileInput";
 
     private FileUploader FileUploader => field ??= Services.GetRequiredService<FileUploader>();
 
@@ -105,11 +149,12 @@
             : ModalModel.IsSquare ? L.PicCrop_PlaceAvatarTitle : L.PicCrop_AvatarTitle);
 
     private ElementReference _canvasRef;
-    private ElementReference _previewRef;
+    private ElementReference _fileInputRef;
     private IJSObjectReference? _jsRef;
     private DotNetObjectReference<PicCropModal>? _blazorRef;
     private CancellationTokenSource? _saveCts;
     private bool _hasError;
+    private bool _hasSource;
     private bool _isSaving;
     private string _saveStatus = "";
     private CancellationTokenSource? _generateCts;
@@ -118,6 +163,18 @@
     private string _description = "";
     private ImageStyle? _style;
     private MediaId? _generatedMediaId;
+    private string _avatarKey = "";
+
+    // A generated avatar (marble/beam) is showing and there's nothing to crop.
+    private bool IsMarbleState => !_avatarKey.IsNullOrEmpty() && !_hasSource && !ModalModel.HasBlur;
+
+    private RenderFragment GeneratedAvatar => @<text>
+        @if (ModalModel.AvatarKind == AvatarKind.Marble) {
+            <marble-avatar key="@_avatarKey" title="@ModalModel.AvatarTitle"></marble-avatar>
+        } else {
+            <beam-avatar key="@_avatarKey"></beam-avatar>
+        }
+    </text>;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -130,8 +187,7 @@
         _jsRef = await JS.InvokeAsync<IJSObjectReference>(
             JSCreateMethod,
             _canvasRef,
-            _previewRef,
-            ModalModel.BlobUrl,
+            ModalModel.InitialImageUrl,
             _blazorRef,
             ModalModel.IsSquare,
             ModalModel.ViewportAspectRatio,
@@ -159,7 +215,42 @@
     protected override void OnInitialized() {
         _description = ModalModel.Description;
         _style = ModalModel.Style;
+        _avatarKey = ModalModel.AvatarKey;
     }
+
+    private async Task OnUploadClick() {
+        if (_jsRef is null)
+            return;
+
+        await JS.InvokeVoidAsync(JSClickFileInput, _fileInputRef).ConfigureAwait(true);
+    }
+
+    private async Task OnFileSelected() {
+        var blobUrl = await JS.InvokeAsync<string?>(JSCreateBlobUrl, _fileInputRef).ConfigureAwait(true);
+        await JS.InvokeVoidAsync(JSClearFileInput, _fileInputRef).ConfigureAwait(true);
+        if (blobUrl is null || _jsRef is null)
+            return;
+
+        await _jsRef.InvokeVoidAsync("setImage", blobUrl, true).ConfigureAwait(true);
+    }
+
+    private async Task OnMirror() {
+        if (_jsRef is { } jsRef)
+            await jsRef.InvokeVoidAsync("mirror").ConfigureAwait(true);
+    }
+
+    private async Task OnReset() {
+        if (_jsRef is { } jsRef)
+            await jsRef.InvokeVoidAsync("reset").ConfigureAwait(true);
+    }
+
+    private async Task OnRevert() {
+        if (_jsRef is { } jsRef)
+            await jsRef.InvokeVoidAsync("revertToPrevious").ConfigureAwait(true);
+    }
+
+    private void OnCancel()
+        => Modal.Close();
 
     private void OnOpenGeneration()
         => ModalUI.Show(new ImageGenerationModal.Model(_description, _style, OnGenerate));
@@ -227,8 +318,14 @@
         StateHasChanged();
     }
 
-    private async Task OnConfirm() {
-        if (_isSaving)
+    [JSInvokable("OnSourceChanged")]
+    public void OnSourceChanged(bool hasSource) {
+        _hasSource = hasSource;
+        StateHasChanged();
+    }
+
+    private async Task OnSave() {
+        if (_isSaving || !_hasSource)
             return;
 
         _isSaving = true;
@@ -298,7 +395,7 @@
     // Nested types
 
     public sealed record Model(
-        string BlobUrl,
+        string InitialImageUrl,
         string Scope,
         Action<MediaRef>? OnCropped,
         bool IsSquare = false,
@@ -314,5 +411,10 @@
 
         public ImageStyle? Style { get; init; }
         public MediaKind MediaKind { get; init; } = MediaKind.ChatPicture;
+
+        // Generated avatar to show when the modal opens without an image (empty = none).
+        public string AvatarKey { get; init; } = "";
+        public string AvatarTitle { get; init; } = "";
+        public AvatarKind AvatarKind { get; init; } = AvatarKind.Beam;
     }
 }
