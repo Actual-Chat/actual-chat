@@ -149,11 +149,14 @@
 .pic-crop-modal.marble .c-preview > canvas {
     @apply hidden;
 }
+/* The bare marble/beam element is inline with no intrinsic size, so it must be sized explicitly
+   (block + w/h-full), or it collapses to 0x0. Border/rounding matches the canvas previews.
+   flex-none: unlike the canvases (which have an intrinsic min-width), these divs have min-width:auto=0,
+   so the label would otherwise squeeze them into small, non-square rectangles and skew the marble. */
 .pic-crop-modal .c-preview > .c-marble-preview {
+    @apply flex-none;
     @apply overflow-hidden;
     @apply rounded-full border border-separator;
-    /* Match the crop canvases: their width attr is the content box, with the border outside it. */
-    @apply box-content;
 }
 .pic-crop-modal.square .c-preview > .c-marble-preview {
     @apply rounded-lg;
@@ -239,8 +242,15 @@
 
 /* ── Generation ── */
 
+/* Match the round viewport: dim only the circle, otherwise the square container's corners fall
+   outside the circular preview and show as dark wedges over it. */
 .pic-crop-modal .c-canvas-container .c-generating {
     @apply absolute inset-0;
     @apply flex-y items-center justify-center;
+    @apply rounded-full;
     @apply backdrop-brightness-50;
+}
+.pic-crop-modal.square .c-canvas-container .c-generating,
+.pic-crop-modal.has-blur .c-canvas-container .c-generating {
+    @apply rounded-none;
 }
