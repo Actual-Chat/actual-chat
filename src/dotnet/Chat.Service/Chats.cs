@@ -1,3 +1,4 @@
+using ActualChat.Streaming;
 using ActualChat.Contacts;
 using ActualChat.Kvas;
 using ActualChat.Localization;
@@ -25,6 +26,10 @@ public partial class Chats(IServiceProvider services) : IChats
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     // Lazy: it's registered only on hosts that run the chat backend, and only these two paths need it
     private TextEntryStreamer TextEntryStreamer => field ??= services.GetRequiredService<TextEntryStreamer>();
+    private ILiveSessionsBackend LiveSessionsBackend
+        => field ??= services.GetRequiredService<ILiveSessionsBackend>();
+    private IAudioStreamingBackend StreamingBackend
+        => field ??= services.GetRequiredService<IAudioStreamingBackend>();
     private IChatEntryStreamsBackend EntryStreamsBackend
         => field ??= services.GetRequiredService<IChatEntryStreamsBackend>();
     private IChatVoiceStreamsBackend VoiceStreamsBackend
@@ -850,6 +855,7 @@ public partial class Chats(IServiceProvider services) : IChats
                 }
         }
 
+        await OfferToListeners(session, chat, textEntry, cancellationToken).ConfigureAwait(false);
         return textEntry;
     }
 
@@ -1489,6 +1495,30 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // Private methods
+
+    // A message typed into a live conversation is part of it: someone listening rather than
+    // reading would otherwise never know it was said. Only while a session is running - outside
+    // one there is nobody listening, and synthesizing every message posted anywhere would cost a
+    // provider call each.
+    private async Task OfferToListeners(
+        Session session,
+        Chat chat,
+        ChatEntry entry,
+        CancellationToken cancellationToken)
+    {
+        if (entry.IsSystemEntry || entry.Content.IsNullOrWhiteSpace() || entry.Audio is not null)
+            return;
+
+        var liveState = await LiveSessionsBackend.GetState(chat.Id, cancellationToken).ConfigureAwait(false);
+        if (liveState is null)
+            return;
+
+        var language = await ResolveStreamLanguage(session, chat.Id, null, cancellationToken)
+            .ConfigureAwait(false);
+        await StreamingBackend
+            .SpeakText(chat.Id, entry.AuthorId, entry.Content, language, cancellationToken)
+            .ConfigureAwait(false);
+    }
 
     private async Task<(Author Author, ChatEntry? EntryToUpdate)> PrepareEntryStream(
         Session session,

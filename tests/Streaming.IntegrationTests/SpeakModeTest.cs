@@ -106,6 +106,39 @@ public sealed class SpeakModeTest(SpeechCollection.AppHostFixture fixture, ITest
     }
 
     [Fact]
+    public async Task ShouldReadAMessageTypedIntoALiveConversation()
+    {
+        // Someone who can't talk right now types instead. A listener would otherwise never know
+        // it was said - the message is part of the conversation, so it is spoken like the rest.
+
+        // arrange - a live session, and someone listening to it
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var liveSessions = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        var author = await Tester.Authors.GetOwn(Tester.Session, chatId, CancellationToken.None);
+        await liveSessions.OnStreamRegistered(
+            chatId, author!.Id, null, true, true, CancellationToken.None);
+        var live = AppHost.Services.GetRequiredService<ILiveAudioStreams>();
+        var listening = await live.GetListeningStream(
+            Tester.Session, chatId, Moment.EpochStart, null, CancellationToken.None);
+        var heard = ReadMuxedFrames(listening, CancellationToken.None);
+
+        // act - an ordinary typed message, not a stream
+        await Tester.Commander.Call(
+            new Chats_UpsertEntry {
+                Session = Tester.Session,
+                ChatId = chatId,
+                LocalId = null,
+                Text = "Give me two minutes and I will be there.",
+            },
+            CancellationToken.None);
+
+        // assert
+        var frames = await heard;
+        frames.Should().NotBeEmpty("a typed message is read aloud to whoever is listening");
+    }
+
+    [Fact]
     public async Task ShouldOfferATextEntryAsSomethingToJoin()
     {
         // Registering the audio makes it discoverable to someone already listening, but nothing

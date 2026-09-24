@@ -16,6 +16,15 @@ public interface IAudioStreamingBackend : IComputeService, IBackendService
     // Language-suffixed transcript stream ids resolve to their base stream's chat.
     Task<ChatId?> GetChatId(StreamId streamId, CancellationToken cancellationToken);
 
+    // Offers a posted message to anyone listening to the chat, to be read aloud. Returns as soon
+    // as it is on offer; the speaking itself outlives the call, and only happens if someone asks.
+    Task SpeakText(
+        ChatId chatId,
+        AuthorId authorId,
+        string text,
+        Language language,
+        CancellationToken cancellationToken);
+
     // How far this stream's synthesized voice is behind the text it was given, or null when
     // nothing is speaking it - which is also the answer "nobody is listening".
     Task<TimeSpan?> GetSpeechBacklog(StreamId streamId, CancellationToken cancellationToken);
