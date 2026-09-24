@@ -76,6 +76,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                 var storeCommand = new Flows_Store(flow.Id, existingVersion) {
                     Flow = (Flow)flow,
                     Events = [resumeOperationEvent],
+                    IsSkipExpected = true,
                 };
                 existingVersion = await Commander.Call(storeCommand, ct).ConfigureAwait(false);
             }
@@ -250,7 +251,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         if (flow is not null) {
             if (dbFlow is null) { // Create
                 if (!VersionChecker.IsExpected(0L, expectedVersion))
-                    return 0L;
+                    return SkipStore(command, 0L);
 
                 dbFlow = new DbFlow(flow);
                 dbFlow.Version = VersionGenerator.NextVersion(dbFlow.Version);
@@ -258,7 +259,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
             }
             else { // Update
                 if (!VersionChecker.IsExpected(dbFlow.Version, expectedVersion))
-                    return dbFlow.Version;
+                    return SkipStore(command, dbFlow.Version);
 
                 dbFlow.UpdateFrom(flow);
                 dbFlow.Version = VersionGenerator.NextVersion(dbFlow.Version);
@@ -269,11 +270,11 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
             if (dbFlow is null) {
                 // Nothing to remove, but maybe a version check is needed?
                 if (!VersionChecker.IsExpected(0L, expectedVersion))
-                    return 0L;
+                    return SkipStore(command, 0L);
             }
             else {
                 if (!VersionChecker.IsExpected(dbFlow.Version, expectedVersion))
-                    return dbFlow.Version;
+                    return SkipStore(command, dbFlow.Version);
 
                 dbContext.Remove(dbFlow);
                 dbFlow = null;
@@ -328,6 +329,19 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
     }
 
     // Private methods
+
+    private long SkipStore(Flows_Store command, long version)
+    {
+        // The caller gets the stored version back as if it had stored its own, so unless it checks
+        // for that itself, this is the only trace of the state and events it just lost
+        if (command.IsSkipExpected)
+            return version;
+
+        Log.LogWarning(
+            "`{FlowId}` store skipped: expected version {ExpectedVersion}, stored {Version}, {EventCount} event(s) dropped",
+            command.FlowId.Value, command.ExpectedVersion, version, command.Events?.Length ?? 0);
+        return version;
+    }
 
     private async Task<Flow> GetOrNewFlow(FlowId flowId, FlowDef flowDef, CancellationToken cancellationToken)
     {
