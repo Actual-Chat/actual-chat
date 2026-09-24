@@ -504,7 +504,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
     internal bool IsAdmin(AccountFull account)
         => IsAdmin(account,
-            HostInfo.BaseUrlKind == BaseUrlKind.Local,
+            // Excluding integration-test hosts, which are loopback too: a test agent must not
+            // become an admin there just by signing in.
+            HostInfo.IsLocalDevInstance() && !HostInfo.IsTested,
             UsersSettings.PredefinedTotps,
             UsersSettings.PredefinedEmailTotps);
 

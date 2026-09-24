@@ -36,8 +36,8 @@ public static class EndpointsExt
 
     private static IResult StopServerEndpoint(HttpContext ctx, HostInfo hostInfo, IHostApplicationLifetime lifetime)
     {
-        // Local-dev-only: allowed only when the request's Host header is local.voxt.ai (or equivalent).
-        if (hostInfo is not { IsDevelopmentInstance: true, BaseUrlKind: BaseUrlKind.Local })
+        // Local-dev-only: local.voxt.ai (or equivalent), or a loopback base URL as CI uses.
+        if (!hostInfo.IsLocalDevInstance())
             return Results.NotFound();
 
         Console.WriteLine($"HTTP {HealthPathPrefix}/stop received - stopping the server...");

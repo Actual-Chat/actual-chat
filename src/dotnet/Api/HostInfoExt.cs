@@ -12,6 +12,14 @@ public static class HostInfoExt
             ? new Uri($"{scheme}://{host}").ToBase().AbsoluteUri
             : hostInfo.BaseUrl;
 
+    public static bool IsLocalDevInstance(this HostInfo hostInfo)
+        // BaseUrlKind reads the host name, and a CI e2e run has no nginx or DNS for *.local.voxt.ai:
+        // it serves the app straight from Kestrel on http://localhost:7080, which is local dev by
+        // every measure except that name. EmailAuth.IsTestAgentEmailTotpHost already counts loopback.
+        => hostInfo.IsDevelopmentInstance
+            && (hostInfo.BaseUrlKind == BaseUrlKind.Local
+                || hostInfo.BaseUrl.EnsureSuffix("/").ToUri().IsLoopback);
+
     public static IReadOnlySet<string> GetHosts(this HostInfo hostInfo)
         => hostInfo.BaseUrlKind switch {
             BaseUrlKind.Unknown => ReadOnlySet<string>.Empty,
