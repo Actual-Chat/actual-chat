@@ -103,6 +103,11 @@ export class TuneUI {
                 return;
             }
 
+            if (BrowserInfo.hostKind === 'MauiApp') {
+                await this.blazorRef.invokeMethodAsync('play', tune);
+                return;
+            }
+
             await Promise.all([this.playVibration(tune, tuneInfo), this.playSound(tune, tuneInfo)]);
         } catch (e) {
             warnLog?.log('Failed yo play tune', tune, e);
@@ -133,10 +138,7 @@ export class TuneUI {
         const ext = DeviceInfo.isWebKit ? '.m4a' : '.webm'; // TODO: allow webm for iOS >= 16.5
         const soundUrl = `dist/sounds/${tuneInfo.sound}${ext}`;
         const cooldown = cooldownMap.get(tune);
-        if (BrowserInfo.hostKind !== 'MauiApp')
-            await SoundPlayer.instance.play(soundUrl, cooldown);
-        else
-            await this.blazorRef.invokeMethodAsync('play', tune);
+        await SoundPlayer.instance.play(soundUrl, cooldown);
     }
 
     private static vibrate(durationMs = 20): void {
