@@ -16,6 +16,20 @@ body.narrow .collapsed-call-view {
     @apply w-auto max-w-120;
     @apply mx-auto;
 }
+/* The in-call pill hugs its text instead of spanning the screen. */
+.collapsed-call-view.in-call,
+body.narrow .collapsed-call-view.in-call {
+    @apply w-fit;
+    @apply px-4 py-2;
+}
+.collapsed-call-view .c-in-call {
+    @apply flex-x items-center gap-2;
+    @apply text-title-500;
+    @apply cursor-pointer;
+}
+.collapsed-call-view .c-timer {
+    @apply tabular-nums;
+}
 .collapsed-call-view .c-av {
     @apply flex-none;
     @apply w-10 h-10;
