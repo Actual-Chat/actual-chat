@@ -338,6 +338,90 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
     }
 
     [Fact]
+    public async Task TakeoverShouldStopOnlyTheAuthorsShareInThatChat()
+    {
+        // arrange - Alice is live in two chats, and Bob is live next to her in the first one
+        var sharedLocations = Alice.AppServices.GetRequiredService<ISharedLocations>();
+        var session = Alice.Session;
+        var (chatId, inviteId) = await Alice.CreateChat(x => x with { Title = "Takeover scope" });
+        var (otherChatId, _) = await Alice.CreateChat(x => x with { Title = "Takeover scope, other chat" });
+        await Bob.JoinChat(chatId, inviteId);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        var hour = TimeSpan.FromHours(1);
+        var first = await Alice.ReportLocation(chatId, new GeoPoint(10, 20), hour, cancellationToken: ct);
+        var otherChatShare = await Alice
+            .ReportLocation(otherChatId, new GeoPoint(11, 21), hour, cancellationToken: ct);
+        var bobShare = await Bob.ReportLocation(chatId, new GeoPoint(12, 22), hour, cancellationToken: ct);
+
+        // act
+        var second = await Alice.ReportLocation(chatId, new GeoPoint(30, 40), hour, cancellationToken: ct);
+
+        // assert
+        await TestWait.When(async ct1 => {
+            var live = await sharedLocations.ListLive(session, chatId, ct1);
+            live.Select(x => x.Id).Should().BeEquivalentTo(
+                [second.Id, bobShare.Id],
+                "a takeover freezes the author's own share and nobody else's");
+        });
+        (await sharedLocations.Get(session, chatId, first.Id, ct))!.IsLive(Clocks.SystemClock.Now)
+            .Should().BeFalse();
+        (await sharedLocations.ListLive(session, otherChatId, ct)).Select(x => x.Id)
+            .Should().Equal([otherChatShare.Id], "a takeover is scoped to its chat");
+    }
+
+    [Fact]
+    public async Task OneShotLocationShouldNotTakeOverTheLiveShare()
+    {
+        // arrange
+        var sharedLocations = Alice.AppServices.GetRequiredService<ISharedLocations>();
+        var session = Alice.Session;
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "One-shot next to a live share" });
+        var otherDevice = await SignInAliceOtherDevice();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        var live = await Alice
+            .ReportLocation(chatId, new GeoPoint(10, 20), TimeSpan.FromHours(1), cancellationToken: ct);
+
+        // act - the other device sends its current location and picks a place, neither of them live
+        await otherDevice.CreateLocationEntry(chatId, new GeoPoint(30, 40), cancellationToken: ct);
+        await otherDevice.ReportLocation(chatId, new GeoPoint(50, 60), isPlace: true, cancellationToken: ct);
+
+        // assert
+        (await sharedLocations.ListLive(session, chatId, ct)).Select(x => x.Id)
+            .Should().Equal([live.Id], "only a live share takes over the running one");
+        (await sharedLocations.Get(session, chatId, live.Id, ct))!.IsLive(Clocks.SystemClock.Now)
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TakeoverShouldInvalidateTheLosingDevicesShare()
+    {
+        // arrange - the losing device watches Get(its id), which is how it learns it lost the share
+        var sharedLocations = Alice.AppServices.GetRequiredService<ISharedLocations>();
+        var session = Alice.Session;
+        var (chatId, _) = await Alice.CreateChat(x => x with { Title = "Takeover reaches the loser" });
+        var otherDevice = await SignInAliceOtherDevice();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        var hour = TimeSpan.FromHours(1);
+        var first = await Alice.ReportLocation(chatId, new GeoPoint(10, 20), hour, cancellationToken: ct);
+        await TestWait.When(async ct1 => {
+            var location = await sharedLocations.Get(session, chatId, first.Id, ct1);
+            location!.IsLive(Clocks.SystemClock.Now).Should().BeTrue();
+        });
+
+        // act
+        await otherDevice.ReportLocation(chatId, new GeoPoint(30, 40), hour, cancellationToken: ct);
+
+        // assert - reactive, so it passes only if the freeze invalidates the id this device never named
+        await TestWait.When(async ct1 => {
+            var location = await sharedLocations.Get(session, chatId, first.Id, ct1);
+            location!.IsLive(Clocks.SystemClock.Now).Should().BeFalse();
+        });
+    }
+
+    [Fact]
     public async Task LiveShareAutoExpires()
     {
         // arrange
