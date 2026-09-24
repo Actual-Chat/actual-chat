@@ -167,6 +167,23 @@ public class ListeningStreamMuxerTest
     }
 
     [Fact]
+    public void MustSkipSynthesizedShouldFollowTheListenersChoice()
+    {
+        // The listener decides what may be synthesized for them. Skipping is also what makes it
+        // free: nothing asks for the stream, so nothing is ever synthesized on their behalf.
+
+        // arrange
+        var spoken = new LiveAudioStreamInfo { IsSynthesized = true };
+        var recorded = new LiveAudioStreamInfo();
+
+        // act, assert
+        ListeningStreamMuxer.MustSkipSynthesized(spoken, true).Should().BeFalse();
+        ListeningStreamMuxer.MustSkipSynthesized(spoken, false).Should().BeTrue();
+        ListeningStreamMuxer.MustSkipSynthesized(recorded, false).Should().BeFalse(
+            "a real voice is heard whatever the listener thinks of synthesized text");
+    }
+
+    [Fact]
     public void MustDubShouldRequireASpeakerWhoDoesNotSpeakTheListenersLanguage()
     {
         // arrange

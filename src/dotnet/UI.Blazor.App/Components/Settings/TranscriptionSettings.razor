@@ -79,6 +79,19 @@
     <ListeningLingerSettings/>
 </Tile>
 
+<TileTopic Topic="@L.Transcription_SpokenTextTopic"/>
+<Tile>
+    <TileItem Click="@OnToggleSpokenText">
+        <Icon><i class="icon-listen text-2xl"></i></Icon>
+        <Content>@L.Transcription_SpokenText</Content>
+        <Caption>@L.Transcription_SpokenTextCaption</Caption>
+        <Right>
+            <Toggle IsChecked="@(!m.Languages.IsSpokenTextDisabled)"
+                    IsCheckedChanged="@(_ => OnToggleSpokenText())"/>
+        </Right>
+    </TileItem>
+</Tile>
+
 <TileTopic Topic="@L.Transcription_TranslatedVoiceTopic"/>
 <Tile>
     <TileItem Click="@OnToggleTranslatedVoice">
@@ -249,6 +262,9 @@
 
         return L.Transcription_OwnVoiceStatus_ReadyToUse;
     }
+
+    private Task OnToggleSpokenText()
+        => LanguageUI.UpdateSettings(x => x with { IsSpokenTextDisabled = !x.IsSpokenTextDisabled });
 
     private Task OnToggleTranslatedVoice()
         => LanguageUI.UpdateSettings(x => x with { IsTranslatedVoiceEnabled = !x.IsTranslatedVoiceEnabled });

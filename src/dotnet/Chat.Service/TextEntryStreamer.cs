@@ -150,6 +150,7 @@ public class TextEntryStreamer(IServiceProvider services)
             SourceBeginsAt = beginsAt,
             Format = AudioSource.DefaultFormat,
             IsTextOnly = false,
+            IsSynthesized = true,
             // Empty would mean "never dub" - and the dub request is exactly what makes the
             // server speak this. Declaring the language is what makes a listener ask.
             Languages = language is { } l ? new ApiArray<Language>([l]) : ApiArray<Language>.Empty,
