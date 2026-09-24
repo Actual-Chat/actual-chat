@@ -16,6 +16,10 @@ public interface IAudioStreamingBackend : IComputeService, IBackendService
     // Language-suffixed transcript stream ids resolve to their base stream's chat.
     Task<ChatId?> GetChatId(StreamId streamId, CancellationToken cancellationToken);
 
+    // The entry this stream posted, once it exists - null while the pipeline is still deciding
+    // there is anything to post. A call-by-call producer has no other way to name its own message.
+    Task<ChatEntryId?> GetStreamedEntryId(StreamId streamId, CancellationToken cancellationToken);
+
     // Folded from the same memoized diff stream GetTranscript replays, and invalidated when the
     // next diff lands. NoCache because the value lives in the memory of one node - the one named
     // by streamId.NodeRef - so a client must never serve it from its own cache.
@@ -60,5 +64,6 @@ public interface IAudioStreamingBackend : IComputeService, IBackendService
         int preSkip,
         RpcStream<AudioFrame> frameStream,
         RpcStream<ExternalTranscriptChunk> transcriptStream,
+        Language? language,
         CancellationToken cancellationToken);
 }

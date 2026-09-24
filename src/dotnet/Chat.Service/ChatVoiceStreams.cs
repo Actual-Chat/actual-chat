@@ -17,8 +17,10 @@ public class ChatVoiceStreams(IServiceProvider services) : IChatVoiceStreamsBack
     private readonly ConcurrentDictionary<Symbol, ExpiringEntry<Symbol, Lease>> _leases = new();
 
     private IServiceProvider Services { get; } = services;
+
     private IAudioStreamingBackend StreamingBackend
         => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
+
     private IMaintenancesBackend Maintenances => field ??= Services.GetRequiredService<IMaintenancesBackend>();
     private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
     private MomentClockSet Clocks => field ??= Services.Clocks();
@@ -38,6 +40,7 @@ public class ChatVoiceStreams(IServiceProvider services) : IChatVoiceStreamsBack
         Session session,
         UserId userId,
         long? repliedEntryLid,
+        Language? language,
         CancellationToken cancellationToken)
     {
         _ = cancellationToken;
@@ -45,7 +48,7 @@ public class ChatVoiceStreams(IServiceProvider services) : IChatVoiceStreamsBack
         var repliedEntryId = repliedEntryLid is { } lid ? ChatEntryId.New(chatId, lid) : (ChatEntryId?)null;
         var record = new AudioRecord(
             streamId, session, chatId, Clocks.SystemClock.Now.EpochOffset.TotalSeconds, repliedEntryId);
-        var lease = new Lease(streamId, userId, chatId, record);
+        var lease = new Lease(streamId, userId, chatId, record, language);
         var expiringLease = ExpiringEntry
             .New(_leases, streamId.Value, lease)
             .SetDisposer(e => {
@@ -107,8 +110,15 @@ public class ChatVoiceStreams(IServiceProvider services) : IChatVoiceStreamsBack
         lease.Frames.Writer.TryComplete();
         lease.Chunks.Writer.TryComplete();
         await (lease.StreamTask ?? Task.CompletedTask).WaitAsync(cancellationToken).ConfigureAwait(false);
-        lock (lease.Lock)
+        // The pipeline creates the entry, so its id only exists once the stream has drained.
+        // Null means nothing was posted - a stream that carried neither audio nor words.
+        var entryId = await StreamingBackend
+            .GetStreamedEntryId(streamId, cancellationToken)
+            .ConfigureAwait(false);
+        lock (lease.Lock) {
+            lease.EntryId = entryId;
             lease.IsCompleted = true;
+        }
 
         // Kept for the idle timeout rather than dropped, so a retried finish answers with the
         // same result instead of "unknown stream".
@@ -163,6 +173,7 @@ public class ChatVoiceStreams(IServiceProvider services) : IChatVoiceStreamsBack
             lease.OggReader.PreSkip,
             RpcStream.New(lease.Frames.Reader.ReadAllAsync(lease.StopTokenSource.Token)),
             RpcStream.New(chunks),
+            lease.Language,
             lease.StopTokenSource.Token);
     }
 
@@ -178,18 +189,28 @@ public class ChatVoiceStreams(IServiceProvider services) : IChatVoiceStreamsBack
 
     // Nested types
 
-    private sealed class Lease(StreamId id, UserId ownerId, ChatId chatId, AudioRecord record) : IDisposable
+    private sealed class Lease(
+        StreamId id,
+        UserId ownerId,
+        ChatId chatId,
+        AudioRecord record,
+        Language? language
+        ) : IDisposable
     {
         public object Lock { get; } = new();
         public StreamId Id { get; } = id;
         public UserId OwnerId { get; } = ownerId;
         public ChatId ChatId { get; } = chatId;
         public AudioRecord Record { get; } = record;
+        public Language? Language { get; } = language;
         public OggOpusReader OggReader { get; } = new();
+
         public Channel<AudioFrame> Frames { get; } = Channel.CreateUnbounded<AudioFrame>(
             new UnboundedChannelOptions { SingleReader = true });
+
         public Channel<ExternalTranscriptChunk> Chunks { get; }
             = Channel.CreateUnbounded<ExternalTranscriptChunk>(new UnboundedChannelOptions { SingleReader = true });
+
         public CancellationTokenSource StopTokenSource { get; } = new(Constants.Chat.MaxEntryStreamDuration);
 
         public Task? StreamTask { get; set; }
@@ -214,8 +235,13 @@ public class ChatVoiceStreams(IServiceProvider services) : IChatVoiceStreamsBack
 
         public ChatVoiceStream ToModel()
         {
-            lock (Lock)
-                return new ChatVoiceStream(Id, EntryId, TextOffset, AudioBytes, IsCompleted);
+            lock (Lock) {
+                // Decoded, not received: a chunk the reader could not use adds bytes and no time,
+                // which is the only signal a producer has that its audio is not being read.
+                return new ChatVoiceStream(
+                    Id, EntryId, TextOffset, AudioBytes, IsCompleted,
+                    Constants.Audio.OpusFrameDuration * OggReader.FrameCount);
+            }
         }
     }
 }

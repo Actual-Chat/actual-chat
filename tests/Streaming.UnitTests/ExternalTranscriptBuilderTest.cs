@@ -2,7 +2,7 @@ using ActualChat.Transcription;
 
 namespace ActualChat.Streaming.UnitTests;
 
-public class ExternalTranscriptBuilderTest
+public sealed class ExternalTranscriptBuilderTest
 {
     [Fact]
     public void ShouldAppendTextAndUseTheSuppliedOffset()
@@ -176,5 +176,22 @@ public class ExternalTranscriptBuilderTest
         // assert
         transcript.Text.Should().Be("ice cream cone");
         transcript.TimeMap.IsValid().Should().BeTrue();
+    }
+
+    [Fact]
+    public void ShouldCarryTheDeclaredLanguage()
+    {
+        // Nothing reads the words here, so an undeclared transcript names no language - and a
+        // listener is never offered a translation of a message whose language is unknown.
+
+        // arrange
+        var builder = new ExternalTranscriptBuilder(Languages.German);
+
+        // act
+        builder.Append(new ExternalTranscriptChunk("Guten Tag", true, 0.5, true), TimeSpan.Zero);
+        var transcript = builder.Finalize(TimeSpan.FromSeconds(1));
+
+        // assert
+        transcript.Languages.Should().Equal(Languages.German);
     }
 }

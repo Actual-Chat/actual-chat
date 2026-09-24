@@ -19,13 +19,14 @@ public partial class AudioStreamingBackend
         int preSkip,
         RpcStream<AudioFrame> frames,
         CancellationToken cancellationToken)
-        => ProcessAudio(record, preSkip, frames, Constants.Audio.FrameSilenceTimeout, cancellationToken);
+        => ProcessAudio(record, preSkip, frames, Constants.Audio.FrameSilenceTimeout, null, cancellationToken);
 
     private async Task ProcessAudio(
         AudioRecord record,
         int preSkip,
         RpcStream<AudioFrame> frames,
         TimeSpan frameSilenceTimeout,
+        Language? declaredLanguage,
         CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug(nameof(ProcessAudio) + ": record #{StreamId} = {Record}", record.StreamId, record);
@@ -36,7 +37,9 @@ public partial class AudioStreamingBackend
             IAsyncEnumerable<AudioFrame> augmentedFrames = frames;
             if (Constants.DebugMode.AudioRecordingStream)
                 augmentedFrames = augmentedFrames.WithLog(Log, nameof(ProcessAudio), cancellationToken);
-            await ProcessAudio(record, preSkip, augmentedFrames, frameSilenceTimeout, delayedCancellationToken)
+            await ProcessAudio(
+                    record, preSkip, augmentedFrames, frameSilenceTimeout, declaredLanguage,
+                    delayedCancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
@@ -60,11 +63,12 @@ public partial class AudioStreamingBackend
         int preSkip,
         RpcStream<AudioFrame> frames,
         RpcStream<ExternalTranscriptChunk> transcriptChunks,
+        Language? language,
         CancellationToken cancellationToken)
     {
         // The builder needs to know how much audio has arrived to derive an offset for a chunk
         // that carries none, so the frame stream is tapped on its way through.
-        var builder = new ExternalTranscriptBuilder();
+        var builder = new ExternalTranscriptBuilder(language);
         var ingestedDuration = TimeSpan.Zero;
         var trackedFrames = frames.Select(frame => {
             var end = frame.Offset + frame.Duration;
@@ -81,7 +85,7 @@ public partial class AudioStreamingBackend
             // that governs an abandoned stream here.
             await ProcessAudio(
                     record, preSkip, RpcStream.New(trackedFrames),
-                    Constants.Chat.EntryStreamIdleTimeout, cancellationToken)
+                    Constants.Chat.EntryStreamIdleTimeout, language, cancellationToken)
                 .ConfigureAwait(false);
         }
         finally {
@@ -102,6 +106,7 @@ public partial class AudioStreamingBackend
             if (builder.Append(chunk, getIngestedDuration.Invoke()) is not null)
                 yield return builder.Transcript;
         }
+
         // Yielded even when empty: a producer that sent audio and no transcript still meant to
         // post, and the entry is only ever created from inside the transcript loop.
         yield return builder.Finalize(getIngestedDuration.Invoke());
@@ -112,6 +117,7 @@ public partial class AudioStreamingBackend
         int preSkip,
         IAsyncEnumerable<AudioFrame> frames,
         TimeSpan frameSilenceTimeout,
+        Language? declaredLanguage,
         CancellationToken cancellationToken)
     {
         using var watchdogCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -152,6 +158,10 @@ public partial class AudioStreamingBackend
         rules.Require(ChatPermissions.WriteAudio);
 
         var languages = await GetTranscriptionLanguage(record, cancellationToken).ConfigureAwait(false);
+        // A producer knows what language it speaks; the speaker's own settings are only a guess
+        // at it, and they decide what a listener is offered a translation from.
+        if (declaredLanguage is { } l)
+            languages = languages with { ChatLanguage = l };
 
         var author = await Authors
             .EnsureJoined(session, chatId, cancellationToken)
@@ -748,6 +758,7 @@ public partial class AudioStreamingBackend
                     RepliedEntryLid = repliedEntryLid,
                 }));
             textEntry = await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
+            RememberEntryId(audioSegment.Record.StreamId, textEntry.Id);
             DebugLog?.LogDebug("CreateTextEntry: #{EntryId} is created in chat #{ChatId}",
                 textEntry.Id,
                 textEntry.ChatId);

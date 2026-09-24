@@ -203,6 +203,7 @@ public interface IChats : IComputeService
         Session session,
         ChatId chatId,
         long? repliedEntryLid,
+        Language? language,
         CancellationToken cancellationToken);
 
     [RpcMethod(ConnectTimeout = double.PositiveInfinity)]

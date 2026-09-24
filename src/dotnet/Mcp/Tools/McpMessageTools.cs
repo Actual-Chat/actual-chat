@@ -121,24 +121,33 @@ public sealed class McpMessageTools(IServiceProvider services)
         "settles into an ordinary playable message. Send Ogg Opus audio with append_voice_stream, " +
         "optionally with the matching text, then finish_voice_stream. Send audio before the text it " +
         "corresponds to, or pass audioOffset, so the transcript lines up with the sound. " +
-        "`entryId` stays 0 - find the posted message with list_messages once the stream finishes.")]
+        "`entryId` is null until finish_voice_stream returns it.")]
     public async Task<McpVoiceStream> StartVoiceStream(
         [Description("The chat id.")] string chatId,
         [Description("LID of the message this one replies to.")] long? replyToId = null,
+        [Description("Language you are speaking, e.g. \"en-US\"; omit to use your own. It decides " +
+            "what listeners can have this message translated from.")] string? language = null,
         CancellationToken cancellationToken = default)
     {
         var stream = await Chats
-            .StartVoiceStream(Session, ChatId.Parse(chatId), replyToId, cancellationToken)
+            .StartVoiceStream(Session, ChatId.Parse(chatId), replyToId,
+                Language.ParseNullable(language), cancellationToken)
             .ConfigureAwait(false);
         return stream.ToMcpModel();
     }
 
     [McpServerTool(Name = "append_voice_stream", UseStructuredContent = true)]
-    [Description("Appends Ogg Opus audio, text, or both. `textOffset` is the number of characters " +
-        "the server already has; a mismatch writes no text and returns the server's offset so a " +
-        "retried call can resume. Audio is append-only and may be chunked anywhere, including " +
-        "mid-page. `audioOffset` is seconds into your own audio at the end of this text; omit it " +
-        "and the server uses the audio it has received.")]
+    [Description("Appends Ogg Opus audio, text, or both. Every Opus packet must hold one 20 ms " +
+        "frame (`ffmpeg -c:a libopus -frame_duration 20`, `opusenc --framesize 20`); a 40 ms or " +
+        "60 ms packet is rejected and ends the stream. Send audio at least as fast as it plays - " +
+        "someone is listening live, and audio arriving slower than real time is a gap in a " +
+        "sentence. Faster is fine. `audioDuration` in the reply is what was decoded: if it stops " +
+        "growing while `audioBytes` does, the audio is not being read. `textOffset` is the number " +
+        "of characters the server already has; a mismatch writes no text and returns the server's " +
+        "offset so a retried call can resume. Audio is append-only, may be chunked anywhere " +
+        "including mid-page, and a chunk sent twice is heard twice. `audioOffset` is seconds into " +
+        "your own audio at the end of this text; omit it and the server uses the audio it has " +
+        "received. A stream with no append for 90 seconds is finished for you.")]
     public async Task<McpVoiceStream> AppendVoiceStream(
         [Description("Stream id from start_voice_stream.")] string streamId,
         [Description("Character offset this text starts at.")] int textOffset,
@@ -156,8 +165,9 @@ public sealed class McpMessageTools(IServiceProvider services)
     }
 
     [McpServerTool(Name = "finish_voice_stream", UseStructuredContent = true)]
-    [Description("Closes the stream and settles the voice message on what was received. Calling it " +
-        "again within 90 seconds returns the same result.")]
+    [Description("Closes the stream and settles the voice message on what was received, returning " +
+        "its `entryId` - null if nothing was posted because neither audio nor words arrived. " +
+        "Calling it again within 90 seconds returns the same result.")]
     public async Task<McpVoiceStream> FinishVoiceStream(
         [Description("Stream id from start_voice_stream.")] string streamId,
         CancellationToken cancellationToken = default)
@@ -230,10 +240,12 @@ public sealed class McpMessageTools(IServiceProvider services)
             foreach (var entry in chatTile.Entries) {
                 if (entry.LocalId < startLid)
                     continue;
+
                 collected.Add(entry);
                 if (collected.Count >= limit)
                     break;
             }
+
             tile = tile.Next();
         }
 
