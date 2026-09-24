@@ -8,25 +8,6 @@ public partial class AudioStreamingBackend
 {
     private readonly ConcurrentDictionary<StreamId, VoiceOverMix> _speechMixes = new();
 
-    public virtual Task PrewarmSpeech(StreamId streamId, CancellationToken cancellationToken)
-    {
-        if (_speechMixes.ContainsKey(streamId))
-            return Task.CompletedTask;
-
-        // Declared here rather than left to PushTextTranscript: starting early can outrun it, and
-        // the worker NewDub picks is cached - a stream that pre-warmed as a dub stays one.
-        _textOnlyStreams[streamId.BaseStreamId] = default;
-
-        // Detached: the caller is a producer pushing text, and it must not wait out a synthesizer
-        // start-up - the point of starting early is that nobody waits for it.
-        _ = BackgroundTask.Run(
-            () => EnsureDub(streamId, CancellationToken.None),
-            Log,
-            $"{nameof(PrewarmSpeech)} failed",
-            CancellationToken.None);
-        return Task.CompletedTask;
-    }
-
     public virtual Task<TimeSpan?> GetSpeechBacklog(StreamId streamId, CancellationToken cancellationToken)
         // Null rather than zero when nothing is speaking this stream: "nobody is listening, write as
         // fast as you like" is a different answer from "the voice is keeping up".

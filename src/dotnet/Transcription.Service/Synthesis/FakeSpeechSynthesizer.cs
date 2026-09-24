@@ -1,3 +1,4 @@
+using System.Text;
 using ActualChat.Audio;
 using ActualChat.Chat;
 
@@ -21,6 +22,7 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
     public const string DefaultVoiceId = "Adrian";
 
     private static readonly ConcurrentDictionary<string, Language> SynthesizedStreamIds = new();
+    private static readonly ConcurrentDictionary<string, StringBuilder> SpokenTextByStream = new();
 
     // Test hook, keyed by stream: lets a test assert that one particular stream was never spoken,
     // which is the only way to tell "declined to speak" from "spoke silence" - and unlike a global
@@ -32,6 +34,11 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
     // has to be right here: a speech stream has no language suffix to read a voice off.
     public static Language? SynthesizedLanguage(string streamId)
         => SynthesizedStreamIds.TryGetValue(streamId, out var language) ? language : null;
+
+    // What was actually handed over to be spoken, which is the only way to tell where speech
+    // started - the audio itself is silence of the right length.
+    public static string SpokenText(string streamId)
+        => SpokenTextByStream.TryGetValue(streamId, out var text) ? text.ToString() : "";
 
 
     private MomentClockSet Clocks { get; } = services.Clocks();
@@ -45,7 +52,8 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
         CancellationToken cancellationToken = default)
     {
         SynthesizedStreamIds[streamId] = options.Language;
-        return Push(text, pcm, options.Listener, cancellationToken);
+        var spoken = SpokenTextByStream.GetOrAdd(streamId, static _ => new StringBuilder());
+        return Push(text, pcm, options.Listener, spoken, cancellationToken);
     }
 
     public Task<AudioSource> Synthesize(
@@ -70,12 +78,15 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
         ChannelReader<string> text,
         ChannelWriter<byte[]> pcm,
         ISpeechSynthesisListener? listener,
+        StringBuilder spoken,
         CancellationToken cancellationToken)
     {
         Exception? error = null;
         var isFirstChunk = true;
         try {
             await foreach (var chunk in text.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
+                lock (spoken)
+                    spoken.Append(chunk);
                 if (isFirstChunk)
                     listener?.OnStreamOpened();
                 var frameCount = Math.Max(1, chunk.Length / 4);

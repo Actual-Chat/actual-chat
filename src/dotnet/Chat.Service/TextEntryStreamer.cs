@@ -161,16 +161,6 @@ public class TextEntryStreamer(IServiceProvider services)
         await LiveSessionsBackend
             .OnStreamRegistered(entry.ChatId, entry.AuthorId, entry.LocalId, true, true, CancellationToken.None)
             .ConfigureAwait(false);
-
-        // Only when someone is already listening: synthesis costs a provider call, and speaking to
-        // an empty room would pay it for every text message anyone ever writes.
-        var participants = await LiveSessionsBackend
-            .ListParticipants(entry.ChatId, CancellationToken.None)
-            .ConfigureAwait(false);
-        if (participants.Any(x => x != entry.AuthorId))
-            await StreamingBackend
-                .PrewarmSpeech(StreamId.Parse(entry.ContentStreamId), CancellationToken.None)
-                .ConfigureAwait(false);
     }
 
     private async IAsyncEnumerable<TranscriptDiff> ToTranscriptDiffs(
