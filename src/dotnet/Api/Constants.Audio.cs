@@ -152,6 +152,9 @@ public static partial class Constants
         // existing TimeSpan parameter, so no RPC contract changes to request the live edge.
         public static readonly TimeSpan SkipToLive = TimeSpan.MaxValue;
         public static readonly TimeSpan MaxStreamDuration = TimeSpan.FromMinutes(3);
+        // The least a listener who joins mid-message hears of it: enough to arrive in the middle
+        // of a thought rather than on its last syllable, and short enough not to start far behind.
+        public static readonly TimeSpan MinSpokenTailDuration = TimeSpan.FromSeconds(8);
         public static readonly TimeSpan MaxBeginsAtDrift = TimeSpan.FromSeconds(5);
         // Between attempts to start the translation a dub reads, while the source transcript is live
         public static readonly TimeSpan DubTranslationRetryDelay = TimeSpan.FromMilliseconds(250);

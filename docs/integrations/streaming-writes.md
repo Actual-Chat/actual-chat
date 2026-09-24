@@ -179,6 +179,12 @@ that is spoken after it appears, and the gap grows for as long as you outrun
 the voice — writing English at 19 characters a second puts the voice four
 seconds behind over half a minute.
 
+**Someone who joins mid-message hears it from near the live edge**, not from its
+first word — otherwise they would stay that far behind the writer for the rest
+of it, and synthesized speech is never persisted for them to catch up on. A
+floor keeps that from becoming silence: a short message is spoken in full, and a
+long one is joined a few seconds back. What they missed is on screen to read.
+
 **The server tells you how far behind the voice is.** Every reply carries
 `speechBacklog`: the seconds of speech a listener still has to hear before
 reaching what you just wrote. Slow down while it grows; it is null when nothing
