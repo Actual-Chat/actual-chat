@@ -113,11 +113,15 @@
                     </HeaderButton>
                 }
                 else {
-                    <HeaderButton Class="btn-video-panel" Click="@OnScreenShareClick">
+                    <HeaderButton
+                        Click="@(() => OnScreenShareClick(!m.IsScreenCasting))"
+                        Class="@("btn-video-panel " + (m.IsScreenCasting ? "on" : "screen-share-start"))">
                         <i class="icon-screen-share text-lg"></i>
                     </HeaderButton>
                 }
-                <HeaderButton Class="btn-video-panel" Click="@OnVideoClick">
+                <HeaderButton
+                    Click="@(() => OnVideoClick(!m.IsCameraOn))"
+                    Class="@("btn-video-panel btn-video-toggle " + (m.IsCameraOn ? "on" : ""))">
                     <i class="icon-video text-lg"></i>
                 </HeaderButton>
                 <HeaderButton
@@ -239,7 +243,14 @@
         var joinedAt = call.Phase == CallPhase.Active
             ? await CallScreensUI.GetOwnJoinedAt(chatId, cancellationToken).ConfigureAwait(false)
             : null;
-        return m with { IsRecording = recordingChatId == chatId, JoinedAt = joinedAt };
+        var isCameraOn = await ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
+        var isScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false);
+        return m with {
+            IsRecording = recordingChatId == chatId,
+            JoinedAt = joinedAt,
+            IsCameraOn = isCameraOn,
+            IsScreenCasting = isScreenCasting,
+        };
     }
 
     private Task OnAcceptClick()
@@ -274,17 +285,34 @@
     private Task OnHangUpClick()
         => State.Value.Chat is { } chat ? CallScreensUI.HangUp(chat.Id) : Task.CompletedTask;
 
-    private void OnVideoClick() {
-        if (State.Value.Chat is { } chat)
-            ChatVideoUI.ToggleVideoCapture(chat.Id);
+    private async Task OnVideoClick(bool enable) {
+        if (State.Value.Chat is not { } chat)
+            return;
+
+        if (!enable) {
+            ChatVideoUI.StopRecording();
+            return;
+        }
+
+        // The video panel lives in the chat, under this screen.
+        await CallScreensUI.LeaveCallScreen(chat.Id).ConfigureAwait(true);
+        ChatVideoUI.ToggleVideoCapture(chat.Id);
     }
 
     private Task OnSwitchCameraClick()
         => CameraUI.SwitchCamera();
 
-    private void OnScreenShareClick() {
-        if (State.Value.Chat is { } chat)
-            ChatVideoUI.ToggleScreenCast(chat.Id);
+    private async Task OnScreenShareClick(bool enable) {
+        if (State.Value.Chat is not { } chat)
+            return;
+
+        if (!enable) {
+            ChatVideoUI.StopScreenCasting();
+            return;
+        }
+
+        await CallScreensUI.LeaveCallScreen(chat.Id).ConfigureAwait(true);
+        ChatVideoUI.ToggleScreenCast(chat.Id);
     }
 
     private void OnToggleRecordingClick(bool enable) {
@@ -314,6 +342,8 @@
         public bool IsMuted { get; init; }
         public Moment? JoinedAt { get; init; }
         public bool IsRecording { get; init; }
+        public bool IsCameraOn { get; init; }
+        public bool IsScreenCasting { get; init; }
         // False when this is the narrow-layout foreground screen rather than the real over-lock one.
         public bool IsOverLock { get; init; }
     }
