@@ -49,7 +49,12 @@ public partial class DigestFlow : PeriodicFlow
 
     protected override async ValueTask<Moment> Run(CancellationToken cancellationToken)
     {
-        var nextRunAt = TimeZoneInfo.NextTimeOfDay(DigestTime, Hub.SystemNow);
+        var now = Hub.SystemNow;
+        var nextRunAt = TimeZoneInfo.NextTimeOfDay(DigestTime, now);
+        if (!IsDue(TimeZoneInfo, DigestTime, LastRunAt, now)) {
+            Console.Log("Skipped: the digest isn't due yet");
+            return nextRunAt;
+        }
         if (await IsSystemOrBot(Account.Id, cancellationToken).ConfigureAwait(false))
             return nextRunAt;
         if (await IsRecentlyActive(cancellationToken).ConfigureAwait(false)) {
@@ -62,6 +67,12 @@ public partial class DigestFlow : PeriodicFlow
         await queues.Enqueue(sendDigestCommand, cancellationToken).ConfigureAwait(false);
         return nextRunAt;
     }
+
+    internal static bool IsDue(TimeZoneInfo timeZoneInfo, TimeSpan digestTime, Moment lastRunAt, Moment now)
+        // Every resume event runs the flow, and wake-ups leave extra ones behind at other hours,
+        // so the digest is due only once the first digest time after the previous run has passed
+        => lastRunAt == default
+            || now >= timeZoneInfo.NextTimeOfDay(digestTime, lastRunAt + TimeSpan.FromTicks(1));
 
     private async Task<bool> IsRecentlyActive(CancellationToken cancellationToken)
     {
