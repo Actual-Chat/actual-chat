@@ -6,7 +6,8 @@
     } else {
         picClass += " pic-square";
     }
-    if (Click.HasDelegate)
+    var isClickable = Click.HasDelegate;
+    if (isClickable)
         picClass += " cursor-pointer";
     var hasPicture = !_pictureUrl.IsNullOrEmpty();
     var isSvg = hasPicture && Path.GetExtension(_pictureUrl).Equals(".svg", StringComparison.OrdinalIgnoreCase);
@@ -14,17 +15,17 @@
         picClass += " pic-svg";
         _pictureUrl += "#svgView(preserveAspectRatio(none))";
     }
-    var clickableCls = hasPicture ? "clickable-avatar" : "";
+    // Gate on the click, not on hasPicture: a generated avatar (marble/beam) is pointer-events:none,
+    // so the click lands on this outer .pic - it must carry the handler and the affordance for those too.
+    var clickableCls = isClickable ? "clickable-avatar" : "";
 }
 
-<div class="pic @Class @picClass @clickableCls">
+<div class="pic @Class @picClass @clickableCls" @onclick="@OnPictureClick">
     <div class="c-content">
         @if (hasPicture) {
             <image-skeleton
                 class="pic-image @ImageSkeletonClass"
-                src="@_pictureUrl"
-                @onclick="@OnPictureClick"
-                @onclick:preventDefault="true"/>
+                src="@_pictureUrl"/>
         } else if (!_avatarKey.IsNullOrEmpty()) {
             switch (AvatarKind) {
                 case AvatarKind.Beam:
