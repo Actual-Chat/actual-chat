@@ -59,6 +59,7 @@ export class MenuHost implements Disposable {
     private readonly disposed$: Subject<void> = new Subject<void>();
     private menu: Menu | null;
     private currentMenuRef: string;
+    private pointerDownSelection: MenuSelection | null = null;
 
     public static create(blazorRef: DotNet.DotNetObject): MenuHost {
         return new MenuHost(blazorRef);
@@ -76,6 +77,11 @@ export class MenuHost implements Disposable {
         DocumentEvents.passive.pointerOver$
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: PointerEvent) => this.onPointerOver(event));
+        DocumentEvents.capturedPassive.pointerDown$
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(() => {
+                this.pointerDownSelection = getMenuSelection();
+            });
 
         fromEvent<KeyboardEvent>(window, 'keydown')
             .pipe(takeUntil(this.disposed$))
@@ -244,6 +250,19 @@ export class MenuHost implements Disposable {
     private removeMessageMark(menuRef: string) {
         const message = document.querySelector(`[data-menu="${menuRef}"]`);
         message?.classList.remove('marked-message');
+    }
+
+    /**
+     * The selection the user made before the click that opens the menu. WebKit selects the word under
+     * a right-click (and a long press, on touch) before dispatching contextmenu, so a selection that
+     * differs from the one at pointerdown is that word, not the user's.
+     */
+    private getUserSelection(event: Event): MenuSelection | null {
+        const selection = getMenuSelection();
+        if (event.type !== 'contextmenu')
+            return selection;
+
+        return isSameSelection(selection, this.pointerDownSelection) ? selection : null;
     }
 
     private async position(menu: Menu, updatedMenu?: Menu): Promise<void> {
@@ -417,7 +436,7 @@ export class MenuHost implements Disposable {
             ? new Vector2D(event.clientX, event.clientY)
             : null;
         const menu = this.create(menuRef, false, triggerElement, null, position);
-        menu.selection = getMenuSelection();
+        menu.selection = this.getUserSelection(event);
         if (this.isShown(menu)) {
             debugLog?.log(`onClick: already shown. Setting position.`);
             // Is it the second click on the same button that triggered the menu?
@@ -478,6 +497,10 @@ function getMenuSelection(): MenuSelection | null {
     const [owner, text] = getSelectionOwner('menu');
     const ownerMenuRef = owner?.dataset.menu;
     return ownerMenuRef ? { text, ownerMenuRef } : null;
+}
+
+function isSameSelection(a: MenuSelection | null, b: MenuSelection | null): boolean {
+    return a?.text === b?.text && a?.ownerMenuRef === b?.ownerMenuRef;
 }
 
 function getPlacementFromAttributes(triggerElement: HTMLElement): Placement | null {
