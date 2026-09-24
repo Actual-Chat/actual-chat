@@ -1,0 +1,30 @@
+.icons-grid {
+    @apply grid gap-2;
+    grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+}
+.icons-grid:empty::before {
+    @apply flex-x items-center justify-center;
+    @apply p-4;
+    @apply text-sm text-03;
+    content: "No icons found";
+}
+.icons-cell {
+    @apply flex-y items-center justify-start gap-1;
+    @apply p-2 min-h-20;
+    @apply rounded-lg border border-separator;
+    @apply text-01;
+    @apply cursor-pointer transition-colors;
+}
+.icons-cell:hover {
+    @apply bg-03;
+}
+.icons-cell > i {
+    @apply flex-none flex-x items-center justify-center;
+    @apply h-8;
+    font-size: 1.75rem;
+}
+.icons-cell .icons-name {
+    @apply w-full;
+    @apply text-xxs text-03 text-center;
+    word-break: break-all;
+}
