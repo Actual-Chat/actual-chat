@@ -21,4 +21,12 @@
     <InternalsVisibleTo Include="$(RootNamespace).Core.UnitTests$(AssemblyPublicKey)" />
   </ItemGroup>
 
+  <!-- Every worktree installs its local Debug build onto the same device under one bundle id,
+       so the BuildBranch metadata tells them apart in the UI. Absent in CI and on a detached HEAD. -->
+  <Target Name="AddBuildBranchMetadata" BeforeTargets="GetAssemblyAttributes" DependsOnTargets="GetBuildVersion">
+    <ItemGroup Condition="'$(Configuration)' == 'Debug' and '$(CI)' != 'true' and $(BuildingRef.StartsWith('refs/heads/'))">
+      <AssemblyMetadata Include="BuildBranch" Value="$(BuildingRef.Substring(11))" />
+    </ItemGroup>
+  </Target>
+
 </Project>
