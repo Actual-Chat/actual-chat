@@ -222,8 +222,10 @@ public static class LocalizedStringsLocalizerExt
 
         public string Integrations_Title => l["Integrations_Title"].Value;
         public string Integrations_Add => l["Integrations_Add"].Value;
-        public string Integrations_Empty => l["Integrations_Empty"].Value;
-        public string Integrations_PersonalEmpty => l["Integrations_PersonalEmpty"].Value;
+        public string Integrations_EmptyTitle => l["Integrations_EmptyTitle"].Value;
+        public string Integrations_EmptyText => l["Integrations_EmptyText"].Value;
+        public string Integrations_PersonalEmptyTitle => l["Integrations_PersonalEmptyTitle"].Value;
+        public string Integrations_PersonalEmptyText => l["Integrations_PersonalEmptyText"].Value;
         public string Integrations_Outgoing => l["Integrations_Outgoing"].Value;
         public string Integrations_OutgoingHint => l["Integrations_OutgoingHint"].Value;
         public string Integrations_Incoming => l["Integrations_Incoming"].Value;
