@@ -38,6 +38,8 @@ public sealed record Flows_Store(FlowId FlowId, long? ExpectedVersion = null)
 {
     public Flow? Flow { get; init; }
     public OperationEvent[]? Events { get; init; }
+    // Set by a caller for which a skipped store is an ordinary outcome, e.g., Start losing a race to another Start
+    public bool IsSkipExpected { get; init; }
 
     // IHasNodeRef implementation - always routes the command to the local node
     NodeRef IHasNodeRef.NodeRef => NodeRef.ThisNodeAlias;
