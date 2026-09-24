@@ -29,6 +29,10 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     // Set by ProcessAudioWithTranscript before the stream is processed: its presence is what
     // makes TranscribeAudio skip the transcriber entirely
     private readonly ConcurrentDictionary<StreamId, IAsyncEnumerable<Transcript>> _externalTranscripts = new();
+    // Streams whose producer said there is no audio and never will be. Speech is opt-in on that
+    // statement rather than inferred from absence: a dub source can also have no audio yet, or
+    // never - and must still be dubbed, not spoken.
+    private readonly ConcurrentDictionary<StreamId, Unit> _textOnlyStreams = new();
 
     private ILogger Log => field ??= Services.LogFor(GetType());
     private ILogger OpenAudioSegmentLog => field ??= Services.LogFor<OpenAudioSegment>();
@@ -96,8 +100,11 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         CancellationToken cancellationToken)
     {
         // A mix is published before it has caught up with its original, so a request that finds the
-        // stream must still wait for its dub entry; Has is the fast path only once the entry is gone
-        if (streamId.Language != null
+        // stream must still wait for its dub entry; Has is the fast path only once the entry is gone.
+        // A text-only stream is served speech on its own id: a listener asks for the stream it was
+        // told about, and there is no original to serve instead.
+        var isSpeech = streamId.Language == null && _textOnlyStreams.ContainsKey(streamId.BaseStreamId);
+        if ((streamId.Language != null || isSpeech)
             && (_dubs.ContainsKey(streamId) || !_audioStreams.Has(streamId))
             && !await EnsureDub(streamId, cancellationToken).ConfigureAwait(false))
             return null;
@@ -161,6 +168,19 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
                 TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Default);
         return transcript;
+    }
+
+    public async Task PushTextTranscript(
+        StreamId streamId,
+        ChatId chatId,
+        AuthorId authorId,
+        RpcStream<TranscriptDiff> diffStream,
+        CancellationToken cancellationToken)
+    {
+        RememberChatId(streamId, chatId);
+        RememberAuthorId(streamId, authorId);
+        _textOnlyStreams[streamId.BaseStreamId] = default;
+        await PushTranscript(streamId, diffStream, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task PushTranscript(

@@ -23,6 +23,7 @@ public interface IChatEntryStreamsBackend : IComputeService, IBackendService
         UserId userId,
         long? localId,
         bool? isViaApi,
+        Language? language,
         CancellationToken cancellationToken);
 
     Task<ChatEntryStream> Append(

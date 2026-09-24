@@ -33,6 +33,7 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
         UserId userId,
         long? localId,
         bool? isViaApi,
+        Language? language,
         CancellationToken cancellationToken)
     {
         var entryToUpdate = localId is { } vLocalId
@@ -52,7 +53,7 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
             .RequireAvailable(Maintenances, chatId, stopToken);
         lease.StreamTask = Streamer.Stream(
             chatId, authorId, entryToUpdate, chunks, stopToken,
-            isViaApi: isViaApi, entryCreatedSource: lease.EntryCreatedSource);
+            isViaApi: isViaApi, entryCreatedSource: lease.EntryCreatedSource, language: language);
 
         try {
             var entry = await lease.EntryCreatedSource.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
