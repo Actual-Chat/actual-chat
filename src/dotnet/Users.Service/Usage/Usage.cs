@@ -76,8 +76,12 @@ public class Usage(IServiceProvider services) : IUsage
         var history = await kvas.Get(cancellationToken).ConfigureAwait(false);
         var updated = ReviewPromptPolicy.Apply(history, command.Outcome, Clocks.SystemClock.Now);
         await kvas.Set(updated, cancellationToken).ConfigureAwait(false);
+
+        var sessionInfo = await Accounts.GetSessionInfo(command.Session, cancellationToken).ConfigureAwait(false);
+        AppKindExt.TryParseUserAgent(sessionInfo?.Description, out var appKind);
         UsageMeters.ReviewPromptOutcomes.Add(1,
-            new KeyValuePair<string, object?>("outcome", command.Outcome.ToString()));
+            new KeyValuePair<string, object?>("outcome", command.Outcome.ToString()),
+            new KeyValuePair<string, object?>("app", appKind.ToString()));
     }
 
     // [CommandHandler]

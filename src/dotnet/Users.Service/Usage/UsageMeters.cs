@@ -20,6 +20,6 @@ public static class UsageMeters
         ReviewPromptVerdicts = m.CreateCounter<long>(
             "usage.review_prompt.verdicts", null, "Review prompt eligibility checks, by verdict");
         ReviewPromptOutcomes = m.CreateCounter<long>(
-            "usage.review_prompt.outcomes", null, "Review prompt results, by outcome");
+            "usage.review_prompt.outcomes", null, "Review prompt results, by outcome and app");
     }
 }
