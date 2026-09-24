@@ -29,4 +29,23 @@ public class SharedLoggingTest(AppHostFixture fixture, ITestOutputHelper @out): 
         log.LogInformation("Hello, world!");
         capturingOutput.HasMessage("Hello, world!").Should().BeTrue();
     }
+
+    [Fact]
+    public async Task LogsFromBackgroundWorkToTestOutput()
+    {
+        // Arrange
+        var capturingOutput = new CapturingTestOutput(Out);
+        AppHost.Output = capturingOutput;
+        var log = AppHost.Services.LogFor<SharedLoggingTest>();
+
+        // Act
+        Task logTask;
+        // Host loops started with the fixture don't carry the test's execution context either
+        using (ExecutionContext.SuppressFlow())
+            logTask = Task.Run(() => log.LogInformation("Hello from background work!"));
+        await logTask;
+
+        // Assert
+        capturingOutput.HasMessage("Hello from background work!").Should().BeTrue();
+    }
 }

@@ -1,7 +1,5 @@
-using ActualChat.Testing.Internal;
 using MartinCostello.Logging.XUnit;
 using Microsoft.Extensions.Hosting;
-using Xunit.DependencyInjection;
 
 namespace ActualChat.Testing;
 
@@ -23,8 +21,8 @@ public static class ServiceCollectionExt
     }
 
     public static IServiceCollection AddTestLogging(this IServiceCollection services, ITestOutputHelper output)
-        => AddTestLogging(services, new TestOutputHelperAccessor() { Output = output.ToSafe() });
-    public static IServiceCollection AddTestLogging(this IServiceCollection services, TestOutputHelperAccessor outputAccessor)
+        => AddTestLogging(services, new TestOutputAccessor() { Output = output.ToSafe() });
+    public static IServiceCollection AddTestLogging(this IServiceCollection services, TestOutputAccessor outputAccessor)
     {
         services.AddTracers(c => c.LoggerFactory().NewTracer(), useScopedTracers: true);
         services.AddLogging(logging => {
@@ -52,7 +50,7 @@ public static class ServiceCollectionExt
         return services;
     }
 
-    public static ILoggerFactory CreateTestLoggerFactory(this TestOutputHelperAccessor outputAccessor)
+    public static ILoggerFactory CreateTestLoggerFactory(this TestOutputAccessor outputAccessor)
         => new ServiceCollection()
             .AddTestLogging(outputAccessor)
             .BuildServiceProvider()
@@ -60,7 +58,7 @@ public static class ServiceCollectionExt
 
     // Private methods
 
-    private static void AddTestLoggingProviders(this ILoggingBuilder logging, TestOutputHelperAccessor outputAccessor)
+    private static void AddTestLoggingProviders(this ILoggingBuilder logging, TestOutputAccessor outputAccessor)
     {
         logging.AddDebug();
         if (!TestRunnerInfo.IsBuildAgent()) {
@@ -82,7 +80,7 @@ public static class ServiceCollectionExt
         // everything below LogLevel.Information
  #pragma warning disable CS0618 // Type or member is obsolete
         logging.AddProvider(new XUnitLoggerProvider(
-            new TestOutputHelperAdaptor(outputAccessor),
+            outputAccessor,
             new XUnitLoggerOptions() {
                 Filter = (_, _) => true,
             }));
