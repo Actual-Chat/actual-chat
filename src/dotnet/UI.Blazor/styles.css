@@ -57,5 +57,6 @@
 @import './Components/YoutubePlayer/youtube-player.css';
 
 @import './Pages/ContentSwapTestPage/content-swap-test-page.css';
+@import './Pages/IconsTestPage/icons-test-page.css';
 
 @import './Services/ScreenSize/screen-size.css';

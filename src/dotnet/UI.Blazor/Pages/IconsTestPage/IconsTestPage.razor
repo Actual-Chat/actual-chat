@@ -1,0 +1,32 @@
+@page "/test/icons"
+@using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Services
+@inherits ComponentBase<UIHub>
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Icons</MainHeader>
+
+<div class="test-page-wrapper flex-y gap-y-6 p-4" data-child="test-page">
+    <div class="theme-light flex-y gap-y-4 p-6 rounded-2xl bg-01 text-01">
+        <h1>theme-light</h1>
+        <div @ref="_lightRef" class="icons-grid"></div>
+    </div>
+    <div class="theme-dark flex-y gap-y-4 p-6 rounded-2xl bg-01 text-01">
+        <h1>theme-dark</h1>
+        <div @ref="_darkRef" class="icons-grid"></div>
+    </div>
+</div>
+
+@code {
+    private static readonly string JSRenderMethod = $"{BlazorUICoreModule.ImportName}.{nameof(IconsTestPage)}.render";
+
+    private ElementReference _lightRef;
+    private ElementReference _darkRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+        await JS.InvokeVoidAsync(JSRenderMethod, _lightRef);
+        await JS.InvokeVoidAsync(JSRenderMethod, _darkRef);
+    }
+}
