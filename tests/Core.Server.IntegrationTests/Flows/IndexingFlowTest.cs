@@ -16,6 +16,13 @@ public sealed class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
     private IndexingFlowTestContext Context { get; }
         = fixture.AppHost.Services.GetRequiredService<IndexingFlowTestContext>();
 
+    protected override async Task InitializeAsync()
+    {
+        await base.InitializeAsync();
+        // The first test on a fresh host would otherwise spend its budget on the host's startup
+        await AppHost.Services.WhenFlowsStarted();
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
