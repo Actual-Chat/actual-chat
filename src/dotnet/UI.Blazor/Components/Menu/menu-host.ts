@@ -59,7 +59,7 @@ export class MenuHost implements Disposable {
     private readonly disposed$: Subject<void> = new Subject<void>();
     private menu: Menu | null;
     private currentMenuRef: string;
-    private pointerDownSelection: MenuSelection | null = null;
+    private pressStartSelection: MenuSelection | null = null;
 
     public static create(blazorRef: DotNet.DotNetObject): MenuHost {
         return new MenuHost(blazorRef);
@@ -77,10 +77,14 @@ export class MenuHost implements Disposable {
         DocumentEvents.passive.pointerOver$
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: PointerEvent) => this.onPointerOver(event));
-        DocumentEvents.capturedPassive.pointerDown$
+        // Safari now and then dispatches no pointerdown for a press in this app; mousedown always arrives.
+        merge(
+            DocumentEvents.capturedPassive.pointerDown$,
+            DocumentEvents.capturedPassive.mouseDown$,
+        )
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => {
-                this.pointerDownSelection = getMenuSelection();
+                this.pressStartSelection = getMenuSelection();
             });
 
         fromEvent<KeyboardEvent>(window, 'keydown')
@@ -253,16 +257,16 @@ export class MenuHost implements Disposable {
     }
 
     /**
-     * The selection the user made before the click that opens the menu. WebKit selects the word under
+     * The selection the user made before the press that opens the menu. WebKit selects the word under
      * a right-click (and a long press, on touch) before dispatching contextmenu, so a selection that
-     * differs from the one at pointerdown is that word, not the user's.
+     * differs from the one at the start of the press is that word, not the user's.
      */
     private getUserSelection(event: Event): MenuSelection | null {
         const selection = getMenuSelection();
         if (event.type !== 'contextmenu')
             return selection;
 
-        return isSameSelection(selection, this.pointerDownSelection) ? selection : null;
+        return isSameSelection(selection, this.pressStartSelection) ? selection : null;
     }
 
     private async position(menu: Menu, updatedMenu?: Menu): Promise<void> {

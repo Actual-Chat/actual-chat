@@ -125,6 +125,7 @@ class DocumentEventSet {
 
     public readonly pointerOver$: Observable<PointerEvent>;
     public readonly pointerDown$: Observable<PointerEvent>;
+    public readonly mouseDown$: Observable<MouseEvent>;
     public readonly pointerMove$: Observable<PointerEvent>;
     public readonly pointerUp$: Observable<PointerEvent>;
     public readonly pointerCancel$: Observable<PointerEvent>;
@@ -155,6 +156,7 @@ class DocumentEventSet {
 
         this.pointerOver$ = fromEvent(document, 'pointerover', options) as Observable<PointerEvent>;
         this.pointerDown$ = fromEvent(document, 'pointerdown', options) as Observable<PointerEvent>;
+        this.mouseDown$ = fromEvent(document, 'mousedown', options) as Observable<MouseEvent>;
         this.pointerMove$ = fromEvent(document, 'pointermove', options) as Observable<PointerEvent>;
         this.pointerUp$ = fromEvent(document, 'pointerup', options) as Observable<PointerEvent>;
         this.pointerCancel$ = fromEvent(document, 'pointercancel', options) as Observable<PointerEvent>;
