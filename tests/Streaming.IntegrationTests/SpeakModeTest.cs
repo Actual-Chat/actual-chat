@@ -157,6 +157,9 @@ public sealed class SpeakModeTest(SpeechCollection.AppHostFixture fixture, ITest
                 Tester.Session, stream.Id, offset, run, default);
             offset = appended.Offset;
             written += run;
+            // Spaced past the streamer's coalescing window, so these arrive as separate diffs -
+            // one diff for the lot would never exercise deciding where to start.
+            await Task.Delay(TimeSpan.FromSeconds(0.3));
         }
         var entry = await ChatsBackend.GetEntry(stream.EntryId, CancellationToken.None);
 

@@ -150,15 +150,16 @@ public partial class AudioStreamingBackend
             // synthesized speech is never persisted for them to catch up on afterwards. The floor
             // is what keeps that from becoming silence - a short message is spoken in full, and a
             // long one is joined a few seconds back rather than at its last syllable.
-            var buffered = sourceMemoizer.ProducedCount;
-            var index = 0;
+            // Decided from a snapshot rather than by counting the diffs to replay: the memoizer's
+            // produced count is not the number Replay yields, so counting spoke the backlog first.
+            var alreadyWritten = await GetTranscriptSnapshot(sourceStreamId, cancellationToken)
+                .ConfigureAwait(false);
+            var skip = alreadyWritten is null ? 0 : GetSkipLength(alreadyWritten.Text, spokenLanguage);
+            if (skip > 0)
+                stabilizer.Next(alreadyWritten! with { Text = alreadyWritten.Text[..skip] });
+
             await foreach (var diff in sourceMemoizer.Replay(cancellationToken).ConfigureAwait(false)) {
                 spoken += diff;
-                if (++index == buffered && buffered > 0) {
-                    var skip = GetSkipLength(spoken.Text, spokenLanguage);
-                    if (skip > 0)
-                        stabilizer.Next(spoken with { Text = spoken.Text[..skip] });
-                }
                 if (stabilizer.Next(spoken) is { } chunk)
                     await text.Writer.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
             }
