@@ -520,9 +520,11 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         if (account.Identities.HasInternalIdentity() && account.Id == Constants.User.Admin.UserId)
             return true;
 
-        // Phones with a predefined TOTP belong to Apple/Google app review, so they're never admins
+        // Phones with a predefined TOTP belong to Apple/Google app review, and test-agent phones
+        // sign in with a fixed code, so neither is ever an admin
         foreach (var phone in account.Identities.GetPhones()) {
-            if (predefinedTotps.ContainsKey(ActualChat.Phone.NormalizePart(phone.Value)))
+            if (predefinedTotps.ContainsKey(ActualChat.Phone.NormalizePart(phone.Value))
+                || Constants.Auth.TestAgent.IsTestAgentPhone(phone.Value))
                 return false;
         }
 

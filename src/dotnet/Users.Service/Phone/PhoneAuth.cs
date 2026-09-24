@@ -105,7 +105,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         var purpose = command.Purpose;
         var captchaToken = command.CaptchaToken;
         var captchaAction = command.CaptchaAction;
-        if (TryGetPredefined(phone, out _))
+        if (IsTestAgentPhone(phone) || TryGetPredefined(phone, out _))
             return new TotpSendResult(NextSendAt(), null); // no need to send predefined totp
 
         await CaptchaProofs
@@ -298,11 +298,17 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
             .Check(method, RateLimitClass.Auth, identities.AsSpan(0, identityCount), cancellationToken)
             .ConfigureAwait(false);
 
+        if (totp == Constants.Auth.TestAgent.Totp && IsTestAgentPhone(phone))
+            return true;
         if (TryGetPredefined(phone, out var predefinedTotp))
             return predefinedTotp == totp;
 
         return await Totps.Validate(purpose, phone.Value, session, totp, cancellationToken).ConfigureAwait(false);
     }
+
+    private bool IsTestAgentPhone(ActualChat.Phone phone)
+        // Host-gated, unlike PredefinedTotps, which serves app-review accounts and works anywhere.
+        => HostInfo.IsTestAgentTotpHost() && Constants.Auth.TestAgent.IsTestAgentPhone(phone.Value);
 
     private bool TryGetPredefined(ActualChat.Phone phone, out int predefinedTotp)
         // removing dashes due to issue with dash in bash env var names

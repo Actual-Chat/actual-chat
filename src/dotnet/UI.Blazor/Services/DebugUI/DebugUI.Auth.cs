@@ -20,15 +20,9 @@ public sealed partial class DebugUI
     /// <param name="phoneOrEmail">An email like <c>test-foo@actual.chat</c>
     /// or a phone in any sensible format
     /// (<c>+1 555 555 5550</c> / <c>15555555550</c> / <c>1-5555555550</c>).</param>
-    /// <param name="register">Confirm the pending registration if the account
-    /// doesn't yet exist.</param>
-    /// <param name="skipOnboarding">Mark all onboarding steps complete.</param>
-    /// <param name="skipBubbles">Mark all feature bubbles complete.</param>
     /// <remarks>
-    /// Uses the dev-bypass TOTP <c>111111</c> (matches the predefined values
-    /// the loop wires up for <c>+1 555 555 5550..5555</c> and the
-    /// <c>test-*@actual.chat</c> dev shortcut). Other inputs will fail TOTP
-    /// validation.
+    /// The TOTP is always <c>111111</c>, which is built in for
+    /// <c>test-*@actual.chat</c> and <c>+1 555 555 5550..5559</c>; anything else fails validation.
     /// </remarks>
     [JSInvokable]
     public async Task SignIn(string phoneOrEmail, bool register = true, bool skipOnboarding = true, bool skipBubbles = true)

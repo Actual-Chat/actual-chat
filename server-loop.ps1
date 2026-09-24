@@ -616,14 +616,6 @@ while ($true) {
         Write-LoopLog "Step 3/3 (server-run)"
         $env:ActualChat_DevLog = $devLog
         $env:ASPNETCORE_ENVIRONMENT = "Development"
-        # Predefined TOTPs for phone sign-in (test numbers +1 555-555-5550..5555).
-        # Lookup key is digits-only normalized phone; value is the 6-digit code.
-        $env:UsersSettings__PredefinedTotps__15555555550 = "111111"
-        $env:UsersSettings__PredefinedTotps__15555555551 = "111111"
-        $env:UsersSettings__PredefinedTotps__15555555552 = "111111"
-        $env:UsersSettings__PredefinedTotps__15555555553 = "111111"
-        $env:UsersSettings__PredefinedTotps__15555555554 = "111111"
-        $env:UsersSettings__PredefinedTotps__15555555555 = "111111"
         # Run dotnet asynchronously so this PowerShell can poll its own stdin
         # while the server is up. Otherwise `*>` redirection makes 's'/'x' keys
         # invisible to the child's Console.ReadKey watcher (the child no longer

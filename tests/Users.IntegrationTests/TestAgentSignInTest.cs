@@ -84,8 +84,8 @@ public class TestAgentSignInTest(AppHostFixture fixture, ITestOutputHelper @out)
         var localHostInfo = hostInfo with { BaseUrl = "https://local.voxt.ai" };
 
         // act
-        var isAllowed = EmailAuth.IsTestAgentEmailTotpHost(hostInfo);
-        var isLocalAllowed = EmailAuth.IsTestAgentEmailTotpHost(localHostInfo);
+        var isAllowed = hostInfo.IsTestAgentTotpHost();
+        var isLocalAllowed = localHostInfo.IsTestAgentTotpHost();
 
         // assert
         isAllowed.Should().BeFalse();

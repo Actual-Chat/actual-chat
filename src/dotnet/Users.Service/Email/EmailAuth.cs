@@ -17,7 +17,6 @@ namespace ActualChat.Users.Email;
 public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IEmailAuth
 {
     private static readonly string TotpFormat = new('0', Constants.Auth.Email.TotpLength);
-    private const int TestAgentTotp = 111111;
 
     private HostInfo HostInfo { get; } = services.HostInfo();
     private UsersSettings UsersSettings { get; } = services.GetRequiredService<UsersSettings>();
@@ -74,7 +73,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var purpose = command.Purpose;
         var email = command.Email.Value;
 
-        if (Constants.Auth.TestAgent.IsTestAgentEmail(email) && IsTestAgentEmailTotpHost(HostInfo))
+        if (Constants.Auth.TestAgent.IsTestAgentEmail(email) && HostInfo.IsTestAgentTotpHost())
             return NextSendAt();
         if (GetPredefinedTotpPrefix(email) is not null)
             return NextSendAt();
@@ -183,14 +182,6 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 
     // Protected/internal methods
 
-    internal static bool IsTestAgentEmailTotpHost(HostInfo hostInfo)
-    {
-        var baseUri = hostInfo.BaseUrl.ToUri();
-        return hostInfo.IsTested
-            || baseUri.IsLoopback
-            || Constants.Hosts.IsLocalDev(baseUri.Host);
-    }
-
     internal static bool IsPredefinedTotpHost(HostInfo hostInfo)
         => hostInfo.IsTested || hostInfo.BaseUrlKind is BaseUrlKind.Development or BaseUrlKind.Local;
 
@@ -234,9 +225,9 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             .Check(method, RateLimitClass.Auth, identities.AsSpan(0, identityCount), cancellationToken)
             .ConfigureAwait(false);
 
-        if (totp == TestAgentTotp
+        if (totp == Constants.Auth.TestAgent.Totp
             && Constants.Auth.TestAgent.IsTestAgentEmail(email)
-            && IsTestAgentEmailTotpHost(HostInfo))
+            && HostInfo.IsTestAgentTotpHost())
             return true;
         if (predefinedTotpPrefix is not null)
             return totp == UsersSettings.PredefinedEmailTotps[predefinedTotpPrefix];
