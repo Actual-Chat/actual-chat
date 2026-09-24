@@ -16,6 +16,12 @@
     _isOwner = m.IsOwner;
     _enableIncompleteUI = m.EnableIncompleteUI;
     Context.Header = RenderHero;
+    // Context.Header only re-renders the frame on a null<->non-null flip, so after an edit (e.g. a new
+    // wallpaper/avatar saved in the owner step) the hero would stay stale. Nudge the frame when the place changes.
+    if (_heroVersion != m.Place.Version) {
+        _heroVersion = m.Place.Version;
+        _ = InvokeAsync(Context.Refresh);
+    }
 }
 
 <div class="chat-settings-subheader">
@@ -63,6 +69,7 @@
     private Place _place = null!;
     private bool _isOwner;
     private bool _enableIncompleteUI;
+    private long _heroVersion = -1;
 
     private RenderFragment RenderHero => @<div class="chat-settings-header place">
         <div class="c-top">
