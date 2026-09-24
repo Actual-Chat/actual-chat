@@ -63,7 +63,7 @@ public sealed partial class DebugUI : UIServiceBase<UIHub>, IDisposable
     public void StopServer()
     {
         // Local-dev-only: same check as the HTTP /health/stop endpoint.
-        if (HostInfo is not { IsDevelopmentInstance: true, BaseUrlKind: BaseUrlKind.Local })
+        if (!HostInfo.IsLocalDevInstance())
             throw StandardError.Unauthorized("StopServer works on local-dev server instances only.");
 
         Log.LogInformation("StopServer requested via DebugUI");

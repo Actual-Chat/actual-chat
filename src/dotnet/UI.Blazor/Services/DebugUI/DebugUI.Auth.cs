@@ -33,7 +33,7 @@ public sealed partial class DebugUI
     [JSInvokable]
     public async Task SignIn(string phoneOrEmail, bool register = true, bool skipOnboarding = true, bool skipBubbles = true)
     {
-        if (HostInfo is not { IsDevelopmentInstance: true, BaseUrlKind: BaseUrlKind.Local })
+        if (!HostInfo.IsLocalDevInstance())
             throw StandardError.Unauthorized("SignIn works on local-dev server instances only.");
 
         var session = Hub.Session;
