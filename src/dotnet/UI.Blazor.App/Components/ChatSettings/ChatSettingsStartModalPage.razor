@@ -67,7 +67,7 @@
                         @L.Place_MembersLabel(m.MemberCount, m.MemberCount)
                     </Content>
                     <Right>
-                        <i class="icon-chevron-right text-3xl"></i>
+                        <i class="icon-chevron-right text-xl"></i>
                     </Right>
                 </TileItem>
             } else {
@@ -155,23 +155,33 @@
                 Size="@SquareSize.Size16"
                 AvatarKind="@_avatarKind"
                 AvatarKey="@_avatarKey"
-                Click="@(() => _avatarPicker!.Pick())"/>
+                Click="@EditPicClick"/>
 
-            <div class="c-buttons">
-                <ButtonRound Class="btn-sm btn-tinted" Click="@(() => _avatarPicker!.Pick())">
-                    <i class="icon-person-add-2 text-2xl"></i>
-                </ButtonRound>
-                <ImageCropPicker @ref="_avatarPicker"
-                    Scope="@_form!.ImageScope"
-                    Title="@L.PicCrop_ChatPictureTitle"
-                    CurrentPicture="@_form.Picture"
-                    CurrentAvatarKey="@(_avatarKey ?? "")"
-                    CurrentAvatarTitle="@_form.Title"
-                    AvatarKind="@_avatarKind"
-                    OnCropped="@OnImagePicked" />
-            </div>
+            @* The hero is reused on inner steps (members, type, integrations) where editing the chat
+               picture makes no sense, so the edit button and the avatar's own click live only here. *@
+            @if (!Context.IsInnerStep) {
+                <div class="c-buttons">
+                    <ButtonRound Class="btn-sm btn-tinted" Click="@(() => _avatarPicker!.Pick())">
+                        <i class="icon-person-add-2 text-2xl"></i>
+                    </ButtonRound>
+                    <ImageCropPicker @ref="_avatarPicker"
+                        Scope="@_form!.ImageScope"
+                        Title="@L.PicCrop_ChatPictureTitle"
+                        CurrentPicture="@_form.Picture"
+                        CurrentAvatarKey="@(_avatarKey ?? "")"
+                        CurrentAvatarTitle="@_form.Title"
+                        AvatarKind="@_avatarKind"
+                        OnCropped="@OnImagePicked" />
+                </div>
+            }
         </div>
     </div>;
+
+    // Only the start step edits the picture; on inner steps the picker isn't rendered, so leave the
+    // avatar unclickable - a default callback also drops the cursor-pointer affordance.
+    private EventCallback<MouseEventArgs> EditPicClick => Context.IsInnerStep
+        ? default
+        : EventCallback.Factory.Create<MouseEventArgs>(this, () => _avatarPicker!.Pick());
 
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;

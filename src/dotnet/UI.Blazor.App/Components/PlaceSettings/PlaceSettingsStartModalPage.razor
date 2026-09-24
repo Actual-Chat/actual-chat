@@ -1,6 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
-@using ActualChat.WebHooks
 @inherits ComputedStateComponent<AppUIHub, PlaceSettingsStartModalPage.ComputedModel>
 @{
     if (State.IsInitial(out var m))
@@ -37,15 +36,10 @@
 </div>
 
 @{
+    // Integrations moved under the pencil (owner settings), so the info step lists members only.
     var tabs = new List<TabDef> {
         new("members", L.Place_TabMembers) { Content = @<AuthorList PlaceId="@PlaceId"/> },
     };
-    if (_isOwner && _enableIncompleteUI)
-        tabs.Add(new("integrations", L.Integrations_Title) {
-            Content = @<div class="place-integrations">
-                          <WebHookList Scope="WebHookScope.Place" ScopeId="@PlaceId.Value"/>
-                      </div>,
-        });
 }
 
 <div class="c-panel-content">
@@ -108,34 +102,40 @@
                 AvatarKind="@AvatarKind.Marble"
                 AvatarKey="@PlaceId.Value"/>
 
-            <div class="c-buttons">
-                @if (_enableIncompleteUI) {
-                    <ButtonRound
-                        Class="btn-sm"
-                        TooltipPosition="@FloatingPosition.Bottom"
-                        Tooltip="@L.Place_Notifications">
-                        <i class="icon-bell text-2xl"></i>
-                    </ButtonRound>
-                }
-                @if (_isOwner) {
-                    <ButtonRound
-                        Class="btn-sm"
-                        TooltipPosition="@FloatingPosition.Bottom"
-                        Tooltip="@L.Place_AddMember"
-                        Click="@OnInviteMembersClick">
-                        <i class="icon-person-add text-2xl"></i>
-                    </ButtonRound>
-                }
-                @if (_isOwner) {
-                    <ButtonRound
-                        Class="btn-sm"
-                        TooltipPosition="@FloatingPosition.Bottom"
-                        Tooltip="@L.Place_EditPlace"
-                        Click="@OnOwnerSettingsClick">
-                        <i class="icon-edit text-2xl"></i>
-                    </ButtonRound>
-                }
-            </div>
+            @* The hero lingers on inner steps (type, members, integrations), where these start-page
+               actions make no sense - same as the owner hero and the close button above. *@
+            @if (!Context.IsInnerStep) {
+                <div class="c-buttons">
+                    @if (_enableIncompleteUI) {
+                        @* TODO: build place notifications management - this bell is an incomplete-UI
+                           placeholder with no Click handler yet; it should open per-place notification settings. *@
+                        <ButtonRound
+                            Class="btn-sm"
+                            TooltipPosition="@FloatingPosition.Bottom"
+                            Tooltip="@L.Place_Notifications">
+                            <i class="icon-bell text-2xl"></i>
+                        </ButtonRound>
+                    }
+                    @if (_isOwner) {
+                        <ButtonRound
+                            Class="btn-sm"
+                            TooltipPosition="@FloatingPosition.Bottom"
+                            Tooltip="@L.Place_AddMember"
+                            Click="@OnInviteMembersClick">
+                            <i class="icon-person-add text-2xl"></i>
+                        </ButtonRound>
+                    }
+                    @if (_isOwner) {
+                        <ButtonRound
+                            Class="btn-sm"
+                            TooltipPosition="@FloatingPosition.Bottom"
+                            Tooltip="@L.Place_EditPlace"
+                            Click="@OnOwnerSettingsClick">
+                            <i class="icon-edit text-2xl"></i>
+                        </ButtonRound>
+                    }
+                </div>
+            }
         </div>
     </div>;
 
