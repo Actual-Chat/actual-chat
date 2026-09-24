@@ -118,6 +118,20 @@ body.narrow .settings-panel > .c-tabs .c-footer {
     @apply flex-1 min-w-0;
     @apply truncate;
     @apply text-micro-500 text-03;
+    @apply cursor-pointer;
+}
+/* Touch devices get no tooltips (see AlwaysVisibleComponents), so a tap on the version unfolds it
+   in place instead, and the footer grows to fit. */
+.settings-panel > .c-tabs .c-footer.expanded {
+    @apply h-auto min-h-10;
+}
+body.narrow .settings-panel > .c-tabs .c-footer.expanded {
+    height: auto;
+    min-height: calc(2.5rem + var(--safe-area-bottom-narrow));
+}
+.settings-panel > .c-tabs .c-footer > .c-content > .c-version.expanded {
+    @apply py-1;
+    @apply whitespace-normal break-all;
 }
 .settings-panel > .c-tabs .c-footer .startup-time-bar {
     @apply text-micro-500;

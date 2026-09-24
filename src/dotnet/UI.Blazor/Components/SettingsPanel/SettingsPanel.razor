@@ -6,6 +6,7 @@
     var selectedTab = tabs.FirstOrDefault(x => x.Id == selectedTabId);
     var cls = _isRightSideVisible ? "hide-panel" : "hide-tabs";
     var attr = _isRightSideVisible ? "hide-panel" : "hide-tabs";
+    var versionExpandedClass = _isVersionExpanded ? "expanded" : "";
 
     RenderFragment RenderTabTitle(SettingsTabDef tab) =>
         @<div class="settings-tab-item">
@@ -47,9 +48,15 @@
         <div class="p-2">
             <ShareOwnAccountTileItem/>
         </div>
-        <div class="c-footer">
+        <div class="c-footer @versionExpandedClass">
             <div class="c-content">
-                <div class="c-version">@ApiConstants.DisplayVersionString</div>
+                <div
+                    class="c-version @versionExpandedClass"
+                    data-tooltip="@ApiConstants.DisplayVersionString"
+                    data-tooltip-position="@(FloatingPosition.Top.ToPositionString())"
+                    @onclick="@(() => _isVersionExpanded = !_isVersionExpanded)">
+                    @ApiConstants.DisplayVersionString
+                </div>
                 <div class="flex-none">
                     <StartupTimeBar/>
                 </div>
@@ -73,6 +80,7 @@
 @code {
     private IReadOnlyList<SettingsTabDef> _lastTabs = [];
     private bool _isRightSideVisible;
+    private bool _isVersionExpanded;
     private ModalStepRef? _tabStepRef;
 
     [CascadingParameter] public Modal? Modal { get; set; }
