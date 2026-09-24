@@ -374,10 +374,19 @@ public static partial class Constants
         {
             public const string EmailPrefix = "test-";
             public const string EmailDomain = "@actual.chat";
+            // +1 555-555-5550..5559: fictional NANPA numbers reserved for testing, so no carrier
+            // ever routes them and no SMS is sent to one.
+            public const string PhonePrefix = "1555555555";
+            public const int Totp = 111111;
 
             public static bool IsTestAgentEmail(string email)
                 => email.StartsWith(EmailPrefix, StringComparison.OrdinalIgnoreCase)
                     && email.EndsWith(EmailDomain, StringComparison.OrdinalIgnoreCase);
+
+            public static bool IsTestAgentPhone(string phone)
+                // Length matters: without it every longer number starting with the prefix would pass.
+                => ActualChat.Phone.NormalizePart(phone) is { Length: 11 } digits
+                    && digits.StartsWith(PhonePrefix);
         }
     }
 

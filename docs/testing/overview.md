@@ -63,7 +63,14 @@ For automated testing and AI agent authentication, special test accounts are ava
 
 ### Phone Auth Test Accounts
 
-Phone authentication supports predefined TOTP codes configured via `UsersSettings.PredefinedTotps`. These are typically set via environment variables for specific test phone numbers.
+`+1 555-555-5550` .. `+1 555-555-5559` sign in with `111111`, the same way `test-*@actual.chat`
+does and under the same host restrictions — nothing to configure, and no SMS is sent. They are
+fictional NANPA numbers reserved for testing, and such accounts are never admins.
+
+A separate mechanism, `UsersSettings.PredefinedTotps`, maps a digits-only phone number to a static
+code and is set via environment variables. It serves the Apple/Google app-review accounts, so
+unlike everything else on this page it is honored on production too — never put those numbers or
+codes in `appsettings*.json`.
 
 ### Email Auth NPC Accounts
 

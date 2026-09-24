@@ -20,7 +20,7 @@ public class Phones(IAccounts accounts, UsersSettings settings) : IPhones
         // 1. Predefined test numbers (e.g. app-review accounts) must resolve exactly,
         // no matter which country the caller's IP maps to
         var digits = ActualChat.Phone.NormalizePart(phone);
-        if (settings.PredefinedTotps.ContainsKey(digits)) {
+        if (settings.PredefinedTotps.ContainsKey(digits) || Constants.Auth.TestAgent.IsTestAgentPhone(digits)) {
             var predefined = PhoneExt.ParseNullable("+" + digits, null);
             if (predefined != null)
                 return predefined;
