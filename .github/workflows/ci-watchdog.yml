@@ -25,6 +25,8 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      rerun: ${{ steps.triage.outputs.rerun }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,6 +36,7 @@ jobs:
           lfs: false
 
       - name: Triage
+        id: triage
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -43,3 +46,20 @@ jobs:
           . ./scripts/CiWatchdog.ps1
           $record = Invoke-CiWatchdog -RunId $env:RUN_ID -DryRun:($env:DRY_RUN -eq 'true')
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value (Format-CiJournalNote $record)
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "rerun=$($record.Rerun.ToString().ToLowerInvariant())"
+
+  notify:
+    name: Notify Voxt
+    needs: triage
+    # always(): a watchdog that fell over re-ran nothing, so the red still has to be reported.
+    # The branch filter is Notify Voxt's own, which this workflow doesn't have.
+    if: >-
+      always() && github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'failure' &&
+      needs.triage.outputs.rerun != 'true' &&
+      (github.event.workflow_run.head_branch == 'dev' || startsWith(github.event.workflow_run.head_branch, 'release/'))
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/notify-voxt.yml
+    secrets: inherit
