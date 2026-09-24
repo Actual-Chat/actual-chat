@@ -42,4 +42,14 @@ public interface IAudioStreamingBackend : IComputeService, IBackendService
         int preSkip,
         RpcStream<AudioFrame> frameStream,
         CancellationToken cancellationToken);
+
+    // The producer supplies the transcript, so server ASR is bypassed. Chunk offsets are
+    // positions in the producer's own audio; a chunk without one is pinned to the audio
+    // ingested so far.
+    Task ProcessAudioWithTranscript(
+        AudioRecord record,
+        int preSkip,
+        RpcStream<AudioFrame> frameStream,
+        RpcStream<ExternalTranscriptChunk> transcriptStream,
+        CancellationToken cancellationToken);
 }
