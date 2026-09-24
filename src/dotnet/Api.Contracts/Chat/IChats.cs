@@ -251,6 +251,7 @@ public interface IChats : IComputeService
     [CommandHandler, LegacyName("OnForwardTextEntries")]
     Task<Unit> OnForwardEntries(Chats_ForwardEntries command, CancellationToken cancellationToken);
 
+    [Obsolete("2026.09: Files are shared via ShareModal, which posts them as a new message. Old clients only.")]
     [CommandHandler]
     Task<Unit> OnForwardAttachment(Chats_ForwardAttachment command, CancellationToken cancellationToken);
 
@@ -345,6 +346,7 @@ public sealed partial record Chats_ForwardEntries : ApiCommand<Unit>
 }
 
 [DataContract, MessagePackObject]
+[Obsolete("2026.09: Files are shared via ShareModal, which posts them as a new message. Old clients only.")]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Chats_ForwardAttachment : ApiCommand<Unit>
 {

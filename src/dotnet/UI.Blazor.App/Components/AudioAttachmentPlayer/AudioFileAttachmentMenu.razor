@@ -64,30 +64,8 @@
     private Task OnStop()
         => Player.Stop().AsTask();
 
-    private async Task OnShare() {
-        var m = State.Value;
-        if (m.Attachment is not { } a)
-            return;
-
-        var modalModel = new ForwardMessageModal.Model(a.EntryId.ChatId) {
-            Title = L.MessageMenu_ShareFile,
-            SubmitTitle = L.Selection_ForwardSubmit,
-            SearchPlaceholder = L.Selection_ForwardSearchPlaceholder,
-        };
-        var modalRef = await ModalUI.Show(modalModel).ConfigureAwait(true);
-        await modalRef.WhenClosed.ConfigureAwait(true);
-        var selectedChatIds = modalModel.SelectedChatIds;
-        if (selectedChatIds.Count == 0)
-            return;
-
-        var cmd = new Chats_ForwardAttachment {
-            Session = Session,
-            ChatEntryId = a.EntryId,
-            AttachmentIndex = a.Index,
-            DestinationChatIds = selectedChatIds.ToArray(),
-        };
-        await UICommander.Run(cmd, CancellationToken.None).ConfigureAwait(true);
-    }
+    private Task OnShare()
+        => State.Value.Attachment is { } a ? ShareUI.Share(a) : Task.CompletedTask;
 
     private Task OnCopyLink()
         => ClipboardUI.WriteText(State.Value.DownloadUrl).AsTask();

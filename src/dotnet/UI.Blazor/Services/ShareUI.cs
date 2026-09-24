@@ -1,4 +1,6 @@
-﻿namespace ActualChat.UI.Blazor.Services;
+﻿using ActualChat.Localization;
+
+namespace ActualChat.UI.Blazor.Services;
 
 public sealed class ShareUI(UIHub hub) : UIServiceBase<UIHub>(hub)
 {
@@ -9,6 +11,13 @@ public sealed class ShareUI(UIHub hub) : UIServiceBase<UIHub>(hub)
         => ModalUI.Show(model);
     public Task<ModalRef> Share(ShareKind kind, string title, string targetTitle, ShareRequest request)
         => ModalUI.Show(new ShareModalModel(kind, title, targetTitle, request, null));
+
+    public Task<ModalRef> Share(ChatEntryAttachment attachment, string targetTitle = "")
+    {
+        var title = attachment.IsVisualMedia() ? L.Share_Media : L.MessageMenu_ShareFile;
+        var request = new ShareRequest("") { Media = [SharedMedia.New(attachment)] };
+        return Share(ShareKind.Media, title, targetTitle, request);
+    }
 
     public async ValueTask<bool> CanShareExternally()
         => MauiShare is not null || await WebShareInfo.CanShare().ConfigureAwait(false);

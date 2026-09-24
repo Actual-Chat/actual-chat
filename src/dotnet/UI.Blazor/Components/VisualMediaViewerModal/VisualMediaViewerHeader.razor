@@ -83,17 +83,8 @@
     private void OnInfoClick()
         => _ = ModalUI.Show(new VisualMediaInfoModal.Model(Attachment));
 
-    private Task OnShareClick() {
-        if (Attachment == null)
-            return Task.CompletedTask;
-
-        var targetTitle = _author?.Avatar.Name ?? "";
-        var model = new ShareModalModel(
-            ShareKind.Media,
-            L.Share_Media,
-            targetTitle,
-            new ShareRequest("") { Media = [SharedMedia.New(Attachment)] },
-            null);
-        return ShareUI.Share(model);
-    }
+    private Task OnShareClick()
+        => Attachment == null
+            ? Task.CompletedTask
+            : ShareUI.Share(Attachment, _author?.Avatar.Name ?? "");
 }
