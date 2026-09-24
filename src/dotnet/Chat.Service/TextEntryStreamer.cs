@@ -21,6 +21,8 @@ public class TextEntryStreamer(IServiceProvider services)
     private ICommander Commander => field ??= Services.Commander();
     private IAudioStreamingBackend StreamingBackend => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
+    private ILiveSessionsBackend LiveSessionsBackend
+        => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
     private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     protected ILogger Log => field ??= Services.LogFor(GetType());
@@ -83,6 +85,12 @@ public class TextEntryStreamer(IServiceProvider services)
             await LiveAudioBackend
                 .Unregister(chatId, streamId.Value, CancellationToken.None)
                 .SilentAwait(false);
+            // A recording client clears its own participation when it stops; nothing here holds a
+            // microphone, so the chat would keep reporting a live speaker for the whole staleness
+            // window after the last word.
+            await LiveSessionsBackend
+                .SetParticipation(chatId, authorId, ParticipationKind.Record, false, CancellationToken.None)
+                .SilentAwait(false);
             // Finalized even on failure, otherwise the entry stays empty and streaming forever.
             entry = await FinalizeEntry(entry, transcript.Text).ConfigureAwait(false);
         }
@@ -130,7 +138,7 @@ public class TextEntryStreamer(IServiceProvider services)
 
     // Private methods
 
-    private Task RegisterSpeech(ChatEntry entry, Moment beginsAt, Language? language)
+    private async Task RegisterSpeech(ChatEntry entry, Moment beginsAt, Language? language)
     {
         // IsTextOnly false on purpose: there is no recording, but there is audio to be had - the
         // synthesis - and GetStream refuses to serve a stream marked text-only.
@@ -146,7 +154,13 @@ public class TextEntryStreamer(IServiceProvider services)
             // server speak this. Declaring the language is what makes a listener ask.
             Languages = language is { } l ? new ApiArray<Language>([l]) : ApiArray<Language>.Empty,
         };
-        return LiveAudioBackend.Register(entry.ChatId, streamInfo, CancellationToken.None);
+        await LiveAudioBackend.Register(entry.ChatId, streamInfo, CancellationToken.None).ConfigureAwait(false);
+        // Registering the audio only makes it discoverable to someone already listening. The session
+        // is what puts activity on the chat and offers a Join, so a bot speaking to a room where
+        // nobody happens to be listening can still be heard by someone who walks in.
+        await LiveSessionsBackend
+            .OnStreamRegistered(entry.ChatId, entry.AuthorId, entry.LocalId, true, true, CancellationToken.None)
+            .ConfigureAwait(false);
     }
 
     private async IAsyncEnumerable<TranscriptDiff> ToTranscriptDiffs(

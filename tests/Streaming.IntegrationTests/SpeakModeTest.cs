@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.Live;
 using ActualChat.Chat;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
@@ -63,7 +64,74 @@ public class SpeakModeTest(AppHostFixture fixture, ITestOutputHelper @out)
             "only a producer that declared its stream text-only is spoken for");
     }
 
+    [Fact]
+    public async Task ShouldOfferATextEntryAsSomethingToJoin()
+    {
+        // Registering the audio makes it discoverable to someone already listening, but nothing
+        // invites anyone in: without a session the chat shows no activity and no Join, so a bot
+        // speaking to a room where nobody happens to be listening is heard by no one.
+
+        // arrange
+        var liveSessions = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+
+        // act
+        var (chatId, stream) = await StreamBotText("Is there anyone here to join and hear this?");
+
+        // assert
+        await TestWait.When(async ct => {
+            var hasRecorder = await liveSessions.HasRecorder(chatId, ct);
+            hasRecorder.Should().BeTrue("a speaking bot is activity someone can join");
+        }, WaitTimeout);
+
+        await Tester.Chats.FinishEntryStream(Tester.Session, stream.Id, default);
+    }
+
+    [Fact]
+    public async Task ShouldReachSomeoneListeningToTheChat()
+    {
+        // The id a listener asks for is the one it was handed - the stream's own, with no language
+        // suffix. Serving speech only on a dub id leaves the bot silent to the very people the
+        // registration was meant to reach, which is what a listening client actually does.
+
+        // arrange - listening before the bot says anything, as someone already in the room is
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var live = AppHost.Services.GetRequiredService<ILiveAudioStreams>();
+        var listening = await live.GetListeningStream(
+            Tester.Session, chatId, Moment.EpochStart, null, CancellationToken.None);
+        var heard = ReadMuxedFrames(listening, CancellationToken.None);
+
+        // act
+        var stream = await Tester.Chats.StartEntryStream(Tester.Session, chatId, null, null, default);
+        await Tester.Chats.AppendEntryStream(
+            Tester.Session, stream.Id, 0, "Can the room hear me speaking this?", default);
+
+        // assert
+        var frames = await heard;
+        frames.Should().NotBeEmpty("a listener must hear a text entry the server speaks");
+
+        await Tester.Chats.FinishEntryStream(Tester.Session, stream.Id, default);
+    }
+
     // Private methods
+
+    private static Task<List<MuxedAudioFrame>> ReadMuxedFrames(
+        IAsyncEnumerable<MuxedAudioStreamItem> items, CancellationToken cancellationToken)
+        => Task.Run(async () => {
+            var frames = new List<MuxedAudioFrame>();
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(WaitTimeout);
+            try {
+                await foreach (var item in items.WithCancellation(cts.Token).ConfigureAwait(false)) {
+                    if (item is MuxedAudioFrame frame)
+                        frames.Add(frame);
+                    if (frames.Count >= 5)
+                        break;
+                }
+            }
+            catch (OperationCanceledException) { }
+            return frames;
+        }, CancellationToken.None);
 
     private async Task<(ChatId, ChatEntryStream)> StreamBotText(string text)
     {
