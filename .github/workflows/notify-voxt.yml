@@ -1,11 +1,12 @@
 name: Notify Voxt
 
 on:
+  # The workflows CI watchdog triages aren't listed here: the watchdog calls this one
+  # once it has decided not to re-run the failed jobs, so a flake it re-runs stays quiet.
+  # A called workflow sees the caller's event, so github.event.workflow_run is the same.
+  workflow_call:
   workflow_run:
     workflows:
-      - Build test and deploy
-      - Run slow tests
-      - Run nightly tests
       - Run claude tests
       - Build nats docker image
       - Create release branch
