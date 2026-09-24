@@ -1,14 +1,15 @@
 using ActualChat.Audio;
 using ActualChat.Live;
 using ActualChat.Chat;
+using ActualChat.Testing;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
 
 namespace ActualChat.Streaming.IntegrationTests;
 
-[Collection(nameof(StreamingCollection))]
-public class SpeakModeTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
+[Collection(nameof(SpeechCollection))]
+public sealed class SpeakModeTest(SpeechCollection.AppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<SpeechCollection.AppHostFixture>(fixture, @out)
 {
     private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(30);
 
@@ -102,13 +103,22 @@ public class SpeakModeTest(AppHostFixture fixture, ITestOutputHelper @out)
         var heard = ReadMuxedFrames(listening, CancellationToken.None);
 
         // act
-        var stream = await Tester.Chats.StartEntryStream(Tester.Session, chatId, null, null, default);
+        var stream = await Tester.Chats.StartEntryStream(
+            Tester.Session, chatId, null, Languages.German, default);
         await Tester.Chats.AppendEntryStream(
-            Tester.Session, stream.Id, 0, "Can the room hear me speaking this?", default);
+            Tester.Session, stream.Id, 0, "Kann mich hier jemand sprechen hoeren?", default);
+        var entry = await ChatsBackend.GetEntry(stream.EntryId, CancellationToken.None);
 
-        // assert
+        // assert - more than a frame or two, because a mix whose synthesis failed still emits one
         var frames = await heard;
-        frames.Should().NotBeEmpty("a listener must hear a text entry the server speaks");
+        frames.Count.Should().BeGreaterThan(2, "a listener must hear the entry, not a lone frame");
+        // A speech stream carries no language suffix to read a voice off, so this is the only
+        // place the declared language can come from - and a real provider rejects it missing.
+        await TestWait.When(ct => {
+            FakeSpeechSynthesizer.SynthesizedLanguage(entry!.ContentStreamId)
+                .Should().Be(Languages.German, "it must be spoken in the language it was written in");
+            return Task.CompletedTask;
+        }, WaitTimeout);
 
         await Tester.Chats.FinishEntryStream(Tester.Session, stream.Id, default);
     }
@@ -125,7 +135,7 @@ public class SpeakModeTest(AppHostFixture fixture, ITestOutputHelper @out)
                 await foreach (var item in items.WithCancellation(cts.Token).ConfigureAwait(false)) {
                     if (item is MuxedAudioFrame frame)
                         frames.Add(frame);
-                    if (frames.Count >= 5)
+                    if (frames.Count >= 10)
                         break;
                 }
             }

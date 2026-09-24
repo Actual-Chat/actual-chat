@@ -20,13 +20,19 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
     // What DubVoiceAccents.ResolveVoice picks from Voices for a speaker who chose nothing (en-US → american)
     public const string DefaultVoiceId = "Adrian";
 
-    private static readonly ConcurrentDictionary<string, Unit> SynthesizedStreamIds = new();
+    private static readonly ConcurrentDictionary<string, Language> SynthesizedStreamIds = new();
 
     // Test hook, keyed by stream: lets a test assert that one particular stream was never spoken,
     // which is the only way to tell "declined to speak" from "spoke silence" - and unlike a global
     // counter it is not disturbed by another test's dub running in the background.
     public static bool WasSynthesized(string streamId)
         => SynthesizedStreamIds.ContainsKey(streamId);
+
+    // The language a real provider is asked for. A fake that ignores it hides the one thing that
+    // has to be right here: a speech stream has no language suffix to read a voice off.
+    public static Language? SynthesizedLanguage(string streamId)
+        => SynthesizedStreamIds.TryGetValue(streamId, out var language) ? language : null;
+
 
     private MomentClockSet Clocks { get; } = services.Clocks();
     private ILogger Log { get; } = services.LogFor<FakeSpeechSynthesizer>();
@@ -38,7 +44,7 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
         ChannelWriter<byte[]> pcm,
         CancellationToken cancellationToken = default)
     {
-        SynthesizedStreamIds[streamId] = default;
+        SynthesizedStreamIds[streamId] = options.Language;
         return Push(text, pcm, options.Listener, cancellationToken);
     }
 
