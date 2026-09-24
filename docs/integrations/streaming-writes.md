@@ -169,6 +169,101 @@ five per second no matter how fast you push, so a token-at-a-time loop costs
 you round trips and buys nothing. Batch a few tokens, or flush on a short timer
 — 50–100 ms is plenty.
 
+## Voice: streaming what you say
+
+The same lease, carrying sound. `start_voice_stream` →
+`append_voice_stream` → `finish_voice_stream` posts a voice message, and a
+listener hears it live rather than after you finish.
+
+An append carries audio, text, or both, and which of the three you send decides
+what happens to your message:
+
+| You send | Server runs | Result |
+|---|---|---|
+| text only (`start_message_stream`) | speech synthesis, for listeners | your words, read aloud in a generated voice |
+| audio only | nothing | a playable message with no transcript |
+| audio and text | nothing | your voice, and a transcript that is exactly your words |
+
+The third is the one to reach for if you have both. Neither recognition nor
+synthesis stands between what you produced and what arrives, so the transcript
+is not a guess at your words and the voice is not an approximation of yours.
+
+### The audio contract
+
+Ogg Opus, and **every packet must hold one 20 ms frame**. That is the format a
+live listener is played without re-encoding, so a 40 ms or 60 ms packet is
+rejected and takes the stream with it. Most encoders already default to 20 ms;
+the flags that force it are:
+
+```bash
+ffmpeg -i in.wav -c:a libopus -frame_duration 20 out.opus
+opusenc --framesize 20 in.wav out.opus
+```
+
+Send the bytes in order. A chunk may split an Ogg page anywhere — the server
+buffers the remainder until the bytes completing it arrive — so chunk by
+whatever size suits your transport, up to 1 MB decoded per call.
+
+### Pacing
+
+**Deliver at least as fast as the audio plays.** Someone is listening while it
+arrives, and audio that turns up slower than real time is a gap in the middle
+of a sentence. Faster is fine: the server holds what it has. At the 32 kbps a
+speech encoder typically produces, one 4 KB chunk per second is real time.
+
+### Reading the reply
+
+Every call returns `{ streamId, entryId, textOffset, audioBytes,
+audioDuration, isFinished }`.
+
+`audioDuration` is what the server **decoded**, not what you sent. If it stops
+growing while `audioBytes` keeps climbing, your audio is not being read — check
+the packet size first. This is the only signal that distinguishes a message
+that will play from one that will be silent.
+
+`entryId` is null until `finish_voice_stream` returns it: the entry is created
+by the audio pipeline once there is something to post, and a stream that
+carried neither audio nor words posts nothing and finishes with `entryId`
+still null.
+
+`textOffset` works exactly as `offset` does for a text stream, with the same
+retry story. Audio has no equivalent check — it is append-only, so a chunk you
+send twice is heard twice.
+
+### Language
+
+`start_voice_stream` takes a `language` (`"en-US"`, `"de-DE"`, …), as
+`start_message_stream` does. It is what listeners are offered a translation
+*from*; omit it and the server falls back to the chat's language, then to your
+own. Nothing reads your words on this path, so an undeclared message is one
+whose language the server can only guess at.
+
+### Example
+
+```python
+stream = mcp("start_voice_stream", chatId=chat_id, language="en-US")
+sid = stream["streamId"]
+
+# 32 kbps = 4000 bytes/s, so one chunk per second is real time
+for i, chunk in enumerate(chunks_of(ogg_bytes, 4000)):
+    reply = mcp("append_voice_stream",
+                streamId=sid,
+                textOffset=offset,
+                text=words_for(i),          # optional, but send it if you have it
+                audioBase64=b64encode(chunk).decode())
+    offset = reply["textOffset"]
+    assert reply["audioDuration"] > 0, "the server is not decoding this audio"
+    time.sleep(1.0)
+
+final = mcp("finish_voice_stream", streamId=sid)
+print(f"posted message {final['entryId']}, {final['audioDuration']:.1f}s of speech")
+```
+
+Send the audio for a passage before the text of it, or pass `audioOffset` —
+seconds into your own audio at the end of that text — so the transcript lines
+up with the sound for word-level seeking. A chunk with neither is pinned to
+however much audio has arrived, which is right if you are sending them together.
+
 ## The stream-capable path
 
 A .NET client talking to the Voxt RPC API can skip the lease entirely and hand
@@ -182,6 +277,7 @@ var entry = await chats.StreamEntry(
     session,
     ChatId.Parse(chatId),
     localId: null, // or your own recent message's LID, to rewrite it
+    language: null, // or the language you are writing in, e.g. Languages.German
     RpcStream.New(TextChunks()),
     cancellationToken);
 
@@ -205,4 +301,9 @@ and apply it as one ordinary edit.
 [IChats.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Api.Contracts/Chat/IChats.cs),
 [TextEntryStreamer.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Chat.Service/TextEntryStreamer.cs),
 [ChatEntryStreams.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Chat.Service/ChatEntryStreams.cs),
+[ChatVoiceStreams.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Chat.Service/ChatVoiceStreams.cs),
 [McpMessageTools.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Mcp/Tools/McpMessageTools.cs).
+
+The MCP server also carries a condensed version of all of this in its
+`instructions`, delivered to every client at initialize
+([McpServerInstructions.cs](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Mcp/Module/McpServerInstructions.cs)).

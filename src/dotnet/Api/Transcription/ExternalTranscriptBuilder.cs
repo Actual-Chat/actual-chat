@@ -7,12 +7,15 @@ namespace ActualChat.Transcription;
 /// Turns an external producer's text deltas into <see cref="TranscriptDiff"/>s and a time map.
 /// Offsets a producer omits are derived from the audio ingested so far.
 /// </summary>
-public sealed class ExternalTranscriptBuilder
+public sealed class ExternalTranscriptBuilder(Language? language = null)
 {
     // Producers round their own offsets; a fraction of a second past the audio is not a lie
     private const float MaxOffsetOvershoot = 0.5f;
 
     private readonly List<Vector2> _points = [new(0, 0)];
+    // Declared rather than detected: nothing here reads the words, and a transcript that names
+    // no language is one a listener is never offered a translation of.
+    private readonly Language[] _languages = language is { } l ? [l] : [];
 
     public Transcript Transcript { get; private set; } = Transcript.Empty;
 
@@ -30,9 +33,8 @@ public sealed class ExternalTranscriptBuilder
         if (!chunk.IsAppend)
             TruncatePointsTo(text.Length);
 
-
         AddPoint(text.Length, offset);
-        Transcript = new Transcript(text, new LinearMap(CollectionsMarshal.AsSpan(_points)), [])
+        Transcript = new Transcript(text, new LinearMap(CollectionsMarshal.AsSpan(_points)), _languages)
             { IsStable = chunk.IsStable };
         var diff = TranscriptDiff.New(Transcript, baseTranscript);
         return diff.IsNone ? null : diff;
