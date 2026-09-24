@@ -855,7 +855,14 @@ public partial class Chats(IServiceProvider services) : IChats
                 }
         }
 
-        await OfferToListeners(session, chat, textEntry, cancellationToken).ConfigureAwait(false);
+        // Best-effort: posting a message must not fail because nobody could be told to speak it.
+        // During a rolling deploy this call can also land on a node that predates SpeakText.
+        try {
+            await OfferToListeners(session, chat, textEntry, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to offer entry #{EntryId} to listeners", textEntry.Id);
+        }
         return textEntry;
     }
 
