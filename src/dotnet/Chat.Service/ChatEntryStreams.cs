@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using ActualChat.Streaming;
 using ActualChat.Mesh;
 
 namespace ActualChat.Chat;
@@ -14,6 +15,8 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
     private IServiceProvider Services { get; } = services;
     private TextEntryStreamer Streamer => field ??= Services.GetRequiredService<TextEntryStreamer>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
+    private IAudioStreamingBackend StreamingBackend
+        => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
     private IMaintenancesBackend Maintenances => field ??= Services.GetRequiredService<IMaintenancesBackend>();
     private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
     private ILogger Log => field ??= Services.LogFor(GetType());
@@ -58,6 +61,9 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
         try {
             var entry = await lease.EntryCreatedSource.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
             lease.EntryId = entry.Id;
+            // The id speech is served on, which the producer never sees - it is the entry's own
+            // content stream, not this lease's handle.
+            lease.ContentStreamId = entry.ContentStreamId;
         }
         catch {
             lease.Dispose();
@@ -79,17 +85,16 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
         }
 
         expiringLease.BumpExpiresAt(IdleTimeout).BeginExpire();
-        return lease.ToModel();
+        return await WithSpeechBacklog(lease, cancellationToken).ConfigureAwait(false);
     }
 
-    public virtual Task<ChatEntryStream> Append(
+    public virtual async Task<ChatEntryStream> Append(
         StreamId streamId,
         UserId userId,
         int offset,
         string text,
         CancellationToken cancellationToken)
     {
-        _ = cancellationToken;
         var expiringLease = GetOwnLease(streamId, userId);
         var lease = expiringLease.Value;
         lock (lease.Lock) {
@@ -98,23 +103,22 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
 
             // Same contract as Uploads_Append: a mismatched offset writes nothing and reports
             // where the server is, so a client that retried or lost a response can resume.
-            if (offset != lease.Offset)
-                return Task.FromResult(lease.ToModel());
+            if (offset == lease.Offset) {
+                if (lease.Offset + text.Length > Constants.Chat.MaxEntryTextLength)
+                    throw StandardError.Constraint(
+                        $"A message can hold up to {Constants.Chat.MaxEntryTextLength} characters.");
 
-            if (lease.Offset + text.Length > Constants.Chat.MaxEntryTextLength)
-                throw StandardError.Constraint(
-                    $"A message can hold up to {Constants.Chat.MaxEntryTextLength} characters.");
+                if (!text.IsNullOrEmpty()) {
+                    if (!lease.Chunks.Writer.TryWrite(text))
+                        throw StandardError.Constraint("This entry stream is already finished.");
 
-            if (!text.IsNullOrEmpty()) {
-                if (!lease.Chunks.Writer.TryWrite(text))
-                    throw StandardError.Constraint("This entry stream is already finished.");
-
-                lease.Offset += text.Length;
+                    lease.Offset += text.Length;
+                }
             }
         }
 
         expiringLease.BumpExpiresAt(IdleTimeout);
-        return Task.FromResult(lease.ToModel());
+        return await WithSpeechBacklog(lease, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<ChatEntryStream> Finish(
@@ -137,6 +141,21 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
     }
 
     // Private methods
+
+    // A producer that wants to be heard needs to know whether it is outrunning the voice reading
+    // it, and no constant can tell it: speaking rate depends on the language, the voice and the
+    // provider. Null means nothing is speaking this entry - nobody is listening.
+    private async Task<ChatEntryStream> WithSpeechBacklog(Lease lease, CancellationToken cancellationToken)
+    {
+        var contentStreamId = lease.ContentStreamId;
+        if (contentStreamId.IsNullOrEmpty())
+            return lease.ToModel();
+
+        var backlog = await StreamingBackend
+            .GetSpeechBacklog(StreamId.Parse(contentStreamId), cancellationToken)
+            .ConfigureAwait(false);
+        return lease.ToModel(backlog);
+    }
 
     private ExpiringEntry<Symbol, Lease> GetOwnLease(StreamId streamId, UserId userId)
     {
@@ -162,6 +181,7 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
 
         public Task<ChatEntry> StreamTask { get; set; } = null!;
         public ChatEntryId EntryId { get; set; }
+        public string ContentStreamId { get; set; } = "";
         public int Offset { get; set; }
         public bool IsCompleted { get; set; }
 
@@ -179,10 +199,10 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
                 TaskScheduler.Default);
         }
 
-        public ChatEntryStream ToModel()
+        public ChatEntryStream ToModel(TimeSpan? speechBacklog = null)
         {
             lock (Lock)
-                return new ChatEntryStream(Id, EntryId, Offset, IsCompleted);
+                return new ChatEntryStream(Id, EntryId, Offset, IsCompleted, speechBacklog);
         }
     }
 }

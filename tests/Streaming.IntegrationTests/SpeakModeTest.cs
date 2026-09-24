@@ -12,6 +12,9 @@ public sealed class SpeakModeTest(SpeechCollection.AppHostFixture fixture, ITest
     : SharedAppHostTestBase<SpeechCollection.AppHostFixture>(fixture, @out)
 {
     private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(30);
+    private const string TextRun =
+        "This is a long run of words that a voice has to say out loud one after another, "
+        + "which takes it a great deal longer than it took to write them down. ";
 
     private WebClientTester Tester => field ??= AppHost.NewWebClientTester(Out);
     private IAudioStreamingBackend StreamingBackend
@@ -63,6 +66,43 @@ public sealed class SpeakModeTest(SpeechCollection.AppHostFixture fixture, ITest
         // assert - routed to the dub path, so this stream was never spoken for
         FakeSpeechSynthesizer.WasSynthesized(dubStreamId.Value).Should().BeFalse(
             "only a producer that declared its stream text-only is spoken for");
+    }
+
+    [Fact]
+    public async Task ShouldTellAProducerHowFarBehindTheVoiceIs()
+    {
+        // No constant can tell a producer whether it is outrunning the voice reading it: speaking
+        // rate depends on the language, the voice and the provider. The server knows, so it says.
+
+        // arrange - listening first, so there is a voice to fall behind
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var live = AppHost.Services.GetRequiredService<ILiveAudioStreams>();
+        var listening = await live.GetListeningStream(
+            Tester.Session, chatId, Moment.EpochStart, null, CancellationToken.None);
+        var heard = ReadMuxedFrames(listening, CancellationToken.None);
+
+        // act - far more text than a voice can say in the time it takes to send it
+        var stream = await Tester.Chats.StartEntryStream(
+            Tester.Session, chatId, null, Languages.English, default);
+        var offset = 0;
+        for (var i = 0; i < 8; i++) {
+            var appended = await Tester.Chats.AppendEntryStream(
+                Tester.Session, stream.Id, offset, TextRun, default);
+            offset = appended.Offset;
+        }
+
+        // assert - once the listener is hearing it, the voice exists to be behind
+        var frames = await heard;
+        frames.Should().NotBeEmpty();
+        await TestWait.When(async ct => {
+            var appended = await Tester.Chats.AppendEntryStream(Tester.Session, stream.Id, offset, "", ct);
+            appended.SpeechBacklog.Should().NotBeNull("someone is listening, so something is speaking");
+            appended.SpeechBacklog!.Value.Should().BePositive(
+                "the producer wrote far more than the voice has had time to say");
+        }, WaitTimeout);
+
+        await Tester.Chats.FinishEntryStream(Tester.Session, stream.Id, default);
     }
 
     [Fact]

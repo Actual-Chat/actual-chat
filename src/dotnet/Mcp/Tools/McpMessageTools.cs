@@ -89,6 +89,10 @@ public sealed class McpMessageTools(IServiceProvider services)
     [Description("Appends text at `offset`, the number of characters the server already has. " +
         "Returns the offset after the call; if `offset` did not match the server's, nothing is " +
         "written and the current offset comes back, so a retried or lost call can resume from there. " +
+        "`speechBacklog` is how many seconds of speech a listener still has to hear before reaching " +
+        "what you just wrote - slow down while it grows, and ignore it while it is null, which means " +
+        "nobody is listening. It beats guessing a rate: how fast a voice speaks depends on the " +
+        "language, the voice and the provider. " +
         "A stream with no append for 90 seconds is finished for you with whatever arrived.")]
     public async Task<McpMessageStream> AppendMessageStream(
         [Description("Stream id from start_message_stream.")] string streamId,

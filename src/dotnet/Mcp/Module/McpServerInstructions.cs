@@ -20,11 +20,13 @@ public static class McpServerInstructions
           arrives over time, e.g. as you generate it. It appears immediately and fills in live,
           the way a transcript grows while someone speaks. Someone listening to the chat hears
           it in a synthesized voice.
-          If you want to be heard as well as read, write at speaking pace, which depends on
-          the language you declared: roughly 15 characters a second for English, 17 for
-          Russian, 6 for Japanese, 4 for Mandarin. Text sent faster than its language's rate
-          is spoken after it appears, by a gap that grows for as long as you outrun the
-          voice - pacing Mandarin at the English number outruns it threefold.
+          If you want to be heard as well as read, watch `speechBacklog` in the reply: the
+          seconds of speech a listener still has to hear before reaching what you just wrote.
+          Slow down while it grows; ignore it while it is null, which means nobody is
+          listening. Failing that, write at speaking pace for the language you declared -
+          roughly 15 characters a second for English, 17 for Russian, 6 for Japanese, 4 for
+          Mandarin - but the backlog is the real answer, because how fast a voice speaks
+          depends on the language, the voice and the provider.
         - start_voice_stream with audio only - you supply the sound. Nothing transcribes it, so
           the message carries no text.
         - start_voice_stream with audio and text - you supply both, and neither speech

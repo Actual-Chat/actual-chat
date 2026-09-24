@@ -179,7 +179,19 @@ that is spoken after it appears, and the gap grows for as long as you outrun
 the voice — writing English at 19 characters a second puts the voice four
 seconds behind over half a minute.
 
-**Speaking rate is per language, not universal.** A character carries far more
+**The server tells you how far behind the voice is.** Every reply carries
+`speechBacklog`: the seconds of speech a listener still has to hear before
+reaching what you just wrote. Slow down while it grows; it is null when nothing
+is speaking this entry, which is also the answer "nobody is listening, write as
+fast as you like". Prefer it to any rate you could look up — it is measured
+from the voice actually speaking, so it is right for the language, the voice and
+the provider, and it stays right when any of them change.
+
+Speech also starts as the text does rather than when the first listener asks,
+so long as someone is already in the room — the provider's start-up no longer
+lands on the first words.
+
+**If you cannot use the backlog, speaking rate is per language, not universal.** A character carries far more
 sound in a character-dense script, so the same number of characters is a very
 different amount of speech:
 

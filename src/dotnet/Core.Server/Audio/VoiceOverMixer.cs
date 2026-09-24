@@ -20,6 +20,13 @@ public sealed class VoiceOverMixer
     public bool HasDubAudio
         // A lone byte is not a sample: it only becomes one if a next chunk pairs it up
         => _dub.Length >= sizeof(short);
+
+    // Speech the synthesizer has already produced that the mix has not emitted yet. Read from
+    // another thread as a gauge, so it is a snapshot rather than a consistent read - which is all
+    // a pacing signal needs.
+    public TimeSpan BufferedDubDuration
+        => TimeSpan.FromSeconds(
+            (double)_dub.Length / sizeof(short) / Constants.Audio.PlaybackSampleRate);
     public bool IsDubSpeaking { get; private set; }
 
     public VoiceOverMixer(float duckGain, int holdFrameCount, int rampSampleCount)

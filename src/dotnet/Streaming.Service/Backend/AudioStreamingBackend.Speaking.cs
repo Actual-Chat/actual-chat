@@ -6,6 +6,32 @@ namespace ActualChat.Streaming;
 
 public partial class AudioStreamingBackend
 {
+    private readonly ConcurrentDictionary<StreamId, VoiceOverMix> _speechMixes = new();
+
+    public virtual Task PrewarmSpeech(StreamId streamId, CancellationToken cancellationToken)
+    {
+        if (_speechMixes.ContainsKey(streamId))
+            return Task.CompletedTask;
+
+        // Declared here rather than left to PushTextTranscript: starting early can outrun it, and
+        // the worker NewDub picks is cached - a stream that pre-warmed as a dub stays one.
+        _textOnlyStreams[streamId.BaseStreamId] = default;
+
+        // Detached: the caller is a producer pushing text, and it must not wait out a synthesizer
+        // start-up - the point of starting early is that nobody waits for it.
+        _ = BackgroundTask.Run(
+            () => EnsureDub(streamId, CancellationToken.None),
+            Log,
+            $"{nameof(PrewarmSpeech)} failed",
+            CancellationToken.None);
+        return Task.CompletedTask;
+    }
+
+    public virtual Task<TimeSpan?> GetSpeechBacklog(StreamId streamId, CancellationToken cancellationToken)
+        // Null rather than zero when nothing is speaking this stream: "nobody is listening, write as
+        // fast as you like" is a different answer from "the voice is keeping up".
+        => Task.FromResult(_speechMixes.TryGetValue(streamId, out var mix) ? mix.SpeechBacklog : (TimeSpan?)null);
+
     // Speaking a text entry is the mirror image of recording one: recording turns audio into text,
     // this turns text into audio. It shares RunDub's publishing but none of its translation
     // machinery - there is nothing to decide, translate, stabilize or skip a backlog of.
@@ -21,6 +47,8 @@ public partial class AudioStreamingBackend
         try {
             // No original: a text entry has no audio, so the mix is the synthesis alone
             mix = new VoiceOverMix(null, new DubActivity(), Clocks, Log);
+            // Registered so a producer can ask how far behind its voice is while it writes
+            _speechMixes[speechStreamId] = mix;
             mixTask = PublishMix(speechStreamId, mix, out memoizer, cancellationToken);
             await mix.WhenCaughtUp.WaitAsync(cancellationToken).ConfigureAwait(false);
             whenPublishedSource.TrySetResult();
@@ -71,6 +99,7 @@ public partial class AudioStreamingBackend
             Log.LogError(e, "RunSpeak: #{StreamId} failed", speechStreamId);
         }
         finally {
+            _speechMixes.TryRemove(speechStreamId, out _);
             text.Writer.TryComplete();
             if (synthesizeTask != null)
                 await synthesizeTask.SilentAwait(false);

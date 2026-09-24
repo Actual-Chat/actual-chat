@@ -41,6 +41,9 @@ public sealed class VoiceOverMix(
     private ILogger Log { get; } = log;
 
     public ChannelWriter<byte[]> DubPcm => _dubPcm.Writer;
+    // How far the voice is behind the text it was given: speech already synthesized and waiting to
+    // be emitted, because the mix emits at speaking rate however fast the synthesizer produced it.
+    public TimeSpan SpeechBacklog => _mixer.BufferedDubDuration;
     // Completes with the number of frames emitted so far once the frames the original had buffered
     // when Run started are replayed - from then on the mix follows the original live - or when Run ends
     public Task<int> WhenCaughtUp => _whenCaughtUpSource.Task;
