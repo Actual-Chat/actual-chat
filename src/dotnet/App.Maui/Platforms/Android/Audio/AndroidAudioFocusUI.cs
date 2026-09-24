@@ -11,7 +11,9 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     private MauiAudioFocusHandle? _handle;
     private CarAudioRoute _carAudioRoute = CarAudioRoute.Default;
     private int _isTrackingCarAudioRoute;
+    private CallAudioRoute? _callAudioRoute;
     public override bool IsCommunicationFocus => _focusHelper.IsCommunicationFocus;
+    public override bool CanRouteToEarpiece => _focusHelper.HasEarpiece;
 
     public AndroidAudioFocusUI(AppUIHub hub)
         : base(hub)
@@ -83,8 +85,33 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
         await _focusHelper.SelectBuiltinSpeaker(cancellationToken).ConfigureAwait(false);
     }
 
+    public override async Task SetCallAudioRoute(CallAudioRoute? route)
+    {
+        bool mustRenew;
+        using (var releaser = await OperationLock.Lock(CancellationToken.None).ConfigureAwait(false)) {
+            releaser.MarkLockedLocally();
+            var lastRoute = _callAudioRoute;
+            if (lastRoute == route)
+                return;
+
+            Log.LogInformation("SetCallAudioRoute: {Route}", route);
+            _callAudioRoute = route;
+            await _focusHelper.SetCallAudioRoute(route ?? default).ConfigureAwait(false);
+            // Only a call starting or ending changes the focus kind; a pick within a call just moves the device.
+            var carAudioRoute = Volatile.Read(ref _carAudioRoute);
+            mustRenew = _handle is not null
+                && GetFocusRequestKind(ActiveMode, carAudioRoute, lastRoute is not null)
+                != GetFocusRequestKind(ActiveMode, carAudioRoute, route is not null);
+        }
+        if (mustRenew)
+            await RenewHeldFocus().ConfigureAwait(false);
+    }
+
     public override AudioOutputKind? GetCurrentOutputKind()
         => _focusHelper.GetCurrentOutputKind();
+
+    public override AudioOutputKind? GetExternalOutputKind()
+        => _focusHelper.GetExternalOutputKind();
 
     // Protected/internal methods
 
@@ -92,7 +119,7 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     {
         // The route is read, never awaited, here: this runs under OperationLock.
         var carAudioRoute = Volatile.Read(ref _carAudioRoute);
-        var kind = GetFocusRequestKind(mode, carAudioRoute);
+        var kind = GetFocusRequestKind(mode, carAudioRoute, _callAudioRoute is not null);
         Log.LogInformation(
             "-> RequestAudioFocus, requested mode: '{Mode}', active handle: '{Handle}', "
             + "car route: {CarAudioRoute}, request: {Kind}",
@@ -131,7 +158,10 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
 
     // Private methods
 
-    private static FocusRequestKind GetFocusRequestKind(AudioFocusMode mode, CarAudioRoute route)
+    private static FocusRequestKind GetFocusRequestKind(
+        AudioFocusMode mode,
+        CarAudioRoute route,
+        bool isInCall)
     {
         // Under projection the projection link carries playback and the phone mic records, so
         // the communication route - an HFP virtual call the car answers by muting Android Auto -
@@ -144,6 +174,7 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
             AudioFocusMode.Recording when isProjecting => FocusRequestKind.ProjectedMedia,
             AudioFocusMode.Listening when isProjecting => FocusRequestKind.ProjectedMedia,
             AudioFocusMode.Recording => FocusRequestKind.Call,
+            AudioFocusMode.Listening or AudioFocusMode.Playback when isInCall => FocusRequestKind.Call,
             AudioFocusMode.Playback => FocusRequestKind.Playback,
             AudioFocusMode.Listening => FocusRequestKind.Listening,
             _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unsupported audio focus mode"),
@@ -211,9 +242,9 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
 
     private void OnOutputDevicesChanged()
     {
-        // Note: Audio routing is now handled internally by AudioFocusHelper's device router
-        // when devices change during active focus. This callback is kept for logging/monitoring.
+        // Routing follows the change inside AudioFocusHelper's device router while a focus is held.
         Log.LogInformation("-> OnOutputDevicesChanged. Active handle: {Handle}", _handle);
+        RaiseOutputDevicesChanged();
     }
 
     // Nested types

@@ -170,7 +170,7 @@ EKAVIAN = [
 KEEP_LATIN = [
     "WebAssembly", "reCAPTCHA", "Microsoft Edge", "Google Chrome", "Apple Safari",
     "Android Auto", "macOS", "Windows", "Android", "iOS", "Google", "Safari", "Chrome", "Edge",
-    "Telegram", "KLIPY", "GIF", "API", "URL", "SMS", "EXIF", "ID", "QR", "OK",
+    "Telegram", "Bluetooth", "KLIPY", "GIF", "API", "URL", "SMS", "EXIF", "ID", "QR", "OK",
     "emoji", "Emoji", "Cookie", "cookie",
     "Live Activities", "AI", "txt", "MB", "&nbsp;", "&ndash;", "Welcome", "DELETE", "Voxt",
     "OAuth", "Claude", "Cursor", "Webhook", "webhook",

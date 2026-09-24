@@ -190,3 +190,12 @@ body.touch-capable .full-screen-call-view .c-hints {
     @apply opacity-40;
     animation-play-state: paused;
 }
+
+/* Audio output menu (rendered by global MenuHost) */
+.call-audio-output-menu {
+    @apply flex-y min-w-[12rem];
+}
+.call-audio-output-menu .ac-menu-item.selected .ac-menu-icon > i,
+.call-audio-output-menu .ac-menu-item.selected .ac-menu-text {
+    @apply text-primary;
+}

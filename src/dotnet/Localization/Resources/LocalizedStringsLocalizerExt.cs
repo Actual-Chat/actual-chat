@@ -1814,6 +1814,10 @@ public static class LocalizedStringsLocalizerExt
         public string Call_IncomingVideo => l["Call_IncomingVideo"].Value;
         public string Call_Outgoing => l["Call_Outgoing"].Value;
         public string Call_InCall => l["Call_InCall"].Value;
+        public string Call_AudioOutputSpeaker => l["Call_AudioOutputSpeaker"].Value;
+        public string Call_AudioOutputPhone => l["Call_AudioOutputPhone"].Value;
+        public string Call_AudioOutputBluetooth => l["Call_AudioOutputBluetooth"].Value;
+        public string Call_AudioOutputHeadphones => l["Call_AudioOutputHeadphones"].Value;
         public string Call_JoinVideo => l["Call_JoinVideo"].Value;
         public string Call_VideoPreview => l["Call_VideoPreview"].Value;
         public string Call_CameraIsOff => l["Call_CameraIsOff"].Value;
