@@ -88,6 +88,9 @@ public static partial class Constants
         // The cap a lease can live under even while it keeps being fed, so a stuck producer
         // can't hold an entry open forever.
         public static readonly TimeSpan MaxEntryStreamDuration = TimeSpan.FromMinutes(30);
+        // An Ogg Opus utterance at ~32 kbps; well above any plausible single message
+        public const int MaxVoiceStreamAudioBytes = 16 * 1024 * 1024;
+        public const int MaxVoiceStreamChunkBytes = 1024 * 1024;
         // 2x the editor's large-paste threshold, which is per paste rather than per message
         public const int MaxEntryTextLength = 64 * 1024;
         public const int MaxQuotedTextLength = 1024;

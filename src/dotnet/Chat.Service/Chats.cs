@@ -26,6 +26,8 @@ public partial class Chats(IServiceProvider services) : IChats
     private TextEntryStreamer TextEntryStreamer => field ??= services.GetRequiredService<TextEntryStreamer>();
     private IChatEntryStreamsBackend EntryStreamsBackend
         => field ??= services.GetRequiredService<IChatEntryStreamsBackend>();
+    private IChatVoiceStreamsBackend VoiceStreamsBackend
+        => field ??= services.GetRequiredService<IChatVoiceStreamsBackend>();
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
@@ -550,6 +552,54 @@ public partial class Chats(IServiceProvider services) : IChats
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         return await EntryStreamsBackend
+            .Finish(streamId, account.Id, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public virtual async Task<ChatVoiceStream> StartVoiceStream(
+        Session session,
+        ChatId chatId,
+        long? repliedEntryLid,
+        CancellationToken cancellationToken)
+    {
+        ThrowIfPlaceRootChat(chatId);
+        await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Permissions.Require(ChatPermissions.Write);
+        chat.Rules.Permissions.Require(ChatPermissions.WriteAudio);
+        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        return await VoiceStreamsBackend
+            .Start(chatId, session, account.Id, repliedEntryLid, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public virtual async Task<ChatVoiceStream> AppendVoiceStream(
+        Session session,
+        StreamId streamId,
+        int textOffset,
+        string? text,
+        byte[]? audio,
+        double? audioOffset,
+        CancellationToken cancellationToken)
+    {
+        if (textOffset < 0)
+            throw StandardError.Constraint("Offset cannot be negative.");
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        return await VoiceStreamsBackend
+            .Append(streamId, account.Id, textOffset, text, audio, audioOffset, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public virtual async Task<ChatVoiceStream> FinishVoiceStream(
+        Session session,
+        StreamId streamId,
+        CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        return await VoiceStreamsBackend
             .Finish(streamId, account.Id, cancellationToken)
             .ConfigureAwait(false);
     }
