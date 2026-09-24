@@ -52,14 +52,10 @@ public class ActivitiesUITest: TestBase
         activities.State.Value.Should().Be(AppActivityState.Foreground);
 
         backgroundStateTracker.SetBackgroundState(true);
-        await activities.State.Computed
-            .When(x => x == AppActivityState.BackgroundIdle)
-            .WaitAsync(TimeSpan.FromSeconds(2));
+        await WhenState(activities, AppActivityState.BackgroundIdle);
 
         activities.SetIsActiveInBackground(true);
-        await activities.State.Computed
-            .When(x => x == AppActivityState.BackgroundActive)
-            .WaitAsync(TimeSpan.FromSeconds(2));
+        await WhenState(activities, AppActivityState.BackgroundActive);
     }
 
     [Fact]
@@ -71,31 +67,21 @@ public class ActivitiesUITest: TestBase
         var activities = (TestActivitiesUI)ScopedServices.GetRequiredService<ActivitiesUI>();
         var source = (TestActivitySource)ScopedServices.GetRequiredService<TestActivitySource>();
         activities.Start();
-        await activities.State.Computed
-            .When(x => x == AppActivityState.BackgroundIdle)
-            .WaitAsync(TimeSpan.FromSeconds(2));
+        await WhenState(activities, AppActivityState.BackgroundIdle);
 
         // Any activity in the set triggers BackgroundActive - here a location share
         source.Set(new LocationActivity(TestChat));
-        await activities.State.Computed
-            .When(x => x == AppActivityState.BackgroundActive)
-            .WaitAsync(TimeSpan.FromSeconds(2));
+        await WhenState(activities, AppActivityState.BackgroundActive);
 
         source.Set(null);
-        await activities.State.Computed
-            .When(x => x == AppActivityState.BackgroundIdle)
-            .WaitAsync(TimeSpan.FromSeconds(2));
+        await WhenState(activities, AppActivityState.BackgroundIdle);
 
         // The audio-intent hook alone still triggers BackgroundActive
         activities.SetAudioActivity(true);
-        await activities.State.Computed
-            .When(x => x == AppActivityState.BackgroundActive)
-            .WaitAsync(TimeSpan.FromSeconds(2));
+        await WhenState(activities, AppActivityState.BackgroundActive);
 
         activities.SetAudioActivity(false);
-        await activities.State.Computed
-            .When(x => x == AppActivityState.BackgroundIdle)
-            .WaitAsync(TimeSpan.FromSeconds(2));
+        await WhenState(activities, AppActivityState.BackgroundIdle);
     }
 
     [Fact]
@@ -108,9 +94,12 @@ public class ActivitiesUITest: TestBase
 
         var location = new LocationActivity(TestChat with { ExtraChatCount = 1 });
         source.Set(location);
-        var cSet = await Computed.Capture(() => activities.GetActivitySet(CancellationToken.None));
-        cSet = await cSet.When(x => !x.IsEmpty).WaitAsync(TimeSpan.FromSeconds(2));
-        cSet.Value.Primary.Should().Be(location);
+        var set = await TestWait.When(async ct => {
+            var current = await activities.GetActivitySet(ct);
+            current.IsEmpty.Should().BeFalse("the source has an activity");
+            return current;
+        });
+        set.Primary.Should().Be(location);
     }
 
     [Fact]
@@ -148,6 +137,17 @@ public class ActivitiesUITest: TestBase
 
         stateChangeCount.Should().BeGreaterThanOrEqualTo(2);
     }
+
+    // Private methods
+
+    private static Task WhenState(
+        ActivitiesUI activities,
+        AppActivityState expected,
+        [CallerFilePath] string callerFilePath = "",
+        [CallerLineNumber] int callerLine = 0)
+        => TestWait.When(
+            async ct => (await activities.State.Use(ct)).Should().Be(expected),
+            callerFilePath: callerFilePath, callerLine: callerLine);
 }
 
 public class TestBackgroundStateTracker : BackgroundStateTracker

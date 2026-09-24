@@ -2600,18 +2600,16 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         invite.Ack.Should().BeNull();
     }
 
-    private static async Task WaitForParticipantPresence(
-        ILiveSessionsBackend backend, ChatId chatId, AuthorId authorId, bool isPresent)
-    {
+    private static Task WaitForParticipantPresence(
+        ILiveSessionsBackend backend, ChatId chatId, AuthorId authorId, bool isPresent,
+        [CallerFilePath] string callerFilePath = "",
+        [CallerLineNumber] int callerLine = 0)
         // GetConsolidatedParticipants carries a real ~200ms ConsolidationDelay before an outside
-        // observer sees a presence change land - poll rather than assert on a still-stale snapshot.
-        for (var attempt = 0; attempt < 30; attempt++) {
-            var participants = await backend.ListParticipants(chatId, default);
-            if (participants.Contains(authorId) == isPresent)
-                return;
-            await Task.Delay(100);
-        }
-    }
+        // observer sees a presence change land, so a one-shot read can still be stale
+        => TestWait.When(async ct => {
+            var participants = await backend.ListParticipants(chatId, ct);
+            participants.Contains(authorId).Should().Be(isPresent, "the presence change must land");
+        }, callerFilePath: callerFilePath, callerLine: callerLine);
 
     private static async Task ObserveUserCall(ICallsBackend callsBackend, UserId userId, CancellationToken ct)
     {

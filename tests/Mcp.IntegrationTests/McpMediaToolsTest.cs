@@ -160,13 +160,13 @@ public class McpMediaToolsTest(McpCollection.AppHostFixture fixture, ITestOutput
         // act
         var media = await WaitFor(
             () => CallTool<McpContentPage<McpMediaItem>>(client, "list_media", new { chatId = chatId.Value }),
-            p => p.Items.Length > 0, attempts: 300);
+            p => p.Items.Length > 0, TimeSpan.FromSeconds(30));
         var files = await WaitFor(
             () => CallTool<McpContentPage<McpFileItem>>(client, "list_files", new { chatId = chatId.Value }),
-            p => p.Items.Length > 0, attempts: 300);
+            p => p.Items.Length > 0, TimeSpan.FromSeconds(30));
         var links = await WaitFor(
             () => CallTool<McpContentPage<McpLinkItem>>(client, "list_links", new { chatId = chatId.Value }),
-            p => p.Items.Length > 0, attempts: 300);
+            p => p.Items.Length > 0, TimeSpan.FromSeconds(30));
 
         // assert
         media.Items.Should().ContainSingle().Which.FileName.Should().Be("shot.png");
