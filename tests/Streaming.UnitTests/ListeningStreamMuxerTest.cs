@@ -335,12 +335,16 @@ public class ListeningStreamMuxerTest
             _streamByAuthor = StreamByAuthorField.GetValue(_muxer)!;
 
             // Initialize backing fields for DI properties used by TryRegister
-            var servicesBackingField = MuxerType.GetField("<Services>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            var servicesBackingField = MuxerType.GetField(
+                "<Services>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance)!;
             servicesBackingField.SetValue(_muxer, services);
 
-            var logBackingField = MuxerType.GetField("<Log>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
+            var logBackingField = MuxerType.GetField(
+                "<Log>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
             if (logBackingField != null)
-                logBackingField.SetValue(_muxer, services.GetRequiredService<ILoggerFactory>().CreateLogger<ListeningStreamMuxer>());
+                logBackingField.SetValue(
+                    _muxer,
+                    services.GetRequiredService<ILoggerFactory>().CreateLogger<ListeningStreamMuxer>());
         }
 
         // Mirrors ProcessStream: registered by id before GetStream, merged per author after it, and
