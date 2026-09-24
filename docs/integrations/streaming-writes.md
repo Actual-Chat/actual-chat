@@ -21,6 +21,9 @@ editing one message repeatedly — reads as a bot either way.
 | Can hold a stream open (a .NET client over the Voxt RPC API) | `IChats.StreamEntry` | hand it an `RpcStream<string>`, await one result |
 | Cannot (MCP, plain HTTP) | `start_message_stream` → `append_message_stream` → `finish_message_stream` | one call per piece, each returns where the server is |
 
+Voice mirrors both: `IChats.StreamVoice` for the first, `start_voice_stream` →
+`append_voice_stream` → `finish_voice_stream` for the second.
+
 Both end in the same place: one ordinary message, authored by you, with the
 full text as its content. Pick the first if you can — it is one call and the
 server handles pacing. Pick the second when a request/response protocol is all
@@ -308,7 +311,32 @@ async IAsyncEnumerable<string> TextChunks()
 
 One call, one result: the finished `ChatEntry`. Pacing, finalization on failure
 and the maintenance checks are the same as above — you just don't have to carry
-an offset. Unlike the MCP path this one *does* accept an edit of a message
+an offset.
+
+Voice has the same shape. `IChats.StreamVoice` takes one stream of
+`VoiceStreamPart`, each carrying Ogg Opus bytes, the text they cover, or both:
+
+```csharp
+var entry = await chats.StreamVoice(
+    session,
+    ChatId.Parse(chatId),
+    repliedEntryLid: null,
+    language: Languages.English,
+    RpcStream.New(Parts()),
+    cancellationToken);
+
+async IAsyncEnumerable<VoiceStreamPart> Parts()
+{
+    await foreach (var (audio, text) in SomeProducer())
+        yield return new VoiceStreamPart(audio, text, AudioOffset: null);
+}
+```
+
+One stream rather than two on purpose: the order is what pins the transcript to
+the sound, so the words for a passage travel with the audio that carries them.
+It returns the posted message, or null if the producer sent neither audio nor
+words. Everything else — the 20 ms packet rule, sending no slower than real
+time — applies unchanged; only the offset bookkeeping goes away. Unlike the MCP path this one *does* accept an edit of a message
 older than 15 minutes: it holds the whole stream, so it can collect the text
 and apply it as one ordinary edit.
 

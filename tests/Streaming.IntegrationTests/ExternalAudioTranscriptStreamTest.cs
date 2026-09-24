@@ -13,6 +13,7 @@ public sealed class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, IT
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan MinAudioDuration = TimeSpan.FromSeconds(1);
     // Comfortably past Constants.Audio.FrameSilenceTimeout, which governs a microphone
     private static readonly TimeSpan FirstFrameDelay = TimeSpan.FromSeconds(4);
 
@@ -75,6 +76,37 @@ public sealed class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, IT
             entries.Should().Contain(e => e.HasAudio,
                 "a producer that sent audio meant to post something playable");
         }, WaitTimeout);
+    }
+
+    [Fact]
+    public async Task ShouldPostAVoiceMessageFromOneHeldStream()
+    {
+        // The stream-capable path: a caller that can hold a stream open shouldn't have to carry
+        // offsets and chunk base64 the way an MCP client must.
+
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();
+        var ogg = await File.ReadAllBytesAsync(
+            (new FilePath(Environment.CurrentDirectory) & "data" & "soniox-tts-sample.opus").Value);
+
+        // act
+        var entry = await Tester.Chats.StreamVoice(
+            Tester.Session,
+            chatId,
+            null,
+            Languages.English,
+            new RpcStream<VoiceStreamPart>(Parts(ogg)),
+            CancellationToken.None);
+
+        // assert
+        entry.Should().NotBeNull("a held stream posts the message it carried");
+        entry!.Content.Should().Be("Spoken in one go");
+        entry.HasAudio.Should().BeTrue();
+        entry.Duration.Should().BeGreaterThan(MinAudioDuration.TotalSeconds,
+            "the whole clip must arrive, not just its first chunk");
+        _ = await chatsBackend.GetEntry(entry.Id, CancellationToken.None);
     }
 
     [Fact]
@@ -169,6 +201,16 @@ public sealed class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, IT
             streamId, Tester.Session, chatId,
             CpuClock.Instance.Now.EpochOffset.TotalSeconds, null);
         return (backend, chatsBackend, record);
+    }
+
+    private static async IAsyncEnumerable<VoiceStreamPart> Parts(byte[] ogg)
+    {
+        const int chunkSize = 4 * 1024;
+        for (var offset = 0; offset < ogg.Length; offset += chunkSize) {
+            var chunk = ogg[offset..Math.Min(offset + chunkSize, ogg.Length)];
+            yield return new VoiceStreamPart(chunk, offset == 0 ? "Spoken in one go" : null, null);
+            await Task.Yield();
+        }
     }
 
     private static async IAsyncEnumerable<AudioFrame> WithLeadingSilence(
