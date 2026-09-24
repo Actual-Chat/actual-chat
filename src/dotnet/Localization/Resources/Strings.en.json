@@ -248,8 +248,10 @@
   // Integrations — chat/place settings and Settings → API & Apps: outgoing web hooks
   "Integrations_Title": "Integrations",
   "Integrations_Add": "Add integration",
-  "Integrations_Empty": "No integrations yet. Outgoing webhooks send this chat's events to a URL you choose.",
-  "Integrations_PersonalEmpty": "No webhooks yet. A personal webhook sends your notifications and the chats you pick to a URL you choose.",
+  "Integrations_EmptyTitle": "No integrations yet",
+  "Integrations_EmptyText": "Outgoing webhooks send this chat's events to a URL you choose.",
+  "Integrations_PersonalEmptyTitle": "No webhooks yet",
+  "Integrations_PersonalEmptyText": "A personal webhook sends your notifications and the chats you pick to a URL you choose.",
   "Integrations_Outgoing": "Outgoing webhook",
   "Integrations_OutgoingHint": "Send events to a URL",
   "Integrations_Incoming": "Incoming webhook",

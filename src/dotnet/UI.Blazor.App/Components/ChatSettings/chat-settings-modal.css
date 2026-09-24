@@ -23,13 +23,7 @@ body.narrow .edit-settings-modal.narrow-view__modal__position-stretch:has(.chat-
     @apply overflow-hidden;
 }
 .chat-settings-container > .tile-item {
-    @apply relative;
     @apply rounded-lg;
-}
-.chat-settings-container > .tile-item:not(:first-child)::before {
-    @apply content-empty;
-    @apply absolute left-2 right-2 -top-px;
-    @apply border-t border-separator;
 }
 
 .edit-place-settings-modal .c-panel-content,
@@ -159,7 +153,7 @@ body.hoverable .chat-settings-container .tile-item:hover {
     @apply whitespace-nowrap;
 }
 .tile-item.item-integrations .tile-item-right i {
-    @apply -ml-2;
+    @apply -mr-2;
 }
 
 .chat-integrations,

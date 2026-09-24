@@ -11,16 +11,17 @@
 
 <TileTopic Topic="@(isPersonal ? L.Settings_Webhooks : L.Integrations_Title)"/>
 
-<ButtonTile Class="btn-primary" Filled="true" Click="@OnAddClick">
-    <Content>@L.Integrations_Add</Content>
-</ButtonTile>
+@if (ShowAddButton) {
+    <ButtonTile Class="btn-primary" Filled="true" Click="@OnAddClick">
+        <Content>@L.Integrations_Add</Content>
+    </ButtonTile>
+}
 
 <Tile Class="web-hook-tile">
     @if (m.Rows.Count == 0) {
         <TileItem IsHoverable="false">
-            <Content>
-                <span class="c-empty">@(isPersonal ? L.Integrations_PersonalEmpty : L.Integrations_Empty)</span>
-            </Content>
+            <Content>@(isPersonal ? L.Integrations_PersonalEmptyTitle : L.Integrations_EmptyTitle)</Content>
+            <Caption>@(isPersonal ? L.Integrations_PersonalEmptyText : L.Integrations_EmptyText)</Caption>
         </TileItem>
     } else {
         @foreach (var row in m.Rows) {
@@ -39,6 +40,7 @@
 @code {
     [Parameter, EditorRequired] public WebHookScope Scope { get; set; }
     [Parameter, EditorRequired] public string ScopeId { get; set; } = "";
+    [Parameter] public bool ShowAddButton { get; set; } = true;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {

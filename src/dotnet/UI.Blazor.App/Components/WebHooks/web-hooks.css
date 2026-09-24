@@ -40,7 +40,6 @@
 .web-hook-detail .c-failing {
     @apply text-danger;
 }
-.web-hook-tile .c-empty,
 .web-hook-delivery-tile .c-empty {
     @apply text-sm text-03;
     @apply whitespace-normal;

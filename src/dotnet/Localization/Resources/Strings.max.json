@@ -248,8 +248,10 @@
   // Integrations — chat/place settings and Settings → API & Apps: outgoing web hooks
   "Integrations_Title": "Entegrasyonlar",
   "Integrations_Add": "Ajouter une intégration",
-  "Integrations_Empty": "Pas encore d'intégrations. Les webhooks sortants envoient les événements de cette discussion vers une URL de votre choix.",
-  "Integrations_PersonalEmpty": "Noch keine Webhooks. Ein persönlicher Webhook sendet Ihre Benachrichtigungen und die von Ihnen gewählten Chats an eine URL Ihrer Wahl.",
+  "Integrations_EmptyTitle": "Pas encore d'intégrations",
+  "Integrations_EmptyText": "Les webhooks sortants envoient les événements de cette discussion vers une URL de votre choix.",
+  "Integrations_PersonalEmptyTitle": "Noch keine Webhooks",
+  "Integrations_PersonalEmptyText": "Ein persönlicher Webhook sendet Ihre Benachrichtigungen und die von Ihnen gewählten Chats an eine URL Ihrer Wahl.",
   "Integrations_Outgoing": "Ausgehender Webhook",
   "Integrations_OutgoingHint": "Envoyer des événements vers une URL",
   "Integrations_Incoming": "Webhook przychodzący",
