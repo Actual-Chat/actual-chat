@@ -34,7 +34,7 @@ describe('onboarding Back', () => {
         await dismissCookieConsent(page);
         await page.evaluate(async (phone) => {
             /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access,
-               @typescript-eslint/no-unsafe-call */
+               @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment */
             const debugUI = (window as any).debugUI;
             await debugUI.signIn(phone, { skipOnboarding: false, skipBubbles: false });
             debugUI.resetOnboarding(true);
