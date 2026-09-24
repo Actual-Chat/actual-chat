@@ -49,7 +49,22 @@ public static class ImageSizeEstimator
             : new Size2D(Math.Max(1, (int)(size.Width * scale)), Math.Max(1, (int)(size.Height * scale)));
     }
 
-    public static string Format(long bytes)
+    // Unknown source dimensions (an unconverted HEIC on Chromium): assume the source fills the budget,
+    // so the resize row can still show an "up to" figure instead of giving up on a size entirely
+    public static long EstimateAtBudget(long sourceBytes, string contentType, ImageQualityBudget budget)
+    {
+        var targetPixels = (double?)budget.MaxPixels ?? 0;
+        if (targetPixels <= 0)
+            return sourceBytes;
+        if (!TryGetFormatMultiplier(contentType, out var multiplier))
+            return (long)(PixelsOnlyK * Math.Pow(targetPixels, PixelsOnlyA));
+
+        var bpp = sourceBytes / targetPixels * multiplier;
+        var estimate = RecodeK * sourceBytes * multiplier * Math.Pow(bpp, RecodeC);
+        return (long)Math.Min(estimate, sourceBytes * multiplier);
+    }
+
+    public static string Format(long bytes, bool isApprox)
     {
         var mb = bytes / 1_000_000.0;
         var rounded = mb switch {
@@ -57,7 +72,7 @@ public static class ImageSizeEstimator
             < 10 => Math.Round(mb * 2, MidpointRounding.AwayFromZero) / 2,
             _ => Math.Round(mb),
         };
-        return $"~{rounded.ToString("0.#", null)} MB";
+        return $"{(isApprox ? "~" : "")}{rounded.ToString("0.#", CultureInfo.InvariantCulture)}MB";
     }
 
     // Private methods

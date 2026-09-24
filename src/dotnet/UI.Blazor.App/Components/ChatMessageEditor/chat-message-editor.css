@@ -480,9 +480,10 @@ body.hoverable .mqs-item:hover {
 }
 .mqs-item-spec {
     @apply text-caption text-03;
+    @apply text-left;
 }
 .mqs-item-size {
-    @apply flex-none self-center;
+    @apply flex-none self-start;
     @apply text-caption text-03;
 }
 .c-remove-btn.btn {
