@@ -139,6 +139,50 @@ public sealed class SpeakModeTest(SpeechCollection.AppHostFixture fixture, ITest
     }
 
     [Fact]
+    public async Task ShouldStartNearTheLiveEdgeForSomeoneWhoJoinsLate()
+    {
+        // The whole message is already written before anyone listens, so every word of it is a
+        // candidate to be skipped - and the floor is the only reason anything is spoken at all.
+
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var stream = await Tester.Chats.StartEntryStream(
+            Tester.Session, chatId, null, Languages.English, default);
+        var offset = 0;
+        var written = "";
+        for (var i = 1; i <= 8; i++) {
+            var run = $"Run {i}. {TextRun}";
+            var appended = await Tester.Chats.AppendEntryStream(
+                Tester.Session, stream.Id, offset, run, default);
+            offset = appended.Offset;
+            written += run;
+        }
+        var entry = await ChatsBackend.GetEntry(stream.EntryId, CancellationToken.None);
+
+        // act - join only now
+        var live = AppHost.Services.GetRequiredService<ILiveAudioStreams>();
+        var listening = await live.GetListeningStream(
+            Tester.Session, chatId, Moment.EpochStart, null, CancellationToken.None);
+        var heard = ReadMuxedFrames(listening, CancellationToken.None);
+
+        // assert
+        var frames = await heard;
+        frames.Should().NotBeEmpty("the floor guarantees there is something left to hear");
+        await TestWait.When(ct => {
+            var spoken = FakeSpeechSynthesizer.SpokenText(entry!.ContentStreamId);
+            spoken.Should().NotBeEmpty();
+            written.Should().Contain(spoken, "only what was written is spoken");
+            written.IndexOf(spoken, StringComparison.Ordinal).Should().BeGreaterThan(0,
+                "the joiner starts near the live edge, not at the first word");
+            spoken.Should().NotContain("Run 1.", "what came before is read rather than heard");
+            return Task.CompletedTask;
+        }, WaitTimeout);
+
+        await Tester.Chats.FinishEntryStream(Tester.Session, stream.Id, default);
+    }
+
+    [Fact]
     public async Task ShouldOfferATextEntryAsSomethingToJoin()
     {
         // Registering the audio makes it discoverable to someone already listening, but nothing

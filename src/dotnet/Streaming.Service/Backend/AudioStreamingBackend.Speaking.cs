@@ -145,8 +145,20 @@ public partial class AudioStreamingBackend
             // is fed to it directly, where a dub would feed the translation of it
             var stabilizer = new DubStabilizer();
             var spoken = Transcript.Empty;
+            // A listener who arrives mid-message starts near the live edge: hearing it from the
+            // first word would leave them that far behind the writer for the rest of it, and
+            // synthesized speech is never persisted for them to catch up on afterwards. The floor
+            // is what keeps that from becoming silence - a short message is spoken in full, and a
+            // long one is joined a few seconds back rather than at its last syllable.
+            var buffered = sourceMemoizer.ProducedCount;
+            var index = 0;
             await foreach (var diff in sourceMemoizer.Replay(cancellationToken).ConfigureAwait(false)) {
                 spoken += diff;
+                if (++index == buffered && buffered > 0) {
+                    var skip = GetSkipLength(spoken.Text, spokenLanguage);
+                    if (skip > 0)
+                        stabilizer.Next(spoken with { Text = spoken.Text[..skip] });
+                }
                 if (stabilizer.Next(spoken) is { } chunk)
                     await text.Writer.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
             }
@@ -165,6 +177,20 @@ public partial class AudioStreamingBackend
 
     // Replayed rather than folded from the loop below: the language is needed before the first
     // chunk is spoken, and a memoized stream can be enumerated again without consuming it.
+    // What to leave unspoken of a message already written when the first listener arrived.
+    internal static int GetSkipLength(string text, Language language)
+    {
+        var floor = SpeechRate.ToCharCount(language, Constants.Audio.MinSpokenTailDuration);
+        var skip = text.Length - floor;
+        if (skip <= 0)
+            return 0; // Short enough to speak in full
+
+        // Start at a word boundary, so the first thing heard is not half a word. A script that
+        // does not space its words has none to find, and starts where the floor puts it.
+        var boundary = text.IndexOf(' ', skip);
+        return boundary < 0 ? skip : boundary + 1;
+    }
+
     private static async Task<Language?> GetSpokenLanguage(
         AsyncMemoizer<TranscriptDiff> sourceMemoizer,
         CancellationToken cancellationToken)
