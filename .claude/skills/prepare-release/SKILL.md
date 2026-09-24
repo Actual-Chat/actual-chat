@@ -250,7 +250,7 @@ RoboKitty server over plain JSON-RPC, authed with `ActualChat_RoboKitty_API_Key`
 jq -n --rawfile t /tmp/rk-text.txt \
   '{jsonrpc:"2.0",id:2,method:"tools/call",params:{name:"post_message",
     arguments:{chatId:"s-pmMsV1UVKG-dCKQXnYpX9",text:$t}}}' > /tmp/rk-body.json
-curl -s -X POST "https://voxt.ai/api/mcp" \
+curl -s -X POST "https://voxt.ai/mcp" \
   -H "Authorization: Bearer ${ActualChat_RoboKitty_API_Key}" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \

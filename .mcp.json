@@ -29,7 +29,7 @@
     },
     "voxt-robokitty": {
       "type": "http",
-      "url": "https://voxt.ai/api/mcp",
+      "url": "https://voxt.ai/mcp",
       "headers": {
         "Authorization": "Bearer ${ActualChat_RoboKitty_API_Key}"
       }
