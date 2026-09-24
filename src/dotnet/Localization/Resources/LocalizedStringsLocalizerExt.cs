@@ -140,10 +140,10 @@ public static class LocalizedStringsLocalizerExt
         public string ListeningLinger_5Seconds => l["ListeningLinger_5Seconds"].Value;
         public string ListeningLinger_10Seconds => l["ListeningLinger_10Seconds"].Value;
         public string ListeningLinger_30Seconds => l["ListeningLinger_30Seconds"].Value;
-        public string Transcription_TranslatedVoiceTopic => l["Transcription_TranslatedVoiceTopic"].Value;
+        public string Transcription_HowOthersHearYouTopic => l["Transcription_HowOthersHearYouTopic"].Value;
         public string Transcription_TranslatedVoice => l["Transcription_TranslatedVoice"].Value;
         public string Transcription_TranslatedVoiceCaption => l["Transcription_TranslatedVoiceCaption"].Value;
-        public string Transcription_SpokenTextTopic => l["Transcription_SpokenTextTopic"].Value;
+        public string Transcription_WhatYouHearTopic => l["Transcription_WhatYouHearTopic"].Value;
         public string Transcription_SpokenText => l["Transcription_SpokenText"].Value;
         public string Transcription_SpokenTextCaption => l["Transcription_SpokenTextCaption"].Value;
         public string Transcription_DubVoice => l["Transcription_DubVoice"].Value;

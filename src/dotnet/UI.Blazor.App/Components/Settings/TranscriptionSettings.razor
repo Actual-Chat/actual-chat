@@ -79,10 +79,10 @@
     <ListeningLingerSettings/>
 </Tile>
 
-<TileTopic Topic="@L.Transcription_SpokenTextTopic"/>
+<TileTopic Topic="@L.Transcription_WhatYouHearTopic"/>
 <Tile>
     <TileItem Click="@OnToggleSpokenText">
-        <Icon><i class="icon-listen text-2xl"></i></Icon>
+        <Icon><i class="icon-volume-up-2 text-2xl"></i></Icon>
         <Content>@L.Transcription_SpokenText</Content>
         <Caption>@L.Transcription_SpokenTextCaption</Caption>
         <Right>
@@ -90,12 +90,8 @@
                     IsCheckedChanged="@(_ => OnToggleSpokenText())"/>
         </Right>
     </TileItem>
-</Tile>
-
-<TileTopic Topic="@L.Transcription_TranslatedVoiceTopic"/>
-<Tile>
     <TileItem Click="@OnToggleTranslatedVoice">
-        <Icon><i class="icon-listen text-2xl"></i></Icon>
+        <Icon><i class="icon-translation text-2xl"></i></Icon>
         <Content>@L.Transcription_TranslatedVoice</Content>
         <Caption>@L.Transcription_TranslatedVoiceCaption</Caption>
         <Right>
@@ -103,6 +99,10 @@
                     IsCheckedChanged="@(_ => OnToggleTranslatedVoice())"/>
         </Right>
     </TileItem>
+</Tile>
+
+<TileTopic Topic="@L.Transcription_HowOthersHearYouTopic"/>
+<Tile>
     @if (m.OwnVoice is { } ownVoice) {
         <TileItem Click="@OnToggleOwnVoice">
             <Icon><i class="icon-voice-01 text-2xl"></i></Icon>
