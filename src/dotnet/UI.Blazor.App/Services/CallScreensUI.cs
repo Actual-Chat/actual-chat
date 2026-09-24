@@ -14,9 +14,8 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
 {
     // Screen requests that can outlive their call: DecideView honors them only while the slot holds that call.
     private readonly MutableState<ChatId?> _overLockRingChatId;
+    // Outlives the phase it was set in: a collapsed dial stays in the island once the peer answers.
     private readonly MutableState<ChatId?> _collapsedChatId;
-    // The active call whose full-screen view gave way to its chat.
-    private readonly MutableState<ChatId?> _inChatChatId;
     // The ring that must not sound while it keeps going: silenced by the user, or already answered.
     private readonly MutableState<ChatId?> _mutedRingChatId;
     private int _overLockRingGeneration;
@@ -32,7 +31,6 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         Bridge = hub.Services.GetService<IIncomingCallsBridge>();
         _overLockRingChatId = NewChatIdState("OverLockRingChatId");
         _collapsedChatId = NewChatIdState("CollapsedChatId");
-        _inChatChatId = NewChatIdState("InChatChatId");
         _mutedRingChatId = NewChatIdState("MutedRingChatId");
     }
 
@@ -49,7 +47,6 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         var screenSize = await Hub.BrowserInfo.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
         var flags = new CallScreenFlags(
             await _collapsedChatId.Use(cancellationToken).ConfigureAwait(false),
-            await _inChatChatId.Use(cancellationToken).ConfigureAwait(false),
             await _overLockRingChatId.Use(cancellationToken).ConfigureAwait(false));
         return DecideView(call, screenSize.IsNarrow(), flags);
     }
@@ -69,6 +66,23 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
 
         var live = await Hub.LiveSessionUI.Get(call.ChatId, cancellationToken).ConfigureAwait(false);
         return live is { Invites.Count: > 0 } ? live.Invites[0].InviteeId : null;
+    }
+
+    [ComputeMethod]
+    public virtual async Task<Moment?> GetOwnJoinedAt(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // The session itself can predate the call - an ambient one gets promoted - so a call timer
+        // counts from my own join, not from LiveSession.StartedAt.
+        var live = await Hub.LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (live is null)
+            return null;
+
+        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (ownAuthor is null)
+            return null;
+
+        var me = live.Members.FirstOrDefault(m => m.AuthorId == ownAuthor.Id);
+        return me is null || me.JoinedAt == default ? null : me.JoinedAt;
     }
 
     [ComputeMethod]
@@ -228,8 +242,8 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
                 return;
         }
 
-        // In chat goes first: the over-lock flag cleared alone would bring the narrow full-screen view back.
-        _inChatChatId.Value = chatId;
+        // Collapsed goes first: the over-lock flag cleared alone would bring the narrow full-screen view back.
+        _collapsedChatId.Value = chatId;
         ClearIf(_overLockRingChatId, chatId);
         await OpenChat(chatId).ConfigureAwait(true);
     }

@@ -130,7 +130,6 @@ public partial class CallScreensUI
     private void ClearCallFlags(ChatId chatId)
     {
         ClearIf(_collapsedChatId, chatId);
-        ClearIf(_inChatChatId, chatId);
         ClearIf(_overLockRingChatId, chatId);
         ClearIf(_mutedRingChatId, chatId);
     }

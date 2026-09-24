@@ -15,5 +15,4 @@ public sealed record CallView(ActiveCall? Call, CallViewKind Kind, bool IsOverLo
     public static readonly CallView None = new(null, CallViewKind.None, false);
 }
 
-internal readonly record struct CallScreenFlags(
-    ChatId? CollapsedChatId, ChatId? InChatChatId, ChatId? OverLockChatId);
+internal readonly record struct CallScreenFlags(ChatId? CollapsedChatId, ChatId? OverLockChatId);

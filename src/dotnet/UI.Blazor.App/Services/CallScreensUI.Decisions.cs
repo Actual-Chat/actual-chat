@@ -19,9 +19,10 @@ public partial class CallScreensUI
             // click (or from the peer chat), and a refused call is taken off by the slot's release.
             CallPhase.Dialing when isCollapsed => CallViewKind.Collapsed,
             CallPhase.Dialing => isNarrow ? CallViewKind.FullScreen : CallViewKind.Modal,
-            _ when flags.InChatChatId == chatId => CallViewKind.None,
-            // A wide screen keeps an active call in its chat.
-            _ => isNarrow ? CallViewKind.FullScreen : CallViewKind.None,
+            // A wide screen keeps an active call in its chat, so there's no full-screen view for the island
+            // to lead back to.
+            _ when !isNarrow => CallViewKind.None,
+            _ => isCollapsed ? CallViewKind.Collapsed : CallViewKind.FullScreen,
         };
         return new CallView(call, kind, false);
     }

@@ -70,36 +70,19 @@ public class CallScreensUIDecisionsTest
         view.Kind.Should().Be(CallViewKind.Collapsed);
     }
 
-    [Fact]
-    public void CollapseShouldNotHideActiveCall()
-    {
-        // act
-        var view = Decide(Call(CallRole.Caller, CallPhase.Active), isNarrow: true, Flags(collapsed: ChatA));
-
-        // assert
-        view.Kind.Should().Be(CallViewKind.FullScreen, "an answered collapsed call gets its full-screen view");
-    }
-
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void InChatShouldHideActiveCall(bool isNarrow)
+    [InlineData(CallRole.Caller, false, CallViewKind.None)]
+    [InlineData(CallRole.Caller, true, CallViewKind.Collapsed)]
+    [InlineData(CallRole.Callee, false, CallViewKind.None)]
+    [InlineData(CallRole.Callee, true, CallViewKind.Collapsed)]
+    public void CollapsedActiveCallShouldShowIslandOnlyOnNarrowScreen(
+        CallRole origin, bool isNarrow, CallViewKind expected)
     {
         // act
-        var view = Decide(Call(CallRole.Callee, CallPhase.Active), isNarrow, Flags(inChat: ChatA));
+        var view = Decide(Call(origin, CallPhase.Active), isNarrow, Flags(collapsed: ChatA));
 
         // assert
-        view.Kind.Should().Be(CallViewKind.None);
-    }
-
-    [Fact]
-    public void InChatShouldNotHideDialing()
-    {
-        // act
-        var view = Decide(Call(CallRole.Caller, CallPhase.Dialing), isNarrow: true, Flags(inChat: ChatA));
-
-        // assert
-        view.Kind.Should().Be(CallViewKind.FullScreen);
+        view.Kind.Should().Be(expected, "the island leads back to a full-screen view only a narrow screen has");
     }
 
     [Theory]
@@ -118,10 +101,10 @@ public class CallScreensUIDecisionsTest
     [Theory]
     [InlineData(CallPhase.Ringing)]
     [InlineData(CallPhase.Active)]
-    public void OverLockShouldOverrideCollapseAndInChat(CallPhase phase)
+    public void OverLockShouldOverrideCollapse(CallPhase phase)
     {
         // arrange
-        var flags = Flags(collapsed: ChatA, inChat: ChatA, overLock: ChatA);
+        var flags = Flags(collapsed: ChatA, overLock: ChatA);
 
         // act
         var view = Decide(Call(CallRole.Callee, phase), isNarrow: true, flags);
@@ -146,7 +129,7 @@ public class CallScreensUIDecisionsTest
     public void FlagsOfAnotherChatShouldBeIgnored()
     {
         // arrange
-        var flags = Flags(collapsed: ChatB, inChat: ChatB, overLock: ChatB);
+        var flags = Flags(collapsed: ChatB, overLock: ChatB);
 
         // act
         var ringView = Decide(Call(CallRole.Callee, CallPhase.Ringing), isNarrow: false, flags);
@@ -185,8 +168,8 @@ public class CallScreensUIDecisionsTest
     private static CallView Decide(ActiveCall? call, bool isNarrow, CallScreenFlags flags = default)
         => CallScreensUI.DecideView(call, isNarrow, flags);
 
-    private static CallScreenFlags Flags(ChatId? collapsed = null, ChatId? inChat = null, ChatId? overLock = null)
-        => new(collapsed, inChat, overLock);
+    private static CallScreenFlags Flags(ChatId? collapsed = null, ChatId? overLock = null)
+        => new(collapsed, overLock);
 
     private static ActiveCall Call(CallRole origin, CallPhase phase)
         => new(ChatA, origin, phase, origin == CallRole.Callee ? CallerA : null, false);

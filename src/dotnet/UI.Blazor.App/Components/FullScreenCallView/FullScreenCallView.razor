@@ -150,7 +150,6 @@
     private DotNetObjectReference<FullScreenCallView>? _dotNetRef;
     private IJSObjectReference? _swipeRef;
     private CallScreensUI CallScreensUI => Hub.CallScreensUI;
-    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private CameraUI CameraUI => Hub.CameraUI;
@@ -238,24 +237,9 @@
         var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
         // Hidden until my own join is known: Accept commits the call before my audio starts.
         var joinedAt = call.Phase == CallPhase.Active
-            ? await GetJoinedAt(chatId, cancellationToken).ConfigureAwait(false)
+            ? await CallScreensUI.GetOwnJoinedAt(chatId, cancellationToken).ConfigureAwait(false)
             : null;
         return m with { IsRecording = recordingChatId == chatId, JoinedAt = joinedAt };
-    }
-
-    private async Task<Moment?> GetJoinedAt(ChatId chatId, CancellationToken cancellationToken) {
-        // The session itself can predate the call - an ambient one gets promoted - so the timer
-        // counts from my own join, not from LiveSession.StartedAt.
-        var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (live is null)
-            return null;
-
-        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (ownAuthor is null)
-            return null;
-
-        var me = live.Members.FirstOrDefault(m => m.AuthorId == ownAuthor.Id);
-        return me is null || me.JoinedAt == default ? null : me.JoinedAt;
     }
 
     private Task OnAcceptClick()

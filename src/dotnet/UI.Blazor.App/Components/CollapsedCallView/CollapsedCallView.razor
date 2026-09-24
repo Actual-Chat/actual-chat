@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Live
 @using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, CollapsedCallView.ComputedModel>
 @{
@@ -7,24 +8,37 @@
         return;
 }
 
-<div class="collapsed-call-view" @ref="Ref">
-    <div class="c-av" @onclick="@OnExpandClick">
-        <AuthorCircle AuthorId="@m.PeerId" Size="SquareSize.Size10"/>
-    </div>
-    <div class="c-name" @onclick="@OnExpandClick">
-        <AuthorName AuthorId="@m.PeerId" Class="c-peer-name" ShowDetailsOnClick="false"/>
-    </div>
-    @if (m.IsIncoming) {
-        <ButtonRound Class="c-decline" Click="@OnDeclineClick">
-            <i class="icon-close text-2xl"></i>
-        </ButtonRound>
-        <ButtonRound Class="c-accept" Click="@OnAcceptClick">
-            <i class="icon-phone-take text-2xl"></i>
-        </ButtonRound>
+<div class="collapsed-call-view @(m.IsInCall ? "in-call" : "")" @ref="Ref">
+    @if (m.IsInCall) {
+        @* Hanging up is left to the chat underneath: the whole island only expands the call back. *@
+        <div class="c-in-call" @onclick="@OnExpandClick">
+            <i class="icon-phone text-xl"></i>
+            <span class="c-status">@L.Call_InCall</span>
+            @if (m.JoinedAt is { } joinedAt) {
+                <span>·</span>
+                <LiveDuration Class="c-timer" StartedAt="@joinedAt"/>
+            }
+            <i class="icon-expand text-xl"></i>
+        </div>
     } else {
-        <ButtonRound Class="c-hang-up" Click="@OnHangUpClick">
-            <i class="icon-phone-off text-2xl"></i>
-        </ButtonRound>
+        <div class="c-av" @onclick="@OnExpandClick">
+            <AuthorCircle AuthorId="@m.PeerId" Size="SquareSize.Size10"/>
+        </div>
+        <div class="c-name" @onclick="@OnExpandClick">
+            <AuthorName AuthorId="@m.PeerId" Class="c-peer-name" ShowDetailsOnClick="false"/>
+        </div>
+        @if (m.IsIncoming) {
+            <ButtonRound Class="c-decline" Click="@OnDeclineClick">
+                <i class="icon-close text-2xl"></i>
+            </ButtonRound>
+            <ButtonRound Class="c-accept" Click="@OnAcceptClick">
+                <i class="icon-phone-take text-2xl"></i>
+            </ButtonRound>
+        } else {
+            <ButtonRound Class="c-hang-up" Click="@OnHangUpClick">
+                <i class="icon-phone-off text-2xl"></i>
+            </ButtonRound>
+        }
     }
 </div>
 
@@ -48,6 +62,11 @@
         var view = await CallScreensUI.GetCallView(cancellationToken).ConfigureAwait(false);
         if (view is not { Kind: CallViewKind.Collapsed, Call: { } call })
             return ComputedModel.None;
+
+        if (call.Phase == CallPhase.Active) {
+            var joinedAt = await CallScreensUI.GetOwnJoinedAt(call.ChatId, cancellationToken).ConfigureAwait(false);
+            return new ComputedModel { ChatId = call.ChatId, IsInCall = true, JoinedAt = joinedAt };
+        }
 
         if (await CallScreensUI.GetCallPeerId(cancellationToken).ConfigureAwait(false) is not { } peerId)
             return ComputedModel.None;
@@ -97,5 +116,7 @@
         // The caller of a ring, or whoever I'm calling.
         public AuthorId PeerId { get; init; }
         public bool IsIncoming { get; init; }
+        public bool IsInCall { get; init; }
+        public Moment? JoinedAt { get; init; }
     }
 }
