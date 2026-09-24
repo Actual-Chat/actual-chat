@@ -108,7 +108,7 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
         var info = dbUserNotifications?.ToModel() ?? new UserNotificationInfo(userId);
 
-        // Population re-check: hide notifications the user has since read, or that the chat's
+        // Population re-check: hide notifications the user has since read or heard, or that the chat's
         // notification mode suppresses (the mode may change after the notification was shown;
         // ringer kinds stay visible even when muted). This is the single source of truth for the
         // "active" set — the app-icon badge, the client reconciler and incoming-call rings all
@@ -116,13 +116,13 @@ public class NotificationsBackend(IServiceProvider services)
         // use the same NotificationHelper predicates. Unread counts on chats and places are a
         // different calculation and deliberately do not come from here.
         // Reads IChatPositionsBackend.Get + notification mode (once per distinct chat), so Fusion
-        // re-invalidates this method whenever a read position or mode setting changes.
-        var readPositions = await GetReadPositions(userId, info.Items, cancellationToken).ConfigureAwait(false);
+        // re-invalidates this method whenever a read/heard position or mode setting changes.
+        var seenPositions = await GetSeenPositions(userId, info.Items, cancellationToken).ConfigureAwait(false);
         var modes = await GetChatNotificationModes(userId, info.Items, cancellationToken).ConfigureAwait(false);
         var now = Clocks.SystemClock.Now;
         AutoInvalidateOnNextExpiration(info.Items, now);
         var items = info.Items.Without(n =>
-            IsRead(n, readPositions) || IsSuppressedByMode(n, modes) || IsExpired(n, now));
+            IsSeen(n, seenPositions) || IsSuppressedByMode(n, modes) || IsExpired(n, now));
         if (items.Count == info.Items.Count)
             return info;
 
@@ -1250,11 +1250,11 @@ public class NotificationsBackend(IServiceProvider services)
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    // Fetches each distinct chat's Read position once (in parallel) instead of one sequential
-    // round-trip per notification. Read-state is then evaluated per notification *instance*
+    // Fetches each distinct chat's seen position once (in parallel) instead of one sequential
+    // round-trip per notification. Seen-state is then evaluated per notification *instance*
     // against its own EntryLid — two notifications can share a NotificationId (chat-keyed dedup)
     // yet anchor to different entries.
-    private async Task<IReadOnlyDictionary<ChatId, long>> GetReadPositions(
+    private async Task<IReadOnlyDictionary<ChatId, long>> GetSeenPositions(
         UserId userId, IEnumerable<Notification> notifications, CancellationToken cancellationToken)
     {
         var chatIds = notifications
@@ -1268,13 +1268,29 @@ public class NotificationsBackend(IServiceProvider services)
         var positions = await chatIds
             .Select(async chatId => (
                 ChatId: chatId!,
-                ReadEntryLid: (await ChatPositionsBackend
-                    .Get(userId, chatId!, ChatPositionKind.Read, cancellationToken)
-                    .ConfigureAwait(false)).EntryLid))
+                SeenEntryLid: await GetSeenEntryLid(userId, chatId!, cancellationToken).ConfigureAwait(false)))
             .Collect(cancellationToken)
             .ConfigureAwait(false);
-        return positions.ToDictionary(x => x.ChatId, x => x.ReadEntryLid);
+        return positions.ToDictionary(x => x.ChatId, x => x.SeenEntryLid);
     }
+
+    private async Task<long> GetSeenEntryLid(UserId userId, ChatId chatId, CancellationToken cancellationToken)
+    {
+        // A PTT utterance played hands-free is acked by the Heard watermark and never by Read, so
+        // it's consumed exactly like a read message and must stop alerting the same way. Both
+        // watermarks are forward-only and share the entry-lid space, so the furthest of the two wins.
+        var readTask = ChatPositionsBackend.Get(userId, chatId, ChatPositionKind.Read, cancellationToken);
+        var heardTask = ChatPositionsBackend.Get(userId, chatId, ChatPositionKind.Heard, cancellationToken);
+        var read = await readTask.ConfigureAwait(false);
+        var heard = await heardTask.ConfigureAwait(false);
+        return Math.Max(ToSeenEntryLid(read), ToSeenEntryLid(heard));
+    }
+
+    private static long ToSeenEntryLid(ChatPosition position)
+        // 0 (and ChatPosition.None's -1) means "nothing yet"; long.MaxValue is the client's
+        // "unbounded" sentinel that must never gate a real entry - it would suppress every
+        // notification in the chat forever. Both normalize to "nothing seen".
+        => position.EntryLid is <= 0 or long.MaxValue ? 0 : position.EntryLid;
 
     private static List<(ChatId ChatId, long EntryLid)> GetReadAdvances(IEnumerable<Notification> dismissed)
     {
@@ -1324,10 +1340,10 @@ public class NotificationsBackend(IServiceProvider services)
             Computed.GetCurrent().InvalidateSafely(expiresAt - now);
     }
 
-    // A chat notification is read once the user's Read position has advanced past its entry.
-    // Only OnRead kinds: a reaction anchors at the recipient's own message, and a ring has no
-    // entry at all, so for those the Read position answers the wrong question.
-    private static bool IsRead(Notification notification, IReadOnlyDictionary<ChatId, long> readPositions)
+    // A chat notification is seen once the user's Read or Heard position has advanced past its
+    // entry. Only OnRead kinds: a reaction anchors at the recipient's own message, and a ring has no
+    // entry at all, so for those the seen position answers the wrong question.
+    private static bool IsSeen(Notification notification, IReadOnlyDictionary<ChatId, long> seenPositions)
     {
         if (notification.DismissMode != NotificationDismissMode.OnRead)
             return false;
@@ -1335,14 +1351,10 @@ public class NotificationsBackend(IServiceProvider services)
         var (chatId, entryLid) = GetReadAnchor(notification);
         if (chatId is null || entryLid <= 0)
             return false;
-        if (!readPositions.TryGetValue(chatId, out var readEntryLid))
+        if (!seenPositions.TryGetValue(chatId, out var seenEntryLid) || seenEntryLid <= 0)
             return false;
-        // A read position of 0 means "never read"; long.MaxValue is the client's "unbounded"
-        // sentinel that must never gate a real entry (it would suppress every notification in the
-        // chat forever). Treat both as "not read".
-        if (readEntryLid is <= 0 or long.MaxValue)
-            return false;
-        return readEntryLid >= entryLid;
+
+        return seenEntryLid >= entryLid;
     }
 
     private async Task<bool> ShouldDeferForActiveReader(
@@ -1363,12 +1375,10 @@ public class NotificationsBackend(IServiceProvider services)
         if (chatId is null || entryLid <= 0)
             return false;
 
-        var readEntryLid = (await ChatPositionsBackend
-            .Get(userId, chatId, ChatPositionKind.Read, cancellationToken)
-            .ConfigureAwait(false)).EntryLid;
-        // long.MaxValue is the client's "unbounded" read sentinel; caught up == read the entry just
-        // before this one (readEntryLid + 1 >= entryLid), tolerating the common consecutive-lid case.
-        if (readEntryLid is <= 0 or long.MaxValue || readEntryLid + 1 < entryLid)
+        var seenEntryLid = await GetSeenEntryLid(userId, chatId, cancellationToken).ConfigureAwait(false);
+        // Caught up == read or heard the entry just before this one (seenEntryLid + 1 >= entryLid),
+        // tolerating the common consecutive-lid case.
+        if (seenEntryLid <= 0 || seenEntryLid + 1 < entryLid)
             return false;
 
         var lastCheckIn = await UserPresencesBackend.GetLastCheckIn(userId, cancellationToken).ConfigureAwait(false);
@@ -1969,7 +1979,7 @@ public class NotificationsBackend(IServiceProvider services)
             List<Notification> ReAnchored)> Reconcile(UserNotificationInfo committed)
         {
             var now = Clocks.SystemClock.Now;
-            var readPositions = await GetReadPositions(
+            var seenPositions = await GetSeenPositions(
                     userId, committed.Items.Concat(notifications), cancellationToken)
                 .ConfigureAwait(false);
             // Must remove exactly what GetUserNotificationInfo hides, or the cleanup flow it
@@ -1987,7 +1997,7 @@ public class NotificationsBackend(IServiceProvider services)
             var remembered = new List<BeepMemory>();
             foreach (var existing in committed.Items) {
                 var isRequested = dismissAll || dismissedIds.Contains(existing.Id);
-                var isSeen = isRequested || IsRead(existing, readPositions);
+                var isSeen = isRequested || IsSeen(existing, seenPositions);
                 var isGone = isSeen
                     || IsSuppressedByMode(existing, modes)
                     || IsExpired(existing, now);
@@ -2008,7 +2018,7 @@ public class NotificationsBackend(IServiceProvider services)
             // so reference equality detects them.
             var changedIds = new List<NotificationId>();
             foreach (var incoming in notifications) {
-                if (IsRead(incoming, readPositions) || IsExpired(incoming, now))
+                if (IsSeen(incoming, seenPositions) || IsExpired(incoming, now))
                     continue;
 
                 var notification = incoming;
@@ -2071,20 +2081,20 @@ public class NotificationsBackend(IServiceProvider services)
                 silentById[id] = !shouldBeep;
             }
 
-            // Partial read: the user read into (but not past) a coalesced notification's window.
-            // Re-anchor it to the new first-unread entry and refresh its lead/count so the quote
-            // tracks where they stopped instead of citing already-read messages.
+            // Partial read: the user read or heard into (but not past) a coalesced notification's
+            // window. Re-anchor it to the new first-unseen entry and refresh its lead/count so the
+            // quote tracks where they stopped instead of citing messages they already consumed.
             var reAnchored = new List<Notification>();
             foreach (var existing in current.Items) {
                 if (existing is not ChatEntryRelatedNotification related)
                     continue;
-                if (!readPositions.TryGetValue(related.ChatId, out var read) || read is <= 0 or long.MaxValue)
+                if (!seenPositions.TryGetValue(related.ChatId, out var seen) || seen <= 0)
                     continue;
                 var start = related.StartEntryLid > 0 ? related.StartEntryLid : related.EntryLid;
-                if (read < start || read >= related.EntryLid)
-                    continue; // nothing newly read here (fully-read ones were already dropped above)
+                if (seen < start || seen >= related.EntryLid)
+                    continue; // nothing newly seen here (fully-seen ones were already dropped above)
 
-                var reanchored = await ReAnchor(related, read + 1, l, cancellationToken).ConfigureAwait(false);
+                var reanchored = await ReAnchor(related, seen + 1, l, cancellationToken).ConfigureAwait(false);
                 current = current with {
                     Items = current.Items.WithUpdate(n => n.Id == related.Id, _ => reanchored),
                 };

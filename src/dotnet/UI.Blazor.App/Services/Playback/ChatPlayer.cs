@@ -194,6 +194,13 @@ public abstract class ChatPlayer : ProcessorBase
             await Hub.LiveAudioStreams
                 .ReportPlayback(Session, ChatId, info.StreamId, info.EntryId, cancellationToken)
                 .ConfigureAwait(false);
+            // Nothing else on the client reads the Heard watermark, so this call is the only thing
+            // that keeps a live computed for it here - and the Android FCM path needs one, since it
+            // reads the position non-blockingly (Computed.GetExisting) to drop the message
+            // notification for an utterance this device has already played.
+            await Hub.ChatPositions
+                .GetOwn(Session, ChatId, ChatPositionKind.Heard, cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "ReportPlayback failed in chat #{ChatId}", ChatId);

@@ -182,20 +182,22 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
                 return true;
             }
 
-            // Skip if this device has already read past the notification's entry. Uses the cached
-            // read position (non-blocking) — it's fresher than the server's debounced cursor. If
-            // there's no cached value (the chat was never opened here), don't suppress.
+            // Skip if this device has already read or heard past the notification's entry. Uses the
+            // cached positions (non-blocking) — they're fresher than the server's debounced cursor.
+            // If there's no cached value (the chat was never opened here), don't suppress. A PTT
+            // utterance played hands-free is acked by the Heard watermark and never by Read, so
+            // both have to clear it - NotificationsBackend gates the server side the same way.
             // Only for kinds a read actually clears: a reaction anchors at the recipient's own
             // message, so its entry is read the moment it was sent and this would drop every one.
             if (entryLid > 0 && NotificationExt.GetDismissMode(kind) == NotificationDismissMode.OnRead) {
                 var chatUI = scopedServices.GetRequiredService<ChatUI>();
-                // GetExisting can return an instance whose first computation is still in flight;
-                // touching its output then throws "Wrong Computed.State: Computing."
-                var cReadEntryLid = Computed.GetExisting(() => chatUI.GetReadEntryLid(chatId, default));
-                if (cReadEntryLid is { ConsistencyState: not ConsistencyState.Computing }
-                    && cReadEntryLid.IsValue(out var readEntryLid)
-                    && readEntryLid >= entryLid) {
-                    Log.LogDebug("OnMessageReceived: already read on this device #{ChatId} @ {EntryLid}",
+                var hub = chatUI.Hub;
+                var readEntryLid = GetCachedValue(() => chatUI.GetReadEntryLid(chatId, default));
+                var heardPosition = GetCachedValue(() =>
+                    hub.ChatPositions.GetOwn(hub.Session, chatId, ChatPositionKind.Heard, default));
+                var seenEntryLid = Math.Max(readEntryLid, heardPosition?.EntryLid ?? 0);
+                if (seenEntryLid >= entryLid) {
+                    Log.LogDebug("OnMessageReceived: already read or heard on this device #{ChatId} @ {EntryLid}",
                         chatId, entryLid);
                     return true;
                 }
@@ -207,6 +209,17 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
             Log.LogWarning(e, "ShouldSuppressForDevice failed for chat #{ChatId}; showing the notification", chatId);
             return false;
         }
+    }
+
+    private static T? GetCachedValue<T>(Func<Task<T>> computeMethodCall)
+    {
+        // GetExisting returns null when nothing is cached, and can also return an instance whose
+        // first computation is still in flight; touching its output then throws
+        // "Wrong Computed.State: Computing."
+        var computed = Computed.GetExisting(computeMethodCall);
+        return computed is { ConsistencyState: not ConsistencyState.Computing } && computed.IsValue(out var value)
+            ? value
+            : default;
     }
 
     private static void ClearAttentionRequests(IReadOnlyList<string> dismissedTags)
