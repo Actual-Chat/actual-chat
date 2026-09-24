@@ -589,6 +589,41 @@ public partial class Chats(IServiceProvider services) : IChats
             .ConfigureAwait(false);
     }
 
+    public virtual async Task<ChatEntry?> StreamVoice(
+        Session session,
+        ChatId chatId,
+        long? repliedEntryLid,
+        Language? language,
+        RpcStream<VoiceStreamPart> parts,
+        CancellationToken cancellationToken)
+    {
+        // Driven through the call-by-call lease rather than beside it: one set of semantics for the
+        // Ogg reassembly, the offsets and the finalization, and the offset can never mismatch
+        // because the only writer is this loop.
+        var stream = await StartVoiceStream(session, chatId, repliedEntryLid, language, cancellationToken)
+            .ConfigureAwait(false);
+        // Re-checked per part rather than once: a stream can outlive the start of a maintenance window.
+        var checkedParts = parts.RequireAvailable(Maintenances, chatId, cancellationToken);
+        try {
+            var textOffset = 0;
+            await foreach (var part in checkedParts.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                var appended = await AppendVoiceStream(
+                        session, stream.Id, textOffset, part.Text, part.Audio, part.AudioOffset,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                textOffset = appended.TextOffset;
+            }
+        }
+        finally {
+            // Finished even on failure, otherwise the message streams until the lease times out.
+            stream = await FinishVoiceStream(session, stream.Id, CancellationToken.None).ConfigureAwait(false);
+        }
+
+        return stream.EntryId is { } entryId
+            ? await this.GetEntry(session, entryId, CancellationToken.None).ConfigureAwait(false)
+            : null;
+    }
+
     public virtual async Task<ChatVoiceStream> StartVoiceStream(
         Session session,
         ChatId chatId,

@@ -196,8 +196,19 @@ public interface IChats : IComputeService
         StreamId streamId,
         CancellationToken cancellationToken);
 
-    // The voice equivalent: an append carries a text delta, an Ogg Opus chunk, or both. Audio is
-    // append-only, so its position is implicit in arrival order on the media timeline.
+    // StreamEntry's voice equivalent, for a caller that can hold a stream open. Returns the posted
+    // message, or null when the producer sent neither audio nor words.
+    [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
+    Task<ChatEntry?> StreamVoice(
+        Session session,
+        ChatId chatId,
+        long? repliedEntryLid,
+        Language? language,
+        RpcStream<VoiceStreamPart> parts,
+        CancellationToken cancellationToken);
+
+    // The same call by call, for a caller that cannot: an append carries a text delta, an Ogg Opus
+    // chunk, or both. Audio is append-only, so its position is implicit in arrival order.
     [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<ChatVoiceStream> StartVoiceStream(
         Session session,
