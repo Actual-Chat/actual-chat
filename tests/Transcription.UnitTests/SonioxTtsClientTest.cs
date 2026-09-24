@@ -167,8 +167,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         await Task.Delay(Short * 4);
         text.Writer.TryWrite("First. ");
         await Task.Delay(Short * 4);
-        text.Writer.TryWrite("Second. ");
-        text.Writer.Complete();
+        WriteLastChunk(soniox, text.Writer, "Second. ");
         await runTask;
         var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
 
@@ -198,8 +197,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var runTask = client.Run("s1", "en", "Adrian", text.Reader, pcm.Writer, listener, CancellationToken.None);
         await soniox.WhenStreamsOpened(1).WaitAsync(TimeSpan.FromSeconds(2));
         var openedBeforeText = listener.StreamsOpened;
-        text.Writer.TryWrite("Hello world. ");
-        text.Writer.Complete();
+        WriteLastChunk(soniox, text.Writer, "Hello world. ");
         await runTask;
 
         // assert
@@ -221,8 +219,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         // act - the pre-opened stream idles out before any text arrives, then a real chunk is sent
         var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, listener, CancellationToken.None);
         await Task.Delay(Short * 2);
-        text.Writer.TryWrite("Real. ");
-        text.Writer.Complete();
+        WriteLastChunk(soniox, text.Writer, "Real. ");
         await runTask;
         var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
 
@@ -277,8 +274,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, null, CancellationToken.None);
         text.Writer.TryWrite("Dropped. ");
         await Task.Delay(Short * 2);
-        text.Writer.TryWrite("Late. ");
-        text.Writer.Complete();
+        WriteLastChunk(soniox, text.Writer, "Late. ");
         await runTask;
         var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
 
@@ -364,6 +360,17 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
 
     // Private methods
 
+    // Writing the last chunk and ending the text are two steps: had the chunk's stream terminated in between,
+    // the client would pre-open one more stream for a chunk that never comes
+    private static void WriteLastChunk(FakeSoniox soniox, ChannelWriter<string> text, string chunk)
+    {
+        var terminatedRelease = TaskCompletionSourceExt.New();
+        soniox.WhenTerminatedReleased = terminatedRelease.Task;
+        text.TryWrite(chunk);
+        text.Complete();
+        terminatedRelease.SetResult();
+    }
+
     private SonioxTtsClient NewClient(FakeSoniox soniox, TimeSpan idleFlush)
     {
         var services = new ServiceCollection()
@@ -433,6 +440,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         public int AudioMessagesPerText { get; init; } = 1;
         public int PcmBytesOnEmptyEnd { get; init; }
         public TimeSpan TerminatedDelay { get; init; }
+        public Task WhenTerminatedReleased { get; set; } = Task.CompletedTask;
         public int ConnectionCount { get; private set; }
         public int OpenedStreamCount { get; private set; }
 
@@ -539,6 +547,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
 
         private async Task Terminate(FakeWebSocket webSocket, string streamId)
         {
+            await WhenTerminatedReleased;
             if (TerminatedDelay > TimeSpan.Zero)
                 await Task.Delay(TerminatedDelay);
             Record(false, $"terminated {streamId}");
