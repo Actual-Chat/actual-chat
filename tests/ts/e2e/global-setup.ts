@@ -114,6 +114,19 @@ export async function teardown() {
     const pid = serverProcess.pid;
     serverProcess = null;
 
+    // `dotnet run` is only a launcher - the server is its child, so the whole tree has to go.
+    // A negative pid is a POSIX process group: on Windows it throws instead, the catch below
+    // swallowed it, and the server outlived the run and then held the port against the next
+    // one - which silently ran against the stale build.
+    if (process.platform === 'win32') {
+        await new Promise<void>(resolve => {
+            const killer = spawn('taskkill', ['/pid', String(pid), '/t', '/f'], { stdio: 'ignore' });
+            killer.on('exit', () => resolve());
+            killer.on('error', () => resolve());
+        });
+        return;
+    }
+
     try { process.kill(-pid, 'SIGTERM'); } catch { /* already dead */ }
     await new Promise(r => setTimeout(r, 2000));
     try { process.kill(-pid, 'SIGKILL'); } catch { /* already dead */ }
