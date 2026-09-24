@@ -344,6 +344,9 @@ public sealed class IosCalls : CXProviderDelegate
         Log.LogInformation("DidActivateAudioSession: app={AppState}, {Session}",
             UIApplication.SharedApplication.ApplicationState, audioSession.Describe());
         AudioSession.OnCallSessionActivated();
+        _ = DispatchToBlazor(
+            c => ((AppleAudioFocusUI)c.GetRequiredService<AudioFocusUI>()).OnCallSessionActivated(),
+            "DidActivateAudioSession");
     }
 
     public override void DidDeactivateAudioSession(CXProvider provider, AVAudioSession audioSession)
