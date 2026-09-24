@@ -121,8 +121,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         if (!state.IsClosing && !await IsSessionLive(chatId).ConfigureAwait(false))
             _ = StartClosingGrace(chatId);
 
-        // Real hang-up or crash: GetConsolidatedParticipants' own staleness self-heal (SelfHealDelay,
-        // ParticipantStaleness) re-triggers this on every observed tick, so a dropped stream eventually
+        // Real hang-up or crash: the SelfHealDelay re-run below, together with ParticipantStaleness,
+        // re-triggers this on every observed tick, so a dropped stream eventually
         // surfaces as Active/Ended even with no explicit SetParticipation(false) ever landing.
         if (state.IsCall)
             _ = SyncCallParticipantActivity(chatId, state, CancellationToken.None);
@@ -406,7 +406,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             if (!isActive) {
                 var state = await SafeGet(chatId).ConfigureAwait(false);
                 if (state is { Kind: LiveSessionKind.Call } callState) {
-                    if ((await GetConsolidatedParticipants(chatId, cancellationToken).ConfigureAwait(false)).Count < 2)
+                    if ((await GetFreshParticipantIds(chatId).ConfigureAwait(false)).Count < 2)
                         shouldCloseAsCall = true;
                     else if (callState.Host == authorId)
                         // The host left but the call goes on - without this the host slot would keep
@@ -824,14 +824,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         var computed = Computed.GetCurrent();
         await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
 
-        var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
-        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
-        var authorIds = participants
-            .Where(kv => IsFreshParticipant(kv.Value, cutoff))
-            .Select(kv => (Ok: AuthorId.TryParse(kv.Key, out var id), Id: id))
-            .Where(x => x.Ok)
-            .Select(x => x.Id)
-            .ToApiArray();
+        var authorIds = await GetFreshParticipantIds(chatId).ConfigureAwait(false);
         if (authorIds.Count > 0)
             // Re-check so a stale (left) participant drops without an explicit off signal.
             computed.Invalidate(SelfHealDelay);
@@ -928,8 +921,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             using (await _changeLocks.Lock(chatId, CancellationToken.None).ConfigureAwait(false)) {
                 var state = await SafeGet(chatId).ConfigureAwait(false);
                 if (state is { Kind: LiveSessionKind.Call }) {
-                    var participants = await GetConsolidatedParticipants(chatId, CancellationToken.None)
-                        .ConfigureAwait(false);
+                    var participants = await GetFreshParticipantIds(chatId).ConfigureAwait(false);
                     if (participants.Count < 2)
                         shouldClose = true;
                     else
@@ -958,7 +950,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     }
 
     // Drives CallInviteStatus.Active/Ended (and the caller-side equivalent on CallState) from genuine
-    // presence, via the same GetConsolidatedParticipants Ambient sessions already use - never from a
+    // presence, by the same freshness rule Ambient sessions already use - never from a
     // raw participant count, and never written inline from SetParticipation, which has no way to detect
     // a silent crash. Internal so a test can drive it directly, without a real self-heal wait.
     internal async Task SyncCallParticipantActivity(
@@ -981,9 +973,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 // self-heal fires a new Sync on every tick, so several can be queued on this same chat's
                 // lock at once - reading freshness before the lock would let a stale snapshot from an
                 // earlier, slower tick win the write race and revert a just-applied Ended back to Active.
-                var freshAuthorIds = (await GetConsolidatedParticipants(chatId, cancellationToken)
-                    .ConfigureAwait(false))
-                    .ToHashSet();
+                var freshAuthorIds = (await GetFreshParticipantIds(chatId).ConfigureAwait(false)).ToHashSet();
                 var invites = await SafeGetInvites(chatId).ConfigureAwait(false);
                 var callerId = freshState.CallerId ?? freshState.Host;
                 // Gate the "become Active" transitions on how many of THIS call's own roster (the
@@ -1547,6 +1537,20 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     private static bool IsFreshParticipant(ParticipationInfo? info, Moment cutoff)
         => info is not null && info.RegisteredAt >= cutoff;
 
+    private async Task<ApiArray<AuthorId>> GetFreshParticipantIds(ChatId chatId)
+    {
+        // For decisions taken under the change lock: GetConsolidatedParticipants keeps serving the old
+        // roster for ConsolidationDelay after a change, so a hang-up read through it still counts two.
+        var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
+        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
+        return participants
+            .Where(kv => IsFreshParticipant(kv.Value, cutoff))
+            .Select(kv => (Ok: AuthorId.TryParse(kv.Key, out var id), Id: id))
+            .Where(x => x.Ok)
+            .Select(x => x.Id)
+            .ToApiArray();
+    }
+
     private async Task<bool> HasParticipant(ChatId chatId)
     {
         var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
@@ -1599,8 +1603,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         if (invites.Values.Any(i => i is { Status: CallInviteStatus.Ringing } || IsInAnswerGrace(i, now)))
             return false;
 
-        var participants = await GetConsolidatedParticipants(
-            chatId, CancellationToken.None).ConfigureAwait(false);
+        var participants = await GetFreshParticipantIds(chatId).ConfigureAwait(false);
         return participants.Count < 2;
     }
 
