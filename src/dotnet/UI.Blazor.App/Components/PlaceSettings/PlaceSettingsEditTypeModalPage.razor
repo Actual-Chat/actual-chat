@@ -22,6 +22,10 @@
         _submitButtonInfo.CanExecute = _formRef?.IsValid ?? false;
     }
     <DataAnnotationsValidator />
+    <AliasAvailabilityValidator For="() => _form.ActualAliasId"
+                                Scope="@AliasAvailabilityValidator.AliasScope.Place"
+                                CurrentAliasId="@_form.CurrentAliasId"
+                                AliasIdReader="@(() => _form.ActualAliasId)"/>
     <FormBlock Class="with-input-radio first">
         <InputRadioGroup Name="chat_type" DisplayName="@L.Place_TypeTitle" @bind-Value="_form.IsPublic">
             <TileItem
@@ -64,14 +68,6 @@
                                  InputId="@_form.AliasIdFormId"
                                  Label="@L.Form_CustomLink"
                                  IsLabelInsideInput="true">
-                        <ValidationMessage Context="fieldLabel">
-                            <AliasValidationMessage
-                                For="@(() => _form.ActualAliasId)"
-                                Scope="@AliasValidationMessage.AliasScope.Place"
-                                FieldLabel="@fieldLabel"
-                                CurrentAliasId="@_form.CurrentAliasId"
-                                AliasIdReader="@(() => _form.ActualAliasId)" />
-                        </ValidationMessage>
                         <ChildContent>
                             <TextBox
                                 Id="@_form.AliasIdFormId"
@@ -79,15 +75,17 @@
                                 @bind-Value="@_form.AliasId"
                                 InputRefCreated="@_aliasTextBoxRefSetter"/>
                         </ChildContent>
+                        <Right>
+                            @if (!_copyAliasFormatString.IsNullOrEmpty() && !_aliasTextBoxRef.Id.IsNullOrEmpty()) {
+                                <CopyToClipboard
+                                    Kind="CopyButtonKind.Header"
+                                    ButtonClass="btn-sm"
+                                    Text=""
+                                    CopyTextSourceRef="@_aliasTextBoxRef"
+                                    CopyTextFormatString="@_copyAliasFormatString" />
+                            }
+                        </Right>
                     </FormSection>
-                    @if (!_aliasTextBoxRef.Id.IsNullOrEmpty()) {
-                        <CopyToClipboard
-                            Kind="CopyButtonKind.Square"
-                            ButtonClass="btn-transparent btn-sm"
-                            Text=""
-                            CopyTextSourceRef="@_aliasTextBoxRef"
-                            CopyTextFormatString="@_copyAliasFormatString" />
-                    }
                 </Content>
             </TileItem>
         </FormBlock>

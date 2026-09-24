@@ -15,6 +15,10 @@
 
 <Form @ref="@_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">
     <AsyncDataAnnotationsValidator @ref="_validator"/>
+    <AliasAvailabilityValidator For="() => _form.AliasId"
+                                Scope="@AliasAvailabilityValidator.AliasScope.Account"
+                                CurrentAliasId="@_form.CurrentAliasId"
+                                AliasIdReader="@(() => _form.AliasId)"/>
     <DialogFrame
         Class="own-account-editor-modal"
         Title="@L.AccountEditor_Title"
@@ -41,14 +45,6 @@
                          InputId="@_form.AliasIdFormId"
                          Label="@L.YourAccount_UserLink"
                          IsLabelInsideInput="true">
-                <ValidationMessage Context="fieldLabel">
-                    <AliasValidationMessage
-                        For="@(() => _form.AliasId)"
-                        Scope="@AliasValidationMessage.AliasScope.Account"
-                        FieldLabel="@fieldLabel"
-                        CurrentAliasId="@_form.CurrentAliasId"
-                        AliasIdReader="@(() => _form.AliasId)"/>
-                </ValidationMessage>
                 <ChildContent>
                     <TextBox
                         Id="@_form.AliasIdFormId"

@@ -74,17 +74,11 @@ body.hoverable .chat-settings-container .tile-item:hover {
 .edit-settings-modal .form-block.with-input-radio .field-chat-alias-id.tile-item {
     @apply pr-2;
 }
-.field-chat-alias-id .tile-item-body-content {
-    @apply relative;
-}
 .field-chat-alias-id .tile-item-right {
     @apply hidden;
 }
 .field-chat-alias-id section {
     @apply mt-0;
-}
-.field-chat-alias-id .copy-to-clipboard {
-    @apply absolute top-0 right-0;
 }
 .form .field-chat-alias-id .form-section-content .text-box {
     @apply text-caption;
@@ -126,7 +120,7 @@ body.hoverable .chat-settings-container .tile-item:hover {
     @apply text-03;
 }
 .tile-item.item-manage-members .tile-item-right i {
-    @apply -ml-2;
+    @apply -mr-2;
 }
 /* This variant carries a two-line caption, so it grows past the row's fixed h-12 instead of clipping
    the caption into the row below. */

@@ -28,7 +28,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AddReactionIcon>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AddToContactsBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AlertConfirmationInfo>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AliasValidationMessage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AlwaysVisibleComponents>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AndroidAppGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AndroidAppLocationGuideContent>();
@@ -345,7 +344,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PhoneVerificationModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PhotoTroubleshooterModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PicCropModal>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceAliasRequiredValidationMessage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfo>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoMembersTab>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoPage>();
@@ -857,7 +855,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.AddReactionIcon), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AddToContactsBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AlertConfirmationInfo), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.AliasValidationMessage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AlwaysVisibleComponents), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AndroidAppGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AndroidAppLocationGuideContent), AotTypeKind.Component),
@@ -1174,7 +1171,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.PhoneVerificationModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PhotoTroubleshooterModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PicCropModal), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceAliasRequiredValidationMessage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfo), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoMembersTab), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoPage), AotTypeKind.Component),

@@ -31,6 +31,10 @@
         _submitButtonInfo.CanExecute = _formRef?.IsValid ?? false;
     }
     <DataAnnotationsValidator />
+    <AliasAvailabilityValidator For="() => _form.ActualAliasId"
+                                Scope="@AliasAvailabilityValidator.AliasScope.Chat(_placeId)"
+                                CurrentAliasId="@_form.CurrentAliasId"
+                                AliasIdReader="@(() => _form.ActualAliasId)"/>
     <FormBlock Class="with-input-radio first">
         <InputRadioGroup Name="chat_type" DisplayName="@L.Chat_TypeTitle" @bind-Value="_form.IsPublic">
             <TileItem
@@ -64,46 +68,45 @@
 
     @if (_form.IsPublic) {
         <FormBlock Class="with-input-radio first last">
-            <TileItem Class="field-chat-alias-id unhovered">
-                <Icon>
-                    <i class="icon-link-2"></i>
-                </Icon>
-                <Content>
-                    <FormSection For="() => _form.ActualAliasId"
-                                 InputId="@_form.AliasIdFormId"
-                                 Label="@L.Form_CustomLink"
-                                 IsLabelInsideInput="true">
-                        <ValidationMessage Context="fieldLabel">
-                            @if (_isPlaceAliasRequired) {
-                                <PlaceAliasRequiredValidationMessage/>
-                            } else {
-                                <AliasValidationMessage
-                                    For="@(() => _form.ActualAliasId)"
-                                    Scope="@AliasValidationMessage.AliasScope.Chat(_placeId)"
-                                    FieldLabel="@fieldLabel"
-                                    CurrentAliasId="@_form.CurrentAliasId"
-                                    AliasIdReader="@(() => _form.ActualAliasId)"/>
-                            }
-                        </ValidationMessage>
-                        <ChildContent>
-                            <TextBox
-                                Id="@_form.AliasIdFormId"
-                                Prefix="@_aliasLocalPrefix"
-                                @bind-Value="@_form.AliasId"
-                                InputRefCreated="@_setAliasCopySource"
-                                readonly="@(_aliasLocalPrefix.IsNullOrEmpty())"/>
-                        </ChildContent>
-                    </FormSection>
-                    @if (!_copyAliasFormatString.IsNullOrEmpty() && !_aliasTextBoxRef.Id.IsNullOrEmpty()) {
-                        <CopyToClipboard
-                            Kind="CopyButtonKind.Square"
-                            ButtonClass="btn-transparent btn-sm"
-                            Text=""
-                            CopyTextSourceRef="@_aliasTextBoxRef"
-                            CopyTextFormatString="@_copyAliasFormatString"/>
-                    }
-                </Content>
-            </TileItem>
+            @if (_isPlaceAliasRequired) {
+                <TileItem Class="field-chat-alias-id unhovered">
+                    <Icon>
+                        <i class="icon-link-2"></i>
+                    </Icon>
+                    <Content>@L.Form_CustomLink</Content>
+                    <Caption>@L.Alias_PlaceLinkRequired</Caption>
+                </TileItem>
+            } else {
+                <TileItem Class="field-chat-alias-id unhovered">
+                    <Icon>
+                        <i class="icon-link-2"></i>
+                    </Icon>
+                    <Content>
+                        <FormSection For="() => _form.ActualAliasId"
+                                     InputId="@_form.AliasIdFormId"
+                                     Label="@L.Form_CustomLink"
+                                     IsLabelInsideInput="true">
+                            <ChildContent>
+                                <TextBox
+                                    Id="@_form.AliasIdFormId"
+                                    Prefix="@_aliasLocalPrefix"
+                                    @bind-Value="@_form.AliasId"
+                                    InputRefCreated="@_setAliasCopySource"/>
+                            </ChildContent>
+                            <Right>
+                                @if (!_copyAliasFormatString.IsNullOrEmpty() && !_aliasTextBoxRef.Id.IsNullOrEmpty()) {
+                                    <CopyToClipboard
+                                        Kind="CopyButtonKind.Header"
+                                        ButtonClass="btn-sm"
+                                        Text=""
+                                        CopyTextSourceRef="@_aliasTextBoxRef"
+                                        CopyTextFormatString="@_copyAliasFormatString"/>
+                                }
+                            </Right>
+                        </FormSection>
+                    </Content>
+                </TileItem>
+            }
         </FormBlock>
     } else if (m.Chat.CanInvite()) {
         <FormBlock Title="@L.Invite_ManageLinks" Class="first last">
