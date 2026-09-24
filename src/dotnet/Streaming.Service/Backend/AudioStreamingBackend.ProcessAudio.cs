@@ -14,10 +14,18 @@ public partial class AudioStreamingBackend
     // Snippets shorter than this are often misclassified, so detection waits for more context.
     private const int MinLanguageDetectionLength = 15;
 
-    public virtual async Task ProcessAudio(
+    public virtual Task ProcessAudio(
         AudioRecord record,
         int preSkip,
         RpcStream<AudioFrame> frames,
+        CancellationToken cancellationToken)
+        => ProcessAudio(record, preSkip, frames, Constants.Audio.FrameSilenceTimeout, cancellationToken);
+
+    private async Task ProcessAudio(
+        AudioRecord record,
+        int preSkip,
+        RpcStream<AudioFrame> frames,
+        TimeSpan frameSilenceTimeout,
         CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug(nameof(ProcessAudio) + ": record #{StreamId} = {Record}", record.StreamId, record);
@@ -28,7 +36,8 @@ public partial class AudioStreamingBackend
             IAsyncEnumerable<AudioFrame> augmentedFrames = frames;
             if (Constants.DebugMode.AudioRecordingStream)
                 augmentedFrames = augmentedFrames.WithLog(Log, nameof(ProcessAudio), cancellationToken);
-            await ProcessAudio(record, preSkip, augmentedFrames, delayedCancellationToken).ConfigureAwait(false);
+            await ProcessAudio(record, preSkip, augmentedFrames, frameSilenceTimeout, delayedCancellationToken)
+                .ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "Error processing audio stream #{StreamId}", record.StreamId);
@@ -46,12 +55,63 @@ public partial class AudioStreamingBackend
         }
     }
 
+    public virtual async Task ProcessAudioWithTranscript(
+        AudioRecord record,
+        int preSkip,
+        RpcStream<AudioFrame> frames,
+        RpcStream<ExternalTranscriptChunk> transcriptChunks,
+        CancellationToken cancellationToken)
+    {
+        // The builder needs to know how much audio has arrived to derive an offset for a chunk
+        // that carries none, so the frame stream is tapped on its way through.
+        var builder = new ExternalTranscriptBuilder();
+        var ingestedDuration = TimeSpan.Zero;
+        var trackedFrames = frames.Select(frame => {
+            var end = frame.Offset + frame.Duration;
+            if (end > ingestedDuration)
+                ingestedDuration = end;
+            return frame;
+        });
+        var transcripts = ToTranscripts(builder, transcriptChunks, () => ingestedDuration, cancellationToken);
+        _externalTranscripts[record.StreamId] = transcripts;
+        try {
+            // A producer appends whole Ogg pages: the first frames surface only once a page is
+            // complete, and an LLM may think for seconds between them. The microphone-grade
+            // silence timeout cuts that off mid-word; the lease's own idle timeout is the one
+            // that governs an abandoned stream here.
+            await ProcessAudio(
+                    record, preSkip, RpcStream.New(trackedFrames),
+                    Constants.Chat.EntryStreamIdleTimeout, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally {
+            _externalTranscripts.TryRemove(record.StreamId, out _);
+            transcriptChunks.Disconnect();
+        }
+    }
+
     // Private methods
+
+    private static async IAsyncEnumerable<Transcript> ToTranscripts(
+        ExternalTranscriptBuilder builder,
+        IAsyncEnumerable<ExternalTranscriptChunk> chunks,
+        Func<TimeSpan> getIngestedDuration,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await foreach (var chunk in chunks.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            if (builder.Append(chunk, getIngestedDuration.Invoke()) is not null)
+                yield return builder.Transcript;
+        }
+        // Yielded even when empty: a producer that sent audio and no transcript still meant to
+        // post, and the entry is only ever created from inside the transcript loop.
+        yield return builder.Finalize(getIngestedDuration.Invoke());
+    }
 
     private async Task ProcessAudio(
         AudioRecord record,
         int preSkip,
         IAsyncEnumerable<AudioFrame> frames,
+        TimeSpan frameSilenceTimeout,
         CancellationToken cancellationToken)
     {
         using var watchdogCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -61,7 +121,7 @@ public partial class AudioStreamingBackend
         frames = WithIngressCadenceLog(record.StreamId.Value, frames, Log, cancellationToken);
         frames = WithFrameSilenceWatchdog(
             record.StreamId.Value,
-            Constants.Audio.FrameSilenceTimeout,
+            frameSilenceTimeout,
             frames,
             watchdogCts,
             requestToken,
@@ -509,21 +569,29 @@ public partial class AudioStreamingBackend
         Task<Transcript?> refinedTranscriptTask,
         CancellationToken cancellationToken)
     {
-        var preferredId = await GetPreferredTranscriberId(audioSegment.Record, cancellationToken)
-            .ConfigureAwait(false);
-        var transcriber = TranscriberSelector.GetStream(transcriptionOptions, preferredId);
-        if (transcriber == null) {
-            Log.LogError("No transcriber supports {Language} for stream #{StreamId}",
-                transcriptionOptions.Language, audioSegment.StreamId);
-            return null;
-        }
+        // The producer supplied its own transcript, so no transcriber is selected and no
+        // transcription context is built - everything below this is the same either way.
+        // Keyed by the record's id, not the segment's: OpenAudioSegment derives its own
+        // ("{localId}-0000"), and the producer only ever knows the record's
+        var externalTranscripts = _externalTranscripts.GetValueOrDefault(audioSegment.Record.StreamId);
+        ITranscriber? transcriber = null;
+        if (externalTranscripts is null) {
+            var preferredId = await GetPreferredTranscriberId(audioSegment.Record, cancellationToken)
+                .ConfigureAwait(false);
+            transcriber = TranscriberSelector.GetStream(transcriptionOptions, preferredId);
+            if (transcriber == null) {
+                Log.LogError("No transcriber supports {Language} for stream #{StreamId}",
+                    transcriptionOptions.Language, audioSegment.StreamId);
+                return null;
+            }
 
-        transcriptionOptions = await WithContext(
-                transcriptionOptions,
-                audioSegment.Record.ChatId,
-                transcriber.Info,
-                cancellationToken)
-            .ConfigureAwait(false);
+            transcriptionOptions = await WithContext(
+                    transcriptionOptions,
+                    audioSegment.Record.ChatId,
+                    transcriber.Info,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         // Providers can fail to complete the transcript stream (e.g. a lost Deepgram finalize ack),
         // which would strand the entry in the streaming state - so transcription gets a deadline,
@@ -540,8 +608,10 @@ public partial class AudioStreamingBackend
             CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         var latencyTrace = new TranscriptLatencyTrace(
             audioSegment.StreamId.Value, audioSegment.Source.CreatedAt, Clocks.ServerClock);
-        IAsyncEnumerable<Transcript> tracedTranscripts = transcriber
-            .Transcribe(audioSegment.StreamId.Value, audioSegment.Source, transcriptionOptions, deadlineCts.Token)
+        var rawTranscripts = externalTranscripts
+            ?? transcriber!.Transcribe(
+                audioSegment.StreamId.Value, audioSegment.Source, transcriptionOptions, deadlineCts.Token);
+        IAsyncEnumerable<Transcript> tracedTranscripts = rawTranscripts
             .ThrottleTranscript(Constants.Transcription.ThrottlePeriod, Clocks.CpuClock, cancellationToken);
         tracedTranscripts = WithLatencyTrace(tracedTranscripts, latencyTrace, Log, cancellationToken);
         using var transcripts = tracedTranscripts.Memoize(CancellationToken.None);
@@ -569,7 +639,9 @@ public partial class AudioStreamingBackend
                             entryLanguage = await CreateLanguages(lastTranscript.Languages).ConfigureAwait(false);
                 if (textEntry != null)
                     continue;
-                if (EmptyRegex.IsMatch(transcript.Text))
+                // An empty ASR transcript means silence, which should not post. An empty external
+                // one means the producer chose not to send words - the audio is still the message.
+                if (externalTranscripts is null && EmptyRegex.IsMatch(transcript.Text))
                     continue;
 
                 // Got first non-empty transcript -> create text entry, so the code below is performed only once
@@ -710,7 +782,9 @@ public partial class AudioStreamingBackend
                 }
             }
 
-            var change = EmptyRegex.IsMatch(realtimeText)
+            // Same rule as entry creation: a silent recording is removed, but an external producer
+            // that sent audio and no words still meant to post - the audio is the message.
+            var change = externalTranscripts is null && EmptyRegex.IsMatch(realtimeText)
                 ? Change.Remove<ChatEntryDiff>()
                 : Change.Update(new ChatEntryDiff {
                     Content = finalText,
@@ -721,7 +795,7 @@ public partial class AudioStreamingBackend
                             TimeMap = finalTimeMap,
                         }
                         : null,
-                    EndsAt = beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
+                    EndsAt = beginsAt + EndOfContent(),
                 });
 
             var command = new ChatsBackend_ChangeEntry(
@@ -729,6 +803,21 @@ public partial class AudioStreamingBackend
                 null, // do not perform version check there - it might have already been changed and it's OK
                 change);
             await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
+        }
+
+        TimeSpan EndOfContent()
+        {
+            var transcriptEnd = TimeSpan.FromSeconds(lastTranscript.TimeRange.End);
+            if (externalTranscripts is null)
+                return transcriptEnd;
+
+            // An external producer's time map spans its words, and with no words there is no map
+            // at all - a LinearMap cannot hold two points at the same character. The entry still
+            // lasts as long as the audio it carries, and a zero-length one gets no player.
+            var audioEnd = audioSegment.Source.WhenDurationAvailable.IsCompletedSuccessfully
+                ? audioSegment.Source.Duration
+                : TimeSpan.Zero;
+            return audioEnd > transcriptEnd ? audioEnd : transcriptEnd;
         }
 
         Task<ChatEntryLanguage> CreateLanguages(Language[] languages)
