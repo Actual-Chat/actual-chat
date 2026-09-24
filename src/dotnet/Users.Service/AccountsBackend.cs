@@ -394,8 +394,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         dbAccount = dbAccount.Require().RequireVersion(expectedVersion);
 
         var mustGreet = !account.IsGreetingCompleted && dbAccount.IsGreetingCompleted;
-        var mustResetDigestFlow = dbAccount.TimeZone != account.TimeZone;
-        var mustResumeDigestFlow = !dbAccount.IsEmailVerified && account.IsEmailVerified();
+        var mustResumeDigestFlow = dbAccount.TimeZone != account.TimeZone
+            || (!dbAccount.IsEmailVerified && account.IsEmailVerified());
         account = account with {
             Version = VersionGenerator.NextVersion(dbAccount.Version),
             Name = AccountNameValidator.Normalize(account.Name),
@@ -420,13 +420,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         if (mustGreet)
             ContactGreeter.Activate();
-        if (mustResetDigestFlow) {
-            Log.LogInformation("Scheduling DigestFlow reset for {AccountId}", account.Id);
-            var flowId = FlowHub.NewId<DigestFlow>(account.Id.Value);
-            context.Operation.AddEvent(FlowHub.NewResumeEvent(flowId).WithReset());
-        }
-        else if (mustResumeDigestFlow) {
-            // The flow is parked on "no verified email" for up to 2 days otherwise
+        if (mustResumeDigestFlow) {
+            // The flow is parked on "no time zone" or "no verified email" for up to 2 days otherwise.
+            // Not a reset: that would drop LastRunAt, and the digest would go out again right away.
             var flowId = FlowHub.NewId<DigestFlow>(account.Id.Value);
             context.Operation.AddEvent(FlowHub.NewResumeEvent(flowId));
         }
