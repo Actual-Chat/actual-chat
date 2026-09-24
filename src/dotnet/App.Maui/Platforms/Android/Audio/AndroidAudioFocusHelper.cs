@@ -30,6 +30,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
     private bool _isFocusSessionOpen;
     private CpuTimestamp _sessionEndedAt = CpuTimestamp.Now - TimeSpan.FromHours(1);
     public bool IsCommunicationFocus => _isCommunicationFocus;
+    public bool HasEarpiece { get; }
 
     public event Action<AudioFocus>? OnFocusChanged;
     public event Action? OnOutputDevicesChanged;
@@ -41,6 +42,8 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         _audioFocusChangeListener = new AudioFocusChangeListener(OnAudioFocusChange);
         _deviceCallback = new DeviceCallback(OnAudioDevicesChanged);
         _audioManager.RegisterAudioDeviceCallback(_deviceCallback, null);
+        HasEarpiece = (_audioManager.GetDevices(GetDevicesTargets.Outputs) ?? [])
+            .Any(d => d.Type == AudioDeviceType.BuiltinEarpiece);
 
         // Chooses the implementation based on API level
         // API 31 (Android 12) introduced SetCommunicationDevice
@@ -155,14 +158,22 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         // here would raise an HFP virtual call, which is what pinning playback to the phone avoids.
         => _deviceRouter.SelectBuiltinSpeaker(cancellationToken);
 
+    public Task SetCallAudioRoute(CallAudioRoute route)
+    {
+        _deviceRouter.CallAudioRoute = route;
+        return _isCommunicationFocus
+            ? _deviceRouter.RequestCommunicationDevice()
+            : Task.CompletedTask;
+    }
+
     public AudioOutputKind? GetCurrentOutputKind()
     {
         // Read-only, so it runs outside the serialized calls. A connected external device counts
         // even when Android hasn't routed to it yet: the user has it on, and that's what matters.
         try {
-            foreach (var output in _audioManager.GetDevices(GetDevicesTargets.Outputs) ?? [])
-                if (GetExternalKind(output.Type) is { } externalKind)
-                    return externalKind;
+            var isExternalSkipped = _isCommunicationFocus && _deviceRouter.CallAudioRoute.IsBuiltinForced;
+            if (!isExternalSkipped && GetExternalOutputKind() is { } externalKind)
+                return externalKind;
 
             if (_audioManager.Mode != Mode.InCommunication)
                 return AudioOutputKind.Speaker;
@@ -174,6 +185,21 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         }
         catch (Exception e) {
             _log.LogWarning(e, "Failed to read the audio output kind");
+            return null;
+        }
+    }
+
+    public AudioOutputKind? GetExternalOutputKind()
+    {
+        try {
+            foreach (var output in _audioManager.GetDevices(GetDevicesTargets.Outputs) ?? [])
+                if (GetExternalKind(output.Type) is { } externalKind)
+                    return externalKind;
+
+            return null;
+        }
+        catch (Exception e) {
+            _log.LogWarning(e, "Failed to read the external audio outputs");
             return null;
         }
 
@@ -449,8 +475,12 @@ public sealed class AndroidAudioFocusHelper : IDisposable
 
     private interface IAudioDeviceRouter : IDisposable
     {
+        CallAudioRoute CallAudioRoute { get; set; }
+
         // Completes only once the route has actually landed, not when it's requested.
         Task<bool> SelectCommunicationDevice(CancellationToken ct);
+        // Completes once the route is requested: for a device change under an already playing track.
+        Task RequestCommunicationDevice();
         Task<bool> SelectBuiltinSpeaker(CancellationToken ct);
         void ClearCommunicationDevice();
         Task OnDevicesChanged(CancellationToken ct);
@@ -465,6 +495,8 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         private readonly AudioManager _audioManager;
         private readonly ILogger _log;
         private CommunicationDeviceListener? _listener;
+
+        public CallAudioRoute CallAudioRoute { get; set; }
 
         public ModernAudioDeviceRouter(AudioManager audioManager, ILogger log)
         {
@@ -481,32 +513,32 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         public async Task<bool> SelectCommunicationDevice(CancellationToken ct)
         {
             try {
-                var devices = _audioManager.AvailableCommunicationDevices;
-
-                _log.LogInformation("Available communication devices: {Devices}",
-                    string.Join(", ", devices.Select(d => d.Type.ToString())));
-
-                // Priority: BLE Headset > BT SCO > Wired > USB > Speaker (NOT earpiece!)
-                // When no external device is connected, we MUST select BuiltinSpeaker
-                // because Mode.InCommunication defaults to earpiece
-                var device = devices.FirstOrDefault(d => d.Type == AudioDeviceType.BleHeadset)
-                          ?? devices.FirstOrDefault(d => d.Type == AudioDeviceType.BluetoothSco)
-                          ?? devices.FirstOrDefault(d => d.Type == AudioDeviceType.WiredHeadset)
-                          ?? devices.FirstOrDefault(d => d.Type == AudioDeviceType.WiredHeadphones)
-                          ?? devices.FirstOrDefault(d => d.Type == AudioDeviceType.UsbHeadset)
-                          ?? devices.FirstOrDefault(d => d.Type == AudioDeviceType.BuiltinSpeaker);
-
-                if (device == null) {
-                    _log.LogWarning("No communication devices available, audio may route to earpiece");
-                    return false;
-                }
-
-                return await SetAndAwaitCommunicationDevice(device, ct).ConfigureAwait(false);
+                var device = PickCommunicationDevice();
+                return device is not null
+                    && await SetAndAwaitCommunicationDevice(device, ct).ConfigureAwait(false);
             }
             catch (Exception e) {
                 _log.LogWarning(e, "Failed to set communication device");
                 return false;
             }
+        }
+
+        public Task RequestCommunicationDevice()
+        {
+            // No read of CommunicationDevice here: while a route change is still landing, that read blocks
+            // in AudioService for up to 3s, and this runs under the focus lock every playback start waits on.
+            try {
+                if (PickCommunicationDevice() is not { } device)
+                    return Task.CompletedTask;
+
+                _log.LogInformation("Requesting communication device: {Type}", device.Type);
+                if (!_audioManager.SetCommunicationDevice(device))
+                    _log.LogWarning("SetCommunicationDevice returned false for device: {Type}", device.Type);
+            }
+            catch (Exception e) {
+                _log.LogWarning(e, "Failed to request communication device");
+            }
+            return Task.CompletedTask;
         }
 
         public async Task<bool> SelectBuiltinSpeaker(CancellationToken ct)
@@ -556,6 +588,33 @@ public sealed class AndroidAudioFocusHelper : IDisposable
 
         // Private methods
 
+        private AudioDeviceInfo? PickCommunicationDevice()
+        {
+            var devices = _audioManager.AvailableCommunicationDevices;
+            _log.LogInformation("Available communication devices: {Devices}",
+                string.Join(", ", devices.Select(d => d.Type.ToString())));
+
+            // Priority: BLE Headset > BT SCO > Wired > USB > Speaker, unless a call picks a built-in
+            // device. The speaker must be selected explicitly: Mode.InCommunication defaults to the earpiece.
+            var route = CallAudioRoute;
+            var builtinType = route.IsEarpiece
+                ? AudioDeviceType.BuiltinEarpiece
+                : AudioDeviceType.BuiltinSpeaker;
+            var builtin = devices.FirstOrDefault(d => d.Type == builtinType)
+                ?? devices.FirstOrDefault(d => d.Type == AudioDeviceType.BuiltinSpeaker);
+            var device = route.IsBuiltinForced
+                ? builtin
+                : devices.FirstOrDefault(d => d.Type == AudioDeviceType.BleHeadset)
+                    ?? devices.FirstOrDefault(d => d.Type == AudioDeviceType.BluetoothSco)
+                    ?? devices.FirstOrDefault(d => d.Type == AudioDeviceType.WiredHeadset)
+                    ?? devices.FirstOrDefault(d => d.Type == AudioDeviceType.WiredHeadphones)
+                    ?? devices.FirstOrDefault(d => d.Type == AudioDeviceType.UsbHeadset)
+                    ?? builtin;
+            if (device is null)
+                _log.LogWarning("No communication devices available, audio may route to earpiece");
+            return device;
+        }
+
         private async Task<bool> SetAndAwaitCommunicationDevice(AudioDeviceInfo device, CancellationToken ct)
         {
             var currentDevice = _audioManager.CommunicationDevice;
@@ -601,6 +660,8 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         private TaskCompletionSource<bool>? _pendingScoConnection;
         private bool _isBluetoothScoActive;
 
+        public CallAudioRoute CallAudioRoute { get; set; }
+
         public LegacyAudioDeviceRouter(AudioManager audioManager, Context context, ILogger log)
         {
             _audioManager = audioManager;
@@ -620,6 +681,17 @@ public sealed class AndroidAudioFocusHelper : IDisposable
 
                 _log.LogInformation("Available output devices (legacy): {Devices}",
                     string.Join(", ", devices.Select(d => d.Type.ToString())));
+
+                var route = CallAudioRoute;
+                if (route.IsBuiltinForced) {
+                    // Only SCO can be dropped here: with a wired headset plugged in, the earpiece
+                    // still plays into the headset - the legacy API has no way to pick it over one.
+                    ClearCommunicationDevice();
+                    _audioManager.SpeakerphoneOn = !route.IsEarpiece;
+                    _log.LogInformation("Built-in device forced (legacy), speakerphone: {IsSpeakerphone}",
+                        !route.IsEarpiece);
+                    return true;
+                }
 
                 // Check for any external device (BT, wired, USB)
                 var hasBluetooth = devices.Any(d => d.Type is AudioDeviceType.BluetoothA2dp
@@ -669,10 +741,11 @@ public sealed class AndroidAudioFocusHelper : IDisposable
                     return true;
                 }
 
-                // No external device - USE SPEAKERPHONE (not earpiece!)
-                // This is critical: Mode.InCommunication defaults to earpiece
-                _audioManager.SpeakerphoneOn = true;
-                _log.LogInformation("No external audio device, using speakerphone");
+                // No external device: the speakerphone, unless a call asks for the earpiece.
+                // It must be turned on explicitly: Mode.InCommunication defaults to the earpiece.
+                _audioManager.SpeakerphoneOn = !route.IsEarpiece;
+                _log.LogInformation("No external audio device, using {Output}",
+                    route.IsEarpiece ? "earpiece" : "speakerphone");
                 return true;
             }
             catch (Exception e) {
@@ -682,6 +755,10 @@ public sealed class AndroidAudioFocusHelper : IDisposable
                 return true;
             }
         }
+
+        public Task RequestCommunicationDevice()
+            // Only the Bluetooth path waits here, and a call that forces a built-in device never takes it.
+            => SelectCommunicationDevice(CancellationToken.None);
 
         public Task<bool> SelectBuiltinSpeaker(CancellationToken ct)
         {

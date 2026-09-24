@@ -135,9 +135,21 @@
                         <i class="icon-recorder-right-half right"></i>
                     }
                 </HeaderButton>
-                <HeaderButton Class="btn-video-panel c-speaker">
-                    <i class="icon-volume-up-2 text-lg"></i>
-                </HeaderButton>
+                @if (CallScreensUI.CanRouteToEarpiece) {
+                    @* With a headset connected there are three places to pick from, so the button opens a menu. *@
+                    var audioOutput = m.AudioOutput;
+                    var audioOutputMenu = audioOutput.ExternalKind is null
+                        ? null
+                        : MenuRef.New<CallAudioOutputMenu>(chat.Id.Value).ToString();
+                    <HeaderButton
+                        Click="@OnSpeakerClick"
+                        Class="btn-video-panel"
+                        data-menu="@audioOutputMenu"
+                        data-menu-trigger="@MenuTrigger.Primary"
+                        data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
+                        <i class="@(CallAudioOutputMenu.GetIcon(_pickedAudioOutputKind ?? audioOutput.Kind)) text-lg"></i>
+                    </HeaderButton>
+                }
                 <HeaderButton Class="btn-video-panel" Click="@OnOptionsClick">
                     <i class="icon-options-2 text-lg"></i>
                 </HeaderButton>
@@ -150,6 +162,8 @@
     private static readonly string JSCreateSwipe = $"{BlazorUIAppModule.ImportName}.IncomingCallSwipe.create";
 
     private bool _shownOverLock;
+    // Shown from the tap itself: the state catches up only after a recompute, which can take a second.
+    private AudioOutputKind? _pickedAudioOutputKind;
     private ElementReference _ringButtons;
     private DotNetObjectReference<FullScreenCallView>? _dotNetRef;
     private IJSObjectReference? _swipeRef;
@@ -174,6 +188,9 @@
         }
         else if (!isShowing && _shownOverLock)
             _shownOverLock = false;
+
+        if (_pickedAudioOutputKind == m.AudioOutput.Kind)
+            _pickedAudioOutputKind = null;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -245,7 +262,9 @@
             : null;
         var isCameraOn = await ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
         var isScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false);
+        var audioOutput = await CallScreensUI.GetAudioOutput(chatId, cancellationToken).ConfigureAwait(false);
         return m with {
+            AudioOutput = audioOutput,
             IsRecording = recordingChatId == chatId,
             JoinedAt = joinedAt,
             IsCameraOn = isCameraOn,
@@ -320,6 +339,17 @@
             _ = ChatAudioUI.SetRecordingChatId(enable ? chat.Id : null);
     }
 
+    private void OnSpeakerClick() {
+        var m = State.Value;
+        if (m.Chat is not { } chat || m.AudioOutput.ExternalKind is not null)
+            return;
+
+        var shownKind = _pickedAudioOutputKind ?? m.AudioOutput.Kind;
+        var kind = shownKind == AudioOutputKind.Speaker ? AudioOutputKind.Phone : AudioOutputKind.Speaker;
+        _pickedAudioOutputKind = kind;
+        CallScreensUI.SetAudioOutput(chat.Id, kind);
+    }
+
     private void OnOptionsClick() {
         if (State.Value.Chat is { } chat)
             ChatVideoUI.ShowVoiceSettings(chat.Id);
@@ -344,6 +374,7 @@
         public bool IsRecording { get; init; }
         public bool IsCameraOn { get; init; }
         public bool IsScreenCasting { get; init; }
+        public CallAudioOutput AudioOutput { get; init; } = new(AudioOutputKind.Speaker, null);
         // False when this is the narrow-layout foreground screen rather than the real over-lock one.
         public bool IsOverLock { get; init; }
     }
