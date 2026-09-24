@@ -7,9 +7,9 @@ const MAX_SOURCE_SIZE = 2048;
 const EXPORT_SIZE = 512;
 const ZOOM_STEP = 0.02;
 const MAX_ZOOM_FACTOR = 4; // max 4× zoom relative to initial fit
-const HANDLE_SIZE = 12; // chevron handle size in pixels
-const HANDLE_HIT_RADIUS = 24; // hit area for grabbing the handle
-const ROTATE_SPEED = 60; // degrees per second for continuous button rotation
+const ROTATE_STEP = 1; // degrees per tap on a rotation button
+const ROTATE_HOLD_DELAY = 300; // ms a rotation button must be held before it spins continuously
+const ROTATE_SPEED = 30; // degrees per second once a held rotation button starts spinning
 const ZOOM_SPEED = 0.5; // scale units per second for continuous button zoom
 const SQUARE_CORNER_RADIUS = 32; // rounded-2xl equivalent for square viewport
 
@@ -29,29 +29,35 @@ export function clearFileInput(input: HTMLInputElement): void {
 export class PicCropModal implements Disposable, IUploadStreamSource {
     private readonly canvas: HTMLCanvasElement;
     private readonly ctx: CanvasRenderingContext2D;
-    private readonly previewCanvas: HTMLCanvasElement;
-    private readonly previewCtx: CanvasRenderingContext2D;
+    private readonly previewCanvases: HTMLCanvasElement[];
+    private readonly blazorRef: DotNet.DotNetObject;
     private readonly img: HTMLImageElement;
-    private readonly blobUrl: string;
     private readonly isSquare: boolean;
     private readonly viewportAspectRatio: number; // 0 = square/circle, >0 = W:H ratio
     private readonly hasBlur: boolean;
     private blurRadius = 0;
 
+    // The avatar the modal opened on. "Revert to previous" returns here; empty for a marble.
+    private readonly seedUrl: string;
+    // Object URLs we created and must revoke; the seed/CDN url is owned by the caller.
+    private readonly ownedUrls = new Set<string>();
+    private hasSource = false;
+
     private sourceCanvas: HTMLCanvasElement | null = null;
     private offsetX = 0;
     private offsetY = 0;
     private scale = 1;
-    private minScale = 1; // set in fitInitialScale — image must cover the viewport
-    private maxScale = 1; // set in fitInitialScale — prevents excessive pixelation
+    private minScale = 1; // set in computeScaleLimits — image must cover the viewport
+    private maxScale = 1; // set in computeScaleLimits — prevents excessive pixelation
     private rotation = 0; // degrees, free rotation
+    private flipX = false; // horizontal mirror
     private dragging = false;
-    private rotationDragging = false; // true when dragging the float handle
     private lastX = 0;
     private lastY = 0;
     private croppedBlob: Blob | null = null;
     private animationId: number | null = null;
     private rotateDirection = 0; // -1 = CCW, 0 = none, 1 = CW
+    private rotateHoldTimer: number | null = null;
     private zoomDirection = 0; // -1 = out, 0 = none, 1 = in
     private lastAnimTime = 0;
     private disposed$: Subject<void> = new Subject<void>();
@@ -62,22 +68,22 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
     private pinchInitialAngle = 0;
     private pinchInitialScale = 0;
     private pinchInitialRotation = 0;
+    private pinchInitialOffsetX = 0;
+    private pinchInitialOffsetY = 0;
 
     public static create(
         canvas: HTMLCanvasElement,
-        previewCanvas: HTMLCanvasElement,
         blobUrl: string,
         blazorRef: DotNet.DotNetObject,
         isSquare = false,
         viewportAspectRatio = 0,
         hasBlur = false,
     ): PicCropModal {
-        return new PicCropModal(canvas, previewCanvas, blobUrl, blazorRef, isSquare, viewportAspectRatio, hasBlur);
+        return new PicCropModal(canvas, blobUrl, blazorRef, isSquare, viewportAspectRatio, hasBlur);
     }
 
     constructor(
         canvas: HTMLCanvasElement,
-        previewCanvas: HTMLCanvasElement,
         blobUrl: string,
         blazorRef: DotNet.DotNetObject,
         isSquare = false,
@@ -86,12 +92,14 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
     ) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d')!;
-        this.previewCanvas = previewCanvas;
-        this.previewCtx = previewCanvas.getContext('2d')!;
-        this.blobUrl = blobUrl;
+        this.blazorRef = blazorRef;
         this.isSquare = isSquare;
         this.viewportAspectRatio = viewportAspectRatio;
         this.hasBlur = hasBlur;
+        this.seedUrl = blobUrl;
+
+        const modal = canvas.closest('.pic-crop-modal')!;
+        this.previewCanvases = Array.from(modal.querySelectorAll<HTMLCanvasElement>('.c-preview canvas'));
 
         this.img = new Image();
         // The source is served from the CDN origin, and without this the canvas it is drawn into
@@ -101,23 +109,26 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         this.img.onerror = () => {
             void blazorRef.invokeMethodAsync('OnImageLoadError');
         };
-        this.img.src = blobUrl;
+        if (blobUrl)
+            this.img.src = blobUrl;
+        else
+            this.render();
 
-        // Mouse drag (pan or rotation)
+        // Mouse drag (pan)
         fromEvent<MouseEvent>(canvas, 'mousedown').pipe(
             takeUntil(this.disposed$),
         ).subscribe(e => this.handlePointerDown(e.clientX, e.clientY, e));
 
         fromEvent<MouseEvent>(window, 'mousemove').pipe(
             takeUntil(this.disposed$),
-            filter(() => this.dragging || this.rotationDragging),
+            filter(() => this.dragging),
         ).subscribe(e => this.handlePointerMove(e.clientX, e.clientY, e));
 
         fromEvent(window, 'mouseup').pipe(
             takeUntil(this.disposed$),
         ).subscribe(() => this.handlePointerUp());
 
-        // Touch: 1 finger = pan/rotation handle, 2 fingers = pinch zoom+rotate
+        // Touch: 1 finger = pan, 2 fingers = pinch zoom+rotate
         fromEvent<TouchEvent>(canvas, 'touchstart', { passive: false } as AddEventListenerOptions).pipe(
             takeUntil(this.disposed$),
         ).subscribe(e => {
@@ -133,7 +144,7 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         ).subscribe(e => {
             if (this.pinching && e.touches.length === 2) {
                 this.handlePinchMove(e);
-            } else if ((this.dragging || this.rotationDragging) && e.touches.length === 1) {
+            } else if (this.dragging && e.touches.length === 1) {
                 this.handlePointerMove(e.touches[0].clientX, e.touches[0].clientY, e);
             }
         });
@@ -158,25 +169,51 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
                 this.zoomOut();
         });
 
-        // Continuous zoom/rotation buttons
-        const modal = canvas.closest('.pic-crop-modal')!;
-        const holdButtons: [string, () => void, () => void][] = [
-            ['.btn-zoom-out', () => this.zoomDirection = -1, () => this.zoomDirection = 0],
-            ['.btn-zoom-in', () => this.zoomDirection = 1, () => this.zoomDirection = 0],
-            ['.btn-rotate-ccw', () => this.rotateDirection = -1, () => this.rotateDirection = 0],
-            ['.btn-rotate-cw', () => this.rotateDirection = 1, () => this.rotateDirection = 0],
+        // Rotation buttons: a tap steps by ROTATE_STEP; holding past ROTATE_HOLD_DELAY spins.
+        const rotateButtons: [string, number][] = [
+            ['.btn-rotate-ccw', -1],
+            ['.btn-rotate-cw', 1],
         ];
-        for (const [selector, onStart, onStop] of holdButtons) {
-            const btn = modal.querySelector(selector)!;
+        for (const [selector, dir] of rotateButtons) {
+            const btn = modal.querySelector(selector);
+            if (!btn)
+                continue;
             fromEvent(btn, 'pointerdown').pipe(
                 takeUntil(this.disposed$),
-            ).subscribe(() => { onStart(); this.startContinuousAction(); });
-            fromEvent(btn, 'pointerup').pipe(
+            ).subscribe(() => {
+                if (!this.hasSource)
+                    return;
+                this.nudgeRotation(dir * ROTATE_STEP);
+                this.rotateHoldTimer = window.setTimeout(() => {
+                    this.rotateDirection = dir;
+                    this.startContinuousAction();
+                }, ROTATE_HOLD_DELAY);
+            });
+            const stop = () => {
+                if (this.rotateHoldTimer !== null) {
+                    clearTimeout(this.rotateHoldTimer);
+                    this.rotateHoldTimer = null;
+                }
+                this.rotateDirection = 0;
+                this.stopContinuousActionIfIdle();
+            };
+            fromEvent(btn, 'pointerup').pipe(takeUntil(this.disposed$)).subscribe(stop);
+            fromEvent(btn, 'pointerleave').pipe(takeUntil(this.disposed$)).subscribe(stop);
+        }
+
+        // Zoom slider
+        const zoomSlider = modal.querySelector<HTMLInputElement>('.zoom-range');
+        if (zoomSlider) {
+            fromEvent(zoomSlider, 'input').pipe(
                 takeUntil(this.disposed$),
-            ).subscribe(() => { onStop(); this.stopContinuousActionIfIdle(); });
-            fromEvent(btn, 'pointerleave').pipe(
-                takeUntil(this.disposed$),
-            ).subscribe(() => { onStop(); this.stopContinuousActionIfIdle(); });
+            ).subscribe(() => {
+                if (!this.hasSource)
+                    return;
+                this.scale = this.minScale * (Number(zoomSlider.value) / 100);
+                this.scale = Math.max(this.minScale, Math.min(this.maxScale, this.scale));
+                this.clampOffset();
+                this.render();
+            });
         }
 
         // Blur slider
@@ -186,16 +223,64 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
                 takeUntil(this.disposed$),
             ).subscribe(() => {
                 this.blurRadius = Number(blurSlider.value);
-                const progress = (this.blurRadius / 16) * 100;
-                blurSlider.style.setProperty('--progress', `${progress}%`);
+                blurSlider.parentElement?.style.setProperty('--progress', String(this.blurRadius / 16));
                 this.render();
             });
         }
     }
 
-    /** Swaps the source image in place, e.g. after a regenerate. onImageLoaded re-fits the view. */
-    public setImage(blobUrl: string): void {
+    /** Replaces the source image, e.g. after an upload or a regenerate. Marks this as an editable source. */
+    public setImage(blobUrl: string, owned = false): void {
+        if (owned)
+            this.ownedUrls.add(blobUrl);
         this.img.src = blobUrl;
+    }
+
+    /** Returns to the avatar the modal opened on (empty for a marble), discarding any upload. */
+    public revertToPrevious(): void {
+        if (this.seedUrl)
+            this.img.src = this.seedUrl;
+        else
+            this.clearImage();
+    }
+
+    private clearImage(): void {
+        this.hasSource = false;
+        this.sourceCanvas = null;
+        this.img.removeAttribute('src');
+        this.render();
+        void this.blazorRef.invokeMethodAsync('OnSourceChanged', false);
+    }
+
+    public mirror(): void {
+        if (!this.hasSource)
+            return;
+        this.flipX = !this.flipX;
+        // Mirror around the viewport centre, not the image centre: reflect the offset across the
+        // vertical axis through that centre. The flip runs in the rotated frame, so the reflection
+        // axis is tilted by the rotation - hence the 2θ terms (identity R(θ)·diag(-1,1)·R(-θ)).
+        const rad = 2 * this.rotation * Math.PI / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+        const ox = this.offsetX;
+        const oy = this.offsetY;
+        this.offsetX = -cos * ox - sin * oy;
+        this.offsetY = -sin * ox + cos * oy;
+        this.clampOffset();
+        this.render();
+    }
+
+    /** Resets pan/zoom/rotation/mirror to the initial cover fit of the current source. */
+    public reset(): void {
+        if (!this.hasSource)
+            return;
+        this.rotation = 0;
+        this.flipX = false;
+        this.offsetX = 0;
+        this.offsetY = 0;
+        this.computeScaleLimits();
+        this.fitToViewport();
+        this.render();
     }
 
     public getBlob(): Blob {
@@ -210,18 +295,46 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         return this.croppedBlob.size;
     }
 
+    // Rotates the view by deltaDeg around the viewport centre (the point currently under the crop),
+    // not the image centre - so whatever is framed stays framed while the image spins beneath it.
+    // Keeping that point fixed means rotating the offset vector by the same angle.
+    private rotateBy(deltaDeg: number): void {
+        const rad = deltaDeg * Math.PI / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+        const ox = this.offsetX;
+        const oy = this.offsetY;
+        this.offsetX = ox * cos - oy * sin;
+        this.offsetY = ox * sin + oy * cos;
+        this.rotation += deltaDeg;
+    }
+
+    private nudgeRotation(deltaDeg: number): void {
+        if (!this.hasSource)
+            return;
+        this.rotateBy(deltaDeg);
+        this.clampOffset();
+        this.render();
+    }
+
     public zoomIn(): void {
+        if (!this.hasSource)
+            return;
         this.scale = Math.min(this.maxScale, this.scale + ZOOM_STEP);
         this.render();
     }
 
     public zoomOut(): void {
+        if (!this.hasSource)
+            return;
         this.scale = Math.max(this.minScale, this.scale - ZOOM_STEP);
         this.clampOffset();
         this.render();
     }
 
     private startContinuousAction(): void {
+        if (!this.hasSource)
+            return;
         this.lastAnimTime = performance.now();
         this.animationId ??= requestAnimationFrame(now => this.continuousActionStep(now));
     }
@@ -240,7 +353,7 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         this.lastAnimTime = now;
 
         if (this.rotateDirection !== 0)
-            this.rotation += this.rotateDirection * ROTATE_SPEED * dt;
+            this.rotateBy(this.rotateDirection * ROTATE_SPEED * dt);
         if (this.zoomDirection !== 0) {
             this.scale += this.zoomDirection * ZOOM_SPEED * dt;
             this.scale = Math.max(this.minScale, Math.min(this.maxScale, this.scale));
@@ -271,13 +384,22 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
             cancelAnimationFrame(this.animationId);
             this.animationId = null;
         }
+        if (this.rotateHoldTimer !== null) {
+            clearTimeout(this.rotateHoldTimer);
+            this.rotateHoldTimer = null;
+        }
         this.disposed$.next();
         this.disposed$.complete();
-        URL.revokeObjectURL(this.blobUrl);
+        for (const url of this.ownedUrls)
+            URL.revokeObjectURL(url);
+        this.ownedUrls.clear();
     }
 
     private onImageLoaded(): void {
-        // Downscale if needed (9A)
+        this.hasSource = true;
+        this.sourceCanvas = null;
+
+        // Downscale if needed
         const img = this.img;
         if (img.naturalWidth > MAX_SOURCE_SIZE || img.naturalHeight > MAX_SOURCE_SIZE) {
             const ratio = Math.min(MAX_SOURCE_SIZE / img.naturalWidth, MAX_SOURCE_SIZE / img.naturalHeight);
@@ -290,9 +412,14 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
             ctx.drawImage(img, 0, 0, w, h);
         }
 
+        this.rotation = 0;
+        this.flipX = false;
+        this.offsetX = 0;
+        this.offsetY = 0;
         this.computeScaleLimits();
         this.fitToViewport();
         this.render();
+        void this.blazorRef.invokeMethodAsync('OnSourceChanged', true);
     }
 
     private getSourceWidth(): number {
@@ -317,7 +444,7 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         return { w: sw * cos + sh * sin, h: sw * sin + sh * cos };
     }
 
-    // Computes scale limits once based on the worst-case rotation angle.
+    // Computes scale limits based on the source size and viewport.
     private computeScaleLimits(): void {
         const { vw, vh } = this.getViewportSize();
         const sw = this.getSourceWidth();
@@ -369,7 +496,7 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         }
     }
 
-    // Clamp offset so the viewport circle stays fully inside the rotated image rectangle.
+    // Clamp offset so the viewport stays fully inside the rotated image rectangle.
     // Projects offset onto image-local axes and clamps along each axis independently.
     private clampOffset(): void {
         const sw = this.getSourceWidth();
@@ -381,18 +508,15 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         const cos = Math.cos(rad);
         const sin = Math.sin(rad);
 
-        // Max offset along image-local X and Y axes
         const maxU = Math.max(0, sw * this.scale / 2 - halfVW);
         const maxV = Math.max(0, sh * this.scale / 2 - halfVH);
 
-        // Project canvas offset onto image-local axes
         let u = this.offsetX * cos + this.offsetY * sin;
         let v = -this.offsetX * sin + this.offsetY * cos;
 
         u = Math.max(-maxU, Math.min(maxU, u));
         v = Math.max(-maxV, Math.min(maxV, v));
 
-        // Convert back to canvas coordinates
         this.offsetX = u * cos - v * sin;
         this.offsetY = u * sin + v * cos;
     }
@@ -409,8 +533,8 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
 
         ctx.clearRect(0, 0, width, height);
 
-        // Draw the image centered with current transform
-        this.drawTransformedImage(ctx, cx, cy);
+        if (this.hasSource)
+            this.drawTransformedImage(ctx, cx, cy);
 
         // Draw darkened overlay with viewport cutout
         ctx.save();
@@ -418,7 +542,6 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         ctx.beginPath();
         ctx.rect(0, 0, width, height);
         this.traceViewportPath(ctx, cx, cy, r);
-        // Use evenodd to cut out the viewport shape
         ctx.fill('evenodd');
         ctx.restore();
 
@@ -431,14 +554,12 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         ctx.stroke();
         ctx.restore();
 
-        // Draw dashed crosshair lines rotated with the image
-        this.renderCrosshair(ctx, cx, cy, r);
+        if (this.hasSource)
+            this.renderGrid(ctx, cx, cy, r);
 
-        // Draw rotation float handle (circle mode only)
-        if (!this.isSquare && this.viewportAspectRatio === 0)
-            this.renderFloat(ctx, cx, cy, r);
-
-        this.renderPreview();
+        this.renderPreviews();
+        this.updateZoomUi();
+        this.updateAngleUi();
     }
 
     private drawTransformedImage(
@@ -453,29 +574,33 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         ctx.save();
         ctx.translate(cx + this.offsetX, cy + this.offsetY);
         ctx.rotate((this.rotation * Math.PI) / 180);
-        ctx.scale(this.scale, this.scale);
+        ctx.scale(this.flipX ? -this.scale : this.scale, this.scale);
         ctx.drawImage(source, -sw / 2, -sh / 2, sw, sh);
         ctx.restore();
     }
 
-    private renderPreview(): void {
-        const pw = this.previewCanvas.width;
-        const ph = this.previewCanvas.height;
-        const pCtx = this.previewCtx;
+    private renderPreviews(): void {
+        for (const preview of this.previewCanvases)
+            this.renderPreview(preview);
+    }
+
+    private renderPreview(previewCanvas: HTMLCanvasElement): void {
+        const pw = previewCanvas.width;
+        const ph = previewCanvas.height;
+        const pCtx = previewCanvas.getContext('2d')!;
 
         pCtx.clearRect(0, 0, pw, ph);
+        if (!this.hasSource)
+            return;
 
-        // Clip to viewport shape
         pCtx.save();
         pCtx.beginPath();
         this.traceViewportPath(pCtx, pw / 2, ph / 2, Math.min(pw, ph) / 2, pw, ph);
         pCtx.clip();
 
-        // Apply blur if set
         if (this.blurRadius > 0)
             pCtx.filter = `blur(${this.blurRadius * (pw / this.canvas.width)}px)`;
 
-        // Draw the same transformed image, scaled to preview size
         const { vw, vh } = this.getViewportSize();
         const previewScale = Math.min(pw / vw, ph / vh);
 
@@ -487,7 +612,7 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         const source = this.getSource();
         const sw = this.getSourceWidth();
         const sh = this.getSourceHeight();
-        pCtx.scale(this.scale, this.scale);
+        pCtx.scale(this.flipX ? -this.scale : this.scale, this.scale);
         pCtx.drawImage(source, -sw / 2, -sh / 2, sw, sh);
 
         pCtx.restore();
@@ -515,7 +640,7 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         const source = this.getSource();
         const sw = this.getSourceWidth();
         const sh = this.getSourceHeight();
-        ctx.scale(this.scale, this.scale);
+        ctx.scale(this.flipX ? -this.scale : this.scale, this.scale);
         ctx.drawImage(source, -sw / 2, -sh / 2, sw, sh);
 
         return new Promise<Blob | null>(resolve => {
@@ -523,88 +648,62 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         });
     }
 
-    private renderCrosshair(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
-        const rad = this.rotation * Math.PI / 180;
-        // Brighter when aligned to 0/90/180/270
-        const aligned = this.isAlignedTo90();
-        const alpha = aligned ? 0.8 : 0.35;
-        const lineWidth = aligned ? 1.5 : 1;
+    // Rule-of-thirds grid clipped to the viewport shape.
+    private renderGrid(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
+        const { vw, vh } = this.getViewportSize();
+        const left = cx - vw / 2;
+        const top = cy - vh / 2;
 
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(rad);
-        ctx.setLineDash([4, 6]);
-        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-        ctx.lineWidth = lineWidth;
-
-        // Vertical line
         ctx.beginPath();
-        ctx.moveTo(0, -r);
-        ctx.lineTo(0, r);
-        ctx.stroke();
+        this.traceViewportPath(ctx, cx, cy, r, vw, vh);
+        ctx.clip();
 
-        // Horizontal line
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(-r, 0);
-        ctx.lineTo(r, 0);
-        ctx.stroke();
-
-        ctx.restore();
-    }
-
-    // Returns true when rotation is within ~1° of a 90° multiple
-    private isAlignedTo90(): boolean {
-        const mod = ((this.rotation % 90) + 90) % 90; // normalize to [0, 90)
-        return mod < 1 || mod > 89;
-    }
-
-    // Draws a triangle pointing toward the center, with red border and white fill
-    private renderFloat(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
-        const { fx, fy } = this.getFloatPosition(cx, cy, r);
-        const toCenter = Math.atan2(cy - fy, cx - fx);
-        const s = HANDLE_SIZE;
-
-        ctx.save();
-        ctx.translate(fx, fy);
-        ctx.rotate(toCenter);
-
-        // Triangle pointing right (toward center after rotation)
-        ctx.beginPath();
-        ctx.moveTo(s * 0.6, 0);        // tip toward center
-        ctx.lineTo(-s * 0.5, -s * 0.6); // top-left
-        ctx.lineTo(-s * 0.5, s * 0.6);  // bottom-left
-        ctx.closePath();
-
-        ctx.fillStyle = 'white';
-        ctx.fill();
-        ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 2.5;
-        ctx.lineJoin = 'round';
-        ctx.stroke();
-
-        ctx.restore();
-    }
-
-    // Handle position: inset from viewport edge so it's fully visible inside
-    private getFloatPosition(cx: number, cy: number, r: number): { fx: number; fy: number } {
-        const floatAngle = (this.rotation - 90) * Math.PI / 180;
-        const inset = r - HANDLE_SIZE * 0.9 + 2;
-        if (this.isSquare) {
-            // For square viewport, clamp the handle position to stay inside the rounded rect
-            const cos = Math.cos(floatAngle);
-            const sin = Math.sin(floatAngle);
-            const maxD = Math.max(Math.abs(cos), Math.abs(sin));
-            const edgeDist = maxD > 0 ? inset / maxD : inset;
-            const d = Math.min(inset, edgeDist);
-            return {
-                fx: cx + d * cos,
-                fy: cy + d * sin,
-            };
+        for (let i = 1; i <= 2; i++) {
+            const x = left + (vw * i) / 3;
+            ctx.moveTo(x, top);
+            ctx.lineTo(x, top + vh);
+            const y = top + (vh * i) / 3;
+            ctx.moveTo(left, y);
+            ctx.lineTo(left + vw, y);
         }
-        return {
-            fx: cx + inset * Math.cos(floatAngle),
-            fy: cy + inset * Math.sin(floatAngle),
-        };
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    private updateZoomUi(): void {
+        const modal = this.canvas.closest('.pic-crop-modal');
+        if (!modal)
+            return;
+        const percent = this.minScale > 0 ? Math.round((this.scale / this.minScale) * 100) : 100;
+        const slider = modal.querySelector<HTMLInputElement>('.zoom-range');
+        if (slider) {
+            slider.value = String(percent);
+            const min = Number(slider.min) || 100;
+            const max = Number(slider.max) || 100 * MAX_ZOOM_FACTOR;
+            const progress = max > min ? (percent - min) / (max - min) : 0;
+            slider.parentElement?.style.setProperty('--progress', String(progress));
+        }
+        const value = modal.querySelector<HTMLElement>('.c-zoom-value');
+        if (value)
+            value.textContent = `${percent}%`;
+    }
+
+    // Shows the tilt relative to the original, normalized to (-180, 180]; hidden at 0.
+    private updateAngleUi(): void {
+        const modal = this.canvas.closest('.pic-crop-modal');
+        const chip = modal?.querySelector<HTMLElement>('.c-angle');
+        if (!chip)
+            return;
+        let angle = ((this.rotation % 360) + 360) % 360;
+        if (angle > 180)
+            angle -= 360;
+        const rounded = Math.round(angle);
+        chip.hidden = !this.hasSource || rounded === 0;
+        chip.textContent = `${rounded}°`;
     }
 
     private toCanvasCoords(clientX: number, clientY: number): [number, number] {
@@ -614,61 +713,30 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         return [(clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY];
     }
 
-    private isNearFloat(clientX: number, clientY: number): boolean {
-        const [canvasX, canvasY] = this.toCanvasCoords(clientX, clientY);
-
-        const cx = this.canvas.width / 2;
-        const cy = this.canvas.height / 2;
-        const r = this.getViewportRadius();
-        const { fx, fy } = this.getFloatPosition(cx, cy, r);
-
-        const dx = canvasX - fx;
-        const dy = canvasY - fy;
-        return dx * dx + dy * dy <= HANDLE_HIT_RADIUS * HANDLE_HIT_RADIUS;
-    }
-
     private handlePointerDown(clientX: number, clientY: number, e: Event): void {
+        if (!this.hasSource)
+            return;
         preventDefaultForEvent(e);
-        if (!this.isSquare && this.viewportAspectRatio === 0 && this.isNearFloat(clientX, clientY)) {
-            this.rotationDragging = true;
-        } else {
-            this.dragging = true;
-            const [cx, cy] = this.toCanvasCoords(clientX, clientY);
-            this.lastX = cx;
-            this.lastY = cy;
-        }
+        this.dragging = true;
+        const [cx, cy] = this.toCanvasCoords(clientX, clientY);
+        this.lastX = cx;
+        this.lastY = cy;
     }
 
     private handlePointerMove(clientX: number, clientY: number, e: Event): void {
         preventDefaultForEvent(e);
-        if (this.rotationDragging) {
-            this.applyRotationDrag(clientX, clientY);
-        } else if (this.dragging) {
-            const [cx, cy] = this.toCanvasCoords(clientX, clientY);
-            const dx = cx - this.lastX;
-            const dy = cy - this.lastY;
-            this.lastX = cx;
-            this.lastY = cy;
-            this.applyPan(dx, dy);
-        }
+        if (!this.dragging)
+            return;
+        const [cx, cy] = this.toCanvasCoords(clientX, clientY);
+        const dx = cx - this.lastX;
+        const dy = cy - this.lastY;
+        this.lastX = cx;
+        this.lastY = cy;
+        this.applyPan(dx, dy);
     }
 
     private handlePointerUp(): void {
         this.dragging = false;
-        this.rotationDragging = false;
-    }
-
-    private applyRotationDrag(clientX: number, clientY: number): void {
-        const [canvasX, canvasY] = this.toCanvasCoords(clientX, clientY);
-
-        const cx = this.canvas.width / 2;
-        const cy = this.canvas.height / 2;
-
-        // Angle from center to pointer, then +90 because float is at "top" of vertical line
-        const angle = Math.atan2(canvasY - cy, canvasX - cx) * 180 / Math.PI;
-        this.rotation = angle + 90;
-        this.clampOffset();
-        this.render();
     }
 
     private applyPan(dx: number, dy: number): void {
@@ -681,10 +749,10 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
     // Two-finger pinch: zoom + rotate simultaneously
 
     private handlePinchStart(e: TouchEvent): void {
+        if (!this.hasSource)
+            return;
         preventDefaultForEvent(e);
-        // Cancel any single-finger drag or button actions
         this.dragging = false;
-        this.rotationDragging = false;
         this.rotateDirection = 0;
         this.zoomDirection = 0;
         this.stopContinuousActionIfIdle();
@@ -695,21 +763,28 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         this.pinchInitialAngle = this.touchAngle(t0, t1);
         this.pinchInitialScale = this.scale;
         this.pinchInitialRotation = this.rotation;
+        this.pinchInitialOffsetX = this.offsetX;
+        this.pinchInitialOffsetY = this.offsetY;
     }
 
     private handlePinchMove(e: TouchEvent): void {
         preventDefaultForEvent(e);
         const [t0, t1] = [e.touches[0], e.touches[1]];
 
-        // Scale: ratio of current distance to initial distance
         const dist = this.touchDistance(t0, t1);
         const scaleRatio = dist / this.pinchInitialDist;
         this.scale = Math.max(this.minScale, Math.min(this.maxScale, this.pinchInitialScale * scaleRatio));
 
-        // Rotation: delta angle between fingers
         const angle = this.touchAngle(t0, t1);
         const angleDelta = (angle - this.pinchInitialAngle) * 180 / Math.PI;
         this.rotation = this.pinchInitialRotation + angleDelta;
+
+        // Rotate around the viewport centre: spin the initial offset by the same delta (see rotateBy).
+        const rad = angleDelta * Math.PI / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+        this.offsetX = this.pinchInitialOffsetX * cos - this.pinchInitialOffsetY * sin;
+        this.offsetY = this.pinchInitialOffsetX * sin + this.pinchInitialOffsetY * cos;
 
         this.clampOffset();
         this.render();

@@ -1,25 +1,24 @@
 .pic-crop-modal .dialog-body {
-    @apply flex-y items-center justify-between gap-4;
+    @apply flex-y items-stretch justify-start gap-4;
     @apply p-4;
-    @apply overflow-hidden;
+    @apply overflow-x-hidden overflow-y-auto;
     @apply select-none;
 }
 
 /* ── Canvas container ── */
 
 .pic-crop-modal .c-content {
-    @apply flex-y items-center justify-center gap-4;
-    @apply h-full;
+    @apply flex-y items-center justify-center;
+    @apply w-full;
 }
 
 .pic-crop-modal .c-canvas-container {
     @apply relative;
+    @apply isolate;
     @apply w-full;
-    @apply rounded-lg;
+    @apply rounded-3xl;
     @apply overflow-hidden;
     aspect-ratio: 1;
-    outline: var(--background-05) solid 0.25rem;
-    outline-offset: -1px;
 }
 .pic-crop-modal.square .c-canvas-container {
     @apply rounded-4xl;
@@ -35,113 +34,91 @@
 .pic-crop-modal.saving .c-canvas-container {
     @apply pointer-events-none;
 }
+.pic-crop-modal.empty .c-canvas-container > canvas {
+    @apply cursor-default;
+}
 
-/* ── Preview ── */
+.pic-crop-modal .c-canvas-container .c-hint {
+    @apply absolute bottom-3 left-1/2;
+    @apply px-3 py-1;
+    @apply rounded-full;
+    @apply bg-pal-black-60;
+    @apply text-caption text-white;
+    @apply pointer-events-none;
+    @apply whitespace-nowrap;
+    @apply -translate-x-1/2;
+}
 
-.pic-crop-modal .c-preview {
+.pic-crop-modal .c-canvas-container .c-angle {
+    @apply absolute top-3 left-1/2;
+    @apply px-3 py-1;
+    @apply rounded-full;
+    @apply bg-pal-black-60;
+    @apply text-caption text-white;
+    @apply pointer-events-none;
+    @apply whitespace-nowrap tabular-nums;
+    @apply -translate-x-1/2;
+}
+
+.pic-crop-modal .c-canvas-container .c-placeholder {
+    @apply absolute inset-0;
+    @apply flex-y items-center justify-center gap-2;
+    @apply text-body text-03;
+    @apply pointer-events-none;
+}
+
+/* The current generated avatar, shown behind the canvas so the canvas overlay dims it and the
+   viewport border frames it - just like an uploaded image. */
+.pic-crop-modal .c-canvas-container .c-marble {
+    @apply absolute inset-0;
+    @apply pointer-events-none select-none;
+    z-index: -1;
+}
+.pic-crop-modal .c-canvas-container .c-marble > marble-avatar,
+.pic-crop-modal .c-canvas-container .c-marble > beam-avatar {
+    @apply block;
+    @apply w-full h-full;
+}
+
+/* ── Zoom row ── */
+
+.pic-crop-modal .c-zoom-readout {
     @apply flex-x items-center gap-3;
-}
-.pic-crop-modal .c-preview > canvas {
-    @apply rounded-full;
-    @apply border border-separator;
-}
-.pic-crop-modal.square .c-preview > canvas {
-    @apply rounded-lg;
-}
-.pic-crop-modal .c-preview-label {
-    @apply text-sm text-03;
-}
-
-/* ── Wallpaper preview ── */
-
-.pic-crop-modal.has-blur .c-preview > canvas {
-    @apply rounded-lg;
-}
-
-/* ── Blur slider ── */
-
-.pic-crop-modal .c-blur-slider {
-    @apply flex-y items-center;
     @apply w-full;
-    @apply px-2;
-    row-gap: 4px;
-    --track-height: 2px;
-    --thumb-size: 16px;
-    --track-color: var(--separator);
-    --progress-color: var(--blue-50-50);
-    --thumb-color: var(--primary);
 }
-.pic-crop-modal .c-blur-slider .blur-range,
-.pic-crop-modal .c-blur-slider .blur-range:focus {
-    @apply w-full;
-    @apply border-none outline-none shadow-none ring-0;
-    @apply bg-transparent;
-    @apply cursor-pointer;
-    height: var(--thumb-size);
-    padding: 0 calc(var(--thumb-size) / 2);
-    appearance: none;
-    -webkit-appearance: none;
+.pic-crop-modal .c-zoom-readout::before,
+.pic-crop-modal .c-zoom-readout::after {
+    @apply content-empty;
+    @apply flex-1;
+    @apply h-px;
+    @apply bg-separator;
 }
-.pic-crop-modal .c-blur-slider .blur-range::-webkit-slider-runnable-track {
-    @apply rounded-full;
-    height: var(--track-height);
-    background: linear-gradient(
-        to right,
-        var(--progress-color) 0%,
-        var(--progress-color) var(--progress, 0%),
-        var(--track-color) var(--progress, 0%),
-        var(--track-color) 100%
-    );
-}
-.pic-crop-modal .c-blur-slider .blur-range::-webkit-slider-thumb {
-    width: var(--thumb-size);
-    height: var(--thumb-size);
-    border-radius: 50%;
-    background: var(--thumb-color);
-    margin-top: calc((var(--track-height) - var(--thumb-size)) / 2);
-    -webkit-appearance: none;
-}
-.pic-crop-modal .c-blur-slider .blur-range::-moz-range-track {
-    @apply rounded-full;
-    height: var(--track-height);
-    background: var(--track-color);
-}
-.pic-crop-modal .c-blur-slider .blur-range::-moz-range-thumb {
-    width: var(--thumb-size);
-    height: var(--thumb-size);
-    border-radius: 50%;
-    border: none;
-    background: var(--thumb-color);
-}
-.pic-crop-modal .c-blur-slider .blur-range::-moz-range-progress {
-    @apply rounded-full;
-    height: var(--track-height);
-    background: var(--progress-color);
-}
-.pic-crop-modal .c-blur-label {
-    @apply text-sm text-03;
+.pic-crop-modal .c-zoom-value {
+    @apply text-caption text-03 tabular-nums;
 }
 
 /* ── Controls ── */
 
 .pic-crop-modal .c-controls {
-    @apply flex-y items-center gap-3;
+    @apply flex-y items-stretch gap-3;
+    @apply p-2;
+    @apply rounded-lg border border-separator;
 }
-.pic-crop-modal .c-controls .c-buttons-row {
-    @apply flex-x items-center justify-center gap-3;
+.pic-crop-modal .c-controls .c-tools-row {
+    @apply flex-x items-center justify-between gap-2;
 }
-.pic-crop-modal .c-controls .c-group {
-    @apply flex-x items-center gap-1;
+.pic-crop-modal .c-controls .c-actions-row {
+    @apply flex-x items-center gap-2;
 }
-.pic-crop-modal .c-controls .btn-round.btn-confirm {
-    @apply bg-primary;
-    @apply text-white;
-}
-.pic-crop-modal .c-controls .btn-round.btn-confirm .spinner {
-    @apply w-5 h-5;
+.pic-crop-modal .c-controls .c-actions-row .btn {
+    @apply flex-1;
+    @apply flex-x items-center justify-center gap-1;
 }
 .pic-crop-modal .c-controls .c-status {
-    @apply text-sm text-03;
+    @apply text-caption text-03;
+}
+.pic-crop-modal .c-controls .c-generation-error {
+    @apply text-caption text-danger;
 }
 /* The shared disabled look repaints the button in bg-03, which is the dialog's own background here -
    the circle vanishes and only a dim glyph is left. Keep the enabled colors and halve the opacity. */
@@ -153,13 +130,111 @@
     @apply -scale-x-100;
 }
 
+/* ── Preview ── */
+
+.pic-crop-modal .c-preview {
+    @apply flex-x items-center gap-1;
+    @apply p-2;
+    @apply rounded-lg border border-separator;
+}
+.pic-crop-modal .c-preview > canvas {
+    @apply rounded-full;
+    @apply border border-separator;
+}
+.pic-crop-modal.square .c-preview > canvas,
+.pic-crop-modal.has-blur .c-preview > canvas {
+    @apply rounded-lg;
+}
+/* The crop canvases have no source for a marble - hide them and show the generated avatar instead. */
+.pic-crop-modal.marble .c-preview > canvas {
+    @apply hidden;
+}
+.pic-crop-modal .c-preview > .c-marble-preview {
+    @apply overflow-hidden;
+    @apply rounded-full border border-separator;
+    /* Match the crop canvases: their width attr is the content box, with the border outside it. */
+    @apply box-content;
+}
+.pic-crop-modal.square .c-preview > .c-marble-preview {
+    @apply rounded-lg;
+}
+.pic-crop-modal .c-preview > .c-marble-preview > marble-avatar,
+.pic-crop-modal .c-preview > .c-marble-preview > beam-avatar {
+    @apply block;
+    @apply w-full h-full;
+}
+.pic-crop-modal .c-preview-label {
+    @apply pl-3;
+    @apply text-caption text-03;
+}
+
+/* ── Sliders (zoom + blur) — div pattern, see docs/ui/components.md "Custom Sliders" ── */
+
+.pic-crop-modal .c-slider {
+    @apply relative;
+    @apply w-full h-5;
+    container-type: inline-size;
+}
+.pic-crop-modal .c-slider .c-track,
+.pic-crop-modal .c-slider .c-fill {
+    @apply absolute left-0 right-0 top-1/2;
+    @apply h-2;
+    @apply rounded-full;
+    @apply pointer-events-none;
+}
+.pic-crop-modal .c-slider .c-track {
+    @apply bg-cancel;
+    @apply -translate-y-1/2;
+}
+.pic-crop-modal .c-slider .c-fill {
+    @apply right-auto;
+    @apply bg-primary;
+    @apply -translate-y-1/2;
+    width: calc(var(--progress, 0) * 100%);
+}
+.pic-crop-modal .c-slider .c-thumb {
+    @apply absolute top-1/2;
+    @apply w-4 h-4;
+    @apply -mt-2;
+    @apply rounded-full;
+    @apply bg-primary shadow-sm;
+    @apply pointer-events-none;
+    transform: translateX(calc(var(--progress, 0) * (100cqw - 100%)));
+}
+.pic-crop-modal .c-slider input {
+    @apply absolute inset-0;
+    @apply w-full h-full m-0;
+    @apply opacity-0;
+    @apply cursor-pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+.pic-crop-modal.empty .c-slider .c-track,
+.pic-crop-modal.empty .c-slider .c-fill,
+.pic-crop-modal.empty .c-slider .c-thumb,
+.pic-crop-modal.saving .c-slider .c-track,
+.pic-crop-modal.saving .c-slider .c-fill,
+.pic-crop-modal.saving .c-slider .c-thumb {
+    @apply opacity-50;
+}
+
+/* ── Blur slider layout ── */
+
+.pic-crop-modal .c-blur-slider {
+    @apply flex-y items-center gap-1;
+    @apply w-full;
+}
+.pic-crop-modal .c-blur-label {
+    @apply text-caption text-03;
+}
+
 /* ── Error ── */
 
 .pic-crop-modal .c-error {
     @apply flex-y items-center justify-center gap-2;
     @apply w-full;
     @apply py-16;
-    @apply text-danger text-sm;
+    @apply text-caption text-danger;
 }
 
 /* ── Generation ── */
@@ -168,7 +243,4 @@
     @apply absolute inset-0;
     @apply flex-y items-center justify-center;
     @apply backdrop-brightness-50;
-}
-.pic-crop-modal .c-controls .c-generation-error {
-    @apply text-danger text-sm;
 }

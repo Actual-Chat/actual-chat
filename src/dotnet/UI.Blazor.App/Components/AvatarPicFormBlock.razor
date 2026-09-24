@@ -32,6 +32,7 @@
         </ButtonRound>
         <ImageCropPicker @ref="_picker"
             Scope="@MediaUploadScopes.ForAccount(AccountUI.OwnAccount.Value)"
+            CurrentPicture="@Picture"
             OnCropped="@OnCropped" />
 
         <ButtonRound Class="btn-modal btn-sm" Click="@OnGenerateAvatarClick">

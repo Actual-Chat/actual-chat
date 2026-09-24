@@ -1111,6 +1111,16 @@ public static class LocalizedStringsLocalizerExt
         public string PicCrop_RotateRight => l["PicCrop_RotateRight"].Value;
         public string PicCrop_Uploading_Format(object arg0) => l["PicCrop_Uploading_Format", arg0].Value;
         public string PicCrop_Processing => l["PicCrop_Processing"].Value;
+        public string PicCrop_Mirror => l["PicCrop_Mirror"].Value;
+        public string PicCrop_Reset => l["PicCrop_Reset"].Value;
+        public string PicCrop_RevertPrevious => l["PicCrop_RevertPrevious"].Value;
+        public string PicCrop_Upload => l["PicCrop_Upload"].Value;
+        public string PicCrop_Create => l["PicCrop_Create"].Value;
+        public string PicCrop_Zoom => l["PicCrop_Zoom"].Value;
+        public string PicCrop_SizesPreview => l["PicCrop_SizesPreview"].Value;
+        public string PicCrop_DragHint => l["PicCrop_DragHint"].Value;
+        public string PicCrop_UploadHint => l["PicCrop_UploadHint"].Value;
+        public string PicCrop_MarbleHint => l["PicCrop_MarbleHint"].Value;
         public string PeerContact_Title => l["PeerContact_Title"].Value;
         public string PeerContact_DisplayName => l["PeerContact_DisplayName"].Value;
         public string PeerContact_BlockUser => l["PeerContact_BlockUser"].Value;
