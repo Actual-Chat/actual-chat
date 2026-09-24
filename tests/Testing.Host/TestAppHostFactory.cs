@@ -18,7 +18,6 @@ using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
-using Xunit.DependencyInjection;
 
 namespace ActualChat.Testing.Host;
 
@@ -46,7 +45,7 @@ public static class TestAppHostFactory
     {
         var instanceName = options.InstanceName.RequireNonEmpty();
         var testOutputHelper = options.Output.ToSafe();
-        var outputAccessor = new TestOutputHelperAccessor() { Output = testOutputHelper };
+        var outputAccessor = new TestOutputAccessor() { Output = testOutputHelper };
         var log = outputAccessor.CreateTestLoggerFactory().CreateLogger(nameof(TestAppHostFactory));
         log.LogInformation("-> NewAppHost, instance '{InstanceName}'", instanceName);
         var manifestPath = GetManifestPath();

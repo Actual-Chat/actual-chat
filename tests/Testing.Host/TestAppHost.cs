@@ -1,5 +1,4 @@
 using ActualChat.App.Server;
-using Xunit.DependencyInjection;
 using Timer = System.Timers.Timer;
 
 namespace ActualChat.Testing.Host;
@@ -13,10 +12,10 @@ public class TestAppHost : AppHost
     public TestAppHostOptions Options { get; }
     public long Id { get; }
     public CpuTimestamp StartedAt { get; } = CpuTimestamp.Now;
-    public TestOutputHelperAccessor OutputAccessor { get; }
+    public TestOutputAccessor OutputAccessor { get; }
     public ITestOutputHelper? Output { get => OutputAccessor.Output; set => OutputAccessor.Output = value; }
 
-    public TestAppHost(TestAppHostOptions options, TestOutputHelperAccessor outputAccessor)
+    public TestAppHost(TestAppHostOptions options, TestOutputAccessor outputAccessor)
     {
         Options = options;
         OutputAccessor = outputAccessor;
