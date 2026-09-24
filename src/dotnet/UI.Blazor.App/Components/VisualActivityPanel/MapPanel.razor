@@ -89,7 +89,14 @@
             return null;
 
         var isMenuOpen = await _isMenuOpen.Use(cancellationToken).ConfigureAwait(false);
-        var ownMarker = await LocationUI.GetOwnMarker(chatId, cancellationToken).ConfigureAwait(false);
+        var ownLive = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
+        var countdown = ownLive is null
+            ? null
+            : await LocationUI.GetCountdown(chatId, ownLive.Id, cancellationToken).ConfigureAwait(false);
+        var isOwnDeviceSharing = ownLive is not null
+            && await LocationUI.IsOwnDeviceLive(chatId, cancellationToken).ConfigureAwait(false);
+        var ownMarker = await LocationUI.GetOwnMarkerUnlessSharedElsewhere(chatId, cancellationToken)
+            .ConfigureAwait(false);
         var markers = participants
             .Where(p => !(ownMarker is not null && p.IsOwn))
             .Select(p => p.MapMarker)
@@ -97,12 +104,6 @@
         if (ownMarker is not null)
             markers.Add(ownMarker);
 
-        var ownLive = await LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
-        var countdown = ownLive is null
-            ? null
-            : await LocationUI.GetCountdown(chatId, ownLive.Id, cancellationToken).ConfigureAwait(false);
-        var isOwnDeviceSharing = ownLive is not null
-            && await LocationUI.IsOwnDeviceLive(chatId, cancellationToken).ConfigureAwait(false);
         var center = ownLive?.Point ?? participants[0].Location.Point;
 
         // The "1.2 km away" chip makes sense only for a single remote sharer

@@ -12,10 +12,12 @@ public class LocationUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
     private AppUIHub Hub => field ??= Tester.ScopedAppServices.AppUIHub();
     private LocationUI LocationUI => Hub.LocationUI;
+    private BlazorTester? _otherDevice;
 
     protected override async Task DisposeAsync()
     {
         await Tester.DisposeSilentlyAsync();
+        await _otherDevice.DisposeSilentlyAsync();
         await base.DisposeAsync();
     }
 
@@ -50,5 +52,97 @@ public class LocationUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
         computed = await computed.Update(cancellationToken);
         computed.Value.Should().BeNull();
         computed.IsConsistent().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task OwnShareOfAnotherDeviceShouldBeLiveButNotThisDevices()
+    {
+        // arrange
+        var otherDevice = await SignInOnTwoDevices();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30).Debuggable());
+        var cancellationToken = cts.Token;
+        var (chatId, _) = await Tester.CreateChat(true, cancellationToken: cancellationToken);
+
+        // act
+        var location = await otherDevice.ReportLocation(
+            chatId,
+            new GeoPoint(10, 20),
+            TimeSpan.FromHours(1),
+            cancellationToken: cancellationToken);
+
+        // assert - the author is live, so Stop is offered here; this device's tracker has no share to report on
+        await TestWait.When(async ct => {
+            var ownLive = await LocationUI.GetOwnLive(chatId, ct);
+            ownLive.Should().NotBeNull();
+            ownLive!.Id.Should().Be(location.Id);
+        });
+        (await LocationUI.IsOwnLive(chatId, cancellationToken)).Should().BeTrue();
+        (await LocationUI.IsOwnDeviceLive(chatId, cancellationToken)).Should().BeFalse();
+        (await LocationUI.GetTrackingError(chatId, cancellationToken)).Should().BeNull();
+        (await LocationUI.GetOwnMarkerUnlessSharedElsewhere(chatId, cancellationToken))
+            .Should().BeNull("the maps show the share itself, not where this device is");
+    }
+
+    [Fact]
+    public async Task StopSharingShouldStopTheShareOfAnotherDevice()
+    {
+        // arrange - this device's reporter never started the share, so only GetOwnLive knows its id
+        var otherDevice = await SignInOnTwoDevices();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30).Debuggable());
+        var cancellationToken = cts.Token;
+        var (chatId, _) = await Tester.CreateChat(true, cancellationToken: cancellationToken);
+        var location = await otherDevice.ReportLocation(
+            chatId,
+            new GeoPoint(10, 20),
+            TimeSpan.FromHours(1),
+            cancellationToken: cancellationToken);
+        await TestWait.When(async ct => (await LocationUI.IsOwnLive(chatId, ct)).Should().BeTrue());
+
+        // act
+        await LocationUI.StopSharing(chatId, cancellationToken);
+
+        // assert
+        await TestWait.When(async ct => (await LocationUI.GetOwnLive(chatId, ct)).Should().BeNull());
+        var stopped = await Hub.SharedLocations.Get(Tester.Session, chatId, location.Id, cancellationToken);
+        stopped!.IsLive(Tester.AppServices.Clocks().SystemClock.Now).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task TakenOverShareShouldShowItsAuthorOnce()
+    {
+        // arrange - the message holds the first share's id, and the other device has taken over since
+        var otherDevice = await SignInOnTwoDevices();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30).Debuggable());
+        var cancellationToken = cts.Token;
+        var (chatId, _) = await Tester.CreateChat(true, cancellationToken: cancellationToken);
+        var hour = TimeSpan.FromHours(1);
+        var entry = await Tester.CreateLocationEntry(chatId, new GeoPoint(10, 20), hour, cancellationToken);
+        var firstId = entry.LocationId.Require();
+
+        // act
+        var second = await otherDevice.ReportLocation(
+            chatId,
+            new GeoPoint(30, 40),
+            hour,
+            cancellationToken: cancellationToken);
+
+        // assert - one marker at the live share, not a second one left behind at the frozen point
+        await TestWait.When(async ct => {
+            var participants = await LocationUI.ListParticipants(chatId, firstId, ct);
+            participants.Select(x => x.Location.Id).Should().Equal(
+                [second.Id],
+                "the frozen share and the live one belong to the same author");
+        });
+    }
+
+    // Private methods
+
+    private async Task<BlazorTester> SignInOnTwoDevices()
+    {
+        var identity = $"bob-{Ulid.NewUlid()}";
+        await Tester.SignInAsBob(identity);
+        _otherDevice = AppHost.NewBlazorTester(Out);
+        await _otherDevice.SignInAsBob(identity);
+        return _otherDevice;
     }
 }

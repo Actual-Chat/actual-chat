@@ -167,6 +167,20 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     }
 
     [ComputeMethod]
+    public virtual async Task<MapMarker?> GetOwnMarkerUnlessSharedElsewhere(
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        // This device's fix stands in for the own live share only while this device is the one sharing:
+        // otherwise it would hide the share and put the author somewhere the chat doesn't see them.
+        var ownLive = await GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
+        if (ownLive is not null && !await IsOwnDeviceLive(chatId, cancellationToken).ConfigureAwait(false))
+            return null;
+
+        return await GetOwnMarker(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
     public virtual async Task<MapMarker?> GetMarker(
         ChatId chatId,
         SharedLocationId locationId,
