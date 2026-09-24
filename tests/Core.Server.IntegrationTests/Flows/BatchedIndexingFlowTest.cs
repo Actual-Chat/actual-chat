@@ -14,6 +14,13 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
         = fixture.AppHost.Services.GetRequiredService<BatchedIndexingFlowTestContext<SimpleItem, ChatId>>();
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
 
+    protected override async Task InitializeAsync()
+    {
+        await base.InitializeAsync();
+        // The first test on a fresh host would otherwise spend its budget on the host's startup
+        await AppHost.Services.WhenFlowsStarted();
+    }
+
     [Fact]
     public async Task MustHandleEmptyBatch()
     {
