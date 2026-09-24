@@ -45,8 +45,17 @@ public partial class AudioStreamingBackend
                 return;
             }
 
+            // A dub reads its voice's language off the stream id's suffix; speech is served on the
+            // text stream's own id, which has none - so it comes from what the producer declared.
+            var language = await GetSpokenLanguage(sourceMemoizer, cancellationToken).ConfigureAwait(false);
+            if (language is not { } spokenLanguage) {
+                Log.LogWarning("RunSpeak: #{StreamId} - the transcript names no language to speak it in",
+                    speechStreamId);
+                return;
+            }
+
             synthesizeTask = StartSynthesis(
-                speechStreamId, text.Reader, mix, mixTask, null, cancellationToken);
+                speechStreamId, spokenLanguage, text.Reader, mix, mixTask, null, cancellationToken);
 
             // DubStabilizer chunks at boundaries a synthesizer can speak well; the source transcript
             // is fed to it directly, where a dub would feed the translation of it
@@ -67,5 +76,20 @@ public partial class AudioStreamingBackend
                 await synthesizeTask.SilentAwait(false);
             await mixTask.SilentAwait(false);
         }
+    }
+
+    // Replayed rather than folded from the loop below: the language is needed before the first
+    // chunk is spoken, and a memoized stream can be enumerated again without consuming it.
+    private static async Task<Language?> GetSpokenLanguage(
+        AsyncMemoizer<TranscriptDiff> sourceMemoizer,
+        CancellationToken cancellationToken)
+    {
+        var transcript = Transcript.Empty;
+        await foreach (var diff in sourceMemoizer.Replay(cancellationToken).ConfigureAwait(false)) {
+            transcript += diff;
+            if (transcript.Languages.Length > 0)
+                return transcript.Languages[0];
+        }
+        return null;
     }
 }
