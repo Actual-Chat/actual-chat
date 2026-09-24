@@ -7,7 +7,7 @@ namespace ActualChat.Mcp.IntegrationTests;
 public class McpSearchToolsTest(McpSearchCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : McpTestBase<McpSearchCollection.AppHostFixture>(fixture, @out)
 {
-    private const int IndexingAttempts = 300;
+    private static readonly TimeSpan IndexingTimeout = TimeSpan.FromSeconds(30);
 
     [LocalFact("needs OpenSearch")]
     public async Task SearchMessagesShouldFindPostedTextInChat()
@@ -24,10 +24,10 @@ public class McpSearchToolsTest(McpSearchCollection.AppHostFixture fixture, ITes
         // act
         var found = await WaitFor(
             () => CallTool<McpFoundMessage[]>(client, "search_messages", new { query = marker, chatId = chatId.Value }),
-            r => r.Length > 0, IndexingAttempts);
+            r => r.Length > 0, IndexingTimeout);
         var foundEverywhere = await WaitFor(
             () => CallTool<McpFoundMessage[]>(client, "search_messages", new { query = marker }),
-            r => r.Length == 2, IndexingAttempts);
+            r => r.Length == 2, IndexingTimeout);
 
         // assert
         found.Should().ContainSingle().Which.EntryId.Should().Be(entry.LocalId);
@@ -47,7 +47,7 @@ public class McpSearchToolsTest(McpSearchCollection.AppHostFixture fixture, ITes
         // act
         var found = await WaitFor(
             () => CallTool<McpFoundContact[]>(client, "search_contacts", new { query = title, scope = "groups" }),
-            r => r.Any(c => c.Id == chatId.Value), IndexingAttempts);
+            r => r.Any(c => c.Id == chatId.Value), IndexingTimeout);
 
         // assert
         found.Should().Contain(c => c.Id == chatId.Value && c.Kind == "chat" && c.Title == title);

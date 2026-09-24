@@ -59,15 +59,18 @@ public abstract class McpTestBase<TFixture>(TFixture fixture, ITestOutputHelper 
         return ErrorText(result);
     }
 
-    protected static async Task<T> WaitFor<T>(Func<Task<T>> read, Func<T, bool> isReady, int attempts = 30)
-    {
-        var result = await read().ConfigureAwait(false);
-        for (var i = 1; i < attempts && !isReady(result); i++) {
-            await Task.Delay(100).ConfigureAwait(false);
-            result = await read().ConfigureAwait(false);
-        }
-        return result;
-    }
+    protected static Task<T> WaitFor<T>(
+        Func<Task<T>> read,
+        Func<T, bool> isReady,
+        TimeSpan? timeout = null,
+        [CallerFilePath] string callerFilePath = "",
+        [CallerLineNumber] int callerLine = 0)
+        // Polled: tool results come over the wire, nothing invalidates on them
+        => TestWait.WhenPolled<T>(async () => {
+            var result = await read().ConfigureAwait(false);
+            isReady(result).Should().BeTrue("the tool result must reach the awaited state");
+            return result;
+        }, timeout, callerFilePath: callerFilePath, callerLine: callerLine);
 
     protected static T DeserializeResult<T>(CallToolResult result)
     {
