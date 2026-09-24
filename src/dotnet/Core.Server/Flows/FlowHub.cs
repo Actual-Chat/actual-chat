@@ -54,7 +54,7 @@ public sealed class FlowHub(IServiceProvider services) : IHasServices
     public FlowResumeEvent NewResumeEvent(Type flowType, params ReadOnlySpan<string> arguments)
         => new(NewId(flowType, FlowId.CombineArguments(arguments)), this);
 
-    // TryGet - must be used mainly in tests
+    // TryGet - reads only; unlike Get, it never starts a missing flow
 
     // [ComputeMethod] - behaves exactly like a compute method
     public async ValueTask<TFlow?> TryGet<TFlow>(string arguments, CancellationToken cancellationToken = default)
@@ -129,8 +129,8 @@ public sealed class FlowHub(IServiceProvider services) : IHasServices
             return flowData.GetFlow(this);
         }
 
-        var expectedVersion = flowData?.Version ?? 0L;
-        flowData = await Backend.Start(flowId, expectedVersion, cancellationToken).ConfigureAwait(false);
+        // Version 0 = start only if there's still no flow; otherwise Start returns the existing one
+        flowData = await Backend.Start(flowId, 0L, cancellationToken).ConfigureAwait(false);
         using (Computed.BeginIsolation()) // Just in case
             cFlowData = await cFlowData
                 // ReSharper disable once AccessToModifiedClosure
