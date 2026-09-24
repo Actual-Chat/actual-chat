@@ -1777,8 +1777,41 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.SetParticipation(
             chatId, aliceAuthor.Id, ParticipationKind.AudioListen, false, default);
 
-        // assert - the call closes on the new shouldCloseAsCall path since GetConsolidatedParticipants
+        // assert - the call closes on the new shouldCloseAsCall path since the fresh participant count
         // drops below 2, regardless of IsSessionLive (which would still be true due to Bob recording)
+        (await backend.GetState(chatId, default)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task HangUpShouldCloseTheCallWhoseRosterWasAlreadyObserved()
+    {
+        // A live call keeps its consolidated participant list observed, and that list serves the old
+        // roster for a moment after a change - the hang-up must not count the leaver as still present.
+
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(
+            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+        await backend.SetParticipation(
+            chatId, bobAuthor.Id, ParticipationKind.Record, true, default);
+        await backend.SetParticipation(
+            chatId, aliceAuthor.Id, ParticipationKind.AudioListen, true, default);
+        await TestWait.When(async ct => (await backend.ListParticipants(chatId, ct)).Should().HaveCount(2));
+
+        // act
+        await backend.SetParticipation(
+            chatId, aliceAuthor.Id, ParticipationKind.AudioListen, false, default);
+
+        // assert
         (await backend.GetState(chatId, default)).Should().BeNull();
     }
 
