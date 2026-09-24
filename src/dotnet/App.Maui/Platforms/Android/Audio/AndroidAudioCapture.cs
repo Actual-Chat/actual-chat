@@ -164,13 +164,20 @@ public class AndroidAudioCapture(IServiceProvider services) : IAudioCapture
                     AndroidAudioRouteLog.Describe(recorder.RoutedDevice),
                     AndroidAudioRouteLog.DescribeState());
                 recorder.RoutingChanged += (_, _) => {
+                    // Raised on the main thread; DescribeState blocks on AudioService, see AndroidAudioPlaybackEngine.
+                    string device;
                     try {
-                        Log.LogInformation("Capture rerouted to {Device}; {AudioState}",
-                            AndroidAudioRouteLog.Describe(recorder.RoutedDevice), AndroidAudioRouteLog.DescribeState());
+                        device = AndroidAudioRouteLog.Describe(recorder.RoutedDevice);
                     }
                     catch {
-                        // A released recorder has no route left to report
+                        return; // A released recorder has no route left to report
                     }
+
+                    _ = BackgroundTask.Run(() => {
+                        Log.LogInformation("Capture rerouted to {Device}; {AudioState}",
+                            device, AndroidAudioRouteLog.DescribeState());
+                        return Task.CompletedTask;
+                    });
                 };
 
                 while (!cancellationToken.IsCancellationRequested) {
