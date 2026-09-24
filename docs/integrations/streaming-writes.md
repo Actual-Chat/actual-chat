@@ -173,16 +173,34 @@ you round trips and buys nothing. Batch a few tokens, or flush on a short timer
 — 50–100 ms is plenty.
 
 **If you want to be heard as well as read, write at speaking pace.** Someone
-listening to the chat hears this message in a synthesized voice, and a voice
-speaks about 15 characters a second. Text you send faster than that is spoken
-after it appears, and the gap grows for as long as you outrun the voice —
-writing at 19 characters a second puts the voice four seconds behind over half
-a minute. It is the same rule as pacing a voice stream's audio, for the same
-reason: the sound plays at speaking rate whatever rate you produced it at.
+listening to the chat hears this message in a synthesized voice, and the sound
+plays at speaking rate whatever rate you produced it at. Text sent faster than
+that is spoken after it appears, and the gap grows for as long as you outrun
+the voice — writing English at 19 characters a second puts the voice four
+seconds behind over half a minute.
 
-A producer that wants to be read quickly should ignore this and write as fast
-as it likes; readers are not waiting on a voice. The choice is yours to make,
-but it is a choice.
+**Speaking rate is per language, not universal.** A character carries far more
+sound in a character-dense script, so the same number of characters is a very
+different amount of speech:
+
+| Language | ~chars/s | vs English |
+|---|---|---|
+| Russian | 17 | 1.2× |
+| English | 15 | 1.0× |
+| Japanese | 6 | 0.4× |
+| Mandarin | 4 | 0.3× |
+
+Pacing Mandarin at the English number writes about three and a half times
+faster than the voice can say it, and the gap never stops growing.
+
+Measure it yourself for a language or voice not listed — the method is one
+request: send a passage to the synthesizer, divide its character count by the
+duration of the audio that comes back. The numbers above were measured that
+way, on two passages per language, and were stable across both.
+
+A producer that wants to be read quickly should ignore all of this and write as
+fast as it likes; readers are not waiting on a voice. The choice is yours to
+make, but it is a choice.
 
 ## Voice: streaming what you say
 
