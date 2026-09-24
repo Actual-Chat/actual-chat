@@ -34,6 +34,10 @@ public sealed partial record LiveAudioStreamInfo
     // Set only on the muxed start item of a dub track; the registry's records carry null.
     [DataMember(Order = 9), Key(9)]
     public Language? DubLanguage { get; init; }
+    // No microphone behind this one: it is text a synthesizer will speak. A listener who wants
+    // only real voices skips it, and then nothing is ever synthesized on their behalf.
+    [DataMember(Order = 10), Key(10)]
+    public bool IsSynthesized { get; init; }
 
     public bool MaySpeak(Language language)
         => Languages.Any(x => x.IsoCode == language.IsoCode);

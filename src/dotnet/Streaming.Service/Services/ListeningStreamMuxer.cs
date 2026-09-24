@@ -33,6 +33,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
     private ChatId ChatId { get; }
     private Moment CatchUpFrom { get; }
     private Language? DubLanguage { get; }
+    private bool IsSpokenTextEnabled { get; }
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILiveAudioStreams LiveAudioStreams => field ??= Services.GetRequiredService<ILiveAudioStreams>();
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
@@ -42,8 +43,9 @@ public sealed class ListeningStreamMuxer : WorkerBase
 
     public ListeningStreamMuxer(
         IServiceProvider services, Session session, ChatId chatId, Moment catchUpFrom = default,
-        Language? dubLanguage = null)
+        Language? dubLanguage = null, bool isSpokenTextEnabled = true)
     {
+        IsSpokenTextEnabled = isSpokenTextEnabled;
         Services = services;
         Session = session;
         ChatId = chatId;
@@ -66,6 +68,12 @@ public sealed class ListeningStreamMuxer : WorkerBase
         => streamInfo.IsCatchUpTarget(catchUpFrom) || !isPreexisting
             ? TimeSpan.Zero
             : Constants.Audio.SkipToLive;
+
+    // internal for tests
+    // A listener who wants only real voices skips anything a synthesizer would speak - and by not
+    // asking for it, never causes it to be synthesized at all.
+    internal static bool MustSkipSynthesized(LiveAudioStreamInfo streamInfo, bool isSpokenTextEnabled)
+        => streamInfo.IsSynthesized && !isSpokenTextEnabled;
 
     // internal for tests
     internal static bool MustDub(LiveAudioStreamInfo streamInfo, Language? dubLanguage)
@@ -115,6 +123,8 @@ public sealed class ListeningStreamMuxer : WorkerBase
                         foreach (var streamInfo in currentStreams) {
                             if (streamInfo.IsTextOnly)
                                 continue; // Registered for activity tracking only, never published
+                            if (MustSkipSynthesized(streamInfo, IsSpokenTextEnabled))
+                                continue; // This listener asked to hear only real voices
                             if (_excludedStreamIds.ContainsKey(streamInfo.StreamId))
                                 continue;
                             if (_streamById.ContainsKey(streamInfo.StreamId))

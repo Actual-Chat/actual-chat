@@ -207,7 +207,14 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author != null)
             await SetListenerPresence(chatId, author.Id, true, cancellationToken).ConfigureAwait(false);
-        var muxer = new ListeningStreamMuxer(Services, session, chatId, catchUpFrom, dubLanguage);
+        // Read once per listening session: a listener who wants only real voices never asks for a
+        // synthesized stream, so nothing is ever synthesized on their behalf.
+        var languageSettings = await Services.UserSettingsUI(session).UserLanguageSettings()
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
+        var muxer = new ListeningStreamMuxer(
+            Services, session, chatId, catchUpFrom, dubLanguage,
+            isSpokenTextEnabled: !languageSettings.IsSpokenTextDisabled);
         var stream = ToLiveAsyncEnumerable(muxer, muxer.Output, chatId, author?.Id, cancellationToken);
         return StandardRpcStream.NewAudioDelivery(stream, allowReconnect: false);
     }

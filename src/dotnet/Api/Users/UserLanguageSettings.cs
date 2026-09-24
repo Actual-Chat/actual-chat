@@ -41,6 +41,10 @@ public sealed partial record UserLanguageSettings : StoredSettings, IHasOrigin, 
     // An entry rather than its media: the builder checks the entry's author is this user.
     [DataMember, MemoryPackOrder(9), Key(9)]
     public ChatEntryId? OwnVoiceSampleEntryId { get; init; }
+    // Listener side of synthesized speech: text messages are read aloud while listening. Negated
+    // so a blob written before this key, which reads as false, keeps the feature on by default.
+    [DataMember, MemoryPackOrder(10), Key(10)]
+    public bool IsSpokenTextDisabled { get; init; }
 
     public List<Language> ListSpoken()
     {

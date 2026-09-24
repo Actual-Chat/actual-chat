@@ -143,6 +143,9 @@ public static class LocalizedStringsLocalizerExt
         public string Transcription_TranslatedVoiceTopic => l["Transcription_TranslatedVoiceTopic"].Value;
         public string Transcription_TranslatedVoice => l["Transcription_TranslatedVoice"].Value;
         public string Transcription_TranslatedVoiceCaption => l["Transcription_TranslatedVoiceCaption"].Value;
+        public string Transcription_SpokenTextTopic => l["Transcription_SpokenTextTopic"].Value;
+        public string Transcription_SpokenText => l["Transcription_SpokenText"].Value;
+        public string Transcription_SpokenTextCaption => l["Transcription_SpokenTextCaption"].Value;
         public string Transcription_DubVoice => l["Transcription_DubVoice"].Value;
         public string Transcription_DubVoiceCaption => l["Transcription_DubVoiceCaption"].Value;
         public string Transcription_DubVoiceDefault => l["Transcription_DubVoiceDefault"].Value;
