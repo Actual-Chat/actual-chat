@@ -72,10 +72,18 @@ public sealed class ImageSizeEstimatorTest
     }
 
     [Theory]
-    [InlineData(40_000, "~0.1 MB")]
-    [InlineData(412_000, "~0.4 MB")]
-    [InlineData(1_600_000, "~1.5 MB")]
-    [InlineData(12_400_000, "~12 MB")]
+    [InlineData(40_000, "~0.1MB")]
+    [InlineData(412_000, "~0.4MB")]
+    [InlineData(626_000, "~0.6MB")]
+    [InlineData(1_600_000, "~1.5MB")]
+    [InlineData(12_400_000, "~12MB")]
     public void ShouldFormatCoarsely(long bytes, string expected)
-        => ImageSizeEstimator.Format(bytes).Should().Be(expected);
+        => ImageSizeEstimator.Format(bytes, isApprox: true).Should().Be(expected);
+
+    [Theory]
+    [InlineData(626_000, "0.6MB")]
+    [InlineData(478_000, "0.5MB")]
+    [InlineData(4_700_000, "4.5MB")]
+    public void ShouldFormatExactSizesInMbWithoutSpace(long bytes, string expected)
+        => ImageSizeEstimator.Format(bytes, isApprox: false).Should().Be(expected);
 }
