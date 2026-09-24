@@ -19,7 +19,8 @@ public partial class AudioStreamingBackend
         int preSkip,
         RpcStream<AudioFrame> frames,
         CancellationToken cancellationToken)
-        => ProcessAudio(record, preSkip, frames, Constants.Audio.FrameSilenceTimeout, null, cancellationToken);
+        => ProcessAudio(
+            record, preSkip, frames, Constants.Audio.FrameSilenceTimeout, null, false, cancellationToken);
 
     private async Task ProcessAudio(
         AudioRecord record,
@@ -27,6 +28,7 @@ public partial class AudioStreamingBackend
         RpcStream<AudioFrame> frames,
         TimeSpan frameSilenceTimeout,
         Language? declaredLanguage,
+        bool isProducerDriven,
         CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug(nameof(ProcessAudio) + ": record #{StreamId} = {Record}", record.StreamId, record);
@@ -39,7 +41,7 @@ public partial class AudioStreamingBackend
                 augmentedFrames = augmentedFrames.WithLog(Log, nameof(ProcessAudio), cancellationToken);
             await ProcessAudio(
                     record, preSkip, augmentedFrames, frameSilenceTimeout, declaredLanguage,
-                    delayedCancellationToken)
+                    isProducerDriven, delayedCancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
@@ -85,7 +87,7 @@ public partial class AudioStreamingBackend
             // that governs an abandoned stream here.
             await ProcessAudio(
                     record, preSkip, RpcStream.New(trackedFrames),
-                    Constants.Chat.EntryStreamIdleTimeout, language, cancellationToken)
+                    Constants.Chat.EntryStreamIdleTimeout, language, true, cancellationToken)
                 .ConfigureAwait(false);
         }
         finally {
@@ -118,6 +120,7 @@ public partial class AudioStreamingBackend
         IAsyncEnumerable<AudioFrame> frames,
         TimeSpan frameSilenceTimeout,
         Language? declaredLanguage,
+        bool isProducerDriven,
         CancellationToken cancellationToken)
     {
         using var watchdogCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -222,7 +225,8 @@ public partial class AudioStreamingBackend
         // in a summarized chat. JustText in a plain chat is just a voice-to-text message, not a session.
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         var isSummarized = chat?.IsSummarized ?? false;
-        if (mustStreamVoice || isSummarized)
+        var wasRegisteredAsStream = mustStreamVoice || isSummarized;
+        if (wasRegisteredAsStream)
             await LiveSessionsBackend
                 .OnStreamRegistered(chatId, author.Id, null, isSummarized, mustStreamVoice, cancellationToken)
                 .ConfigureAwait(false);
@@ -300,6 +304,14 @@ public partial class AudioStreamingBackend
                     await LiveAudioBackend
                         .Unregister(chatId, openSegment.StreamId.Value, CancellationToken.None)
                         .ConfigureAwait(false);
+                    // A recording client clears its own participation when it stops; a producer has
+                    // no client to do it, so HasRecorder - and with it the chat's "talking" state -
+                    // would stand until the 90s staleness cutoff, long after the sound ended.
+                    if (isProducerDriven && wasRegisteredAsStream)
+                        await LiveSessionsBackend
+                            .SetParticipation(chatId, author.Id, ParticipationKind.Record, false,
+                                CancellationToken.None)
+                            .ConfigureAwait(false);
                 }
 
                 if (mustStreamVoice && mustTranscribe) {

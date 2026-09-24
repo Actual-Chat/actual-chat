@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Chat;
+using ActualChat.Live;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
 using ActualLab.IO;
@@ -73,6 +74,35 @@ public sealed class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, IT
             var entries = await ListEntries(chatsBackend, record.ChatId, ct);
             entries.Should().Contain(e => e.HasAudio,
                 "a producer that sent audio meant to post something playable");
+        }, WaitTimeout);
+    }
+
+    [Fact]
+    public async Task ShouldStopReportingARecorderOnceTheStreamEnds()
+    {
+        // A recording client clears its own participation when it stops. A producer has no client,
+        // so nothing said "done" and the chat kept reporting someone talking - with no sound behind
+        // it - until the 90-second staleness cutoff let go.
+
+        // arrange
+        var (backend, _, record) = await NewRecording();
+        var liveSessions = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+
+        // act
+        await backend.ProcessAudioWithTranscript(
+            record,
+            0,
+            new RpcStream<AudioFrame>(await ReadFrames()),
+            new RpcStream<ExternalTranscriptChunk>(new[] {
+                new ExternalTranscriptChunk("Done speaking", true, 0.2, true),
+            }.ToAsyncEnumerable()),
+            null,
+            CancellationToken.None);
+
+        // assert
+        await TestWait.When(async ct => {
+            var hasRecorder = await liveSessions.HasRecorder(record.ChatId, ct);
+            hasRecorder.Should().BeFalse("the sound is over, so nothing is recording");
         }, WaitTimeout);
     }
 
