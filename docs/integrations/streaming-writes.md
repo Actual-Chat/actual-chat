@@ -211,6 +211,22 @@ arrives, and audio that turns up slower than real time is a gap in the middle
 of a sentence. Faster is fine: the server holds what it has. At the 32 kbps a
 speech encoder typically produces, one 4 KB chunk per second is real time.
 
+### Pacing the text against the voice
+
+Send a clause when the audio that carries it is going out, not on a fixed cadence.
+Live listeners see the text the moment it arrives and hear the audio when playback
+reaches it, so a schedule that ignores where the words fall in the sound drifts
+against it — clauses are not equal in length, and spacing them evenly puts each one
+on screen after it has been spoken.
+
+`audioOffset` does not fix this. It writes the time map, which drives seeking and
+highlighting on the *finished* message; live rendering shows whatever text has
+arrived. For a listener following along, the send time is the only lever.
+
+If you have alignment, use it. If you don't, character count is a good stand-in —
+speech runs at a roughly constant number of characters per second, so a clause
+starting `n` characters into a message of `N` belongs at about `n/N` of its audio.
+
 ### Reading the reply
 
 Every call returns `{ streamId, entryId, textOffset, audioBytes,

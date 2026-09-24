@@ -40,6 +40,12 @@ public static class McpServerInstructions
         `audioDuration` in the reply is what the server actually decoded. If it stops growing
         while `audioBytes` does, your audio is not being read - check the packet size first.
 
+        Send a clause of text when the audio carrying it is going out, not on a fixed
+        cadence: a listener reads the text as it arrives and hears the audio when playback
+        reaches it, so evenly spaced text drifts against unevenly sized clauses and lands
+        after they have been spoken. `audioOffset` does not help here - it writes the time
+        map, which drives seeking on the finished message, not live display.
+
         ## Offsets and resuming
 
         `textOffset` is the number of characters the server already has. Pass what you think it
