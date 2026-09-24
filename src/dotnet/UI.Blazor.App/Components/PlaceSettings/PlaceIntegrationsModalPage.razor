@@ -1,0 +1,24 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.WebHooks
+@inherits ComponentBase<AppUIHub>
+
+<div class="chat-integrations">
+    <WebHookList Scope="WebHookScope.Place" ScopeId="@PlaceId.Value" ShowAddButton="false"/>
+</div>
+
+@code {
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+
+    private PlaceId PlaceId { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        PlaceId = Context.GetModel<PlaceId>();
+        Context.Title = L.Integrations_Title;
+        // The frame already draws a back arrow on inner steps, so the footer hosts the page's real
+        // action instead - Add integration - the same way the chat integrations page does.
+        Context.Buttons = [DialogButtonInfo.CreateSubmitButton(L.Integrations_Add, OnAddClick)];
+    }
+
+    private Task OnAddClick()
+        => Hub.ModalUI.Show(new WebHookCreateModal.Model(WebHookScope.Place, PlaceId.Value));
+}

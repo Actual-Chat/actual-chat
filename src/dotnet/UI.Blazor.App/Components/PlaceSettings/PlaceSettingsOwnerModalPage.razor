@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Media
+@using ActualChat.WebHooks
 @inherits ComputedStateComponent<AppUIHub, PlaceSettingsOwnerModalPage.ComputedModel>
 @{
     if (State.IsInitial(out var m))
@@ -51,39 +52,48 @@
                 @(m.Place.IsPublic ? L.Place_Public : L.Place_Private)
             </Right>
         </TileItem>
-    </div>
-
-    @if (canEditMembers || isOwner) {
-        <div class="chat-settings-container">
-            @if(canEditMembers) {
-                <TileItem Class="item-manage-members" Click="OnManageMembersClick">
+        @if (canEditMembers) {
+            <TileItem Class="item-manage-members" Click="OnManageMembersClick">
+                <Icon>
+                    <i class="icon-people"></i>
+                </Icon>
+                <Content>
+                    @L.Place_MembersLabel(m.MemberCount, m.MemberCount)
+                </Content>
+                <Right>
+                    <i class="icon-chevron-right text-xl"></i>
+                </Right>
+            </TileItem>
+        }
+        @if (isOwner) {
+            <TileItem Click="OnCopyChatClick" Class="copy-chat-item">
+                <Icon>
+                    <i class="icon-copy-in-place text-xl"></i>
+                </Icon>
+                <Content>
+                    @L.Place_CopyChatInto
+                </Content>
+            </TileItem>
+            @if (m.EnableIncompleteUI) {
+                <TileItem Class="item-integrations" Click="OnIntegrationsClick">
                     <Icon>
-                        <i class="icon-people"></i>
+                        <i class="icon-link-2"></i>
                     </Icon>
                     <Content>
-                        @L.Place_MembersLabel(m.MemberCount, m.MemberCount)
+                        @L.Integrations_Title
                     </Content>
                     <Right>
-                        <i class="icon-chevron-right text-3xl"></i>
+                        <span class="c-count">@L.Integrations_Hooks_Format(m.WebHookCount, m.WebHookCount)</span>
+                        <i class="icon-chevron-right text-xl"></i>
                     </Right>
                 </TileItem>
             }
-            @if (isOwner) {
-                <TileItem Click="OnCopyChatClick" Class="copy-chat-item">
-                    <Icon>
-                        <i class="icon-cloud-upload text-xl"></i>
-                    </Icon>
-                    <Content>
-                        @L.Place_CopyChatInto
-                    </Content>
-                </TileItem>
-                <TileItem Class="item-danger" Click="@(() => OnPlaceDeleteClick())">
-                    <Icon><i class="icon-trash02"></i></Icon>
-                    <Content>@L.LeaveConfirm_DeletePlaceTitle</Content>
-                </TileItem>
-            }
-        </div>
-    }
+            <TileItem Class="item-danger" Click="@(() => OnPlaceDeleteClick())">
+                <Icon><i class="icon-trash02"></i></Icon>
+                <Content>@L.LeaveConfirm_DeletePlaceTitle</Content>
+            </TileItem>
+        }
+    </div>
 </Form>
 
 @code {
@@ -96,6 +106,12 @@
     private DialogButtonInfo _submitButtonInfo = null!;
     private ImageCropPicker? _avatarPicker;
     private ImageCropPicker? _wallpaperPicker;
+
+    // Only this owner step edits the pictures; on inner steps the pickers aren't rendered, so leave the
+    // avatar unclickable - a default callback also drops the cursor-pointer affordance.
+    private EventCallback<MouseEventArgs> EditPicClick => Context.IsInnerStep
+        ? default
+        : EventCallback.Factory.Create<MouseEventArgs>(this, () => _avatarPicker!.Pick());
 
     private IPlaces Places => Hub.Places;
     private ChatUI ChatUI => Hub.ChatUI;
@@ -141,32 +157,36 @@
                 IsSquare="true"
                 AvatarKind="@AvatarKind.Marble"
                 AvatarKey="@PlaceId.Value"
-                Click="@(() => _avatarPicker!.Pick())"/>
+                Click="@EditPicClick"/>
 
-            <div class="c-buttons">
-                <ButtonRound Class="btn-modal btn-sm" Click="@(() => _avatarPicker!.Pick())">
-                    <i class="icon-person-add-2 text-2xl"></i>
-                </ButtonRound>
-                <ImageCropPicker @ref="_avatarPicker"
-                    Scope="@_form!.ImageScope"
-                    IsSquare="true"
-                    CurrentPicture="@_form.Picture"
-                    CurrentAvatarKey="@PlaceId.Value"
-                    CurrentAvatarTitle="@_form.Title"
-                    AvatarKind="AvatarKind.Marble"
-                    OnCropped="@OnImagePicked" />
+            @* The hero is reused on inner steps (type, members, copy chat) where editing the pictures
+               makes no sense, so the edit buttons and the avatar's own click live only here. *@
+            @if (!Context.IsInnerStep) {
+                <div class="c-buttons">
+                    <ButtonRound Class="btn-modal btn-sm" Click="@(() => _avatarPicker!.Pick())">
+                        <i class="icon-person-add-2 text-2xl"></i>
+                    </ButtonRound>
+                    <ImageCropPicker @ref="_avatarPicker"
+                        Scope="@_form!.ImageScope"
+                        IsSquare="true"
+                        CurrentPicture="@_form.Picture"
+                        CurrentAvatarKey="@PlaceId.Value"
+                        CurrentAvatarTitle="@_form.Title"
+                        AvatarKind="AvatarKind.Marble"
+                        OnCropped="@OnImagePicked" />
 
-                <ButtonRound Class="btn-modal btn-sm" Click="@(() => _wallpaperPicker!.Pick())">
-                    <i class="icon-image text-2xl"></i>
-                </ButtonRound>
-                <ImageCropPicker @ref="_wallpaperPicker"
-                    Scope="@_form!.ImageScope"
-                    IsSquare="true"
-                    ViewportAspectRatio="@WallpaperAspectRatio"
-                    HasBlur="true"
-                    CurrentPicture="@_form.Background"
-                    OnCropped="@OnBackgroundPicked" />
-            </div>
+                    <ButtonRound Class="btn-modal btn-sm" Click="@(() => _wallpaperPicker!.Pick())">
+                        <i class="icon-image text-2xl"></i>
+                    </ButtonRound>
+                    <ImageCropPicker @ref="_wallpaperPicker"
+                        Scope="@_form!.ImageScope"
+                        IsSquare="true"
+                        ViewportAspectRatio="@WallpaperAspectRatio"
+                        HasBlur="true"
+                        CurrentPicture="@_form.Background"
+                        OnCropped="@OnBackgroundPicked" />
+                </div>
+            }
         </div>
     </div>;
 
@@ -207,11 +227,18 @@
             return new() { Place = place };
 
         var allAuthorIds = await Places.ListAuthorIds(Session, place.Id, cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        var webHookCount = enableIncompleteUI
+            ? (await Hub.WebHooks.List(Session, WebHookScope.Place, placeId.Value, cancellationToken)
+                .ConfigureAwait(false)).Count
+            : 0;
 
         return new() {
             Place = place,
             MemberCount = allAuthorIds.Length,
             IsOwner = place.Rules.IsOwner(),
+            EnableIncompleteUI = enableIncompleteUI,
+            WebHookCount = webHookCount,
         };
     }
 
@@ -233,6 +260,9 @@
 
     private void OnManageMembersClick()
         => Context.StepIn(DiveInDialogPage.New<PlaceSettingsEditMembersModalPage>(new PlaceSettingsEditMembersModalPage.Model(PlaceId)));
+
+    private void OnIntegrationsClick()
+        => Context.StepIn(DiveInDialogPage.New<PlaceIntegrationsModalPage>(PlaceId));
 
     private async Task OnSubmit() {
         if (_formRef == null)
@@ -301,5 +331,7 @@
         public Place? Place { get; init; }
         public int MemberCount { get; init; }
         public bool IsOwner { get; init; }
+        public bool EnableIncompleteUI { get; init; }
+        public int WebHookCount { get; init; }
     }
 }
