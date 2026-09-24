@@ -10,7 +10,8 @@ public static class McpModelExt
             : new McpIdRange<long>(range.Start, range.End - 1);
 
     public static McpMessageStream ToMcpModel(this ChatEntryStream stream)
-        => new(stream.Id.Value, stream.EntryId.LocalId, stream.Offset, stream.IsCompleted);
+        => new(stream.Id.Value, stream.EntryId.LocalId, stream.Offset,
+            stream.SpeechBacklog?.TotalSeconds, stream.IsCompleted);
 
     public static McpVoiceStream ToMcpModel(this ChatVoiceStream stream)
         => new(stream.Id.Value, stream.EntryId?.LocalId, stream.TextOffset,
