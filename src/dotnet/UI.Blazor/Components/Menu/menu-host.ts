@@ -248,7 +248,13 @@ export class MenuHost implements Disposable {
 
         menu.focused = true;
         const firstItem = menu.menuElement.querySelector<HTMLElement>('[role=menuitem]');
-        firstItem?.focus({ preventScroll: true });
+        if (!firstItem)
+            return;
+
+        if (menu.selection)
+            focusKeepingSelection(firstItem);
+        else
+            firstItem.focus({ preventScroll: true });
     }
 
     private removeMessageMark(menuRef: string) {
@@ -501,6 +507,22 @@ function getMenuSelection(): MenuSelection | null {
     const [owner, text] = getSelectionOwner('menu');
     const ownerMenuRef = owner?.dataset.menu;
     return ownerMenuRef ? { text, ownerMenuRef } : null;
+}
+
+/** WebKit collapses the text selection when a non-editable element gets focus; Chrome keeps it. */
+function focusKeepingSelection(element: HTMLElement): void {
+    const selection = document.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+        element.focus({ preventScroll: true });
+        return;
+    }
+
+    const range = selection.getRangeAt(0).cloneRange();
+    element.focus({ preventScroll: true });
+    if (selection.isCollapsed && !range.collapsed) {
+        selection.removeAllRanges();
+        selection.addRange(range);
+    }
 }
 
 function isSameSelection(a: MenuSelection | null, b: MenuSelection | null): boolean {
