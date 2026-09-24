@@ -37,6 +37,15 @@ public interface IAudioStreamingBackend : IComputeService, IBackendService
         RpcStream<TranscriptDiff> diffStream,
         CancellationToken cancellationToken);
 
+    // A transcript with no audio behind it. Carries the speaker, which PushTranscript can leave to
+    // ProcessAudio but nothing else would register - and without it the text cannot be spoken.
+    Task PushTextTranscript(
+        StreamId streamId,
+        ChatId chatId,
+        AuthorId authorId,
+        RpcStream<TranscriptDiff> diffStream,
+        CancellationToken cancellationToken);
+
     Task ProcessAudio(
         AudioRecord record,
         int preSkip,

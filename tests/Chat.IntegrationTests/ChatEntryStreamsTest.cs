@@ -27,7 +27,7 @@ public class ChatEntryStreamsTest(ChatCollection.AppHostFixture fixture, ITestOu
         var chatId = await NewChat();
 
         // act
-        var stream = await Tester.Chats.StartEntryStream(Tester.Session, chatId, null, default);
+        var stream = await Tester.Chats.StartEntryStream(Tester.Session, chatId, null, null, default);
         stream = await Append(stream, "Hello, ");
         stream = await Append(stream, "streamed ");
         stream = await Append(stream, "world!");
@@ -48,7 +48,7 @@ public class ChatEntryStreamsTest(ChatCollection.AppHostFixture fixture, ITestOu
         var chatId = await NewChat();
 
         // act
-        var stream = await Tester.Chats.StartEntryStream(Tester.Session, chatId, null, default);
+        var stream = await Tester.Chats.StartEntryStream(Tester.Session, chatId, null, null, default);
 
         // assert - the entry is there from the first call, so a watcher can already follow it
         var entry = await ChatsBackend.GetEntry(stream.EntryId, default);
@@ -69,7 +69,7 @@ public class ChatEntryStreamsTest(ChatCollection.AppHostFixture fixture, ITestOu
 
         // arrange
         var chatId = await NewChat();
-        var stream = await Tester.Chats.StartEntryStream(Tester.Session, chatId, null, default);
+        var stream = await Tester.Chats.StartEntryStream(Tester.Session, chatId, null, null, default);
         stream = await Append(stream, "One");
 
         // act - the same append again, then one that skips ahead
@@ -89,7 +89,7 @@ public class ChatEntryStreamsTest(ChatCollection.AppHostFixture fixture, ITestOu
     {
         // arrange
         var chatId = await NewChat(isPublic: true);
-        var stream = await Tester.Chats.StartEntryStream(Tester.Session, chatId, null, default);
+        var stream = await Tester.Chats.StartEntryStream(Tester.Session, chatId, null, null, default);
         await using var bob = AppHost.NewWebClientTester(Out);
         await bob.SignInAsUniqueBob();
         await bob.Commander.Call(new Authors_Join { Session = bob.Session, ChatId = chatId });
@@ -111,7 +111,7 @@ public class ChatEntryStreamsTest(ChatCollection.AppHostFixture fixture, ITestOu
     {
         // arrange
         var chatId = await NewChat();
-        var stream = await Tester.Chats.StartEntryStream(Tester.Session, chatId, null, default);
+        var stream = await Tester.Chats.StartEntryStream(Tester.Session, chatId, null, null, default);
         stream = await Append(stream, "Done");
 
         // act
@@ -136,7 +136,7 @@ public class ChatEntryStreamsTest(ChatCollection.AppHostFixture fixture, ITestOu
         Streams.IdleTimeout = TimeSpan.FromSeconds(2);
         try {
             // act - start, append once, then never call again
-            var stream = await Tester.Chats.StartEntryStream(Tester.Session, chatId, null, default);
+            var stream = await Tester.Chats.StartEntryStream(Tester.Session, chatId, null, null, default);
             await Append(stream, "Half a thought");
 
             // assert
@@ -161,7 +161,7 @@ public class ChatEntryStreamsTest(ChatCollection.AppHostFixture fixture, ITestOu
         await SetMaintenance(admin, chatId, true);
         try {
             // act
-            var start = () => Tester.Chats.StartEntryStream(Tester.Session, chatId, null, default);
+            var start = () => Tester.Chats.StartEntryStream(Tester.Session, chatId, null, null, default);
 
             // assert
             await start.Should().ThrowAsync<Exception>();
@@ -181,7 +181,7 @@ public class ChatEntryStreamsTest(ChatCollection.AppHostFixture fixture, ITestOu
         var apiSession = new Session(apiKey);
 
         // act
-        var stream = await Tester.Chats.StartEntryStream(apiSession, chatId, null, default);
+        var stream = await Tester.Chats.StartEntryStream(apiSession, chatId, null, null, default);
         await Tester.Chats.AppendEntryStream(apiSession, stream.Id, 0, "From a bot", default);
         var finished = await Tester.Chats.FinishEntryStream(apiSession, stream.Id, default);
 

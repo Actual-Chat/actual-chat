@@ -75,10 +75,12 @@ public sealed class McpMessageTools(IServiceProvider services)
     public async Task<McpMessageStream> StartMessageStream(
         [Description("The chat id.")] string chatId,
         [Description("LID of your own recent message to stream into; omit to post a new one.")] long? entryId = null,
+        [Description("Language you are writing in, e.g. \"en-US\"; omit to use your own.")] string? language = null,
         CancellationToken cancellationToken = default)
     {
         var stream = await Chats
-            .StartEntryStream(Session, ChatId.Parse(chatId), entryId, cancellationToken)
+            .StartEntryStream(Session, ChatId.Parse(chatId), entryId,
+                Language.ParseNullable(language), cancellationToken)
             .ConfigureAwait(false);
         return stream.ToMcpModel();
     }

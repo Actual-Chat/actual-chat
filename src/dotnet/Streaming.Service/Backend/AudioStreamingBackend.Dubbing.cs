@@ -44,10 +44,19 @@ public partial class AudioStreamingBackend
 #pragma warning disable CA2016 // Pass cancellationToken
         var stopTokenSource = HostLifetime.CreateStopTokenSource();
 #pragma warning restore CA2016
-        var worker = FuncWorker.New(
-            static (arg, ct) => arg.self.RunDub(arg.dubStreamId, arg.whenPublishedSource, ct),
-            (self: this, dubStreamId, whenPublishedSource),
-            stopTokenSource);
+        // Only a producer that declared its stream text-only gets spoken. Inferring it from a
+        // missing recording would also catch a dub whose audio has not arrived yet, or a
+        // transcript-only dub source, both of which must still be dubbed.
+        var isSpeech = _textOnlyStreams.ContainsKey(dubStreamId.BaseStreamId);
+        var worker = isSpeech
+            ? FuncWorker.New(
+                static (arg, ct) => arg.self.RunSpeak(arg.dubStreamId, arg.whenPublishedSource, ct),
+                (self: this, dubStreamId, whenPublishedSource),
+                stopTokenSource)
+            : FuncWorker.New(
+                static (arg, ct) => arg.self.RunDub(arg.dubStreamId, arg.whenPublishedSource, ct),
+                (self: this, dubStreamId, whenPublishedSource),
+                stopTokenSource);
         return new DubEntry(worker, whenPublishedSource.Task);
     }
 

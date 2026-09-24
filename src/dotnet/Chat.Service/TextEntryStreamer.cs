@@ -1,3 +1,5 @@
+using ActualChat.Audio;
+using ActualChat.Live;
 using ActualChat.Mesh;
 using ActualChat.Streaming;
 using ActualChat.Transcription;
@@ -18,6 +20,7 @@ public class TextEntryStreamer(IServiceProvider services)
 
     private ICommander Commander => field ??= Services.Commander();
     private IAudioStreamingBackend StreamingBackend => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
+    private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     protected ILogger Log => field ??= Services.LogFor(GetType());
@@ -38,13 +41,17 @@ public class TextEntryStreamer(IServiceProvider services)
         IAsyncEnumerable<string> textChunks,
         CancellationToken cancellationToken = default,
         bool? isViaApi = null,
-        TaskCompletionSource<ChatEntry>? entryCreatedSource = null)
+        TaskCompletionSource<ChatEntry>? entryCreatedSource = null,
+        Language? language = null)
     {
         var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
-        using var stream = ToTranscriptDiffs(textChunks, cancellationToken)
+        using var stream = ToTranscriptDiffs(textChunks, language, cancellationToken)
             .Memoize(cancellationToken);
         var rpcStream = RpcStream.New(stream.Replay(cancellationToken));
-        var publishStreamTask = StreamingBackend.PushTranscript(streamId, rpcStream, cancellationToken);
+        // PushTextTranscript rather than PushTranscript: nothing else registers the speaker for a
+        // transcript with no audio, and without it the text cannot be spoken aloud later.
+        var publishStreamTask = StreamingBackend.PushTextTranscript(
+            streamId, chatId, authorId, rpcStream, cancellationToken);
 
         // The entry has to exist before the stream is drained: readers find the stream through
         // its ContentStreamId, so anything published earlier has no subscriber to reach.
@@ -60,6 +67,12 @@ public class TextEntryStreamer(IServiceProvider services)
         }
         entryCreatedSource?.TrySetResult(entry);
 
+        // Announce it as live audio so a listener's client discovers something to play: that
+        // request is what makes the server speak the text. Without it nothing ever asks, and a
+        // bot is silent to someone who is listening to everyone else in the room.
+        var beginsAt = Clocks.ServerClock.Now;
+        await RegisterSpeech(entry, beginsAt, language).ConfigureAwait(false);
+
         var transcript = Transcript.Empty;
         try {
             await foreach (var diff in stream.Replay(cancellationToken).ConfigureAwait(false))
@@ -67,6 +80,9 @@ public class TextEntryStreamer(IServiceProvider services)
             await publishStreamTask.ConfigureAwait(false);
         }
         finally {
+            await LiveAudioBackend
+                .Unregister(chatId, streamId.Value, CancellationToken.None)
+                .SilentAwait(false);
             // Finalized even on failure, otherwise the entry stays empty and streaming forever.
             entry = await FinalizeEntry(entry, transcript.Text).ConfigureAwait(false);
         }
@@ -114,8 +130,28 @@ public class TextEntryStreamer(IServiceProvider services)
 
     // Private methods
 
+    private Task RegisterSpeech(ChatEntry entry, Moment beginsAt, Language? language)
+    {
+        // IsTextOnly false on purpose: there is no recording, but there is audio to be had - the
+        // synthesis - and GetStream refuses to serve a stream marked text-only.
+        var streamInfo = new LiveAudioStreamInfo {
+            ChatId = entry.ChatId,
+            AuthorId = entry.AuthorId,
+            StreamId = entry.ContentStreamId,
+            BeginsAt = beginsAt,
+            SourceBeginsAt = beginsAt,
+            Format = AudioSource.DefaultFormat,
+            IsTextOnly = false,
+            // Empty would mean "never dub" - and the dub request is exactly what makes the
+            // server speak this. Declaring the language is what makes a listener ask.
+            Languages = language is { } l ? new ApiArray<Language>([l]) : ApiArray<Language>.Empty,
+        };
+        return LiveAudioBackend.Register(entry.ChatId, streamInfo, CancellationToken.None);
+    }
+
     private async IAsyncEnumerable<TranscriptDiff> ToTranscriptDiffs(
         IAsyncEnumerable<string> textChunks,
+        Language? language,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         // Producers may push at any rate - an LLM emits a token at a time - but every diff costs a
@@ -131,8 +167,11 @@ public class TextEntryStreamer(IServiceProvider services)
             if (newText == text)
                 continue;
 
+            // The producer declares its language, so a transcript with no audio still says what
+            // it is - which is what lets it be spoken, and translated, later
             yield return new TranscriptDiff(StringDiff.New(newText, text), LinearMapDiff.None) {
                 IsStable = true,
+                Languages = language is { } l ? [l] : null,
             };
 
             text = newText;
