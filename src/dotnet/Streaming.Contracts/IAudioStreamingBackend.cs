@@ -16,10 +16,6 @@ public interface IAudioStreamingBackend : IComputeService, IBackendService
     // Language-suffixed transcript stream ids resolve to their base stream's chat.
     Task<ChatId?> GetChatId(StreamId streamId, CancellationToken cancellationToken);
 
-    // Starts speaking a text stream before anyone asks for it, so the first listener does not wait
-    // out the synthesizer's start-up. A no-op once it is already speaking.
-    Task PrewarmSpeech(StreamId streamId, CancellationToken cancellationToken);
-
     // How far this stream's synthesized voice is behind the text it was given, or null when
     // nothing is speaking it - which is also the answer "nobody is listening".
     Task<TimeSpan?> GetSpeechBacklog(StreamId streamId, CancellationToken cancellationToken);
