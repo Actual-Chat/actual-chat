@@ -87,6 +87,10 @@
 </Form>
 
 @code {
+    // The wallpaper is shown as a ~104px-tall band across the full panel width, so the crop viewport
+    // matches that panorama rather than a tall 2.5:1 frame that object-cover would trim top and bottom.
+    private const float WallpaperAspectRatio = 3.75f;
+
     private Form?_formRef;
     private FormModel? _form;
     private DialogButtonInfo _submitButtonInfo = null!;
@@ -136,7 +140,8 @@
                 Size="@SquareSize.Size16"
                 IsSquare="true"
                 AvatarKind="@AvatarKind.Marble"
-                AvatarKey="@PlaceId.Value"/>
+                AvatarKey="@PlaceId.Value"
+                Click="@(() => _avatarPicker!.Pick())"/>
 
             <div class="c-buttons">
                 <ButtonRound Class="btn-modal btn-sm" Click="@(() => _avatarPicker!.Pick())">
@@ -145,6 +150,10 @@
                 <ImageCropPicker @ref="_avatarPicker"
                     Scope="@_form!.ImageScope"
                     IsSquare="true"
+                    CurrentPicture="@_form.Picture"
+                    CurrentAvatarKey="@PlaceId.Value"
+                    CurrentAvatarTitle="@_form.Title"
+                    AvatarKind="AvatarKind.Marble"
                     OnCropped="@OnImagePicked" />
 
                 <ButtonRound Class="btn-modal btn-sm" Click="@(() => _wallpaperPicker!.Pick())">
@@ -153,8 +162,9 @@
                 <ImageCropPicker @ref="_wallpaperPicker"
                     Scope="@_form!.ImageScope"
                     IsSquare="true"
-                    ViewportAspectRatio="2.5f"
+                    ViewportAspectRatio="@WallpaperAspectRatio"
                     HasBlur="true"
+                    CurrentPicture="@_form.Background"
                     OnCropped="@OnBackgroundPicked" />
             </div>
         </div>

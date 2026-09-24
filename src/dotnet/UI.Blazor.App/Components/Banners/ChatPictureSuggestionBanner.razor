@@ -122,7 +122,8 @@
             scope,
             mediaRef => OnCropped(target, mediaRef),
             IsSquare: target.PlaceId != null,
-            ViewportAspectRatio: target.IsBackground ? 2.5f : 0,
+            // Match the ~104px-tall wallpaper band; a tall 2.5:1 frame gets trimmed top/bottom by object-cover.
+            ViewportAspectRatio: target.IsBackground ? 3.75f : 0,
             HasBlur: target.IsBackground) {
             Title = target.PlaceId is null ? L.PicCrop_ChatPictureTitle
                 : target.IsBackground ? L.PicCrop_WallpaperTitle : L.PicCrop_PlaceAvatarTitle,
