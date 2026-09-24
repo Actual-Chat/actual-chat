@@ -157,6 +157,20 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         });
     }
 
+    public void OnCallSessionActivated()
+    {
+        // An incoming ring interrupts whatever session the app held, and iOS never posts the end
+        // once CallKit hands that session back for the call - so the activation is the end.
+        _ = _interruptionQueue.Enqueue(async _ => {
+            if (!IsInterrupted)
+                return;
+
+            Log.LogInformation("CallKit activated the session - ending the interruption");
+            Volatile.Write(ref _interruptedAt, 0);
+            await TryRecover().ConfigureAwait(false);
+        });
+    }
+
     public override async Task SelectOutputRoute(string routeId)
     {
         // Shown as picked before it is: the refresh below corrects a pick that fails.
