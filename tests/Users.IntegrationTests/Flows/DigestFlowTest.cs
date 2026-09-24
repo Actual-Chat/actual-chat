@@ -166,6 +166,48 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await spy.WaitFor(userId);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task WakeUpShouldNotResendDigest(bool isTimeZoneChange)
+    {
+        // arrange
+        using var cts = NewTestCts();
+        var ct = cts.Token;
+        var spy = new SendDigestSpy();
+        await using var h = await NewAppHost(options => options with  {
+            ConfigureServices = (_, services) => {
+                services.AddSingleton(spy);
+                services.AddCommander().AddHandlers<SendDigestSpy>();
+            },
+        });
+        await using var tester = h.NewWebClientTester(Out);
+
+        var flowHub = h.Services.FlowHub();
+        var account = await tester.SignInAsNew("Digest", ct);
+        var userId = account.Id;
+        await flowHub.Get<DigestFlow>(userId.Value, ct);
+        await UpdateAccount(h, userId, "America/New_York", true, ct);
+        await spy.WaitFor(userId);
+        var lastRunAt = (await flowHub.Get<DigestFlow>(userId.Value, ct)).LastRunAt;
+
+        // act
+        if (isTimeZoneChange)
+            await UpdateAccount(h, userId, "Asia/Tokyo", true, ct);
+        else
+            await flowHub.NewResumeEvent<DigestFlow>(userId.Value).Schedule(ct);
+        await TestWait.When(async innerCt => {
+            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, innerCt);
+            flow.Should().NotBeNull();
+            flow.LastRunAt.Should().BeGreaterThan(lastRunAt);
+        }, TimeSpan.FromSeconds(30));
+        await Task.Delay(TimeSpan.FromSeconds(2), ct);
+
+        // assert
+        spy.UserIds.Count(x => x == userId).Should().Be(1,
+            "a wake-up before the next digest time must not send another digest");
+    }
+
     [Fact]
     public async Task ShouldSkipDigestForRecentlyActiveUser()
     {
