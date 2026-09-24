@@ -119,6 +119,12 @@ public abstract class TuneUI : ProcessorBase
         return mustPlay ? PlayAndWaitInternal(tune) : Task.CompletedTask;
     }
 
+    // The MAUI WebView has no vibration API on iOS and no sound player of its own, so a tune
+    // the JS side starts - a menu opening, a drag - is handed back to the app here.
+    [JSInvokable("play")]
+    public Task OnPlay(Tune tune)
+        => PlayAndWait(tune);
+
     protected abstract Task PlayInternal(Tune tune);
 
     protected abstract Task PlayAndWaitInternal(Tune tune);
