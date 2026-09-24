@@ -114,6 +114,58 @@ public sealed class McpMessageTools(IServiceProvider services)
         return stream.ToMcpModel();
     }
 
+    [McpServerTool(Name = "start_voice_stream", UseStructuredContent = true)]
+    [Description("Opens a voice message you fill in as you speak it: listeners hear it live and it " +
+        "settles into an ordinary playable message. Send Ogg Opus audio with append_voice_stream, " +
+        "optionally with the matching text, then finish_voice_stream. Send audio before the text it " +
+        "corresponds to, or pass audioOffset, so the transcript lines up with the sound. " +
+        "`entryId` stays 0 - find the posted message with list_messages once the stream finishes.")]
+    public async Task<McpVoiceStream> StartVoiceStream(
+        [Description("The chat id.")] string chatId,
+        [Description("LID of the message this one replies to.")] long? replyToId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var stream = await Chats
+            .StartVoiceStream(Session, ChatId.Parse(chatId), replyToId, cancellationToken)
+            .ConfigureAwait(false);
+        return stream.ToMcpModel();
+    }
+
+    [McpServerTool(Name = "append_voice_stream", UseStructuredContent = true)]
+    [Description("Appends Ogg Opus audio, text, or both. `textOffset` is the number of characters " +
+        "the server already has; a mismatch writes no text and returns the server's offset so a " +
+        "retried call can resume. Audio is append-only and may be chunked anywhere, including " +
+        "mid-page. `audioOffset` is seconds into your own audio at the end of this text; omit it " +
+        "and the server uses the audio it has received.")]
+    public async Task<McpVoiceStream> AppendVoiceStream(
+        [Description("Stream id from start_voice_stream.")] string streamId,
+        [Description("Character offset this text starts at.")] int textOffset,
+        [Description("Text to append.")] string? text = null,
+        [Description("Ogg Opus bytes, base64-encoded; at most 1 MB decoded.")] string? audioBase64 = null,
+        [Description("Seconds into your audio at the end of this text.")] double? audioOffset = null,
+        CancellationToken cancellationToken = default)
+    {
+        var audio = audioBase64.IsNullOrEmpty() ? null : Convert.FromBase64String(audioBase64);
+        var stream = await Chats
+            .AppendVoiceStream(Session, StreamId.Parse(streamId), textOffset, text, audio,
+                audioOffset, cancellationToken)
+            .ConfigureAwait(false);
+        return stream.ToMcpModel();
+    }
+
+    [McpServerTool(Name = "finish_voice_stream", UseStructuredContent = true)]
+    [Description("Closes the stream and settles the voice message on what was received. Calling it " +
+        "again within 90 seconds returns the same result.")]
+    public async Task<McpVoiceStream> FinishVoiceStream(
+        [Description("Stream id from start_voice_stream.")] string streamId,
+        CancellationToken cancellationToken = default)
+    {
+        var stream = await Chats
+            .FinishVoiceStream(Session, StreamId.Parse(streamId), cancellationToken)
+            .ConfigureAwait(false);
+        return stream.ToMcpModel();
+    }
+
     [McpServerTool(Name = "remove_message", UseStructuredContent = true)]
     [Description("Soft-remove a message by its local id.")]
     public async Task RemoveMessage(
