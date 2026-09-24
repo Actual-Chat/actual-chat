@@ -17,7 +17,8 @@ public partial class Chats(IServiceProvider services) : IChats
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IAvatars Avatars { get; } = services.GetRequiredService<IAvatars>();
-    private IPlaces Places => field ??= services.GetRequiredService<IPlaces>(); // Lazy resolving to prevent cyclic dependency
+    // Lazy resolving to prevent cyclic dependency
+    private IPlaces Places => field ??= services.GetRequiredService<IPlaces>();
     private IConversationsBackend ConversationsBackend { get; } = services.GetRequiredService<IConversationsBackend>();
     private IMaintenancesBackend Maintenances { get; } = services.GetRequiredService<IMaintenancesBackend>();
 
@@ -32,7 +33,8 @@ public partial class Chats(IServiceProvider services) : IChats
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
     private IChatsBackend Backend { get; } = services.GetRequiredService<IChatsBackend>();
-    private ISharedLocationsBackend SharedLocationsBackend { get; } = services.GetRequiredService<ISharedLocationsBackend>();
+    private ISharedLocationsBackend SharedLocationsBackend { get; }
+        = services.GetRequiredService<ISharedLocationsBackend>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private UserLocalizers UserLocalizers { get; } = services.GetRequiredService<UserLocalizers>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
@@ -150,7 +152,9 @@ public partial class Chats(IServiceProvider services) : IChats
         CancellationToken cancellationToken)
     {
         await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetVisualMediaPeriod(chatId, periodKey, pageIndex, cancellationToken).ConfigureAwait(false);
+        return await Backend
+            .GetVisualMediaPeriod(chatId, periodKey, pageIndex, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -267,7 +271,10 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<Author[]> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<Author[]> ListMentionableAuthors(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
     {
         await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
         var authorIds = await AuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
@@ -282,7 +289,10 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatCopyState?> GetChatCopyState(Session session, ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ChatCopyState?> GetChatCopyState(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
     {
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
@@ -306,7 +316,10 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ReadPositionsStat> GetReadPositionsStat(Session session, ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ReadPositionsStat> GetReadPositionsStat(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
     {
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null)
@@ -316,7 +329,11 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<bool> IsEntryReadByMentionedUser(Session session, ChatEntryId chatEntryId, MentionRef mentionId, CancellationToken cancellationToken)
+    public virtual async Task<bool> IsEntryReadByMentionedUser(
+        Session session,
+        ChatEntryId chatEntryId,
+        MentionRef mentionId,
+        CancellationToken cancellationToken)
     {
         var chatId = chatEntryId.ChatId;
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -333,7 +350,9 @@ public partial class Chats(IServiceProvider services) : IChats
 
         var userId = mentionId.Target as UserId;
         if (mentionId.Target is AuthorId authorId) {
-            var author = await AuthorsBackend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
+            var author = await AuthorsBackend
+                .Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken)
+                .ConfigureAwait(false);
             if (author is not null)
                 userId = author.UserId;
         }
@@ -342,7 +361,9 @@ public partial class Chats(IServiceProvider services) : IChats
         if (userId == chat.Rules.Account?.Id)
             return true; // Mention refers to the chat entry author.
 
-        var readPosition = await ChatPositionsBackend.Get(userId, chatId, ChatPositionKind.Read, cancellationToken).ConfigureAwait(false);
+        var readPosition = await ChatPositionsBackend
+            .Get(userId, chatId, ChatPositionKind.Read, cancellationToken)
+            .ConfigureAwait(false);
         var hasRead = readPosition.EntryLid >= chatEntry.LocalId;
         // TODO: Do not track dependency after resulting to true.
         return hasRead;
@@ -350,7 +371,9 @@ public partial class Chats(IServiceProvider services) : IChats
         async Task<HashSet<MentionRef>> GetMentionIds()
         {
             var chatMarkupHub = ChatMarkupHubFactory[chatEntry.ChatId];
-            var markup = await chatMarkupHub.GetMarkup(chatEntry, MarkupConsumer.Notification, cancellationToken).ConfigureAwait(false);
+            var markup = await chatMarkupHub
+                .GetMarkup(chatEntry, MarkupConsumer.Notification, cancellationToken)
+                .ConfigureAwait(false);
             return MentionExtractor.Instance.GetMentionIds(markup);
         }
     }
@@ -392,8 +415,10 @@ public partial class Chats(IServiceProvider services) : IChats
                     ValidateThreadChatChangeConstraints(chatDiff2);
                 }
                 else if (change.Kind is ChangeKind.Remove) {
-                    var parentChat = await Get(session, threadChatId.ParentChatId, cancellationToken).ConfigureAwait(false);
-                    parentChat.Require().Rules.Permissions.Require(ChatPermissions.Owner); // Thread can be removed only by parent chat owner.
+                    var parentChat = await Get(session, threadChatId.ParentChatId, cancellationToken)
+                        .ConfigureAwait(false);
+                    // Thread can be removed only by parent chat owner.
+                    parentChat.Require().Rules.Permissions.Require(ChatPermissions.Owner);
                 }
                 else
                     throw StandardError.Internal("Invalid ChangeKind");
@@ -685,7 +710,10 @@ public partial class Chats(IServiceProvider services) : IChats
                     var remapResult = LinearMapDtwRemapper.RemapWithSimilarity(
                         textEntry.Content, text, audio.TimeMap,
                         LinearMapAlignmentMode.UserEditedTranscript);
-                    if (remapResult is { Similarity: >= LinearMapRemapResult.MinorEditSimilarityThreshold, Map.IsDegenerate: false }) {
+                    if (remapResult is {
+                            Similarity: >= LinearMapRemapResult.MinorEditSimilarityThreshold,
+                            Map.IsDegenerate: false,
+                        }) {
                         // Minor edit: keep audio, update TimeMap
                         diff = diff with { Audio = textEntry.Audio! with { TimeMap = remapResult.Map } };
                     }
@@ -717,7 +745,8 @@ public partial class Chats(IServiceProvider services) : IChats
                     .ConfigureAwait(false);
                 if (hasReachedLimit)
                     throw StandardError.Constraint(
-                        $"You can send up to {Constants.Chat.NonContactPeerMessageLimit} messages until this user adds you to their contacts or replies.");
+                        $"You can send up to {Constants.Chat.NonContactPeerMessageLimit} messages until "
+                        + "this user adds you to their contacts or replies.");
             }
 
             var commandResult = await TryHandleAdminCommand(session, chatId, author, text, cancellationToken)
@@ -871,7 +900,9 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [CommandHandler]
-    public virtual async Task<Chat> OnGetOrCreateFromTemplate(Chats_GetOrCreateFromTemplate command, CancellationToken cancellationToken)
+    public virtual async Task<Chat> OnGetOrCreateFromTemplate(
+        Chats_GetOrCreateFromTemplate command,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
@@ -882,11 +913,15 @@ public partial class Chats(IServiceProvider services) : IChats
         templateChat.Require(Chat.MustBeTemplate);
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var chat = await Backend.GetTemplatedChatFor(templateChatId, account.Id, cancellationToken).ConfigureAwait(false);
+        var chat = await Backend
+            .GetTemplatedChatFor(templateChatId, account.Id, cancellationToken)
+            .ConfigureAwait(false);
         if (chat != null)
             return chat;
 
-        var templateAuthorIds = await AuthorsBackend.ListAuthorIds(templateChatId, cancellationToken).ConfigureAwait(false);
+        var templateAuthorIds = await AuthorsBackend
+            .ListAuthorIds(templateChatId, cancellationToken)
+            .ConfigureAwait(false);
         var templateAuthors = await templateAuthorIds
             .Select(aId => AuthorsBackend.Get(templateChatId, aId, RequestedAuthorKind.Full, cancellationToken))
             .Collect(4, cancellationToken) // NOTE(AY): Why 4? AK, please add comment
@@ -950,11 +985,13 @@ public partial class Chats(IServiceProvider services) : IChats
             .ToDictionary(x => x.TemplateAuthorId, x => x.CloneAuthorId);
         var roleAuthors = authorRoles
             .SelectMany(x => x.Roles, (x, r) => (x.AuthorId, Role: r))
-            .Where(x => x.Role.SystemRole is not SystemRole.Anyone and not SystemRole.None and not SystemRole.Owner) // Owner is already registered
+            // Owner is already registered
+            .Where(x => x.Role.SystemRole is not SystemRole.Anyone and not SystemRole.None and not SystemRole.Owner)
             .GroupBy(x => x.Role.Id,
                 (_, xs) => {
                     var tuples = xs.ToList();
-                    return (tuples.FirstOrDefault().Role, AuthorIds: tuples.Select(x => authorMap[x.AuthorId]).ToArray());
+                    return (tuples.FirstOrDefault().Role,
+                        AuthorIds: tuples.Select(x => authorMap[x.AuthorId]).ToArray());
                 })
             .ToList();
 
@@ -1031,7 +1068,9 @@ public partial class Chats(IServiceProvider services) : IChats
             .ConfigureAwait(false);
 
         foreach (var destinationChatId in destinationChatIds) {
-            var destinationChat = await Get(session, destinationChatId, cancellationToken).Require().ConfigureAwait(false);
+            var destinationChat = await Get(session, destinationChatId, cancellationToken)
+                .Require()
+                .ConfigureAwait(false);
             await Authors.EnsureJoined(session, destinationChatId, cancellationToken).ConfigureAwait(false);
             destinationChat.Rules.Permissions.Require(ChatPermissions.Write);
 
@@ -1081,7 +1120,9 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [CommandHandler]
-    public virtual async Task<Unit> OnForwardAttachment(Chats_ForwardAttachment command, CancellationToken cancellationToken)
+    public virtual async Task<Unit> OnForwardAttachment(
+        Chats_ForwardAttachment command,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return default;
@@ -1102,7 +1143,9 @@ public partial class Chats(IServiceProvider services) : IChats
             ?? throw StandardError.NotFound<ChatEntryAttachment>("Attachment not found in the source entry.");
 
         foreach (var destinationChatId in destinationChatIds) {
-            var destinationChat = await Get(session, destinationChatId, cancellationToken).Require().ConfigureAwait(false);
+            var destinationChat = await Get(session, destinationChatId, cancellationToken)
+                .Require()
+                .ConfigureAwait(false);
             await Authors.EnsureJoined(session, destinationChatId, cancellationToken).ConfigureAwait(false);
             destinationChat.Rules.Permissions.Require(ChatPermissions.Write);
 
@@ -1125,7 +1168,9 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [CommandHandler]
-    public virtual async Task<Chat_CopyChatResult> OnCopyChat(Chat_CopyChat command, CancellationToken cancellationToken)
+    public virtual async Task<Chat_CopyChatResult> OnCopyChat(
+        Chat_CopyChat command,
+        CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
@@ -1209,7 +1254,9 @@ public partial class Chats(IServiceProvider services) : IChats
         async Task<bool> UpdateChatUserSettings(UserId userId)
         {
             var userKvas = ServerKvasBackend.ForUser(userId);
-            var chatUserSettings = await userKvas.ChatUserSettings(sourceChatId).Get(cancellationToken).ConfigureAwait(false);
+            var chatUserSettings = await userKvas.ChatUserSettings(sourceChatId)
+                .Get(cancellationToken)
+                .ConfigureAwait(false);
             if (chatUserSettings == ChatUserSettings.Default)
                 return false;
 
@@ -1373,7 +1420,9 @@ public partial class Chats(IServiceProvider services) : IChats
     // Protected/internal methods
 
     [ComputeMethod]
-    protected virtual async Task<ReadPositionsStat> GetReadPositionsStatInternal(ChatId chatId, CancellationToken cancellationToken)
+    protected virtual async Task<ReadPositionsStat> GetReadPositionsStatInternal(
+        ChatId chatId,
+        CancellationToken cancellationToken)
     {
         var statBackend = await Backend.GetReadPositionsStat(chatId, cancellationToken).ConfigureAwait(false);
         if (statBackend == null)
@@ -1501,7 +1550,9 @@ public partial class Chats(IServiceProvider services) : IChats
         CancellationToken cancellationToken)
     {
         var messageLimit = Constants.Chat.NonContactPeerMessageLimit;
-        var firstAuthors = await Backend.GetFirstEntryAuthors(chatId, messageLimit, true, cancellationToken).ConfigureAwait(false);
+        var firstAuthors = await Backend
+            .GetFirstEntryAuthors(chatId, messageLimit, true, cancellationToken)
+            .ConfigureAwait(false);
         return firstAuthors.Count == 1 && firstAuthors.Contains(authorId);
     }
 
@@ -1594,7 +1645,8 @@ public partial class Chats(IServiceProvider services) : IChats
         }
 
         async ValueTask<ChatEntry?> GetRemovedEntry(ChatEntryId entryId) {
-            await Get(session, chat.Id, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
+            // Make sure we can read the chat
+            await Get(session, chat.Id, cancellationToken).Require().ConfigureAwait(false);
             return await Backend.GetRemovedEntry(entryId, cancellationToken).ConfigureAwait(false);
         }
     }
