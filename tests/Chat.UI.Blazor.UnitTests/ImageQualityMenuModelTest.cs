@@ -98,10 +98,10 @@ public sealed class ImageQualityMenuModelTest
     }
 
     [Fact]
-    public void UnknownSourceDimensionsShouldMakeAResizeRowUnknownButNotAnOriginalRow()
+    public void UnknownSourceDimensionsShouldStillEstimateAResizeRowApproximately()
     {
         // arrange - an unconverted HEIC on Chromium: dimensions unknown, bytes known; SelectedQuality
-        // is deliberately a different preset than the one queried below, so the null result is not
+        // is deliberately a different preset than the one queried below, so the estimate is not
         // an artefact of IsProcessing or of Mpx12 happening to be the enum default
         var attachment = NewImage("image/heic", 3_000_000, default) with {
             SelectedQuality = ImageQualityPreset.Mpx3,
@@ -113,8 +113,10 @@ public sealed class ImageQualityMenuModelTest
         var resizeTotal = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Mpx12, isMobile: false);
         var originalTotal = ImageQualityMenuModel.GetTotal(images, 0, ImageQualityPreset.Original, isMobile: false);
 
-        // assert
-        resizeTotal.Should().BeNull();
+        // assert - the resize row falls back to the budget's ceiling rather than giving up on a size
+        var expected = ImageSizeEstimator.EstimateAtBudget(
+            3_000_000, "image/heic", ImageQualityPreset.Mpx12.GetBudget());
+        resizeTotal.Should().Be(new ImageQualityMenuModel.PresetTotal(expected, false));
         originalTotal.Should().Be(new ImageQualityMenuModel.PresetTotal(3_000_000, true));
     }
 

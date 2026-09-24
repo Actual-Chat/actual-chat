@@ -107,8 +107,6 @@
         if (total is null)
             return "—";
 
-        return total.Value.IsExact
-            ? FileSizeFormatter.Format(total.Value.Bytes)
-            : ImageSizeEstimator.Format(total.Value.Bytes);
+        return ImageSizeEstimator.Format(total.Value.Bytes, isApprox: !total.Value.IsExact);
     }
 }

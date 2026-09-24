@@ -62,9 +62,11 @@ public static class ImageQualityMenuModel
             }
 
             if (source.Size.Width <= 0 || source.Size.Height <= 0) {
-                // Unknown source dimensions (e.g. an unconverted HEIC on Chromium) make the whole
-                // row's total meaningless, not just this image's share of it
-                return null;
+                // Unknown source dimensions (e.g. an unconverted HEIC on Chromium): fall back to the
+                // budget's own pixel ceiling so the row still shows an approximate "up to" size
+                total += ImageSizeEstimator.EstimateAtBudget(source.Length, source.FileType, budget);
+                isExact = false;
+                continue;
             }
 
             total += ImageSizeEstimator.Estimate(source.Length, source.Size, source.FileType, budget);
