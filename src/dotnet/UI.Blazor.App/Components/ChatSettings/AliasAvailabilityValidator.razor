@@ -1,0 +1,105 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using System.Linq.Expressions
+@inherits ComponentBase<AppUIHub>
+@implements IDisposable
+@* No visual output: this only pushes an "already in use" error into the edit context, which
+   FormSection then shows in its inline (top) slot and Form.IsValid uses to gate Save. *@
+
+@code {
+    private ValidationMessageStore? _messages;
+    private EditContext? _editContext;
+    private FieldIdentifier _field;
+    private string? _lastChecked;
+
+    [CascadingParameter] EditContext CurrentEditContext { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Expression<Func<string>>? For { get; set; }
+    [Parameter, EditorRequired] public AliasScope Scope { get; set; } = null!;
+    [Parameter] public string CurrentAliasId { get; set; } = "";
+    [Parameter, EditorRequired] public Func<string> AliasIdReader { get; set; } = null!;
+
+    protected override void OnParametersSet() {
+        if (CurrentEditContext == null)
+            throw StandardError.Internal($"{GetType()} requires a cascading parameter of type {nameof(EditContext)}.");
+        if (For == null)
+            throw StandardError.Internal($"{GetType()} requires a value for the {nameof(For)} parameter.");
+
+        if (CurrentEditContext == _editContext)
+            return;
+
+        Detach();
+        _editContext = CurrentEditContext;
+        _messages = new ValidationMessageStore(_editContext);
+        _field = FieldIdentifier.Create(For);
+        _editContext.OnFieldChanged += OnFieldChanged;
+        _editContext.OnValidationRequested += OnValidationRequested;
+    }
+
+    void IDisposable.Dispose() => Detach();
+
+    // Private methods
+
+    private void OnFieldChanged(object? sender, FieldChangedEventArgs e) => _ = Check();
+
+    private void OnValidationRequested(object? sender, ValidationRequestedEventArgs e) => _ = Check();
+
+    private async Task Check() {
+        // Re-checking the same value would re-run the query and (on validation-requested) never settle
+        var alias = AliasIdReader();
+        if (alias == _lastChecked)
+            return;
+
+        _lastChecked = alias;
+        _messages!.Clear(_field);
+        _editContext!.NotifyValidationStateChanged();
+        // The current alias is the one being kept, and format errors are the [AliasId] attribute's job
+        if (alias.IsNullOrEmpty() || alias == CurrentAliasId || !AliasId.TryParse(alias, out var aliasId))
+            return;
+
+        bool isTaken;
+        try {
+            isTaken = await IsTaken(aliasId).ConfigureAwait(true);
+        }
+        catch (Exception e) {
+            // The server still rejects a taken alias on save, so a failed pre-check just skips the hint
+            Hub.LogFor(GetType()).LogWarning(e, "Failed to check alias '{Alias}' availability", alias);
+            return;
+        }
+
+        if (AliasIdReader() != alias)
+            return; // The value changed while the query was in flight
+
+        if (isTaken) {
+            _messages.Add(_field, L.Alias_LinkInUse);
+            _editContext.NotifyValidationStateChanged();
+        }
+    }
+
+    private async Task<bool> IsTaken(AliasId aliasId) {
+        if (ReferenceEquals(Scope, AliasScope.Account))
+            return await Hub.Aliases.GetUserIdByAlias(aliasId).ConfigureAwait(true) is not null;
+        if (Scope.PlaceId is null)
+            return await Hub.Aliases.GetTarget(aliasId).ConfigureAwait(true) is not null;
+
+        return await Hub.Aliases.GetPlaceChatIdByAlias(Scope.PlaceId, aliasId).ConfigureAwait(true) is not null;
+    }
+
+    private void Detach() {
+        if (_editContext == null)
+            return;
+
+        _editContext.OnFieldChanged -= OnFieldChanged;
+        _editContext.OnValidationRequested -= OnValidationRequested;
+        _messages?.Clear();
+        _editContext.NotifyValidationStateChanged();
+        _editContext = null;
+    }
+
+    // Nested types
+
+    public record AliasScope(PlaceId? PlaceId = null) {
+        public static readonly AliasScope Account = new();
+        public static readonly AliasScope Place = new();
+        public static AliasScope Chat(PlaceId? placeId) => new(placeId);
+    }
+}
