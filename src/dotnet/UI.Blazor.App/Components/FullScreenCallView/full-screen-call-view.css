@@ -7,6 +7,10 @@
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
 }
+/* The in-call toolbar opens modals and menus, so they must land on top; a ring still covers them. */
+.full-screen-call-view.in-call {
+    @apply z-call-screen;
+}
 /* Blurred caller avatar fills the screen behind everything. */
 .full-screen-call-view .c-bg {
     @apply absolute inset-0 z-0;
