@@ -18,8 +18,8 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import type { Page } from 'playwright';
 import {
-    BASE_URL, clearBrowserCache, connectBrowser, ensureSignedIn, openChat, screenshot,
-    type BrowserConnection,
+    BASE_URL, clearBrowserCache, connectBrowser, ensureSignedIn, isVisibleWithin, openChat,
+    screenshot, type BrowserConnection,
 } from './helpers';
 
 const shot = (name: string) => screenshot('e2e', name);
@@ -35,22 +35,24 @@ const TILE_URL_RE = /maps[.-][^/]*\.(?:voxt\.ai|actual\.chat)\/(?:planet\/.*\.pb
 // active share mints a NEW SharedLocation and orphans the old row server-side, where
 // nothing can stop it until it expires on its own.
 async function stopSharingIfAny(page: Page) {
-    for (let i = 0; i < 2; i++) {
-        await page.keyboard.press('Escape').catch(() => { /* ignore */ });
-        await page.waitForTimeout(300);
-    }
+    // A failed test can leave a modal open, and ModalHost marks everything outside it inert, so
+    // the stop button below is unclickable and each click waits out Playwright's 30s default -
+    // which is what used to blow this hook's budget and leak the share into the next test.
+    // A fresh navigation drops the modal; the share is server state and survives it.
+    await openChat(page).catch(() => { /* ignore */ });
+
     // A failed hide-flow test leaves the panel collapsed to the pill — restore it first.
     const pill = page.locator('.activity-pill').first();
-    if (await pill.isVisible({ timeout: 500 }).catch(() => false)) {
-        await pill.click().catch(() => { /* ignore */ });
-        await page.waitForTimeout(500);
-    }
+    if (await isVisibleWithin(pill, 2_000))
+        await pill.click({ timeout: 5_000, force: true }).catch(() => { /* ignore */ });
+
     const stopButton = page.locator('.visual-activity-panel .map-panel .btn-stop-sharing').first();
-    if (await stopButton.isVisible({ timeout: 1_000 }).catch(() => false)) {
-        await stopButton.click().catch(() => { /* ignore */ });
-        await page.locator('.visual-activity-panel .map-panel').first()
-            .waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => { /* ignore */ });
-    }
+    if (!await isVisibleWithin(stopButton, 5_000))
+        return;
+
+    await stopButton.click({ timeout: 5_000, force: true }).catch(() => { /* ignore */ });
+    await page.locator('.visual-activity-panel .map-panel').first()
+        .waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
 }
 
 describe('location sharing', () => {
@@ -71,9 +73,11 @@ describe('location sharing', () => {
         await ensureSignedIn(page);
     }, 120_000);
 
+    // Generous on purpose: the budget has to cover openChat's own waits, or the hook times out
+    // halfway and leaves the very share it exists to stop.
     afterEach(async () => {
         await stopSharingIfAny(page);
-    }, 30_000);
+    }, 120_000);
 
     afterAll(async () => {
         await page.close();

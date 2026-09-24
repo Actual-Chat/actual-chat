@@ -145,6 +145,12 @@ export async function clearBrowserCache(page: Page) {
     } catch { /* non-Chromium or CDP unavailable */ }
 }
 
+/** Whether the locator becomes visible within the timeout — unlike `Locator.isVisible`, which
+ *  ignores its timeout option and answers for the instant it runs. */
+export async function isVisibleWithin(locator: Locator, timeout: number): Promise<boolean> {
+    return locator.waitFor({ state: 'visible', timeout }).then(() => true).catch(() => false);
+}
+
 /** Wait past the #web-splash overlay until any Blazor landmark is visible. */
 export async function waitForAppReady(page: Page, timeout = 30_000) {
     await page.locator([
