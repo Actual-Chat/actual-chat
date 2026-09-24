@@ -7,8 +7,9 @@
     var bodyClass = Icon == null
         ? "ml-2"
         : "";
+    var hasRight = Right != null;
 }
-<div class="tile-item @unselectedCls @extraClass group @Class"
+<div class="tile-item @unselectedCls @extraClass @(hasRight ? "" : "no-right") group @Class"
      tabindex="@(isClickable ? 0 : (int?)null)"
      role="@(isClickable ? Role : null)"
      @attributes="@_resolvedAdditionalAttributes">
@@ -27,9 +28,11 @@
             </div>
         }
     </div>
-    <div class="tile-item-right">
-        @Right
-    </div>
+    @if (hasRight) {
+        <div class="tile-item-right">
+            @Right
+        </div>
+    }
 </div>
 
 @code {

@@ -18,14 +18,25 @@
         @account.Name
     </Content>
     <Right>
-        <Button Class="btn-modal btn-sm btn-share-action" Click="@(() => OnShareClick(account, account.Avatar.Name))">
-            <Icon><i class="icon-share-2"></i></Icon>
-            <Title>@L.Common_Share</Title>
-        </Button>
+        <div class="share-actions">
+            <ButtonSquare Tooltip="@L.Common_Share"
+                          Class="btn-sm"
+                          Click="@(() => OnShareClick(account, account.Avatar.Name))">
+                <i class="icon-share-external" aria-hidden="true"></i>
+            </ButtonSquare>
+            <ButtonSquare Tooltip="@L.ShareQr_Show"
+                          Class="btn-sm"
+                          Click="@(() => OnShowQrClick(account))">
+                <i class="icon-QR" aria-hidden="true"></i>
+            </ButtonSquare>
+        </div>
     </Right>
 </TileItem>
 
 @code {
+    // Same as ShareUIExt.QrImageSize: the avatar baked into the QR centre as a PNG.
+    private const int QrImageSize = 160;
+
     [Parameter] public SquareSize AvatarSize { get; set; } = SquareSize.Size12;
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
@@ -42,5 +53,13 @@
         var request = new ShareRequest(
             L.Share_TextNamed_Format(name, CoreConstants.AppName), Links.User(account.AliasInfo));
         shareUI.Share(ShareKind.Contact, L.YourAccount_ShareYourContact, name, request);
+    }
+
+    private void OnShowQrClick(AccountFull account) {
+        var imageUrl = UrlMapper.IconUrl(IconQuery.Create(
+            account.Avatar.Picture, AvatarKind.Beam,
+            DefaultUserPicture.GetAvatarKey(account.Id.Value), QrImageSize));
+        _ = ModalUI.Show(new ShareQrModalModel(
+            account.Avatar.Name, Links.User(account.AliasInfo), imageUrl));
     }
 }

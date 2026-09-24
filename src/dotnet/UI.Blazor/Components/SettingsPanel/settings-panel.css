@@ -226,6 +226,11 @@ body.hoverable .tile-item.clickable.item-danger:hover,
     @apply flex-1 flex-x justify-end items-center;
     @apply min-h-6;
 }
+/* No value slot: the empty flex-1 spacer is gone, so let the body take the full row instead of
+   centering (justify-center) - otherwise a wrapping label like the empty-state text is squeezed. */
+.tile-item.no-right .tile-item-body {
+    @apply flex-1;
+}
 /* A bare value is an anonymous flex item with a flex-basis of 0 and no min-width floor, so a long
    label starves it down to its min-content - one word, or one glyph in CJK. The floor plus the
    ellipsis keep it readable and make the label (already truncate) give way first. :not(:empty)
@@ -358,8 +363,7 @@ body.narrow .settings-tab-header {
 /* The share button is decoration, the account name is the identity, so the button yields first -
    but by a factor that lets its label ellipsise on the way rather than snap to icon-only. */
 .tile-item-my-account-link .tile-item-right {
-    @apply flex-initial shrink-[8];
-    @apply min-w-24;
+    @apply pr-1;
 }
 .tile-item-my-account-link .btn.btn-share-action {
     @apply mr-0.5 md:mr-0;
