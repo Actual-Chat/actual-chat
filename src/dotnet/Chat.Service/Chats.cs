@@ -1168,6 +1168,7 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [CommandHandler]
+    [Obsolete("2026.09: Files are shared via ShareModal, which posts them as a new message. Old clients only.")]
     public virtual async Task<Unit> OnForwardAttachment(
         Chats_ForwardAttachment command,
         CancellationToken cancellationToken)

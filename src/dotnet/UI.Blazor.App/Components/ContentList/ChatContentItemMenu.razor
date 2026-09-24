@@ -11,7 +11,12 @@
         Text="@L.Content_GoToMessage"
         Click="@OnGoToMessage">
     </MenuEntry>
-    @if (!m.BlobId.IsNullOrEmpty()) {
+    @if (m.Attachment is not null) {
+        <MenuEntry
+            Icon="icon-share-2"
+            Text="@L.Common_Share"
+            Click="@OnShare">
+        </MenuEntry>
         <MenuEntry
             Icon="icon-download"
             Text="@L.MessageMenu_Download"
@@ -57,11 +62,7 @@
         if (attachment is null)
             return Model.None;
 
-        return new Model {
-            BlobId = attachment.Media.BlobId,
-            FileName = attachment.Media.FileName,
-            ContentType = attachment.Media.ContentType,
-        };
+        return new Model { Attachment = attachment };
     }
 
     private async Task OnGoToMessage() {
@@ -71,20 +72,21 @@
             PanelsUI.Right.SetIsVisible(false);
     }
 
+    private Task OnShare()
+        => State.Value.Attachment is { } a ? ShareUI.Share(a) : Task.CompletedTask;
+
     private Task OnDownload() {
-        var m = State.Value;
-        if (m.BlobId.IsNullOrEmpty())
+        if (State.Value.Attachment is not { } attachment)
             return Task.CompletedTask;
 
-        return Hub.FileDownloadUI.Download(m.BlobId, m.FileName, m.ContentType);
+        var media = attachment.Media;
+        return Hub.FileDownloadUI.Download(media.BlobId, media.FileName, media.ContentType);
     }
 
     // Nested types
 
     public sealed record Model {
         public static readonly Model None = new();
-        public string BlobId { get; init; } = "";
-        public string FileName { get; init; } = "";
-        public string ContentType { get; init; } = "";
+        public ChatEntryAttachment? Attachment { get; init; }
     }
 }
