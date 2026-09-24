@@ -172,6 +172,18 @@ five per second no matter how fast you push, so a token-at-a-time loop costs
 you round trips and buys nothing. Batch a few tokens, or flush on a short timer
 — 50–100 ms is plenty.
 
+**If you want to be heard as well as read, write at speaking pace.** Someone
+listening to the chat hears this message in a synthesized voice, and a voice
+speaks about 15 characters a second. Text you send faster than that is spoken
+after it appears, and the gap grows for as long as you outrun the voice —
+writing at 19 characters a second puts the voice four seconds behind over half
+a minute. It is the same rule as pacing a voice stream's audio, for the same
+reason: the sound plays at speaking rate whatever rate you produced it at.
+
+A producer that wants to be read quickly should ignore this and write as fast
+as it likes; readers are not waiting on a voice. The choice is yours to make,
+but it is a choice.
+
 ## Voice: streaming what you say
 
 The same lease, carrying sound. `start_voice_stream` →

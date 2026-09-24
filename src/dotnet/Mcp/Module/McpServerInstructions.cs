@@ -20,6 +20,9 @@ public static class McpServerInstructions
           arrives over time, e.g. as you generate it. It appears immediately and fills in live,
           the way a transcript grows while someone speaks. Someone listening to the chat hears
           it in a synthesized voice.
+          If you want to be heard as well as read, write at speaking pace - a voice speaks
+          about 15 characters a second, and text sent faster than that is spoken after it
+          appears, by a gap that grows for as long as you outrun the voice.
         - start_voice_stream with audio only - you supply the sound. Nothing transcribes it, so
           the message carries no text.
         - start_voice_stream with audio and text - you supply both, and neither speech
