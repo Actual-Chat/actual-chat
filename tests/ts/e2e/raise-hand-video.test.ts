@@ -16,6 +16,7 @@
  *   AC_E2E_SERVER=external npx vitest run tests/ts/e2e/raise-hand-video.test.ts --config vitest.config.e2e.ts
  */
 
+import * as path from 'path';
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import type { BrowserContext, Page } from 'playwright';
 import {
@@ -26,6 +27,7 @@ import {
 const shot = (name: string) => screenshot('e2e-raise-hand', name);
 
 const CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
+const SPEECH_WAV = path.resolve('lib/data/test-audio-1.wav');
 
 async function openChat(page: Page) {
     await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
@@ -93,16 +95,22 @@ async function setGallery(page: Page, isOn: boolean) {
 }
 
 async function openCallTab(page: Page) {
-    // A closed right panel stays in the DOM, parked just past the viewport's right edge,
-    // so Playwright reports it visible - check where it is instead.
-    const panel = page.locator('.chat-side-panel').first();
-    const box = await panel.boundingBox();
+    // A closed right panel stays in the DOM, parked just past the viewport's right edge, so Playwright
+    // reports it visible - check where it is instead. Its toggle renders only while it's closed, and
+    // right after the video panel collapses it can be mid-transition, so retry until the tab is on screen.
+    await skipOnboarding(page);
     const width = page.viewportSize()?.width ?? 0;
-    if (!box || box.x >= width)
-        await page.locator('button:has(i.icon-layout)').first().click();
-    const callTab = panel.locator('[data-tab-id="call"]').first();
-    await expect.poll(async () => (await callTab.boundingBox())?.x ?? width, { timeout: 10_000 })
-        .toBeLessThan(width);
+    const callTab = page.locator('.chat-side-panel [data-tab-id="call"]').first();
+    const toggle = page.locator('button:has(i.icon-layout)').first();
+    await expect.poll(async () => {
+        const x = (await callTab.boundingBox())?.x ?? width;
+        if (x < width)
+            return true;
+
+        if (await toggle.isVisible())
+            await toggle.click({ timeout: 2_000 }).catch(() => { /* retried */ });
+        return false;
+    }, { timeout: 20_000, interval: 1_000 }).toBe(true);
     await callTab.click();
 }
 
@@ -135,7 +143,9 @@ describe('raise hand and reactions in a video call', () => {
     let bob: Page;
 
     beforeAll(async () => {
-        conn = await connectBrowser();
+        // Real speech, not the fake mic's beep: silent recording idles out after 30s, and with no
+        // recorder left the session closes. Speech also registers the audio streams with the session.
+        conn = await connectBrowser({ fakeAudioFile: SPEECH_WAV });
         // Sequential sign-ins: parallel ones race on the shared server flow (see vitest.config.e2e.ts).
         ({ context: aliceCtx, page: alice } = await newUserContext(conn, TEST_EMAIL));
         ({ context: bobCtx, page: bob } = await newUserContext(conn, TEST_EMAIL_2));
@@ -244,8 +254,8 @@ describe('raise hand and reactions in a video call', () => {
     }, 300_000);
 
     async function startSession() {
-        // A session has to latch before a hand can go up, and it closes again if the fake mic's
-        // recording hasn't reached the server by the time the cameras start - so retry the setup.
+        // A session has to latch before a hand can go up, and it closes again if nobody is recording
+        // yet when the cameras start. The speech WAV makes that rare; the retry covers the rest.
         for (let attempt = 1; ; attempt++) {
             await startRecording(alice);
             await startRecording(bob);

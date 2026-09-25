@@ -48,12 +48,18 @@ export interface BrowserConnection {
     ownsBrowser: boolean;
 }
 
+export interface ConnectBrowserOptions {
+    /** A PCM WAV the headless browser's fake mic plays on a loop instead of its beep, for tests that
+     *  need real speech (voice activity). Ignored when connecting to an existing Chrome over CDP. */
+    fakeAudioFile?: string;
+}
+
 /** AC_E2E_BROWSER: "auto" (CDP, fallback headless), "cdp", or "headless". */
-export async function connectBrowser(): Promise<BrowserConnection> {
+export async function connectBrowser(options: ConnectBrowserOptions = {}): Promise<BrowserConnection> {
     const mode = (process.env.AC_E2E_BROWSER ?? 'auto').toLowerCase();
 
     if (mode === 'headless')
-        return launchHeadless();
+        return launchHeadless(options);
 
     if (mode === 'cdp') {
         const conn = await tryCdp();
@@ -68,7 +74,7 @@ export async function connectBrowser(): Promise<BrowserConnection> {
         return conn;
 
     console.log('CDP not available, falling back to headless Chromium');
-    return launchHeadless();
+    return launchHeadless(options);
 }
 
 async function tryCdp(): Promise<BrowserConnection | null> {
@@ -107,7 +113,7 @@ function getCdpHosts(): string[] {
 
 /** AC_E2E_HOST_RESOLVER_RULES: Chromium's --host-resolver-rules, e.g. "MAP *.local.voxt.ai 127.0.0.1"
  *  when the worktree's /etc/hosts entry points at a LAN IP the machine no longer has. */
-async function launchHeadless(): Promise<BrowserConnection> {
+async function launchHeadless(options: ConnectBrowserOptions): Promise<BrowserConnection> {
     try {
         const hostResolverRules = process.env.AC_E2E_HOST_RESOLVER_RULES;
         const browser = await chromium.launch({
@@ -116,6 +122,7 @@ async function launchHeadless(): Promise<BrowserConnection> {
                 '--no-sandbox', '--disable-setuid-sandbox',
                 // A grantable fake mic, so tests can start recording (call activity)
                 '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
+                ...(options.fakeAudioFile ? [`--use-file-for-fake-audio-capture=${options.fakeAudioFile}`] : []),
                 ...(hostResolverRules ? [`--host-resolver-rules=${hostResolverRules}`] : []),
             ],
         });
