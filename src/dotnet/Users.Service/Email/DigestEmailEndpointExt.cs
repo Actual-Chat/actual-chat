@@ -67,23 +67,49 @@ public static class DigestEmailEndpointExt
                 .Schedule(cancellationToken)
                 .ConfigureAwait(false);
 
+        var signedInAs = await GetSignedInAs(userId, httpContext).ConfigureAwait(false);
         var baseUrl = services.UrlMapper().BaseUrl;
-        return Results.Content(RenderPage(token, isEnabled, baseUrl), "text/html; charset=utf-8");
+        var recipient = account.Email.NullIfEmpty() ?? account.Name;
+        var html = RenderPage(token, isEnabled, recipient, signedInAs, baseUrl);
+        return Results.Content(html, "text/html; charset=utf-8");
     }
 
-    private static string RenderPage(string token, bool isEnabled, string baseUrl)
+    private static async Task<string?> GetSignedInAs(UserId userId, HttpContext httpContext)
+    {
+        // The link is anonymous: it acts on the account the email went to, while the browser may
+        // be signed in as someone else, who would then look for the change in the wrong Settings
+        var session = httpContext.TryGetSessionFromCookie();
+        if (session is null)
+            return null;
+
+        var ownAccount = await httpContext.RequestServices.GetRequiredService<IAccounts>()
+            .GetOwn(session, httpContext.RequestAborted)
+            .ConfigureAwait(false);
+        if (ownAccount.IsGuest || ownAccount.Id == userId)
+            return null;
+
+        return ownAccount.Email.NullIfEmpty() ?? ownAccount.Name;
+    }
+
+    private static string RenderPage(
+        string token, bool isEnabled, string recipient, string? signedInAs, string baseUrl)
     {
         var appName = WebUtility.HtmlEncode(CoreConstants.AppName);
         var encodedToken = WebUtility.HtmlEncode(token);
+        var encodedRecipient = WebUtility.HtmlEncode(recipient);
         var (title, text, action, actionText) = isEnabled
             ? ("Digest emails are on again",
-                $"You will keep receiving the daily digest of your unread chats in {appName}.",
+                $"<b>{encodedRecipient}</b> will keep receiving the daily digest of unread chats in {appName}.",
                 GetUnsubscribePath(encodedToken),
                 "Turn off")
             : ("Digest emails are off",
-                $"You will no longer receive the daily digest of your unread chats from {appName}.",
+                $"<b>{encodedRecipient}</b> will no longer receive the daily digest of unread chats from {appName}.",
                 ResubscribeRoute.Replace("{token}", encodedToken),
                 "Undo");
+        var note = signedInAs is null
+            ? ""
+            : $"<p class=\"note\">This browser is signed in as <b>{WebUtility.HtmlEncode(signedInAs)}</b>, "
+                + "a different account, so its Settings are unchanged.</p>";
         return $$"""
             <!DOCTYPE html>
             <html lang="en">
@@ -98,6 +124,7 @@ public static class DigestEmailEndpointExt
             main { max-width: 420px; padding: 32px 24px; text-align: center; }
             h1 { font-size: 22px; font-weight: 600; margin: 0 0 12px; }
             p { font-size: 15px; line-height: 22px; margin: 0 0 24px; color: #4A4A4A; }
+            p.note { font-size: 13px; line-height: 18px; color: #B54708; }
             button, a.button { display: inline-block; min-width: 120px; margin: 0 6px 12px; padding: 10px 20px;
                                font-size: 15px; border-radius: 24px; border: 1px solid #E8E8E8; cursor: pointer;
                                text-decoration: none; }
@@ -109,6 +136,7 @@ public static class DigestEmailEndpointExt
             <main>
             <h1>{{title}}</h1>
             <p>{{text}}</p>
+            {{note}}
             <form method="post" action="{{action}}" style="display:inline">
             <button type="submit">{{actionText}}</button>
             </form>
