@@ -194,6 +194,7 @@
     <PackageReference Include="Xamarin.Firebase.Messaging" />
     <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
     <PackageReference Include="Xamarin.Google.Android.Play.Review" />
+    <PackageReference Include="Xamarin.Google.Android.InstallReferrer" />
     <PackageReference Include="Xamarin.Google.Dagger" />
     <PackageReference Include="Xamarin.Google.AI.Edge.LiteRT" />
     <PackageReference Include="OpusSharp.Core" />
