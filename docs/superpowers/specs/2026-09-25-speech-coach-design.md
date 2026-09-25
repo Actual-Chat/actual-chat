@@ -319,13 +319,23 @@ profiling is involved.
 
 ## Risks
 
-1. **Filler survival.** If the transcriber drops "um"/"эээ", the filled-pause class is empty and
-   the headline metric is lexical fillers only. Soniox has no verbatim option and its benchmarks
-   ignore fillers; Deepgram keeps seven English tokens; ElevenLabs Scribe is verbatim by default
-   and multilingual. Spike before implementation: real audio with deliberate fillers through the
-   current pipeline, comparing realtime and refined text. Fallbacks, in order: analyse the
-   realtime text when the refined one strips fillers; re-transcribe own audio with the verbatim
-   transcriber for opted-in users.
+1. **Filler survival — measured 2026-09-25, risk retired.** `FillerSurvivalTest` ran two
+   TTS-generated clips (Soniox TTS; not human recordings, so fillers are pronounced cleanly)
+   through Soniox realtime (stt-rt-v5) and offline (stt-async-v5):
+
+   | filler | script | realtime | offline |
+   |---|---|---|---|
+   | um / uh (en) | 2 / 2 | 2 / 2 | 2 / 2 |
+   | you know / like (en) | 2 / 1 | 2 / 1 | 2 / 1 |
+   | эээ (ru) | 2 | 2, written **э-э** | 2, written **э-э** |
+   | ну / вот / как бы (ru) | 2 / 2 / 2 | 2 / 2 / 2 | 2 / 2 / 2 |
+
+   Both passes keep filled pauses and lexical fillers; the offline pass does not strip them.
+   Two consequences for the tagger: Russian filled pauses are normalised to hyphenated forms
+   ("э-э", "м-м"), so the prompt must name them, and `SpanLocator` must treat a hyphen inside a
+   word as part of the word. Human speech may still lose mumbled fillers; the golden-set test
+   watches for that with real transcripts as they become available. Fallbacks (analyse the
+   realtime text, or re-transcribe with the verbatim transcriber) stay listed but are not needed.
 2. **LLM tagging quality across languages** is unproven anywhere. The golden set gates prompt
    edits; the lexicon fallback bounds the damage.
 3. **Bands are borrowed.** Pace bands come from English-language products; Russian and others
