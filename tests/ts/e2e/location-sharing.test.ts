@@ -19,7 +19,7 @@ import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import type { Page } from 'playwright';
 import {
     BASE_URL, clearBrowserCache, connectBrowser, ensureSignedIn, isVisibleWithin, openChat,
-    screenshot, type BrowserConnection,
+    screenshot, watchMapPaint, type BrowserConnection,
 } from './helpers';
 
 const shot = (name: string) => screenshot('e2e', name);
@@ -27,9 +27,6 @@ const shot = (name: string) => screenshot('e2e', name);
 // London -> Paris, to prove the marker tracks position updates.
 const START = { latitude: 51.5074, longitude: -0.1278, accuracy: 12 };
 const MOVED = { latitude: 48.8566, longitude: 2.3522, accuracy: 12 };
-
-// An ACTUAL tile/glyph fetch from our maps.* proxy (not just the style JSON).
-const TILE_URL_RE = /maps[.-][^/]*\.(?:voxt\.ai|actual\.chat)\/(?:planet\/.*\.pbf|natural_earth\/.*\.png|fonts\/)/;
 
 // A failed test must not leak its live share into the next one: re-sharing over an
 // active share mints a NEW SharedLocation and orphans the old row server-side, where
@@ -91,11 +88,9 @@ describe('location sharing', () => {
         // arrange — open a chat we can post in
         await openChat(page);
 
-        // act — open the "+" menu and start a share (arm the tile listener BEFORE the share
+        // act — open the "+" menu and start a share (arm the paint check BEFORE the share
         // starts: the inline panel begins fetching tiles the moment it mounts)
-        const tileLoaded = page.waitForResponse(
-            r => TILE_URL_RE.test(r.url()) && r.ok(),
-            { timeout: 30_000 });
+        const mapPainted = watchMapPaint(page);
         await page.locator('.chat-message-editor .attach-btn').first().click({ force: true });
         await page.locator('.ac-menu-item:has-text("Location")').first().click({ force: true });
 
@@ -126,11 +121,10 @@ describe('location sharing', () => {
         // assert — the activity pill appears only while the panel is hidden
         expect(await page.locator('.activity-pill').count()).toBe(0);
 
-        // assert — the inline panel renders a MapLibre marker on real tiles (not blank: CSP
-        // allows the maps host AND the map got a non-zero viewport)
+        // assert — the inline panel renders a MapLibre marker, and the map itself isn't blank
+        // (with tiles: CSP allows the maps host; without them: the map got a real viewport)
         await mapPanel.locator('.maplibregl-marker').first().waitFor({ state: 'visible', timeout: 15_000 });
-        const tileResp = await tileLoaded;
-        expect(tileResp.ok()).toBe(true);
+        await mapPainted(mapPanel);
         await page.waitForTimeout(1_500); // let the tiles paint before the screenshot
         await page.screenshot({ path: shot('loc-panel') });
 
@@ -205,10 +199,8 @@ describe('location sharing', () => {
         const modal = page.locator('.share-location-modal').first();
         await modal.waitFor({ state: 'visible', timeout: 10_000 });
 
-        // arm the tile listener before posting so we don't miss the inline-map tile requests
-        const tileLoaded = page.waitForResponse(
-            r => TILE_URL_RE.test(r.url()) && r.ok(),
-            { timeout: 20_000 });
+        // arm the paint check before posting so we don't miss the inline-map tile requests
+        const mapPainted = watchMapPaint(page, 20_000);
         await modal.locator('.c-send-current').first().click();
         // Sending dismisses the modal, and until it does ModalHost keeps everything outside it
         // inert - so a click below would land on .layout-body instead of the message.
@@ -226,9 +218,8 @@ describe('location sharing', () => {
             .waitFor({ state: 'visible', timeout: 15_000 });
         expect(await marker.locator('map-marker-pin').count()).toBe(0);
 
-        // assert — the inline map actually paints real tiles (not blank)
-        const tileResp = await tileLoaded;
-        expect(tileResp.ok()).toBe(true);
+        // assert — the inline map isn't blank
+        await mapPainted(locationMessage);
         await page.waitForTimeout(1_500); // let the tiles paint before the screenshot
         await page.screenshot({ path: shot('loc-one-shot') });
 

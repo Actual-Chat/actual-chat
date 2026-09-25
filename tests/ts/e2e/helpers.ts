@@ -151,6 +151,29 @@ export async function isVisibleWithin(locator: Locator, timeout: number): Promis
     return locator.waitFor({ state: 'visible', timeout }).then(() => true).catch(() => false);
 }
 
+// An ACTUAL tile/glyph fetch from our maps.* proxy (not just the style JSON).
+const tileUrlRe = /maps[.-][^/]*\.(?:voxt\.ai|actual\.chat)\/(?:planet\/.*\.pbf|natural_earth\/.*\.png|fonts\/)/;
+
+/** Arms the "this map isn't blank" check before the map mounts, and returns the wait to await
+ *  once it has. Without a tile host it falls back to the map canvas having a non-empty box:
+ *  markers are DOM overlays and render even on a 0-sized map, so they don't prove it alone. */
+export function watchMapPaint(page: Page, timeout = 30_000): (map: Locator) => Promise<void> {
+    // UrlMapper builds the maps.* tile host only for voxt.ai, dev.voxt.ai and the local dev hosts
+    // (UrlMapper.cs:73), and maps.* is a reverse proxy to OpenFreeMap rather than a tile server of
+    // ours — so a CI run served from http://localhost:7080 has nothing to fetch tiles from.
+    const host = new URL(BASE_URL).hostname.toLowerCase();
+    const hasMapTiles = host === 'voxt.ai' || host === 'dev.voxt.ai'
+        || host === 'local.voxt.ai' || host === 'local.actual.chat'
+        || host.endsWith('.local.voxt.ai');
+    if (!hasMapTiles)
+        return map => map.locator('.maplibregl-canvas').first().waitFor({ state: 'visible', timeout });
+
+    const tileLoaded = page.waitForResponse(r => tileUrlRe.test(r.url()) && r.ok(), { timeout });
+    return async () => {
+        await tileLoaded;
+    };
+}
+
 /** Wait past the #web-splash overlay until any Blazor landmark is visible. */
 export async function waitForAppReady(page: Page, timeout = 30_000) {
     await page.locator([

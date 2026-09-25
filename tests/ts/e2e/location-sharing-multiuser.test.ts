@@ -21,7 +21,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import type { BrowserContext, Page } from 'playwright';
 import {
-    TEST_EMAIL, TEST_EMAIL_2, connectBrowser, newUserContext, openChat, screenshot,
+    TEST_EMAIL, TEST_EMAIL_2, connectBrowser, newUserContext, openChat, screenshot, watchMapPaint,
     type BrowserConnection,
 } from './helpers';
 
@@ -31,13 +31,6 @@ const shot = (name: string) => screenshot('e2e-multi', name);
 const ALICE_START = { latitude: 51.5074, longitude: -0.1278, accuracy: 12 }; // London
 const ALICE_MOVED = { latitude: 48.8566, longitude: 2.3522, accuracy: 12 };  // Paris
 const BOB_START = { latitude: 52.5200, longitude: 13.4050, accuracy: 12 };   // Berlin
-
-// An ACTUAL tile/glyph fetch from our maps.* proxy (not just the style JSON).
-const TILE_URL_RE = /maps[.-][^/]*\.(?:voxt\.ai|actual\.chat)\/(?:planet\/.*\.pbf|natural_earth\/.*\.png|fonts\/)/;
-
-const tileLoaded = (page: Page) => page.waitForResponse(
-    r => TILE_URL_RE.test(r.url()) && r.ok(),
-    { timeout: 30_000 });
 
 // A failed test must not leak its live share into the next run: re-sharing over an
 // active share mints a NEW SharedLocation and orphans the old row server-side, where
@@ -103,17 +96,17 @@ describe('multi-user location sharing', () => {
         const alicePanel = alice.locator('.visual-activity-panel .map-panel').first();
         const bobPanel = bob.locator('.visual-activity-panel .map-panel').first();
 
-        // act — Alice starts a live share (arm both tile listeners first: each user's
+        // act — Alice starts a live share (arm both paint checks first: each user's
         // inline panel starts fetching tiles as soon as the share reaches them)
-        const aliceTiles = tileLoaded(alice);
-        const bobTiles = tileLoaded(bob);
+        const alicePainted = watchMapPaint(alice);
+        const bobPainted = watchMapPaint(bob);
         await startShare(alice, '15 min');
 
         // assert — Alice sees her own share (with a Stop button, no viewer CTA)
         await alicePanel.waitFor({ state: 'visible', timeout: 20_000 });
         await alicePanel.locator('.btn-stop-sharing').first().waitFor({ state: 'visible', timeout: 10_000 });
         expect(await alicePanel.locator('.btn-share-location').count()).toBe(0);
-        expect((await aliceTiles).ok()).toBe(true);
+        await alicePainted(alicePanel);
 
         // assert — no Call/Map switch on either side: the map is the only panel activity (#4067)
         expect(await alice.locator('.call-map-switch').count()).toBe(0);
@@ -127,7 +120,7 @@ describe('multi-user location sharing', () => {
         await bobPanel.waitFor({ state: 'visible', timeout: 20_000 });
         expect(await bobPanel.locator('.btn-stop-sharing').count()).toBe(0);
         await bobPanel.locator('.btn-share-location').first().waitFor({ state: 'visible', timeout: 10_000 });
-        expect((await bobTiles).ok()).toBe(true);
+        await bobPainted(bobPanel);
         await bob.screenshot({ path: shot('bob-sees-alice') });
 
         // assert — Bob's inline panel shows both markers: Alice's share + his own location
