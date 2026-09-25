@@ -28,7 +28,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private readonly MutableState<ChatEntryId?> _highlightedEntryId;
     private readonly MutableState<IImmutableSet<ConversationId>> _conversationExpansionOverrides;
     private readonly MutableState<IImmutableSet<ConversationId>> _autoExpandedConversations;
-    private ChatViewItemVisibility _itemVisibilityAtExpansionChange = ChatViewItemVisibility.Empty;
+    private readonly ConcurrentDictionary<ConversationId, ChatViewItemVisibility> _itemVisibilityAtExpansionChange = new();
     // Holds the selected chat's lids only - ClearAutoExpansionState drops it on every chat change
     private LidRangeSet? _witnessedLids;
     private readonly ConcurrentDictionary<ConversationId, Unit> _suppressedAutoExpansions = new();
@@ -418,9 +418,11 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // What the chat view reports, not what consumers see - ItemVisibility masks this
         => _reportedItemVisibility.Value = itemVisibility;
 
-    // The report in hand when an expansion last changed: it describes the render from before the change
-    public ChatViewItemVisibility ItemVisibilityAtExpansionChange
-        => Volatile.Read(ref _itemVisibilityAtExpansionChange);
+    // The report in hand when the conversation's expansion last changed: it describes the render from
+    // before the change. Kept per conversation, since any other one changing may happen after the new
+    // render has already reported - auto-expansion does exactly that, off the rows that report reveals.
+    public ChatViewItemVisibility? GetItemVisibilityAtExpansionChange(ConversationId conversationId)
+        => _itemVisibilityAtExpansionChange.GetValueOrDefault(conversationId);
 
     public void ResetReportedItemVisibility(ChatId chatId)
     {
@@ -739,6 +741,10 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                     _pendingSelectedChatIds.Add(chatId);
             }
             ClearAutoExpansionState();
+            // The live block's fold reads these for the selected chat only
+            foreach (var conversationId in _itemVisibilityAtExpansionChange.Keys)
+                if (conversationId.ChatId != chatId)
+                    _itemVisibilityAtExpansionChange.TryRemove(conversationId, out _);
             selectedChatId.Value = chatId; // "Resumes" ProcessSelectedChatChanges, which does the rest
             // Inline rather than in that chain: it starts late and skips values set within one tick,
             // and a chat skipped that way kept its cached IsSelected and stayed highlighted.
@@ -779,8 +785,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         IImmutableSet<ConversationId> value)
     {
         // Recorded before the change lands, so whoever sees the change also sees the report it made stale
-        if (!value.SetEquals(expansionState.Value))
-            Volatile.Write(ref _itemVisibilityAtExpansionChange, _reportedItemVisibility.Value);
+        var itemVisibility = _reportedItemVisibility.Value;
+        foreach (var conversationId in value.SymmetricExcept(expansionState.Value))
+            _itemVisibilityAtExpansionChange[conversationId] = itemVisibility;
         expansionState.Value = value;
     }
 

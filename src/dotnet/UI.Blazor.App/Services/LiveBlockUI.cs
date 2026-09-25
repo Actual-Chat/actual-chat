@@ -432,7 +432,8 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                 // expanded render replaces it. Not the report in hand here: the expanded render's first one
                 // can land before this pass, and the view re-reports only on a change.
                 if (isBlockExpanded && !chatState.WasBlockExpanded)
-                    chatState.StaleVisibility = Hub.ChatUI.ItemVisibilityAtExpansionChange;
+                    chatState.StaleVisibility = Hub.ChatUI.GetItemVisibilityAtExpansionChange(
+                        ConversationId.New(chatId, v));
                 chatState.WasBlockExpanded = isBlockExpanded;
                 var isVisibilityUsable = isBlockExpanded
                     && !ReferenceEquals(visibility, chatState.StaleVisibility)

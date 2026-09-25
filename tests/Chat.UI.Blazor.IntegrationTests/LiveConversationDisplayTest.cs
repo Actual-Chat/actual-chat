@@ -1644,6 +1644,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             var visibility = await chatUI.ItemVisibility.Use(ct);
             visibility.Should().BeSameAs(expandedVisibility, "the report must be what the governor reads");
         });
+        // Any other conversation's expansion changing in between must not pass the fresh report off as
+        // the block's stale one - auto-expansion does this off the very rows that report reveals
+        chatUI.ToggleExpandConversation(ConversationId.New(otherChat.Id, 1));
         chatUI.SelectChatOnNavigation(chat.Id);
 
         // assert
