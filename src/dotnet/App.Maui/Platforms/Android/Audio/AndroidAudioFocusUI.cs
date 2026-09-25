@@ -15,7 +15,6 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     private MauiAudioFocusHandle? _handle;
     private CarAudioRoute _carAudioRoute = CarAudioRoute.Default;
     private int _isTrackingCarAudioRoute;
-    private int _isCallActive;
     private int _isCallVideo;
     // Non-null while a call is on: all its audio then takes the communication route, and the route
     // only picks the device. A call's playback is one long track, so its usage can't follow a focus
@@ -98,13 +97,10 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
         await _focusHelper.SelectBuiltinSpeaker(cancellationToken).ConfigureAwait(false);
     }
 
-    public override void SetCallActive(bool isCallActive, bool hasVideo)
+    public override Task SetCallActive(bool isCallActive, bool hasVideo)
     {
-        // Reconciled to the latest report rather than applied in order: two reports landing out of
-        // order must not leave a finished call's route behind.
         Volatile.Write(ref _isCallVideo, hasVideo ? 1 : 0);
-        Volatile.Write(ref _isCallActive, isCallActive ? 1 : 0);
-        _ = BackgroundTask.Run(SyncCallAudioRoute, Log, "Failed to sync the call audio route", Hub.StopToken);
+        return SetCallAudioRoute(isCallActive ? _callAudioRoute ?? GetDefaultCallAudioRoute() : null);
     }
 
     public override async Task ApplyOutputRoute(string? routeId)
@@ -171,13 +167,6 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     }
 
     // Private methods
-
-    private Task SyncCallAudioRoute()
-    {
-        var isCallActive = Volatile.Read(ref _isCallActive) != 0;
-        var route = isCallActive ? _callAudioRoute ?? GetDefaultCallAudioRoute() : (CallAudioRoute?)null;
-        return SetCallAudioRoute(route);
-    }
 
     private CallAudioRoute GetDefaultCallAudioRoute()
     {

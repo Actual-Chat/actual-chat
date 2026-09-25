@@ -23,6 +23,7 @@ public partial class CallUI
     {
         var baseChains = new[] {
             AsyncChain.From(SyncMyCall),
+            AsyncChain.From(SyncCallActivity),
             AsyncChain.From(SyncOutputRoute),
             AsyncChain.From(SyncOutputRouteTakeover),
         };
@@ -133,8 +134,6 @@ public partial class CallUI
             if (held is { Role: CallRole.Caller, Phase: CallPhase.Dialing } && next?.ChatId != held.ChatId)
                 unansweredChatId = held.ChatId;
         }
-
-        ReportCallActivity();
         if (ringingChatId is { } chatId)
             _ = SendRingAck(chatId, RingAck.Ringing);
         if (unansweredChatId is { } unanswered)
