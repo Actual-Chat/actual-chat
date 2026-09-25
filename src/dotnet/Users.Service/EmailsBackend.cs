@@ -60,6 +60,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             Chats = digestPreviewChats,
             OtherUnreadCount = digestParameters.OtherUnreadCount,
             RenderedHtml = html,
+            UnsubscribeLink = unsubscribeLink,
         };
     }
 
