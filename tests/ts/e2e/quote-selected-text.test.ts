@@ -81,6 +81,9 @@ describe('quote selected text', () => {
 
         // Select the fragment inside the message, then open the context menu the way the
         // menu host listens for it: a contextmenu event bubbling up from the message.
+        // The press has to come first — the host snapshots the selection on pointerdown and
+        // drops one that appeared only with the click, which is how WebKit's select-the-word
+        // -under-the-cursor is kept out of Quote (#4798).
         const selected = await source.evaluate((el, fragment) => {
             const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
             for (let node = walker.nextNode(); node; node = walker.nextNode()) {
@@ -95,12 +98,16 @@ describe('quote selected text', () => {
                 selection.removeAllRanges();
                 selection.addRange(range);
                 const rect = range.getBoundingClientRect();
-                el.dispatchEvent(new MouseEvent('contextmenu', {
+                const at = {
                     bubbles: true,
                     cancelable: true,
+                    button: 2,
                     clientX: rect.left + rect.width / 2,
                     clientY: rect.top + rect.height / 2,
-                }));
+                };
+                el.dispatchEvent(new PointerEvent('pointerdown', at));
+                el.dispatchEvent(new MouseEvent('mousedown', at));
+                el.dispatchEvent(new MouseEvent('contextmenu', at));
                 return selection.toString();
             }
             return null;
@@ -135,12 +142,16 @@ describe('quote selected text', () => {
         await source.evaluate(el => {
             window.getSelection()?.removeAllRanges();
             const rect = el.getBoundingClientRect();
-            el.dispatchEvent(new MouseEvent('contextmenu', {
+            const at = {
                 bubbles: true,
                 cancelable: true,
+                button: 2,
                 clientX: rect.left + 10,
                 clientY: rect.top + 10,
-            }));
+            };
+            el.dispatchEvent(new PointerEvent('pointerdown', at));
+            el.dispatchEvent(new MouseEvent('mousedown', at));
+            el.dispatchEvent(new MouseEvent('contextmenu', at));
         });
 
         const replyItem = page.locator('li.ac-menu-item:has-text("Reply")').first();
