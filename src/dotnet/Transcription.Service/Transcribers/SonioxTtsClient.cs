@@ -62,6 +62,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         string sessionId,
         string language,
         string voice,
+        double? speed,
         ChannelReader<string> text,
         ChannelWriter<byte[]> pcm,
         ISpeechSynthesisListener? listener,
@@ -71,7 +72,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         if (apiKey.IsNullOrEmpty())
             throw StandardError.Configuration("CoreSettings:SonioxKey is not set.");
 
-        _run = new RunArgs(sessionId, apiKey, language, voice, pcm, listener);
+        _run = new RunArgs(sessionId, apiKey, language, voice, speed, pcm, listener);
         Exception? error = null;
         try {
             var hasReconnected = false;
@@ -184,6 +185,14 @@ public sealed class SonioxTtsClient(IServiceProvider services)
 
     // Protected/internal methods
 
+    // Soniox reads a bracketed word as an audio tag ("[whispering]", "[pause]"), so a "[sic]" or a
+    // "[1]" typed by a user - or a tag typed on purpose - would direct the voice instead of being said.
+    // Same-length replacement, so the text's offsets stay where the caller left them.
+    internal static string NeutralizeAudioTags(string text)
+        => text.AsSpan().IndexOfAny('[', ']') < 0
+            ? text
+            : text.Replace('[', ' ').Replace(']', ' ');
+
     // It's internal to be accessible from tests
     internal static IEnumerable<string> SplitText(string text, int maxLength)
     {
@@ -286,6 +295,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
             model = Model,
             language = run.Language,
             voice = run.Voice,
+            speed = run.Speed,
             audio_format = PcmFormat,
             sample_rate = SampleRate,
             stream_id = stream.Id,
@@ -438,7 +448,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         _run!.Listener?.OnStreamOpened();
         Log.LogDebug("Soniox TTS #{StreamId}: {Action} {Length} chars, ended",
             stream.Id, isResent ? "resent" : "sent", chunk.Length);
-        return SendText(chunk, true, cancellationToken);
+        return SendText(NeutralizeAudioTags(chunk), true, cancellationToken);
     }
 
     private Task SendText(string text, bool isEnd, CancellationToken cancellationToken)
@@ -495,7 +505,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                     audio_format = audioFormat,
                     sample_rate = SampleRate,
                     bitrate = audioFormat == OpusFormat ? OpusBitrate : (int?)null,
-                    text = part,
+                    text = NeutralizeAudioTags(part),
                 }, options: JsonOptions),
             };
             using var response = await httpClient
@@ -577,6 +587,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         string ApiKey,
         string Language,
         string Voice,
+        double? Speed,
         ChannelWriter<byte[]> Pcm,
         ISpeechSynthesisListener? Listener);
 

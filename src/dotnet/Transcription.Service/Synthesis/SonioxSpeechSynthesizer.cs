@@ -28,7 +28,7 @@ public sealed class SonioxSpeechSynthesizer(IServiceProvider services) : ISpeech
         ChannelWriter<byte[]> pcm,
         CancellationToken cancellationToken = default)
         => new SonioxTtsClient(Services).Run(
-            streamId, options.Language.ToSoniox(), GetVoice(options), text, pcm,
+            streamId, options.Language.ToSoniox(), GetVoice(options), options.Speed, text, pcm,
             options.Listener, cancellationToken);
 
     public Task<AudioSource> Synthesize(

@@ -30,7 +30,8 @@ public sealed class SpeechSkipTest
         // assert
         skip.Should().BeGreaterThan(0);
         var spoken = text.Length - skip;
-        var floor = SpeechRate.ToCharCount(Languages.English, Constants.Audio.MinSpokenTailDuration);
+        var floor = SpeechRate.ToCharCount(
+            Languages.English, Constants.Audio.MinSpokenTailDuration, Constants.Audio.SpokenTextSpeed);
         spoken.Should().BeLessThanOrEqualTo(floor,
             "the joiner starts near the live edge, not at the beginning");
         spoken.Should().BeGreaterThan(floor / 2, "but still hears the floor's worth of it");

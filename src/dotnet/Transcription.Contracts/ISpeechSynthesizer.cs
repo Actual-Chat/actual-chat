@@ -6,6 +6,8 @@ namespace ActualChat.Transcription;
 public sealed record SpeechSynthesisOptions(Language Language, string? VoiceId = null)
 {
     public ISpeechSynthesisListener? Listener { get; init; }
+    // Relative to the voice's normal rate (1.0); null leaves it to the provider. Soniox takes 0.7..1.3
+    public double? Speed { get; init; }
 }
 
 public interface ISpeechSynthesisListener

@@ -139,7 +139,8 @@ public partial class AudioStreamingBackend
             }
 
             synthesizeTask = StartSynthesis(
-                speechStreamId, spokenLanguage, text.Reader, mix, mixTask, null, cancellationToken);
+                speechStreamId, spokenLanguage, Constants.Audio.SpokenTextSpeed,
+                text.Reader, mix, mixTask, null, cancellationToken);
 
             // DubStabilizer chunks at boundaries a synthesizer can speak well; the source transcript
             // is fed to it directly, where a dub would feed the translation of it
@@ -181,7 +182,8 @@ public partial class AudioStreamingBackend
     // What to leave unspoken of a message already written when the first listener arrived.
     internal static int GetSkipLength(string text, Language language)
     {
-        var floor = SpeechRate.ToCharCount(language, Constants.Audio.MinSpokenTailDuration);
+        var floor = SpeechRate.ToCharCount(
+            language, Constants.Audio.MinSpokenTailDuration, Constants.Audio.SpokenTextSpeed);
         var skip = text.Length - floor;
         if (skip <= 0)
             return 0; // Short enough to speak in full

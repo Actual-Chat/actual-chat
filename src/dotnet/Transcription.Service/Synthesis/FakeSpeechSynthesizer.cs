@@ -21,19 +21,33 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
     // What DubVoiceAccents.ResolveVoice picks from Voices for a speaker who chose nothing (en-US → american)
     public const string DefaultVoiceId = "Adrian";
 
-    private static readonly ConcurrentDictionary<string, Language> SynthesizedStreamIds = new();
+    private static readonly ConcurrentDictionary<string, SpeechSynthesisOptions> OptionsByStream = new();
     private static readonly ConcurrentDictionary<string, StringBuilder> SpokenTextByStream = new();
 
     // Test hook, keyed by stream: lets a test assert that one particular stream was never spoken,
     // which is the only way to tell "declined to speak" from "spoke silence" - and unlike a global
     // counter it is not disturbed by another test's dub running in the background.
     public static bool WasSynthesized(string streamId)
-        => SynthesizedStreamIds.ContainsKey(streamId);
+        => OptionsByStream.ContainsKey(streamId);
 
     // The language a real provider is asked for. A fake that ignores it hides the one thing that
     // has to be right here: a speech stream has no language suffix to read a voice off.
     public static Language? SynthesizedLanguage(string streamId)
-        => SynthesizedStreamIds.TryGetValue(streamId, out var language) ? language : null;
+        => OptionsByStream.TryGetValue(streamId, out var options) ? options.Language : null;
+
+    // The stream that spoke a fragment and the options it was spoken with, for a test that never
+    // learns the stream id - a typed message is spoken on an id the server makes up.
+    public static (string StreamId, SpeechSynthesisOptions Options)? FindSpoken(string fragment)
+    {
+        foreach (var (streamId, spoken) in SpokenTextByStream) {
+            bool isMatch;
+            lock (spoken)
+                isMatch = spoken.ToString().Contains(fragment);
+            if (isMatch && OptionsByStream.TryGetValue(streamId, out var options))
+                return (streamId, options);
+        }
+        return null;
+    }
 
     // What was actually handed over to be spoken, which is the only way to tell where speech
     // started - the audio itself is silence of the right length.
@@ -51,7 +65,7 @@ public sealed class FakeSpeechSynthesizer(IServiceProvider services) : ISpeechSy
         ChannelWriter<byte[]> pcm,
         CancellationToken cancellationToken = default)
     {
-        SynthesizedStreamIds[streamId] = options.Language;
+        OptionsByStream[streamId] = options;
         var spoken = SpokenTextByStream.GetOrAdd(streamId, static _ => new StringBuilder());
         return Push(text, pcm, options.Listener, spoken, cancellationToken);
     }

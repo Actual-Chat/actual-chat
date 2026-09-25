@@ -139,6 +139,55 @@ public sealed class SpeakModeTest(SpeechCollection.AppHostFixture fixture, ITest
     }
 
     [Fact]
+    public async Task ShouldSpeakATypedMessageWithoutItsMarkup()
+    {
+        // Markup is for the eye: a voice reading the asterisks and backticks aloud says something
+        // nobody wrote. It is also read a little faster than a dub, which follows a human's pace.
+
+        // arrange
+        var chatId = await StartLiveSessionAndListen();
+
+        // act
+        await PostText(chatId, "**Two** minutes and I am `there`, see ||nothing||.");
+
+        // assert
+        var spoken = await WhenSpoken("Two minutes and I am there, see .");
+        spoken.Options.Speed.Should().Be(Constants.Audio.SpokenTextSpeed, "text follows no human's pace");
+    }
+
+    [Fact]
+    public async Task ShouldNotSpeakACodeOnlyTypedMessage()
+    {
+        // arrange
+        var chatId = await StartLiveSessionAndListen();
+
+        // act - the marker posted after it is spoken, so by then the code would have been too
+        await PostText(chatId, "```sql\nselect 4b1f from nowhere;\n```");
+        await PostText(chatId, "Marker 4b1f spoken.");
+
+        // assert
+        await WhenSpoken("Marker 4b1f spoken");
+        FakeSpeechSynthesizer.FindSpoken("4b1f from nowhere").Should().BeNull("code is read, never heard");
+    }
+
+    [Fact]
+    public async Task ShouldNotSpeakAWallOfText()
+    {
+        // arrange - the marker is at the end, which is the part a late start would still speak
+        var chatId = await StartLiveSessionAndListen();
+        var wall = string.Concat(Enumerable.Repeat(TextRun, 8)) + "End of wall 9c2e.";
+
+        // act
+        await PostText(chatId, wall);
+        await PostText(chatId, "Marker 9c2e spoken.");
+
+        // assert
+        await WhenSpoken("Marker 9c2e spoken");
+        FakeSpeechSynthesizer.FindSpoken("End of wall 9c2e").Should().BeNull(
+            "a message that takes minutes to say is left for reading");
+    }
+
+    [Fact]
     public async Task ShouldStartNearTheLiveEdgeForSomeoneWhoJoinsLate()
     {
         // The whole message is already written before anyone listens, so every word of it is a
@@ -244,6 +293,40 @@ public sealed class SpeakModeTest(SpeechCollection.AppHostFixture fixture, ITest
     }
 
     // Private methods
+
+    // A live session with someone listening to it: the listening is what makes the server speak
+    private async Task<ChatId> StartLiveSessionAndListen()
+    {
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var liveSessions = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        var author = await Tester.Authors.GetOwn(Tester.Session, chatId, CancellationToken.None);
+        await liveSessions.OnStreamRegistered(
+            chatId, author!.Id, null, true, true, CancellationToken.None);
+        var live = AppHost.Services.GetRequiredService<ILiveAudioStreams>();
+        var listening = await live.GetListeningStream(
+            Tester.Session, chatId, Moment.EpochStart, null, CancellationToken.None);
+        _ = ReadMuxedFrames(listening, CancellationToken.None);
+        return chatId;
+    }
+
+    // Polled: the fake's record is a side effect, not a computed value, so nothing invalidates it
+    private static Task<(string StreamId, SpeechSynthesisOptions Options)> WhenSpoken(string fragment)
+        => TestWait.WhenPolled<(string StreamId, SpeechSynthesisOptions Options)>(() => {
+            var spoken = FakeSpeechSynthesizer.FindSpoken(fragment);
+            spoken.Should().NotBeNull($"'{fragment}' is spoken to whoever is listening");
+            return Task.FromResult(spoken!.Value);
+        }, WaitTimeout);
+
+    private Task PostText(ChatId chatId, string text)
+        => Tester.Commander.Call(
+            new Chats_UpsertEntry {
+                Session = Tester.Session,
+                ChatId = chatId,
+                LocalId = null,
+                Text = text,
+            },
+            CancellationToken.None);
 
     private static Task<List<MuxedAudioFrame>> ReadMuxedFrames(
         IAsyncEnumerable<MuxedAudioStreamItem> items, CancellationToken cancellationToken)

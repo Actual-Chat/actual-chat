@@ -31,6 +31,17 @@ public static partial class MarkupExt
         return text;
     }
 
+    // Line structure is kept: a synthesizer pauses at a line end, and ToReadableText's whitespace
+    // collapsing would run the blocks together.
+    public static string ToSpokenText(this Markup markup)
+    {
+        var lines = MarkupFormatter.Spoken.Format(markup)
+            .Split('\n')
+            .Select(line => WhitespaceRegex.Replace(line, " ").Trim())
+            .Where(line => line.Length > 0);
+        return string.Join('\n', lines);
+    }
+
     public static string ToClipboardText(this Markup markup)
         => MarkupFormatter.Readable.Format(markup);
 

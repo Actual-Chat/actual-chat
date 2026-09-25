@@ -119,8 +119,14 @@ comes, see [TTS transport](#tts-transport-pcm-live-opus-on-replay);
 `terminated` and `error_code` complete the stream they name — audio
 messages carry no `stream_id`, so they go to the one open stream, which
 is also why streams are strictly sequential). A stream is opened with
-the config (`tts-rt-v2`, `pcm_s16le`, 48 000 Hz, the language, the voice
-and a fresh `stream_id`).
+the config (`tts-rt-v2`, `pcm_s16le`, 48 000 Hz, the language, the voice,
+a fresh `stream_id` and, when `SpeechSynthesisOptions.Speed` is set, a
+`speed`: a dub sends none and follows the voice's normal rate, while text
+spoken for a typed or streamed entry (`RunSpeak`) asks for
+`Constants.Audio.SpokenTextSpeed`, 1.15). Before a chunk goes out its `[`
+and `]` are replaced with spaces (`NeutralizeAudioTags`): Soniox reads a
+bracketed word as an audio tag (`[pause]`, `[whispering]`), so a `[sic]`
+in a message would direct the voice instead of being said.
 
 **Every chunk is a stream of its own.** Each chunk the dub worker hands
 the client is one translated clause (`ClauseSplitter`/`ClauseTranslator`,
