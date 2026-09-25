@@ -86,6 +86,9 @@ public sealed class AudioEngines : ProcessorBase
 
     // Private methods
 
+    public string DescribeOutputs()
+        => $"{Playback.DescribeOutput()}; {Recording.DescribeOutput()}";
+
     private void OnConfigurationChange(object? sender, NSNotificationEventArgs e)
         => Log.LogInformation("Audio engine configuration change");
 }

@@ -8,7 +8,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
 /// Everything that shows the call <see cref="CallUI"/> holds: the modal, the island, the full-screen view,
-/// the ringtone, the ringback and the earpiece switch. <see cref="GetCallView"/> alone decides which of them shows it.
+/// the ringtone and the ringback. <see cref="GetCallView"/> alone decides which of them shows it.
 /// </summary>
 public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
@@ -18,12 +18,9 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     private readonly MutableState<ChatId?> _collapsedChatId;
     // The ring that must not sound while it keeps going: silenced by the user, or already answered.
     private readonly MutableState<ChatId?> _mutedRingChatId;
-    private readonly MutableState<AudioRouteChoice?> _audioRouteChoice;
-    private readonly MutableState<AudioOutputKind?> _externalOutputKind;
     private int _overLockRingGeneration;
 
     public IState<ChatId?> MutedRingChatId => _mutedRingChatId;
-    public bool CanRouteToEarpiece => Hub.AudioFocusUI.CanRouteToEarpiece;
 
     private IIncomingCallsBridge? Bridge { get; }
     private CallUI CallUI => Hub.CallUI;
@@ -35,12 +32,6 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         _overLockRingChatId = NewChatIdState("OverLockRingChatId");
         _collapsedChatId = NewChatIdState("CollapsedChatId");
         _mutedRingChatId = NewChatIdState("MutedRingChatId");
-        _audioRouteChoice = StateFactory.NewMutable(
-            (AudioRouteChoice?)null,
-            StateCategories.Get(GetType(), "AudioRouteChoice"));
-        _externalOutputKind = StateFactory.NewMutable(
-            (AudioOutputKind?)null,
-            StateCategories.Get(GetType(), "ExternalOutputKind"));
     }
 
     void INotifyInitialized.Initialized()
@@ -92,18 +83,6 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
 
         var me = live.Members.FirstOrDefault(m => m.AuthorId == ownAuthor.Id);
         return me is null || me.JoinedAt == default ? null : me.JoinedAt;
-    }
-
-    [ComputeMethod]
-    public virtual async Task<CallAudioOutput> GetAudioOutput(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var choice = await _audioRouteChoice.Use(cancellationToken).ConfigureAwait(false);
-        var route = choice?.ChatId == chatId ? choice.Route : default;
-        var externalKind = await _externalOutputKind.Use(cancellationToken).ConfigureAwait(false);
-        var kind = externalKind is { } k && !route.IsBuiltinForced ? k
-            : route.IsEarpiece ? AudioOutputKind.Phone
-            : AudioOutputKind.Speaker;
-        return new CallAudioOutput(kind, externalKind);
     }
 
     [ComputeMethod]
@@ -233,18 +212,6 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     public void ToggleMuteRing(ChatId chatId)
         => _mutedRingChatId.Value = _mutedRingChatId.Value == chatId ? null : chatId;
 
-    public void SetAudioOutput(ChatId chatId, AudioOutputKind kind)
-    {
-        var choice = _audioRouteChoice.Value;
-        var route = choice?.ChatId == chatId ? choice.Route : default;
-        route = kind switch {
-            AudioOutputKind.Phone => new CallAudioRoute(true, true),
-            AudioOutputKind.Speaker => new CallAudioRoute(false, true),
-            _ => route with { IsBuiltinForced = false },
-        };
-        _audioRouteChoice.Value = new AudioRouteChoice(chatId, route);
-    }
-
     public void Collapse(ChatId chatId)
     {
         // A modal disposed after its call ended must not collapse whatever holds the slot next.
@@ -362,8 +329,4 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         if (state.Value == chatId)
             state.Value = null;
     }
-
-    // Nested types
-
-    private sealed record AudioRouteChoice(ChatId ChatId, CallAudioRoute Route);
 }

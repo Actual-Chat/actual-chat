@@ -19,6 +19,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     private readonly Lock _lock = new();
     private readonly MutableState<ActiveCall?> _activeCall;
+    private (bool IsCallActive, bool HasVideo) _reportedCallActivity;
     // The call the server last named as mine. The slot blends this with a gesture it hasn't answered
     // yet, so it can't tell the two apart - and a screen that must wait for the server needs to.
     private readonly MutableState<ChatId?> _serverCallChatId;
@@ -173,8 +174,10 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 return false;
 
             SetIntentUnsafe(new ActiveCall(chatId, CallRole.Caller, CallPhase.Dialing, peerId, hasVideo));
-            return true;
         }
+
+        ReportCallActivity();
+        return true;
     }
 
     public bool TryCommitAccept(ChatId chatId)
@@ -189,8 +192,10 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             // before the projection lands leaves them unknown until the server's own answer does.
             SetIntentUnsafe(new ActiveCall(chatId, CallRole.Callee, CallPhase.Active,
                 heldCall?.PeerId, heldCall?.HasVideo ?? false));
-            return true;
         }
+
+        ReportCallActivity();
+        return true;
     }
 
     public bool DropRing(ChatId chatId)
@@ -203,8 +208,10 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
             if (call.Phase == CallPhase.Ringing)
                 ReleaseUnsafe(chatId);
-            return true;
         }
+
+        ReportCallActivity();
+        return true;
     }
 
     public void Release(ChatId chatId)
@@ -213,9 +220,30 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             if (_activeCall.Value?.ChatId == chatId)
                 ReleaseUnsafe(chatId);
         }
+
+        ReportCallActivity();
     }
 
     // Private methods
+
+    // After every write to the slot, and outside _lock: the audio session's category follows this,
+    // and a call on the line must keep the one that can reach the earpiece even while the mic is
+    // off. Read from the slot rather than passed in, so a write that skipped Apply - an accept, a
+    // placed call - is reported the same as the server's answer.
+    private void ReportCallActivity()
+    {
+        (bool IsCallActive, bool HasVideo) activity;
+        lock (_lock) {
+            var call = _activeCall.Value;
+            var isCallActive = call is { Phase: CallPhase.Active or CallPhase.Dialing };
+            activity = (isCallActive, isCallActive && call!.HasVideo);
+            if (activity == _reportedCallActivity)
+                return;
+
+            _reportedCallActivity = activity;
+        }
+        Hub.AudioFocusUI.SetCallActive(activity.IsCallActive, activity.HasVideo);
+    }
 
     // Caller must hold _lock.
     private void SetIntentUnsafe(ActiveCall call)

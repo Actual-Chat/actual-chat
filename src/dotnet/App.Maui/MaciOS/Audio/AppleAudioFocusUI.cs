@@ -12,6 +12,10 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     // iOS may never post the interruption end - a Bluetooth device connecting can leave a Began
     // with nothing after it - so the latch expires rather than waiting for a notification.
     private static readonly TimeSpan InterruptionEndTimeout = TimeSpan.FromSeconds(10);
+    // A session switch holds the main thread for up to 2s, and a render only reaches the WebView
+    // through that thread: the pick's checkmark, the toggle's icon and the menu closing all wait
+    // for the switch unless it lets them through first.
+    private static readonly TimeSpan OutputPickPaintDelay = TimeSpan.FromMilliseconds(100);
 
     private readonly AsyncLock _lock = new(LockReentryMode.CheckedFail);
     private readonly ActiveScopes _activeScopes;
@@ -20,6 +24,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     private readonly Disposable<NSObject> _mediaServicesResetSubscription;
     private readonly Disposable<NSObject> _routeChangeSubscription;
     private readonly TaskSerializer _interruptionQueue = new();
+    private readonly MutableState<AudioOutputRoutes> _outputRoutes;
     private long _interruptedAt;
     private bool _isSuspended;
     private bool _isSessionConfigured;
@@ -32,11 +37,14 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     public override bool IsSuspended => _isSuspended || IsInterrupted;
+    public override IState<AudioOutputRoutes>? OutputRoutes => _outputRoutes;
 
     public AppleAudioFocusUI(AppUIHub hub)
     {
         Hub = hub;
         _activeScopes = new ActiveScopes(Hub.LogFor(GetType()));
+        _outputRoutes = Hub.StateFactory.NewMutable(
+            AudioOutputRoutes.None, StateCategories.Get(GetType(), nameof(OutputRoutes)));
         _interruptionSubscription = Disposable.New(
             AVAudioSession.Notifications.ObserveInterruption(OnInterruption),
             NSNotificationCenter.DefaultCenter.RemoveObserver);
@@ -124,7 +132,43 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         using var _1 = await _lock.Lock(cts.Token).ConfigureAwait(false);
         // No scope check: a PTT playback's engine starts before its listening scope arrives, and
         // the route is the session category's business, not the scopes'.
+        // Not forced: restating an override the route already holds clears it to None first, and
+        // that bounces the route - which restarts this very playback, which asks again.
         await AudioSession.ApplyOutputRoute(_activeScopes.GetMode()).ConfigureAwait(false);
+    }
+
+    public override void SetCallActive(bool isCallActive, bool hasVideo)
+    {
+        Log.LogInformation("SetCallActive: {IsCallActive}, video={HasVideo}", isCallActive, hasVideo);
+        AudioSession.IsCallActive = isCallActive;
+        // CallKit sets this for its own calls; an app-owned call only ever reports it here.
+        AudioSession.IsCallVideo = hasVideo;
+        // The pick belongs to the call that just ended; the next one starts from the defaults.
+        if (!isCallActive)
+            AudioSession.ResetCallRouteLatch();
+        // The session was configured before the call was known - a recording started a moment
+        // earlier sits on the speaker - so it's brought to the call's configuration right away.
+        _ = _interruptionQueue.Enqueue(async _ => {
+            using (await _lock.Lock(StopToken).ConfigureAwait(false)) {
+                if (!_activeScopes.IsEmpty)
+                    await SetModeUnsafe(_activeScopes.GetMode()).ConfigureAwait(false);
+            }
+            await RefreshOutputRoutes().ConfigureAwait(false);
+        });
+    }
+
+    public override async Task SelectOutputRoute(string routeId)
+    {
+        // Shown as picked before it is: the refresh below corrects a pick that fails.
+        var routes = _outputRoutes.Value;
+        if (routes.Routes.Any(x => x.Id == routeId))
+            _outputRoutes.Value = routes with { CurrentId = routeId };
+        await Task.Delay(OutputPickPaintDelay).ConfigureAwait(false);
+        // No lock: the user is waiting on this, the session applies it on the main thread anyway,
+        // and the mode read here only names the pick in the log.
+        await AudioSession.SelectOutputRoute(routeId, _activeScopes.GetMode()).ConfigureAwait(false);
+        // A pick that changes nothing raises no route change to refresh on.
+        await RefreshOutputRoutes().ConfigureAwait(false);
     }
 
     public override AudioFocusDiagnostics GetDiagnostics()
@@ -220,6 +264,9 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
             AudioEngines.Resume(mode);
 
         (_isSessionConfigured, _isSessionActivated) = (setup.IsConfigured, setup.IsActivated);
+        // The category the call just got is what makes a route list exist at all, and the change
+        // to it doesn't always raise a route change to refresh on.
+        await RefreshOutputRoutes().ConfigureAwait(false);
         Log.LogInformation("SetMode: {Mode} -> configured={IsConfigured}, activated={IsActivated}, owner={Owner}",
             mode, setup.IsConfigured, setup.IsActivated, AudioSession.Owner);
     }
@@ -297,7 +344,8 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
 
     private void OnConfigurationChange(object? sender, NSNotificationEventArgs e)
     {
-        Log.LogInformation("Audio engine configuration change detected");
+        Log.LogInformation("Audio engine configuration change detected: {Session}; engines={Engines}",
+            AVAudioSession.SharedInstance().DescribeFormat(), AudioEngines.DescribeOutputs());
         _ = BackgroundTask.Run(async () => {
             using var _1 = await _lock.Lock(StopToken).ConfigureAwait(false);
             if (!_activeScopes.IsEmpty && !_isSuspended)
@@ -356,6 +404,8 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     {
         var reason = e.Reason;
         _ = _interruptionQueue.Enqueue(_ => HandleRouteChange(reason));
+        // Queued after the handler, so it reads the route that handler settled on.
+        _ = _interruptionQueue.Enqueue(_ => RefreshOutputRoutes());
     }
 
     private async Task HandleRouteChange(AVAudioSessionRouteChangeReason reason)
@@ -387,6 +437,15 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
 
         Log.LogInformation("Route change ({Reason}) while suspended - attempting recovery", reason);
         await TryRecover().ConfigureAwait(false);
+    }
+
+    private async Task RefreshOutputRoutes()
+    {
+        var outputRoutes = await AudioSession.GetOutputRoutes().ConfigureAwait(false);
+        _outputRoutes.Value = outputRoutes;
+        Log.LogInformation("OutputRoutes: current={CurrentId}, routes=[{Routes}]",
+            outputRoutes.CurrentId,
+            string.Join(", ", outputRoutes.Routes.Select(x => $"{x.Kind}:{x.Id}:{x.Name}")));
     }
 
     private async Task HandleInterruption(

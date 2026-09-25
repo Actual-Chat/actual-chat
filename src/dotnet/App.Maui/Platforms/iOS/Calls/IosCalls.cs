@@ -342,7 +342,7 @@ public sealed class IosCalls : CXProviderDelegate
     public override void DidActivateAudioSession(CXProvider provider, AVAudioSession audioSession)
     {
         Log.LogInformation("DidActivateAudioSession: app={AppState}, {Session}",
-            UIApplication.SharedApplication.ApplicationState, AudioSession.Describe(audioSession));
+            UIApplication.SharedApplication.ApplicationState, audioSession.Describe());
         AudioSession.OnCallSessionActivated();
     }
 

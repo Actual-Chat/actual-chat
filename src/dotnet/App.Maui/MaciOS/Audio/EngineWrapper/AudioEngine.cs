@@ -126,6 +126,18 @@ public sealed class AudioEngine : IDisposable
         _isRunning.Invalidate();
     }
 
+    // Diagnostics only: what the engine believes the hardware output is.
+    public string DescribeOutput()
+    {
+        lock (_lock) {
+            if (_engine is not { } engine)
+                return "none";
+
+            var format = engine.OutputNode.GetBusOutputFormat(AudioNode.Bus);
+            return $"{Mode}: {format.SampleRate:F0} Hz x {format.ChannelCount}, running={engine.Running}";
+        }
+    }
+
     public void Reconnect()
     {
         // A configuration change stops the engine itself and drops its connections to the I/O

@@ -1,5 +1,4 @@
 using ActualChat.Live;
-using ActualChat.UI.Blazor.Services;
 namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class CallScreensUI
@@ -15,8 +14,6 @@ public partial class CallScreensUI
             AsyncChain.From(SyncRingtone),
             AsyncChain.From(SyncRingback),
             AsyncChain.From(SyncCallView),
-            AsyncChain.From(SyncCallAudioRoute),
-            AsyncChain.From(SyncExternalOutput),
         };
         var retryDelays = RetryDelaySeq.Exp(0.5, 10);
         return (
@@ -40,17 +37,6 @@ public partial class CallScreensUI
 
         var mutedChatId = await _mutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
         return mutedChatId != call.ChatId;
-    }
-
-    [ComputeMethod]
-    protected virtual async Task<CallAudioRoute?> GetActiveCallAudioRoute(CancellationToken cancellationToken)
-    {
-        var call = await CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
-        if (call is null || call.Phase == CallPhase.Ringing)
-            return null;
-
-        var choice = await _audioRouteChoice.Use(cancellationToken).ConfigureAwait(false);
-        return choice?.ChatId == call.ChatId ? choice.Route : default(CallAudioRoute);
     }
 
     // Private methods
@@ -78,52 +64,6 @@ public partial class CallScreensUI
             // RetryForever chain retries, so a bridge that owns the ring keeps it.
             if (isRinging)
                 StopRinging(mustEndOwnedRing: false);
-        }
-    }
-
-    private async Task SyncCallAudioRoute(CancellationToken cancellationToken)
-    {
-        var cRoute = await Computed
-            .Capture(() => GetActiveCallAudioRoute(cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        var route = (CallAudioRoute?)null;
-        try {
-            await foreach (var c in cRoute.Changes(cancellationToken).ConfigureAwait(false)) {
-                if (c.Value == route)
-                    continue;
-
-                route = c.Value;
-                await Hub.AudioFocusUI.SetCallAudioRoute(route).ConfigureAwait(false);
-            }
-        }
-        finally {
-            // The call route must not outlive the call on a fault or scope disposal either.
-            if (route is not null)
-                await Hub.AudioFocusUI.SetCallAudioRoute(null).ConfigureAwait(false);
-        }
-    }
-
-    private async Task SyncExternalOutput(CancellationToken cancellationToken)
-    {
-        var audioFocusUI = Hub.AudioFocusUI;
-        audioFocusUI.OutputDevicesChanged += OnOutputDevicesChanged;
-        try {
-            OnOutputDevicesChanged();
-            await TaskExt.NeverEnding(cancellationToken).ConfigureAwait(false);
-        }
-        finally {
-            audioFocusUI.OutputDevicesChanged -= OnOutputDevicesChanged;
-        }
-        return;
-
-        void OnOutputDevicesChanged() {
-            var externalKind = audioFocusUI.GetExternalOutputKind();
-            var lastExternalKind = _externalOutputKind.Value;
-            _externalOutputKind.Value = externalKind;
-            // A headset connected mid-call takes the audio over, as it does in the system dialer.
-            if (externalKind is not null && externalKind != lastExternalKind
-                && _audioRouteChoice.Value is { Route.IsBuiltinForced: true } choice)
-                _audioRouteChoice.Value = choice with { Route = choice.Route with { IsBuiltinForced = false } };
         }
     }
 
@@ -192,7 +132,5 @@ public partial class CallScreensUI
         ClearIf(_collapsedChatId, chatId);
         ClearIf(_overLockRingChatId, chatId);
         ClearIf(_mutedRingChatId, chatId);
-        if (_audioRouteChoice.Value?.ChatId == chatId)
-            _audioRouteChoice.Value = null;
     }
 }
