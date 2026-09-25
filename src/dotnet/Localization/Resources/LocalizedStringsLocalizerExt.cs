@@ -1262,8 +1262,6 @@ public static class LocalizedStringsLocalizerExt
         public string Location_MapTypeHybrid => l["Location_MapTypeHybrid"].Value;
         public string MapPanel_ShareFromThisDevice => l["MapPanel_ShareFromThisDevice"].Value;
         public string Location_SharingFromAnotherDeviceCaption => l["Location_SharingFromAnotherDeviceCaption"].Value;
-        public string Location_SharingMovedToAnotherDevice => l["Location_SharingMovedToAnotherDevice"].Value;
-        public string Location_SharingStoppedFromAnotherDevice => l["Location_SharingStoppedFromAnotherDevice"].Value;
         public string Content_NoFiles => l["Content_NoFiles"].Value;
         public string Content_NoLinks => l["Content_NoLinks"].Value;
         public string Content_NoMedia => l["Content_NoMedia"].Value;

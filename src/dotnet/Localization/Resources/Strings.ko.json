@@ -1195,8 +1195,6 @@
   "Location_MapTypeHybrid": "하이브리드",
   "MapPanel_ShareFromThisDevice": "이 기기에서 공유",
   "Location_SharingFromAnotherDeviceCaption": "지금 다른 기기에서 공유 중 — 이 기기가 이어받습니다",
-  "Location_SharingMovedToAnotherDevice": "위치 공유가 다른 기기로 넘어갔습니다",
-  "Location_SharingStoppedFromAnotherDevice": "다른 기기에서 위치 공유를 중지했습니다",
   "Content_NoFiles": "아직 파일이 없습니다",
   "Content_NoLinks": "아직 링크가 없습니다",
   "Content_NoMedia": "아직 미디어가 없습니다",

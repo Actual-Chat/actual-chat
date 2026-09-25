@@ -1202,8 +1202,6 @@
   "Location_ChoosePlaceCaption": "Herhangi bir nokta - bulunduğun yer olmak zorunda değil",
   "MapPanel_ShareFromThisDevice": "Bu cihazdan paylaş",
   "Location_SharingFromAnotherDeviceCaption": "Şu anda başka bir cihazdan paylaşıyorsun — bu cihaz devralacak",
-  "Location_SharingMovedToAnotherDevice": "Konum paylaşımı başka bir cihaza taşındı",
-  "Location_SharingStoppedFromAnotherDevice": "Konum paylaşımı başka bir cihazdan durduruldu",
   "Content_NoFiles": "Henüz dosya yok",
   "Content_NoLinks": "Henüz bağlantı yok",
   "Content_NoMedia": "Henüz medya yok",

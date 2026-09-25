@@ -1195,8 +1195,6 @@
   "Location_MapTypeHybrid": "हाइब्रिड",
   "MapPanel_ShareFromThisDevice": "इस डिवाइस से साझा करें",
   "Location_SharingFromAnotherDeviceCaption": "आप अभी दूसरे डिवाइस से साझा कर रहे हैं — यह डिवाइस उसकी जगह लेगा",
-  "Location_SharingMovedToAnotherDevice": "स्थान साझा करना दूसरे डिवाइस पर चला गया",
-  "Location_SharingStoppedFromAnotherDevice": "स्थान साझा करना दूसरे डिवाइस से रोक दिया गया",
   "Content_NoFiles": "अभी कोई फ़ाइल नहीं",
   "Content_NoLinks": "अभी कोई लिंक नहीं",
   "Content_NoMedia": "अभी कोई मीडिया नहीं",

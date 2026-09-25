@@ -1,5 +1,4 @@
 using ActualChat.Kvas;
-using ActualChat.Localization;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.Services;
 
@@ -195,7 +194,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
             .ConfigureAwait(false);
         await foreach (var (stoppedIds, _) in cStopped.Changes(cancellationToken).ConfigureAwait(false))
             if (!stoppedIds.IsDefaultOrEmpty)
-                await DropStoppedShares(stoppedIds, cancellationToken).ConfigureAwait(false);
+                DropStoppedShares(stoppedIds);
     }
 
     private async Task TroubleshootTracking(CancellationToken cancellationToken)
@@ -307,7 +306,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
             if (stoppedIds.IsDefaultOrEmpty)
                 return activeShares;
 
-            await DropStoppedShares(stoppedIds, cancellationToken).ConfigureAwait(false);
+            DropStoppedShares(stoppedIds);
             return activeShares.Where(x => x.LocationId is not { } id || !stoppedIds.Contains(id)).ToArray();
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
@@ -356,33 +355,16 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         // A push into a frozen share is answered with that share - the fallback for a device that missed
         // the takeover's invalidation.
         if (location is not null && !location.IsLive(ServerNow))
-            await DropStoppedShares([locationId], cancellationToken).ConfigureAwait(false);
+            DropStoppedShares([locationId]);
     }
 
-    private async Task DropStoppedShares(
-        ImmutableArray<SharedLocationId> stoppedIds,
-        CancellationToken cancellationToken)
+    private void DropStoppedShares(ImmutableArray<SharedLocationId> stoppedIds)
     {
-        ActiveShare[] dropped;
         lock (_lock) {
-            dropped = _shares.Value.Where(x => x.LocationId is { } id && stoppedIds.Contains(id)).ToArray();
-            if (dropped.Length > 0)
-                _shares.Value = _shares.Value.Except(dropped).ToArray();
+            var kept = _shares.Value.Where(x => x.LocationId is not { } id || !stoppedIds.Contains(id)).ToArray();
+            if (kept.Length != _shares.Value.Length)
+                _shares.Value = kept;
         }
-        foreach (var share in dropped)
-            await NotifyShareDropped(share.ChatId, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task NotifyShareDropped(ChatId chatId, CancellationToken cancellationToken)
-    {
-        // The share neither expired nor was stopped here, so the user is told; whether the author is
-        // live from elsewhere now decides between "moved" and "stopped".
-        var ownLive = await Hub.LocationUI.GetOwnLive(chatId, cancellationToken).ConfigureAwait(false);
-        var text = ownLive is null
-            ? L.Location_SharingStoppedFromAnotherDevice
-            : L.Location_SharingMovedToAnotherDevice;
-        await Dispatcher.InvokeAsync(() => ToastUI.Show(text, "icon-marker-pin", ToastDismissDelay.Short))
-            .ConfigureAwait(false);
     }
 
     private async Task<ActiveShare[]> InitializeShares(ActiveShare[] activeShares, CancellationToken cancellationToken)

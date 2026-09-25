@@ -1195,8 +1195,6 @@
   "Location_MapTypeHybrid": "Ibrida",
   "MapPanel_ShareFromThisDevice": "Condividi da questo dispositivo",
   "Location_SharingFromAnotherDeviceCaption": "Stai condividendo da un altro dispositivo: questo prenderà il suo posto",
-  "Location_SharingMovedToAnotherDevice": "La condivisione della posizione è passata a un altro dispositivo",
-  "Location_SharingStoppedFromAnotherDevice": "La condivisione della posizione è stata interrotta da un altro dispositivo",
   "Content_NoFiles": "Ancora nessun file",
   "Content_NoLinks": "Ancora nessun link",
   "Content_NoMedia": "Ancora nessun media",
