@@ -262,8 +262,15 @@ services, stored settings through the key-value client.
   commands `Coach_DismissTip` and admin-only `Coach_RebuildOwnDays`.
 - **`IChatCoach`** (Chat): `GetOwnMarks(session, chatId, lidRange)` → spans per entry lid, only
   for lids authored by the caller, invalidated per chat on every entry-row write.
-- **Feature flag:** `Features_EnableSpeechCoach` (`ExperimentalFeature`). Backend handlers
-  return early when off; the client hides every surface and ignores the settings record.
+- **Feature flag, two layers.** The existing flags are the wrong kind: "incomplete UI" is
+  admins plus a per-user setting, "experimental feature" is admins plus a focus group plus a
+  per-user setting, and neither is visible to the backend. So: (1) a **server master switch**
+  `CoachSettings.IsEnabled` (configuration, per environment, like `IsSummarizationEnabled`) —
+  off means both event handlers return early and `ICoach`/`IChatCoach` report the feature
+  disabled; on in dev, off in prod until the Poised decision. (2) a **client flag**
+  `Features_EnableSpeechCoach` (`FeatureDef<bool>, IClientFeatureDef`) computed as the server
+  switch AND a rollout rule: admins plus the focus group during the test, everyone at launch.
+  The UI reads only this flag and hides every surface when it is false.
 
 Surfaces:
 
