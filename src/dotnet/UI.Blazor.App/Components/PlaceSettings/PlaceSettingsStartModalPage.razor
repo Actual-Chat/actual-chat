@@ -102,8 +102,8 @@
                 AvatarKind="@AvatarKind.Marble"
                 AvatarKey="@PlaceId.Value"/>
 
-            @* The hero lingers on inner steps (type, members, integrations), where these start-page
-               actions make no sense - same as the owner hero and the close button above. *@
+            @* This start page is always the modal root, so its actions make sense only before diving into
+               any step - hide them the moment a step (add members, owner settings, ...) is pushed on top. *@
             @if (!Context.IsInnerStep) {
                 <div class="c-buttons">
                     @if (_enableIncompleteUI) {
