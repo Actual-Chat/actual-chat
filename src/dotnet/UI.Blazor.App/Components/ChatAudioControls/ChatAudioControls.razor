@@ -85,6 +85,7 @@
 
 @code {
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private Moment Now => Hub.Clocks.CpuClock.Now;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
@@ -120,6 +121,7 @@
             return;
         }
 
+        ChatVideoUI.LeaveVideoSession(Chat.Id);
         var audioState = await ChatAudioUI.GetState(Chat.Id).ConfigureAwait(true);
         if (audioState.IsRecording)
             await ChatAudioUI.SetRecordingChatId(default).ConfigureAwait(true);

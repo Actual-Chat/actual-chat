@@ -34,6 +34,10 @@
     @apply bg-danger;
     @apply animate-pulse;
 }
+.recording-sub-header .c-round-container > .c-live-icon {
+    @apply text-lg leading-none text-danger;
+    @apply animate-pulse;
+}
 .recording-sub-header .c-line-1 a {
     text-decoration: none;
 }
@@ -61,6 +65,13 @@
     @apply shrink;
     @apply truncate;
     @apply text-caption-500;
+}
+/* Inline with the sentence, so the icons read as part of "Recording in <chat>" */
+.recording-sub-header .c-line-1 > .c-video-kinds {
+    @apply inline-flex items-center gap-x-1;
+    @apply ml-1;
+    @apply align-text-top;
+    @apply text-base leading-none text-banner-error;
 }
 .recording-sub-header .btn {
     @apply flex-none;

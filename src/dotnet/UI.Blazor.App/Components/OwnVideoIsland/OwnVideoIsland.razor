@@ -1,0 +1,74 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Streaming
+@using ActualChat.UI.Blazor.App.Components.VideoPanel
+@using ActualChat.UI.Blazor.App.Module
+@inherits ComputedStateComponent<AppUIHub, OwnVideoIsland.Model>
+@{
+    var m = State.Value;
+    if (m.ChatId is not { } chatId)
+        return;
+}
+
+<div class="own-video-island" @ref="Ref" @onclick="@OnClick">
+    <VideoStreamingPreview @key="@m.SourceKind" SourceChatId="@chatId" SourceKind="@m.SourceKind"/>
+</div>
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.DraggableIsland.create";
+
+    private IJSObjectReference? _jsRef;
+
+    private ChatUI ChatUI => Hub.ChatUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private ElementReference Ref { get; set; }
+
+    public override async ValueTask DisposeAsync() {
+        await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null;
+        await base.DisposeAsync();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        var cameraChatId = await ChatVideoUI.GetCameraChatId(cancellationToken).ConfigureAwait(false);
+        if (cameraChatId is { } c && c != selectedChatId)
+            return new Model(c, VideoSourceKind.Camera);
+
+        var screenCastChatId = await ChatVideoUI.GetScreenCastChatId(cancellationToken).ConfigureAwait(false);
+        if (screenCastChatId is { } s && s != selectedChatId)
+            return new Model(s, VideoSourceKind.ScreenCast);
+
+        return Model.None;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        // The island's element comes and goes with the state, so the drag controller follows it
+        var isShowing = State.Value.ChatId is not null;
+        if (isShowing && _jsRef is null)
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+        else if (!isShowing && _jsRef is not null) {
+            await _jsRef.DisposeSilentlyAsync("dispose");
+            _jsRef = null;
+        }
+    }
+
+    private void OnClick() {
+        if (State.Value.ChatId is { } chatId)
+            _ = History.NavigateTo(Links.Chat(chatId));
+    }
+
+    // Nested types
+
+    public sealed record Model(ChatId? ChatId, VideoSourceKind SourceKind)
+    {
+        public static readonly Model None = new(null, VideoSourceKind.Camera);
+    }
+}

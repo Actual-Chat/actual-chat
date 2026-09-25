@@ -55,7 +55,7 @@
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoStreamingPreview.create";
 
-    private Chat Chat => ChatContext.Chat;
+    private ChatId ChatId => SourceChatId ?? ChatContext!.Chat.Id;
     private CameraUI CameraUI => Hub.CameraUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ElementReference Ref { get; set; }
@@ -63,7 +63,9 @@
     private bool _isSuspended;
     private Model _suspendedModel = Model.None;
 
-    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
+    [CascadingParameter] public ChatContext? ChatContext { get; set; }
+    // Set when rendered outside the chat view, where there is no cascading ChatContext
+    [Parameter] public ChatId? SourceChatId { get; set; }
     [Parameter, EditorRequired] public VideoSourceKind SourceKind { get; set; }
     [Parameter] public string Class { get; set; } = "";
 
@@ -83,7 +85,7 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = Chat.Id;
+        var chatId = ChatId;
         if (_isSuspended)
             return _suspendedModel;
 
@@ -107,7 +109,7 @@
     }
 
     private void OnSettingsClick()
-        => ChatVideoUI.ChangeVideoSessionSettings(Chat.Id);
+        => ChatVideoUI.ChangeVideoSessionSettings(ChatId);
 
     private void OnSuspendOwnStreamingPreview(bool suspended) {
         _suspendedModel = suspended ? State.Value : Model.None;

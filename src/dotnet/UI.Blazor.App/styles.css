@@ -56,6 +56,7 @@
 @import './Components/CallModal/call-modal.css';
 @import './Components/FullScreenCallView/full-screen-call-view.css';
 @import './Components/CollapsedCallView/collapsed-call-view.css';
+@import './Components/OwnVideoIsland/own-video-island.css';
 @import './Components/AddMember/add-member-modal.css';
 @import './Components/MarkupEditor/markup-editor.css';
 @import './Components/MarkupParts/markup-parts.css';

@@ -26,6 +26,7 @@
 
 @code {
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private Moment Now => Hub.Clocks.CpuClock.Now;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
@@ -44,6 +45,7 @@
         => _ = ChatAudioUI.SetListeningState(ChatState.Id, false);
 
     private async Task OnHangUp() {
+        ChatVideoUI.LeaveVideoSession(ChatState.Id);
         if (ChatState.IsRecording)
             await ChatAudioUI.SetRecordingChatId(default).ConfigureAwait(true);
 

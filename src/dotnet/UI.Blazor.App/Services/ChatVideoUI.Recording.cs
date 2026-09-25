@@ -59,6 +59,14 @@ public partial class ChatVideoUI
         => await GetErrorState(kind).Use(cancellationToken).ConfigureAwait(false);
 
     [ComputeMethod]
+    public virtual async Task<ChatId?> GetCameraChatId(CancellationToken cancellationToken = default)
+        => await _recordingChatId.Use(cancellationToken).ConfigureAwait(false);
+
+    [ComputeMethod]
+    public virtual async Task<ChatId?> GetScreenCastChatId(CancellationToken cancellationToken = default)
+        => await _screenCastChatId.Use(cancellationToken).ConfigureAwait(false);
+
+    [ComputeMethod]
     public virtual async Task<bool> IsAnyOwnStreaming(CancellationToken cancellationToken = default)
         => await _recordingChatId.Use(cancellationToken).ConfigureAwait(false) is not null
             || await _screenCastChatId.Use(cancellationToken).ConfigureAwait(false) is not null;
@@ -94,6 +102,17 @@ public partial class ChatVideoUI
     {
         _screenCastChatId.Value = null;
         ClearRecordingError(VideoSourceKind.ScreenCast);
+    }
+
+    public void LeaveVideoSession(ChatId chatId)
+    {
+        // Own streams keep running across chat switches, so hanging up a chat must stop them explicitly
+        if (_recordingChatId.Value == chatId)
+            StopRecording();
+        if (_screenCastChatId.Value == chatId)
+            StopScreenCasting();
+        if (_watchingChatId.Value == chatId)
+            SetWatching(null);
     }
 
     public void SetBackgroundBlur(bool enabled)

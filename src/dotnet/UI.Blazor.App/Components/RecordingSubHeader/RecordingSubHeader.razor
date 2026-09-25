@@ -1,50 +1,66 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, RecordingSubHeader.Model?>
 @{
-    var m = State.Value;
-    var cls = "recording-sub-header";
-    if (m?.RecordingChat != null)
-        cls += " recording-elsewhere";
+    var rows = State.Value?.Rows ?? [];
 }
 
-<SubHeader Class="@cls" IsVisible="@(m is not null)">
-    <div class="c-round-container">
-        @if (m?.RecordingChat != null) {
-            <div class="c-round"></div>
-        } else {
-            <i class="icon-alert-triangle text-banner-warning"></i>
-        }
-    </div>
+@* The first slot stays mounted so the common single-row banner keeps its exit animation *@
+@for (var i = 0; i < Math.Max(1, rows.Count); i++) {
+    var row = i < rows.Count ? rows[i] : null;
+    var cls = "recording-sub-header";
+    if (row?.Chat != null)
+        cls += " recording-elsewhere";
+    <SubHeader @key="i" Class="@cls" IsVisible="@(row is not null)">
+        <div class="c-round-container">
+            @if (row is { Chat: not null, IsCamera: true }) {
+                <i class="c-live-icon icon-video"></i>
+            } else if (row is { Chat: not null, IsScreenCast: true }) {
+                <i class="c-live-icon icon-screen-share"></i>
+            } else if (row?.Chat != null) {
+                <div class="c-round"></div>
+            } else {
+                <i class="icon-alert-triangle text-banner-warning"></i>
+            }
+        </div>
 
-    <div class="c-container">
-        @if (m?.RecordingChat != null) {
-            <div class="c-line-1 composed-sentence"><span class="c-text c-part"
-                >@L.Recording_InChat_Prefix</span><a class="c-text c-value highlight" href="@m.RecordingChatUrl"
-                >@m.RecordingChat.Title</a><span class="c-text c-part"
-                >@L.Recording_InChat_Suffix</span></div>
-        }
+        <div class="c-container">
+            @if (row?.Chat != null) {
+                <div class="c-line-1 composed-sentence"><span class="c-text c-part"
+                    >@L.Recording_InChat_Prefix</span><a class="c-text c-value highlight"
+                    href="@Links.Chat(row.Chat.Id)">@row.Chat.Title</a><span class="c-text c-part"
+                    >@L.Recording_InChat_Suffix</span>
+                    @* The leading icon shows the camera, so a parallel screencast needs its own mark *@
+                    @if (row is { IsCamera: true, IsScreenCast: true }) {
+                        <span class="c-video-kinds">
+                            <i class="icon-screen-share"></i>
+                        </span>
+                    }
+                </div>
+            }
 
-        @if (m?.StopRecordingAt != null) {
-            <div class="c-line-2 flex-none pr-4">
-                <div class="c-text">@L.Recording_WillStopIn</div>
-                <Countdown EndsAt="@m.StopRecordingAt.Value" Clock="@Clocks.CpuClock" Class="c-text highlight"/>
-            </div>
-        }
-    </div>
+            @if (row?.StopRecordingAt != null) {
+                <div class="c-line-2 flex-none pr-4">
+                    <div class="c-text">@L.Recording_WillStopIn</div>
+                    <Countdown EndsAt="@row.StopRecordingAt.Value" Clock="@Clocks.CpuClock" Class="c-text highlight"/>
+                </div>
+            }
+        </div>
 
-    <Button
-        Class="btn-transparent unhovered recording-in-chat on"
-        Click="@(async _ => await ChatAudioUI.SetRecordingChatId(default))"
-        Tooltip="@L.Recording_StopRecording"
-        TooltipPosition="FloatingPosition.Top">
-        @L.Common_Stop
-    </Button>
-</SubHeader>
+        <Button
+            Class="btn-transparent unhovered recording-in-chat on"
+            Click="@(_ => OnStop(row))"
+            Tooltip="@L.Recording_StopRecording"
+            TooltipPosition="FloatingPosition.Top">
+            @L.Common_Stop
+        </Button>
+    </SubHeader>
+}
 
 @code {
     private IChats Chats => Hub.Chats;
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
 
     protected override ComputedState<Model?>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -54,42 +70,59 @@
             });
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var recordingChat = await GetRecordingElsewhereChat(cancellationToken).ConfigureAwait(false);
+        var audioChatId = await ChatAudioUI.GetRecordingChatId();
+        var cameraChatId = await ChatVideoUI.GetCameraChatId(cancellationToken).ConfigureAwait(false);
+        var screenCastChatId = await ChatVideoUI.GetScreenCastChatId(cancellationToken).ConfigureAwait(false);
         var stopRecordingAt = await ChatAudioUI.StopRecordingAt.Use(cancellationToken).ConfigureAwait(false);
-        if (recordingChat == null && stopRecordingAt == null)
-            return null;
+        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
 
-        return new() {
-            RecordingChat = recordingChat,
-            RecordingChatUrl = recordingChat != null ? Links.Chat(recordingChat.Id) : "",
-            StopRecordingAt = stopRecordingAt,
-        };
+        var rows = new List<Row>(2);
+        var isAudioRowAdded = false;
+        foreach (var chatId in new[] { audioChatId, cameraChatId, screenCastChatId }.SkipNullItems().Distinct()) {
+            if (chatId == selectedChatId)
+                continue;
+
+            var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+            if (chat is null)
+                continue;
+
+            var isAudio = chatId == audioChatId;
+            isAudioRowAdded |= isAudio;
+            rows.Add(new Row(chat, isAudio, chatId == cameraChatId, chatId == screenCastChatId) {
+                StopRecordingAt = isAudio ? stopRecordingAt : null,
+            });
+        }
+        // Recording in the selected chat is about to idle out
+        if (stopRecordingAt != null && !isAudioRowAdded)
+            rows.Insert(0, new Row(null, true, false, false) { StopRecordingAt = stopRecordingAt });
+
+        return rows.Count == 0 ? null : new Model(rows);
     }
 
-    private async Task<Chat?> GetRecordingElsewhereChat(CancellationToken cancellationToken) {
-        var recordingChatId = await ChatAudioUI.GetRecordingChatId();
-        if (recordingChatId is null)
-            return null;
+    private void OnStop(Row? row) {
+        if (row is null)
+            return;
 
-        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-        if (selectedChatId == recordingChatId)
-            return null;
-
-        return await Chats.Get(Session, recordingChatId, cancellationToken).ConfigureAwait(false);
+        if (row.IsAudio)
+            _ = ChatAudioUI.SetRecordingChatId(default);
+        if (row.IsCamera)
+            ChatVideoUI.StopRecording();
+        if (row.IsScreenCast)
+            ChatVideoUI.StopScreenCasting();
     }
-
-    private void OnStop()
-        => _ = ChatAudioUI.SetRecordingChatId(default);
 
     // Nested types
 
-    public sealed record Model {
-        public Chat? RecordingChat { get; init; }
-        public string? RecordingChatUrl { get; init; }
-        public Moment? StopRecordingAt { get; init; }
-
+    public sealed record Model(IReadOnlyList<Row> Rows)
+    {
         // This record relies on referential equality
         public bool Equals(Model? other) => ReferenceEquals(this, other);
         public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+    }
+
+    // Chat is null for the idle countdown of the recording in the selected chat
+    public sealed record Row(Chat? Chat, bool IsAudio, bool IsCamera, bool IsScreenCast)
+    {
+        public Moment? StopRecordingAt { get; init; }
     }
 }
