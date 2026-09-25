@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Text;
 
 namespace ActualChat.Chat;
@@ -191,6 +192,13 @@ public sealed record MarkupFormatter(
     public static readonly MarkupFormatter ReadableUnstyledForQuote = ReadableUnstyled with {
         UrlFormatter = FormatUrlForQuote,
     };
+    // Text for a voice: what can't be listened to (code, tables, links, hidden text) is left out,
+    // every block ends a sentence so the voice pauses, and no marker or token is read aloud.
+    public static readonly MarkupFormatter Spoken = new(MentionMarkup.SpokenFormatter, false) { IsSpoken = true };
+
+    private static readonly SearchValues<char> SentenceEndChars = SearchValues.Create(".!?…:;,");
+
+    public bool IsSpoken { get; init; }
 
     public MarkupFormatter() : this(MentionMarkup.DefaultFormatter, true) { }
     public MarkupFormatter(bool showStyleTokens) : this(MentionMarkup.DefaultFormatter, showStyleTokens) { }
@@ -198,13 +206,79 @@ public sealed record MarkupFormatter(
     // Protected methods
 
     protected override void VisitUrl(UrlMarkup markup, ref StringBuilder state)
-        => state.Append(UrlFormatter?.Invoke(markup) ?? markup.Format());
+    {
+        if (IsSpoken && markup.Kind == UrlMarkupKind.Www)
+            return;
+
+        state.Append(UrlFormatter?.Invoke(markup) ?? markup.Format());
+    }
 
     protected override void VisitMention(MentionMarkup markup, ref StringBuilder state)
         => state.Append(MentionFormatter.Invoke(markup));
 
+    protected override void VisitCodeBlock(CodeBlockMarkup markup, ref StringBuilder state)
+    {
+        if (!IsSpoken)
+            base.VisitCodeBlock(markup, ref state);
+    }
+
+    protected override void VisitPreformattedText(PreformattedTextMarkup markup, ref StringBuilder state)
+    {
+        if (IsSpoken)
+            state.Append(markup.Text);
+        else
+            base.VisitPreformattedText(markup, ref state);
+    }
+
+    protected override void VisitParagraph(ParagraphMarkup markup, ref StringBuilder state)
+    {
+        var start = state.Length;
+        base.VisitParagraph(markup, ref state);
+        if (IsSpoken)
+            EndSentence(state, start);
+    }
+
+    protected override void VisitHeader(HeaderMarkup markup, ref StringBuilder state)
+    {
+        if (!IsSpoken) {
+            base.VisitHeader(markup, ref state);
+            return;
+        }
+
+        var start = state.Length;
+        Visit(markup.Content, ref state);
+        EndSentence(state, start);
+    }
+
+    protected override void VisitListItem(ListItemMarkup markup, ref StringBuilder state)
+    {
+        if (!IsSpoken) {
+            base.VisitListItem(markup, ref state);
+            return;
+        }
+
+        var start = state.Length;
+        Visit(markup.Content, ref state);
+        EndSentence(state, start);
+    }
+
+    protected override void VisitBlockQuote(BlockQuoteMarkup markup, ref StringBuilder state)
+    {
+        if (!IsSpoken) {
+            base.VisitBlockQuote(markup, ref state);
+            return;
+        }
+
+        var start = state.Length;
+        Visit(markup.Content, ref state);
+        EndSentence(state, start);
+    }
+
     protected override void VisitTable(TableMarkup markup, ref StringBuilder state)
     {
+        if (IsSpoken)
+            return;
+
         if (ShowStyleTokens) {
             base.VisitTable(markup, ref state);
             return;
@@ -221,6 +295,9 @@ public sealed record MarkupFormatter(
 
     protected override void VisitStylized(StylizedMarkup markup, ref StringBuilder state)
     {
+        if (markup.Style == TextStyle.Spoiler && IsSpoken)
+            return;
+
         if (markup.Style == TextStyle.Spoiler && !ShowStyleTokens) {
             // No reveal affordance in flattened text (notifications, chat-list & quote previews),
             // so the content is replaced with a mask instead of leaking through.
@@ -238,6 +315,17 @@ public sealed record MarkupFormatter(
     }
 
     // Private methods
+
+    private static void EndSentence(StringBuilder sb, int start)
+    {
+        var last = sb.Length - 1;
+        while (last >= start && char.IsWhiteSpace(sb[last]))
+            last--;
+        if (last < start || SentenceEndChars.Contains(sb[last]))
+            return;
+
+        sb.Insert(last + 1, '.');
+    }
 
     private static string FormatUrlForQuote(UrlMarkup markup)
         => markup.Kind is UrlMarkupKind.Www

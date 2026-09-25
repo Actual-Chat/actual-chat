@@ -45,7 +45,9 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         }, cts.Token);
 
         // act
-        await client.Run("test", "en", "Adrian", text.Reader, pcm.Writer, listener, cts.Token);
+        await client.Run(
+            "test", "en", "Adrian", null,
+            text.Reader, pcm.Writer, listener, cts.Token);
         var chunks = await readTask;
 
         // assert
@@ -88,7 +90,9 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         }, cts.Token);
 
         // act
-        var runTask = client.Run("test", "en", "Adrian", text.Reader, pcm.Writer, null, cts.Token);
+        var runTask = client.Run(
+            "test", "en", "Adrian", null,
+            text.Reader, pcm.Writer, null, cts.Token);
         for (var i = 1; i <= 5; i++) {
             text.Writer.TryWrite($"This is clause number {i}.");
             await Task.Delay(TimeSpan.FromSeconds(1), cts.Token);
@@ -146,7 +150,9 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(40));
 
         // act
-        var runTask = client.Run("test", "en", "Adrian", text.Reader, pcm.Writer, null, cts.Token);
+        var runTask = client.Run(
+            "test", "en", "Adrian", null,
+            text.Reader, pcm.Writer, null, cts.Token);
         text.Writer.TryWrite("This chunk is spoken first.");
         await Task.Delay(TimeSpan.FromSeconds(12), cts.Token);
         text.Writer.TryWrite("This chunk arrives well after the stream pre-opened for it was ended as idle.");
@@ -179,7 +185,9 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
 
         // act
-        await client.Run("test", "en", "Adrian", text.Reader, pcm.Writer, null, cts.Token);
+        await client.Run(
+            "test", "en", "Adrian", null,
+            text.Reader, pcm.Writer, null, cts.Token);
         var chunks = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
@@ -210,7 +218,9 @@ public class SonioxTtsClientTest(ITestOutputHelper @out, ILogger<SonioxTtsClient
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(40));
 
         // act
-        var runTask = client.Run("test", "en", "Adrian", textChannel.Reader, pcm.Writer, listener, cts.Token);
+        var runTask = client.Run(
+            "test", "en", "Adrian", null,
+            textChannel.Reader, pcm.Writer, listener, cts.Token);
         var chunks = text.Split('|');
         for (var i = 0; i < chunks.Length; i++) {
             textChannel.Writer.TryWrite(chunks[i]);

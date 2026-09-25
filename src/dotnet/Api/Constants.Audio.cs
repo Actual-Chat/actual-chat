@@ -155,6 +155,11 @@ public static partial class Constants
         // The least a listener who joins mid-message hears of it: enough to arrive in the middle
         // of a thought rather than on its last syllable, and short enough not to start far behind.
         public static readonly TimeSpan MinSpokenTailDuration = TimeSpan.FromSeconds(8);
+        // A typed message that would take longer than this to say is read rather than heard: a
+        // pasted wall of text is not conversation, and whoever listens from its start hears all of it.
+        public static readonly TimeSpan MaxSpokenMessageDuration = TimeSpan.FromSeconds(30);
+        // Text is spoken a little faster than a dub: there is no original voice whose pace it follows
+        public const double SpokenTextSpeed = 1.15;
         public static readonly TimeSpan MaxBeginsAtDrift = TimeSpan.FromSeconds(5);
         // Between attempts to start the translation a dub reads, while the source transcript is live
         public static readonly TimeSpan DubTranslationRetryDelay = TimeSpan.FromMilliseconds(250);

@@ -110,7 +110,9 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         text.Writer.Complete();
 
         // act
-        await client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, listener, CancellationToken.None);
+        await client.Run(
+            "s", "en", "Adrian", null,
+            text.Reader, pcm.Writer, listener, CancellationToken.None);
         var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
@@ -126,6 +128,44 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact(Timeout = 15_000)]
+    public async Task RunShouldNeutralizeBracketsBeforeSoniox()
+    {
+        // arrange
+        var soniox = new FakeSoniox();
+        var client = NewClient(soniox, idleFlush: Long);
+        var text = Channel.CreateUnbounded<string>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
+        text.Writer.TryWrite("See [1], then [whispering] go.");
+        text.Writer.Complete();
+
+        // act
+        await client.Run(
+            "s", "en", "Adrian", null,
+            text.Reader, pcm.Writer, null, CancellationToken.None);
+
+        // assert
+        soniox.Sent.Should().Equal("config s-1", "text+end s-1 'See  1 , then  whispering  go.'");
+    }
+
+    [Fact(Timeout = 15_000)]
+    public async Task RunShouldAskForTheSpeedItWasGiven()
+    {
+        // arrange
+        var soniox = new FakeSoniox();
+        var client = NewClient(soniox, idleFlush: Long);
+        var text = Channel.CreateUnbounded<string>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
+        text.Writer.TryWrite("Quick.");
+        text.Writer.Complete();
+
+        // act
+        await client.Run("s", "en", "Adrian", 1.15, text.Reader, pcm.Writer, null, CancellationToken.None);
+
+        // assert
+        soniox.Sent.Should().Equal("config s-1 speed=1.15", "text+end s-1 'Quick.'");
+    }
+
+    [Fact(Timeout = 15_000)]
     public async Task RunShouldReuseTheConnectionAcrossStreams()
     {
         // arrange
@@ -138,7 +178,9 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         text.Writer.Complete();
 
         // act
-        await client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, null, CancellationToken.None);
+        await client.Run(
+            "s", "en", "Adrian", null,
+            text.Reader, pcm.Writer, null, CancellationToken.None);
         var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
@@ -163,7 +205,9 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
 
         // act - the pre-opened stream idles out empty before the first chunk arrives, and so does
         // the one pre-opened after it
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, null, CancellationToken.None);
+        var runTask = client.Run(
+            "s", "en", "Adrian", null,
+            text.Reader, pcm.Writer, null, CancellationToken.None);
         await Task.Delay(Short * 4);
         text.Writer.TryWrite("First. ");
         await Task.Delay(Short * 4);
@@ -194,7 +238,9 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var listener = new RecordingListener();
 
         // act
-        var runTask = client.Run("s1", "en", "Adrian", text.Reader, pcm.Writer, listener, CancellationToken.None);
+        var runTask = client.Run(
+            "s1", "en", "Adrian", null,
+            text.Reader, pcm.Writer, listener, CancellationToken.None);
         await soniox.WhenStreamsOpened(1).WaitAsync(TimeSpan.FromSeconds(2));
         var openedBeforeText = listener.StreamsOpened;
         WriteLastChunk(soniox, text.Writer, "Hello world. ");
@@ -217,7 +263,9 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var pcm = Channel.CreateUnbounded<byte[]>();
 
         // act - the pre-opened stream idles out before any text arrives, then a real chunk is sent
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, listener, CancellationToken.None);
+        var runTask = client.Run(
+            "s", "en", "Adrian", null,
+            text.Reader, pcm.Writer, listener, CancellationToken.None);
         await Task.Delay(Short * 2);
         WriteLastChunk(soniox, text.Writer, "Real. ");
         await runTask;
@@ -240,7 +288,9 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var pcm = Channel.CreateUnbounded<byte[]>();
 
         // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, listener, CancellationToken.None);
+        var runTask = client.Run(
+            "s", "en", "Adrian", null,
+            text.Reader, pcm.Writer, listener, CancellationToken.None);
         text.Writer.TryWrite("Spoken. ");
         await Task.Delay(Short / 3);
         text.Writer.TryWrite("Lost. ");
@@ -271,7 +321,9 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var pcm = Channel.CreateUnbounded<byte[]>();
 
         // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, null, CancellationToken.None);
+        var runTask = client.Run(
+            "s", "en", "Adrian", null,
+            text.Reader, pcm.Writer, null, CancellationToken.None);
         text.Writer.TryWrite("Dropped. ");
         await Task.Delay(Short * 2);
         WriteLastChunk(soniox, text.Writer, "Late. ");
@@ -302,7 +354,9 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         text.Writer.TryComplete();
 
         // act
-        await client.Run("s1", "en", "Adrian", text.Reader, pcm.Writer, listener, CancellationToken.None);
+        await client.Run(
+            "s1", "en", "Adrian", null,
+            text.Reader, pcm.Writer, listener, CancellationToken.None);
 
         // assert
         client.StreamCount.Should().Be(2);
@@ -326,7 +380,9 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         text.Writer.TryComplete();
 
         // act
-        await client.Run("s1", "en", "Adrian", text.Reader, pcm.Writer, listener, CancellationToken.None);
+        await client.Run(
+            "s1", "en", "Adrian", null,
+            text.Reader, pcm.Writer, listener, CancellationToken.None);
         var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
 
         // assert
@@ -348,7 +404,9 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         var pcm = Channel.CreateUnbounded<byte[]>();
 
         // act
-        var runTask = client.Run("s", "en", "Adrian", text.Reader, pcm.Writer, null, CancellationToken.None);
+        var runTask = client.Run(
+            "s", "en", "Adrian", null,
+            text.Reader, pcm.Writer, null, CancellationToken.None);
         text.Writer.TryWrite("Doomed. ");
 
         // assert
@@ -494,7 +552,9 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
                 if (message.TryGetProperty("api_key", out _)) {
                     message.GetProperty("audio_format").GetString().Should().Be("pcm_s16le");
                     message.TryGetProperty("bitrate", out _).Should().BeFalse("PCM has no bitrate");
-                    Record(true, $"config {streamId}");
+                    Record(true, message.TryGetProperty("speed", out var speed)
+                        ? $"config {streamId} speed={speed.GetDouble()}"
+                        : $"config {streamId}");
                     lock (_streamConnections)
                         _streamConnections[streamId] = connectionIndex;
                     OnStreamOpened();

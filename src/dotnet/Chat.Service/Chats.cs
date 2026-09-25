@@ -1507,7 +1507,8 @@ public partial class Chats(IServiceProvider services) : IChats
     // A message typed into a live conversation is part of it: someone listening rather than
     // reading would otherwise never know it was said. Only while a session is running - outside
     // one there is nobody listening, and synthesizing every message posted anywhere would cost a
-    // provider call each.
+    // provider call each. What can't be listened to - code, tables, links, hidden text, a wall of
+    // text - is left for reading.
     private async Task OfferToListeners(
         Session session,
         Chat chat,
@@ -1521,10 +1522,22 @@ public partial class Chats(IServiceProvider services) : IChats
         if (liveState is null)
             return;
 
+        var markup = await ChatMarkupHubFactory[chat.Id]
+            .GetMarkup(entry, MarkupConsumer.MessageView, cancellationToken)
+            .ConfigureAwait(false);
+        var text = markup.ToSpokenText();
+        if (text.IsNullOrEmpty())
+            return;
+
         var language = await ResolveStreamLanguage(session, chat.Id, null, cancellationToken)
             .ConfigureAwait(false);
+        var maxLength = SpeechRate.ToCharCount(
+            language, Constants.Audio.MaxSpokenMessageDuration, Constants.Audio.SpokenTextSpeed);
+        if (text.Length > maxLength)
+            return;
+
         await StreamingBackend
-            .SpeakText(chat.Id, entry.AuthorId, entry.Content, language, cancellationToken)
+            .SpeakText(chat.Id, entry.AuthorId, text, language, cancellationToken)
             .ConfigureAwait(false);
     }
 

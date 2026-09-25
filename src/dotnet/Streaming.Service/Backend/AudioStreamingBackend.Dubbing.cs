@@ -150,8 +150,8 @@ public partial class AudioStreamingBackend
                     + "at {SourceEnd:F1}s of speech",
                     dubStreamId, startedAt.Elapsed.TotalSeconds, Fold(sourceMemoizer).TimeRange.End);
                 synthesizeTask = StartSynthesis(
-                    dubStreamId, dubStreamId.Language!, text.Reader, mix, mixTask, latencyTrace,
-                    cancellationToken);
+                    dubStreamId, dubStreamId.Language!, null,
+                    text.Reader, mix, mixTask, latencyTrace, cancellationToken);
                 return true;
             }
 
@@ -347,6 +347,7 @@ public partial class AudioStreamingBackend
     private Task StartSynthesis(
         StreamId dubStreamId,
         Language language,
+        double? speed,
         ChannelReader<string> text,
         VoiceOverMix mix,
         Task mixTask,
@@ -361,7 +362,10 @@ public partial class AudioStreamingBackend
                 await previousDubTask.SilentAwait(false);
                 var voiceId = await GetSpeakerVoice(dubStreamId, cancellationToken).ConfigureAwait(false);
                 latencyTrace?.OnVoice(voiceId);
-                var options = new SpeechSynthesisOptions(language, voiceId) { Listener = latencyTrace };
+                var options = new SpeechSynthesisOptions(language, voiceId) {
+                    Listener = latencyTrace,
+                    Speed = speed,
+                };
                 await SpeechSynthesizer!
                     .Synthesize(dubStreamId.Value, text, options, mix.DubPcm, cancellationToken)
                     .ConfigureAwait(false);

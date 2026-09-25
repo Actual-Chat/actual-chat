@@ -17,6 +17,7 @@ public abstract partial class MentionMarkup(MentionRef id, string name = "") : M
     public static readonly Func<MentionMarkup, string> NameOrNotAvailableFormatter = m => "@" + m.NameOrNotAvailable;
     public static readonly Func<MentionMarkup, string> NameOrIdFormatter = m => "@" + m.NameOrId;
     public static readonly Func<MentionMarkup, string> ReadableFormatter = FormatReadable;
+    public static readonly Func<MentionMarkup, string> SpokenFormatter = FormatSpoken;
     [DataMember, Key(0)]
     public MentionRef Id { get; } = id;
     [DataMember, Key(1)]
@@ -60,6 +61,10 @@ public abstract partial class MentionMarkup(MentionRef id, string name = "") : M
         ChatMention or PlaceMention => "@\"" + m.NameOrNotAvailable + "\"",
         _ => "@" + JoinWithReadableSpace(m.NameOrNotAvailable),
     };
+
+    // A voice says the name as it is said aloud: no marker, no quotes, no readable-space joins
+    private static string FormatSpoken(MentionMarkup m)
+        => m is EmojiMention em ? FormatEmojiReadable(em) : m.NameOrNotAvailable;
 
     private static string FormatEmojiReadable(EmojiMention em)
     {

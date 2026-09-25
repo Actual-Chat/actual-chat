@@ -21,6 +21,6 @@ public static class SpeechRate
     public static double CharsPerSecond(Language language)
         => CharsPerSecondByCode.GetValueOrDefault(language.IsoCode, DefaultCharsPerSecond);
 
-    public static int ToCharCount(Language language, TimeSpan duration)
-        => (int)Math.Round(duration.TotalSeconds * CharsPerSecond(language));
+    public static int ToCharCount(Language language, TimeSpan duration, double speed = 1)
+        => (int)Math.Round(duration.TotalSeconds * CharsPerSecond(language) * speed);
 }
