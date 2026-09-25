@@ -163,9 +163,21 @@ Cost shape per call:
 | Immediate (opted-in) | one per finalized voice message | 400 prompt + ~200 text + ~100 output |
 | Batch (everyone else) | one per user per conversation, chunked at ~2000 words | 400 prompt + up to ~3000 text + ~500 output |
 
-Volume: take the production sum of `UsageDays.SpeechEntries` per day (all users) for the batch
-path, and the same for opted-in users once the toggle exists. TODO before the plan is approved:
-put the current daily figure here.
+Volume, production, measured 2026-09-25 from `usage_events_recorded_total{kind="Speech"}` (one
+event per finalized voice entry; the counter is two days old, so re-check after a week) and
+`app_audio_stream_count`:
+
+| Figure | Value |
+|---|---|
+| finalized voice entries per day | 500–800, bursty (single hours of 300–400) |
+| active users per day | ~240 |
+| mean concurrent audio streams | ~1 (range 0.1–3.5), i.e. ~20 audio-hours/day |
+| text messages per day, 14-day mean | ~450 |
+
+Worst case, everyone on the immediate path: 800 calls × ~700 tokens ≈ 0.6 M tokens/day. The
+batch path carries the same text in fewer calls, ≈ 0.3 M tokens/day. Both are far under the
+2 M tokens/minute budget of the existing rate limiter, so at today's volume the caps exist for
+abuse, not for budget. The lexicon fallback matters only if volume grows by two orders.
 
 ### Metrics
 
@@ -312,7 +324,7 @@ profiling is involved.
 3. **Bands are borrowed.** Pace bands come from English-language products; Russian and others
    need measurement before the labels are trusted. Per-language overrides exist for that.
 4. **Cost** scales with voice volume on the batch path. The caps and switches above are the
-   stops; sizing is a TODO above.
+   stops; today's volume (see *LLM work*) makes it negligible.
 
 ## Testing
 
@@ -370,5 +382,4 @@ New components and placement:
 
 - Design: the meaning of the dashed sentence underline in the desktop mock; whether the dismiss
   cross is a plain dismiss or a snooze; chip tap behaviour beyond jump-to-audio.
-- The daily voice-entry volume figure for sizing (TODO above).
 - Outcome of the filler-survival spike.
