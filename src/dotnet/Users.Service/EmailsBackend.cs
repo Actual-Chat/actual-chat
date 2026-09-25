@@ -78,6 +78,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             .ConfigureAwait(false);
         if (account is null) {
             diagLog?.LogInformation("<- OnSendDigest. No account");
+            EmailMeters.RecordSend("no_account");
             return default;
         }
 
@@ -87,6 +88,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             .ConfigureAwait(false);
         if (digestParameters.UnreadChats.Count == 0) {
             diagLog?.LogInformation("<- OnSendDigest. No unread chats");
+            EmailMeters.RecordSend("no_unread");
             return default;
         }
 
@@ -96,6 +98,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             .ConfigureAwait(false);
 
         diagLog?.LogInformation("<- OnSendDigest. Completed");
+        EmailMeters.RecordSend("sent");
         return default;
     }
 

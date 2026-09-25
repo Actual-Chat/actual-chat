@@ -1,6 +1,7 @@
 using ActualChat.App.Server.Flows;
 using System.Collections.Concurrent;
 using ActualChat.Testing.Host;
+using ActualChat.Users.Email;
 using ActualChat.Users.Flows;
 
 namespace ActualChat.Users.IntegrationTests.Flows;
@@ -8,6 +9,14 @@ namespace ActualChat.Users.IntegrationTests.Flows;
 public class DigestFlowTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(DigestFlowTest)}", TestAppHostOptions.Default, @out)
 {
+    private EmailMeterTap Meters { get; } = new();
+
+    protected override async Task DisposeAsync()
+    {
+        Meters.Dispose();
+        await base.DisposeAsync();
+    }
+
     [Theory]
     [InlineData(4, 4, 0)]
     [InlineData(5, 5, 0)]
@@ -164,6 +173,11 @@ public class DigestFlowTest(ITestOutputHelper @out)
             flow.RunCount.Should().BeGreaterThan(0);
         }, TimeSpan.FromSeconds(30));
         await spy.WaitFor(userId);
+        await TestWait.WhenPolled(
+            () => Meters.Count(EmailMeters.DigestSends).Should().BeGreaterThan(0,
+                "every SendDigest execution reports its outcome"),
+            Intervals.Fixed(TimeSpan.FromMilliseconds(200)),
+            TimeSpan.FromSeconds(30));
     }
 
     [Theory]
@@ -190,6 +204,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await UpdateAccount(h, userId, "America/New_York", true, ct);
         await spy.WaitFor(userId);
         var lastRunAt = (await flowHub.Get<DigestFlow>(userId.Value, ct)).LastRunAt;
+        var notDueCount = Meters.Count(EmailMeters.DigestRuns, ("result", "not_due"));
 
         // act
         if (isTimeZoneChange)
@@ -206,6 +221,8 @@ public class DigestFlowTest(ITestOutputHelper @out)
         // assert
         spy.UserIds.Count(x => x == userId).Should().Be(1,
             "a wake-up before the next digest time must not send another digest");
+        Meters.Count(EmailMeters.DigestRuns, ("result", "not_due")).Should().BeGreaterThan(notDueCount,
+            "the skipped run reports why it did not send");
     }
 
     [Fact]
@@ -244,6 +261,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await Task.Delay(TimeSpan.FromSeconds(2), ct);
         spy.UserIds.Should().NotContain(userId,
             "a user who was in the app within the last day has seen what the digest would summarize");
+        Meters.Count(EmailMeters.DigestRuns, ("result", "recently_active")).Should().BeGreaterThan(0);
     }
 
     [Fact]

@@ -53,10 +53,14 @@ public static class DigestEmailEndpointExt
         if (account is null)
             return Results.NotFound();
 
-        var kvas = services.GetRequiredService<IServerKvasBackend>().ForUser(userId);
-        await kvas.UserEmailsSettings()
-            .Update(x => x with { IsDigestEnabled = isEnabled }, cancellationToken)
-            .ConfigureAwait(false);
+        var settings = services.GetRequiredService<IServerKvasBackend>().ForUser(userId).UserEmailsSettings();
+        var emailsSettings = await settings.Get(cancellationToken).ConfigureAwait(false);
+        if (emailsSettings.IsDigestEnabled != isEnabled) {
+            await settings.Set(emailsSettings with { IsDigestEnabled = isEnabled }, cancellationToken)
+                .ConfigureAwait(false);
+            var source = HttpMethods.IsPost(httpContext.Request.Method) ? "link_post" : "link_get";
+            EmailMeters.RecordSubscription(isEnabled, source);
+        }
         if (isEnabled)
             await services.FlowHub()
                 .NewResumeEvent<DigestFlow>(userId.Value)
