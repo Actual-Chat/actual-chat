@@ -273,6 +273,18 @@ export async function dismissCookieConsent(page: Page, timeout = 10_000) {
     await page.waitForTimeout(200);
 }
 
+/** Turns incomplete UI on or off for the signed-in account (it persists with the account, so
+ *  a test that turns it on should turn it off again). Test agents are admins on a local server. */
+export async function setIncompleteUI(page: Page, enable: boolean) {
+    await page.evaluate(async isEnabled => {
+        /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access,
+           @typescript-eslint/no-unsafe-call */
+        await (window as any).debugUI.setIncompleteUI(isEnabled);
+        /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access,
+           @typescript-eslint/no-unsafe-call */
+    }, enable);
+}
+
 export async function skipOnboarding(page: Page) {
     await page.evaluate(() => {
         /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment,

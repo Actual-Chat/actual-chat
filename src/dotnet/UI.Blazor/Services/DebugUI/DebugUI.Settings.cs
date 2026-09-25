@@ -15,6 +15,16 @@ public sealed partial class DebugUI
         Log.LogInformation("SetVirtualListOverlay({Enable}): done", enable);
     }
 
+    [JSInvokable]
+    public async Task SetIncompleteUI(bool enable)
+    {
+        // The same account setting as Settings > Developer tools; it only takes effect for an admin
+        await Hub.UserSettingsUI.UserAppSettings()
+            .Update(x => x with { IsIncompleteUIEnabled = enable })
+            .ConfigureAwait(false);
+        Log.LogInformation("SetIncompleteUI({Enable}): done", enable);
+    }
+
 #pragma warning disable CA1822 // Can be static
     [JSInvokable]
     public string GetThreadPoolSettings()

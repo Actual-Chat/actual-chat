@@ -97,12 +97,20 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     public Task SetHost(ChatId chatId, AuthorId targetAuthorId, CancellationToken cancellationToken)
         => LiveSessions.SetHost(Session, chatId, targetAuthorId, cancellationToken);
 
+    // Hands and reactions are incomplete UI for now: without it nothing raises or shows them.
+    [ComputeMethod]
+    public virtual async Task<bool> AreHandsEnabled(CancellationToken cancellationToken)
+        => await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+
     // Consolidated, like the two below: they all project Get, which changes on every stream and mic flip.
     [ComputeMethod(ConsolidationDelay = 0, ConsolidationComparer = typeof(ApiArrayComparer<AuthorId>))]
     public virtual async Task<ApiArray<AuthorId>> ListRaisedHandAuthorIds(
         ChatId chatId,
         CancellationToken cancellationToken)
     {
+        if (!await AreHandsEnabled(cancellationToken).ConfigureAwait(false))
+            return default;
+
         var live = await Get(chatId, cancellationToken).ConfigureAwait(false);
         return live is null
             ? default
@@ -117,6 +125,8 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     public virtual async Task<bool> CanReact(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.Kind == ChatKind.Peer)
+            return false;
+        if (!await AreHandsEnabled(cancellationToken).ConfigureAwait(false))
             return false;
 
         var me = await GetOwnMember(chatId, cancellationToken).ConfigureAwait(false);
@@ -168,6 +178,9 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     [ComputeMethod]
     public virtual async Task<ApiArray<CallReaction>> ListReactions(ChatId chatId, CancellationToken cancellationToken)
     {
+        if (!await AreHandsEnabled(cancellationToken).ConfigureAwait(false))
+            return default;
+
         // While the RPC peer is down we stop receiving invalidations, so the last known value is stale.
         var isConnected = await Hub.ConnectivityUI.IsConnected.Use(cancellationToken).ConfigureAwait(false);
         if (!isConnected)

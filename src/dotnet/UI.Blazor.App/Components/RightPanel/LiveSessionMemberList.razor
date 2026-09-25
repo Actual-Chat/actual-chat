@@ -33,7 +33,7 @@
     </div>
     @if (m.IsController) {
         var anyMuted = live.Members.Any(x => x.AuthorId != m.OwnAuthorId && x.MicMuted);
-        var anyHandRaised = live.Members.Any(x => x.IsHandRaised);
+        var anyHandRaised = m.AreHandsEnabled && live.Members.Any(x => x.IsHandRaised);
         <div class="c-manage">
             <span class="c-manage-title">@L.Call_Manage</span>
             <div class="c-manage-buttons">
@@ -68,11 +68,11 @@
     }
     <div class="c-content">
         @foreach (var (key, title, group) in groups) {
-            // Raised hands first, in raise order: the queue a host works through
-            var members = live.Members
-                .Where(x => x.Group == group)
-                .OrderBy(x => x.HandRaisedAt ?? Moment.MaxValue)
-                .ToList();
+            var members = live.Members.Where(x => x.Group == group).ToList();
+            if (m.AreHandsEnabled) {
+                // Raised hands first, in raise order: the queue a host works through
+                members = members.OrderBy(x => x.HandRaisedAt ?? Moment.MaxValue).ToList();
+            }
             if (members.Count == 0)
                 continue;
 
@@ -87,7 +87,7 @@
                         IsShortPresenceText="true"
                         Click="@_onClickCallback"/>
                     <div class="c-member-state">
-                        @if (member.IsHandRaised) {
+                        @if (m.AreHandsEnabled && member.IsHandRaised) {
                             @if (CanLowerHand(m, member)) {
                                 <button class="c-hand-btn" title="@L.Call_LowerHand"
                                         @onclick="@(() => OnLowerHandClick(live.ChatId, member))">
@@ -173,6 +173,7 @@
         var ownAuthor = await ownAuthorTask.ConfigureAwait(false);
         var rules = await rulesTask.ConfigureAwait(false);
         var isHost = ownAuthor is not null && live.Host == ownAuthor.Id;
+        var areHandsEnabled = await LiveSessionUI.AreHandsEnabled(cancellationToken).ConfigureAwait(false);
         var ownerIds = ownerIdsTask is null
             ? []
             : await ownerIdsTask.ConfigureAwait(false);
@@ -184,6 +185,7 @@
             IsHost = isHost,
             IsPeerChat = isPeerChat,
             OwnerAuthorIds = ownerIds,
+            AreHandsEnabled = areHandsEnabled,
         };
     }
 
@@ -263,6 +265,7 @@
         public bool IsHost { get; init; }
         public bool IsPeerChat { get; init; }
         public IReadOnlyCollection<AuthorId> OwnerAuthorIds { get; init; } = [];
+        public bool AreHandsEnabled { get; init; }
         public bool CanMuteOthers => IsController && !IsPeerChat;
         public bool CanSetHost => (IsOwner || IsHost) && !IsPeerChat;
         public bool CanMute(AuthorId authorId)

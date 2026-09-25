@@ -9,7 +9,8 @@
  *     -> the badge goes away and Bob is told his hand was lowered.
  *
  * Prerequisites:
- * - Server running (server-loop / run-watch).
+ * - Server running (server-loop / run-watch), locally: the feature is incomplete UI, which the
+ *   test turns on for both accounts - test agents are admins only on a local server.
  *
  * Run:
  *   AC_E2E_SERVER=external npx vitest run tests/ts/e2e/raise-hand-video.test.ts --config vitest.config.e2e.ts
@@ -18,7 +19,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import type { BrowserContext, Page } from 'playwright';
 import {
-    BASE_URL, TEST_EMAIL, TEST_EMAIL_2, connectBrowser, newUserContext, screenshot,
+    BASE_URL, TEST_EMAIL, TEST_EMAIL_2, connectBrowser, newUserContext, screenshot, setIncompleteUI,
     skipOnboarding, waitForChatReady, waitForEditor, type BrowserConnection,
 } from './helpers';
 
@@ -142,6 +143,9 @@ describe('raise hand and reactions in a video call', () => {
         // and shows "No microphone access" while a fresh context still reports "prompt".
         for (const ctx of [aliceCtx, bobCtx])
             await ctx.grantPermissions(['microphone', 'camera'], { origin: BASE_URL });
+        // Hands and reactions are incomplete UI for now
+        for (const page of [alice, bob])
+            await setIncompleteUI(page, true);
     }, 180_000);
 
     afterEach(async () => {
@@ -153,8 +157,10 @@ describe('raise hand and reactions in a video call', () => {
         // Unload before closing: a context closed outright leaves its server-side circuit alive for
         // about a minute, still heartbeating as this account - and when it finally goes, its leave
         // removes the next run's participation record (one record per author), closing that session.
-        for (const page of [alice, bob])
+        for (const page of [alice, bob]) {
+            await setIncompleteUI(page, false).catch(() => { /* ignore */ });
             await page.goto('about:blank').catch(() => { /* ignore */ });
+        }
         await aliceCtx.close().catch(() => { /* ignore */ });
         await bobCtx.close().catch(() => { /* ignore */ });
         if (conn.ownsBrowser) {
