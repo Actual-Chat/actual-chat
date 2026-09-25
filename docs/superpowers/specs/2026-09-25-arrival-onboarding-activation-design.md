@@ -37,7 +37,7 @@ The arrival string is a short value written to session temporal `c.Arrival`. The
 | Arrival | Produced when |
 |---|---|
 | `join:<inviteId>` | A `/join/<inviteId>` URL was opened. |
-| `user:<route>` | A `/u/<route>` URL was opened. The route is resolved to a user id on the server. |
+| `user:<userId>` | A `/u/<route>` URL was opened. `UserPage` already resolves the route (and `/u/@alias`) to a user id, so the client writes the id. |
 | `campaign:<id>` | The landing URL carried `utm_campaign=<id>` or `c=<id>`, or the Android Play Install Referrer did. |
 | *(absent)* | The server falls back to `web` or `store`, chosen from the session's app kind. |
 
@@ -50,37 +50,40 @@ Rules:
   `UsageEvent`) owns `Parse`/`Format`. The id part is capped at 64 characters, restricted to
   `[A-Za-z0-9_\-.@]`, and ignored otherwise. The client uses it to format the value and the server
   uses it to parse the value back.
-- **Client placement.** The capture is a small partial `AccountUI.Arrival.cs` (CODING_STYLE #14:
-  extend an existing UI service). It watches `History` location changes while the account is a
-  guest and matches the URL with the existing `LocalUrlExt.IsPrivateChatInvite`/`IsUser` helpers.
-  Deep links on MAUI already arrive as Blazor navigations, so they are covered too.
+- **Client placement.** `AccountUI.Arrival.cs` is a small partial of `AccountUI` (CODING_STYLE #14:
+  extend an existing UI service). It exposes `SetArrival(ArrivalInfo)`, which writes only while
+  the account is a guest. `ChatInvitePage` calls it with `join:<inviteId>`, and `UserPage` with
+  `user:<userId>` once the route is resolved. Deep links on MAUI arrive as Blazor navigations to
+  these pages, so they are covered too. A campaign comes from the query of the first URL `History`
+  saw (`ArrivalInfo.FromLandingQuery`) and is written from `AccountUI`'s worker at start-up.
 - **Android Play Install Referrer.** This adds the `Xamarin.Google.Android.InstallReferrer`
-  package. On the first launch after install, while the account is a guest and `c.Arrival` is
-  empty, the app reads the install referrer once (the result is remembered in local settings). If
-  the referrer carries `utm_campaign`, the app writes `campaign:<id>`. Failures are logged and
-  ignored.
+  package. `IInstallReferrer` (in `UI.Blazor/Services`, next to `IAppReviewer`) has
+  `Task<string?> GetQuery(CancellationToken)` and an Android-only implementation registered in
+  `MauiProgram.Android.cs`. On start-up, while the account is a guest and `c.Arrival` is empty,
+  `AccountUI` reads the install referrer. If its query carries `utm_campaign`, `AccountUI` writes
+  `campaign:<id>`. Play keeps returning the same referrer, so no "already read" flag is needed.
+  Failures are logged and ignored.
 
 ### Server
 
 In `AccountsBackend.OnSignIn`, when `isNew`:
 
 1. Read `c.Arrival` from `ISessionTemporalsBackend`, then parse it with `ArrivalInfo`.
-2. If the arrival is `user:<route>`, resolve it through `UserLinks.GetUserIdByRoute` to
-   `user:<userId>`. If the route doesn't resolve, keep the kind as `User` with the raw route
-   dropped (`user:`).
-3. If there is no arrival, fall back to `store` when `AppKindExt.TryParseUserAgent(SessionInfo.Description)`
+2. If there is no arrival, fall back to `store` when `AppKindExt.TryParseUserAgent(SessionInfo.Description)`
    says MAUI, and to `web` otherwise.
-4. Write `UsageEvent(Kind: SignUp, OccurredAt: now, SourceId: <arrival>, Value: 1,
+3. Write `UsageEvent(Kind: SignUp, OccurredAt: now, SourceId: <arrival>, Value: 1,
    Attributes: { ArrivalKind = … })` through `UsageBackend_Record`. The write goes through
    `context.Operation.AddEvent` so it runs after the account commit.
-5. Clear `c.Arrival`.
+4. Clear `c.Arrival`. Bot accounts get no `SignUp`.
 
 Model changes (no migration: `kind` is an integer and `attributes` is jsonb):
 
 - `UsageEventKind.SignUp = 5`, `UsageEventKind.OnboardingStep = 6`.
 - A new `enum ArrivalKind { Web = 0, Store = 1, Join = 2, User = 3, Campaign = 4 }` in `ActualChat.Api`.
 - `UsageEventAttributes`: add `[DataMember, Key(4)] public ArrivalKind? ArrivalKind { get; init; }`.
-- `DbUsageDay.Apply` ignores both new kinds, as it already ignores `ActiveDay`. `UsageDay` is unchanged.
+- The new kinds get **no day row**. In `UsageBackend.OnRecord` and `OnRebuildDays`, any day row counts as an
+  active day for the review prompt, so both handlers skip day handling for
+  `!kind.IsDayRollup()` (`UsageEventKindExt`). `UsageDay` is unchanged.
 - The builders are `UsageEventSource.SignUp(ArrivalInfo, Moment)` and
   `UsageEventSource.OnboardingStep(string step, bool isCompleted, Moment)`.
 
@@ -102,10 +105,11 @@ server can't infer steps, and the client must report them.
   Permissions, Languages, DataCollection, Passkey, Finished`. `Finished` is written when the stepper
   completes (`OnboardingModal.OnCurrentStepChanged(isCompleted: true)`), because the last visible
   step varies: Passkey is conditional.
-- **Client hook.** `Stepper` raises a new `StepFinished(IStep step, bool isSkipped)` callback from
-  `Step.TryComplete` and `Step.Skip`. It is raised **only when the user acts**: the automatic
-  `MarkCompleted` in `OnInitialized` is excluded, so steps the user already had done are not
-  counted. `OnboardingModal` subscribes and sends the command through `UICommander` without
+- **Client hook.** `Stepper` gets a new `[Parameter] EventCallback<StepFinishedArgs> StepFinished`,
+  raised from `Stepper.TryMoveForward` (after `TryComplete` succeeds) and `Stepper.Skip`. Both
+  the footer buttons and `PhoneStep` go through these methods. Steps the user had already done are
+  auto-skipped by `Move` and never raise it. The step name is
+  `OnboardingSteps.GetName(step.GetType())`, which is the type name minus `Step`. `OnboardingModal` subscribes and sends the command through `UICommander` without
   awaiting it, so errors never block onboarding.
 - **Drop-off.** A user dropped off when they have a `SignUp` row and no `Finished` row. Their
   last step is the step with the highest `OnboardingSteps` index among their rows.
@@ -126,9 +130,9 @@ named `usage.funnel.events` and has tags `event` and `app`, where `app` comes fr
 | `SignInRequestedFromLink` | Client, `AccountUI.RequestSignInFromHomePage` when a redirect URL is a `/join/` or `/u/` URL |
 | `SignInCompletedFromLink` | Client, `SignInRequest` completes signed in with that redirect URL |
 | `SignUp` | Server, `OnSignIn` when `isNew`, with an extra tag `arrival` = `ArrivalKind` |
-| `InviteBannerShown` | Client, `InviteFriendsBanner`, once per session |
+| `InviteBannerShown` | Client, `InviteFriendsBanner.OnInitialized`, deduplicated by a flag on `ChatListUI` (once per app run) |
 | `InviteShare`, `InviteCopy`, `InviteQr` | Client, `ShareActions` (see below) |
-| `ContactsGrantedFromBanner` | Client, contacts-access banner (#4801) grant path, when it exists; otherwise `PermissionsUI` contacts grant |
+| `ContactsAccessGranted` | Client, `PermissionHandler.CheckOrRequest` when a request it made ends granted and the handler is a `ContactsPermissionHandler` (via a protected virtual `OnRequestGranted`). This covers the #4801 banner once it uses the handler. |
 | `ContactsMatched` | Server, `ContactLinker` where it creates a contact (`!contact.IsRegular` branch) |
 
 The client reports events through one command, `Usage_RecordFunnelEvent(FunnelEvent Event)`, on
@@ -141,12 +145,13 @@ The client reports events through one command, `Usage_RecordFunnelEvent(FunnelEv
   method on the UI hub (a static `UsageUIExt`, no new service; there is no `UsageUI` today) and
   never awaits it on a render path. Errors are logged at debug level.
 
-**ShareActions taps.** QR and MAUI share already run through .NET handlers. Copy
-(`copy-trigger.ts`) and web share (`share.ts`) are JS-only. Each gets an optional .NET callback:
-`CopyTrigger` gains an `OnCopied` `EventCallback`, invoked from JS through the component's
-existing interop ref, and web share gets the same on `ShareExternallyButton`. `ShareActions`
-raises the funnel event only when its model is the own-account invite model used by the banner.
-Other share sites stay uncounted.
+**ShareActions taps.** `ShareActions` gets `[Parameter] Action<ShareActionKind>? Tapped`, where
+`ShareActionKind` is `Share, Copy, Qr`. The share button and the copy trigger are wrapped in
+`<span class="contents" @onclick=…>`. The JS handlers in `copy-trigger.ts` and `share.ts` never
+stop propagation, so Blazor sees the bubbling click without any JS change, and
+`display: contents` keeps the layout. QR calls `Tapped` from `OnShowQrClick`. Only
+`InviteFriendsBanner` passes `Tapped`, so other share sites stay uncounted. A tap is counted,
+not a completed share.
 
 **Why a client event is needed at all.** The exporter runs only on the server. The
 `AppUIInstruments` counters in WASM and MAUI are never exported, so anything the client alone sees
