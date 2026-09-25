@@ -1,6 +1,7 @@
 using System.Net.Mail;
 using System.Security.Claims;
 using ActualChat.Db;
+using ActualChat.Diagnostics;
 using ActualChat.Flows;
 using ActualChat.Security;
 using ActualChat.Users.Db;
@@ -26,6 +27,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     ];
 
     private ISessionsBackend SessionsBackend => field ??= Services.GetRequiredService<ISessionsBackend>();
+    private ISessionTemporalsBackend SessionTemporalsBackend => field ??= Services.GetRequiredService<ISessionTemporalsBackend>();
     private IAvatarsBackend AvatarsBackend => field ??= Services.GetRequiredService<IAvatarsBackend>();
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
     private ContactGreeter ContactGreeter => field ??= Services.GetRequiredService<ContactGreeter>();
@@ -282,6 +284,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         // Emit NewUserEvent if this is a new user
         if (isNew) {
             context.Operation.AddEvent(new NewAccountEvent(userId));
+            if (!account.IsBot)
+                await RecordSignUp(context, session, userId, sessionInfo, cancellationToken).ConfigureAwait(false);
 
             // Auto-enable early access settings for test agent accounts
             if (identities.GetEmails().Any(Constants.Auth.TestAgent.IsTestAgentEmail)) {
@@ -557,6 +561,31 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     }
 
     // Private methods
+
+    private async Task RecordSignUp(
+        CommandContext context, Session session, UserId userId, SessionInfoFull? sessionInfo,
+        CancellationToken cancellationToken)
+    {
+        // Measurement only: whatever goes wrong here must not fail the sign-in
+        try {
+            var arrivalKey = Constants.SessionTemporals.ToClientKey(Constants.SessionTemporals.ArrivalKey);
+            var value = await SessionTemporalsBackend.Get(session, arrivalKey, cancellationToken).ConfigureAwait(false);
+            AppKindExt.TryParseUserAgent(sessionInfo?.Description, out var appKind);
+            if (!ArrivalInfo.TryParse(value, out var arrival))
+                arrival = ArrivalInfo.Fallback(appKind);
+
+            var signUp = UsageEventSource.SignUp(arrival, Clocks.SystemClock.Now);
+            context.Operation.AddEvent(new UsageBackend_Record(userId, ApiArray.New(signUp)));
+            FunnelMeters.Record(FunnelEvent.SignUp, appKind, arrival.Kind);
+            if (value is not null)
+                await Commander
+                    .Call(new SessionTemporalsBackend_Set(session, arrivalKey, null), true, cancellationToken)
+                    .ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to record the sign-up of user '{UserId}'", userId);
+        }
+    }
 
     private static string GetPendingRegistrationIdentifier(
         UserIdentity authenticatedIdentity,

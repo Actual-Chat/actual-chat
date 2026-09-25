@@ -2,7 +2,10 @@ using ActualChat.Live;
 using ActualChat.Queues;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
+using ActualChat.Users.Db;
+using ActualLab.Fusion.EntityFramework;
 using ActualLab.Generators;
+using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Users.IntegrationTests;
 
@@ -12,6 +15,8 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
     private IUsageBackend Backend => AppHost.Services.GetRequiredService<IUsageBackend>();
     private IUsage Usage => AppHost.Services.GetRequiredService<IUsage>();
+    private DbHub<UsersDbContext> DbHub => AppHost.Services.GetRequiredService<DbHub<UsersDbContext>>();
+    private ISessionTemporalsBackend SessionTemporals => AppHost.Services.GetRequiredService<ISessionTemporalsBackend>();
 
     [Fact(Timeout = 90_000)]
     public async Task MessagesAndSpeechShouldBeCounted()
@@ -231,5 +236,100 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
         // assert
         days.Should().BeEmpty("a day row counts as an active day for the review prompt");
         rebuiltDays.Should().BeEmpty("the rebuild must apply the same rule");
+    }
+
+    [Fact(Timeout = 90_000)]
+    public async Task SignUpShouldRecordTheArrivalAndConsumeIt()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        await SetArrival(tester.Session, "join:inv-123");
+
+        // act
+        var account = await tester.SignInAsUniqueAlice();
+
+        // assert
+        var signUp = await WaitForSignUp(account.Id);
+        signUp.SourceId.Should().Be("join:inv-123");
+        signUp.Attributes!.ArrivalKind.Should().Be(ArrivalKind.Join);
+        var arrivalKey = Constants.SessionTemporals.ToClientKey(Constants.SessionTemporals.ArrivalKey);
+        (await SessionTemporals.Get(tester.Session, arrivalKey, default))
+            .Should().BeNull("the arrival is consumed by the sign-up");
+    }
+
+    [Fact(Timeout = 90_000)]
+    public async Task SignUpWithoutArrivalShouldFallBackToWeb()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+
+        // act
+        var account = await tester.SignInAsUniqueAlice();
+
+        // assert
+        var signUp = await WaitForSignUp(account.Id);
+        signUp.SourceId.Should().Be("web", "a test web client has no app user agent");
+    }
+
+    [Fact(Timeout = 90_000)]
+    public async Task InvalidArrivalShouldFallBackAndNotBreakSignUp()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        await SetArrival(tester.Session, "join:" + new string('x', 500) + " <script>");
+
+        // act
+        var account = await tester.SignInAsUniqueAlice();
+
+        // assert
+        account.IsGuestOrNull().Should().BeFalse();
+        var signUp = await WaitForSignUp(account.Id);
+        signUp.SourceId.Should().Be("web");
+    }
+
+    [Fact(Timeout = 90_000)]
+    public async Task ExistingAccountSignInShouldNotRecordSignUp()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueAlice();
+        await WaitForSignUp(account.Id);
+        await using var otherTester = AppHost.NewWebClientTester(Out);
+        await SetArrival(otherTester.Session, "campaign:late");
+
+        // act
+        await otherTester.SignIn(account);
+        await Task.Delay(500);
+
+        // assert
+        var events = await ListEvents(account.Id, UsageEventKind.SignUp, default);
+        events.Should().ContainSingle().Which.SourceId.Should().Be("web", "only account creation records a sign-up");
+    }
+
+    // Private methods
+
+    private Task SetArrival(Session session, string value)
+        => Commander.Call(new SessionTemporals_Set {
+            Session = session,
+            Key = Constants.SessionTemporals.ArrivalKey,
+            Value = value,
+        });
+
+    // Polled: the rows are read from the DB directly, so there is no invalidation to wake a When on
+    private Task<UsageEvent> WaitForSignUp(UserId userId)
+        => TestWait.WhenPolled<UsageEvent>(async () => {
+            var events = await ListEvents(userId, UsageEventKind.SignUp, default);
+            return events.Should().ContainSingle().Subject;
+        });
+
+    private async Task<List<UsageEvent>> ListEvents(
+        UserId userId, UsageEventKind kind, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken);
+        await using var _ = dbContext;
+        var dbEvents = await dbContext.UsageEvents
+            .Where(e => e.UserId == userId.Value && e.Kind == kind)
+            .ToListAsync(cancellationToken);
+        return dbEvents.Select(e => e.ToModel()).ToList();
     }
 }
