@@ -19,7 +19,9 @@ public sealed partial class FailingThrottledUpdateFlow : ThrottledUpdateFlow
     /// </summary>
     public static int FailUntilCallCount { get; set; }
 
-    protected override TimeSpan ThrottlePeriod => TimeSpan.FromSeconds(2);
+    public static readonly TimeSpan Throttle = TimeSpan.FromSeconds(2);
+
+    protected override TimeSpan ThrottlePeriod => Throttle;
     protected override int MaxFailCount => 3;
     protected override TimeSpan RetryDelay => TimeSpan.FromMilliseconds(200);
 

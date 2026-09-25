@@ -43,26 +43,27 @@ public class FailingThrottledUpdateFlowTest(FailingThrottledUpdateFlowFixture fi
     [Fact]
     public async Task GiveUpAfterMaxFailCountTest()
     {
-        // Arrange - always fail
+        // arrange - always fail
         FailingThrottledUpdateFlow.FailUntilCallCount = int.MaxValue;
         var target = $"test-{Guid.NewGuid():N}";
         var args = ThrottledUpdateFlow.GetArguments(target);
+        var scheduledAt = FlowHub.SystemNow;
 
-        // Act
+        // act
         await FlowHub.TryScheduleUpdate<FailingThrottledUpdateFlow>(target);
 
-        // Assert - should give up after MaxFailCount (3) and advance NextRunAt
+        // assert - gives up after MaxFailCount (3) and throttles as after a success. NextRunAt is
+        // checked against the scheduling time: against the current one it holds for only 2 s after
+        // giving up, and a wait that first sees the flow later can never pass.
         await TestWait.When(async ct => {
             var flow = await FlowHub.TryGet<FailingThrottledUpdateFlow>(args, ct);
             flow.Should().NotBeNull();
             flow!.SuccessCount.Should().Be(0);
-            flow.FailCount.Should().Be(0); // Reset after giving up
-            flow.NextRunAt.Should().BeGreaterThan(FlowHub.SystemNow);
+            flow.FailCount.Should().Be(0, "it is reset after giving up");
+            flow.NextRunAt.Should().BeGreaterThanOrEqualTo(scheduledAt + FailingThrottledUpdateFlow.Throttle);
             flow.Console.ToString().Should().Contain("giving up");
         }, DefaultTimeout);
-
-        // Verify Run was called exactly MaxFailCount times
-        FailingThrottledUpdateFlow.CallCounts.GetValueOrDefault(target).Should().Be(3);
+        FailingThrottledUpdateFlow.CallCounts.GetValueOrDefault(target).Should().Be(3, "Run is called MaxFailCount times");
     }
 
     [Fact]
