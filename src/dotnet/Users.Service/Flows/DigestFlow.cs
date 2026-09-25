@@ -1,5 +1,6 @@
 using ActualChat.Flows;
 using ActualChat.Queues;
+using ActualChat.Users.Email;
 using TimeZoneConverter;
 
 namespace ActualChat.Users.Flows;
@@ -27,19 +28,19 @@ public partial class DigestFlow : PeriodicFlow
         var accounts = Services.GetRequiredService<IAccountsBackend>();
         var account = await accounts.Get(userId, cancellationToken).ConfigureAwait(false);
         if (account?.IsGuestOrNull() != false)
-            return "No account";
+            return Suspend("no_account", "No account");
         if (account.TimeZone.IsNullOrEmpty())
-            return "Account has no time zone";
+            return Suspend("no_time_zone", "Account has no time zone");
         if (!account.IsEmailVerified() && !await IsSystemOrBot(userId, cancellationToken).ConfigureAwait(false))
-            return "Account has no verified email";
+            return Suspend("no_verified_email", "Account has no verified email");
         if (!TZConvert.TryGetTimeZoneInfo(account.TimeZone, out var timeZoneInfo))
-            return $"Can't find TimeZoneInfo for time zone: {account.TimeZone}";
+            return Suspend("unknown_time_zone", $"Can't find TimeZoneInfo for time zone: {account.TimeZone}");
 
         var serverKvasBackend = Services.GetRequiredService<IServerKvasBackend>();
         var kvas = serverKvasBackend.ForUser(userId);
         var userEmailsSettings = await kvas.UserEmailsSettings().Get(cancellationToken).ConfigureAwait(false);
         if (!userEmailsSettings.IsDigestEnabled)
-            return "Digest is disabled for this account";
+            return Suspend("disabled", "Digest is disabled for this account");
 
         Account = account;
         TimeZoneInfo = timeZoneInfo;
@@ -53,18 +54,23 @@ public partial class DigestFlow : PeriodicFlow
         var nextRunAt = TimeZoneInfo.NextTimeOfDay(DigestTime, now);
         if (!IsDue(TimeZoneInfo, DigestTime, LastRunAt, now)) {
             Console.Log("Skipped: the digest isn't due yet");
+            EmailMeters.RecordRun("not_due");
             return nextRunAt;
         }
-        if (await IsSystemOrBot(Account.Id, cancellationToken).ConfigureAwait(false))
+        if (await IsSystemOrBot(Account.Id, cancellationToken).ConfigureAwait(false)) {
+            EmailMeters.RecordRun("system_or_bot");
             return nextRunAt;
+        }
         if (await IsRecentlyActive(cancellationToken).ConfigureAwait(false)) {
             Console.Log("Skipped: the user was active recently");
+            EmailMeters.RecordRun("recently_active");
             return nextRunAt;
         }
 
         var sendDigestCommand = new EmailsBackend_SendDigest(Account.Id);
         var queues = Services.Queues();
         await queues.Enqueue(sendDigestCommand, cancellationToken).ConfigureAwait(false);
+        EmailMeters.RecordRun("send");
         return nextRunAt;
     }
 
@@ -90,5 +96,11 @@ public partial class DigestFlow : PeriodicFlow
         var accounts = Services.GetRequiredService<IAccountsBackend>();
         var account = await accounts.Get(userId, cancellationToken).ConfigureAwait(false);
         return account is { IsBot: true };
+    }
+
+    private static FlowReadiness Suspend(string result, string reason)
+    {
+        EmailMeters.RecordRun(result);
+        return reason;
     }
 }

@@ -1,5 +1,6 @@
 using ActualChat.Flows;
 using ActualChat.Kvas;
+using ActualChat.Users.Email;
 using ActualChat.Users.Flows;
 using CommunityToolkit.HighPerformance.Buffers;
 
@@ -71,10 +72,18 @@ public class UserSettings(IServiceProvider services) : IUserSettings
         value?.ValidateKey(key);
 
         var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
+        bool? digestToggledTo = null;
+        if (value is UserEmailsSettings emailsSettings) {
+            var oldEmailsSettings = await GetEmailsSettings(prefix, cancellationToken).ConfigureAwait(false);
+            if (oldEmailsSettings.IsDigestEnabled != emailsSettings.IsDigestEnabled)
+                digestToggledTo = emailsSettings.IsDigestEnabled;
+        }
         var data = Serialize(value);
         var setManyCommand = new ServerKvasBackend_SetMany(prefix, (key, data));
         await Commander.Call(setManyCommand, true, cancellationToken).ConfigureAwait(false);
 
+        if (digestToggledTo is { } isDigestEnabled)
+            EmailMeters.RecordSubscription(isDigestEnabled, "settings");
         if (key == nameof(UserEmailsSettings)) {
             // Otherwise a re-enabled digest waits for the flow's next scheduled check, up to 2 days away
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -91,6 +100,12 @@ public class UserSettings(IServiceProvider services) : IUserSettings
         => await GetUserPrefix(session, cancellationToken).ConfigureAwait(false)
             ?? await GetGuestPrefix(session, cancellationToken).ConfigureAwait(false)
             ?? "";
+
+    private async Task<UserEmailsSettings> GetEmailsSettings(string prefix, CancellationToken cancellationToken)
+    {
+        var data = await KvasBackend.Get(prefix, nameof(UserEmailsSettings), cancellationToken).ConfigureAwait(false);
+        return Deserialize(data, nameof(UserEmailsSettings)) as UserEmailsSettings ?? new UserEmailsSettings();
+    }
 
     private async ValueTask<string?> GetUserPrefix(Session session, CancellationToken cancellationToken)
     {

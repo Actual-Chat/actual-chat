@@ -13,9 +13,11 @@ public class DigestUnsubscribeEndpointTest(AppHostFixture fixture, ITestOutputHe
         = fixture.AppHost.Services.GetRequiredService<DigestUnsubscribeTokens>();
     private IServerKvasBackend KvasBackend { get; }
         = fixture.AppHost.Services.GetRequiredService<IServerKvasBackend>();
+    private EmailMeterTap Meters { get; } = new();
 
     protected override async Task DisposeAsync()
     {
+        Meters.Dispose();
         await Tester.DisposeSilentlyAsync();
         await base.DisposeAsync();
     }
@@ -26,6 +28,7 @@ public class DigestUnsubscribeEndpointTest(AppHostFixture fixture, ITestOutputHe
         // arrange
         var account = await Tester.SignInAsNew("Alice");
         using var http = AppHost.NewHttpClient();
+        var offCount = CountSubscriptions("off", "link_get");
 
         // act
         var response = await http.GetAsync(DigestEmailEndpointExt.GetUnsubscribePath(Tokens.Create(account.Id)));
@@ -38,6 +41,25 @@ public class DigestUnsubscribeEndpointTest(AppHostFixture fixture, ITestOutputHe
         html.Should().Contain("/resubscribe", "the page offers an Undo");
         var settings = await KvasBackend.ForUser(account.Id).UserEmailsSettings().Get();
         settings.IsDigestEnabled.Should().BeFalse();
+        CountSubscriptions("off", "link_get").Should().Be(offCount + 1, "the footer link is a GET");
+    }
+
+    [Fact]
+    public async Task RepeatedUnsubscribeShouldCountOnce()
+    {
+        // arrange
+        var account = await Tester.SignInAsNew("Dave");
+        using var http = AppHost.NewHttpClient();
+        var path = DigestEmailEndpointExt.GetUnsubscribePath(Tokens.Create(account.Id));
+        var offCount = CountSubscriptions("off", "link_get");
+
+        // act
+        await http.GetAsync(path);
+        await http.GetAsync(path);
+
+        // assert
+        CountSubscriptions("off", "link_get").Should().Be(offCount + 1,
+            "a link scanner re-opening the link is not another opt-out");
     }
 
     [Fact]
@@ -47,6 +69,8 @@ public class DigestUnsubscribeEndpointTest(AppHostFixture fixture, ITestOutputHe
         var account = await Tester.SignInAsNew("Bob");
         using var http = AppHost.NewHttpClient();
 
+        var offCount = CountSubscriptions("off", "link_post");
+
         // act
         var response = await http.PostAsync(DigestEmailEndpointExt.GetUnsubscribePath(Tokens.Create(account.Id)), null);
 
@@ -54,6 +78,8 @@ public class DigestUnsubscribeEndpointTest(AppHostFixture fixture, ITestOutputHe
         response.StatusCode.Should().Be(HttpStatusCode.OK, "RFC 8058 one-click POST must work without a body");
         var settings = await KvasBackend.ForUser(account.Id).UserEmailsSettings().Get();
         settings.IsDigestEnabled.Should().BeFalse();
+        CountSubscriptions("off", "link_post").Should().Be(offCount + 1,
+            "a mail client's one-click unsubscribe is a POST");
     }
 
     [Fact]
@@ -64,6 +90,7 @@ public class DigestUnsubscribeEndpointTest(AppHostFixture fixture, ITestOutputHe
         using var http = AppHost.NewHttpClient();
         var token = Tokens.Create(account.Id);
         await http.GetAsync(DigestEmailEndpointExt.GetUnsubscribePath(token));
+        var onCount = CountSubscriptions("on", "link_post");
 
         // act
         var response = await http.PostAsync($"/emails/digest/{token}/resubscribe", null);
@@ -74,6 +101,25 @@ public class DigestUnsubscribeEndpointTest(AppHostFixture fixture, ITestOutputHe
         html.Should().Contain("Digest emails are on again");
         var settings = await KvasBackend.ForUser(account.Id).UserEmailsSettings().Get();
         settings.IsDigestEnabled.Should().BeTrue();
+        CountSubscriptions("on", "link_post").Should().Be(onCount + 1);
+    }
+
+    [Fact]
+    public async Task SettingsToggleShouldCountAsSettings()
+    {
+        // arrange
+        await Tester.SignInAsNew("Erin");
+        var offCount = CountSubscriptions("off", "settings");
+        var onCount = CountSubscriptions("on", "settings");
+
+        // act
+        await SetDigestEnabled(false);
+        await SetDigestEnabled(false);
+        await SetDigestEnabled(true);
+
+        // assert
+        CountSubscriptions("off", "settings").Should().Be(offCount + 1, "saving the same value again is not a toggle");
+        CountSubscriptions("on", "settings").Should().Be(onCount + 1);
     }
 
     [Fact]
@@ -88,4 +134,16 @@ public class DigestUnsubscribeEndpointTest(AppHostFixture fixture, ITestOutputHe
         // assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    // Private methods
+
+    private Task SetDigestEnabled(bool isEnabled)
+        => Tester.Commander.Call(new UserSettings_Set {
+            Session = Tester.Session,
+            Key = nameof(UserEmailsSettings),
+            Value = new UserEmailsSettings { IsDigestEnabled = isEnabled },
+        });
+
+    private int CountSubscriptions(string action, string source)
+        => Meters.Count(EmailMeters.DigestSubscriptions, ("action", action), ("source", source));
 }
