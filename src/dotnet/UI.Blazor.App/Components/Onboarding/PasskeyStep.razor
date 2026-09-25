@@ -29,8 +29,6 @@
         return passkey != null;
     }
 
-    protected override ValueTask OnSkip() {
-        OnboardingUI.SnoozePasskeyStep();
-        return ValueTask.CompletedTask;
-    }
+    protected override async ValueTask OnSkip()
+        => await OnboardingUI.SnoozePasskeyStep();
 }

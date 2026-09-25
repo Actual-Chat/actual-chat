@@ -524,6 +524,30 @@ public partial class StoredSettingsSerializationTest
         settings.Link.Should().Be(CarLink.Call);
     }
 
+    [Fact]
+    public void LocalOnboardingSettingsReadsBlobWithRetiredPasskeyKeys()
+    {
+        // arrange
+        // Taken from a dev client: IsPermissionsStepCompleted, AreCookiesAccepted and the
+        // since-retired PasskeyNudgeCount (key 2) and PasskeyNudgeLastAt (key 3)
+        ReadOnlyMemory<byte> bytes = Convert.FromBase64String("AZTDwgHTAD+a6THDVxE=");
+
+        // act
+        var result = KvasSerializer.Default.Read<LocalOnboardingSettings>(ref bytes);
+
+        // assert
+        result.Should().NotBeNull();
+        result!.IsPermissionsStepCompleted.Should().BeTrue();
+        result.AreCookiesAccepted.Should().BeFalse();
+    }
+
+    [Fact]
+    public void UserOnboardingSettingsPasskeyNudgeDeclineCountRoundTrip()
+        => AssertBaseTypeRoundTrip(new UserOnboardingSettings {
+            IsAvatarStepCompleted = true,
+            PasskeyNudgeDeclineCount = 2,
+        });
+
     private static void AssertBaseTypeRoundTrip<T>(T value)
         where T : StoredSettings
     {
