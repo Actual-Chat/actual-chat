@@ -11,14 +11,18 @@
     @apply flex-1 flex-y md:flex-x items-start justify-start gap-y-1;
     @apply overflow-hidden;
 }
+/* The line's own font must match its text: the inherited body-size strut
+   otherwise pushes the inline-block chat title below the rest of the sentence */
 .recording-sub-header .c-line-1 {
     @apply flex-1;
     @apply max-w-full;
     @apply overflow-hidden;
+    @apply text-caption;
 }
 /* Recording_InChat_Prefix/_Suffix have no edge space of their own - this replaces the row's gap */
 .recording-sub-header .c-line-1 > .c-value {
     @apply px-1;
+    @apply align-text-top;
 }
 .recording-sub-header .c-round-container {
     @apply flex-none flex justify-center items-center;
