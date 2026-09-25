@@ -1,3 +1,4 @@
+using ActualChat.Diagnostics;
 using ActualChat.Invite.Db;
 using ActualChat.Kvas;
 using Microsoft.EntityFrameworkCore;
@@ -206,6 +207,9 @@ public class InvitesBackend(IServiceProvider services)
         dbInvite.UpdateFrom(invite);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var sessionInfo = await Accounts.GetSessionInfo(command.Session, cancellationToken).ConfigureAwait(false);
+        AppKindExt.TryParseUserAgent(sessionInfo?.Description, out var appKind);
+        FunnelMeters.Record(FunnelEvent.JoinUsed, appKind);
         context.Operation.Items.KeylessSet(invite);
         return invite;
 

@@ -306,6 +306,59 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
         events.Should().ContainSingle().Which.SourceId.Should().Be("web", "only account creation records a sign-up");
     }
 
+    [Fact(Timeout = 90_000)]
+    public async Task OnboardingStepShouldBeRecordedOncePerStep()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueAlice();
+
+        // act
+        await RecordStep(tester, "Phone", false);
+        await RecordStep(tester, "Phone", true);
+        await RecordStep(tester, OnboardingSteps.Finished, true);
+
+        // assert
+        var events = await ListEvents(account.Id, UsageEventKind.OnboardingStep, default);
+        events.Should().HaveCount(2);
+        events.Single(e => e.SourceId == "Phone").Value.Should().Be(0, "the first report of a step wins");
+        events.Should().Contain(e => e.SourceId == OnboardingSteps.Finished);
+    }
+
+    [Fact(Timeout = 90_000)]
+    public async Task UnknownOrGuestOnboardingStepShouldBeRejected()
+    {
+        // arrange
+        await using var guestTester = AppHost.NewWebClientTester(Out);
+        await using var tester = AppHost.NewWebClientTester(Out);
+        await tester.SignInAsUniqueAlice();
+
+        // act
+        var unknownStep = () => RecordStep(tester, "Nope", true);
+        var guestStep = () => RecordStep(guestTester, "Phone", true);
+
+        // assert
+        await unknownStep.Should().ThrowAsync<Exception>();
+        await guestStep.Should().ThrowAsync<Exception>();
+    }
+
+    [Fact(Timeout = 90_000)]
+    public async Task FunnelEventShouldAcceptOnlyClientEvents()
+    {
+        // arrange - a guest on purpose: link-opened events happen before an account exists
+        await using var guestTester = AppHost.NewWebClientTester(Out);
+
+        // act
+        var clientEvent = () => RecordFunnelEvent(guestTester, FunnelEvent.JoinOpenedSignedOut);
+        var serverEvent = () => RecordFunnelEvent(guestTester, FunnelEvent.SignUp);
+        var unknownEvent = () => RecordFunnelEvent(guestTester, (FunnelEvent)99);
+
+        // assert
+        await clientEvent.Should().NotThrowAsync();
+        await serverEvent.Should().ThrowAsync<Exception>();
+        await unknownEvent.Should().ThrowAsync<Exception>();
+    }
+
     // Private methods
 
     private Task SetArrival(Session session, string value)
@@ -332,4 +385,14 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
             .ToListAsync(cancellationToken);
         return dbEvents.Select(e => e.ToModel()).ToList();
     }
+
+    private static Task RecordStep(IWebClientTester tester, string step, bool isCompleted)
+        => tester.Commander.Call(new Usage_RecordOnboardingStep {
+            Session = tester.Session,
+            Step = step,
+            IsCompleted = isCompleted,
+        });
+
+    private static Task RecordFunnelEvent(IWebClientTester tester, FunnelEvent funnelEvent)
+        => tester.Commander.Call(new Usage_RecordFunnelEvent { Session = tester.Session, Event = funnelEvent });
 }
