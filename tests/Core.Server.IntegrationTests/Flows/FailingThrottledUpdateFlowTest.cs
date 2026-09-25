@@ -13,6 +13,8 @@ public class FailingThrottledUpdateFlowTest(FailingThrottledUpdateFlowFixture fi
     protected override async Task InitializeAsync()
     {
         await base.InitializeAsync();
+        // The first test on this class's own host would otherwise spend its budget on the host's startup
+        await AppHost.Services.WhenFlowsStarted();
         FailingThrottledUpdateFlow.CallCounts.Clear();
         FailingThrottledUpdateFlow.FailUntilCallCount = 0;
     }
