@@ -10,6 +10,8 @@ public static partial class Constants
         public const string ClientKeyPrefix = "c.";
         public const string SignInErrorKey = "SignInError";
         public const string PendingRegistrationKey = "PendingRegistration";
+        // Client-written: how a guest reached the app, read when their account is created (see ArrivalInfo)
+        public const string ArrivalKey = "Arrival";
         // Written to SignInErrorKey when the user cancels a registration
         // confirmation prompt. The UI uses this exact string to detect
         // a cancel and reset the sign-in form.

@@ -77,4 +77,11 @@ public static class UsageEventSource
         var day = UsageDay.DayOf(at);
         return new UsageEvent(UsageEventKind.ActiveDay, day, day.ToDateTime().ToString("yyyy-MM-dd", null), 1);
     }
+
+    public static UsageEvent SignUp(ArrivalInfo arrival, Moment at)
+        => new(UsageEventKind.SignUp, at, arrival.Format(), 1,
+            new UsageEventAttributes { ArrivalKind = arrival.Kind });
+
+    public static UsageEvent OnboardingStep(string step, bool isCompleted, Moment at)
+        => new(UsageEventKind.OnboardingStep, at, step, isCompleted ? 1 : 0);
 }
