@@ -23,6 +23,7 @@ public sealed partial record UserOnboardingSettings : StoredSettings, IHasOrigin
     [DataMember, MemoryPackOrder(13), Key(8)] public bool IsTranscriptReplayTutorialStepCompleted { get; init; } // Disabled
     [DataMember, MemoryPackOrder(14), Key(9)] public bool IsPlacesTutorialStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(17), Key(11)] public bool IsSummarizationTutorialStepCompleted { get; init; }
+    [DataMember, MemoryPackOrder(18), Key(12)] public int PasskeyNudgeDeclineCount { get; init; }
 
     public bool HasUncompletedSteps()
     {

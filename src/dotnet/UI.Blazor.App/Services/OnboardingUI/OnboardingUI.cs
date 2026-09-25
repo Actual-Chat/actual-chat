@@ -8,7 +8,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
 {
-    private const int MaxPasskeyNudgeCount = 3;
+    private const int MaxPasskeyNudgeDeclineCount = 3;
     private static readonly TimeSpan PasskeyNudgeInterval = TimeSpan.FromDays(7);
     private static readonly SemaphoreSlim Lock = new (1);
     private CancellationTokenSource? _lastTryShowCts;
@@ -16,6 +16,7 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
 
     private LoadingUI LoadingUI => Hub.LoadingUI;
     private PasskeyUI PasskeyUI => Hub.PasskeyUI;
+    private LocalStorage LocalStorage => Hub.LocalStorage;
 
     public SyncedState<UserOnboardingSettings> UserSettings { get; init; }
     public new StoredState<LocalOnboardingSettings> LocalSettings { get; init; }
@@ -97,24 +98,46 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
         if (passkeys.Count > 0)
             return false;
 
-        await WhenLocalSettingsRead.ConfigureAwait(false);
-        var local = LocalSettings.Value;
-        if (local.PasskeyNudgeCount >= MaxPasskeyNudgeCount)
+        await UserSettings.WhenSynchronized(ComputedSynchronizer.Current, cancellationToken).ConfigureAwait(false);
+        if (UserSettings.Value.PasskeyNudgeDeclineCount >= MaxPasskeyNudgeDeclineCount)
             return false;
 
-        return Clocks.SystemClock.Now - local.PasskeyNudgeLastAt > PasskeyNudgeInterval;
+        var lastSnoozedAt = await GetPasskeyNudgeSnoozedAt(cancellationToken).ConfigureAwait(false);
+        return Clocks.SystemClock.Now - lastSnoozedAt > PasskeyNudgeInterval;
     }
 
-    public void SnoozePasskeyStep()
+    public async Task SnoozePasskeyStep()
     {
-        var local = LocalSettings.Value;
-        UpdateLocalSettings(local with {
-            PasskeyNudgeCount = local.PasskeyNudgeCount + 1,
-            PasskeyNudgeLastAt = Clocks.SystemClock.Now,
-        });
+        // The decline count is per account, so the last one ends the nudge on every device;
+        // the pause between them is per device, in LocalStorage, which sign-out doesn't wipe
+        var settings = UserSettings.Value;
+        UpdateUserSettings(settings with { PasskeyNudgeDeclineCount = settings.PasskeyNudgeDeclineCount + 1 });
+        var now = Clocks.SystemClock.Now.EpochOffsetTicks.ToString();
+        await LocalStorage.SetString(GetPasskeyNudgeSnoozedAtKey(), now).SilentAwait();
     }
 
     // Private methods
+
+    private async Task<Moment> GetPasskeyNudgeSnoozedAt(CancellationToken cancellationToken)
+    {
+        try {
+            var value = await LocalStorage.GetString(GetPasskeyNudgeSnoozedAtKey()).ConfigureAwait(false);
+            return long.TryParse(value, out var ticks)
+                ? new Moment(ticks)
+                : default;
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            // An unreadable pause counts as a fresh one: skipping a nudge is cheaper than nagging
+            Log.LogWarning(e, "Failed to read the passkey nudge pause");
+            return Moment.MaxValue;
+        }
+    }
+
+    private async Task ResetPasskeyNudgeSnoozedAt()
+        => await LocalStorage.RemoveItem(GetPasskeyNudgeSnoozedAtKey()).SilentAwait();
+
+    private string GetPasskeyNudgeSnoozedAtKey()
+        => $"{nameof(OnboardingUI)}.PasskeyNudgeSnoozedAt.{AccountUI.OwnAccount.Value.Id}";
 
     private async Task<bool> ShouldBeShown(CancellationToken cancellationToken)
     {
@@ -156,6 +179,7 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
     {
         UserSettings.Set(new UserOnboardingSettings());
         LocalSettings.Set(new LocalOnboardingSettings());
+        _ = ResetPasskeyNudgeSnoozedAt();
     }
 
     public void ResetOnboarding(bool enable)
@@ -164,6 +188,7 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
             // Reset all steps to uncompleted (re-enable onboarding)
             UserSettings.Set(new UserOnboardingSettings());
             LocalSettings.Set(new LocalOnboardingSettings());
+            _ = ResetPasskeyNudgeSnoozedAt();
         }
         else {
             // Mark all steps as completed (skip onboarding)
@@ -179,11 +204,11 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
                 IsPlacesTutorialStepCompleted = true,
                 IsLanguagesStepCompleted = true,
                 IsSummarizationTutorialStepCompleted = true,
+                PasskeyNudgeDeclineCount = MaxPasskeyNudgeDeclineCount,
             });
             LocalSettings.Set(new LocalOnboardingSettings {
                 IsPermissionsStepCompleted = true,
                 AreCookiesAccepted = true,
-                PasskeyNudgeCount = MaxPasskeyNudgeCount,
             });
             // Close the onboarding modal if it's open
             _lastModalRef?.Close(true);
