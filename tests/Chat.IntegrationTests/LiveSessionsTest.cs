@@ -2600,6 +2600,137 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         invite.Ack.Should().BeNull();
     }
 
+    [Fact]
+    public async Task RaisedHandShouldSurviveHeartbeatsAndKeepItsPlaceInTheQueue()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(tester.Session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
+        await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_031), null, true, true, default);
+
+        // act
+        await backend.SetHandRaised(chatId, author.Id, true, default);
+        var raisedAt = HandRaisedAt(await backend.Get(chatId, default), author.Id);
+        await backend.SetParticipation(chatId, author.Id, ParticipationKind.Record, true, default);
+        await backend.SetParticipation(chatId, author.Id, ParticipationKind.AudioListen, true, default);
+        await backend.SetHandRaised(chatId, author.Id, true, default);
+        await backend.MutePeer(chatId, author.Id, true, default);
+
+        // assert
+        raisedAt.Should().NotBeNull();
+        HandRaisedAt(await backend.Get(chatId, default), author.Id).Should()
+            .Be(raisedAt, "heartbeats, kind changes, a second raise and a mute all keep the original raise");
+    }
+
+    [Fact]
+    public async Task LoweredHandShouldClearFromTheSession()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(tester.Session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
+        await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_032), null, true, true, default);
+        await backend.SetHandRaised(chatId, author.Id, true, default);
+
+        // act
+        await backend.SetHandRaised(chatId, author.Id, false, default);
+
+        // assert
+        HandRaisedAt(await backend.Get(chatId, default), author.Id).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task LeavingShouldLowerTheHand()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(tester.Session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var otherAuthorId = AuthorId.New(chatId, 777_033);
+        await backend.OnStreamRegistered(chatId, otherAuthorId, null, true, true, default);
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
+        await backend.SetParticipation(chatId, author.Id, ParticipationKind.AudioListen, true, default);
+        await backend.SetHandRaised(chatId, author.Id, true, default);
+
+        // act
+        await backend.SetParticipation(chatId, author.Id, ParticipationKind.AudioListen, false, default);
+        await backend.SetParticipation(chatId, author.Id, ParticipationKind.AudioListen, true, default);
+
+        // assert
+        HandRaisedAt(await backend.Get(chatId, default), author.Id)
+            .Should().BeNull("rejoining starts with the hand down");
+    }
+
+    [Fact]
+    public async Task RaiseShouldBeIgnoredUntilTheSessionLatches()
+    {
+        // arrange - one camera and a listener: participation records exist, but Get has no session yet
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var viewer = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(tester.Session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_034), null, true, true, default);
+        await backend.SetParticipation(chatId, viewer!.Id, ParticipationKind.AudioListen, true, default);
+        (await backend.Get(chatId, default)).Should().BeNull();
+
+        // act
+        await backend.SetHandRaised(chatId, viewer.Id, true, default);
+        await backend.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_035), null, true, true, default);
+
+        // assert
+        var live = await backend.Get(chatId, default);
+        live.Should().NotBeNull();
+        HandRaisedAt(live, viewer.Id).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task LowerAllHandsShouldClearEveryHand()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(tester.Session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var otherAuthorId = AuthorId.New(chatId, 777_038);
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
+        await backend.OnStreamRegistered(chatId, otherAuthorId, null, true, true, default);
+        await backend.SetHandRaised(chatId, author.Id, true, default);
+        await backend.SetHandRaised(chatId, otherAuthorId, true, default);
+
+        // act
+        await backend.LowerAllHands(chatId, default);
+
+        // assert
+        var live = await backend.Get(chatId, default);
+        live!.Members.Should().NotContain(m => m.IsHandRaised);
+    }
+
+    [Fact]
+    public async Task HandsShouldBeRejectedInAPeerChat()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bobAuthor, _) = await NewTwoPartyCall(tester);
+        var liveSessions = tester.AppServices.GetRequiredService<ILiveSessions>();
+
+        // act
+        var raise = () => liveSessions.SetHandRaised(tester.Session, chatId, bobAuthor.Id, true, default);
+
+        // assert
+        await raise.Should().ThrowAsync<Exception>();
+    }
+
     private static Task WaitForParticipantPresence(
         ILiveSessionsBackend backend, ChatId chatId, AuthorId authorId, bool isPresent,
         [CallerFilePath] string callerFilePath = "",
@@ -2619,6 +2750,9 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
             c = await c.Update(ct);
         }
     }
+
+    private static Moment? HandRaisedAt(LiveSession? live, AuthorId authorId)
+        => live?.Members.FirstOrDefault(m => m.AuthorId == authorId)?.HandRaisedAt;
 
     private static async Task<(ChatId ChatId, AuthorFull Bob, AuthorFull Alice)> NewTwoPartyCall(
         IWebTester tester)

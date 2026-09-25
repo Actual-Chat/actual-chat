@@ -10,6 +10,7 @@
     var isScreenCast = StreamInfo.SourceKind == VideoSourceKind.ScreenCast;
     var sourceKindCls = isScreenCast ? "screencast" : "";
     var labelIcon = isScreenCast ? "icon-screen-share" : "icon-video";
+    var handRaisedCls = IsHandRaised ? "hand-raised" : "";
     // Prefer rotation-aware source dims over encoder dims: the encoder's W/H
     // can be landscape at PushVideo time even when the source is portrait
     // (the rotation reconcile in workers/video-processing.ts swaps encoder
@@ -24,7 +25,8 @@
         _                                                   => "",
     };
 }
-<div class="video-track-player remote-video-container has-source-aspect @FocusedClass @sourceKindCls" style="@aspectRatioStyle"
+<div class="video-track-player remote-video-container has-source-aspect @FocusedClass @sourceKindCls @handRaisedCls"
+     style="@aspectRatioStyle"
      @onclick="@OnClick" @onclick:stopPropagation="true">
     @* Low-res intrinsic resolution: WebGPU renders to a 64×64 swap chain
        and CSS `object-cover` upscales to fill the focused tile. The heavy
@@ -39,12 +41,20 @@
     <div class="video-placeholder" aria-hidden="true">
         <i class="icon-video-play animate-pulse"></i>
     </div>
-    @if (!string.IsNullOrEmpty(AuthorName)) {
-        <div class="video-participant-label">
-            <i class="@labelIcon"></i>
-            <span>@AuthorName</span>
-            <span class="video-fps" data-stream-id="@StreamInfo.StreamId.Value"></span>
-        </div>
+    <div class="video-tile-caption">
+        @if (!string.IsNullOrEmpty(AuthorName)) {
+            <div class="video-participant-label">
+                <i class="@labelIcon"></i>
+                <span>@AuthorName</span>
+                <span class="video-fps" data-stream-id="@StreamInfo.StreamId.Value"></span>
+            </div>
+        }
+        @if (IsHandRaised) {
+            <div class="video-hand-badge"><i class="icon-hand"></i></div>
+        }
+    </div>
+    @if (IsHandRaised) {
+        <div class="video-hand-badge corner"><i class="icon-hand"></i></div>
     }
 </div>
 
@@ -80,6 +90,9 @@
 
     [Parameter]
     public string FocusedClass { get; set; } = "";
+
+    [Parameter]
+    public bool IsHandRaised { get; set; }
 
     [Parameter]
     public EventCallback OnClick { get; set; }

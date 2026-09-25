@@ -1809,6 +1809,11 @@ public static class LocalizedStringsLocalizerExt
         public string Call_AlreadyInCall => l["Call_AlreadyInCall"].Value;
         public string Call_RecordingTurnedOffByHost => l["Call_RecordingTurnedOffByHost"].Value;
         public string Call_MakeHost => l["Call_MakeHost"].Value;
+        public string Call_RaiseHand => l["Call_RaiseHand"].Value;
+        public string Call_LowerHand => l["Call_LowerHand"].Value;
+        public string Call_HandRaised => l["Call_HandRaised"].Value;
+        public string Call_LowerAllHands => l["Call_LowerAllHands"].Value;
+        public string Call_HandLowered => l["Call_HandLowered"].Value;
         public string Call_DetectingLanguage => l["Call_DetectingLanguage"].Value;
         public string Call_Incoming => l["Call_Incoming"].Value;
         public string Call_IncomingVideo => l["Call_IncomingVideo"].Value;

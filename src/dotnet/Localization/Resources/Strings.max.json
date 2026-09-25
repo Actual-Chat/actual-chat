@@ -2044,6 +2044,11 @@
   "Call_AlreadyInCall": "Você já está em uma chamada",
   "Call_RecordingTurnedOffByHost": "Nagrywanie wyłączone przez prowadzącego",
   "Call_MakeHost": "Ustaw jako prowadzącego",
+  "Call_RaiseHand": "Levantar la mano",
+  "Call_LowerHand": "Turunkan tangan",
+  "Call_HandRaised": "Рука је подигнута",
+  "Call_LowerAllHands": "Turunkan semua tangan",
+  "Call_HandLowered": "Tay của bạn đã được hạ xuống",
   // "Join" in the call sense - entering a call that is already running, not
   // becoming a member of anything. Languages that distinguish the two (ru, uk)
   // must use the "enter" verb here and keep Common_Join for membership.

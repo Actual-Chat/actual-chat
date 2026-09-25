@@ -20,6 +20,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<ILiveVideoStreams, LiveVideoStreams>();
         rpcHost.AddApi<ILiveSessions, LiveSessions>();
         rpcHost.AddApi<IChatTypingActivities, ChatTypingActivities>();
+        rpcHost.AddApi<IChatCallReactions, ChatCallReactions>();
         rpcHost.AddApi<IOwnVoices, OwnVoices>();
         rpcHost.AddBackend<IAudioStreamingBackend, AudioStreamingBackend>();
         rpcHost.AddBackend<IVideoStreamingBackend, VideoStreamingBackend>();
@@ -28,6 +29,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<ILiveSessionsBackend, LiveSessionsBackend>();
         rpcHost.AddBackend<ICallsBackend, CallsBackend>();
         rpcHost.AddBackend<IChatTypingActivitiesBackend, ChatTypingActivitiesBackend>();
+        rpcHost.AddBackend<IChatCallReactionsBackend, ChatCallReactionsBackend>();
         services.AddSingleton<LiveStreamAccess>();
         services.AddSingleton<PeerParticipations>();
         services.AddSingleton<RemoteVideoStreamCache>();

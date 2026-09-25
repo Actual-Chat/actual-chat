@@ -62,11 +62,16 @@
         + $"{(m.IsCollapsed ? "" : "open-video-panel")} {(m.IsCollapsed || m.IsHidden ? "" : "visible-video-panel")}";
     var videoMenuRef = MenuRef.New<VideoPanelMenu>(Chat.Id.Value, ScreenSize.IsNarrow().ToString()).ToString();
     var cameraMenuRef = MenuRef.New<CameraMenu>(CameraMenuRequester, m.SelectedCameraDeviceId ?? "").ToString();
+    var reactionsMenuRef = MenuRef.New<CallReactionsMenu>(Chat.Id.Value).ToString();
     var layout = m.Layout;
     var panelCls = $"video-panel {firstOpenCls} {recordingCls} {remoteStreamsCls} "
         + $"{collapsedCls} {hiddenCls} {expandedCls} {equalLayoutCls}";
     var contentLayoutCls = m.IsEqualLayout && m.IsExpanded ? "video-panel-layout__equal" : layout.LayoutClass;
     var isMobileOrNarrow = ScreenSize.IsNarrow() || Hub.BrowserInfo.IsMobile;
+    // Speaker view hides the speaker's tile label (the name is in the header), so its hand moves there too
+    var isFocusedHandRaised = m.FocusedAuthorId is { } focusedAuthorId
+        ? m.RaisedHandAuthorIds.Contains(focusedAuthorId)
+        : m.IsOwnHandRaised && layout.OwnCameraPreviewClass.Contains("item-focused");
 }
 
 <OnUIEvent TEvent="@CameraSelectedEvent" Handler="OnCameraSelectedEvent"/>
@@ -141,6 +146,11 @@
                         Click="@OnTogglePinClick">
                         <i class="icon-pin text-lg"></i>
                     </HeaderButton>
+                    @if (m.IsExpanded && isFocusedHandRaised) {
+                        <div class="btn-video-panel btn-h btn-hand on">
+                            <i class="icon-hand text-lg"></i>
+                        </div>
+                    }
                 </div>
             }
         </div>
@@ -184,6 +194,15 @@
                     <i class="icon-message-ellipse text-lg"></i>
                 </HeaderButton>
             }
+            @if (m.CanReact) {
+                <HeaderButton
+                    Class="@("btn-video-panel btn-react " + (m.IsOwnHandRaised ? "on" : ""))"
+                    data-menu="@reactionsMenuRef"
+                    data-menu-trigger="@MenuTrigger.Primary"
+                    data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
+                    <i class="@(m.IsOwnHandRaised ? "icon-hand" : "icon-add-reaction") text-lg"></i>
+                </HeaderButton>
+            }
         </div>
         <div class="video-panel-content @contentLayoutCls" data-menu="@videoMenuRef">
             <div class="c-grid tiles-@(layout.TileCount)">
@@ -205,17 +224,20 @@
                     }
                     if (m.SpeakingAuthorIds is { } speaking && speaking.Contains(streamInfo.AuthorId))
                         remoteStreamCls += " speaking";
+                    var isHandRaised = m.RaisedHandAuthorIds.Contains(streamInfo.AuthorId);
                     <RemoteStreamPlayer
                         @key="streamInfo.StreamId.Value"
                         StreamInfo="@streamInfo"
                         Class="@remoteStreamCls"
+                        IsHandRaised="@isHandRaised"
                         OnTileClick="@OnTilePinClick" />
                     var pipStream = layout.GetPipStreamFor(streamInfo.StreamId);
                     if (pipStream is not null) {
                         <RemoteStreamPlayer
                             @key="@("pip-" + pipStream.StreamId.Value)"
                             StreamInfo="@pipStream"
-                            Class="pip-overlay" />
+                            Class="pip-overlay"
+                            IsHandRaised="@isHandRaised" />
                     }
                 }
                 @* Own screencast is normally not rendered — the primary slot is
@@ -230,14 +252,17 @@
                     <VideoStreamingPreview
                         @key="@("own-camera-" + Chat.Id.Value)"
                         SourceKind="@VideoSourceKind.Camera"
-                        Class="@(layout.OwnCameraPreviewClass + ownSpeakingCls)" />
+                        Class="@(layout.OwnCameraPreviewClass + ownSpeakingCls)"
+                        IsHandRaised="@m.IsOwnHandRaised" />
                 } else if (isOwnScreenCasting && !hasRemoteStreams) {
                     <VideoStreamingPreview
                         @key="@("own-screencast-" + Chat.Id.Value)"
                         SourceKind="@VideoSourceKind.ScreenCast"
-                        Class="item-focused" />
+                        Class="item-focused"
+                        IsHandRaised="@m.IsOwnHandRaised" />
                 }
             </div>
+            <CallReactionsOverlay ChatId="@Chat.Id"/>
         </div>
         @if (m.IsExpanded && isChatVisible && !ScreenSize.IsNarrow() && m.ChatContext is { } chatContext) {
             <div class="video-panel-chat upload-drag-drop-host" data-child="video-panel-chat">
@@ -277,6 +302,7 @@
     private CameraUI CameraUI => Hub.CameraUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private IAuthors Authors => Hub.Authors;
     private HistoryStepper HistoryStepper => field ??= Hub.Services.GetRequiredService<HistoryStepper>();
     private ILogger Log => field ??= Hub.LogFor(GetType());
@@ -441,6 +467,11 @@
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         var selectedCameraDeviceId = await CameraUI.GetSelectedDeviceId(cancellationToken).ConfigureAwait(false);
 
+        var canReact = await LiveSessionUI.CanReact(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnHandRaised = await LiveSessionUI.IsOwnHandRaised(chatId, cancellationToken).ConfigureAwait(false);
+        var raisedHandAuthorIds = await LiveSessionUI.ListRaisedHandAuthorIds(chatId, cancellationToken)
+            .ConfigureAwait(false);
+
         var activeStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
         var videoStreamMemberCount = activeStreams.Count > 0
             ? await ChatVideoUI.GetVideoStreamMemberCount(chatId, cancellationToken).ConfigureAwait(false)
@@ -460,7 +491,10 @@
                 IsExpanded: isExpanded,
                 IsEqualLayout: isEqualLayout,
                 IsChatVisible: isChatVisible,
-                SelectedCameraDeviceId: selectedCameraDeviceId);
+                SelectedCameraDeviceId: selectedCameraDeviceId,
+                CanReact: canReact,
+                IsOwnHandRaised: isOwnHandRaised,
+                RaisedHandAuthorIds: raisedHandAuthorIds);
 
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
         // Name of the currently focused participant — shown above the member count in the header
@@ -503,7 +537,10 @@
             SpeakingAuthorIds: speakingAuthorIds.ToArray(),
             OwnAuthorId: ownAuthorId,
             IsPinned: pinnedAuthorId is not null,
-            FocusedAuthorId: focusedAuthorId);
+            FocusedAuthorId: focusedAuthorId,
+            CanReact: canReact,
+            IsOwnHandRaised: isOwnHandRaised,
+            RaisedHandAuthorIds: raisedHandAuthorIds);
     }
 
     private static AuthorId? GetFocusedRemoteAuthorId(VideoPanelLayout layout, VideoStreamInfo[] remoteStreams) {
@@ -658,7 +695,10 @@
         AuthorId[]? SpeakingAuthorIds = null,
         AuthorId? OwnAuthorId = null,
         bool IsPinned = false,
-        AuthorId? FocusedAuthorId = null
+        AuthorId? FocusedAuthorId = null,
+        bool CanReact = false,
+        bool IsOwnHandRaised = false,
+        ApiArray<AuthorId> RaisedHandAuthorIds = default
     ) {
         public static readonly Model Loading = new(null, VideoPanelLayout.New, [], false, false, false, 0, false);
     }

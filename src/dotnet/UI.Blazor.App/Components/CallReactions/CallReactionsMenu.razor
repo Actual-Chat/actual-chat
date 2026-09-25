@@ -1,0 +1,68 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Live
+@inherits ComputedMenuBase<AppUIHub, CallReactionsMenu.Model>
+@{
+    var m = State.Value;
+    if (m.ChatId is not { } chatId)
+        return;
+}
+
+<div class="call-reactions-menu">
+    <MenuEntry
+        Icon="icon-hand"
+        Class="@(m.IsOwnHandRaised ? "on" : "")"
+        Text="@(m.IsOwnHandRaised ? L.Call_LowerHand : L.Call_RaiseHand)"
+        Click="@(() => OnHandClick(chatId, !m.IsOwnHandRaised))"/>
+    <MenuEntrySeparator/>
+    <ul class="reaction-select">
+        @foreach (var emoji in CallReaction.AllowedEmojis) {
+            <MenuEntry @key="emoji"
+                Class="reaction-select-reaction"
+                Click="@(() => OnEmojiClick(chatId, emoji))">
+                <IconContent>
+                    <EmojiIcon Emoji="@emoji" HasPreview="false" Class="reaction-select-reaction-emoji"/>
+                </IconContent>
+            </MenuEntry>
+        }
+    </ul>
+</div>
+
+@code {
+    private ChatId? _chatId;
+
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+
+    protected override void OnParametersSet() {
+        if (Arguments is not [ var sChatId ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _chatId = ChatId.TryParse(sChatId);
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (_chatId is not { } chatId)
+            return Model.None;
+
+        var isOwnHandRaised = await LiveSessionUI.IsOwnHandRaised(chatId, cancellationToken).ConfigureAwait(false);
+        return new Model(chatId, isOwnHandRaised);
+    }
+
+    private Task OnHandClick(ChatId chatId, bool isRaised)
+        => LiveSessionUI.SetOwnHandRaised(chatId, isRaised, CancellationToken.None);
+
+    private Task OnEmojiClick(ChatId chatId, Emoji emoji)
+        => LiveSessionUI.SendReaction(chatId, emoji, CancellationToken.None);
+
+    // Nested types
+
+    public sealed record Model(ChatId? ChatId, bool IsOwnHandRaised) {
+        public static readonly Model None = new(null, false);
+    }
+}
