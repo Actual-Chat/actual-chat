@@ -133,14 +133,8 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
         // Finally, wait for the possibility to render onboarding modal
         await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        if (UserSettings.Value.HasUncompletedSteps())
-            return true;
-
-        if (await ShouldShowPasskeyStep(cancellationToken).ConfigureAwait(false))
-            return true;
-
         if (!LocalSettings.Value.IsPermissionsStepCompleted) {
-            // Fix IsPermissionsStepCompleted based on actual permissions:
+            // Fix IsPermissionsStepCompleted based on actual permissions before anything else opens the modal:
             // we don't want to show the "Required permissions" screen if they're already granted
             var permissionsStepModel = await PermissionStepModel.New(Services, cancellationToken).ConfigureAwait(false);
             if (permissionsStepModel.SkipEverything) {
@@ -148,6 +142,13 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
                 await Task.Yield(); // Just in case
             }
         }
+
+        if (UserSettings.Value.HasUncompletedSteps())
+            return true;
+
+        if (await ShouldShowPasskeyStep(cancellationToken).ConfigureAwait(false))
+            return true;
+
         return LocalSettings.Value.HasUncompletedSteps();
     }
 
