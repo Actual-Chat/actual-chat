@@ -210,4 +210,26 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
         history.Outcome.Should().Be(ReviewPromptOutcome.Asked);
         afterReview.Reason.Should().Be("Already reviewed");
     }
+
+    [Fact(Timeout = 90_000)]
+    public async Task NonActivityKindsShouldNotCreateDayRows()
+    {
+        // arrange - a day nothing else touches, so any day row there comes from these events
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueAlice();
+        var at = Clocks.SystemClock.Now - TimeSpan.FromDays(10);
+        var range = new Range<Moment>(at - TimeSpan.FromDays(1), at + TimeSpan.FromDays(1));
+
+        // act
+        await Commander.Call(new UsageBackend_Record(account.Id, ApiArray.New(
+            UsageEventSource.OnboardingStep("Phone", true, at),
+            UsageEventSource.SignUp(ArrivalInfo.New(ArrivalKind.Campaign, "c1")!.Value, at))));
+        var days = await Backend.ListDays(account.Id, range, default);
+        await Commander.Call(new UsageBackend_RebuildDays(account.Id));
+        var rebuiltDays = await Backend.ListDays(account.Id, range, default);
+
+        // assert
+        days.Should().BeEmpty("a day row counts as an active day for the review prompt");
+        rebuiltDays.Should().BeEmpty("the rebuild must apply the same rule");
+    }
 }
