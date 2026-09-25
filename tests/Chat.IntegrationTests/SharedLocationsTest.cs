@@ -292,7 +292,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
     }
 
     [Fact]
-    public async Task StopOfAFrozenOwnShareStopsTheLiveOne()
+    public async Task StopOfATakenOverShareKeepsTheLiveOne()
     {
         // arrange - a takeover, so the id the losing device holds is frozen
         var sharedLocations = Alice.AppServices.GetRequiredService<ISharedLocations>();
@@ -305,12 +305,15 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         var first = await Alice.ReportLocation(chatId, new GeoPoint(10, 20), hour, cancellationToken: ct);
         var second = await Alice.ReportLocation(chatId, new GeoPoint(30, 40), hour, cancellationToken: ct);
         await cList.When(x => x.Count == 1 && x[0].Id == second.Id, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
+        var frozen = await sharedLocations.Get(session, chatId, first.Id, ct);
 
-        // act - the losing device stops by the id it holds, as an old app does
+        // act - the losing device stops by the id it holds
         await Alice.StopSharingLocation(chatId, first.Id, ct);
 
-        // assert - read as "stop my live share here"
-        await cList.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
+        // assert
+        (await sharedLocations.Get(session, chatId, first.Id, ct)).Should().Be(frozen);
+        var live = await sharedLocations.Get(session, chatId, second.Id, ct);
+        live!.IsLive(Clocks.SystemClock.Now).Should().BeTrue();
     }
 
     [Fact]
@@ -330,7 +333,7 @@ public class SharedLocationsTest(ChatCollection.AppHostFixture fixture, ITestOut
         // act
         await Alice.StopSharingLocation(chatId, location.Id, ct);
 
-        // assert - nothing to retarget to, so the frozen share is left exactly as it was
+        // assert
         (await sharedLocations.Get(session, chatId, location.Id, ct)).Should().Be(frozen);
     }
 
