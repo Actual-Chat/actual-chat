@@ -2,10 +2,12 @@
 @using ActualChat.UI.Blazor.Module
 @inherits ComponentBase<AppUIHub>
 
+@* The call screen shares z-modal-overlay with the menu and bubble hosts, so DOM order is what
+   decides: it comes before them, or a menu opened from it renders underneath and eats the taps. *@
 <ModalHost />
+<FullScreenCallView />
 <MenuHost />
 <BubbleHost />
-<FullScreenCallView />
 <CollapsedCallView />
 <SpoilerFilterDefs />
 <Hotkey Keys="ctrl+k" AriaLabel="@L.Shortcuts_JumpToChat" OnTrigger="OnQuickNav"/>

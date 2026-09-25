@@ -135,20 +135,29 @@
                         <i class="icon-recorder-right-half right"></i>
                     }
                 </HeaderButton>
-                @if (CallScreensUI.CanRouteToEarpiece) {
-                    @* With a headset connected there are three places to pick from, so the button opens a menu. *@
-                    var audioOutput = m.AudioOutput;
-                    var audioOutputMenu = audioOutput.ExternalKind is null
-                        ? null
-                        : MenuRef.New<CallAudioOutputMenu>(chat.Id.Value).ToString();
-                    <HeaderButton
-                        Click="@OnSpeakerClick"
-                        Class="btn-video-panel"
-                        data-menu="@audioOutputMenu"
-                        data-menu-trigger="@MenuTrigger.Primary"
-                        data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
-                        <i class="@(CallAudioOutputMenu.GetIcon(_pickedAudioOutputKind ?? audioOutput.Kind)) text-lg"></i>
-                    </HeaderButton>
+                @* Absent where the platform picks the output on its own - the web, the Mac. *@
+                @if (HasOutputPicker) {
+                    var output = m.OutputRoutes;
+                    var outputCls = output.Current?.Kind is AudioOutputKind.Phone or null ? "" : "on";
+                    @* The speaker glyph stands for both built-in outputs and the tint tells them apart, as
+                       on the system call screen; only an external device shows its own glyph. *@
+                    var isBuiltin = output.Current?.Kind is AudioOutputKind.Phone or AudioOutputKind.Speaker or null;
+                    var outputIcon = isBuiltin ? "icon-volume-up-2" : output.Current.GetIcon();
+                    if (output.HasExternal) {
+                        @* With a headset in play there are three or more places to go, so a toggle won't do. *@
+                        <HeaderButton
+                            Class="@($"btn-video-panel c-speaker {outputCls}")"
+                            data-menu="@(MenuRef.New<AudioOutputMenu>().ToString())"
+                            data-menu-trigger="@MenuTrigger.Primary"
+                            data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
+                            <i class="@outputIcon text-lg"></i>
+                        </HeaderButton>
+                    }
+                    else {
+                        <HeaderButton Class="@($"btn-video-panel c-speaker {outputCls}")" Click="@OnSpeakerClick">
+                            <i class="icon-volume-up-2 text-lg"></i>
+                        </HeaderButton>
+                    }
                 }
                 <HeaderButton Class="btn-video-panel" Click="@OnOptionsClick">
                     <i class="icon-options-2 text-lg"></i>
@@ -162,15 +171,15 @@
     private static readonly string JSCreateSwipe = $"{BlazorUIAppModule.ImportName}.IncomingCallSwipe.create";
 
     private bool _shownOverLock;
-    // Shown from the tap itself: the state catches up only after a recompute, which can take a second.
-    private AudioOutputKind? _pickedAudioOutputKind;
     private ElementReference _ringButtons;
     private DotNetObjectReference<FullScreenCallView>? _dotNetRef;
     private IJSObjectReference? _swipeRef;
     private CallScreensUI CallScreensUI => Hub.CallScreensUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
     private CameraUI CameraUI => Hub.CameraUI;
+    private bool HasOutputPicker => AudioFocusUI.OutputRoutes is not null;
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
@@ -188,9 +197,6 @@
         }
         else if (!isShowing && _shownOverLock)
             _shownOverLock = false;
-
-        if (_pickedAudioOutputKind == m.AudioOutput.Kind)
-            _pickedAudioOutputKind = null;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -255,6 +261,10 @@
             return m with { IsMuted = mutedChatId == chatId };
         }
 
+        var outputRoutes = AudioFocusUI.OutputRoutes is { } outputRoutesState
+            ? await outputRoutesState.Use(cancellationToken).ConfigureAwait(false)
+            : AudioOutputRoutes.None;
+        m = m with { OutputRoutes = outputRoutes };
         var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
         // Hidden until my own join is known: Accept commits the call before my audio starts.
         var joinedAt = call.Phase == CallPhase.Active
@@ -262,9 +272,7 @@
             : null;
         var isCameraOn = await ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
         var isScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false);
-        var audioOutput = await CallScreensUI.GetAudioOutput(chatId, cancellationToken).ConfigureAwait(false);
         return m with {
-            AudioOutput = audioOutput,
             IsRecording = recordingChatId == chatId,
             JoinedAt = joinedAt,
             IsCameraOn = isCameraOn,
@@ -339,15 +347,12 @@
             _ = ChatAudioUI.SetRecordingChatId(enable ? chat.Id : null);
     }
 
-    private void OnSpeakerClick() {
-        var m = State.Value;
-        if (m.Chat is not { } chat || m.AudioOutput.ExternalKind is not null)
-            return;
-
-        var shownKind = _pickedAudioOutputKind ?? m.AudioOutput.Kind;
-        var kind = shownKind == AudioOutputKind.Speaker ? AudioOutputKind.Phone : AudioOutputKind.Speaker;
-        _pickedAudioOutputKind = kind;
-        CallScreensUI.SetAudioOutput(chat.Id, kind);
+    private Task OnSpeakerClick() {
+        // Never routed through the listing: the toggle has to work even before the first one
+        // arrives, and the earpiece and the speaker are there whatever it says.
+        var isOnSpeaker = State.Value.OutputRoutes.Current?.Kind == AudioOutputKind.Speaker;
+        return AudioFocusUI.SelectOutputRoute(
+            isOnSpeaker ? AudioOutputRoute.PhoneId : AudioOutputRoute.SpeakerId);
     }
 
     private void OnOptionsClick() {
@@ -374,7 +379,7 @@
         public bool IsRecording { get; init; }
         public bool IsCameraOn { get; init; }
         public bool IsScreenCasting { get; init; }
-        public CallAudioOutput AudioOutput { get; init; } = new(AudioOutputKind.Speaker, null);
+        public AudioOutputRoutes OutputRoutes { get; init; } = AudioOutputRoutes.None;
         // False when this is the narrow-layout foreground screen rather than the real over-lock one.
         public bool IsOverLock { get; init; }
     }

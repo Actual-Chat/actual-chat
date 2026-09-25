@@ -39,6 +39,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioFileAttachment>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioFileAttachmentMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioFileRow>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioOutputMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioPanel.AudioDiagnosticsModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioSubHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AuthorBadge>();
@@ -61,7 +62,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.BannerStack>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Banners>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.BreakableWord>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallAudioOutputMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallMessageView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallModalHeader>();
@@ -866,6 +866,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.AudioFileAttachment), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AudioFileAttachmentMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AudioFileRow), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.AudioOutputMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AudioPanel.AudioDiagnosticsModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AudioSubHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AuthorBadge), AotTypeKind.Component),
@@ -888,7 +889,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.BannerStack), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Banners), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.BreakableWord), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.CallAudioOutputMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CallMessageView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CallModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CallModalHeader), AotTypeKind.Component),

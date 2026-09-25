@@ -2,6 +2,7 @@ using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using AVFoundation;
 using Foundation;
+using UIKit;
 
 namespace ActualChat.App.Maui.Audio;
 
@@ -16,12 +17,21 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
     private static readonly TimeSpan PlaybackActivityTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan PttActivationTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan CallActivationTimeout = TimeSpan.FromSeconds(5);
+    private static readonly AudioOutputRoute PhoneRoute =
+        new(AudioOutputRoute.PhoneId, AudioOutputKind.Phone);
+    private static readonly AudioOutputRoute SpeakerRoute =
+        new(AudioOutputRoute.SpeakerId, AudioOutputKind.Speaker);
 
     private static readonly Lock OwnerLock = new();
     private static int _owner;
     private static long _ownerChangedAt;
     private static int _isCallVideo;
+    private static int _isCallActive;
     private static int _isCallOverrideCleared;
+    private static string? _selectedOutputId;
+    private static string? _unsettledOutputId;
+    private static AudioOutputRoute[] _externalRoutes = [];
+    private static int _isBluetoothOff;
     private static int _isOwnerWatchdogRunning;
     private static Action? _ownerWatchdogRecovery;
     private static Func<bool>? _isPttActivationAvailable;
@@ -43,6 +53,11 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         set => Volatile.Write(ref _isCallVideo, value ? 1 : 0);
     }
 
+    public static bool IsCallActive {
+        get => Volatile.Read(ref _isCallActive) != 0;
+        set => Volatile.Write(ref _isCallActive, value ? 1 : 0);
+    }
+
     public static void SetOwner(AudioSessionOwner owner)
         => PublishOwner(owner);
 
@@ -54,7 +69,7 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             var wasCallKit = Owner == AudioSessionOwner.CallKit;
             PublishOwnerUnsafe(AudioSessionOwnership.OnReleased(Owner, release, hasLivePlayback));
             if (wasCallKit) {
-                Volatile.Write(ref _isCallOverrideCleared, 0);
+                ResetCallRouteLatch();
                 ResetCallActivationUnsafe();
             }
         }
@@ -63,9 +78,16 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
     }
 
     public static void ResetCallRouteLatch()
+    {
         // ReleaseOwner clears the latch only while CallKit still owns the session, so a call PTT
         // took the session away from mid-way would leave the next one on this one's route.
-        => Volatile.Write(ref _isCallOverrideCleared, 0);
+        // The user's output pick is this call's too: the next one starts from the defaults.
+        Volatile.Write(ref _isCallOverrideCleared, 0);
+        Volatile.Write(ref _selectedOutputId, null);
+        Volatile.Write(ref _unsettledOutputId, null);
+        Volatile.Write(ref _externalRoutes, []);
+        Volatile.Write(ref _isBluetoothOff, 0);
+    }
 
     public static void SetOwnerWatchdogRecovery(Action recovery)
         => Volatile.Write(ref _ownerWatchdogRecovery, recovery);
@@ -222,7 +244,7 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         // CannotInterruptOthers ('!int') for an app that just went to the background,
         // MissingEntitlement ('ent?') for one resumed from suspension - both mean the app may
         // not activate its own session there and only the PTT framework can.
-        => (AVAudioSessionErrorCode)(long)error.Code
+        => (AVAudioSessionErrorCode)error.Code
             is AVAudioSessionErrorCode.CannotInterruptOthers or AVAudioSessionErrorCode.MissingEntitlement;
 
     public static void NotifyPlaybackActivity()
@@ -250,8 +272,27 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
     public Task<AudioSessionSetup> Reactivate(AudioFocusMode mode)
         => DispatchToMainThread(() => ReactivateUnsafe(mode));
 
-    public Task ApplyOutputRoute(AudioFocusMode mode, bool mustDropOverride = false)
-        => DispatchToMainThread(() => ApplyOutputRouteUnsafe(mode, mustDropOverride));
+    // mustForce restates an override the route already shows - a source started after
+    // VoiceProcessingIO needs that, an incidental route change does not.
+    public Task ApplyOutputRoute(AudioFocusMode mode, bool mustDropOverride = false, bool mustForce = false)
+        => DispatchToMainThread(() => ApplyOutputRouteUnsafe(mode, mustDropOverride || mustForce, mustDropOverride));
+
+    public Task<AudioOutputRoutes> GetOutputRoutes()
+        => DispatchToMainThread(GetOutputRoutesUnsafe);
+
+    public Task SelectOutputRoute(string routeId, AudioFocusMode mode)
+        => DispatchToMainThread(() => {
+            Volatile.Write(ref _selectedOutputId, routeId);
+            Volatile.Write(ref _unsettledOutputId, null);
+            // The earpiece switches Bluetooth off, and the speaker leaves it that way: the speaker
+            // override beats a device either way, and turning Bluetooth back on reconnects the
+            // headset first - about a second more on every earpiece-to-speaker switch.
+            if (routeId == AudioOutputRoute.PhoneId && Volatile.Read(ref _externalRoutes).Length != 0)
+                Volatile.Write(ref _isBluetoothOff, 1);
+            else if (routeId != AudioOutputRoute.SpeakerId)
+                Volatile.Write(ref _isBluetoothOff, 0);
+            ApplyOutputRouteUnsafe(mode, mustForce: true);
+        });
 
     public AppleAudioSessionDiagnostics? GetDiagnostics()
     {
@@ -289,14 +330,6 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             Log.LogWarning(e, "Failed to read the audio output kind");
             return null;
         }
-    }
-
-    public static string Describe(AVAudioSession session)
-    {
-        var route = session.CurrentRoute;
-        return $"category={session.Category}, mode={session.Mode}, rate={session.SampleRate}, "
-            + $"inputChannels={session.InputNumberOfChannels}, inputs={Describe(route.Inputs)}, "
-            + $"outputs={Describe(route.Outputs)}, otherAudio={session.OtherAudioPlaying}";
     }
 
     // Private methods
@@ -396,7 +429,7 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             // that owner hands off to CallKit) can still land here for a CallKit owner - keep the
             // latch scoped to one call on this exit path too.
             if (owner == AudioSessionOwner.CallKit) {
-                Volatile.Write(ref _isCallOverrideCleared, 0);
+                ResetCallRouteLatch();
                 ResetCallActivationUnsafe();
             }
             return owner;
@@ -434,7 +467,7 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             if (!isActivationPending)
                 ApplyOutputRouteUnsafe(mode);
             Log.LogInformation("Reactivate({Mode}) under {Owner}: configured={IsConfigured}, {Session}",
-                mode, owner, isConfigured, Describe(session));
+                mode, owner, isConfigured, session.Describe());
             return new AudioSessionSetup(isConfigured, false, isActivationPending);
         }
 
@@ -474,7 +507,7 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             if (!isActivationPending)
                 ApplyOutputRouteUnsafe(minMode);
             Log.LogInformation("Reconfigure({Mode}) under {Owner}: configured={IsConfigured}, {Session}",
-                minMode, owner, isConfigured, Describe(session));
+                minMode, owner, isConfigured, session.Describe());
             return new AudioSessionSetup(isConfigured, false, isActivationPending);
         }
 
@@ -558,20 +591,27 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             Log.LogWarning("Failed to deactivate audio session: {Error}", error.LocalizedDescription);
     }
 
-    private void ApplyOutputRouteUnsafe(AudioFocusMode mode, bool mustDropOverride = false)
+    private void ApplyOutputRouteUnsafe(
+        AudioFocusMode mode, bool mustForce = false, bool mustDropOverride = false)
     {
         // PlayAndRecord is the only category with a route to pick: Playback and Ambient always
         // reach the speaker, and an override on either is rejected. The category decides, not
         // the mode or the owner: a session the PTT framework activated is PlayAndRecord whatever
         // the app plays on it, and it lands on the receiver until the app overrides the port.
         var session = AVAudioSession.SharedInstance();
-        if (session.Category != AVAudioSession.CategoryPlayAndRecord)
+        if (session.GetCategory() != AVAudioSessionCategory.PlayAndRecord)
             return;
 
         // CurrentRoute reports the speaker while our own override holds it there, which hides a
         // device that just arrived and would outrank it - the override has to go before the read.
-        if (mustDropOverride)
+        if (mustDropOverride) {
             session.OverrideOutputAudioPort(AVAudioSessionPortOverride.None, out _);
+            // A device that just arrived is where the user now wants to listen, over any earlier pick.
+            Volatile.Write(ref _selectedOutputId, null);
+            Volatile.Write(ref _isBluetoothOff, 0);
+        }
+        if (TryApplySelectedOutputUnsafe(session, mode, mustForce))
+            return;
 
         var outputs = session.CurrentRoute.Outputs;
         if (outputs.Length == 0) {
@@ -583,18 +623,24 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         if (GetPortOverride(hasExternalDevice, MustPreferSpeaker(Owner, IsCallVideo)) is not { } portOverride)
             return;
 
-        var isOverridden = ForceOverride(session, portOverride, out var error);
+        if (!mustForce
+            && portOverride is AVAudioSessionPortOverride.Speaker
+            && IsOnRoute(session, SpeakerRoute.Id))
+            return;
+
         // An external device won the output, and the mic has to follow it: the override moves
-        // playback only, so iOS leaves a headset that arrived mid-recording unheard.
+        // playback only, so iOS leaves a headset that arrived mid-recording unheard. The input
+        // goes first - changing it re-routes the session, which drops an override set before it.
         var input = ApplyPreferredInput(hasExternalDevice);
+        var isOverridden = ForceOverride(session, portOverride, out var error);
         Log.LogInformation(
             "ApplyOutputRoute: mode={Mode}, sessionMode={SessionMode}, "
             + "{Outputs} -> {Override} -> {Result}, input={Input}",
             mode,
             session.Mode,
-            Describe(outputs),
+            outputs.Describe(),
             portOverride,
-            isOverridden ? Describe(session.CurrentRoute.Outputs) : $"failed: {error.LocalizedDescription}",
+            isOverridden ? session.CurrentRoute.Outputs.Describe() : $"failed: {error.LocalizedDescription}",
             input);
         return;
 
@@ -608,16 +654,6 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
                 Log.LogWarning("ApplyOutputRoute: failed to set preferred input: {Error}",
                     inputError.LocalizedDescription);
             return input?.PortType ?? "default";
-        }
-
-        // Restating an override the session already holds is a no-op, and a no-op won't move a
-        // source started after VoiceProcessingIO. Clearing first makes it a real transition.
-        static bool ForceOverride(AVAudioSession session, AVAudioSessionPortOverride portOverride, out NSError error) {
-            if (portOverride is AVAudioSessionPortOverride.None)
-                return session.OverrideOutputAudioPort(portOverride, out error);
-
-            return session.OverrideOutputAudioPort(AVAudioSessionPortOverride.None, out error)
-                && session.OverrideOutputAudioPort(portOverride, out error);
         }
 
         // Null means leave the route alone - Macs have no receiver to push off, and once a live
@@ -646,8 +682,175 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         }
     }
 
-    private static string Describe(AVAudioSessionPortDescription[] ports)
-        => string.Join(", ", ports.Select(x => x.PortType));
+    private bool TryApplySelectedOutputUnsafe(AVAudioSession session, AudioFocusMode mode, bool mustForce)
+    {
+        if (Volatile.Read(ref _selectedOutputId) is not { } selectedId)
+            return false;
+
+        // Restating a route the session already holds still stops and rebuilds the engine, whose
+        // rebuild raises the next route change - the loop that starves the recorder mid-call.
+        if (!mustForce && IsOnRoute(session, selectedId))
+            return true;
+
+        // A pick iOS won't grant - the earpiece behind a device that outranks it - is applied once
+        // and then left: re-applying it raises another route change, which lands back here.
+        if (!mustForce && Volatile.Read(ref _unsettledOutputId) == selectedId)
+            return true;
+
+        var builtInMic = session.AvailableInputs?.FirstOrDefault(x => x.PortType == AVAudioSession.PortBuiltInMic);
+        AVAudioSessionPortOverride portOverride;
+        AVAudioSessionPortDescription? input;
+        // The mode and the options decide the route before any override does, and both read the
+        // pick - the earpiece drops AllowBluetooth, without which a device keeps the output. Only
+        // a fresh pick rebuilds on an option difference: iOS re-adds bits of its own under some
+        // modes, and chasing those on every route change is a loop.
+        var sessionMode = GetSessionMode(Owner, IsCallVideo);
+        var options = GetCategoryOptions(Owner, IsCallVideo);
+        if (!IsConfiguredAs(session, sessionMode, options) && (mustForce || session.GetMode() != sessionMode)) {
+            Log.LogInformation(
+                "ApplyOutputRoute: reconfiguring for {Id}: mode {From} -> {To}, options {FromOptions} -> {ToOptions}",
+                selectedId, session.Mode, sessionMode, session.CategoryOptions, options);
+            // A refused category change costs this pick only; the caller's playback still starts.
+            try {
+                ConfigureRecordingUnsafe(session, Owner, IsCallVideo);
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "ApplyOutputRoute: couldn't reconfigure the session for {Id}", selectedId);
+            }
+        }
+
+        if (selectedId == SpeakerRoute.Id)
+            (portOverride, input) = (AVAudioSessionPortOverride.Speaker, builtInMic);
+        else if (selectedId == PhoneRoute.Id)
+            // The input leads for a two-way device: moving it off a headset's mic brings the
+            // output back to the receiver too.
+            (portOverride, input) = (AVAudioSessionPortOverride.None, builtInMic);
+        else {
+            input = session.AvailableInputs?.FirstOrDefault(x => x.UID == selectedId);
+            // An output-only device (A2DP, AirPlay, wired headphones) is reached by clearing the
+            // override and leaving the input to iOS; one that's gone ends the pick.
+            var isOutputOnlyCurrent = input is null && session.CurrentRoute.Outputs.Any(x => x.UID == selectedId);
+            if (input is null && !isOutputOnlyCurrent) {
+                Log.LogInformation("ApplyOutputRoute: selected output {Id} is gone, back to the defaults", selectedId);
+                Volatile.Write(ref _selectedOutputId, null);
+                Volatile.Write(ref _isBluetoothOff, 0);
+                return false;
+            }
+
+            portOverride = AVAudioSessionPortOverride.None;
+        }
+
+        var outputChannels = session.OutputNumberOfChannels;
+        // The input goes first: changing it re-routes the session, which drops an override set
+        // before it - the first speaker tap of a call landed back on the earpiece. Restating the
+        // input it already has still raises a route change that lands back here, so it's skipped.
+        if (session.PreferredInput?.UID != input?.UID && !session.SetPreferredInput(input, out var inputError))
+            Log.LogWarning("ApplyOutputRoute: failed to set preferred input: {Error}", inputError.LocalizedDescription);
+        var isOverridden = ForceOverride(session, portOverride, out var error);
+        Log.LogInformation(
+            "ApplyOutputRoute: mode={Mode}, selected={Selected} -> {Result}, input={Input}, "
+            + "outChannels={Before}->{After}",
+            mode,
+            selectedId,
+            isOverridden ? session.CurrentRoute.Outputs.Describe() : $"failed: {error.LocalizedDescription}",
+            input?.PortType ?? "default",
+            outputChannels,
+            session.OutputNumberOfChannels);
+        var isSettled = IsOnRoute(session, selectedId);
+        Volatile.Write(ref _unsettledOutputId, isSettled ? null : selectedId);
+        Log.LogInformation("ApplyOutputRoute: after {Selected}: settled={IsSettled}, options={Options}, {Session}",
+            selectedId, isSettled, session.CategoryOptions, session.DescribeFormat());
+        return true;
+    }
+
+    private static bool IsOnRoute(AVAudioSession session, string routeId)
+    {
+        var outputs = session.CurrentRoute.Outputs;
+        if (routeId == SpeakerRoute.Id)
+            return outputs.Any(x => x.PortType == AVAudioSession.PortBuiltInSpeaker);
+        if (routeId == PhoneRoute.Id)
+            return outputs.Any(x => x.PortType == AVAudioSession.PortBuiltInReceiver);
+
+        return outputs.Any(x => x.UID == routeId);
+    }
+
+    private static bool ForceOverride(
+        AVAudioSession session, AVAudioSessionPortOverride portOverride, out NSError error)
+    {
+        // Restating an override the session already holds is a no-op, and a no-op won't move a
+        // source started after VoiceProcessingIO. Clearing first makes it a real transition.
+        if (portOverride is AVAudioSessionPortOverride.None)
+            return session.OverrideOutputAudioPort(portOverride, out error);
+
+        return session.OverrideOutputAudioPort(AVAudioSessionPortOverride.None, out error)
+            && session.OverrideOutputAudioPort(portOverride, out error);
+    }
+
+    private static AudioOutputRoutes GetOutputRoutesUnsafe()
+    {
+        // Only PlayAndRecord has a route to pick, and a Mac has no receiver and no override.
+        var session = AVAudioSession.SharedInstance();
+        if (OperatingSystem.IsMacCatalyst()
+            || session.GetCategory() != AVAudioSessionCategory.PlayAndRecord)
+            return AudioOutputRoutes.None;
+
+        // iOS lists inputs, never outputs: a two-way device shows up as its mic, and an
+        // output-only one only while it's the current output.
+        var outputs = session.CurrentRoute.Outputs;
+        var routes = new List<AudioOutputRoute>();
+        var hasReceiver = UIDevice.CurrentDevice.UserInterfaceIdiom == UIUserInterfaceIdiom.Phone;
+        // Wired headphones take the output from the receiver, and there's no switching back.
+        if (hasReceiver && outputs.All(x => x.PortType != AVAudioSession.PortHeadphones))
+            routes.Add(PhoneRoute);
+        routes.Add(SpeakerRoute);
+        foreach (var input in session.AvailableInputs ?? []) {
+            if (input.PortType != AVAudioSession.PortBuiltInMic)
+                routes.Add(ToRoute(input));
+        }
+
+        // While Bluetooth is switched off iOS reports no device at all - so the ones seen just
+        // before the earpiece pick are carried over, or the device would drop off the menu the
+        // moment it's stepped away from and there'd be no way back to it. One unplugged
+        // meanwhile lingers until the next pick, which then fails and clears it.
+        if (Volatile.Read(ref _isBluetoothOff) != 0)
+            routes.AddRange(Volatile.Read(ref _externalRoutes).Where(x => routes.All(y => y.Id != x.Id)));
+        else
+            Volatile.Write(ref _externalRoutes,
+                routes.Where(x => x.Kind is not (AudioOutputKind.Phone or AudioOutputKind.Speaker)).ToArray());
+
+        var current = outputs.FirstOrDefault();
+        if (current is null)
+            return new AudioOutputRoutes(routes, "");
+
+        var currentId = GetRouteId(current, routes);
+        if (currentId is null && IsExternalPort(current.PortType)) {
+            var route = ToRoute(current);
+            routes.Add(route);
+            currentId = route.Id;
+        }
+        return new AudioOutputRoutes(routes, currentId ?? "");
+
+        static string? GetRouteId(AVAudioSessionPortDescription output, List<AudioOutputRoute> routes) {
+            if (output.PortType == AVAudioSession.PortBuiltInReceiver)
+                return PhoneRoute.Id;
+            if (output.PortType == AVAudioSession.PortBuiltInSpeaker)
+                return SpeakerRoute.Id;
+
+            // A headset's mic and its output are two ports with different UIDs and names.
+            // TODO: looks like a candidate for a  AVAudioSessionPortDescriptionExt
+            var kind = output.GetOutputKind();
+            var route = routes.FirstOrDefault(x => x.Id == output.UID)
+                ?? routes.FirstOrDefault(x => x.Kind == kind
+                    && (kind == AudioOutputKind.Headphones || x.Name == output.PortName));
+            return route?.Id;
+        }
+
+        static AudioOutputRoute ToRoute(AVAudioSessionPortDescription port) {
+            // A wired port's name is "Headset Microphone" or "Headphones" - the kind says it better.
+            var kind = port.GetOutputKind();
+            return new AudioOutputRoute(port.UID, kind, kind == AudioOutputKind.Headphones ? "" : port.PortName);
+        }
+    }
 
     private static bool IsExternalPort(NSString portType)
         => portType == AVAudioSession.PortBluetoothA2DP
@@ -662,7 +865,9 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
     private void ConfigureUnsafe(AVAudioSession session, AudioFocusMode mode)
     {
         Log.LogInformation("Configure: mode={Mode}", mode);
-        if (mode is AudioFocusMode.Recording)
+        // A call on the line keeps the call's category whatever the focus mode: Playback and
+        // Ambient only ever reach the loudspeaker, so a muted call would lose the earpiece.
+        if (mode is AudioFocusMode.Recording || IsCallActive)
             ConfigureRecordingUnsafe(session, Owner, IsCallVideo);
         else if (mode is AudioFocusMode.Playback or AudioFocusMode.Listening)
             session.SetCategory(AVAudioSessionCategory.Playback).Assert($"{mode}: failed to set category");
@@ -672,31 +877,79 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
 
     private static void ConfigureRecordingUnsafe(AVAudioSession session, AudioSessionOwner owner, bool isCallVideo)
     {
-        // VoiceChat carries the PTT call's AEC under a PTT owner. VideoChat, not Default, for
-        // ours: SetVoiceProcessingEnabled replaces Default and drops DefaultToSpeaker with it.
-        // Default for a PTT playback: VoiceChat puts the loudspeaker on the telephony profile and
-        // the call volume, far too quiet for a hands-free listener - and a wake plays, it doesn't
-        // record, so it wants no AEC. A transmit re-prepares with VoiceChat when it begins.
-        var sessionMode = owner switch {
-            AudioSessionOwner.App => AVAudioSessionMode.VideoChat,
-            AudioSessionOwner.CallKit when isCallVideo => AVAudioSessionMode.VideoChat,
-            AudioSessionOwner.PttPlayback => AVAudioSessionMode.Default,
-            _ => AVAudioSessionMode.VoiceChat,
-        };
-        var options = AVAudioSessionCategoryOptions.AllowBluetooth
-            | AVAudioSessionCategoryOptions.AllowBluetoothA2DP;
-        // A CallKit voice call is the one case that wants the receiver, so it drops
-        // DefaultToSpeaker too - a phone call starts at the ear, not on the speaker.
-        if (MustPreferSpeaker(owner, isCallVideo))
-            options |= AVAudioSessionCategoryOptions.DefaultToSpeaker;
+        var sessionMode = GetSessionMode(owner, isCallVideo);
+        var options = GetCategoryOptions(owner, isCallVideo);
+        // Even identical values count as a change on a live session: they clear the port override
+        // and rebuild the voice path, so a mute mid-call would drop the call off the speaker.
+        if (IsConfiguredAs(session, sessionMode, options))
+            return;
+
         session.SetCategory(AVAudioSessionCategory.PlayAndRecord, sessionMode, options)
             .Assert("Recording: failed to set category");
         session.SetPreferredIOBufferDuration(Constants.Audio.OpusFrameDuration.TotalSeconds, out var error);
         error.Assert("Failed to set preferred IO buffer duration");
     }
 
+    private static AVAudioSessionMode GetSessionMode(AudioSessionOwner owner, bool isCallVideo)
+    {
+        // VideoChat always takes the loudspeaker - an override can't pull it back - so the
+        // earpiece needs VoiceChat, the telephony profile, whoever owns the session. A live call
+        // stays in it throughout, so a switch never swaps the mode on top of the output change.
+        if (IsCallActive || Volatile.Read(ref _selectedOutputId) == AudioOutputRoute.PhoneId)
+            return AVAudioSessionMode.VoiceChat;
+
+        // VoiceChat carries the PTT call's AEC under a PTT owner. VideoChat, not Default, for
+        // ours: SetVoiceProcessingEnabled replaces Default and drops DefaultToSpeaker with it.
+        // Default for a PTT playback: VoiceChat puts the loudspeaker on the telephony profile and
+        // the call volume, far too quiet for a hands-free listener - and a wake plays, it doesn't
+        // record, so it wants no AEC. A transmit re-prepares with VoiceChat when it begins.
+        return owner switch {
+            AudioSessionOwner.App => AVAudioSessionMode.VideoChat,
+            AudioSessionOwner.CallKit when isCallVideo => AVAudioSessionMode.VideoChat,
+            AudioSessionOwner.PttPlayback => AVAudioSessionMode.Default,
+            _ => AVAudioSessionMode.VoiceChat,
+        };
+    }
+
+    private static bool IsConfiguredAs(
+        AVAudioSession session, AVAudioSessionMode mode, AVAudioSessionCategoryOptions options)
+    {
+        const AVAudioSessionCategoryOptions ownOptions = AVAudioSessionCategoryOptions.DefaultToSpeaker
+            | AVAudioSessionCategoryOptions.AllowBluetooth
+            | AVAudioSessionCategoryOptions.AllowBluetoothA2DP;
+        return session.GetCategory() == AVAudioSessionCategory.PlayAndRecord
+            && session.GetMode() == mode
+            && (session.CategoryOptions & ownOptions) == options;
+    }
+
+    private static AVAudioSessionCategoryOptions GetCategoryOptions(AudioSessionOwner owner, bool isCallVideo)
+    {
+        // A connected Bluetooth device holds the output whatever the override says, so the earpiece
+        // is only reachable with the option gone, and it has to stay gone: restoring it hands the
+        // route straight back. The device leaves AvailableInputs with it - hence the listing below.
+        // Only with a device actually connected: dropping the option rebuilds the category, which
+        // costs about 1.5s, and the earpiece needs nothing of the sort when nothing outranks it.
+        // SelectOutputRoute decides when that applies.
+        if (Volatile.Read(ref _isBluetoothOff) != 0)
+            return default;
+
+        var options = AVAudioSessionCategoryOptions.AllowBluetooth
+            | AVAudioSessionCategoryOptions.AllowBluetoothA2DP;
+        // A live call leaves the speaker to the port override: flipping DefaultToSpeaker is a
+        // category change, which costs a second of rebuilt voice path on every switch.
+        // A CallKit voice call is the one case that wants the receiver, so it drops
+        // DefaultToSpeaker too - a phone call starts at the ear, not on the speaker.
+        if (!IsCallActive && MustPreferSpeaker(owner, isCallVideo))
+            options |= AVAudioSessionCategoryOptions.DefaultToSpeaker;
+        return options;
+    }
+
     private static bool MustPreferSpeaker(AudioSessionOwner owner, bool isCallVideo)
-        => owner != AudioSessionOwner.CallKit || isCallVideo;
+        // A voice call starts at the ear, like a phone call, whoever owns the session; a video
+        // call on the speaker, since the phone is held out to be seen. Anything else - a voice
+        // message, PTT - keeps the speaker.
+        => Volatile.Read(ref _selectedOutputId) != PhoneRoute.Id
+            && (!(IsCallActive || owner == AudioSessionOwner.CallKit) || isCallVideo);
 }
 
 /// <summary>

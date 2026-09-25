@@ -51,9 +51,6 @@ public class AudioFocusUI : ProcessorBase
         // Whether the focus we hold actually took the communication route. ActiveMode no longer
         // implies it: a recording under car projection asks for Media usage and stays in Normal.
         => false;
-    public virtual bool CanRouteToEarpiece => false;
-
-    public event Action? OutputDevicesChanged;
 
     public virtual Task<AudioFocusScope?> TryAcquire(AudioFocusRequester requester)
         => Task.FromResult<AudioFocusScope?>(FakeScope.Instance);
@@ -84,9 +81,13 @@ public class AudioFocusUI : ProcessorBase
         // EnsureOutputRoute, this must never fall back to a Bluetooth device.
         => Task.CompletedTask;
 
-    public virtual Task SetCallAudioRoute(CallAudioRoute? route)
-        // Non-null while a call is on: all its audio then takes the communication route, and the route only picks
-        // the device. A call's playback is one long track, so its usage can't follow a focus change mid-call.
+    public virtual void SetCallActive(bool isCallActive, bool hasVideo)
+    { }
+
+    // Null where the platform picks the output on its own and offers nothing to choose from.
+    public virtual IState<AudioOutputRoutes>? OutputRoutes => null;
+
+    public virtual Task SelectOutputRoute(string routeId)
         => Task.CompletedTask;
 
     public virtual AudioFocusDiagnostics GetDiagnostics()
@@ -94,15 +95,6 @@ public class AudioFocusUI : ProcessorBase
 
     public virtual AudioOutputKind? GetCurrentOutputKind()
         => null;
-
-    public virtual AudioOutputKind? GetExternalOutputKind()
-        // A connected headset, whether or not audio is routed to it right now.
-        => null;
-
-    // Protected/internal methods
-
-    protected void RaiseOutputDevicesChanged()
-        => OutputDevicesChanged?.Invoke();
 
     // Nested types
 
@@ -115,12 +107,6 @@ public class AudioFocusUI : ProcessorBase
     }
 }
 
-/// <summary>
-/// Where a call's audio goes: a connected headset unless <see cref="IsBuiltinForced"/>,
-/// otherwise the earpiece or the loudspeaker. The default is the headset, then the loudspeaker.
-/// </summary>
-public readonly record struct CallAudioRoute(bool IsEarpiece, bool IsBuiltinForced);
-
 public enum AudioOutputKind
 {
     Phone,
@@ -129,6 +115,36 @@ public enum AudioOutputKind
     Bluetooth,
     Car,
     Other,
+}
+
+/// <summary>
+/// A device call audio can play through. <see cref="Name"/> is the device's own name,
+/// empty where the kind alone names it.
+/// </summary>
+public sealed record AudioOutputRoute(string Id, AudioOutputKind Kind, string Name = "")
+{
+    // The built-in pair is always reachable, so it's addressable without a listing to look it up in.
+    public const string PhoneId = "phone";
+    public const string SpeakerId = "speaker";
+}
+
+/// <summary>
+/// The outputs call audio can be switched between right now, and the one it plays through.
+/// </summary>
+public sealed record AudioOutputRoutes(IReadOnlyList<AudioOutputRoute> Routes, string CurrentId)
+{
+    public static readonly AudioOutputRoutes None = new([], "");
+
+    public AudioOutputRoute? Current => Routes.FirstOrDefault(x => x.Id == CurrentId);
+    public bool HasExternal => Routes.Any(x => x.Kind is not (AudioOutputKind.Phone or AudioOutputKind.Speaker));
+
+    public bool Equals(AudioOutputRoutes? other)
+        => other is not null
+            && CurrentId == other.CurrentId
+            && Routes.SequenceEqual(other.Routes);
+
+    public override int GetHashCode()
+        => HashCode.Combine(CurrentId, Routes.Count);
 }
 
 /// <summary>

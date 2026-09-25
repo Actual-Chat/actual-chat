@@ -1,0 +1,58 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedMenuBase<AppUIHub, AudioOutputRoutes>
+@{
+    var m = State.Value;
+    if (m.Routes.Count == 0)
+        return;
+}
+
+<div class="audio-output-menu">
+    @foreach (var route in m.Routes) {
+        var isSelected = route.Id == m.CurrentId;
+        <MenuEntry
+            Class="@(isSelected ? "selected" : "")"
+            Icon="@route.GetIcon()"
+            Click="@(() => OnClick(route.Id))">
+            <TextContent>
+                <span class="c-name">@Title(route)</span>
+                @if (isSelected) {
+                    <i class="icon-checkmark-simple c-check"></i>
+                }
+            </TextContent>
+        </MenuEntry>
+    }
+</div>
+
+@code {
+    private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
+
+    protected override ComputedState<AudioOutputRoutes>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<AudioOutputRoutes>.Options() {
+                InitialValue = AudioOutputRoutes.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<AudioOutputRoutes> ComputeState(CancellationToken cancellationToken) {
+        var m = AudioFocusUI.OutputRoutes is { } outputRoutes
+            ? await outputRoutes.Use(cancellationToken).ConfigureAwait(false)
+            : AudioOutputRoutes.None;
+        Hub.LogFor(GetType()).LogInformation("AudioOutputMenu: {Count} route(s), current={CurrentId}",
+            m.Routes.Count, m.CurrentId);
+        return m;
+    }
+
+    private Task OnClick(string routeId) {
+        _ = Hub.TuneUI.Play(Tune.ClickButton);
+        return AudioFocusUI.SelectOutputRoute(routeId);
+    }
+
+    private string Title(AudioOutputRoute route)
+        => route.Kind switch {
+            AudioOutputKind.Phone => L.Call_AudioOutputPhone,
+            AudioOutputKind.Speaker => L.Call_AudioOutputSpeaker,
+            _ when !route.Name.IsNullOrEmpty() => route.Name,
+            AudioOutputKind.Bluetooth => L.Call_AudioOutputBluetooth,
+            _ => L.Call_AudioOutputHeadphones,
+        };
+}

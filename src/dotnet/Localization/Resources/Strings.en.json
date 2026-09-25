@@ -2059,6 +2059,8 @@
   "Call_IncomingVideo": "Incoming video call",
   "Call_Outgoing": "Outgoing call",
   "Call_InCall": "In call",
+  // Where call audio plays: the call screen's speaker button and its menu. "Phone" is the
+  // phone's own earpiece, as opposed to its loudspeaker or a headset.
   "Call_AudioOutputSpeaker": "Speaker",
   "Call_AudioOutputPhone": "Phone",
   "Call_AudioOutputBluetooth": "Bluetooth",

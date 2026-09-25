@@ -154,6 +154,11 @@ body.touch-capable .full-screen-call-view .c-hints {
 .full-screen-call-view .c-toolbar .btn-video-panel.btn-h {
     @apply w-12 h-12;
 }
+/* Lit whenever the sound leaves the earpiece: speaker, headset or car. */
+.full-screen-call-view .c-toolbar .btn-video-panel.btn-h.c-speaker.on {
+    @apply bg-pal-blue-50-50;
+    @apply text-pal-blue-95;
+}
 /* Record button — styled like the video panel's full-screen footer record button. */
 .full-screen-call-view .c-toolbar > button.btn-rec {
     background: linear-gradient(180deg, #C60077 -18.32%, #2970FF 132%);
@@ -191,11 +196,17 @@ body.touch-capable .full-screen-call-view .c-hints {
     animation-play-state: paused;
 }
 
-/* Audio output menu (rendered by global MenuHost) */
-.call-audio-output-menu {
-    @apply flex-y min-w-[12rem];
+/* Output picker menu: the device's own icon leads, the current route carries the checkmark at
+   the row's end. Narrow layout line-clamps the label, which makes the row a -webkit-box and
+   outranks a plainer selector - hence the item in the middle and the explicit display. */
+.audio-output-menu .ac-menu-item .ac-menu-text {
+    @apply flex-x items-center gap-x-2 text-left;
+    display: flex;
+    -webkit-line-clamp: unset;
 }
-.call-audio-output-menu .ac-menu-item.selected .ac-menu-icon > i,
-.call-audio-output-menu .ac-menu-item.selected .ac-menu-text {
-    @apply text-primary;
+.audio-output-menu .ac-menu-item .c-name {
+    @apply truncate;
+}
+.audio-output-menu .ac-menu-item .c-check {
+    @apply ml-auto shrink-0 text-lg text-03;
 }
