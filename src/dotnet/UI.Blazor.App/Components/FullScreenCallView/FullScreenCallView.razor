@@ -7,6 +7,8 @@
     var m = State.Value;
     if (m.Chat is not { } chat)
         return;
+
+    var reactionsMenuRef = MenuRef.New<CallReactionsMenu>(chat.Id.Value).ToString();
 }
 
 <div class="full-screen-call-view @(m.Phase == CallPhase.Ringing ? "ringing" : "in-call")">
@@ -15,6 +17,9 @@
                   IsSquare="@true" IsBlurred="@true" ShowFullSizeAvatar="@true" HideTitle="@true"/>
     </div>
     <div class="c-scrim"></div>
+    @if (m.Phase != CallPhase.Ringing) {
+        <CallReactionsOverlay ChatId="@chat.Id"/>
+    }
 
     @if (m.Phase == CallPhase.Ringing) {
         <div class="c-topbar c-brand">
@@ -159,6 +164,15 @@
                         </HeaderButton>
                     }
                 }
+                @if (m.CanReact) {
+                    <HeaderButton
+                        Class="@("btn-video-panel btn-react " + (m.IsOwnHandRaised ? "on" : ""))"
+                        data-menu="@reactionsMenuRef"
+                        data-menu-trigger="@MenuTrigger.Primary"
+                        data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
+                        <i class="@(m.IsOwnHandRaised ? "icon-hand" : "icon-add-reaction") text-lg"></i>
+                    </HeaderButton>
+                }
                 <HeaderButton Class="btn-video-panel" Click="@OnOptionsClick">
                     <i class="icon-options-2 text-lg"></i>
                 </HeaderButton>
@@ -175,6 +189,7 @@
     private DotNetObjectReference<FullScreenCallView>? _dotNetRef;
     private IJSObjectReference? _swipeRef;
     private CallScreensUI CallScreensUI => Hub.CallScreensUI;
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
@@ -270,11 +285,15 @@
             : null;
         var isCameraOn = await ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
         var isScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false);
+        var canReact = await LiveSessionUI.CanReact(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnHandRaised = await LiveSessionUI.IsOwnHandRaised(chatId, cancellationToken).ConfigureAwait(false);
         return m with {
             IsRecording = recordingChatId == chatId,
             JoinedAt = joinedAt,
             IsCameraOn = isCameraOn,
             IsScreenCasting = isScreenCasting,
+            CanReact = canReact,
+            IsOwnHandRaised = isOwnHandRaised,
         };
     }
 
@@ -377,6 +396,8 @@
         public bool IsCameraOn { get; init; }
         public bool IsScreenCasting { get; init; }
         public AudioOutputRoutes OutputRoutes { get; init; } = AudioOutputRoutes.None;
+        public bool CanReact { get; init; }
+        public bool IsOwnHandRaised { get; init; }
         // False when this is the narrow-layout foreground screen rather than the real over-lock one.
         public bool IsOverLock { get; init; }
     }

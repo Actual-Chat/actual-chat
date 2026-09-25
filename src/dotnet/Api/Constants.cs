@@ -401,6 +401,10 @@ public static partial class Constants
         // even if the caller disconnects and nobody polls GetState. Longer than RingTimeout so the
         // observed path marks it Missed first; a status change rewrites the field without this TTL.
         public static readonly TimeSpan RingTtl = TimeSpan.FromSeconds(60);
+        // How long an emoji reaction stays listed; the UI floats it for a fraction of that.
+        public static readonly TimeSpan ReactionDuration = TimeSpan.FromSeconds(5);
+        // An author's reactions closer together than this are dropped, so spam can't churn every viewer's list.
+        public static readonly TimeSpan ReactionMinInterval = TimeSpan.FromSeconds(0.5);
     }
 
     public static class Notification

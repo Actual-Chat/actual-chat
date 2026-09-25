@@ -203,6 +203,35 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         await Backend.SetHost(chatId, targetAuthorId, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task SetHandRaised(
+        Session session,
+        ChatId chatId,
+        AuthorId targetAuthorId,
+        bool isRaised,
+        CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        RequireNotPeerChatForHands(chatId);
+        if (chat.Rules.Author?.Id != targetAuthorId) {
+            if (isRaised)
+                throw StandardError.Constraint("You can't raise another participant's hand.");
+
+            var authority = await GetCallAuthority(session, chatId, cancellationToken).ConfigureAwait(false);
+            authority.RequireManage();
+        }
+
+        await Backend.SetHandRaised(chatId, targetAuthorId, isRaised, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task LowerAllHands(Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        RequireNotPeerChatForHands(chatId);
+        var authority = await GetCallAuthority(session, chatId, cancellationToken).ConfigureAwait(false);
+        authority.RequireManage();
+        await Backend.LowerAllHands(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task StartCall(
         Session session,
         ChatId chatId,
@@ -423,6 +452,12 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         // A 1:1 conversation has no host in any meaningful sense - neither side may silence the other.
         if (chatId is PeerChatId)
             throw StandardError.Constraint("You cannot mute another participant in a one-on-one chat.");
+    }
+
+    private static void RequireNotPeerChatForHands(ChatId chatId)
+    {
+        if (chatId is PeerChatId)
+            throw StandardError.Constraint("Raising a hand isn't available in a one-on-one chat.");
     }
 
     // Nested types

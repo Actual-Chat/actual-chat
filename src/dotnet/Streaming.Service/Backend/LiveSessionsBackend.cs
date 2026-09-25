@@ -195,6 +195,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 IsMicOpen = m.IsMicOpen || isRecorder,
                 IsListening = m.IsListening || isListener,
                 MicMuted = info.MicMuted,
+                HandRaisedAt = info.HandRaisedAt,
                 // RegisteredAt is a liveness stamp rewritten by every heartbeat - only the fallback
                 // for participation records written before JoinedAt existed.
                 JoinedAt = info.JoinedAt == default ? info.RegisteredAt : info.JoinedAt,
@@ -213,8 +214,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         var members = byAuthor.Values
             .Select(m => m with {
                 Group = m.AuthorId == host || ownerIds.Contains(m.AuthorId) ? MemberGroup.Host
-                    : m.IsMicOpen || m.HasCamera || m.HasScreenShare || m.IsListening ? MemberGroup.Other
+                    : m.IsPresent ? MemberGroup.Other
                     : MemberGroup.Exited,
+                // Only present members show a hand: a crashed client's record lingers for ParticipantStaleness
+                HandRaisedAt = m.IsPresent ? m.HandRaisedAt : null,
             })
             // Without the tie-breaks the order is byAuthor's insertion order, i.e. Redis HGETALL
             // order - it reshuffles the list on every recompute. AuthorId breaks the JoinedAt tie
@@ -370,12 +373,17 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         using (Computed.BeginIsolation())
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
             if (isActive) {
-                // Preserve mute flags and the original join time across heartbeats / kind changes:
-                // RegisteredAt is refreshed by every heartbeat, so it can't double as JoinedAt.
+                // Preserve mute flags, the raised hand and the original join time across heartbeats / kind
+                // changes: RegisteredAt is refreshed by every heartbeat, so it can't double as JoinedAt.
                 var now = Clocks.SystemClock.Now;
                 var existing = await SafeGetParticipant(chatId, authorId).ConfigureAwait(false);
-                var joinedAt = existing is { JoinedAt: var j } && j != default ? j : now;
-                var info = new ParticipationInfo(kind, now, existing?.MicMuted ?? false, joinedAt);
+                var info = existing is null
+                    ? new ParticipationInfo(kind, now, JoinedAt: now)
+                    : existing with {
+                        Kind = kind,
+                        RegisteredAt = now,
+                        JoinedAt = existing.JoinedAt != default ? existing.JoinedAt : now,
+                    };
                 await _participants.Set(chatId.Value, authorId.Value, info).ConfigureAwait(false);
                 // The participants hash refreshes its own TTL on write, but the session state key only
                 // does so on Set - which a steady-state session never reaches. Without this the state
@@ -503,6 +511,48 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         };
         await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
         InvalidateState(chatId);
+    }
+
+    public virtual async Task SetHandRaised(
+        ChatId chatId,
+        AuthorId authorId,
+        bool isRaised,
+        CancellationToken cancellationToken)
+    {
+        using var _ = Computed.BeginIsolation();
+        using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
+
+        var existing = await SafeGetParticipant(chatId, authorId).ConfigureAwait(false);
+        if (existing is null || (existing.HandRaisedAt is not null) == isRaised)
+            return;
+
+        if (isRaised) {
+            // A hand is a LiveSession member's state, so it exists only where Get returns a session
+            var state = await SafeGet(chatId).ConfigureAwait(false);
+            if (state is null || (state.SessionStartedAt is null && !state.IsCall))
+                return;
+        }
+
+        var info = existing with { HandRaisedAt = isRaised ? Clocks.SystemClock.Now : null };
+        await _participants.Set(chatId.Value, authorId.Value, info).ConfigureAwait(false);
+        InvalidateGet(chatId);
+    }
+
+    public virtual async Task LowerAllHands(ChatId chatId, CancellationToken cancellationToken)
+    {
+        using var _ = Computed.BeginIsolation();
+        using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
+
+        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
+        foreach (var (authorIdValue, info) in participants) {
+            if (info?.HandRaisedAt is null)
+                continue;
+
+            await _participants
+                .Set(chatId.Value, authorIdValue, info with { HandRaisedAt = null })
+                .ConfigureAwait(false);
+        }
+        InvalidateGet(chatId);
     }
 
     public virtual async Task UpdateSummary(
@@ -1260,9 +1310,11 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     private async Task EnsureParticipant(ChatId chatId, AuthorId authorId)
     {
         var existing = await SafeGetParticipant(chatId, authorId).ConfigureAwait(false);
+        var now = Clocks.SystemClock.Now;
         // Preserve the client's real kind — a trailing utterance must not flip a now-listening author back to Record.
-        var kind = existing?.Kind ?? ParticipationKind.Record;
-        var info = new ParticipationInfo(kind, Clocks.SystemClock.Now, existing?.MicMuted ?? false);
+        var info = existing is null
+            ? new ParticipationInfo(ParticipationKind.Record, now, JoinedAt: now)
+            : existing with { RegisteredAt = now };
         await _participants.Set(chatId.Value, authorId.Value, info).ConfigureAwait(false);
         InvalidateListParticipants(chatId);
         InvalidateHasRecorder(chatId);
@@ -1940,5 +1992,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         [property: DataMember(Order = 0), Key(0)] ParticipationKind Kind,
         [property: DataMember(Order = 1), Key(1)] Moment RegisteredAt,
         [property: DataMember(Order = 2), Key(2)] bool MicMuted = false,
-        [property: DataMember(Order = 3), Key(3)] Moment JoinedAt = default);
+        [property: DataMember(Order = 3), Key(3)] Moment JoinedAt = default,
+        [property: DataMember(Order = 4), Key(4)] Moment? HandRaisedAt = null);
 }

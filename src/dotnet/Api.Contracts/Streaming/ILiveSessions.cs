@@ -71,6 +71,14 @@ public interface ILiveSessions : IComputeService
         CancellationToken cancellationToken);
     Task MuteAll(Session session, ChatId chatId, bool muted, CancellationToken cancellationToken);
     Task SetHost(Session session, ChatId chatId, AuthorId targetAuthorId, CancellationToken cancellationToken);
+    // Anyone raises or lowers their own hand; only the host, an Owner or a Moderator lowers someone else's.
+    Task SetHandRaised(
+        Session session,
+        ChatId chatId,
+        AuthorId targetAuthorId,
+        bool isRaised,
+        CancellationToken cancellationToken);
+    Task LowerAllHands(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     // Voice-call ring lifecycle (StartCall invitees empty = every other chat member).
     // Caller methods

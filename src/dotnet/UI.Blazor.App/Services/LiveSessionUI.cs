@@ -1,3 +1,4 @@
+using ActualChat.Comparison;
 using ActualChat.Localization;
 using ActualChat.Live;
 using ActualChat.Streaming;
@@ -18,9 +19,15 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     // How long a mute verdict must survive before it stops a recording - long enough for a
     // peer's own mute lift to come back from the server, short enough to feel immediate.
     private static readonly TimeSpan MuteEnforcementDelay = TimeSpan.FromSeconds(1);
+    // How long an own raise / lower shows ahead of the server echo; a raise the server ignored
+    // (no session latched yet) snaps back once it runs out.
+    private static readonly TimeSpan PendingOwnHandTimeout = TimeSpan.FromSeconds(5);
 
     private readonly ConcurrentDictionary<ChatId, Conversation?> _lastConversations = new();
     private readonly ConcurrentDictionary<ChatId, LiveBlockState?> _lastBlockStates = new();
+    private readonly ConcurrentDictionary<ChatId, bool> _ownHandIntents = new();
+    private readonly MutableState<(ChatId ChatId, bool IsRaised)?> _pendingOwnHand
+        = hub.StateFactory.NewMutable(default((ChatId ChatId, bool IsRaised)?));
 
     private ILiveSessions LiveSessions => Hub.LiveSessions;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
@@ -90,6 +97,88 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     public Task SetHost(ChatId chatId, AuthorId targetAuthorId, CancellationToken cancellationToken)
         => LiveSessions.SetHost(Session, chatId, targetAuthorId, cancellationToken);
 
+    // Consolidated, like the two below: they all project Get, which changes on every stream and mic flip.
+    [ComputeMethod(ConsolidationDelay = 0, ConsolidationComparer = typeof(ApiArrayComparer<AuthorId>))]
+    public virtual async Task<ApiArray<AuthorId>> ListRaisedHandAuthorIds(
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var live = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        return live is null
+            ? default
+            : live.Members
+                .Where(m => m.IsHandRaised)
+                .OrderBy(m => m.HandRaisedAt)
+                .Select(m => m.AuthorId)
+                .ToApiArray();
+    }
+
+    [ComputeMethod(ConsolidationDelay = 0)]
+    public virtual async Task<bool> CanReact(ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (chatId.Kind == ChatKind.Peer)
+            return false;
+
+        var me = await GetOwnMember(chatId, cancellationToken).ConfigureAwait(false);
+        return me is { IsPresent: true };
+    }
+
+    [ComputeMethod(ConsolidationDelay = 0)]
+    public virtual async Task<bool> IsOwnHandRaised(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var pending = await _pendingOwnHand.Use(cancellationToken).ConfigureAwait(false);
+        if (pending is { } p && p.ChatId == chatId)
+            return p.IsRaised;
+
+        var me = await GetOwnMember(chatId, cancellationToken).ConfigureAwait(false);
+        return me is { IsHandRaised: true };
+    }
+
+    public async Task SetOwnHandRaised(ChatId chatId, bool isRaised, CancellationToken cancellationToken)
+    {
+        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (ownAuthor is null)
+            return;
+
+        _ownHandIntents[chatId] = isRaised;
+        _pendingOwnHand.Value = (chatId, isRaised);
+        try {
+            await LiveSessions.SetHandRaised(Session, chatId, ownAuthor.Id, isRaised, cancellationToken)
+                .ConfigureAwait(false);
+            var cMe = await Computed
+                .Capture(() => GetOwnMember(chatId, cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
+            await cMe
+                .When(me => me is { IsHandRaised: var x } && x == isRaised, cancellationToken)
+                .WaitAsync(PendingOwnHandTimeout, cancellationToken)
+                .SilentAwait(false);
+        }
+        finally {
+            if (_pendingOwnHand.Value == (chatId, isRaised))
+                _pendingOwnHand.Value = null;
+        }
+    }
+
+    public Task LowerHand(ChatId chatId, AuthorId targetAuthorId, CancellationToken cancellationToken)
+        => LiveSessions.SetHandRaised(Session, chatId, targetAuthorId, false, cancellationToken);
+
+    public Task LowerAllHands(ChatId chatId, CancellationToken cancellationToken)
+        => LiveSessions.LowerAllHands(Session, chatId, cancellationToken);
+
+    [ComputeMethod]
+    public virtual async Task<ApiArray<CallReaction>> ListReactions(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // While the RPC peer is down we stop receiving invalidations, so the last known value is stale.
+        var isConnected = await Hub.ConnectivityUI.IsConnected.Use(cancellationToken).ConfigureAwait(false);
+        if (!isConnected)
+            return default;
+
+        return await Hub.ChatCallReactions.List(Session, chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public Task SendReaction(ChatId chatId, Emoji emoji, CancellationToken cancellationToken)
+        => Hub.ChatCallReactions.Send(Session, chatId, emoji, cancellationToken);
+
     [ComputeMethod]
     public virtual async Task<bool> AmIInLiveConversation(ChatId chatId, CancellationToken cancellationToken)
     {
@@ -124,6 +213,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         var baseChains = new[] {
             AsyncChain.From(RunParticipationSync),
             AsyncChain.From(RunMuteEnforcement),
+            AsyncChain.From(RunHandLoweredNotice),
         };
         var retryDelays = RetryDelaySeq.Exp(0.5, 8);
         return (
@@ -217,6 +307,29 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             => computed.ValueOrDefault is { } chatId && !chatId.Value.IsNullOrEmpty();
     }
 
+    private async Task RunHandLoweredNotice(CancellationToken cancellationToken)
+    {
+        // Tells me when someone else - the host, an Owner or a Moderator - lowered my hand.
+        var cRaised = await Computed
+            .Capture(() => GetOwnRaisedHandChatIds(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        var raised = cRaised.ValueOrDefault ?? [];
+        while (!cancellationToken.IsCancellationRequested) {
+            await cRaised.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+            cRaised = await cRaised.Update(cancellationToken).ConfigureAwait(false);
+            // ValueOrDefault is null only when the computed errored: keep the last known set until it recovers.
+            if (cRaised.ValueOrDefault is not { } next)
+                continue;
+
+            foreach (var chatId in raised.Except(next)) {
+                // Leaving the call drops the hand too, and a hand I lowered myself needs no notice
+                if (IsInLiveConversation(chatId) && _ownHandIntents.TryRemove(chatId, out var isRaised) && isRaised)
+                    Hub.ToastUI.Show(L.Call_HandLowered, "icon-hand", ToastDismissDelay.Short);
+            }
+            raised = next;
+        }
+    }
+
     // Protected/internal methods
 
     // It's internal to be accessible from tests
@@ -231,16 +344,32 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         if (recording?.ChatId is not { } chatId || chatId.Value.IsNullOrEmpty())
             return null;
 
+        var me = await GetOwnMember(chatId, cancellationToken).ConfigureAwait(false);
+        return me is { MicMuted: true } ? chatId : null;
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<LiveSessionMember?> GetOwnMember(ChatId chatId, CancellationToken cancellationToken)
+    {
         var live = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (live is null)
             return null;
 
         var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (ownAuthor is null)
-            return null;
+        return ownAuthor is null ? null : live.Members.FirstOrDefault(m => m.AuthorId == ownAuthor.Id);
+    }
 
-        var me = live.Members.FirstOrDefault(m => m.AuthorId == ownAuthor.Id);
-        return me is { MicMuted: true } ? chatId : null;
+    [ComputeMethod]
+    protected virtual async Task<ImmutableHashSet<ChatId>> GetOwnRaisedHandChatIds(CancellationToken cancellationToken)
+    {
+        var participations = await GetMyParticipations(cancellationToken).ConfigureAwait(false);
+        var result = ImmutableHashSet.CreateBuilder<ChatId>();
+        foreach (var chatId in participations.Keys) {
+            var me = await GetOwnMember(chatId, cancellationToken).ConfigureAwait(false);
+            if (me is { IsHandRaised: true })
+                result.Add(chatId);
+        }
+        return result.ToImmutable();
     }
 
     [ComputeMethod]

@@ -16,9 +16,10 @@
     // local user can see they're broadcasting in two ways at once.
     var showDualIcons = isCameraSource && isOwnCameraRecording && isOwnScreenCasting;
     var labelIcon = isCameraSource ? "icon-video" : "icon-screen-share";
+    var handRaisedCls = IsHandRaised ? "hand-raised" : "";
 }
 
-<div @ref="Ref" class="video-track-player video-streaming-preview @Class @recordingCls @screenCastCls">
+<div @ref="Ref" class="video-track-player video-streaming-preview @Class @recordingCls @screenCastCls @handRaisedCls">
     <canvas class="remote-video-bg" aria-hidden="true"></canvas>
     @* Both surfaces carry the settings tap: CSS hides whichever one the active
        render backend isn't using, so only the visible one can be hit. *@
@@ -35,16 +36,24 @@
             <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
         </span>
     </div>
-    <div class="video-participant-label">
-        @if (showDualIcons) {
-            <i class="icon-screen-share"></i>
-            <i class="icon-video"></i>
-        } else {
-            <i class="@labelIcon"></i>
+    <div class="video-tile-caption">
+        <div class="video-participant-label">
+            @if (showDualIcons) {
+                <i class="icon-screen-share"></i>
+                <i class="icon-video"></i>
+            } else {
+                <i class="@labelIcon"></i>
+            }
+            <span>@L.ChatView_You</span>
+            <span class="video-fps" data-source-kind="@((int)SourceKind)"></span>
+        </div>
+        @if (IsHandRaised) {
+            <div class="video-hand-badge"><i class="icon-hand"></i></div>
         }
-        <span>@L.ChatView_You</span>
-        <span class="video-fps" data-source-kind="@((int)SourceKind)"></span>
     </div>
+    @if (IsHandRaised) {
+        <div class="video-hand-badge corner"><i class="icon-hand"></i></div>
+    }
     @if (m.LastErrorMessage is {} errorMessage && errorMessage.Length > 0) {
         <div class="video-error">
             <span>@errorMessage</span>
@@ -68,6 +77,7 @@
     [Parameter] public ChatId? SourceChatId { get; set; }
     [Parameter, EditorRequired] public VideoSourceKind SourceKind { get; set; }
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool IsHandRaised { get; set; }
 
     public override async ValueTask DisposeAsync() {
         ChatVideoUI.SuspendOwnStreamingPreview -= OnSuspendOwnStreamingPreview;

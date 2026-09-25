@@ -6,6 +6,7 @@
 }
 
 <VideoTrackPlayer StreamInfo="@StreamInfo" AuthorName="@m.AuthorName" FocusedClass="@Class"
+                  IsHandRaised="@IsHandRaised"
                   OnClick="@(() => OnTileClick.InvokeAsync(StreamInfo.AuthorId))" />
 
 @code {
@@ -14,6 +15,7 @@
     [Parameter, EditorRequired]
     public VideoStreamInfo StreamInfo { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool IsHandRaised { get; set; }
     [Parameter] public EventCallback<AuthorId> OnTileClick { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
