@@ -20,6 +20,13 @@
     var canEditChatType = !isThread && m.IsOwner;
     _chat = m.Chat;
     Context.Header = canEditChatPic ? RenderHero : null;
+    // Context.Header only re-renders the frame on a null<->non-null flip, so a fresh instance (after
+    // stepping back from an inner step) or an edit wouldn't refresh the hero. Force it when the chat
+    // version changes; a new instance starts at -1 and refreshes once, adopting its own live hero.
+    if (canEditChatPic && _heroVersion != m.Chat.Version) {
+        _heroVersion = m.Chat.Version;
+        _ = InvokeAsync(Context.Refresh);
+    }
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
@@ -120,6 +127,17 @@
     </div>
 </Form>
 
+@* Picker renders nothing and lives in the page body, not the hero fragment: a @ref inside a fragment the
+   frame renders can fail to rebind on a fresh instance, leaving it null so the hero button NREs. *@
+<ImageCropPicker @ref="_avatarPicker"
+    Scope="@_form!.ImageScope"
+    Title="@L.PicCrop_ChatPictureTitle"
+    CurrentPicture="@_form.Picture"
+    CurrentAvatarKey="@(_avatarKey ?? "")"
+    CurrentAvatarTitle="@_form.Title"
+    AvatarKind="@_avatarKind"
+    OnCropped="@OnImagePicked" />
+
 @code {
     private Form?_formRef;
     private FormModel? _form;
@@ -129,6 +147,7 @@
     private string? _avatarKey;
     private PlaceId? _placeId;
     private bool _isPlaceWelcomeChat;
+    private long _heroVersion = -1;
     private Chat _chat = null!;
 
     private RenderFragment RenderHero => @<div class="chat-settings-header">
@@ -164,14 +183,6 @@
                     <ButtonRound Class="btn-sm btn-tinted" Click="@(() => _avatarPicker!.Pick())">
                         <i class="icon-person-add-2 text-2xl"></i>
                     </ButtonRound>
-                    <ImageCropPicker @ref="_avatarPicker"
-                        Scope="@_form!.ImageScope"
-                        Title="@L.PicCrop_ChatPictureTitle"
-                        CurrentPicture="@_form.Picture"
-                        CurrentAvatarKey="@(_avatarKey ?? "")"
-                        CurrentAvatarTitle="@_form.Title"
-                        AvatarKind="@_avatarKind"
-                        OnCropped="@OnImagePicked" />
                 </div>
             }
         </div>
