@@ -11,6 +11,7 @@ public sealed class ChatSettings
     public LanguageDetectionSettings LanguageDetection { get; set; } = new ();
     public bool IsSummarizationEnabled { get; set; }
     public SummarizationSettings Summarization { get; set; } = new ();
+    public CoachSettings Coach { get; set; } = new ();
     public bool IsChatContentItemIndexingEnabled { get; set; }
     // How much of a chat's tail the describer reads. The lower bound is the client's - see
     // Constants.Chat.MinImageSuggestionEntries.
@@ -70,3 +71,17 @@ public class SummarizationSettings
         => words < MinConversationWords || entryCount < MinConversationEntries;
 }
 
+public class CoachSettings
+{
+    public bool IsEnabled { get; set; }
+    public string OpenAIModel { get; set; } = "gpt-5.6-luna";
+    public FilePath PromptFile { get; set; } = "coach-tag-speech.md";
+    public int PromptVersion { get; set; } = 1;
+    public TimeSpan HttpTimeout { get; set; } = TimeSpan.FromSeconds(60);
+    public double MinPauseSeconds { get; set; } = 1;
+    public double MaxResponseGapSeconds { get; set; } = 10;
+    public int BatchChunkWords { get; set; } = 2000;
+    public TimeSpan ConversationMaturity { get; set; } = TimeSpan.FromMinutes(10);
+    public TimeSpan MaxConversationWait { get; set; } = TimeSpan.FromHours(2);
+    public int MaxTaggerCallsPerUserPerDay { get; set; } = 500;
+}
