@@ -1,8 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Components.Settings
-@inherits SimpleStep<AppUIHub>;
+@inherits Step<AppUIHub, PermissionsState>;
 @{
     var m = _model;
+    var state = State.Value;
     if (CurrentStep != this || m is null)
         return;
 }
@@ -24,15 +25,16 @@
                 continue;
 
             var r = row;
+            var isGranted = r.IsGranted || (state.IsKnown && state.IsGranted(r.Kind));
             <div class="step-tile" @onclick="() => OnToggle(r, true)">
-                <i class="step-tile-icon @r.Icon @(r.IsGranted ? "on" : "")"></i>
+                <i class="step-tile-icon @r.Icon @(isGranted ? "on" : "")"></i>
                 <div class="step-tile-body">
                     <div class="step-tile-title">@r.Title</div>
                     <div class="step-tile-subtitle">@r.Rationale</div>
                 </div>
                 <Toggle
-                    IsChecked="@r.IsGranted"
-                    IsDisabled="@(r.IsGranted || _isRequesting)"
+                    IsChecked="@isGranted"
+                    IsDisabled="@(isGranted || _isRequesting)"
                     IsCheckedChanged="isOn => OnToggle(r, isOn)"/>
             </div>
         }
@@ -60,6 +62,7 @@
     private bool _isRequesting;
 
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
+    private PermissionsUI PermissionsUI => field ??= Services.GetRequiredService<PermissionsUI>();
     private IRecordingPermissionRequester RecordingPermissionRequester
         => field ??= Services.GetRequiredService<IRecordingPermissionRequester>();
 
@@ -67,6 +70,18 @@
 
     protected override async Task OnInitializedAsync()
         => _model = await PermissionStepModel.New(Services);
+
+    protected override ComputedState<PermissionsState>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<PermissionsState>.Options() {
+                InitialValue = PermissionsState.Unknown,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    // A grant made in the system settings page a toggle opens lands here on the return to the app
+    protected override Task<PermissionsState> ComputeState(CancellationToken cancellationToken)
+        => PermissionsUI.GetState(cancellationToken);
 
     protected override Task<bool> Validate()
         => Task.FromResult(_model != null);
