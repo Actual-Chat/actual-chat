@@ -90,3 +90,14 @@ body.hoverable .live-session-member-list .c-mic-btn:hover {
 body.hoverable .live-session-member-list .c-host-btn:hover {
     @apply bg-hover;
 }
+.live-session-member-list .c-hand-btn {
+    @apply flex items-center justify-center;
+    @apply rounded-full;
+    @apply text-primary;
+}
+body.hoverable .live-session-member-list .c-hand-btn:hover {
+    @apply bg-hover;
+}
+.live-session-member-list .c-member-state i.c-hand {
+    @apply text-primary;
+}

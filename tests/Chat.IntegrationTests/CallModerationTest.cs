@@ -250,6 +250,77 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
         (await IsMuted(call.ChatId, call.MemberAuthorId)).Should().BeTrue();
     }
 
+    [Fact]
+    public async Task PlainMemberCanRaiseAndLowerOwnHand()
+    {
+        // arrange
+        var call = await ArrangeCall();
+
+        // act
+        await LiveSessions(Member).SetHandRaised(Member.Session, call.ChatId, call.MemberAuthorId, true, default);
+        await WhenHandRaised(call.ChatId, call.MemberAuthorId);
+        await LiveSessions(Member).SetHandRaised(Member.Session, call.ChatId, call.MemberAuthorId, false, default);
+
+        // assert
+        await WhenHandRaised(call.ChatId, call.MemberAuthorId, false);
+    }
+
+    [Fact]
+    public async Task ModeratorCanLowerAnothersHandButPlainMemberCannot()
+    {
+        // arrange
+        var call = await ArrangeCall();
+        await PromoteToModerator(call.ModeratorAuthorId);
+        await WaitForModerate(Moderator, call.ChatId);
+        await LiveSessions(Owner).SetHandRaised(Owner.Session, call.ChatId, call.OwnerAuthorId, true, default);
+        await LiveSessions(Member).SetHandRaised(Member.Session, call.ChatId, call.MemberAuthorId, true, default);
+
+        // act
+        var memberLowersOwner = () => LiveSessions(Member)
+            .SetHandRaised(Member.Session, call.ChatId, call.OwnerAuthorId, false, default);
+        await LiveSessions(Moderator)
+            .SetHandRaised(Moderator.Session, call.ChatId, call.MemberAuthorId, false, default);
+
+        // assert
+        await memberLowersOwner.Should().ThrowAsync<Exception>();
+        await WhenHandRaised(call.ChatId, call.OwnerAuthorId);
+        await WhenHandRaised(call.ChatId, call.MemberAuthorId, false);
+    }
+
+    [Fact]
+    public async Task NobodyCanRaiseAnothersHand()
+    {
+        // arrange
+        var call = await ArrangeCall();
+
+        // act
+        var raiseMembersHand = () => LiveSessions(Owner)
+            .SetHandRaised(Owner.Session, call.ChatId, call.MemberAuthorId, true, default);
+
+        // assert
+        await raiseMembersHand.Should().ThrowAsync<Exception>();
+        await WhenHandRaised(call.ChatId, call.MemberAuthorId, false);
+    }
+
+    [Fact]
+    public async Task OnlyAControllerCanLowerAllHands()
+    {
+        // arrange
+        var call = await ArrangeCall();
+        await LiveSessions(Member).SetHandRaised(Member.Session, call.ChatId, call.MemberAuthorId, true, default);
+        await LiveSessions(Moderator)
+            .SetHandRaised(Moderator.Session, call.ChatId, call.ModeratorAuthorId, true, default);
+
+        // act
+        var memberLowersAll = () => LiveSessions(Member).LowerAllHands(Member.Session, call.ChatId, default);
+        await memberLowersAll.Should().ThrowAsync<Exception>();
+        await LiveSessions(Owner).LowerAllHands(Owner.Session, call.ChatId, default);
+
+        // assert
+        await WhenHandRaised(call.ChatId, call.MemberAuthorId, false);
+        await WhenHandRaised(call.ChatId, call.ModeratorAuthorId, false);
+    }
+
     // Private methods
 
     private async Task<CallSetup> ArrangeCall()
@@ -299,6 +370,20 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
         return MicMuted(computed.Value, authorId);
     }
 
+    private Task WhenHandRaised(
+        ChatId chatId,
+        AuthorId authorId,
+        bool expected = true,
+        [CallerFilePath] string callerFilePath = "",
+        [CallerLineNumber] int callerLine = 0)
+    {
+        var backend = Backend(Owner);
+        return TestWait.When(async ct => {
+            var live = await backend.Get(chatId, ct);
+            HandRaised(live, authorId).Should().Be(expected);
+        }, callerFilePath: callerFilePath, callerLine: callerLine);
+    }
+
     private static async Task WaitForModerate(WebClientTester tester, ChatId chatId)
     {
         var chats = tester.AppServices.GetRequiredService<IChats>();
@@ -312,6 +397,8 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
         => tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
     private static bool MicMuted(LiveSession? live, AuthorId authorId)
         => live?.Members.FirstOrDefault(x => x.AuthorId == authorId)?.MicMuted ?? false;
+    private static bool HandRaised(LiveSession? live, AuthorId authorId)
+        => live?.Members.FirstOrDefault(x => x.AuthorId == authorId)?.IsHandRaised ?? false;
 
     // Nested types
 

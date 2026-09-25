@@ -65,6 +65,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallMessageView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallModalHeader>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallReactionsMenu>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallReactionsOverlay>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CameraMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CarAudioSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivities>();
@@ -893,6 +895,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.CallMessageView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CallModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CallModalHeader), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CallReactionsMenu), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CallReactionsOverlay), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CameraMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CarAudioSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivities), AotTypeKind.Component),

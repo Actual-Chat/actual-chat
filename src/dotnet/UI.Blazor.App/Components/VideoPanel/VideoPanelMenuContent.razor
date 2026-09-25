@@ -9,7 +9,7 @@
     var isCollapsed = a.Mode == VisualActivityPanelMode.Collapsed;
     var effectiveChatVisible = IsChatVisible ?? !a.IsNarrow;
     var hasLayoutActions = a.CanToggleFullscreen || a.CanToggleIsland || a.CanMinimize;
-    var hasStreamActions = a.CanSwitchCamera || a.CanToggleVideo || a.CanToggleScreenCast;
+    var hasStreamActions = a.CanSwitchCamera || a.CanToggleVideo || a.CanToggleScreenCast || CanReact;
     var hasSettingsActions = a.CanShowVideoSettings || a.CanShowVoiceSettings;
     var hasChatActions = a.CanToggleChatPanel;
     var hasDiagnosticsActions = a.CanShowDiagnostics;
@@ -61,6 +61,12 @@
                 Text="@(IsOwnScreenCasting ? L.Call_StopScreenShare : L.Call_ShareScreen)"
                 Click="@OnToggleScreenCast"/>
         }
+        @if (CanReact) {
+            <MenuEntry
+                Icon="icon-hand"
+                Text="@(IsOwnHandRaised ? L.Call_LowerHand : L.Call_RaiseHand)"
+                Click="@OnToggleHand"/>
+        }
     }
 
     @if ((hasLayoutActions || hasStreamActions) && hasSettingsActions) {
@@ -111,6 +117,8 @@
     [Parameter] public bool IsOwnRecording { get; set; }
     [Parameter] public bool IsOwnScreenCasting { get; set; }
     [Parameter] public bool? IsChatVisible { get; set; }
+    [Parameter] public bool CanReact { get; set; }
+    [Parameter] public bool IsOwnHandRaised { get; set; }
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
@@ -134,6 +142,9 @@
 
     private void OnToggleScreenCast()
         => ChatVideoUI.ToggleScreenCast(ChatId);
+
+    private Task OnToggleHand()
+        => Hub.LiveSessionUI.SetOwnHandRaised(ChatId, !IsOwnHandRaised, CancellationToken.None);
 
     private void OnToggleChatPanel() {
         var a = Actions;

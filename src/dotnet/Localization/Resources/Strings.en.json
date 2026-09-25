@@ -2044,6 +2044,11 @@
   "Call_AlreadyInCall": "You're already in a call",
   "Call_RecordingTurnedOffByHost": "Recording turned off by the host",
   "Call_MakeHost": "Make host",
+  "Call_RaiseHand": "Raise hand",
+  "Call_LowerHand": "Lower hand",
+  "Call_HandRaised": "Hand raised",
+  "Call_LowerAllHands": "Lower all hands",
+  "Call_HandLowered": "Your hand was lowered",
   // "Join" in the call sense - entering a call that is already running, not
   // becoming a member of anything. Languages that distinguish the two (ru, uk)
   // must use the "enter" verb here and keep Common_Join for membership.
