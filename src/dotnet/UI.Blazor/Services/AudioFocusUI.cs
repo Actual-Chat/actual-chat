@@ -84,10 +84,12 @@ public class AudioFocusUI : ProcessorBase
     public virtual void SetCallActive(bool isCallActive, bool hasVideo)
     { }
 
-    // Null where the platform picks the output on its own and offers nothing to choose from.
+    // The platform's own view - what's connected, where the sound is - and null where it offers
+    // nothing to choose from. Which output a call should be on is CallUI's business.
     public virtual IState<AudioOutputRoutes>? OutputRoutes => null;
 
-    public virtual Task SelectOutputRoute(string routeId)
+    // Null puts the call back on the platform's defaults.
+    public virtual Task ApplyOutputRoute(string? routeId)
         => Task.CompletedTask;
 
     public virtual AudioFocusDiagnostics GetDiagnostics()
@@ -126,6 +128,13 @@ public sealed record AudioOutputRoute(string Id, AudioOutputKind Kind, string Na
     // The built-in pair is always reachable, so it's addressable without a listing to look it up in.
     public const string PhoneId = "phone";
     public const string SpeakerId = "speaker";
+
+    public static string GetDefaultBuiltinId(bool hasVideo)
+        // A voice call starts at the ear, like a phone call; a video call on the speaker, where the
+        // phone is held out to be seen. A connected device outranks either, whatever the platform.
+        => hasVideo ? SpeakerId : PhoneId;
+
+    public bool IsExternal => Kind is not (AudioOutputKind.Phone or AudioOutputKind.Speaker);
 }
 
 /// <summary>
@@ -136,7 +145,7 @@ public sealed record AudioOutputRoutes(IReadOnlyList<AudioOutputRoute> Routes, s
     public static readonly AudioOutputRoutes None = new([], "");
 
     public AudioOutputRoute? Current => Routes.FirstOrDefault(x => x.Id == CurrentId);
-    public bool HasExternal => Routes.Any(x => x.Kind is not (AudioOutputKind.Phone or AudioOutputKind.Speaker));
+    public bool HasExternal => Routes.Any(x => x.IsExternal);
 
     public bool Equals(AudioOutputRoutes? other)
         => other is not null

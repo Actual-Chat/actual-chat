@@ -13,8 +13,8 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     // with nothing after it - so the latch expires rather than waiting for a notification.
     private static readonly TimeSpan InterruptionEndTimeout = TimeSpan.FromSeconds(10);
     // A session switch holds the main thread for up to 2s, and a render only reaches the WebView
-    // through that thread: the pick's checkmark, the toggle's icon and the menu closing all wait
-    // for the switch unless it lets them through first.
+    // through that thread: the pick's checkmark, the toggle's icon and the menu closing - which
+    // CallUI shows from the tap itself - all wait for the switch unless it lets them through first.
     private static readonly TimeSpan OutputPickPaintDelay = TimeSpan.FromMilliseconds(100);
 
     private readonly AsyncLock _lock = new(LockReentryMode.CheckedFail);
@@ -171,16 +171,22 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         });
     }
 
-    public override async Task SelectOutputRoute(string routeId)
+    public override async Task ApplyOutputRoute(string? routeId)
     {
-        // Shown as picked before it is: the refresh below corrects a pick that fails.
-        var routes = _outputRoutes.Value;
-        if (routes.Routes.Any(x => x.Id == routeId))
-            _outputRoutes.Value = routes with { CurrentId = routeId };
-        await Task.Delay(OutputPickPaintDelay).ConfigureAwait(false);
         // No lock: the user is waiting on this, the session applies it on the main thread anyway,
         // and the mode read here only names the pick in the log.
-        await AudioSession.SelectOutputRoute(routeId, _activeScopes.GetMode()).ConfigureAwait(false);
+        if (routeId is null) {
+            // The session drops a pick of its own accord at a call's end and on a device's arrival,
+            // so the defaults are usually in place already - and restating them bounces the route.
+            if (!AudioSession.HasSelectedOutput)
+                return;
+
+            await AudioSession.ClearOutputRoute(_activeScopes.GetMode()).ConfigureAwait(false);
+        }
+        else {
+            await Task.Delay(OutputPickPaintDelay).ConfigureAwait(false);
+            await AudioSession.SelectOutputRoute(routeId, _activeScopes.GetMode()).ConfigureAwait(false);
+        }
         // A pick that changes nothing raises no route change to refresh on.
         await RefreshOutputRoutes().ConfigureAwait(false);
     }

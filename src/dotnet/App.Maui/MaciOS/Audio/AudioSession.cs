@@ -280,6 +280,16 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
     public Task<AudioOutputRoutes> GetOutputRoutes()
         => DispatchToMainThread(GetOutputRoutesUnsafe);
 
+    public static bool HasSelectedOutput => Volatile.Read(ref _selectedOutputId) is not null;
+
+    public Task ClearOutputRoute(AudioFocusMode mode)
+        => DispatchToMainThread(() => {
+            Volatile.Write(ref _selectedOutputId, null);
+            Volatile.Write(ref _unsettledOutputId, null);
+            Volatile.Write(ref _isBluetoothOff, 0);
+            ApplyOutputRouteUnsafe(mode);
+        });
+
     public Task SelectOutputRoute(string routeId, AudioFocusMode mode)
         => DispatchToMainThread(() => {
             Volatile.Write(ref _selectedOutputId, routeId);
@@ -945,11 +955,11 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
     }
 
     private static bool MustPreferSpeaker(AudioSessionOwner owner, bool isCallVideo)
-        // A voice call starts at the ear, like a phone call, whoever owns the session; a video
-        // call on the speaker, since the phone is held out to be seen. Anything else - a voice
-        // message, PTT - keeps the speaker.
+        // A call starts on the built-in output CallUI's rule names, whoever owns the session.
+        // Anything else - a voice message, PTT - keeps the speaker.
         => Volatile.Read(ref _selectedOutputId) != PhoneRoute.Id
-            && (!(IsCallActive || owner == AudioSessionOwner.CallKit) || isCallVideo);
+            && (!(IsCallActive || owner == AudioSessionOwner.CallKit)
+                || AudioOutputRoute.GetDefaultBuiltinId(isCallVideo) == SpeakerRoute.Id);
 }
 
 /// <summary>
