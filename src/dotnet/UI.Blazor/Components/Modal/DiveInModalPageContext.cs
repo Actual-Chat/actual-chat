@@ -11,6 +11,7 @@ public class DiveInModalPageContext
     public MutablePropertyBag Items { get; } = new();
     public MutablePropertyBag ContextItems => _modalContext.Items;
     public bool IsInnerStep => _modalContext.IsInnerStep;
+    public bool IsTopmostPage(Type pageComponentType) => _modalContext.IsTopmostPage(pageComponentType);
 
     public string Title {
         get;

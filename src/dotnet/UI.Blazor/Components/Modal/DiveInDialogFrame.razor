@@ -104,6 +104,13 @@
 
     bool IDiveInModalContext.IsInnerStep => Modal.Ref.StepRef != null;
 
+    // True when the topmost step is a page of the given component type. A hero lingers as the backdrop on
+    // deeper steps, and its fragment then resolves the cascaded Context to the topmost step's context, so
+    // comparing context identity is unreliable. Compare the frame's live top page type instead - it lets a
+    // hero-owning page (e.g. the place owner page, itself an inner step) gate its actions to its own step.
+    bool IDiveInModalContext.IsTopmostPage(Type pageComponentType)
+        => _pageInfo.PageId == pageComponentType.ToString();
+
     void IDiveInModalContext.Close()
         => OnClose();
 
