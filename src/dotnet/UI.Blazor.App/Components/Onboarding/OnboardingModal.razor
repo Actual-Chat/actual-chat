@@ -17,7 +17,7 @@
     HasHeader="false"
     NarrowViewSettings="DialogFrameNarrowViewSettings.Default">
     <Body>
-    <Stepper Context="stepper" CurrentStepChanged="@OnCurrentStepChanged"
+    <Stepper Context="stepper" CurrentStepChanged="@OnCurrentStepChanged" StepFinished="@OnStepFinished"
         Class="onboarding-stepper" ContentClass="no-scrollbar" ShowNoise="@true" SkipCompletedSteps="@true">
         <Filler>
             @if (stepper.CurrentStep is PhoneStep) {
@@ -109,6 +109,8 @@
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
 
+    private ILogger Log => field ??= Hub.LogFor(GetType());
+
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
@@ -143,8 +145,26 @@
         if (!isCompleted)
             return;
 
+        RecordStep(OnboardingSteps.Finished, true);
         ModalModel.CanBeClosed = true;
         Modal.Close(true);
+    }
+
+    private void OnStepFinished(StepFinishedArgs args)
+        => RecordStep(OnboardingSteps.GetName(args.Step.GetType()), !args.IsSkipped);
+
+    // Private methods
+
+    private void RecordStep(string step, bool isCompleted) {
+        if (!OnboardingSteps.IsValid(step)) {
+            Log.LogWarning("RecordStep: unknown onboarding step {Step}", step);
+            return;
+        }
+
+        var command = new Usage_RecordOnboardingStep { Session = Session, Step = step, IsCompleted = isCompleted };
+        _ = Hub.Commander.Call(command, CancellationToken.None)
+            .ContinueWith(t => Log.LogWarning(t.Exception, "RecordStep: failed for {Step}", step),
+                TaskContinuationOptions.OnlyOnFaulted);
     }
 
     // Nested types

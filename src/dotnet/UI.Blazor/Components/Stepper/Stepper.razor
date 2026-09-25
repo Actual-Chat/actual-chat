@@ -50,6 +50,7 @@
     [Parameter] public RenderFragment<Stepper>? Steps { get; set; }
     [Parameter] public RenderFragment<Stepper>? Filler { get; set; }
     [Parameter] public EventCallback<bool> CurrentStepChanged { get; set; }
+    [Parameter] public EventCallback<StepFinishedArgs> StepFinished { get; set; }
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ContentClass { get; set; } = "";
     [Parameter] public bool ShowNoise { get; set; }
@@ -104,17 +105,19 @@
     }
 
     public async ValueTask<bool> TryMoveForward() {
-        if (_currentStep is null || !await _currentStep.TryComplete())
+        if (_currentStep is not { } step || !await step.TryComplete())
             return false;
 
+        await StepFinished.InvokeAsync(new StepFinishedArgs(step, false));
         return await Move(1);
     }
 
     public async ValueTask Skip() {
-        if (_currentStep is null)
+        if (_currentStep is not { } step)
             return;
 
-        await _currentStep.Skip();
+        await step.Skip();
+        await StepFinished.InvokeAsync(new StepFinishedArgs(step, true));
         await Move(1);
     }
 
