@@ -41,4 +41,7 @@ public static class UserScopedKvasBackendExt
 
     public static KvasAccessor<AppReviewPromptState> AppReviewPromptState(this UserScopedKvasBackend kvas)
         => kvas.AccessorFor<AppReviewPromptState>();
+
+    public static KvasAccessor<UserCoachSettings> UserCoachSettings(this UserScopedKvasBackend kvas)
+        => kvas.AccessorFor<UserCoachSettings>();
 }

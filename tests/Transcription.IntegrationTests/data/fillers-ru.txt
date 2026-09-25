@@ -1,0 +1,6 @@
+Ну, эээ, я вчера ходил в магазин, и, вот, там была, как бы, большая очередь. Эээ, я ждал, ну, минут двадцать. Это было, вот, как бы, неприятно.
+эээ=2 ну=2 вот=2 "как бы"=2
+Generated with Soniox TTS from this script; not a human recording.
+Clip recipe: Soniox TTS mp3 -> ffmpeg -map_metadata -1 -c:a libopus -b:a 32k -ar 48000 -ac 1 -f webm, then
+Tags/Cues/SeekHead removed and the trailing BlockGroup rewritten as a SimpleBlock (the app's WebM reader accepts
+only MediaRecorder-style streams).

@@ -22,6 +22,9 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `ShardKey` — Unsigned 32-bit routing key with hexadecimal prefix and slice formatting
 - `ISymbolIdentifier<T>` / `SymbolIdentifier` — Symbol-based identifier contract and parsing helpers
 
+### Text
+- `SpanLocator` — n-th whole-word occurrence of a word or phrase as a char range; validates LLM-returned spans
+
 ### Async & Concurrency
 - `Debouncer<T>` — delays action execution until interval passes without new items
 - `Throttler<T>` — limits action execution to at most once per interval
@@ -133,6 +136,8 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `Author` (record) — author in a chat (user link, avatar, rules)
 - `ChatEntry` — base for chat entries (TextEntry, SystemEntry)
 - `TextEntry` (record) — text message with markup, attachments, reactions
+- `CoachEntryAnalysis` / `CoachConversationAnalysis` (records) — speech-coach analysis of one voice entry (metrics + `SpeechSpan`s) and one author's turn-taking over a quiet run of entries; `CoachEntryMarks` is the per-entry span list served to the client
+- `SpeechTextStats` / `SpeechTimingStats` / `SpeechMetrics` — word, sentence, repetition, pause and pace numbers over `PlayableTextMarkup.Words`
 - `Place` (record) — community/place information
 - `Role` (record) — role definition with permissions; system roles are `Anyone`,
   `Guest`/`User`/`AnonymousUser` (automatic membership), and `Moderator`/`Owner`
@@ -192,6 +197,7 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `IPlaces` — place (community) management; `ListOwnerIds`/`ListModeratorIds` forward to the place root chat
 - `IRoles` — role management; `ListOwnerIds`/`ListModeratorIds` mask anonymous members from non-owner callers (use `IRolesBackend` when that masking would be a hole)
 - `IReactions` — message reactions
+- `IChatCoach` — the caller's own speech-coach marks in a chat (`GetOwnMarks`), plus `IsEnabled`
 - `IImageSuggestions` — AI picture suggestions for a chat (generate, accept, dismiss)
 - `IMentions` — mention queries
 
@@ -222,7 +228,7 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 ## Backend Contracts (`*.Contracts`)
 
 Backend interfaces follow the pattern `I{Service}Backend` for internal service communication:
-- `IChatsBackend`, `IAuthorsBackend`, `IPlacesBackend`, `IChatThreadsBackend`, `IChatEntryLanguagesBackend`, `IWebHooksBackend` — chat backends
+- `IChatsBackend`, `IAuthorsBackend`, `IPlacesBackend`, `IChatThreadsBackend`, `IChatEntryLanguagesBackend`, `IWebHooksBackend`, `ICoachAnalysisBackend` — chat backends
 - `IAccountsBackend`, `IAvatarsBackend`, `ISessionTemporalsBackend`, `UserScopedKvasBackend`, `IPasskeysBackend` — user backends
 - `IContactsBackend` — contact backend
 - `IMediaBackend`, `IMediaProgressBackend`, `IUploadsBackend` — media backends
@@ -382,6 +388,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `IConversationSummarizer`, `ConversationSummarizer` — AI conversation summarization
 - `IChatDigestSummarizer` — chat digest summarization
 - `IThreadInsightExtractor` — thread insight extraction
+- `ISpeechTagger`, `SpeechTagger` — LLM tagging of fillers, weak words and profanity in a transcript, JSON-schema output re-located in the text by `SpanLocator`
 - `IChatImageDescriber` — describes a chat as the subject of a picture
 - `IEmbeddingsCalculator` — text embeddings
 - `IEntryGroupExtractor`, `EntryGroupBuilder` — group entries for ML

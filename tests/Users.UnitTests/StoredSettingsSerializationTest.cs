@@ -562,4 +562,29 @@ public partial class StoredSettingsSerializationTest
         // on the arrays, so two structurally identical instances aren't `Equals`.
         read.Should().BeEquivalentTo(value);
     }
+
+    [Fact]
+    public void UserCoachSettingsUnionRoundTrip()
+    {
+        // arrange
+        var settings = new UserCoachSettings {
+            Origin = "union-coach-test",
+            IsCoachingEnabled = true,
+            AreLiveTipsEnabled = false,
+            TipInterval = TimeSpan.FromMinutes(15),
+        };
+
+        // act
+        using var buffer = KvasSerializer.Default.Write<StoredSettings>(settings);
+        var bytes = buffer.WrittenMemory;
+        var result = KvasSerializer.Default.Read<StoredSettings>(ref bytes);
+
+        // assert
+        result.Should().BeOfType<UserCoachSettings>();
+        var typed = (UserCoachSettings)result!;
+        typed.Origin.Should().Be(settings.Origin);
+        typed.IsCoachingEnabled.Should().BeTrue();
+        typed.AreLiveTipsEnabled.Should().BeFalse();
+        typed.TipInterval.Should().Be(TimeSpan.FromMinutes(15));
+    }
 }
