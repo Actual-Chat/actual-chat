@@ -288,6 +288,7 @@
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter] public bool IsClosing { get; set; }
+    [Parameter] public bool MustStopStreamingOnClose { get; set; } = true;
     [Parameter] public EventCallback OnClosed { get; set; }
 
     public override async ValueTask DisposeAsync() {
@@ -352,7 +353,8 @@
     public async Task CloseVideoPanel() {
         ChatActivityUI.TogglePanelMode(Chat.Id, VisualActivityPanelMode.Expanded, false);
         CloseExpandStep();
-        ChatVideoUI.StopStreaming();
+        if (MustStopStreamingOnClose)
+            ChatVideoUI.StopStreaming();
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
 

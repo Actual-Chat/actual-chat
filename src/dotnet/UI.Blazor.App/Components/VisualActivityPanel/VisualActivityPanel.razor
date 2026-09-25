@@ -18,8 +18,11 @@
     // ChatPage.ComputeState run (it uses ByRef equality), so a reference change here
     // means "the chat's data updated", not "the user switched chats".
     var chatId = chatContext?.Chat.Id;
-    if (_lastWatchingChatId is { } lastChatId && chatId is { } currentChatId && lastChatId != currentChatId)
+    if (_lastWatchingChatId is { } lastChatId && chatId is { } currentChatId && lastChatId != currentChatId) {
+        // Leaving the chat only hides the panel: own camera & screencast keep publishing to it
+        _mustKeepStreamingOnClose = true;
         ChatVideoUI.CloseVideoPanel();
+    }
     _lastWatchingChatId = isWatching ? chatId : null;
 
     // Handle show/hide transitions based on watching state and the Call/Map tab
@@ -27,9 +30,11 @@
         _isRendered = true;
         _chatContextToRender = chatContext;
         _isClosing = false;
+        _mustKeepStreamingOnClose = false;
     } else if (_isRendered && showVideo) {
         _chatContextToRender = chatContext;
         _isClosing = false;
+        _mustKeepStreamingOnClose = false;
     } else if (_isRendered && !showVideo) {
         if (isWatching) {
             // Still on the call — switched to the Map tab; swap instantly, no closing animation
@@ -50,7 +55,10 @@
         @if (_chatContextToRender is not null) {
             <ErrorBarrier Name="VideoPanel" Kind="ErrorBarrierKind.Medium">
                 <CascadingValue Value="_chatContextToRender">
-                    <VideoPanel IsClosing="@_isClosing" OnClosed="@OnContentClosed"/>
+                    <VideoPanel
+                        IsClosing="@_isClosing"
+                        MustStopStreamingOnClose="@(!_mustKeepStreamingOnClose)"
+                        OnClosed="@OnContentClosed"/>
                 </CascadingValue>
             </ErrorBarrier>
         } else if (showMap) {
@@ -86,6 +94,7 @@
     private ChatContext? _chatContextToRender;
     private bool _isRendered;
     private bool _isClosing;
+    private bool _mustKeepStreamingOnClose;
     private bool _isPanelRendered;
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
@@ -131,10 +140,19 @@
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         var isWatching = watchingChatId == chatId;
 
+        // Own video keeps publishing while the user is in another chat, so coming back reopens the panel.
+        // This reads the local intent, which clears synchronously on stop.
+        if (!isWatching) {
+            var ownSourceKind = await ChatVideoUI.GetOwnSourceKind(chatId, cancellationToken).ConfigureAwait(false);
+            if (ownSourceKind is not null) {
+                ChatVideoUI.OpenVideoPanel(chatId);
+                isWatching = true;
+            }
+        }
+
         // Auto-open the video panel when the user is listening and someone else is streaming.
-        // Remote-only on purpose: own streams already open it from ChatVideoUI's start paths,
-        // and counting them here would reopen the panel VideoPanel just closed on own-stop —
-        // for as long as the server still lists the stopped stream.
+        // Remote-only on purpose: counting own streams from the server's list would reopen the panel
+        // VideoPanel just closed on own-stop — for as long as the server still lists the stopped stream.
         if (!isWatching) {
             var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
             if (audioState.IsListening || audioState.IsRecording) {
@@ -155,6 +173,7 @@
     private void OnContentClosed() {
         _isRendered = false;
         _isClosing = false;
+        _mustKeepStreamingOnClose = false;
     }
 
     // Nested types
