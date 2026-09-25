@@ -17,6 +17,13 @@
     var canEditMembers = m.Place.Rules.CanEditMembers();
     var isOwner = m.IsOwner;
     Context.Header = RenderHero;
+    // Context.Header only re-renders the frame on a null<->non-null flip, so a fresh instance (after
+    // stepping back from an inner step) or an edit wouldn't refresh the hero. Force it when the place
+    // version changes; a new instance starts at -1 and refreshes once, adopting its own live hero.
+    if (_heroVersion != m.Place.Version) {
+        _heroVersion = m.Place.Version;
+        _ = InvokeAsync(Context.Refresh);
+    }
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
@@ -96,22 +103,41 @@
     </div>
 </Form>
 
+@* Pickers render nothing and live in the page body, not the hero fragment: a @ref inside a fragment the
+   frame renders can fail to rebind on a fresh instance, leaving these null so the hero buttons NRE. *@
+<ImageCropPicker @ref="_avatarPicker"
+    Scope="@_form!.ImageScope"
+    IsSquare="true"
+    CurrentPicture="@_form.Picture"
+    CurrentAvatarKey="@PlaceId.Value"
+    CurrentAvatarTitle="@_form.Title"
+    AvatarKind="AvatarKind.Marble"
+    OnCropped="@OnImagePicked" />
+<ImageCropPicker @ref="_wallpaperPicker"
+    Scope="@_form!.ImageScope"
+    IsSquare="true"
+    ViewportAspectRatio="@WallpaperAspectRatio"
+    HasBlur="true"
+    CurrentPicture="@_form.Background"
+    OnCropped="@OnBackgroundPicked" />
+
 @code {
-    // The wallpaper is shown as a ~104px-tall band across the full panel width, so the crop viewport
-    // matches that panorama rather than a tall 2.5:1 frame that object-cover would trim top and bottom.
-    private const float WallpaperAspectRatio = 3.75f;
+    // Crop viewport is a bit taller than the panel's ~316x104 band so there's vertical headroom for
+    // object-cover when the panel grows; the modal renders it around 350x130.
+    private const float WallpaperAspectRatio = 350f / 130f;
 
     private Form?_formRef;
     private FormModel? _form;
     private DialogButtonInfo _submitButtonInfo = null!;
     private ImageCropPicker? _avatarPicker;
     private ImageCropPicker? _wallpaperPicker;
+    private long _heroVersion = -1;
 
-    // Only this owner step edits the pictures; on inner steps the pickers aren't rendered, so leave the
-    // avatar unclickable - a default callback also drops the cursor-pointer affordance.
-    private EventCallback<MouseEventArgs> EditPicClick => Context.IsInnerStep
-        ? default
-        : EventCallback.Factory.Create<MouseEventArgs>(this, () => _avatarPicker!.Pick());
+    // The hero lingers as the backdrop on deeper steps and its Context then points at the topmost step, so
+    // gate on the frame's live top page type: the pictures are editable only while owner itself is on top.
+    private EventCallback<MouseEventArgs> EditPicClick => Context.IsTopmostPage(GetType())
+        ? EventCallback.Factory.Create<MouseEventArgs>(this, () => _avatarPicker!.Pick())
+        : default;
 
     private IPlaces Places => Hub.Places;
     private ChatUI ChatUI => Hub.ChatUI;
@@ -159,32 +185,16 @@
                 AvatarKey="@PlaceId.Value"
                 Click="@EditPicClick"/>
 
-            @* The hero is reused on inner steps (type, members, copy chat) where editing the pictures
-               makes no sense, so the edit buttons and the avatar's own click live only here. *@
-            @if (!Context.IsInnerStep) {
+            @* Buttons show only while owner is the topmost step; drop them once a deeper step (type,
+               members, ...) is on top. Gated on the frame's live top page type - see EditPicClick. *@
+            @if (Context.IsTopmostPage(GetType())) {
                 <div class="c-buttons">
                     <ButtonRound Class="btn-modal btn-sm" Click="@(() => _avatarPicker!.Pick())">
                         <i class="icon-person-add-2 text-2xl"></i>
                     </ButtonRound>
-                    <ImageCropPicker @ref="_avatarPicker"
-                        Scope="@_form!.ImageScope"
-                        IsSquare="true"
-                        CurrentPicture="@_form.Picture"
-                        CurrentAvatarKey="@PlaceId.Value"
-                        CurrentAvatarTitle="@_form.Title"
-                        AvatarKind="AvatarKind.Marble"
-                        OnCropped="@OnImagePicked" />
-
                     <ButtonRound Class="btn-modal btn-sm" Click="@(() => _wallpaperPicker!.Pick())">
                         <i class="icon-image text-2xl"></i>
                     </ButtonRound>
-                    <ImageCropPicker @ref="_wallpaperPicker"
-                        Scope="@_form!.ImageScope"
-                        IsSquare="true"
-                        ViewportAspectRatio="@WallpaperAspectRatio"
-                        HasBlur="true"
-                        CurrentPicture="@_form.Background"
-                        OnCropped="@OnBackgroundPicked" />
                 </div>
             }
         </div>
