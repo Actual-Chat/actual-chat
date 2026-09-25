@@ -471,7 +471,7 @@ public partial class ChatUI
                                 var newOverrides = isOverridden
                                     ? overrides0.Remove(conversationId)
                                     : overrides0.Add(conversationId);
-                                _conversationExpansionOverrides.Value = newOverrides;
+                                SetExpansion(_conversationExpansionOverrides, newOverrides);
                                 _lastExpansions[chatId] = GetLastExpansions(chatId) with {
                                     Overrides = newOverrides,
                                 };
@@ -501,9 +501,9 @@ public partial class ChatUI
                         if (!isJoinedExpanded) {
                             // The chat's last-expansions snapshot is deliberately not updated: the diff below
                             // is what widens the load window, and the rows this expand reveals need it.
-                            _conversationExpansionOverrides.Value = joinOverrides.Contains(joinedConversation.Id)
+                            SetExpansion(_conversationExpansionOverrides, joinOverrides.Contains(joinedConversation.Id)
                                 ? joinOverrides.Remove(joinedConversation.Id)
-                                : joinOverrides.Add(joinedConversation.Id);
+                                : joinOverrides.Add(joinedConversation.Id));
                         }
                     }
                 }
@@ -547,7 +547,7 @@ public partial class ChatUI
                             if (lostRemovals.Count > 0)
                                 updated = updated.Except(lostRemovals);
                             autoExpanded = updated;
-                            _autoExpandedConversations.Value = updated;
+                            SetExpansion(_autoExpandedConversations, updated);
                         }
                     }
                 }

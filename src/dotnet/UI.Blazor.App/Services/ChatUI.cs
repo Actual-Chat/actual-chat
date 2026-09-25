@@ -28,6 +28,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private readonly MutableState<ChatEntryId?> _highlightedEntryId;
     private readonly MutableState<IImmutableSet<ConversationId>> _conversationExpansionOverrides;
     private readonly MutableState<IImmutableSet<ConversationId>> _autoExpandedConversations;
+    private ChatViewItemVisibility _itemVisibilityAtExpansionChange = ChatViewItemVisibility.Empty;
     // Holds the selected chat's lids only - ClearAutoExpansionState drops it on every chat change
     private LidRangeSet? _witnessedLids;
     private readonly ConcurrentDictionary<ConversationId, Unit> _suppressedAutoExpansions = new();
@@ -417,6 +418,10 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // What the chat view reports, not what consumers see - ItemVisibility masks this
         => _reportedItemVisibility.Value = itemVisibility;
 
+    // The report in hand when an expansion last changed: it describes the render from before the change
+    public ChatViewItemVisibility ItemVisibilityAtExpansionChange
+        => Volatile.Read(ref _itemVisibilityAtExpansionChange);
+
     public void ResetReportedItemVisibility(ChatId chatId)
     {
         // Chat views overlap during navigation, so a disposing view must not clear its successor's
@@ -508,9 +513,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             var isExpandedWithoutAuto =
                 _knownConversationDefaultExpanded.GetValueOrDefault(conversationId) ^ isOverridden;
             if (!isAutoExpanded || isExpandedWithoutAuto)
-                _conversationExpansionOverrides.Value = isOverridden
+                SetExpansion(_conversationExpansionOverrides, isOverridden
                     ? overrides.Remove(conversationId)
-                    : overrides.Add(conversationId);
+                    : overrides.Add(conversationId));
         }
         Hub.LiveBlockUI.ResetReveal(conversationId.ChatId);
     }
@@ -622,9 +627,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             // the latched one, and keying the override off the wrong one leaves the block expanded.
             var latched = _knownConversationDefaultExpanded.GetOrAdd(conversationId, isExpandedByDefault);
             var overrides = _conversationExpansionOverrides.Value;
-            _conversationExpansionOverrides.Value = latched
+            SetExpansion(_conversationExpansionOverrides, latched
                 ? overrides.Add(conversationId)
-                : overrides.Remove(conversationId);
+                : overrides.Remove(conversationId));
         }
     }
 
@@ -638,7 +643,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             var autoExpanded = _autoExpandedConversations.Value;
             var isAutoExpanded = autoExpanded.Contains(conversationId);
             if (isAutoExpanded)
-                _autoExpandedConversations.Value = autoExpanded.Remove(conversationId);
+                SetExpansion(_autoExpandedConversations, autoExpanded.Remove(conversationId));
             return isAutoExpanded;
         }
     }
@@ -766,7 +771,17 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         Volatile.Write(ref _witnessedLids, null);
         _suppressedAutoExpansions.Clear();
         if (_autoExpandedConversations.Value.Count != 0)
-            _autoExpandedConversations.Value = ImmutableHashSet<ConversationId>.Empty;
+            SetExpansion(_autoExpandedConversations, ImmutableHashSet<ConversationId>.Empty);
+    }
+
+    private void SetExpansion(
+        MutableState<IImmutableSet<ConversationId>> expansionState,
+        IImmutableSet<ConversationId> value)
+    {
+        // Recorded before the change lands, so whoever sees the change also sees the report it made stale
+        if (!value.SetEquals(expansionState.Value))
+            Volatile.Write(ref _itemVisibilityAtExpansionChange, _reportedItemVisibility.Value);
+        expansionState.Value = value;
     }
 
     private bool SelectPlaceInternal(PlaceId? placeId)
