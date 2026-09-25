@@ -2,6 +2,10 @@
 @inherits ComponentBase<AppUIHub>
 @implements IModalView<OwnAvatarEditorModal.Model>
 @{
+    // The form is rendered only once its model is fully loaded: the EditContext validates the model on first
+    // render, so a still-loading (empty Name) model would stick a false "required" error on the prefilled field.
+    if (!_isLoaded)
+        return;
     var bioFieldAttrs = new Dictionary<string, object> { { "maxLength", 160 } };
 }
 
@@ -86,6 +90,7 @@
 @code {
     private Form _formRef = null!;
     private FormModel _form = null!;
+    private bool _isLoaded;
     private bool _isAnonymous;
 
     private IAvatars Avatars => Hub.Avatars;
@@ -100,10 +105,13 @@
         if (_form is { OriginalAvatar: { } currentAvatar } && currentAvatar.Id == ModalModel.AvatarId)
             return;
 
-        _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
-        _form.OriginalAvatar = await Avatars.GetOwn(Session, ModalModel.AvatarId, default);
+        // Build the model fully before assigning _form: the EditContext validates on first render, so a
+        // partially-built model (empty Name) would stick a false "required" error on the prefilled field.
+        // Render is gated on _isLoaded until everything below is loaded.
+        var form = new FormModel(ComponentIdGenerator) {
+            OriginalAvatar = await Avatars.GetOwn(Session, ModalModel.AvatarId, default),
+        };
 
-        _isAnonymous = _form.OriginalAvatar?.IsAnonymous ?? false;
         var account = await Accounts.GetOwn(Session, default);
         var isDefault = ModalModel.AvatarId == account.Avatar.Id;
         var isActive = false;
@@ -112,14 +120,17 @@
             isActive = ModalModel.AvatarId == (author?.AvatarId ?? Symbol.Empty);
         }
 
-        _form.Picture = _form.OriginalAvatar?.Picture;
+        form.Picture = form.OriginalAvatar?.Picture;
+        form.Name = form.OriginalAvatar?.Name ?? "";
+        form.Bio = form.OriginalAvatar?.Bio ?? "";
+        form.IsDefault = isDefault;
+        form.IsActive = isActive;
+        form.Title = ModalModel.Title;
+        form.CopyToBase();
 
-        _form.Name = _form.OriginalAvatar?.Name ?? "";
-        _form.Bio = _form.OriginalAvatar?.Bio ?? "";
-        _form.IsDefault = isDefault;
-        _form.IsActive = isActive;
-        _form.Title = ModalModel.Title;
-        _form.CopyToBase();
+        _isAnonymous = form.OriginalAvatar?.IsAnonymous ?? false;
+        _form = form;
+        _isLoaded = true;
     }
 
     private async Task OnSave() {
