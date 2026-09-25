@@ -261,9 +261,7 @@
             return m with { IsMuted = mutedChatId == chatId };
         }
 
-        var outputRoutes = AudioFocusUI.OutputRoutes is { } outputRoutesState
-            ? await outputRoutesState.Use(cancellationToken).ConfigureAwait(false)
-            : AudioOutputRoutes.None;
+        var outputRoutes = await Hub.CallUI.GetOutputRoutes(cancellationToken).ConfigureAwait(false);
         m = m with { OutputRoutes = outputRoutes };
         var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
         // Hidden until my own join is known: Accept commits the call before my audio starts.
@@ -347,12 +345,11 @@
             _ = ChatAudioUI.SetRecordingChatId(enable ? chat.Id : null);
     }
 
-    private Task OnSpeakerClick() {
+    private void OnSpeakerClick() {
         // Never routed through the listing: the toggle has to work even before the first one
         // arrives, and the earpiece and the speaker are there whatever it says.
         var isOnSpeaker = State.Value.OutputRoutes.Current?.Kind == AudioOutputKind.Speaker;
-        return AudioFocusUI.SelectOutputRoute(
-            isOnSpeaker ? AudioOutputRoute.PhoneId : AudioOutputRoute.SpeakerId);
+        Hub.CallUI.SelectOutputRoute(isOnSpeaker ? AudioOutputRoute.PhoneId : AudioOutputRoute.SpeakerId);
     }
 
     private void OnOptionsClick() {

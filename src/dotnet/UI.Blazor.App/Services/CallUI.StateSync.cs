@@ -20,10 +20,20 @@ public partial class CallUI
     // Protected/internal methods
 
     protected override Task OnRun(CancellationToken cancellationToken)
-        => AsyncChain.From(SyncMyCall)
-            .Log(LogLevel.Debug, Log)
-            .RetryForever(RetryDelaySeq.Exp(0.5, 10), Log)
-            .Run(cancellationToken);
+    {
+        var baseChains = new[] {
+            AsyncChain.From(SyncMyCall),
+            AsyncChain.From(SyncOutputRoute),
+            AsyncChain.From(SyncOutputRouteTakeover),
+        };
+        var retryDelays = RetryDelaySeq.Exp(0.5, 10);
+        return (
+            from chain in baseChains
+            select chain
+                .Log(LogLevel.Debug, Log)
+                .RetryForever(retryDelays, Log)
+            ).RunIsolated(cancellationToken);
+    }
 
     internal static ActiveCall? Reconcile(UserCall? myCall, CallIntentView intent)
     {

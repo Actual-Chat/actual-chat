@@ -24,8 +24,6 @@
 </div>
 
 @code {
-    private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
-
     protected override ComputedState<AudioOutputRoutes>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<AudioOutputRoutes>.Options() {
@@ -34,17 +32,15 @@
             });
 
     protected override async Task<AudioOutputRoutes> ComputeState(CancellationToken cancellationToken) {
-        var m = AudioFocusUI.OutputRoutes is { } outputRoutes
-            ? await outputRoutes.Use(cancellationToken).ConfigureAwait(false)
-            : AudioOutputRoutes.None;
+        var m = await Hub.CallUI.GetOutputRoutes(cancellationToken).ConfigureAwait(false);
         Hub.LogFor(GetType()).LogInformation("AudioOutputMenu: {Count} route(s), current={CurrentId}",
             m.Routes.Count, m.CurrentId);
         return m;
     }
 
-    private Task OnClick(string routeId) {
+    private void OnClick(string routeId) {
         _ = Hub.TuneUI.Play(Tune.ClickButton);
-        return AudioFocusUI.SelectOutputRoute(routeId);
+        Hub.CallUI.SelectOutputRoute(routeId);
     }
 
     private string Title(AudioOutputRoute route)

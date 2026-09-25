@@ -16,11 +16,11 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     private CarAudioRoute _carAudioRoute = CarAudioRoute.Default;
     private int _isTrackingCarAudioRoute;
     private int _isCallActive;
+    private int _isCallVideo;
     // Non-null while a call is on: all its audio then takes the communication route, and the route
     // only picks the device. A call's playback is one long track, so its usage can't follow a focus
     // change mid-call.
     private CallAudioRoute? _callAudioRoute;
-    private AudioOutputKind? _lastExternalOutputKind;
     public override bool IsCommunicationFocus => _focusHelper.IsCommunicationFocus;
     // Nothing to pick from without an earpiece - a tablet - so the call screen shows no button there.
     public override IState<AudioOutputRoutes>? OutputRoutes => _focusHelper.HasEarpiece ? _outputRoutes : null;
@@ -33,7 +33,6 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
             AudioOutputRoutes.None, StateCategories.Get(GetType(), nameof(OutputRoutes)));
         _focusHelper.OnFocusChanged += OnFocusChanged;
         _focusHelper.OnOutputDevicesChanged += OnOutputDevicesChanged;
-        _lastExternalOutputKind = _focusHelper.GetExternalOutputKind();
         RefreshOutputRoutes();
     }
 
@@ -103,22 +102,21 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     {
         // Reconciled to the latest report rather than applied in order: two reports landing out of
         // order must not leave a finished call's route behind.
+        Volatile.Write(ref _isCallVideo, hasVideo ? 1 : 0);
         Volatile.Write(ref _isCallActive, isCallActive ? 1 : 0);
         _ = BackgroundTask.Run(SyncCallAudioRoute, Log, "Failed to sync the call audio route", Hub.StopToken);
     }
 
-    public override async Task SelectOutputRoute(string routeId)
+    public override async Task ApplyOutputRoute(string? routeId)
     {
         if (_callAudioRoute is not { } route) {
-            Log.LogWarning("SelectOutputRoute: no call is on, ignoring {RouteId}", routeId);
+            if (routeId is not null)
+                Log.LogWarning("ApplyOutputRoute: no call is on, ignoring {RouteId}", routeId);
             return;
         }
 
-        // Shown as picked before it is: the refresh after the switch corrects a pick that fails.
-        var routes = _outputRoutes.Value;
-        if (routes.Routes.Any(x => x.Id == routeId))
-            _outputRoutes.Value = routes with { CurrentId = routeId };
         route = routeId switch {
+            null => GetDefaultCallAudioRoute(),
             AudioOutputRoute.PhoneId => new CallAudioRoute(true, true),
             AudioOutputRoute.SpeakerId => new CallAudioRoute(false, true),
             _ => route with { IsBuiltinForced = false },
@@ -177,8 +175,16 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     private Task SyncCallAudioRoute()
     {
         var isCallActive = Volatile.Read(ref _isCallActive) != 0;
-        var route = isCallActive ? _callAudioRoute ?? default(CallAudioRoute) : (CallAudioRoute?)null;
+        var route = isCallActive ? _callAudioRoute ?? GetDefaultCallAudioRoute() : (CallAudioRoute?)null;
         return SetCallAudioRoute(route);
+    }
+
+    private CallAudioRoute GetDefaultCallAudioRoute()
+    {
+        // Not forced: a connected headset outranks the built-in default, as it does on iOS.
+        var isCallVideo = Volatile.Read(ref _isCallVideo) != 0;
+        var isEarpiece = AudioOutputRoute.GetDefaultBuiltinId(isCallVideo) == AudioOutputRoute.PhoneId;
+        return new CallAudioRoute(isEarpiece, false);
     }
 
     private async Task SetCallAudioRoute(CallAudioRoute? route)
@@ -306,23 +312,14 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
 
     private void OnOutputDevicesChanged()
     {
-        // Routing follows the change inside AudioFocusHelper's device router while a focus is held.
-        // Raised on the main thread, and the device reads below block on AudioService.
+        // Routing follows the change inside AudioFocusHelper's device router while a focus is held;
+        // a headset arriving mid-call takes the pick over through CallUI, which watches the routes.
+        // Raised on the main thread, and the device read behind the refresh blocks on AudioService.
         Log.LogInformation("-> OnOutputDevicesChanged. Active handle: {Handle}", _handle);
-        _ = BackgroundTask.Run(HandleOutputDevicesChanged, Log, "Failed to handle an output device change",
-            Hub.StopToken);
-    }
-
-    private async Task HandleOutputDevicesChanged()
-    {
-        var externalKind = _focusHelper.GetExternalOutputKind();
-        var isNewlyConnected = externalKind is not null && externalKind != _lastExternalOutputKind;
-        _lastExternalOutputKind = externalKind;
-        // A headset connected mid-call takes the audio over, as it does in the system dialer.
-        if (isNewlyConnected && _callAudioRoute is { IsBuiltinForced: true } route)
-            await SetCallAudioRoute(route with { IsBuiltinForced = false }).ConfigureAwait(false);
-        else
+        _ = BackgroundTask.Run(() => {
             RefreshOutputRoutes();
+            return Task.CompletedTask;
+        }, Log, "Failed to handle an output device change", Hub.StopToken);
     }
 
     // Nested types

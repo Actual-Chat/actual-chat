@@ -43,6 +43,9 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _serverCallChatId = StateFactory.NewMutable(
             (ChatId?)null,
             StateCategories.Get(GetType(), "ServerCallChatId"));
+        _pickedOutputRouteId = StateFactory.NewMutable(
+            (string?)null,
+            StateCategories.Get(GetType(), "PickedOutputRouteId"));
     }
 
     void INotifyInitialized.Initialized()
@@ -242,6 +245,9 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
             _reportedCallActivity = activity;
         }
+        // The pick belongs to the call that just ended; the next one starts from the defaults.
+        if (!activity.IsCallActive)
+            _pickedOutputRouteId.Value = null;
         Hub.AudioFocusUI.SetCallActive(activity.IsCallActive, activity.HasVideo);
     }
 
