@@ -429,9 +429,10 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                 // below it say nothing about what the reader scrolled past - fed to the fold, they would
                 // swallow every spoken row by the time the block is expanded again. The report in hand at
                 // the moment of expansion is that same collapsed-render report, so it is held until the
-                // expanded render replaces it.
+                // expanded render replaces it. Not the report in hand here: the expanded render's first one
+                // can land before this pass, and the view re-reports only on a change.
                 if (isBlockExpanded && !chatState.WasBlockExpanded)
-                    chatState.StaleVisibility = visibility;
+                    chatState.StaleVisibility = Hub.ChatUI.ItemVisibilityAtExpansionChange;
                 chatState.WasBlockExpanded = isBlockExpanded;
                 var isVisibilityUsable = isBlockExpanded
                     && !ReferenceEquals(visibility, chatState.StaleVisibility)

@@ -1587,6 +1587,73 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task ReportRightAfterExpandFeedsTheFold()
+    {
+        // The chat view re-reports only on a change, so the expanded render's first report may be the
+        // last one for a while. It can land before the fold governor has even seen the expand, and it must
+        // not be taken for the collapsed render's report then, or the fold stays frozen until a scroll.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var otherChat = await CreateSettledChat("report-after-expand-other");
+        var chat = await CreateSettledChat("report-after-expand-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_470);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var v = live!.EffectiveVisibleStartLid;
+        await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+        }, CancellationToken.None);
+        var lids = new List<long>();
+        for (var i = 0; i < 5 + LiveFoldMath.MinTailEntryCount; i++)
+            lids.Add((await CreateSpokenEntry(chat.Id, $"m-{i}")).LocalId);
+
+        // Not joined, so the block stays collapsed until the toggle below
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        var conversation = live.ToConversation();
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await TestWait.When(async ct => {
+            await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            (await liveBlockUI.GetBlock(chat.Id, ct)).Should().NotBeNull("the session must latch a block");
+            chatUI.IsConversationExpanded(conversation).Should().BeFalse("a viewer who never joined sees the card");
+        });
+        chatUI.ReportItemVisibility(new ChatViewItemVisibility(
+            chat.Id,
+            new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.ConversationStart, v) },
+            false,
+            false));
+
+        // act - the governor tracks the selected chat only, so with another one selected it can't see the
+        // expand before the expanded render's report: its first pass after the return gets both at once
+        var viewportTop = lids[5];
+        chatUI.SelectChatOnNavigation(otherChat.Id);
+        chatUI.ToggleExpandConversation(conversation.Id);
+        var expandedVisibility = new ChatViewItemVisibility(
+            chat.Id,
+            lids.Skip(5).Select(l => ChatMessageKey.New(ChatMessageKind.None, l)).ToHashSet(),
+            false,
+            false);
+        chatUI.ReportItemVisibility(expandedVisibility);
+        await TestWait.When(async ct => {
+            var visibility = await chatUI.ItemVisibility.Use(ct);
+            visibility.Should().BeSameAs(expandedVisibility, "the report must be what the governor reads");
+        });
+        chatUI.SelectChatOnNavigation(chat.Id);
+
+        // assert
+        await TestWait.When(async ct => {
+            var block = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
+            block.FoldEndLid.Should().Be(viewportTop, "the first report of the expanded render must drive the fold");
+        });
+    }
+
+    [Fact]
     public async Task ExpandedBlockFoldsUnsummarizedRowsAboveViewport()
     {
         // §4: the expanded live block - the auto-swallow mode - swallows everything above the viewport,
