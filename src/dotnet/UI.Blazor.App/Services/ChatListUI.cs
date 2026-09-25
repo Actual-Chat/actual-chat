@@ -25,6 +25,7 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     private ComputedState<Trimmed<int>>? _unreadChatCount;
     private ComputedState<ChatInfo?>? _notesChat;
     private (string ListKey, ChatId ChatId)? _scrollAnchor;
+    private int _isInviteBannerShownReported;
 
     private IContacts Contacts => Hub.Contacts;
     private IAuthors Authors => Hub.Authors;
@@ -72,6 +73,13 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         => _placeChatLists.GetOrAdd(placeId is not null ? Option.Some(placeId) : Option<PlaceId>.None,
             static (placeId1, self) => new PlaceChatListSettings(placeId1.ValueOrDefault, self.Hub, true),
             this);
+
+    // Once per app run: the virtual list re-creates the banner as it scrolls in and out
+    public void ReportInviteBannerShown()
+    {
+        if (Interlocked.Exchange(ref _isInviteBannerShownReported, 1) == 0)
+            Hub.RecordFunnelEvent(FunnelEvent.InviteBannerShown);
+    }
 
     [ComputeMethod]
     public virtual async Task<bool> MustShowInviteFriendsBanner(
