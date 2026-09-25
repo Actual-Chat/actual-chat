@@ -27,6 +27,7 @@ export * from './Components/ChatView/Items/ChatEntryMessageInternalView/chat-ent
 export * from './Components/ContentList/content-list-date-visor';
 export * from './Components/ContentList/visual-media-duration';
 export * from './Components/DateVisor/date-visor';
+export * from './Components/DraggableIsland/draggable-island';
 export * from './Components/DubVoiceModal/dub-voice-modal';
 export * from './Components/FontSizeSlider/font-size-slider';
 export * from './Components/JoinVideoCallModal/join-video-call-modal';
@@ -45,7 +46,6 @@ export * from './Components/TranslationSubHeader/translation-svg.lit';
 export * from './Components/SubHeader/sub-header';
 export * from './Components/SubHeader/sub-header.lit';
 export * from './Components/Banners/banner-stack';
-export * from './Components/CollapsedCallView/draggable-call-island';
 export * from './Components/FullScreenCallView/incoming-call-swipe';
 export * from './Services/incoming-call-ringtone';
 export * from './Services/outgoing-call-ringback';

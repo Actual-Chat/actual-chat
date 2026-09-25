@@ -6,10 +6,10 @@ const MarginPx = 8;
 
 const clamp = (v: number, min: number, max: number): number => Math.max(min, Math.min(max, v));
 
-// Makes a collapsed call island (incoming or outgoing) draggable. A tap on the avatar/body (no real
-// move) still bubbles to Blazor's expand handler; once a drag actually moves the island, the trailing
-// click is swallowed so it doesn't also re-open the modal. Taps on the action buttons are left alone.
-export class DraggableCallIsland implements Disposable {
+// Makes a floating island draggable. A tap on its body (no real move) still bubbles to Blazor's click
+// handler; once a drag actually moves the island, the trailing click is swallowed so it doesn't also
+// fire that handler. Taps on buttons are left alone.
+export class DraggableIsland implements Disposable {
     private readonly disposed$ = new Subject<void>();
     private dragging = false;
     private moved = false;
@@ -25,8 +25,8 @@ export class DraggableCallIsland implements Disposable {
     private minTy = 0;
     private maxTy = 0;
 
-    public static create(root: HTMLElement): DraggableCallIsland {
-        return new DraggableCallIsland(root);
+    public static create(root: HTMLElement): DraggableIsland {
+        return new DraggableIsland(root);
     }
 
     constructor(private readonly root: HTMLElement) {
@@ -59,7 +59,7 @@ export class DraggableCallIsland implements Disposable {
     private onDown(e: PointerEvent): void {
         const target = e.target as HTMLElement | null;
         if (target?.closest('button, [role="button"]'))
-            return; // Accept / Decline / Hang up keep acting.
+            return; // Buttons keep acting.
 
         // Own the gesture so a drag near a screen edge doesn't also swipe a side panel open.
         e.stopPropagation();
@@ -94,7 +94,7 @@ export class DraggableCallIsland implements Disposable {
         e.stopPropagation();
         if (!this.moved) {
             // Capture only once a drag starts: Chrome retargets the trailing click to the capture
-            // target, so capturing on pointerdown would steal a plain tap from the avatar/name handlers.
+            // target, so capturing on pointerdown would steal a plain tap from the island's click handlers.
             this.root.setPointerCapture(e.pointerId);
         }
         this.moved = true;
