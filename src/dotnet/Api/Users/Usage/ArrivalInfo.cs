@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using ActualChat.Hosting;
 
 namespace ActualChat.Users;
 

@@ -3,6 +3,8 @@
 @inherits ComponentBase<AppUIHub>
 
 @code {
+    private UserId? _reportedUserId;
+
     private IAccounts Accounts => Hub.Accounts;
     private IAliases Aliases => Hub.Aliases;
     private ChatListUI ChatListUI => Hub.ChatListUI;
@@ -30,6 +32,17 @@
                 url = Links.Chat(notesChatInfo.Id);
             _ = History.NavigateTo(url, true);
             return;
+        }
+
+        if (_reportedUserId != account.Id) {
+            _reportedUserId = account.Id;
+            if (ownAccount.IsGuestOrNull()) {
+                Hub.RecordFunnelEvent(FunnelEvent.UserLinkOpenedSignedOut);
+                if (ArrivalInfo.New(ArrivalKind.User, account.Id.Value) is { } arrival)
+                    _ = AccountUI.SetArrival(arrival);
+            }
+            else
+                Hub.RecordFunnelEvent(FunnelEvent.UserLinkOpenedSignedIn);
         }
 
         var chatId = PeerChatId.New(ownAccount.Id, account.Id);

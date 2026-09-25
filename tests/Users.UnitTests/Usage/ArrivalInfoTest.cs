@@ -1,5 +1,3 @@
-using ActualChat.Hosting;
-
 namespace ActualChat.Users.UnitTests.Usage;
 
 public class ArrivalInfoTest

@@ -1,7 +1,5 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using ActualChat.Hosting;
-using ActualChat.Users;
 
 namespace ActualChat.Diagnostics;
 

@@ -79,6 +79,10 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
 
     public async Task<bool> RequestSignInFromHomePage(string title, string? redirectUrl)
     {
+        var isFromLink = redirectUrl is not null
+            && (new LocalUrl(redirectUrl).IsPrivateChatInvite() || new LocalUrl(redirectUrl).IsUser());
+        if (isFromLink)
+            Hub.RecordFunnelEvent(FunnelEvent.SignInRequestedFromLink);
         var mySignInRequest = new SignInRequest(Hub, title, redirectUrl);
         _activeSignInRequest.Value = mySignInRequest;
         try {
@@ -101,7 +105,10 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
             // Intended
         }
         TryResetSignInRequest(mySignInRequest);
-        return OwnAccount.Value is { IsGuest: false };
+        var isSignedIn = OwnAccount.Value is { IsGuest: false };
+        if (isFromLink && isSignedIn)
+            Hub.RecordFunnelEvent(FunnelEvent.SignInCompletedFromLink);
+        return isSignedIn;
     }
 
     // Sign-in / sign-out

@@ -12,6 +12,7 @@ public partial class AccountUI
             AsyncChain.From(MonitorAccountChange),
             AsyncChain.From(MonitorPendingRegistration),
             AsyncChain.From(MonitorSessionValidity),
+            AsyncChain.From(CaptureLandingArrival),
         };
         return Task.WhenAll(chains.Select(c => c
             .Log(LogLevel.Debug, Log)
