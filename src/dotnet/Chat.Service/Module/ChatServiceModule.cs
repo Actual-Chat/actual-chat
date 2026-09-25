@@ -1,5 +1,6 @@
 using System.Net;
 using ActualChat.AI;
+using ActualChat.Chat.Coach;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Flows;
 using ActualChat.Chat.ML;
@@ -87,6 +88,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddLocalApi<ITranslations, Translations>();
         rpcHost.AddBackend<ITranslationsBackend, TranslationsBackend>();
         rpcHost.AddBackend<IChatEntryLanguagesBackend, ChatEntryLanguagesBackend>();
+        rpcHost.AddBackend<ICoachAnalysisBackend, CoachAnalysisBackend>();
 
         // Conversations
         rpcHost.AddLocalApi<IConversations, Conversations>();
@@ -167,6 +169,18 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             (c, _) => new EntryGroupExtractor(
                 c.GetRequiredService<IEmbeddingsCalculator>(),
                 c.LogFor<EntryGroupExtractor>()));
+
+        if (Settings.Coach.IsEnabled && !CoreServerSettings.OpenAIKey.IsNullOrEmpty()) {
+            AddKeyedOpenAI(services, SpeechTagger.ServiceKey, Settings.Coach.OpenAIModel, Settings.Coach.HttpTimeout);
+            services.AddSingleton<ISpeechTagger>(c => new SpeechTagger(
+                new SpeechTagger.Options {
+                    PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.Coach.PromptFile,
+                    PromptVersion = Settings.Coach.PromptVersion,
+                },
+                c));
+        }
+        else
+            services.AddSingleton<ISpeechTagger, SpeechTaggerStub>();
 
         if (Settings.IsSummarizationEnabled) {
             AddKeyedOpenAI(services,
