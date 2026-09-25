@@ -86,6 +86,13 @@ async function expandGlobalIfPossible(page: Page) {
     }
 }
 
+/**
+ * A fresh cluster needs ~2.5 min before a seeded user is findable (1m indexing delay, rounded
+ * up to a 1m quantum, then a 30s refresh), and vitest's file order is no contract.
+ */
+const INDEX_WARMUP_BUDGET = 210_000;
+const RETRY_DELAY = 10_000;
+
 describe('global people search', () => {
     let conn: BrowserConnection;
     let page: Page;
@@ -117,26 +124,37 @@ describe('global people search', () => {
         { query: 'rumi',     needle: 'rumi' },
         { query: 'einstein', needle: 'einstein' },
     ])('finds "$needle" when searching for "$query"', async ({ query, needle }) => {
-        await clearSearch(page);
-        await searchFor(page, query);
-        await page.screenshot({ path: screenshot('people-search', `01-${query}-default`) });
+        const deadline = Date.now() + INDEX_WARMUP_BUDGET;
+        let found = false;
+        let attempts = 0;
+        for (;;) {
+            attempts++;
+            await clearSearch(page);
+            await searchFor(page, query);
+            await page.screenshot({ path: screenshot('people-search', `01-${query}-default`) });
 
-        let found = await findPersonResultContaining(page, needle);
-        if (!found) {
-            await expandGlobalIfPossible(page);
-            await page.screenshot({ path: screenshot('people-search', `02-${query}-expanded`) });
             found = await findPersonResultContaining(page, needle);
+            if (!found) {
+                await expandGlobalIfPossible(page);
+                await page.screenshot({ path: screenshot('people-search', `02-${query}-expanded`) });
+                found = await findPersonResultContaining(page, needle);
+            }
+            if (found || Date.now() + RETRY_DELAY >= deadline)
+                break;
+
+            await page.waitForTimeout(RETRY_DELAY);
         }
 
         if (!found) {
             const visible = await hasAnyPersonResult(page);
             const groupHeader = await page.locator('.search-result-group-header').count();
             throw new Error(
-                `No person result containing "${needle}" after searching "${query}". ` +
+                `No person result containing "${needle}" after searching "${query}" ` +
+                `${attempts} times over ${INDEX_WARMUP_BUDGET / 1000}s. ` +
                 `Any person results visible: ${visible}. Group headers rendered: ${groupHeader}.`,
             );
         }
 
         expect(found).toBe(true);
-    }, 45_000);
+    }, INDEX_WARMUP_BUDGET + 60_000);
 });

@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
+import E2ESequencer from './tests/ts/e2e/sequencer';
 
 const src = (name: string) => path.resolve(__dirname, `src/nodejs/src/${name}.ts`);
 
@@ -28,6 +29,9 @@ export default defineConfig({
         // Run files sequentially: all tests share one test account and
         // parallel sign-ins race each other on the same server flow.
         fileParallelism: false,
+        sequence: {
+            sequencer: E2ESequencer,
+        },
         reporters: ['default', 'junit'],
         outputFile: {
             junit: 'tmp/ts-e2e-tests.xml',
