@@ -263,6 +263,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
             // Translation
             db.AddEntityResolver<string, DbTranslation>();
+            db.AddEntityResolver<string, DbCoachEntry>();
 
             // DbChatEntryLanguage
             db.AddEntityResolver<string, DbChatEntryLanguage>();
