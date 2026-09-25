@@ -26,7 +26,8 @@ public class DigestUnsubscribeEndpointTest(AppHostFixture fixture, ITestOutputHe
     public async Task GetShouldTurnDigestOff()
     {
         // arrange
-        var account = await Tester.SignInAsNew("Alice");
+        var account = await Tester.SignInAsNew("Alice",
+            a => a.WithEmailIdentity(ActualChat.Email.Parse("alice-digest@example.com")));
         using var http = AppHost.NewHttpClient();
         var offCount = CountSubscriptions("off", "link_get");
 
@@ -38,10 +39,49 @@ public class DigestUnsubscribeEndpointTest(AppHostFixture fixture, ITestOutputHe
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         response.Headers.CacheControl!.NoStore.Should().BeTrue();
         html.Should().Contain("Digest emails are off");
+        html.Should().Contain("alice-digest@example.com", "the page names the account it acted on");
+        html.Should().NotContain("signed in as", "no session cookie means no other account to warn about");
         html.Should().Contain("/resubscribe", "the page offers an Undo");
         var settings = await KvasBackend.ForUser(account.Id).UserEmailsSettings().Get();
         settings.IsDigestEnabled.Should().BeFalse();
         CountSubscriptions("off", "link_get").Should().Be(offCount + 1, "the footer link is a GET");
+    }
+
+    [Fact]
+    public async Task PageShouldWarnWhenSignedInAsAnotherAccount()
+    {
+        // arrange
+        var ownAccount = await Tester.SignInAsNew("Grace");
+        await using var otherTester = AppHost.NewWebClientTester(Out);
+        var otherAccount = await otherTester.SignInAsNew("Heidi");
+        using var http = NewHttpClientSignedInAs(Tester.Session);
+
+        // act
+        var response = await http.GetAsync(DigestEmailEndpointExt.GetUnsubscribePath(Tokens.Create(otherAccount.Id)));
+        var html = await response.Content.ReadAsStringAsync();
+
+        // assert
+        html.Should().Contain(otherAccount.Name, "the page names the account the email went to");
+        html.Should().Contain("signed in as").And.Contain(ownAccount.Name,
+            "the reader must learn their own Settings are not the ones that changed");
+        var ownSettings = await KvasBackend.ForUser(ownAccount.Id).UserEmailsSettings().Get();
+        ownSettings.IsDigestEnabled.Should().BeTrue("the link acts on the token's account only");
+    }
+
+    [Fact]
+    public async Task PageShouldNotWarnWhenSignedInAsTheSameAccount()
+    {
+        // arrange
+        var account = await Tester.SignInAsNew("Ivan");
+        using var http = NewHttpClientSignedInAs(Tester.Session);
+
+        // act
+        var response = await http.GetAsync(DigestEmailEndpointExt.GetUnsubscribePath(Tokens.Create(account.Id)));
+        var html = await response.Content.ReadAsStringAsync();
+
+        // assert
+        html.Should().Contain(account.Name);
+        html.Should().NotContain("signed in as");
     }
 
     [Fact]
@@ -123,6 +163,28 @@ public class DigestUnsubscribeEndpointTest(AppHostFixture fixture, ITestOutputHe
     }
 
     [Fact]
+    public async Task UnsubscribeShouldUpdateSettingsUI()
+    {
+        // arrange
+        var account = await Tester.SignInAsNew("Frank");
+        using var http = AppHost.NewHttpClient();
+        var settingsUI = Tester.AppServices.UserSettingsUI(Tester.Session);
+        var computed = await Computed.Capture(
+            () => settingsUI.UserSettings.Get(Tester.Session, nameof(UserEmailsSettings)));
+        ((computed.Value as UserEmailsSettings)?.IsDigestEnabled ?? true).Should().BeTrue();
+
+        // act
+        await http.GetAsync(DigestEmailEndpointExt.GetUnsubscribePath(Tokens.Create(account.Id)));
+
+        // assert
+        await TestWait.When(async innerCt => {
+            computed.IsInvalidated().Should().BeTrue("the settings the UI shows must react to the link");
+            var settings = await settingsUI.UserEmailsSettings().Get(innerCt);
+            settings.IsDigestEnabled.Should().BeFalse();
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public async Task BadTokenShouldBeNotFound()
     {
         // arrange
@@ -136,6 +198,13 @@ public class DigestUnsubscribeEndpointTest(AppHostFixture fixture, ITestOutputHe
     }
 
     // Private methods
+
+    private HttpClient NewHttpClientSignedInAs(Session session)
+    {
+        var http = AppHost.NewHttpClient();
+        http.DefaultRequestHeaders.Add("Cookie", $"{Constants.Session.CookieName}={session.Id}");
+        return http;
+    }
 
     private Task SetDigestEnabled(bool isEnabled)
         => Tester.Commander.Call(new UserSettings_Set {
