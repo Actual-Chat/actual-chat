@@ -84,4 +84,6 @@ public class CoachSettings
     public TimeSpan ConversationMaturity { get; set; } = TimeSpan.FromMinutes(10);
     public TimeSpan MaxConversationWait { get; set; } = TimeSpan.FromHours(2);
     public int MaxTaggerCallsPerUserPerDay { get; set; } = 500;
+    public int MaxRunEntries { get; set; } = 400;
+    public int MaxTaggerCallsPerRun { get; set; } = 50;
 }

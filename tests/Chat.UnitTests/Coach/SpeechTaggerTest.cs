@@ -76,4 +76,28 @@ public class SpeechTaggerTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         act.Should().Throw<Exception>("a schema failure must count as a failed call, not as an empty result");
     }
+
+    [Fact]
+    public void ParseResponseShouldMatchSubstringsForNoSpaceScripts()
+    {
+        // arrange
+        const string text = "あの私はあの店に行きました";
+        const string json = """{"items":[{"class":"filledPause","word":"あの","occurrence":2,"synonyms":[]}]}""";
+
+        // act
+        var spans = SpeechTagger.ParseResponse(text, json, isWordSplittable: false);
+
+        // assert
+        spans.Should().ContainSingle().Which.Start.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task StubShouldNotPretendToTag()
+    {
+        // act
+        var result = await new SpeechTaggerStub().Tag(new SpeechTagRequest("um, hello", null), default);
+
+        // assert
+        result.Should().BeNull("a stub result would mark rows as tagged with zero fillers");
+    }
 }

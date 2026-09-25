@@ -1,6 +1,7 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
+using ActualChat.Hashing;
 using ActualChat.Queues;
 using ActualChat.Users;
 using ActualLab.Fusion.EntityFramework;
@@ -12,13 +13,14 @@ namespace ActualChat.Chat.Coach;
 /// <summary>
 /// Analyses a user's own voice entries (metrics + LLM spans) and, once a run of entries has gone
 /// quiet, their turn-taking in it; every row write emits the matching event to the user shard.
+/// The LLM is always called outside the operation transaction, which only re-checks and stores.
 /// </summary>
 public class CoachAnalysisBackend(IServiceProvider services)
     : DbServiceBase<ChatDbContext>(services), ICoachAnalysisBackend
 {
-    // A run is scanned in windows this many lids wide; a run longer than MaxRunEntries is cut there.
+    // A run is scanned in windows this many lids wide, at most MaxScanLids back from the anchor
     private const long ScanWindow = 50;
-    private const int MaxRunEntries = 400;
+    private const long MaxScanLids = 5000;
 
     private ChatSettings Settings { get; } = services.GetRequiredService<ChatSettings>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
@@ -55,11 +57,12 @@ public class CoachAnalysisBackend(IServiceProvider services)
     public virtual async Task<ApiArray<CoachEntryMarks>> ListMarks(
         ChatId chatId, AuthorId authorId, Range<long> lidTileRange, CancellationToken cancellationToken)
     {
+        var tile = Constants.Chat.EntryIdTiles.GetTile(lidTileRange);
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var rows = await dbContext.CoachEntries
             .Where(x => x.ChatId == chatId.Value && x.AuthorId == authorId.Value
-                && x.LocalId >= lidTileRange.Start && x.LocalId < lidTileRange.End && x.Spans != "[]")
+                && x.LocalId >= tile.Range.Start && x.LocalId < tile.Range.End && x.Spans != "[]")
             .OrderBy(x => x.LocalId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -75,33 +78,22 @@ public class CoachAnalysisBackend(IServiceProvider services)
         if (Invalidation.IsActive) {
             var written = context.Operation.Items.KeylessGet<CoachEntryAnalysis?>();
             if (written is not null)
-                InvalidateEntry(written);
+                InvalidateEntry(written.Id, written.AuthorId);
+            return;
+        }
+        if (!Settings.Coach.IsEnabled)
+            return;
+
+        var existing = await Get(id, cancellationToken).ConfigureAwait(false);
+        var entry = command.IsRemoved
+            ? null
+            : await ChatsBackend.GetEntry(id, cancellationToken).ConfigureAwait(false);
+        if (entry is null || !IsAnalyzable(entry)) {
+            if (existing is not null)
+                await RemoveEntry(id, context, cancellationToken).ConfigureAwait(false);
             return;
         }
 
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _1 = dbContext.ConfigureAwait(false);
-        var dbEntry = await dbContext.CoachEntries.ForUpdate()
-            .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
-            .ConfigureAwait(false);
-
-        if (command.IsRemoved) {
-            if (dbEntry is null)
-                return;
-
-            var removed = dbEntry.ToModel();
-            dbContext.Remove(dbEntry);
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation.Items.KeylessSet(removed);
-            context.Operation.AddEvent(new CoachEntryAnalyzedEvent(removed, true));
-            return;
-        }
-
-        var entry = await ChatsBackend.GetEntry(id, cancellationToken).ConfigureAwait(false);
-        if (entry is null || !IsAnalyzable(entry))
-            return;
-
-        var existing = dbEntry?.ToModel();
         var isUnchanged = existing is not null && existing.ContentHash == entry.ContentHash;
         if (isUnchanged && existing!.TagState != CoachTagState.Pending)
             return;
@@ -123,6 +115,15 @@ public class CoachAnalysisBackend(IServiceProvider services)
         if (isUnchanged && analysis.TagState == existing!.TagState)
             return;
 
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _1 = dbContext.ConfigureAwait(false);
+        var dbEntry = await dbContext.CoachEntries.ForUpdate()
+            .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
+            .ConfigureAwait(false);
+        var current = await ChatsBackend.GetEntry(id, cancellationToken).ConfigureAwait(false);
+        if (current is null || !IsStillWorthWriting(dbEntry, analysis, current.ContentHash))
+            return;
+
         analysis = analysis with { Version = VersionGenerator.NextVersion(dbEntry?.Version ?? 0) };
         if (dbEntry is null)
             dbContext.Add(new DbCoachEntry(analysis));
@@ -140,19 +141,21 @@ public class CoachAnalysisBackend(IServiceProvider services)
         var (chatId, entryLid) = command;
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
-            var touched = context.Operation.Items.KeylessGet<TouchedRun?>();
-            if (touched is null)
+            var touch = context.Operation.Items.KeylessGet<CoachRunTouch?>();
+            if (touch is null)
                 return;
 
-            foreach (var authorId in touched.AuthorIds)
-                _ = GetConversation(touched.Id, authorId, default);
-            foreach (var tagged in touched.TaggedEntries)
-                InvalidateEntry(tagged);
+            foreach (var authorId in touch.AuthorIds)
+                _ = GetConversation(touch.Id, authorId, default);
+            foreach (var taggedEntry in touch.TaggedEntries)
+                InvalidateEntry(taggedEntry.Id, taggedEntry.AuthorId);
             return;
         }
+        if (!Settings.Coach.IsEnabled)
+            return;
 
         var now = Clocks.SystemClock.Now;
-        var run = await FindRun(chatId, entryLid, cancellationToken).ConfigureAwait(false);
+        var (firstLid, run) = await FindRun(chatId, entryLid, cancellationToken).ConfigureAwait(false);
         if (run.Count == 0)
             return;
 
@@ -163,22 +166,38 @@ public class CoachAnalysisBackend(IServiceProvider services)
         if (isStillActive && !waitedLongEnough)
             throw StandardError.Postpone(maturity - (now - quietSince));
 
-        var conversationId = ConversationId.New(chatId, run[0].LocalId);
+        var conversationId = ConversationId.New(chatId, firstLid);
         var runVersion = run[^1].LocalId;
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _1 = dbContext.ConfigureAwait(false);
-        var touchedRun = new TouchedRun(conversationId);
-
+        var authors = new List<(AuthorId Id, UserId UserId)>();
         foreach (var authorId in run.Where(IsAnalyzable).Select(e => e.AuthorId).Distinct()) {
             var author = await AuthorsBackend
                 .Get(chatId, authorId, RequestedAuthorKind.Default, cancellationToken)
                 .ConfigureAwait(false);
-            if (author is null || author.UserId.IsGuestOrNull() || author.IsAnonymous == true)
+            if (author is not null && !author.UserId.IsGuestOrNull() && author.IsAnonymous != true)
+                authors.Add((authorId, author.UserId));
+        }
+        var tagged = await TagPendingEntries(run, authors, cancellationToken).ConfigureAwait(false);
+
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _1 = dbContext.ConfigureAwait(false);
+        var touchedAuthors = new List<AuthorId>();
+        var touchedEntries = new List<CoachTaggedEntry>();
+
+        var runEntries = run.ToDictionary(e => e.Id);
+        foreach (var analysis in tagged) {
+            var dbEntry = await dbContext.CoachEntries.ForUpdate()
+                .FirstOrDefaultAsync(x => x.Id == analysis.Id.Value, cancellationToken)
+                .ConfigureAwait(false);
+            if (dbEntry is null || !IsStillWorthWriting(dbEntry, analysis, runEntries[analysis.Id].ContentHash))
                 continue;
 
-            await TagPendingEntries(dbContext, run, authorId, touchedRun, context, cancellationToken)
-                .ConfigureAwait(false);
+            var stored = analysis with { Version = VersionGenerator.NextVersion(dbEntry.Version) };
+            dbEntry.UpdateFrom(stored);
+            touchedEntries.Add(new CoachTaggedEntry(stored.Id, stored.AuthorId));
+            context.Operation.AddEvent(new CoachEntryAnalyzedEvent(stored, false));
+        }
 
+        foreach (var (authorId, userId) in authors) {
             var rowId = DbCoachConversation.ComposeId(conversationId, authorId);
             var dbRow = await dbContext.CoachConversations.ForUpdate()
                 .FirstOrDefaultAsync(x => x.Id == rowId, cancellationToken)
@@ -192,7 +211,7 @@ public class CoachAnalysisBackend(IServiceProvider services)
 
             var version = VersionGenerator.NextVersion(dbRow?.Version ?? 0);
             var model = new CoachConversationAnalysis(conversationId, authorId, version) {
-                UserId = author.UserId,
+                UserId = userId,
                 ConversationVersion = runVersion,
                 EndsAt = quietSince,
                 OwnSpeechSeconds = stats.OwnSpeechSeconds,
@@ -209,11 +228,12 @@ public class CoachAnalysisBackend(IServiceProvider services)
                 dbContext.Add(new DbCoachConversation(model));
             else
                 dbRow.UpdateFrom(model);
-            touchedRun.AuthorIds.Add(authorId);
+            touchedAuthors.Add(authorId);
             context.Operation.AddEvent(new CoachConversationAnalyzedEvent(model));
         }
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(touchedRun);
+        context.Operation.Items.KeylessSet(
+            new CoachRunTouch(conversationId, touchedAuthors.ToApiArray(), touchedEntries.ToApiArray()));
     }
 
     // [EventHandler]
@@ -228,8 +248,9 @@ public class CoachAnalysisBackend(IServiceProvider services)
             return;
 
         if (changeKind == ChangeKind.Remove || entry.IsRemoved) {
-            await Queues.Enqueue(new CoachAnalysisBackend_AnalyzeEntry(entry.Id, true), cancellationToken)
-                .ConfigureAwait(false);
+            if (entry.HasAudio)
+                await Queues.Enqueue(new CoachAnalysisBackend_AnalyzeEntry(entry.Id, true), cancellationToken)
+                    .ConfigureAwait(false);
             return;
         }
 
@@ -244,12 +265,13 @@ public class CoachAnalysisBackend(IServiceProvider services)
 
         await Queues.Enqueue(new CoachAnalysisBackend_AnalyzeEntry(entry.Id, false), cancellationToken)
             .ConfigureAwait(false);
-        if (!isFinalized)
-            return;
-
-        var delayUntil = (entry.EndsAt ?? Clocks.SystemClock.Now) + Settings.Coach.ConversationMaturity;
+        // An edit after the run went quiet must also re-tag a non-opted-in user's row; its delay counts
+        // from now so the run command finds the row already reset by the entry command
+        var anchor = isFinalized ? entry.EndsAt ?? Clocks.SystemClock.Now : Clocks.SystemClock.Now;
+        var delayUntil = anchor + Settings.Coach.ConversationMaturity;
         var analyzeRun = new CoachAnalysisBackend_AnalyzeConversation(entry.ChatId, entry.LocalId) {
             DelayUntil = delayUntil,
+            Salt = isFinalized ? "" : entry.ContentHash.Value,
         };
         await Queues.Enqueue(analyzeRun, cancellationToken).ConfigureAwait(false);
     }
@@ -266,11 +288,44 @@ public class CoachAnalysisBackend(IServiceProvider services)
             }
             && !entry.Content.IsNullOrWhiteSpace();
 
-    private void InvalidateEntry(CoachEntryAnalysis analysis)
+    // The entry may have been edited while the LLM was running (then the analysis is stale), or a
+    // concurrent command may already have stored the same tags
+    private static bool IsStillWorthWriting(
+        DbCoachEntry? dbEntry, CoachEntryAnalysis analysis, HashString currentContentHash)
     {
-        _ = Get(analysis.Id, default);
-        var tile = Constants.Chat.EntryIdTiles.GetTile(analysis.Id.LocalId);
-        _ = ListMarks(analysis.Id.ChatId, analysis.AuthorId, tile.Range, default);
+        if (analysis.ContentHash != currentContentHash)
+            return false;
+        if (dbEntry is null || dbEntry.ContentHash != analysis.ContentHash.Value)
+            return true;
+
+        // Same text: only newer tags are worth writing; a pending re-analysis of identical text
+        // carries nothing and must not downgrade a row a concurrent command just tagged
+        return analysis.TagState == CoachTagState.Tagged
+            && (dbEntry.TagState != CoachTagState.Tagged || dbEntry.PromptVersion < analysis.PromptVersion);
+    }
+
+    private void InvalidateEntry(ChatEntryId id, AuthorId authorId)
+    {
+        _ = Get(id, default);
+        var tile = Constants.Chat.EntryIdTiles.GetTile(id.LocalId);
+        _ = ListMarks(id.ChatId, authorId, tile.Range, default);
+    }
+
+    private async Task RemoveEntry(ChatEntryId id, CommandContext context, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+        var dbEntry = await dbContext.CoachEntries.ForUpdate()
+            .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbEntry is null)
+            return;
+
+        var removed = dbEntry.ToModel();
+        dbContext.Remove(dbEntry);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        context.Operation.Items.KeylessSet(removed);
+        context.Operation.AddEvent(new CoachEntryAnalyzedEvent(removed, true));
     }
 
     private CoachEntryAnalysis Analyze(ChatEntry entry, UserId userId, Language? language, CoachEntryAnalysis? existing)
@@ -332,54 +387,73 @@ public class CoachAnalysisBackend(IServiceProvider services)
         };
     }
 
-    private async Task TagPendingEntries(
-        ChatDbContext dbContext,
-        List<ChatEntry> run,
-        AuthorId authorId,
-        TouchedRun touched,
-        CommandContext context,
-        CancellationToken cancellationToken)
+    // Reads the rows without locks and tags them outside any transaction; the caller re-checks each
+    // row under a lock before storing. A row whose text hash is stale (the entry was edited and the
+    // entry command has not run yet) is re-analysed here rather than waited for.
+    private async Task<List<CoachEntryAnalysis>> TagPendingEntries(
+        List<ChatEntry> run, List<(AuthorId Id, UserId UserId)> authors, CancellationToken cancellationToken)
     {
-        var own = run.Where(e => e.AuthorId == authorId && IsAnalyzable(e)).ToDictionary(e => e.Id.Value);
+        var userIds = authors.ToDictionary(a => a.Id, a => a.UserId);
+        var own = run
+            .Where(e => IsAnalyzable(e) && userIds.ContainsKey(e.AuthorId))
+            .ToDictionary(e => e.Id.Value);
         var ownIds = own.Keys.ToList();
+        List<DbCoachEntry> rows;
+        {
+            var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+            await using var _ = dbContext.ConfigureAwait(false);
+            rows = await dbContext.CoachEntries
+                .Where(x => ownIds.Contains(x.Id))
+                .OrderBy(x => x.LocalId)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         var promptVersion = Settings.Coach.PromptVersion;
-        var pending = await dbContext.CoachEntries.ForUpdate()
-            .Where(x => ownIds.Contains(x.Id))
-            .Where(x => x.TagState == CoachTagState.Pending || x.PromptVersion < promptVersion)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        foreach (var dbEntry in pending) {
+        var tagged = new List<CoachEntryAnalysis>();
+        foreach (var dbEntry in rows) {
+            if (tagged.Count >= Settings.Coach.MaxTaggerCallsPerRun)
+                break;
+
             var entry = own[dbEntry.Id];
-            var analysis = await ApplyTags(dbEntry.ToModel(), entry.Content, cancellationToken).ConfigureAwait(false);
-            if (analysis.TagState != CoachTagState.Tagged)
+            var analysis = dbEntry.ToModel();
+            if (analysis.ContentHash != entry.ContentHash) {
+                var language = await GetLanguage(entry.Id, analysis.UserId, cancellationToken).ConfigureAwait(false);
+                analysis = Analyze(entry, analysis.UserId, language, analysis);
+            }
+            if (analysis.TagState == CoachTagState.Tagged && analysis.PromptVersion >= promptVersion)
                 continue;
 
-            analysis = analysis with { Version = VersionGenerator.NextVersion(dbEntry.Version) };
-            dbEntry.UpdateFrom(analysis);
-            touched.TaggedEntries.Add(analysis);
-            context.Operation.AddEvent(new CoachEntryAnalyzedEvent(analysis, false));
+            analysis = await ApplyTags(analysis, entry.Content, cancellationToken).ConfigureAwait(false);
+            if (analysis.TagState == CoachTagState.Tagged)
+                tagged.Add(analysis);
         }
+        return tagged;
     }
 
     // The coaching "conversation" is a run of entries with no quiet gap of ConversationMaturity
     // between neighbours; the summarizer's conversations exist only for long threads, so they
-    // cannot be the unit here.
-    private async Task<List<ChatEntry>> FindRun(ChatId chatId, long entryLid, CancellationToken cancellationToken)
+    // cannot be the unit here. The run is identified by its true first lid; when it is longer than
+    // MaxRunEntries only its tail is analysed, so the identity never depends on which entry
+    // triggered the command.
+    private async Task<(long FirstLid, List<ChatEntry> Entries)> FindRun(
+        ChatId chatId, long entryLid, CancellationToken cancellationToken)
     {
         var maturity = Settings.Coach.ConversationMaturity;
         var lidRange = await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
         if (entryLid < lidRange.Start || entryLid >= lidRange.End)
-            return [];
+            return (entryLid, []);
 
-        var run = new LinkedList<ChatEntry>();
         var anchor = await ReadWindow(chatId, entryLid, entryLid + 1, cancellationToken).ConfigureAwait(false);
         if (anchor.Count == 0)
-            return [];
+            return (entryLid, []);
 
+        var run = new LinkedList<ChatEntry>();
         run.AddFirst(anchor[0]);
+        var scanFloor = Math.Max(lidRange.Start, entryLid - MaxScanLids);
         var windowStart = entryLid;
-        while (run.Count < MaxRunEntries && windowStart > lidRange.Start) {
-            var from = Math.Max(lidRange.Start, windowStart - ScanWindow);
+        while (windowStart > scanFloor) {
+            var from = Math.Max(scanFloor, windowStart - ScanWindow);
             var window = await ReadWindow(chatId, from, windowStart, cancellationToken).ConfigureAwait(false);
             var isClosed = false;
             for (var i = window.Count - 1; i >= 0; i--) {
@@ -397,7 +471,7 @@ public class CoachAnalysisBackend(IServiceProvider services)
         }
 
         var windowEnd = entryLid + 1;
-        while (run.Count < MaxRunEntries && windowEnd < lidRange.End) {
+        while (windowEnd < lidRange.End) {
             var to = Math.Min(lidRange.End, windowEnd + ScanWindow);
             var window = await ReadWindow(chatId, windowEnd, to, cancellationToken).ConfigureAwait(false);
             var isClosed = false;
@@ -414,7 +488,13 @@ public class CoachAnalysisBackend(IServiceProvider services)
 
             windowEnd = to;
         }
-        return run.ToList();
+
+        var entries = run.ToList();
+        var firstLid = entries[0].LocalId;
+        var maxRunEntries = Settings.Coach.MaxRunEntries;
+        if (entries.Count > maxRunEntries)
+            entries = entries.Skip(entries.Count - maxRunEntries).ToList();
+        return (firstLid, entries);
     }
 
     private async Task<List<ChatEntry>> ReadWindow(
@@ -445,14 +525,5 @@ public class CoachAnalysisBackend(IServiceProvider services)
             .Get(cancellationToken)
             .ConfigureAwait(false);
         return languageSettings.Primary;
-    }
-
-    // Nested types
-
-    private sealed class TouchedRun(ConversationId id)
-    {
-        public ConversationId Id { get; } = id;
-        public List<AuthorId> AuthorIds { get; } = [];
-        public List<CoachEntryAnalysis> TaggedEntries { get; } = [];
     }
 }

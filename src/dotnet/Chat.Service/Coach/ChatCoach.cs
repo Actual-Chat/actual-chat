@@ -4,6 +4,9 @@ namespace ActualChat.Chat.Coach;
 
 public class ChatCoach(IServiceProvider services) : IChatCoach
 {
+    // One conversation tile of lids; a client pages marks by the tiles it renders
+    public const long MaxLidRangeLength = 1280;
+
     private ChatSettings Settings { get; } = services.GetRequiredService<ChatSettings>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private ICoachAnalysisBackend Backend { get; } = services.GetRequiredService<ICoachAnalysisBackend>();
@@ -16,6 +19,9 @@ public class ChatCoach(IServiceProvider services) : IChatCoach
     public virtual async Task<ApiArray<CoachEntryMarks>> GetOwnMarks(
         Session session, ChatId chatId, Range<long> lidRange, CancellationToken cancellationToken)
     {
+        if (lidRange.IsEmptyOrNegative || lidRange.End - lidRange.Start > MaxLidRangeLength)
+            throw new ArgumentOutOfRangeException(
+                nameof(lidRange), lidRange, $"Range must be non-empty and at most {MaxLidRangeLength} lids long.");
         if (!Settings.Coach.IsEnabled)
             return ApiArray<CoachEntryMarks>.Empty;
 

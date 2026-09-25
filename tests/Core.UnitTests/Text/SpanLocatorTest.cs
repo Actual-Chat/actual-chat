@@ -32,4 +32,14 @@ public class SpanLocatorTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void LocateShouldKeepApostrophesInsideWords()
         => SpanLocator.Locate("I don't know, don't.", "don't", 2).Should().Be(new Range<int>(14, 19));
+
+    [Theory]
+    [InlineData("あの私はあの店に行きました", "あの", 2, 4, 6)]
+    [InlineData("えっと私は店に", "えっと", 1, 0, 3)]
+    public void LocateShouldMatchSubstringsWhenWordsAreNotSpaceDelimited(string text, string word, int n, int start, int end)
+        => SpanLocator.Locate(text, word, n, isWholeWord: false).Should().Be(new Range<int>(start, end));
+
+    [Fact]
+    public void LocateShouldStillRequireWholeWordsByDefault()
+        => SpanLocator.Locate("あの私はあの店に", "あの", 2).Should().BeNull("kana runs have no word boundaries");
 }

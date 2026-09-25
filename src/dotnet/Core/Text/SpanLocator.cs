@@ -8,10 +8,14 @@ namespace ActualChat;
 /// </summary>
 public static class SpanLocator
 {
-    public static Range<int>? Locate(string text, string word, int occurrence)
+    // isWholeWord = false is for scripts without word spaces, where a match inside a run of letters
+    // is the only kind there is.
+    public static Range<int>? Locate(string text, string word, int occurrence, bool isWholeWord = true)
     {
         if (occurrence < 1 || text.IsNullOrEmpty() || word.IsNullOrWhiteSpace())
             return null;
+        if (!isWholeWord)
+            return LocateSubstring(text, word.Trim(), occurrence);
 
         var parts = word.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var seen = 0;
@@ -35,6 +39,19 @@ public static class SpanLocator
     }
 
     // Private methods
+
+    private static Range<int>? LocateSubstring(string text, string word, int occurrence)
+    {
+        var seen = 0;
+        var i = 0;
+        while ((i = text.IndexOf(word, i, StringComparison.OrdinalIgnoreCase)) >= 0) {
+            if (++seen == occurrence)
+                return new Range<int>(i, i + word.Length);
+
+            i += word.Length;
+        }
+        return null;
+    }
 
     private static int MatchPhrase(string text, int start, string[] parts)
     {

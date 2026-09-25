@@ -9,10 +9,12 @@ public interface ICoachAnalysisBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<CoachEntryAnalysis?> Get(ChatEntryId id, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<CoachConversationAnalysis?> GetConversation(ConversationId id, AuthorId authorId, CancellationToken cancellationToken);
+    Task<CoachConversationAnalysis?> GetConversation(
+        ConversationId id, AuthorId authorId, CancellationToken cancellationToken);
     // lidTileRange must be a Constants.Chat.EntryIdTiles tile: writes invalidate per tile
     [ComputeMethod]
-    Task<ApiArray<CoachEntryMarks>> ListMarks(ChatId chatId, AuthorId authorId, Range<long> lidTileRange, CancellationToken cancellationToken);
+    Task<ApiArray<CoachEntryMarks>> ListMarks(
+        ChatId chatId, AuthorId authorId, Range<long> lidTileRange, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task OnAnalyzeEntry(CoachAnalysisBackend_AnalyzeEntry command, CancellationToken cancellationToken);
@@ -28,10 +30,12 @@ public interface ICoachAnalysisBackend : IComputeService, IBackendService
 public sealed partial record CoachAnalysisBackend_AnalyzeEntry(
     [property: DataMember, Key(0)] ChatEntryId Id,
     [property: DataMember, Key(1)] bool IsRemoved
-) : ICommand<Unit>, IBackendCommand, IHasShardKey
+) : ICommand<Unit>, IBackendCommand, IHasShardKey, IHasTimeout
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => Id.ChatId.ShardKey;
+    // The immediate path calls the LLM from this command; the default queue budget is 15 s
+    TimeSpan? IHasTimeout.Timeout => TimeSpan.FromMinutes(3);
 }
 
 /// <summary>
@@ -49,9 +53,14 @@ public sealed partial record CoachAnalysisBackend_AnalyzeConversation(
 
     [DataMember, Key(2)]
     public Moment DelayUntil { get; init; }
+    // Distinguishes a re-analysis (an edit) from the burst of commands a fresh run produces
+    [DataMember, Key(3)]
+    public string Salt { get; init; } = "";
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => ChatId.ShardKey;
-    string IHasUuid.Uuid => $"coach:{ChatId}:{EntryLid / LidBucket}";
+    string IHasUuid.Uuid => Salt.IsNullOrEmpty()
+        ? $"coach:{ChatId}:{EntryLid / LidBucket}"
+        : $"coach:{ChatId}:{EntryLid / LidBucket}:{Salt}";
     TimeSpan? IHasTimeout.Timeout => TimeSpan.FromMinutes(5);
 }

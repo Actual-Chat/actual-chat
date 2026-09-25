@@ -62,7 +62,8 @@ public class SpeechTagger(SpeechTagger.Options settings, IServiceProvider servic
 
     private Options Settings { get; } = settings;
     private Kernel Kernel => field ??= services.GetRequiredService<Kernel>();
-    private IChatCompletionService Completion => field ??= Kernel.GetRequiredService<IChatCompletionService>(ServiceKey);
+    private IChatCompletionService Completion
+        => field ??= Kernel.GetRequiredService<IChatCompletionService>(ServiceKey);
     private IPromptHelpers PromptHelpers => field ??= services.GetRequiredService<IPromptHelpers>();
     private ILogger Log => field ??= services.LogFor(GetType());
     private string PromptTemplate => field ??= File.ReadAllText(Settings.PromptFile).Trim();
@@ -88,7 +89,8 @@ public class SpeechTagger(SpeechTagger.Options settings, IServiceProvider servic
             var response = await Completion
                 .GetChatMessageContentAsync(history, executionSettings, Kernel, cancellationToken)
                 .ConfigureAwait(false);
-            var spans = ParseResponse(request.Text, response.Content ?? "");
+            var isWordSplittable = SpeechTextStats.IsWordSplittable(request.Language);
+            var spans = ParseResponse(request.Text, response.Content ?? "", isWordSplittable);
             return new SpeechTagResult(spans, Settings.PromptVersion);
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
@@ -97,7 +99,7 @@ public class SpeechTagger(SpeechTagger.Options settings, IServiceProvider servic
         }
     }
 
-    public static ApiArray<SpeechSpan> ParseResponse(string text, string json)
+    public static ApiArray<SpeechSpan> ParseResponse(string text, string json, bool isWordSplittable = true)
     {
         json = json.Replace("```json", "", StringComparison.OrdinalIgnoreCase).Replace("```", "").Trim();
         using var doc = JsonDocument.Parse(json);
@@ -117,7 +119,7 @@ public class SpeechTagger(SpeechTagger.Options settings, IServiceProvider servic
             if (word.IsNullOrEmpty() || !item.TryGetProperty("occurrence", out var occurrence))
                 continue;
 
-            var range = SpanLocator.Locate(text, word, occurrence.GetInt32());
+            var range = SpanLocator.Locate(text, word, occurrence.GetInt32(), isWholeWord: isWordSplittable);
             if (range is null)
                 continue;
 
@@ -128,14 +130,16 @@ public class SpeechTagger(SpeechTagger.Options settings, IServiceProvider servic
                     .Take(MaxSynonyms)
                     .ToApiArray()
                 : ApiArray<string>.Empty;
-            spans.Add(new SpeechSpan(kind.Value, word.ToLower(), range.Value.Start, range.Value.End - range.Value.Start, synonyms!));
+            var (start, end) = range.Value;
+            spans.Add(new SpeechSpan(kind.Value, word.ToLower(), start, end - start, synonyms!));
         }
         return spans.OrderBy(s => s.Start).ToApiArray();
     }
 }
 
+// Reports failure so rows stay pending instead of being marked tagged with zero fillers
 public sealed class SpeechTaggerStub : ISpeechTagger
 {
     public Task<SpeechTagResult?> Tag(SpeechTagRequest request, CancellationToken cancellationToken)
-        => Task.FromResult<SpeechTagResult?>(new SpeechTagResult(ApiArray<SpeechSpan>.Empty, 0));
+        => Task.FromResult<SpeechTagResult?>(null);
 }

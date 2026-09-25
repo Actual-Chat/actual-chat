@@ -43,6 +43,7 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
             ConfigureHost = (_, cfg) => cfg.AddInMemoryCollection(
                 ($"{coach}:{nameof(CoachSettings.IsEnabled)}", "true"),
                 ($"{coach}:{nameof(CoachSettings.ConversationMaturity)}", "00:00:01"),
+                ($"{coach}:{nameof(CoachSettings.MaxRunEntries)}", "3"),
                 ($"{nameof(ChatSettings)}:{nameof(ChatSettings.IsTranslationEnabled)}", "true"),
                 ($"{nameof(ChatSettings)}:{nameof(ChatSettings.UseFakeLanguageDetection)}", "true")),
             ConfigureServices = (_, services) => services.Replace(ServiceDescriptor.Singleton<ISpeechTagger>(tagger)),
@@ -311,5 +312,109 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         bobMarks[0].Spans.Select(s => s.Kind).Should().Contain(SpeechSpanKind.Filler);
         aliceMarks.Should().BeEmpty("marks are private to their author");
         (await chatCoach.IsEnabled(bob.Session, default)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetOwnMarksShouldRejectAnUnboundedRange()
+    {
+        // arrange
+        var (appHost, _) = await NewCoachHost("coach-marks-range");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var chatCoach = appHost.Services.GetRequiredService<IChatCoach>();
+
+        // act
+        var act = () => chatCoach.GetOwnMarks(tester.Session, chatId, new Range<long>(0, 1_000_000_000), default);
+
+        // assert
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>("a client must page marks by bounded ranges");
+    }
+
+    [Fact]
+    public async Task EntryEditedToEmptyShouldDropItsRow()
+    {
+        // arrange
+        var (appHost, _) = await NewCoachHost("coach-edit-empty");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(appHost, account);
+        var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
+        var entry = await PostVoice(tester, chatId, Text);
+        await WhenTagged(backend, entry.Id);
+
+        // act
+        await tester.Commander.Call(new ChatsBackend_ChangeEntry(entry.Id, null,
+            Change.Update(new ChatEntryDiff { Content = "   " })));
+
+        // assert
+        await TestWait.When(async ct => (await backend.Get(entry.Id, ct))
+            .Should().BeNull("stale spans would point into text that is gone"));
+    }
+
+    [Fact]
+    public async Task EditAfterTheRunClosedShouldReTagANonOptedInEntry()
+    {
+        // arrange
+        var (appHost, tagger) = await NewCoachHost("coach-edit-after-close");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
+        var entry = await PostVoice(tester, chatId, Text);
+        await WhenTagged(backend, entry.Id);
+        tagger.Calls.Should().Be(1);
+
+        // act
+        var edited = await tester.Commander.Call(new ChatsBackend_ChangeEntry(entry.Id, null,
+            Change.Update(new ChatEntryDiff { Content = "So, um, a shorter one." })));
+
+        // assert
+        var reanalyzed = await TestWait.When(async ct => {
+            var analysis = await backend.Get(entry.Id, ct);
+            analysis!.ContentHash.Should().Be(edited.ContentHash);
+            analysis.TagState.Should().Be(CoachTagState.Tagged);
+            return analysis;
+        }, TimeSpan.FromSeconds(30));
+        reanalyzed.Words.Should().Be(5);
+        tagger.Calls.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task CappedRunShouldAnalyseItsTailUnderItsTrueStart()
+    {
+        // arrange: MaxRunEntries is 3 in this host; five alternating turns, so a capped tail has three
+        var (appHost, _) = await NewCoachHost("coach-capped-run");
+        await using var _1 = appHost;
+        await using var bob = appHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        var (chatId, inviteId) = await bob.CreateChat(true);
+        await using var alice = appHost.NewBlazorTester(Out);
+        await alice.SignInAsAlice();
+        await alice.JoinChat(chatId, inviteId);
+        var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
+
+        // act
+        var first = await PostVoice(bob, chatId, "One.");
+        await PostVoice(alice, chatId, "Two.");
+        await PostVoice(bob, chatId, "Three.");
+        await PostVoice(alice, chatId, "Four.");
+        await PostVoice(bob, chatId, "Five.");
+
+        // assert
+        var row = await TestWait.When(async ct => {
+            var r = await backend.GetConversation(ConversationId.New(chatId, first.LocalId), first.AuthorId, ct);
+            r.Should().NotBeNull("the run is identified by its true first entry even when only its tail is analysed");
+            return r!;
+        }, TimeSpan.FromSeconds(30));
+        row.TotalTurns.Should().Be(3, "only the last MaxRunEntries entries are analysed");
+        row.OwnTurns.Should().Be(2);
+        var midId = ConversationId.New(chatId, first.LocalId + 2);
+        var midRow = await backend.GetConversation(midId, first.AuthorId, default);
+        midRow.Should().BeNull("a capped scan must not mint a second identity inside the same run");
     }
 }
