@@ -9,6 +9,8 @@ public sealed partial record DigestPreview
     public int OtherUnreadCount { get; init; }
     [DataMember, Key(2)]
     public string RenderedHtml { get; init; } = "";
+    [DataMember, Key(3)]
+    public string UnsubscribeLink { get; init; } = "";
 }
 
 [DataContract, MessagePackObject]

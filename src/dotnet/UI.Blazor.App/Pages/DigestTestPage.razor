@@ -46,6 +46,13 @@
 
     <FormBlock>
         @if (_result is not null) {
+            <p class="mb-4">
+                <a href="@_result.UnsubscribeLink" target="_blank" class="underline">Open the unsubscribe page</a>
+                <span class="text-gray-500">
+                    (the link from the email footer; open it in a window signed in as another account
+                    to see the "signed in as" note)
+                </span>
+            </p>
             var tabs = new TabDef[] {
                 new("email-preview", "Email Preview") { Content = @<text>
                     @if (_result.RenderedHtml.IsNullOrEmpty()) {
