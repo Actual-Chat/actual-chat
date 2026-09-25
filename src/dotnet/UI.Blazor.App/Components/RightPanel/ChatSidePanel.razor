@@ -121,6 +121,7 @@
             Chat = chat,
             ShowCallTab = liveSession is not null,
             ShowMembersTab = showMemberTab,
+            ShowThreads = chatId.Kind is ChatKind.Group or ChatKind.Place or ChatKind.Peer,
             ShowContentItemsTab = true,
         };
     }
@@ -132,10 +133,12 @@
         public static Model Loading(Chat chat) => new() { Chat = chat };
 
         public Chat? Chat { get; init; }
-        public bool ShowThreads => Chat?.Id.Kind is ChatKind.Group or ChatKind.Place or ChatKind.Peer;
         public bool ShowTabs => ShowCallTab || ShowMembersTab || ShowContentItemsTab || ShowThreads;
         public bool ShowCallTab { get; init; }
         public bool ShowMembersTab { get; init; }
+        // Set only once loaded: the TabPanel keeps its first selection, so a loading model
+        // showing any tab would pin it there ahead of Call and Members
+        public bool ShowThreads { get; init; }
         public bool ShowContentItemsTab { get; init; }
     }
 }
