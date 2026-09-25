@@ -572,6 +572,9 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         const sh = this.getSourceHeight();
 
         ctx.save();
+        // Wallpaper has no separate preview: its canvas is the preview, so it must show the blur too.
+        if (this.blurRadius > 0)
+            ctx.filter = `blur(${this.blurRadius}px)`;
         ctx.translate(cx + this.offsetX, cy + this.offsetY);
         ctx.rotate((this.rotation * Math.PI) / 180);
         ctx.scale(this.flipX ? -this.scale : this.scale, this.scale);

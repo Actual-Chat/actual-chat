@@ -1,15 +1,29 @@
 .pic-crop-modal .dialog-body {
-    @apply flex-y items-stretch justify-start gap-4;
+    @apply flex-y items-stretch justify-center gap-4;
     @apply p-4;
     @apply overflow-x-hidden overflow-y-auto;
     @apply select-none;
 }
 
-/* ── Canvas container ── */
+/* ── Crop area: canvas at left, size previews stacked in the right gutter ── */
 
+.pic-crop-modal .c-crop {
+    @apply flex-x items-start gap-3;
+    @apply w-full shrink-0;
+}
 .pic-crop-modal .c-content {
-    @apply flex-y items-center justify-center;
-    @apply w-full;
+    @apply flex-1 min-w-0;
+}
+
+/* ── Create / Upload: full-width pair under the canvas, each half the modal ── */
+
+.pic-crop-modal .c-actions-row {
+    @apply flex-x items-center gap-4;
+    @apply w-full shrink-0;
+}
+.pic-crop-modal .c-actions-row .btn {
+    @apply flex-1;
+    @apply flex-x items-center justify-center gap-1;
 }
 
 .pic-crop-modal .c-canvas-container {
@@ -21,7 +35,16 @@
     aspect-ratio: 1;
 }
 .pic-crop-modal.square .c-canvas-container {
-    @apply rounded-4xl;
+    @apply rounded-4xl border border-separator;
+}
+/* Wallpaper: full-width horizontal strip at its own aspect (no wasted square), doubling as the
+   blurred preview. Its intrinsic canvas size carries the ratio, so let the height follow the width. */
+.pic-crop-modal.has-blur .c-canvas-container {
+    @apply rounded-lg;
+    aspect-ratio: auto;
+}
+.pic-crop-modal.has-blur .c-canvas-container > canvas {
+    @apply h-auto;
 }
 .pic-crop-modal .c-canvas-container > canvas {
     @apply w-full h-full;
@@ -38,17 +61,6 @@
     @apply cursor-default;
 }
 
-.pic-crop-modal .c-canvas-container .c-hint {
-    @apply absolute bottom-3 left-1/2;
-    @apply px-3 py-1;
-    @apply rounded-full;
-    @apply bg-pal-black-60;
-    @apply text-caption text-white;
-    @apply pointer-events-none;
-    @apply whitespace-nowrap;
-    @apply -translate-x-1/2;
-}
-
 .pic-crop-modal .c-canvas-container .c-angle {
     @apply absolute top-3 left-1/2;
     @apply px-3 py-1;
@@ -60,11 +72,28 @@
     @apply -translate-x-1/2;
 }
 
+/* Nothing uploaded yet (e.g. a place with no wallpaper): tint the canvas so the empty box reads as a
+   drop zone, with a centered hint. A marble covers this bg, so it only shows for the truly-empty case. */
+.pic-crop-modal.empty .c-canvas-container {
+    @apply bg-03;
+}
 .pic-crop-modal .c-canvas-container .c-placeholder {
     @apply absolute inset-0;
     @apply flex-y items-center justify-center gap-2;
     @apply text-body text-03;
     @apply pointer-events-none;
+}
+
+/* "Upload or create an image" — shown while there's nothing to crop (marble/empty). */
+.pic-crop-modal .c-canvas-container .c-hint {
+    @apply absolute bottom-3 left-1/2;
+    @apply px-3 py-1;
+    @apply rounded-full;
+    @apply bg-pal-black-60;
+    @apply text-caption text-white;
+    @apply pointer-events-none;
+    @apply whitespace-nowrap;
+    @apply -translate-x-1/2;
 }
 
 /* The current generated avatar, shown behind the canvas so the canvas overlay dims it and the
@@ -80,39 +109,16 @@
     @apply w-full h-full;
 }
 
-/* ── Zoom row ── */
-
-.pic-crop-modal .c-zoom-readout {
-    @apply flex-x items-center gap-3;
-    @apply w-full;
-}
-.pic-crop-modal .c-zoom-readout::before,
-.pic-crop-modal .c-zoom-readout::after {
-    @apply content-empty;
-    @apply flex-1;
-    @apply h-px;
-    @apply bg-separator;
-}
-.pic-crop-modal .c-zoom-value {
-    @apply text-caption text-03 tabular-nums;
-}
-
 /* ── Controls ── */
 
 .pic-crop-modal .c-controls {
     @apply flex-y items-stretch gap-3;
+    @apply shrink-0;
     @apply p-2;
     @apply rounded-lg border border-separator;
 }
 .pic-crop-modal .c-controls .c-tools-row {
     @apply flex-x items-center justify-between gap-2;
-}
-.pic-crop-modal .c-controls .c-actions-row {
-    @apply flex-x items-center gap-2;
-}
-.pic-crop-modal .c-controls .c-actions-row .btn {
-    @apply flex-1;
-    @apply flex-x items-center justify-center gap-1;
 }
 .pic-crop-modal .c-controls .c-status {
     @apply text-caption text-03;
@@ -130,19 +136,17 @@
     @apply -scale-x-100;
 }
 
-/* ── Preview ── */
+/* ── Preview: right gutter, biggest at top ── */
 
 .pic-crop-modal .c-preview {
-    @apply flex-x items-center gap-1;
-    @apply p-2;
-    @apply rounded-lg border border-separator;
+    @apply flex-y items-start gap-2;
+    @apply flex-none;
 }
 .pic-crop-modal .c-preview > canvas {
     @apply rounded-full;
     @apply border border-separator;
 }
-.pic-crop-modal.square .c-preview > canvas,
-.pic-crop-modal.has-blur .c-preview > canvas {
+.pic-crop-modal.square .c-preview > canvas {
     @apply rounded-lg;
 }
 /* The crop canvases have no source for a marble - hide them and show the generated avatar instead. */
@@ -165,10 +169,6 @@
 .pic-crop-modal .c-preview > .c-marble-preview > beam-avatar {
     @apply block;
     @apply w-full h-full;
-}
-.pic-crop-modal .c-preview-label {
-    @apply pl-3;
-    @apply text-caption text-03;
 }
 
 /* ── Sliders (zoom + blur) — div pattern, see docs/ui/components.md "Custom Sliders" ── */
@@ -221,13 +221,13 @@
     @apply opacity-50;
 }
 
-/* ── Blur slider layout ── */
+/* ── Labeled slider (zoom + blur): the slider with its name underneath ── */
 
-.pic-crop-modal .c-blur-slider {
-    @apply flex-y items-center gap-1;
+.pic-crop-modal .c-labeled-slider {
+    @apply flex-y items-center;
     @apply w-full;
 }
-.pic-crop-modal .c-blur-label {
+.pic-crop-modal .c-slider-label {
     @apply text-caption text-03;
 }
 
