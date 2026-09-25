@@ -31,6 +31,7 @@ public class ArrivalInfoTest
     [InlineData("join:has space")]
     [InlineData("campaign:a/b")]
     [InlineData("JOIN:abc")]
+    [InlineData("join:abc\n")]
     public void InvalidValueShouldNotParse(string? value)
     {
         // act

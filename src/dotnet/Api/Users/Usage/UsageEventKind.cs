@@ -13,7 +13,7 @@ public enum UsageEventKind
 
 public static class UsageEventKindExt
 {
-    // A UsageDay row marks its day as active, so only activity kinds may create one
     public static bool IsDayRollup(this UsageEventKind kind)
+        // A UsageDay row marks its day as active, so only activity kinds may create one
         => kind is not (UsageEventKind.SignUp or UsageEventKind.OnboardingStep);
 }

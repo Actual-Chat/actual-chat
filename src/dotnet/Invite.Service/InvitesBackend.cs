@@ -207,9 +207,7 @@ public class InvitesBackend(IServiceProvider services)
         dbInvite.UpdateFrom(invite);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        var sessionInfo = await Accounts.GetSessionInfo(command.Session, cancellationToken).ConfigureAwait(false);
-        AppKindExt.TryParseUserAgent(sessionInfo?.Description, out var appKind);
-        FunnelMeters.Record(FunnelEvent.JoinUsed, appKind);
+        await RecordJoinUsed(command.Session, cancellationToken).ConfigureAwait(false);
         context.Operation.Items.KeylessSet(invite);
         return invite;
 
@@ -265,6 +263,21 @@ public class InvitesBackend(IServiceProvider services)
     [ComputeMethod]
     protected virtual Task<Unit> PseudoGetAll(string searchKey)
         => ActualLab.Async.TaskExt.UnitTask;
+
+    // Private methods
+
+    private async Task RecordJoinUsed(Session session, CancellationToken cancellationToken)
+    {
+        // Measurement only: it must not fail the join
+        try {
+            var sessionInfo = await Accounts.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+            AppKindExt.TryParseUserAgent(sessionInfo?.Description, out var appKind);
+            FunnelMeters.Record(FunnelEvent.JoinUsed, appKind);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogWarning(e, "Failed to record the invite use");
+        }
+    }
 
     private static void AutoInvalidate(Moment expiresOn, Moment now)
     {

@@ -577,12 +577,11 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             var signUp = UsageEventSource.SignUp(arrival, Clocks.SystemClock.Now);
             context.Operation.AddEvent(new UsageBackend_Record(userId, ApiArray.New(signUp)));
             FunnelMeters.Record(FunnelEvent.SignUp, appKind, arrival.Kind);
+            // An event, so a sign-in retried after a failed commit still finds the arrival
             if (value is not null)
-                await Commander
-                    .Call(new SessionTemporalsBackend_Set(session, arrivalKey, null), true, cancellationToken)
-                    .ConfigureAwait(false);
+                context.Operation.AddEvent(new SessionTemporalsBackend_Set(session, arrivalKey, null));
         }
-        catch (Exception e) when (e is not OperationCanceledException) {
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             Log.LogWarning(e, "Failed to record the sign-up of user '{UserId}'", userId);
         }
     }

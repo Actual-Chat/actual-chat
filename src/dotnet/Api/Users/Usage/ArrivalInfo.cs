@@ -23,9 +23,9 @@ public readonly partial record struct ArrivalInfo(ArrivalKind Kind, string Id = 
     public static ArrivalInfo Fallback(AppKind appKind)
         => new(appKind.IsMaui() ? ArrivalKind.Store : ArrivalKind.Web);
 
-    // Accepts a local URL ("/path?a=b"), a bare query ("a=b") or a store install referrer
     public static ArrivalInfo? FromQuery(string? urlOrQuery)
     {
+        // Accepts a local URL ("/path?a=b"), a bare query ("a=b") or a store install referrer
         if (urlOrQuery.IsNullOrEmpty())
             return null;
 
@@ -89,6 +89,6 @@ public readonly partial record struct ArrivalInfo(ArrivalKind Kind, string Id = 
         return isParsed;
     }
 
-    [GeneratedRegex("^[A-Za-z0-9_.@-]+$")]
+    [GeneratedRegex(@"^[A-Za-z0-9_.@-]+\z")]
     private static partial Regex IdRegex();
 }

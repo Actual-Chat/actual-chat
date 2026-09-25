@@ -74,9 +74,9 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
             static (placeId1, self) => new PlaceChatListSettings(placeId1.ValueOrDefault, self.Hub, true),
             this);
 
-    // Once per app run: the virtual list re-creates the banner as it scrolls in and out
     public void ReportInviteBannerShown()
     {
+        // Once per app run: the virtual list re-creates the banner as it scrolls in and out
         if (Interlocked.Exchange(ref _isInviteBannerShownReported, 1) == 0)
             Hub.RecordFunnelEvent(FunnelEvent.InviteBannerShown);
     }

@@ -253,8 +253,8 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
         signUp.SourceId.Should().Be("join:inv-123");
         signUp.Attributes!.ArrivalKind.Should().Be(ArrivalKind.Join);
         var arrivalKey = Constants.SessionTemporals.ToClientKey(Constants.SessionTemporals.ArrivalKey);
-        (await SessionTemporals.Get(tester.Session, arrivalKey, default))
-            .Should().BeNull("the arrival is consumed by the sign-up");
+        await TestWait.When(async ct => (await SessionTemporals.Get(tester.Session, arrivalKey, ct))
+            .Should().BeNull("the arrival is consumed by the sign-up"));
     }
 
     [Fact(Timeout = 90_000)]
@@ -368,8 +368,8 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
             Value = value,
         });
 
-    // Polled: the rows are read from the DB directly, so there is no invalidation to wake a When on
     private Task<UsageEvent> WaitForSignUp(UserId userId)
+        // Polled: the rows are read from the DB directly, so there is no invalidation to wake a When on
         => TestWait.WhenPolled<UsageEvent>(async () => {
             var events = await ListEvents(userId, UsageEventKind.SignUp, default);
             return events.Should().ContainSingle().Subject;

@@ -46,6 +46,9 @@ Rules:
 - **The client writes only while the session is a guest.** Once signed in, it stops writing.
 - **Last link-touch wins.** Each new `/join/`, `/u/` or campaign URL opened as a guest overwrites
   the value. The link that led to the sign-in request is the one we want.
+- **Expiry.** Session temporals expire 10 minutes after their last write. So `AccountUI` keeps the captured
+  arrival and re-writes it every 5 minutes while the account is a guest. It also adopts an arrival already
+  in the session at start-up. The server clears it through an operation event, i.e. only after the sign-in commits.
 - **Parsing and validation are shared.** One `ArrivalInfo` type in `ActualChat.Api` (next to
   `UsageEvent`) owns `Parse`/`Format`. The id part is capped at 64 characters, restricted to
   `[A-Za-z0-9_\-.@]`, and ignored otherwise. The client uses it to format the value and the server

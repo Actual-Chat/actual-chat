@@ -2,8 +2,8 @@ namespace ActualChat.UI.Blazor.Services;
 
 public static class UsageUIExt
 {
-    // Fire-and-forget: a lost count must never surface in the UI
     public static void RecordFunnelEvent(this UIHub hub, FunnelEvent funnelEvent)
+        // Fire-and-forget: a lost count must never surface in the UI
         => _ = hub.Commander
             .Call(new Usage_RecordFunnelEvent { Session = hub.Session, Event = funnelEvent }, CancellationToken.None)
             .ContinueWith(
