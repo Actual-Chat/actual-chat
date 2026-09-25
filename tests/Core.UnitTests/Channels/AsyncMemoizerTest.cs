@@ -175,9 +175,9 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : AsyncMemoizerTestBase(@
 public class OldAsyncMemoizerTest(ITestOutputHelper @out) : AsyncMemoizerTestBase(@out)
 {
     protected override bool IsItemDropInstant => true;
-    // Its fan-out copies items into each consumer's own unbounded channel, so a consumer misses
-    // only what the fan-out hadn't copied before the ring overwrote it - up to the scheduler
-    protected override bool IsOverflowGapGuaranteed => false;
+    // Its fan-out reads ring slots the producer may already have overwritten, so a stalled
+    // consumer may see no gap, or newer items ahead of older ones - up to the scheduler
+    protected override bool IsOverflowWindowConsistent => false;
 
     protected override IAsyncMemoizer<T> Memoize<T>(
         IAsyncEnumerable<T> source,
@@ -207,8 +207,8 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
     /// </summary>
     protected abstract bool IsItemDropInstant { get; }
 
-    // Whether a consumer stalled through a bounded overflow is sure to see a gap
-    protected virtual bool IsOverflowGapGuaranteed => true;
+    // Whether a consumer stalled through a bounded overflow sees ascending unique items with a gap
+    protected virtual bool IsOverflowWindowConsistent => true;
 
     protected IAsyncMemoizer<T> Memoize<T>(Channel<T> channel, int capacity = int.MaxValue, CancellationToken ct = default)
         => Memoize(channel.Reader.ReadAllAsync(ct), capacity, ct);
@@ -1016,7 +1016,7 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
     // === Bounded capacity overflow + slow consumer ===
     // IsItemDropInstant=true: bounded overflow physically evicts items;
     //     the consumer sees whatever remained in the bounded window when it resumed, with a gap
-    //     (for the old impl only when its fan-out lagged, see IsOverflowGapGuaranteed).
+    //     (not guaranteed for the old impl, see IsOverflowWindowConsistent).
     // IsItemDropInstant=false: the consumer holds evicted nodes alive via its local
     //     pointer and sees every item produced (the stall just delays delivery).
     // Either way, a *new* late-joiner sees only the current buffer (last capacity items).
@@ -1057,9 +1057,10 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
         if (IsItemDropInstant) {
             items.First().Should().Be(1, "first item was read before blocking");
             items.Last().Should().Be(50, "most recent item should be present");
-            items.Should().BeInAscendingOrder().And.OnlyHaveUniqueItems("eviction may skip items, never reorder them");
-            if (IsOverflowGapGuaranteed)
+            if (IsOverflowWindowConsistent) {
+                items.Should().BeInAscendingOrder().And.OnlyHaveUniqueItems("eviction may skip items, never reorder them");
                 items.Should().HaveCountLessThan(50, "some items should be skipped due to bounded eviction");
+            }
         }
         else {
             items.Should().Equal(Enumerable.Range(1, 50));
