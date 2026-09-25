@@ -122,33 +122,30 @@ describe('SVG avatar upload', () => {
         const avatarModal = page.locator('.edit-avatar-modal');
         await avatarModal.waitFor({ state: 'visible', timeout: 5000 });
 
-        // AvatarPicFormBlock now uses ImageCropPicker, whose <input type="file"> is
-        // attached to the document root (not inside the avatar modal). Target it
-        // globally — the modal currently has only one file input in the DOM tree.
-        const fileInput = page.locator('input[type="file"]').first();
-        await fileInput.waitFor({ state: 'attached', timeout: 5000 });
-        await fileInput.setInputFiles(svgFilePath);
-
-        // After file selection, ImageCropPicker opens PicCropModal on top of the
-        // avatar editor. Confirm the crop to trigger server-side conversion + upload.
-        const cropModal = page.locator('.pic-crop-modal');
-        await cropModal.waitFor({ state: 'visible', timeout: 10_000 });
-        const confirmBtn = cropModal.locator('.btn-confirm').first();
-        await confirmBtn.waitFor({ state: 'visible', timeout: 5_000 });
-        await confirmBtn.click();
-
-        // Apply switches the modal into its saving state (spinner on the button,
-        // upload/processing status) until the server returns the converted media.
-        await cropModal.locator('.btn-confirm .spinner').waitFor({ state: 'visible', timeout: 5_000 });
-        await page.screenshot({ path: screenshot('e2e', 'svg-avatar-crop-saving') });
-        await cropModal.waitFor({ state: 'hidden', timeout: 15_000 });
-        await page.screenshot({ path: screenshot('e2e', 'svg-avatar-uploaded') });
-
-        // Verify the preview image is visible and is served as PNG.
         // Pic renders via <image-skeleton> (LitElement, light DOM) containing <img>.
         const avatarPic = avatarModal.locator('.pic img').first();
-        await avatarPic.waitFor({ state: 'visible', timeout: 10_000 });
+        const srcBefore = await avatarPic.getAttribute('src').catch(() => null) ?? '';
 
+        // The crop modal owns the upload now: the picker only opens it on the current
+        // picture, and the <input type="file"> lives inside the modal.
+        await avatarModal.locator('button:has(i.icon-image)').first().click();
+        const cropModal = page.locator('.pic-crop-modal');
+        await cropModal.waitFor({ state: 'visible', timeout: 10_000 });
+        await cropModal.locator('input[type="file"]').first().setInputFiles(svgFilePath);
+
+        // Save stays disabled until the picked image is decoded into the canvas.
+        const cropSaveBtn = cropModal.locator('.btn-modal.btn-primary').first();
+        await expect.poll(() => cropSaveBtn.isEnabled(), { timeout: 10_000 }).toBe(true);
+        await page.screenshot({ path: screenshot('e2e', 'svg-avatar-crop-loaded') });
+        await cropSaveBtn.click();
+
+        // Saving runs the server-side conversion + upload; the modal closes once it returns.
+        await cropModal.waitFor({ state: 'hidden', timeout: 30_000 });
+        await page.screenshot({ path: screenshot('e2e', 'svg-avatar-uploaded') });
+
+        await avatarPic.waitFor({ state: 'visible', timeout: 10_000 });
+        await expect.poll(() => avatarPic.getAttribute('src'), { timeout: 10_000 })
+            .not.toBe(srcBefore);
         const imgSrc = await avatarPic.getAttribute('src') ?? '';
         console.log('Avatar editor img src after SVG upload:', imgSrc);
         expect(imgSrc).toMatch(/\.png/);
