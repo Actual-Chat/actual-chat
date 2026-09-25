@@ -93,18 +93,29 @@ so redelivery and crashes cannot lose or double-count work. The command:
 4. Emits the per-entry record to the user shard (`CoachBackend_Record`), which appends it to the
    log, rebuilds the day row and, for opted-in users, runs the tip rules.
 
-**Trigger B — a conversation closes.** `ConversationChangedEvent` for a created conversation
-marks the point where the split flow has fixed its entry range. For every author in the range
-who is a tracked user the handler issues `CoachAnalysis_AnalyzeConversation`, which:
+**Trigger B — a run of entries goes quiet.** The summarizer's `Conversation` rows exist only
+for long threads (≥ 1200 words and ≥ 10 entries), and `ConversationChangedEvent` fires only on a
+title or description change, so neither can mark "the conversation is over". Instead the entry
+handler also enqueues a delayed `CoachAnalysisBackend_AnalyzeConversation(chatId, lid)` per lid
+bucket (deduplicated by uuid, `DelayUntil` = entry end + `ConversationMaturity`). When it runs it
+scans around the lid for the maximal run of entries with no gap ≥ `ConversationMaturity` between
+neighbours (capped at 400 entries), and postpones itself while the run's last entry is younger
+than the maturity, up to `MaxConversationWait`. The run is identified as
+`ConversationId(chatId, firstLid)` with its last lid as the version. For every author in the run
+who is a tracked user it then:
 
-1. Tags that user's pending rows in the range in one batched call, chunked above a word limit,
-   and re-emits their records (same source id, so the log replaces rather than duplicates).
-2. Computes the per-conversation row from timings only: own speech time over everyone's speech
-   time, own and total turns, longest monologue (longest run of own consecutive entries), patience
+1. Tags that user's pending rows in the run (one tagger call per entry in v1; batching by
+   `BatchChunkWords` is deferred) and re-emits their records (same source id, so the log replaces
+   rather than duplicates).
+2. Computes the per-run row from timings only: own speech time over everyone's speech time,
+   own and total turns, longest monologue (longest run of own consecutive entries), patience
    (mean gap between another author's entry ending and the user's next entry starting, counting
    only gaps under a cap), interruptions (own entries starting before the previous other-author
    entry ended). No other author's text is read.
-3. Emits a per-conversation record to the user shard.
+3. Emits a per-run record to the user shard.
+
+The entry's language comes from its language row (written during streaming when translation is
+on), else from the user's primary language setting.
 
 Turn-taking and its siblings are therefore conversation-delayed even for opted-in users. They
 are trends, not tips, which matches the mocks.
