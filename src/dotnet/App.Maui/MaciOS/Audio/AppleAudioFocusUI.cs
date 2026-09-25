@@ -137,7 +137,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         await AudioSession.ApplyOutputRoute(_activeScopes.GetMode()).ConfigureAwait(false);
     }
 
-    public override void SetCallActive(bool isCallActive, bool hasVideo)
+    public override Task SetCallActive(bool isCallActive, bool hasVideo)
     {
         Log.LogInformation("SetCallActive: {IsCallActive}, video={HasVideo}", isCallActive, hasVideo);
         AudioSession.IsCallActive = isCallActive;
@@ -148,7 +148,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
             AudioSession.ResetCallRouteLatch();
         // The session was configured before the call was known - a recording started a moment
         // earlier sits on the speaker - so it's brought to the call's configuration right away.
-        _ = _interruptionQueue.Enqueue(async _ => {
+        return _interruptionQueue.Enqueue(async _ => {
             using (await _lock.Lock(StopToken).ConfigureAwait(false)) {
                 if (!_activeScopes.IsEmpty)
                     await SetModeUnsafe(_activeScopes.GetMode()).ConfigureAwait(false);

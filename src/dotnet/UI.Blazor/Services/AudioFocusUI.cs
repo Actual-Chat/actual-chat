@@ -81,8 +81,8 @@ public class AudioFocusUI : ProcessorBase
         // EnsureOutputRoute, this must never fall back to a Bluetooth device.
         => Task.CompletedTask;
 
-    public virtual void SetCallActive(bool isCallActive, bool hasVideo)
-    { }
+    public virtual Task SetCallActive(bool isCallActive, bool hasVideo)
+        => Task.CompletedTask;
 
     // The platform's own view - what's connected, where the sound is - and null where it offers
     // nothing to choose from. Which output a call should be on is CallUI's business.
