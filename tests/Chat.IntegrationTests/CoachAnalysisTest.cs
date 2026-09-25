@@ -280,4 +280,36 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var rows = await dbContext.CoachEntries.CountAsync(x => x.ChatId == chatId.Value);
         rows.Should().Be(0, "chat removal deletes the coach rows with the entries");
     }
+
+    [Fact]
+    public async Task GetOwnMarksShouldReturnOnlyTheCallersSpans()
+    {
+        // arrange
+        var (appHost, _) = await NewCoachHost("coach-marks");
+        await using var _1 = appHost;
+        await using var bob = appHost.NewBlazorTester(Out);
+        var bobAccount = await bob.SignInAsUniqueBob();
+        var (chatId, inviteId) = await bob.CreateChat(true);
+        await OptIn(appHost, bobAccount);
+        await using var alice = appHost.NewBlazorTester(Out);
+        await alice.SignInAsAlice();
+        await alice.JoinChat(chatId, inviteId);
+        var chatCoach = appHost.Services.GetRequiredService<IChatCoach>();
+        var entry = await PostVoice(bob, chatId, Text);
+        var lidRange = new Range<long>(0, entry.LocalId + 1);
+
+        // act
+        var bobMarks = await TestWait.When(async ct => {
+            var marks = await chatCoach.GetOwnMarks(bob.Session, chatId, lidRange, ct);
+            marks.Should().ContainSingle();
+            return marks;
+        }, TimeSpan.FromSeconds(30));
+        var aliceMarks = await chatCoach.GetOwnMarks(alice.Session, chatId, lidRange, default);
+
+        // assert
+        bobMarks[0].EntryLid.Should().Be(entry.LocalId);
+        bobMarks[0].Spans.Select(s => s.Kind).Should().Contain(SpeechSpanKind.Filler);
+        aliceMarks.Should().BeEmpty("marks are private to their author");
+        (await chatCoach.IsEnabled(bob.Session, default)).Should().BeTrue();
+    }
 }

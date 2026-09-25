@@ -59,6 +59,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
         // Reactions
         rpcHost.AddApi<IReactions, Reactions>();
+        rpcHost.AddApi<IChatCoach, ChatCoach>();
         rpcHost.AddBackend<IReactionsBackend, ReactionsBackend>();
 
         // Image suggestions
