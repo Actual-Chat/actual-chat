@@ -7,7 +7,7 @@
 @implements IAsyncDisposable
 
 <DialogFrame
-    Class="@("pic-crop-modal"
+    Class="@("pic-crop-modal fixed-height"
         + (ModalModel.IsSquare ? " square" : "")
         + (ModalModel.HasBlur ? " has-blur" : "")
         + (_hasSource ? "" : " empty")
@@ -24,69 +24,57 @@
                 <span>@L.PicCrop_LoadFailed</span>
             </div>
         } else {
-            <div class="c-content">
-                <div class="c-canvas-container">
-                    @if (IsMarbleState) {
-                        <div class="c-marble">@GeneratedAvatar</div>
-                    }
-                    <canvas @ref="_canvasRef" width="400" height="400"></canvas>
-                    @if (_hasSource) {
+            <div class="c-crop">
+                <div class="c-content">
+                    <div class="c-canvas-container">
+                        @if (IsMarbleState) {
+                            <div class="c-marble">@GeneratedAvatar</div>
+                        }
+                        <canvas @ref="_canvasRef" width="400"
+                                height="@(ModalModel.ViewportAspectRatio > 0 ? (int)(400 / ModalModel.ViewportAspectRatio) : 400)"></canvas>
                         <div class="c-angle" hidden></div>
-                        <div class="c-hint">@L.PicCrop_DragHint</div>
-                    } else if (IsMarbleState) {
-                        <div class="c-hint">@L.PicCrop_MarbleHint</div>
-                    } else {
-                        <div class="c-placeholder">
-                            <i class="icon-upload text-3xl"></i>
-                            <span>@L.PicCrop_UploadHint</span>
-                        </div>
-                    }
-                    @if (_isGenerating) {
-                        <div class="c-generating">
-                            <Spinner/>
-                        </div>
-                    }
+                        @if (IsMarbleState) {
+                            <div class="c-hint">@L.PicCrop_MarbleHint</div>
+                        } else if (!_hasSource) {
+                            <div class="c-placeholder">
+                                <i class="icon-image text-3xl"></i>
+                                <span>@L.PicCrop_MarbleHint</span>
+                            </div>
+                        }
+                        @if (_isGenerating) {
+                            <div class="c-generating">
+                                <Spinner/>
+                            </div>
+                        }
+                    </div>
                 </div>
-            </div>
-            <div class="c-preview">
-                @if (ModalModel.ViewportAspectRatio > 0) {
-                    <canvas width="120" height="@((int)(120 / ModalModel.ViewportAspectRatio))"></canvas>
-                } else {
-                    <canvas width="48" height="48"></canvas>
-                    <canvas width="40" height="40"></canvas>
-                    <canvas width="32" height="32"></canvas>
-                    @* The canvases stay in the DOM (JS captures them once); a marble has no crop source,
-                       so it's shown as its own elements and the empty canvases are hidden via CSS. *@
-                    @if (IsMarbleState) {
-                        <div class="c-marble-preview w-[48px] h-[48px]">@GeneratedAvatar</div>
-                        <div class="c-marble-preview w-[40px] h-[40px]">@GeneratedAvatar</div>
-                        <div class="c-marble-preview w-[32px] h-[32px]">@GeneratedAvatar</div>
-                    }
-                }
-                <span class="c-preview-label">@L.PicCrop_SizesPreview</span>
-            </div>
-            <div class="c-controls">
-                @if (ModalModel.HasBlur) {
-                    <div class="c-blur-slider">
-                        <div class="c-slider">
-                            <div class="c-track"></div>
-                            <div class="c-fill"></div>
-                            <div class="c-thumb"></div>
-                            <input type="range" class="blur-range dialog-unstyled" min="0" max="16" step="1" value="0" />
-                        </div>
-                        <span class="c-blur-label">@L.PicCrop_Blur</span>
+                @* Wallpaper needs no size previews: its canvas is already a full-width, blurred WYSIWYG. *@
+                @if (ModalModel.ViewportAspectRatio <= 0) {
+                    <div class="c-preview">
+                        <canvas width="48" height="48"></canvas>
+                        <canvas width="40" height="40"></canvas>
+                        <canvas width="32" height="32"></canvas>
+                        @* The canvases stay in the DOM (JS captures them once); a marble has no crop source,
+                           so it's shown as its own elements and the empty canvases are hidden via CSS. *@
+                        @if (IsMarbleState) {
+                            <div class="c-marble-preview w-[48px] h-[48px]">@GeneratedAvatar</div>
+                            <div class="c-marble-preview w-[40px] h-[40px]">@GeneratedAvatar</div>
+                            <div class="c-marble-preview w-[32px] h-[32px]">@GeneratedAvatar</div>
+                        }
                     </div>
                 }
-                <div class="c-slider">
-                    <div class="c-track"></div>
-                    <div class="c-fill"></div>
-                    <div class="c-thumb"></div>
-                    <input type="range" class="zoom-range dialog-unstyled" min="100" max="400" step="1" value="100"
-                           disabled="@(!_hasSource || _isSaving)" />
-                </div>
-                <div class="c-zoom-readout">
-                    <span class="c-zoom-value">100%</span>
-                </div>
+            </div>
+            <div class="c-actions-row">
+                <Button Class="@($"btn-outline {ActionBtnSize}")" Click="@OnOpenGeneration" IsDisabled="@(_isSaving || _isGenerating)">
+                    <i class="icon-ai-stars text-lg"></i>
+                    <span>@L.PicCrop_Create</span>
+                </Button>
+                <Button Class="@($"btn-outline {ActionBtnSize}")" Click="@OnUploadClick" IsDisabled="@_isSaving">
+                    <i class="icon-upload text-lg"></i>
+                    <span>@L.PicCrop_Upload</span>
+                </Button>
+            </div>
+            <div class="c-controls">
                 <div class="c-tools-row">
                     <ButtonRound Class="btn-rotate-ccw btn-sm" Tooltip="@L.PicCrop_RotateLeft" IsDisabled="@(!_hasSource || _isSaving)">
                         <i class="icon-refresh text-xl c-flip"></i>
@@ -104,20 +92,29 @@
                         <i class="icon-forward text-xl c-flip"></i>
                     </ButtonRound>
                 </div>
-                <div class="c-actions-row">
-                    <Button Class="btn-modal btn-sm" Click="@OnOpenGeneration" IsDisabled="@(_isSaving || _isGenerating)">
-                        <i class="icon-ai-stars text-xl"></i>
-                        <span>@L.PicCrop_Create</span>
-                    </Button>
-                    <Button Class="btn-modal btn-sm" Click="@OnUploadClick" IsDisabled="@_isSaving">
-                        <i class="icon-upload text-xl"></i>
-                        <span>@L.PicCrop_Upload</span>
-                    </Button>
+                <div class="c-labeled-slider">
+                    <div class="c-slider">
+                        <div class="c-track"></div>
+                        <div class="c-fill"></div>
+                        <div class="c-thumb"></div>
+                        <input type="range" class="zoom-range dialog-unstyled" min="100" max="400" step="1" value="100"
+                               disabled="@(!_hasSource || _isSaving)" />
+                    </div>
+                    <span class="c-slider-label">@L.PicCrop_Zoom</span>
                 </div>
+                @if (ModalModel.HasBlur) {
+                    <div class="c-labeled-slider">
+                        <div class="c-slider">
+                            <div class="c-track"></div>
+                            <div class="c-fill"></div>
+                            <div class="c-thumb"></div>
+                            <input type="range" class="blur-range dialog-unstyled" min="0" max="16" step="1" value="0" />
+                        </div>
+                        <span class="c-slider-label">@L.PicCrop_Blur</span>
+                    </div>
+                }
                 @if (_hasGenerationError) {
                     <div class="c-status c-generation-error">@L.PicCrop_GenerationFailed</div>
-                } else if (!_saveStatus.IsNullOrEmpty()) {
-                    <div class="c-status">@_saveStatus</div>
                 }
             </div>
         }
@@ -156,7 +153,6 @@
     private bool _hasError;
     private bool _hasSource;
     private bool _isSaving;
-    private string _saveStatus = "";
     private CancellationTokenSource? _generateCts;
     private bool _isGenerating;
     private bool _hasGenerationError;
@@ -176,7 +172,10 @@
         }
     </text>;
 
+    private string ActionBtnSize => ScreenSize.IsNarrow() ? "btn-sm" : "btn-md";
+
     [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -332,7 +331,6 @@
         _saveCts = new CancellationTokenSource();
         var cancellationToken = _saveCts.Token;
         try {
-            SetSaveStatus(L.PicCrop_Uploading_Format(0));
             var exported = await _jsRef!.InvokeAsync<bool>("exportCrop", cancellationToken).ConfigureAwait(true);
             if (!exported) {
                 UICommander.ShowError(StandardError.Upload.CropExportFailed());
@@ -360,10 +358,8 @@
             }, cancellationToken);
 
             var streamSource = new WebUploadStreamSource(_jsRef!);
-            var progress = new Progress<double>(p => SetSaveStatus(L.PicCrop_Uploading_Format((int)p)));
-            await FileUploader.Upload(streamSource, uploadId, progress, cancellationToken);
+            await FileUploader.Upload(streamSource, uploadId, null, cancellationToken);
 
-            SetSaveStatus(L.PicCrop_Processing);
             var mediaRef = await UICommander.Call(new Media_ProcessUpload {
                 Session = Session,
                 MediaId = mediaId,
@@ -381,15 +377,9 @@
         }
         finally {
             _isSaving = false;
-            _saveStatus = "";
             _saveCts.DisposeSilently();
             _saveCts = null;
         }
-    }
-
-    private void SetSaveStatus(string status) {
-        _saveStatus = status;
-        _ = InvokeAsync(StateHasChanged);
     }
 
     // Nested types
