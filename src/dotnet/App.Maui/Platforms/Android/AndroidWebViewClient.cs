@@ -129,9 +129,11 @@ public class AndroidWebViewClient(
             // A fill answers before the real headers exist, so the one that matters for a
             // CORS-flagged load (a canvas-bound image) has to be replayed from what every
             // own-content host sends - without it such a load fails until the entry is cached.
-            return fetch is var (body, mimeType)
-                ? new WebResourceResponse(mimeType, null, 200, "OK", CorsHeaders(), body)
-                : null;
+            if (fetch is not var (body, mimeType))
+                return null;
+
+            return new WebResourceResponse(
+                mimeType, null, 200, "OK", CorsHeaders(), new WebViewResponseStream(body, url));
         }
 
         ContentCacheLog.DebugLog?.LogDebug("Intercept blocked {Elapsed} on T{ThreadId}, hit: {Url}",
@@ -155,7 +157,7 @@ public class AndroidWebViewClient(
                 (int)response.StatusCode,
                 response.ReasonPhrase.NullIfEmpty() ?? "OK",
                 headers,
-                new ContentResponseStream(response, response.Content.ReadAsStream()));
+                new WebViewResponseStream(new ContentResponseStream(response, response.Content.ReadAsStream()), url));
         }
         catch (Exception e) {
             response.Dispose();
