@@ -1795,12 +1795,24 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         // Persist the already-computed summary as a real conversation *before* the live state drops,
         // so the in-chat block doesn't flicker; an empty title (phone-mode, or below the summary
         // threshold) has nothing to keep and just vanishes.
+        // The whole close is one locked step that re-checks liveness: callers found the session empty without
+        // the lock, and a speaker who came back since has reopened this same session. Dropping it would take
+        // their fresh recorder along; keeping it after the write would persist it twice, the second time under
+        // whatever context start the summary flow has moved to - i.e. as another card.
+        using var _ = Computed.BeginIsolation();
+        using var lockHolder = await _changeLocks.Lock(state.ChatId, cancellationToken).ConfigureAwait(false);
+        if (await SafeGet(state.ChatId).ConfigureAwait(false) is not { } freshState)
+            return; // Another closer got here first
+        if (await IsSessionLive(state.ChatId).ConfigureAwait(false))
+            return;
+
+        state = freshState;
         if (state.SessionStartedAt is not null && !state.Title.IsNullOrEmpty())
             await Commander
                 .Call(new ConversationBackend_Materialize(state.ToMaterializedConversation()), true, cancellationToken)
                 .ConfigureAwait(false);
         await EnqueueSessionEnded(state).ConfigureAwait(false);
-        await Close(state.ChatId, cancellationToken).ConfigureAwait(false);
+        await RemoveSession(state.ChatId).ConfigureAwait(false);
     }
 
     private async Task EnqueueSessionEnded(LiveSessionState state)
@@ -1876,7 +1888,12 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     {
         using var _ = Computed.BeginIsolation();
         using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
+        await RemoveSession(chatId).ConfigureAwait(false);
+    }
 
+    // Caller must hold the change lock + Computed.BeginIsolation().
+    private async Task RemoveSession(ChatId chatId)
+    {
         // Everything derived from the dropped participant map is invalidated with it: HasRecorder
         // otherwise self-heals on a delay, reading the dial-time caller as a talker after the call.
         await _redisScope.Remove(chatId.Value).ConfigureAwait(false);

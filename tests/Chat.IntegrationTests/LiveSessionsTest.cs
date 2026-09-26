@@ -1588,6 +1588,50 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task FinalizeSessionShouldNotDropASessionRestartedWhileItCloses()
+    {
+        // FinalizeSession decides the session is empty, then materializes it, then drops it. A speaker
+        // coming back in between reopens that same session - and the drop used to take it away anyway,
+        // together with their fresh recorder registration. Whichever side wins, a session must remain:
+        // the one that was kept, or a new one the restart started after the close.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = (await tester.GetOwnAuthor(chatId))!;
+        var peerId = AuthorId.New(chatId, 777_025);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // act - the offset is swept: the window is as wide as the materialization, and a fixed one
+        // lands on either side of it depending on the machine
+        for (var offsetMs = 0; offsetMs <= 30; offsetMs += 2) {
+            await backend.OnStreamRegistered(chatId, author.Id, null, true, true, default);
+            await backend.OnStreamRegistered(chatId, peerId, null, true, true, default);
+            await tester.CreateTextEntry(chatId, $"said at {offsetMs}ms");
+            var live = await backend.GetState(chatId, default);
+            // The title is what makes the close materialize, and that write is the window
+            await backend.UpdateSummary(chatId, new LiveSessionSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                EndEntryLid = live!.EffectiveVisibleStartLid, MessageCount = 1,
+            }, default);
+            await backend.SetParticipation(chatId, peerId, ParticipationKind.Record, false, default);
+            await backend.SetParticipation(chatId, author.Id, ParticipationKind.Record, false, default);
+
+            var finalize = Task.Run(async () =>
+                await backend.FinalizeSession(chatId, default).ConfigureAwait(false));
+            await Task.Delay(offsetMs);
+            await backend.OnStreamRegistered(chatId, peerId, null, true, true, default);
+            await finalize;
+
+            // assert
+            var state = await backend.GetState(chatId, default);
+            state.Should().NotBeNull($"the restart at +{offsetMs}ms must leave a session behind");
+            state!.AuthorIds.Should().Contain(peerId);
+        }
+    }
+
+    [Fact]
     public async Task RangeTileShouldKeepPreLatchConversationsVisible()
     {
         // arrange — transcription starts solo at e0, a conversation is persisted over [e0, e2] before the
