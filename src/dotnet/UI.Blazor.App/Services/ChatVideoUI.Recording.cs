@@ -1,3 +1,4 @@
+using ActualChat.Localization;
 using ActualChat.UI.Blazor.App.Components.VideoPanel;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -132,6 +133,19 @@ public partial class ChatVideoUI
             StopScreenCasting();
         else
             StopRecording();
+    }
+
+    public void OnRecordingError(VideoRecorderError error, string? cameraLabel, string message, VideoSourceKind kind)
+    {
+        // Unknown carries browser or server wording we don't own, so it reaches the user untranslated.
+        var text = error switch {
+            VideoRecorderError.CameraUnavailable when !cameraLabel.IsNullOrEmpty()
+                => L.Video_CameraUnavailableNamed_Format(cameraLabel),
+            VideoRecorderError.CameraUnavailable => L.Call_CameraIsUnavailable,
+            VideoRecorderError.RestartRequired => L.Video_RestartRequired,
+            _ => message,
+        };
+        OnRecordingError(text, kind);
     }
 
     public void OnRecordingError(string error, VideoSourceKind kind)

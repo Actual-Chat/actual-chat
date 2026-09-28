@@ -1,9 +1,11 @@
 using ActualChat.Chat.Module;
 using ActualChat.Contacts;
+using ActualChat.Localization;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Video;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
@@ -211,5 +213,32 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
         await backend.Unregister(chatId, streamId, CancellationToken.None);
         show = await ShouldShowPanel(isRecording: false);
         show.Should().BeFalse("no recording and no streams → panel should hide");
+    }
+
+    [Fact]
+    public async Task RecorderErrorCodeShouldReachUserLocalized()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var chatVideoUI = tester.ScopedAppServices.GetRequiredService<ChatVideoUI>();
+        var l = tester.ScopedAppServices.GetRequiredService<IStringLocalizer>();
+        var kind = VideoSourceKind.Camera;
+
+        // act
+        chatVideoUI.OnRecordingError(VideoRecorderError.CameraUnavailable, "FaceTime HD", "raw", kind);
+        var named = await chatVideoUI.GetLastVideoRecorderError(kind);
+        chatVideoUI.OnRecordingError(VideoRecorderError.CameraUnavailable, null, "raw", kind);
+        var unnamed = await chatVideoUI.GetLastVideoRecorderError(kind);
+        chatVideoUI.OnRecordingError(VideoRecorderError.RestartRequired, null, "raw", kind);
+        var restart = await chatVideoUI.GetLastVideoRecorderError(kind);
+        chatVideoUI.OnRecordingError(VideoRecorderError.Unknown, null, "Requested device not found", kind);
+        var unknown = await chatVideoUI.GetLastVideoRecorderError(kind);
+
+        // assert
+        named.Should().Be(l.Video_CameraUnavailableNamed_Format("FaceTime HD"));
+        unnamed.Should().Be(l.Call_CameraIsUnavailable);
+        restart.Should().Be(l.Video_RestartRequired);
+        unknown.Should().Be("Requested device not found", "browser wording we don't own stays untranslated");
     }
 }

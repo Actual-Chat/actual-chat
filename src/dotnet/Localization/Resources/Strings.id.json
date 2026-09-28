@@ -1722,6 +1722,8 @@
   "Video_YesContinue": "Ya, lanjutkan",
   "Video_StopNow": "Hentikan sekarang",
   "Video_FailedToStartRecording": "Gagal memulai perekaman",
+  "Video_CameraUnavailableNamed_Format": "Kamera “{0}” tidak tersedia",
+  "Video_RestartRequired": "Mulai ulang aplikasi atau perangkat agar dapat menggunakan video.",
   "Video_StartVideo": "Mulai video",
   "Video_StopVideo": "Hentikan video",
   "Video_TurnCameraOn": "Nyalakan kamera",

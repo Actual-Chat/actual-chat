@@ -1722,6 +1722,8 @@
   "Video_YesContinue": "Ano, pokračovat",
   "Video_StopNow": "Zastavit hned",
   "Video_FailedToStartRecording": "Nepodařilo se spustit nahrávání",
+  "Video_CameraUnavailableNamed_Format": "Kamera „{0}“ není dostupná",
+  "Video_RestartRequired": "Restartujte prosím aplikaci nebo zařízení, abyste mohli používat video.",
   "Video_StartVideo": "Spustit video",
   "Video_StopVideo": "Zastavit video",
   "Video_TurnCameraOn": "Zapnout kameru",

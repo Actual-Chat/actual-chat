@@ -1722,6 +1722,8 @@
   "Video_YesContinue": "Sim, continuar",
   "Video_StopNow": "Parar agora",
   "Video_FailedToStartRecording": "Não foi possível iniciar a gravação",
+  "Video_CameraUnavailableNamed_Format": "A câmera '{0}' não está disponível",
+  "Video_RestartRequired": "Reinicie o aplicativo ou o dispositivo para poder usar o vídeo.",
   "Video_StartVideo": "Iniciar vídeo",
   "Video_StopVideo": "Parar vídeo",
   "Video_TurnCameraOn": "Ligar a câmera",

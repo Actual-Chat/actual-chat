@@ -1722,6 +1722,8 @@
   "Video_YesContinue": "Có, tiếp tục",
   "Video_StopNow": "Dừng ngay",
   "Video_FailedToStartRecording": "Không thể bắt đầu ghi",
+  "Video_CameraUnavailableNamed_Format": "Máy ảnh '{0}' không khả dụng",
+  "Video_RestartRequired": "Vui lòng khởi động lại ứng dụng hoặc thiết bị để có thể sử dụng video.",
   "Video_StartVideo": "Bật video",
   "Video_StopVideo": "Tắt video",
   "Video_TurnCameraOn": "Bật camera",

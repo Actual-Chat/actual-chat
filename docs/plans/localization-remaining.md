@@ -488,26 +488,22 @@ through `blazorRef.invokeMethodAsync('OnRecordingError', …)` into
 languages — so this needs no TS-side catalog, only a protocol.
 
 **Agreed approach: JS sends an error code plus its argument, C# localizes.**
-Prototyped and verified (`tsc`, `eslint`, `npm run build:Verify`,
-`dotnet build`, `AppLocalizationTest` 15/15), then pulled back out to keep this
-branch docs-only. The implementation is preserved on the local branch
-`wip/l10n-video-error-codes` (commit `1e14cc0ce2`) — reuse it rather than
-redoing the work:
+Done (#4262):
 
-- `video-recorder.ts` gains `RecordingErrorCodes`, a `CodedError` carrying a
-  code through a `throw`, and a `RecordingError { code, arg, message }` returned
-  by `describeStartError`; the four `OnRecordingError` call sites pass the
-  triple.
-- `ChatVideoUI.Localize(code, arg, message)` maps `cameraUnavailable` /
-  `restartRequired` onto three new keys — `Video_CameraUnavailable`,
-  `Video_CameraUnavailableNamed_Format`, `Video_RestartRequired`. The camera
-  label rides as an argument instead of being interpolated into an English
-  sentence no translation could follow.
+- `video-recorder.ts` carries a `VideoRecorderError` enum mirrored by
+  `VideoRecorderError.cs`, throws `RestartRequiredError` when every encoder
+  probe fails, and every `OnRecordingError` call passes
+  `(code, cameraLabel, message)` instead of prose.
+- `ChatVideoUI.OnRecordingError(VideoRecorderError, cameraLabel, message, kind)`
+  maps `CameraUnavailable` onto the existing `Call_CameraIsUnavailable` or the
+  new `Video_CameraUnavailableNamed_Format`, and `RestartRequired` onto the new
+  `Video_RestartRequired`. The camera label rides as an argument instead of
+  being interpolated into an English sentence no translation could follow.
 - The raw message still travels beside the code, because
   `IsScreenCastAlreadyActiveError` string-matches the *untranslated* wording of
   the server's "Another screencast is already active"
   (`LiveVideoBackend.cs:92`) to decide whether to show the modal.
-- Errors we don't originate — browser `DOMException`s — carry an empty code and
+- Errors we don't originate — browser `DOMException`s — arrive as `Unknown` and
   reach the user as raw browser text. Not fixable from our side.
 
 **Trap worth knowing:** a file using the typed localizer members needs

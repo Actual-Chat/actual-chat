@@ -1722,6 +1722,8 @@
   "Video_YesContinue": "Да, продължи",
   "Video_StopNow": "Спрете сега",
   "Video_FailedToStartRecording": "Записът не можа да започне",
+  "Video_CameraUnavailableNamed_Format": "Камерата „{0}“ не е достъпна",
+  "Video_RestartRequired": "Моля, рестартирайте приложението или устройството, за да можете да използвате видео.",
   "Video_StartVideo": "Пуснете видео",
   "Video_StopVideo": "Спрете видеото",
   "Video_TurnCameraOn": "Включете камерата",
