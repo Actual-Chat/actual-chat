@@ -6,16 +6,28 @@ namespace ActualChat.Chat;
 
 public partial class ChatsBackend
 {
+    private const string ImportedEntryIds = "ImportedEntryIds";
+    private const string ImportedPreviousEntryLid = "ImportedPreviousEntryLid";
+
+    // [CommandHandler]
     public virtual async Task<ApiArray<ChatImportEntryResult>> OnImportEntries(
         ChatsBackend_ImportEntries command, CancellationToken cancellationToken)
     {
         var chatId = command.ChatId;
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
-            foreach (var id in context.Operation.Items.Get<ChatEntryId[]>("ImportedEntryIds") ?? []) {
+            var invEntryIds = context.Operation.Items.Get<ChatEntryId[]>(ImportedEntryIds) ?? [];
+            foreach (var id in invEntryIds) {
                 InvalidateTiles(chatId, id.LocalId, ChangeKind.Create, false);
                 _ = GetEntryAttachments(id, default);
             }
+            // The batch appends past the existing tail, so only that entry's range tile can also
+            // have changed - and only when it isn't in the same conversation tile as the first
+            // imported entry, which InvalidateTiles already covered.
+            var invPreviousLid = context.Operation.Items.Get<long>(ImportedPreviousEntryLid);
+            if (invEntryIds.Length > 0 && invPreviousLid != 0
+                && !ConversationIdTiles.GetTile(invEntryIds[0].LocalId).Range.Contains(invPreviousLid))
+                _ = GetEntryRangeTile(chatId, ConversationIdTiles.GetTile(invPreviousLid).Range.Start, default);
             _ = GetMinLid(chatId, default);
             _ = GetMaxLid(chatId, true, default);
             _ = GetMaxLid(chatId, false, default);
@@ -48,10 +60,11 @@ public partial class ChatsBackend
             return JsonSerializer.Deserialize<ApiArray<ChatImportEntryResult>>(receipt.Result);
         }
 
-        var tail = await db.ChatEntries
+        var tailEntry = await db.ChatEntries
             .Where(x => x.ChatId == chatId.Value && x.Kind == 0 && !x.IsThreadEntry && !x.IsRemoved)
-            .OrderByDescending(x => x.LocalId).Select(x => (DateTime?)x.BeginsAt)
+            .OrderByDescending(x => x.LocalId).Select(x => new { x.LocalId, x.BeginsAt })
             .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        var tail = (DateTime?)tailEntry?.BeginsAt;
         var consenting = (await db.ChatImportConsents.Where(x => x.ImportId == command.ImportId && x.HasConsent)
             .Select(x => x.UserId).ToListAsync(cancellationToken).ConfigureAwait(false)).ToHashSet();
         var results = new ChatImportEntryResult[command.Entries.Count];
@@ -91,7 +104,8 @@ public partial class ChatsBackend
             tail = input.BeginsAt;
         }
         db.Add(new DbChatImportBatch { Id = batchId, Request = request, Result = JsonSerializer.Serialize(results) });
-        context.Operation.Items.Set("ImportedEntryIds", createdIds.ToArray());
+        context.Operation.Items.Set(ImportedEntryIds, createdIds.ToArray());
+        context.Operation.Items.Set(ImportedPreviousEntryLid, tailEntry?.LocalId ?? 0L);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return results.ToApiArray();
 
