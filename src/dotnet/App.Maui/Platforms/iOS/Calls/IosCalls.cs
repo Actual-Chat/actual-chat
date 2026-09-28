@@ -235,6 +235,28 @@ public sealed class IosCalls : CXProviderDelegate
         RequestTransaction(callId, call, new CXEndCallAction(new NSUuid(callId.ToString())), LocalAction.End);
     }
 
+    public void ContinueCall(INIntent intent)
+    {
+        // The system call UI's video button is no CXAction: it brings the app up with a call intent, the
+        // same one a Recents or Siri callback carries. callservicesd sends the legacy INStartVideoCallIntent
+        // there ("does not declare support for any dialing intents" in its log), a Recents tap the current
+        // INStartCallIntent. Only an answered call turns it into video; anything else has no call here to act on.
+        var (contacts, hasVideo) = intent switch {
+            INStartCallIntent x => (x.Contacts, x.CallCapability == INCallCapability.VideoCall),
+            INStartVideoCallIntent x => (x.Contacts, true),
+            _ => (null, false),
+        };
+        var handle = contacts?.FirstOrDefault()?.PersonHandle?.Value;
+        if (ChatId.TryParse(handle, allowNull: true) is not { } chatId || !hasVideo || !HasAnsweredCall(chatId)) {
+            Log.LogInformation("ContinueCall: ignored {Intent}, handle={Handle}, hasVideo={HasVideo}",
+                intent.GetType().Name, handle, hasVideo);
+            return;
+        }
+
+        Log.LogInformation("ContinueCall: video for chat #{ChatId}", chatId);
+        _ = DispatchToBlazor(c => StartVideoLocally(c, chatId), "ContinueCall");
+    }
+
     public ChatId[] ListActiveCallChatIds()
         // Rings only: a replaced scope's bridge re-watches these, and a call the user already
         // answered is not a ring.
@@ -395,6 +417,13 @@ public sealed class IosCalls : CXProviderDelegate
         // The same switch the in-app recorder toggle flips: a call is muted by not recording into it.
         => services.GetRequiredService<ChatAudioUI>().SetRecordingChatId(isMuted ? null : chatId).AsTask();
 
+    private static async Task StartVideoLocally(IServiceProvider services, ChatId chatId)
+    {
+        // The call screen's own video button minus its join preview: the video panel lives in the chat, under it.
+        await services.GetRequiredService<CallScreensUI>().LeaveCallScreen(chatId).ConfigureAwait(true);
+        services.GetRequiredService<ChatVideoUI>().StartVideoCapture(chatId);
+    }
+
     private void EndCalls(ChatId chatId, CXCallEndedReason reason)
     {
         foreach (var (callId, call) in _calls) {
@@ -464,6 +493,9 @@ public sealed class IosCalls : CXProviderDelegate
         call = null;
         return Guid.TryParse(callUuid.AsString(), out var callId) && _calls.TryRemove(callId, out call);
     }
+
+    private bool HasAnsweredCall(ChatId chatId)
+        => _calls.Values.Any(x => x.ChatId == chatId && x.IsAnswered);
 
     private static bool IsRinging(Call call)
         => !call.IsOutgoing && !call.IsAnswered && !call.IsVerdictPending;

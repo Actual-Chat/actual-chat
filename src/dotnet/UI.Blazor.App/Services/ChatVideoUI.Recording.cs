@@ -174,6 +174,15 @@ public partial class ChatVideoUI
         await OpenVideoPanelInternal(chatId, cancellationToken).ConfigureAwait(false);
     }
 
+    private async Task StartVideoCaptureInternal(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        if (!await IsVideoAvailable(chatId, cancellationToken).ConfigureAwait(false))
+            return;
+
+        var settings = await LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
+        StartVideoStreaming(chatId, settings.SelectedCameraDeviceId, settings.IsBackgroundBlurEnabledOrDefault);
+    }
+
     private async Task StartScreenCastingInternal(ChatId chatId, CancellationToken cancellationToken = default)
     {
         if (!await IsVideoAvailable(chatId, cancellationToken).ConfigureAwait(false))
