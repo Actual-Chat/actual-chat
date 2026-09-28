@@ -11,11 +11,8 @@
         Severity="BannerSeverity.Info"
         ShowDismissButton="true"
         Dismiss="@OnDismiss">
-        <Icon>
-            <i class="icon-mic text-2xl"></i>
-        </Icon>
         <Body>
-            <div class="c-tip-title">@Title(tip)</div>
+            <div class="c-tip-title"><i class="icon-mic"></i><span>@Title(tip)</span></div>
             <div class="c-tip-body">
                 @switch (tip.Kind) {
                     case CoachTipKind.SlowDown:
