@@ -1,3 +1,4 @@
+using ActualChat.Media.Module;
 using ActualChat.Module;
 using ActualChat.Testing.Host;
 
@@ -16,6 +17,8 @@ public class AppHostFixture(IMessageSink messageSink)
             // CoreServerSettings binds from the "CoreSettings" section (see CoreServerModule.LoadSettings),
             // not the "CoreServerSettings" section AddInMemory<CoreServerSettings> would use.
             cfg.AddInMemoryCollection(
-                ($"{nameof(CoreSettings)}:{nameof(CoreServerSettings.EgressHostAllowList)}:0", "domain*.some"));
+                ($"{nameof(CoreSettings)}:{nameof(CoreServerSettings.EgressHostAllowList)}:0", "domain*.some"),
+                ($"{nameof(MediaSettings)}:{nameof(MediaSettings.CrawlTimeout)}", "00:00:03"),
+                ($"{nameof(MediaSettings)}:{nameof(MediaSettings.LinkPreviewRetryDelay)}", "00:00:01"));
         }
     });

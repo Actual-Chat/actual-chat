@@ -116,8 +116,10 @@ public class ImageGrabber(IServiceProvider services)
                 if (string.Equals(uri.DnsSafeHost, "opengraph.githubassets.com", StringComparison.OrdinalIgnoreCase) && !Settings.GithubApiKey.IsNullOrEmpty())
                     request.Headers.Authorization = AuthenticationHeaderValue.Parse($"Bearer {Settings.GithubApiKey}");
                 response = await HttpClient.SendAsync(request, cancellationToken1).ConfigureAwait(false);
-                if (!response.IsSuccessStatusCode)
+                if (!response.IsSuccessStatusCode) {
+                    Log.LogWarning("Failed to get an image with url='{ImageUrl}': {StatusCode}", uri, response.StatusCode);
                     return null;
+                }
             }
             catch (Exception e) {
                 Log.LogWarning(e, "Failed to get an image with url='{ImageUrl}'", uri);
