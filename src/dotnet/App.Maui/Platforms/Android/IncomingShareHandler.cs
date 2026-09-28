@@ -29,7 +29,8 @@ public static class IncomingShareHandler
         if (!shortcutChatIdString.IsNullOrEmpty()) {
             targetChatId = ChatId.TryParse(shortcutChatIdString);
             if (targetChatId is null)
-                Log.LogWarning("Share via shortcut: failed to parse shortcut id '{ShortcutId}' as ChatId", shortcutChatIdString);
+                Log.LogWarning("Share via shortcut: failed to parse shortcut id '{ShortcutId}' as ChatId",
+                    shortcutChatIdString);
             else
                 Log.LogInformation("Share triggered via shortcut for chat: {ChatId}", targetChatId);
         }
@@ -127,7 +128,7 @@ public static class IncomingShareHandler
     // Ensures that the action will be queued for execution on the main thread.
     private static void BeginInvokeOnMainThreadAsync(Action action)
     {
-        if (MainThread.IsMainThread) {
+        if (IsMainThread) {
             var dispatcher = Dispatcher.GetForCurrentThread();
             if (dispatcher != null) {
                 _ = dispatcher.DispatchAsync(action);

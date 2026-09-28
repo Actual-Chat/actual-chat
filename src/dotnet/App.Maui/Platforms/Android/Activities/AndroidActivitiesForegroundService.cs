@@ -389,9 +389,9 @@ public sealed class AndroidActivitiesForegroundService : Service
         // startForeground call, not on the [Service] attribute - and a wake starts as
         // mediaPlayback only, so a press must re-issue this before the mic is opened.
         // Inline on the main thread, because the media-button dispatch runs there and the raise
-        // must stay inside it; BeginInvokeOnMainThread posts even from the main thread.
+        // must stay inside it; BeginDispatchToMainThread posts even from the main thread.
         var kind = isMicrophoneNeeded ? ActivityKind.Recording : ActivityKind.Listening;
-        if (MainThread.IsMainThread)
+        if (IsMainThread)
             Apply();
         else
             BeginDispatchToMainThread(Apply);

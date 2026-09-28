@@ -18,7 +18,7 @@ public sealed class AppleLocationTracker(AppUIHub hub) : MauiLocationTrackerBase
         SetError(null);
         try {
             var accuracy = await GetAccuracy(cancellationToken).ConfigureAwait(false);
-            MainThread.BeginInvokeOnMainThread(() => {
+            BeginDispatchToMainThread(() => {
                 _manager ??= CreateManager();
                 _manager.SetAccuracy(accuracy);
                 _manager.RequestWhenInUseAuthorization();
@@ -40,7 +40,7 @@ public sealed class AppleLocationTracker(AppUIHub hub) : MauiLocationTrackerBase
 
         IsTracking = false;
         SetCached(null);
-        MainThread.BeginInvokeOnMainThread(() => _manager?.StopUpdatingLocation());
+        BeginDispatchToMainThread(() => _manager?.StopUpdatingLocation());
         return Task.CompletedTask;
     }
 
@@ -51,7 +51,7 @@ public sealed class AppleLocationTracker(AppUIHub hub) : MauiLocationTrackerBase
         if (manager is null)
             return;
 
-        await MainThread.InvokeOnMainThreadAsync(() => {
+        await DispatchToMainThread(() => {
                 manager.LocationsUpdated -= OnLocationsUpdated;
                 manager.UpdatedHeading -= OnHeadingUpdated;
                 manager.Failed -= OnFailed;

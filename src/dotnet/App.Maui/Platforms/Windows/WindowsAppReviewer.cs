@@ -9,7 +9,7 @@ namespace ActualChat.App.Maui;
 public sealed class WindowsAppReviewer : IAppReviewer
 {
     public Task<AppReviewOutcome> RequestReview(CancellationToken cancellationToken)
-        => MainThread.InvokeOnMainThreadAsync(async () => {
+        => DispatchToMainThread(async () => {
             if (Application.Current?.Windows.FirstOrDefault()?.Handler?.PlatformView is not Window window)
                 return AppReviewOutcome.Failed;
 

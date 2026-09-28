@@ -18,6 +18,6 @@ public class MacClipboardUI(UIHub hub) : MauiClipboardUI(hub)
             return;
 
         // ReSharper disable once AccessToDisposedClosure
-        await MainThread.InvokeOnMainThreadAsync(() => UIPasteboard.General.Image = image).ConfigureAwait(false);
+        await DispatchToMainThread(() => UIPasteboard.General.Image = image).ConfigureAwait(false);
     }
 }

@@ -1,5 +1,5 @@
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
-using Microsoft.Maui.ApplicationModel;
+using ActualChat.Maui;
 
 namespace ActualChat.App.Maui.IosShareExt.Services;
 
@@ -8,16 +8,16 @@ public class ShareInputs(IosHub hub)
     private ILogger Log => field ??= hub.LogFor(GetType());
 
     public Task<string> GetText(CancellationToken cancellationToken = default)
-        => MainThread.InvokeOnMainThreadAsync(async () => {
+        => MauiMainThread.DispatchToMainThread(async () => {
             var inputs = await ListTextInputsUnsafe(cancellationToken).ConfigureAwait(false);
             return string.Join('\n', inputs);
         });
 
     public Task<List<NSItemProvider>> ListFiles(CancellationToken cancellationToken = default)
-        => MainThread.InvokeOnMainThreadAsync(() => ListFileInputsUnsafe().ToList());
+        => MauiMainThread.DispatchToMainThread(() => ListFileInputsUnsafe().ToList());
 
     public Task<bool> HasFiles()
-        => MainThread.InvokeOnMainThreadAsync(() => ListFileInputsUnsafe().Any());
+        => MauiMainThread.DispatchToMainThread(() => ListFileInputsUnsafe().Any());
 
     private Task<string[]> ListTextInputsUnsafe(CancellationToken cancellationToken)
     {

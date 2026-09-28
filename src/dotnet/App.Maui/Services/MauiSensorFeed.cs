@@ -207,7 +207,7 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
         }
         // UIKit is main-thread only; the main-thread queue is also what orders start vs. stop,
         // so _proximityObserver is touched from that thread alone.
-        MainThread.BeginInvokeOnMainThread(() => {
+        BeginDispatchToMainThread(() => {
             try {
                 UIKit.UIDevice.CurrentDevice.ProximityMonitoringEnabled = true;
                 _proximityObserver ??= Foundation.NSNotificationCenter.DefaultCenter.AddObserver(
@@ -230,7 +230,7 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
 
             _isProximityOn = false;
         }
-        MainThread.BeginInvokeOnMainThread(() => {
+        BeginDispatchToMainThread(() => {
             try {
                 if (_proximityObserver is { } observer)
                     Foundation.NSNotificationCenter.DefaultCenter.RemoveObserver(observer);

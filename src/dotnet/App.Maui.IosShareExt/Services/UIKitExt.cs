@@ -1,3 +1,4 @@
+using ActualChat.Maui;
 using Intents;
 using Microsoft.Maui.ApplicationModel;
 
@@ -10,22 +11,23 @@ public static class UIKitExt
         .ExtensionContext.Require();
 
     public static Task CloseApp(CancellationToken cancellationToken = default)
-        => MainThread.InvokeOnMainThreadAsync(() => ExtensionContext.CompleteRequestAsync([])).WaitAsync(cancellationToken);
+        => MauiMainThread.DispatchToMainThread(() => ExtensionContext.CompleteRequestAsync([]))
+            .WaitAsync(cancellationToken);
 
     public static void PlaySuccessHaptic()
-        => MainThread.BeginInvokeOnMainThread(() => {
+        => MauiMainThread.BeginDispatchToMainThread(() => {
             var generator = new UINotificationFeedbackGenerator();
             generator.Prepare();
             generator.NotificationOccurred(UINotificationFeedbackType.Success);
         });
 
     public static Task OpenUrl(NSUrl url, CancellationToken cancellationToken = default)
-        => MainThread.InvokeOnMainThreadAsync(
+        => MauiMainThread.DispatchToMainThread(
                 () => UIApplication.SharedApplication.OpenUrlAsync(url, new UIApplicationOpenUrlOptions()))
             .WaitAsync(cancellationToken);
 
     public static Task<ChatId?> GetSuggestedRecipient()
-        => MainThread.InvokeOnMainThreadAsync(GetSuggestedRecipientUnsafe);
+        => MauiMainThread.DispatchToMainThread(GetSuggestedRecipientUnsafe);
 
     private static ChatId? GetSuggestedRecipientUnsafe()
         => ExtensionContext.GetIntent() is INSendMessageIntent sendMessageIntent

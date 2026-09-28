@@ -73,6 +73,6 @@ public class MediaMetadataUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IMedi
     }
 
     private Task Invoke(Action action, [CallerMemberName] string name = "")
-        => MainThread.InvokeOnMainThreadAsync(action).Catch(Log, "Failed to invoke '{Name}'", name);
+        => DispatchToMainThread(action).Catch(Log, "Failed to invoke '{Name}'", name);
 #endif
 }

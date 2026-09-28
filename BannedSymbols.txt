@@ -1,2 +1,4 @@
 M:System.String.IsNullOrEmpty(System.String);Use x.IsNullOrEmpty() instead (docs/CODING_STYLE.md)
 M:System.String.IsNullOrWhiteSpace(System.String);Use x.IsNullOrWhiteSpace() instead (docs/CODING_STYLE.md)
+T:Microsoft.Maui.ApplicationModel.MainThread;Use MauiMainThread instead (docs/CODING_STYLE.md)
+T:ActualChat.Maui.MacOSMainThread;Use MauiMainThread instead (docs/CODING_STYLE.md)

@@ -231,6 +231,11 @@ public async switchFacing(): Promise<boolean> {
   `Platforms/iOS`, even when it would compile for Catalyst.
 - `IOS` is **not** defined for Mac Catalyst (only `MACCATALYST` is), so an `#if IOS` registration
   leaves Catalyst out.
+- Main-thread checks and dispatch go through `ActualChat.Maui.MauiMainThread` (`IsMainThread`,
+  `BeginDispatchToMainThread`, `DispatchToMainThread`; static-imported in `App.Maui`). Essentials'
+  `MainThread` and the AppKit `MacOSMainThread` are banned at build time (`BannedSymbols.txt`):
+  Essentials' is the "not implemented" neutral build on the `macos` TFM, so a direct call there
+  compiles and throws at runtime.
 
 ### Global Usings
 

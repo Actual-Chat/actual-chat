@@ -14,7 +14,7 @@ public sealed class AppleAppReviewer : IAppReviewer
 #pragma warning restore CA1422
 
     public Task<AppReviewOutcome> RequestReview(CancellationToken cancellationToken)
-        => MainThread.InvokeOnMainThreadAsync(() => {
+        => DispatchToMainThread(() => {
             if (IsBetaBuild)
                 return AppReviewOutcome.Failed;
             if (WindowStateManager.Default.GetCurrentUIWindow()?.WindowScene is not { } windowScene)

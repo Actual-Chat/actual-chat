@@ -64,7 +64,7 @@ public sealed class MauiShare(IServiceProvider services) : IMauiShare
             var title = request.Text.NullIfEmpty() ?? files[0].FileName;
             // The share sheet is a UIViewController presentation on Apple platforms, so it must
             // happen on the main thread - off it, iOS drops it silently.
-            await MainThread.InvokeOnMainThreadAsync(() => files.Count == 1
+            await DispatchToMainThread(() => files.Count == 1
                 ? DataTransfer.Share.Default.RequestAsync(new DataTransfer.ShareFileRequest {
                     Title = title,
                     File = files[0],
