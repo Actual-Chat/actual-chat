@@ -1935,6 +1935,7 @@
   "Coach_TipRecommended_Format": "Khuyến nghị {0}–{1}",
   "Coach_TipTooFast": "Bạn nói quá nhanh, người khác có thể khó theo kịp.",
   "Coach_TipTooSlow": "Bạn nói quá chậm, người khác có thể khó giữ được sự tập trung.",
-  "Coach_TipFillerBody": "Hôm nay bạn đã nói “{0}” hơn {1} lần.",
+  "Coach_TipFillerBody": "Bạn đã nói “{0}” {1} lần",
+  "Coach_TipInWindow": "trong {0} phút qua",
   "Coach_TipWeakWordBody_Format": "Từ “{0}” thường bị lạm dụng. Hãy chọn một từ đồng nghĩa cụ thể hơn để lời nói sắc nét hơn."
 }

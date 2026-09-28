@@ -1935,6 +1935,7 @@
   "Coach_TipRecommended_Format": "推奨 {0}〜{1}",
   "Coach_TipTooFast": "話す速さが速すぎて、相手がついてこられないかもしれません。",
   "Coach_TipTooSlow": "話す速さが遅すぎて、相手の集中が続かないかもしれません。",
-  "Coach_TipFillerBody": "今日「{0}」を {1} 回以上使いました。",
+  "Coach_TipFillerBody": "「{0}」を {1} 回使いました",
+  "Coach_TipInWindow": "過去 {0} 分間に",
   "Coach_TipWeakWordBody_Format": "「{0}」は使われすぎる言葉です。より具体的な言葉に置き換えると話が引き締まります。"
 }

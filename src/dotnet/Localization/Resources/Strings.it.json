@@ -1935,6 +1935,7 @@
   "Coach_TipRecommended_Format": "Consigliato {0}–{1}",
   "Coach_TipTooFast": "Parli troppo velocemente e gli altri potrebbero faticare a seguirti.",
   "Coach_TipTooSlow": "Parli troppo lentamente e gli altri potrebbero faticare a restare attenti.",
-  "Coach_TipFillerBody": "Oggi hai detto “{0}” più di {1} volta.|Oggi hai detto “{0}” più di {1} volte.",
+  "Coach_TipFillerBody": "Hai detto “{0}” {1} volta|Hai detto “{0}” {1} volte",
+  "Coach_TipInWindow": "nell'ultimo {0} minuto|negli ultimi {0} minuti",
   "Coach_TipWeakWordBody_Format": "La parola “{0}” è spesso abusata. Prova un sinonimo più preciso per rendere il tuo discorso più incisivo."
 }

@@ -4,15 +4,15 @@ using ActualChat.Users.Module;
 namespace ActualChat.Users;
 
 /// <summary>
-/// Decides whether the record just logged earns a live tip: a word count crossing a step today
-/// wins over pace, and nothing fires inside the user's tip interval.
+/// Decides whether the entry just logged earns a live tip, judged over the last TipWindow of the
+/// user's own entries: a word said TipWordCount times in the window wins over pace, a tipped word
+/// rests for TipWordCooldown, and nothing fires inside the user's tip interval.
 /// </summary>
 public static class CoachTipPolicy
 {
     public static UserCoachTip? Evaluate(
         CoachRecord record,
-        CoachDay before,
-        CoachDay after,
+        IReadOnlyList<CoachRecord> window,
         ApiArray<SpeechSpan> spansWithSynonyms,
         UserCoachTip previous,
         UserCoachSettings settings,
@@ -20,21 +20,33 @@ public static class CoachTipPolicy
         Moment now,
         string? language)
     {
-        if (settings is not { IsCoachingEnabled: true, AreLiveTipsEnabled: true } || record.Entry is not { } entry)
+        if (settings is not { IsCoachingEnabled: true, AreLiveTipsEnabled: true } || record.Entry is null)
             return null;
         if (previous.LastTipAt != default && now - previous.LastTipAt < settings.TipInterval)
             return null;
         // Re-tagged or edited old entries are not live feedback
-        if (record.Day != UsageDay.DayOf(now))
+        if (now - record.OccurredAt > s.TipWindow)
             return null;
 
-        var tip = WordTip(before, after, spansWithSynonyms, s.TipWordStep) ?? PaceTip(entry, s, language);
+        var entries = window
+            .Where(r => r.Entry is not null && now - r.OccurredAt <= s.TipWindow)
+            .Select(r => r.Entry!)
+            .ToList();
+        var tip = WordTip(entries, spansWithSynonyms, previous, s, now) ?? PaceTip(entries, s, language);
         if (tip is null)
             return null;
 
+        var wordTipAt = previous.WordTipAt;
+        if (!tip.Word.IsNullOrEmpty()) {
+            var map = wordTipAt.ToDictionary(x => x.Key, x => x.Value);
+            map[tip.Word] = now;
+            wordTipAt = new ApiMap<string, Moment>(map);
+        }
         return tip with {
             ChatId = record.ChatId,
-            EntryLid = entry.EntryLid,
+            EntryLid = record.Entry.EntryLid,
+            WindowMinutes = (int)s.TipWindow.TotalMinutes,
+            WordTipAt = wordTipAt,
             ShownAt = now,
             LastTipAt = now,
             IsDismissed = false,
@@ -43,28 +55,39 @@ public static class CoachTipPolicy
 
     // Private methods
 
-    private static UserCoachTip? WordTip(CoachDay before, CoachDay after, ApiArray<SpeechSpan> spans, int step)
+    private static UserCoachTip? WordTip(
+        List<CoachEntryRecord> entries, ApiArray<SpeechSpan> spans, UserCoachTip previous, CoachScoringSettings s, Moment now)
     {
-        if (CrossedStep(before.FillerCounts, after.FillerCounts, step) is { } filler)
-            return new UserCoachTip { Kind = CoachTipKind.Filler, Word = filler.Word, Count = filler.Count };
+        var filler = TopWord(entries, s, previous, now, SpeechSpanKind.Filler, SpeechSpanKind.FilledPause);
+        if (filler is { } f)
+            return new UserCoachTip { Kind = CoachTipKind.Filler, Word = f.Word, Count = f.Count };
 
-        if (CrossedStep(before.WeakWordCounts, after.WeakWordCounts, step) is { } weak) {
-            var synonyms = Synonyms(spans, weak.Word);
+        var weak = TopWord(entries, s, previous, now, SpeechSpanKind.Weak);
+        if (weak is { } w) {
+            var synonyms = Synonyms(spans, w.Word);
             if (synonyms.Count > 0)
-                return new UserCoachTip {
-                    Kind = CoachTipKind.WeakWord, Word = weak.Word, Count = weak.Count, Synonyms = synonyms,
-                };
+                return new UserCoachTip { Kind = CoachTipKind.WeakWord, Word = w.Word, Count = w.Count, Synonyms = synonyms };
         }
         return null;
     }
 
-    private static (string Word, int Count)? CrossedStep(
-        ApiMap<string, int> before, ApiMap<string, int> after, int step)
+    private static (string Word, int Count)? TopWord(
+        List<CoachEntryRecord> entries, CoachScoringSettings s, UserCoachTip previous, Moment now,
+        params SpeechSpanKind[] kinds)
     {
-        foreach (var (word, count) in after.OrderByDescending(x => x.Value)) {
-            var previous = before.GetValueOrDefault(word);
-            if (count / step > previous / step)
-                return (word, count);
+        var counts = new Dictionary<string, int>();
+        foreach (var entry in entries)
+            foreach (var span in entry.Spans)
+                if (kinds.Contains(span.Kind))
+                    counts[span.Word] = counts.GetValueOrDefault(span.Word) + 1;
+
+        foreach (var (word, count) in counts.OrderByDescending(x => x.Value).ThenBy(x => x.Key)) {
+            if (count < s.TipWordCount)
+                return null;
+            if (previous.WordTipAt.TryGetValue(word, out var tippedAt) && now - tippedAt < s.TipWordCooldown)
+                continue;
+
+            return (word, count);
         }
         return null;
     }
@@ -74,13 +97,18 @@ public static class CoachTipPolicy
             .FirstOrDefault(sp => sp.Kind == SpeechSpanKind.Weak && sp.Word == word && sp.Synonyms.Count > 0)
             ?.Synonyms ?? ApiArray<string>.Empty;
 
-    private static UserCoachTip? PaceTip(CoachEntryRecord entry, CoachScoringSettings s, string? language)
+    private static UserCoachTip? PaceTip(List<CoachEntryRecord> entries, CoachScoringSettings s, string? language)
     {
-        if (entry.Words is not { } words || words < s.TipMinWords)
-            return null;
+        var words = 0;
+        var seconds = 0d;
+        foreach (var entry in entries) {
+            if (entry.Words is not { } entryWords)
+                continue;
 
-        var seconds = entry.SpeechSeconds ?? entry.DurationSeconds;
-        if (seconds <= 0)
+            words += entryWords;
+            seconds += entry.SpeechSeconds ?? entry.DurationSeconds;
+        }
+        if (words < s.TipMinWords || seconds <= 0)
             return null;
 
         var wpm = (int)Math.Round(words * 60 / seconds);

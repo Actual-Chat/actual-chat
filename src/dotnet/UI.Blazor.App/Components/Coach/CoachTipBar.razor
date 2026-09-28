@@ -25,7 +25,7 @@
                         <div>@(tip.Kind == CoachTipKind.SlowDown ? L.Coach_TipTooFast : L.Coach_TipTooSlow)</div>
                         break;
                     case CoachTipKind.Filler:
-                        <div>@Highlight(L.Coach_TipFillerBody(tip.Count, tip.Word, tip.Count), tip.Word)</div>
+                        <div>@Highlight(L.Coach_TipFillerBody(tip.Count, tip.Word, tip.Count), tip.Word) @L.Coach_TipInWindow(tip.WindowMinutes, tip.WindowMinutes).</div>
                         break;
                     default:
                         <div>@Highlight(L.Coach_TipWeakWordBody_Format(tip.Word), tip.Word)</div>

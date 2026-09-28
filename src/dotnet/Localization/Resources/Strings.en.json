@@ -2284,6 +2284,7 @@
   "Coach_TipRecommended_Format": "{0}–{1} recommended",
   "Coach_TipTooFast": "You're speaking too fast, which may make it hard for others to follow you.",
   "Coach_TipTooSlow": "You're speaking too slowly, which may make it harder for others to stay engaged.",
-  "Coach_TipFillerBody": "You've used “{0}” more than {1} time today.|You've used “{0}” more than {1} times today.",
+  "Coach_TipFillerBody": "You've said “{0}” {1} time|You've said “{0}” {1} times",
+  "Coach_TipInWindow": "in the last {0} minute|in the last {0} minutes",
   "Coach_TipWeakWordBody_Format": "The word “{0}” is often overused. Consider a more specific synonym to sharpen your speech."
 }

@@ -1935,6 +1935,7 @@
   "Coach_TipRecommended_Format": "Preporučeno {0}–{1}",
   "Coach_TipTooFast": "Govorite prebrzo, pa vas drugi možda teško prate.",
   "Coach_TipTooSlow": "Govorite presporo, pa drugi možda teže ostaju uključeni.",
-  "Coach_TipFillerBody": "Rekli ste „{0}“ više od {1} puta danas.|Rekli ste „{0}“ više od {1} puta danas.|Rekli ste „{0}“ više od {1} puta danas.",
+  "Coach_TipFillerBody": "Rekli ste „{0}“ {1} put|Rekli ste „{0}“ {1} puta|Rekli ste „{0}“ {1} puta",
+  "Coach_TipInWindow": "u posljednju {0} minutu|u posljednje {0} minute|u posljednjih {0} minuta",
   "Coach_TipWeakWordBody_Format": "Riječ „{0}“ se često prečesto koristi. Razmislite o preciznijem sinonimu da vaš govor bude oštriji."
 }

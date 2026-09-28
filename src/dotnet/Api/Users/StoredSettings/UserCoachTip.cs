@@ -47,6 +47,12 @@ public sealed partial record UserCoachTip : StoredSettings, IHasOrigin, IHasKvas
     public int PaceSlowWpm { get; init; }
     [DataMember, Key(12)]
     public int PaceFastWpm { get; init; }
+    // The window the count was taken over, in minutes, so the card says what triggered it
+    [DataMember, Key(13)]
+    public int WindowMinutes { get; init; }
+    // When each word was last tipped; the policy's per-word cooldown reads it
+    [DataMember, Key(14)]
+    public ApiMap<string, Moment> WordTipAt { get; init; } = new ();
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsPending => Kind != CoachTipKind.None && !IsDismissed;

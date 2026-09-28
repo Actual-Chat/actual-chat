@@ -155,8 +155,11 @@ public sealed class CoachScoringSettings
     public int WeightSentenceLength { get; set; } = 10;
     public int TipPaceFastWpm { get; set; } = 170;
     public int TipPaceSlowWpm { get; set; } = 100;
+    // Live tips judge the last TipWindow of the user's own speech, not the day's totals
+    public TimeSpan TipWindow { get; set; } = TimeSpan.FromMinutes(20);
     public int TipMinWords { get; set; } = 30;
-    public int TipWordStep { get; set; } = 10;
+    public int TipWordCount { get; set; } = 3;
+    public TimeSpan TipWordCooldown { get; set; } = TimeSpan.FromMinutes(60);
     public CoachRollout Rollout { get; set; } = CoachRollout.AdminsAndFocusGroup;
     public string[] FocusGroupEmails { get; set; } = [];
 }

@@ -1935,6 +1935,7 @@
   "Coach_TipRecommended_Format": "建议 {0}–{1}",
   "Coach_TipTooFast": "你说得太快，别人可能跟不上。",
   "Coach_TipTooSlow": "你说得太慢，别人可能难以保持专注。",
-  "Coach_TipFillerBody": "你今天说“{0}”已超过 {1} 次。",
+  "Coach_TipFillerBody": "你说了“{0}” {1} 次",
+  "Coach_TipInWindow": "在过去 {0} 分钟内",
   "Coach_TipWeakWordBody_Format": "“{0}”这个词常被过度使用。换一个更具体的同义词能让表达更精准。"
 }

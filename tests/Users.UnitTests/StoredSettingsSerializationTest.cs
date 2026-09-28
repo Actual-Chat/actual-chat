@@ -613,6 +613,10 @@ public partial class StoredSettingsSerializationTest
             Synonyms = ApiArray.New("excellent"),
             ShownAt = new DateTime(2026, 9, 26, 12, 0, 0, DateTimeKind.Utc),
             LastTipAt = new DateTime(2026, 9, 26, 12, 0, 0, DateTimeKind.Utc),
+            WindowMinutes = 20,
+            WordTipAt = new ApiMap<string, Moment>(new Dictionary<string, Moment> {
+                ["awesome"] = new DateTime(2026, 9, 26, 12, 0, 0, DateTimeKind.Utc),
+            }),
         };
 
         // act
@@ -626,6 +630,8 @@ public partial class StoredSettingsSerializationTest
         typed.ChatId.Should().Be(chatId);
         typed.Kind.Should().Be(CoachTipKind.WeakWord);
         typed.Synonyms.Should().Equal("excellent");
+        typed.WindowMinutes.Should().Be(20);
+        typed.WordTipAt.Should().ContainKey("awesome");
         typed.IsPending.Should().BeTrue();
     }
 }

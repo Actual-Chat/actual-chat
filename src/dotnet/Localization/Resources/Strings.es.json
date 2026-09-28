@@ -1935,6 +1935,7 @@
   "Coach_TipRecommended_Format": "Recomendado {0}–{1}",
   "Coach_TipTooFast": "Hablas demasiado rápido y a los demás les puede costar seguirte.",
   "Coach_TipTooSlow": "Hablas demasiado despacio y a los demás les puede costar mantener la atención.",
-  "Coach_TipFillerBody": "Hoy has dicho «{0}» más de {1} vez.|Hoy has dicho «{0}» más de {1} veces.",
+  "Coach_TipFillerBody": "Has dicho «{0}» {1} vez|Has dicho «{0}» {1} veces",
+  "Coach_TipInWindow": "en el último {0} minuto|en los últimos {0} minutos",
   "Coach_TipWeakWordBody_Format": "La palabra «{0}» se usa demasiado. Prueba un sinónimo más preciso para afinar tu discurso."
 }

@@ -6,50 +6,103 @@ namespace ActualChat.Users.UnitTests.Coach;
 public class CoachTipPolicyTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private static readonly Moment Now = new DateTime(2026, 9, 26, 12, 0, 0, DateTimeKind.Utc);
-    private static readonly Moment Day = new DateTime(2026, 9, 26, 0, 0, 0, DateTimeKind.Utc);
     private static readonly CoachScoringSettings S = new();
     private static readonly UserCoachSettings OptedIn = new() { IsCoachingEnabled = true, AreLiveTipsEnabled = true };
     private static readonly UserCoachTip NoTip = new();
     private static readonly ApiArray<SpeechSpan> NoSpans = ApiArray<SpeechSpan>.Empty;
 
-    private static CoachRecord Entry(int words, double speechSeconds, int fillers = 0, int weak = 0)
-        => new (CoachRecordKind.Entry, "e1", UserId.New(), GroupChatId.New(), Now) {
+    private static CoachRecord Entry(
+        int words, double speechSeconds, Moment? at = null, params (SpeechSpanKind Kind, string Word)[] spans)
+    {
+        var occurredAt = at ?? Now;
+        var apiSpans = spans.Select(s => new SpeechSpan(s.Kind, s.Word, 0, s.Word.Length, ApiArray<string>.Empty)).ToApiArray();
+        var fillers = spans.Count(s => s.Kind is SpeechSpanKind.Filler or SpeechSpanKind.FilledPause);
+        var weak = spans.Count(s => s.Kind == SpeechSpanKind.Weak);
+        return new (CoachRecordKind.Entry, $"e{occurredAt.EpochOffset.Ticks}", UserId.New(), GroupChatId.New(), occurredAt) {
             Entry = new CoachEntryRecord(1, "en-US", speechSeconds, speechSeconds, words, 2, 0, 0, words, 0, 0, true,
-                0, fillers, weak, 0, NoSpans),
+                0, fillers, weak, 0, apiSpans),
         };
+    }
 
-    private static CoachDay Fillers(int youKnow)
-        => new CoachDay(Day) {
-            FillerCounts = new ApiMap<string, int>(new Dictionary<string, int> { ["you know"] = youKnow }),
-        };
-
-    private static CoachDay Weak(int awesome)
-        => new CoachDay(Day) {
-            WeakWordCounts = new ApiMap<string, int>(new Dictionary<string, int> { ["awesome"] = awesome }),
-        };
+    private static (SpeechSpanKind, string) Filler(string word) => (SpeechSpanKind.Filler, word);
 
     private static UserCoachTip? Evaluate(
-        CoachRecord record, CoachDay before, CoachDay after, ApiArray<SpeechSpan> spans, UserCoachTip previous,
+        CoachRecord record, IReadOnlyList<CoachRecord> window, ApiArray<SpeechSpan> spans, UserCoachTip previous,
         UserCoachSettings? settings = null)
-        => CoachTipPolicy.Evaluate(record, before, after, spans, previous, settings ?? OptedIn, S, Now, "en-US");
+        => CoachTipPolicy.Evaluate(record, window, spans, previous, settings ?? OptedIn, S, Now, "en-US");
 
     [Fact]
-    public void FillerCountCrossingTenShouldTip()
+    public void ThreeUsesOfAWordInTheWindowShouldTip()
     {
+        // arrange
+        var earlier = Entry(20, 10, Now - TimeSpan.FromMinutes(15), Filler("you know"), Filler("you know"));
+        var current = Entry(20, 10, Now, Filler("you know"));
+
         // act
-        var tip = Evaluate(Entry(40, 20), Fillers(9), Fillers(11), NoSpans, NoTip);
+        var tip = Evaluate(current, [earlier, current], NoSpans, NoTip);
 
         // assert
         tip!.Kind.Should().Be(CoachTipKind.Filler);
         tip.Word.Should().Be("you know");
-        tip.Count.Should().Be(11);
+        tip.Count.Should().Be(3, "the count is what the window holds, not the day");
+        tip.WindowMinutes.Should().Be((int)S.TipWindow.TotalMinutes);
         tip.LastTipAt.Should().Be(Now);
-        tip.IsDismissed.Should().BeFalse();
+        tip.WordTipAt["you know"].Should().Be(Now);
     }
 
     [Fact]
-    public void FillerCountStayingBetweenStepsShouldNotTip()
-        => Evaluate(Entry(40, 20), Fillers(11), Fillers(13), NoSpans, NoTip).Should().BeNull();
+    public void UsesOutsideTheWindowShouldNotCount()
+    {
+        // arrange: nine uses over the day, none dense enough
+        var old = Entry(20, 10, Now - TimeSpan.FromHours(3),
+            Filler("you know"), Filler("you know"), Filler("you know"), Filler("you know"));
+        var current = Entry(20, 10, Now, Filler("you know"), Filler("you know"));
+
+        // act
+        var tip = Evaluate(current, [current], NoSpans, NoTip);
+
+        // assert
+        tip.Should().BeNull("only two uses fall inside the window");
+        old.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void TheSameWordShouldNotTipAgainInsideItsCooldown()
+    {
+        // arrange
+        var previous = new UserCoachTip {
+            Kind = CoachTipKind.Filler, Word = "you know", IsDismissed = true,
+            LastTipAt = Now - TimeSpan.FromMinutes(30),
+            WordTipAt = new ApiMap<string, Moment>(new Dictionary<string, Moment> { ["you know"] = Now - TimeSpan.FromMinutes(30) }),
+        };
+        var current = Entry(20, 10, Now, Filler("you know"), Filler("you know"), Filler("you know"));
+
+        // act
+        var tip = Evaluate(current, [current], NoSpans, previous);
+
+        // assert
+        tip.Should().BeNull("the word was tipped 30 minutes ago, inside its 60-minute cooldown");
+    }
+
+    [Fact]
+    public void AnotherWordShouldTipDuringTheFirstWordsCooldown()
+    {
+        // arrange
+        var previous = new UserCoachTip {
+            Kind = CoachTipKind.Filler, Word = "you know", IsDismissed = true,
+            LastTipAt = Now - TimeSpan.FromMinutes(30),
+            WordTipAt = new ApiMap<string, Moment>(new Dictionary<string, Moment> { ["you know"] = Now - TimeSpan.FromMinutes(30) }),
+        };
+        var current = Entry(20, 10, Now, Filler("you know"), Filler("you know"), Filler("you know"),
+            Filler("like"), Filler("like"), Filler("like"));
+
+        // act
+        var tip = Evaluate(current, [current], NoSpans, previous);
+
+        // assert
+        tip!.Word.Should().Be("like");
+        tip.WordTipAt.Keys.Should().BeEquivalentTo(["you know", "like"], "the map remembers every tipped word");
+    }
 
     [Fact]
     public void WeakWordShouldTipOnlyWithSynonyms()
@@ -57,47 +110,62 @@ public class CoachTipPolicyTest(ITestOutputHelper @out) : TestBase(@out)
         // arrange
         var synonyms = ApiArray.New("excellent", "superb");
         var spans = ApiArray.New(new SpeechSpan(SpeechSpanKind.Weak, "awesome", 0, 7, synonyms));
+        var weak = (SpeechSpanKind.Weak, "awesome");
+        var current = Entry(20, 10, Now, weak, weak, weak);
 
         // act
-        var with = Evaluate(Entry(40, 20, weak: 1), Weak(9), Weak(10), spans, NoTip);
-        var without = Evaluate(Entry(40, 20, weak: 1), Weak(9), Weak(10), NoSpans, NoTip);
+        var with = Evaluate(current, [current], spans, NoTip);
+        var without = Evaluate(current, [current], NoSpans, NoTip);
 
         // assert
         with!.Kind.Should().Be(CoachTipKind.WeakWord);
+        with.Count.Should().Be(3);
         with.Synonyms.Should().Equal("excellent", "superb");
         without.Should().BeNull();
     }
 
-    [Theory]
-    [InlineData(60, 20, CoachTipKind.SlowDown)]
-    [InlineData(30, 20, CoachTipKind.SpeedUp)]
-    [InlineData(50, 20, CoachTipKind.None)]
-    [InlineData(20, 5, CoachTipKind.None)]
-    public void PaceTipShouldNeedEnoughWordsAndAnOutOfBandRate(int words, double seconds, CoachTipKind expected)
+    [Fact]
+    public void PaceShouldBeJudgedOverTheWindow()
     {
+        // arrange: three short entries, none reaching the word floor alone, all too fast together
+        var a = Entry(12, 3, Now - TimeSpan.FromMinutes(10));
+        var b = Entry(12, 3, Now - TimeSpan.FromMinutes(5));
+        var c = Entry(12, 3, Now);
+
         // act
-        var tip = Evaluate(Entry(words, seconds), new CoachDay(Day), new CoachDay(Day), NoSpans, NoTip);
+        var alone = Evaluate(c, [c], NoSpans, NoTip);
+        var together = Evaluate(c, [a, b, c], NoSpans, NoTip);
 
         // assert
-        (tip?.Kind ?? CoachTipKind.None).Should().Be(expected);
-        if (tip is not null)
-            tip.Wpm.Should().Be((int)Math.Round(words * 60 / seconds));
+        alone.Should().BeNull("12 words are below the floor");
+        together!.Kind.Should().Be(CoachTipKind.SlowDown);
+        together.Wpm.Should().Be(240);
+        together.PaceSlowWpm.Should().Be((int)S.PaceSlowWpm);
+        together.PaceFastWpm.Should().Be((int)S.PaceFastWpm);
     }
 
     [Fact]
     public void WordTipShouldWinOverPace()
-        => Evaluate(Entry(60, 20), Fillers(9), Fillers(10), NoSpans, NoTip)!.Kind.Should().Be(CoachTipKind.Filler);
+    {
+        // arrange
+        var current = Entry(60, 10, Now, Filler("like"), Filler("like"), Filler("like"));
+
+        // act
+        var tip = Evaluate(current, [current], NoSpans, NoTip);
+
+        // assert
+        tip!.Kind.Should().Be(CoachTipKind.Filler);
+    }
 
     [Fact]
     public void TipsShouldRespectTheInterval()
     {
         // arrange
-        var recent = new UserCoachTip {
-            Kind = CoachTipKind.Filler, LastTipAt = Now - TimeSpan.FromMinutes(2), IsDismissed = true,
-        };
+        var recent = new UserCoachTip { Kind = CoachTipKind.SpeedUp, LastTipAt = Now - TimeSpan.FromMinutes(2), IsDismissed = true };
+        var current = Entry(60, 10, Now, Filler("like"), Filler("like"), Filler("like"));
 
         // act
-        var tip = Evaluate(Entry(60, 20), Fillers(9), Fillers(10), NoSpans, recent);
+        var tip = Evaluate(current, [current], NoSpans, recent);
 
         // assert
         tip.Should().BeNull("5 minutes have not passed");
@@ -107,34 +175,28 @@ public class CoachTipPolicyTest(ITestOutputHelper @out) : TestBase(@out)
     [InlineData(false, true)]
     [InlineData(true, false)]
     public void TipsShouldRequireBothToggles(bool coaching, bool liveTips)
-        => Evaluate(Entry(60, 20), Fillers(9), Fillers(10), NoSpans, NoTip,
-                new UserCoachSettings { IsCoachingEnabled = coaching, AreLiveTipsEnabled = liveTips })
-            .Should().BeNull();
-
-    [Fact]
-    public void TipsShouldOnlyFireForTodaysEntries()
     {
-        // arrange: a re-tagged entry from yesterday crossing a step on yesterday's day
-        var yesterday = Entry(60, 20) with { OccurredAt = Now - TimeSpan.FromDays(1) };
-        var before = Fillers(9) with { Day = Day - TimeSpan.FromDays(1) };
-        var after = Fillers(10) with { Day = Day - TimeSpan.FromDays(1) };
+        // arrange
+        var current = Entry(60, 10, Now, Filler("like"), Filler("like"), Filler("like"));
 
         // act
-        var tip = Evaluate(yesterday, before, after, NoSpans, NoTip);
+        var tip = Evaluate(current, [current], NoSpans, NoTip,
+            new UserCoachSettings { IsCoachingEnabled = coaching, AreLiveTipsEnabled = liveTips });
 
         // assert
-        tip.Should().BeNull("a tip is live feedback on what was just said");
+        tip.Should().BeNull();
     }
 
     [Fact]
-    public void PaceTipShouldCarryTheRecommendedRange()
+    public void AReTaggedOldEntryShouldNotTip()
     {
+        // arrange: the entry itself is older than the window
+        var old = Entry(60, 10, Now - TimeSpan.FromHours(2), Filler("like"), Filler("like"), Filler("like"));
+
         // act
-        var tip = Evaluate(Entry(60, 20), new CoachDay(Day), new CoachDay(Day), NoSpans, NoTip);
+        var tip = Evaluate(old, [old], NoSpans, NoTip);
 
         // assert
-        tip!.Kind.Should().Be(CoachTipKind.SlowDown);
-        tip.PaceSlowWpm.Should().Be((int)S.PaceSlowWpm, "the card shows the good band, not the tip threshold");
-        tip.PaceFastWpm.Should().Be((int)S.PaceFastWpm);
+        tip.Should().BeNull("a tip is live feedback on what was just said");
     }
 }

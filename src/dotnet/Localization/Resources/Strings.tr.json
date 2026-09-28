@@ -1942,6 +1942,7 @@
   "Coach_TipRecommended_Format": "Önerilen {0}–{1}",
   "Coach_TipTooFast": "Çok hızlı konuşuyorsunuz, başkaları sizi takip etmekte zorlanabilir.",
   "Coach_TipTooSlow": "Çok yavaş konuşuyorsunuz, başkaları dikkatini korumakta zorlanabilir.",
-  "Coach_TipFillerBody": "Bugün “{0}” kelimesini {1} kereden fazla kullandınız.",
+  "Coach_TipFillerBody": "“{0}” kelimesini {1} kez kullandınız",
+  "Coach_TipInWindow": "son {0} dakikada",
   "Coach_TipWeakWordBody_Format": "“{0}” kelimesi sık sık gereğinden fazla kullanılır. Konuşmanızı keskinleştirmek için daha belirgin bir eş anlamlı seçin."
 }

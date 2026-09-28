@@ -1935,6 +1935,7 @@
   "Coach_TipRecommended_Format": "Zalecane {0}–{1}",
   "Coach_TipTooFast": "Mówisz za szybko, przez co inni mogą mieć trudność, by nadążyć.",
   "Coach_TipTooSlow": "Mówisz za wolno, przez co innym może być trudniej utrzymać uwagę.",
-  "Coach_TipFillerBody": "Dziś powiedziałeś „{0}” więcej niż {1} raz.|Dziś powiedziałeś „{0}” więcej niż {1} razy.|Dziś powiedziałeś „{0}” więcej niż {1} razy.",
+  "Coach_TipFillerBody": "Powiedziałeś „{0}” {1} raz|Powiedziałeś „{0}” {1} razy|Powiedziałeś „{0}” {1} razy",
+  "Coach_TipInWindow": "w ciągu ostatniej {0} minuty|w ciągu ostatnich {0} minut|w ciągu ostatnich {0} minut",
   "Coach_TipWeakWordBody_Format": "Słowo „{0}” jest często nadużywane. Wybierz precyzyjniejszy synonim, aby wyostrzyć swoją mowę."
 }

@@ -2028,6 +2028,7 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_TipTooSlow => l["Coach_TipTooSlow"].Value;
         public string Coach_TipFillerBody(long count, object arg0, object arg1)
             => l.Plural("Coach_TipFillerBody", count, arg0, arg1);
+        public string Coach_TipInWindow(long count, object arg0) => l.Plural("Coach_TipInWindow", count, arg0);
         public string Coach_TipWeakWordBody_Format(object arg0) => l["Coach_TipWeakWordBody_Format", arg0].Value;
 
     }

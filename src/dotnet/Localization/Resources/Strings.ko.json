@@ -1935,6 +1935,7 @@
   "Coach_TipRecommended_Format": "권장 {0}–{1}",
   "Coach_TipTooFast": "너무 빠르게 말해서 다른 사람이 따라오기 어려울 수 있습니다.",
   "Coach_TipTooSlow": "너무 느리게 말해서 다른 사람이 집중하기 어려울 수 있습니다.",
-  "Coach_TipFillerBody": "오늘 “{0}”를 {1}회 이상 사용했습니다.",
+  "Coach_TipFillerBody": "“{0}”를 {1}회 사용했습니다",
+  "Coach_TipInWindow": "최근 {0}분 동안",
   "Coach_TipWeakWordBody_Format": "“{0}”는 자주 남용되는 단어입니다. 더 구체적인 동의어로 바꾸면 말이 더 선명해집니다."
 }

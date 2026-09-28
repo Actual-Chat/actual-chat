@@ -153,14 +153,13 @@ public class CoachBackend(IServiceProvider services)
             return;
 
         var record = CoachRecord.FromEntry(analysis);
-        var before = await GetDay(analysis.UserId, record.Day, cancellationToken).ConfigureAwait(false);
         await Commander
             .Call(new CoachBackend_Record(analysis.UserId, record, eventCommand.IsRemoved), true, cancellationToken)
             .ConfigureAwait(false);
         if (eventCommand.IsRemoved)
             return;
 
-        await EvaluateTip(analysis, record, before, cancellationToken).ConfigureAwait(false);
+        await EvaluateTip(analysis, record, cancellationToken).ConfigureAwait(false);
     }
 
     // [EventHandler]
@@ -197,13 +196,6 @@ public class CoachBackend(IServiceProvider services)
 
     // Private methods
 
-    private async Task<CoachDay> GetDay(UserId userId, Moment day, CancellationToken cancellationToken)
-    {
-        var range = new Range<Moment>(day, day + TimeSpan.FromDays(1));
-        var days = await ListDays(userId, range, cancellationToken).ConfigureAwait(false);
-        return days.Count > 0 ? days[0] : new CoachDay(day);
-    }
-
     private async Task RebuildDay(
         UsersDbContext dbContext, UserId userId, Moment day, CancellationToken cancellationToken)
     {
@@ -231,8 +223,7 @@ public class CoachBackend(IServiceProvider services)
     }
 
     // Runs after the record command, outside any DB operation, the way the review prompt does
-    private async Task EvaluateTip(
-        CoachEntryAnalysis analysis, CoachRecord record, CoachDay before, CancellationToken cancellationToken)
+    private async Task EvaluateTip(CoachEntryAnalysis analysis, CoachRecord record, CancellationToken cancellationToken)
     {
         try {
             var kvas = ServerKvasBackend.ForUser(analysis.UserId);
@@ -240,18 +231,19 @@ public class CoachBackend(IServiceProvider services)
             if (settings is not { IsCoachingEnabled: true, AreLiveTipsEnabled: true })
                 return;
 
-            var after = await GetDay(analysis.UserId, record.Day, cancellationToken).ConfigureAwait(false);
+            var now = Clocks.SystemClock.Now;
+            var window = await ListRecentEntries(analysis.UserId, now - Settings.Coach.TipWindow, cancellationToken)
+                .ConfigureAwait(false);
             var tipAccessor = kvas.UserCoachTip();
             var previous = await tipAccessor.Get(cancellationToken).ConfigureAwait(false);
             var tip = CoachTipPolicy.Evaluate(
                 record,
-                before,
-                after,
+                window,
                 analysis.Spans,
                 previous,
                 settings,
                 Settings.Coach,
-                Clocks.SystemClock.Now,
+                now,
                 analysis.Language?.Value);
             if (tip is not null)
                 await tipAccessor.Set(tip with { Origin = "" }, cancellationToken).ConfigureAwait(false);
@@ -259,6 +251,20 @@ public class CoachBackend(IServiceProvider services)
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             Log.LogWarning(e, "Tip evaluation failed for {UserId}", analysis.UserId);
         }
+    }
+
+    // The latest version of each entry the user spoke since the moment given, for the tip window
+    private async Task<List<CoachRecord>> ListRecentEntries(UserId userId, Moment since, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+        var sinceDb = since.ToDateTimeClamped();
+        var rows = await dbContext.CoachEvents
+            .Where(e => e.UserId == userId.Value && e.Kind == CoachRecordKind.Entry && !e.IsRemoved)
+            .Where(e => e.OccurredAt >= sinceDb)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return rows.Select(r => r.ToModel()).ToList();
     }
 
     // jsonb normalises the stored text, so equality is checked on the models

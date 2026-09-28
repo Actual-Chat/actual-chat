@@ -1936,6 +1936,7 @@
   "Coach_TipRecommended_Format": "{0}–{1} empfohlen",
   "Coach_TipTooFast": "Du sprichst zu schnell, andere können dir dann schwer folgen.",
   "Coach_TipTooSlow": "Du sprichst zu langsam, andere bleiben dann schwerer bei der Sache.",
-  "Coach_TipFillerBody": "Du hast „{0}“ heute mehr als {1} Mal gesagt.|Du hast „{0}“ heute mehr als {1} Mal gesagt.",
+  "Coach_TipFillerBody": "Du hast „{0}“ {1} Mal gesagt|Du hast „{0}“ {1} Mal gesagt",
+  "Coach_TipInWindow": "in der letzten {0} Minute|in den letzten {0} Minuten",
   "Coach_TipWeakWordBody_Format": "Das Wort „{0}“ wird oft überstrapaziert. Ein genaueres Synonym macht deine Rede schärfer."
 }

@@ -184,7 +184,7 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task FillerStepShouldStoreATipForAnOptedInUser()
+    public async Task WordUsesInTheWindowShouldStoreATipForAnOptedInUser()
     {
         // arrange
         await using var tester = AppHost.NewWebClientTester(Out);
@@ -207,6 +207,38 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         tip.Kind.Should().Be(CoachTipKind.Filler);
         tip.Word.Should().Be("like");
         tip.ChatId.Should().Be(chatId);
+    }
+
+    [Fact]
+    public async Task WordUsesAcrossRecentEntriesShouldAddUpToATip()
+    {
+        // arrange: two uses 15 minutes ago and two now, none of the entries reaching three alone
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        await Kvas.ForUser(account.Id, isOutermost: true).UserCoachSettings()
+            .Set(new UserCoachSettings { IsCoachingEnabled = true });
+        var now = Clocks.SystemClock.Now;
+        var earlier = Entry(account.Id, chatId, 1, 20, 10, now - TimeSpan.FromMinutes(15), 2, "like");
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(earlier, false));
+        await WhenDay(account.Id, UsageDay.DayOf(now), d => d.Entries == 1);
+        await Queues.WhenProcessing(TimeSpan.FromSeconds(1), default);
+        (await Kvas.ForUser(account.Id).UserCoachTip().Get(default)).IsPending.Should().BeFalse("two uses are below the count");
+
+        // act
+        var current = Entry(account.Id, chatId, 2, 20, 10, now, 2, "like");
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(current, false));
+
+        // assert
+        var tip = await TestWait.When(async ct => {
+            var t = await Kvas.ForUser(account.Id).UserCoachTip().Get(ct);
+            t.IsPending.Should().BeTrue();
+            return t;
+        });
+        tip.Word.Should().Be("like");
+        tip.Count.Should().Be(4, "the window holds both entries");
+        tip.EntryLid.Should().Be(2);
+        tip.WordTipAt.Should().ContainKey("like");
     }
 
     [Theory]
