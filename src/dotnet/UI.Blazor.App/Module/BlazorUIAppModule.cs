@@ -77,6 +77,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<VideoPanelLayoutCalculator>(ServiceLifetime.Transient);
         fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
         fusion.AddService<HighlightUI>(ServiceLifetime.Scoped);
+        fusion.AddService<CoachUI>(ServiceLifetime.Scoped);
         fusion.AddService<LocalSearchUI>(ServiceLifetime.Scoped);
         services.AddScoped<RecentMentionsUI>();
         services.AddScoped<RecentGifsUI>();
