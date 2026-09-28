@@ -85,7 +85,7 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         await OptIn(bob);
         var marks = await TestWait.When(async ct => {
             var m = await bobUI.GetOwnMarks(entry.Id, entry.AuthorId, ct);
-            m.Should().NotBeEmpty();
+            m.Select(s => s.Kind).Should().Contain(SpeechSpanKind.FilledPause, "the code spans land before the tagger's");
             return m;
         }, TimeSpan.FromSeconds(30));
         await OptIn(alice);
