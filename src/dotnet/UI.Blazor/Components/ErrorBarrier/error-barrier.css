@@ -27,7 +27,7 @@
     @apply text-center;
 }
 .error-barrier > .c-text .c-header {
-    @apply font-bold text-lg;
+    @apply text-subhead-600;
 }
 .error-barrier.compact > .c-text .c-header {
     @apply hidden;

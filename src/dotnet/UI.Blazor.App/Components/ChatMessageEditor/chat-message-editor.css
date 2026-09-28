@@ -964,7 +964,7 @@ body.touch-capable .notify-call-btn:active .bell-svg.active {
     @apply py-2 px-4;
     @apply rounded-full;
     @apply bg-black;
-    @apply text-white font-medium text-lg;
+    @apply text-white text-subhead-500;
     @apply pointer-events-none;
     @apply select-none;
 }

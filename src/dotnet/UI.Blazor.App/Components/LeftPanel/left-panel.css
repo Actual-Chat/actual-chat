@@ -254,7 +254,7 @@ body:not(.narrow) .left-panel-content-header.place > .c-content {
     @apply min-w-0;
     @apply pl-1;
     @apply truncate;
-    @apply text-01 text-lg font-medium;
+    @apply text-01 text-subhead-500;
 }
 .left-panel-content-header > .c-content[data-has-open-search] > .c-title {
     @apply p-0;

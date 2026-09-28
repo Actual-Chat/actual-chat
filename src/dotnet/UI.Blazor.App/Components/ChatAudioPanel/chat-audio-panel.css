@@ -118,7 +118,7 @@ body.narrow .narrow-panel .chat-audio-panel .btn.btn-round svg {
 
 /* Buttons, Desktop view */
 .chat-language-toggle.btn {
-    @apply font-semibold text-lg text-03 md:text-base;
+    @apply text-subhead-500 md:text-body-500 text-03;
 }
 
 /* === 3. Recorder Wrapper === */
