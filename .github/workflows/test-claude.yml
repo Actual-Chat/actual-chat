@@ -10,6 +10,7 @@ on:
       - "scripts/CiWatchdog.ps1"
       - "add-hosts.ps1"
       - "tests/ps/**"
+      - ".claude/hooks/**"
       - ".github/workflows/test-claude.yml"
 
 permissions:

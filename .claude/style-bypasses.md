@@ -242,6 +242,13 @@ edited. The reason can be as short as whose decision it was.
   the branch that surfaced it; Dmitrii's standing rule is to leave violations outside
   one's own change as they are
 
+## tests/ps/unit/StyleCheck/Rules.cs
+
+- The whole file — `volatile`, a same-line `return`, a method brace on the
+  declaration line, an over-long attribute — required: this is the fixture the
+  style-check script's own tests run against, and every violation in it is the
+  thing being detected. Nothing compiles it: no `.csproj` includes `tests/ps`.
+
 ## src/dotnet/Users.Service/AppUpdates/AppUpdates.cs
 
 - `[Key(0)] Info`, `[Key(1)] PreviousInfo`, `[Key(2)] NextCheckAt`
