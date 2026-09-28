@@ -19,6 +19,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     private static IByteSerializer SerializerV3 => Serializers.MessagePack;
     private static IByteSerializer TypeDecoratingSerializerV2 => Serializers.MemoryPackTypeDecorating;
     private static IByteSerializer TypeDecoratingSerializerV3 => Serializers.MessagePackTypeDecorating;
+    private static readonly TimeSpan SlowEnqueueStepThreshold = TimeSpan.FromSeconds(5);
 
     private readonly AsyncLockSet<int> _getStreamLocks = new();
     private readonly AsyncLockSet<int> _getConsumerLock = new();
@@ -51,7 +52,13 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
             throw new ArgumentOutOfRangeException(nameof(queueShardRef));
 
         var shardIndex = queueShardRef.GetShardIndex();
-        await GetStream(shardIndex, cancellationToken).ConfigureAwait(false);
+        var stepStartedAt = CpuTimestamp.Now;
+        try {
+            await GetStream(shardIndex, cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            WarnIfSlowEnqueueStep(nameof(GetStream), shardIndex, stepStartedAt);
+        }
         var context = new NatsJSContext(Connection);
         var buffer = new ArrayPoolBuffer<byte>(ArrayPools.SharedBytePool, 1024);
         try {
@@ -60,12 +67,19 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
             var headers = ReferenceEquals(queuedCommand.Headers, null)
                 ? null
                 : new NatsHeaders(queuedCommand.Headers.ToDictionary());
-            var response = await context.PublishAsync(subjectName,
-                    buffer.WrittenMemory,
-                    opts: new NatsJSPubOpts { MsgId = queuedCommand.Uuid },
-                    headers: headers,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+            PubAckResponse response;
+            stepStartedAt = CpuTimestamp.Now;
+            try {
+                response = await context.PublishAsync(subjectName,
+                        buffer.WrittenMemory,
+                        opts: new NatsJSPubOpts { MsgId = queuedCommand.Uuid },
+                        headers: headers,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            finally {
+                WarnIfSlowEnqueueStep(nameof(context.PublishAsync), shardIndex, stepStartedAt);
+            }
             if (response.Error is { } error) {
                 Log.LogError(
                     "NATS write failed: Code={Code}, ErrCode={ErrCode}, Description={Description}, {Kind} command #{Uuid} {Command}",
@@ -419,6 +433,15 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
         var config = GetConsumerConfig(shardIndex, consumerName);
         return await stream.CreateOrUpdateConsumerAsync(config, linkedCts.Token).ConfigureAwait(false);
+    }
+
+    private void WarnIfSlowEnqueueStep(string step, int shardIndex, CpuTimestamp startedAt)
+    {
+        // Runs in finally, so a step that hangs until cancellation is reported too
+        var elapsed = startedAt.Elapsed;
+        if (elapsed >= SlowEnqueueStepThreshold)
+            Log.LogWarning("[{ShardScheme}-S{ShardIndex}] Enqueue: {Step} took {Elapsed}",
+                ShardScheme.Name, shardIndex, step, elapsed.ToShortString());
     }
 
     // Serialization
