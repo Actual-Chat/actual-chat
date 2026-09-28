@@ -16,7 +16,7 @@
                     ClearButton="true"/>
             </ChildContent>
             <ValidationMessage Context="fieldLabel">
-                @if (!string.IsNullOrEmpty(_status)) {
+                @if (!_status.IsNullOrEmpty()) {
                     <div class="form-section-validation invalid">@_status</div>
                 }
             </ValidationMessage>
@@ -27,7 +27,7 @@
 
     <div class="flex-x gap-x-2 mb-3">
         <Button Class="btn-primary" Click="@OnResolveClick" IsDisabled="@_isBusy">Resolve</Button>
-        @if (_resolved is { BlobId: var blobId } && !string.IsNullOrEmpty(blobId)) {
+        @if (_resolved is { BlobId: var blobId } && !blobId.IsNullOrEmpty()) {
             <a class="btn btn-primary" href="@_downloadHref" download="@_downloadFileName">
                 <span class="btn-content">Download .webm</span>
             </a>

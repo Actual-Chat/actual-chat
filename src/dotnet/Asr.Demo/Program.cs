@@ -147,7 +147,7 @@ async Task TranscribeMicrophone()
             var speed = (int)(1.0 / Math.Max(0.001, rtf));
 
             // Print new fixed text increments as permanent lines
-            if (!string.Equals(partial.FixedText, lastFixedText) && !string.IsNullOrEmpty(partial.FixedText)) {
+            if (partial.FixedText != lastFixedText && !partial.FixedText.IsNullOrEmpty()) {
                 var newPart = partial.FixedText.Length > lastFixedText.Length
                     ? partial.FixedText[lastFixedText.Length..].TrimStart()
                     : partial.FixedText;

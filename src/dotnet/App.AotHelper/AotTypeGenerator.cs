@@ -190,7 +190,7 @@ public static class AotTypeGenerator
             var outputPath = Path.Combine(srcDotnet, target.RelativePath.Replace('/', Path.DirectorySeparatorChar));
             var code = GenerateSourceFile(target, filtered, stjKeeps, mpKeeps, frameworkKeeps, mpByteSerializerTypeArgs);
             var dir = Path.GetDirectoryName(outputPath);
-            if (!string.IsNullOrEmpty(dir))
+            if (!dir.IsNullOrEmpty())
                 Directory.CreateDirectory(dir);
             // StringBuilder.AppendLine emits CRLF on Windows, but .gitattributes stores
             // *.cs with LF - without this the file is rewritten dirty on every run.

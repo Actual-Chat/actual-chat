@@ -50,7 +50,7 @@ public static class LocalAppSettingsExt
         // Explicit user override wins; otherwise mirror selfie-style views —
         // every desktop camera, and mobile front ('user') cameras. Mobile back
         // cameras aren't mirrored (default would look wrong for "the real world").
-        if (!string.IsNullOrEmpty(deviceId) && settings.CameraMirrorOverrides.TryGetValue(deviceId, out var v))
+        if (!deviceId.IsNullOrEmpty() && settings.CameraMirrorOverrides.TryGetValue(deviceId, out var v))
             return v;
 
         return !isMobile || facingMode == "user";

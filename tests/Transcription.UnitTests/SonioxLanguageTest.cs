@@ -34,6 +34,6 @@ public sealed class SonioxLanguageTest(ITestOutputHelper @out) : TestBase(@out)
         var codes = SonioxLanguage.Supported.Select(x => x.ToSoniox()).ToArray();
 
         // assert
-        codes.Should().OnlyContain(x => !string.IsNullOrEmpty(x));
+        codes.Should().OnlyContain(x => !x.IsNullOrEmpty());
     }
 }

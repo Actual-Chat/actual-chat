@@ -458,7 +458,7 @@ public record VideoPanelLayout(
     // Real video tiles (focused + sidebar cameras, excluding PiP overlays) — drives
     // the equal-split grid template (`tiles-N`) in the "equal" layout, see video-panel.css.
     public int TileCount
-        => (string.IsNullOrEmpty(OwnCameraPreviewClass) ? 0 : 1) + RemoteStreamPlayerClasses.Length;
+        => (OwnCameraPreviewClass.IsNullOrEmpty() ? 0 : 1) + RemoteStreamPlayerClasses.Length;
 
     public string GetRemoteStreamPlayerClass(StreamId streamId)
         => RemoteStreamPlayerClasses.FirstOrDefault(c => c.StreamId == streamId.Value)?.Class ?? "";

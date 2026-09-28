@@ -132,7 +132,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         await using var _ = dbContext.ConfigureAwait(false);
 
         DateTime dMinModifiedAt = Clocks.SystemClock.Now - Settings.Translation.HangingTimeout;
-        var dbTranslations = await dbContext.Translations.Where(x => !string.IsNullOrEmpty(x.StreamId) && x.ModifiedAt < dMinModifiedAt)
+        var dbTranslations = await dbContext.Translations.Where(x => x.StreamId != null && x.StreamId != "" && x.ModifiedAt < dMinModifiedAt)
             .OrderBy(x => x.ModifiedAt)
             .Take(limit)
             .ToListAsync(cancellationToken)

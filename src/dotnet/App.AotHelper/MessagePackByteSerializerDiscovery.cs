@@ -137,7 +137,7 @@ public static class MessagePackByteSerializerDiscovery
         // Ref structs can't be generic arguments.
         if (type.IsByRefLike) return false;
         // Skip types that can't be referenced via a named expression (anonymous, open generic).
-        if (string.IsNullOrEmpty(type.FullName))
+        if (type.FullName.IsNullOrEmpty())
             return false;
         // Skip inaccessible (non-public) nested types — they can't appear in source keeps.
         if (!IsPubliclyAccessible(type))
@@ -184,7 +184,7 @@ public static class MessagePackByteSerializerDiscovery
             if (tickIdx > 0) simpleName = simpleName.Substring(0, tickIdx);
 
             var prefix = "";
-            if (i == 0 && !string.IsNullOrEmpty(seg.Namespace))
+            if (i == 0 && !seg.Namespace.IsNullOrEmpty())
                 prefix = seg.Namespace + ".";
 
             string segPart;

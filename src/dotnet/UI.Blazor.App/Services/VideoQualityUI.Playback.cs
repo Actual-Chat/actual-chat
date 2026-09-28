@@ -538,9 +538,9 @@ public sealed partial class VideoQualityUI
         var decReason = aggregateDecoderVerdict == HealthVerdict.Bad && worstDecoder is not null
             ? $"decode deficit={worstDecoder.DecodeDeficitEma * 100:F1}% hang={worstDecoder.HangRateIn60s}"
             : "";
-        var inboundReason = !string.IsNullOrEmpty(dlReason) ? dlReason
-            : !string.IsNullOrEmpty(decReason) ? decReason
-            : !string.IsNullOrEmpty(_lastInboundProbeNote) ? _lastInboundProbeNote
+        var inboundReason = !dlReason.IsNullOrEmpty() ? dlReason
+            : !decReason.IsNullOrEmpty() ? decReason
+            : !_lastInboundProbeNote.IsNullOrEmpty() ? _lastInboundProbeNote
             : _inboundBwEstimator.LastVerdict switch {
                 BandwidthVerdict.Good => $"BW ↑ {ceilingKbps} kbps",
                 BandwidthVerdict.Bad => $"BW ↓ {ceilingKbps} kbps",
@@ -1082,7 +1082,7 @@ public sealed partial class VideoQualityUI
 
     private static string ShortStreamId(string streamId)
     {
-        if (string.IsNullOrEmpty(streamId)) return "";
+        if (streamId.IsNullOrEmpty()) return "";
         return streamId.Length <= 6 ? streamId : streamId[..6];
     }
 }

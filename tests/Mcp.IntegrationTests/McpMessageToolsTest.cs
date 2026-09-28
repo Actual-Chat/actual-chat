@@ -434,7 +434,7 @@ public class McpMessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutp
             !m.IsStreaming &&
             !m.IsTranscribed &&
             !m.IsRemoved &&
-            !string.IsNullOrEmpty(m.Author.Id));
+            !m.Author.Id.IsNullOrEmpty());
         page.FullRange.FirstId.Should().BeLessThanOrEqualTo(posted[0].LocalId);
         page.FullRange.LastId.Should().BeGreaterThanOrEqualTo(posted[^1].LocalId);
     }

@@ -16,7 +16,7 @@
     var body = Entry.Exception is null
         ? Entry.Message
         : $"{Entry.Message}\n{Entry.Exception}";
-    var text = string.IsNullOrEmpty(body) ? header : $"{header}\n{body}";
+    var text = body.IsNullOrEmpty() ? header : $"{header}\n{body}";
 }
 
 <CopyTrigger CopyText="@text" Tooltip="@L.LogView_CopyToClipboard">

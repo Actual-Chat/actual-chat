@@ -64,6 +64,8 @@
     <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
     <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" PrivateAssets="all" />
+    <AdditionalFiles Include="$(RepoRoot)BannedSymbols.txt" />
   </ItemGroup>
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and $(EnableExtraAnalyzers)">
     <PackageReference Include="Roslynator.Analyzers" PrivateAssets="all" />

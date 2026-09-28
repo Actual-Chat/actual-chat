@@ -45,7 +45,7 @@
                 }
             </div>
         } else {
-            var effectiveCameraState = !string.IsNullOrEmpty(m.LastRecorderError)
+            var effectiveCameraState = !m.LastRecorderError.IsNullOrEmpty()
                 ? CameraState.Unavailable
                 : PreviewState;
             var videoCls = "c-video";
@@ -498,7 +498,7 @@
         // the live self-preview picks up the change without waiting for the
         // next camera (re)acquisition. No-op if we never resolved a deviceId.
         var deviceId = CameraUI.LastDeviceId ?? _selectedDevice?.DeviceId;
-        if (string.IsNullOrEmpty(deviceId))
+        if (deviceId.IsNullOrEmpty())
             return;
         var mirrored = _isCameraMirrored;
         await Hub.LocalSettings.LocalAppSettings().Update(

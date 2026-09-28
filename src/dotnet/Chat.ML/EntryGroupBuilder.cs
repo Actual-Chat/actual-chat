@@ -175,7 +175,7 @@ public partial class EntryGroupBuilder
 
     private static int CountWords(string text)
     {
-        if (string.IsNullOrEmpty(text))
+        if (text.IsNullOrEmpty())
             return 0;
 
         int count = 0;

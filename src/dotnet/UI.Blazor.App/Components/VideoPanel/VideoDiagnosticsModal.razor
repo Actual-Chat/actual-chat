@@ -443,7 +443,7 @@
                     var peekBitrate = hasDiag ? GetNum(rdPeek, "bitrateKbps") : 0;
                     var liveCodec = hasDiag ? GetStr(rdPeek, "codec") : "";
                     var liveCodecCategory = hasDiag ? GetStr(rdPeek, "codecCategory") : "";
-                    var displayCodec = !string.IsNullOrEmpty(liveCodec) ? liveCodec : s.Info.Format.Codec;
+                    var displayCodec = !liveCodec.IsNullOrEmpty() ? liveCodec : s.Info.Format.Codec;
                     JsonElement? fwdEl = hasDiag
                         && rdPeek.TryGetProperty("forwarded", out var fwd)
                         && fwd.ValueKind == JsonValueKind.Object
@@ -474,7 +474,7 @@
                             <span class="diag-label">Codec</span>
                             <span class="diag-value">
                                 @displayCodec
-                                @if (!string.IsNullOrEmpty(liveCodecCategory)) {
+                                @if (!liveCodecCategory.IsNullOrEmpty()) {
                                     <text> (@liveCodecCategory)</text>
                                 }
                             </span>
@@ -934,7 +934,7 @@
         var i = 0;
         // Most recent first.
         foreach (var e in entries.Reverse()) {
-            var rowClass = string.IsNullOrEmpty(e.CapChange)
+            var rowClass = e.CapChange.IsNullOrEmpty()
                 ? "diag-log-row"
                 : "diag-log-row diag-log-row-action";
             builder.OpenElement(seqBase + 100 + i * 30, "div");
@@ -957,9 +957,9 @@
 
             builder.OpenElement(seqBase + 121 + i * 30, "span");
             builder.AddAttribute(seqBase + 122 + i * 30, "class",
-                string.IsNullOrEmpty(e.CapChange) ? "diag-log-cap diag-dim" : "diag-log-cap");
+                e.CapChange.IsNullOrEmpty() ? "diag-log-cap diag-dim" : "diag-log-cap");
             builder.AddContent(seqBase + 123 + i * 30,
-                string.IsNullOrEmpty(e.CapChange) ? e.Reason : $"{e.CapChange} · {e.Reason}");
+                e.CapChange.IsNullOrEmpty() ? e.Reason : $"{e.CapChange} · {e.Reason}");
             builder.CloseElement();
             builder.CloseElement(); // diag-log-line
 
@@ -975,7 +975,7 @@
 
     private static void AppendSubline(RenderTreeBuilder builder, int seqBase, string label, string rawValues)
     {
-        if (string.IsNullOrEmpty(rawValues))
+        if (rawValues.IsNullOrEmpty())
             return;
 
         builder.OpenElement(seqBase, "div");
@@ -1248,7 +1248,7 @@
         => ageMs >= 0 ? $"{ageMs:0}ms" : "n/a";
 
     private static double EstimatedLayerKbps(VideoSourceKind? sourceKind, int layerId, string codec) {
-        if (sourceKind is not { } kind || string.IsNullOrEmpty(codec))
+        if (sourceKind is not { } kind || codec.IsNullOrEmpty())
             return 0;
         var layers = VideoLayerDef.ListFor(kind);
         if ((uint)layerId >= (uint)layers.Length)

@@ -24,7 +24,7 @@
                     Id="@_form.TitleId"
                     Autofocus="false"
                     Autocomplete="off"/>
-                @if (_generatingSmartTitle && string.IsNullOrEmpty(_form.Title)) {
+                @if (_generatingSmartTitle && _form.Title.IsNullOrEmpty()) {
                     <div class="waiting-message-container">
                         <span id="waiting-circle-1" class="c-circle"></span>
                         <span id="waiting-circle-2" class="c-circle"></span>

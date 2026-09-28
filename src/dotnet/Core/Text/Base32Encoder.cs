@@ -77,7 +77,7 @@ public static class Base32Encoder
 
     public static ulong Decode(string value)
     {
-        if (string.IsNullOrEmpty(value)) return 0;
+        if (value.IsNullOrEmpty()) return 0;
 
         ulong result = 0;
         foreach (var c in value) {
@@ -92,7 +92,7 @@ public static class Base32Encoder
 
     public static byte[] DecodeBytes(string value)
     {
-        if (string.IsNullOrEmpty(value)) return [];
+        if (value.IsNullOrEmpty()) return [];
 
         int byteCount = value.Length * 5 / 8;
         var result = new byte[byteCount];

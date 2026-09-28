@@ -93,9 +93,9 @@ public sealed class ProgressiveStreamingHandler(
     {
         var result = TranscribeIncremental(audio);
         var parts = new List<string>();
-        if (!string.IsNullOrEmpty(result.FixedText))
+        if (!result.FixedText.IsNullOrEmpty())
             parts.Add(result.FixedText);
-        if (!string.IsNullOrEmpty(result.ActiveText))
+        if (!result.ActiveText.IsNullOrEmpty())
             parts.Add(result.ActiveText);
         return string.Join(' ', parts);
     }
