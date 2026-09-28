@@ -165,9 +165,13 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public void ToggleVideoCapture(ChatId chatId)
     {
-        if (_recordingChatId.Value == chatId)
+        var isOwnRecording = _recordingChatId.Value == chatId;
+        if (isOwnRecording) {
             StopRecording();
-        else if (HasJoinedVideoSession(chatId))
+            return;
+        }
+
+        if (HasJoinedVideoSession(chatId))
             ResumeVideoStreaming(chatId);
         else
             JoinVideoSession(chatId);

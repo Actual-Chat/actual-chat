@@ -237,10 +237,9 @@ public sealed class IosCalls : CXProviderDelegate
 
     public void ContinueCall(INIntent intent)
     {
-        // The system call UI's video button is no CXAction: it brings the app up with a call intent, the
-        // same one a Recents or Siri callback carries. callservicesd sends the legacy INStartVideoCallIntent
-        // there ("does not declare support for any dialing intents" in its log), a Recents tap the current
-        // INStartCallIntent. Only an answered call turns it into video; anything else has no call here to act on.
+        // The system call UI's video button is no CXAction: it brings the app up with a call intent - the
+        // legacy INStartVideoCallIntent, per callservicesd's "does not declare support for any dialing
+        // intents"; a Recents or Siri callback carries the current INStartCallIntent. Answered calls only.
         var (contacts, hasVideo) = intent switch {
             INStartCallIntent x => (x.Contacts, x.CallCapability == INCallCapability.VideoCall),
             INStartVideoCallIntent x => (x.Contacts, true),
