@@ -91,7 +91,7 @@ FROM dotnet-restore AS base
 COPY src/nodejs/fonts/*.ttf src/nodejs/fonts/
 COPY src/dotnet/ src/dotnet/
 COPY tests/ tests/
-COPY *.props *.targets ./
+COPY *.props *.targets BannedSymbols.txt ./
 # we need to regenerate ThisAssembly files with the new version info
 RUN dotnet msbuild /t:GenerateAssemblyNBGVVersionInfo ActualChat.CI.slnf
 
