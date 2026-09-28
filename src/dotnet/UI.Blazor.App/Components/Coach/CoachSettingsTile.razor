@@ -1,0 +1,75 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, UserCoachSettings>
+@{
+    var s = State.Value;
+    _formModel.Minutes = (int)s.TipInterval.TotalMinutes;
+}
+
+<Tile Class="coach-settings">
+    <TileItem Class="coach-settings-coaching" Click="@OnToggleCoaching">
+        <Icon><i class="icon-mic text-2xl"></i></Icon>
+        <Content>@L.Coach_Coaching</Content>
+        <Caption>@L.Coach_CoachingCaption</Caption>
+        <Right>
+            <Toggle IsChecked="@s.IsCoachingEnabled" IsCheckedChanged="@(_ => OnToggleCoaching())"/>
+        </Right>
+    </TileItem>
+    <TileItem Class="coach-settings-tips" Click="@OnToggleTips">
+        <Content>@L.Coach_LiveTips</Content>
+        <Right>
+            <Toggle IsChecked="@s.AreLiveTipsEnabled" IsDisabled="@(!s.IsCoachingEnabled)"
+                    IsCheckedChanged="@(_ => OnToggleTips())"/>
+        </Right>
+    </TileItem>
+    <Form Model="@_formModel">
+        <FormBlock>
+            <FormSection
+                For="() => _formModel.Minutes"
+                InputId="@_formModel.MinutesFormId"
+                IsLabelInsideInput="true"
+                Label="@L.Coach_TipInterval"
+                HideValidationMessage="true">
+                <InputSelect
+                    Value="_formModel.Minutes"
+                    ValueExpression="@(() => _formModel.Minutes)"
+                    ValueChanged="@((int minutes) => OnMinutesChanged(minutes))">
+                    @foreach (var item in Intervals) {
+                        <option value="@item">@L.Coach_TipIntervalMinutes(item, item)</option>
+                    }
+                </InputSelect>
+            </FormSection>
+        </FormBlock>
+    </Form>
+</Tile>
+
+@code {
+    private static readonly int[] Intervals = [1, 5, 15, 30];
+    private FormModel _formModel = null!;
+
+    protected override void OnInitialized()
+        => _formModel = new FormModel(ComponentIdGenerator);
+
+    protected override ComputedState<UserCoachSettings>.Options GetStateOptions()
+        => new() { InitialValue = new UserCoachSettings(), Category = GetStateCategory(GetType()) };
+
+    protected override Task<UserCoachSettings> ComputeState(CancellationToken cancellationToken)
+        => UserSettingsUI.UserCoachSettings().Get(cancellationToken);
+
+    private Task OnToggleCoaching()
+        => UserSettingsUI.UserCoachSettings().Update(x => x with { IsCoachingEnabled = !x.IsCoachingEnabled });
+
+    private Task OnToggleTips()
+        => UserSettingsUI.UserCoachSettings().Update(x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled });
+
+    private Task OnMinutesChanged(int minutes) {
+        _formModel.Minutes = minutes;
+        return UserSettingsUI.UserCoachSettings()
+            .Update(x => x with { TipInterval = TimeSpan.FromMinutes(minutes) }, CancellationToken.None);
+    }
+
+    public sealed class FormModel(ComponentIdGenerator componentIdGenerator) {
+        public int Minutes { get; set; }
+        public string MinutesFormId { get; } = componentIdGenerator.Next("coach-tip-interval");
+    }
+}

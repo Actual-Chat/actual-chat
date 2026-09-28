@@ -1,0 +1,35 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComponentBase<AppUIHub>
+@{
+    var m = Metric;
+    var labels = Labels;
+    var band = labels.Band(m.Kind, m.Band);
+    var hasChips = m.Kind is CoachMetricKind.Fillers or CoachMetricKind.WeakWords && m.Chips.Count > 0;
+}
+
+<div class="coach-metric-row" data-metric="@m.Kind">
+    <div class="c-head">
+        <span class="c-title">@labels.MetricTitle(m.Kind)</span>
+        @if (!band.IsNullOrEmpty()) {
+            <span class="c-band band-@m.Band.ToString().ToLower()">@band</span>
+        }
+    </div>
+    <div class="c-value @(m.Value is null ? "c-no-data" : "")">@labels.Value(m)</div>
+    @if (hasChips) {
+        <div class="c-chips">
+            @foreach (var chip in m.Chips) {
+                <button type="button" class="coach-chip" @onclick="@(() => WordClick.InvokeAsync(chip.Word))">
+                    <span class="c-word">@chip.Word</span><span class="c-count">@chip.Count</span>
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private CoachLabels Labels => field ??= new CoachLabels(L);
+
+    [Parameter, EditorRequired] public CoachMetric Metric { get; set; } = null!;
+    [Parameter] public EventCallback<string> WordClick { get; set; }
+}
