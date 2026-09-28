@@ -15,12 +15,10 @@
         picClass += " pic-svg";
         _pictureUrl += "#svgView(preserveAspectRatio(none))";
     }
-    // Gate on the click, not on hasPicture: a generated avatar (marble/beam) is pointer-events:none,
-    // so the click lands on this outer .pic - it must carry the handler and the affordance for those too.
-    var clickableCls = isClickable ? "clickable-avatar" : "";
+    var zoomableCls = hasPicture ? "zoomable-avatar" : "";
 }
 
-<div class="pic @Class @picClass @clickableCls" @onclick="@OnPictureClick">
+<div class="pic @Class @picClass @zoomableCls" @onclick="@OnPictureClick">
     <div class="c-content">
         @if (hasPicture) {
             <image-skeleton

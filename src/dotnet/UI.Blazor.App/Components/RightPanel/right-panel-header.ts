@@ -183,8 +183,8 @@ export class RightPanelHeader {
     }
 
     private onAvatarClickHandler = () => {
-        const clickableAvatar = this.header.querySelector('.clickable-avatar');
-        if (!clickableAvatar)
+        const zoomableAvatar = this.header.querySelector('.zoomable-avatar');
+        if (!zoomableAvatar)
             return;
 
         const isExpanded = this.header.classList.contains('expanded-header');
