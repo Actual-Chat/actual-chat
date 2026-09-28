@@ -23,6 +23,14 @@ public sealed class ResumeLatencyFlowTest(ResumeLatencyFlowFixture fixture, ITes
     private static readonly TimeSpan MaxTypicalDelay = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan StallDelay = TimeSpan.FromSeconds(10);
 
+    protected override async Task InitializeAsync()
+    {
+        await base.InitializeAsync();
+        // Resumes staged before the host owns its queue and flow shards wait for an owner,
+        // and that wait lands in the measured delays
+        await AppHost.Services.WhenFlowsStarted();
+    }
+
     [Fact]
     [Trait("Category", "Slow")]
     public async Task ResumesShouldNotStall()
