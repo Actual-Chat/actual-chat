@@ -202,6 +202,7 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `IMentions` — mention queries
 
 ### User Services
+- `ICoach` — the caller's speech-coach score and metric rows per window, day series, pending live tip, jump-to-audio occurrences; `IsEnabled` is the per-user rollout verdict
 - `IAccounts` — account management
 - `IPasskeyAuth` — passkey (WebAuthn) registration and sign-in
 - `IAvatars` — avatar management
@@ -229,7 +230,7 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 
 Backend interfaces follow the pattern `I{Service}Backend` for internal service communication:
 - `IChatsBackend`, `IAuthorsBackend`, `IPlacesBackend`, `IChatThreadsBackend`, `IChatEntryLanguagesBackend`, `IWebHooksBackend`, `ICoachAnalysisBackend` — chat backends
-- `IAccountsBackend`, `IAvatarsBackend`, `ISessionTemporalsBackend`, `UserScopedKvasBackend`, `IPasskeysBackend` — user backends
+- `IAccountsBackend`, `IAvatarsBackend`, `ISessionTemporalsBackend`, `UserScopedKvasBackend`, `IPasskeysBackend`, `ICoachBackend` — user backends; the coach backend keeps a per-user log of the chat-side analyses keyed by source id and rebuilds day rows from it
 - `IContactsBackend` — contact backend
 - `IMediaBackend`, `IMediaProgressBackend`, `IUploadsBackend` — media backends
 - `IImageSuggestionsBackend` — one pending generated image per opaque key, plus its dismissal

@@ -163,6 +163,8 @@ regenerated only on a prompt-version bump. Model: the quality tier (`gpt-5.6-ter
 few dozen times ever. With the tagger switched off (cost floor), code matches against these lists
 and produces rows in the same shape, without synonyms.
 
+The lexicon job is deferred to a follow-up; see plan 2 (`docs/superpowers/plans/2026-09-26-speech-coach-2-users.md`).
+
 **Not LLM work:** pace, pauses, turn-taking and its siblings, questions, sentence length,
 vocabulary, repetition, the score, the rollups, and the tip text (templates over rollup numbers).
 Language detection already exists per entry.
@@ -316,7 +318,8 @@ defined meaning and is not implemented (open question for design).
   new range recomputes it and deletes rows for start lids that no longer exist.
 - Entry edited or re-transcribed: the entry is re-analysed and re-tagged (text changed).
 - Redelivery: keyed, idempotent writes on the chat side; log dedupe on the user side.
-- Per-user daily cap on tagger calls on both paths; over the cap, rows stay pending.
+- Per-user daily cap on tagger calls on both paths; over the cap, rows stay pending. Deferred to a
+  follow-up; see plan 2.
 - Global switches: immediate path off (everyone batched, tips from the batch); tagger off
   (lexicon matching). Own rate-limiter key.
 
