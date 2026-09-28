@@ -169,7 +169,7 @@ internal sealed class ContentSchemeHandler : NSObject, IWKUrlSchemeHandler
 
         try {
             var isSent = false;
-            await MainThread.InvokeOnMainThreadAsync(() => {
+            await DispatchToMainThread(() => {
                 if (_stoppedTasks.ContainsKey(taskHandle))
                     return;
 

@@ -63,8 +63,8 @@ public sealed class ApplePasskeyClient : IPasskeyClient
             PresentationContextProvider = handler,
         };
         using var _ = cancellationToken.Register(
-            () => MauiMainThread.BeginDispatchToMainThread(() => controller.Cancel()));
-        await MauiMainThread.DispatchToMainThread(() => controller.PerformRequests()).ConfigureAwait(false);
+            () => BeginDispatchToMainThread(() => controller.Cancel()));
+        await DispatchToMainThread(() => controller.PerformRequests()).ConfigureAwait(false);
         return await handler.WhenCompleted.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 

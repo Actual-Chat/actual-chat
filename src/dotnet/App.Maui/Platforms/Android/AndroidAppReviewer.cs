@@ -19,7 +19,7 @@ public sealed class AndroidAppReviewer : IAppReviewer
             return AppReviewOutcome.Failed;
 
         // Play still decides whether the card actually appears, and never says.
-        await MainThread.InvokeOnMainThreadAsync(
+        await DispatchToMainThread(
             () => reviewManager.LaunchReviewFlow(activity, reviewInfo).AsAsync()).ConfigureAwait(false);
         return AppReviewOutcome.Requested;
     }

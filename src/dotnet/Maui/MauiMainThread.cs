@@ -1,3 +1,5 @@
+// The one place that talks to Essentials' MainThread; everything else is banned from it (BannedSymbols.txt)
+#pragma warning disable RS0030
 using Microsoft.Maui.ApplicationModel;
 #if MACOS
 // MAUI Essentials' MainThread is its "not implemented" neutral build on the macos TFM

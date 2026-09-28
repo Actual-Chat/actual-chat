@@ -14,7 +14,7 @@ public class WindowsClipboardUI(UIHub hub) : MauiClipboardUI(hub)
         await data.CopyToAsync(stream.AsStreamForWrite()).ConfigureAwait(false);
         stream.Seek(0);
 
-        await MainThread.InvokeOnMainThreadAsync(() => {
+        await DispatchToMainThread(() => {
             var package = new WinDataPackage();
             package.SetBitmap(RandomAccessStreamReference.CreateFromStream(stream));
             WinClipboard.SetContent(package);

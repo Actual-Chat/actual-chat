@@ -1,3 +1,5 @@
+// Banned everywhere but here and MauiMainThread, which wraps it (BannedSymbols.txt)
+#pragma warning disable RS0030
 using CoreFoundation;
 using Foundation;
 

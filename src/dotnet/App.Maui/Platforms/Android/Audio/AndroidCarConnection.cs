@@ -95,7 +95,7 @@ public class AndroidCarConnection : SafeDisposableBase, ICarConnection
         var whenAnsweredSource = TaskCompletionSourceExt.New<bool>();
         _ = Task.Delay(MainActivity.MaxPermissionRequestDuration, cancellationToken)
             .ContinueWith(_ => whenAnsweredSource.TrySetResult(false), TaskScheduler.Default);
-        MainThread.BeginInvokeOnMainThread(() => {
+        BeginDispatchToMainThread(() => {
             try {
                 activity.RequestPermission(Manifest.Permission.BluetoothConnect, isGranted => {
                     _log.LogInformation("RequestAssistantLinkPermission: granted = {IsGranted}", isGranted);

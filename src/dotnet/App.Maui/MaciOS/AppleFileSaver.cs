@@ -62,7 +62,7 @@ public sealed class AppleFileSaver(UIHub hub) : UIServiceBase<UIHub>(hub), IFile
 
         // The share sheet is a UIViewController presentation, so it must happen on the main
         // thread - off it, iOS drops it silently. The await above lands us on a pool thread.
-        await MainThread.InvokeOnMainThreadAsync(
+        await DispatchToMainThread(
             () => Share.Default.RequestAsync(new ShareMultipleFilesRequest {
                 Title = files.Count == 1 ? files[0].FileName : L.Editor_Files(files.Count, files.Count),
                 Files = shareFiles,
