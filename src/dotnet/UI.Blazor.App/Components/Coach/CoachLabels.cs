@@ -69,10 +69,11 @@ public sealed class CoachLabels(IStringLocalizer l)
         };
     }
 
+    // No rate means no tagged words yet, so the zero count is absence of data rather than a clean sheet
     private string Counted(double count, double? rate)
         => rate is { } r
             ? $"{Round(count)} · {l.Coach_PercentOfSpeech_Format(Round(r * 100))}"
-            : Round(count).ToString();
+            : l.Coach_NoData;
 
     private static int Round(double value)
         => (int)Math.Round(value);
