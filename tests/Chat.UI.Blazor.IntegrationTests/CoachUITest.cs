@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Kvas;
 using ActualChat.Users;
 using ActualChat.Users.Module;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -317,5 +318,44 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         wordStart.Should().NotBeNull();
         var expectedStartAt = entry.BeginsAt + TimeSpan.FromSeconds(wordStart!.Value - 0.25);
         (replay.StartAt - expectedStartAt).Duration().Should().BeLessThan(TimeSpan.FromMilliseconds(50));
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task TipBarShouldShowOnlyInTheTipsChatAndClearOnDismiss()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-tip");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        var (otherChatId, _) = await tester.CreateChat(true);
+        await OptIn(tester);
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var kvas = appHost.Services.GetRequiredService<IServerKvasBackend>().ForUser(account.Id, isOutermost: true);
+        await kvas.UserCoachTip().Set(new UserCoachTip {
+            Kind = CoachTipKind.Filler, ChatId = chatId, EntryLid = 1, Word = "um", Count = 10,
+            ShownAt = appHost.Services.Clocks().SystemClock.Now,
+        });
+        await TestWait.When(async ct => (await hub.Coach.GetPendingTip(tester.Session, ct)).Should().NotBeNull());
+
+        // act
+        var inTipsChat = tester.Render<CoachTipBar>(p => p.Add(x => x.ChatId, chatId));
+        InitializeHub(tester, hub, inTipsChat.Instance);
+        var inOtherChat = tester.Render<CoachTipBar>(p => p.Add(x => x.ChatId, otherChatId));
+
+        // assert
+        inTipsChat.WaitForAssertion(() => inTipsChat.FindAll(".coach-tip-bar .banner").Should().ContainSingle());
+        inTipsChat.Find(".coach-tip-bar .banner").TextContent.Should().Contain("um");
+        await Task.Delay(300);
+        inOtherChat.FindAll(".coach-tip-bar .banner").Should().BeEmpty("the tip belongs to another chat");
+
+        // act - dismiss
+        await inTipsChat.InvokeAsync(() => inTipsChat.Find(".coach-tip-bar .close-banner").Click());
+
+        // assert
+        await TestWait.When(async ct => (await hub.Coach.GetPendingTip(tester.Session, ct)).Should().BeNull());
+        inTipsChat.WaitForAssertion(() => inTipsChat.FindAll(".coach-tip-bar .banner").Should().BeEmpty());
     }
 }

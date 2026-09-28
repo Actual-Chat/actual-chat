@@ -1,0 +1,66 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, UserCoachTip?>
+@{
+    var tip = State.Value;
+}
+
+<div class="coach-tip-bar">
+    <Banner
+        IsVisible="@(tip is not null)"
+        Severity="BannerSeverity.Info"
+        ShowDismissButton="true"
+        Dismiss="@OnDismiss">
+        <Icon>
+            <i class="icon-mic text-2xl"></i>
+        </Icon>
+        <Body>
+            @if (tip is not null) {
+                <span class="c-text">@TipText(tip)</span>
+                @if (tip.Kind == CoachTipKind.WeakWord && tip.Synonyms.Count > 0) {
+                    <span class="c-synonyms">
+                        @L.Coach_TipSynonyms
+                        @foreach (var synonym in tip.Synonyms) {
+                            <span class="coach-chip">@synonym</span>
+                        }
+                    </span>
+                }
+            }
+        </Body>
+        <Buttons>
+            <BannerButton Click="@OnOpenCoach">@L.Coach_OpenCoach</BannerButton>
+        </Buttons>
+    </Banner>
+</div>
+
+@code {
+    private ICoach Coach => Hub.Coach;
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+
+    protected override ComputedState<UserCoachTip?>.Options GetStateOptions()
+        => new() { UpdateDelayer = FixedDelayer.NextTick, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<UserCoachTip?> ComputeState(CancellationToken cancellationToken) {
+        var chatId = ChatId;
+        if (!await Hub.CoachUI.IsMarkingEnabled(cancellationToken).ConfigureAwait(false))
+            return null;
+
+        var tip = await Coach.GetPendingTip(Session, cancellationToken).ConfigureAwait(false);
+        return tip is { IsPending: true } && tip.ChatId == chatId ? tip : null;
+    }
+
+    private string TipText(UserCoachTip tip)
+        => tip.Kind switch {
+            CoachTipKind.SlowDown => L.Coach_TipSlowDown_Format(tip.Wpm),
+            CoachTipKind.SpeedUp => L.Coach_TipSpeedUp_Format(tip.Wpm),
+            CoachTipKind.Filler => L.Coach_TipFiller_Format(tip.Word, tip.Count),
+            _ => L.Coach_TipWeakWord_Format(tip.Word),
+        };
+
+    private Task OnDismiss()
+        => UICommander.Run(new Coach_DismissTip { Session = Session });
+
+    private void OnOpenCoach()
+        => PanelsUI.Right.Open(RightPanelMode.Coach);
+}
