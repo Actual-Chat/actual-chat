@@ -1,4 +1,3 @@
-using ActualChat.Users.Coach;
 using ActualChat.Users.Module;
 
 namespace ActualChat.Users.UnitTests.Coach;

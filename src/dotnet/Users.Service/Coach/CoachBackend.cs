@@ -5,7 +5,7 @@ using ActualLab.Fusion.EntityFramework;
 using ActualLab.Versioning;
 using Microsoft.EntityFrameworkCore;
 
-namespace ActualChat.Users.Coach;
+namespace ActualChat.Users;
 
 /// <summary>
 /// The user side of the speech coach: an append-or-replace log of the chat-side analyses keyed by

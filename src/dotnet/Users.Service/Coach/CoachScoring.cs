@@ -1,6 +1,6 @@
 using ActualChat.Users.Module;
 
-namespace ActualChat.Users.Coach;
+namespace ActualChat.Users;
 
 /// <summary>
 /// Bands, sub-scores and the 0-100 score over a merged day; the same bands serve the tab, the

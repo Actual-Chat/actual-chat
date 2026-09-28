@@ -1,7 +1,7 @@
 using ActualChat.Chat;
 using ActualChat.Users.Module;
 
-namespace ActualChat.Users.Coach;
+namespace ActualChat.Users;
 
 /// <summary>
 /// Decides whether the record just logged earns a live tip: a word count crossing a step today
