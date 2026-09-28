@@ -2,10 +2,11 @@ namespace ActualChat.Chat;
 
 public static class SpeechSpanExt
 {
-    // One slot per markup word, null where no span touches it; null overall when nothing maps. The
-    // words carry trailing whitespace, so a span start inside a word's TextRange is that word, and
-    // a phrase ("you know") covers every word its range reaches into.
-    public static SpeechSpanKind?[]? MapToWords(this IReadOnlyList<SpeechSpan> spans, PlayableTextMarkup markup)
+    // One slot per markup word holding the span that touches it (its kind, word and synonyms), null
+    // where none does; null overall when nothing maps. The words carry trailing whitespace, so a span
+    // start inside a word's TextRange is that word, and a phrase ("you know") covers every word its
+    // range reaches into.
+    public static SpeechSpan?[]? MapToWords(this IReadOnlyList<SpeechSpan> spans, PlayableTextMarkup markup)
     {
         if (spans.Count == 0)
             return null;
@@ -14,18 +15,18 @@ public static class SpeechSpanExt
         if (words.Length == 0)
             return null;
 
-        SpeechSpanKind?[]? kinds = null;
+        SpeechSpan?[]? result = null;
         foreach (var span in spans) {
             var index = FindWord(words, span.Start);
             if (index < 0)
                 continue;
 
-            kinds ??= new SpeechSpanKind?[words.Length];
+            result ??= new SpeechSpan?[words.Length];
             var end = span.Start + Math.Max(span.Length, 1);
             for (var i = index; i < words.Length && words[i].TextRange.Start < end; i++)
-                kinds[i] ??= span.Kind;
+                result[i] ??= span;
         }
-        return kinds;
+        return result;
     }
 
     private static int FindWord(PlayableTextMarkup.Word[] words, int position)

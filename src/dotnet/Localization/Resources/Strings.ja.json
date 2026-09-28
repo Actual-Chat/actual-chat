@@ -1937,5 +1937,8 @@
   "Coach_TipTooSlow": "話す速さが遅すぎて、相手の集中が続かないかもしれません。",
   "Coach_TipFillerBody": "「{0}」を {1} 回使いました",
   "Coach_TipInWindow": "過去 {0} 分間に",
+  "Coach_MarkFillerBody_Format": "「{0}」はここでは意味を持ちません。次は省きましょう。",
+  "Coach_MarkRepetitionTitle": "同じ言葉を続けて2回言いました",
+  "Coach_MarkRepetitionBody_Format": "「{0}」が2回続きました。1回で十分です。",
   "Coach_TipWeakWordBody_Format": "「{0}」は使われすぎる言葉です。より具体的な言葉に置き換えると話が引き締まります。"
 }

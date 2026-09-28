@@ -9,14 +9,14 @@
 }
 
 <span @ref="Ref" class="@containerCls @colorCls">
-    @if (m.Map == null && m.MarkKinds == null) {
+    @if (m.Map == null && m.MarkSpans == null) {
         @Markup.Text
     } else {
         var wordCount = Markup.Words.Length;
         foreach (var run in BuildRuns(m.Map ?? new WordPlayback[wordCount], wordCount)) {
             var c0 = Markup.Words[run.Start].TextRange.Start;
             var c1 = Markup.Words[run.End].TextRange.End;
-            <span class="@RunClass(run)" data-c0="@c0">@Markup.Text[c0..c1]</span>
+            <span class="@RunClass(run)" data-c0="@c0" @attributes="@MarkAttributes(run.Start)">@Markup.Text[c0..c1]</span>
         }
     }
 </span>
@@ -67,12 +67,12 @@
         var hasSelection = await SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
         var model = await InnerComputeState(cancellationToken).ConfigureAwait(false);
         var highlightedWords = await HighlightUI.GetWordSet(entryId, cancellationToken).ConfigureAwait(false);
-        var markKinds = await GetMarkKinds(cancellationToken).ConfigureAwait(false);
+        var markSpans = await GetMarkSpans(cancellationToken).ConfigureAwait(false);
         if (rendered is not { Map: not null })
             return model with { // Never rendered
                 HasSelection = hasSelection,
                 HighlightedWords = highlightedWords,
-                MarkKinds = markKinds,
+                MarkSpans = markSpans,
             };
 
         var map = EnrichMapWithPlayedStatus(model.Map, rendered.Map);
@@ -80,10 +80,10 @@
             Map = map,
             HasSelection = hasSelection,
             HighlightedWords = highlightedWords,
-            MarkKinds = markKinds,
+            MarkSpans = markSpans,
         };
 
-        async Task<SpeechSpanKind?[]?> GetMarkKinds(CancellationToken cancellationToken1)
+        async Task<SpeechSpan?[]?> GetMarkSpans(CancellationToken cancellationToken1)
         {
             // Spans index entry.Content; a translated markup has different offsets
             if (!hasAudio || markup.Text != entry.Content)
@@ -174,7 +174,9 @@
             var highlighted = IsHighlighted(i);
             var mark = MarkClass(i);
             var j = i + 1;
-            while (j < count && map[j] == fill && IsHighlighted(j) == highlighted && MarkClass(j) == mark)
+            // A word with a hint menu is a run of its own: the menu is an attribute of the span
+            while (!HasMenu(i) && j < count && !HasMenu(j)
+                && map[j] == fill && IsHighlighted(j) == highlighted && MarkClass(j) == mark)
                 j++;
             runs.Add(new Run(fill, highlighted, mark, i, j - 1));
             i = j;
@@ -196,11 +198,30 @@
     }
 
     private string MarkClass(int index)
-        => _rendered?.MarkKinds?[index] switch {
+        => _rendered?.MarkSpans?[index]?.Kind switch {
             SpeechSpanKind.FilledPause or SpeechSpanKind.Filler => "coach-filler",
             SpeechSpanKind.Weak or SpeechSpanKind.Repetition => "coach-weak",
             _ => "",
         };
+
+    // A marked word opens its hint on tap instead of starting the replay; the click handler in JS
+    // skips words that carry a menu
+    private bool HasMenu(int index)
+        => _rendered?.MarkSpans?[index] is { } span && span.Kind != SpeechSpanKind.Profanity;
+
+    private Dictionary<string, object>? MarkAttributes(int index)
+    {
+        if (!HasMenu(index))
+            return null;
+
+        var span = _rendered!.MarkSpans![index]!;
+
+        return new Dictionary<string, object> {
+            ["data-menu"] = MenuRef.New<CoachMarkMenu>(CoachMarkHint.ToArguments(span)).ToString(),
+            ["data-menu-trigger"] = MenuTrigger.Primary.ToString(),
+            ["data-menu-placement"] = FloatingPosition.Top.ToPositionString(),
+        };
+    }
 
     private bool IsHighlighted(int index) {
         var m = _rendered;
@@ -226,6 +247,6 @@
         public WordPlayback[]? Map { get; init; }
         public bool HasSelection { get; init; }
         public IReadOnlySet<string> HighlightedWords { get; init; } = new ApiSet<string>();
-        public SpeechSpanKind?[]? MarkKinds { get; init; }
+        public SpeechSpan?[]? MarkSpans { get; init; }
     }
 }

@@ -1937,5 +1937,8 @@
   "Coach_TipTooSlow": "Mówisz za wolno, przez co innym może być trudniej utrzymać uwagę.",
   "Coach_TipFillerBody": "Powiedziałeś „{0}” {1} raz|Powiedziałeś „{0}” {1} razy|Powiedziałeś „{0}” {1} razy",
   "Coach_TipInWindow": "w ciągu ostatniej {0} minuty|w ciągu ostatnich {0} minut|w ciągu ostatnich {0} minut",
+  "Coach_MarkFillerBody_Format": "„{0}” nic tu nie wnosi; następnym razem je pomiń.",
+  "Coach_MarkRepetitionTitle": "Powiedziałeś słowo dwa razy z rzędu",
+  "Coach_MarkRepetitionBody_Format": "„{0}” padło dwa razy; raz wystarczy.",
   "Coach_TipWeakWordBody_Format": "Słowo „{0}” jest często nadużywane. Wybierz precyzyjniejszy synonim, aby wyostrzyć swoją mowę."
 }

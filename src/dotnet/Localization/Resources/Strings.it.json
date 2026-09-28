@@ -1937,5 +1937,8 @@
   "Coach_TipTooSlow": "Parli troppo lentamente e gli altri potrebbero faticare a restare attenti.",
   "Coach_TipFillerBody": "Hai detto “{0}” {1} volta|Hai detto “{0}” {1} volte",
   "Coach_TipInWindow": "nell'ultimo {0} minuto|negli ultimi {0} minuti",
+  "Coach_MarkFillerBody_Format": "“{0}” qui non aggiunge nulla; la prossima volta lascialo fuori.",
+  "Coach_MarkRepetitionTitle": "Hai detto la parola due volte di seguito",
+  "Coach_MarkRepetitionBody_Format": "“{0}” è uscito due volte; una basta.",
   "Coach_TipWeakWordBody_Format": "La parola “{0}” è spesso abusata. Prova un sinonimo più preciso per rendere il tuo discorso più incisivo."
 }

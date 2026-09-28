@@ -2286,5 +2286,8 @@
   "Coach_TipTooSlow": "You're speaking too slowly, which may make it harder for others to stay engaged.",
   "Coach_TipFillerBody": "You've said “{0}” {1} time|You've said “{0}” {1} times",
   "Coach_TipInWindow": "in the last {0} minute|in the last {0} minutes",
+  "Coach_MarkFillerBody_Format": "“{0}” carries no meaning here; drop it next time.",
+  "Coach_MarkRepetitionTitle": "You said it twice in a row",
+  "Coach_MarkRepetitionBody_Format": "“{0}” came twice; once is enough.",
   "Coach_TipWeakWordBody_Format": "The word “{0}” is often overused. Consider a more specific synonym to sharpen your speech."
 }

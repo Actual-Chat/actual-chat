@@ -136,12 +136,15 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
 
         // assert
         cut.WaitForAssertion(() => {
-            cut.FindAll(".playable-word").Count.Should().Be(markup.Words.Length,
-                "the JS click handler maps span index to word index");
             cut.FindAll(".coach-filler").Should().ContainSingle().Which.TextContent.Trim().Should().Be("um,");
             cut.FindAll(".coach-weak").Select(e => e.TextContent.Trim()).Should().BeEquivalentTo(["the", "awesome."],
                 "the repeated word and the weak word get the dotted underline");
         }, TimeSpan.FromSeconds(10));
+        var weak = cut.FindAll(".coach-weak").Single(e => e.TextContent.Trim() == "awesome.");
+        weak.GetAttribute("data-menu").Should().NotBeNullOrEmpty("a tap on a marked word opens its hint");
+        weak.GetAttribute("data-menu-trigger").Should().Be("Primary");
+        cut.FindAll("[data-menu]").Count.Should().Be(3,
+            "only marked words get a hint; the others keep tap-to-play");
     }
 
     [Fact(Timeout = 60_000)]

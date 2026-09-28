@@ -30,8 +30,8 @@ public class SpeechSpanExtTest
         // assert
         kinds.Should().NotBeNull();
         kinds!.Length.Should().Be(markup.Words.Length);
-        kinds[1].Should().Be(SpeechSpanKind.FilledPause, "'um,' is the second word");
-        kinds[6].Should().Be(SpeechSpanKind.Repetition, "the repeated 'the' is the seventh word");
+        kinds[1]!.Kind.Should().Be(SpeechSpanKind.FilledPause, "'um,' is the second word");
+        kinds[6]!.Kind.Should().Be(SpeechSpanKind.Repetition, "the repeated 'the' is the seventh word");
         kinds.Count(k => k is not null).Should().Be(2);
     }
 
@@ -68,7 +68,7 @@ public class SpeechSpanExtTest
         var kinds = spans.MapToWords(markup);
 
         // assert
-        kinds![1].Should().Be(SpeechSpanKind.Filler);
+        kinds![1]!.Kind.Should().Be(SpeechSpanKind.Filler);
     }
 
     [Fact]
@@ -93,8 +93,8 @@ public class SpeechSpanExtTest
         var kinds = spans.MapToWords(markup);
 
         // assert
-        kinds![2].Should().Be(SpeechSpanKind.Filler, "'you' starts the phrase");
-        kinds[3].Should().Be(SpeechSpanKind.Filler, "'know,' ends the phrase");
+        kinds![2]!.Kind.Should().Be(SpeechSpanKind.Filler, "'you' starts the phrase");
+        kinds[3]!.Kind.Should().Be(SpeechSpanKind.Filler, "'know,' ends the phrase");
         kinds.Count(k => k is not null).Should().Be(2);
     }
 
@@ -110,6 +110,23 @@ public class SpeechSpanExtTest
         var kinds = spans.MapToWords(markup);
 
         // assert
-        kinds![0].Should().Be(SpeechSpanKind.Weak);
+        kinds![0]!.Kind.Should().Be(SpeechSpanKind.Weak);
+    }
+
+    [Fact]
+    public void MapToWordsShouldKeepTheSpanSoItsSynonymsReachTheWord()
+    {
+        // arrange
+        const string text = "It was awesome.";
+        var markup = Markup(text);
+        var spans = new[] {
+            new SpeechSpan(SpeechSpanKind.Weak, "awesome", text.IndexOf("awesome"), 7, ApiArray.New("excellent")),
+        };
+
+        // act
+        var kinds = spans.MapToWords(markup);
+
+        // assert
+        kinds![2]!.Synonyms.Should().Equal("excellent");
     }
 }

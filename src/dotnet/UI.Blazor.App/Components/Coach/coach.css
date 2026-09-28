@@ -109,3 +109,10 @@
     color: #e9e9ec;
 }
 .banner.coach-tip-bar .c-tip-close i { @apply text-base; color: #e9e9ec; }
+.coach-mark-menu {
+    @apply flex-y gap-y-1;
+    @apply max-w-80 p-3;
+}
+.coach-mark-menu .c-title { @apply text-body-500 text-02; }
+.coach-mark-menu .c-body { @apply text-sm text-03; }
+.coach-mark-menu .c-synonyms { @apply flex-x flex-wrap gap-1 mt-1; }

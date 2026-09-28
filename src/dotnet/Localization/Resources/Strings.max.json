@@ -2286,5 +2286,8 @@
   "Coach_TipTooSlow": "Вы говорите слишком медленно — другим может быть труднее удерживать внимание.",
   "Coach_TipFillerBody": "“{0}” kelimesini {1} kez kullandınız",
   "Coach_TipInWindow": "dans les {0} dernières minutes",
+  "Coach_MarkFillerBody_Format": "«{0}» здесь ничего не значит — в следующий раз обойдитесь без него.",
+  "Coach_MarkRepetitionTitle": "Anda mengucapkan kata itu dua kali berturut-turut",
+  "Coach_MarkRepetitionBody_Format": "«{0}» прозвучало дважды — достаточно одного раза.",
   "Coach_TipWeakWordBody_Format": "“{0}” शब्द अक्सर ज़रूरत से ज़्यादा इस्तेमाल होता है। अपनी बात को सटीक बनाने के लिए कोई और सटीक पर्यायवाची चुनें।"
 }

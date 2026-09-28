@@ -1,0 +1,18 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Chat
+@inherits Menu<AppUIHub>
+@{
+    var hint = new CoachMarkHint(L).For(CoachMarkHint.FromArguments(Arguments));
+}
+
+<div class="coach-mark-menu">
+    <div class="c-title">@hint.Title</div>
+    <div class="c-body">@hint.Body</div>
+    @if (hint.Synonyms.Count > 0) {
+        <div class="c-synonyms">
+            @foreach (var synonym in hint.Synonyms) {
+                <span class="coach-chip">@synonym</span>
+            }
+        </div>
+    }
+</div>

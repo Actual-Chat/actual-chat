@@ -1937,5 +1937,8 @@
   "Coach_TipTooSlow": "Anda bicara terlalu pelan, orang lain mungkin sulit tetap fokus.",
   "Coach_TipFillerBody": "Anda mengucapkan “{0}” {1} kali",
   "Coach_TipInWindow": "dalam {0} menit terakhir",
+  "Coach_MarkFillerBody_Format": "“{0}” tidak menambah makna di sini; lain kali hilangkan.",
+  "Coach_MarkRepetitionTitle": "Anda mengucapkan kata itu dua kali berturut-turut",
+  "Coach_MarkRepetitionBody_Format": "“{0}” muncul dua kali; sekali sudah cukup.",
   "Coach_TipWeakWordBody_Format": "Kata “{0}” sering dipakai berlebihan. Gunakan sinonim yang lebih spesifik agar ucapan Anda lebih tajam."
 }

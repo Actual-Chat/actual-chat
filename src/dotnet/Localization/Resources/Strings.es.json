@@ -1937,5 +1937,8 @@
   "Coach_TipTooSlow": "Hablas demasiado despacio y a los demás les puede costar mantener la atención.",
   "Coach_TipFillerBody": "Has dicho «{0}» {1} vez|Has dicho «{0}» {1} veces",
   "Coach_TipInWindow": "en el último {0} minuto|en los últimos {0} minutos",
+  "Coach_MarkFillerBody_Format": "«{0}» no aporta nada aquí; la próxima vez omítelo.",
+  "Coach_MarkRepetitionTitle": "Dijiste la palabra dos veces seguidas",
+  "Coach_MarkRepetitionBody_Format": "«{0}» salió dos veces; con una basta.",
   "Coach_TipWeakWordBody_Format": "La palabra «{0}» se usa demasiado. Prueba un sinónimo más preciso para afinar tu discurso."
 }

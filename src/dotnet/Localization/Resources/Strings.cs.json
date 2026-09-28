@@ -1937,5 +1937,8 @@
   "Coach_TipTooSlow": "Mluvíte příliš pomalu, ostatní mohou hůř udržet pozornost.",
   "Coach_TipFillerBody": "Řekli jste „{0}“ {1}krát|Řekli jste „{0}“ {1}krát|Řekli jste „{0}“ {1}krát",
   "Coach_TipInWindow": "za poslední {0} minutu|za poslední {0} minuty|za posledních {0} minut",
+  "Coach_MarkFillerBody_Format": "„{0}“ tu nic neznamená; příště ho vynechte.",
+  "Coach_MarkRepetitionTitle": "Řekli jste slovo dvakrát za sebou",
+  "Coach_MarkRepetitionBody_Format": "„{0}“ zaznělo dvakrát; jednou stačí.",
   "Coach_TipWeakWordBody_Format": "Slovo „{0}“ se často nadužívá. Zvolte přesnější synonymum, aby byla vaše řeč výstižnější."
 }
