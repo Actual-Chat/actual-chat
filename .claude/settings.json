@@ -1,5 +1,15 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$AC_GITHUB_TOKEN\" ] && [ -z \"$GH_TOKEN\" ] && [ -n \"$CLAUDE_ENV_FILE\" ] && printf 'export GH_TOKEN=%q\\n' \"$AC_GITHUB_TOKEN\" >> \"$CLAUDE_ENV_FILE\"; exit 0"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
