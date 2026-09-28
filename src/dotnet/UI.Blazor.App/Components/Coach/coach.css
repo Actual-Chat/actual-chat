@@ -49,3 +49,7 @@
     @apply px-2 py-0.5 rounded-full bg-01 text-sm;
 }
 .coach-chip .c-count { @apply text-03; }
+.coach-trends { @apply flex-y gap-y-3; }
+.coach-trends .c-section { @apply flex-y gap-y-2 p-3 rounded-lg bg-02; }
+.coach-trends .c-section-title { @apply text-body-500 text-02; }
+.coach-trends .c-no-data { @apply text-caption text-03; }

@@ -248,4 +248,36 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         await TestWait.When(async ct => (await hub.UserSettingsUI.UserCoachSettings().Get(ct))
             .IsCoachingEnabled.Should().BeTrue());
     }
+
+    [Fact(Timeout = 60_000)]
+    public async Task CoachTrendsShouldShowOneBarPerDayWithSpeech()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-trends");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        var coach = tester.ScopedAppServices.AppUIHub().Coach;
+        await PostVoice(tester, chatId, Text);
+        var summary = await TestWait.When(async ct => {
+            var s = await coach.GetOwnSummary(tester.Session, CoachWindow.Week, ct);
+            s.Entries.Should().Be(1);
+            return s;
+        }, TimeSpan.FromSeconds(30));
+
+        // act
+        var cut = tester.Render<CoachTrends>(p => p
+            .Add(x => x.Summary, summary)
+            .Add(x => x.Window, CoachWindow.Week));
+
+        // assert
+        cut.WaitForAssertion(() => {
+            cut.FindAll(".bar-chart .c-bar").Count.Should().Be(7, "a week has seven columns");
+            cut.FindAll(".bar-chart .c-bar").Count(b => b.GetAttribute("style")!.Contains("height: 100%"))
+                .Should().Be(1, "only today has speech");
+            cut.FindAll(".donut-chart circle.c-slice").Should().NotBeEmpty();
+        }, TimeSpan.FromSeconds(10));
+    }
 }

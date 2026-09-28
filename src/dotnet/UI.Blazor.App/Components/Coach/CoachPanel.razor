@@ -51,7 +51,8 @@
         }
     </div>;
 
-    private RenderFragment TrendsContent => @<div class="coach-trends"></div>;
+    private RenderFragment TrendsContent
+        => @<CoachTrends Summary="@State.Value.Summary" Window="@State.Value.Window"/>;
 
     protected override void OnInitialized() {
         _window = StateFactory.NewMutable(CoachWindow.Today);
