@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using ActualChat.Flows;
@@ -116,13 +117,20 @@ public class ImageGrabber(IServiceProvider services)
                 if (string.Equals(uri.DnsSafeHost, "opengraph.githubassets.com", StringComparison.OrdinalIgnoreCase) && !Settings.GithubApiKey.IsNullOrEmpty())
                     request.Headers.Authorization = AuthenticationHeaderValue.Parse($"Bearer {Settings.GithubApiKey}");
                 response = await HttpClient.SendAsync(request, cancellationToken1).ConfigureAwait(false);
-                if (!response.IsSuccessStatusCode) {
-                    Log.LogWarning("Failed to get an image with url='{ImageUrl}': {StatusCode}", uri, response.StatusCode);
-                    return null;
-                }
             }
             catch (Exception e) {
                 Log.LogWarning(e, "Failed to get an image with url='{ImageUrl}'", uri);
+                return null;
+            }
+
+            // opengraph.githubassets.com rate-limits card renders per identity and says when to come back;
+            // the typed failure lets the crawl's flow retry after that delay (#4884)
+            if (response.StatusCode is HttpStatusCode.TooManyRequests)
+                throw response.GetRetryAfter() is { } retryAfter
+                    ? new RateLimitExceededException(retryAfter)
+                    : new RateLimitExceededException($"Too many requests to '{uri.Host}'.");
+            if (!response.IsSuccessStatusCode) {
+                Log.LogWarning("Failed to get an image with url='{ImageUrl}': {StatusCode}", uri, response.StatusCode);
                 return null;
             }
 

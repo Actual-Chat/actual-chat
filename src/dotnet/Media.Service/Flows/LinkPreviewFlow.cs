@@ -15,7 +15,12 @@ public sealed partial class LinkPreviewFlow : ThrottledUpdateFlow
     private ICommander Commander => field ??= Services.Commander();
 
     protected override TimeSpan ThrottlePeriod => MediaSettings.LinkPreviewUpdatePeriod;
-    protected override TimeSpan RetryDelay => MediaSettings.LinkPreviewRetryDelay;
+    protected override RetryDelaySeq RetryDelays
+        => RetryDelaySeq.Exp(
+            MediaSettings.LinkPreviewRetryDelay,
+            MediaSettings.LinkPreviewMaxRetryDelay,
+            multiplier: 2);
+    protected override int MaxFailCount => MediaSettings.LinkPreviewRetryCount;
 
     protected override async ValueTask Run(CancellationToken cancellationToken)
     {
@@ -51,9 +56,12 @@ public sealed partial class LinkPreviewFlow : ThrottledUpdateFlow
         await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
 
         // The page declares an image we couldn't grab (timeout, 429, ...): the title and description
-        // are saved above, and throwing makes ThrottledFlow retry the crawl in RetryDelay instead of
-        // in ThrottlePeriod. It gives up after MaxFailCount attempts.
+        // are saved above, and throwing makes ThrottledFlow retry the crawl after the next RetryDelays
+        // step (or the Retry-After the image host asked for) instead of after ThrottlePeriod.
+        // It gives up after MaxFailCount attempts.
         if (linkPreview.PreviewMediaId is null && !linkMeta.OpenGraph.ImageUrl.IsNullOrEmpty())
-            throw StandardError.External($"Link preview thumbnail is missing: '{linkMeta.OpenGraph.ImageUrl}'.");
+            throw linkMeta.RetryDelay is { } retryDelay
+                ? new RateLimitExceededException(retryDelay)
+                : StandardError.External($"Link preview thumbnail is missing: '{linkMeta.OpenGraph.ImageUrl}'.");
     }
 }

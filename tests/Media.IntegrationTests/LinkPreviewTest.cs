@@ -152,6 +152,35 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
+    public async Task ShouldWaitForRetryAfterBeforeRetryingThumbnail()
+    {
+        // arrange
+        var url = $"https://domain1.some/{RandomStringGenerator.Next()}";
+        var id = LinkPreview.ComposeId(url);
+        var imgUrl = $"https://domain2.some/images/{RandomStringGenerator.Next()}.jpg";
+        var retryAfter = TimeSpan.FromSeconds(4);
+        Http.SetupImageAfterFailures(imgUrl, HttpStatusCode.TooManyRequests, 1, retryAfter)
+            .SetupHtml(url, h => h.Title("Title 1").Description("Description 1").Image(imgUrl))
+            .SetupEmptyRobots(url);
+
+        // act
+        await Tester.SignInAsAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var startedAt = CpuTimestamp.Now;
+        var entry = await Tester.CreateTextEntry(chatId, $"a b c {url} !!!");
+
+        // assert
+        var entryLinkPreview = await GetEntryLinkPreview(entry.Id, id).Require();
+        entryLinkPreview.PreviewMedia.Should().BeNull();
+        await TestWait.When(async ct => {
+            var preview = await Previews.Get(id, ct).Require();
+            preview.PreviewMedia.Should().NotBeNull();
+        }, TimeSpan.FromSeconds(20));
+        // The fixture's backoff is 1s; only the Retry-After can push the retry past it
+        startedAt.Elapsed.Should().BeGreaterThan(retryAfter);
+    }
+
+    [Fact]
     public async Task ShouldSkipEmails()
     {
         // arrange
