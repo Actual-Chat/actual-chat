@@ -1,7 +1,9 @@
 using ActualChat.Chat;
 using ActualChat.Hashing;
 using ActualChat.Queues;
+using ActualChat.Chat.Module;
 using ActualChat.Testing.Host;
+using ActualChat.Users.Module;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
@@ -139,6 +141,7 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         // act
         await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, 1, 40, 20, T0), true));
         await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, 99, 1, 1, T0), true));
+        await Queues.WhenProcessing(TimeSpan.FromSeconds(1), default);
 
         // assert
         var day = await WhenDay(account.Id, UsageDay.DayOf(T0), d => d.Entries == 1);
@@ -223,6 +226,7 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         var entry = Entry(account.Id, chatId, 1, 100, 60, now, 10, "like");
         await Queues.Enqueue(new CoachEntryAnalyzedEvent(entry, false));
         await WhenDay(account.Id, UsageDay.DayOf(now), d => d.Entries == 1);
+        await Queues.WhenProcessing(TimeSpan.FromSeconds(1), default);
 
         // assert
         (await Kvas.ForUser(account.Id).UserCoachTip().Get(default)).IsPending.Should().BeFalse();
@@ -339,5 +343,168 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         await using var dbContext = await dbHub.CreateDbContext(false);
         (await dbContext.CoachEvents.CountAsync(e => e.UserId == account.Id.Value)).Should().Be(0);
         (await dbContext.CoachDays.CountAsync(d => d.UserId == account.Id.Value)).Should().Be(0);
+    }
+
+    private async Task<long> DayRowVersion(UserId userId, Moment day)
+    {
+        var dbHub = AppHost.Services.GetRequiredService<DbHub<UsersDbContext>>();
+        await using var dbContext = await dbHub.CreateDbContext(false);
+        var dbDay = day.ToDateTimeClamped();
+        return await dbContext.CoachDays
+            .Where(d => d.UserId == userId.Value && d.Day == dbDay)
+            .Select(d => d.Version)
+            .SingleAsync();
+    }
+
+    [Fact]
+    public async Task RedeliveryShouldNotRewriteTheRow()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var e = new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, 1, 40, 20, T0, 1, "ну"), false);
+        await Queues.Enqueue(e);
+        await WhenDay(account.Id, UsageDay.DayOf(T0), d => d.Entries == 1);
+        var version = await DayRowVersion(account.Id, UsageDay.DayOf(T0));
+
+        // act
+        await Queues.Enqueue(e);
+        await Queues.WhenProcessing(TimeSpan.FromSeconds(1), default);
+
+        // assert
+        (await DayRowVersion(account.Id, UsageDay.DayOf(T0)))
+            .Should().Be(version, "an identical redelivery must not rebuild the day");
+    }
+
+    [Fact]
+    public async Task StaleEventShouldNotOverwriteANewerRow()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var newer = Entry(account.Id, chatId, 1, 55, 20, T0) with { Version = 2 };
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(newer, false));
+        await WhenDay(account.Id, UsageDay.DayOf(T0), d => d.Words == 55);
+
+        // act
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, 1, 40, 20, T0), false));
+        await Queues.WhenProcessing(TimeSpan.FromSeconds(1), default);
+
+        // assert
+        var day = await WhenDay(account.Id, UsageDay.DayOf(T0), d => d.Entries == 1);
+        day.Words.Should().Be(55, "a late delivery of an older version is ignored");
+    }
+
+    [Fact]
+    public async Task LateEventAfterRemovalShouldNotResurrectTheRow()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var entry = Entry(account.Id, chatId, 1, 40, 20, T0);
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(entry, false));
+        await WhenDay(account.Id, UsageDay.DayOf(T0), d => d.Entries == 1);
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(entry, true));
+        await Queues.WhenProcessing(TimeSpan.FromSeconds(1), default);
+
+        // act
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(entry, false));
+        await Queues.WhenProcessing(TimeSpan.FromSeconds(1), default);
+
+        // assert
+        var range = new Range<Moment>(UsageDay.DayOf(T0), UsageDay.DayOf(T0) + TimeSpan.FromDays(1));
+        (await Backend.ListDays(account.Id, range, default)).Should().BeEmpty("a removed message stays removed");
+    }
+
+    [Fact]
+    public async Task NewEntryShouldShowUpInOccurrences()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var range = new Range<Moment>(T0 - TimeSpan.FromDays(1), T0 + TimeSpan.FromDays(1));
+        (await Backend.ListOccurrences(account.Id, "like", range, 10, default)).Should().BeEmpty();
+
+        // act
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, 1, 40, 20, T0, 1, "like"), false));
+
+        // assert
+        await TestWait.When(async ct => (await Backend.ListOccurrences(account.Id, "like", range, 10, ct))
+            .Should().ContainSingle("a new entry must invalidate the occurrences"));
+    }
+
+    [Fact]
+    public async Task OccurrencesShouldLookPastTheLatestHundredEntries()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, 1, 40, 20, T0, 1, "like"), false));
+        for (var i = 2; i <= 121; i++)
+            await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+                Entry(account.Id, chatId, i, 40, 20, T0 + TimeSpan.FromMinutes(i)), false));
+        await WhenDay(account.Id, UsageDay.DayOf(T0), d => d.Entries == 121);
+
+        // act
+        var range = new Range<Moment>(T0 - TimeSpan.FromDays(1), T0 + TimeSpan.FromDays(1));
+        var occurrences = await Backend.ListOccurrences(account.Id, "like", range, 20, default);
+
+        // assert
+        occurrences.Should().ContainSingle("the chip count promises every occurrence in the window");
+    }
+
+    [Fact]
+    public async Task ConcurrentEventsShouldAllLandInTheDay()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+
+        // act
+        await Task.WhenAll(Enumerable.Range(1, 8).Select(i =>
+            Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, i, 10, 5, T0), false))));
+
+        // assert
+        await Queues.WhenProcessing(TimeSpan.FromSeconds(1), default);
+        var day = await WhenDay(account.Id, UsageDay.DayOf(T0), d => d.Entries == 8);
+        day.Words.Should().Be(80);
+    }
+
+    [Fact]
+    public async Task IsEnabledShouldFollowTheRolloutRule()
+    {
+        // arrange
+        var coach = $"{nameof(ChatSettings)}:{nameof(ChatSettings.Coach)}:{nameof(CoachSettings.IsEnabled)}";
+        var rollout = $"{nameof(UsersSettings)}:{nameof(UsersSettings.Coach)}:{nameof(CoachScoringSettings.Rollout)}";
+        await using var focusHost = await NewAppHost("coach-rollout-focus", o => o with {
+            ConfigureHost = (_, cfg) => cfg.AddInMemoryCollection((coach, "true")),
+        });
+        await using var everyoneHost = await NewAppHost("coach-rollout-everyone", o => o with {
+            ConfigureHost = (_, cfg) => cfg.AddInMemoryCollection(
+                (coach, "true"),
+                (rollout, nameof(CoachRollout.Everyone))),
+        });
+        await using var guest = focusHost.NewWebClientTester(Out);
+        await using var bob = focusHost.NewWebClientTester(Out);
+        await bob.SignInAsUniqueBob();
+        await using var admin = focusHost.NewWebClientTester(Out);
+        await admin.SignInAsUniqueBobAdmin();
+        await using var anyone = everyoneHost.NewWebClientTester(Out);
+        await anyone.SignInAsUniqueBob();
+        var focusCoach = focusHost.Services.GetRequiredService<ICoach>();
+        var everyoneCoach = everyoneHost.Services.GetRequiredService<ICoach>();
+
+        // assert
+        (await focusCoach.IsEnabled(guest.Session, default)).Should().BeFalse();
+        (await focusCoach.IsEnabled(bob.Session, default)).Should().BeFalse("not an admin, not in the focus group");
+        (await focusCoach.IsEnabled(admin.Session, default)).Should().BeTrue();
+        (await everyoneCoach.IsEnabled(anyone.Session, default)).Should().BeTrue();
+        (await Coach.IsEnabled(bob.Session, default)).Should().BeFalse("the shared host has the master switch off");
     }
 }

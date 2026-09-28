@@ -24,6 +24,9 @@ public static class CoachTipPolicy
             return null;
         if (previous.LastTipAt != default && now - previous.LastTipAt < settings.TipInterval)
             return null;
+        // Re-tagged or edited old entries are not live feedback
+        if (record.Day != UsageDay.DayOf(now))
+            return null;
 
         var tip = WordTip(before, after, spansWithSynonyms, s.TipWordStep) ?? PaceTip(entry, s);
         if (tip is null)

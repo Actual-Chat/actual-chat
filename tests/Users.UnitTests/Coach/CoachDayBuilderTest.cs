@@ -32,7 +32,9 @@ public class CoachDayBuilderTest(ITestOutputHelper @out) : TestBase(@out)
         // arrange
         var records = new[] {
             Entry(1, 100, 80, true,
-                Span(SpeechSpanKind.Filler, "you know"), Span(SpeechSpanKind.Filler, "you know"), Span(SpeechSpanKind.Weak, "awesome")),
+                Span(SpeechSpanKind.Filler, "you know"),
+                Span(SpeechSpanKind.Filler, "you know"),
+                Span(SpeechSpanKind.Weak, "awesome")),
             Entry(2, 10, 9, false),
         };
 
@@ -74,7 +76,8 @@ public class CoachDayBuilderTest(ITestOutputHelper @out) : TestBase(@out)
         // arrange
         var a = CoachDayBuilder.Build(Day, [Entry(1, 100, 80, true, Span(SpeechSpanKind.Filler, "like"))], 20);
         var nextDay = Day + TimeSpan.FromDays(1);
-        var later = Entry(2, 50, 40, true, Span(SpeechSpanKind.Filler, "like")) with { OccurredAt = nextDay + TimeSpan.FromHours(2) };
+        var later = Entry(2, 50, 40, true, Span(SpeechSpanKind.Filler, "like"))
+            with { OccurredAt = nextDay + TimeSpan.FromHours(2) };
         var b = CoachDayBuilder.Build(nextDay, [later], 20);
 
         // act

@@ -50,6 +50,7 @@ public class Coach(IServiceProvider services) : ICoach
             .UserLanguageSettings()
             .Get(cancellationToken)
             .ConfigureAwait(false);
+        InvalidateAtMidnight(range);
         return CoachScoring.Summarize(window, merged, trailingDay, Settings.Coach, languageSettings.Primary.Value);
     }
 
@@ -86,6 +87,7 @@ public class Coach(IServiceProvider services) : ICoach
             return ApiArray<CoachOccurrence>.Empty;
 
         var (range, _) = Ranges(window);
+        InvalidateAtMidnight(range);
         return await Backend
             .ListOccurrences(account.Id, word.Trim().ToLower(), range, MaxOccurrences, cancellationToken)
             .ConfigureAwait(false);
@@ -117,6 +119,14 @@ public class Coach(IServiceProvider services) : ICoach
     }
 
     // Private methods
+
+    // The window slides at UTC midnight even when no coach event invalidates the user's days
+    private void InvalidateAtMidnight(Range<Moment> window)
+    {
+        var delay = window.End - Clocks.SystemClock.Now;
+        if (delay > TimeSpan.Zero)
+            Computed.GetCurrent().Invalidate(delay);
+    }
 
     // "Today" is the UTC day; the client's local day is a later refinement
     private (Range<Moment> Window, Range<Moment>? Trailing) Ranges(CoachWindow window)

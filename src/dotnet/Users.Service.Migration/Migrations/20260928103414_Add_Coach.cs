@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ActualChat.Users.Migrations;
 
 /// <inheritdoc />
-public partial class _20260928101231_Add_Coach : Migration
+public partial class _20260928103414_Add_Coach : Migration
 {
     /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
@@ -33,6 +33,8 @@ public partial class _20260928101231_Add_Coach : Migration
                 source_id = table.Column<string>(type: "text", nullable: false, collation: "C"),
                 kind = table.Column<int>(type: "integer", nullable: false),
                 chat_id = table.Column<string>(type: "text", nullable: false, collation: "C"),
+                version = table.Column<long>(type: "bigint", nullable: false),
+                is_removed = table.Column<bool>(type: "boolean", nullable: false),
                 day = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                 occurred_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                 payload = table.Column<string>(type: "jsonb", nullable: false)

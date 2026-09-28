@@ -31,6 +31,7 @@ public class CoachRecordTest(ITestOutputHelper @out) : TestBase(@out)
         record.SourceId.Should().Be(analysis.Id.Value);
         record.ChatId.Should().Be(chatId);
         record.Day.Should().Be(new DateTime(2026, 9, 26, 0, 0, 0, DateTimeKind.Utc));
+        record.Version.Should().Be(1, "the chat-side version orders late and duplicate deliveries");
         record.Entry!.Words.Should().Be(20);
         record.Entry.IsTagged.Should().BeTrue();
         record.Entry.Spans.Should().ContainSingle().Which.Synonyms.Should().BeEmpty("synonyms stay chat-side");

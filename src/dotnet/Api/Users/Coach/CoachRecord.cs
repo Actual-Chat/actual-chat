@@ -57,12 +57,15 @@ public sealed partial record CoachRecord(
 {
     [DataMember, Key(5)] public CoachEntryRecord? Entry { get; init; }
     [DataMember, Key(6)] public CoachRunRecord? Run { get; init; }
+    // The chat-side analysis version: a lower one is a late or duplicate delivery and is ignored
+    [DataMember, Key(7)] public long Version { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Moment Day => UsageDay.DayOf(OccurredAt);
 
     public static CoachRecord FromEntry(CoachEntryAnalysis a)
         => new (CoachRecordKind.Entry, a.Id.Value, a.UserId, a.Id.ChatId, a.BeginsAt) {
+            Version = a.Version,
             Entry = new CoachEntryRecord(
                 a.Id.LocalId,
                 a.Language?.Value,
@@ -85,6 +88,7 @@ public sealed partial record CoachRecord(
 
     public static CoachRecord FromRun(CoachConversationAnalysis a)
         => new (CoachRecordKind.Run, $"{a.Id}:{a.AuthorId}", a.UserId, a.Id.ChatId, a.EndsAt) {
+            Version = a.Version,
             Run = new CoachRunRecord(
                 a.Id.StartEntryLid,
                 a.OwnSpeechSeconds,

@@ -110,4 +110,19 @@ public class CoachTipPolicyTest(ITestOutputHelper @out) : TestBase(@out)
         => Evaluate(Entry(60, 20), Fillers(9), Fillers(10), NoSpans, NoTip,
                 new UserCoachSettings { IsCoachingEnabled = coaching, AreLiveTipsEnabled = liveTips })
             .Should().BeNull();
+
+    [Fact]
+    public void TipsShouldOnlyFireForTodaysEntries()
+    {
+        // arrange: a re-tagged entry from yesterday crossing a step on yesterday's day
+        var yesterday = Entry(60, 20) with { OccurredAt = Now - TimeSpan.FromDays(1) };
+        var before = Fillers(9) with { Day = Day - TimeSpan.FromDays(1) };
+        var after = Fillers(10) with { Day = Day - TimeSpan.FromDays(1) };
+
+        // act
+        var tip = Evaluate(yesterday, before, after, NoSpans, NoTip);
+
+        // assert
+        tip.Should().BeNull("a tip is live feedback on what was just said");
+    }
 }

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Users.Migrations;
 
 [DbContext(typeof(UsersDbContext))]
-[Migration("20260928101231_Add_Coach")]
-partial class _20260928101231_Add_Coach
+[Migration("20260928103414_Add_Coach")]
+partial class _20260928103414_Add_Coach
 {
     /// <inheritdoc />
     protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -308,6 +308,10 @@ partial class _20260928101231_Add_Coach
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("day");
 
+                b.Property<bool>("IsRemoved")
+                    .HasColumnType("boolean")
+                    .HasColumnName("is_removed");
+
                 b.Property<int>("Kind")
                     .HasColumnType("integer")
                     .HasColumnName("kind");
@@ -320,6 +324,10 @@ partial class _20260928101231_Add_Coach
                     .IsRequired()
                     .HasColumnType("jsonb")
                     .HasColumnName("payload");
+
+                b.Property<long>("Version")
+                    .HasColumnType("bigint")
+                    .HasColumnName("version");
 
                 b.HasKey("UserId", "SourceId");
 

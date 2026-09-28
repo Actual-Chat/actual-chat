@@ -16,7 +16,7 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20260928101231_Add_Coach";
+    public override string LastMigrationId => "20260928103414_Add_Coach";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -310,6 +310,10 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("day");
 
+                b.Property<bool>("IsRemoved")
+                    .HasColumnType("boolean")
+                    .HasColumnName("is_removed");
+
                 b.Property<int>("Kind")
                     .HasColumnType("integer")
                     .HasColumnName("kind");
@@ -322,6 +326,10 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
                     .IsRequired()
                     .HasColumnType("jsonb")
                     .HasColumnName("payload");
+
+                b.Property<long>("Version")
+                    .HasColumnType("bigint")
+                    .HasColumnName("version");
 
                 b.HasKey("UserId", "SourceId");
 

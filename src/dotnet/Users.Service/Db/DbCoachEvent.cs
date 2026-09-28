@@ -12,6 +12,9 @@ public class DbCoachEvent : IRequirementTarget
     public string SourceId { get; set; } = "";
     public CoachRecordKind Kind { get; set; }
     public string ChatId { get; set; } = "";
+    public long Version { get; set; }
+    // A tombstone: the row stays so a late delivery of an older version cannot bring the data back
+    public bool IsRemoved { get; set; }
 
     public DateTime Day {
         get => field.DefaultKind(DateTimeKind.Utc);
@@ -32,8 +35,16 @@ public class DbCoachEvent : IRequirementTarget
     public CoachRecord ToModel()
         => SystemJsonSerializer.Default.Read<CoachRecord>(Payload);
 
+    public void MarkRemoved()
+    {
+        IsRemoved = true;
+        Payload = "{}";
+    }
+
     public void UpdateFrom(CoachRecord record)
     {
+        IsRemoved = false;
+        Version = record.Version;
         UserId = record.UserId.Value;
         SourceId = record.SourceId;
         Kind = record.Kind;

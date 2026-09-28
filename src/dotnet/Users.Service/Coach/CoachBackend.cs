@@ -1,4 +1,5 @@
 using ActualChat.Chat;
+using ActualChat.Db;
 using ActualChat.Users.Db;
 using ActualChat.Users.Module;
 using ActualLab.Fusion.EntityFramework;
@@ -14,9 +15,10 @@ namespace ActualChat.Users;
 public class CoachBackend(IServiceProvider services)
     : ShardedDbServiceBase<UsersDbContext>(services), ICoachBackend
 {
-    // Occurrences are picked out of the latest entries; this many rows per requested occurrence
-    // bounds the scan for a rare word
-    private const int OccurrenceRowsPerLimit = 5;
+    // Occurrences are picked out of the latest entries, page by page, until enough are found or the
+    // scan cap is hit
+    private const int OccurrencePageSize = 100;
+    private const int OccurrenceMaxRows = 5000;
 
     private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
@@ -33,22 +35,31 @@ public class CoachBackend(IServiceProvider services)
     public virtual async Task<ApiArray<CoachOccurrence>> ListOccurrences(
         UserId userId, string word, Range<Moment> range, int limit, CancellationToken cancellationToken)
     {
+        // Every write invalidates ListAllDays, so depending on it keeps this fresh
+        await ListAllDays(userId, cancellationToken).ConfigureAwait(false);
         var start = range.Start.ToDateTimeClamped();
         var end = range.End.ToDateTimeClamped();
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
-        var rows = await dbContext.CoachEvents
-            .Where(e => e.UserId == userId.Value && e.Kind == CoachRecordKind.Entry)
-            .Where(e => e.OccurredAt >= start && e.OccurredAt < end)
-            .OrderByDescending(e => e.OccurredAt)
-            .Take(limit * OccurrenceRowsPerLimit)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return rows
-            .Select(r => r.ToModel())
-            .SelectMany(r => r.Entry!.Spans
-                .Where(s => s.Word == word)
-                .Select(s => new CoachOccurrence(r.ChatId, r.Entry.EntryLid, s.Start, s.Length, r.OccurredAt)))
+        var found = new List<CoachOccurrence>();
+        for (var skip = 0; skip < OccurrenceMaxRows && found.Count < limit; skip += OccurrencePageSize) {
+            var rows = await dbContext.CoachEvents
+                .Where(e => e.UserId == userId.Value && e.Kind == CoachRecordKind.Entry && !e.IsRemoved)
+                .Where(e => e.OccurredAt >= start && e.OccurredAt < end)
+                .OrderByDescending(e => e.OccurredAt)
+                .Skip(skip)
+                .Take(OccurrencePageSize)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            found.AddRange(rows
+                .Select(r => r.ToModel())
+                .SelectMany(r => r.Entry!.Spans
+                    .Where(s => s.Word == word)
+                    .Select(s => new CoachOccurrence(r.ChatId, r.Entry.EntryLid, s.Start, s.Length, r.OccurredAt))));
+            if (rows.Count < OccurrencePageSize)
+                break;
+        }
+        return found
             .OrderByDescending(o => o.At)
             .ThenByDescending(o => o.Start)
             .Take(limit)
@@ -68,26 +79,33 @@ public class CoachBackend(IServiceProvider services)
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
-        var dbEvent = await dbContext.CoachEvents.ForUpdate()
+        // One writer per user: the day is rebuilt from the log, and two concurrent rebuilds would
+        // each miss the other's row
+        await dbContext.CoachDays.Lock(userId.Value, cancellationToken).ConfigureAwait(false);
+        var dbEvent = await dbContext.CoachEvents
             .FirstOrDefaultAsync(e => e.UserId == userId.Value && e.SourceId == record.SourceId, cancellationToken)
             .ConfigureAwait(false);
-        var hasChanges = false;
-        if (isRemoved) {
-            if (dbEvent is not null) {
-                dbContext.Remove(dbEvent);
-                hasChanges = true;
-            }
-        }
-        else if (dbEvent is null) {
-            dbContext.Add(new DbCoachEvent(record));
-            hasChanges = true;
-        }
-        else if (dbEvent.Payload != SystemJsonSerializer.Default.Write(record)) {
-            dbEvent.UpdateFrom(record);
-            hasChanges = true;
-        }
-        if (!hasChanges)
+        if (dbEvent is not null && record.Version < dbEvent.Version)
             return;
+        if (dbEvent is { IsRemoved: true } && record.Version <= dbEvent.Version)
+            return;
+
+        if (isRemoved) {
+            if (dbEvent is null) {
+                dbEvent = new DbCoachEvent(record);
+                dbContext.Add(dbEvent);
+            }
+            else if (dbEvent.IsRemoved)
+                return;
+
+            dbEvent.MarkRemoved();
+        }
+        else if (dbEvent is null)
+            dbContext.Add(new DbCoachEvent(record));
+        else if (!dbEvent.IsRemoved && IsSameRecord(dbEvent, record))
+            return;
+        else
+            dbEvent.UpdateFrom(record);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await RebuildDay(dbContext, userId, record.Day, cancellationToken).ConfigureAwait(false);
@@ -106,8 +124,9 @@ public class CoachBackend(IServiceProvider services)
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
+        await dbContext.CoachDays.Lock(userId.Value, cancellationToken).ConfigureAwait(false);
         var days = await dbContext.CoachEvents
-            .Where(e => e.UserId == userId.Value)
+            .Where(e => e.UserId == userId.Value && !e.IsRemoved)
             .Select(e => e.Day)
             .Distinct()
             .ToListAsync(cancellationToken)
@@ -190,7 +209,7 @@ public class CoachBackend(IServiceProvider services)
     {
         var dbDay = day.ToDateTimeClamped();
         var events = await dbContext.CoachEvents
-            .Where(e => e.UserId == userId.Value && e.Day == dbDay)
+            .Where(e => e.UserId == userId.Value && e.Day == dbDay && !e.IsRemoved)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var row = await dbContext.CoachDays.ForUpdate()
@@ -235,12 +254,16 @@ public class CoachBackend(IServiceProvider services)
                 Clocks.SystemClock.Now,
                 analysis.Language?.Value);
             if (tip is not null)
-                await tipAccessor.Set(tip with { Origin = previous.Origin }, cancellationToken).ConfigureAwait(false);
+                await tipAccessor.Set(tip with { Origin = "" }, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             Log.LogWarning(e, "Tip evaluation failed for {UserId}", analysis.UserId);
         }
     }
+
+    // jsonb normalises the stored text, so equality is checked on the models
+    private static bool IsSameRecord(DbCoachEvent dbEvent, CoachRecord record)
+        => SystemJsonSerializer.Default.Write(dbEvent.ToModel()) == SystemJsonSerializer.Default.Write(record);
 
     private static bool IsTrackedUser(UserId userId)
         => userId is { IsGuest: false } && !userId.Value.IsNullOrEmpty();
