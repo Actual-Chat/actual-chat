@@ -344,6 +344,9 @@
   "ChatList_Thread_Format": "Tópico '{0}'",
 
   "ChatList_InviteFriends": "Convide amigos compartilhando um link para a sua conta, ou mostre um código QR se eles estiverem por perto.",
+  "ChatList_FindContacts": "Encontrar amigos nos contatos",
+  "ChatList_FindContactsPrivacy": "Os números de telefone e endereços de e-mail são convertidos em hash no seu dispositivo antes de serem enviados.",
+  "ChatList_FindContactsVerifyPhone_Format": "Seus amigos encontram você no {0} pelo seu número de telefone, então verifique-o primeiro.",
   "ShareQr_Show": "Mostrar",
   "ShareQr_Hint_Format": "Peça a um amigo para escanear este código QR com a câmera do telefone para encontrar você no {0}.",
   "ShareQr_TabShow": "Meu QR",

@@ -344,6 +344,9 @@
   "ChatList_Thread_Format": "Chủ đề '{0}'",
 
   "ChatList_InviteFriends": "Mời bạn bè bằng cách chia sẻ liên kết tới tài khoản của bạn, hoặc cho họ xem mã QR nếu họ ở gần.",
+  "ChatList_FindContacts": "Tìm bạn bè từ danh bạ",
+  "ChatList_FindContactsPrivacy": "Số điện thoại và địa chỉ email được băm trên thiết bị của bạn trước khi gửi.",
+  "ChatList_FindContactsVerifyPhone_Format": "Bạn bè tìm thấy bạn trên {0} qua số điện thoại, vì vậy hãy xác minh số trước.",
   "ShareQr_Show": "Hiển thị",
   "ShareQr_Hint_Format": "Hãy nhờ một người bạn quét mã QR này bằng camera điện thoại để tìm thấy bạn trên {0}.",
   "ShareQr_TabShow": "QR của tôi",

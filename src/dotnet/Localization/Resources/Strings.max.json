@@ -419,6 +419,11 @@
   // screen it opens. "Show" is the button that opens that screen; the Tab ones name its two
   // halves, the user's own code and the camera that reads someone else's.
   "ChatList_InviteFriends": "Laden Sie Freunde ein, indem Sie einen Link zu Ihrem Konto teilen oder ihnen einen QR-Code zeigen, wenn sie in der Nähe sind.",
+  // A secondary action under the invite text: it opens an explanation, then asks for the phone's
+  // contacts permission. "Hashed" means a one-way fingerprint of each number, not the number itself.
+  "ChatList_FindContacts": "Пронађите пријатеље из контаката",
+  "ChatList_FindContactsPrivacy": "Os números de telefone e endereços de e-mail são convertidos em hash no seu dispositivo antes de serem enviados.",
+  "ChatList_FindContactsVerifyPhone_Format": "Seus amigos encontram você no {0} pelo seu número de telefone, então verifique-o primeiro.",
   "ShareQr_Show": "Прикажите",
   "ShareQr_Hint_Format": "友だちにスマートフォンのカメラでこの QR コードをスキャンしてもらうと、{0} であなたを見つけられます。",
   "ShareQr_TabShow": "我的二维码",

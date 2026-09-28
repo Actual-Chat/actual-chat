@@ -11,6 +11,17 @@
         <Kitty Name="invite-cat" Class="c-image"/>
         <div class="c-text">@L.ChatList_InviteFriends</div>
         <ShareActions Model="@m.ShareModel" Tapped="@OnShareTapped"/>
+        @if (m.CanFindContacts) {
+            <div class="c-find-contacts">
+                <Button Class="btn-transparent btn-find-contacts" Click="@OnFindContactsClick">
+                    <i class="icon-person" aria-hidden="true"></i>
+                    <span>@L.ChatList_FindContacts</span>
+                </Button>
+                <ButtonRound Class="btn-xs btn-transparent" Tooltip="@L.Common_Hide" Click="@OnHideFindContactsClick">
+                    <i class="icon-close" aria-hidden="true"></i>
+                </ButtonRound>
+            </div>
+        }
     </div>
 </div>
 
@@ -18,6 +29,10 @@
     public const int MaxFullSizeChatCount = 2;
 
     private ChatListUI ChatListUI => Hub.ChatListUI;
+    private PermissionsUI PermissionsUI => field ??= Hub.Services.GetRequiredService<PermissionsUI>();
+    // Null outside the native apps: the web has no address book to read
+    private PermissionDef? ContactsPermission
+        => PermissionsUI.Permissions.FirstOrDefault(x => x.Kind == PermissionKind.Contacts);
 
     [Parameter] public bool IsCompact { get; set; }
 
@@ -37,9 +52,30 @@
             });
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var shareModel = await ShareUI.GetOwnAccountModel(cancellationToken).ConfigureAwait(false);
-        return shareModel == null ? null : new Model(shareModel);
+        if (shareModel == null)
+            return null;
+
+        var canFindContacts = await CanFindContacts(account, cancellationToken).ConfigureAwait(false);
+        return new Model(shareModel, canFindContacts);
+    }
+
+    private async Task<bool> CanFindContacts(AccountFull account, CancellationToken cancellationToken) {
+        if (ContactsPermission == null)
+            return false;
+
+        // Not reactive - OnHideFindContactsClick recomputes the state itself after writing it
+        var isHidden = await Hub.LocalSettings.LocalAppSettings()
+            .Get(x => x.IsFindContactsHidden ?? false, cancellationToken)
+            .ConfigureAwait(false);
+        if (isHidden)
+            return false;
+
+        var permissions = await PermissionsUI.GetState(cancellationToken).ConfigureAwait(false);
+        // Both halves matter: contacts find friends for the user, a verified phone lets friends find them
+        return permissions.IsKnown
+            && !(permissions.IsGranted(PermissionKind.Contacts) && account.IsPhoneVerified());
     }
 
     private void OnShareTapped(ShareActionKind kind)
@@ -49,5 +85,55 @@
             _ => FunnelEvent.InviteQr,
         });
 
-    public sealed record Model(ShareModalModel ShareModel);
+    private async Task OnFindContactsClick() {
+        Hub.RecordFunnelEvent(FunnelEvent.InviteFindContacts);
+        var account = await Hub.Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(true);
+        var isPhoneVerified = account.IsPhoneVerified();
+        if (!await ConfirmFindContacts(isPhoneVerified).ConfigureAwait(true))
+            return;
+
+        if (!isPhoneVerified) {
+            var editorRef = await ModalUI
+                .Show(new OwnAccountEditorModal.Model(OwnAccountEditorModal.AccountField.Phone))
+                .ConfigureAwait(true);
+            await editorRef.WhenClosed.ConfigureAwait(true);
+            account = await Hub.Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(true);
+            if (!account.IsPhoneVerified())
+                return;
+        }
+
+        if (ContactsPermission is { } contactsPermission)
+            await PermissionsUI.Request(contactsPermission, true).ConfigureAwait(true);
+    }
+
+    private async Task<bool> ConfirmFindContacts(bool isPhoneVerified) {
+        // The explanation comes before the OS prompt, which only says the app wants the contacts
+        var isConfirmed = false;
+        var model = new ConfirmModal.Model(false, "", () => isConfirmed = true) {
+            Title = L.ChatList_FindContacts,
+            MarkupTitle = RenderExplanation(isPhoneVerified),
+            ConfirmButtonText = isPhoneVerified ? L.Common_Continue : L.Common_Verify,
+            CancelButtonText = L.Onboarding_NotNow,
+        };
+        var modalRef = await ModalUI.Show(model).ConfigureAwait(true);
+        await modalRef.WhenClosed.ConfigureAwait(true);
+        return isConfirmed;
+    }
+
+    private RenderFragment RenderExplanation(bool isPhoneVerified) => @<div class="find-contacts-text">
+        <p>@L.Permission_ContactsRationale_Format(CoreConstants.AppName)</p>
+        <p>@L.ChatList_FindContactsPrivacy</p>
+        @if (!isPhoneVerified) {
+            <p>@L.ChatList_FindContactsVerifyPhone_Format(CoreConstants.AppName)</p>
+        }
+    </div>;
+
+    private async Task OnHideFindContactsClick() {
+        await Hub.LocalSettings.LocalAppSettings()
+            .Update(x => x with { IsFindContactsHidden = true }, CancellationToken.None)
+            .ConfigureAwait(true);
+        _ = State.Recompute();
+    }
+
+    public sealed record Model(ShareModalModel ShareModel, bool CanFindContacts);
 }
