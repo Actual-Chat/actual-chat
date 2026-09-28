@@ -321,7 +321,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `History` — browser navigation history management
 - `ModalUI` — modal dialog management
 - `ToastUI` — toast notification management
-- `PanelsUI` — left/middle/right panel management
+- `PanelsUI` — left/middle/right panel management; `RightPanel.Mode` (`RightPanelMode` Chat | Coach) persists which content the right panel shows
 - `AccountUI` — account state and authentication flow
 - `PasskeyUI` — passkey list/register/rename/delete/sign-in over `IPasskeyAuth`
 - `IPasskeyClient` — platform passkey (WebAuthn) ceremonies, one implementation per platform (web/Android/Apple)
@@ -341,12 +341,14 @@ Resolving *which* language a given user reads is `UserLocalizers`
 ### Caching
 - `WebRemoteComputedCache` — IndexedDB-based remote computed cache
 
+- `DonutChart` / `BarChart` / `ChartItem` — inline SVG donut and div bar chart; colors come from the `Class` the caller passes (`currentColor`)
 
 ## Blazor App (`ActualChat.UI.Blazor.App`)
 
 ### Core Services
 - `AppUIHub` — extended UI hub with chat-specific services
 - `ChatUI` — chat selection, read positions, chat state
+- `CoachUI` — speech-coach client verdicts (flag + Coaching toggle), per-tile marks cache behind inline marking, jump-to-audio from an occurrence
 - `ChatAudioUI` — audio listening/recording state
 - `ChatListUI` — chat list filtering and sorting
 - `SearchUI` — unified search across chats
@@ -411,6 +413,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 ### Flows (`ActualChat.Flows.Service`)
 - `FlowBackend`, `FlowsServiceModule` — flow execution backend
 
+- `CoachPanel`, `CoachScoreCard`, `CoachSettingsTile`, `CoachMetricRow`, `CoachTrends`, `CoachOccurrences`, `CoachTipBar`, `CoachLabels` — the speech-coach surfaces: right-panel Coach mode, Trends, chip occurrences, the tip bar above the composer; `CoachLabels` maps metric kinds, bands and windows to catalog text
 
 ## Email Templates (`ActualChat.Mjml.Blazor`, `ActualChat.Users.Templates`)
 
