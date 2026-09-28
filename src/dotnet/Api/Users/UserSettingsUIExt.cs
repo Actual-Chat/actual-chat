@@ -64,4 +64,7 @@ public static class UserSettingsUIExt
 
     public static UserSettingsAccessor<UserCoachSettings> UserCoachSettings(this UserSettingsUI settingsUI)
         => new(settingsUI, nameof(UserCoachSettings));
+
+    public static UserSettingsAccessor<UserCoachTip> UserCoachTip(this UserSettingsUI settingsUI)
+        => new(settingsUI, nameof(UserCoachTip));
 }
