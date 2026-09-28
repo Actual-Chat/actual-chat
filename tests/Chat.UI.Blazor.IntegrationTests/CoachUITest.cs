@@ -2,6 +2,11 @@ using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.App.Components;
+using ActualChat.UI.Blazor.App.Components.MarkupParts;
+using Bunit;
+using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Users;
 using ActualChat.Users.Module;
@@ -39,8 +44,13 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
                 ($"{users}:{nameof(CoachScoringSettings.Rollout)}", nameof(CoachRollout.Everyone)),
                 ($"{nameof(ChatSettings)}:{nameof(ChatSettings.IsTranslationEnabled)}", "true"),
                 ($"{nameof(ChatSettings)}:{nameof(ChatSettings.UseFakeLanguageDetection)}", "true")),
-            ConfigureServices = (_, services)
-                => services.Replace(ServiceDescriptor.Singleton<ISpeechTagger>(new FakeTagger())),
+            ConfigureServices = (_, services) => {
+                services.Replace(ServiceDescriptor.Singleton<ISpeechTagger>(new FakeTagger()));
+                // Components rendered through BlazorTester call JS from OnAfterRender; the server's
+                // remote runtime refuses that, a loose bUnit one answers with defaults
+                services.Replace(ServiceDescriptor.Scoped<IJSRuntime>(
+                    _ => new BunitJSInterop { Mode = JSRuntimeMode.Loose }.JSRuntime));
+            },
         });
     }
 
@@ -86,5 +96,69 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         marks.Select(s => s.Kind).Should().Contain(SpeechSpanKind.FilledPause);
         aliceMarks.Should().BeEmpty("the entry is not hers");
         (await bobUI.IsEnabled(default)).Should().BeTrue();
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task PlayableTextMarkupViewShouldMarkFillersAndWeakWordsOfOwnEntries()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-marking");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(tester);
+        var coachUI = tester.ScopedAppServices.AppUIHub().CoachUI;
+        var entry = await PostVoice(tester, chatId, Text);
+        await TestWait.When(async ct
+            => (await coachUI.GetOwnMarks(entry.Id, entry.AuthorId, ct)).Should().NotBeEmpty(),
+            TimeSpan.FromSeconds(30));
+        var markup = new PlayableTextMarkup(entry.Content, entry.Audio!.TimeMap);
+
+        // act
+        var cut = tester.Render<CascadingValue<ChatEntry>>(p => p
+            .Add(x => x.Value, entry)
+            .Add(x => x.IsFixed, true)
+            .AddChildContent<PlayableTextMarkupView>(c => c.Add(x => x.Markup, markup)));
+
+        // assert
+        cut.WaitForAssertion(() => {
+            cut.FindAll(".playable-word").Count.Should().Be(markup.Words.Length,
+                "the JS click handler maps span index to word index");
+            cut.FindAll(".coach-filler").Should().ContainSingle().Which.TextContent.Trim().Should().Be("um,");
+            cut.FindAll(".coach-weak").Select(e => e.TextContent.Trim()).Should().BeEquivalentTo(["the", "awesome."],
+                "the repeated word and the weak word get the dotted underline");
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task PlayableTextMarkupViewShouldNotMarkATranslatedMarkup()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-marking-translated");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(tester);
+        var coachUI = tester.ScopedAppServices.AppUIHub().CoachUI;
+        var entry = await PostVoice(tester, chatId, Text);
+        await TestWait.When(async ct
+            => (await coachUI.GetOwnMarks(entry.Id, entry.AuthorId, ct)).Should().NotBeEmpty(),
+            TimeSpan.FromSeconds(30));
+        var translated = new PlayableTextMarkup("Итак, эм, я пошёл в магазин.", entry.Audio!.TimeMap);
+
+        // act
+        var cut = tester.Render<CascadingValue<ChatEntry>>(p => p
+            .Add(x => x.Value, entry)
+            .Add(x => x.IsFixed, true)
+            .AddChildContent<PlayableTextMarkupView>(c => c.Add(x => x.Markup, translated)));
+        await Task.Delay(500);
+
+        // assert
+        cut.FindAll(".coach-filler").Should().BeEmpty("the spans index the original text, not the translation");
+        cut.FindAll(".coach-weak").Should().BeEmpty();
     }
 }

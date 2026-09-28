@@ -165,6 +165,14 @@
 .playable-text-markup .highlight {
     @apply text-primary;
 }
+.playable-text-markup .coach-filler {
+    @apply line-through decoration-2;
+    text-decoration-color: var(--danger);
+}
+.playable-text-markup .coach-weak {
+    @apply underline decoration-dotted decoration-2 underline-offset-4;
+    text-decoration-color: var(--warning);
+}
 
 .selected-word-float {
     @apply absolute z-modal-overlay;
