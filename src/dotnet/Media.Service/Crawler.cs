@@ -46,7 +46,9 @@ public sealed class Crawler(
             if (handler is null)
                 return CrawledLink.None;
 
-            return await handler.Handle(response, cts.Token).ConfigureAwait(false);
+            // The page is already buffered here, so CrawlTimeout is spent. The handler's
+            // image download runs on its own ImageDownloadTimeout, not on what's left of this one.
+            return await handler.Handle(response, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
             log.LogWarning("Crawl of '{Url}' timed out after {Timeout}s", url, settings.CrawlTimeout.TotalSeconds);

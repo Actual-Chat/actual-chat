@@ -1,3 +1,4 @@
+using ActualChat.Media.Module;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
 
@@ -79,6 +80,26 @@ public class CrawlerTest(AppHostFixture fixture, ITestOutputHelper @out)
         meta.PreviewMediaId.Should().BeNull();
         meta.OpenGraph.Title.Should().Be("Title 1");
         meta.OpenGraph.Description.Should().Be("Description 1");
+    }
+
+    [Fact]
+    public async Task ImageDownloadShouldNotShareCrawlTimeout()
+    {
+        // arrange
+        var url = $"{Authority1}/{RandomStringGenerator.Next()}";
+        var imgUrl = $"{Authority2}/images/{RandomStringGenerator.Next()}.jpg";
+        var settings = AppHost.Services.GetRequiredService<MediaSettings>();
+        Http.SetupDelayedImage(imgUrl, settings.CrawlTimeout + TimeSpan.FromSeconds(1))
+            .SetupHtml(url, h => h.Title("Title 1").Description("Description 1").Image(imgUrl))
+            .SetupEmptyRobots(url);
+
+        // act
+        var sut = AppHost.Services.GetRequiredService<Crawler>();
+        var meta = await sut.Crawl(url, CancellationToken.None);
+
+        // assert
+        meta.PreviewMediaId.Should().NotBeNull();
+        meta.OpenGraph.Title.Should().Be("Title 1");
     }
 
     [Fact]

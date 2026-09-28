@@ -65,7 +65,10 @@ public abstract class ThrottledFlow : Flow<string>
                 FailCount = 0;
             }
             else {
-                Runtime.StageResumeIn(RetryDelay);
+                // NextRunAt holds MustUpdate() false until the retry, so the resumes a viewer
+                // schedules meanwhile don't spend the remaining attempts right away.
+                NextRunAt = Hub.SystemNow + RetryDelay;
+                Runtime.StageResumeAt(NextRunAt);
                 Console.Log($"Run() failed (attempt {FailCount}/{MaxFailCount}): {e.Message}, retrying in {RetryDelay.ToShortString()}");
             }
         }
