@@ -200,7 +200,7 @@ public class Uploads(IServiceProvider services) : IUploads
     {
         if (upload is null || upload.UserId != user.Id)
             throw StandardError.Upload.NotFound();
-        if (!upload.Tag.StartsWith(nameof(ChatEntryAttachment) + "/v1/"))
+        if (!upload.HasChatEntryAttachmentTag())
             return;
 
         var chatId = upload.ExtractChatIdFromTag();

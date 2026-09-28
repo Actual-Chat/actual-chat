@@ -147,7 +147,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
 
         await EnsureUploadHasBeenCompleted(upload, cancellationToken).ConfigureAwait(false);
 
-        var importedUpload = upload.Tag.StartsWith(nameof(ChatEntryAttachment) + "/v1/")
+        var importedUpload = upload.HasChatEntryAttachmentTag()
             ? await Services.GetRequiredService<IChatsBackend>()
                 .GetImportUpload(upload.ExtractChatIdFromTag(), uploadId, cancellationToken).ConfigureAwait(false)
             : null;
