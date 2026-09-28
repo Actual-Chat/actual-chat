@@ -229,6 +229,19 @@ edited. The reason can be as short as whose decision it was.
   — required: FluentAssertions' `OnlyContain` takes an `Expression<Func<T, bool>>`, and an
   `is` pattern-matching operator inside an expression tree is CS8122
 
+## src/dotnet/Core.Server/Queues/Nats/NatsQueueProcessor.cs
+
+- L85 `"NATS write failed: Code={Code}, ErrCode={ErrCode}, Description={Description}, {Kind} command #{Uuid} {Command}",`
+  — line longer than 120 chars — predates the branch that surfaced it; Dmitrii's
+  standing rule is to leave violations outside one's own change as they are
+
+## tests/Core.Server.IntegrationTests/Flows/TimerFlowTest.cs
+
+- L125 `private async Task<TFlow> GetLocalFlow<TFlow>(FlowHub hub, Func<int, string> argumentFactory, CancellationToken cancellationToken)`
+  and the same line of `GetRemoteFlow<TFlow>` — line longer than 120 chars — predates
+  the branch that surfaced it; Dmitrii's standing rule is to leave violations outside
+  one's own change as they are
+
 ## src/dotnet/Users.Service/AppUpdates/AppUpdates.cs
 
 - `[Key(0)] Info`, `[Key(1)] PreviousInfo`, `[Key(2)] NextCheckAt`
