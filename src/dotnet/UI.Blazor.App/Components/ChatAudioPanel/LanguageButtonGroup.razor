@@ -8,6 +8,14 @@
         return; // Loading
 
     var useShortTitle = languages.Count > 2;
+    var segmentCount = languages.Count == 1 ? 2 : languages.Count;
+    var activeIndex = 0;
+    for (var i = 0; i < languages.Count; i++) {
+        if (languages[i] == language) {
+            activeIndex = i;
+            break;
+        }
+    }
 }
 
 <div class="language-btn-group">
@@ -30,7 +38,8 @@
         }
         @**@:
     </div>
-    <div class="c-languages">
+    <div class="c-languages" style="--seg-count: @segmentCount; --seg-index: @activeIndex;">
+        <div class="c-thumb"></div>
         @foreach (var l in languages) {
             <button
                 class="@(l == language ? "active" : "")"
@@ -50,7 +59,6 @@
     private LanguageUI LanguageUI => Hub.LanguageUI;
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
-    [Parameter] public EventCallback Click { get; set; }
 
     protected override ComputedState<(IReadOnlyList<Language>?, Language)>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -67,10 +75,8 @@
         return (languages.ListSpoken(), language);
     }
 
-    private async Task OnClick(Language language) {
-        await LanguageUI.ChangeChatLanguage(ChatId, language);
-        await Click.InvokeAsync();
-    }
+    private Task OnClick(Language language)
+        => LanguageUI.ChangeChatLanguage(ChatId, language);
 
     private void OnConfigureSecondLanguage()
         => _ = UIEventHub.Publish(new ShowSettingsEvent(SettingsTabId.Transcription));

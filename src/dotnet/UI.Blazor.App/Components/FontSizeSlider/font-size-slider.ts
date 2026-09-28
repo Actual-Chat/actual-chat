@@ -11,7 +11,7 @@ export class FontSizeSlider {
     private blazorRef: DotNet.DotNetObject;
     private readonly slider: HTMLElement;
     private readonly input: HTMLInputElement | null;
-    private readonly tile: HTMLElement | null;
+    private readonly sizeLabel: HTMLElement | null;
     private readonly fontSizes: string[];
 
     static create(slider: HTMLElement, blazorRef: DotNet.DotNetObject, fontSizes: string[], fontSize: string): FontSizeSlider {
@@ -26,20 +26,21 @@ export class FontSizeSlider {
         if (!this.input)
             return;
 
-        this.tile = this.slider.closest('.font-size-tile');
-        if (!this.tile)
-            return;
+        this.sizeLabel = this.slider.querySelector('.c-size');
 
         this.input.min = '0';
         this.input.max = (fontSizes.length - 1).toString();
         const index = Math.max(0, fontSizes.indexOf(fontSize));
         this.input.value = index.toString();
 
-        this.updateProgress(index);
+        this.update(index);
 
         fromEvent(this.input, 'input')
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => this.onInput());
+        fromEvent(this.input, 'change')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(() => this.onChange());
     }
 
     public dispose() {
@@ -50,18 +51,24 @@ export class FontSizeSlider {
         this.disposed$.complete();
     }
 
-    private updateProgress(index: number) {
-        const percent =
-            index / (this.fontSizes.length - 1) * 100;
+    private update(index: number) {
+        const size = this.fontSizes[index];
+        const percent = index / (this.fontSizes.length - 1) * 100;
 
         this.input!.style.setProperty('--progress', `${percent}%`);
+        this.slider.style.setProperty('--preview-font-size', size);
+        if (this.sizeLabel)
+            this.sizeLabel.textContent = size;
     }
 
     private onInput() {
         const index = Math.round(Number(this.input!.value));
         this.input!.value = index.toString();
+        this.update(index);
+    }
 
-        this.updateProgress(index);
+    private onChange() {
+        const index = Math.round(Number(this.input!.value));
         this.blazorRef.invokeMethodAsync('OnFontSizeChangedFromJs', index);
     }
 
@@ -71,6 +78,7 @@ export class FontSizeSlider {
             return;
 
         this.input!.value = index.toString();
+        this.update(index);
     }
 }
 

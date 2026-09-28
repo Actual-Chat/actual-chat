@@ -4,14 +4,16 @@
 @implements IAsyncDisposable
 
 <div @ref="Ref" class="font-size-slider">
-    <label>
-        <span class="slider-text">Font size: @_fontSize</span>
-        <input
-            class="slider-input"
-            type="range"
-            id="fontSizeSlider"
-        />
-    </label>
+    <input
+        class="slider-input"
+        type="range"
+        id="fontSizeSlider"
+        aria-label="@L.UserInterface_Font"
+    />
+    <div class="c-preview">
+        <span class="c-size">@_fontSize</span>
+        <span class="c-sample" aria-hidden="true">Aa 12 #$</span>
+    </div>
 </div>
 
 @code {
