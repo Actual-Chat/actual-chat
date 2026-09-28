@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Kvas
 @inherits ComputedStateComponent<AppUIHub, InviteFriendsBanner.Model?>
 @{
     var m = State.ValueOrDefault;
@@ -28,6 +29,8 @@
 @code {
     public const int MaxFullSizeChatCount = 2;
 
+    private StoredState<Box<bool>> _isFindContactsHidden = null!;
+
     private ChatListUI ChatListUI => Hub.ChatListUI;
     private PermissionsUI PermissionsUI => field ??= Hub.Services.GetRequiredService<PermissionsUI>();
     // Null outside the native apps: the web has no address book to read
@@ -35,6 +38,15 @@
         => PermissionsUI.Permissions.FirstOrDefault(x => x.Kind == PermissionKind.Contacts);
 
     [Parameter] public bool IsCompact { get; set; }
+
+    protected override void OnInitialized() {
+        // Device-local, like the OS permission it's about
+        _isFindContactsHidden = StateFactory.NewKvasStored<Box<bool>>(
+            new(LocalSettings, "InviteFriendsBanner.IsFindContactsHidden") {
+                InitialValue = Box.New(false),
+                Category = GetStateCategory(GetType()),
+            });
+    }
 
     protected override void OnAfterRender(bool firstRender) {
         base.OnAfterRender(firstRender);
@@ -52,31 +64,31 @@
             });
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        var shareModel = await ShareUI.GetOwnAccountModel(cancellationToken).ConfigureAwait(false);
-        if (shareModel == null)
-            return null;
-
-        var canFindContacts = await CanFindContacts(account, cancellationToken).ConfigureAwait(false);
-        return new Model(shareModel, canFindContacts);
+        var shareModelTask = ShareUI.GetOwnAccountModel(cancellationToken);
+        var canFindContactsTask = CanFindContacts(cancellationToken);
+        var shareModel = await shareModelTask.ConfigureAwait(false);
+        var canFindContacts = await canFindContactsTask.ConfigureAwait(false);
+        return shareModel == null ? null : new Model(shareModel, canFindContacts);
     }
 
-    private async Task<bool> CanFindContacts(AccountFull account, CancellationToken cancellationToken) {
+    private async Task<bool> CanFindContacts(CancellationToken cancellationToken) {
         if (ContactsPermission == null)
             return false;
 
-        // Not reactive - OnHideFindContactsClick recomputes the state itself after writing it
-        var isHidden = await Hub.LocalSettings.LocalAppSettings()
-            .Get(x => x.IsFindContactsHidden ?? false, cancellationToken)
-            .ConfigureAwait(false);
-        if (isHidden)
+        if (!_isFindContactsHidden.WhenRead.IsCompleted)
+            await _isFindContactsHidden.WhenRead.ConfigureAwait(false);
+        var isHidden = await _isFindContactsHidden.Use(cancellationToken).ConfigureAwait(false);
+        if (isHidden.Value)
             return false;
 
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var permissions = await PermissionsUI.GetState(cancellationToken).ConfigureAwait(false);
         // Both halves matter: contacts find friends for the user, a verified phone lets friends find them
         return permissions.IsKnown
             && !(permissions.IsGranted(PermissionKind.Contacts) && account.IsPhoneVerified());
     }
+
+    // Event handlers
 
     private void OnShareTapped(ShareActionKind kind)
         => Hub.RecordFunnelEvent(kind switch {
@@ -128,12 +140,10 @@
         }
     </div>;
 
-    private async Task OnHideFindContactsClick() {
-        await Hub.LocalSettings.LocalAppSettings()
-            .Update(x => x with { IsFindContactsHidden = true }, CancellationToken.None)
-            .ConfigureAwait(true);
-        _ = State.Recompute();
-    }
+    private void OnHideFindContactsClick()
+        => _isFindContactsHidden.Value = Box.New(true);
+
+    // Nested types
 
     public sealed record Model(ShareModalModel ShareModel, bool CanFindContacts);
 }
