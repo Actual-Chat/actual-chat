@@ -463,8 +463,7 @@ public static class IosPtt
     {
         BlazorWebViewApp.EnsureStarted();
         _ = BackgroundTask.Run(async () => {
-            var isForeground = await AppServicesAccessor
-                .DispatchToMainThread(() => UIApplication.SharedApplication.ApplicationState
+            var isForeground = await DispatchToMainThread(() => UIApplication.SharedApplication.ApplicationState
                     == UIApplicationState.Active)
                 .ConfigureAwait(false);
             Log.LogInformation("PTT wake dispatched for chat #{ChatId}, isForeground={IsForeground}, owner={Owner}",

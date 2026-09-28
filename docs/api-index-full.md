@@ -1161,6 +1161,7 @@ Cross-MAUI-app shared utilities (used by App.Maui and IosShareExt).
 - `MauiPreferences` - MAUI preferences storage.
 - `MauiEncryptionKeys` - Lazy secure database/cache key initialization and legacy preferences migration.
 - `MauiDiagnostics` - MAUI diagnostics utilities.
+- `MauiMainThread` (static class) - Main-thread check and dispatch shared by every MAUI project; aliases `MacOSMainThread` on the AppKit backend.
 - `MauiHostNameRemapper` - Remaps hostnames for MAUI environments.
 - `MauiBackgroundState` - MAUI app background/foreground state tracking.
 - `WebAuth` - Web authentication settings for MAUI.

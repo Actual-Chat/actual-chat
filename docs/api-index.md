@@ -434,6 +434,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 
 - `MauiModule`, `MauiSettings`, `MauiPreferences`, `MauiDiagnostics`, `MauiHostNameRemapper`, `MauiBackgroundState`
 - `MauiEncryptionKeys` — secure database/cache keys; await lazy `WhenReady` before reading `DbEncryptionKey`
+- `MauiMainThread` — `IsMainThread`, `BeginDispatchToMainThread`, `DispatchToMainThread` (static-imported in `App.Maui`); the one main-thread API on every platform, including the AppKit backend
 - `AppStrings` — the `IStringLocalizer` for code with no Blazor circuit (native dialogs, local notifications, the share extension); language from `MauiPreferences.UILanguage`
 - `KvasarStoreSupport` — Kvasar store suspend handling + legacy SQLite cleanup
 - `ChatIntents`, `IconUIExt.GetIntentImage` — shared pieces of an Intents donation (chat `INPerson`, PNG avatar `INImage`, `INInteraction` donation); reuse for any new `INIntent`
