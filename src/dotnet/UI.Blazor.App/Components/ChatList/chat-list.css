@@ -537,3 +537,18 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
     @apply max-w-72 px-4;
     @apply text-center text-sm text-03;
 }
+.invite-friends-banner .c-find-contacts {
+    @apply flex items-center gap-x-1;
+}
+.invite-friends-banner .c-find-contacts > .btn-find-contacts {
+    @apply text-primary;
+}
+.invite-friends-banner .c-find-contacts > .btn-find-contacts i {
+    @apply text-xl;
+}
+.invite-friends-banner .c-find-contacts > .btn-round {
+    @apply text-03;
+}
+.find-contacts-text > p + p {
+    @apply mt-2;
+}

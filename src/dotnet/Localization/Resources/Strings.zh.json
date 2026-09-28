@@ -345,6 +345,9 @@
   "ChatList_Thread_Format": "话题“{0}”",
 
   "ChatList_InviteFriends": "分享你的账号链接来邀请朋友，如果他们就在附近，也可以给他们看二维码。",
+  "ChatList_FindContacts": "从通讯录查找好友",
+  "ChatList_FindContactsPrivacy": "电话号码和电子邮件地址会在发送前于你的设备上进行哈希处理。",
+  "ChatList_FindContactsVerifyPhone_Format": "好友通过你的电话号码在 {0} 上找到你，所以请先验证号码。",
   "ShareQr_Show": "显示",
   "ShareQr_Hint_Format": "请朋友用手机相机扫描此二维码，即可在 {0} 上找到你。",
   "ShareQr_TabShow": "我的二维码",

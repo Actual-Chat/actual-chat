@@ -345,6 +345,9 @@
   "ChatList_Thread_Format": "थ्रेड '{0}'",
 
   "ChatList_InviteFriends": "अपने अकाउंट का लिंक शेयर करके दोस्तों को आमंत्रित करें, या अगर वे पास हों तो उन्हें QR कोड दिखाएँ।",
+  "ChatList_FindContacts": "संपर्कों से दोस्त खोजें",
+  "ChatList_FindContactsPrivacy": "फ़ोन नंबर और ईमेल पते भेजे जाने से पहले आपके डिवाइस पर हैश किए जाते हैं।",
+  "ChatList_FindContactsVerifyPhone_Format": "दोस्त आपको {0} पर आपके फ़ोन नंबर से ढूँढते हैं, इसलिए पहले उसे सत्यापित करें।",
   "ShareQr_Show": "दिखाएँ",
   "ShareQr_Hint_Format": "किसी दोस्त से कहें कि वह इस QR कोड को अपने फ़ोन के कैमरे से स्कैन करे और आपको {0} पर ढूँढ़ ले।",
   "ShareQr_TabShow": "मेरा QR",

@@ -383,6 +383,9 @@ public static class LocalizedStringsLocalizerExt
         public string ChatList_Thread_Format(object arg0) => l["ChatList_Thread_Format", arg0].Value;
 
         public string ChatList_InviteFriends => l["ChatList_InviteFriends"].Value;
+        public string ChatList_FindContacts => l["ChatList_FindContacts"].Value;
+        public string ChatList_FindContactsPrivacy => l["ChatList_FindContactsPrivacy"].Value;
+        public string ChatList_FindContactsVerifyPhone_Format(object arg0) => l["ChatList_FindContactsVerifyPhone_Format", arg0].Value;
         public string ShareQr_Show => l["ShareQr_Show"].Value;
         public string ShareQr_Hint_Format(object arg0) => l["ShareQr_Hint_Format", arg0].Value;
         public string ShareQr_TabShow => l["ShareQr_TabShow"].Value;

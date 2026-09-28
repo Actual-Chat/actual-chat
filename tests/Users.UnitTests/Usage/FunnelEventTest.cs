@@ -15,6 +15,7 @@ public class FunnelEventTest
     [InlineData(FunnelEvent.JoinOpenedSignedOut)]
     [InlineData(FunnelEvent.InviteCopy)]
     [InlineData(FunnelEvent.ContactsAccessGranted)]
+    [InlineData(FunnelEvent.InviteFindContacts)]
     public void ClientEventShouldBeClientReportable(FunnelEvent funnelEvent)
         => funnelEvent.IsClientReportable().Should().BeTrue();
 }

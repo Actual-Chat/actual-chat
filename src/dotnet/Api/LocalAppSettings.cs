@@ -28,6 +28,7 @@ public partial record LocalAppSettings : StoredSettings, IHasKvasKey<LocalAppSet
     // Comma-separated PermissionKind names that were missing when the permission warning was last
     // dismissed. Kept per-device: OS permission state is per-device, and this avoids a server round-trip.
     [DataMember, MemoryPackOrder(7), Key(7)] public string? DismissedPermissionWarnings { get; init; }
+    [DataMember, MemoryPackOrder(8), Key(8)] public bool? IsFindContactsHidden { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsLogViewerEnabledOrDefault => IsLogViewerEnabled ?? true;

@@ -345,6 +345,9 @@
   "ChatList_Thread_Format": "Wątek „{0}”",
 
   "ChatList_InviteFriends": "Zaproś znajomych, udostępniając link do swojego konta, albo pokaż im kod QR, jeśli są w pobliżu.",
+  "ChatList_FindContacts": "Znajdź znajomych w kontaktach",
+  "ChatList_FindContactsPrivacy": "Numery telefonów i adresy e-mail są haszowane na Twoim urządzeniu przed wysłaniem.",
+  "ChatList_FindContactsVerifyPhone_Format": "Znajomi znajdują Cię w {0} po numerze telefonu, więc najpierw go zweryfikuj.",
   "ShareQr_Show": "Pokaż",
   "ShareQr_Hint_Format": "Poproś znajomego, aby zeskanował ten kod QR aparatem telefonu i znalazł Cię w {0}.",
   "ShareQr_TabShow": "Mój QR",

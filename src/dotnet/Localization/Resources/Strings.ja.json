@@ -345,6 +345,9 @@
   "ChatList_Thread_Format": "スレッド「{0}」",
 
   "ChatList_InviteFriends": "アカウントのリンクを共有して友だちを招待しましょう。近くにいる場合は QR コードを見せることもできます。",
+  "ChatList_FindContacts": "連絡先から友だちを探す",
+  "ChatList_FindContactsPrivacy": "電話番号とメールアドレスは、送信前に端末上でハッシュ化されます。",
+  "ChatList_FindContactsVerifyPhone_Format": "友だちは電話番号で {0} 上のあなたを見つけます。まず電話番号を確認してください。",
   "ShareQr_Show": "表示",
   "ShareQr_Hint_Format": "友だちにスマートフォンのカメラでこの QR コードをスキャンしてもらうと、{0} であなたを見つけられます。",
   "ShareQr_TabShow": "マイ QR",

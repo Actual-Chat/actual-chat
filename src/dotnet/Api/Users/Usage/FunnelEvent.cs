@@ -19,6 +19,7 @@ public enum FunnelEvent
     InviteQr = 11,
     ContactsAccessGranted = 12,
     ContactsMatched = 13,
+    InviteFindContacts = 14,
 }
 
 public static class FunnelEventExt

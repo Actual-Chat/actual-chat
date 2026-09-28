@@ -345,6 +345,9 @@
   "ChatList_Thread_Format": "Konu '{0}'",
 
   "ChatList_InviteFriends": "Hesabınızın bağlantısını paylaşarak arkadaşlarınızı davet edin veya yakındalarsa onlara bir QR kodu gösterin.",
+  "ChatList_FindContacts": "Kişilerden arkadaş bul",
+  "ChatList_FindContactsPrivacy": "Telefon numaraları ve e-posta adresleri gönderilmeden önce cihazınızda hash'lenir.",
+  "ChatList_FindContactsVerifyPhone_Format": "Arkadaşlarınız sizi {0} üzerinde telefon numaranızla bulur, bu yüzden önce onu doğrulayın.",
   "ShareQr_Show": "Gösterin",
   "ShareQr_Hint_Format": "Bir arkadaşınızdan bu QR kodu telefonunun kamerasıyla taramasını isteyin; sizi {0} üzerinde bulsun.",
   "ShareQr_TabShow": "QR kodum",

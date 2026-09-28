@@ -345,6 +345,9 @@
   "ChatList_Thread_Format": "Нит „{0}“",
 
   "ChatList_InviteFriends": "Позовите пријатеље дељењем линка на свој рачун, или им покажите QR код ако су у близини.",
+  "ChatList_FindContacts": "Пронађите пријатеље из контаката",
+  "ChatList_FindContactsPrivacy": "Бројеви телефона и адресе е-поште хеширају се на вашем уређају пре слања.",
+  "ChatList_FindContactsVerifyPhone_Format": "Пријатељи вас проналазе на {0} по броју телефона, зато га прво потврдите.",
   "ShareQr_Show": "Прикажите",
   "ShareQr_Hint_Format": "Замолите пријатеља да скенира овај QR код камером телефона како би вас пронашао на {0}.",
   "ShareQr_TabShow": "Мој QR",

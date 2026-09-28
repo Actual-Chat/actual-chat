@@ -345,6 +345,9 @@
   "ChatList_Thread_Format": "Тред «{0}»",
 
   "ChatList_InviteFriends": "Приглашайте друзей, отправив ссылку на ваш аккаунт, или покажите QR-код, если они рядом.",
+  "ChatList_FindContacts": "Найти друзей в контактах",
+  "ChatList_FindContactsPrivacy": "Номера телефонов и адреса почты хешируются на вашем устройстве перед отправкой.",
+  "ChatList_FindContactsVerifyPhone_Format": "Друзья находят вас в {0} по номеру телефона, поэтому сначала подтвердите его.",
   "ShareQr_Show": "Показать",
   "ShareQr_Hint_Format": "Попросите друга отсканировать этот QR-код камерой телефона, чтобы найти вас в {0}.",
   "ShareQr_TabShow": "Мой QR",

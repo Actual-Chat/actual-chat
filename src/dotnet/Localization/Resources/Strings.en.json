@@ -420,6 +420,11 @@
   // screen it opens. "Show" is the button that opens that screen; the Tab ones name its two
   // halves, the user's own code and the camera that reads someone else's.
   "ChatList_InviteFriends": "Invite friends by sharing a link to your account, or show them a QR code if they're nearby.",
+  // A secondary action under the invite text: it opens an explanation, then asks for the phone's
+  // contacts permission. "Hashed" means a one-way fingerprint of each number, not the number itself.
+  "ChatList_FindContacts": "Find friends from contacts",
+  "ChatList_FindContactsPrivacy": "Phone numbers and email addresses are hashed on your device before they're sent.",
+  "ChatList_FindContactsVerifyPhone_Format": "Friends find you on {0} by your phone number, so verify it first.",
   "ShareQr_Show": "Show",
   "ShareQr_Hint_Format": "Ask a friend to scan this QR code with their phone's camera to find you on {0}.",
   "ShareQr_TabShow": "Share QR",

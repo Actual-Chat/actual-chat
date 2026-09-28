@@ -345,6 +345,9 @@
   "ChatList_Thread_Format": "Utas “{0}”",
 
   "ChatList_InviteFriends": "Undang teman dengan membagikan tautan ke akun Anda, atau tunjukkan kode QR jika mereka ada di dekat Anda.",
+  "ChatList_FindContacts": "Temukan teman dari kontak",
+  "ChatList_FindContactsPrivacy": "Nomor telepon dan alamat email di-hash di perangkat Anda sebelum dikirim.",
+  "ChatList_FindContactsVerifyPhone_Format": "Teman menemukan Anda di {0} lewat nomor telepon, jadi verifikasi dulu nomor Anda.",
   "ShareQr_Show": "Tampilkan",
   "ShareQr_Hint_Format": "Minta teman memindai kode QR ini dengan kamera ponselnya untuk menemukan Anda di {0}.",
   "ShareQr_TabShow": "QR saya",
