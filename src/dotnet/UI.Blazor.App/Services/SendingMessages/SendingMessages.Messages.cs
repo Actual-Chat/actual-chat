@@ -64,6 +64,7 @@ partial class SendingMessages
             cancelSendRequested) {
             LocationPoint = request.LocationPoint,
             IsLocationPlace = request.IsLocationPlace,
+            LocationId = request.LocationId,
         };
         return sendingMessage;
     }

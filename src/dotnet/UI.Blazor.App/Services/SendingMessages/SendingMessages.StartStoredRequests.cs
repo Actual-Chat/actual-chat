@@ -73,6 +73,7 @@ partial class SendingMessages
             AfterSendMessageHandlerArgs = cmd.AfterSendMessageHandler?.Args ?? "",
             LocationPoint = cmd.LocationPoint,
             IsLocationPlace = cmd.IsLocationPlace,
+            LocationId = cmd.LocationId,
         };
         return entry;
     }

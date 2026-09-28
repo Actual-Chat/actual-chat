@@ -397,14 +397,11 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
         if (sharedLocation is null)
             return share;
 
-        var command = new Chats_UpsertEntry {
-            Session = Session,
-            ChatId = share.ChatId,
-            LocalId = null,
-            LocationId = sharedLocation.Id,
-        };
-        await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+        // The id is stored before the entry is posted: the post is the queue's to retry, and a share
+        // left without its id would be created again next cycle, freezing this one.
         SetSharedLocationId(share.ChatId, sharedLocation.Id);
+        var request = SendMessageRequest.NewLocation(share.ChatId, sharedLocation.Id);
+        await Hub.SendingMessages.Send(request, cancellationToken).ConfigureAwait(false);
         return share with { LocationId = sharedLocation.Id };
     }
 
