@@ -95,6 +95,9 @@ features:
 - [Passkeys](./passkeys.md) — the feature flag, RP id and origin allow-list, the
   Android `apk-key-hash` derivation, association files, the client seam per
   platform, and the manual verification recipe.
+- [Usage and funnel metrics](./usage-metrics.md) — what is recorded about arrival
+  links, onboarding and activation, and what to update when you add an onboarding
+  step, a way in, or a funnel step.
 - [Integrations: outgoing web hooks](./integrations/web-hooks.md) — scopes, the
   event catalog, the signed envelope and every `data` shape, Standard Webhooks
   verification, retry/disable rules, and the settings walkthrough.
