@@ -179,10 +179,5 @@ public sealed class SonioxClient(IServiceProvider services)
     }
 
     private static TimeSpan GetRetryDelay(HttpResponseMessage response)
-    {
-        var retryAfter = response.Headers.RetryAfter;
-        var delay = retryAfter?.Delta
-            ?? (retryAfter?.Date is { } date ? date - DateTimeOffset.UtcNow : DefaultRetryDelay);
-        return delay <= TimeSpan.Zero ? DefaultRetryDelay : TimeSpanExt.Min(delay, MaxRetryDelay);
-    }
+        => response.GetRetryAfter() is { } delay ? TimeSpanExt.Min(delay, MaxRetryDelay) : DefaultRetryDelay;
 }

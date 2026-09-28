@@ -36,11 +36,15 @@ public static class HttpMockExt
         this HttpHandlerMock mock,
         string url,
         HttpStatusCode failureStatusCode,
-        int failureCount)
+        int failureCount,
+        TimeSpan? retryAfter = null)
     {
         var requestCount = 0;
         return mock.Setup(url, req => Interlocked.Increment(ref requestCount) <= failureCount
-            ? new (failureStatusCode) { RequestMessage = req }
+            ? new (failureStatusCode) {
+                RequestMessage = req,
+                Headers = { RetryAfter = retryAfter is { } delay ? new RetryConditionHeaderValue(delay) : null },
+            }
             : ImageResponse(req, "default.jpg", "image/jpeg"));
     }
 

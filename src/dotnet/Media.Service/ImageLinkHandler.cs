@@ -11,13 +11,19 @@ public sealed class ImageLinkHandler(ImageGrabber imageGrabber, ILogger<ImageLin
     public async Task<CrawledLink> Handle(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var mediaId = (MediaId?)null;
+        var retryDelay = (TimeSpan?)null;
         try {
             mediaId = await imageGrabber.GetOrGrab(response.RequestMessage!.RequestUri!.AbsoluteUri, cancellationToken).ConfigureAwait(false);
+        }
+        catch (RateLimitExceededException e) {
+            retryDelay = e.RetryDelay;
+            log.LogWarning("Rate-limited grabbing image with url '{ImageUrl}': {Message}",
+                response.RequestMessage?.RequestUri, e.Message);
         }
         catch (Exception e) {
             log.LogWarning(e, "Failed to grab image with url '{ImageUrl}'",
                 response.RequestMessage?.RequestUri);
         }
-        return new CrawledLink(mediaId, OpenGraph.None);
+        return new CrawledLink(mediaId, OpenGraph.None, retryDelay);
     }
 }

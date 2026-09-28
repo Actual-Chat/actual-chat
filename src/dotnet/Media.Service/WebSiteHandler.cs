@@ -18,14 +18,20 @@ public sealed class WebSiteHandler(MediaSettings settings, ImageGrabber imageGra
             return CrawledLink.None;
 
         var mediaId = (MediaId?)null;
+        var retryDelay = (TimeSpan?)null;
         try {
             mediaId = await imageGrabber.GetOrGrab(graph.ImageUrl, cancellationToken).ConfigureAwait(false);
+        }
+        catch (RateLimitExceededException e) {
+            retryDelay = e.RetryDelay;
+            Log.LogWarning("Rate-limited grabbing image with url '{ImageUrl}' for page with url '{PageUrl}': {Message}",
+                graph.ImageUrl, requestUri, e.Message);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Failed to grab image with url '{ImageUrl}' for page with url '{PageUrl}'",
                 graph.ImageUrl, requestUri);
         }
-        return new (mediaId, graph);
+        return new (mediaId, graph, retryDelay);
     }
 
     private async Task<OpenGraph?> ParseOpenGraph(
