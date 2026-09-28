@@ -1,7 +1,3 @@
-#if MACOS
-using CoreFoundation;
-using Foundation;
-#endif
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
 using Microsoft.Maui.Devices.Sensors;
@@ -9,6 +5,11 @@ using Microsoft.Maui.Networking;
 using Sentry.Extensibility;
 using Sentry.Protocol;
 using Device = Sentry.Protocol.Device;
+#if MACOS
+// MAUI Essentials' MainThread is its "not implemented" neutral build on the macos TFM
+// TODO(maui-labs): see MacOSMainThread
+using MainThread = ActualChat.Maui.MacOSMainThread;
+#endif
 
 namespace ActualChat.Maui.Sentry.Internal;
 
@@ -21,14 +22,6 @@ internal static class MauiDeviceData
     private static int _isDisplayChangeTracked;
 #endif
     private static DisplaySnapshot? _displaySnapshot;
-
-#if MACOS
-    // Essentials' MainThread is its "not implemented" neutral build on the macos TFM
-    // TODO(maui-labs): use MainThread once it's implemented there
-    private static bool IsMainThread => NSThread.Current.IsMainThread;
-#elif !ANDROID
-    private static bool IsMainThread => MainThread.IsMainThread;
-#endif
 
     public static void ApplyMauiDeviceData(this Device device, IDiagnosticLogger? logger)
     {
@@ -101,12 +94,12 @@ internal static class MauiDeviceData
             // An event logged off the UI thread gets the last snapshot instead of waiting for it:
             // this runs inside the logging call, and the UI thread may itself be waiting on the
             // thread that logs - which is how it deadlocked into a background watchdog kill (#4869).
-            if (IsMainThread)
+            if (MainThread.IsMainThread)
                 ReadDisplaySnapshot().ApplyTo(device);
             else if (Volatile.Read(ref _displaySnapshot) is { } displaySnapshot)
                 displaySnapshot.ApplyTo(device);
             else if (Interlocked.Exchange(ref _isDisplayCaptureQueued, 1) == 0)
-                BeginInvokeOnMainThread(() => ReadDisplaySnapshot());
+                MainThread.BeginInvokeOnMainThread(() => ReadDisplaySnapshot());
 #endif
 
             // https://docs.microsoft.com/dotnet/maui/platform-integration/device/vibrate
@@ -179,14 +172,6 @@ internal static class MauiDeviceData
         DeviceDisplay.Current.MainDisplayInfoChanged += (_, e)
             => Volatile.Write(ref _displaySnapshot, ToSnapshot(e.DisplayInfo));
     }
-#endif
-
-#if MACOS
-    private static void BeginInvokeOnMainThread(Action action)
-        => DispatchQueue.MainQueue.DispatchAsync(action);
-#elif !ANDROID
-    private static void BeginInvokeOnMainThread(Action action)
-        => MainThread.BeginInvokeOnMainThread(action);
 #endif
 
     // Nested types
