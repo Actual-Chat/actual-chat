@@ -41,6 +41,7 @@ public static partial class MauiProgram
         services.AddSingleton<AndroidContentDownloader>();
         services.AddScoped<IFileSaver, AndroidFileSaver>();
         services.AddScoped<IAppReviewer>(_ => new AndroidAppReviewer());
+        services.AddScoped<IInstallReferrer>(_ => new AndroidInstallReferrer());
 
         services.AddTransient<IDeviceTokenRetriever>(c => new AndroidDeviceTokenRetriever(c));
         // Temporarily disabled switch between loudspeaker and earpiece
