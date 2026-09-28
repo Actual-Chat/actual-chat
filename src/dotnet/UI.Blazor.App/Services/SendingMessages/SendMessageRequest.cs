@@ -12,6 +12,8 @@ public sealed class SendMessageRequest
     public FilesUploadHandle? Uploads { get; private set; }
     public IReadOnlyList<MediaRef> ExistingMedia { get; private set; } = [];
     public AfterSendMessageHandler? AfterSendMessageHandler { get; private set; }
+    public GeoPoint? LocationPoint { get; private set; }
+    public bool IsLocationPlace { get; private set; }
 
     public static SendMessageRequest NewMessage(
         ChatId chatId,
@@ -25,6 +27,14 @@ public sealed class SendMessageRequest
             Uploads = uploads,
             ExistingMedia = existingMedia ?? [],
             AfterSendMessageHandler = afterSendMessageHandler,
+        };
+
+    public static SendMessageRequest NewLocation(ChatId chatId, GeoPoint point, bool isPlace)
+        => new () {
+            ChatId = chatId,
+            Text = "",
+            LocationPoint = point,
+            IsLocationPlace = isPlace,
         };
 
     public static SendMessageRequest EditMessage(ChatEntryId chatEntryId, string newText)

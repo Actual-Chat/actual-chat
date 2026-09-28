@@ -38,7 +38,9 @@
             }
         </div>
         <div class="c-footer">
-            @if (m.IsLive) {
+            @if (m.IsSending) {
+                <i class="icon-clock c-pin"></i>
+            } else if (m.IsLive) {
                 <marker-pin-live-svg class="c-pin"></marker-pin-live-svg>
             } else {
                 <i class="icon-marker-pin c-pin"></i>
@@ -80,6 +82,9 @@
             });
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        if (Entry.GetSendingMessage() is { LocationPoint: { } pendingPoint } sendingMessage)
+            return await GetSendingModel(pendingPoint, sendingMessage.IsLocationPlace, cancellationToken)
+                .ConfigureAwait(false);
         if (Entry.LocationId is not { } locationId)
             return null;
 
@@ -111,13 +116,22 @@
 
     // Private methods
 
+    private async Task<Model> GetSendingModel(GeoPoint point, bool isPlace, CancellationToken cancellationToken) {
+        // The shared location doesn't exist yet, so the pin comes from the queued send itself.
+        var marker = await LocationUI.GetPendingMarker(Entry.ChatId, point, isPlace, cancellationToken)
+            .ConfigureAwait(false);
+        return new Model(point, [marker], null, false, IsPlace: isPlace) { IsSending = true };
+    }
+
     private async Task<double?> GetDistance(GeoPoint target, CancellationToken cancellationToken) {
         var ownPoint = await LocationUI.GetCurrentLocation(cancellationToken).ConfigureAwait(false);
         return ownPoint?.DistanceTo(target);
     }
 
     private Task OnOpenMap()
-        => LocationUI.ShowLocationMapModal(Entry.ChatId, Entry.LocationId);
+        => State.Value is { IsSending: true }
+            ? Task.CompletedTask
+            : LocationUI.ShowLocationMapModal(Entry.ChatId, Entry.LocationId);
 
     private Task OnStopSharing()
         => LocationUI.StopSharing(Entry.ChatId, Entry.LocationId, CancellationToken.None);
@@ -140,6 +154,7 @@
         double? Distance = null,
         GeoTrackingError? TrackingError = null,
         bool IsPlace = false) {
+        public bool IsSending { get; init; }
         public bool IsLive => Countdown is not null;
     }
 }
