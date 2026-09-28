@@ -2248,17 +2248,28 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task RestartedSessionSurfacesItsEntriesForAViewerWhoLeftTheLastOne()
+    public Task RestartedSessionSurfacesItsEntriesForAViewerWhoLeftTheLastOne()
+        => AssertRestartSurfacesItsEntriesForAViewerWhoLeftTheLastOne(closesBeforeRestart: false);
+
+    [Fact]
+    public Task SessionStartedAfterTheCloseShouldSurfaceItsEntriesForAViewerWhoLeftTheLastOne()
+        => AssertRestartSurfacesItsEntriesForAViewerWhoLeftTheLastOne(closesBeforeRestart: true);
+
+    private async Task AssertRestartSurfacesItsEntriesForAViewerWhoLeftTheLastOne(bool closesBeforeRestart)
     {
-        // Everyone hangs up, and then someone starts talking again while the viewer is not attending.
+        // Everyone hangs up, and then others start talking again while the viewer is not attending.
         // The viewer was in the session that ended, so the block they are still looking at is a frozen
         // one - and its hidden tail must not be allowed to swallow what the next session says.
+        // Whether the restart reopens the closing session or starts a new one depends on the summary
+        // flow finishing the close first, so each order gets its own test; two speakers come back
+        // because one would not latch a new session.
 
         // arrange
         await Tester.SignInAsUniqueBob();
         var chat = await CreateSettledChat("restart-after-close-test");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
         var peerId = AuthorId.New(chat.Id, 777_140);
+        var otherPeerId = AuthorId.New(chat.Id, 777_141);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
         await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
@@ -2284,9 +2295,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
         }, TimeSpan.FromSeconds(10));
 
-        // Everyone stops, the viewer included - which is what latches the frozen template. No
-        // FinalizeSession: the report restarts "almost instantly", i.e. while the session is still
-        // closing rather than after it has been put away.
+        // Everyone stops, the viewer included - which is what latches the frozen template. The report
+        // restarts "almost instantly", i.e. while the session is still closing, unless the close is
+        // forced to complete first.
         await chatAudioUI.SetListeningState(chat.Id, false);
         InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
         await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
@@ -2306,8 +2317,14 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             : $"after stop: session=v={stateAfterStop.EffectiveVisibleStartLid}, isClosing={stateAfterStop.IsClosing}, "
                 + $"authors={stateAfterStop.AuthorIds.Count}, end={stateAfterStop.EndEntryLid}");
 
-        // act - one of them starts talking again, and says something
+        if (closesBeforeRestart) {
+            await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
+            (await liveBackend.GetState(chat.Id, CancellationToken.None)).Should().BeNull();
+        }
+
+        // act - two of them start talking again, and say something
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, otherPeerId, null, true, true, CancellationToken.None);
         var restarted = await liveBackend.GetState(chat.Id, CancellationToken.None);
         Out.WriteLine(restarted == null
             ? "after restart: session=<null>"
