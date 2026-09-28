@@ -9,18 +9,19 @@
 }
 .coach-panel > .c-cover .right-panel-close-btn { @apply absolute top-2 right-2; }
 .coach-panel > .c-header {
-    @apply relative flex-none flex-x items-end justify-between;
+    @apply relative flex-none flex-x items-start justify-end;
     @apply px-4 h-10;
 }
-.coach-panel > .c-header .c-avatar { @apply -mt-8; }
+.coach-panel > .c-header > .c-avatar { @apply absolute left-4 -top-8 z-10; }
+.coach-panel > .c-header .c-settings-btn { @apply mt-1; }
 .coach-panel > .c-body {
     @apply flex-1 flex-y gap-y-3;
     @apply px-4 pb-4 pt-2;
     @apply overflow-y-auto;
 }
-.coach-panel .c-title-row { @apply flex-x items-start justify-between gap-x-3; }
-.coach-panel .c-title-row .c-title { @apply text-title-500 text-02; }
-.coach-score-card { @apply flex-y items-end text-right; }
+.coach-panel .c-title-row { @apply flex-x items-start justify-between gap-x-3 pt-1; }
+.coach-panel .c-title-row .c-title { @apply text-title-500 text-02 whitespace-nowrap; }
+.coach-score-card { @apply flex-y items-end text-right max-w-44; }
 .coach-score-card .c-score { @apply text-body-500 text-02; }
 .coach-score-card .c-no-score { @apply text-caption text-03; }
 .coach-score-card .c-delta { @apply text-caption; }
