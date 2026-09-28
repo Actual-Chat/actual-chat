@@ -3,53 +3,39 @@
 @inherits ComputedStateComponent<AppUIHub, UserCoachSettings>
 @{
     var s = State.Value;
-    _formModel.Minutes = (int)s.TipInterval.TotalMinutes;
+    var minutes = (int)s.TipInterval.TotalMinutes;
 }
 
 <Tile Class="coach-settings">
     <TileItem Class="coach-settings-coaching" Click="@OnToggleCoaching">
-        <Icon><i class="icon-mic text-2xl"></i></Icon>
         <Content>@L.Coach_Coaching</Content>
-        <Caption>@L.Coach_CoachingCaption</Caption>
+        <Caption>@(s.IsCoachingEnabled ? L.RightPanel_On : L.RightPanel_Off)</Caption>
         <Right>
             <Toggle IsChecked="@s.IsCoachingEnabled" IsCheckedChanged="@(_ => OnToggleCoaching())"/>
         </Right>
     </TileItem>
     <TileItem Class="coach-settings-tips" Click="@OnToggleTips">
         <Content>@L.Coach_LiveTips</Content>
+        <Caption>@(s.AreLiveTipsEnabled ? L.RightPanel_On : L.RightPanel_Off)</Caption>
         <Right>
             <Toggle IsChecked="@s.AreLiveTipsEnabled" IsDisabled="@(!s.IsCoachingEnabled)"
                     IsCheckedChanged="@(_ => OnToggleTips())"/>
         </Right>
     </TileItem>
-    <Form Model="@_formModel">
-        <FormBlock>
-            <FormSection
-                For="() => _formModel.Minutes"
-                InputId="@_formModel.MinutesFormId"
-                IsLabelInsideInput="true"
-                Label="@L.Coach_TipInterval"
-                IsRequired="true"
-                HideValidationMessage="true">
-                <InputSelect
-                    Value="_formModel.Minutes"
-                    ValueExpression="@(() => _formModel.Minutes)"
-                    ValueChanged="@((int minutes) => OnMinutesChanged(minutes))">
-                    @foreach (var item in Intervals) {
-                        <option value="@item">@L.Coach_TipIntervalMinutes(item, item)</option>
-                    }
-                </InputSelect>
-            </FormSection>
-        </FormBlock>
-    </Form>
+    <TileItem Class="coach-settings-interval" IsHoverable="false" Role="">
+        <Content>@L.Coach_TipInterval</Content>
+        <Right>
+            <select class="c-interval" value="@minutes" @onchange="@OnMinutesChanged">
+                @foreach (var item in Intervals) {
+                    <option value="@item" selected="@(item == minutes)">@L.Coach_TipIntervalMinutes(item, item)</option>
+                }
+            </select>
+        </Right>
+    </TileItem>
 </Tile>
 
 @code {
     private static readonly int[] Intervals = [1, 5, 15, 30];
-    private FormModel _formModel = null!;
-
-    protected override void OnInitialized()
-        => _formModel = new FormModel(ComponentIdGenerator);
 
     protected override ComputedState<UserCoachSettings>.Options GetStateOptions()
         => new() { InitialValue = new UserCoachSettings(), Category = GetStateCategory(GetType()) };
@@ -65,14 +51,9 @@
             ? UserSettingsUI.UserCoachSettings().Update(x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled })
             : Task.CompletedTask;
 
-    private Task OnMinutesChanged(int minutes) {
-        _formModel.Minutes = minutes;
-        return UserSettingsUI.UserCoachSettings()
-            .Update(x => x with { TipInterval = TimeSpan.FromMinutes(minutes) }, CancellationToken.None);
-    }
-
-    public sealed class FormModel(ComponentIdGenerator componentIdGenerator) {
-        public int Minutes { get; set; }
-        public string MinutesFormId { get; } = componentIdGenerator.Next("coach-tip-interval");
-    }
+    private Task OnMinutesChanged(ChangeEventArgs e)
+        => int.TryParse(e.Value?.ToString(), out var minutes)
+            ? UserSettingsUI.UserCoachSettings()
+                .Update(x => x with { TipInterval = TimeSpan.FromMinutes(minutes) }, CancellationToken.None)
+            : Task.CompletedTask;
 }

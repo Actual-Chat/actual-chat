@@ -4,6 +4,9 @@
 }
 
 <div class="bar-chart @Class">
+    @if (ReferenceValue is { } reference && max > 0) {
+        <div class="c-reference" style="bottom: @((Math.Clamp(reference / max, 0, 1) * 100).ToString("F0", null))%"></div>
+    }
     @foreach (var item in Items) {
         var height = max > 0 ? item.Value / max * 100 : 0;
         <div class="c-column">
@@ -20,4 +23,5 @@
     [Parameter, EditorRequired] public IReadOnlyList<ChartItem> Items { get; set; } = [];
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ValueFormat { get; set; } = "F0";
+    [Parameter] public double? ReferenceValue { get; set; }
 }

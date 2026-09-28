@@ -26,7 +26,7 @@ public class CoachLabelsTest
     }
 
     [Fact]
-    public void ValueShouldShowTheCountAndShareOnceWordsWereTagged()
+    public void ValueAndRateShouldSplitACountedMetricForTheRowLayout()
     {
         // arrange
         var labels = NewLabels();
@@ -34,8 +34,10 @@ public class CoachLabelsTest
 
         // act
         var value = labels.Value(metric);
+        var rate = labels.Rate(metric);
 
         // assert
-        value.Should().Be("3 · 5% of speech");
+        value.Should().Be("3", "the row title carries the count");
+        rate.Should().Be("5% of speech", "the right side carries the share");
     }
 }

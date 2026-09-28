@@ -60,7 +60,7 @@ public sealed class CoachLabels(IStringLocalizer l)
             CoachMetricKind.Pace => l.Coach_Wpm_Format(Round(value)),
             CoachMetricKind.Pauses => l.Coach_PerMinute_Format(value.ToString("F1", null)),
             CoachMetricKind.Fillers or CoachMetricKind.WeakWords or CoachMetricKind.Repetition
-                or CoachMetricKind.Profanity => Counted(value, metric.Rate),
+                or CoachMetricKind.Profanity => metric.Rate is null ? l.Coach_NoData : Round(value).ToString(),
             CoachMetricKind.SentenceLength => l.Coach_WordsPerSentence_Format(value.ToString("F1", null)),
             CoachMetricKind.Vocabulary => l.Coach_Percent_Format(Round(value * 100)),
             CoachMetricKind.TurnTaking => l.Coach_PercentOfTalkTime_Format(Round(value * 100)),
@@ -69,11 +69,26 @@ public sealed class CoachLabels(IStringLocalizer l)
         };
     }
 
-    // No rate means no tagged words yet, so the zero count is absence of data rather than a clean sheet
-    private string Counted(double count, double? rate)
-        => rate is { } r
-            ? $"{Round(count)} · {l.Coach_PercentOfSpeech_Format(Round(r * 100))}"
-            : l.Coach_NoData;
+    // No rate means no tagged words yet, so a zero count is absence of data rather than a clean sheet
+    public string Rate(CoachMetric metric)
+        => metric.Kind is CoachMetricKind.Fillers or CoachMetricKind.WeakWords or CoachMetricKind.Repetition
+            or CoachMetricKind.Profanity && metric.Rate is { } rate
+            ? l.Coach_PercentOfSpeech_Format(Round(rate * 100))
+            : "";
+
+    public string PaceNudge(CoachBand band)
+        => band switch {
+            CoachBand.High => l.Coach_NudgePaceFast,
+            CoachBand.Low => l.Coach_NudgePaceSlow,
+            _ => l.Coach_NudgePaceGood,
+        };
+
+    public string TurnNudge(CoachBand band)
+        => band switch {
+            CoachBand.Low => l.Coach_NudgeTurnLow,
+            CoachBand.High => l.Coach_NudgeTurnHigh,
+            _ => l.Coach_NudgeTurnGood,
+        };
 
     private static int Round(double value)
         => (int)Math.Round(value);

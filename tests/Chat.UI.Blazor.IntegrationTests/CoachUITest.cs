@@ -242,8 +242,13 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         // assert
         cut.WaitForAssertion(() => cut.Find(".coach-metric-row[data-metric=Pace]").TextContent
             .Should().Contain("wpm"), TimeSpan.FromSeconds(10));
+        cut.WaitForAssertion(() => cut.Find(".coach-metric-row[data-metric=Fillers] .c-title").TextContent
+            .Should().Contain("1"), TimeSpan.FromSeconds(10));
+        cut.FindAll(".coach-metric-row[data-metric=Fillers] .coach-chip").Should().BeEmpty("chips show on expand");
+        await cut.InvokeAsync(() => cut.Find(".coach-metric-row[data-metric=Fillers] .c-head").Click());
         cut.WaitForAssertion(() => cut.Find(".coach-metric-row[data-metric=Fillers] .coach-chip").TextContent
-            .Should().Contain("um"), TimeSpan.FromSeconds(10));
+            .Should().Contain("um"));
+        cut.Find(".coach-panel .coach-trends").Should().NotBeNull("Trends is a section of the panel, not a tab");
 
         // act - the greyed-out tips row does nothing while coaching is off; the Coaching toggle writes the setting
         await cut.InvokeAsync(() => cut.Find(".coach-settings-tips").Click());
@@ -287,12 +292,14 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
 
         // assert
         cut.WaitForAssertion(() => {
-            cut.FindAll(".bar-chart .c-bar").Count.Should().Be(7, "a week has seven columns");
-            cut.FindAll(".bar-chart .c-bar").Count(b => b.GetAttribute("style")!.Contains("height: 100%"))
+            cut.FindAll(".c-pace .bar-chart .c-bar").Count.Should().Be(7, "a week has seven columns");
+            cut.FindAll(".c-pace .bar-chart .c-bar").Count(b => b.GetAttribute("style")!.Contains("height: 100%"))
                 .Should().Be(1, "only today has speech");
             cut.FindAll(".donut-chart circle.c-slice").Should().NotBeEmpty();
+            cut.FindAll(".coach-trends .c-turn .bar-chart .c-bar").Count.Should().Be(7, "turn-taking has a day column too");
         }, TimeSpan.FromSeconds(10));
-        var todayColumn = cut.FindAll(".bar-chart .c-column")
+        cut.Find(".coach-trends .c-pace .c-nudge").TextContent.Should().NotBeEmpty();
+        var todayColumn = cut.FindAll(".c-pace .bar-chart .c-column")
             .Single(c => c.QuerySelector(".c-bar")!.GetAttribute("style")!.Contains("height: 100%"));
         todayColumn.QuerySelector(".c-label")!.TextContent.Trim().Should().Be(today.ToString("ddd", null),
             "the column is a UTC day and its label must not shift with the browser's offset");
@@ -362,7 +369,8 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
 
         // assert
         inTipsChat.WaitForAssertion(() => inTipsChat.FindAll(".banner.coach-tip-bar").Should().ContainSingle());
-        inTipsChat.Find(".banner.coach-tip-bar").TextContent.Should().Contain("um");
+        inTipsChat.Find(".banner.coach-tip-bar .c-tip-title").TextContent.Should().Be("Avoid filler words");
+        inTipsChat.Find(".banner.coach-tip-bar .c-tip-body").TextContent.Should().Contain("um").And.Contain("10");
         var otherBar = (IStatefulComponent<UserCoachTip?>)inOtherChat.Instance;
         inOtherChat.WaitForAssertion(() => otherBar.State.Snapshot.UpdateCount.Should().BePositive());
         inOtherChat.FindAll(".coach-tip-bar").Should().BeEmpty("the tip belongs to another chat, and nothing reserves space");

@@ -1,15 +1,15 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Users
-@inherits ComputedStateComponent<AppUIHub, CoachTrends.Model>
+@inherits ComponentBase<AppUIHub>
 @{
-    var m = State.Value;
     var s = Summary;
     var composition = Composition(s);
 }
 
 <div class="coach-trends">
+    <div class="c-section-title">@L.Coach_Trends</div>
     <div class="c-section">
-        <div class="c-section-title">@L.Coach_TrendsComposition</div>
+        <div class="c-card-title">@L.Coach_TrendsComposition</div>
         @if (composition.Count > 0) {
             <DonutChart Items="@composition">
                 <Center>@L.Coach_Words(s.Words, s.Words)</Center>
@@ -19,60 +19,16 @@
         }
     </div>
     <div class="c-section">
-        <div class="c-section-title">@L.Coach_TrendsPace</div>
-        @if (m.Bars.Count > 0) {
-            <BarChart Items="@m.Bars" Class="text-primary"/>
-        } else {
-            <div class="c-no-data">@L.Coach_TrendsNoDays</div>
-        }
+        <CoachDayChart Kind="@CoachMetricKind.Pace" Metric="@Find(s, CoachMetricKind.Pace)" Window="@Window"/>
     </div>
-    @foreach (var metric in s.Metrics) {
-        if (metric.Kind is CoachMetricKind.TurnTaking or CoachMetricKind.Patience
-            or CoachMetricKind.Interruptions or CoachMetricKind.Monologue) {
-            <CoachMetricRow Metric="@metric"/>
-        }
-    }
+    <div class="c-section">
+        <CoachDayChart Kind="@CoachMetricKind.TurnTaking" Metric="@Find(s, CoachMetricKind.TurnTaking)" Window="@Window"/>
+    </div>
 </div>
 
 @code {
-    private const int MaxDays = 90;
-
-    private ICoach Coach => Hub.Coach;
-
     [Parameter, EditorRequired] public CoachSummary Summary { get; set; } = null!;
     [Parameter] public CoachWindow Window { get; set; }
-
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var window = Window;
-        var dayCount = window switch {
-            CoachWindow.Today or CoachWindow.Week => 7,
-            CoachWindow.Month => 30,
-            _ => MaxDays,
-        };
-        var today = UsageDay.DayOf(Clocks.SystemClock.Now);
-        var range = new Range<Moment>(today - TimeSpan.FromDays(dayCount - 1), today + TimeSpan.FromDays(1));
-        var days = await Coach.ListOwnDays(Session, range, cancellationToken).ConfigureAwait(false);
-        if (days.Count == 0)
-            return Model.None;
-
-        var byDay = days.ToDictionary(d => d.Day);
-        var bars = new List<ChartItem>(dayCount);
-        for (var i = 0; i < dayCount; i++) {
-            var day = range.Start + TimeSpan.FromDays(i);
-            var wpm = byDay.TryGetValue(day, out var d) && d.SpeechSeconds > 0 ? d.Words * 60 / d.SpeechSeconds : 0;
-            bars.Add(new ChartItem(DayLabel(day, dayCount), wpm));
-        }
-        return new Model(bars);
-    }
-
-    private string DayLabel(Moment day, int dayCount) {
-        // The columns are UTC days (CoachDay.Day), so the label is the UTC date, not a converted instant
-        var date = day.ToDateTime();
-        return dayCount <= 7 ? date.ToString("ddd", DateFormatter) : date.ToString("d", DateFormatter);
-    }
 
     private List<ChartItem> Composition(CoachSummary s) {
         if (s.Words == 0)
@@ -91,10 +47,9 @@
         ];
     }
 
-    private static int Count(CoachSummary s, CoachMetricKind kind)
-        => (int)(s.Metrics.FirstOrDefault(m => m.Kind == kind)?.Value ?? 0);
+    private static CoachMetric? Find(CoachSummary s, CoachMetricKind kind)
+        => s.Metrics.FirstOrDefault(m => m.Kind == kind);
 
-    public sealed record Model(List<ChartItem> Bars) {
-        public static readonly Model None = new([]);
-    }
+    private static int Count(CoachSummary s, CoachMetricKind kind)
+        => (int)(Find(s, kind)?.Value ?? 0);
 }

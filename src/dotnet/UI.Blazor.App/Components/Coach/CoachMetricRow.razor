@@ -4,32 +4,43 @@
 @{
     var m = Metric;
     var labels = Labels;
-    var band = labels.Band(m.Kind, m.Band);
     var hasChips = m.Kind is CoachMetricKind.Fillers or CoachMetricKind.WeakWords && m.Chips.Count > 0;
+    var hasDetails = hasChips || Details is not null;
+    var rate = labels.Rate(m);
+    var aside = rate.IsNullOrEmpty() ? labels.Band(m.Kind, m.Band) : rate;
 }
 
-<div class="coach-metric-row" data-metric="@m.Kind">
-    <div class="c-head">
-        <span class="c-title">@labels.MetricTitle(m.Kind)</span>
-        @if (!band.IsNullOrEmpty()) {
-            <span class="c-band band-@m.Band.ToString().ToLower()">@band</span>
+<div class="coach-metric-row @(hasDetails ? "expandable" : "") @(_isExpanded ? "expanded" : "")" data-metric="@m.Kind">
+    <div class="c-head" @onclick="@OnHeadClick">
+        <i class="c-chevron @(hasDetails ? (_isExpanded ? "icon-chevron-up" : "icon-chevron-down") : "") text-xl"></i>
+        <span class="c-title">@labels.MetricTitle(m.Kind)<span class="c-value"> — @labels.Value(m)</span></span>
+        @if (!aside.IsNullOrEmpty()) {
+            <span class="c-aside band-@m.Band.ToString().ToLower()">@aside</span>
         }
     </div>
-    <div class="c-value @(m.Value is null ? "c-no-data" : "")">@labels.Value(m)</div>
-    @if (hasChips) {
-        <div class="c-chips">
-            @foreach (var chip in m.Chips) {
-                <button type="button" class="coach-chip" @onclick="@(() => WordClick.InvokeAsync(chip.Word))">
-                    <span class="c-word">@chip.Word</span><span class="c-count">@chip.Count</span>
-                </button>
-            }
-        </div>
+    @if (_isExpanded) {
+        @if (hasChips) {
+            <div class="c-chips">
+                @foreach (var chip in m.Chips) {
+                    <button type="button" class="coach-chip" @onclick="@(() => WordClick.InvokeAsync(chip.Word))">
+                        <span class="c-word">@chip.Word</span><span class="c-count">(@chip.Count)</span>
+                    </button>
+                }
+            </div>
+        }
+        @Details
     }
 </div>
 
 @code {
+    private bool _isExpanded;
+
     private CoachLabels Labels => field ??= new CoachLabels(L);
 
     [Parameter, EditorRequired] public CoachMetric Metric { get; set; } = null!;
     [Parameter] public EventCallback<string> WordClick { get; set; }
+    [Parameter] public RenderFragment? Details { get; set; }
+
+    private void OnHeadClick()
+        => _isExpanded = !_isExpanded;
 }

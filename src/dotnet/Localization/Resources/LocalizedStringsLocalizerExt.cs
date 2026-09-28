@@ -1938,8 +1938,6 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_Title => l["Coach_Title"].Value;
         public string Coach_ModeChat => l["Coach_ModeChat"].Value;
         public string Coach_ModeCoach => l["Coach_ModeCoach"].Value;
-        public string Coach_TabMetrics => l["Coach_TabMetrics"].Value;
-        public string Coach_TabTrends => l["Coach_TabTrends"].Value;
         public string Coach_WindowToday => l["Coach_WindowToday"].Value;
         public string Coach_WindowWeek => l["Coach_WindowWeek"].Value;
         public string Coach_WindowMonth => l["Coach_WindowMonth"].Value;
@@ -1992,12 +1990,27 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_TrendsNoDays => l["Coach_TrendsNoDays"].Value;
         public string Coach_Occurrences_Format(object arg0) => l["Coach_Occurrences_Format", arg0].Value;
         public string Coach_OccurrencesEmpty => l["Coach_OccurrencesEmpty"].Value;
-        public string Coach_TipSlowDown_Format(object arg0) => l["Coach_TipSlowDown_Format", arg0].Value;
-        public string Coach_TipSpeedUp_Format(object arg0) => l["Coach_TipSpeedUp_Format", arg0].Value;
-        public string Coach_TipFiller_Format(object arg0, object arg1) => l["Coach_TipFiller_Format", arg0, arg1].Value;
-        public string Coach_TipWeakWord_Format(object arg0) => l["Coach_TipWeakWord_Format", arg0].Value;
-        public string Coach_TipSynonyms => l["Coach_TipSynonyms"].Value;
         public string Coach_OpenCoach => l["Coach_OpenCoach"].Value;
+        public string Coach_Trends => l["Coach_Trends"].Value;
+        public string Coach_TrendsTurnTaking => l["Coach_TrendsTurnTaking"].Value;
+        public string Coach_NudgePaceGood => l["Coach_NudgePaceGood"].Value;
+        public string Coach_NudgePaceFast => l["Coach_NudgePaceFast"].Value;
+        public string Coach_NudgePaceSlow => l["Coach_NudgePaceSlow"].Value;
+        public string Coach_NudgeTurnGood => l["Coach_NudgeTurnGood"].Value;
+        public string Coach_NudgeTurnLow => l["Coach_NudgeTurnLow"].Value;
+        public string Coach_NudgeTurnHigh => l["Coach_NudgeTurnHigh"].Value;
+        public string Coach_TipSlowDownTitle => l["Coach_TipSlowDownTitle"].Value;
+        public string Coach_TipSpeedUpTitle => l["Coach_TipSpeedUpTitle"].Value;
+        public string Coach_TipFillerTitle => l["Coach_TipFillerTitle"].Value;
+        public string Coach_TipWeakWordTitle => l["Coach_TipWeakWordTitle"].Value;
+        public string Coach_TipWpm_Format(object arg0) => l["Coach_TipWpm_Format", arg0].Value;
+        public string Coach_TipRecommended_Format(object arg0, object arg1)
+            => l["Coach_TipRecommended_Format", arg0, arg1].Value;
+        public string Coach_TipTooFast => l["Coach_TipTooFast"].Value;
+        public string Coach_TipTooSlow => l["Coach_TipTooSlow"].Value;
+        public string Coach_TipFillerBody(long count, object arg0, object arg1)
+            => l.Plural("Coach_TipFillerBody", count, arg0, arg1);
+        public string Coach_TipWeakWordBody_Format(object arg0) => l["Coach_TipWeakWordBody_Format", arg0].Value;
 
     }
 }

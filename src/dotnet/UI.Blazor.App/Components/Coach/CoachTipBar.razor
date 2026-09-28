@@ -15,19 +15,31 @@
             <i class="icon-mic text-2xl"></i>
         </Icon>
         <Body>
-            <span class="c-text">@TipText(tip)</span>
-            @if (tip.Kind == CoachTipKind.WeakWord && tip.Synonyms.Count > 0) {
-                <span class="c-synonyms">
-                    @L.Coach_TipSynonyms
-                    @foreach (var synonym in tip.Synonyms) {
-                        <span class="coach-chip">@synonym</span>
-                    }
-                </span>
-            }
+            <div class="c-tip-title">@Title(tip)</div>
+            <div class="c-tip-body">
+                @switch (tip.Kind) {
+                    case CoachTipKind.SlowDown:
+                    case CoachTipKind.SpeedUp:
+                        <span class="c-tip-value">@L.Coach_TipWpm_Format(tip.Wpm)</span>
+                        <span class="c-tip-range">@L.Coach_TipRecommended_Format(tip.PaceSlowWpm, tip.PaceFastWpm)</span>
+                        <div>@(tip.Kind == CoachTipKind.SlowDown ? L.Coach_TipTooFast : L.Coach_TipTooSlow)</div>
+                        break;
+                    case CoachTipKind.Filler:
+                        <div>@L.Coach_TipFillerBody(tip.Count, tip.Word, tip.Count)</div>
+                        break;
+                    default:
+                        <div>@L.Coach_TipWeakWordBody_Format(tip.Word)</div>
+                        @if (tip.Synonyms.Count > 0) {
+                            <div class="c-synonyms">
+                                @foreach (var synonym in tip.Synonyms) {
+                                    <span class="coach-chip">@synonym</span>
+                                }
+                            </div>
+                        }
+                        break;
+                }
+            </div>
         </Body>
-        <Buttons>
-            <BannerButton Click="@OnOpenCoach">@L.Coach_OpenCoach</BannerButton>
-        </Buttons>
     </Banner>
 }
 
@@ -52,17 +64,14 @@
         return tip is { IsPending: true } && tip.ChatId == chatId ? tip : null;
     }
 
-    private string TipText(UserCoachTip tip)
+    private string Title(UserCoachTip tip)
         => tip.Kind switch {
-            CoachTipKind.SlowDown => L.Coach_TipSlowDown_Format(tip.Wpm),
-            CoachTipKind.SpeedUp => L.Coach_TipSpeedUp_Format(tip.Wpm),
-            CoachTipKind.Filler => L.Coach_TipFiller_Format(tip.Word, tip.Count),
-            _ => L.Coach_TipWeakWord_Format(tip.Word),
+            CoachTipKind.SlowDown => L.Coach_TipSlowDownTitle,
+            CoachTipKind.SpeedUp => L.Coach_TipSpeedUpTitle,
+            CoachTipKind.Filler => L.Coach_TipFillerTitle,
+            _ => L.Coach_TipWeakWordTitle,
         };
 
     private Task OnDismiss()
         => UICommander.Run(new Coach_DismissTip { Session = Session });
-
-    private void OnOpenCoach()
-        => PanelsUI.Right.Open(RightPanelMode.Coach);
 }

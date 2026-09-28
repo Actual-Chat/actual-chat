@@ -1,0 +1,78 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, CoachDayChart.Model>
+@{
+    var m = State.Value;
+    var labels = Labels;
+    var metric = Metric;
+    var band = metric?.Band ?? CoachBand.None;
+    var kind = Kind;
+    var isPace = kind == CoachMetricKind.Pace;
+}
+
+<div class="coach-day-chart @(isPace ? "c-pace" : "c-turn")">
+    <div class="c-chart-head">
+        <span class="c-headline">@(metric is not null && metric.Value is not null ? labels.Value(metric) : L.Coach_NoData)</span>
+        <span class="c-caption">@(isPace ? L.Coach_TrendsPace : L.Coach_TrendsTurnTaking)</span>
+        @if (band != CoachBand.None) {
+            <span class="c-band band-@band.ToString().ToLower()">@labels.Band(kind, band)</span>
+            <span class="c-nudge">@(isPace ? labels.PaceNudge(band) : labels.TurnNudge(band))</span>
+        }
+    </div>
+    @if (m.Bars.Count > 0) {
+        <BarChart Items="@m.Bars" Class="text-primary" ReferenceValue="@m.Reference"/>
+    } else {
+        <div class="c-no-data">@L.Coach_TrendsNoDays</div>
+    }
+</div>
+
+@code {
+    private ICoach Coach => Hub.Coach;
+    private CoachLabels Labels => field ??= new CoachLabels(L);
+
+    [Parameter, EditorRequired] public CoachMetricKind Kind { get; set; }
+    [Parameter] public CoachMetric? Metric { get; set; }
+    [Parameter] public CoachWindow Window { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var kind = Kind;
+        var window = Window;
+        var metric = Metric;
+        var range = CoachDayRange.For(window, Clocks.SystemClock.Now);
+        var dayCount = CoachDayRange.DayCount(window);
+        var days = await Coach.ListOwnDays(Session, range, cancellationToken).ConfigureAwait(false);
+        if (days.Count == 0)
+            return Model.None;
+
+        var byDay = days.ToDictionary(d => d.Day);
+        var bars = new List<ChartItem>(dayCount);
+        for (var i = 0; i < dayCount; i++) {
+            var day = range.Start + TimeSpan.FromDays(i);
+            byDay.TryGetValue(day, out var d);
+            bars.Add(new ChartItem(DayLabel(day, dayCount), d is null ? 0 : Value(kind, d)));
+        }
+        // The pace line is the good band's lower edge; the turn line is the fair share of talk time
+        double? reference = kind == CoachMetricKind.Pace
+            ? null
+            : metric is { Value: { } share, Rate: { } ratio } && ratio > 0 ? share / ratio * 100 : null;
+        return new Model(bars, reference);
+    }
+
+    private static double Value(CoachMetricKind kind, CoachDay d)
+        => kind == CoachMetricKind.Pace
+            ? d.SpeechSeconds > 0 ? d.Words * 60 / d.SpeechSeconds : 0
+            : d.TotalSpeechSeconds > 0 ? d.OwnSpeechSeconds / d.TotalSpeechSeconds * 100 : 0;
+
+    private string DayLabel(Moment day, int dayCount) {
+        // The columns are UTC days (CoachDay.Day), so the label is the UTC date, not a converted instant
+        var date = day.ToDateTime();
+        return dayCount <= 7 ? date.ToString("ddd", DateFormatter) : date.ToString("d", DateFormatter);
+    }
+
+    public sealed record Model(List<ChartItem> Bars, double? Reference) {
+        public static readonly Model None = new([], null);
+    }
+}
