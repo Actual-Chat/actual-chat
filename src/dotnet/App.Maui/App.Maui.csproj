@@ -829,6 +829,9 @@
     <!-- Localized Info.plist usage descriptions; the Link keeps <lang>.lproj at the bundle root,
          where the OS looks for it -->
     <BundleResource Include="Platforms\iOS\Resources\**\InfoPlist.strings" Link="%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- Tunes play through the WebView (WebTuneUI), which fetches them from dist/sounds - the
+         folder build.mjs strips from the MAUI wwwroot because the other platforms play them natively -->
+    <BundleResource Include="..\..\..\resources\sounds\converted\*.m4a" Link="wwwroot\dist\sounds\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- NOT MacCatalyst -->
