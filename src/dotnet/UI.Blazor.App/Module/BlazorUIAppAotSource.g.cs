@@ -28,6 +28,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AddReactionIcon>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AddToContactsBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AlertConfirmationInfo>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AliasAvailabilityValidator>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AlwaysVisibleComponents>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AndroidAppGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AndroidAppLocationGuideContent>();
@@ -352,6 +353,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoWideLeftPanel>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceIntegrationsModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceMenuButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceSettingsCopyChatModalPage>();
@@ -858,6 +860,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.AddReactionIcon), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AddToContactsBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AlertConfirmationInfo), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.AliasAvailabilityValidator), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AlwaysVisibleComponents), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AndroidAppGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AndroidAppLocationGuideContent), AotTypeKind.Component),
@@ -1182,6 +1185,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoWideLeftPanel), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceIntegrationsModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceMenuButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceSettingsCopyChatModalPage), AotTypeKind.Component),
