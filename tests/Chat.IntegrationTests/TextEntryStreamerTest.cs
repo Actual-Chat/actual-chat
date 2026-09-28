@@ -258,6 +258,7 @@ public class TextEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestO
     {
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(isPublic);
+        await AppHost.Services.WaitForOpeningEntry(chatId);
         var author = await Tester.GetOwnAuthor(chatId).Require();
         return (chatId, author.Id);
     }
