@@ -13,6 +13,7 @@ public static class LocalizedStringsLocalizerExt
     {
         public string Common_Save => l["Common_Save"].Value;
         public string Common_Cancel => l["Common_Cancel"].Value;
+        public string Common_Create => l["Common_Create"].Value;
         public string Common_Close => l["Common_Close"].Value;
         public string Common_Delete => l["Common_Delete"].Value;
         public string Common_OK => l["Common_OK"].Value;

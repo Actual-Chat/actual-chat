@@ -123,7 +123,7 @@
             <Button
                 Click="@(() => Cancelled())"
                 Class="btn-modal">
-                Cancel
+                @L.Common_Cancel
             </Button>
         }
         <Button
@@ -131,7 +131,7 @@
             Type="@ButtonType.Button"
             IsDisabled="@(!context.Validate() || !CanCreate)"
             Class="btn-modal btn-primary">
-            Create
+            @L.Common_Create
         </Button>
     </RenderIntoSlot>
 </Form>
