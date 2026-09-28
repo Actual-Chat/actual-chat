@@ -1,0 +1,53 @@
+/* ── React menu ── */
+
+.call-reactions-menu .reaction-select {
+    @apply md:max-w-none;
+    grid-template-columns: repeat(6, 2rem);
+}
+.call-reactions-menu .ac-menu-item.on {
+    @apply text-primary;
+}
+
+/* ── Floating emoji reactions ── */
+
+.call-reactions-overlay {
+    @apply absolute inset-0 z-30;
+    @apply overflow-hidden pointer-events-none;
+}
+.call-reactions-overlay .c-reaction {
+    @apply absolute bottom-16;
+    @apply flex-y items-center gap-1;
+    @apply opacity-0;
+    will-change: transform, opacity;
+    animation: callReactionFloat 3s ease-out forwards;
+}
+.call-reactions-overlay .c-emoji {
+    @apply w-12 h-12;
+    @apply text-5xl leading-none;
+}
+.call-reactions-overlay .c-name {
+    @apply px-1.5 py-0.5 rounded;
+    @apply text-caption text-white whitespace-nowrap;
+    @apply overflow-hidden;
+    max-width: 12ch;
+    text-overflow: ellipsis;
+    background: rgba(0, 0, 0, 0.5);
+}
+.video-panel.collapsed .call-reactions-overlay .c-name {
+    @apply hidden;
+}
+@keyframes callReactionFloat {
+    0% { opacity: 0; transform: translateY(0) scale(0.6); }
+    10% { opacity: 1; transform: translateY(-1rem) scale(1); }
+    75% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-12rem) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .call-reactions-overlay .c-reaction {
+        animation: callReactionFade 3s linear forwards;
+    }
+    @keyframes callReactionFade {
+        0%, 100% { opacity: 0; }
+        10%, 80% { opacity: 1; }
+    }
+}

@@ -48,6 +48,8 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         bool muted,
         CancellationToken cancellationToken);
     Task SetHost(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
+    Task SetHandRaised(ChatId chatId, AuthorId authorId, bool isRaised, CancellationToken cancellationToken);
+    Task LowerAllHands(ChatId chatId, CancellationToken cancellationToken);
     Task UpdateSummary(
         ChatId chatId,
         LiveSessionSummary summary,

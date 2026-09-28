@@ -54,6 +54,7 @@
 @import './Components/PlaybackSpeedButton/playback-speed-button.css';
 @import './Components/PlaybackRunningBorder/playback-running-border.css';
 @import './Components/CallModal/call-modal.css';
+@import './Components/CallReactions/call-reactions.css';
 @import './Components/FullScreenCallView/full-screen-call-view.css';
 @import './Components/CollapsedCallView/collapsed-call-view.css';
 @import './Components/OwnVideoIsland/own-video-island.css';
