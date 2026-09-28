@@ -38,6 +38,7 @@ public sealed class UsersSettings
     public AppUpdateSettings AppUpdates { get; set; } = new();
     public ReviewPromptSettings ReviewPrompt { get; set; } = new();
     public UsageSettings Usage { get; set; } = new();
+    public CoachScoringSettings Coach { get; set; } = new();
     // A kill switch: MauiAuthController.Start assumes every browser component the app can reach
     // reports Sec-Fetch-Site: none. Turn this off if some platform turns out not to.
     public bool IsMauiAuthFetchSiteCheckEnabled { get; set; } = true;
@@ -108,4 +109,54 @@ public sealed class ReviewPromptSettings
     public int MaxDeclines { get; set; } = 2;
     // A pending prompt older than this is dropped: a backgrounded app must not pop it up hours later
     public TimeSpan PendingTtl { get; set; } = TimeSpan.FromMinutes(10);
+}
+
+public enum CoachRollout
+{
+    AdminsAndFocusGroup = 0,
+    Everyone = 1,
+}
+
+public sealed class PaceBand
+{
+    public double Slow { get; set; } = 110;
+    public double Fast { get; set; } = 160;
+}
+
+/// <summary>
+/// Speech-coach bands, weights and tip thresholds; the same bands serve the tab, the trends and
+/// the tips. Pace bands can be overridden per ISO language code.
+/// </summary>
+public sealed class CoachScoringSettings
+{
+    public int MinScoreWords { get; set; } = 200;
+    public int MinVocabularyWords { get; set; } = 20;
+    public int BadgeMinDelta { get; set; } = 3;
+    public int TrailingDays { get; set; } = 30;
+    public double PaceSlowWpm { get; set; } = 110;
+    public double PaceFastWpm { get; set; } = 160;
+    public Dictionary<string, PaceBand> PaceByLanguage { get; set; } = new();
+    public double FillerGoodRate { get; set; } = 0.03;
+    public double FillerHighRate { get; set; } = 0.06;
+    public double WeakGoodRate { get; set; } = 0.04;
+    public double WeakHighRate { get; set; } = 0.06;
+    public double RepetitionGoodRate { get; set; } = 0.04;
+    public double SentenceShort { get; set; } = 8;
+    public double SentenceLong { get; set; } = 20;
+    public double TurnLowFactor { get; set; } = 0.5;
+    public double TurnHighFactor { get; set; } = 1.5;
+    public double PatienceLowSeconds { get; set; } = 0.5;
+    public double PatienceHighSeconds { get; set; } = 1.5;
+    public double MonologueFlagSeconds { get; set; } = 90;
+    public int WeightFillers { get; set; } = 30;
+    public int WeightPace { get; set; } = 25;
+    public int WeightWeakWords { get; set; } = 20;
+    public int WeightTurnTaking { get; set; } = 15;
+    public int WeightSentenceLength { get; set; } = 10;
+    public int TipPaceFastWpm { get; set; } = 170;
+    public int TipPaceSlowWpm { get; set; } = 100;
+    public int TipMinWords { get; set; } = 30;
+    public int TipWordStep { get; set; } = 10;
+    public CoachRollout Rollout { get; set; } = CoachRollout.AdminsAndFocusGroup;
+    public string[] FocusGroupEmails { get; set; } = [];
 }

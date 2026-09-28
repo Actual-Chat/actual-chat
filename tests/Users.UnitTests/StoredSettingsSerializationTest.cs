@@ -597,4 +597,35 @@ public partial class StoredSettingsSerializationTest
         typed.AreLiveTipsEnabled.Should().BeFalse();
         typed.TipInterval.Should().Be(TimeSpan.FromMinutes(15));
     }
+
+    [Fact]
+    public void UserCoachTipUnionRoundTrip()
+    {
+        // arrange
+        var chatId = GroupChatId.New();
+        var tip = new UserCoachTip {
+            Origin = "union-tip-test",
+            Kind = CoachTipKind.WeakWord,
+            ChatId = chatId,
+            EntryLid = 42,
+            Word = "awesome",
+            Count = 10,
+            Synonyms = ApiArray.New("excellent"),
+            ShownAt = new DateTime(2026, 9, 26, 12, 0, 0, DateTimeKind.Utc),
+            LastTipAt = new DateTime(2026, 9, 26, 12, 0, 0, DateTimeKind.Utc),
+        };
+
+        // act
+        using var buffer = KvasSerializer.Default.Write<StoredSettings>(tip);
+        var bytes = buffer.WrittenMemory;
+        var result = KvasSerializer.Default.Read<StoredSettings>(ref bytes);
+
+        // assert
+        result.Should().BeOfType<UserCoachTip>();
+        var typed = (UserCoachTip)result!;
+        typed.ChatId.Should().Be(chatId);
+        typed.Kind.Should().Be(CoachTipKind.WeakWord);
+        typed.Synonyms.Should().Equal("excellent");
+        typed.IsPending.Should().BeTrue();
+    }
 }

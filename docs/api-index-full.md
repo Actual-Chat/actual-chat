@@ -428,6 +428,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ITimeZones` - Service for time zone lookup and conversion.
 - `IUserPresences` - Service for tracking and querying user online presence.
 - `IChatCoach` - The caller's own speech-coach marks in a chat.
+- `ICoach` - The caller's speech-coach score, days, pending tip and occurrences.
   
 
 ## ActualChat.Api
@@ -675,6 +676,11 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `CoachEntryAnalysis` (record) - Speech-coach analysis of one voice entry.
 - `CoachConversationAnalysis` (record) - One author's turn-taking numbers over one run of entries.
 - `CoachEntryMarks` (record) - Spans of one entry, served to the client for inline marking.
+- `CoachRecordKind` (enum) - Entry or run log record.
+- `CoachEntryRecord` / `CoachRunRecord` / `CoachRecord` (records) - A user's speech-coach log row as emitted by the chat side.
+- `CoachDay` (record) - One user's speech-coach numbers for one UTC day; `CoachDayBuilder` builds and merges them.
+- `CoachWindow` / `CoachMetricKind` / `CoachBand` (enums), `CoachChip`, `CoachMetric`, `CoachSummary`, `CoachOccurrence` (records) - The scored window served to the Coach tab.
+- `CoachTipKind` (enum), `UserCoachTip` (record) - The user's latest live coaching tip, stored in KVAS.
 
 ## ActualChat.Chat.Contracts
 
@@ -723,6 +729,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `UserScopedKvasBackend` - User-scoped wrapper around IServerKvasBackend.
 - `ServerKvasBackendExt` (static class) - Extension methods for IServerKvasBackend.
 - `AccountsBackendExt` (static class) - Extension methods for IAccountsBackend.
+- `ICoachBackend` - Per-user speech-coach log keyed by source id, day rows rebuilt from it, occurrences for jump-to-audio.
 
 ## ActualChat.Contacts.Contracts
 
@@ -802,6 +809,11 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `SessionsBackend` - Implementation of ISessionsBackend.
 - `UserPresences` - Implementation of IUserPresences for presence tracking.
 - `UserPresencesBackend` - Implementation of IUserPresencesBackend.
+- `Coach` - Implementation of ICoach.
+- `CoachBackend` - Implementation of ICoachBackend.
+- `CoachScoring` (static class) - Bands, sub-scores and the 0-100 score over a merged day.
+- `CoachTipPolicy` (static class) - Decides whether a fresh log record earns a live tip.
+- `CoachScoringSettings` / `PaceBand` / `CoachRollout` - Speech-coach bands, weights, tip thresholds and rollout rule (UsersSettings:Coach).
 
 ## ActualChat.Chat.Service
 
@@ -1051,6 +1063,7 @@ Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 - `FiniteList<T>` - Known length, uniform item height, real scrollbar; item position is a pure function of index.
 - `InfiniteList<T>` - Unbounded feed: no scrollbar, fixed huge virtual space, items held by anchoring.
 - `WebRemoteComputedCache` - IndexedDB-based remote computed cache.
+- `Features_EnableSpeechCoach` - Client flag: the server's per-user speech-coach verdict.
 
 ## ActualChat.UI.Blazor.App
 
