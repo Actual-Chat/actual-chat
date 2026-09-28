@@ -91,5 +91,6 @@
 .banner.coach-tip-bar .c-tip-title { @apply text-body-500 pr-8; }
 .banner.coach-tip-bar .c-tip-body { @apply text-sm text-02; }
 .banner.coach-tip-bar .c-tip-value { @apply text-primary font-semibold mr-2; }
+.banner.coach-tip-bar .c-word { @apply text-danger font-semibold; }
 .banner.coach-tip-bar .c-synonyms { @apply flex-x flex-wrap gap-1 mt-1; }
 .banner.coach-tip-bar .close-banner-abs { @apply absolute top-2 right-2; }

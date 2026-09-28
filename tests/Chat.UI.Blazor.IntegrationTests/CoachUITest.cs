@@ -371,6 +371,8 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         inTipsChat.WaitForAssertion(() => inTipsChat.FindAll(".banner.coach-tip-bar").Should().ContainSingle());
         inTipsChat.Find(".banner.coach-tip-bar .c-tip-title").TextContent.Should().Be("Avoid filler words");
         inTipsChat.Find(".banner.coach-tip-bar .c-tip-body").TextContent.Should().Contain("um").And.Contain("10");
+        inTipsChat.Find(".banner.coach-tip-bar .c-tip-body .c-word").TextContent.Should().Be("um",
+            "the word is highlighted inside the sentence, whatever the language puts around it");
         var otherBar = (IStatefulComponent<UserCoachTip?>)inOtherChat.Instance;
         inOtherChat.WaitForAssertion(() => otherBar.State.Snapshot.UpdateCount.Should().BePositive());
         inOtherChat.FindAll(".coach-tip-bar").Should().BeEmpty("the tip belongs to another chat, and nothing reserves space");

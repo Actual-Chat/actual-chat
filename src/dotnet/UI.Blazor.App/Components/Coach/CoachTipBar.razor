@@ -25,10 +25,10 @@
                         <div>@(tip.Kind == CoachTipKind.SlowDown ? L.Coach_TipTooFast : L.Coach_TipTooSlow)</div>
                         break;
                     case CoachTipKind.Filler:
-                        <div>@L.Coach_TipFillerBody(tip.Count, tip.Word, tip.Count)</div>
+                        <div>@Highlight(L.Coach_TipFillerBody(tip.Count, tip.Word, tip.Count), tip.Word)</div>
                         break;
                     default:
-                        <div>@L.Coach_TipWeakWordBody_Format(tip.Word)</div>
+                        <div>@Highlight(L.Coach_TipWeakWordBody_Format(tip.Word), tip.Word)</div>
                         @if (tip.Synonyms.Count > 0) {
                             <div class="c-synonyms">
                                 @foreach (var synonym in tip.Synonyms) {
@@ -70,6 +70,24 @@
             CoachTipKind.SpeedUp => L.Coach_TipSpeedUpTitle,
             CoachTipKind.Filler => L.Coach_TipFillerTitle,
             _ => L.Coach_TipWeakWordTitle,
+        };
+
+    // The sentence comes from the catalog with the word already inside it, so the word is found
+    // back in the text rather than assembled from fragments: every language keeps its own order
+    private static RenderFragment Highlight(string text, string word)
+        => builder => {
+            var at = word.IsNullOrEmpty() ? -1 : text.IndexOf(word);
+            if (at < 0) {
+                builder.AddContent(0, text);
+                return;
+            }
+
+            builder.AddContent(0, text[..at]);
+            builder.OpenElement(1, "span");
+            builder.AddAttribute(2, "class", "c-word");
+            builder.AddContent(3, word);
+            builder.CloseElement();
+            builder.AddContent(4, text[(at + word.Length)..]);
         };
 
     private Task OnDismiss()
