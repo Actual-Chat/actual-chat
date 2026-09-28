@@ -175,6 +175,11 @@ body.narrow .navbar-chats .chat-list.virtual-list::-webkit-scrollbar {
 }
 
 /* Tabs */
+/* The chat list props its tab strip up with the sort button; the notifications panel has none, so
+   its strip collapses to label height and the bottom hill hugs the text. Hold it at full height. */
+.navbar-chats .tab-panel-tabs {
+    @apply min-h-10;
+}
 .navbar-chats .tab-panel-tabs .chats-tab {
     @apply flex-y h-full;
     @apply overflow-y-visible md:overflow-y-auto custom-scrollbar;
