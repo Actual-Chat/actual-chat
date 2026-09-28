@@ -17,7 +17,7 @@
                 TimerButtonColor="#e9e9ec"
                 Delay="@AutoDismissDelay"
                 Click="@(_ => OnDismiss())"/>
-            <div class="c-tip-title"><i class="icon-mic"></i><span>@Title(tip)</span></div>
+            <div class="c-tip-title"><img class="c-tip-mascot" src="/dist/images/kitties/coach-cat.png" alt="" draggable="false"><span>@Title(tip)</span></div>
             <div class="c-tip-body">
                 @switch (tip.Kind) {
                     case CoachTipKind.SlowDown:
