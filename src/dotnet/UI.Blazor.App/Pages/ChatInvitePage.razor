@@ -18,6 +18,7 @@
 
 @code {
     private bool _signInFromHomeRequested;
+    private string? _reportedInviteId;
     private Result<Invite>? _useResult;
     private AccountFull? _account;
 
@@ -30,11 +31,22 @@
 
     protected override async Task OnParametersSetAsync() {
         _account = await AccountUI.OwnAccount.Use();
-        if (_account.IsGuest || !_account.IsActive()) {
+        var isSignedOut = _account.IsGuest || !_account.IsActive();
+        var mustReport = _reportedInviteId != InviteId;
+        _reportedInviteId = InviteId;
+        if (isSignedOut) {
             _signInFromHomeRequested = true;
+            if (mustReport) {
+                Hub.RecordFunnelEvent(FunnelEvent.JoinOpenedSignedOut);
+                if (ArrivalInfo.New(ArrivalKind.Join, InviteId) is { } arrival)
+                    _ = AccountUI.SetArrival(arrival);
+            }
             _ = AccountUI.RequestSignInFromHomePage(L.SignIn_ToUseChatInvite, History.LocalUrl);
             return;
         }
+
+        if (mustReport)
+            Hub.RecordFunnelEvent(FunnelEvent.JoinOpenedSignedIn);
 
         var useCommand = new Invites_Use { Session = Session, InviteId = InviteId };
         Invite invite;

@@ -57,6 +57,8 @@ public abstract class PermissionHandler : UIWorkerBase<UIHub>
             Log.LogDebug("Post-request check");
             isGranted = await Get(cancellationToken).ConfigureAwait(false);
             SetUnsafe(isGranted);
+            if (isGranted == true)
+                OnRequestGranted();
             return isGranted ?? false;
         }).ConfigureAwait(false);
     }
@@ -101,6 +103,10 @@ public abstract class PermissionHandler : UIWorkerBase<UIHub>
     protected abstract Task<bool?> Get(CancellationToken cancellationToken);
     protected abstract Task<bool> Request(CancellationToken cancellationToken);
     protected abstract Task Troubleshoot(CancellationToken cancellationToken);
+
+    // Called only when our own request, not an earlier grant, made the permission granted
+    protected virtual void OnRequestGranted()
+    { }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {

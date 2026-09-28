@@ -12,6 +12,7 @@ public partial class AccountUI
             AsyncChain.From(MonitorAccountChange),
             AsyncChain.From(MonitorPendingRegistration),
             AsyncChain.From(MonitorSessionValidity),
+            AsyncChain.From(MaintainArrival),
         };
         return Task.WhenAll(chains.Select(c => c
             .Log(LogLevel.Debug, Log)
@@ -38,6 +39,8 @@ public partial class AccountUI
             // ProviderSelectStep). Fires on the first resolution and on logout; cached, so repeats are cheap.
             if (newAccount.IsGuestOrNull())
                 _ = WarmPasskeyAvailability(cancellationToken);
+            else
+                _ = ForgetArrival();
             if (oldAccount is null) {
                 MarkReady();
                 continue; // Very first account change

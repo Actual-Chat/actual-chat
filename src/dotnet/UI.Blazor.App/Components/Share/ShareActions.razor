@@ -6,23 +6,30 @@
 }
 
 <div class="share-actions">
+    @* The JS copy and share handlers don't stop propagation, so these wrappers see the taps *@
     @if (_canShareExternally) {
-        <ShareExternallyButton ButtonClass="btn-square" Request="@request"/>
-        <CopyTrigger Tooltip="@L.Share_CopyLink" CopyText="@link">
-            <ButtonSquare>
-                <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
-                <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
-            </ButtonSquare>
-        </CopyTrigger>
+        <span class="contents" @onclick="@(() => Tapped?.Invoke(ShareActionKind.Share))">
+            <ShareExternallyButton ButtonClass="btn-square" Request="@request"/>
+        </span>
+        <span class="contents" @onclick="@(() => Tapped?.Invoke(ShareActionKind.Copy))">
+            <CopyTrigger Tooltip="@L.Share_CopyLink" CopyText="@link">
+                <ButtonSquare>
+                    <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
+                    <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
+                </ButtonSquare>
+            </CopyTrigger>
+        </span>
     } else {
-        <CopyTrigger Class="c-copy-link" CopyText="@link">
-            <ButtonSquare>
-                <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
-                <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
-                <span class="hide-on-copied-hint">@L.Share_CopyLink</span>
-                <span class="copied-hint">@L.Share_LinkCopied</span>
-            </ButtonSquare>
-        </CopyTrigger>
+        <span class="contents" @onclick="@(() => Tapped?.Invoke(ShareActionKind.Copy))">
+            <CopyTrigger Class="c-copy-link" CopyText="@link">
+                <ButtonSquare>
+                    <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
+                    <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
+                    <span class="hide-on-copied-hint">@L.Share_CopyLink</span>
+                    <span class="copied-hint">@L.Share_LinkCopied</span>
+                </ButtonSquare>
+            </CopyTrigger>
+        </span>
     }
     <ButtonSquare Tooltip="@L.ShareQr_Show" Click="@OnShowQrClick">
         <i class="icon-QR" aria-hidden="true"></i>
@@ -32,21 +39,23 @@
 @code {
     private bool _canShareExternally;
 
-
     [Parameter, EditorRequired] public ShareModalModel Model { get; set; } = null!;
     // Takes over the share and copy text when set, e.g. with a comment the user typed
     [Parameter] public ShareRequest? Request { get; set; }
     [Parameter] public Func<LocalUrl, Task<bool>>? ScanHandler { get; set; }
+    [Parameter] public Action<ShareActionKind>? Tapped { get; set; }
 
     protected override async Task OnInitializedAsync()
         => _canShareExternally = await ShareUI.CanShareExternally();
 
-    private Task OnShowQrClick()
-        => ModalUI.Show(new ShareQrModalModel(
+    private Task OnShowQrClick() {
+        Tapped?.Invoke(ShareActionKind.Qr);
+        return ModalUI.Show(new ShareQrModalModel(
             Model.Title,
             Model.Request.Link.GetValueOrDefault(),
             Model.ImageUrl,
             ScanHandler) {
             AbsoluteUrl = Model.Request.HasExternalLink() ? Model.Request.GetShareLink(UrlMapper) : null,
         });
+    }
 }
