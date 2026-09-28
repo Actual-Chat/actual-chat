@@ -16,7 +16,6 @@ public sealed class ResumeLatencyFlowFixture(IMessageSink messageSink) : ActualC
     });
 
 [Collection(nameof(ResumeLatencyFlowCollection))]
-[Trait("Category", "Slow")]
 public sealed class ResumeLatencyFlowTest(ResumeLatencyFlowFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<ResumeLatencyFlowFixture>(fixture, @out)
 {
@@ -25,12 +24,33 @@ public sealed class ResumeLatencyFlowTest(ResumeLatencyFlowFixture fixture, ITes
     private static readonly TimeSpan StallDelay = TimeSpan.FromSeconds(10);
 
     [Fact]
+    [Trait("Category", "Slow")]
+    public async Task ResumesShouldNotStall()
+    {
+        // act
+        var delays = await RunFlow();
+
+        // assert
+        delays.Max().Should().BeLessThan(StallDelay, "no resume may stall");
+    }
+
+    // Build agents lose up to ~2s per resume (#4647), so the budget is checked nightly, not on every PR
+    [Fact]
+    [Trait("Category", "Nightly")]
     public async Task ResumeDelaysShouldStayWithinBudget()
     {
-        // arrange
-        var args = $"test-{RandomStringGenerator.Default.Next()}";
-
         // act
+        var delays = await RunFlow();
+
+        // assert
+        delays.Count(x => x >= MaxTypicalDelay).Should().BeLessThanOrEqualTo(1,
+            "at most one resume may miss its budget when DelayQuanta=0");
+        delays.Max().Should().BeLessThan(StallDelay, "no resume may stall");
+    }
+
+    private async Task<TimeSpan[]> RunFlow()
+    {
+        var args = $"test-{RandomStringGenerator.Default.Next()}";
         await FlowHub.NewResumeEvent<ResumeLatencyFlow>(args).Schedule();
         await TestWait.When(async ct => {
             var flow = await FlowHub.TryGet<ResumeLatencyFlow>(args, ct);
@@ -38,12 +58,8 @@ public sealed class ResumeLatencyFlowTest(ResumeLatencyFlowFixture fixture, ITes
             flow.UntypedResult.Should().NotBeNull("the flow must complete all 5 resumes");
         }, TimeSpan.FromSeconds(30));
 
-        // assert
         var completedFlow = await FlowHub.Get<ResumeLatencyFlow>(args);
         WriteLine(completedFlow.Console.ToString());
-        var delays = completedFlow.Delays;
-        delays.Count(x => x >= MaxTypicalDelay).Should().BeLessThanOrEqualTo(1,
-            "at most one resume may miss its budget when DelayQuanta=0");
-        delays.Max().Should().BeLessThan(StallDelay, "no resume may stall");
+        return completedFlow.Delays;
     }
 }
