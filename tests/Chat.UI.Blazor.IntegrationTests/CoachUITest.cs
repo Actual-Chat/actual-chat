@@ -386,10 +386,41 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
             TimeSpan.FromSeconds(10));
 
         // act - dismiss
-        await inTipsChat.InvokeAsync(() => inTipsChat.Find(".coach-tip-bar .close-banner").Click());
+        await inTipsChat.InvokeAsync(() => inTipsChat.Find(".banner.coach-tip-bar .c-tip-close").Click());
 
         // assert
         await TestWait.When(async ct => (await hub.Coach.GetPendingTip(tester.Session, ct)).Should().BeNull());
         inTipsChat.WaitForAssertion(() => inTipsChat.FindAll(".banner.coach-tip-bar").Should().BeEmpty());
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task TipBarShouldCountDownAndDismissItself()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-tip-autodismiss");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(tester);
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var kvas = appHost.Services.GetRequiredService<IServerKvasBackend>().ForUser(account.Id, isOutermost: true);
+        await kvas.UserCoachTip().Set(new UserCoachTip {
+            Kind = CoachTipKind.SpeedUp, ChatId = chatId, EntryLid = 1, Wpm = 80, PaceSlowWpm = 110, PaceFastWpm = 160,
+            ShownAt = appHost.Services.Clocks().SystemClock.Now,
+        });
+        await TestWait.When(async ct => (await hub.Coach.GetPendingTip(tester.Session, ct)).Should().NotBeNull());
+
+        // act
+        var cut = tester.Render<CoachTipBar>(p => p.Add(x => x.ChatId, chatId).Add(x => x.AutoDismissDelay, 1));
+        InitializeHub(tester, hub, cut.Instance);
+
+        // assert
+        cut.WaitForAssertion(() => cut.Find(".banner.coach-tip-bar .btn-timer").Should().NotBeNull(
+            "the close button carries the countdown ring, like a toast"));
+        await TestWait.When(async ct => (await hub.Coach.GetPendingTip(tester.Session, ct)).Should().BeNull(),
+            TimeSpan.FromSeconds(10));
+        cut.WaitForAssertion(() => cut.FindAll(".banner.coach-tip-bar").Should().BeEmpty());
     }
 }

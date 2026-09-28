@@ -8,10 +8,15 @@
 @if (tip is not null) {
     <Banner
         Class="coach-tip-bar"
-        Severity="BannerSeverity.Info"
-        ShowDismissButton="true"
-        Dismiss="@OnDismiss">
+        Severity="BannerSeverity.Info">
         <Body>
+            <TimerCloseButton
+                @key="@tip.ShownAt"
+                Class="c-tip-close btn-sm"
+                CircleClass="btn-sm"
+                TimerButtonColor="#e9e9ec"
+                Delay="@AutoDismissDelay"
+                Click="@(_ => OnDismiss())"/>
             <div class="c-tip-title"><i class="icon-mic"></i><span>@Title(tip)</span></div>
             <div class="c-tip-body">
                 @switch (tip.Kind) {
@@ -41,9 +46,14 @@
 }
 
 @code {
+    private readonly CancellationTokenSource _disposeCts = new ();
+    private Moment _autoDismissScheduledFor;
+
     private ICoach Coach => Hub.Coach;
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    // Seconds the card stays before it dismisses itself, the way a toast does but longer
+    [Parameter] public double AutoDismissDelay { get; set; } = 30;
 
     protected override ComputedState<UserCoachTip?>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.NextTick, Category = GetStateCategory(GetType()) };
@@ -86,6 +96,29 @@
             builder.CloseElement();
             builder.AddContent(4, text[(at + word.Length)..]);
         };
+
+    protected override void OnAfterRender(bool firstRender) {
+        var tip = State.Value;
+        if (tip is null || tip.ShownAt == _autoDismissScheduledFor)
+            return;
+
+        _autoDismissScheduledFor = tip.ShownAt;
+        _ = AutoDismiss(tip.ShownAt, TimeSpan.FromSeconds(AutoDismissDelay), _disposeCts.Token);
+    }
+
+    public override async ValueTask DisposeAsync() {
+        _disposeCts.CancelAndDisposeSilently();
+        await base.DisposeAsync();
+    }
+
+    // The dismiss goes through the server, so every open client clears the same tip
+    private async Task AutoDismiss(Moment shownAt, TimeSpan delay, CancellationToken cancellationToken) {
+        await Task.Delay(delay, cancellationToken).SilentAwait(false);
+        if (cancellationToken.IsCancellationRequested || State.Value?.ShownAt != shownAt)
+            return;
+
+        await OnDismiss().ConfigureAwait(false);
+    }
 
     private Task OnDismiss()
         => UICommander.Run(new Coach_DismissTip { Session = Session });

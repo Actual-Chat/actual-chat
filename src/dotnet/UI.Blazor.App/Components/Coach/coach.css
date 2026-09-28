@@ -102,10 +102,9 @@
 .banner.coach-tip-bar .c-word { @apply font-semibold; color: #d25e8c; }
 .banner.coach-tip-bar .c-synonyms { @apply flex-x flex-wrap gap-1 mt-1; }
 .banner.coach-tip-bar .coach-chip { @apply bg-01 text-02; }
-.banner.coach-tip-bar .close-banner-abs {
+.banner.coach-tip-bar .c-tip-close {
     @apply absolute top-3 right-3;
-    @apply w-6 h-6 min-w-0 min-h-0 rounded-full border;
-    border-color: #e9e9ec;
+    @apply w-6 h-6 min-w-0 min-h-0 p-0;
     color: #e9e9ec;
 }
-.banner.coach-tip-bar .close-banner-abs i { @apply text-base; }
+.banner.coach-tip-bar .c-tip-close i { @apply text-sm; }
