@@ -173,17 +173,16 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             JoinVideoSession(chatId);
     }
 
-    public void StartVideoCapture(ChatId chatId)
+    public Task StartVideoCapture(ChatId chatId, CancellationToken cancellationToken = default)
     {
         // No join preview: for a gesture that already said "video on", such as the system call UI's
         // video button. The camera and blur are the ones the last session saved.
         if (_recordingChatId.Value == chatId)
-            return;
+            return Task.CompletedTask;
 
-        if (HasJoinedVideoSession(chatId))
-            ResumeVideoStreaming(chatId);
-        else
-            _ = StartVideoCaptureInternal(chatId);
+        return HasJoinedVideoSession(chatId)
+            ? ResumeVideoStreamingInternal(chatId, cancellationToken)
+            : StartVideoCaptureInternal(chatId, cancellationToken);
     }
 
     public void ToggleScreenCast(ChatId chatId)

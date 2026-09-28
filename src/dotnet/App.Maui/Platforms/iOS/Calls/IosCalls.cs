@@ -421,7 +421,7 @@ public sealed class IosCalls : CXProviderDelegate
     {
         // The call screen's own video button minus its join preview: the video panel lives in the chat, under it.
         await services.GetRequiredService<CallScreensUI>().LeaveCallScreen(chatId).ConfigureAwait(true);
-        services.GetRequiredService<ChatVideoUI>().StartVideoCapture(chatId);
+        await services.GetRequiredService<ChatVideoUI>().StartVideoCapture(chatId).ConfigureAwait(false);
     }
 
     private void EndCalls(ChatId chatId, CXCallEndedReason reason)
