@@ -724,6 +724,10 @@ Update chat services for the new feature:
 
 - `OnboardingModal.razor` - Onboarding flow
 - `UserOnboardingSettings.cs` - Completion tracking
+- `OnboardingSteps.All` - Step names for the usage stats; see [Usage and funnel metrics](../usage-metrics.md)
+
+A new way into the app (a link type, a campaign source) or a new funnel step also has a checklist
+there.
 
 ---
 

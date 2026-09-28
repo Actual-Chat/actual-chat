@@ -116,6 +116,7 @@ export default withMermaid(defineConfig({
               { text: "Offline Render Path", link: "/architecture/offline-render-path" },
               { text: "Notifications", link: "/notifications" },
               { text: "Passkeys", link: "/passkeys" },
+              { text: "Usage & Funnel Metrics", link: "/usage-metrics" },
               { text: "Integrations: web hooks", link: "/integrations/web-hooks" },
             ],
           },
