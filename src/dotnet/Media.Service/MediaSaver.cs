@@ -37,8 +37,8 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
     // Save
 
     public async Task<MediaRef> Save(
-        MediaId mediaId, ProcessedFile processedFile, bool isUpdate, MediaKind kind,
-        CancellationToken cancellationToken, UserId? userId = null)
+        MediaId mediaId, ProcessedFile processedFile, bool isUpdate, MediaKind kind, UserId? userId,
+        CancellationToken cancellationToken)
     {
         var mediaRef = GetMediaRef(mediaId, processedFile);
         if (processedFile.Thumbnail != null) {
@@ -76,7 +76,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
     public Task<MediaRef> Save(
         MediaId mediaId, UploadedFile file, Size2D? size, MediaKind kind,
         CancellationToken cancellationToken)
-        => Save(mediaId, new ProcessedFile(file, size, null), false, kind, cancellationToken);
+        => Save(mediaId, new ProcessedFile(file, size, null), false, kind, null, cancellationToken);
 
     // Private methods
 

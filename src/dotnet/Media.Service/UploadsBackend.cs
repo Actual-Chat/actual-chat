@@ -178,8 +178,8 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
                     processedFile,
                     isUpdate: false,
                     MediaKind.ChatEntryAttachment,
-                    cancellationToken1,
-                    importedUpload?.UserId)
+                    importedUpload?.UserId,
+                    cancellationToken1)
                 .ConfigureAwait(false);
         }
     }
