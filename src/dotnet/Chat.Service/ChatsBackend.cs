@@ -1135,6 +1135,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .Join(dbContext.Mentions.Where(m => m.ChatId == chatId.Value), ce => ce.LocalId, rs => rs.EntryLid, (_, rs) => rs)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
+            // Remove coach rows
+            await dbContext.CoachEntries
+                .Where(x => x.ChatId == chatId.Value)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+            await dbContext.CoachConversations
+                .Where(x => x.ChatId == chatId.Value)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
             // Remove entries
             await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId.Value)
@@ -1786,6 +1795,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .ConfigureAwait(false);
             chatEntriesToInvalidate.Add(chatId, lastAuthorEntryId);
 
+            // Remove coach rows
+            await dbContext.CoachEntries
+                .Where(x => x.ChatId == chatId && x.AuthorId == authorId)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+            await dbContext.CoachConversations
+                .Where(x => x.ChatId == chatId && x.AuthorId == authorId)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
             // Remove entries
             await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId)

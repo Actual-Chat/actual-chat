@@ -233,6 +233,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `TranscriberExt` (static class) - Extension methods for transcibers.
 - `DeepgramTranscriber` - Deepgram speech-to-text transcriber.
 - `GoogleTranscriber` - Google speech-to-text transcriber.
+- `SpanLocator` (static class) - Locates the n-th whole-word occurrence of a word or phrase in a text.
 - `AliasId` (class) - Plain string identifier for an alias.
 - `AliasInfo` (record) - Alias information.
 
@@ -361,6 +362,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ShardScheme` - Sharding scheme configuration.
 - `ShardSchemeFlags` (enum) - Flags configuring a shard scheme's behavior.
 - `ServerHashInputExt` (static class) - Server-side hash input extensions.
+- `CoachEntryAnalyzedEvent` (record) - A voice entry's speech-coach analysis was written or removed; routed to the author's user shard.
+- `CoachConversationAnalyzedEvent` (record) - An author's turn-taking row over a run of entries was written; routed to the user shard.
 
 ## ActualChat.Db
 
@@ -424,6 +427,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ServerApiInfo` (record) - Server API version and compatibility information.
 - `ITimeZones` - Service for time zone lookup and conversion.
 - `IUserPresences` - Service for tracking and querying user online presence.
+- `IChatCoach` - The caller's own speech-coach marks in a chat.
   
 
 ## ActualChat.Api
@@ -662,6 +666,15 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `StringDiffHandler` - Handler for string diffs.
 - `IDiffHandler<T>` - Interface for diff handlers.
 - `ThreadContact` (record) - Contact information for a thread.
+- `SpeechSpanKind` (enum) - Kind of a tagged span: filled pause, filler, weak word, profanity, repetition.
+- `SpeechSpan` (record) - A tagged word in a transcript with its char range and synonyms.
+- `SpeechTextStats` (record) - Word, sentence, question, repetition and vocabulary counts of a transcript.
+- `SpeechTimingStats` (record) - Speech time and pauses of a transcript from its time map.
+- `SpeechMetrics` (record) - Duration, text and timing stats of a transcript with words per minute.
+- `CoachTagState` (enum) - Whether an entry's LLM tagging is pending, done or skipped.
+- `CoachEntryAnalysis` (record) - Speech-coach analysis of one voice entry.
+- `CoachConversationAnalysis` (record) - One author's turn-taking numbers over one run of entries.
+- `CoachEntryMarks` (record) - Spans of one entry, served to the client for inline marking.
 
 ## ActualChat.Chat.Contracts
 
@@ -688,6 +701,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `RequestedAuthorKind` (enum) - Specifies the level of detail to return for author queries.
 - `AuthorsBackendExt` (static class) - Extension methods for IAuthorsBackend.
 - `ChatsBackendExt` (static class) - Extension methods for IChatsBackend.
+- `ICoachAnalysisBackend` - Analyses voice entries and quiet runs of entries for the speech coach; serves per-tile marks.
 - `PlacesBackendExt` (static class) - Extension methods for IPlacesBackend.
 - `RolesBackendExt` (static class) - Extension methods for IRolesBackend.
 
@@ -811,6 +825,9 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `PlacesBackend` - Implementation of IPlacesBackend.
 - `Reactions` - Implementation of IReactions for message reactions.
 - `ReactionsBackend` - Implementation of IReactionsBackend.
+- `ChatCoach` - Implementation of IChatCoach.
+- `CoachAnalysisBackend` - Implementation of ICoachAnalysisBackend.
+- `ConversationStats` (record) - Turn-taking, patience and interruptions for one author over timed entries.
 - `Roles` - Implementation of IRoles for role management.
 - `RolesBackend` - Implementation of IRolesBackend.
 - `Translations` - Implementation of ITranslations.
@@ -973,6 +990,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ChatCompletionServiceExt` (static class) - Extensions for chat completion service.
 - `OpenAITranscriber` - Transcriber using OpenAI API.
 - `TokenEstimator` - Estimates token counts for prompts.
+- `ISpeechTagger`, `SpeechTagger`, `SpeechTaggerStub` - LLM tagging of fillers, weak words and profanity in a transcript.
 
 ## ActualChat.Localization
 

@@ -1,0 +1,55 @@
+[
+  {
+    "language": "en-US",
+    "text": "So, um, I think we should, like, move the meeting, you know, to Thursday.",
+    "expected": [
+      { "class": "filledPause", "word": "um", "occurrence": 1 },
+      { "class": "filler", "word": "like", "occurrence": 1 },
+      { "class": "filler", "word": "you know", "occurrence": 1 }
+    ]
+  },
+  {
+    "language": "en-US",
+    "text": "I like the new design, it's really awesome, and the colors are nice.",
+    "expected": [
+      { "class": "weak", "word": "really", "occurrence": 1 },
+      { "class": "weak", "word": "awesome", "occurrence": 1 },
+      { "class": "weak", "word": "nice", "occurrence": 1 }
+    ]
+  },
+  {
+    "language": "en-US",
+    "text": "Uh, basically we finished the report, and, um, it went well.",
+    "expected": [
+      { "class": "filledPause", "word": "uh", "occurrence": 1 },
+      { "class": "filler", "word": "basically", "occurrence": 1 },
+      { "class": "filledPause", "word": "um", "occurrence": 1 }
+    ]
+  },
+  {
+    "language": "ru-RU",
+    "text": "Ну, э-э, я думаю, что мы, как бы, закончили проект, вот.",
+    "expected": [
+      { "class": "filler", "word": "ну", "occurrence": 1 },
+      { "class": "filledPause", "word": "э-э", "occurrence": 1 },
+      { "class": "filler", "word": "как бы", "occurrence": 1 },
+      { "class": "filler", "word": "вот", "occurrence": 1 }
+    ]
+  },
+  {
+    "language": "ru-RU",
+    "text": "Мне нравится вот эта книга, она очень интересная.",
+    "expected": [
+      { "class": "weak", "word": "очень", "occurrence": 1 }
+    ]
+  },
+  {
+    "language": "ru-RU",
+    "text": "Короче, мы, типа, обсудили это, и, ммм, решили подождать.",
+    "expected": [
+      { "class": "filler", "word": "короче", "occurrence": 1 },
+      { "class": "filler", "word": "типа", "occurrence": 1 },
+      { "class": "filledPause", "word": "ммм", "occurrence": 1 }
+    ]
+  }
+]
