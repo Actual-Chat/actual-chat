@@ -267,7 +267,7 @@ On the server, `AcceptCall`:
   participants close the call; otherwise the status is recomputed.
 
 From there the call runs on presence. The client's streams drive
-`LiveSessionUI.RunParticipationSync`, which reports `SetParticipation` with a heartbeat.
+`LiveSessionUI.SyncParticipations`, which reports `SetParticipation` with a heartbeat.
 `GetState`'s self-heal runs `SyncCallParticipantActivity`, which marks the caller and the
 invitee `Active`, and the status becomes `Active`. The caller's holding loop in `CallUI` sees
 that and joins the conversation, moving the slot to `Active`.

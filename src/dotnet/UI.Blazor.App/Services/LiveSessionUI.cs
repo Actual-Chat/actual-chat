@@ -224,8 +224,8 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         // Retried rather than awaited together: UIWorkerBase never restarts a worker that threw,
         // so one errored computed used to end participation reporting for the rest of the session.
         var baseChains = new[] {
-            AsyncChain.From(RunParticipationSync),
-            AsyncChain.From(RunMuteEnforcement),
+            AsyncChain.From(SyncParticipations),
+            AsyncChain.From(StopRecordingWhenMuted),
             AsyncChain.From(NotifyWhenHandLowered),
         };
         var retryDelays = RetryDelaySeq.Exp(0.5, 8);
@@ -237,7 +237,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             ).RunIsolated(cancellationToken);
     }
 
-    private async Task RunParticipationSync(CancellationToken cancellationToken)
+    private async Task SyncParticipations(CancellationToken cancellationToken)
     {
         var cParticipations = await Computed
             .Capture(() => GetMyParticipations(cancellationToken), cancellationToken)
@@ -289,7 +289,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         }
     }
 
-    private async Task RunMuteEnforcement(CancellationToken cancellationToken)
+    private async Task StopRecordingWhenMuted(CancellationToken cancellationToken)
     {
         // Soft mute enforcement: when the host turns off my recording (MicMuted) — either
         // per-peer or via mute-all — my own recorder stops and I'm told why. MicMuted is

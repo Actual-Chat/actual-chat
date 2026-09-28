@@ -293,7 +293,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
 
     public Task LeaveCall(Session session, ChatId chatId, CancellationToken cancellationToken)
         // Hanging up now goes through the same SetParticipation path as any other presence change -
-        // see ChatAudioUI.SetRecordingChatId / SetListeningState and LiveSessionUI.RunParticipationSync.
+        // see ChatAudioUI.SetRecordingChatId / SetListeningState and LiveSessionUI.SyncParticipations.
         => throw StandardError.NotSupported<ILiveSessions>(
             $"{nameof(LeaveCall)} is obsolete and no longer available.");
 
