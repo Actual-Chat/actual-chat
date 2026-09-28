@@ -7,10 +7,10 @@
         ? Avatar?.Name ?? ""
         : "";
     var avatarClass = IsBlurred ? "avatar-blurred": "";
-    var clickableCls = !_pictureUrl.IsNullOrEmpty() ? "clickable-avatar" : "";
+    var zoomableCls = !_pictureUrl.IsNullOrEmpty() ? "zoomable-avatar" : "";
 }
 
-<div class="avatar-circle @avatarClass @clickableCls @Class">
+<div class="avatar-circle @avatarClass @zoomableCls @Class">
     <div class="c-content">
         @if (Avatar is null) {
             <div class="c-skeleton @_class"></div>

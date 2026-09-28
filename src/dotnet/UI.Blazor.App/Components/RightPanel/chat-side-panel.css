@@ -295,20 +295,20 @@ body.narrow .chat-side-panel::before {
     animation: addBorderRadius .4s ease-in-out forwards;
 }
 
-.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .clickable-avatar:hover {
+.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .zoomable-avatar:hover {
     @apply cursor-pointer;
 }
-.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar {
+.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .zoomable-avatar.full-size-avatar {
     @apply absolute top-0;
     @apply w-16 h-16 max-w-none max-h-none;
     @apply opacity-0;
     transition: width 0.25s ease-in, height 0.25s ease-in, opacity 0.25s ease-in 0.25s;
 }
-.chat-side-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar {
+.chat-side-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar .zoomable-avatar.full-size-avatar {
     @apply hidden;
     @apply opacity-0;
 }
-.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar {
+.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar .zoomable-avatar.full-size-avatar {
     width: var(--expanded-header-height);
     height: var(--expanded-header-height);
 }
@@ -334,19 +334,19 @@ body.narrow .chat-side-panel::before {
         border-radius: 9999px;
     }
 }
-.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar .c-content {
+.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .zoomable-avatar.full-size-avatar .c-content {
     @apply w-full h-full;
 }
-.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .clickable-avatar.small-avatar .c-content {
+.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .zoomable-avatar.small-avatar .c-content {
     width: calc(4rem - 1.5rem * var(--rp-collapse));
     height: calc(4rem - 1.5rem * var(--rp-collapse));
     transition: width 0.25s ease-in, height 0.25s ease-in;
 }
-.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar .clickable-avatar.small-avatar .c-content {
+.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar .zoomable-avatar.small-avatar .c-content {
     width: var(--expanded-header-height);
     height: var(--expanded-header-height);
 }
-.chat-side-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar .clickable-avatar.small-avatar .c-content {
+.chat-side-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar .zoomable-avatar.small-avatar .c-content {
     @apply w-16 h-16;
 }
 
