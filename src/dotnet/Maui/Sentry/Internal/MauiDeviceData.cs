@@ -1,3 +1,7 @@
+#if MACOS
+using CoreFoundation;
+using Foundation;
+#endif
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
 using Microsoft.Maui.Devices.Sensors;
@@ -12,6 +16,18 @@ internal static class MauiDeviceData
 {
 #if ANDROID
     private static readonly Lock JniLock = new();
+#else
+    private static int _isDisplayCaptureQueued;
+    private static int _isDisplayChangeTracked;
+#endif
+    private static DisplaySnapshot? _displaySnapshot;
+
+#if MACOS
+    // Essentials' MainThread is its "not implemented" neutral build on the macos TFM
+    // TODO(maui-labs): use MainThread once it's implemented there
+    private static bool IsMainThread => NSThread.Current.IsMainThread;
+#elif !ANDROID
+    private static bool IsMainThread => MainThread.IsMainThread;
 #endif
 
     public static void ApplyMauiDeviceData(this Device device, IDiagnosticLogger? logger)
@@ -74,26 +90,23 @@ internal static class MauiDeviceData
                 logger?.LogDebug("No permission to read network state from the device");
             }
 
-#if MACCATALYST || IOS || WINDOWS
-            if (MainThread.IsMainThread)
-                CaptureDisplayInfo();
-            else
-            {
-                // On iOS and Mac Catalyst, Accessing DeviceDisplay.Current must be done on the UI thread or else an
-                // exception will be thrown.
-                // See https://learn.microsoft.com/en-us/dotnet/maui/platform-integration/device/display?view=net-maui-8.0&tabs=macios#platform-differences
-                using var resetEvent = new ManualResetEventSlim(false);
-                // ReSharper disable once AccessToDisposedClosure - not disposed until lambda completes
-                MainThread.BeginInvokeOnMainThread(() => CaptureDisplayInfo(resetEvent));
-                resetEvent.Wait();
-            }
-#elif ANDROID
+#if ANDROID
             // DeviceDisplay.Current is not threadsafe on Android.
             // See: https://github.com/getsentry/sentry-dotnet/issues/3627
             lock (JniLock)
-            {
-                CaptureDisplayInfo();
-            }
+                ReadDisplaySnapshot().ApplyTo(device);
+#else
+            // DeviceDisplay.Current must be read on the UI thread here, see
+            // https://learn.microsoft.com/en-us/dotnet/maui/platform-integration/device/display?view=net-maui-8.0&tabs=macios#platform-differences
+            // An event logged off the UI thread gets the last snapshot instead of waiting for it:
+            // this runs inside the logging call, and the UI thread may itself be waiting on the
+            // thread that logs - which is how it deadlocked into a background watchdog kill (#4869).
+            if (IsMainThread)
+                ReadDisplaySnapshot().ApplyTo(device);
+            else if (Volatile.Read(ref _displaySnapshot) is { } displaySnapshot)
+                displaySnapshot.ApplyTo(device);
+            else if (Interlocked.Exchange(ref _isDisplayCaptureQueued, 1) == 0)
+                BeginInvokeOnMainThread(() => ReadDisplaySnapshot());
 #endif
 
             // https://docs.microsoft.com/dotnet/maui/platform-integration/device/vibrate
@@ -130,23 +143,64 @@ internal static class MauiDeviceData
             // Log, but swallow the exception so we can continue sending events
             logger?.LogError(ex, "Error getting MAUI device information");
         }
+    }
 
-        void CaptureDisplayInfo(ManualResetEventSlim? resetEvent = null)
-        {
-            // https://docs.microsoft.com/dotnet/maui/platform-integration/device/display
-            var display = DeviceDisplay.MainDisplayInfo;
-            device.ScreenResolution ??= $"{(int)display.Width}x{(int)display.Height}";
-            device.ScreenDensity ??= (float)display.Density;
-            device.Orientation ??= display.Orientation switch
-            {
+    // Private methods
+
+    private static DisplaySnapshot ReadDisplaySnapshot()
+    {
+        // https://docs.microsoft.com/dotnet/maui/platform-integration/device/display
+        var snapshot = ToSnapshot(DeviceDisplay.MainDisplayInfo);
+        Volatile.Write(ref _displaySnapshot, snapshot);
+#if !ANDROID
+        TrackDisplayChanges();
+#endif
+        return snapshot;
+    }
+
+    private static DisplaySnapshot ToSnapshot(DisplayInfo display)
+        => new(
+            $"{(int)display.Width}x{(int)display.Height}",
+            (float)display.Density,
+            display.Orientation switch {
                 DisplayOrientation.Portrait => DeviceOrientation.Portrait,
                 DisplayOrientation.Landscape => DeviceOrientation.Landscape,
-                _ => null
-            };
-            // device.ScreenDpi ??= ?
-            // ? = display.RefreshRate;
-            // ? = display.Rotation;
-            resetEvent?.Set();
+                _ => null,
+            });
+
+#if !ANDROID
+    private static void TrackDisplayChanges()
+    {
+        // Rotation and monitor changes arrive on the UI thread, so the snapshot stays current
+        // for events logged elsewhere
+        if (Interlocked.Exchange(ref _isDisplayChangeTracked, 1) != 0)
+            return;
+
+        DeviceDisplay.Current.MainDisplayInfoChanged += (_, e)
+            => Volatile.Write(ref _displaySnapshot, ToSnapshot(e.DisplayInfo));
+    }
+#endif
+
+#if MACOS
+    private static void BeginInvokeOnMainThread(Action action)
+        => DispatchQueue.MainQueue.DispatchAsync(action);
+#elif !ANDROID
+    private static void BeginInvokeOnMainThread(Action action)
+        => MainThread.BeginInvokeOnMainThread(action);
+#endif
+
+    // Nested types
+
+    private sealed record DisplaySnapshot(
+        string ScreenResolution,
+        float ScreenDensity,
+        DeviceOrientation? Orientation)
+    {
+        public void ApplyTo(Device device)
+        {
+            device.ScreenResolution ??= ScreenResolution;
+            device.ScreenDensity ??= ScreenDensity;
+            device.Orientation ??= Orientation;
         }
     }
 }

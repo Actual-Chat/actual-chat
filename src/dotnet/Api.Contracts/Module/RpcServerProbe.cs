@@ -29,8 +29,10 @@ public sealed class RpcServerProbe(IServiceProvider services)
         try {
             using var response = await httpClient.GetAsync(url, cts.Token).ConfigureAwait(false);
             var isSuccess = response.IsSuccessStatusCode;
-            Log.LogWarning("RPC probe to {Url}: {Status} ({StatusCode})",
-                url, isSuccess ? "OK" : "FAILED", (int)response.StatusCode);
+            if (isSuccess)
+                Log.LogInformation("RPC probe to {Url}: OK ({StatusCode})", url, (int)response.StatusCode);
+            else
+                Log.LogWarning("RPC probe to {Url}: FAILED ({StatusCode})", url, (int)response.StatusCode);
             return isSuccess;
         }
         catch (Exception e) {
