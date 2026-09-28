@@ -1,6 +1,7 @@
 .coach-panel {
     @apply relative flex-y h-full;
     @apply bg-03;
+    @apply overflow-y-auto;
 }
 .coach-panel > .c-cover {
     @apply relative flex-none h-26;
@@ -15,9 +16,8 @@
 .coach-panel > .c-header > .c-avatar { @apply absolute left-4 -top-8 z-10; }
 .coach-panel > .c-header .c-settings-btn { @apply mt-1; }
 .coach-panel > .c-body {
-    @apply flex-1 flex-y gap-y-3;
+    @apply flex-none flex-y gap-y-3;
     @apply px-4 pb-4 pt-2;
-    @apply overflow-y-auto;
 }
 .coach-panel .c-title-row { @apply flex-x items-start justify-between gap-x-3 pt-1; }
 .coach-panel .c-title-row .c-title { @apply text-title-500 text-02 whitespace-nowrap; }
