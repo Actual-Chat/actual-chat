@@ -26,4 +26,5 @@ public sealed partial record UsageEventAttributes
     [DataMember, Key(1)] public LiveSessionKind? SessionKind { get; init; }
     [DataMember, Key(2)] public int? ParticipantCount { get; init; }
     [DataMember, Key(3)] public bool? IsViaApi { get; init; }
+    [DataMember, Key(4)] public ArrivalKind? ArrivalKind { get; init; }
 }

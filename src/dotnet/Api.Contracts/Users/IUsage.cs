@@ -21,6 +21,10 @@ public interface IUsage : IComputeService
     Task OnResetReviewPrompt(Usage_ResetReviewPrompt command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRebuildOwnDays(Usage_RebuildOwnDays command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnRecordOnboardingStep(Usage_RecordOnboardingStep command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnRecordFunnelEvent(Usage_RecordFunnelEvent command, CancellationToken cancellationToken);
 }
 
 [DataContract, MessagePackObject]
@@ -43,3 +47,21 @@ public sealed partial record Usage_ResetReviewPrompt : ApiCommand<Unit>;
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Usage_RebuildOwnDays : ApiCommand<Unit>;
+
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Usage_RecordOnboardingStep : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required string Step { get; init; }
+    [DataMember(Order = 3), Key(3)] public required bool IsCompleted { get; init; }
+}
+
+/// <summary>
+/// Counts a funnel step only the client sees; guests may send it.
+/// </summary>
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Usage_RecordFunnelEvent : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required FunnelEvent Event { get; init; }
+}

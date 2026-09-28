@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ActualChat.Chat;
 using ActualChat.Contacts;
+using ActualChat.Diagnostics;
 using ActualChat.Users.Db;
 using ActualChat.Users.Module;
 using ActualLab.Fusion.EntityFramework;
@@ -13,6 +14,7 @@ public class UsageBackend(IServiceProvider services)
     private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
     private IContactsBackend ContactsBackend => field ??= Services.GetRequiredService<IContactsBackend>();
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
+    private ISessionsBackend SessionsBackend => field ??= Services.GetRequiredService<ISessionsBackend>();
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
     private UsersSettings Settings => field ??= Services.GetRequiredService<UsersSettings>();
 
@@ -88,7 +90,11 @@ public class UsageBackend(IServiceProvider services)
             .ConfigureAwait(false);
         var existingKeys = existing.Select(e => (e.Kind, e.SourceId)).ToHashSet();
 
-        var dayIds = events.Select(e => UsageDay.DayOf(e.OccurredAt).ToDateTime()).Distinct().ToList();
+        var dayIds = events
+            .Where(e => e.Kind.IsDayRollup())
+            .Select(e => UsageDay.DayOf(e.OccurredAt).ToDateTime())
+            .Distinct()
+            .ToList();
         var dbDays = await dbContext.UsageDays.ForUpdate()
             .Where(d => d.UserId == userId.Value && dayIds.Contains(d.Day))
             .ToDictionaryAsync(d => d.Day, cancellationToken)
@@ -102,6 +108,11 @@ public class UsageBackend(IServiceProvider services)
             }
 
             dbContext.Add(new DbUsageEvent(userId, usageEvent));
+            hasChanges = true;
+            UsageMeters.EventsRecorded.Add(1, new KeyValuePair<string, object?>("kind", usageEvent.Kind.ToString()));
+            if (!usageEvent.Kind.IsDayRollup())
+                continue;
+
             var day = UsageDay.DayOf(usageEvent.OccurredAt).ToDateTime();
             if (!dbDays.TryGetValue(day, out var dbDay)) {
                 dbDay = new DbUsageDay { UserId = userId.Value, Day = day };
@@ -110,8 +121,6 @@ public class UsageBackend(IServiceProvider services)
             }
             dbDay.Apply(usageEvent);
             dbDay.Version = VersionGenerator.NextVersion(dbDay.Version);
-            hasChanges = true;
-            UsageMeters.EventsRecorded.Add(1, new KeyValuePair<string, object?>("kind", usageEvent.Kind.ToString()));
         }
 
         if (hasChanges)
@@ -145,6 +154,9 @@ public class UsageBackend(IServiceProvider services)
         var days = new Dictionary<DateTime, DbUsageDay>();
         foreach (var dbEvent in dbEvents) {
             var usageEvent = dbEvent.ToModel();
+            if (!usageEvent.Kind.IsDayRollup())
+                continue;
+
             var day = UsageDay.DayOf(usageEvent.OccurredAt).ToDateTime();
             if (!days.TryGetValue(day, out var dbDay)) {
                 dbDay = new DbUsageDay { UserId = userId.Value, Day = day, Version = VersionGenerator.NextVersion() };
@@ -154,6 +166,21 @@ public class UsageBackend(IServiceProvider services)
             dbDay.Apply(usageEvent);
         }
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnCountFunnelEvent(
+        UsageBackend_CountFunnelEvent command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var appKind = AppKind.Unknown;
+        if (command.Session is { } session) {
+            var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
+            AppKindExt.TryParseUserAgent(sessionInfo?.Description, out appKind);
+        }
+        FunnelMeters.Record(command.Event, appKind, command.Arrival);
     }
 
     // [EventHandler]

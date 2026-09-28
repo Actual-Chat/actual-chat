@@ -1,3 +1,4 @@
+using ActualChat.Diagnostics;
 using ActualChat.Users.Module;
 
 namespace ActualChat.Users;
@@ -107,5 +108,38 @@ public class Usage(IServiceProvider services) : IUsage
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeAdmin);
         await Commander.Call(new UsageBackend_RebuildDays(account.Id), true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnRecordOnboardingStep(
+        Usage_RecordOnboardingStep command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        if (!OnboardingSteps.IsValid(command.Step))
+            throw StandardError.Constraint($"Unknown onboarding step: '{command.Step}'.");
+
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        account.Require(AccountFull.MustNotBeGuest);
+        var usageEvent = UsageEventSource.OnboardingStep(command.Step, command.IsCompleted, Clocks.SystemClock.Now);
+        await Commander
+            .Call(new UsageBackend_Record(account.Id, ApiArray.New(usageEvent)), true, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnRecordFunnelEvent(Usage_RecordFunnelEvent command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var funnelEvent = command.Event;
+        if (!funnelEvent.IsClientReportable())
+            throw StandardError.Constraint($"Funnel event '{funnelEvent}' can't be reported by a client.");
+
+        var sessionInfo = await Accounts.GetSessionInfo(command.Session, cancellationToken).ConfigureAwait(false);
+        AppKindExt.TryParseUserAgent(sessionInfo?.Description, out var appKind);
+        FunnelMeters.Record(funnelEvent, appKind);
     }
 }
