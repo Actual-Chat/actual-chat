@@ -1,20 +1,50 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, RightPanelContent.Model>
 @* The side panel's swap area: whatever occupies the panel goes through it, so a change of what is
-   shown hands over instead of cutting. Only the chat side panel does today. Keyed by chat rather
-   than by panel kind because that is what changes underneath it. *@
+   shown hands over instead of cutting. Chat mode is keyed by chat, Coach mode by nothing but itself,
+   because that is what changes underneath each. *@
+@{
+    var m = State.Value;
+    var isCoach = m is { IsCoachEnabled: true, Mode: RightPanelMode.Coach };
+    var layerKey = isCoach ? "coach" : ChatContext?.Chat.Id.Value;
+}
 
+@if (m.IsCoachEnabled) {
+    <RightPanelModeSwitch/>
+}
 <ContentSwap
     Name="SidePanel"
-    LayerKey="@ChatContext?.Chat.Id"
+    LayerKey="@layerKey"
     Class="side-panel-swap"
     Effect="@ContentSwapEffect.WipeRight">
     <ChildContent>
-        <CascadingValuePin TValue="ChatContext" RetentionKeySelector="@(c => c?.Chat.Id)">
-            <ChatSidePanel/>
-        </CascadingValuePin>
+        @if (isCoach) {
+            <div class="coach-panel"></div>
+        } else {
+            <CascadingValuePin TValue="ChatContext" RetentionKeySelector="@(c => c?.Chat.Id)">
+                <ChatSidePanel/>
+            </CascadingValuePin>
+        }
     </ChildContent>
 </ContentSwap>
 
 @code {
     [CascadingParameter] public ChatContext? ChatContext { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var isCoachEnabled = await Hub.CoachUI.IsEnabled(cancellationToken).ConfigureAwait(false);
+        var mode = await PanelsUI.Right.Mode.Use(cancellationToken).ConfigureAwait(false);
+        return new Model(isCoachEnabled, mode);
+    }
+
+    public sealed record Model(bool IsCoachEnabled, RightPanelMode Mode) {
+        public static readonly Model None = new(false, RightPanelMode.Chat);
+    }
 }

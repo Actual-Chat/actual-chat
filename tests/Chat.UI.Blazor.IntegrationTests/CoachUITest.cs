@@ -8,6 +8,7 @@ using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using ActualChat.Users.Module;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -58,6 +59,14 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
     {
         var streaming = await tester.CreateStreamingEntry(chatId, Language.Parse("en-US"));
         return (await tester.FinalizeStreamingEntry(streaming, text)).ChatEntrySlim;
+    }
+
+    // What AppBase does for the real app: the hub needs a root component's dispatcher before
+    // anything that schedules on it (panel state, navigation, modals) can run
+    private static void InitializeHub(BlazorTester tester, AppUIHub hub, ComponentBase root)
+    {
+        tester.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        hub.Initialize(root, RenderModeDef.GetOrDefault(""));
     }
 
     private static Task OptIn(BlazorTester tester)
@@ -160,5 +169,43 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         // assert
         cut.FindAll(".coach-filler").Should().BeEmpty("the spans index the original text, not the translation");
         cut.FindAll(".coach-weak").Should().BeEmpty();
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task RightPanelModeShouldPersistAcrossScopes()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-panel-mode");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var stored = tester.ScopedAppServices.GetRequiredService<RightPanelStoredState>();
+        await stored.WhenRead;
+        var cut = tester.Render<RightPanelModeSwitch>();
+        InitializeHub(tester, hub, cut.Instance);
+
+        // act
+        await cut.InvokeAsync(() => cut.FindAll(".btn-mode")[1].Click());
+
+        // assert
+        await TestWait.When(_ => {
+            hub.PanelsUI.Right.Mode.Value.Should().Be(RightPanelMode.Coach);
+            return Task.CompletedTask;
+        });
+        await TestWait.When(_ => {
+            stored.Mode.Should().Be(RightPanelMode.Coach, "the mode survives a chat switch and the next session");
+            return Task.CompletedTask;
+        });
+        cut.WaitForAssertion(() => cut.Find(".btn-mode.on").TextContent.Trim().Should().Be("Coach"));
+
+        // act - the mobile menu entry opens the panel in Coach mode
+        await cut.InvokeAsync(() => hub.PanelsUI.Right.Open(RightPanelMode.Coach));
+
+        // assert
+        await TestWait.When(_ => {
+            hub.PanelsUI.Right.IsVisible.Value.Should().BeTrue();
+            return Task.CompletedTask;
+        });
     }
 }

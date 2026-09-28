@@ -1,0 +1,13 @@
+.right-panel-mode-switch {
+    @apply flex-x items-center justify-center gap-x-1;
+    @apply mx-4 my-2 p-1;
+    @apply rounded-full bg-02;
+}
+.right-panel-mode-switch .btn.btn-mode {
+    @apply flex-1 min-h-8;
+    @apply rounded-full border-0 bg-transparent no-sheen;
+    @apply text-03 text-sm;
+}
+.right-panel-mode-switch .btn.btn-mode.on {
+    @apply bg-01 text-01 shadow-sm;
+}
