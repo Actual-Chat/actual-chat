@@ -380,7 +380,9 @@ body.hoverable .btn-video-panel.btn-h:hover {
 .btn-video-panel.btn-h.btn-video-toggle.on,
 .btn-video-panel.btn-h.chat-btn.on,
 .btn-video-panel.btn-h.layout-toggle-btn.on,
-.btn-video-panel.btn-h.btn-pin-toggle.on {
+.btn-video-panel.btn-h.btn-pin-toggle.on,
+.btn-video-panel.btn-h.btn-hand.on,
+.btn-video-panel.btn-h.btn-react.on {
     @apply bg-pal-blue-50-50;
     @apply text-pal-blue-95;
 }
@@ -758,9 +760,13 @@ body.show-fps-overlay .video-fps:empty {
     @apply hidden;
 }
 
-/* Participant label */
-.video-panel .video-track-player .video-participant-label {
+/* Participant label and raised hand: one bottom-left row, so a hidden label leaves the hand in its place */
+.video-panel .video-track-player .video-tile-caption {
     @apply absolute bottom-1 left-1 z-10;
+    @apply flex items-center gap-1;
+    @apply pointer-events-none;
+}
+.video-panel .video-track-player .video-participant-label {
     @apply flex items-center gap-1;
     @apply px-1.5 py-0.5 rounded;
     @apply text-sm text-white;
@@ -774,6 +780,38 @@ body.show-fps-overlay .video-fps:empty {
 body.narrow .video-panel:not(.layout-equal) .video-panel-content .video-track-player.item-x .video-participant-label,
 body.narrow .video-panel-content .video-track-player.pip-overlay .video-participant-label {
     @apply hidden;
+}
+/* Raised hand: right of the label, except on a small tile (top-left corner) and on the speaker in
+   speaker view (a button-sized indicator in the header instead, see .btn-hand) */
+.video-panel .video-track-player .video-hand-badge {
+    @apply flex items-center justify-center;
+    @apply w-6 h-6 rounded-full;
+    @apply bg-primary text-white text-sm;
+}
+.video-panel .video-track-player .video-hand-badge.corner {
+    @apply absolute top-1 left-1 z-10 hidden;
+    @apply pointer-events-none;
+}
+.video-panel:not(.layout-equal) .video-track-player.item-x .video-hand-badge.corner,
+.video-panel .video-track-player.pip-overlay .video-hand-badge.corner {
+    @apply flex;
+}
+.video-panel:not(.layout-equal) .video-track-player.item-x .video-tile-caption .video-hand-badge,
+.video-panel .video-track-player.pip-overlay .video-tile-caption .video-hand-badge,
+.video-panel.expanded:not(.layout-equal) .video-track-player.item-focused .video-hand-badge {
+    @apply hidden;
+}
+.video-panel .video-panel-header .header-row-pin {
+    @apply gap-2;
+}
+.video-panel .video-panel-header .btn-hand {
+    @apply pointer-events-none;
+}
+.video-panel.collapsed .video-track-player .video-hand-badge {
+    @apply w-5 h-5 text-xs;
+}
+.video-panel:not(.layout-equal) .video-track-player.item-x.hand-raised:not(.speaking)::after {
+    @apply border-primary opacity-100;
 }
 /* Focused video shows the participant name in the header (.c-center), so the
    in-video label is redundant there — but the FPS/codec readout lives inside that

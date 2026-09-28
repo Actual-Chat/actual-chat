@@ -26,4 +26,11 @@ public sealed partial record LiveSessionMember
     public bool MicMuted { get; init; }
     [DataMember(Order = 7), Key(7)]
     public Moment JoinedAt { get; init; }
+    [DataMember(Order = 8), Key(8)]
+    public Moment? HandRaisedAt { get; init; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public bool IsPresent => IsMicOpen || HasCamera || HasScreenShare || IsListening;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public bool IsHandRaised => HandRaisedAt is not null;
 }

@@ -11,7 +11,9 @@
     Actions="@m.Actions"
     IsOwnRecording="@m.IsOwnRecording"
     IsOwnScreenCasting="@m.IsOwnScreenCasting"
-    IsChatVisible="@m.IsChatVisible"/>
+    IsChatVisible="@m.IsChatVisible"
+    CanReact="@m.CanReact"
+    IsOwnHandRaised="@m.IsOwnHandRaised"/>
 
 @code {
     private ChatId? _chatId;
@@ -44,6 +46,9 @@
         var isOwnRecording = await Hub.ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
         var isOwnScreenCasting = await Hub.ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false);
         var isChatVisible = await Hub.ChatVideoUI.GetIsVideoPanelChatVisible(cancellationToken).ConfigureAwait(false);
+        var liveSessionUI = Hub.LiveSessionUI;
+        var canReact = await liveSessionUI.CanReact(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnHandRaised = await liveSessionUI.IsOwnHandRaised(chatId, cancellationToken).ConfigureAwait(false);
 
         return new Model {
             ChatId = chatId,
@@ -52,6 +57,8 @@
             IsOwnRecording = isOwnRecording,
             IsOwnScreenCasting = isOwnScreenCasting,
             IsChatVisible = isChatVisible,
+            CanReact = canReact,
+            IsOwnHandRaised = isOwnHandRaised,
         };
     }
 
@@ -64,5 +71,7 @@
         public bool IsOwnRecording { get; init; }
         public bool IsOwnScreenCasting { get; init; }
         public bool? IsChatVisible { get; init; }
+        public bool CanReact { get; init; }
+        public bool IsOwnHandRaised { get; init; }
     }
 }

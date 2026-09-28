@@ -1,0 +1,64 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Live
+@inherits ComputedStateComponent<AppUIHub, CallReactionsOverlay.Model>
+@{
+    var m = State.Value;
+}
+
+<div class="call-reactions-overlay">
+    @foreach (var (reaction, authorName) in m.Reactions) {
+        var svgName = Emojis.TryGetSvgName(reaction.Emoji);
+        <div @key="@(reaction.AuthorId.Value + "/" + reaction.SentAt.EpochOffsetTicks)"
+             class="c-reaction" style="left: @GetLeftPercent(reaction)%">
+            @if (svgName is not null) {
+                <img class="c-emoji" src="/dist/images/emoji/@(svgName)-animated.svg" alt="@reaction.Emoji.Title"
+                     draggable="false"/>
+            } else {
+                <span class="c-emoji">@reaction.Emoji.Symbol</span>
+            }
+            <span class="c-name">@authorName</span>
+        </div>
+    }
+</div>
+
+@code {
+    private IAuthors Authors => Hub.Authors;
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = ChatId;
+        var reactions = await LiveSessionUI.ListReactions(chatId, cancellationToken).ConfigureAwait(false);
+        if (reactions.Count == 0)
+            return Model.None;
+
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var result = new List<(CallReaction, string)>(reactions.Count);
+        foreach (var reaction in reactions) {
+            var authorName = reaction.AuthorId == ownAuthor?.Id
+                ? L.ChatView_You
+                : (await Authors.Get(Session, chatId, reaction.AuthorId, cancellationToken).ConfigureAwait(false))
+                    ?.Avatar.Name ?? "";
+            result.Add((reaction, authorName));
+        }
+        return new Model(result);
+    }
+
+    private static int GetLeftPercent(CallReaction reaction)
+        // Spreads simultaneous reactions across the panel, and keeps each one in place across re-renders
+        => 10 + (int)((uint)HashCode.Combine(reaction.AuthorId.Value, reaction.SentAt.EpochOffsetTicks) % 70);
+
+    // Nested types
+
+    public sealed record Model(IReadOnlyList<(CallReaction Reaction, string AuthorName)> Reactions) {
+        public static readonly Model None = new([]);
+    }
+}
