@@ -62,5 +62,5 @@
     @apply w-full p-3 rounded-lg bg-02 text-left;
 }
 .coach-occurrence .c-time { @apply text-caption text-03; }
-.coach-tip-bar { @apply px-2 pb-1; }
+.banner.coach-tip-bar { @apply w-auto mx-2 mb-1; }
 .coach-tip-bar .c-synonyms { @apply flex-x flex-wrap items-center gap-1 ml-2; }

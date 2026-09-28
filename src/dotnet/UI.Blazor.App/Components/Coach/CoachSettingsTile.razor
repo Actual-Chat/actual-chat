@@ -61,7 +61,9 @@
         => UserSettingsUI.UserCoachSettings().Update(x => x with { IsCoachingEnabled = !x.IsCoachingEnabled });
 
     private Task OnToggleTips()
-        => UserSettingsUI.UserCoachSettings().Update(x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled });
+        => State.Value.IsCoachingEnabled
+            ? UserSettingsUI.UserCoachSettings().Update(x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled })
+            : Task.CompletedTask;
 
     private Task OnMinutesChanged(int minutes) {
         _formModel.Minutes = minutes;

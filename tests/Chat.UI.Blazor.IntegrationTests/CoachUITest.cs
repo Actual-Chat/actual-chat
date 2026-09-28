@@ -4,6 +4,7 @@ using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Components.MarkupParts;
+using ActualLab.Fusion.Blazor;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
@@ -166,7 +167,8 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
             .Add(x => x.Value, entry)
             .Add(x => x.IsFixed, true)
             .AddChildContent<PlayableTextMarkupView>(c => c.Add(x => x.Markup, translated)));
-        await Task.Delay(500);
+        var view = (IStatefulComponent<PlayableTextMarkupView.Model>)cut.FindComponent<PlayableTextMarkupView>().Instance;
+        cut.WaitForAssertion(() => view.State.Snapshot.UpdateCount.Should().BePositive("the view must have computed once"));
 
         // assert
         cut.FindAll(".coach-filler").Should().BeEmpty("the spans index the original text, not the translation");
@@ -243,12 +245,17 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         cut.WaitForAssertion(() => cut.Find(".coach-metric-row[data-metric=Fillers] .coach-chip").TextContent
             .Should().Contain("um"), TimeSpan.FromSeconds(10));
 
-        // act - the Coaching toggle writes the setting
+        // act - the greyed-out tips row does nothing while coaching is off; the Coaching toggle writes the setting
+        await cut.InvokeAsync(() => cut.Find(".coach-settings-tips").Click());
         await cut.InvokeAsync(() => cut.Find(".coach-settings-coaching input").Change(true));
 
         // assert
-        await TestWait.When(async ct => (await hub.UserSettingsUI.UserCoachSettings().Get(ct))
-            .IsCoachingEnabled.Should().BeTrue());
+        var settings = await TestWait.When(async ct => {
+            var x = await hub.UserSettingsUI.UserCoachSettings().Get(ct);
+            x.IsCoachingEnabled.Should().BeTrue();
+            return x;
+        });
+        settings.AreLiveTipsEnabled.Should().BeTrue("a disabled toggle's row must not flip the setting");
     }
 
     [Fact(Timeout = 60_000)]
@@ -262,6 +269,10 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         tester.JSInterop.Mode = JSRuntimeMode.Loose;
         var (chatId, _) = await tester.CreateChat(true);
         var coach = tester.ScopedAppServices.AppUIHub().Coach;
+        // A New York browser reports +240 min; the day columns are UTC days and must keep their UTC labels
+        ((ServerSideDateTimeConverter)tester.ScopedAppServices.GetRequiredService<DateTimeConverter>())
+            .Initialize(TimeSpan.FromMinutes(240));
+        var today = UsageDay.DayOf(appHost.Services.Clocks().SystemClock.Now).ToDateTime();
         await PostVoice(tester, chatId, Text);
         var summary = await TestWait.When(async ct => {
             var s = await coach.GetOwnSummary(tester.Session, CoachWindow.Week, ct);
@@ -281,6 +292,10 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
                 .Should().Be(1, "only today has speech");
             cut.FindAll(".donut-chart circle.c-slice").Should().NotBeEmpty();
         }, TimeSpan.FromSeconds(10));
+        var todayColumn = cut.FindAll(".bar-chart .c-column")
+            .Single(c => c.QuerySelector(".c-bar")!.GetAttribute("style")!.Contains("height: 100%"));
+        todayColumn.QuerySelector(".c-label")!.TextContent.Trim().Should().Be(today.ToString("ddd", null),
+            "the column is a UTC day and its label must not shift with the browser's offset");
     }
 
     [Fact(Timeout = 60_000)]
@@ -346,16 +361,25 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         var inOtherChat = tester.Render<CoachTipBar>(p => p.Add(x => x.ChatId, otherChatId));
 
         // assert
-        inTipsChat.WaitForAssertion(() => inTipsChat.FindAll(".coach-tip-bar .banner").Should().ContainSingle());
-        inTipsChat.Find(".coach-tip-bar .banner").TextContent.Should().Contain("um");
-        await Task.Delay(300);
-        inOtherChat.FindAll(".coach-tip-bar .banner").Should().BeEmpty("the tip belongs to another chat");
+        inTipsChat.WaitForAssertion(() => inTipsChat.FindAll(".banner.coach-tip-bar").Should().ContainSingle());
+        inTipsChat.Find(".banner.coach-tip-bar").TextContent.Should().Contain("um");
+        var otherBar = (IStatefulComponent<UserCoachTip?>)inOtherChat.Instance;
+        inOtherChat.WaitForAssertion(() => otherBar.State.Snapshot.UpdateCount.Should().BePositive());
+        inOtherChat.FindAll(".coach-tip-bar").Should().BeEmpty("the tip belongs to another chat, and nothing reserves space");
+
+        // act - live tips off hides it, on brings it back
+        await hub.UserSettingsUI.UserCoachSettings().Update(x => x with { AreLiveTipsEnabled = false });
+        inTipsChat.WaitForAssertion(() => inTipsChat.FindAll(".banner.coach-tip-bar").Should().BeEmpty(),
+            TimeSpan.FromSeconds(10));
+        await hub.UserSettingsUI.UserCoachSettings().Update(x => x with { AreLiveTipsEnabled = true });
+        inTipsChat.WaitForAssertion(() => inTipsChat.FindAll(".banner.coach-tip-bar").Should().ContainSingle(),
+            TimeSpan.FromSeconds(10));
 
         // act - dismiss
         await inTipsChat.InvokeAsync(() => inTipsChat.Find(".coach-tip-bar .close-banner").Click());
 
         // assert
         await TestWait.When(async ct => (await hub.Coach.GetPendingTip(tester.Session, ct)).Should().BeNull());
-        inTipsChat.WaitForAssertion(() => inTipsChat.FindAll(".coach-tip-bar .banner").Should().BeEmpty());
+        inTipsChat.WaitForAssertion(() => inTipsChat.FindAll(".banner.coach-tip-bar").Should().BeEmpty());
     }
 }

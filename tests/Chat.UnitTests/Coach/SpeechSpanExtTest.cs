@@ -80,4 +80,36 @@ public class SpeechSpanExtTest
         // assert
         kinds.Should().BeNull();
     }
+
+    [Fact]
+    public void MapToWordsShouldMarkEveryWordOfAPhrase()
+    {
+        // arrange
+        const string text = "I went, you know, to the store.";
+        var markup = Markup(text);
+        var spans = new[] { Span(SpeechSpanKind.Filler, text, "you know") };
+
+        // act
+        var kinds = spans.MapToWords(markup);
+
+        // assert
+        kinds![2].Should().Be(SpeechSpanKind.Filler, "'you' starts the phrase");
+        kinds[3].Should().Be(SpeechSpanKind.Filler, "'know,' ends the phrase");
+        kinds.Count(k => k is not null).Should().Be(2);
+    }
+
+    [Fact]
+    public void MapToWordsShouldAttributeAStartInsideTrailingWhitespaceToThatWord()
+    {
+        // arrange - a stale span may land on the space after a word; it belongs to that word, not the next
+        const string text = "So, um, I went.";
+        var markup = Markup(text);
+        var spans = new[] { new SpeechSpan(SpeechSpanKind.Weak, "x", 3, 1, ApiArray<string>.Empty) };
+
+        // act
+        var kinds = spans.MapToWords(markup);
+
+        // assert
+        kinds![0].Should().Be(SpeechSpanKind.Weak);
+    }
 }

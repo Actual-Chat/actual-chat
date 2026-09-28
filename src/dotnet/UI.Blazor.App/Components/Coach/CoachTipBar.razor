@@ -5,9 +5,9 @@
     var tip = State.Value;
 }
 
-<div class="coach-tip-bar">
+@if (tip is not null) {
     <Banner
-        IsVisible="@(tip is not null)"
+        Class="coach-tip-bar"
         Severity="BannerSeverity.Info"
         ShowDismissButton="true"
         Dismiss="@OnDismiss">
@@ -15,23 +15,21 @@
             <i class="icon-mic text-2xl"></i>
         </Icon>
         <Body>
-            @if (tip is not null) {
-                <span class="c-text">@TipText(tip)</span>
-                @if (tip.Kind == CoachTipKind.WeakWord && tip.Synonyms.Count > 0) {
-                    <span class="c-synonyms">
-                        @L.Coach_TipSynonyms
-                        @foreach (var synonym in tip.Synonyms) {
-                            <span class="coach-chip">@synonym</span>
-                        }
-                    </span>
-                }
+            <span class="c-text">@TipText(tip)</span>
+            @if (tip.Kind == CoachTipKind.WeakWord && tip.Synonyms.Count > 0) {
+                <span class="c-synonyms">
+                    @L.Coach_TipSynonyms
+                    @foreach (var synonym in tip.Synonyms) {
+                        <span class="coach-chip">@synonym</span>
+                    }
+                </span>
             }
         </Body>
         <Buttons>
             <BannerButton Click="@OnOpenCoach">@L.Coach_OpenCoach</BannerButton>
         </Buttons>
     </Banner>
-</div>
+}
 
 @code {
     private ICoach Coach => Hub.Coach;
@@ -43,7 +41,11 @@
 
     protected override async Task<UserCoachTip?> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
-        if (!await Hub.CoachUI.IsMarkingEnabled(cancellationToken).ConfigureAwait(false))
+        if (!await Hub.CoachUI.IsEnabled(cancellationToken).ConfigureAwait(false))
+            return null;
+
+        var settings = await UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
+        if (settings is not { IsCoachingEnabled: true, AreLiveTipsEnabled: true })
             return null;
 
         var tip = await Coach.GetPendingTip(Session, cancellationToken).ConfigureAwait(false);

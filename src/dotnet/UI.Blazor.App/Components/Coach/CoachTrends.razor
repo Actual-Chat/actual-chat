@@ -69,8 +69,9 @@
     }
 
     private string DayLabel(Moment day, int dayCount) {
-        var local = DateTimeConverter.ToLocalTime(day);
-        return dayCount <= 7 ? local.ToString("ddd", DateFormatter) : local.ToString("d", DateFormatter);
+        // The columns are UTC days (CoachDay.Day), so the label is the UTC date, not a converted instant
+        var date = day.ToDateTime();
+        return dayCount <= 7 ? date.ToString("ddd", DateFormatter) : date.ToString("d", DateFormatter);
     }
 
     private List<ChartItem> Composition(CoachSummary s) {
