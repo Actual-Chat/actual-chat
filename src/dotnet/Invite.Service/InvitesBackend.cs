@@ -206,6 +206,7 @@ public class InvitesBackend(IServiceProvider services)
         dbInvite.UpdateFrom(invite);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        context.Operation.AddEvent(new UsageBackend_CountFunnelEvent(account.Id, FunnelEvent.JoinUsed, command.Session));
         context.Operation.Items.KeylessSet(invite);
         return invite;
 

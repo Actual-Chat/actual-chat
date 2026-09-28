@@ -1,4 +1,5 @@
 using ActualChat.Contacts.Db;
+using ActualChat.Diagnostics;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 
@@ -93,6 +94,7 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
             // This command doesn't throw an exception in case contact already exists
             var createCmd = new ContactsBackend_Change(contactId, null, Change.Upsert(contact));
             await Commander.Call(createCmd, cancellationToken).ConfigureAwait(false);
+            FunnelMeters.Record(FunnelEvent.ContactsMatched, AppKind.Unknown);
         }
 
         var reviewCommand = new ContactsBackend_ReviewExternalContactName(contactId);

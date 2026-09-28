@@ -25,6 +25,8 @@ public interface IUsageBackend : IComputeService, IBackendService
     Task OnRecord(UsageBackend_Record command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRebuildDays(UsageBackend_RebuildDays command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnCountFunnelEvent(UsageBackend_CountFunnelEvent command, CancellationToken cancellationToken);
 
     // Events
 
@@ -58,6 +60,22 @@ public sealed partial record UsageBackend_Record(
 // ReSharper disable once InconsistentNaming
 public sealed partial record UsageBackend_RebuildDays(
     [property: DataMember, Key(0)] UserId UserId
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public ShardKey ShardKey => UserId.ShardKey;
+}
+
+/// <summary>
+/// Counts a server-side funnel step; sent as an operation event, so it counts only committed operations.
+/// </summary>
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record UsageBackend_CountFunnelEvent(
+    [property: DataMember, Key(0)] UserId UserId,
+    [property: DataMember, Key(1)] FunnelEvent Event,
+    [property: DataMember, Key(2)] Session? Session = null,
+    [property: DataMember, Key(3)] ArrivalKind? Arrival = null
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]

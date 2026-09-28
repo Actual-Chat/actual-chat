@@ -26,6 +26,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     ];
 
     private ISessionsBackend SessionsBackend => field ??= Services.GetRequiredService<ISessionsBackend>();
+    private ISessionTemporalsBackend SessionTemporalsBackend => field ??= Services.GetRequiredService<ISessionTemporalsBackend>();
     private IAvatarsBackend AvatarsBackend => field ??= Services.GetRequiredService<IAvatarsBackend>();
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
     private ContactGreeter ContactGreeter => field ??= Services.GetRequiredService<ContactGreeter>();
@@ -277,6 +278,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         // Emit UserSignedInEvent
         context.Operation.AddEvent(new UserSignedInEvent(userId, session));
+        await RecordSignInUsage(context, session, userId, isNew && !account.IsBot, sessionInfo, cancellationToken)
+            .ConfigureAwait(false);
         context.Operation.AddEvent(FlowHub.NewResumeEvent<UserSignInFlow>(userId.Value));
 
         // Emit NewUserEvent if this is a new user
@@ -557,6 +560,43 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     }
 
     // Private methods
+
+    private async Task RecordSignInUsage(
+        CommandContext context, Session session, UserId userId, bool isSignUp, SessionInfoFull? sessionInfo,
+        CancellationToken cancellationToken)
+    {
+        // Measurement only: whatever goes wrong here must not fail the sign-in.
+        // Everything goes out as operation events, so it counts only a committed sign-in and survives a retry.
+        try {
+            var arrivalKey = Constants.SessionTemporals.ToClientKey(Constants.SessionTemporals.ArrivalKey);
+            var signInFromLinkKey = Constants.SessionTemporals.ToClientKey(Constants.SessionTemporals.SignInFromLinkKey);
+            var arrivalValue = await SessionTemporalsBackend.Get(session, arrivalKey, cancellationToken)
+                .ConfigureAwait(false);
+            var signInFromLinkValue = await SessionTemporalsBackend.Get(session, signInFromLinkKey, cancellationToken)
+                .ConfigureAwait(false);
+            if (isSignUp) {
+                AppKindExt.TryParseUserAgent(sessionInfo?.Description, out var appKind);
+                if (!ArrivalInfo.TryParse(arrivalValue, out var arrival))
+                    arrival = ArrivalInfo.Fallback(appKind);
+
+                var signUp = UsageEventSource.SignUp(arrival, Clocks.SystemClock.Now);
+                context.Operation.AddEvent(new UsageBackend_Record(userId, ApiArray.New(signUp)));
+                context.Operation.AddEvent(new UsageBackend_CountFunnelEvent(
+                    userId, FunnelEvent.SignUp, session, arrival.Kind));
+            }
+            if (signInFromLinkValue is not null) {
+                context.Operation.AddEvent(new UsageBackend_CountFunnelEvent(
+                    userId, FunnelEvent.SignInCompletedFromLink, session));
+                context.Operation.AddEvent(new SessionTemporalsBackend_Set(session, signInFromLinkKey, null));
+            }
+            // Any sign-in consumes the arrival: a later sign-up in this session is a different person's
+            if (arrivalValue is not null)
+                context.Operation.AddEvent(new SessionTemporalsBackend_Set(session, arrivalKey, null));
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogWarning(e, "Failed to record the sign-in usage of user '{UserId}'", userId);
+        }
+    }
 
     private static string GetPendingRegistrationIdentifier(
         UserIdentity authenticatedIdentity,

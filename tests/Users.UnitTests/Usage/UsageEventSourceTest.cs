@@ -175,6 +175,38 @@ public class UsageEventSourceTest
         evening.OccurredAt.Should().Be(morning.OccurredAt);
     }
 
+    [Fact]
+    public void SignUpShouldCarryTheArrival()
+    {
+        // arrange
+        var arrival = ArrivalInfo.New(ArrivalKind.Join, "inv1")!.Value;
+
+        // act
+        var signUp = UsageEventSource.SignUp(arrival, T0);
+
+        // assert
+        signUp.Kind.Should().Be(UsageEventKind.SignUp);
+        signUp.SourceId.Should().Be("join:inv1");
+        signUp.Value.Should().Be(1);
+        signUp.Attributes!.ArrivalKind.Should().Be(ArrivalKind.Join);
+        signUp.Kind.IsDayRollup().Should().BeFalse();
+    }
+
+    [Fact]
+    public void OnboardingStepShouldEncodeSkipAsZero()
+    {
+        // act
+        var skipped = UsageEventSource.OnboardingStep("Phone", false, T0);
+        var completed = UsageEventSource.OnboardingStep("Phone", true, T0);
+
+        // assert
+        skipped.SourceId.Should().Be("Phone");
+        skipped.Value.Should().Be(0);
+        completed.Value.Should().Be(1);
+        skipped.Kind.IsDayRollup().Should().BeFalse();
+        UsageEventKind.Speech.IsDayRollup().Should().BeTrue();
+    }
+
     private static TextEntry NewTextEntry()
         => new(ChatEntryId.New(TestChatId, 1), 7) {
             AuthorId = TestAuthorId,
