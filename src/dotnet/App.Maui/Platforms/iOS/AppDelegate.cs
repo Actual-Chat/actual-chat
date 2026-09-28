@@ -2,6 +2,7 @@ using ActualChat.App.Maui.Services;
 using ActualChat.Maui.Services;
 using Firebase.CloudMessaging;
 using Foundation;
+using Intents;
 using UIKit;
 using UserNotifications;
 using DeviceType = ActualChat.Notifications.DeviceType;
@@ -46,7 +47,11 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
         NSUserActivity userActivity,
         UIApplicationRestorationHandler completionHandler)
     {
-        CheckForAppLink(userActivity);
+        var intent = userActivity.GetInteraction()?.Intent;
+        if (intent is INStartCallIntent or INStartVideoCallIntent)
+            IosCalls.Instance.ContinueCall(intent);
+        else
+            CheckForAppLink(userActivity);
         return base.ContinueUserActivity(application, userActivity, completionHandler);
     }
 
