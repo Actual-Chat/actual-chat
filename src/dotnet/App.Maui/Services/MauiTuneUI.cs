@@ -14,6 +14,7 @@ public class MauiTuneUI : TuneUI
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
 
     protected override bool CanVibrate => Vibration.Default.IsSupported;
+    protected override bool IsNative => true;
 
     public MauiTuneUI(UIHub hub) : base(hub)
         => _audioFocusRequester = new AudioFocusRequester(AudioFocusMode.Tune, OnLostAudioFocus);

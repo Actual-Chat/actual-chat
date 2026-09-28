@@ -3,7 +3,6 @@ import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { SoundPlayer } from './sound-player';
 import { Interactive } from 'interactive';
-import { BrowserInfo } from '../BrowserInfo/browser-info';
 
 const { logScope, debugLog, warnLog, errorLog } = getLogs('TuneUI');
 
@@ -78,11 +77,13 @@ export class TuneUI {
     private static whenReady = new PromiseSource();
     private static blazorRef: DotNet.DotNetObject;
     private static tunes: Record<Tune, TuneInfo>;
+    private static isNative: boolean;
 
     /** Called by blazor */
-    public static init(blazorRef: DotNet.DotNetObject, tunes: Record<Tune, TuneInfo>) {
+    public static init(blazorRef: DotNet.DotNetObject, tunes: Record<Tune, TuneInfo>, isNative: boolean) {
         this.blazorRef = blazorRef;
         this.tunes = tunes;
+        this.isNative = isNative;
         this.whenReady.resolve(null);
     }
 
@@ -103,7 +104,7 @@ export class TuneUI {
                 return;
             }
 
-            if (BrowserInfo.hostKind === 'MauiApp') {
+            if (this.isNative) {
                 await this.blazorRef.invokeMethodAsync('play', tune);
                 return;
             }

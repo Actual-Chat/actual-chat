@@ -73,6 +73,9 @@ public abstract class TuneUI : ProcessorBase
     protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.Tunes);
     // False without vibration hardware: desktop browsers, Windows, Mac Catalyst, iPads
     protected abstract bool CanVibrate { get; }
+    // Whether the app plays tunes itself; otherwise the JS side does. The host kind can't tell:
+    // the AppKit backend is a MAUI host that plays through the WebView (WebTuneUI).
+    protected abstract bool IsNative { get; }
 
     private async ValueTask Initialize()
     {
@@ -81,7 +84,7 @@ public abstract class TuneUI : ProcessorBase
             var resolvedTunes = Resolve(CanVibrate);
             Volatile.Write(ref _resolvedTunes, resolvedTunes);
             _backendRef ??= DotNetObjectReference.Create(this);
-            await Hub.JS.InvokeVoidAsync(JSInitMethod, _backendRef, resolvedTunes).ConfigureAwait(false);
+            await Hub.JS.InvokeVoidAsync(JSInitMethod, _backendRef, resolvedTunes, IsNative).ConfigureAwait(false);
         }
         catch (JSDisconnectedException e) {
             // The headless PTT scope marks its runtime disconnected up front, so this
