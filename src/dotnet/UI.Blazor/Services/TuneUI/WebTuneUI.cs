@@ -13,6 +13,7 @@ public class WebTuneUI(UIHub hub) : TuneUI(hub)
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
     protected override bool CanVibrate => BrowserInfo.CanVibrate;
+    protected override bool IsNative => false;
 
     protected override Task PlayInternal(Tune tune)
         => ForegroundTask.Run(() => JS.InvokeVoidAsync(JSPlayMethod, tune).AsTask());
