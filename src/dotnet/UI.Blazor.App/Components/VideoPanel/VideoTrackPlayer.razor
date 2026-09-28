@@ -39,7 +39,7 @@
     <div class="video-placeholder" aria-hidden="true">
         <i class="icon-video-play animate-pulse"></i>
     </div>
-    @if (!string.IsNullOrEmpty(AuthorName)) {
+    @if (!AuthorName.IsNullOrEmpty()) {
         <div class="video-participant-label">
             <i class="@labelIcon"></i>
             <span>@AuthorName</span>

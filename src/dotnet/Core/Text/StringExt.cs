@@ -40,8 +40,10 @@ public static partial class StringExt
     public static string? RequireMaxLength(this string source, int length, [CallerArgumentExpression(nameof(source))] string name = "")
         => source.Length <= length ? source : throw StandardError.Constraint($"{name} Must be no more than {length} characters.");
 
+#pragma warning disable RS0030
     public static bool IsNullOrWhiteSpace([NotNullWhen(false)] this string? source)
         => string.IsNullOrWhiteSpace(source);
+#pragma warning restore RS0030
 
     public static string ToSentenceCase(this string str, string delimiter = " ")
         => CaseChangeRegex.Replace(str, m => $"{m.Value[0]}{delimiter}{m.Value[1..]}");
@@ -55,7 +57,7 @@ public static partial class StringExt
 
     public static string ToKebabCase(this string input)
     {
-        if (string.IsNullOrEmpty(input))
+        if (input.IsNullOrEmpty())
             return input;
 
         // Split on capital letters, but keep sequences of capitals together if followed by lowercase

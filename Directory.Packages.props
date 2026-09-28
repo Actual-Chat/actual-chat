@@ -308,6 +308,7 @@
     <!-- Analyzers -->
     <PackageVersion Include="Moq.Analyzers" Version="0.4.2" />
     <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0" />
     <PackageVersion Include="Meziantou.Analyzer" Version="3.0.93" />
     <PackageVersion Include="Roslynator.Analyzers" Version="4.15.0" />
     <PackageVersion Include="xunit.analyzers" Version="1.27.0" />

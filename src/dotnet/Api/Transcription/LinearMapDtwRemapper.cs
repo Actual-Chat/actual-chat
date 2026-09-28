@@ -138,7 +138,7 @@ namespace ActualChat.Transcription
             public static List<Token> TokenizeWithOffsets(string text)
             {
                 var list = new List<Token>();
-                if (string.IsNullOrEmpty(text))
+                if (text.IsNullOrEmpty())
                     return list;
 
                 // NOTE: We normalize token TEXT to lowercase for robust matching,
@@ -165,7 +165,7 @@ namespace ActualChat.Transcription
 
             public static Int128 Signature(string token)
             {
-                if (string.IsNullOrEmpty(token) || token.Length < 3)
+                if (token.IsNullOrEmpty() || token.Length < 3)
                     return Int128.Zero;
 
                 var s = token.AsSpan();

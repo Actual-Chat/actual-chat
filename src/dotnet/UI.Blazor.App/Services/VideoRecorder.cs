@@ -159,7 +159,7 @@ public sealed class VideoRecorder : IAsyncDisposable
     public async Task SetSelectedCamera(string deviceId, CancellationToken cancellationToken)
     {
         _deviceId = deviceId;
-        if (!string.IsNullOrEmpty(deviceId))
+        if (!deviceId.IsNullOrEmpty())
             await _jsRef.InvokeVoidAsync("setSelectedCamera", cancellationToken, deviceId).ConfigureAwait(false);
     }
 
@@ -171,7 +171,7 @@ public sealed class VideoRecorder : IAsyncDisposable
 
     public Task SwitchCamera(string deviceId, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(deviceId) || _deviceId == deviceId)
+        if (deviceId.IsNullOrEmpty() || _deviceId == deviceId)
             return Task.CompletedTask;
 
         _deviceId = deviceId;

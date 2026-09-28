@@ -44,7 +44,7 @@ public class OSLogLogger(string name) : ILogger<object>
 
         var message = formatter(state, exception);
 
-        if (!string.IsNullOrEmpty(message) || exception != null) {
+        if (!message.IsNullOrEmpty() || exception != null) {
             WriteMessage(logLevel,
                 _name,
                 eventId.Id,
@@ -104,7 +104,7 @@ public class OSLogLogger(string name) : ILogger<object>
         logBuilder.Append(eventId);
         logBuilder.Append("] ");
 
-        if (!string.IsNullOrEmpty(message)) {
+        if (!message.IsNullOrEmpty()) {
             var len = logBuilder.Length;
             logBuilder.Append(message);
             logBuilder.Replace(Environment.NewLine, NewLineWithMessagePadding, len, message.Length);

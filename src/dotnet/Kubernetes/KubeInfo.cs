@@ -53,11 +53,11 @@ public sealed class KubeInfo(IServiceProvider services) : IKubeInfo, IAsyncDispo
 
         // Try to get token and CA from kubectl
         var token = ExecuteKubectlCommand("create token default --duration=24h").Trim();
-        if (!string.IsNullOrEmpty(token))
+        if (!token.IsNullOrEmpty())
             File.WriteAllText(tokenPath, token);
 
         var caData = ExecuteKubectlCommand("config view --raw -o jsonpath=\"{.clusters[?(@.name=='docker-desktop')].cluster.certificate-authority-data}\"").Trim();
-        if (!string.IsNullOrEmpty(caData))
+        if (!caData.IsNullOrEmpty())
             File.WriteAllBytes(caPath, Convert.FromBase64String(caData));
 
         return _localInstance = new KubeInfo(services) {

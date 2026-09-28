@@ -54,7 +54,7 @@
 
     private void OnConversationToggleClick() {
         _ = TuneUI.Play(Tune.ClickButton);
-        _loadingCls = string.IsNullOrEmpty(_loadingCls) ? "loading-conversation" : "";
+        _loadingCls = _loadingCls.IsNullOrEmpty() ? "loading-conversation" : "";
         ConversationToggleClick.InvokeAsync();
     }
 

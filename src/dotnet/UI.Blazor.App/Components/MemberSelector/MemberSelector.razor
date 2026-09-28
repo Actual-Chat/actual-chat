@@ -144,7 +144,7 @@
 
     private void OnFilter(string filter) {
         _searchQuery = new SearchQuery(filter);
-        FilteredItems = string.IsNullOrWhiteSpace(filter)
+        FilteredItems = filter.IsNullOrWhiteSpace()
             ? AllItems.ToArray()
             : AllItems
                 .Where(x => x.Account.Avatar.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))

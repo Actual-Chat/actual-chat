@@ -121,7 +121,7 @@
                 break;
             case 1:
                 _formModel.SecondaryLanguageId = languageId;
-                if (string.IsNullOrEmpty(languageId))
+                if (languageId.IsNullOrEmpty())
                     _formModel.TertiaryLanguageId = "";
                 break;
             case 2:
@@ -139,7 +139,7 @@
         => languageId == _formModel.SecondaryLanguageId;
 
     private bool IsTertiaryDisabled
-        => string.IsNullOrEmpty(_formModel.SecondaryLanguageId);
+        => _formModel.SecondaryLanguageId.IsNullOrEmpty();
 
     // Nested types
 

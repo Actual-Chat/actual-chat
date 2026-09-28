@@ -415,7 +415,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 : resource.AddService(serviceName, "actualchat", ApiConstants.FullVersionString);
 
             var containerName = Environment.GetEnvironmentVariable("CONTAINER_NAME").NullIfEmpty() ?? "actual-chat-app";
-            if (!string.IsNullOrEmpty(containerName))
+            if (!containerName.IsNullOrEmpty())
                 resource.AddAttributes([KeyValuePair.Create<string, object>("k8s.container.name", containerName)]);
         });
 

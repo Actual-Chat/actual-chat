@@ -60,7 +60,7 @@ public static class MibcGenerator
         }
 
         var directory = Path.GetDirectoryName(outputPath);
-        if (!string.IsNullOrEmpty(directory))
+        if (!directory.IsNullOrEmpty())
             Directory.CreateDirectory(directory);
         builder.Save(outputPath);
 
