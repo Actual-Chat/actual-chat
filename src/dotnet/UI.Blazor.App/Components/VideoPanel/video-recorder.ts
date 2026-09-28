@@ -131,11 +131,20 @@ const CAPTURE_STALL_RECOVERY_MS = 3000;
 // Ceiling on one recoverNow() pass. 15s clears a slow-but-live restart with room
 // to spare; see scheduleRecovery for why the pass must be bounded at all.
 const RECOVER_NOW_TIMEOUT_MS = 15_000;
-// User-facing message shown when the HW encoder cannot be initialised at all
-// (every codec probe fails) or when recovery has exhausted MAX_RECOVERY_ATTEMPTS.
-// Kept free of codec/encoder/internals — actionable only.
-const USER_FACING_RESTART_MESSAGE =
-    'Please restart the app or device to be able to use video.';
+// Mirrors VideoRecorderError.cs: C# maps the code onto a catalog string, so no
+// user-facing prose is composed here. Unknown ships the raw message instead.
+enum VideoRecorderError {
+    Unknown = 0,
+    CameraUnavailable = 1,
+    RestartRequired = 2,
+}
+
+// Thrown when no encoder can be initialised at all (every codec probe fails).
+class RestartRequiredError extends Error {
+    constructor() {
+        super('HW+SW encoders unavailable, restart required');
+    }
+}
 
 interface PreviewTrackGenerator {
     track: MediaStreamTrack;
@@ -1043,8 +1052,7 @@ export class VideoRecorder {
         } catch (error) {
             this.setRecordingState('error');
             errorLog?.log('Failed to start warmup:', error);
-            const message = await this.describeStartError(error);
-            await this.blazorRef.invokeMethodAsync('OnRecordingError', message);
+            await this.reportStartError(error);
         }
     }
 
@@ -1315,7 +1323,7 @@ export class VideoRecorder {
                     warnLog?.log(
                         `All probe attempts failed (initialPick=${initialPick}) — ` +
                         `aborting startRecording, HW+SW encoders appear unavailable`);
-                    throw new Error(USER_FACING_RESTART_MESSAGE);
+                    throw new RestartRequiredError();
                 }
             }
             this.currentHardwareAcceleration = chosenHwAccel;
@@ -1408,8 +1416,7 @@ export class VideoRecorder {
         } catch (error) {
             this.setRecordingState('error');
             errorLog?.log('Failed to start recording:', error);
-            const message = await this.describeStartError(error);
-            await this.blazorRef.invokeMethodAsync('OnRecordingError', message);
+            await this.reportStartError(error);
         }
     }
 
@@ -1494,8 +1501,7 @@ export class VideoRecorder {
             }
             this.setRecordingState('error');
             errorLog?.log('Failed to start screencast:', error);
-            const message = error instanceof Error ? error.message : String(error);
-            await this.blazorRef.invokeMethodAsync('OnRecordingError', message);
+            await this.reportError(VideoRecorderError.Unknown, null, error);
         }
     }
 
@@ -2409,7 +2415,7 @@ export class VideoRecorder {
             this.recoveryScheduled = false;
             void this.engageEncoderFallback(reason).then(engaged => {
                 if (!engaged)
-                    void this.blazorRef.invokeMethodAsync('OnRecordingError', USER_FACING_RESTART_MESSAGE);
+                    void this.reportError(VideoRecorderError.RestartRequired, null, reason);
             });
             return;
         }
@@ -3072,21 +3078,31 @@ export class VideoRecorder {
         }
     }
 
-    private async describeStartError(error: unknown): Promise<string> {
-        if (error instanceof DOMException && error.name === 'NotReadableError') {
-            const deviceId = this.selectedCameraDeviceId;
-            if (!deviceId) return 'Camera is unavailable';
-            try {
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                const label = devices
-                    .find(d => d.kind === 'videoinput' && d.deviceId === deviceId)
-                    ?.label;
-                return label ? `Camera '${label}' is unavailable` : 'Camera is unavailable';
-            } catch {
-                return 'Camera is unavailable';
-            }
+    private async reportStartError(cause: unknown): Promise<void> {
+        if (cause instanceof RestartRequiredError)
+            await this.reportError(VideoRecorderError.RestartRequired, null, cause);
+        else if (cause instanceof DOMException && cause.name === 'NotReadableError')
+            await this.reportError(VideoRecorderError.CameraUnavailable, await this.getSelectedCameraLabel(), cause);
+        else
+            await this.reportError(VideoRecorderError.Unknown, null, cause);
+    }
+
+    private async reportError(error: VideoRecorderError, cameraLabel: string | null, cause: unknown): Promise<void> {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        await this.blazorRef.invokeMethodAsync('OnRecordingError', error, cameraLabel, message);
+    }
+
+    private async getSelectedCameraLabel(): Promise<string | null> {
+        const deviceId = this.selectedCameraDeviceId;
+        if (!deviceId)
+            return null;
+
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            return devices.find(d => d.kind === 'videoinput' && d.deviceId === deviceId)?.label || null;
+        } catch {
+            return null;
         }
-        return error instanceof Error ? error.message : String(error);
     }
 
     private async pickSimulcastCodec(

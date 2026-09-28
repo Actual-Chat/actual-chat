@@ -1723,6 +1723,8 @@
   "Video_YesContinue": "Da, nastavi",
   "Video_StopNow": "Zaustavite odmah",
   "Video_FailedToStartRecording": "Snimanje se nije moglo pokrenuti",
+  "Video_CameraUnavailableNamed_Format": "Kamera „{0}“ nije dostupna",
+  "Video_RestartRequired": "Ponovo pokrenite aplikaciju ili uređaj da biste mogli koristiti video.",
   "Video_StartVideo": "Pokrenite video",
   "Video_StopVideo": "Zaustavite video",
   "Video_TurnCameraOn": "Uključite kameru",

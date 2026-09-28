@@ -1730,6 +1730,8 @@
   "Video_YesContinue": "Evet, devam",
   "Video_StopNow": "Şimdi durdurun",
   "Video_FailedToStartRecording": "Kayıt başlatılamadı",
+  "Video_CameraUnavailableNamed_Format": "'{0}' kamerası kullanılamıyor",
+  "Video_RestartRequired": "Videoyu kullanabilmek için lütfen uygulamayı veya cihazı yeniden başlatın.",
   "Video_StartVideo": "Videoyu başlatın",
   "Video_StopVideo": "Videoyu durdurun",
   "Video_TurnCameraOn": "Kamerayı açın",

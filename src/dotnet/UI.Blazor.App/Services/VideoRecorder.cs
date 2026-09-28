@@ -674,10 +674,10 @@ public sealed class VideoRecorder : IAsyncDisposable
         }
 
         [JSInvokable]
-        public void OnRecordingError(string error)
+        public void OnRecordingError(VideoRecorderError error, string? cameraLabel, string message)
         {
             videoRecorder.OnRecordingError();
-            hub.ChatVideoUI.OnRecordingError(error, kind);
+            hub.ChatVideoUI.OnRecordingError(error, cameraLabel, message, kind);
         }
 
         [JSInvokable]
