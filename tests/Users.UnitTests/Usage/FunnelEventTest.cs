@@ -6,6 +6,7 @@ public class FunnelEventTest
     [InlineData(FunnelEvent.JoinUsed)]
     [InlineData(FunnelEvent.SignUp)]
     [InlineData(FunnelEvent.ContactsMatched)]
+    [InlineData(FunnelEvent.SignInCompletedFromLink)]
     [InlineData((FunnelEvent)99)]
     public void ServerOnlyOrUnknownEventShouldNotBeClientReportable(FunnelEvent funnelEvent)
         => funnelEvent.IsClientReportable().Should().BeFalse();

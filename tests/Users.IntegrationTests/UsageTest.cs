@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Diagnostics.Metrics;
 using ActualChat.Live;
 using ActualChat.Queues;
 using ActualChat.Streaming;
@@ -299,11 +301,31 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // act
         await otherTester.SignIn(account);
-        await Task.Delay(500);
 
-        // assert
+        // assert - the arrival is dropped by the same operation that would have recorded a sign-up
+        var arrivalKey = Constants.SessionTemporals.ToClientKey(Constants.SessionTemporals.ArrivalKey);
+        await TestWait.When(async ct => (await SessionTemporals.Get(otherTester.Session, arrivalKey, ct))
+            .Should().BeNull("any sign-in consumes the arrival"));
         var events = await ListEvents(account.Id, UsageEventKind.SignUp, default);
         events.Should().ContainSingle().Which.SourceId.Should().Be("web", "only account creation records a sign-up");
+    }
+
+    [Fact(Timeout = 90_000)]
+    public async Task SignInFromLinkShouldBeCountedOnTheServer()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        await SetTemporal(tester.Session, Constants.SessionTemporals.SignInFromLinkKey, "1");
+        using var funnelEvents = new FunnelEventListener();
+
+        // act
+        await tester.SignInAsUniqueAlice();
+
+        // assert
+        await TestWait.WhenPolled(() => funnelEvents.Count(FunnelEvent.SignInCompletedFromLink)
+            .Should().BeGreaterThan(0, "a full-page sign-in redirect reloads the client, so only the server can count it"));
+        var key = Constants.SessionTemporals.ToClientKey(Constants.SessionTemporals.SignInFromLinkKey);
+        await TestWait.When(async ct => (await SessionTemporals.Get(tester.Session, key, ct)).Should().BeNull());
     }
 
     [Fact(Timeout = 90_000)]
@@ -362,11 +384,10 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
     // Private methods
 
     private Task SetArrival(Session session, string value)
-        => Commander.Call(new SessionTemporals_Set {
-            Session = session,
-            Key = Constants.SessionTemporals.ArrivalKey,
-            Value = value,
-        });
+        => SetTemporal(session, Constants.SessionTemporals.ArrivalKey, value);
+
+    private Task SetTemporal(Session session, string key, string value)
+        => Commander.Call(new SessionTemporals_Set { Session = session, Key = key, Value = value });
 
     private Task<UsageEvent> WaitForSignUp(UserId userId)
         // Polled: the rows are read from the DB directly, so there is no invalidation to wake a When on
@@ -395,4 +416,32 @@ public class UsageTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     private static Task RecordFunnelEvent(IWebClientTester tester, FunnelEvent funnelEvent)
         => tester.Commander.Call(new Usage_RecordFunnelEvent { Session = tester.Session, Event = funnelEvent });
+
+    // Nested types
+
+    private sealed class FunnelEventListener : IDisposable
+    {
+        private readonly MeterListener _listener = new();
+        private readonly ConcurrentQueue<string> _events = new();
+
+        public FunnelEventListener()
+        {
+            _listener.InstrumentPublished = (instrument, listener) => {
+                if (instrument.Name == "usage.funnel.events")
+                    listener.EnableMeasurementEvents(instrument);
+            };
+            _listener.SetMeasurementEventCallback<long>((_, _, tags, _) => {
+                foreach (var tag in tags)
+                    if (tag.Key == "event")
+                        _events.Enqueue(tag.Value as string ?? "");
+            });
+            _listener.Start();
+        }
+
+        public void Dispose()
+            => _listener.Dispose();
+
+        public int Count(FunnelEvent funnelEvent)
+            => _events.Count(e => e == funnelEvent.ToString());
+    }
 }

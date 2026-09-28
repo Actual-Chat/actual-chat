@@ -39,6 +39,8 @@ public partial class AccountUI
             // ProviderSelectStep). Fires on the first resolution and on logout; cached, so repeats are cheap.
             if (newAccount.IsGuestOrNull())
                 _ = WarmPasskeyAvailability(cancellationToken);
+            else
+                _ = ForgetArrival();
             if (oldAccount is null) {
                 MarkReady();
                 continue; // Very first account change

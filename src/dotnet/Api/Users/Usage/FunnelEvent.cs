@@ -26,5 +26,9 @@ public static class FunnelEventExt
     public static bool IsClientReportable(this FunnelEvent funnelEvent)
         // Server-only events are counted where they happen; a client must not be able to inflate them
         => Enum.IsDefined(funnelEvent)
-            && funnelEvent is not (FunnelEvent.JoinUsed or FunnelEvent.SignUp or FunnelEvent.ContactsMatched);
+            && funnelEvent is not (
+                FunnelEvent.JoinUsed
+                or FunnelEvent.SignUp
+                or FunnelEvent.SignInCompletedFromLink
+                or FunnelEvent.ContactsMatched);
 }

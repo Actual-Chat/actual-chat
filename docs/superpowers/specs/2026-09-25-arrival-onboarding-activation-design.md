@@ -46,9 +46,10 @@ Rules:
 - **The client writes only while the session is a guest.** Once signed in, it stops writing.
 - **Last link-touch wins.** Each new `/join/`, `/u/` or campaign URL opened as a guest overwrites
   the value. The link that led to the sign-in request is the one we want.
-- **Expiry.** Session temporals expire 10 minutes after their last write. So `AccountUI` keeps the captured
-  arrival and re-writes it every 5 minutes while the account is a guest. It also adopts an arrival already
-  in the session at start-up. The server clears it through an operation event, i.e. only after the sign-in commits.
+- **Expiry.** Session temporals expire 10 minutes after their last write. So `AccountUI` keeps the arrival in
+  local storage until an account exists, and re-sends it at start-up, every 5 minutes and whenever `SignInModal`
+  opens. One `AsyncLock` orders every arrival write, so a landing URL can't overwrite a link page's value. The Play
+  install referrer is read once per install. Any sign-in consumes the arrival (server side, as an operation event).
 - **Parsing and validation are shared.** One `ArrivalInfo` type in `ActualChat.Api` (next to
   `UsageEvent`) owns `Parse`/`Format`. The id part is capped at 64 characters, restricted to
   `[A-Za-z0-9_\-.@]`, and ignored otherwise. The client uses it to format the value and the server
@@ -128,12 +129,12 @@ named `usage.funnel.events` and has tags `event` and `app`, where `app` comes fr
 | Event | Counted where |
 |---|---|
 | `JoinOpenedSignedOut`, `JoinOpenedSignedIn` | Client, `ChatInvitePage` |
-| `JoinUsed` | Server, `InvitesBackend.OnUse` success |
+| `JoinUsed` | Server, `InvitesBackend.OnUse`, as a `UsageBackend_CountFunnelEvent` operation event (after commit) |
 | `UserLinkOpenedSignedOut`, `UserLinkOpenedSignedIn` | Client, `UserPage` |
-| `SignInRequestedFromLink` | Client, `AccountUI.RequestSignInFromHomePage` when a redirect URL is a `/join/` or `/u/` URL |
-| `SignInCompletedFromLink` | Client, `SignInRequest` completes signed in with that redirect URL |
+| `SignInRequestedFromLink` | Client, `AccountUI.RequestSignInFromHomePage` when the redirect URL is a `/join/` URL (`/u/` never requests a sign-in) |
+| `SignInCompletedFromLink` | Server, `OnSignIn` when the client set the `c.SignInFromLink` session temporal in `RequestSignInFromHomePage` (survives a full-page sign-in redirect); after commit |
 | `SignUp` | Server, `OnSignIn` when `isNew`, with an extra tag `arrival` = `ArrivalKind` |
-| `InviteBannerShown` | Client, `InviteFriendsBanner.OnInitialized`, deduplicated by a flag on `ChatListUI` (once per app run) |
+| `InviteBannerShown` | Client, `InviteFriendsBanner.OnAfterRender` once it has a model, deduplicated by a flag on `ChatListUI` (once per app run) |
 | `InviteShare`, `InviteCopy`, `InviteQr` | Client, `ShareActions` (see below) |
 | `ContactsAccessGranted` | Client, `PermissionHandler.CheckOrRequest` when a request it made ends granted and the handler is a `ContactsPermissionHandler` (via a protected virtual `OnRequestGranted`). This covers the #4801 banner once it uses the handler. |
 | `ContactsMatched` | Server, `ContactLinker` where it creates a contact (`!contact.IsRegular` branch) |
@@ -142,8 +143,8 @@ The client reports events through one command, `Usage_RecordFunnelEvent(FunnelEv
 `IUsage`:
 
 - **Guests may call it.** The worst abuse is an inflated counter.
-- **Validation.** The server accepts only events marked client-reportable. `JoinUsed`, `SignUp`
-  and `ContactsMatched` are server-only and rejected from the client.
+- **Validation.** The server accepts only events marked client-reportable. `JoinUsed`, `SignUp`,
+  `SignInCompletedFromLink` and `ContactsMatched` are server-only and rejected from the client.
 - **Fire-and-forget.** The client sends it through a `RecordFunnelEvent(FunnelEvent)` extension
   method on the UI hub (a static `UsageUIExt`, no new service; there is no `UsageUI` today) and
   never awaits it on a render path. Errors are logged at debug level.

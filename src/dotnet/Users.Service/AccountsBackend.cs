@@ -1,7 +1,6 @@
 using System.Net.Mail;
 using System.Security.Claims;
 using ActualChat.Db;
-using ActualChat.Diagnostics;
 using ActualChat.Flows;
 using ActualChat.Security;
 using ActualChat.Users.Db;
@@ -279,13 +278,13 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         // Emit UserSignedInEvent
         context.Operation.AddEvent(new UserSignedInEvent(userId, session));
+        await RecordSignInUsage(context, session, userId, isNew && !account.IsBot, sessionInfo, cancellationToken)
+            .ConfigureAwait(false);
         context.Operation.AddEvent(FlowHub.NewResumeEvent<UserSignInFlow>(userId.Value));
 
         // Emit NewUserEvent if this is a new user
         if (isNew) {
             context.Operation.AddEvent(new NewAccountEvent(userId));
-            if (!account.IsBot)
-                await RecordSignUp(context, session, userId, sessionInfo, cancellationToken).ConfigureAwait(false);
 
             // Auto-enable early access settings for test agent accounts
             if (identities.GetEmails().Any(Constants.Auth.TestAgent.IsTestAgentEmail)) {
@@ -562,27 +561,40 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
     // Private methods
 
-    private async Task RecordSignUp(
-        CommandContext context, Session session, UserId userId, SessionInfoFull? sessionInfo,
+    private async Task RecordSignInUsage(
+        CommandContext context, Session session, UserId userId, bool isSignUp, SessionInfoFull? sessionInfo,
         CancellationToken cancellationToken)
     {
-        // Measurement only: whatever goes wrong here must not fail the sign-in
+        // Measurement only: whatever goes wrong here must not fail the sign-in.
+        // Everything goes out as operation events, so it counts only a committed sign-in and survives a retry.
         try {
             var arrivalKey = Constants.SessionTemporals.ToClientKey(Constants.SessionTemporals.ArrivalKey);
-            var value = await SessionTemporalsBackend.Get(session, arrivalKey, cancellationToken).ConfigureAwait(false);
-            AppKindExt.TryParseUserAgent(sessionInfo?.Description, out var appKind);
-            if (!ArrivalInfo.TryParse(value, out var arrival))
-                arrival = ArrivalInfo.Fallback(appKind);
+            var signInFromLinkKey = Constants.SessionTemporals.ToClientKey(Constants.SessionTemporals.SignInFromLinkKey);
+            var arrivalValue = await SessionTemporalsBackend.Get(session, arrivalKey, cancellationToken)
+                .ConfigureAwait(false);
+            var signInFromLinkValue = await SessionTemporalsBackend.Get(session, signInFromLinkKey, cancellationToken)
+                .ConfigureAwait(false);
+            if (isSignUp) {
+                AppKindExt.TryParseUserAgent(sessionInfo?.Description, out var appKind);
+                if (!ArrivalInfo.TryParse(arrivalValue, out var arrival))
+                    arrival = ArrivalInfo.Fallback(appKind);
 
-            var signUp = UsageEventSource.SignUp(arrival, Clocks.SystemClock.Now);
-            context.Operation.AddEvent(new UsageBackend_Record(userId, ApiArray.New(signUp)));
-            FunnelMeters.Record(FunnelEvent.SignUp, appKind, arrival.Kind);
-            // An event, so a sign-in retried after a failed commit still finds the arrival
-            if (value is not null)
+                var signUp = UsageEventSource.SignUp(arrival, Clocks.SystemClock.Now);
+                context.Operation.AddEvent(new UsageBackend_Record(userId, ApiArray.New(signUp)));
+                context.Operation.AddEvent(new UsageBackend_CountFunnelEvent(
+                    userId, FunnelEvent.SignUp, session, arrival.Kind));
+            }
+            if (signInFromLinkValue is not null) {
+                context.Operation.AddEvent(new UsageBackend_CountFunnelEvent(
+                    userId, FunnelEvent.SignInCompletedFromLink, session));
+                context.Operation.AddEvent(new SessionTemporalsBackend_Set(session, signInFromLinkKey, null));
+            }
+            // Any sign-in consumes the arrival: a later sign-up in this session is a different person's
+            if (arrivalValue is not null)
                 context.Operation.AddEvent(new SessionTemporalsBackend_Set(session, arrivalKey, null));
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-            Log.LogWarning(e, "Failed to record the sign-up of user '{UserId}'", userId);
+            Log.LogWarning(e, "Failed to record the sign-in usage of user '{UserId}'", userId);
         }
     }
 

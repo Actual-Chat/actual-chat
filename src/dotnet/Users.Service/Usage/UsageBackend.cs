@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ActualChat.Chat;
 using ActualChat.Contacts;
+using ActualChat.Diagnostics;
 using ActualChat.Users.Db;
 using ActualChat.Users.Module;
 using ActualLab.Fusion.EntityFramework;
@@ -13,6 +14,7 @@ public class UsageBackend(IServiceProvider services)
     private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
     private IContactsBackend ContactsBackend => field ??= Services.GetRequiredService<IContactsBackend>();
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
+    private ISessionsBackend SessionsBackend => field ??= Services.GetRequiredService<ISessionsBackend>();
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
     private UsersSettings Settings => field ??= Services.GetRequiredService<UsersSettings>();
 
@@ -164,6 +166,21 @@ public class UsageBackend(IServiceProvider services)
             dbDay.Apply(usageEvent);
         }
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnCountFunnelEvent(
+        UsageBackend_CountFunnelEvent command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var appKind = AppKind.Unknown;
+        if (command.Session is { } session) {
+            var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
+            AppKindExt.TryParseUserAgent(sessionInfo?.Description, out appKind);
+        }
+        FunnelMeters.Record(command.Event, appKind, command.Arrival);
     }
 
     // [EventHandler]
