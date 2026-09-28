@@ -196,9 +196,12 @@ body.wide .activity-pill {
 
 /* visual-activity-panel.ts wires the drag gesture; Blazor renders the handle
    only in the Inline, non-closing state. */
+/* Width tracks the grabbed bar (.c-bar active), not the panel: the handle hangs
+   below the panel onto the translation subheader, and a wider hit area swallowed
+   taps meant for that banner's toggle and close button. */
 .visual-activity-panel > .c-drag-handle {
     @apply absolute z-10;
-    @apply h-8 w-64;
+    @apply h-8 w-40;
     @apply cursor-grab;
     top: 100%;
     left: 50%;
@@ -221,7 +224,7 @@ body.wide .visual-activity-panel > .c-drag-handle {
 }
 .visual-activity-panel > .c-drag-handle > .c-bar {
     @apply absolute bottom-6 left-1/2 -translate-x-1/2;
-    @apply w-32 h-1 rounded-full;
+    @apply w-32 h-1.5 rounded-full;
     @apply opacity-70;
     background: linear-gradient(to left, var(--bottom-sheet-1), var(--bottom-sheet-2));
     transition: width 0.15s ease-out, height 0.15s ease-out, opacity 0.15s ease-out;
