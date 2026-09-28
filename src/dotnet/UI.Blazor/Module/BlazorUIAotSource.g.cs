@@ -199,6 +199,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.ErrorBarrierTestPage.ErrorBarrierTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.ErrorBarrierTestPage.FailingTestTimer>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.FeaturesTestPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.IconsTestPage.IconsTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.InfoToastTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.LandingBackgroundTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.ModalsTestPage>();
@@ -741,6 +742,7 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Pages.ErrorBarrierTestPage.ErrorBarrierTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.ErrorBarrierTestPage.FailingTestTimer), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.FeaturesTestPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Pages.IconsTestPage.IconsTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.InfoToastTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.LandingBackgroundTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.ModalsTestPage), AotTypeKind.Component),
