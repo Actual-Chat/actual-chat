@@ -144,6 +144,12 @@ export class DebugUI {
         return this._backendRef.invokeMethodAsync('TestLog', count, lineCount) as unknown as Promise<void>;
     }
 
+    /** Turns incomplete UI on or off for the signed-in account, as Settings > Developer tools does.
+     *  Persisted in UserAppSettings; it only takes effect for an admin. */
+    public static setIncompleteUI(enable = true): Promise<void> {
+        return this._backendRef.invokeMethodAsync('SetIncompleteUI', enable) as unknown as Promise<void>;
+    }
+
     public static resetOnboarding(enable: boolean): void {
         void this._backendRef.invokeMethodAsync('ResetOnboarding', enable);
     }
