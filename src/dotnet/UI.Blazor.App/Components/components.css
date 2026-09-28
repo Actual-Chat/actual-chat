@@ -88,7 +88,7 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply text-01;
 }
 .chat-footer.readonly {
-    @apply text-lg;
+    @apply text-subhead;
 }
 .chat-footer.readonly .c-content {
     @apply flex justify-center items-center;
@@ -118,7 +118,7 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply px-4;
 }
 .signin-footer .btn .btn-content {
-    @apply text-lg;
+    @apply text-subhead;
 }
 
 .chat-header-center {

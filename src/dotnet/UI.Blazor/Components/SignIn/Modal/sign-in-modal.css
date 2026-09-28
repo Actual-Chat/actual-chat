@@ -2,7 +2,7 @@
     @apply text-title-500 text-01;
 }
 .sign-in-modal-reason {
-    @apply text-lg font-semibold md:font-medium text-03;
+    @apply text-subhead-600 md:text-subhead-500 text-03;
 }
 .sign-in {
     @apply w-full !max-w-full;
