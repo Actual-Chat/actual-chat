@@ -1,0 +1,32 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, RightPanelMode>
+@{
+    var mode = State.Value;
+}
+
+<div class="right-panel-mode-switch" role="tablist">
+    <Button Class="@ButtonClass(mode, RightPanelMode.Chat)" Click="@(_ => Select(RightPanelMode.Chat))">
+        @L.Coach_ModeChat
+    </Button>
+    <Button Class="@ButtonClass(mode, RightPanelMode.Coach)" Click="@(_ => Select(RightPanelMode.Coach))">
+        @L.Coach_ModeCoach
+    </Button>
+</div>
+
+@code {
+    protected override ComputedState<RightPanelMode>.Options GetStateOptions()
+        => new() {
+            InitialValue = PanelsUI.Right.Mode.Value,
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override Task<RightPanelMode> ComputeState(CancellationToken cancellationToken)
+        => PanelsUI.Right.Mode.Use(cancellationToken);
+
+    private void Select(RightPanelMode mode)
+        => PanelsUI.Right.SetMode(mode);
+
+    private static string ButtonClass(RightPanelMode current, RightPanelMode mode)
+        => current == mode ? "btn-mode on" : "btn-mode";
+}

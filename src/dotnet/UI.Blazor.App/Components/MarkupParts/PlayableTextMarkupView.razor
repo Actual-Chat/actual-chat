@@ -9,10 +9,11 @@
 }
 
 <span @ref="Ref" class="@containerCls @colorCls">
-    @if (m.Map == null) {
+    @if (m.Map == null && m.MarkKinds == null) {
         @Markup.Text
     } else {
-        foreach (var run in BuildRuns(m.Map, Markup.Words.Length)) {
+        var wordCount = Markup.Words.Length;
+        foreach (var run in BuildRuns(m.Map ?? new WordPlayback[wordCount], wordCount)) {
             var c0 = Markup.Words[run.Start].TextRange.Start;
             var c1 = Markup.Words[run.End].TextRange.End;
             <span class="@RunClass(run)" data-c0="@c0">@Markup.Text[c0..c1]</span>
@@ -59,23 +60,38 @@
         var hasAudio = Entry.HasAudio;
         var markup = Markup;
         var rendered = _rendered;
-        var entryId = Entry.Id;
-        var entryLocalId = Entry.LocalId;
+        var entry = Entry;
+        var entryId = entry.Id;
+        var entryLocalId = entry.LocalId;
 
         var hasSelection = await SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
         var model = await InnerComputeState(cancellationToken).ConfigureAwait(false);
         var highlightedWords = await HighlightUI.GetWordSet(entryId, cancellationToken).ConfigureAwait(false);
+        var markKinds = await GetMarkKinds(cancellationToken).ConfigureAwait(false);
         if (rendered is not { Map: not null })
             return model with { // Never rendered
                 HasSelection = hasSelection,
                 HighlightedWords = highlightedWords,
+                MarkKinds = markKinds,
             };
 
         var map = EnrichMapWithPlayedStatus(model.Map, rendered.Map);
         return new() {
             Map = map,
             HasSelection = hasSelection,
+            HighlightedWords = highlightedWords,
+            MarkKinds = markKinds,
         };
+
+        async Task<SpeechSpanKind?[]?> GetMarkKinds(CancellationToken cancellationToken1)
+        {
+            // Spans index entry.Content; a translated markup has different offsets
+            if (!hasAudio || markup.Text != entry.Content)
+                return null;
+
+            var spans = await Hub.CoachUI.GetOwnMarks(entryId, entry.AuthorId, cancellationToken1).ConfigureAwait(false);
+            return spans.MapToWords(markup);
+        }
 
         async Task<Model> InnerComputeState(CancellationToken cancellationToken1)
         {
@@ -156,25 +172,35 @@
         while (i < count) {
             var fill = map[i];
             var highlighted = IsHighlighted(i);
+            var mark = MarkClass(i);
             var j = i + 1;
-            while (j < count && map[j] == fill && IsHighlighted(j) == highlighted)
+            while (j < count && map[j] == fill && IsHighlighted(j) == highlighted && MarkClass(j) == mark)
                 j++;
-            runs.Add(new Run(fill, highlighted, i, j - 1));
+            runs.Add(new Run(fill, highlighted, mark, i, j - 1));
             i = j;
         }
         return runs;
     }
 
     private static string RunClass(Run run) {
-        var fillCls = run.Fill switch {
+        var cls = run.Fill switch {
             WordPlayback.Playing => "playing-run",
             WordPlayback.Played => "played-run",
             _ => "",
         };
-        if (!run.Highlighted)
-            return fillCls;
-        return fillCls.Length == 0 ? "highlight" : fillCls + " highlight";
+        if (run.Highlighted)
+            cls = cls.Length == 0 ? "highlight" : cls + " highlight";
+        if (run.Mark.Length != 0)
+            cls = cls.Length == 0 ? run.Mark : cls + " " + run.Mark;
+        return cls;
     }
+
+    private string MarkClass(int index)
+        => _rendered?.MarkKinds?[index] switch {
+            SpeechSpanKind.FilledPause or SpeechSpanKind.Filler => "coach-filler",
+            SpeechSpanKind.Weak or SpeechSpanKind.Repetition => "coach-weak",
+            _ => "",
+        };
 
     private bool IsHighlighted(int index) {
         var m = _rendered;
@@ -192,7 +218,7 @@
 
     public enum WordPlayback { None, Playing, Played }
 
-    private readonly record struct Run(WordPlayback Fill, bool Highlighted, int Start, int End);
+    private readonly record struct Run(WordPlayback Fill, bool Highlighted, string Mark, int Start, int End);
 
     public sealed record Model {
         public static readonly Model None = new();
@@ -200,5 +226,6 @@
         public WordPlayback[]? Map { get; init; }
         public bool HasSelection { get; init; }
         public IReadOnlySet<string> HighlightedWords { get; init; } = new ApiSet<string>();
+        public SpeechSpanKind?[]? MarkKinds { get; init; }
     }
 }

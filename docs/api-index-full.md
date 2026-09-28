@@ -670,6 +670,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `SpeechSpanKind` (enum) - Kind of a tagged span: filled pause, filler, weak word, profanity, repetition.
 - `SpeechSpan` (record) - A tagged word in a transcript with its char range and synonyms.
 - `SpeechTextStats` (record) - Word, sentence, question, repetition and vocabulary counts of a transcript.
+- `SpeechSpanExt` - Maps speech spans to `PlayableTextMarkup` word indices for inline marking.
 - `SpeechTimingStats` (record) - Speech time and pauses of a transcript from its time map.
 - `SpeechMetrics` (record) - Duration, text and timing stats of a transcript with words per minute.
 - `CoachTagState` (enum) - Whether an entry's LLM tagging is pending, done or skipped.
@@ -1048,6 +1049,8 @@ Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 - `ModalUI` - Modal dialog management.
 - `NavbarUI` - Navbar management.
 - `PanelsUI` - Panel management.
+- `RightPanelMode` (enum) - What the right panel shows: Chat or Coach; persisted by `RightPanelStoredState`.
+- `DonutChart` / `BarChart` / `ChartItem` - Inline donut and bar charts with no domain knowledge.
 - `PasskeyUI` - Passkey list/register/rename/delete/sign-in over `IPasskeyAuth`.
 - `PermissionHandler` (abstract class) - Permission request handling base.
 - `ReconnectUI` - RPC connection state monitoring.
@@ -1075,6 +1078,11 @@ Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 - `ChatPlayer` (abstract class) - Base class for playing audio entries.
 - `ChatPlayers` - Orchestrates audio playback across chats.
 - `ChatUI` - Chat selection, read positions, and chat state.
+- `CoachUI` - Speech-coach client verdicts, per-tile marks cache and jump-to-audio.
+- `CoachPanel` / `CoachSettingsTile` / `CoachMetricRow` / `CoachTrends` / `CoachDayChart` / `CoachOccurrences` / `CoachTipBar` - The speech-coach surfaces.
+- `CoachDayRange` - The UTC day range a coach window covers.
+- `CoachLabels` - Metric kind, band and window text for the coach surfaces.
+- `RightPanelModeSwitch` / `CoachMenuEntry` - The Chat | Coach switch and the mobile menu entry.
 - `ChatView` - Main chat view component.
 - `EditMembersUI` - Member editing utilities.
 - `ImageAttachmentProcessor` - Runs an attachment image through the JS image processor (resize, jpegli, metadata strip).

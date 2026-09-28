@@ -1,0 +1,95 @@
+.coach-panel {
+    @apply relative flex-y h-full;
+    @apply bg-03;
+    @apply overflow-y-auto;
+}
+.coach-panel > .c-cover {
+    @apply relative flex-none h-26;
+    background: linear-gradient(120deg, var(--primary) 0%, var(--primary-hover, var(--primary)) 60%, var(--background-03) 100%);
+    padding-top: var(--safe-area-top);
+}
+.coach-panel > .c-cover .right-panel-close-btn { @apply absolute top-2 right-2; }
+.coach-panel > .c-header {
+    @apply relative flex-none flex-x items-start justify-end;
+    @apply px-4 h-10;
+}
+.coach-panel > .c-header > .c-avatar { @apply absolute left-4 -top-8 z-10; }
+.coach-panel > .c-header .c-settings-btn { @apply mt-1; }
+.coach-panel > .c-body {
+    @apply flex-none flex-y gap-y-3;
+    @apply px-4 pb-4 pt-2;
+}
+.coach-panel .c-title-row { @apply flex-x items-start justify-between gap-x-3 pt-1; }
+.coach-panel .c-title-row .c-title { @apply text-title-500 text-02 whitespace-nowrap; }
+.coach-score-card { @apply flex-y items-end text-right max-w-44; }
+.coach-score-card .c-score { @apply text-body-500 text-02; }
+.coach-score-card .c-no-score { @apply text-caption text-03; }
+.coach-score-card .c-delta { @apply text-caption; }
+.coach-score-card .c-delta.up { @apply text-success; }
+.coach-score-card .c-delta.down { @apply text-danger; }
+.coach-score-card .c-coverage { @apply text-caption text-03; }
+.coach-settings .c-interval {
+    @apply bg-transparent text-primary text-sm;
+}
+.coach-window-tabs { @apply -mx-4; }
+.coach-metrics { @apply flex-y; }
+.coach-metric-row { @apply flex-y border-b border-separator; }
+.coach-metric-row .c-head {
+    @apply flex-x items-center gap-x-2;
+    @apply min-h-12 py-2;
+}
+.coach-metric-row.expandable .c-head { @apply cursor-pointer; }
+.coach-metric-row .c-chevron { @apply w-5 text-03; }
+.coach-metric-row .c-title { @apply flex-1 text-body-500 text-02; }
+.coach-metric-row .c-value { @apply text-03 font-normal; }
+.coach-metric-row .c-aside { @apply text-sm; }
+.coach-metric-row .c-aside.band-good { @apply text-success; }
+.coach-metric-row .c-aside.band-medium { @apply text-warning; }
+.coach-metric-row .c-aside.band-high,
+.coach-metric-row .c-aside.band-low { @apply text-danger; }
+.coach-metric-row .c-aside.band-none { @apply text-03; }
+.coach-metric-row .c-chips { @apply flex-x flex-wrap gap-2 pb-3 pl-7; }
+.coach-chip {
+    @apply flex-x items-center gap-x-1;
+    @apply px-3 py-1 rounded-full bg-01 text-sm;
+}
+.coach-chip .c-count { @apply text-03; }
+.coach-metric-row .coach-day-chart { @apply mb-3 ml-7 p-3 rounded-lg bg-01; }
+.coach-trends { @apply flex-y gap-y-3; }
+.coach-trends .c-section-title { @apply text-title-500 text-02 pt-2; }
+.coach-trends .c-section { @apply flex-y gap-y-2 p-3 rounded-lg bg-01; }
+.coach-trends .c-card-title { @apply text-body-500 text-02; }
+.coach-trends .c-no-data,
+.coach-day-chart .c-no-data { @apply text-caption text-03; }
+.coach-day-chart { @apply flex-y gap-y-2; }
+.coach-day-chart .c-chart-head { @apply flex-y; }
+.coach-day-chart .c-headline { @apply text-title-500 text-02; }
+.coach-day-chart .c-caption { @apply text-caption text-03; }
+.coach-day-chart .c-band { @apply text-sm; }
+.coach-day-chart .c-band.band-good { @apply text-success; }
+.coach-day-chart .c-band.band-medium { @apply text-warning; }
+.coach-day-chart .c-band.band-high,
+.coach-day-chart .c-band.band-low { @apply text-danger; }
+.coach-day-chart .c-nudge { @apply text-caption text-03; }
+.coach-occurrences { @apply flex-y gap-y-2; }
+.coach-occurrences .c-head { @apply flex-x items-center gap-x-2; }
+.coach-occurrences .c-title { @apply text-body-500 text-02; }
+.coach-occurrences .c-no-data { @apply text-caption text-03; }
+.coach-occurrence {
+    @apply flex-x items-center justify-between;
+    @apply w-full p-3 rounded-lg bg-01 text-left;
+}
+.coach-occurrence .c-time { @apply text-caption text-03; }
+.banner.coach-tip-bar {
+    @apply relative w-auto h-auto mx-2 mb-1 py-3 px-3;
+    @apply rounded-xl border-0;
+    @apply bg-04 text-01;
+}
+.banner.coach-tip-bar > .c-content { @apply justify-start items-start; }
+.banner.coach-tip-bar .banner-lead { @apply items-start; }
+.banner.coach-tip-bar .banner-body { @apply flex-y gap-y-1; }
+.banner.coach-tip-bar .c-tip-title { @apply text-body-500 pr-8; }
+.banner.coach-tip-bar .c-tip-body { @apply text-sm text-02; }
+.banner.coach-tip-bar .c-tip-value { @apply text-primary font-semibold mr-2; }
+.banner.coach-tip-bar .c-synonyms { @apply flex-x flex-wrap gap-1 mt-1; }
+.banner.coach-tip-bar .close-banner-abs { @apply absolute top-2 right-2; }

@@ -1,0 +1,77 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, UserCoachTip?>
+@{
+    var tip = State.Value;
+}
+
+@if (tip is not null) {
+    <Banner
+        Class="coach-tip-bar"
+        Severity="BannerSeverity.Info"
+        ShowDismissButton="true"
+        Dismiss="@OnDismiss">
+        <Icon>
+            <i class="icon-mic text-2xl"></i>
+        </Icon>
+        <Body>
+            <div class="c-tip-title">@Title(tip)</div>
+            <div class="c-tip-body">
+                @switch (tip.Kind) {
+                    case CoachTipKind.SlowDown:
+                    case CoachTipKind.SpeedUp:
+                        <span class="c-tip-value">@L.Coach_TipWpm_Format(tip.Wpm)</span>
+                        <span class="c-tip-range">@L.Coach_TipRecommended_Format(tip.PaceSlowWpm, tip.PaceFastWpm)</span>
+                        <div>@(tip.Kind == CoachTipKind.SlowDown ? L.Coach_TipTooFast : L.Coach_TipTooSlow)</div>
+                        break;
+                    case CoachTipKind.Filler:
+                        <div>@L.Coach_TipFillerBody(tip.Count, tip.Word, tip.Count)</div>
+                        break;
+                    default:
+                        <div>@L.Coach_TipWeakWordBody_Format(tip.Word)</div>
+                        @if (tip.Synonyms.Count > 0) {
+                            <div class="c-synonyms">
+                                @foreach (var synonym in tip.Synonyms) {
+                                    <span class="coach-chip">@synonym</span>
+                                }
+                            </div>
+                        }
+                        break;
+                }
+            </div>
+        </Body>
+    </Banner>
+}
+
+@code {
+    private ICoach Coach => Hub.Coach;
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+
+    protected override ComputedState<UserCoachTip?>.Options GetStateOptions()
+        => new() { UpdateDelayer = FixedDelayer.NextTick, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<UserCoachTip?> ComputeState(CancellationToken cancellationToken) {
+        var chatId = ChatId;
+        if (!await Hub.CoachUI.IsEnabled(cancellationToken).ConfigureAwait(false))
+            return null;
+
+        var settings = await UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
+        if (settings is not { IsCoachingEnabled: true, AreLiveTipsEnabled: true })
+            return null;
+
+        var tip = await Coach.GetPendingTip(Session, cancellationToken).ConfigureAwait(false);
+        return tip is { IsPending: true } && tip.ChatId == chatId ? tip : null;
+    }
+
+    private string Title(UserCoachTip tip)
+        => tip.Kind switch {
+            CoachTipKind.SlowDown => L.Coach_TipSlowDownTitle,
+            CoachTipKind.SpeedUp => L.Coach_TipSpeedUpTitle,
+            CoachTipKind.Filler => L.Coach_TipFillerTitle,
+            _ => L.Coach_TipWeakWordTitle,
+        };
+
+    private Task OnDismiss()
+        => UICommander.Run(new Coach_DismissTip { Session = Session });
+}

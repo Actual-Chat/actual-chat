@@ -1,0 +1,21 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, bool>
+
+@if (State.Value) {
+    <MenuEntry
+        Icon="icon-mic text-2xl"
+        Text="@L.Coach_OpenCoach"
+        Click="@OnClick">
+    </MenuEntry>
+}
+
+@code {
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => new() { InitialValue = false, Category = GetStateCategory(GetType()) };
+
+    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
+        => Hub.CoachUI.IsEnabled(cancellationToken);
+
+    private void OnClick()
+        => PanelsUI.Right.Open(RightPanelMode.Coach);
+}

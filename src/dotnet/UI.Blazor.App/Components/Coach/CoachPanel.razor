@@ -1,0 +1,136 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, CoachPanel.Model>
+@{
+    var m = State.Value;
+    var s = m.Summary;
+    var labels = Labels;
+    var tabs = Windows.Select(w => new TabDef(w.ToString(), labels.Window(w))).ToList();
+}
+
+<div class="coach-panel">
+    <ErrorBarrier Name="CoachPanel" Kind="@ErrorBarrierKind.Full">
+        <div class="c-cover">
+            <ButtonRound Click="@OnClose" Class="right-panel-close-btn btn-sm close-btn">
+                <i class="icon-close text-2xl"></i>
+            </ButtonRound>
+        </div>
+        <div class="c-header">
+            <div class="c-avatar">
+                @if (m.Avatar is not null) {
+                    <AvatarCircle Avatar="@m.Avatar" Size="@SquareSize.Size14"/>
+                }
+            </div>
+            <ButtonRound Click="@OnSettingsClick" Class="btn-sm btn-tinted c-settings-btn">
+                <i class="icon-settings text-2xl"></i>
+            </ButtonRound>
+        </div>
+        <div class="c-body">
+            <div class="c-title-row">
+                <span class="c-title">@L.Coach_Title</span>
+                <div class="coach-score-card">
+                    @if (s.Score is { } score) {
+                        <div class="c-score">@L.Coach_Score_Format(score)</div>
+                        @if (s.ScoreDelta is { } delta) {
+                            var deltaText = delta > 0 ? "+" + delta : delta.ToString();
+                            <div class="c-delta @(delta > 0 ? "up" : "down")">@L.Coach_ScoreDelta_Format(deltaText)</div>
+                        }
+                    } else {
+                        <div class="c-no-score">@L.Coach_ScoreNeedsWords(MinScoreWords, MinScoreWords)</div>
+                    }
+                    <div class="c-coverage">
+                        @L.Coach_Words(s.Words, s.Words)
+                        @if (s.Entries > 0 && s.TaggedEntries < s.Entries) {
+                            <span> · @L.Coach_Analysed(s.Entries, s.TaggedEntries, s.Entries)</span>
+                        }
+                    </div>
+                </div>
+            </div>
+            @if (_showSettings) {
+                <CoachSettingsTile/>
+            }
+            <TabPanel
+                Tabs="@tabs"
+                TabsClass="left-panel-tabs wide-left-panel-tabs coach-window-tabs"
+                BottomHill="true"
+                DefaultTabId="@m.Window.ToString()"
+                SwapKind="@TabContentSwap.None"
+                SelectedTabIdChanged="@OnWindowTabChanged"/>
+            @if (m.Word is { } word) {
+                <CoachOccurrences Word="@word" Window="@m.Window" Back="@OnOccurrencesBack"/>
+            } else {
+                <div class="coach-metrics">
+                    @foreach (var metric in s.Metrics) {
+                        if (metric.Kind == CoachMetricKind.Pace) {
+                            <CoachMetricRow Metric="@metric">
+                                <Details>
+                                    <CoachDayChart Kind="@CoachMetricKind.Pace" Metric="@metric" Window="@m.Window"/>
+                                </Details>
+                            </CoachMetricRow>
+                        } else {
+                            <CoachMetricRow Metric="@metric" WordClick="@OnWordClick"/>
+                        }
+                    }
+                </div>
+                <CoachTrends Summary="@s" Window="@m.Window"/>
+            }
+        </div>
+        <div class="safe-area-bottom safe-area-bottom-overlay"></div>
+    </ErrorBarrier>
+</div>
+
+@code {
+    // The server's CoachScoringSettings.MinScoreWords; the client has no access to it, so the
+    // copy shows the default and the server decides whether a score exists
+    private const int MinScoreWords = 200;
+    private static readonly CoachWindow[] Windows
+        = [CoachWindow.Today, CoachWindow.Week, CoachWindow.Month, CoachWindow.AllTime];
+
+    private MutableState<CoachWindow> _window = null!;
+    private MutableState<string?> _word = null!;
+    private bool _showSettings = true;
+
+    private CoachLabels Labels => field ??= new CoachLabels(L);
+    private ICoach Coach => Hub.Coach;
+
+    protected override void OnInitialized() {
+        _window = StateFactory.NewMutable(CoachWindow.Today);
+        _word = StateFactory.NewMutable((string?)null);
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var window = await _window.Use(cancellationToken).ConfigureAwait(false);
+        var word = await _word.Use(cancellationToken).ConfigureAwait(false);
+        var summary = await Coach.GetOwnSummary(Session, window, cancellationToken).ConfigureAwait(false);
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        return new Model(window, summary, word, account.IsGuest ? null : account.Avatar);
+    }
+
+    private void OnWindowTabChanged(string? tabId) {
+        if (Enum.TryParse<CoachWindow>(tabId, out var window))
+            _window.Value = window;
+    }
+
+    private void OnWordClick(string word)
+        => _word.Value = word;
+
+    private void OnOccurrencesBack()
+        => _word.Value = null;
+
+    private void OnSettingsClick()
+        => _showSettings = !_showSettings;
+
+    private void OnClose()
+        => PanelsUI.Right.SetIsVisible(false);
+
+    public sealed record Model(CoachWindow Window, CoachSummary Summary, string? Word, Avatar? Avatar) {
+        public static readonly Model None = new(CoachWindow.Today, CoachSummary.None, null, null);
+    }
+}
