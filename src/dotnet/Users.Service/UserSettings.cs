@@ -28,6 +28,8 @@ public class UserSettings(IServiceProvider services) : IUserSettings
         [nameof(FakeDeviceContactOptions)] = typeof(FakeDeviceContactOptions),
         [nameof(UserReplaySettings)] = typeof(UserReplaySettings),
         [nameof(UserPttSettings)] = typeof(UserPttSettings),
+        [nameof(UserCoachSettings)] = typeof(UserCoachSettings),
+        [nameof(UserCoachTip)] = typeof(UserCoachTip),
         [nameof(UserCarAudioSettings)] = typeof(UserCarAudioSettings),
         [nameof(UserImageStyleSettings)] = typeof(UserImageStyleSettings),
         [nameof(RecentMentions)] = typeof(RecentMentions),
