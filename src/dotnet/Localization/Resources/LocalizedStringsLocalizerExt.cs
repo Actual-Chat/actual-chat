@@ -1934,5 +1934,70 @@ public static class LocalizedStringsLocalizerExt
 
         public string ChatSettings_UsePlaceSettingsForMembers => l["ChatSettings_UsePlaceSettingsForMembers"].Value;
 
+        // Speech coach
+        public string Coach_Title => l["Coach_Title"].Value;
+        public string Coach_ModeChat => l["Coach_ModeChat"].Value;
+        public string Coach_ModeCoach => l["Coach_ModeCoach"].Value;
+        public string Coach_TabMetrics => l["Coach_TabMetrics"].Value;
+        public string Coach_TabTrends => l["Coach_TabTrends"].Value;
+        public string Coach_WindowToday => l["Coach_WindowToday"].Value;
+        public string Coach_WindowWeek => l["Coach_WindowWeek"].Value;
+        public string Coach_WindowMonth => l["Coach_WindowMonth"].Value;
+        public string Coach_WindowAllTime => l["Coach_WindowAllTime"].Value;
+        public string Coach_Score_Format(object arg0) => l["Coach_Score_Format", arg0].Value;
+        public string Coach_ScoreNeedsWords(long count, object arg0) => l.Plural("Coach_ScoreNeedsWords", count, arg0);
+        public string Coach_ScoreDelta_Format(object arg0) => l["Coach_ScoreDelta_Format", arg0].Value;
+        public string Coach_Analysed(long count, object arg0, object arg1)
+            => l.Plural("Coach_Analysed", count, arg0, arg1);
+        public string Coach_Words(long count, object arg0) => l.Plural("Coach_Words", count, arg0);
+        public string Coach_Coaching => l["Coach_Coaching"].Value;
+        public string Coach_CoachingCaption => l["Coach_CoachingCaption"].Value;
+        public string Coach_LiveTips => l["Coach_LiveTips"].Value;
+        public string Coach_TipInterval => l["Coach_TipInterval"].Value;
+        public string Coach_TipIntervalMinutes(long count, object arg0)
+            => l.Plural("Coach_TipIntervalMinutes", count, arg0);
+        public string Coach_MetricPace => l["Coach_MetricPace"].Value;
+        public string Coach_MetricPauses => l["Coach_MetricPauses"].Value;
+        public string Coach_MetricFillers => l["Coach_MetricFillers"].Value;
+        public string Coach_MetricWeakWords => l["Coach_MetricWeakWords"].Value;
+        public string Coach_MetricRepetition => l["Coach_MetricRepetition"].Value;
+        public string Coach_MetricProfanity => l["Coach_MetricProfanity"].Value;
+        public string Coach_MetricQuestions => l["Coach_MetricQuestions"].Value;
+        public string Coach_MetricSentenceLength => l["Coach_MetricSentenceLength"].Value;
+        public string Coach_MetricVocabulary => l["Coach_MetricVocabulary"].Value;
+        public string Coach_MetricTurnTaking => l["Coach_MetricTurnTaking"].Value;
+        public string Coach_MetricPatience => l["Coach_MetricPatience"].Value;
+        public string Coach_MetricInterruptions => l["Coach_MetricInterruptions"].Value;
+        public string Coach_MetricMonologue => l["Coach_MetricMonologue"].Value;
+        public string Coach_BandGood => l["Coach_BandGood"].Value;
+        public string Coach_BandMedium => l["Coach_BandMedium"].Value;
+        public string Coach_BandHigh => l["Coach_BandHigh"].Value;
+        public string Coach_BandLow => l["Coach_BandLow"].Value;
+        public string Coach_BandFast => l["Coach_BandFast"].Value;
+        public string Coach_BandSlow => l["Coach_BandSlow"].Value;
+        public string Coach_BandLong => l["Coach_BandLong"].Value;
+        public string Coach_BandShort => l["Coach_BandShort"].Value;
+        public string Coach_BandBalanced => l["Coach_BandBalanced"].Value;
+        public string Coach_Wpm_Format(object arg0) => l["Coach_Wpm_Format", arg0].Value;
+        public string Coach_PerMinute_Format(object arg0) => l["Coach_PerMinute_Format", arg0].Value;
+        public string Coach_PercentOfSpeech_Format(object arg0) => l["Coach_PercentOfSpeech_Format", arg0].Value;
+        public string Coach_WordsPerSentence_Format(object arg0) => l["Coach_WordsPerSentence_Format", arg0].Value;
+        public string Coach_Seconds_Format(object arg0) => l["Coach_Seconds_Format", arg0].Value;
+        public string Coach_PercentOfTalkTime_Format(object arg0) => l["Coach_PercentOfTalkTime_Format", arg0].Value;
+        public string Coach_Percent_Format(object arg0) => l["Coach_Percent_Format", arg0].Value;
+        public string Coach_NoData => l["Coach_NoData"].Value;
+        public string Coach_TrendsComposition => l["Coach_TrendsComposition"].Value;
+        public string Coach_TrendsOtherWords => l["Coach_TrendsOtherWords"].Value;
+        public string Coach_TrendsPace => l["Coach_TrendsPace"].Value;
+        public string Coach_TrendsNoDays => l["Coach_TrendsNoDays"].Value;
+        public string Coach_Occurrences_Format(object arg0) => l["Coach_Occurrences_Format", arg0].Value;
+        public string Coach_OccurrencesEmpty => l["Coach_OccurrencesEmpty"].Value;
+        public string Coach_TipSlowDown_Format(object arg0) => l["Coach_TipSlowDown_Format", arg0].Value;
+        public string Coach_TipSpeedUp_Format(object arg0) => l["Coach_TipSpeedUp_Format", arg0].Value;
+        public string Coach_TipFiller_Format(object arg0, object arg1) => l["Coach_TipFiller_Format", arg0, arg1].Value;
+        public string Coach_TipWeakWord_Format(object arg0) => l["Coach_TipWeakWord_Format", arg0].Value;
+        public string Coach_TipSynonyms => l["Coach_TipSynonyms"].Value;
+        public string Coach_OpenCoach => l["Coach_OpenCoach"].Value;
+
     }
 }
