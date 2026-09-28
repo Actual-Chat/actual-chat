@@ -162,7 +162,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public async Task HangUp(ChatId chatId)
     {
         // Leaving the call server-side follows from the stopped audio, through the same SetParticipation
-        // path as any other presence change - see LiveSessionUI.RunParticipationSync. The server's claim
+        // path as any other presence change - see LiveSessionUI.SyncParticipations. The server's claim
         // goes with that presence, on its next read of this call.
         Release(chatId);
         await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(true);
