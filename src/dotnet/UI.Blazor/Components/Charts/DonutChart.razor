@@ -1,0 +1,43 @@
+@namespace ActualChat.UI.Blazor.Components
+@{
+    var total = Items.Sum(i => Math.Max(i.Value, 0));
+    var offset = 0d;
+}
+
+<div class="donut-chart @Class">
+    <div class="c-ring">
+        <svg viewBox="0 0 42 42">
+            <circle class="c-track" cx="21" cy="21" r="@Radius"/>
+            @if (total > 0) {
+                foreach (var item in Items) {
+                    if (item.Value <= 0)
+                        continue;
+
+                    var share = item.Value / total * 100;
+                    <circle class="c-slice @item.Class" cx="21" cy="21" r="@Radius"
+                            stroke-dasharray="@Format(share) @Format(100 - share)"
+                            stroke-dashoffset="@Format(-offset)"/>
+                    offset += share;
+                }
+            }
+        </svg>
+        <div class="c-center">@Center</div>
+    </div>
+    <ul class="c-legend">
+        @foreach (var item in Items) {
+            <li class="@item.Class"><span class="c-swatch"></span>@item.Label</li>
+        }
+    </ul>
+</div>
+
+@code {
+    // 2πr = 100, so dash lengths are percentages
+    private const string Radius = "15.9155";
+
+    [Parameter, EditorRequired] public IReadOnlyList<ChartItem> Items { get; set; } = [];
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public RenderFragment? Center { get; set; }
+
+    private static string Format(double value)
+        => value.ToString("F2", null);
+}

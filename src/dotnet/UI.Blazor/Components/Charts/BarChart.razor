@@ -1,0 +1,23 @@
+@namespace ActualChat.UI.Blazor.Components
+@{
+    var max = Items.Count == 0 ? 0 : Items.Max(i => i.Value);
+}
+
+<div class="bar-chart @Class">
+    @foreach (var item in Items) {
+        var height = max > 0 ? item.Value / max * 100 : 0;
+        <div class="c-column">
+            <div class="c-bar-track">
+                <div class="c-bar @item.Class" style="height: @(height.ToString("F0", null))%"
+                     title="@item.Value.ToString(ValueFormat, null)"></div>
+            </div>
+            <div class="c-label">@item.Label</div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ChartItem> Items { get; set; } = [];
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string ValueFormat { get; set; } = "F0";
+}
