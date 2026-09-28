@@ -26,12 +26,14 @@ public interface IChatImports : IComputeService
 }
 
 [DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
 public sealed partial record ChatImports_Start : ApiCommand<ChatImportSession>
 {
     [DataMember, Key(2)] public required ChatId ChatId { get; init; }
 }
 
 [DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
 public sealed partial record ChatImports_End : ApiCommand<Unit>
 {
     [DataMember, Key(2)] public required ChatId ChatId { get; init; }
@@ -39,6 +41,7 @@ public sealed partial record ChatImports_End : ApiCommand<Unit>
 }
 
 [DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
 public sealed partial record ChatImports_SetConsent : ApiCommand<Unit>
 {
     [DataMember, Key(2)] public required ChatId ChatId { get; init; }
@@ -47,6 +50,7 @@ public sealed partial record ChatImports_SetConsent : ApiCommand<Unit>
 }
 
 [DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
 public sealed partial record ChatImports_ImportEntries : ApiCommand<ApiArray<ChatImportEntryResult>>, INotDeduplicated
 {
     [DataMember, Key(2)] public required ChatId ChatId { get; init; }
@@ -55,6 +59,7 @@ public sealed partial record ChatImports_ImportEntries : ApiCommand<ApiArray<Cha
 }
 
 [DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
 public sealed partial record ChatImports_CreateUpload : ApiCommand<UploadId>
 {
     [DataMember, Key(2)] public required ChatId ChatId { get; init; }
@@ -66,6 +71,7 @@ public sealed partial record ChatImports_CreateUpload : ApiCommand<UploadId>
 }
 
 [DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
 public sealed partial record ChatImports_FinalizeUpload : ApiCommand<MediaRef>
 {
     [DataMember, Key(2)] public required ChatId ChatId { get; init; }
