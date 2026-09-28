@@ -1079,7 +1079,8 @@ Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 - `ChatPlayers` - Orchestrates audio playback across chats.
 - `ChatUI` - Chat selection, read positions, and chat state.
 - `CoachUI` - Speech-coach client verdicts, per-tile marks cache and jump-to-audio.
-- `CoachPanel` / `CoachScoreCard` / `CoachSettingsTile` / `CoachMetricRow` / `CoachTrends` / `CoachOccurrences` / `CoachTipBar` - The speech-coach surfaces.
+- `CoachPanel` / `CoachSettingsTile` / `CoachMetricRow` / `CoachTrends` / `CoachDayChart` / `CoachOccurrences` / `CoachTipBar` - The speech-coach surfaces.
+- `CoachDayRange` - The UTC day range a coach window covers.
 - `CoachLabels` - Metric kind, band and window text for the coach surfaces.
 - `RightPanelModeSwitch` / `CoachMenuEntry` - The Chat | Coach switch and the mobile menu entry.
 - `ChatView` - Main chat view component.

@@ -413,7 +413,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 ### Flows (`ActualChat.Flows.Service`)
 - `FlowBackend`, `FlowsServiceModule` — flow execution backend
 
-- `CoachPanel`, `CoachScoreCard`, `CoachSettingsTile`, `CoachMetricRow`, `CoachTrends`, `CoachOccurrences`, `CoachTipBar`, `CoachLabels` — the speech-coach surfaces: right-panel Coach mode, Trends, chip occurrences, the tip bar above the composer; `CoachLabels` maps metric kinds, bands and windows to catalog text
+- `CoachPanel`, `CoachSettingsTile`, `CoachMetricRow`, `CoachTrends`, `CoachDayChart`, `CoachOccurrences`, `CoachTipBar`, `CoachLabels`, `CoachDayRange` — the speech-coach surfaces: right-panel Coach mode, Trends, chip occurrences, the tip bar above the composer; `CoachLabels` maps metric kinds, bands and windows to catalog text
 
 ## Email Templates (`ActualChat.Mjml.Blazor`, `ActualChat.Users.Templates`)
 
