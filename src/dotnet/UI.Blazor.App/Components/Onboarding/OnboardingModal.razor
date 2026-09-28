@@ -17,7 +17,7 @@
     HasHeader="false"
     NarrowViewSettings="DialogFrameNarrowViewSettings.Default">
     <Body>
-    <Stepper Context="stepper" CurrentStepChanged="@OnCurrentStepChanged"
+    <Stepper Context="stepper" CurrentStepChanged="@OnCurrentStepChanged" StepFinished="@OnStepFinished"
         Class="onboarding-stepper" ContentClass="no-scrollbar" ShowNoise="@true" SkipCompletedSteps="@true">
         <Filler>
             @if (stepper.CurrentStep is PhoneStep) {
@@ -143,9 +143,13 @@
         if (!isCompleted)
             return;
 
+        Hub.RecordOnboardingStep(OnboardingSteps.Finished, true);
         ModalModel.CanBeClosed = true;
         Modal.Close(true);
     }
+
+    private void OnStepFinished(StepFinishedArgs args)
+        => Hub.RecordOnboardingStep(OnboardingSteps.GetName(args.Step.GetType()), !args.IsSkipped);
 
     // Nested types
 

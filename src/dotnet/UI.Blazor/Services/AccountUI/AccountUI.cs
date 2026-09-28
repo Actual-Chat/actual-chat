@@ -79,6 +79,15 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
 
     public async Task<bool> RequestSignInFromHomePage(string title, string? redirectUrl)
     {
+        // Only join links ask for a sign-in; the server counts the completion, which survives a sign-in redirect
+        if (redirectUrl is not null && new LocalUrl(redirectUrl).IsPrivateChatInvite()) {
+            Hub.RecordFunnelEvent(FunnelEvent.SignInRequestedFromLink);
+            _ = Hub.Commander.Call(new SessionTemporals_Set {
+                Session = Session,
+                Key = Constants.SessionTemporals.SignInFromLinkKey,
+                Value = "1",
+            }).WithErrorLog(Log, "Failed to mark the sign-in as started from a link");
+        }
         var mySignInRequest = new SignInRequest(Hub, title, redirectUrl);
         _activeSignInRequest.Value = mySignInRequest;
         try {

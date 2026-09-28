@@ -22,6 +22,7 @@
 
     protected override void OnInitialized() {
         AccountUI.PostponeOnSignInWorkflow(Modal.Ref.WhenClosed);
+        _ = AccountUI.PublishArrival();
         base.OnInitialized();
     }
 

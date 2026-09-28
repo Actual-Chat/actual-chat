@@ -10,14 +10,23 @@
     <div class="c-content">
         <Kitty Name="invite-cat" Class="c-image"/>
         <div class="c-text">@L.ChatList_InviteFriends</div>
-        <ShareActions Model="@m.ShareModel"/>
+        <ShareActions Model="@m.ShareModel" Tapped="@OnShareTapped"/>
     </div>
 </div>
 
 @code {
     public const int MaxFullSizeChatCount = 2;
 
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+
     [Parameter] public bool IsCompact { get; set; }
+
+    protected override void OnAfterRender(bool firstRender) {
+        base.OnAfterRender(firstRender);
+        // Counted only once the banner has actually rendered, not when the list merely created it
+        if (State.ValueOrDefault is not null)
+            ChatListUI.ReportInviteBannerShown();
+    }
 
     protected override ComputedState<Model?>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -32,6 +41,13 @@
         var shareModel = await ShareUI.GetOwnAccountModel(cancellationToken).ConfigureAwait(false);
         return shareModel == null ? null : new Model(shareModel);
     }
+
+    private void OnShareTapped(ShareActionKind kind)
+        => Hub.RecordFunnelEvent(kind switch {
+            ShareActionKind.Share => FunnelEvent.InviteShare,
+            ShareActionKind.Copy => FunnelEvent.InviteCopy,
+            _ => FunnelEvent.InviteQr,
+        });
 
     public sealed record Model(ShareModalModel ShareModel);
 }
