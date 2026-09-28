@@ -18,6 +18,27 @@ public partial class AudioStreamingBackend
     private ISpeechSynthesizer? SpeechSynthesizer => field ??= Services.GetService<ISpeechSynthesizer>();
     private SpeakerVoices SpeakerVoices => field ??= Services.GetRequiredService<SpeakerVoices>();
 
+    // Protected/internal methods
+
+    // internal for tests
+    internal static async Task WaitForBuffered(
+        AsyncMemoizer<AudioFrame> memoizer,
+        int producedCount,
+        CancellationToken cancellationToken)
+    {
+        // The mix writes its frames to a channel the published memoizer reads a moment later, so what
+        // the mix has emitted isn't behind the memoizer's tail - the live edge a joiner pins - just yet
+        while (true) {
+            // Read once: a frame landing between the check and WhenChanged's argument is waited past,
+            // and a finished original's mix emits nothing more until the dub that waits on this starts
+            var count = memoizer.ProducedCount;
+            if (count >= producedCount || memoizer.IsCompleted)
+                return;
+
+            await memoizer.WhenChanged(count).WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     // Private methods
 
     private async Task<bool> EnsureDub(StreamId dubStreamId, CancellationToken cancellationToken)
@@ -331,17 +352,6 @@ public partial class AudioStreamingBackend
         return BackgroundTask.Run(
             () => mix.Run(frames.Writer, cancellationToken),
             Log, $"Dub #{dubStreamId} mix failed");
-    }
-
-    private static async Task WaitForBuffered(
-        AsyncMemoizer<AudioFrame> memoizer,
-        int producedCount,
-        CancellationToken cancellationToken)
-    {
-        // The mix writes its frames to a channel the published memoizer reads a moment later, so what
-        // the mix has emitted isn't behind the memoizer's tail - the live edge a joiner pins - just yet
-        while (memoizer.ProducedCount < producedCount && !memoizer.IsCompleted)
-            await memoizer.WhenChanged(memoizer.ProducedCount).WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private Task StartSynthesis(
