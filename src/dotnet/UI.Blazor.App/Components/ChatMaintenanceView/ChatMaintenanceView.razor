@@ -46,7 +46,7 @@
     private bool _showEveryone;
     private int _offset;
 
-    private IChatImports Imports => Hub.Services.GetRequiredService<IChatImports>();
+    private IChatImports Imports => field ??= Hub.Services.GetRequiredService<IChatImports>();
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
 

@@ -13,6 +13,8 @@
 @code {
     private bool _isBusy;
 
+    private IChatImports Imports => field ??= Hub.Services.GetRequiredService<IChatImports>();
+
     [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
     [Parameter] public EventCallback Started { get; set; }
 
@@ -28,7 +30,7 @@
         _isBusy = true;
         try {
             await Hub.UICommander.Run(new ChatImports_Start { Session = Session, ChatId = ChatId });
-            var import = await Hub.Services.GetRequiredService<IChatImports>().Get(Session, ChatId, default);
+            var import = await Imports.Get(Session, ChatId, default);
             if (import is { IsActive: true })
                 await Started.InvokeAsync();
         }
