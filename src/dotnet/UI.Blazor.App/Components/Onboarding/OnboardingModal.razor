@@ -74,7 +74,8 @@
                     }
                     @if (stepper.CanSkip) {
                         if (isTutorial) {
-                            <TutorialSkipButton Stepper="@stepper" Click="@(() => OnSkip(stepper))"/>
+                            @* A tutorial slide has nothing to skip: its arrow reads as "next", and usage stats count it so *@
+                            <TutorialSkipButton Stepper="@stepper" Click="@(() => OnNext(stepper))"/>
                         } else {
                             <Button
                                 Class="btn-cancel"
