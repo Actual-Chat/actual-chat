@@ -17,12 +17,17 @@ already says; that section explains exactly when a comment is justified and
 when it isn't. Re-read it any time you're tempted to add a `//`, `///`, or
 JSDoc block.
 
-A style hook checks every `.cs`/`.ts`/`.razor`/`.css` edit against
-[docs/CODING_STYLE.md](docs/CODING_STYLE.md). Everything it reports is fixed by
+Two checks run on every `.cs`/`.ts`/`.razor`/`.css` edit, both against
+[docs/CODING_STYLE.md](docs/CODING_STYLE.md). A script checks the mechanical
+rules — line length, control-flow placement, brace placement, `volatile`,
+namespace and `using` placement — on the lines you changed plus three lines
+around them; it answers in milliseconds and counts characters exactly, so its
+verdict on those rules is the final one. An LLM hook checks the rest of the
+guide over the whole file. Everything they report is fixed by
 default, including violations outside the lines you changed. If the user
 explicitly decides to keep offending code as-is, record it in
 [.claude/style-bypasses.md](.claude/style-bypasses.md), in the format described
-there. That file is the only thing the hook skips; without an entry there the
+there. That file is the only thing they skip; without an entry there the
 same violation is reported again on the next edit to that file.
 
 # Type Catalog — Reuse Existing Abstractions (CRITICAL)
