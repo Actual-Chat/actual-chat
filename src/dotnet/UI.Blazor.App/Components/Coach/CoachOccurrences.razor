@@ -1,0 +1,56 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, CoachOccurrences.Model>
+@{
+    var m = State.Value;
+}
+
+<div class="coach-occurrences">
+    <div class="c-head">
+        <ButtonRound Click="@(() => Back.InvokeAsync())" Class="btn-sm"><i class="icon-arrow-left text-2xl"></i></ButtonRound>
+        <span class="c-title">@L.Coach_Occurrences_Format(Word)</span>
+    </div>
+    @if (m.Items.Count == 0) {
+        <div class="c-no-data">@L.Coach_OccurrencesEmpty</div>
+    } else {
+        @foreach (var item in m.Items) {
+            <button type="button" class="coach-occurrence" @onclick="@(() => OnClick(item.Occurrence))">
+                <span class="c-chat">@item.ChatTitle</span>
+                <span class="c-time">@DateTimeConverter.ToLocalTime(item.Occurrence.At).ToString("g", DateFormatter)</span>
+            </button>
+        }
+    }
+</div>
+
+@code {
+    private ICoach Coach => Hub.Coach;
+    private IChats Chats => Hub.Chats;
+
+    [Parameter, EditorRequired] public string Word { get; set; } = "";
+    [Parameter] public CoachWindow Window { get; set; }
+    [Parameter] public EventCallback Back { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var word = Word;
+        var window = Window;
+        var occurrences = await Coach.ListOwnOccurrences(Session, word, window, cancellationToken).ConfigureAwait(false);
+        var items = new List<Item>(occurrences.Count);
+        foreach (var occurrence in occurrences) {
+            var chat = await Chats.Get(Session, occurrence.ChatId, cancellationToken).ConfigureAwait(false);
+            items.Add(new Item(occurrence, chat?.Title ?? ""));
+        }
+        return new Model(items);
+    }
+
+    private Task OnClick(CoachOccurrence occurrence)
+        => Hub.CoachUI.JumpTo(occurrence, CancellationToken.None);
+
+    public sealed record Item(CoachOccurrence Occurrence, string ChatTitle);
+
+    public sealed record Model(List<Item> Items) {
+        public static readonly Model None = new([]);
+    }
+}

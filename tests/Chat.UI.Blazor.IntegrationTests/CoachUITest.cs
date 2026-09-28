@@ -58,7 +58,8 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
     private static async Task<ChatEntry> PostVoice(IWebTester tester, ChatId chatId, string text)
     {
         var streaming = await tester.CreateStreamingEntry(chatId, Language.Parse("en-US"));
-        return (await tester.FinalizeStreamingEntry(streaming, text)).ChatEntrySlim;
+        var timeMap = new LinearMap(0, 0, text.Length, 10);
+        return (await tester.FinalizeStreamingEntry(streaming, text, timeMap)).ChatEntrySlim;
     }
 
     // What AppBase does for the real app: the hub needs a root component's dispatcher before
@@ -279,5 +280,42 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
                 .Should().Be(1, "only today has speech");
             cut.FindAll(".donut-chart circle.c-slice").Should().NotBeEmpty();
         }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task ClickingAnOccurrenceShouldStartReplayAtTheWord()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-jump");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        var hub = tester.ScopedAppServices.AppUIHub();
+        await OptIn(tester);
+        var entry = await PostVoice(tester, chatId, Text);
+        await TestWait.When(async ct => (await hub.Coach.ListOwnOccurrences(tester.Session, "um", CoachWindow.Today, ct))
+            .Should().ContainSingle(), TimeSpan.FromSeconds(30));
+        var cut = tester.Render<CoachOccurrences>(p => p
+            .Add(x => x.Word, "um")
+            .Add(x => x.Window, CoachWindow.Today));
+        InitializeHub(tester, hub, cut.Instance);
+        hub.ChatUI.SelectChatOnNavigation(chatId);
+        cut.WaitForAssertion(() => cut.FindAll(".coach-occurrence").Should().ContainSingle());
+
+        // act
+        await cut.InvokeAsync(() => cut.Find(".coach-occurrence").Click());
+
+        // assert
+        var replay = await TestWait.When(_ => {
+            hub.ChatAudioUI.ReplayState.Value.Should().NotBeNull();
+            return Task.FromResult(hub.ChatAudioUI.ReplayState.Value!);
+        });
+        replay.ChatId.Should().Be(chatId);
+        var wordStart = entry.Audio!.TimeMap.TryMap(entry.Content.IndexOf("um"));
+        wordStart.Should().NotBeNull();
+        var expectedStartAt = entry.BeginsAt + TimeSpan.FromSeconds(wordStart!.Value - 0.25);
+        (replay.StartAt - expectedStartAt).Duration().Should().BeLessThan(TimeSpan.FromMilliseconds(50));
     }
 }

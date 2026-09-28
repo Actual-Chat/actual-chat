@@ -26,7 +26,7 @@
                 }
             </div>
             @if (m.Word is { } word) {
-                <div class="coach-occurrences" data-word="@word"></div>
+                <CoachOccurrences Word="@word" Window="@m.Window" Back="@OnOccurrencesBack"/>
             } else {
                 <TabPanel Tabs="@tabs" TabsClass="left-panel-tabs wide-left-panel-tabs" SwapKind="@TabContentSwap.Swipe"/>
             }
