@@ -3,7 +3,7 @@ using Foundation;
 
 namespace ActualChat.Maui;
 
-// TODO(maui-labs): delete, with the MainThread alias in AppServicesAccessor, once Essentials'
+// TODO(maui-labs): delete, with the MainThread alias in MauiMainThread, once Essentials'
 // MainThread is implemented on the macos TFM.
 /// <summary>
 /// Main-thread dispatch for the AppKit backend: MAUI Essentials' <c>MainThread</c> resolves

@@ -5,11 +5,6 @@ using Microsoft.Maui.Networking;
 using Sentry.Extensibility;
 using Sentry.Protocol;
 using Device = Sentry.Protocol.Device;
-#if MACOS
-// MAUI Essentials' MainThread is its "not implemented" neutral build on the macos TFM
-// TODO(maui-labs): see MacOSMainThread
-using MainThread = ActualChat.Maui.MacOSMainThread;
-#endif
 
 namespace ActualChat.Maui.Sentry.Internal;
 
@@ -94,12 +89,12 @@ internal static class MauiDeviceData
             // An event logged off the UI thread gets the last snapshot instead of waiting for it:
             // this runs inside the logging call, and the UI thread may itself be waiting on the
             // thread that logs - which is how it deadlocked into a background watchdog kill (#4869).
-            if (MainThread.IsMainThread)
+            if (MauiMainThread.IsMainThread)
                 ReadDisplaySnapshot().ApplyTo(device);
             else if (Volatile.Read(ref _displaySnapshot) is { } displaySnapshot)
                 displaySnapshot.ApplyTo(device);
             else if (Interlocked.Exchange(ref _isDisplayCaptureQueued, 1) == 0)
-                MainThread.BeginInvokeOnMainThread(() => ReadDisplaySnapshot());
+                MauiMainThread.BeginDispatchToMainThread(() => ReadDisplaySnapshot());
 #endif
 
             // https://docs.microsoft.com/dotnet/maui/platform-integration/device/vibrate

@@ -26,15 +26,14 @@ public sealed class MacOSLocationPermissionHandler : LocationPermissionHandler
 
     protected override async Task<bool?> Get(CancellationToken cancellationToken)
     {
-        var isGranted = await MacOSMainThread
-            .InvokeOnMainThreadAsync(() => ToIsGranted(LocationManager.AuthorizationStatus))
+        var isGranted = await DispatchToMainThread(() => ToIsGranted(LocationManager.AuthorizationStatus))
             .ConfigureAwait(false);
         Log.LogInformation("Get: {IsGranted}", isGranted);
         return isGranted;
     }
 
     protected override Task<bool> Request(CancellationToken cancellationToken)
-        => MacOSMainThread.InvokeOnMainThreadAsync(async () => {
+        => DispatchToMainThread(async () => {
             var manager = LocationManager;
             if (ToIsGranted(manager.AuthorizationStatus) is { } isGranted)
                 return isGranted;
