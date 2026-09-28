@@ -3099,7 +3099,11 @@ export class VideoRecorder {
 
         try {
             const devices = await navigator.mediaDevices.enumerateDevices();
-            return devices.find(d => d.kind === 'videoinput' && d.deviceId === deviceId)?.label || null;
+            const label = devices.find(d => d.kind === 'videoinput' && d.deviceId === deviceId)?.label;
+            if (!label)
+                return null;
+
+            return label;
         } catch {
             return null;
         }
