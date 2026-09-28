@@ -1597,9 +1597,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
         return participants
             .Where(kv => IsFreshParticipant(kv.Value, cutoff))
-            .Select(kv => (Ok: AuthorId.TryParse(kv.Key, out var id), Id: id))
-            .Where(x => x.Ok)
-            .Select(x => x.Id)
+            .Select(kv => AuthorId.TryParse(kv.Key, out var id) ? id : null)
+            .SkipNullItems()
             .ToApiArray();
     }
 
