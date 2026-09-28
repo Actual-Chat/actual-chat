@@ -9,6 +9,9 @@ public partial class TimerFlow : Flow<Unit>
 {
     private static bool _threwRerouteException;
 
+    // A reset re-creates the flow, so nothing in its own state tells that it happened
+    public static ConcurrentDictionary<FlowId, int> InitCounts { get; } = new();
+
     [DataMember(Order = 0)]
     public int RemainingCount { get; set; }
     [DataMember(Order = 1)]
@@ -17,6 +20,7 @@ public partial class TimerFlow : Flow<Unit>
     protected override ValueTask Init(CancellationToken cancellationToken)
     {
         Console.Log($"Init @ {Runtime.Services.MeshWatcher().ThisNode.Ref.Value}");
+        InitCounts.AddOrUpdate(Id, 1, static (_, count) => count + 1);
         var args = Id.SplitArguments("", "1", "1");
         RemainingCount = int.Parse(args[1]);
         Period = TimeSpan.FromSeconds(double.Parse(args[2]));

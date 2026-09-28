@@ -42,6 +42,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
         var h1node = h1.Services.MeshWatcher().ThisNode;
         WriteLine($"h0.ThisNode: {h0node}");
         WriteLine($"h1.ThisNode: {h1node}");
+        await WhenFlowsStarted(h0, h1);
 
         var flowHub = h0.Services.FlowHub();
 
@@ -69,6 +70,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
         await using var h1 = await NewAppHost(o => o with { MustInitializeDb = false });
         WriteLine($"h0.ThisNode: {h0.Services.MeshWatcher().ThisNode}");
         WriteLine($"h1.ThisNode: {h1.Services.MeshWatcher().ThisNode}");
+        await WhenFlowsStarted(h0, h1);
 
         var flowHub = h0.Services.FlowHub();
 
@@ -92,6 +94,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
         await using var h1 = await NewAppHost(o => o with { MustInitializeDb = false });
         WriteLine($"h0.ThisNode: {h0.Services.MeshWatcher().ThisNode}");
         WriteLine($"h1.ThisNode: {h1.Services.MeshWatcher().ThisNode}");
+        await WhenFlowsStarted(h0, h1);
 
         var flowHub = h0.Services.FlowHub();
         var queues = h0.Services.Queues();
@@ -99,23 +102,33 @@ public class TimerFlowTest(ITestOutputHelper @out)
         var f = await GetRemoteFlow<TimerFlow>(flowHub, i => $"f{i},5", cancellationToken);
         f.Should().NotBeNull();
 
-        // Waiting for the RemainingCount to hit 3
+        // Each count lasts a second, so a loaded runner can step over any exact one - wait for a bound.
+        // RemainingCount is 0 before Init too, so 0 counts only once the flow has completed.
         await TestWait.When(async ct => {
             var flow = await GetFlow<TimerFlow>(flowHub, f.Id, ct);
-            flow!.RemainingCount.Should().Be(3);
+            var hasProgressed = flow!.RemainingCount is > 0 and <= 3 || flow.UntypedResult is not null;
+            hasProgressed.Should().BeTrue(
+                $"the flow must count down to 3 or below, but it's at {flow.RemainingCount}");
         }, DefaultTimeout);
+        var initCount = TimerFlow.InitCounts.GetValueOrDefault(f.Id);
 
         await queues.Enqueue(flowHub.NewResumeEvent(f.Id).WithReset(), cancellationToken);
 
-        await TestWait.When(async ct => {
-            var flow = await GetFlow<TimerFlow>(flowHub, f.Id, ct);
-            flow!.RemainingCount.Should().BeGreaterThan(3);
-        }, DefaultTimeout);
+        await TestWait.WhenPolled(
+            () => TimerFlow.InitCounts.GetValueOrDefault(f.Id).Should().BeGreaterThan(initCount,
+                "the reset must re-run Init"),
+            DefaultTimeout);
 
         await WhenCompleted(flowHub, f.Id);
     }
 
     // Private methods
+
+    private static async Task WhenFlowsStarted(params TestAppHost[] hosts)
+    {
+        foreach (var host in hosts)
+            await host.Services.WhenFlowsStarted();
+    }
 
     private async Task<TFlow> GetLocalFlow<TFlow>(FlowHub hub, Func<int, string> argumentFactory, CancellationToken cancellationToken)
         where TFlow : Flow
