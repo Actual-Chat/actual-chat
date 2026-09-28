@@ -28,7 +28,7 @@ public static class CoachTipPolicy
         if (record.Day != UsageDay.DayOf(now))
             return null;
 
-        var tip = WordTip(before, after, spansWithSynonyms, s.TipWordStep) ?? PaceTip(entry, s);
+        var tip = WordTip(before, after, spansWithSynonyms, s.TipWordStep) ?? PaceTip(entry, s, language);
         if (tip is null)
             return null;
 
@@ -74,7 +74,7 @@ public static class CoachTipPolicy
             .FirstOrDefault(sp => sp.Kind == SpeechSpanKind.Weak && sp.Word == word && sp.Synonyms.Count > 0)
             ?.Synonyms ?? ApiArray<string>.Empty;
 
-    private static UserCoachTip? PaceTip(CoachEntryRecord entry, CoachScoringSettings s)
+    private static UserCoachTip? PaceTip(CoachEntryRecord entry, CoachScoringSettings s, string? language)
     {
         if (entry.Words is not { } words || words < s.TipMinWords)
             return null;
@@ -84,11 +84,18 @@ public static class CoachTipPolicy
             return null;
 
         var wpm = (int)Math.Round(words * 60 / seconds);
-        if (wpm > s.TipPaceFastWpm)
-            return new UserCoachTip { Kind = CoachTipKind.SlowDown, Wpm = wpm };
-        if (wpm < s.TipPaceSlowWpm)
-            return new UserCoachTip { Kind = CoachTipKind.SpeedUp, Wpm = wpm };
+        var kind = wpm > s.TipPaceFastWpm ? CoachTipKind.SlowDown
+            : wpm < s.TipPaceSlowWpm ? CoachTipKind.SpeedUp
+            : CoachTipKind.None;
+        if (kind == CoachTipKind.None)
+            return null;
 
-        return null;
+        var range = CoachScoring.PaceRange(s, language);
+        return new UserCoachTip {
+            Kind = kind,
+            Wpm = wpm,
+            PaceSlowWpm = (int)Math.Round(range.Slow),
+            PaceFastWpm = (int)Math.Round(range.Fast),
+        };
     }
 }

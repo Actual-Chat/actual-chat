@@ -125,4 +125,16 @@ public class CoachTipPolicyTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         tip.Should().BeNull("a tip is live feedback on what was just said");
     }
+
+    [Fact]
+    public void PaceTipShouldCarryTheRecommendedRange()
+    {
+        // act
+        var tip = Evaluate(Entry(60, 20), new CoachDay(Day), new CoachDay(Day), NoSpans, NoTip);
+
+        // assert
+        tip!.Kind.Should().Be(CoachTipKind.SlowDown);
+        tip.PaceSlowWpm.Should().Be((int)S.PaceSlowWpm, "the card shows the good band, not the tip threshold");
+        tip.PaceFastWpm.Should().Be((int)S.PaceFastWpm);
+    }
 }

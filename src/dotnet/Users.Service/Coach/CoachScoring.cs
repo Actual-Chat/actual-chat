@@ -64,6 +64,9 @@ public static class CoachScoring
         return wpm < band.Slow ? CoachBand.Low : wpm > band.Fast ? CoachBand.High : CoachBand.Good;
     }
 
+    public static PaceBand PaceRange(CoachScoringSettings s, string? language)
+        => Band(s, language);
+
     // Private methods
 
     private static ApiArray<CoachMetric> Metrics(CoachDay d, CoachScoringSettings s, string? language)

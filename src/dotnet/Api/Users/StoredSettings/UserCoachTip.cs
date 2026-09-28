@@ -42,6 +42,11 @@ public sealed partial record UserCoachTip : StoredSettings, IHasOrigin, IHasKvas
     public bool IsDismissed { get; init; }
     [DataMember, Key(10)]
     public Moment LastTipAt { get; init; }
+    // The good pace band the card quotes next to a pace tip, in wpm
+    [DataMember, Key(11)]
+    public int PaceSlowWpm { get; init; }
+    [DataMember, Key(12)]
+    public int PaceFastWpm { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsPending => Kind != CoachTipKind.None && !IsDismissed;
