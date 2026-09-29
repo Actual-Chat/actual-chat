@@ -11,7 +11,9 @@ public sealed class ResumeLatencyFlowFixture(IMessageSink messageSink) : ActualC
     messageSink,
     TestAppHostOptions.Default with {
         ConfigureServices = (_, services) => {
-            services.AddFlows().Add<ResumeLatencyFlow>();
+            // Master flows (migrations, indexing, sweeps) start with the host and load its DB
+            // for ~15s - right when the resumes are measured (#4914)
+            services.AddFlows(useMasterFlows: false).Add<ResumeLatencyFlow>();
         },
     });
 
