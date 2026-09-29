@@ -120,8 +120,8 @@ public class ConversationStatsTest(AppHostFixture fixture, ITestOutputHelper @ou
         // SessionStartedAt latches only once a second author is in - accepting a call is the
         // shortest path to that; ambient sessions get there via two registered audio streams.
         var liveSessions = services.GetRequiredService<ILiveSessions>();
-        await liveSessions.StartCall(session, chat.Id, default, false, default);
-        await liveSessions.AcceptCall(otherSession, chat.Id, default);
+        await liveSessions.StartCall(session, chat.Id, default, false, "test-caller", default);
+        await liveSessions.AcceptCall(otherSession, chat.Id, "test-callee", default);
         return (session, chat, author.Id);
     }
 

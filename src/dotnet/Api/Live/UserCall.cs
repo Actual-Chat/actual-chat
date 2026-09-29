@@ -6,7 +6,8 @@ public enum CallPhase { Ringing, Dialing, Active }
 
 /// <summary>
 /// The one call a user is in, across every device they're signed in on: the server's claim on
-/// that user, and the answer <see cref="ActualChat.Streaming.ILiveSessions"/> gives their clients.
+/// that user, and the answer <see cref="ActualChat.Streaming.ILiveSessions"/> gives the client
+/// that placed or answered it - or, while it rings, every client of theirs.
 /// </summary>
 [DataContract, MessagePackObject]
 public sealed partial record UserCall
@@ -25,4 +26,8 @@ public sealed partial record UserCall
     public bool HasVideo { get; init; }
     [DataMember(Order = 6), Key(6)]
     public Moment SinceAt { get; init; }
+    [DataMember(Order = 7), Key(7)]
+    public string? SessionHash { get; init; }
+    [DataMember(Order = 8), Key(8)]
+    public string? ClientId { get; init; }
 }

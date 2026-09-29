@@ -244,7 +244,8 @@ public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDispo
     private async Task WhenRingEnded(ChatId chatId, CancellationToken cancellationToken)
     {
         var cMyCall = await Computed
-            .Capture(() => Hub.LiveSessions.GetMyCall(Hub.Session, cancellationToken), cancellationToken)
+            .Capture(() => Hub.LiveSessions.GetMyCall(Hub.Session, Hub.CallUI.ClientId, cancellationToken),
+                cancellationToken)
             .ConfigureAwait(false);
         while (true) {
             // Precise, because Safe reads a disconnected client as synchronized - and its "no call"

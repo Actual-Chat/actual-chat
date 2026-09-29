@@ -636,6 +636,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         AuthorId callerAuthorId,
         ApiArray<AuthorId> invitees,
         bool hasVideo,
+        string? sessionHash,
+        string? clientId,
         CancellationToken cancellationToken)
     {
         // Ring each distinct invitee except the caller - once, and never the caller themselves.
@@ -646,14 +648,14 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         // the invites to know who they're calling; a group call has no single peer to name.
         var callerPeerId = invitees.Count == 1 ? invitees[0] : null;
         if (!await ClaimUserCall(chatId, callerAuthorId, CallRole.Caller, CallPhase.Dialing,
-                callerPeerId, hasVideo, cancellationToken).ConfigureAwait(false))
+                callerPeerId, hasVideo, sessionHash, clientId, cancellationToken).ConfigureAwait(false))
             throw StandardError.Constraint("You're already in a call.");
 
         var ringing = new List<AuthorId>();
         var busy = new List<AuthorId>();
         foreach (var invitee in invitees) {
             var isFree = await ClaimUserCall(chatId, invitee, CallRole.Callee, CallPhase.Ringing,
-                callerAuthorId, hasVideo, cancellationToken).ConfigureAwait(false);
+                callerAuthorId, hasVideo, null, null, cancellationToken).ConfigureAwait(false);
             (isFree ? ringing : busy).Add(invitee);
         }
 
@@ -720,9 +722,15 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             await CloseBusyCall(chatId, cancellationToken).ConfigureAwait(false);
     }
 
-    public virtual async Task AcceptCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken)
+    public virtual async Task AcceptCall(
+        ChatId chatId,
+        AuthorId inviteeAuthorId,
+        string? sessionHash,
+        string? clientId,
+        CancellationToken cancellationToken)
     {
-        var isReclaimed = await ReclaimMissedRing(chatId, inviteeAuthorId, cancellationToken).ConfigureAwait(false);
+        var isReclaimed = await ClaimAnswer(chatId, inviteeAuthorId, sessionHash, clientId, cancellationToken)
+            .ConfigureAwait(false);
         (ConversationId? ConversationId, bool JustConnected) accepted;
         try {
             accepted = await AcceptInvite(chatId, inviteeAuthorId, cancellationToken).ConfigureAwait(false);
@@ -1144,6 +1152,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         CallPhase phase,
         AuthorId? peerId,
         bool hasVideo,
+        string? sessionHash,
+        string? clientId,
         CancellationToken cancellationToken)
     {
         if (await GetUserId(chatId, authorId, cancellationToken).ConfigureAwait(false) is not { } userId)
@@ -1156,6 +1166,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             Phase = phase,
             PeerId = peerId,
             HasVideo = hasVideo,
+            SessionHash = sessionHash,
+            ClientId = clientId,
         };
         return await CallsBackend.TryClaim(userId, call, cancellationToken).ConfigureAwait(false);
     }
@@ -1223,22 +1235,31 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         }
     }
 
-    // ExpireRings released a missed ring's claim, so a late answer takes it again - before the answer is
-    // written: a callee who took another call meanwhile can't also connect this one. Reports whether it
-    // took one, for the caller to release it if the answer is refused after all.
-    private async Task<bool> ReclaimMissedRing(
-        ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken)
+    // Taken before the answer is written. A ring's claim names no client, so every client of the callee
+    // sees it; the answer makes it the answering client's alone (#4929). A missed ring's claim is gone
+    // (ExpireRings released it), so a late answer takes it anew - and a callee who took another call
+    // meanwhile can't also connect this one. Reports whether it was taken anew, for the caller to
+    // release it if the answer is refused after all.
+    private async Task<bool> ClaimAnswer(
+        ChatId chatId,
+        AuthorId inviteeAuthorId,
+        string? sessionHash,
+        string? clientId,
+        CancellationToken cancellationToken)
     {
         var invite = await SafeGetInvite(chatId, inviteeAuthorId).ConfigureAwait(false);
-        if (invite is not { Status: CallInviteStatus.Missed })
+        var isMissed = invite is { Status: CallInviteStatus.Missed };
+        var isRingToOwn = invite is { Status: CallInviteStatus.Ringing } && sessionHash is not null;
+        if (!isMissed && !isRingToOwn)
             return false;
 
         var state = await SafeGet(chatId).ConfigureAwait(false);
         if (!await ClaimUserCall(chatId, inviteeAuthorId, CallRole.Callee, CallPhase.Active,
-                state?.CallerId ?? state?.Host, state?.HasVideo ?? false, cancellationToken).ConfigureAwait(false))
+                state?.CallerId ?? state?.Host, state?.HasVideo ?? false, sessionHash, clientId, cancellationToken)
+                .ConfigureAwait(false))
             throw StandardError.Constraint("You're already in another call.");
 
-        return true;
+        return isMissed;
     }
 
     private async Task ReleaseUserCall(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)

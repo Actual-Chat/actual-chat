@@ -147,6 +147,22 @@ can't stay busy. Two exceptions keep that rule workable:
 Ambient live sessions never claim anything: recording or listening in a chat without a call
 doesn't make anyone busy.
 
+**Whose call it is.** The claim is per user, but a call runs on one client: the one that placed
+it or answered the ring. The claim names that client - `SessionHash` for the device, and
+`ClientId` for the running app instance or browser tab, a random id `CallUI` makes at start
+and sends with `StartCall`, `AcceptCall` and `GetMyCall`. `GetMyCall` answers with the claim
+only on that client (`LiveSessions.IsOnClient`); every other client of the user reads "no call"
+and behaves as it would without one - no screens, no ringback, no call audio mode, no audio
+(#4929). A ring is the exception: its claim names no client, so it rings on all of them, and
+answering it makes it the answering client's (`LiveSessionsBackend.ClaimAnswer`). The user
+stays busy on every client all the same: `StartCall` is still arbitrated by the per-user claim.
+
+A reloaded tab or a restarted app is a new client and doesn't see the call it had - the call's
+audio died with it anyway, and the call closes on the missing presence. A claim that names no
+session (taken by a server predating these fields) or no client (placed by an app predating
+them, through the legacy `StartCall` / `AcceptCall` / `GetMyCall` overloads) is shown to every
+client that could have made it.
+
 **The client slot** is `CallUI._activeCall`, and it is a projection of `GetMyCall` plus the
 intent of a gesture this client just made - `StartCall` sets `Caller/Dialing`, `Accept` sets
 `Active`, hanging up clears it, each before its RPC, so the screens follow the tap and not the
@@ -255,7 +271,8 @@ On the callee's client, `CallScreensUI.Accept`:
 
 On the server, `AcceptCall`:
 
-- moves the invitee's user call to `Active`;
+- moves the invitee's user call to `Active` and names the answering client in it, so the
+  invitee's other clients stop seeing the call;
 - sets the invite to `Accepted`;
 - on the first accept, latches the call: `SessionStartedAt = now`, `VisibleStartLid` at the
   chat's end, and the invitee added to `AuthorIds`. `RecomputeCallStatus` moves the caller's
@@ -270,7 +287,8 @@ From there the call runs on presence. The client's streams drive
 `LiveSessionUI.SyncParticipations`, which reports `SetParticipation` with a heartbeat.
 `GetState`'s self-heal runs `SyncCallParticipantActivity`, which marks the caller and the
 invitee `Active`, and the status becomes `Active`. The caller's holding loop in `CallUI` sees
-that and joins the conversation, moving the slot to `Active`.
+that and joins the conversation, moving the slot to `Active`. Only the client the call was
+placed from sees it at all - see "Whose call it is" above.
 
 ### Decline
 

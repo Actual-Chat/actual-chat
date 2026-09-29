@@ -66,7 +66,7 @@ public partial class CallUI
     private async Task SyncMyCall(CancellationToken cancellationToken)
     {
         var c = await Computed
-            .Capture(() => LiveSessions.GetMyCall(Session, cancellationToken), cancellationToken)
+            .Capture(() => LiveSessions.GetMyCall(Session, ClientId, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         while (true) {
             _cMyCall = c;
