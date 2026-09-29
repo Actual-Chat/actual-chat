@@ -84,7 +84,7 @@
         => _showSettings = !_showSettings;
 
     private void OnScoreClick()
-        => _ = ModalUI.Show(new CoachScoreSheet.Model(State.Value.Language));
+        => _ = ModalUI.Show(new CoachScoreSheet.Model(State.Value.Language, State.Value.Summary.Words));
 
     private void OnFocusClick()
         => CoachUI.SelectTab(CoachTab.Skills);

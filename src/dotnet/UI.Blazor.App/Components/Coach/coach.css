@@ -168,3 +168,4 @@
 .coach-skills .chip { @apply whitespace-nowrap flex-none; }
 .coach-language-chips .c-chips,
 .coach-skills .c-periods .c-chips { @apply flex-wrap; }
+.coach-score-sheet .c-empty { @apply py-2 text-center; }

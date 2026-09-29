@@ -10,6 +10,10 @@
 <DialogFrame Class="coach-score-sheet modal-sm" Title="@L.Coach_ScoreSheetTitle">
     <Body>
     <FormBlock>
+        @if (State.Value.Count == 0) {
+            var missing = Math.Max(1, MinScoreWords - ModalModel.Words);
+            <div class="c-empty text-03">@L.Coach_ScoreAfterWords(missing, missing)</div>
+        } else {
         <Tile>
             @foreach (var part in State.Value) {
                 <TileItem @key="@part.Kind" IsHoverable="false" Role="">
@@ -23,6 +27,7 @@
                 </TileItem>
             }
         </Tile>
+        }
     </FormBlock>
     </Body>
     <Buttons>
@@ -32,6 +37,9 @@
 </DialogFrame>
 
 @code {
+    // The server's CoachScoringSettings.MinScoreWords, as the score card copy also assumes
+    private const int MinScoreWords = 200;
+
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
@@ -56,5 +64,5 @@
         Modal.Close();
     }
 
-    public sealed record Model(string? Language);
+    public sealed record Model(string? Language, int Words);
 }
