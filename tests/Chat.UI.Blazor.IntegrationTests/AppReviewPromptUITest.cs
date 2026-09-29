@@ -69,12 +69,12 @@ public sealed class AppReviewPromptUITest(ChatAppHostFixture fixture, ITestOutpu
 
         // act - the worker would do exactly this once GetShowablePrompt turns non-null
         var modal = await hub.ModalUI.Show(new AppReviewModal.Model(outcomes.Add));
-        Click(tester, host, "AppReview_MaybeLater");
-        Click(tester, host, "AppReview_NotRightNow");
-        Click(tester, host, "Common_Close");
+        await Click(tester, host, "AppReview_MaybeLater");
+        await Click(tester, host, "AppReview_NotRightNow");
+        await Click(tester, host, "Common_Close");
         await modal.WhenClosed.WaitAsync(TimeSpan.FromSeconds(10));
         // The outcome is reported from the modal's Dispose, which runs on the host's next render
-        host.WaitForAssertion(() => outcomes.Should().ContainSingle(), TimeSpan.FromSeconds(10));
+        await TestWait.WhenRendered(host, () => outcomes.Should().ContainSingle());
         var outcome = outcomes.Single();
         await tester.Commander.Call(new Usage_RecordReviewPrompt { Session = tester.Session, Outcome = outcome });
 
@@ -104,10 +104,11 @@ public sealed class AppReviewPromptUITest(ChatAppHostFixture fixture, ITestOutpu
         await kvas.Set(ReviewPromptPolicy.MarkPending(history, chatId, Clocks.SystemClock.Now));
     }
 
-    private static void Click(BlazorTester tester, IRenderedComponent<ModalHost> host, string localizedKey)
+    private static async Task Click(BlazorTester tester, IRenderedComponent<ModalHost> host, string localizedKey)
     {
         var text = tester.ScopedAppServices.GetRequiredService<IStringLocalizer>()[localizedKey].Value;
-        host.WaitForAssertion(() => host.FindAll("button").Should().Contain(b => b.TextContent.Trim() == text));
+        await TestWait.WhenRendered(host,
+            () => host.FindAll("button").Should().Contain(b => b.TextContent.Trim() == text));
         host.FindAll("button").First(b => b.TextContent.Trim() == text).Click();
     }
 }

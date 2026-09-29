@@ -8,7 +8,7 @@ public class ErrorBarrierBoundaryTest
     [Theory]
     [InlineData(1)]
     [InlineData(4)]
-    public void ErrorContentShouldSurviveSeveralErrorsInOneRender(int failingChildCount)
+    public async Task ErrorContentShouldSurviveSeveralErrorsInOneRender(int failingChildCount)
     {
         // arrange
         using var context = TestBunitContext.New();
@@ -21,14 +21,14 @@ public class ErrorBarrierBoundaryTest
             .Add(x => x.ErrorContent, _ => b => b.AddContent(0, "failed")));
 
         // assert
-        cut.WaitForAssertion(() => cut.Markup.Should().Be("failed",
+        await TestWait.WhenRendered(cut, () => cut.Markup.Should().Be("failed",
             "the renderer's empty render queued for each later error must not wipe the error content"));
         activations.Select(e => e.Message).Should().Equal(["child 1"],
             "errors arriving while the boundary is already failed are the same activation");
     }
 
     [Fact]
-    public void RecoveredBoundaryShouldReportTheNextErrorAsNewActivation()
+    public async Task RecoveredBoundaryShouldReportTheNextErrorAsNewActivation()
     {
         // arrange
         using var context = TestBunitContext.New();
@@ -37,14 +37,14 @@ public class ErrorBarrierBoundaryTest
             .Add(x => x.Activated, activations.Add)
             .Add(x => x.ChildContent, b => AddFailingChildren(b, 2))
             .Add(x => x.ErrorContent, _ => b => b.AddContent(0, "failed")));
-        cut.WaitForAssertion(() => cut.Markup.Should().Be("failed"));
+        await TestWait.WhenRendered(cut, () => cut.Markup.Should().Be("failed"));
 
         // act
-        cut.InvokeAsync(cut.Instance.Recover);
+        _ = cut.InvokeAsync(cut.Instance.Recover);
 
         // assert
-        cut.WaitForAssertion(() => activations.Should().HaveCount(2));
-        cut.WaitForAssertion(() => cut.Markup.Should().Be("failed"));
+        await TestWait.WhenRendered(cut, () => activations.Should().HaveCount(2));
+        await TestWait.WhenRendered(cut, () => cut.Markup.Should().Be("failed"));
     }
 
     // Private methods
