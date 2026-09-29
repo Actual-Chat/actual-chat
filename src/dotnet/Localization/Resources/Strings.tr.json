@@ -2081,5 +2081,7 @@
   "Coach_ScoreSheetTitle": "Puanınızı ne değiştirir",
   "Coach_ScorePoints_Format": "{1} puanın {0} tanesi",
   "Coach_Native": "ana dil",
-  "Coach_Learning": "öğreniyorum"
+  "Coach_Learning": "öğreniyorum",
+  "Coach_TalkTime": "Konuşma süresi",
+  "Coach_TalkOthers": "Diğerleri"
 }

@@ -2074,5 +2074,7 @@
   "Coach_ScoreSheetTitle": "От чего зависит ваш балл",
   "Coach_ScorePoints_Format": "{0} из {1} баллов",
   "Coach_Native": "родной",
-  "Coach_Learning": "изучаемый"
+  "Coach_Learning": "изучаемый",
+  "Coach_TalkTime": "Время речи",
+  "Coach_TalkOthers": "Остальные"
 }

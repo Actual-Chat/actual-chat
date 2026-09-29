@@ -604,6 +604,8 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         cleared.Should().Equal(CoachMetricKind.Fillers);
         withoutScore.FindAll(".card-item").Count.Should().Be(1, "no focus row before the first score");
         withScore.FindAll(".card-item").Count.Should().Be(2);
+        withScore.Find(".c-score-ring .c-arc").GetAttribute("stroke-dasharray").Should().Be("70.00 30.00");
+        withoutScore.FindAll(".c-score-ring").Should().BeEmpty("no ring before the first score");
     }
 
     [Fact(Timeout = 60_000)]

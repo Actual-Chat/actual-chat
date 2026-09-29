@@ -2074,5 +2074,7 @@
   "Coach_ScoreSheetTitle": "점수를 바꾸는 것",
   "Coach_ScorePoints_Format": "{1}점 중 {0}점",
   "Coach_Native": "원어민",
-  "Coach_Learning": "학습 중"
+  "Coach_Learning": "학습 중",
+  "Coach_TalkTime": "발언 시간",
+  "Coach_TalkOthers": "다른 사람"
 }

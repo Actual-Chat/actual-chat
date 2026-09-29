@@ -2428,5 +2428,7 @@
   "Coach_ScoreSheetTitle": "Điều gì ảnh hưởng đến điểm của bạn",
   "Coach_ScorePoints_Format": "{1} puanın {0} tanesi",
   "Coach_Native": "Muttersprache",
-  "Coach_Learning": "та, що вивчається"
+  "Coach_Learning": "та, що вивчається",
+  "Coach_TalkTime": "Tiempo de conversación",
+  "Coach_TalkOthers": "Những người khác"
 }

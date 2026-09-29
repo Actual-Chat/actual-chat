@@ -2428,5 +2428,7 @@
   "Coach_ScoreSheetTitle": "What moves your score",
   "Coach_ScorePoints_Format": "{0} of {1} points",
   "Coach_Native": "native",
-  "Coach_Learning": "learning"
+  "Coach_Learning": "learning",
+  "Coach_TalkTime": "Talk time",
+  "Coach_TalkOthers": "Others"
 }

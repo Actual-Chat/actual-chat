@@ -2074,5 +2074,7 @@
   "Coach_ScoreSheetTitle": "Što pokreće vaš rezultat",
   "Coach_ScorePoints_Format": "{0} od {1} bodova",
   "Coach_Native": "maternji",
-  "Coach_Learning": "učim"
+  "Coach_Learning": "učim",
+  "Coach_TalkTime": "Vrijeme govora",
+  "Coach_TalkOthers": "Ostali"
 }

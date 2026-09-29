@@ -2074,5 +2074,7 @@
   "Coach_ScoreSheetTitle": "Qué mueve tu puntuación",
   "Coach_ScorePoints_Format": "{0} de {1} puntos",
   "Coach_Native": "nativo",
-  "Coach_Learning": "aprendiendo"
+  "Coach_Learning": "aprendiendo",
+  "Coach_TalkTime": "Tiempo de conversación",
+  "Coach_TalkOthers": "Otros"
 }

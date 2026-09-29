@@ -170,3 +170,11 @@
 .coach-score-sheet .c-empty { @apply py-2 text-center; }
 .coach-skills .c-topic-row { @apply flex-x items-center justify-between gap-x-2; }
 .coach-skills .c-periods { @apply justify-start; }
+.coach-talk-time { @apply p-3 items-center; }
+.coach-talk-time .donut-chart .c-ring { @apply w-24 h-24; }
+.coach-talk-time .donut-chart .c-center { @apply text-title-500 text-01; }
+.c-score-ring { @apply relative flex-none flex items-center justify-center w-10 h-10; }
+.c-score-ring > svg { @apply absolute inset-0 w-full h-full; transform: rotate(-90deg); }
+.c-score-ring .c-track { fill: none; stroke: var(--background-02); stroke-width: 4; }
+.c-score-ring .c-arc { fill: none; stroke: var(--primary); stroke-width: 4; stroke-linecap: round; }
+.c-score-ring i { @apply text-xl; }

@@ -2074,5 +2074,7 @@
   "Coach_ScoreSheetTitle": "Yang memengaruhi skor Anda",
   "Coach_ScorePoints_Format": "{0} dari {1} poin",
   "Coach_Native": "bahasa ibu",
-  "Coach_Learning": "belajar"
+  "Coach_Learning": "belajar",
+  "Coach_TalkTime": "Waktu bicara",
+  "Coach_TalkOthers": "Lainnya"
 }

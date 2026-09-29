@@ -2074,5 +2074,7 @@
   "Coach_ScoreSheetTitle": "什么会影响你的得分",
   "Coach_ScorePoints_Format": "{1} 分中的 {0} 分",
   "Coach_Native": "母语",
-  "Coach_Learning": "学习中"
+  "Coach_Learning": "学习中",
+  "Coach_TalkTime": "发言时间",
+  "Coach_TalkOthers": "其他人"
 }

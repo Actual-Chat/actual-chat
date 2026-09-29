@@ -2074,5 +2074,7 @@
   "Coach_ScoreSheetTitle": "スコアを左右するもの",
   "Coach_ScorePoints_Format": "{1} 点中 {0} 点",
   "Coach_Native": "ネイティブ",
-  "Coach_Learning": "学習中"
+  "Coach_Learning": "学習中",
+  "Coach_TalkTime": "発話時間",
+  "Coach_TalkOthers": "ほかの人"
 }

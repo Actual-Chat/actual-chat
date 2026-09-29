@@ -2074,5 +2074,7 @@
   "Coach_ScoreSheetTitle": "O que influencia sua pontuação",
   "Coach_ScorePoints_Format": "{0} de {1} pontos",
   "Coach_Native": "nativo",
-  "Coach_Learning": "aprendendo"
+  "Coach_Learning": "aprendendo",
+  "Coach_TalkTime": "Tempo de fala",
+  "Coach_TalkOthers": "Outros"
 }

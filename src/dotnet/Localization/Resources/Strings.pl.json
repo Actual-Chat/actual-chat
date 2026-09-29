@@ -2074,5 +2074,7 @@
   "Coach_ScoreSheetTitle": "Co wpływa na Twój wynik",
   "Coach_ScorePoints_Format": "{0} z {1} pkt",
   "Coach_Native": "ojczysty",
-  "Coach_Learning": "nauka"
+  "Coach_Learning": "nauka",
+  "Coach_TalkTime": "Czas mówienia",
+  "Coach_TalkOthers": "Pozostali"
 }

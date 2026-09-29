@@ -9,7 +9,20 @@
 
 <Card Class="coach-score-card">
     <CardItem Click="@ScoreClick">
-        <Left><i class="text-2xl icon-star text-primary"></i></Left>
+        <Left>
+            @if (s.Score is { } ring) {
+                <span class="c-score-ring">
+                    <svg viewBox="0 0 42 42">
+                        <circle class="c-track" cx="21" cy="21" r="18"/>
+                        <circle class="c-arc" cx="21" cy="21" r="18" pathLength="100"
+                                stroke-dasharray="@Dash(ring)"/>
+                    </svg>
+                    <i class="icon-star text-primary"></i>
+                </span>
+            } else {
+                <i class="text-2xl icon-star text-primary"></i>
+            }
+        </Left>
         <Title>
             @if (s.Score is { } score) {
                 @(Language is null ? L.Coach_Score_Format(score) : L.Coach_ScoreOf_Format(labels.LanguageName(Language), score))
@@ -47,6 +60,11 @@
     [Parameter] public string? Language { get; set; }
     [Parameter] public EventCallback ScoreClick { get; set; }
     [Parameter] public EventCallback FocusClick { get; set; }
+
+    private static string Dash(int score) {
+        var value = Math.Clamp(score, 0, 100);
+        return value.ToString("F2", null) + " " + (100 - value).ToString("F2", null);
+    }
 
     private CoachLabels Labels => field ??= new CoachLabels(L);
 }

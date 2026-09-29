@@ -27,6 +27,15 @@
             </CardItem>
         </Card>
     }
+    @if (m.TalkShare is { } share) {
+        var percent = (int)Math.Round(share * 100);
+        <TileTopic Topic="@L.Coach_TalkTime"/>
+        <Card Class="coach-talk-time">
+            <DonutChart Items="@TalkItems(share)">
+                <Center>@percent%</Center>
+            </DonutChart>
+        </Card>
+    }
     <TileTopic Topic="@L.Coach_ScoreLastWeeks"/>
     <Card Class="coach-week-scores">
         <BarChart Items="@ScoreItems(m.Scores)"/>
@@ -72,6 +81,8 @@
                 perDay.GetValueOrDefault(d) > 0))
             .ToList();
         var weekDays = days.Where(d => d.Day >= weekStart).ToApiArray();
+        var week = CoachDayBuilder.Merge(weekStart, weekDays);
+        double? talkShare = week.TotalSpeechSeconds > 0 ? week.OwnSpeechSeconds / week.TotalSpeechSeconds : null;
         var streak = 0;
         for (var i = 0; i < HistoryWeeks; i++) {
             var start = weekStart - TimeSpan.FromDays(7 * i);
@@ -82,8 +93,14 @@
             streak++;
         }
         var note = await UserSettingsUI.UserCoachWeeklyNote().Get(cancellationToken).ConfigureAwait(false);
-        return new Model(deltas, scores, milestones, weekDays, cells, streak, note);
+        return new Model(deltas, scores, milestones, weekDays, cells, streak, note, talkShare);
     }
+
+    private IReadOnlyList<ChartItem> TalkItems(double share)
+        => [
+            new ChartItem(L.ChatView_You, share, "text-primary"),
+            new ChartItem(L.Coach_TalkOthers, 1 - share, "text-03"),
+        ];
 
     private Task OnNoteSeen()
         => UserSettingsUI.UserCoachWeeklyNote().Update(x => x with { IsSeen = true });
@@ -104,7 +121,8 @@
         ApiArray<CoachDay> WeekDays,
         List<DayCell> WeekCells,
         int WeeksInARow,
-        UserCoachWeeklyNote Note) {
+        UserCoachWeeklyNote Note,
+        double? TalkShare) {
         public static readonly Model None = new(
             ApiArray<CoachWeekDelta>.Empty,
             ApiArray<CoachWeekScore>.Empty,
@@ -112,6 +130,7 @@
             ApiArray<CoachDay>.Empty,
             [],
             0,
-            new UserCoachWeeklyNote());
+            new UserCoachWeeklyNote(),
+            null);
     }
 }

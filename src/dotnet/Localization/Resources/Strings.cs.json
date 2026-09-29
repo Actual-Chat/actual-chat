@@ -2074,5 +2074,7 @@
   "Coach_ScoreSheetTitle": "Co ovlivňuje vaše skóre",
   "Coach_ScorePoints_Format": "{0} z {1} bodů",
   "Coach_Native": "rodilý",
-  "Coach_Learning": "učím se"
+  "Coach_Learning": "učím se",
+  "Coach_TalkTime": "Čas mluvení",
+  "Coach_TalkOthers": "Ostatní"
 }

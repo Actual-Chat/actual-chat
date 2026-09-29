@@ -2074,5 +2074,7 @@
   "Coach_ScoreSheetTitle": "Какво движи резултата ви",
   "Coach_ScorePoints_Format": "{0} от {1} точки",
   "Coach_Native": "роден",
-  "Coach_Learning": "учене"
+  "Coach_Learning": "учене",
+  "Coach_TalkTime": "Време за говорене",
+  "Coach_TalkOthers": "Другите"
 }

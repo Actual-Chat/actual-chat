@@ -2075,5 +2075,7 @@
   "Coach_ScoreSheetTitle": "Was dein Ergebnis beeinflusst",
   "Coach_ScorePoints_Format": "{0} von {1} Punkten",
   "Coach_Native": "Muttersprache",
-  "Coach_Learning": "lernend"
+  "Coach_Learning": "lernend",
+  "Coach_TalkTime": "Sprechzeit",
+  "Coach_TalkOthers": "Andere"
 }

@@ -2074,5 +2074,7 @@
   "Coach_ScoreSheetTitle": "Cosa fa cambiare il tuo punteggio",
   "Coach_ScorePoints_Format": "{0} punti su {1}",
   "Coach_Native": "madrelingua",
-  "Coach_Learning": "in apprendimento"
+  "Coach_Learning": "in apprendimento",
+  "Coach_TalkTime": "Tempo di parola",
+  "Coach_TalkOthers": "Altri"
 }

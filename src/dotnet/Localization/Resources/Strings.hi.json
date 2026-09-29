@@ -2074,5 +2074,7 @@
   "Coach_ScoreSheetTitle": "आपका स्कोर किससे बदलता है",
   "Coach_ScorePoints_Format": "{1} में से {0} अंक",
   "Coach_Native": "मूल भाषा",
-  "Coach_Learning": "सीख रहे हैं"
+  "Coach_Learning": "सीख रहे हैं",
+  "Coach_TalkTime": "बोलने का समय",
+  "Coach_TalkOthers": "अन्य"
 }

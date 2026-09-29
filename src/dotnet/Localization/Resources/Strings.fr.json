@@ -2074,5 +2074,7 @@
   "Coach_ScoreSheetTitle": "Ce qui fait bouger votre score",
   "Coach_ScorePoints_Format": "{0} sur {1} points",
   "Coach_Native": "natif",
-  "Coach_Learning": "apprentissage"
+  "Coach_Learning": "apprentissage",
+  "Coach_TalkTime": "Temps de parole",
+  "Coach_TalkOthers": "Les autres"
 }

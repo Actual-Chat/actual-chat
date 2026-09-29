@@ -2183,6 +2183,8 @@ public static class LocalizedStringsLocalizerExt
             => l["Coach_ScorePoints_Format", arg0, arg1].Value;
         public string Coach_Native => l["Coach_Native"].Value;
         public string Coach_Learning => l["Coach_Learning"].Value;
+        public string Coach_TalkTime => l["Coach_TalkTime"].Value;
+        public string Coach_TalkOthers => l["Coach_TalkOthers"].Value;
 
     }
 }
