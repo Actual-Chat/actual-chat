@@ -96,13 +96,14 @@ public partial class AccountUI
             Volatile.Write(ref _pendingRegistrationToken, info.Token);
             await Hub.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
             var infoCopy = info;
+            var action = PendingRegistrationAction ?? ShowPendingRegistrationModal;
             try {
                 await Hub.Dispatcher
-                    .InvokeAsync(() => ShowPendingRegistrationModal(infoCopy))
+                    .InvokeAsync(() => action.Invoke(infoCopy))
                     .ConfigureAwait(false);
             }
             catch (Exception e) {
-                Log.LogError(e, "Failed to show pending-registration modal");
+                Log.LogError(e, "Failed to handle the pending registration");
             }
         }
     }

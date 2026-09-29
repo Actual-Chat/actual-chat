@@ -37,7 +37,7 @@ describe('onboarding Back', () => {
                @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment */
             const debugUI = (window as any).debugUI;
             await debugUI.signIn(phone, { skipOnboarding: false, skipBubbles: false });
-            debugUI.resetOnboarding(true);
+            await debugUI.resetOnboarding(true);
             /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access,
                @typescript-eslint/no-unsafe-call */
         }, PHONE);
@@ -55,10 +55,10 @@ describe('onboarding Back', () => {
     }, 120_000);
 
     afterAll(async () => {
-        await page.evaluate(() => {
+        await page.evaluate(async () => {
             /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access,
                @typescript-eslint/no-unsafe-call */
-            (window as any).debugUI?.resetOnboarding(false);
+            await (window as any).debugUI?.resetOnboarding(false);
             /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access,
                @typescript-eslint/no-unsafe-call */
         }).catch(() => { /* ignore */ });

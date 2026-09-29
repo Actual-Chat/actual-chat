@@ -16,4 +16,10 @@ public sealed partial record LocalOnboardingSettings : StoredSettings
         };
         return !areAllFeatureIndependentStepsCompleted;
     }
+
+    public LocalOnboardingSettings WithAllStepsCompleted()
+        => this with {
+            IsPermissionsStepCompleted = true,
+            AreCookiesAccepted = true,
+        };
 }

@@ -30,6 +30,7 @@
     private readonly CancellationTokenSource _disposeCts = new();
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<BubbleHost> _blazorRef = null!;
+    private readonly TaskCompletionSource _whenJSReadySource = TaskCompletionSourceExt.New();
 
     [Inject] private UIHub Hub { get; init; } = null!;
     private AccountUI AccountUI => Hub.AccountUI;
@@ -40,6 +41,8 @@
     private IJSRuntime JS => field ??= Hub.JS;
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
+    public Task WhenJSReady => _whenJSReadySource.Task;
+
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BubbleHost))]
     public BubbleHost() { }
 
@@ -48,6 +51,7 @@
 
     public async ValueTask DisposeAsync() {
         _disposeCts.CancelAndDisposeSilently();
+        _whenJSReadySource.TrySetCanceled();
         await _jsRef.DisposeSilentlyAsync("dispose");
         _jsRef = null!;
         _blazorRef.DisposeSilently();
@@ -125,6 +129,7 @@
             // Starts paused: AttentionUI lets bubbles in once the attention flow for the account is done
             var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _blazorRef, readBubbles, true);
+            _whenJSReadySource.TrySetResult();
             _ = PauseWhileAttentionIsTaken(_disposeCts.Token);
         }
     }

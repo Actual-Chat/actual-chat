@@ -36,6 +36,9 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
     public Moment StartedAt { get; }
     public event Action<AccountFull?>? LoginLogout;
 
+    // Replaces the confirmation modal; DebugUI.SignIn sets it to confirm the registration itself
+    internal Func<PendingRegistrationInfo, Task>? PendingRegistrationAction { get; set; }
+
     public AccountUI(UIHub hub) : base(hub)
     {
         CpuClock = Services.Clocks().CpuClock;
