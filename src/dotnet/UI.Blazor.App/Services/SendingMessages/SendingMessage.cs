@@ -17,7 +17,7 @@ public record SendingMessage(
 {
     public GeoPoint? LocationPoint { get; init; }
     public bool IsLocationPlace { get; init; }
-    public SharedLocationId? LocationId { get; init; }
+    public TimeSpan LocationLiveDuration { get; init; }
     public ChatEntry? PostedChatEntry { get; private set; }
     public Exception? Error { get; private set; }
     public Moment? SentMoment { get; private set; }

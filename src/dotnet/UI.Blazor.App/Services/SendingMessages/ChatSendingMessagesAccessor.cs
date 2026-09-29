@@ -70,7 +70,6 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
                 SendingTag = sendingMessage,
                 ClientUid = Guid.NewGuid().ToString(),
                 HasUploadingAttachments = sendingMessage.AttachmentUploads is not null,
-                LocationId = sendingMessage.LocationId,
             };
             Owner.RegisterEntryByClientId(chatEntry);
             entries.Add(chatEntry);

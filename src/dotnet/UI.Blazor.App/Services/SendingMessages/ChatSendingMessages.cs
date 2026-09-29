@@ -38,6 +38,14 @@ public class ChatSendingMessages
             return _editMessages.Count > 0 ? _editMessages.LastOrDefault(c => !c.ToBeRemoved && c.LocalId == chatEntryId.LocalId) : null;
     }
 
+    public SendingMessage? TryGet(string uuid)
+    {
+        // Retired copies included: a completed send stays here until pruned, and its posted entry is
+        // what a caller resuming by uuid is after
+        lock (_lock)
+            return _newMessages.FirstOrDefault(c => c.Uuid == uuid);
+    }
+
     public void AddSendingMessage(SendingMessage sendingMessage)
     {
         lock (_lock)

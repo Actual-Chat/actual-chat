@@ -97,7 +97,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         var now = Clocks.SystemClock.Now;
         var resultSource = TaskCompletionSourceExt.New<ChatEntry?>();
         await _whenStoredRequestsProcessed.ConfigureAwait(false);
-        var uuid = Ulid.NewUlid().ToString();
+        var uuid = cmd.Uuid.NullIfEmpty() ?? Ulid.NewUlid().ToString();
         var filesUpload = cmd.Uploads is not null ? _filesUploadRegistry.Get(cmd.Uploads) : null;
         var entry = CreateStoredSendRequest(uuid, now, cmd, filesUpload);
         DebugLog?.LogDebug("About to store post request '{Text}'", cmd.Text.ToPrivate());
@@ -151,6 +151,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             NewChatEntryLocalId = entry.NewChatEntryLocalId,
             LocationPoint = entry.LocationPoint,
             IsLocationPlace = entry.IsLocationPlace,
+            LocationLiveDuration = entry.LocationLiveDuration,
             LocationId = entry.LocationId,
             AfterSendMessageHandler = !entry.AfterSendMessageHandlerKey.IsNullOrEmpty()
                 ? new AfterSendMessageHandler(entry.AfterSendMessageHandlerKey, entry.AfterSendMessageHandlerArgs)
@@ -608,6 +609,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         public long? NewChatEntryLocalId { get; init; }
         public GeoPoint? LocationPoint { get; init; }
         public bool IsLocationPlace { get; init; }
+        public TimeSpan LocationLiveDuration { get; init; }
         // Set once the shared location exists, so a retry or a restart posts the entry for it
         // instead of minting a second one
         public SharedLocationId? LocationId { get; init; }

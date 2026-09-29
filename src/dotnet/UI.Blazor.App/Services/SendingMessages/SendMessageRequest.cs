@@ -14,7 +14,9 @@ public sealed class SendMessageRequest
     public AfterSendMessageHandler? AfterSendMessageHandler { get; private set; }
     public GeoPoint? LocationPoint { get; private set; }
     public bool IsLocationPlace { get; private set; }
-    public SharedLocationId? LocationId { get; private set; }
+    public TimeSpan LocationLiveDuration { get; private set; }
+    // Set by a caller that has to find the send again later, e.g. after a restart; minted otherwise
+    public string Uuid { get; private set; } = "";
 
     public static SendMessageRequest NewMessage(
         ChatId chatId,
@@ -38,12 +40,13 @@ public sealed class SendMessageRequest
             IsLocationPlace = isPlace,
         };
 
-    // For a location that already exists, such as a live share the reporter has just created
-    public static SendMessageRequest NewLocation(ChatId chatId, SharedLocationId locationId)
+    public static SendMessageRequest NewLiveLocation(ChatId chatId, GeoPoint point, TimeSpan duration, string uuid)
         => new () {
             ChatId = chatId,
             Text = "",
-            LocationId = locationId,
+            LocationPoint = point,
+            LocationLiveDuration = duration,
+            Uuid = uuid,
         };
 
     public static SendMessageRequest EditMessage(ChatEntryId chatEntryId, string newText)

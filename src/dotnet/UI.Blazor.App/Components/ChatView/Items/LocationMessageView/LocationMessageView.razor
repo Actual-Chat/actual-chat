@@ -83,8 +83,7 @@
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         if (Entry.GetSendingMessage() is { LocationPoint: { } pendingPoint } sendingMessage)
-            return await GetSendingModel(pendingPoint, sendingMessage.IsLocationPlace, cancellationToken)
-                .ConfigureAwait(false);
+            return await GetSendingModel(sendingMessage, pendingPoint, cancellationToken).ConfigureAwait(false);
         if (Entry.LocationId is not { } locationId)
             return null;
 
@@ -116,11 +115,21 @@
 
     // Private methods
 
-    private async Task<Model> GetSendingModel(GeoPoint point, bool isPlace, CancellationToken cancellationToken) {
-        // The shared location doesn't exist yet, so the pin comes from the queued send itself.
+    private async Task<Model> GetSendingModel(
+        SendingMessage sendingMessage,
+        GeoPoint point,
+        CancellationToken cancellationToken) {
+        // The shared location doesn't exist yet, so the pin and the countdown come from the queued send itself.
+        var isPlace = sendingMessage.IsLocationPlace;
         var marker = await LocationUI.GetPendingMarker(Entry.ChatId, point, isPlace, cancellationToken)
             .ConfigureAwait(false);
-        return new Model(point, [marker], null, false, IsPlace: isPlace) { IsSending = true };
+        var duration = sendingMessage.LocationLiveDuration;
+        var countdown = duration == TimeSpan.Zero ? null
+            : duration == Constants.Location.UnlimitedDuration ? DurationCountdown.Unlimited
+            : new DurationCountdown(duration, duration);
+        return new Model(point, [marker], countdown, IsOwnLive: countdown is not null, IsPlace: isPlace) {
+            IsSending = true,
+        };
     }
 
     private async Task<double?> GetDistance(GeoPoint target, CancellationToken cancellationToken) {

@@ -131,6 +131,7 @@ public sealed partial record SendMessageRequestEntry : IHasId<string>, ISanitize
     [DataMember, Key(13)] public GeoPoint? LocationPoint { get; init; }
     [DataMember, Key(14)] public bool IsLocationPlace { get; init; }
     [DataMember, Key(15)] public SharedLocationId? LocationId { get; init; }
+    [DataMember, Key(16)] public TimeSpan LocationLiveDuration { get; init; }
 
     string IHasId<string>.Id => Uuid;
 

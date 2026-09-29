@@ -12,6 +12,9 @@ public sealed partial record ActiveShare(
     [property: DataMember, Key(3)] TimeSpan Duration
 )
 {
+    // The queued send that creates the share and posts its entry; LocationId is adopted from that entry
+    [DataMember, Key(4)] public string SendUuid { get; init; } = "";
+
     // StartedAt + TimeSpan.MaxValue would silently wrap negative
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Moment ExpiresAt => Duration == Constants.Location.UnlimitedDuration

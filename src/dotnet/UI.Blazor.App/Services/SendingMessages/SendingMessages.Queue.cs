@@ -21,6 +21,14 @@ partial class SendingMessages
                 DebugLog?.LogDebug("<- ProcessQueueItem. Text: '{Text}'", request.Text.ToPrivate());
                 return chatEntry;
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested
+                && !_cancellationTokenSource.IsCancellationRequested) {
+                // The send was cancelled rather than the service stopped: a live share created above
+                // must not run on without its entry, and nothing else knows its id
+                if (request.LocationLiveDuration > TimeSpan.Zero && request.LocationId is { } createdId)
+                    await StopSharedLocation(request.ChatId, createdId).ConfigureAwait(false);
+                throw;
+            }
             catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
                 if (!IsTransientError(e)) {
                     Log.LogError(e,
@@ -137,7 +145,7 @@ partial class SendingMessages
             Id = null,
             Change = Change.Create(new SharedLocationDiff {
                 Point = point,
-                LiveDuration = TimeSpan.Zero,
+                LiveDuration = request.LocationLiveDuration,
                 IsPlace = request.IsLocationPlace,
             }),
         };
@@ -148,6 +156,23 @@ partial class SendingMessages
         await _requestsRepo.MarkLocationWasCreated(request.Uuid, location.Id, cancellationToken)
             .ConfigureAwait(false);
         return request with { LocationId = location.Id };
+    }
+
+    private async Task StopSharedLocation(ChatId chatId, SharedLocationId locationId)
+    {
+        try {
+            using var cts = new CancellationTokenSource(ProcessCommandTimeout);
+            var cmd = new SharedLocations_Change {
+                Session = Session,
+                ChatId = chatId,
+                Id = locationId,
+                Change = Change.Remove<SharedLocationDiff>(),
+            };
+            await Commander.Call(cmd, cts.Token).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to stop the shared location '{LocationId}' of a cancelled send", locationId);
+        }
     }
 
     private async Task<MediaId[]> ReserveMediaIds(PostMessageRequestInternal request, CancellationToken cancellationToken)

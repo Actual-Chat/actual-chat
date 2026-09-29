@@ -32,6 +32,9 @@ partial class SendingMessages
     public void Cancel(SendingMessage sendingMessage)
         => sendingMessage.Cancel();
 
+    public SendingMessage? TryGetSendingMessage(ChatId chatId, string uuid)
+        => GetChatSendingMessages(chatId).TryGet(uuid);
+
     private SendingMessage CreateAndRegisterSendingMessage(
         PostMessageRequestInternal request,
         Action cancelSendRequested)
@@ -64,7 +67,7 @@ partial class SendingMessages
             cancelSendRequested) {
             LocationPoint = request.LocationPoint,
             IsLocationPlace = request.IsLocationPlace,
-            LocationId = request.LocationId,
+            LocationLiveDuration = request.LocationLiveDuration,
         };
         return sendingMessage;
     }

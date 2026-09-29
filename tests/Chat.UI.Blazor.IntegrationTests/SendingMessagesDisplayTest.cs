@@ -223,6 +223,37 @@ public class SendingMessagesDisplayTest(ChatAppHostFixture fixture, ITestOutputH
         reread!.LocationId.Should().Be(entry.LocationId);
     }
 
+    // A live share's entry goes through the queue too, with the queue creating the live share: the
+    // reporter finds the send by the uuid it chose and adopts the share id from the posted entry.
+    [Fact]
+    public async Task ShouldPostLiveLocationEntryViaSendingQueue()
+    {
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "sending-live-location-queue-test");
+        var sendingMessages = Tester.ScopedAppServices.GetRequiredService<SendingMessages>();
+        var sharedLocations = Tester.AppServices.GetRequiredService<ISharedLocations>();
+        var point = new GeoPoint(52.52, 13.405);
+        var duration = Constants.Location.Durations[0];
+        var uuid = Ulid.NewUlid().ToString();
+
+        // act
+        var postTask = await sendingMessages.Send(
+            SendMessageRequest.NewLiveLocation(chat.Id, point, duration, uuid),
+            CancellationToken.None);
+        var entry = await postTask.WaitAsync(TimeSpan.FromSeconds(30));
+
+        // assert
+        entry!.LocationId.Should().NotBeNull();
+        var sending = sendingMessages.TryGetSendingMessage(chat.Id, uuid);
+        sending.Should().NotBeNull("the reporter resumes a queued share by the uuid it chose");
+        sending!.PostedChatEntry?.LocationId.Should().Be(entry.LocationId);
+        var location = await sharedLocations.Get(Tester.Session, chat.Id, entry.LocationId!, CancellationToken.None);
+        location!.Point.Should().Be(point);
+        location.Duration.Should().Be(duration);
+        location.IsLive(Tester.AppServices.Clocks().SystemClock.Now).Should().BeTrue();
+    }
+
     private async Task<List<string>> GetSendingContents(
         ChatUI chatUI,
         ChatId chatId,
