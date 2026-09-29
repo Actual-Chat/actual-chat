@@ -277,18 +277,29 @@ On the server, `AcceptCall`:
 - on the first accept, latches the call: `SessionStartedAt = now`, `VisibleStartLid` at the
   chat's end, and the invitee added to `AuthorIds`. `RecomputeCallStatus` moves the caller's
   status to `Connecting`;
-- deliberately doesn't register the invitee's presence. Presence comes only from real
-  streams, which is what lets the next check tell "accepted" from "accepted and connected";
+- deliberately doesn't register the invitee's presence. Presence comes only from the
+  invitee's client once it listens or records, which is what lets the next check tell
+  "accepted" from "accepted and connected";
 - calls `DismissRing` for this invitee, which clears the ring on their other devices;
 - `CallConnectGrace` (3 s) later, runs `EnforceCallConnectGrace`. Fewer than two fresh
   participants close the call; otherwise the status is recomputed.
 
-From there the call runs on presence. The client's streams drive
+From there the call runs on presence. The client's listening and recording flags drive
 `LiveSessionUI.SyncParticipations`, which reports `SetParticipation` with a heartbeat.
 `GetState`'s self-heal runs `SyncCallParticipantActivity`, which marks the caller and the
 invitee `Active`, and the status becomes `Active`. The caller's holding loop in `CallUI` sees
 that and joins the conversation, moving the slot to `Active`. Only the client the call was
 placed from sees it at all - see "Whose call it is" above.
+
+Presence has exactly two sources: that client report, and `PeerParticipations` releasing what a
+peer claimed once its connection stays down past `ParticipationDisconnectGrace`. The listening
+stream itself doesn't touch it. It closes on every re-subscribe, and when it used to drop the
+listener's presence, calls ended on their own (#4835).
+
+Hanging up is a presence drop too. A leave that leaves the call with nobody closes it at once.
+A leave that leaves one party schedules `EnforceCallLeaveGrace` `CallLeaveGrace` later, and the
+call closes only if fewer than two are still present then. `CloseAndMaterialize` counts once
+more under the change lock, so a party back by then keeps the call.
 
 ### Decline
 
@@ -362,6 +373,7 @@ A refused answer - past the grace, or after a cancel - shows the "Missed call" t
 | `AnswerGrace` | 10 s | How long past `RingTimeout` a `Missed` invite can still be answered, and the call stays open for it. |
 | `Constants.Call.RingTtl` | 60 s | Redis field TTL on a ringing invite: the backstop when nobody observes the session. |
 | `CallConnectGrace` | 3 s | After the first accept, both sides must be present by then, or the call closes. |
+| `CallLeaveGrace` | 2 s | After a leave that left one party, how long the other has to come back before the call closes. |
 | `CallsBackend.ClaimTtl` | 2 min | Redis TTL on a user call, refreshed while the call lives. |
 | `CallsBackend.ClaimGrace` | 10 s | How long a fresh claim backs itself, before the session has to. |
 | `CallsBackend.ClaimSelfHeal` | 10 s | How often a live claim re-checks itself against the session. |

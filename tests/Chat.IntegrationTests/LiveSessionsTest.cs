@@ -1794,9 +1794,9 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     [Fact]
     public async Task PresenceDropBelowTwoShouldCloseTheCall()
     {
-        // The mid-call symmetric-hangup path: SetParticipation is what the connection-lifetime hooks
-        // (LiveAudioStreams, AudioStreamingBackend) call when a stream's connection drops, and it's also
-        // what an explicit hang-up goes through - either way it must enforce the ">= 2" invariant.
+        // The mid-call symmetric-hangup path: SetParticipation is what a client's leave and
+        // PeerParticipations' release of a dead peer both go through - either way it must enforce the
+        // ">= 2" invariant, once CallLeaveGrace has passed without the party coming back.
 
         // arrange - Bob records (stays live), Alice listens then drops. This isolates the new
         // shouldCloseAsCall path: the old emptiedByLeave wouldn't fire, but the >=2 check does.
@@ -1817,13 +1817,13 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.SetParticipation(
             chatId, aliceAuthor.Id, ParticipationKind.AudioListen, true, default);
 
-        // act - Alice's listening stream drops (connection lost), leaving Bob as the sole participant
+        // act - Alice leaves, leaving Bob as the sole participant
         await backend.SetParticipation(
             chatId, aliceAuthor.Id, ParticipationKind.AudioListen, false, default);
 
-        // assert - the call closes on the new shouldCloseAsCall path since the fresh participant count
-        // drops below 2, regardless of IsSessionLive (which would still be true due to Bob recording)
-        (await backend.GetState(chatId, default)).Should().BeNull();
+        // assert - the call closes on the leave-grace path since the fresh participant count drops
+        // below 2, regardless of IsSessionLive (which would still be true due to Bob recording)
+        await TestWait.When(async ct => (await backend.GetState(chatId, ct)).Should().BeNull());
     }
 
     [Fact]
@@ -1856,7 +1856,45 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
             chatId, aliceAuthor.Id, ParticipationKind.AudioListen, false, default);
 
         // assert
-        (await backend.GetState(chatId, default)).Should().BeNull();
+        await TestWait.When(async ct => (await backend.GetState(chatId, ct)).Should().BeNull());
+    }
+
+    [Fact]
+    public async Task PresenceBackWithinLeaveGraceShouldKeepTheCall()
+    {
+        // A party whose presence dips and returns (#4835 had a listening stream's end remove it) must
+        // not end the call: the leave only schedules a check, and the check counts who is here by then.
+
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(
+            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+        await backend.SetParticipation(
+            chatId, bobAuthor.Id, ParticipationKind.Record, true, default);
+        await backend.SetParticipation(
+            chatId, aliceAuthor.Id, ParticipationKind.AudioListen, true, default);
+
+        // act - Alice drops and is back before the grace ends; EnforceCallLeaveGrace is internal so the
+        // test drives the check directly instead of waiting CallLeaveGrace out
+        await backend.SetParticipation(
+            chatId, aliceAuthor.Id, ParticipationKind.AudioListen, false, default);
+        await backend.SetParticipation(
+            chatId, aliceAuthor.Id, ParticipationKind.AudioListen, true, default);
+        await backend.EnforceCallLeaveGrace(chatId);
+
+        // assert
+        var state = await backend.GetState(chatId, default);
+        state.Should().NotBeNull("both parties are present when the leave-grace check runs");
+        state!.Kind.Should().Be(LiveSessionKind.Call);
     }
 
     [Fact]

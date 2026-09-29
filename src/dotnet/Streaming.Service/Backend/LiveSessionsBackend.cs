@@ -42,6 +42,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     // EnforceCallConnectGrace) - short enough that a stalled connect surfaces fast, long enough to
     // cover the accept-flow reorder's round trip (client starts listening immediately on accept).
     private static readonly TimeSpan CallConnectGrace = TimeSpan.FromSeconds(3);
+    // How long a call left with one party waits before closing (see EnforceCallLeaveGrace): a party whose
+    // presence dips and returns within it keeps the call, a real hang-up still ends it within seconds.
+    private static readonly TimeSpan CallLeaveGrace = TimeSpan.FromSeconds(2);
     // How long CallTailFlow's first pass waits: the realtime transcriber's own post-audio deadline is
     // how long the last utterance's entry can take to appear at all (its text settles later still).
     private static readonly TimeSpan CallTailDelay = Constants.Transcription.CompletionTimeout;
@@ -369,6 +372,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     {
         bool emptiedByLeave;
         var shouldCloseAsCall = false;
+        var mustCheckCallLeave = false;
         var startedClosing = false;
         using (Computed.BeginIsolation())
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
@@ -410,12 +414,15 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             // A Call needs >= 2 genuinely present participants, whether the departure was an explicit
             // hang-up or a connection that just died - both reach this the same way. Scoped to Call:
             // Dialing keeps its own ExpireRings path, and Ambient has no such invariant (solo dictation
-            // is legitimate).
+            // is legitimate). One party left gets CallLeaveGrace to come back; none left closes now.
             if (!isActive) {
                 var state = await SafeGet(chatId).ConfigureAwait(false);
                 if (state is { Kind: LiveSessionKind.Call } callState) {
-                    if ((await GetFreshParticipantIds(chatId).ConfigureAwait(false)).Count < 2)
+                    var participantCount = (await GetFreshParticipantIds(chatId).ConfigureAwait(false)).Count;
+                    if (participantCount == 0)
                         shouldCloseAsCall = true;
+                    else if (participantCount == 1)
+                        mustCheckCallLeave = true;
                     else if (callState.Host == authorId)
                         // The host left but the call goes on - without this the host slot would keep
                         // pointing at someone who already left.
@@ -427,13 +434,16 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             // closes it outright below - no waiting on the grace or on a UI observer. EvaluateLiveness only
             // marks a still-populated session closing (recoverable if a recorder returns), so a transient
             // not-live blip never tears down a live recording - unlike an unconditional CloseNow here would.
-            var isLive = await IsSessionLive(chatId).ConfigureAwait(false);
-            emptiedByLeave = !isActive && !shouldCloseAsCall && !isLive;
-            if (!emptiedByLeave && !shouldCloseAsCall)
+            // A call leave skips all of this: it would close or mark closing the call CallLeaveGrace may keep.
+            var isCallLeave = shouldCloseAsCall || mustCheckCallLeave;
+            emptiedByLeave = !isActive && !isCallLeave && !await IsSessionLive(chatId).ConfigureAwait(false);
+            if (!emptiedByLeave && !isCallLeave)
                 startedClosing = await EvaluateLiveness(chatId).ConfigureAwait(false);
         }
         if (shouldCloseAsCall)
-            await CloseCall(chatId).ConfigureAwait(false);
+            await CloseCall(chatId, mustRecheckParties: true).ConfigureAwait(false);
+        else if (mustCheckCallLeave)
+            _ = ScheduleCallPartiesCheck(chatId, nameof(EnforceCallLeaveGrace), CallLeaveGrace);
         else if (emptiedByLeave)
             await CloseNow(chatId).ConfigureAwait(false);
         else if (startedClosing)
@@ -742,7 +752,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         if (accepted.ConversationId is { } cid)
             await DismissRing(cid, [inviteeAuthorId], cancellationToken).ConfigureAwait(false);
         if (accepted.JustConnected)
-            _ = ScheduleCallConnectGraceCheck(chatId);
+            _ = ScheduleCallPartiesCheck(chatId, nameof(EnforceCallConnectGrace), CallConnectGrace);
     }
 
     public virtual async Task DeclineCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken)
@@ -950,16 +960,16 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         InvalidateState(chatId);
     }
 
-    private Task ScheduleCallConnectGraceCheck(ChatId chatId)
-        // Logged as the pair to EnforceCallConnectGrace's verdict: the two lines bracket the window
-        // a client has to get its listening stream up, which is what a slow accept loses.
+    private Task ScheduleCallPartiesCheck(ChatId chatId, string checkName, TimeSpan grace)
+        // Logged as the pair to EnforceCallParties' verdict: the two lines bracket the window a client has
+        // to get (or get back) its presence up, which is what a slow accept or a presence dip loses.
         => BackgroundTask.Run(async () => {
             Log.LogInformation(
-                nameof(ScheduleCallConnectGraceCheck) + ": chat #{ChatId} - checking back in {Grace}",
-                chatId, CallConnectGrace.ToShortString());
-            await Task.Delay(CallConnectGrace).ConfigureAwait(false);
-            await EnforceCallConnectGrace(chatId).ConfigureAwait(false);
-        }, Log, $"Call-connect grace check failed for chat #{chatId}");
+                "{CheckName}: chat #{ChatId} - checking back in {Grace}",
+                checkName, chatId, grace.ToShortString());
+            await Task.Delay(grace).ConfigureAwait(false);
+            await EnforceCallParties(chatId, checkName, grace).ConfigureAwait(false);
+        }, Log, $"{checkName} check failed for chat #{chatId}");
 
     private Task ScheduleAnswerGraceEnd(ChatId chatId)
         // A missed ring holds the call open for a late answer, and GetState's self-heal that would close it
@@ -971,7 +981,15 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
     // AcceptCall schedules this once, fire-and-forget, CallConnectGrace after promoting Kind to Call.
     // Internal so a test can drive it directly, without a real wait - mirrors ExpireRings.
-    internal async Task EnforceCallConnectGrace(ChatId chatId)
+    internal Task EnforceCallConnectGrace(ChatId chatId)
+        => EnforceCallParties(chatId, nameof(EnforceCallConnectGrace), CallConnectGrace);
+
+    // SetParticipation schedules this, CallLeaveGrace after a leave that left the call one party.
+    // Internal so a test can drive it directly, without a real wait.
+    internal Task EnforceCallLeaveGrace(ChatId chatId)
+        => EnforceCallParties(chatId, nameof(EnforceCallLeaveGrace), CallLeaveGrace);
+
+    private async Task EnforceCallParties(ChatId chatId, string checkName, TimeSpan grace)
     {
         try {
             var shouldClose = false;
@@ -986,24 +1004,23 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                         await RecomputeCallStatus(chatId, state, CancellationToken.None).ConfigureAwait(false);
 
                     // The verdict this method exists for, and the one thing that tells a closed call
-                    // apart from one the callee left: a slow client registers its presence through a
-                    // listening stream, so the count here is what the race actually turns on.
+                    // apart from one a party left: a client registers its presence through its
+                    // participation sync, so the count here is what the race actually turns on.
                     Log.LogInformation(
-                        nameof(EnforceCallConnectGrace) + ": chat #{ChatId} - {ParticipantCount} participant(s)"
-                        + " after {Grace}, {Verdict}",
-                        chatId, participants.Count, CallConnectGrace.ToShortString(),
-                        shouldClose ? "closing the call" : "connected");
+                        "{CheckName}: chat #{ChatId} - {ParticipantCount} participant(s) after {Grace}, {Verdict}",
+                        checkName, chatId, participants.Count, grace.ToShortString(),
+                        shouldClose ? "closing the call" : "keeping it");
                 }
                 else
                     Log.LogInformation(
-                        nameof(EnforceCallConnectGrace) + ": chat #{ChatId} - no call to check (kind: {Kind})",
-                        chatId, state?.Kind);
+                        "{CheckName}: chat #{ChatId} - no call to check (kind: {Kind})",
+                        checkName, chatId, state?.Kind);
             }
             if (shouldClose)
-                await CloseCall(chatId).ConfigureAwait(false);
+                await CloseCall(chatId, mustRecheckParties: true).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogWarning(e, "EnforceCallConnectGrace failed for chat #{ChatId}", chatId);
+            Log.LogWarning(e, "{CheckName} failed for chat #{ChatId}", checkName, chatId);
         }
     }
 
@@ -1208,8 +1225,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 // The first answer latches a dialing call to Connected: it's now a live conversation, so
                 // surface the block from the chat end at answer time and make it genuinely two-party.
                 // The invitee's own presence is NOT registered here (unlike before) - it now comes only
-                // from a real listening/recording stream, so EnforceCallConnectGrace below can actually
-                // tell "accepted" apart from "accepted and connected".
+                // from the invitee's client once it listens or records, so EnforceCallConnectGrace below
+                // can actually tell "accepted" apart from "accepted and connected".
                 var visibleStartLid = (await ChatsBackend
                     .GetLidRange(chatId, false, cancellationToken)
                     .ConfigureAwait(false)).End;
@@ -1751,16 +1768,17 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         }
     }
 
-    // Unconditional call teardown: unlike CloseNow it doesn't require the session to be empty first -
-    // a call left with a single participant is already over, so it winds down with them still present.
-    private async Task CloseCall(ChatId chatId)
+    // Call teardown: unlike CloseNow it doesn't require the session to be empty first - a call left with
+    // a single participant is already over, so it winds down with them still present. mustRecheckParties
+    // is for a close decided by headcount: it counts again under the lock, and a party back by then keeps it.
+    private async Task CloseCall(ChatId chatId, bool mustRecheckParties = false)
     {
         try {
             var state = await SafeGet(chatId).ConfigureAwait(false);
             if (state is null)
                 return;
 
-            await CloseAndMaterialize(state, CancellationToken.None).ConfigureAwait(false);
+            await CloseAndMaterialize(state, CancellationToken.None, mustRecheckParties).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "CloseCall failed for chat #{ChatId}", chatId);
@@ -1783,7 +1801,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         }
     }
 
-    private async Task CloseAndMaterialize(LiveSessionState state, CancellationToken cancellationToken)
+    private async Task CloseAndMaterialize(
+        LiveSessionState state,
+        CancellationToken cancellationToken,
+        bool mustRecheckParties = false)
     {
         if (state.IsCall) {
             // Dropping the session key is the atomic claim that picks one closer out of the several
@@ -1793,6 +1814,11 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             using (Computed.BeginIsolation())
             using (await _changeLocks.Lock(state.ChatId, CancellationToken.None).ConfigureAwait(false)) {
                 if (await SafeGet(state.ChatId).ConfigureAwait(false) is not { } current)
+                    return;
+
+                // A presence-driven close was decided before this lock: a party back by now keeps the call.
+                if (mustRecheckParties
+                    && (await GetFreshParticipantIds(state.ChatId).ConfigureAwait(false)).Count >= 2)
                     return;
 
                 state = current;

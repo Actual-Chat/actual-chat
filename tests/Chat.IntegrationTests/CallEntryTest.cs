@@ -144,7 +144,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         await backend.AcceptCall(chatId, alice.Id, default);
         var connected = await backend.GetState(chatId, default);
         connected.Should().NotBeNull();
-        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
+        await HangUp(backend, chatId, alice.Id);
 
         // assert
         var entries = await ReadCallEntries(tester, chatId);
@@ -181,7 +181,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         var shortCall = await backend.GetState(chatId, default);
         await tester.CreateTextEntry(chatId, "hi");
         await tester.CreateTextEntry(chatId, "hi back");
-        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
+        await HangUp(backend, chatId, alice.Id);
 
         // assert
         var shortConversation = await conversations.Get(shortCall!.ToMaterializedConversation().Id, default);
@@ -194,7 +194,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         var longCall = await backend.GetState(chatId, default);
         for (var i = 0; i < settings.MinConversationEntries; i++)
             await tester.CreateTextEntry(chatId, longLine);
-        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
+        await HangUp(backend, chatId, alice.Id);
 
         // assert
         var longConversation = await conversations.Get(longCall!.ToMaterializedConversation().Id, default);
@@ -222,7 +222,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         await backend.AcceptCall(chatId, alice.Id, default);
         var connected = await backend.GetState(chatId, default);
         connected.Should().NotBeNull();
-        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
+        await HangUp(backend, chatId, alice.Id);
 
         // assert
         var entries = await ReadCallEntries(tester, chatId);
@@ -252,7 +252,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, true, default);
         await backend.CancelCall(chatId, bob.Id, default);
         (await backend.GetState(chatId, default))!.Outcome.Should().Be(CallOutcome.Canceled);
-        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
+        await HangUp(backend, chatId, alice.Id);
 
         // assert
         var entries = await ReadCallEntries(tester, chatId);
@@ -414,7 +414,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         await backend.AcceptCall(chatId, alice.Id, default);
         var connected = await backend.GetState(chatId, default);
         await tester.CreateTextEntry(chatId, "hi");
-        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
+        await HangUp(backend, chatId, alice.Id);
 
         var conversationId = connected!.ToMaterializedConversation().Id;
         var materialized = await conversations.Get(conversationId, default);
@@ -454,7 +454,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         await backend.AcceptCall(chatId, alice.Id, default);
         var connected = await backend.GetState(chatId, default);
         await tester.CreateTextEntry(chatId, "hi");
-        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
+        await HangUp(backend, chatId, alice.Id);
 
         var conversationId = connected!.ToMaterializedConversation().Id;
         var backdated = await BackdateCallEnd(tester, conversationId);
@@ -492,7 +492,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         var streaming = new List<StreamingEntry>();
         for (var i = 0; i < settings.MinConversationEntries; i++)
             streaming.Add(await tester.CreateStreamingEntry(chatId, Languages.English));
-        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
+        await HangUp(backend, chatId, alice.Id);
 
         var conversationId = connected!.ToMaterializedConversation().Id;
         var materialized = await BackdateCallEnd(tester, conversationId);
@@ -534,7 +534,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         var connected = await backend.GetState(chatId, default);
         await tester.CreateTextEntry(chatId, "hi");
         await tester.CreateTextEntry(chatId, "hi back");
-        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
+        await HangUp(backend, chatId, alice.Id);
 
         var materialized = await conversations.Get(connected!.ToMaterializedConversation().Id, default);
         materialized.Should().NotBeNull();
@@ -556,6 +556,14 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
     }
 
     // Private methods
+
+    private static async Task HangUp(ILiveSessionsBackend backend, ChatId chatId, AuthorId authorId)
+    {
+        // A leave that leaves the call one party only schedules its close CallLeaveGrace later;
+        // EnforceCallLeaveGrace is internal so the test runs that check now instead of waiting it out.
+        await backend.SetParticipation(chatId, authorId, ParticipationKind.Record, false, default);
+        await ((LiveSessionsBackend)backend).EnforceCallLeaveGrace(chatId);
+    }
 
     private async Task RunCallTailFlow(IWebTester tester, ConversationId conversationId)
     {
