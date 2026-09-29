@@ -109,7 +109,8 @@
         => scores
             .Select(s => new ChartItem(
                 s.WeekStart.ToDateTime().ToString("m", DateFormatter),
-                s.Score ?? 0))
+                s.Score ?? 0,
+                "text-primary"))
             .ToList();
 
     public sealed record DayCell(string Label, bool HasSpeech);
