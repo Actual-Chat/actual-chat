@@ -428,7 +428,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ITimeZones` - Service for time zone lookup and conversion.
 - `IUserPresences` - Service for tracking and querying user online presence.
 - `IChatCoach` - The caller's own speech-coach marks in a chat.
-- `ICoach` - The caller's speech-coach score, days, pending tip and occurrences.
+- `ICoach` - The caller's speech-coach score, per-language days, conversations, focus, week deltas, milestones, languages, pending tip and occurrences; commands set focus, language level and per-chat coaching and delete the data.
   
 
 ## ActualChat.Api
@@ -682,6 +682,10 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `CoachDay` (record) - One user's speech-coach numbers for one UTC day; `CoachDayBuilder` builds and merges them.
 - `CoachWindow` / `CoachMetricKind` / `CoachBand` (enums), `CoachChip`, `CoachMetric`, `CoachSummary`, `CoachOccurrence` (records) - The scored window served to the Coach tab.
 - `CoachTipKind` (enum), `UserCoachTip` (record) - The user's latest live coaching tip, stored in KVAS.
+- `CoachConversation` (record), `CoachConversationBuilder` - A run of one user's entries in one chat with no long gap; derived from the log, never stored.
+- `CoachLanguageLevel` (enum), `CoachLanguageInfo`, `CoachScorePart`, `CoachWeekDelta`, `CoachWeekScore`, `CoachMilestone` / `CoachMilestoneKind` - Per-language level, score explanation, week-over-week deltas and milestones served to the panel.
+- `CoachSkillSets` (static class) - Which skills are headline per language level and which are conversation-bound; `CoachWeek` - ISO week start in UTC.
+- `UserCoachSettings` (record) - Coaching, tips, marks, skip-one-to-one, per-language level and focus, weekly summary; `UserCoachWeeklyNote` (record) - The Monday note.
 
 ## ActualChat.Chat.Contracts
 
@@ -812,7 +816,9 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `UserPresencesBackend` - Implementation of IUserPresencesBackend.
 - `Coach` - Implementation of ICoach.
 - `CoachBackend` - Implementation of ICoachBackend.
-- `CoachScoring` (static class) - Bands, sub-scores and the 0-100 score over a merged day.
+- `CoachScoring` (static class) - Per-language bands, sub-scores, the 0-100 score, its explanation and conversation bands.
+- `CoachFocus` / `CoachProgressBuilder` (static classes) - Automatic focus skill; week deltas, milestones and weekly scores.
+- `CoachWeeklyNoteFlow` - Writes the Monday coaching note for each user at their digest time.
 - `CoachTipPolicy` (static class) - Decides whether a fresh log record earns a live tip.
 - `CoachScoringSettings` / `PaceBand` / `CoachRollout` - Speech-coach bands, weights, tip thresholds and rollout rule (UsersSettings:Coach).
 
@@ -1079,10 +1085,11 @@ Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 - `ChatPlayers` - Orchestrates audio playback across chats.
 - `ChatUI` - Chat selection, read positions, and chat state.
 - `CoachUI` - Speech-coach client verdicts, per-tile marks cache and jump-to-audio.
-- `CoachPanel` / `CoachSettingsTile` / `CoachMetricRow` / `CoachTrends` / `CoachDayChart` / `CoachOccurrences` / `CoachTipBar` - The speech-coach surfaces.
-- `CoachDayRange` - The UTC day range a coach window covers.
+- `CoachPanel` / `CoachHeader` / `CoachScoreCard` / `CoachLanguageChips` / `CoachEmptyState` - The Coach panel shell.
+- `CoachRecentTab` / `CoachConversationCard`, `CoachProgressTab` / `CoachWeekDeltas` / `CoachMilestones`, `CoachSkillsTab` / `CoachSkillRow` / `CoachScoreSheet` - The three tabs.
+- `CoachSettingsPage` / `CoachChatToggleEntry` / `CoachOccurrences` / `CoachTipBar` - Settings behind the gear, the "Coach me here" menu entry, jump-to-audio list and the tip bar.
 - `CoachLabels` - Metric kind, band and window text for the coach surfaces.
-- `RightPanelModeSwitch` / `CoachMenuEntry` - The Chat | Coach switch and the mobile menu entry.
+- `RightPanelModeSwitch` - The Chat | Coach switch, with a dot while a weekly note is unread.
 - `ChatView` - Main chat view component.
 - `EditMembersUI` - Member editing utilities.
 - `ImageAttachmentProcessor` - Runs an attachment image through the JS image processor (resize, jpegli, metadata strip).

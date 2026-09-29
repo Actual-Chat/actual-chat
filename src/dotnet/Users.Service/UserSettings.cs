@@ -30,6 +30,7 @@ public class UserSettings(IServiceProvider services) : IUserSettings
         [nameof(UserReplaySettings)] = typeof(UserReplaySettings),
         [nameof(UserPttSettings)] = typeof(UserPttSettings),
         [nameof(UserCoachSettings)] = typeof(UserCoachSettings),
+        [nameof(UserCoachWeeklyNote)] = typeof(UserCoachWeeklyNote),
         [nameof(UserCarAudioSettings)] = typeof(UserCarAudioSettings),
         [nameof(UserImageStyleSettings)] = typeof(UserImageStyleSettings),
         [nameof(RecentMentions)] = typeof(RecentMentions),
@@ -85,6 +86,13 @@ public class UserSettings(IServiceProvider services) : IUserSettings
 
         if (digestToggledTo is { } isDigestEnabled)
             EmailMeters.RecordSubscription(isDigestEnabled, "settings");
+        if (key == nameof(UserCoachSettings)) {
+            var coachAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+            if (!coachAccount.IsGuest)
+                await FlowHub.NewResumeEvent<CoachWeeklyNoteFlow>(coachAccount.Id.Value)
+                    .Schedule(cancellationToken)
+                    .ConfigureAwait(false);
+        }
         if (key == nameof(UserEmailsSettings)) {
             // Otherwise a re-enabled digest waits for the flow's next scheduled check, up to 2 days away
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);

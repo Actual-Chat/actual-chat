@@ -250,6 +250,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             services.AddFlows()
                 .Add<UserSignInFlow>()
                 .Add<DigestFlow>()
+                .Add<CoachWeeklyNoteFlow>()
                 .Add<AccountMigrationFlow>()
                 .Add<UsageContactsBackfillFlow>();
         }

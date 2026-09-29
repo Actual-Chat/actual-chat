@@ -15,3 +15,6 @@
 .right-panel-mode-switch .btn.btn-mode.on {
     @apply bg-primary text-01 shadow-sm;
 }
+.right-panel-mode-switch .btn.btn-mode .c-dot {
+    @apply inline-block w-2 h-2 ml-1 rounded-full bg-danger;
+}

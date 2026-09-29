@@ -9,6 +9,15 @@
 }
 
 <div class="coach-progress">
+    @if (m.Note.IsPending) {
+        <Card Class="coach-note">
+            <CardItem Click="@OnNoteSeen">
+                <Left><i class="text-2xl icon-star text-primary"></i></Left>
+                <Title>@L.Coach_WeekNoteTitle</Title>
+                <Caption>@labels.NoteCaption(m.Note)</Caption>
+            </CardItem>
+        </Card>
+    }
     @if (best is not null) {
         <Card Class="coach-better">
             <CardItem>
@@ -72,8 +81,12 @@
 
             streak++;
         }
-        return new Model(deltas, scores, milestones, weekDays, cells, streak);
+        var note = await UserSettingsUI.UserCoachWeeklyNote().Get(cancellationToken).ConfigureAwait(false);
+        return new Model(deltas, scores, milestones, weekDays, cells, streak, note);
     }
+
+    private Task OnNoteSeen()
+        => UserSettingsUI.UserCoachWeeklyNote().Update(x => x with { IsSeen = true });
 
     private IReadOnlyList<ChartItem> ScoreItems(ApiArray<CoachWeekScore> scores)
         => scores
@@ -90,13 +103,15 @@
         ApiArray<CoachMilestone> Milestones,
         ApiArray<CoachDay> WeekDays,
         List<DayCell> WeekCells,
-        int WeeksInARow) {
+        int WeeksInARow,
+        UserCoachWeeklyNote Note) {
         public static readonly Model None = new(
             ApiArray<CoachWeekDelta>.Empty,
             ApiArray<CoachWeekScore>.Empty,
             ApiArray<CoachMilestone>.Empty,
             ApiArray<CoachDay>.Empty,
             [],
-            0);
+            0,
+            new UserCoachWeeklyNote());
     }
 }

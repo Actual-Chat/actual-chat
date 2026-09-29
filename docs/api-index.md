@@ -202,7 +202,7 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `IMentions` — mention queries
 
 ### User Services
-- `ICoach` — the caller's speech-coach score and metric rows per window, day series, pending live tip, jump-to-audio occurrences; `IsEnabled` is the per-user rollout verdict
+- `ICoach` — the caller's speech-coach score and skills per window and language, conversations, focus, week deltas, milestones, pending live tip, jump-to-audio occurrences; commands for focus, language level, per-chat coaching, data deletion; `IsEnabled` is the per-user rollout verdict
 - `IAccounts` — account management
 - `IPasskeyAuth` — passkey (WebAuthn) registration and sign-in
 - `IAvatars` — avatar management
@@ -414,7 +414,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 ### Flows (`ActualChat.Flows.Service`)
 - `FlowBackend`, `FlowsServiceModule` — flow execution backend
 
-- `CoachPanel`, `CoachSettingsTile`, `CoachMetricRow`, `CoachTrends`, `CoachDayChart`, `CoachOccurrences`, `CoachTipBar`, `CoachLabels`, `CoachDayRange` — the speech-coach surfaces: right-panel Coach mode, Trends, chip occurrences, the tip bar above the composer; `CoachLabels` maps metric kinds, bands and windows to catalog text
+- `CoachPanel` (shell) with `CoachRecentTab`, `CoachProgressTab`, `CoachSkillsTab`, `CoachSettingsPage`, `CoachScoreSheet`, `CoachChatToggleEntry`, `CoachOccurrences`, `CoachTipBar`, `CoachLabels` — the speech-coach surfaces: right-panel Coach mode with Recent / Progress / Skills, settings behind the gear, the "Coach me here" menu entry, chip occurrences, the tip bar above the composer; `CoachLabels` maps metric kinds, bands and windows to catalog text
 
 ## Email Templates (`ActualChat.Mjml.Blazor`, `ActualChat.Users.Templates`)
 

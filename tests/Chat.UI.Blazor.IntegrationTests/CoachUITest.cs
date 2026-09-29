@@ -507,4 +507,37 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         cut.Find(".coach-settings-page .c-languages-manage").TextContent.Should().Contain("Manage");
         cut.FindAll(".coach-settings-page .c-language").Count.Should().BeGreaterThan(0);
     }
+
+    [Fact(Timeout = 60_000)]
+    public async Task WeeklyNoteShouldShowInProgressAndAPillDotUntilOpened()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-note");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        var hub = tester.ScopedAppServices.AppUIHub();
+        await OptIn(tester);
+        await PostVoice(tester, chatId, Text);
+        await hub.UserSettingsUI.UserCoachWeeklyNote().Set(new UserCoachWeeklyNote {
+            WeekStart = new DateTime(2026, 9, 21, 0, 0, 0, DateTimeKind.Utc),
+            ScoreDelta = 4,
+        });
+
+        // act
+        var cut = tester.Render<CoachPanel>();
+        InitializeHub(tester, hub, cut.Instance);
+        var mode = tester.Render<RightPanelModeSwitch>();
+        cut.WaitForAssertion(() => cut.Find(".coach-conversation"), TimeSpan.FromSeconds(30));
+        hub.CoachUI.SelectTab(CoachTab.Progress);
+
+        // assert
+        mode.WaitForAssertion(() => mode.Find(".btn-mode .c-dot"), TimeSpan.FromSeconds(10));
+        cut.WaitForAssertion(() => cut.Find(".coach-note").TextContent.Should().Contain("Your week with the coach"),
+            TimeSpan.FromSeconds(10));
+        await cut.InvokeAsync(() => cut.Find(".coach-note .card-item").Click());
+        mode.WaitForAssertion(() => mode.FindAll(".btn-mode .c-dot").Should().BeEmpty(), TimeSpan.FromSeconds(10));
+    }
 }

@@ -103,6 +103,18 @@ public sealed class CoachLabels(IStringLocalizer l)
             .Take(3)
             .Select(c => $"“{c.Word}”"));
 
+    public string NoteCaption(UserCoachWeeklyNote note)
+    {
+        var parts = new List<string>();
+        if (note.ScoreDelta is { } delta)
+            parts.Add(l.Coach_WeekNoteScore_Format(delta > 0 ? "+" + delta : delta.ToString()));
+        if (note.FocusKind is { } kind && note.FocusDelta is { } focusDelta)
+            parts.Add(l.Coach_WeekNoteFocus_Format(MetricTitle(kind), focusDelta > 0 ? "▲" : "▼"));
+        if (note.BestStartLid != 0)
+            parts.Add(l.Coach_WeekNoteBest);
+        return string.Join(" · ", parts);
+    }
+
     public string Milestone(CoachMilestoneKind kind)
         => kind switch {
             CoachMilestoneKind.Words1K => l.Coach_MilestoneWords1K,
