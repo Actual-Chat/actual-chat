@@ -2076,5 +2076,7 @@
   "Coach_Native": "母语",
   "Coach_Learning": "学习中",
   "Coach_TalkTime": "发言时间",
-  "Coach_TalkOthers": "其他人"
+  "Coach_TalkOthers": "其他人",
+  "Coach_CoachInPlace": "在此空间中辅导我",
+  "Coach_OffByPlace": "已关闭，该空间已关闭"
 }

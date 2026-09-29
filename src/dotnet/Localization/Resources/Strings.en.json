@@ -2430,5 +2430,7 @@
   "Coach_Native": "native",
   "Coach_Learning": "learning",
   "Coach_TalkTime": "Talk time",
-  "Coach_TalkOthers": "Others"
+  "Coach_TalkOthers": "Others",
+  "Coach_CoachInPlace": "Coach me in this place",
+  "Coach_OffByPlace": "Off, the place is off"
 }

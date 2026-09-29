@@ -655,6 +655,36 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
     }
 
     [Fact(Timeout = 60_000)]
+    public async Task CoachPlaceToggleShouldSwitchTheWholePlaceAndExplainTheChatCard()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-place-toggle");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var place = await tester.CreatePlace(true);
+        var (chatId, _) = await tester.CreateChat(true, placeId: place.Id);
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var kvas = appHost.Services.GetRequiredService<IServerKvasBackend>().ForUser(account.Id);
+
+        // act
+        var placeCard = tester.Render<CoachChatToggleCard>(p => p.Add(x => x.ChatId, chatId).Add(x => x.IsPlace, true));
+        InitializeHub(tester, hub, placeCard.Instance);
+        placeCard.WaitForAssertion(() => placeCard.Find(".c-coach-toggle .card-item").TextContent.Should().Contain("test place"),
+            TimeSpan.FromSeconds(30));
+        await placeCard.InvokeAsync(() => placeCard.Find(".c-coach-toggle .card-item").Click());
+
+        // assert
+        await TestWait.When(async ct =>
+            (await kvas.ChatUserSettings(place.Id.RootChatId).Get(ct)).IsCoachingEnabled.Should().BeFalse());
+        var chatCard = tester.Render<CoachChatToggleCard>(p => p.Add(x => x.ChatId, chatId));
+        InitializeHub(tester, hub, chatCard.Instance);
+        chatCard.WaitForAssertion(() => chatCard.Find(".c-coach-toggle .card-item").TextContent
+            .Should().Contain("the place is off"), TimeSpan.FromSeconds(30));
+    }
+
+    [Fact(Timeout = 60_000)]
     public async Task CoachSettingsShouldOfferTheSwitchForTheChatThePanelIsOpenedFor()
     {
         // arrange

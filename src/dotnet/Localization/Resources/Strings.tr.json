@@ -2083,5 +2083,7 @@
   "Coach_Native": "ana dil",
   "Coach_Learning": "öğreniyorum",
   "Coach_TalkTime": "Konuşma süresi",
-  "Coach_TalkOthers": "Diğerleri"
+  "Coach_TalkOthers": "Diğerleri",
+  "Coach_CoachInPlace": "Bu yerde koçluk",
+  "Coach_OffByPlace": "Kapalı, yer kapalı"
 }

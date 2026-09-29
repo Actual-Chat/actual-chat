@@ -2076,5 +2076,7 @@
   "Coach_Native": "ネイティブ",
   "Coach_Learning": "学習中",
   "Coach_TalkTime": "発話時間",
-  "Coach_TalkOthers": "ほかの人"
+  "Coach_TalkOthers": "ほかの人",
+  "Coach_CoachInPlace": "このプレイスでコーチする",
+  "Coach_OffByPlace": "オフ（プレイスがオフです）"
 }

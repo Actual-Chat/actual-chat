@@ -2430,5 +2430,7 @@
   "Coach_Native": "Muttersprache",
   "Coach_Learning": "та, що вивчається",
   "Coach_TalkTime": "Tiempo de conversación",
-  "Coach_TalkOthers": "Những người khác"
+  "Coach_TalkOthers": "Những người khác",
+  "Coach_CoachInPlace": "このプレイスでコーチする",
+  "Coach_OffByPlace": "Desactivado, el lugar está desactivado"
 }

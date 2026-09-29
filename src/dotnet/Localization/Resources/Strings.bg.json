@@ -2076,5 +2076,7 @@
   "Coach_Native": "роден",
   "Coach_Learning": "учене",
   "Coach_TalkTime": "Време за говорене",
-  "Coach_TalkOthers": "Другите"
+  "Coach_TalkOthers": "Другите",
+  "Coach_CoachInPlace": "Треньор в това място",
+  "Coach_OffByPlace": "Изкл., мястото е изключено"
 }

@@ -2076,5 +2076,7 @@
   "Coach_Native": "рідна",
   "Coach_Learning": "та, що вивчається",
   "Coach_TalkTime": "Час мовлення",
-  "Coach_TalkOthers": "Інші"
+  "Coach_TalkOthers": "Інші",
+  "Coach_CoachInPlace": "Тренер у цьому місці",
+  "Coach_OffByPlace": "Вимк., місце вимкнено"
 }

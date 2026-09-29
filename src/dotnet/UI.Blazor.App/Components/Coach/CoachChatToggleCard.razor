@@ -1,17 +1,17 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, bool?>
+@inherits ComputedStateComponent<AppUIHub, CoachChatToggleCard.Model>
 @{
-    var isOn = State.Value;
+    var m = State.Value;
 }
 
-@if (isOn is { } on) {
+@if (m.IsVisible) {
     <div class="c-coach-toggle">
         <Card>
-            <CardItem Click="@(() => OnToggle(!on))">
-                <Left><i class="text-2xl icon-ai-stars @(on ? "text-primary" : "text-03")"></i></Left>
-                <Title>@L.Coach_CoachMeHere</Title>
-                <Caption>@(on ? L.RightPanel_On : L.RightPanel_Off)</Caption>
-                <Right><Toggle IsChecked="@on" IsCheckedChanged="@OnToggle"/></Right>
+            <CardItem Click="@(() => OnToggle(!m.IsOn))">
+                <Left><i class="text-2xl icon-ai-stars @(m.IsOn ? "text-primary" : "text-03")"></i></Left>
+                <Title>@(IsPlace ? L.Coach_CoachInPlace : L.Coach_CoachMeHere)</Title>
+                <Caption>@Caption(m)</Caption>
+                <Right><Toggle IsChecked="@m.IsOn" IsCheckedChanged="@OnToggle"/></Right>
             </CardItem>
         </Card>
     </div>
@@ -19,13 +19,43 @@
 
 @code {
     [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
+    [Parameter] public bool IsPlace { get; set; }
 
-    protected override ComputedState<bool?>.Options GetStateOptions()
-        => new() { InitialValue = null, Category = GetStateCategory(GetType()) };
+    private ChatId TargetId => IsPlace ? ChatId.RootChatId : ChatId;
 
-    protected override Task<bool?> ComputeState(CancellationToken cancellationToken)
-        => Hub.CoachUI.IsChatCoached(ChatId, cancellationToken);
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var isOn = await Hub.CoachUI.IsChatCoached(TargetId, cancellationToken).ConfigureAwait(false);
+        if (isOn is not { } on)
+            return Model.None;
+
+        var placeName = "";
+        var isOffByPlace = false;
+        if (ChatId is PlaceChatId placeChatId) {
+            if (IsPlace) {
+                var place = await Hub.Places.Get(Session, placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+                placeName = place?.Title ?? "";
+            }
+            else {
+                var chatSettings = await Hub.UserSettingsUI.ChatUserSettings(ChatId).Get(cancellationToken).ConfigureAwait(false);
+                var placeSettings = await Hub.UserSettingsUI.ChatUserSettings(ChatId.RootChatId).Get(cancellationToken).ConfigureAwait(false);
+                isOffByPlace = chatSettings.IsCoachingEnabled == null && placeSettings.IsCoachingEnabled == false;
+            }
+        }
+        return new Model(true, on, placeName, isOffByPlace);
+    }
+
+    private string Caption(Model m)
+        => IsPlace && m.PlaceName.Length != 0 ? m.PlaceName
+            : m.IsOffByPlace ? L.Coach_OffByPlace
+            : m.IsOn ? L.RightPanel_On : L.RightPanel_Off;
 
     private Task OnToggle(bool isEnabled)
-        => UICommander.Run(new Coach_SetChatCoaching { Session = Session, ChatId = ChatId, IsEnabled = isEnabled });
+        => UICommander.Run(new Coach_SetChatCoaching { Session = Session, ChatId = TargetId, IsEnabled = isEnabled });
+
+    public sealed record Model(bool IsVisible, bool IsOn, string PlaceName, bool IsOffByPlace) {
+        public static readonly Model None = new(false, false, "", false);
+    }
 }

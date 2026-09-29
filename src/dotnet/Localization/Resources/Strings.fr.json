@@ -2076,5 +2076,7 @@
   "Coach_Native": "natif",
   "Coach_Learning": "apprentissage",
   "Coach_TalkTime": "Temps de parole",
-  "Coach_TalkOthers": "Les autres"
+  "Coach_TalkOthers": "Les autres",
+  "Coach_CoachInPlace": "Coach dans ce lieu",
+  "Coach_OffByPlace": "Désactivé, le lieu est désactivé"
 }

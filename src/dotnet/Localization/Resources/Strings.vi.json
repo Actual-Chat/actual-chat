@@ -2076,5 +2076,7 @@
   "Coach_Native": "tiếng mẹ đẻ",
   "Coach_Learning": "đang học",
   "Coach_TalkTime": "Thời gian nói",
-  "Coach_TalkOthers": "Những người khác"
+  "Coach_TalkOthers": "Những người khác",
+  "Coach_CoachInPlace": "Huấn luyện trong nơi này",
+  "Coach_OffByPlace": "Tắt, nơi này đang tắt"
 }

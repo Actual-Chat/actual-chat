@@ -2185,6 +2185,8 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_Learning => l["Coach_Learning"].Value;
         public string Coach_TalkTime => l["Coach_TalkTime"].Value;
         public string Coach_TalkOthers => l["Coach_TalkOthers"].Value;
+        public string Coach_CoachInPlace => l["Coach_CoachInPlace"].Value;
+        public string Coach_OffByPlace => l["Coach_OffByPlace"].Value;
 
     }
 }

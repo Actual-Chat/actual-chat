@@ -2076,5 +2076,7 @@
   "Coach_Native": "ojczysty",
   "Coach_Learning": "nauka",
   "Coach_TalkTime": "Czas mówienia",
-  "Coach_TalkOthers": "Pozostali"
+  "Coach_TalkOthers": "Pozostali",
+  "Coach_CoachInPlace": "Trener w tym miejscu",
+  "Coach_OffByPlace": "Wyłączone, miejsce jest wyłączone"
 }

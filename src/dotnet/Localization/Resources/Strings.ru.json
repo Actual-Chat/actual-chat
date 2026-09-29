@@ -2076,5 +2076,7 @@
   "Coach_Native": "родной",
   "Coach_Learning": "изучаемый",
   "Coach_TalkTime": "Время речи",
-  "Coach_TalkOthers": "Остальные"
+  "Coach_TalkOthers": "Остальные",
+  "Coach_CoachInPlace": "Тренер в этом месте",
+  "Coach_OffByPlace": "Выкл., место отключено"
 }

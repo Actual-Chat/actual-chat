@@ -2076,5 +2076,7 @@
   "Coach_Native": "rodilý",
   "Coach_Learning": "učím se",
   "Coach_TalkTime": "Čas mluvení",
-  "Coach_TalkOthers": "Ostatní"
+  "Coach_TalkOthers": "Ostatní",
+  "Coach_CoachInPlace": "Trenér v tomto místě",
+  "Coach_OffByPlace": "Vypnuto, místo je vypnuté"
 }

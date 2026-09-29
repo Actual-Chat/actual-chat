@@ -18,6 +18,9 @@
     </div>
 
     @if (ChatId is not null) {
+        @if (ChatId != ChatId.RootChatId) {
+            <CoachChatToggleCard ChatId="@ChatId" IsPlace="true"/>
+        }
         <CoachChatToggleCard ChatId="@ChatId"/>
     }
     <Tile Class="c-coaching">

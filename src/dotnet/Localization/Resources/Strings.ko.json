@@ -2076,5 +2076,7 @@
   "Coach_Native": "원어민",
   "Coach_Learning": "학습 중",
   "Coach_TalkTime": "발언 시간",
-  "Coach_TalkOthers": "다른 사람"
+  "Coach_TalkOthers": "다른 사람",
+  "Coach_CoachInPlace": "이 플레이스에서 코칭",
+  "Coach_OffByPlace": "꺼짐, 플레이스가 꺼져 있음"
 }
