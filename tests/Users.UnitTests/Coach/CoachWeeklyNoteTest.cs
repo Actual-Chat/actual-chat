@@ -61,4 +61,19 @@ public class CoachWeeklyNoteTest(ITestOutputHelper @out) : TestBase(@out)
             new Moment(new DateTime(2026, 9, 28, 5, 0, 0, DateTimeKind.Utc))).Should()
             .Be(new Moment(new DateTime(2026, 9, 21, 6, 0, 0, DateTimeKind.Utc)), "before 09:00 local it is still last week");
     }
+
+    [Fact]
+    public void TheReportedWeekShouldBeTheOneThatEndedInTheUsersZoneNotInUtc()
+    {
+        // arrange: Sydney-like UTC+10, so Monday 09:00 local is still Sunday 23:00 UTC
+        var zone = TimeZoneInfo.CreateCustomTimeZone("test", TimeSpan.FromHours(10), "test", "test");
+        var due = new Moment(new DateTime(2026, 9, 27, 23, 0, 0, DateTimeKind.Utc));
+
+        // act
+        var start = CoachWeeklyNoteFlow.ReportedWeekStart(zone, due);
+
+        // assert
+        start.Should().Be(new Moment(new DateTime(2026, 9, 21, 0, 0, 0, DateTimeKind.Utc)),
+            "the week before Monday 28 September");
+    }
 }

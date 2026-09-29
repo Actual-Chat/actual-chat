@@ -39,7 +39,8 @@ public interface ICoach : IComputeService
     Task<ApiArray<CoachMilestone>> ListOwnMilestones(Session session, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ApiArray<CoachWeekScore>> ListOwnWeekScores(Session session, int weeks, CancellationToken cancellationToken);
+    Task<ApiArray<CoachWeekScore>> ListOwnWeekScores(
+        Session session, int weeks, string? language, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ApiArray<CoachLanguageInfo>> ListOwnLanguages(Session session, CancellationToken cancellationToken);

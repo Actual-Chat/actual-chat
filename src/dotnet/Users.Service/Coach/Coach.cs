@@ -165,7 +165,7 @@ public class Coach(IServiceProvider services) : ICoach
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<CoachWeekScore>> ListOwnWeekScores(
-        Session session, int weeks, CancellationToken cancellationToken)
+        Session session, int weeks, string? language, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account.IsGuestOrNull())
@@ -175,10 +175,6 @@ public class Coach(IServiceProvider services) : ICoach
         var now = Clocks.SystemClock.Now;
         var thisWeek = CoachProgressBuilder.WeekStart(UsageDay.DayOf(now));
         var range = new Range<Moment>(thisWeek - TimeSpan.FromDays(7 * (count - 1)), thisWeek + TimeSpan.FromDays(7));
-        var settings = await ServerKvasBackend.ForUser(account.Id).UserCoachSettings()
-            .Get(cancellationToken)
-            .ConfigureAwait(false);
-        var language = settings.SelectedLanguage.NullIfEmpty();
         var days = await Backend.ListDays(account.Id, range, language, cancellationToken).ConfigureAwait(false);
         InvalidateAtMidnight(range);
         return CoachProgressBuilder.WeeklyScores(days, count, now, Settings.Coach, language);
@@ -367,9 +363,10 @@ public class Coach(IServiceProvider services) : ICoach
             CoachWindow.Month or CoachWindow.Days30 => today - TimeSpan.FromDays(29),
             _ => Moment.EpochStart,
         };
+        var trailingDays = window == CoachWindow.Days7 ? 7 : Settings.Coach.TrailingDays;
         var trailing = window == CoachWindow.AllTime
             ? (Range<Moment>?)null
-            : new Range<Moment>(start - TimeSpan.FromDays(Settings.Coach.TrailingDays), start);
+            : new Range<Moment>(start - TimeSpan.FromDays(trailingDays), start);
         return (new Range<Moment>(start, tomorrow), trailing);
     }
 }

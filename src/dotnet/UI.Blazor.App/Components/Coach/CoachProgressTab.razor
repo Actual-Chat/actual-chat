@@ -58,7 +58,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var deltas = await Hub.Coach.GetOwnWeekDeltas(Session, Language, cancellationToken).ConfigureAwait(false);
-        var scores = await Hub.Coach.ListOwnWeekScores(Session, 4, cancellationToken).ConfigureAwait(false);
+        var scores = await Hub.Coach.ListOwnWeekScores(Session, 4, Language, cancellationToken).ConfigureAwait(false);
         var milestones = await Hub.Coach.ListOwnMilestones(Session, cancellationToken).ConfigureAwait(false);
         var today = UsageDay.DayOf(Clocks.SystemClock.Now);
         var weekStart = CoachWeek.StartOf(today);

@@ -162,3 +162,4 @@
 .coach-settings-page select { @apply bg-transparent text-primary text-sm; }
 .coach-settings-page .c-data .c-hint { @apply px-2 pb-2; }
 .coach-menu-entry { @apply flex-x items-center justify-between gap-x-4 w-full; }
+.coach-panel .tab-panel { @apply flex-none; }

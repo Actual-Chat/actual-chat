@@ -16,6 +16,8 @@ public sealed class CoachLabels(IStringLocalizer l)
             CoachWindow.Today => l.Coach_WindowToday,
             CoachWindow.Week => l.Coach_WindowWeek,
             CoachWindow.Month => l.Coach_WindowMonth,
+            CoachWindow.Days7 => l.Coach_WindowDays7,
+            CoachWindow.Days30 => l.Coach_WindowDays30,
             _ => l.Coach_WindowAllTime,
         };
 

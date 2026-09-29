@@ -120,7 +120,7 @@ public class CoachDayBuilderTest(ITestOutputHelper @out) : TestBase(@out)
         var days = CoachDayBuilder.BuildAll(Day, records, 20);
 
         // assert
-        days.Select(d => d.Language).Should().BeEquivalentTo(["en", "ru"]);
+        days.Select(d => d.Language).Should().BeEquivalentTo(["", "en", "ru"], "a runs-only neutral row joins the language rows");
         days.Single(d => d.Language == "en").Words.Should().Be(100);
         days.Single(d => d.Language == "ru").Words.Should().Be(70);
         days.Should().OnlyContain(d => d.Runs == 1 && d.OwnSpeechSeconds == 30, "runs are not language-bound");
@@ -151,5 +151,23 @@ public class CoachDayBuilderTest(ITestOutputHelper @out) : TestBase(@out)
 
         // assert
         days.Should().ContainSingle().Which.Language.Should().Be("");
+    }
+
+    [Fact]
+    public void ANeutralRunsOnlyRowShouldLetEveryLanguageSeeTheDaysRunsWithoutDoubleCountingWords()
+    {
+        // arrange
+        var days = CoachDayBuilder.BuildAll(Day, [EntryIn("ru-RU", 1, 100), Run(1, 30, 90, 3)], 20);
+
+        // act: what an English filter reads is the neutral row alone
+        var forEnglish = CoachDayBuilder.Merge(Day, days.Where(d => d.Language is "en" or ""));
+        var all = CoachDayBuilder.Merge(Day, days);
+
+        // assert
+        forEnglish.Words.Should().Be(0);
+        forEnglish.Runs.Should().Be(1);
+        forEnglish.OwnSpeechSeconds.Should().Be(30);
+        all.Words.Should().Be(100);
+        all.Runs.Should().Be(1, "runs count once per day however many rows carry them");
     }
 }

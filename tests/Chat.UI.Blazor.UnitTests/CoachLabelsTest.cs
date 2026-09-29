@@ -92,4 +92,24 @@ public class CoachLabelsTest
         l.BandWord(CoachMetricKind.TurnTaking, CoachBand.High).Should().Be("a bit much");
         l.BandWord(CoachMetricKind.Pace, CoachBand.Good).Should().Be("comfortable");
     }
+
+    [Fact]
+    public void WindowShouldLabelEveryPeriodDifferently()
+    {
+        // arrange
+        var l = new CoachLabels(new TestStringLocalizer(new() {
+            ["Coach_WindowToday"] = "Today",
+            ["Coach_WindowWeek"] = "Week",
+            ["Coach_WindowMonth"] = "Month",
+            ["Coach_WindowAllTime"] = "All time",
+            ["Coach_WindowDays7"] = "Last 7 days",
+            ["Coach_WindowDays30"] = "30 days",
+        }));
+
+        // act
+        var labels = new[] { CoachWindow.Days7, CoachWindow.Days30, CoachWindow.AllTime }.Select(l.Window).ToList();
+
+        // assert
+        labels.Should().Equal("Last 7 days", "30 days", "All time");
+    }
 }

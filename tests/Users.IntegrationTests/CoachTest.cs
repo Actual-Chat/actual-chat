@@ -559,12 +559,14 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         var range = new Range<Moment>(day, day + TimeSpan.FromDays(1));
         var rows = await TestWait.When(async ct => {
             var all = await Backend.ListDays(account.Id, range, null, ct);
-            all.Should().HaveCount(2);
+            all.Should().HaveCount(3, "one row per language and a neutral row for the run");
             all.Should().OnlyContain(d => d.Runs == 1);
             return all;
         });
         rows.Single(d => d.Language == "ru").Words.Should().Be(40);
-        (await Backend.ListDays(account.Id, range, "en-US", default)).Should().ContainSingle().Which.Words.Should().Be(100);
+        var english = await Backend.ListDays(account.Id, range, "en-US", default);
+        english.Sum(d => d.Words).Should().Be(100);
+        english.Should().Contain(d => d.Language == "", "the neutral row is always included");
         var summary = await Coach.GetOwnSummary(tester.Session, CoachWindow.AllTime, null, default);
         summary.Words.Should().Be(140);
     }
@@ -621,5 +623,82 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
             summary.Words.Should().Be(0);
         });
         (await Kvas.ForUser(account.Id).UserCoachSettings().Get(default)).FocusByLanguage.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListDaysShouldRebuildDayRowsThatAreMissingButHaveEvents()
+    {
+        // arrange: one day's row vanishes, as day rows do when the language migration truncates them
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var day = UsageDay.DayOf(T0);
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, 1, 40, 20, T0), false));
+        await WhenDay(account.Id, day, d => d.Entries == 1);
+        var dbHub = AppHost.Services.GetRequiredService<DbHub<UsersDbContext>>();
+        await using (var dbContext = await dbHub.CreateDbContext(true)) {
+            await dbContext.CoachDays.Where(d => d.UserId == account.Id.Value).ExecuteDeleteAsync();
+        }
+
+        // act: a later write invalidates the cached list, and the read finds the first day without a row
+        var later = T0 + TimeSpan.FromDays(2);
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, 2, 40, 20, later), false));
+
+        // assert
+        var range = new Range<Moment>(day, day + TimeSpan.FromDays(3));
+        var days = await TestWait.When(async ct => {
+            var all = await Backend.ListDays(account.Id, range, null, ct);
+            all.Should().HaveCount(2);
+            return all;
+        });
+        days.Select(d => d.Entries).Should().Equal(1, 1);
+    }
+
+    [Fact]
+    public async Task WeekScoresShouldFollowTheLanguageTheCallerAsksFor()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var now = Clocks.SystemClock.Now;
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 1, 400, 160, now - TimeSpan.FromMinutes(1), language: Languages.Russian), false));
+        await WhenDay(account.Id, UsageDay.DayOf(now), d => d.Words == 400);
+
+        // act
+        var russian = await Coach.ListOwnWeekScores(tester.Session, 4, "ru", default);
+        var english = await Coach.ListOwnWeekScores(tester.Session, 4, "en", default);
+
+        // assert
+        russian[^1].Score.Should().NotBeNull();
+        english[^1].Score.Should().BeNull("the English rows hold no words");
+    }
+
+    [Fact]
+    public async Task SevenDayScoreShouldBeComparedWithThePreviousSevenDays()
+    {
+        // arrange: identical this week and last week, a bad stretch three weeks ago
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var now = Clocks.SystemClock.Now;
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 1, 400, 160, now - TimeSpan.FromMinutes(1)), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 2, 400, 160, now - TimeSpan.FromDays(9)), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 3, 400, 160, now - TimeSpan.FromDays(20), 60, "ну"), false));
+        await TestWait.When(async ct => {
+            var all = await Coach.GetOwnSummary(tester.Session, CoachWindow.AllTime, null, ct);
+            all.Entries.Should().Be(3);
+        });
+
+        // act
+        var summary = await Coach.GetOwnSummary(tester.Session, CoachWindow.Days7, null, default);
+
+        // assert
+        summary.Score.Should().NotBeNull();
+        summary.ScoreDelta.Should().BeNull("this week equals last week; the bad stretch is older than a week");
     }
 }

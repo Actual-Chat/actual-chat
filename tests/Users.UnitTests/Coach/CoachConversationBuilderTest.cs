@@ -92,4 +92,24 @@ public class CoachConversationBuilderTest(ITestOutputHelper @out) : TestBase(@ou
         // assert
         conversations.Should().HaveCount(2);
     }
+
+    [Fact]
+    public void ACutLogShouldNotShowItsOldestConversationBecauseItMayBeMissingItsStart()
+    {
+        // arrange
+        var records = new[] {
+            Entry(ChatA, 5, T0 + TimeSpan.FromHours(3), 30),
+            Entry(ChatA, 4, T0 + TimeSpan.FromHours(1), 30),
+        };
+
+        // act
+        var whole = CoachConversationBuilder.Build(records, Gap);
+        var cut = CoachConversationBuilder.Build(records, Gap, isLogCut: true);
+        var onlyOne = CoachConversationBuilder.Build([records[0]], Gap, isLogCut: true);
+
+        // assert
+        whole.Select(c => c.StartEntryLid).Should().Equal(5, 4);
+        cut.Select(c => c.StartEntryLid).Should().Equal(5);
+        onlyOne.Should().ContainSingle("a lone conversation stays, however incomplete");
+    }
 }

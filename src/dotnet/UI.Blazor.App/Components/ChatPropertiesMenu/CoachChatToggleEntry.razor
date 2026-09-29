@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Chat.Coach
 @using ActualChat.Users
 @inherits ComputedStateComponent<AppUIHub, CoachChatToggleEntry.Model>
 @{
@@ -28,9 +29,11 @@
 
         var chatSettings = await UserSettingsUI.ChatUserSettings(ChatId).Get(cancellationToken).ConfigureAwait(false);
         var coachSettings = await UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
-        var isOn = chatSettings.IsCoachingEnabled
-            ?? !(coachSettings.SkipPeerChats && ChatId.Kind == ChatKind.Peer);
-        return new Model(true, isOn);
+        var root = ChatId.RootChatId;
+        var placeSettings = root != ChatId
+            ? await UserSettingsUI.ChatUserSettings(root).Get(cancellationToken).ConfigureAwait(false)
+            : null;
+        return new Model(true, CoachScope.IsInScope(ChatId, chatSettings, placeSettings, coachSettings));
     }
 
     private Task OnClick()

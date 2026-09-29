@@ -105,7 +105,7 @@ public class CoachAnalysisBackend(IServiceProvider services)
             return;
 
         var kvas = ServerKvasBackend.ForUser(author.UserId);
-        if (!await CoachScope.IsInScope(kvas, id.ChatId, cancellationToken).ConfigureAwait(false)) {
+        if (!await CoachScopeKvas.IsInScope(kvas, id.ChatId, cancellationToken).ConfigureAwait(false)) {
             if (existing is not null)
                 await RemoveEntry(id, context, cancellationToken).ConfigureAwait(false);
             return;
@@ -181,7 +181,7 @@ public class CoachAnalysisBackend(IServiceProvider services)
                 continue;
 
             var kvas = ServerKvasBackend.ForUser(author.UserId);
-            if (await CoachScope.IsInScope(kvas, chatId, cancellationToken).ConfigureAwait(false))
+            if (await CoachScopeKvas.IsInScope(kvas, chatId, cancellationToken).ConfigureAwait(false))
                 authors.Add((authorId, author.UserId));
         }
         var tagged = await TagPendingEntries(run, authors, cancellationToken).ConfigureAwait(false);

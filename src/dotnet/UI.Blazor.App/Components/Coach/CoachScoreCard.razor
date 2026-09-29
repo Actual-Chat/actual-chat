@@ -27,7 +27,7 @@
         </Caption>
         <Right><i class="icon-chevron-right text-xl text-03"></i></Right>
     </CardItem>
-    @if (Focus is { } focus) {
+    @if (Focus is { } focus && s.Score is not null) {
         <CardItem Click="@FocusClick">
             <Left><i class="text-2xl icon-ai-stars text-primary"></i></Left>
             <Title>@L.Coach_WorkingOn_Format(labels.MetricTitle(focus).ToLowerInvariant())</Title>

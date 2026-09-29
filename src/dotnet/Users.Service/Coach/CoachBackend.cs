@@ -1,6 +1,10 @@
+using ActualChat.Flows;
+using ActualChat.Queues;
+using System.Collections.Concurrent;
 using ActualChat.Chat;
 using ActualChat.Db;
 using ActualChat.Users.Db;
+using ActualChat.Users.Flows;
 using ActualChat.Users.Module;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Versioning;
@@ -20,9 +24,18 @@ public class CoachBackend(IServiceProvider services)
     private const int OccurrencePageSize = 100;
     private const int OccurrenceMaxRows = 5000;
     private const int ConversationEntriesPerCard = 8;
+    private const int MinConversationEntries = 400;
+    private static readonly TimeSpan HealRetryDelay = TimeSpan.FromMinutes(1);
+
+    private static readonly TimeSpan FlowRestartDelay = TimeSpan.FromHours(6);
+
+    private readonly ConcurrentDictionary<UserId, Moment> _healedAt = new();
+    private readonly ConcurrentDictionary<UserId, Moment> _flowStartedAt = new();
 
     private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
+    private IQueues Queues => field ??= Services.Queues();
+    private FlowHub FlowHub => field ??= Services.FlowHub();
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<CoachDay>> ListDays(
@@ -46,19 +59,21 @@ public class CoachBackend(IServiceProvider services)
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var runSince = (Clocks.SystemClock.Now - TimeSpan.FromDays(30)).ToDateTimeClamped();
+        var take = Math.Max(count * ConversationEntriesPerCard, MinConversationEntries);
         var entries = await dbContext.CoachEvents
             .Where(e => e.UserId == userId.Value && e.Kind == CoachRecordKind.Entry && !e.IsRemoved)
             .OrderByDescending(e => e.OccurredAt)
-            .Take(count * ConversationEntriesPerCard)
+            .Take(take)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+        var isTruncated = entries.Count == take;
         var runs = await dbContext.CoachEvents
             .Where(e => e.UserId == userId.Value && e.Kind == CoachRecordKind.Run && !e.IsRemoved)
             .Where(e => e.OccurredAt >= runSince)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return CoachConversationBuilder
-            .Build(entries.Concat(runs).Select(e => e.ToModel()), Settings.Coach.ConversationGap)
+            .Build(entries.Concat(runs).Select(e => e.ToModel()), Settings.Coach.ConversationGap, isTruncated)
             .Take(count)
             .Select(c => CoachScoring.BandConversation(c, Settings.Coach))
             .ToApiArray();
@@ -214,6 +229,7 @@ public class CoachBackend(IServiceProvider services)
         if (eventCommand.IsRemoved)
             return;
 
+        await EnsureWeeklyNoteFlow(analysis.UserId, cancellationToken).ConfigureAwait(false);
         await EvaluateTip(analysis, record, cancellationToken).ConfigureAwait(false);
     }
 
@@ -246,10 +262,53 @@ public class CoachBackend(IServiceProvider services)
             .OrderBy(d => d.Day)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+        await HealMissingDays(dbContext, userId, rows, cancellationToken).ConfigureAwait(false);
         return rows.Select(r => r.ToModel()).ToApiArray();
     }
 
     // Private methods
+
+    // Users who coached before the weekly note existed have no flow until something starts one; a
+    // finished entry is the sign they are active, and the flow itself checks the settings
+    private async Task EnsureWeeklyNoteFlow(UserId userId, CancellationToken cancellationToken)
+    {
+        var now = Clocks.SystemClock.Now;
+        if (_flowStartedAt.TryGetValue(userId, out var at) && now - at < FlowRestartDelay)
+            return;
+
+        _flowStartedAt[userId] = now;
+        try {
+            await FlowHub.NewResumeEvent<CoachWeeklyNoteFlow>(userId.Value)
+                .Schedule(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogWarning(e, "Starting the weekly note flow failed for {UserId}", userId);
+        }
+    }
+
+    // Day rows are derived from the log; when a day has events but no row (the language migration
+    // truncates them), rebuild instead of showing a hole
+    private async Task HealMissingDays(
+        UsersDbContext dbContext, UserId userId, List<DbCoachDay> rows, CancellationToken cancellationToken)
+    {
+        var eventDays = await dbContext.CoachEvents
+            .Where(e => e.UserId == userId.Value && !e.IsRemoved)
+            .Select(e => e.Day)
+            .Distinct()
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var rowDays = rows.Select(r => r.Day).ToHashSet();
+        if (eventDays.All(rowDays.Contains))
+            return;
+
+        var now = Clocks.SystemClock.Now;
+        if (_healedAt.TryGetValue(userId, out var at) && now - at < HealRetryDelay)
+            return;
+
+        _healedAt[userId] = now;
+        await Queues.Enqueue(new CoachBackend_RebuildDays(userId), cancellationToken).ConfigureAwait(false);
+    }
 
     private async Task RebuildDay(
         UsersDbContext dbContext, UserId userId, Moment day, CancellationToken cancellationToken)

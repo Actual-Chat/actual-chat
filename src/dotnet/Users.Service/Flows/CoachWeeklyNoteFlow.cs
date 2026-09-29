@@ -56,7 +56,7 @@ public partial class CoachWeeklyNoteFlow : PeriodicFlow
         var settings = Services.GetRequiredService<UsersSettings>().Coach;
         var kvas = Services.GetRequiredService<IServerKvasBackend>().ForUser(UserId);
         var userSettings = await kvas.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
-        var thisWeekStart = CoachWeek.StartOf(UsageDay.DayOf(now)) - TimeSpan.FromDays(7);
+        var thisWeekStart = ReportedWeekStart(TimeZoneInfo, lastDue);
         var lastWeekStart = thisWeekStart - TimeSpan.FromDays(7);
         var language = userSettings.SelectedLanguage.NullIfEmpty();
         var thisDays = await backend
@@ -123,6 +123,14 @@ public partial class CoachWeeklyNoteFlow : PeriodicFlow
         if (monday > local)
             monday = monday.AddDays(-7);
         return new Moment(TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(monday, DateTimeKind.Unspecified), timeZoneInfo));
+    }
+
+    // The note is delivered on the user's Monday, so the reported week is the one before that local
+    // Monday; the day rows are UTC days, so the local date is taken as a UTC day
+    internal static Moment ReportedWeekStart(TimeZoneInfo timeZoneInfo, Moment lastDue)
+    {
+        var localMonday = TimeZoneInfo.ConvertTimeFromUtc(lastDue.ToDateTime(), timeZoneInfo).Date;
+        return new Moment(DateTime.SpecifyKind(localMonday, DateTimeKind.Utc)) - TimeSpan.FromDays(7);
     }
 
     internal static bool IsDue(Moment lastDue, Moment lastRunAt, Moment now)

@@ -40,9 +40,11 @@
                         Language="@Language"
                         IsHeadline="@true"
                         IsFocus="@(Focus == kind)"
+                        IsFocusOverridden="@m.IsFocusOverridden"
                         IsNotMeasured="@(!m.IsWordSplittable && CoachSkillSets.IsLanguageBound(kind))"
                         WordClick="@OnWordClick"
-                        FocusClick="@OnFocusClick"/>
+                        FocusClick="@OnFocusClick"
+                        FocusClear="@OnFocusClear"/>
                 }
             }
         </Card>
@@ -97,7 +99,9 @@
         var primary = languages.FirstOrDefault()?.Iso ?? "";
         var iso = Language is null ? primary : ActualChat.Language.GetIsoCode(Language);
         var isSplittable = languages.FirstOrDefault(x => x.Iso == iso)?.IsWordSplittable ?? true;
-        return new Model(window, word, summary, settings.LevelOf(iso), isSplittable, primary);
+        return new Model(
+            window, word, summary, settings.LevelOf(iso), isSplittable, primary,
+            settings.FocusByLanguage.ContainsKey(iso));
     }
 
     private void OnWindow(CoachWindow window)
@@ -116,14 +120,22 @@
             Kind = kind,
         });
 
+    private Task OnFocusClear(CoachMetricKind kind)
+        => UICommander.Run(new Coach_SetFocus {
+            Session = Session,
+            Language = Language ?? State.Value.PrimaryIso,
+            Kind = null,
+        });
+
     public sealed record Model(
         CoachWindow Window,
         string? Word,
         CoachSummary Summary,
         CoachLanguageLevel Level,
         bool IsWordSplittable,
-        string PrimaryIso) {
+        string PrimaryIso,
+        bool IsFocusOverridden) {
         public static readonly Model None = new(
-            CoachWindow.Days7, null, CoachSummary.None, CoachLanguageLevel.Native, true, "");
+            CoachWindow.Days7, null, CoachSummary.None, CoachLanguageLevel.Native, true, "", false);
     }
 }

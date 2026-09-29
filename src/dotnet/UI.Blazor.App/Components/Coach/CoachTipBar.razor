@@ -29,6 +29,9 @@
                     case CoachTipKind.Filler:
                         <div>@Highlight(L.Coach_TipFillerBody(tip.Count, tip.Word, tip.Count), tip.Word) @L.Coach_TipInWindow(tip.WindowMinutes, tip.WindowMinutes).</div>
                         break;
+                    case CoachTipKind.Clean:
+                        <div>@L.Coach_TipCleanBody_Format(tip.WindowMinutes)</div>
+                        break;
                     default:
                         <div>@Highlight(L.Coach_TipWeakWordBody_Format(tip.Word), tip.Word)</div>
                         @if (tip.Synonyms.Count > 0) {
@@ -76,6 +79,7 @@
             CoachTipKind.SlowDown => L.Coach_TipSlowDownTitle,
             CoachTipKind.SpeedUp => L.Coach_TipSpeedUpTitle,
             CoachTipKind.Filler => L.Coach_TipFillerTitle,
+            CoachTipKind.Clean => L.Coach_TipCleanTitle,
             _ => L.Coach_TipWeakWordTitle,
         };
 

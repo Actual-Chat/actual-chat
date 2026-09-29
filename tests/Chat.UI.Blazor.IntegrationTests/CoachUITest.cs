@@ -540,4 +540,69 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         await cut.InvokeAsync(() => cut.Find(".coach-note .card-item").Click());
         mode.WaitForAssertion(() => mode.FindAll(".btn-mode .c-dot").Should().BeEmpty(), TimeSpan.FromSeconds(10));
     }
+
+    [Fact(Timeout = 60_000)]
+    public async Task TipBarShouldRenderACleanRunTipInItsOwnWords()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-clean-tip");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(tester);
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var kvas = appHost.Services.GetRequiredService<IServerKvasBackend>().ForUser(account.Id, isOutermost: true);
+        await kvas.UserCoachTip().Set(new UserCoachTip {
+            Kind = CoachTipKind.Clean, ChatId = chatId, EntryLid = 1, Count = 180, WindowMinutes = 20,
+            ShownAt = appHost.Services.Clocks().SystemClock.Now,
+        });
+        await TestWait.When(async ct => (await hub.Coach.GetPendingTip(tester.Session, ct)).Should().NotBeNull());
+
+        // act
+        var cut = tester.Render<CoachTipBar>(p => p.Add(x => x.ChatId, chatId));
+        InitializeHub(tester, hub, cut.Instance);
+
+        // assert
+        cut.WaitForAssertion(() => {
+            cut.Find(".c-tip-title").TextContent.Should().Contain("Clean run");
+            cut.Find(".c-tip-body").TextContent.Should().Contain("20 minutes, no filler words");
+        });
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task FocusShouldBeClearableAndHiddenBelowTheScoreFloor()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-focus");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var metric = new CoachMetric(CoachMetricKind.Fillers, 5, 0.04, CoachBand.Medium, ApiArray<CoachChip>.Empty);
+        var cleared = new List<CoachMetricKind>();
+
+        // act
+        var row = tester.Render<CoachSkillRow>(p => p
+            .Add(x => x.Metric, metric)
+            .Add(x => x.IsHeadline, true)
+            .Add(x => x.IsFocus, true)
+            .Add(x => x.IsFocusOverridden, true)
+            .Add(x => x.FocusClear, EventCallback.Factory.Create<CoachMetricKind>(this, k => cleared.Add(k))));
+        InitializeHub(tester, hub, row.Instance);
+        var withoutScore = tester.Render<CoachScoreCard>(p => p
+            .Add(x => x.Summary, CoachSummary.None)
+            .Add(x => x.Focus, CoachMetricKind.Fillers));
+        var withScore = tester.Render<CoachScoreCard>(p => p
+            .Add(x => x.Summary, CoachSummary.None with { Score = 70, Words = 500 })
+            .Add(x => x.Focus, CoachMetricKind.Fillers));
+        await row.InvokeAsync(() => row.Find(".c-focus-clear").Click());
+
+        // assert
+        cleared.Should().Equal(CoachMetricKind.Fillers);
+        withoutScore.FindAll(".card-item").Count.Should().Be(1, "no focus row before the first score");
+        withScore.FindAll(".card-item").Count.Should().Be(2);
+    }
 }

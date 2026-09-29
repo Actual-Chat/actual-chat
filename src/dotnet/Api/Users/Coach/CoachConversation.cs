@@ -35,7 +35,10 @@ public static class CoachConversationBuilder
     private const double SecondaryLanguageShare = 0.25;
     private static readonly TimeSpan RunTolerance = TimeSpan.FromHours(1);
 
-    public static ApiArray<CoachConversation> Build(IEnumerable<CoachRecord> records, TimeSpan gap)
+    // isLogCut: the records are only the newest ones, so the oldest conversation may lack its first
+    // entries and is left out (unless it is the only one)
+    public static ApiArray<CoachConversation> Build(
+        IEnumerable<CoachRecord> records, TimeSpan gap, bool isLogCut = false)
     {
         var list = records.ToList();
         var result = new List<CoachConversation>();
@@ -52,7 +55,10 @@ public static class CoachConversationBuilder
             if (group.Count > 0)
                 result.Add(Close(group, runs));
         }
-        return result.OrderByDescending(c => c.StartedAt).ToApiArray();
+        var ordered = result.OrderByDescending(c => c.StartedAt).ToList();
+        if (isLogCut && ordered.Count > 1)
+            ordered.RemoveAt(ordered.Count - 1);
+        return ordered.ToApiArray();
     }
 
     // Private methods
