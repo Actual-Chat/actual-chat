@@ -30,7 +30,7 @@ public static class CoachScoring
         var band = Band(s, language);
         var weighted = 0d;
         var weights = 0;
-        Add(FillerRate(d), 0, s.FillerGoodRate, s.WeightFillers);
+        Add(FillerRate(d), 0, FillerRange(s, language).Good, s.WeightFillers);
         Add(Pace(d), band.Slow, band.Fast, s.WeightPace);
         Add(WeakRate(d), 0, s.WeakGoodRate, s.WeightWeakWords);
         Add(TurnRatio(d), s.TurnLowFactor, s.TurnHighFactor, s.WeightTurnTaking);
@@ -67,6 +67,50 @@ public static class CoachScoring
     public static PaceBand PaceRange(CoachScoringSettings s, string? language)
         => Band(s, language);
 
+    public static RateBand FillerRange(CoachScoringSettings s, string? language)
+    {
+        var iso = language.IsNullOrEmpty() ? "" : Language.GetIsoCode(language);
+        return s.FillerByLanguage.TryGetValue(iso, out var band)
+            ? band
+            : new RateBand { Good = s.FillerGoodRate, High = s.FillerHighRate };
+    }
+
+    public static ApiArray<CoachScorePart> Explain(CoachDay d, CoachScoringSettings s, string? language)
+    {
+        if (d.Words < s.MinScoreWords)
+            return ApiArray<CoachScorePart>.Empty;
+
+        var pace = Band(s, language);
+        var filler = FillerRange(s, language);
+        var fillerRate = FillerRate(d);
+        var paceValue = Pace(d);
+        var raw = new List<(CoachMetricKind Kind, double? Value, double Low, double High, int Weight, CoachBand Band)> {
+            (CoachMetricKind.Fillers, fillerRate, 0, filler.Good, s.WeightFillers,
+                RateBand(fillerRate, filler.Good, filler.High)),
+            (CoachMetricKind.Pace, paceValue, pace.Slow, pace.Fast, s.WeightPace,
+                paceValue is { } p ? PaceBand(p, s, language) : CoachBand.None),
+            (CoachMetricKind.WeakWords, WeakRate(d), 0, s.WeakGoodRate, s.WeightWeakWords,
+                RateBand(WeakRate(d), s.WeakGoodRate, s.WeakHighRate)),
+            (CoachMetricKind.TurnTaking, TurnRatio(d), s.TurnLowFactor, s.TurnHighFactor, s.WeightTurnTaking,
+                RangeBand(TurnRatio(d), s.TurnLowFactor, s.TurnHighFactor)),
+            (CoachMetricKind.SentenceLength, SentenceLength(d), s.SentenceShort, s.SentenceLong,
+                s.WeightSentenceLength, RangeBand(SentenceLength(d), s.SentenceShort, s.SentenceLong)),
+        };
+        var present = raw.Where(x => x.Value is not null).ToList();
+        var totalWeight = present.Sum(x => x.Weight);
+        if (totalWeight == 0)
+            return ApiArray<CoachScorePart>.Empty;
+
+        return present
+            .Select(x => {
+                var max = 100d * x.Weight / totalWeight;
+                return new CoachScorePart(
+                    x.Kind, x.Weight, x.Band, SubScore(x.Value!.Value, x.Low, x.High) / 100 * max, max);
+            })
+            .OrderBy(x => x.Points - x.MaxPoints)
+            .ToApiArray();
+    }
+
     // Private methods
 
     private static ApiArray<CoachMetric> Metrics(CoachDay d, CoachScoringSettings s, string? language)
@@ -86,7 +130,8 @@ public static class CoachScoring
             new CoachMetric(CoachMetricKind.Pauses, speechMinutes > 0 ? d.Pauses / speechMinutes : null, null,
                 CoachBand.None, none),
             new CoachMetric(CoachMetricKind.Fillers, d.FilledPauses + d.Fillers, fillerRate,
-                RateBand(fillerRate, s.FillerGoodRate, s.FillerHighRate), Chips(d.FillerCounts)),
+                RateBand(fillerRate, FillerRange(s, language).Good, FillerRange(s, language).High),
+                Chips(d.FillerCounts)),
             new CoachMetric(CoachMetricKind.WeakWords, d.WeakWords, weakRate,
                 RateBand(weakRate, s.WeakGoodRate, s.WeakHighRate), Chips(d.WeakWordCounts)),
             new CoachMetric(CoachMetricKind.Repetition, d.Repetitions, repetitionRate,

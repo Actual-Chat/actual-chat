@@ -140,8 +140,8 @@ public class CoachTipPolicyTest(ITestOutputHelper @out) : TestBase(@out)
         alone.Should().BeNull("12 words are below the floor");
         together!.Kind.Should().Be(CoachTipKind.SlowDown);
         together.Wpm.Should().Be(240);
-        together.PaceSlowWpm.Should().Be((int)S.PaceSlowWpm);
-        together.PaceFastWpm.Should().Be((int)S.PaceFastWpm);
+        together.PaceSlowWpm.Should().Be(130, "the English band");
+        together.PaceFastWpm.Should().Be(170);
     }
 
     [Fact]

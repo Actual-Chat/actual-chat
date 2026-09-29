@@ -117,6 +117,12 @@ public enum CoachRollout
     Everyone = 1,
 }
 
+public sealed class RateBand
+{
+    public double Good { get; set; } = 0.03;
+    public double High { get; set; } = 0.06;
+}
+
 public sealed class PaceBand
 {
     public double Slow { get; set; } = 110;
@@ -135,7 +141,23 @@ public sealed class CoachScoringSettings
     public int TrailingDays { get; set; } = 30;
     public double PaceSlowWpm { get; set; } = 110;
     public double PaceFastWpm { get; set; } = 160;
-    public Dictionary<string, PaceBand> PaceByLanguage { get; set; } = new();
+    // Comfortable spoken pace differs with word length; languages without an entry use the global band
+    public Dictionary<string, PaceBand> PaceByLanguage { get; set; } = new() {
+        ["en"] = new PaceBand { Slow = 130, Fast = 170 },
+        ["ru"] = new PaceBand { Slow = 100, Fast = 140 },
+        ["uk"] = new PaceBand { Slow = 100, Fast = 140 },
+        ["pl"] = new PaceBand { Slow = 100, Fast = 140 },
+        ["cs"] = new PaceBand { Slow = 100, Fast = 140 },
+        ["de"] = new PaceBand { Slow = 110, Fast = 150 },
+        ["es"] = new PaceBand { Slow = 150, Fast = 200 },
+        ["it"] = new PaceBand { Slow = 150, Fast = 200 },
+        ["fr"] = new PaceBand { Slow = 140, Fast = 180 },
+        ["pt"] = new PaceBand { Slow = 140, Fast = 180 },
+    };
+    public Dictionary<string, RateBand> FillerByLanguage { get; set; } = new() {
+        ["en"] = new RateBand(),
+        ["ru"] = new RateBand(),
+    };
     public double FillerGoodRate { get; set; } = 0.03;
     public double FillerHighRate { get; set; } = 0.06;
     public double WeakGoodRate { get; set; } = 0.04;

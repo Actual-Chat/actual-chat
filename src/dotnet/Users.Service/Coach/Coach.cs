@@ -66,6 +66,25 @@ public class Coach(IServiceProvider services) : ICoach
     }
 
     // [ComputeMethod]
+    public virtual async Task<ApiArray<CoachScorePart>> ExplainOwnScore(
+        Session session, string? language, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull())
+            return ApiArray<CoachScorePart>.Empty;
+
+        var (range, _) = Ranges(CoachWindow.Days7);
+        var days = await Backend.ListDays(account.Id, range, language, cancellationToken).ConfigureAwait(false);
+        InvalidateAtMidnight(range);
+        var languageSettings = await ServerKvasBackend.ForUser(account.Id)
+            .UserLanguageSettings()
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
+        return CoachScoring.Explain(
+            CoachDayBuilder.Merge(range.Start, days), Settings.Coach, language ?? languageSettings.Primary.Value);
+    }
+
+    // [ComputeMethod]
     public virtual async Task<ApiArray<CoachConversation>> ListOwnConversations(
         Session session, int count, CancellationToken cancellationToken)
     {

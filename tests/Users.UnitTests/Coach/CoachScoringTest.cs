@@ -138,4 +138,66 @@ public class CoachScoringTest(ITestOutputHelper @out) : TestBase(@out)
         CoachScoring.PaceBand(150, s, "ru-RU").Should().Be(CoachBand.High);
         CoachScoring.PaceBand(150, s, "en-US").Should().Be(CoachBand.Good);
     }
+
+    private static CoachDay ScoredDay(
+        int words, int fillers, int weak, double speechSeconds, int sentences, double ownSpeech, double fairShare)
+        => DayWith(words, fillers, weak, speechSeconds, sentences) with {
+            OwnSpeechSeconds = ownSpeech,
+            FairShareSeconds = fairShare,
+            TotalSpeechSeconds = ownSpeech * 3,
+            Runs = ownSpeech > 0 ? 1 : 0,
+        };
+
+    [Fact]
+    public void ExplainShouldAddUpToTheScore()
+    {
+        // arrange
+        var day = ScoredDay(1000, 50, 30, 400, 100, 100, 100);
+
+        // act
+        var parts = CoachScoring.Explain(day, S, "en-US");
+        var score = CoachScoring.Score(day, S, "en-US");
+
+        // assert
+        parts.Select(p => p.Kind).Should().BeEquivalentTo(
+            [CoachMetricKind.Fillers, CoachMetricKind.Pace, CoachMetricKind.WeakWords, CoachMetricKind.TurnTaking,
+                CoachMetricKind.SentenceLength]);
+        parts.Sum(p => p.MaxPoints).Should().BeApproximately(100, 1e-9);
+        ((int)Math.Round(parts.Sum(p => p.Points))).Should().Be(score!.Value);
+        parts.Single(p => p.Kind == CoachMetricKind.Fillers).Band.Should().Be(CoachBand.Medium);
+    }
+
+    [Fact]
+    public void ExplainShouldSpreadWeightsWhenAnInputIsMissing()
+    {
+        // arrange: no runs, so no turn-taking
+        var day = ScoredDay(1000, 10, 10, 400, 100, 0, 0);
+
+        // act
+        var parts = CoachScoring.Explain(day, S, "en-US");
+
+        // assert
+        parts.Should().NotContain(p => p.Kind == CoachMetricKind.TurnTaking);
+        parts.Sum(p => p.MaxPoints).Should().BeApproximately(100, 1e-9);
+    }
+
+    [Fact]
+    public void FillerBandShouldFollowTheLanguageTable()
+    {
+        // arrange
+        var s = new CoachScoringSettings {
+            FillerByLanguage = { ["ru"] = new RateBand { Good = 0.05, High = 0.10 } },
+        };
+        var day = ScoredDay(1000, 40, 0, 400, 100, 0, 0);
+
+        // act
+        var ru = CoachScoring.Summarize(CoachWindow.AllTime, day, null, s, "ru-RU").Metrics
+            .Single(m => m.Kind == CoachMetricKind.Fillers).Band;
+        var en = CoachScoring.Summarize(CoachWindow.AllTime, day, null, s, "en-US").Metrics
+            .Single(m => m.Kind == CoachMetricKind.Fillers).Band;
+
+        // assert
+        ru.Should().Be(CoachBand.Good);
+        en.Should().Be(CoachBand.Medium);
+    }
 }
