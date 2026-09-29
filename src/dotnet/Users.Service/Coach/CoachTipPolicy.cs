@@ -28,11 +28,15 @@ public static class CoachTipPolicy
         if (now - record.OccurredAt > s.TipWindow)
             return null;
 
+        var iso = Language.GetIsoCode(record.Entry.Language ?? language ?? "");
         var entries = window
             .Where(r => r.Entry is not null && now - r.OccurredAt <= s.TipWindow)
             .Select(r => r.Entry!)
+            .Where(e => Language.GetIsoCode(e.Language ?? "") == iso)
             .ToList();
-        var tip = WordTip(entries, spansWithSynonyms, previous, s, now) ?? PaceTip(entries, s, language);
+        var tip = WordTip(entries, spansWithSynonyms, previous, s, now)
+            ?? PaceTip(entries, s, language)
+            ?? CleanTip(entries, previous, s, now);
         if (tip is null)
             return null;
 
@@ -49,6 +53,7 @@ public static class CoachTipPolicy
             WordTipAt = wordTipAt,
             ShownAt = now,
             LastTipAt = now,
+            CleanTipDay = tip.Kind == CoachTipKind.Clean ? tip.CleanTipDay : previous.CleanTipDay,
             IsDismissed = false,
         };
     }
@@ -96,6 +101,21 @@ public static class CoachTipPolicy
         => spans
             .FirstOrDefault(sp => sp.Kind == SpeechSpanKind.Weak && sp.Word == word && sp.Synonyms.Count > 0)
             ?.Synonyms ?? ApiArray<string>.Empty;
+
+    private static UserCoachTip? CleanTip(
+        List<CoachEntryRecord> entries, UserCoachTip previous, CoachScoringSettings s, Moment now)
+    {
+        var today = UsageDay.DayOf(now);
+        if (previous.CleanTipDay == today || entries.Count == 0 || entries.Any(e => !e.IsTagged))
+            return null;
+        if (entries.Any(e => e.FilledPauses + e.Fillers + e.WeakWords > 0))
+            return null;
+
+        var words = entries.Sum(e => e.Words ?? 0);
+        return words < s.CleanTipMinWords
+            ? null
+            : new UserCoachTip { Kind = CoachTipKind.Clean, Count = words, CleanTipDay = today };
+    }
 
     private static UserCoachTip? PaceTip(List<CoachEntryRecord> entries, CoachScoringSettings s, string? language)
     {

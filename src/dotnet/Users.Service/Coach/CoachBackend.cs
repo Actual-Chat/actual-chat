@@ -284,7 +284,8 @@ public class CoachBackend(IServiceProvider services)
         try {
             var kvas = ServerKvasBackend.ForUser(analysis.UserId);
             var settings = await kvas.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
-            if (settings is not { IsCoachingEnabled: true, AreLiveTipsEnabled: true })
+            if (settings is not { IsCoachingEnabled: true, AreLiveTipsEnabled: true }
+                || settings.LevelOf(analysis.Language?.Value) == CoachLanguageLevel.Off)
                 return;
 
             var now = Clocks.SystemClock.Now;

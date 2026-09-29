@@ -199,4 +199,50 @@ public class CoachTipPolicyTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         tip.Should().BeNull("a tip is live feedback on what was just said");
     }
+
+    private static CoachRecord EntryIn(string language, int words, double seconds, Moment at,
+        params (SpeechSpanKind Kind, string Word)[] spans)
+    {
+        var r = Entry(words, seconds, at, spans);
+        return r with { Entry = r.Entry! with { Language = language } };
+    }
+
+    [Fact]
+    public void AWindowWithNoFillersShouldEarnOneCleanTipPerDay()
+    {
+        // arrange
+        var earlier = Entry(120, 60, Now - TimeSpan.FromMinutes(10));
+        var current = Entry(60, 30, Now);
+
+        // act
+        var tip = Evaluate(current, [earlier, current], NoSpans, NoTip);
+        var again = Evaluate(current, [earlier, current], NoSpans, tip! with { LastTipAt = Now - TimeSpan.FromHours(1) });
+
+        // assert
+        tip!.Kind.Should().Be(CoachTipKind.Clean);
+        tip.CleanTipDay.Should().Be(UsageDay.DayOf(Now));
+        again.Should().BeNull("one clean tip a day");
+    }
+
+    [Fact]
+    public void AWeakWordInTheWindowShouldBlockTheCleanTip()
+    {
+        var earlier = Entry(120, 60, Now - TimeSpan.FromMinutes(10), (SpeechSpanKind.Weak, "very"));
+        var current = Entry(60, 30, Now);
+        Evaluate(current, [earlier, current], NoSpans, NoTip).Should().BeNull();
+    }
+
+    [Fact]
+    public void OtherLanguagesShouldNotCountTowardAWordTip()
+    {
+        // arrange
+        var russian = EntryIn("ru-RU", 20, 10, Now - TimeSpan.FromMinutes(5), Filler("like"), Filler("like"));
+        var current = Entry(20, 10, Now, Filler("like"));
+
+        // act
+        var tip = Evaluate(current, [russian, current], NoSpans, NoTip);
+
+        // assert
+        tip.Should().BeNull("two of the three uses are in another language");
+    }
 }

@@ -54,6 +54,9 @@ public sealed partial record UserCoachTip : StoredSettings, IHasOrigin, IHasKvas
     // When each word was last tipped; the policy's per-word cooldown reads it
     [DataMember, Key(14)]
     public ApiMap<string, Moment> WordTipAt { get; init; } = new ();
+    // The UTC day of the last clean-run tip; at most one a day
+    [DataMember, Key(15)]
+    public Moment CleanTipDay { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsPending => Kind != CoachTipKind.None && !IsDismissed;

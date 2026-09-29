@@ -181,6 +181,7 @@ public sealed class CoachScoringSettings
     public TimeSpan TipWindow { get; set; } = TimeSpan.FromMinutes(20);
     public int TipMinWords { get; set; } = 30;
     public int TipWordCount { get; set; } = 3;
+    public int CleanTipMinWords { get; set; } = 150;
     // Own entries of one chat closer than this belong to one conversation card
     public TimeSpan ConversationGap { get; set; } = TimeSpan.FromMinutes(30);
     public int RecentConversations { get; set; } = 20;
