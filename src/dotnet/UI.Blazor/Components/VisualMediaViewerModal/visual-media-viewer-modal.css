@@ -12,6 +12,11 @@
     padding-top: var(--safe-area-top);
     padding-bottom: var(--safe-area-bottom);
 }
+/* The viewer covers the whole window, so under the AppKit titlebar its header drops below the
+   traffic lights the way it drops below the notch (body.narrow folds the titlebar in already). */
+html.native-titlebar body.wide .image-viewer-modal.modal-frame {
+    --safe-area-top: calc(env(safe-area-inset-top, 0px) + var(--titlebar-inset));
+}
 
 /* Image viewer header */
 .image-viewer-header {
