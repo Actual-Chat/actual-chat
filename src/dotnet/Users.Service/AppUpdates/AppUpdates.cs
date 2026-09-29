@@ -92,8 +92,11 @@ public class AppUpdates : IAppUpdates
 
     // Internal methods (used by tests)
 
-    internal void Invalidate(AppKind appKind)
+    internal async Task Invalidate(AppKind appKind)
     {
+        // Invalidation.Begin reaches the source only through a registered consolidating computed,
+        // so the read makes sure there is one - https://github.com/ActualLab/Fusion/issues/168
+        _ = await GetLatestUpdateInfo(appKind, default).ConfigureAwait(false);
         using (Invalidation.Begin())
             _ = GetLatestUpdateInfo(appKind, default);
     }
