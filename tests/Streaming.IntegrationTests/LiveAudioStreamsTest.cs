@@ -206,8 +206,11 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
     }
 
     [Fact(Timeout = 60_000)]
-    public async Task GetListeningStreamShouldTrackListenerPresence()
+    public async Task ListeningStreamEndShouldNotDropPresence()
     {
+        // A listener's presence is its client's claim. A listening stream closes on every re-subscribe,
+        // not only on a leave, so letting its end drop that claim ended calls on their own (#4835).
+
         // arrange
         var appHost = AppHost;
         var services = appHost.Services;
@@ -221,7 +224,7 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
             ExpectedVersion = null,
             Change = new() {
                 Create = new ChatDiff {
-                    Title = "GetListeningStreamPresenceTest",
+                    Title = "ListeningStreamPresenceTest",
                     Kind = ChatKind.Group,
                 },
             },
@@ -232,25 +235,22 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
         var liveSessionsBackend = services.GetRequiredService<ILiveSessionsBackend>();
         var authors = services.GetRequiredService<IAuthors>();
         var author = await authors.GetOwn(session, chat.Id, default);
+        await liveSessionsBackend.SetParticipation(
+            chat.Id, author!.Id, ParticipationKind.AudioListen, true, default);
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-
-        // act - open the listening stream and start consuming it
         var stream = await liveAudioStreams.GetListeningStream(session, chat.Id, default, cts.Token);
-        var consumeTask = BackgroundTask.Run(async () => {
-            await foreach (var _ in stream.WithCancellation(cts.Token)) { }
-        }, cts.Token);
+        // MoveNextAsync enters the iterator's try block, so cancelling below runs its finally
+        var enumerator = stream.GetAsyncEnumerator(cts.Token);
+        var moveNextTask = enumerator.MoveNextAsync().AsTask();
 
-        // assert - presence is registered while the stream is open
-        await TestWait.When(async ct =>
-            (await liveSessionsBackend.ListParticipants(chat.Id, ct)).Should().Contain(author!.Id));
-
-        // act - the caller stops consuming (cancellation unwinds the async iterator's finally block)
+        // act - the stream ends, as the old one does on a re-subscribe
         await cts.CancelAsync();
-        await consumeTask.SilentAwait(false);
+        await moveNextTask.SilentAwait(false);
+        await enumerator.DisposeAsync();
 
-        // assert - presence goes with it, not with the 90s ParticipantStaleness backstop
-        await TestWait.When(async ct =>
-            (await liveSessionsBackend.ListParticipants(chat.Id, ct)).Should().NotContain(author!.Id));
+        // assert
+        (await liveSessionsBackend.ListParticipants(chat.Id, default))
+            .Should().Contain(author.Id, "only the client's own leave may drop its presence");
     }
 
     [Fact(Timeout = 60_000)]

@@ -189,5 +189,6 @@ since only this build writes one.
 - An ambient session's close has the same race, and nothing catches it there.
   `LiveConversationSummaryFlow.Finalize` takes `entries[^1].LocalId` at the moment it runs, so a
   transcript that lands after it is outside the conversation for good. It bites far less often —
-  that close goes through a grace, where a call's does not — which is why `CallTailFlow` is keyed
+  that close goes through a long grace, where a call's waits at most `CallLeaveGrace` (2 s) —
+  which is why `CallTailFlow` is keyed
   to calls rather than to every materialized live session.
