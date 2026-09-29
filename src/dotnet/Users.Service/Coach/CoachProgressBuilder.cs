@@ -91,12 +91,8 @@ public static class CoachProgressBuilder
             .ToApiArray();
     }
 
-    // ISO weeks start on Monday, in UTC like the day rows
     public static Moment WeekStart(Moment day)
-    {
-        var offset = ((int)day.ToDateTime().DayOfWeek + 6) % 7;
-        return day - TimeSpan.FromDays(offset);
-    }
+        => CoachWeek.StartOf(day);
 
     // Private methods
 

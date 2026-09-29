@@ -1,0 +1,26 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComponentBase<AppUIHub>
+
+<Card Class="coach-milestones">
+    @foreach (var m in Milestones) {
+        <CardItem @key="@m.Kind" TitleClass="@(m.AchievedAt is null ? "text-03" : "text-01")">
+            <Left><span class="c-check @(m.AchievedAt is null ? "off" : "")">@(m.AchievedAt is null ? "" : "✓")</span></Left>
+            <Title>@Labels.Milestone(m.Kind)</Title>
+            <Right>
+                @if (m.AchievedAt is { } at) {
+                    <span class="text-caption text-03">
+                        @DateFormatter.FormatRelativeDate(DateTimeConverter.ToLocalTime(at),
+                            DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now))
+                    </span>
+                }
+            </Right>
+        </CardItem>
+    }
+</Card>
+
+@code {
+    [Parameter, EditorRequired] public ApiArray<CoachMilestone> Milestones { get; set; }
+
+    private CoachLabels Labels => field ??= new CoachLabels(L);
+}

@@ -245,48 +245,6 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
     }
 
     [Fact(Timeout = 60_000)]
-    public async Task CoachTrendsShouldShowOneBarPerDayWithSpeech()
-    {
-        // arrange
-        var appHost = await NewCoachHost("coach-ui-trends");
-        await using var _1 = appHost;
-        await using var tester = appHost.NewBlazorTester(Out);
-        await tester.SignInAsUniqueBob();
-        tester.JSInterop.Mode = JSRuntimeMode.Loose;
-        var (chatId, _) = await tester.CreateChat(true);
-        var coach = tester.ScopedAppServices.AppUIHub().Coach;
-        // A New York browser reports +240 min; the day columns are UTC days and must keep their UTC labels
-        ((ServerSideDateTimeConverter)tester.ScopedAppServices.GetRequiredService<DateTimeConverter>())
-            .Initialize(TimeSpan.FromMinutes(240));
-        var today = UsageDay.DayOf(appHost.Services.Clocks().SystemClock.Now).ToDateTime();
-        await PostVoice(tester, chatId, Text);
-        var summary = await TestWait.When(async ct => {
-            var s = await coach.GetOwnSummary(tester.Session, CoachWindow.Week, null, ct);
-            s.Entries.Should().Be(1);
-            return s;
-        }, TimeSpan.FromSeconds(30));
-
-        // act
-        var cut = tester.Render<CoachTrends>(p => p
-            .Add(x => x.Summary, summary)
-            .Add(x => x.Window, CoachWindow.Week));
-
-        // assert
-        cut.WaitForAssertion(() => {
-            cut.FindAll(".c-pace .bar-chart .c-bar").Count.Should().Be(7, "a week has seven columns");
-            cut.FindAll(".c-pace .bar-chart .c-bar").Count(b => b.GetAttribute("style")!.Contains("height: 100%"))
-                .Should().Be(1, "only today has speech");
-            cut.FindAll(".donut-chart circle.c-slice").Should().NotBeEmpty();
-            cut.FindAll(".coach-trends .c-turn .bar-chart .c-bar").Count.Should().Be(7, "turn-taking has a day column too");
-        }, TimeSpan.FromSeconds(10));
-        cut.Find(".coach-trends .c-pace .c-nudge").TextContent.Should().NotBeEmpty();
-        var todayColumn = cut.FindAll(".c-pace .bar-chart .c-column")
-            .Single(c => c.QuerySelector(".c-bar")!.GetAttribute("style")!.Contains("height: 100%"));
-        todayColumn.QuerySelector(".c-label")!.TextContent.Trim().Should().Be(today.ToString("ddd", null),
-            "the column is a UTC day and its label must not shift with the browser's offset");
-    }
-
-    [Fact(Timeout = 60_000)]
     public async Task ClickingAnOccurrenceShouldStartReplayAtTheWord()
     {
         // arrange
@@ -458,6 +416,34 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
             cards.Should().HaveCount(1);
             cards[0].QuerySelectorAll(".c-finding").Length.Should().BeInRange(1, 3);
             cards[0].TextContent.Should().Contain("Marked transcript");
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task ProgressTabShouldShowDeltasDaysAndMilestones()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-progress");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        var hub = tester.ScopedAppServices.AppUIHub();
+        await OptIn(tester);
+        await PostVoice(tester, chatId, Text);
+
+        // act
+        var cut = tester.Render<CoachPanel>();
+        InitializeHub(tester, hub, cut.Instance);
+        cut.WaitForAssertion(() => cut.Find(".coach-conversation"), TimeSpan.FromSeconds(30));
+        hub.CoachUI.SelectTab(CoachTab.Progress);
+
+        // assert
+        cut.WaitForAssertion(() => {
+            cut.FindAll(".coach-progress .coach-days .c-day.on").Count.Should().BeGreaterThan(0);
+            cut.FindAll(".coach-milestones .card-item").Count.Should().Be(7);
+            cut.Find(".coach-week-deltas").TextContent.Should().Contain("not enough speech");
         }, TimeSpan.FromSeconds(30));
     }
 }

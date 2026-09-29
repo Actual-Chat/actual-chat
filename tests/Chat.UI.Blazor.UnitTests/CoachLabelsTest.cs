@@ -40,4 +40,34 @@ public class CoachLabelsTest
         value.Should().Be("3", "the row title carries the count");
         rate.Should().Be("5% of speech", "the right side carries the share");
     }
+
+    private static CoachLabels NewProgressLabels()
+        => new (new TestStringLocalizer(new() {
+            ["Coach_PercentOfSpeech_Format"] = "{0}% of speech",
+            ["Coach_Wpm_Format"] = "{0} wpm",
+            ["Coach_NotEnoughSpeech"] = "not enough speech",
+            ["Coach_DeltaSame"] = "same",
+        }));
+
+    [Fact]
+    public void DeltaValueAndBadgeShouldFormatPerKind()
+    {
+        // arrange
+        var l = NewProgressLabels();
+        var fillers = new CoachWeekDelta(CoachMetricKind.Fillers, 0.07, 0.04, CoachBand.Medium, true);
+        var pace = new CoachWeekDelta(CoachMetricKind.Pace, 95, 118, CoachBand.Good, true);
+        var monologue = new CoachWeekDelta(CoachMetricKind.Monologue, 190, 140, CoachBand.High, true);
+        var same = new CoachWeekDelta(CoachMetricKind.WeakWords, 0.03, 0.03, CoachBand.Good, null);
+        var unknown = new CoachWeekDelta(CoachMetricKind.Fillers, null, 0.04, CoachBand.Medium, null);
+
+        // act & assert
+        l.DeltaValue(fillers).Should().Be("7% → 4% of speech");
+        l.DeltaBadge(fillers).Should().Be("▼ 43%");
+        l.DeltaValue(pace).Should().Be("95 → 118 wpm");
+        l.DeltaBadge(pace).Should().Be("▲ 23");
+        l.DeltaValue(monologue).Should().Be("3:10 → 2:20");
+        l.DeltaBadge(monologue).Should().Be("▼ 0:50");
+        l.DeltaBadge(same).Should().Be("same");
+        l.DeltaValue(unknown).Should().Be("not enough speech");
+    }
 }

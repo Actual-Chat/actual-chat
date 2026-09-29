@@ -63,6 +63,58 @@ public sealed class CoachLabels(IStringLocalizer l)
                 : l.Coach_FindingMonologueShort_Format(Clock(c.LongestMonologueSeconds ?? 0)),
         };
 
+    public string Milestone(CoachMilestoneKind kind)
+        => kind switch {
+            CoachMilestoneKind.Words1K => l.Coach_MilestoneWords1K,
+            CoachMilestoneKind.Words10K => l.Coach_MilestoneWords10K,
+            CoachMilestoneKind.Words100K => l.Coach_MilestoneWords100K,
+            CoachMilestoneKind.FiveDayWeek => l.Coach_MilestoneFiveDayWeek,
+            CoachMilestoneKind.CleanFillerWeek => l.Coach_MilestoneCleanFillerWeek,
+            CoachMilestoneKind.NoLongMonologueWeek => l.Coach_MilestoneNoLongMonologueWeek,
+            _ => l.Coach_MilestoneRisingMonth,
+        };
+
+    public string DeltaValue(CoachWeekDelta d)
+    {
+        if (d.Previous is not { } was || d.Current is not { } now)
+            return l.Coach_NotEnoughSpeech;
+
+        return d.Kind switch {
+            CoachMetricKind.Fillers or CoachMetricKind.WeakWords or CoachMetricKind.Repetition
+                => $"{Round(was * 100)}% → " + l.Coach_PercentOfSpeech_Format(Round(now * 100)),
+            CoachMetricKind.TurnTaking => $"{Round(was * 100)}% → " + l.Coach_PercentOfTalkTime_Format(Round(now * 100)),
+            CoachMetricKind.Pace => $"{Round(was)} → " + l.Coach_Wpm_Format(Round(now)),
+            CoachMetricKind.Monologue => $"{Clock(was)} → {Clock(now)}",
+            CoachMetricKind.Vocabulary => $"{Round(was * 100)} → " + l.Coach_OfEvery100_Format(Round(now * 100)),
+            CoachMetricKind.SentenceLength => $"{was.ToString("F1", null)} → "
+                + l.Coach_WordsPerSentence_Format(now.ToString("F1", null)),
+            _ => $"{Round(was)} → {Round(now)}",
+        };
+    }
+
+    public string DeltaBadge(CoachWeekDelta d)
+    {
+        if (d.Previous is not { } was || d.Current is not { } now || d.IsBetter is null)
+            return l.Coach_DeltaSame;
+
+        var arrow = now < was ? "▼" : "▲";
+        return d.Kind switch {
+            CoachMetricKind.Fillers or CoachMetricKind.WeakWords or CoachMetricKind.Repetition
+                => was > 0 ? $"{arrow} {Round(Math.Abs(now - was) / was * 100)}%" : arrow,
+            CoachMetricKind.TurnTaking => $"{arrow} {Round(Math.Abs(now - was) * 100)}",
+            CoachMetricKind.Monologue => $"{arrow} {Clock(Math.Abs(now - was))}",
+            _ => $"{arrow} {Round(Math.Abs(now - was))}",
+        };
+    }
+
+    public string BetterCaption(CoachWeekDelta best, int speakingDays)
+    {
+        var relative = best.Previous is { } was and > 0 && best.Current is { } now
+            ? Round(Math.Abs(now - was) / was * 100)
+            : 0;
+        return l.Coach_BetterCaption_Format(MetricTitle(best.Kind), relative, speakingDays);
+    }
+
     public static string Clock(double seconds)
         => $"{(int)seconds / 60}:{(int)seconds % 60:00}";
 
