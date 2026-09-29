@@ -1,8 +1,16 @@
+using ActualChat.Kvas;
 using ActualChat.Chat;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
+
+public enum CoachTab
+{
+    Recent = 0,
+    Progress = 1,
+    Skills = 2,
+}
 
 /// <summary>
 /// The client side of the speech coach: the per-user verdicts, the marks behind inline marking
@@ -11,6 +19,9 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
     private const double ReplayLeadSeconds = 0.25;
+
+    private readonly StoredState<Box<CoachTab>> _selectedTab = hub.StateFactory.NewKvasStored<Box<CoachTab>>(
+        new (hub.LocalSettings, "Coach.Tab") { InitialValue = Box.New(CoachTab.Recent) });
 
     private IChats Chats => Hub.Chats;
     private IChatCoach ChatCoach => Hub.ChatCoach;
@@ -21,6 +32,35 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
     public virtual async Task<bool> IsEnabled(CancellationToken cancellationToken)
         => await Features.Get<Features_EnableSpeechCoach>(cancellationToken).ConfigureAwait(false);
 
+    public async ValueTask<CoachTab> UseSelectedTab(CancellationToken cancellationToken)
+        => (await _selectedTab.Use(cancellationToken).ConfigureAwait(false)).Value;
+
+    public void SelectTab(CoachTab tab)
+        => _selectedTab.Value = Box.New(tab);
+
+    [ComputeMethod]
+    public virtual async Task<ApiArray<CoachLanguageInfo>> ListOwnLanguages(CancellationToken cancellationToken)
+        => await Hub.Coach.ListOwnLanguages(Session, cancellationToken).ConfigureAwait(false);
+
+    // The chip selection: the remembered language while it still has words, else the most spoken one;
+    // null when fewer than two languages have words, so callers ask for "all"
+    [ComputeMethod]
+    public virtual async Task<string?> GetSelectedLanguage(CancellationToken cancellationToken)
+    {
+        var languages = (await ListOwnLanguages(cancellationToken).ConfigureAwait(false))
+            .Where(l => l.Words30Days > 0)
+            .ToList();
+        if (languages.Count < 2)
+            return null;
+
+        var settings = await UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
+        var remembered = languages.FirstOrDefault(l => l.Iso == settings.SelectedLanguage);
+        return (remembered ?? languages.MaxBy(l => l.Words30Days))!.Iso;
+    }
+
+    public Task SelectLanguage(string iso)
+        => UserSettingsUI.UserCoachSettings().Update(x => x with { SelectedLanguage = iso });
+
     [ComputeMethod]
     public virtual async Task<bool> IsMarkingEnabled(CancellationToken cancellationToken)
     {
@@ -28,7 +68,7 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
             return false;
 
         var settings = await UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
-        return settings.IsCoachingEnabled;
+        return settings is { IsCoachingEnabled: true, AreMarksEnabled: true };
     }
 
     [ComputeMethod]

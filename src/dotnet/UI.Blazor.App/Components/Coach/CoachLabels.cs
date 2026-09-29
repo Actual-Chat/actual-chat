@@ -1,4 +1,5 @@
 using ActualChat.Localization;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Users;
 using Microsoft.Extensions.Localization;
 
@@ -16,6 +17,28 @@ public sealed class CoachLabels(IStringLocalizer l)
             CoachWindow.Week => l.Coach_WindowWeek,
             CoachWindow.Month => l.Coach_WindowMonth,
             _ => l.Coach_WindowAllTime,
+        };
+
+    public string Tab(CoachTab tab)
+        => tab switch {
+            CoachTab.Recent => l.Coach_TabRecent,
+            CoachTab.Progress => l.Coach_TabProgress,
+            _ => l.Coach_TabSkills,
+        };
+
+    public string LanguageName(string iso)
+        => Languages.All.FirstOrDefault(x => x.IsoCode == iso)?.Title ?? iso;
+
+    public string FocusHint(CoachMetricKind kind, CoachChip? top)
+        => kind switch {
+            CoachMetricKind.Fillers when top is not null => l.Coach_FocusHintFillers_Format(top.Word, top.Count),
+            CoachMetricKind.WeakWords when top is not null => l.Coach_FocusHintWeakWords_Format(top.Word, top.Count),
+            CoachMetricKind.Pace => l.Coach_FocusHintPace,
+            CoachMetricKind.TurnTaking => l.Coach_FocusHintTurnTaking,
+            CoachMetricKind.Monologue => l.Coach_FocusHintMonologue,
+            CoachMetricKind.Vocabulary => l.Coach_FocusHintVocabulary,
+            CoachMetricKind.SentenceLength => l.Coach_FocusHintSentenceLength,
+            _ => "",
         };
 
     public string MetricTitle(CoachMetricKind kind)

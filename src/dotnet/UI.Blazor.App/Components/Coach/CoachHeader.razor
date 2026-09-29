@@ -1,0 +1,41 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, Avatar?>
+
+<div class="coach-header">
+    <div class="c-cover">
+        <ButtonRound Click="@OnClose" Class="right-panel-close-btn btn-sm close-btn">
+            <i class="icon-close text-2xl"></i>
+        </ButtonRound>
+    </div>
+    <div class="c-head">
+        <div class="c-avatar">
+            @if (State.Value is { } avatar) {
+                <AvatarCircle Avatar="@avatar" Size="@SquareSize.Size14"/>
+            }
+        </div>
+        <div class="c-buttons">
+            <ButtonRound Click="@SettingsClick" Class="btn-sm btn-tinted c-settings-btn">
+                <i class="icon-settings text-2xl"></i>
+            </ButtonRound>
+        </div>
+        <div class="c-bottom">
+            <span class="c-title">@L.Coach_Title</span>
+            <span class="status-badge"><i class="icon-lock"></i><span class="c-text">@L.Coach_OnlyYou</span></span>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback SettingsClick { get; set; }
+
+    protected override ComputedState<Avatar?>.Options GetStateOptions()
+        => new() { InitialValue = null, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Avatar?> ComputeState(CancellationToken cancellationToken) {
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        return account.IsGuest ? null : account.Avatar;
+    }
+
+    private void OnClose()
+        => PanelsUI.Right.SetIsVisible(false);
+}

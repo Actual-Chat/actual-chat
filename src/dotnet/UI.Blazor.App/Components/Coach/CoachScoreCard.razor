@@ -1,0 +1,52 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComponentBase<AppUIHub>
+@{
+    var s = Summary;
+    var labels = Labels;
+    var missing = Math.Max(0, MinScoreWords - s.Words);
+}
+
+<Card Class="coach-score-card">
+    <CardItem Click="@ScoreClick">
+        <Left><i class="text-2xl icon-star text-primary"></i></Left>
+        <Title>
+            @if (s.Score is { } score) {
+                @(Language is null ? L.Coach_Score_Format(score) : L.Coach_ScoreOf_Format(labels.LanguageName(Language), score))
+            } else {
+                @L.Coach_ScoreAfterWords(missing, missing)
+            }
+        </Title>
+        <Caption>
+            @if (s.ScoreDelta is { } delta) {
+                var text = delta > 0 ? "+" + delta : delta.ToString();
+                <span class="@(delta > 0 ? "text-success" : "text-danger")">@L.Coach_ScoreThisWeek_Format(text)</span>
+                <span> · </span>
+            }
+            @L.Coach_WhatMovesIt
+        </Caption>
+        <Right><i class="icon-chevron-right text-xl text-03"></i></Right>
+    </CardItem>
+    @if (Focus is { } focus) {
+        <CardItem Click="@FocusClick">
+            <Left><i class="text-2xl icon-ai-stars text-primary"></i></Left>
+            <Title>@L.Coach_WorkingOn_Format(labels.MetricTitle(focus).ToLowerInvariant())</Title>
+            <Caption>@labels.FocusHint(focus, s.Metrics.FirstOrDefault(m => m.Kind == focus)?.Chips.FirstOrDefault())</Caption>
+            <Right><i class="icon-chevron-right text-xl text-03"></i></Right>
+        </CardItem>
+    }
+</Card>
+
+@code {
+    // The server's CoachScoringSettings.MinScoreWords; the client has no access to it, so the
+    // copy shows the default and the server decides whether a score exists
+    private const int MinScoreWords = 200;
+
+    [Parameter, EditorRequired] public CoachSummary Summary { get; set; } = CoachSummary.None;
+    [Parameter] public CoachMetricKind? Focus { get; set; }
+    [Parameter] public string? Language { get; set; }
+    [Parameter] public EventCallback ScoreClick { get; set; }
+    [Parameter] public EventCallback FocusClick { get; set; }
+
+    private CoachLabels Labels => field ??= new CoachLabels(L);
+}

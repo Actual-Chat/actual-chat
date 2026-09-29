@@ -217,53 +217,31 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
     }
 
     [Fact(Timeout = 60_000)]
-    public async Task CoachPanelShouldShowNoDataThenTheDaysNumbers()
+    public async Task PanelShouldShowTheNewUserStateThenTabsAfterTheFirstConversation()
     {
         // arrange
-        var appHost = await NewCoachHost("coach-ui-panel");
+        var appHost = await NewCoachHost("coach-ui-shell");
         await using var _1 = appHost;
         await using var tester = appHost.NewBlazorTester(Out);
         await tester.SignInAsUniqueBob();
         tester.JSInterop.Mode = JSRuntimeMode.Loose;
         var (chatId, _) = await tester.CreateChat(true);
         var hub = tester.ScopedAppServices.AppUIHub();
+        await OptIn(tester);
 
         // act
         var cut = tester.Render<CoachPanel>();
         InitializeHub(tester, hub, cut.Instance);
-
-        // assert
-        cut.WaitForAssertion(() => cut.FindAll(".coach-metric-row").Count.Should().Be(13));
-        cut.Find(".coach-score-card").TextContent.Should().Contain("Speak at least",
-            "no score below the word floor");
-
-        // act - one voice message lands in Today
+        cut.WaitForAssertion(() => cut.Find(".coach-empty").TextContent.Should().Contain("Your speech, read back to you"));
         await PostVoice(tester, chatId, Text);
-        await TestWait.When(async ct => (await hub.Coach.GetOwnSummary(tester.Session, CoachWindow.Today, null, ct))
-            .Entries.Should().Be(1), TimeSpan.FromSeconds(30));
 
         // assert
-        cut.WaitForAssertion(() => cut.Find(".coach-metric-row[data-metric=Pace]").TextContent
-            .Should().Contain("wpm"), TimeSpan.FromSeconds(10));
-        cut.WaitForAssertion(() => cut.Find(".coach-metric-row[data-metric=Fillers] .c-title").TextContent
-            .Should().Contain("1"), TimeSpan.FromSeconds(10));
-        cut.FindAll(".coach-metric-row[data-metric=Fillers] .coach-chip").Should().BeEmpty("chips show on expand");
-        await cut.InvokeAsync(() => cut.Find(".coach-metric-row[data-metric=Fillers] .c-head").Click());
-        cut.WaitForAssertion(() => cut.Find(".coach-metric-row[data-metric=Fillers] .coach-chip").TextContent
-            .Should().Contain("um"));
-        cut.Find(".coach-panel .coach-trends").Should().NotBeNull("Trends is a section of the panel, not a tab");
-
-        // act - the greyed-out tips row does nothing while coaching is off; the Coaching toggle writes the setting
-        await cut.InvokeAsync(() => cut.Find(".coach-settings-tips").Click());
-        await cut.InvokeAsync(() => cut.Find(".coach-settings-coaching input").Change(true));
-
-        // assert
-        var settings = await TestWait.When(async ct => {
-            var x = await hub.UserSettingsUI.UserCoachSettings().Get(ct);
-            x.IsCoachingEnabled.Should().BeTrue();
-            return x;
-        });
-        settings.AreLiveTipsEnabled.Should().BeTrue("a disabled toggle's row must not flip the setting");
+        cut.WaitForAssertion(() => {
+            cut.FindAll(".coach-tabs .btn-tab").Select(t => t.TextContent.Trim()).Should().Equal("Recent", "Progress", "Skills");
+            cut.Find(".coach-score-card").TextContent.Should().Contain("Score after");
+            cut.Find(".coach-header .status-badge").TextContent.Should().Contain("Only you");
+        }, TimeSpan.FromSeconds(30));
+        cut.FindAll(".coach-language-chips").Should().BeEmpty("one language spoken");
     }
 
     [Fact(Timeout = 60_000)]

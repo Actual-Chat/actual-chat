@@ -1,0 +1,11 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComponentBase<AppUIHub>
+
+<div class="coach-skills"></div>
+
+@code {
+    [Parameter] public string? Language { get; set; }
+    [Parameter] public CoachSummary Summary { get; set; } = CoachSummary.None;
+    [Parameter] public CoachMetricKind? Focus { get; set; }
+}
