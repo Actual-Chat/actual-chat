@@ -2033,8 +2033,6 @@
   "Coach_Settings": "教练设置",
   "Coach_CoachingCaption2": "为你的语音消息提供提示、标记和即时分析。关闭不会删除任何内容。",
   "Coach_Where": "范围",
-  "Coach_Everywhere": "所有地方",
-  "Coach_EverywhereCaption": "你关闭的聊天和空间除外",
   "Coach_SkipPeerChats": "跳过一对一聊天",
   "Coach_SkipPeerChatsCaption": "与一个人的私人对话不会被分析",
   "Coach_SwitchedOff": "已关闭",
@@ -2078,5 +2076,7 @@
   "Coach_TalkTime": "发言时间",
   "Coach_TalkOthers": "其他人",
   "Coach_CoachInPlace": "在此空间中辅导我",
-  "Coach_OffByPlace": "已关闭，该空间已关闭"
+  "Coach_OffByPlace": "已关闭，该空间已关闭",
+  "Coach_Here": "此处",
+  "Coach_WhereHint": "除你关闭的位置外，教练在所有地方倾听。"
 }

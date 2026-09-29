@@ -2033,8 +2033,6 @@
   "Coach_Settings": "Налаштування коуча",
   "Coach_CoachingCaption2": "Підказки, позначки та миттєвий аналіз ваших голосових повідомлень. Вимкнення нічого не видаляє.",
   "Coach_Where": "Де",
-  "Coach_Everywhere": "Скрізь",
-  "Coach_EverywhereCaption": "Крім чатів і просторів, які ви вимкнете",
   "Coach_SkipPeerChats": "Пропускати особисті чати",
   "Coach_SkipPeerChatsCaption": "Особисті розмови з однією людиною не зачіпаються",
   "Coach_SwitchedOff": "Вимкнено",
@@ -2078,5 +2076,7 @@
   "Coach_TalkTime": "Час мовлення",
   "Coach_TalkOthers": "Інші",
   "Coach_CoachInPlace": "Тренер у цьому місці",
-  "Coach_OffByPlace": "Вимк., місце вимкнено"
+  "Coach_OffByPlace": "Вимк., місце вимкнено",
+  "Coach_Here": "Тут",
+  "Coach_WhereHint": "Тренер слухає всюди, крім того, що ви вимкнете."
 }

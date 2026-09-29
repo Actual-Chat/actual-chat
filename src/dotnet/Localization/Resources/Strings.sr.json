@@ -2033,8 +2033,6 @@
   "Coach_Settings": "Поставке тренера",
   "Coach_CoachingCaption2": "Савјети, ознаке и тренутна анализа ваших гласовних порука. Искључивање ништа не брише.",
   "Coach_Where": "Где",
-  "Coach_Everywhere": "Свугде",
-  "Coach_EverywhereCaption": "Осим четова и места које искључите",
   "Coach_SkipPeerChats": "Прескочи разговоре један на један",
   "Coach_SkipPeerChatsCaption": "Приватни разговори с једном особом се не дирају",
   "Coach_SwitchedOff": "Искључено",
@@ -2078,5 +2076,7 @@
   "Coach_TalkTime": "Вријеме говора",
   "Coach_TalkOthers": "Остали",
   "Coach_CoachInPlace": "Тренер у овом месту",
-  "Coach_OffByPlace": "Искључено, место је искључено"
+  "Coach_OffByPlace": "Искључено, место је искључено",
+  "Coach_Here": "Овде",
+  "Coach_WhereHint": "Тренер слуша свуда осим тамо где га искључите."
 }

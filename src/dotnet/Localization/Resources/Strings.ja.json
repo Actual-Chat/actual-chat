@@ -2033,8 +2033,6 @@
   "Coach_Settings": "コーチの設定",
   "Coach_CoachingCaption2": "自分の音声メッセージに、ヒントやマーク、すぐに分かる分析を表示します。オフにしても何も削除されません。",
   "Coach_Where": "対象",
-  "Coach_Everywhere": "すべて",
-  "Coach_EverywhereCaption": "オフにしたチャットとスペース以外",
   "Coach_SkipPeerChats": "1 対 1 のチャットを除外",
   "Coach_SkipPeerChatsCaption": "1 人との個人的な会話は対象外です",
   "Coach_SwitchedOff": "オフ",
@@ -2078,5 +2076,7 @@
   "Coach_TalkTime": "発話時間",
   "Coach_TalkOthers": "ほかの人",
   "Coach_CoachInPlace": "このプレイスでコーチする",
-  "Coach_OffByPlace": "オフ（プレイスがオフです）"
+  "Coach_OffByPlace": "オフ（プレイスがオフです）",
+  "Coach_Here": "ここ",
+  "Coach_WhereHint": "オフにした場所を除き、どこでもコーチが聞きます。"
 }

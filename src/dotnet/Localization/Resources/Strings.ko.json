@@ -2033,8 +2033,6 @@
   "Coach_Settings": "코치 설정",
   "Coach_CoachingCaption2": "내 음성 메시지에 팁, 표시, 즉시 분석을 보여 줘요. 꺼도 삭제되는 것은 없어요.",
   "Coach_Where": "적용 범위",
-  "Coach_Everywhere": "모든 곳",
-  "Coach_EverywhereCaption": "끈 채팅과 플레이스 제외",
   "Coach_SkipPeerChats": "1:1 채팅 제외",
   "Coach_SkipPeerChatsCaption": "한 사람과의 비공개 대화는 건드리지 않아요",
   "Coach_SwitchedOff": "꺼짐",
@@ -2078,5 +2076,7 @@
   "Coach_TalkTime": "발언 시간",
   "Coach_TalkOthers": "다른 사람",
   "Coach_CoachInPlace": "이 플레이스에서 코칭",
-  "Coach_OffByPlace": "꺼짐, 플레이스가 꺼져 있음"
+  "Coach_OffByPlace": "꺼짐, 플레이스가 꺼져 있음",
+  "Coach_Here": "여기",
+  "Coach_WhereHint": "끈 곳을 제외하고 어디서나 코치가 듣습니다."
 }

@@ -2139,8 +2139,6 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_Settings => l["Coach_Settings"].Value;
         public string Coach_CoachingCaption2 => l["Coach_CoachingCaption2"].Value;
         public string Coach_Where => l["Coach_Where"].Value;
-        public string Coach_Everywhere => l["Coach_Everywhere"].Value;
-        public string Coach_EverywhereCaption => l["Coach_EverywhereCaption"].Value;
         public string Coach_SkipPeerChats => l["Coach_SkipPeerChats"].Value;
         public string Coach_SkipPeerChatsCaption => l["Coach_SkipPeerChatsCaption"].Value;
         public string Coach_SwitchedOff => l["Coach_SwitchedOff"].Value;
@@ -2187,6 +2185,8 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_TalkOthers => l["Coach_TalkOthers"].Value;
         public string Coach_CoachInPlace => l["Coach_CoachInPlace"].Value;
         public string Coach_OffByPlace => l["Coach_OffByPlace"].Value;
+        public string Coach_Here => l["Coach_Here"].Value;
+        public string Coach_WhereHint => l["Coach_WhereHint"].Value;
 
     }
 }

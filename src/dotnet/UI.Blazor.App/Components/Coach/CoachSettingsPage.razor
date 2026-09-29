@@ -17,12 +17,6 @@
         <span class="c-title text-03">@L.Coach_Settings</span>
     </div>
 
-    @if (ChatId is not null) {
-        @if (ChatId != ChatId.RootChatId) {
-            <CoachChatToggleCard ChatId="@ChatId" IsPlace="true"/>
-        }
-        <CoachChatToggleCard ChatId="@ChatId"/>
-    }
     <Tile Class="c-coaching">
         <TileItem Click="@(() => Update(x => x with { IsCoachingEnabled = !x.IsCoachingEnabled }))">
             <Icon><i class="icon-ai-stars text-2xl"></i></Icon>
@@ -35,25 +29,34 @@
         </TileItem>
     </Tile>
 
-    <TileTopic Topic="@L.Coach_Where"/>
-    <Tile Class="c-where">
-        <TileItem IsHoverable="false" Role="">
-            <Icon><i class="icon-message-square text-2xl"></i></Icon>
-            <Content>@L.Coach_Everywhere</Content>
-            <Caption>@L.Coach_EverywhereCaption</Caption>
-        </TileItem>
-        <TileItem Class="c-skip-peers" Click="@(() => Update(x => x with { SkipPeerChats = !x.SkipPeerChats }))">
-            <Icon><i class="icon-person text-2xl"></i></Icon>
-            <Content>@L.Coach_SkipPeerChats</Content>
-            <Caption>@L.Coach_SkipPeerChatsCaption</Caption>
-            <Right>
-                <Toggle IsChecked="@s.SkipPeerChats"
-                        IsCheckedChanged="@(_ => Update(x => x with { SkipPeerChats = !x.SkipPeerChats }))"/>
-            </Right>
-        </TileItem>
+    @if (s.IsCoachingEnabled) {
+        @if (ChatId is not null) {
+            <TileTopic Topic="@L.Coach_Here"/>
+            <Tile Class="c-here">
+                @if (ChatId != ChatId.RootChatId) {
+                    <CoachChatToggleCard ChatId="@ChatId" IsPlace="true"/>
+                }
+                <CoachChatToggleCard ChatId="@ChatId"/>
+            </Tile>
+        }
+
+        <TileTopic Topic="@L.Coach_Where"/>
+        <div class="c-hint">@L.Coach_WhereHint</div>
+        <Tile Class="c-where">
+            <TileItem Class="c-skip-peers" Click="@(() => Update(x => x with { SkipPeerChats = !x.SkipPeerChats }))">
+                <Icon><i class="icon-person text-2xl"></i></Icon>
+                <Content>@L.Coach_SkipPeerChats</Content>
+                <Caption>@L.Coach_SkipPeerChatsCaption</Caption>
+                <Right>
+                    <Toggle IsChecked="@s.SkipPeerChats"
+                            IsCheckedChanged="@(_ => Update(x => x with { SkipPeerChats = !x.SkipPeerChats }))"/>
+                </Right>
+            </TileItem>
+        </Tile>
+
         @if (m.SwitchedOff.Count > 0) {
-            <div class="c-switched-off">
-                <div class="c-topic">@L.Coach_SwitchedOff</div>
+            <TileTopic Topic="@L.Coach_SwitchedOff"/>
+            <Tile Class="c-switched-off">
                 @foreach (var item in m.SwitchedOff) {
                     <TileItem @key="@item.Id" IsHoverable="false" Role="">
                         <Icon><ChatIcon Chat="@item.Chat" HideTitle="@true"/></Icon>
@@ -61,84 +64,84 @@
                         <Right><a class="c-switch-on" @onclick="@(() => SwitchOn(item.Id))">@L.Coach_SwitchOn</a></Right>
                     </TileItem>
                 }
-            </div>
+            </Tile>
+            <div class="c-hint">@L.Coach_SwitchOffHint</div>
         }
-    </Tile>
-    <div class="c-hint">@L.Coach_SwitchOffHint</div>
 
-    <div class="c-topic-row">
-        <TileTopic Topic="@L.Coach_Languages"/>
-        <a class="c-languages-manage" @onclick="@OnManageLanguages">@L.Coach_Manage</a>
-    </div>
-    <Tile Class="c-languages">
-        <div class="form form-y form-block">
-            @foreach (var language in m.Languages) {
-                <section @key="@language.Iso" class="form-section c-language">
+        <div class="c-topic-row">
+            <TileTopic Topic="@L.Coach_Languages"/>
+            <a class="c-languages-manage" @onclick="@OnManageLanguages">@L.Coach_Manage</a>
+        </div>
+        <Tile Class="c-languages">
+            <div class="form form-y form-block">
+                @foreach (var language in m.Languages) {
+                    <section @key="@language.Iso" class="form-section c-language">
+                        <div class="form-section-content label-inside-input">
+                            <div class="c-left">
+                                <div class="form-section-label">
+                                    <label class="internal-label">
+                                        @labels.LanguageName(language.Iso) · @L.Coach_WordsIn30Days(language.Words30Days, language.Words30Days)
+                                    </label>
+                                </div>
+                                <select class="c-level" value="@language.Level" @onchange="@(e => OnLevelChanged(language.Iso, e))">
+                                    @foreach (var level in Levels) {
+                                        <option value="@level" selected="@(level == language.Level)">@labels.Level(level)</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </section>
+                }
+            </div>
+        </Tile>
+        <div class="c-hint">@L.Coach_LanguagesCaption</div>
+
+        <TileTopic Topic="@L.Coach_HowYouHear"/>
+        <Tile Class="c-hear">
+            <TileItem Click="@(() => Update(x => x with { AreMarksDisabled = !x.AreMarksDisabled }))">
+                <Icon><i class="icon-edit text-2xl"></i></Icon>
+                <Content>@L.Coach_Marks</Content>
+                <Caption>@L.Coach_MarksCaption</Caption>
+                <Right>
+                    <Toggle IsChecked="@(!s.AreMarksDisabled)"
+                            IsCheckedChanged="@(_ => Update(x => x with { AreMarksDisabled = !x.AreMarksDisabled }))"/>
+                </Right>
+            </TileItem>
+            <TileItem Class="c-live-tips" Click="@(() => Update(x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled }))">
+                <Icon><i class="icon-star text-2xl"></i></Icon>
+                <Content>@L.Coach_LiveTips</Content>
+                <Caption>@L.Coach_LiveTipsCaption</Caption>
+                <Right>
+                    <Toggle IsChecked="@s.AreLiveTipsEnabled"
+                            IsCheckedChanged="@(_ => Update(x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled }))"/>
+                </Right>
+            </TileItem>
+            <div class="form form-y form-block c-interval-block">
+                <section class="form-section">
                     <div class="form-section-content label-inside-input">
                         <div class="c-left">
-                            <div class="form-section-label">
-                                <label class="internal-label">
-                                    @labels.LanguageName(language.Iso) · @L.Coach_WordsIn30Days(language.Words30Days, language.Words30Days)
-                                </label>
-                            </div>
-                            <select class="c-level" value="@language.Level" @onchange="@(e => OnLevelChanged(language.Iso, e))">
-                                @foreach (var level in Levels) {
-                                    <option value="@level" selected="@(level == language.Level)">@labels.Level(level)</option>
+                            <div class="form-section-label"><label class="internal-label">@L.Coach_AtMost</label></div>
+                            <select class="c-interval" value="@minutes" @onchange="@OnMinutesChanged">
+                                <option value="0" selected="@(minutes == 0)">@L.Coach_OncePerConversation</option>
+                                @foreach (var item in Intervals) {
+                                    <option value="@item" selected="@(item == minutes)">@L.Coach_TipIntervalMinutes(item, item)</option>
                                 }
                             </select>
                         </div>
                     </div>
                 </section>
-            }
-        </div>
-    </Tile>
-    <div class="c-hint">@L.Coach_LanguagesCaption</div>
-
-    <TileTopic Topic="@L.Coach_HowYouHear"/>
-    <Tile Class="c-hear">
-        <TileItem Click="@(() => Update(x => x with { AreMarksDisabled = !x.AreMarksDisabled }))">
-            <Icon><i class="icon-edit text-2xl"></i></Icon>
-            <Content>@L.Coach_Marks</Content>
-            <Caption>@L.Coach_MarksCaption</Caption>
-            <Right>
-                <Toggle IsChecked="@(!s.AreMarksDisabled)"
-                        IsCheckedChanged="@(_ => Update(x => x with { AreMarksDisabled = !x.AreMarksDisabled }))"/>
-            </Right>
-        </TileItem>
-        <TileItem Class="c-live-tips" Click="@(() => Update(x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled }))">
-            <Icon><i class="icon-star text-2xl"></i></Icon>
-            <Content>@L.Coach_LiveTips</Content>
-            <Caption>@L.Coach_LiveTipsCaption</Caption>
-            <Right>
-                <Toggle IsChecked="@s.AreLiveTipsEnabled"
-                        IsCheckedChanged="@(_ => Update(x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled }))"/>
-            </Right>
-        </TileItem>
-        <div class="form form-y form-block c-interval-block">
-            <section class="form-section">
-                <div class="form-section-content label-inside-input">
-                    <div class="c-left">
-                        <div class="form-section-label"><label class="internal-label">@L.Coach_AtMost</label></div>
-                        <select class="c-interval" value="@minutes" @onchange="@OnMinutesChanged">
-                            <option value="0" selected="@(minutes == 0)">@L.Coach_OncePerConversation</option>
-                            @foreach (var item in Intervals) {
-                                <option value="@item" selected="@(item == minutes)">@L.Coach_TipIntervalMinutes(item, item)</option>
-                            }
-                        </select>
-                    </div>
-                </div>
-            </section>
-        </div>
-        <TileItem Click="@(() => Update(x => x with { IsWeeklySummaryDisabled = !x.IsWeeklySummaryDisabled }))">
-            <Icon><i class="icon-email text-2xl"></i></Icon>
-            <Content>@L.Coach_WeeklySummary</Content>
-            <Caption>@L.Coach_WeeklySummaryCaption</Caption>
-            <Right>
-                <Toggle IsChecked="@(!s.IsWeeklySummaryDisabled)"
-                        IsCheckedChanged="@(_ => Update(x => x with { IsWeeklySummaryDisabled = !x.IsWeeklySummaryDisabled }))"/>
-            </Right>
-        </TileItem>
-    </Tile>
+            </div>
+            <TileItem Click="@(() => Update(x => x with { IsWeeklySummaryDisabled = !x.IsWeeklySummaryDisabled }))">
+                <Icon><i class="icon-email text-2xl"></i></Icon>
+                <Content>@L.Coach_WeeklySummary</Content>
+                <Caption>@L.Coach_WeeklySummaryCaption</Caption>
+                <Right>
+                    <Toggle IsChecked="@(!s.IsWeeklySummaryDisabled)"
+                            IsCheckedChanged="@(_ => Update(x => x with { IsWeeklySummaryDisabled = !x.IsWeeklySummaryDisabled }))"/>
+                </Right>
+            </TileItem>
+        </Tile>
+    }
 
     <TileTopic Topic="@L.Coach_YourData"/>
     <Tile Class="c-data">

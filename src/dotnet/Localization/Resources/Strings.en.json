@@ -2387,8 +2387,6 @@
   "Coach_Settings": "Coach settings",
   "Coach_CoachingCaption2": "Tips, marks and instant analysis of your voice messages. Off deletes nothing.",
   "Coach_Where": "Where",
-  "Coach_Everywhere": "Everywhere",
-  "Coach_EverywhereCaption": "Except the chats and places you switch off",
   "Coach_SkipPeerChats": "Skip one-to-one chats",
   "Coach_SkipPeerChatsCaption": "Private conversations with one person are left alone",
   "Coach_SwitchedOff": "Switched off",
@@ -2432,5 +2430,7 @@
   "Coach_TalkTime": "Talk time",
   "Coach_TalkOthers": "Others",
   "Coach_CoachInPlace": "Coach me in this place",
-  "Coach_OffByPlace": "Off, the place is off"
+  "Coach_OffByPlace": "Off, the place is off",
+  "Coach_Here": "Here",
+  "Coach_WhereHint": "Coaching listens everywhere except what you switch off."
 }

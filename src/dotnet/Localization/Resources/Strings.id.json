@@ -2033,8 +2033,6 @@
   "Coach_Settings": "Pengaturan pelatih",
   "Coach_CoachingCaption2": "Tips, tanda, dan analisis instan pesan suara Anda. Dimatikan tidak menghapus apa pun.",
   "Coach_Where": "Di mana",
-  "Coach_Everywhere": "Di mana saja",
-  "Coach_EverywhereCaption": "Kecuali obrolan dan tempat yang Anda matikan",
   "Coach_SkipPeerChats": "Lewati obrolan pribadi",
   "Coach_SkipPeerChatsCaption": "Percakapan pribadi dengan satu orang tidak dianalisis",
   "Coach_SwitchedOff": "Dimatikan",
@@ -2078,5 +2076,7 @@
   "Coach_TalkTime": "Waktu bicara",
   "Coach_TalkOthers": "Lainnya",
   "Coach_CoachInPlace": "Coach di tempat ini",
-  "Coach_OffByPlace": "Nonaktif, tempat ini nonaktif"
+  "Coach_OffByPlace": "Nonaktif, tempat ini nonaktif",
+  "Coach_Here": "Di sini",
+  "Coach_WhereHint": "Coach mendengarkan di mana saja kecuali yang Anda matikan."
 }

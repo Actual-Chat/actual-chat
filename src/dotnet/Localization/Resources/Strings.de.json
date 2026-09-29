@@ -2034,8 +2034,6 @@
   "Coach_Settings": "Coach-Einstellungen",
   "Coach_CoachingCaption2": "Tipps, Markierungen und sofortige Analyse deiner Sprachnachrichten. „Aus“ löscht nichts.",
   "Coach_Where": "Wo",
-  "Coach_Everywhere": "Überall",
-  "Coach_EverywhereCaption": "Außer in den Chats und Orten, die du ausschaltest",
   "Coach_SkipPeerChats": "Einzelchats überspringen",
   "Coach_SkipPeerChatsCaption": "Private Gespräche mit einer Person bleiben unberührt",
   "Coach_SwitchedOff": "Ausgeschaltet",
@@ -2079,5 +2077,7 @@
   "Coach_TalkTime": "Sprechzeit",
   "Coach_TalkOthers": "Andere",
   "Coach_CoachInPlace": "Coach in diesem Place",
-  "Coach_OffByPlace": "Aus, der Place ist aus"
+  "Coach_OffByPlace": "Aus, der Place ist aus",
+  "Coach_Here": "Hier",
+  "Coach_WhereHint": "Der Coach hört überall zu, außer wo du ihn ausschaltest."
 }

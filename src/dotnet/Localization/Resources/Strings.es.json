@@ -2033,8 +2033,6 @@
   "Coach_Settings": "Ajustes del entrenador",
   "Coach_CoachingCaption2": "Consejos, marcas y análisis instantáneo de tus mensajes de voz. Desactivar no borra nada.",
   "Coach_Where": "Dónde",
-  "Coach_Everywhere": "En todas partes",
-  "Coach_EverywhereCaption": "Salvo los chats y lugares que desactives",
   "Coach_SkipPeerChats": "Omitir chats individuales",
   "Coach_SkipPeerChatsCaption": "Las conversaciones privadas con una sola persona se dejan en paz",
   "Coach_SwitchedOff": "Desactivado",
@@ -2078,5 +2076,7 @@
   "Coach_TalkTime": "Tiempo de conversación",
   "Coach_TalkOthers": "Otros",
   "Coach_CoachInPlace": "Coach en este lugar",
-  "Coach_OffByPlace": "Desactivado, el lugar está desactivado"
+  "Coach_OffByPlace": "Desactivado, el lugar está desactivado",
+  "Coach_Here": "Aquí",
+  "Coach_WhereHint": "El coach escucha en todas partes, salvo donde lo desactives."
 }

@@ -2040,8 +2040,6 @@
   "Coach_Settings": "Koç ayarları",
   "Coach_CoachingCaption2": "Sesli mesajlarınız için ipuçları, işaretler ve anında analiz. Kapatmak hiçbir şeyi silmez.",
   "Coach_Where": "Nerede",
-  "Coach_Everywhere": "Her yerde",
-  "Coach_EverywhereCaption": "Kapattığınız sohbetler ve mekanlar hariç",
   "Coach_SkipPeerChats": "Birebir sohbetleri atla",
   "Coach_SkipPeerChatsCaption": "Tek kişiyle özel sohbetlere dokunulmaz",
   "Coach_SwitchedOff": "Kapalı",
@@ -2085,5 +2083,7 @@
   "Coach_TalkTime": "Konuşma süresi",
   "Coach_TalkOthers": "Diğerleri",
   "Coach_CoachInPlace": "Bu yerde koçluk",
-  "Coach_OffByPlace": "Kapalı, yer kapalı"
+  "Coach_OffByPlace": "Kapalı, yer kapalı",
+  "Coach_Here": "Burada",
+  "Coach_WhereHint": "Koç, kapattığınız yerler dışında her yerde dinler."
 }

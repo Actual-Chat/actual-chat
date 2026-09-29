@@ -2033,8 +2033,6 @@
   "Coach_Settings": "Настройки на коуча",
   "Coach_CoachingCaption2": "Съвети, отметки и незабавен анализ на гласовите ви съобщения. Изключването не изтрива нищо.",
   "Coach_Where": "Къде",
-  "Coach_Everywhere": "Навсякъде",
-  "Coach_EverywhereCaption": "Освен чатовете и местата, които изключите",
   "Coach_SkipPeerChats": "Пропускане на лични чатове",
   "Coach_SkipPeerChatsCaption": "Личните разговори с един човек се пропускат",
   "Coach_SwitchedOff": "Изключено",
@@ -2078,5 +2076,7 @@
   "Coach_TalkTime": "Време за говорене",
   "Coach_TalkOthers": "Другите",
   "Coach_CoachInPlace": "Треньор в това място",
-  "Coach_OffByPlace": "Изкл., мястото е изключено"
+  "Coach_OffByPlace": "Изкл., мястото е изключено",
+  "Coach_Here": "Тук",
+  "Coach_WhereHint": "Треньорът следи навсякъде, освен там, където го изключите."
 }

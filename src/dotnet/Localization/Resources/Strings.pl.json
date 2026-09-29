@@ -2033,8 +2033,6 @@
   "Coach_Settings": "Ustawienia trenera",
   "Coach_CoachingCaption2": "Wskazówki, oznaczenia i natychmiastowa analiza Twoich wiadomości głosowych. Wyłączenie niczego nie usuwa.",
   "Coach_Where": "Gdzie",
-  "Coach_Everywhere": "Wszędzie",
-  "Coach_EverywhereCaption": "Poza czatami i miejscami, które wyłączysz",
   "Coach_SkipPeerChats": "Pomijaj czaty jeden na jeden",
   "Coach_SkipPeerChatsCaption": "Prywatne rozmowy z jedną osobą zostają nietknięte",
   "Coach_SwitchedOff": "Wyłączone",
@@ -2078,5 +2076,7 @@
   "Coach_TalkTime": "Czas mówienia",
   "Coach_TalkOthers": "Pozostali",
   "Coach_CoachInPlace": "Trener w tym miejscu",
-  "Coach_OffByPlace": "Wyłączone, miejsce jest wyłączone"
+  "Coach_OffByPlace": "Wyłączone, miejsce jest wyłączone",
+  "Coach_Here": "Tutaj",
+  "Coach_WhereHint": "Trener słucha wszędzie, oprócz miejsc, które wyłączysz."
 }

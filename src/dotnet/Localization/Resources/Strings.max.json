@@ -2387,8 +2387,6 @@
   "Coach_Settings": "Configurações do treinador",
   "Coach_CoachingCaption2": "自分の音声メッセージに、ヒントやマーク、すぐに分かる分析を表示します。オフにしても何も削除されません。",
   "Coach_Where": "적용 범위",
-  "Coach_Everywhere": "En todas partes",
-  "Coach_EverywhereCaption": "Кроме чатов и пространств, которые вы отключите",
   "Coach_SkipPeerChats": "Ignorer les discussions en tête-à-tête",
   "Coach_SkipPeerChatsCaption": "Les conversations privées avec une seule personne sont laissées de côté",
   "Coach_SwitchedOff": "Ausgeschaltet",
@@ -2432,5 +2430,7 @@
   "Coach_TalkTime": "Tiempo de conversación",
   "Coach_TalkOthers": "Những người khác",
   "Coach_CoachInPlace": "このプレイスでコーチする",
-  "Coach_OffByPlace": "Desactivado, el lugar está desactivado"
+  "Coach_OffByPlace": "Desactivado, el lugar está desactivado",
+  "Coach_Here": "Burada",
+  "Coach_WhereHint": "Треньорът следи навсякъде, освен там, където го изключите."
 }

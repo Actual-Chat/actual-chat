@@ -640,16 +640,16 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         // act
         var cut = tester.Render<CoachChatToggleCard>(p => p.Add(x => x.ChatId, chatId));
         InitializeHub(tester, hub, cut.Instance);
-        cut.WaitForAssertion(() => cut.Find(".c-coach-toggle .card-item").TextContent.Should().Contain("On"),
+        cut.WaitForAssertion(() => cut.Find(".c-coach-toggle").TextContent.Should().Contain("On"),
             TimeSpan.FromSeconds(30));
-        await cut.InvokeAsync(() => cut.Find(".c-coach-toggle .card-item").Click());
+        await cut.InvokeAsync(() => cut.Find(".c-coach-toggle").Click());
 
         // assert
         await TestWait.When(async ct =>
             (await kvas.ChatUserSettings(chatId).Get(ct)).IsCoachingEnabled.Should().BeFalse());
-        cut.WaitForAssertion(() => cut.Find(".c-coach-toggle .card-item").TextContent.Should().Contain("Off"),
+        cut.WaitForAssertion(() => cut.Find(".c-coach-toggle").TextContent.Should().Contain("Off"),
             TimeSpan.FromSeconds(10));
-        await cut.InvokeAsync(() => cut.Find(".c-coach-toggle .card-item").Click());
+        await cut.InvokeAsync(() => cut.Find(".c-coach-toggle").Click());
         await TestWait.When(async ct =>
             (await kvas.ChatUserSettings(chatId).Get(ct)).IsCoachingEnabled.Should().BeTrue());
     }
@@ -671,16 +671,16 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         // act
         var placeCard = tester.Render<CoachChatToggleCard>(p => p.Add(x => x.ChatId, chatId).Add(x => x.IsPlace, true));
         InitializeHub(tester, hub, placeCard.Instance);
-        placeCard.WaitForAssertion(() => placeCard.Find(".c-coach-toggle .card-item").TextContent.Should().Contain("test place"),
+        placeCard.WaitForAssertion(() => placeCard.Find(".c-coach-toggle").TextContent.Should().Contain("test place"),
             TimeSpan.FromSeconds(30));
-        await placeCard.InvokeAsync(() => placeCard.Find(".c-coach-toggle .card-item").Click());
+        await placeCard.InvokeAsync(() => placeCard.Find(".c-coach-toggle").Click());
 
         // assert
         await TestWait.When(async ct =>
             (await kvas.ChatUserSettings(place.Id.RootChatId).Get(ct)).IsCoachingEnabled.Should().BeFalse());
         var chatCard = tester.Render<CoachChatToggleCard>(p => p.Add(x => x.ChatId, chatId));
         InitializeHub(tester, hub, chatCard.Instance);
-        chatCard.WaitForAssertion(() => chatCard.Find(".c-coach-toggle .card-item").TextContent
+        chatCard.WaitForAssertion(() => chatCard.Find(".c-coach-toggle").TextContent
             .Should().Contain("the place is off"), TimeSpan.FromSeconds(30));
     }
 

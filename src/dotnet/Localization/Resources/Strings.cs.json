@@ -2033,8 +2033,6 @@
   "Coach_Settings": "Nastavení kouče",
   "Coach_CoachingCaption2": "Tipy, značky a okamžitá analýza vašich hlasových zpráv. Vypnutí nic nemaže.",
   "Coach_Where": "Kde",
-  "Coach_Everywhere": "Všude",
-  "Coach_EverywhereCaption": "Kromě chatů a míst, která vypnete",
   "Coach_SkipPeerChats": "Přeskočit chaty jeden na jednoho",
   "Coach_SkipPeerChatsCaption": "Soukromé konverzace s jednou osobou se nechávají být",
   "Coach_SwitchedOff": "Vypnuto",
@@ -2078,5 +2076,7 @@
   "Coach_TalkTime": "Čas mluvení",
   "Coach_TalkOthers": "Ostatní",
   "Coach_CoachInPlace": "Trenér v tomto místě",
-  "Coach_OffByPlace": "Vypnuto, místo je vypnuté"
+  "Coach_OffByPlace": "Vypnuto, místo je vypnuté",
+  "Coach_Here": "Tady",
+  "Coach_WhereHint": "Trenér poslouchá všude, kromě míst, která vypnete."
 }

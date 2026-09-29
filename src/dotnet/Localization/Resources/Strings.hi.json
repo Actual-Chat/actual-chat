@@ -2033,8 +2033,6 @@
   "Coach_Settings": "कोच सेटिंग",
   "Coach_CoachingCaption2": "सुझाव, चिह्न और आपके वॉइस संदेशों का तुरंत विश्लेषण। बंद करने पर कुछ नहीं मिटता।",
   "Coach_Where": "कहाँ",
-  "Coach_Everywhere": "हर जगह",
-  "Coach_EverywhereCaption": "सिवाय उन चैट और जगहों के जिन्हें आप बंद करें",
   "Coach_SkipPeerChats": "आमने-सामने की चैट छोड़ें",
   "Coach_SkipPeerChatsCaption": "एक व्यक्ति के साथ निजी बातचीत को छोड़ दिया जाता है",
   "Coach_SwitchedOff": "बंद",
@@ -2078,5 +2076,7 @@
   "Coach_TalkTime": "बोलने का समय",
   "Coach_TalkOthers": "अन्य",
   "Coach_CoachInPlace": "इस प्लेस में कोच",
-  "Coach_OffByPlace": "बंद, प्लेस बंद है"
+  "Coach_OffByPlace": "बंद, प्लेस बंद है",
+  "Coach_Here": "यहाँ",
+  "Coach_WhereHint": "कोच हर जगह सुनता है, सिवाय उन जगहों के जहाँ आप उसे बंद करें।"
 }
