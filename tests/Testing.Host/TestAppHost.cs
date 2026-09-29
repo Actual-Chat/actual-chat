@@ -12,7 +12,7 @@ public class TestAppHost : AppHost
     private CpuTimestamp _lastHeartbeatAt;
     private TimeSpan _lastCpuTime;
     private TimeSpan _lastGCPauseDuration;
-    private (long Busy, long Total) _lastMachineCpuTicks;
+    private MachineStat _lastMachineStat;
 
     public TestAppHostOptions Options { get; }
     public long Id { get; }
@@ -31,7 +31,7 @@ public class TestAppHost : AppHost
         _lastHeartbeatAt = StartedAt;
         _lastCpuTime = Environment.CpuUsage.TotalTime;
         _lastGCPauseDuration = GC.GetTotalPauseDuration();
-        _lastMachineCpuTicks = ReadMachineCpuTicks();
+        _lastMachineStat = ReadMachineStat();
         _heartbeatTimer = new Timer(1000);
         _heartbeatTimer.Elapsed += (_, _) => WriteLine($"alive: {GetLoadInfo()}");
         _heartbeatTimer.Start();
@@ -78,48 +78,61 @@ public class TestAppHost : AppHost
             var now = CpuTimestamp.Now;
             var cpuTime = Environment.CpuUsage.TotalTime;
             var gcPauseDuration = GC.GetTotalPauseDuration();
-            var machineCpuTicks = ReadMachineCpuTicks();
+            var machineStat = ReadMachineStat();
             var interval = now - _lastHeartbeatAt;
             var cpuCoreCount = (cpuTime - _lastCpuTime).TotalSeconds / interval.TotalSeconds;
             var info = $"tick {interval.ToShortString()}, "
                 + $"cpu {cpuCoreCount:F1} of {Environment.ProcessorCount} cores, "
                 + $"pool {ThreadPool.ThreadCount} threads {ThreadPool.PendingWorkItemCount} queued, "
                 + $"gc pause +{(gcPauseDuration - _lastGCPauseDuration).ToShortString()}"
-                + FormatMachineLoad(_lastMachineCpuTicks, machineCpuTicks);
+                + FormatMachineLoad(_lastMachineStat, machineStat);
             _lastHeartbeatAt = now;
             _lastCpuTime = cpuTime;
             _lastGCPauseDuration = gcPauseDuration;
-            _lastMachineCpuTicks = machineCpuTicks;
+            _lastMachineStat = machineStat;
             return info;
         }
     }
 
     // Linux only, which is what CI runs on; elsewhere the machine figures are just left out
-    private static (long Busy, long Total) ReadMachineCpuTicks()
+    private static MachineStat ReadMachineStat()
     {
         if (!OperatingSystem.IsLinux())
             return default;
 
         try {
+            var lines = File.ReadAllLines("/proc/stat");
             // "cpu user nice system idle iowait irq softirq steal ..." - idle and iowait are the idle time
-            var ticks = File.ReadLines("/proc/stat").First()
+            var ticks = lines[0]
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries)
                 .Skip(1).Take(8).Select(long.Parse).ToArray();
             var total = ticks.Sum();
-            return (total - ticks[3] - ticks[4], total);
+            return new MachineStat(
+                total - ticks[3] - ticks[4], ticks[4], total,
+                ReadCounter(lines, "procs_running"), ReadCounter(lines, "procs_blocked"));
         }
         catch (IOException) {
             return default;
         }
+
+        static int ReadCounter(string[] lines, string name) {
+            var line = lines.FirstOrDefault(x => x.StartsWith(name + " "));
+            return line is null ? -1 : int.Parse(line.AsSpan(name.Length + 1));
+        }
     }
 
-    private static string FormatMachineLoad((long Busy, long Total) last, (long Busy, long Total) current)
+    private static string FormatMachineLoad(MachineStat last, MachineStat current)
     {
+        // loadavg alone can't tell a CPU queue from an I/O wait: it counts both, over a minute.
+        // The run/io-blocked thread counts are instant, iowait is the share of the last interval.
         if (current.Total <= last.Total)
             return "";
 
-        var busyPercent = 100.0 * (current.Busy - last.Busy) / (current.Total - last.Total);
-        return $", machine cpu {busyPercent:F0}%, loadavg {ReadLoadAverage()}";
+        var totalDelta = (double)(current.Total - last.Total);
+        var busyPercent = 100 * (current.Busy - last.Busy) / totalDelta;
+        var ioWaitPercent = 100 * (current.IoWait - last.IoWait) / totalDelta;
+        return $", machine cpu {busyPercent:F0}% iowait {ioWaitPercent:F0}%, "
+            + $"run {current.RunningCount} io-blocked {current.BlockedCount}, loadavg {ReadLoadAverage()}";
     }
 
     private static string ReadLoadAverage()
@@ -131,4 +144,13 @@ public class TestAppHost : AppHost
             return "?";
         }
     }
+
+    // Nested types
+
+    private readonly record struct MachineStat(
+        long Busy,
+        long IoWait,
+        long Total,
+        int RunningCount,
+        int BlockedCount);
 }
