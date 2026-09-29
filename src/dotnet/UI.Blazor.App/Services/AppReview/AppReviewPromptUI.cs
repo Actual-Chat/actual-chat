@@ -1,6 +1,7 @@
 using System.Diagnostics.Metrics;
 using ActualChat.Diagnostics;
 using ActualChat.UI.Blazor.App.Components;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -16,21 +17,25 @@ public class AppReviewPromptUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICom
 
     private AppReviewUI AppReviewUI => Hub.AppReviewUI;
     private IUsage Usage => Hub.Usage;
+    private AttentionUI AttentionUI => Hub.AttentionUI;
     private BackgroundStateTracker BackgroundStateTracker
         => field ??= Services.GetRequiredService<BackgroundStateTracker>();
 
     [ComputeMethod]
     public virtual async Task<PendingReviewPrompt?> GetShowablePrompt(CancellationToken cancellationToken)
     {
-        // Foreground and "no modal open" are device facts, so they stay here; the decision itself is the server's
+        // Foreground and "free to take attention" are device facts, so they stay here;
+        // the decision itself is the server's
         var pending = await Usage.GetPendingReviewPrompt(Session, cancellationToken).ConfigureAwait(false);
         if (pending is null)
             return null;
         if (await BackgroundStateTracker.IsBackground.Use(cancellationToken).ConfigureAwait(false))
             return null;
 
-        var activeModals = await ModalUI.ActiveModals.Use(cancellationToken).ConfigureAwait(false);
-        return activeModals.Count > 0 ? null : pending;
+        var isAvailable = await AttentionUI
+            .IsAvailableFor(AttentionKind.AppReview, cancellationToken)
+            .ConfigureAwait(false);
+        return isAvailable ? pending : null;
     }
 
     // Protected/internal methods

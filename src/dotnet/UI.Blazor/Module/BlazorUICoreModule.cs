@@ -98,6 +98,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
 
         // UI services
         services.AddScoped(c => new LoadingUI(c.UIHub()));
+        services.AddScoped(c => new AttentionUI(c.UIHub()));
         services.AddScoped(c => new ReconnectUI(c.UIHub()));
         if (!isServer)
             services.AddSingleton<RpcClientPeerReconnectDelayer>(c => new AppRpcClientPeerReconnectDelayer(c));

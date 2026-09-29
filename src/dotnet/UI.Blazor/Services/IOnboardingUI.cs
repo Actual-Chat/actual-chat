@@ -1,8 +1,10 @@
 namespace ActualChat.UI.Blazor.Services;
 
+// AttentionUI decides when onboarding runs; this is what it runs
 public interface IOnboardingUI
 {
-    Task<bool> TryShow();
+    Task<bool> ShouldBeShown(CancellationToken cancellationToken);
+    Task<ModalRef> Show();
 
     /// <summary>
     /// Resets onboarding state.

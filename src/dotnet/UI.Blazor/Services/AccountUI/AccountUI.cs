@@ -23,7 +23,6 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
 
     private IAccounts Accounts => Hub.Accounts;
 
-    private IOnboardingUI OnboardingUI => Hub.OnboardingUI;
     private INotificationUI NotificationUI => Hub.NotificationUI;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private ReloadUI ReloadUI => Hub.ReloadUI;
@@ -221,6 +220,9 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
                 return;
 
             IsShown = true;
+            // Signing in restarts the attention flow, and the modal closes before the redirect below lands -
+            // without this hold onboarding would open on the home page instead of the link the user came for
+            var hold = hub.AttentionUI.Hold(nameof(SignInRequest));
             try {
                 var modalRef = await hub.ModalUI.Show(new SignInModal.Model(title)).ConfigureAwait(true);
                 await modalRef.WhenClosed.ConfigureAwait(true);
@@ -228,13 +230,17 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
                     return;
 
                 if (redirectUrl != null && hub.History.LocalUrl.IsHome()) {
+                    // The hold moves to redirectUrl and lasts until the user leaves it.
                     // We must await this call to delay the ResetSignInRequest call,
                     // otherwise ProcessOwnAccountChange logic may trigger
                     // the default redirect on sign-in before this one happens.
-                    await hub.History.NavigateTo(redirectUrl, true).ConfigureAwait(true);
+                    await hub.AutoNavigationUI
+                        .NavigateTo(redirectUrl, AutoNavigationReason.AppLink, mustReplace: true)
+                        .ConfigureAwait(true);
                 }
             }
             finally {
+                hold.Dispose();
                 IsCompleted = true;
                 hub.AccountUI.TryResetSignInRequest(this);
             }

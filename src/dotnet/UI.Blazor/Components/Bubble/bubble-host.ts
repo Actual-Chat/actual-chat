@@ -32,13 +32,14 @@ export class BubbleHost {
     private _clearAutoUpdate?: () => void;
     private _suppressAll = false;
 
-    public static create(blazorRef: DotNet.DotNetObject, readBubbles: string[]): BubbleHost {
-        return new BubbleHost(blazorRef, readBubbles);
+    public static create(blazorRef: DotNet.DotNetObject, readBubbles: string[], isPaused: boolean): BubbleHost {
+        return new BubbleHost(blazorRef, readBubbles, isPaused);
     }
 
     constructor(
         private readonly blazorRef: DotNet.DotNetObject,
-        private readonly readBubbles: string[]) {
+        private readonly readBubbles: string[],
+        private _isPaused: boolean) {
         debugLog?.log('constructor');
 
         const domChanged$ = new Subject();
@@ -122,6 +123,29 @@ export class BubbleHost {
         bubblesToSkip.forEach(x => x.isRead = true);
 
         return bubblesToSkip.map(x => x.bubbleRef);
+    }
+
+    /** Pausing hides the shown bubble without reading it: it comes back once AttentionUI lets it. */
+    public setPaused(isPaused: boolean): void {
+        debugLog?.log(`setPaused:`, isPaused);
+
+        this._isPaused = isPaused;
+        if (!isPaused) {
+            this.updateBubbles();
+            this.showNextBubble();
+            return;
+        }
+
+        this.clearAutoUpdate();
+        this._bubbles.forEach(x => {
+            if (!x.isShown)
+                return;
+
+            x.isShown = false;
+            if (x.bubbleElement)
+                x.bubbleElement.style.display = 'none';
+            x.bubbleElement = undefined;
+        });
     }
 
     public readBubble(bubbleRef: string): void {
@@ -309,7 +333,7 @@ export class BubbleHost {
     private showNextBubble(): void {
         debugLog?.log(`showNextBubble`);
 
-        if (this._suppressAll)
+        if (this._suppressAll || this._isPaused)
             return;
 
         const notReadBubbles = this._bubbles.filter(x => !x.isRead);

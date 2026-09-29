@@ -6,11 +6,15 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class IncomingShareUI(AppUIHub hub)
 {
+    private static readonly TimeSpan ExpectedShareTimeout = TimeSpan.FromSeconds(15);
+    private AttentionHold? _expectedShareHold;
+
     private AppUIHub Hub { get; } = hub;
     private Session Session => Hub.Session;
     private IChats Chats => Hub.Chats;
     private ModalUI ModalUI => Hub.ModalUI;
-    private History History => Hub.History;
+    private AttentionUI AttentionUI => Hub.AttentionUI;
+    private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private ToastUI ToastUI => Hub.ToastUI;
     private SendingMessages SendingMessages => Hub.SendingMessages;
     private SentContentStorage SentContentStorage
@@ -20,12 +24,21 @@ public class IncomingShareUI(AppUIHub hub)
     private IStringLocalizer L => Hub.StringLocalizer;
     private ILogger Log { get; } = StaticLog.For<IncomingShareUI>();
 
+    // A share intent arrives before the Blazor scope exists, and ShareText / ShareFiles wait for the
+    // first render - so the platform side calls this first, and nothing unsolicited opens in between
+    public void ExpectShare()
+    {
+        var hold = AttentionUI.Hold(nameof(ExpectShare), maxDuration: ExpectedShareTimeout);
+        Interlocked.Exchange(ref _expectedShareHold, hold)?.Dispose();
+    }
+
     public void ShareText(string plainText, ChatId? targetChatId = null)
     {
         _ = ShareInternal();
         return;
 
         async ValueTask ShareInternal() {
+            using var _ = TakeShareHold();
             if (targetChatId != null) {
                 var targetChat = await Chats.Get(Session, targetChatId, Hub.StopToken).ConfigureAwait(true);
                 if (targetChat is { }) {
@@ -44,6 +57,7 @@ public class IncomingShareUI(AppUIHub hub)
         return;
 
         async ValueTask ShareInternal() {
+            using var _ = TakeShareHold();
             if (targetChatId != null) {
                 var targetChat = await Chats.Get(Session, targetChatId, Hub.StopToken).ConfigureAwait(true);
                 if (targetChat is { }) {
@@ -54,6 +68,15 @@ public class IncomingShareUI(AppUIHub hub)
 
             await ShowShareModal(new IncomingShareModal.Model(files)).ConfigureAwait(true);
         }
+    }
+
+    private AttentionHold TakeShareHold()
+    {
+        // Taken before the expected one is dropped, so there's no gap - and an expected hold that has already
+        // outlived its timeout can't stand in for it
+        var hold = AttentionUI.Hold(nameof(IncomingShareUI));
+        Interlocked.Exchange(ref _expectedShareHold, null)?.Dispose();
+        return hold;
     }
 
     private async Task ShowShareModal(IncomingShareModal.Model model)
@@ -77,7 +100,7 @@ public class IncomingShareUI(AppUIHub hub)
                 await SendingMessages.Send(SendMessageRequest.NewMessage(chatId, comment), cancellationToken).ConfigureAwait(true);
             await SendingMessages.Send(SendMessageRequest.NewMessage(chatId, text), cancellationToken).ConfigureAwait(true);
         }
-        await History.NavigateTo(Links.Chat(chatIds.First())).ConfigureAwait(true);
+        await AutoNavigationUI.NavigateTo(Links.Chat(chatIds.First()), AutoNavigationReason.Share).ConfigureAwait(true);
     }
 
     private async Task SendFiles(IReadOnlyCollection<ChatId> chatIds, AttachFileInfo[] files, string comment)
@@ -132,7 +155,7 @@ public class IncomingShareUI(AppUIHub hub)
     private async Task PrefillChatEditor(ChatId chatId, string text, AttachFileInfo[] files)
     {
         SentContentStorage.Push(chatId, files, text);
-        await History.NavigateTo(Links.Chat(chatId)).ConfigureAwait(true);
+        await AutoNavigationUI.NavigateTo(Links.Chat(chatId), AutoNavigationReason.Share).ConfigureAwait(true);
     }
 
     private async Task<ImmutableArray<Attachment>> CreateAttachmentList(IEnumerable<AttachFileInfo> fileInfos)
