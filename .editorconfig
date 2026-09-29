@@ -391,7 +391,6 @@ dotnet_diagnostic.ma0051.severity = none # MA0051: Method is too long
 dotnet_diagnostic.ma0026.severity = none # MA0026 TODO
 dotnet_diagnostic.vsthrd003.severity = none # VSTHRD003 Avoid awaiting or returning a Task representing work that was not started within your context as that can lead to deadlocks.
 dotnet_diagnostic.rz10012.severity = error # Found markup element with unexpected name
-dotnet_diagnostic.rs0030.severity = error # RS0030: The symbol is banned in this project (BannedSymbols.txt)
 dotnet_diagnostic.ma0016.severity = none # MA0016: Prefer return collection abstraction instead of implementation
 dotnet_diagnostic.RCS1079.severity = none # (duplicate of MA0025) RCS1079: Implement the functionality instead of throwing new NotImplementedException
 dotnet_diagnostic.MA0046.severity = none # Use EventHandler<T> to declare events
@@ -411,3 +410,8 @@ dotnet_diagnostic.MA0004.severity = none
 # Consider calling ConfigureAwait on the awaited task
 CA2007.report = DetectContext
 dotnet_diagnostic.CA2007.severity = none
+
+# RS0030 (BannedSymbols.txt) is an error via .globalconfig; the WinUI XAML compiler's
+# generated file calls string.IsNullOrEmpty and can't be fixed on our side
+[artifacts/**/XamlTypeInfo.g.cs]
+dotnet_diagnostic.rs0030.severity = none

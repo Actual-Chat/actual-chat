@@ -31,9 +31,10 @@ internal sealed class LoggerFilterConfigureOptions(IConfiguration configuration)
             }
         }
 
-        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode",
-            Justification = "IConfiguration.GetValue is safe when T is a bool.")]
-        bool GetCaptureScopesValue(LoggerFilterOptions options) => configuration.GetValue(nameof(options.CaptureScopes), options.CaptureScopes);
+        bool GetCaptureScopesValue(LoggerFilterOptions options)
+            => bool.TryParse(configuration[nameof(options.CaptureScopes)], out var captureScopes)
+                ? captureScopes
+                : options.CaptureScopes;
     }
 
     private static void LoadRules(LoggerFilterOptions options, IConfigurationSection configurationSection, string? logger)

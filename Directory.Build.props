@@ -296,8 +296,6 @@
     <NoWarn>$(NoWarn);MsgPack017</NoWarn>
     <!-- Found markup element with unexpected name 'XXX'. If this is intended to be a component, add a @using directive for its namespace. -->
     <WarningsAsErrors>$(WarningsAsErrors);RZ10012</WarningsAsErrors>
-    <!-- RS0030: The symbol is banned in this project (BannedSymbols.txt) -->
-    <WarningsAsErrors>$(WarningsAsErrors);RS0030</WarningsAsErrors>
   </PropertyGroup>
 
   <!-- Global usings -->
