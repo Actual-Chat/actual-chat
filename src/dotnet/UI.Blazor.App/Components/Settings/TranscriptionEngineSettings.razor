@@ -53,6 +53,9 @@
         // new(TranscriberId.ElevenLabsStream.Value, L.Transcription_NoRetranscription_Format("ElevenLabs")),
         // new(TranscriberId.NewPair(TranscriberId.ElevenLabsStream, TranscriberId.ElevenLabsOffline).Value,
         //     L.Transcription_Retranscription_Format("ElevenLabs", "ElevenLabs")),
+        new(TranscriberId.XaiStream.Value, L.Transcription_NoRetranscription_Format("xAI Grok")),
+        new(TranscriberId.NewPair(TranscriberId.XaiStream, TranscriberId.OpenAIOffline).Value,
+            L.Transcription_Retranscription_Format("xAI Grok", "OpenAI")),
         new(TranscriberId.GoogleStream.Value, "Google Cloud"),
     ];
 

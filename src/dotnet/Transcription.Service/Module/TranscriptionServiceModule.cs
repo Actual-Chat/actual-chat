@@ -43,6 +43,8 @@ public sealed class TranscriptionServiceModule(IServiceProvider moduleServices)
             services.AddSingleton<ITranscriber, ElevenLabsTranscriber>();
             services.AddSingleton<IOfflineTranscriber, ElevenLabsOfflineTranscriber>();
         }
+        if (!coreSettings.XaiApiKey.IsNullOrEmpty())
+            services.AddSingleton<ITranscriber, XaiTranscriber>();
         if (Constants.Transcription.IsRetranscriptionEnabled && !coreSettings.OpenAIKey.IsNullOrEmpty())
             // Not TryAddEnumerable: it rejects factory descriptors, which have no
             // implementation type to tell them apart, and throws at startup.

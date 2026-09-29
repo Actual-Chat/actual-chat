@@ -334,6 +334,12 @@ public static partial class Constants
             public static readonly double VadThreshold = 0.5;
             public static readonly double VadSilenceThresholdSeconds = 0.5;
         }
+
+        public static class Xai
+        {
+            public static readonly double Speed = 2;
+            public static readonly TimeSpan Endpointing = TimeSpan.FromMilliseconds(500);
+        }
     }
 
     public static class Recaptcha
