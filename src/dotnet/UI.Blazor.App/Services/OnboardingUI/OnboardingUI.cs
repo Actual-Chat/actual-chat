@@ -136,13 +136,30 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
             }
         }
 
-        if (UserSettings.Value.HasUncompletedSteps())
+        var userSettings = await GetUserSettingsFromServer(cancellationToken).ConfigureAwait(false);
+        if (userSettings.HasUncompletedSteps())
             return true;
 
-        if (await ShouldShowPasskeyStep(cancellationToken).ConfigureAwait(false))
+        if (userSettings.PasskeyNudgeDeclineCount < MaxPasskeyNudgeDeclineCount
+            && await ShouldShowPasskeyStep(cancellationToken).ConfigureAwait(false))
             return true;
 
         return LocalSettings.Value.HasUncompletedSteps();
+    }
+
+    private async Task<UserOnboardingSettings> GetUserSettingsFromServer(CancellationToken cancellationToken)
+    {
+        // After a reload UserSettings starts from the client cache, which may predate the last write,
+        // and its WhenSynchronized doesn't wait for the server - Precise does. UserSettingsUI.Get isn't
+        // a compute method (it reads temporals first), so Computed.Capture would get the wrong computed
+        var cSettings = await Computed
+            .New(Services, UserSettingsUI.UserOnboardingSettings().Get)
+            .Update(cancellationToken)
+            .ConfigureAwait(false);
+        cSettings = await cSettings
+            .Synchronize(ComputedSynchronizer.Precise.Instance, cancellationToken)
+            .ConfigureAwait(false);
+        return cSettings.Value;
     }
 
     public void ResetSettings()
