@@ -190,34 +190,21 @@ export async function collectVideoCodecState(): Promise<VideoCodecState> {
 
 // Console surface: `debugUI.video.*`. Everything the diagnostics modal can do,
 // callable without clicking through it — which is how these actually get
-// exercised while debugging a live call.
-export function initVideoDebugConsole(): void {
-    const api = {
-        state: collectVideoCodecState,
-        settings: getVideoDebugSettings,
-        setForceDecodeCodec: setVideoDebugForceDecodeCodec,
-        setPreferredEncodeCodec: setVideoDebugPreferredEncodeCodec,
-        restart: () => applyCodecOverrides(true),
-    };
-    const root = globalThis as unknown as { debugUI?: Record<string, unknown> };
-    if (root.debugUI) {
-        root.debugUI.video = api;
-        return;
-    }
+// exercised while debugging a live call. DebugUI lives in UI.Blazor and can't
+// import this module, so it reads the hook on access.
+const videoDebugConsole = {
+    state: collectVideoCodecState,
+    settings: getVideoDebugSettings,
+    setForceDecodeCodec: setVideoDebugForceDecodeCodec,
+    setPreferredEncodeCodec: setVideoDebugPreferredEncodeCodec,
+    restart: () => applyCodecOverrides(true),
+};
 
-    // DebugUI.init() assigns globalThis.debugUI from C#, which happens after
-    // whenBlazorReady resolves. Intercepting the assignment beats racing it
-    // with a timer.
-    let current: Record<string, unknown> | undefined;
-    Object.defineProperty(root, 'debugUI', {
-        configurable: true,
-        get: () => current,
-        set: (value: Record<string, unknown>) => {
-            current = value;
-            value.video = api;
-        },
-    });
-}
+type VideoDebugConsoleGlobal = typeof globalThis & {
+    __videoDebugConsole?: typeof videoDebugConsole;
+};
+
+(globalThis as VideoDebugConsoleGlobal).__videoDebugConsole = videoDebugConsole;
 
 export function setVideoDebugDownscalerMode(mode: DownscalerMode): void {
     setDownscalerModeImpl(mode);
