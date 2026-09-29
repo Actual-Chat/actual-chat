@@ -7,8 +7,10 @@ public class RpcBackendConnection(
     RpcTransport transport,
     PropertyBag properties,
     Session session,
-    string? remoteIPAddress)
+    string? remoteIPAddress,
+    string? requestHost = null)
     : SessionBoundRpcConnection(transport, properties, session)
 {
     public string? RemoteIPAddress { get; init; } = remoteIPAddress;
+    public string? RequestHost { get; init; } = requestHost;
 }
