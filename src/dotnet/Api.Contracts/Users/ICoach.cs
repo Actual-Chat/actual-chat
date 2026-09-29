@@ -16,6 +16,10 @@ public interface ICoach : IComputeService
     Task<ApiArray<CoachDay>> ListOwnDays(
         Session session, Range<Moment> dayRange, string? language, CancellationToken cancellationToken);
     [ComputeMethod]
+    Task<ApiArray<CoachConversation>> ListOwnConversations(
+        Session session, int count, CancellationToken cancellationToken);
+
+    [ComputeMethod]
     Task<UserCoachTip?> GetPendingTip(Session session, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<CoachOccurrence>> ListOwnOccurrences(

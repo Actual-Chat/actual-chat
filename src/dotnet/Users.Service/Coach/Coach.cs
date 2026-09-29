@@ -66,6 +66,18 @@ public class Coach(IServiceProvider services) : ICoach
     }
 
     // [ComputeMethod]
+    public virtual async Task<ApiArray<CoachConversation>> ListOwnConversations(
+        Session session, int count, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull())
+            return ApiArray<CoachConversation>.Empty;
+
+        var limited = Math.Clamp(count, 1, Settings.Coach.RecentConversations);
+        return await Backend.ListConversations(account.Id, limited, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
     public virtual async Task<UserCoachTip?> GetPendingTip(Session session, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);

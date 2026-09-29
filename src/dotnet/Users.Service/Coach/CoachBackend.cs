@@ -19,6 +19,7 @@ public class CoachBackend(IServiceProvider services)
     // scan cap is hit
     private const int OccurrencePageSize = 100;
     private const int OccurrenceMaxRows = 5000;
+    private const int ConversationEntriesPerCard = 8;
 
     private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
@@ -33,6 +34,32 @@ public class CoachBackend(IServiceProvider services)
         return days
             .Where(d => d.Day >= dayRange.Start && d.Day < dayRange.End)
             .Where(d => iso is null || d.Language == iso || d.Language == "")
+            .ToApiArray();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<CoachConversation>> ListConversations(
+        UserId userId, int count, CancellationToken cancellationToken)
+    {
+        // Every write invalidates ListAllDays, so depending on it keeps this fresh
+        await ListAllDays(userId, cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+        var runSince = (Clocks.SystemClock.Now - TimeSpan.FromDays(30)).ToDateTimeClamped();
+        var entries = await dbContext.CoachEvents
+            .Where(e => e.UserId == userId.Value && e.Kind == CoachRecordKind.Entry && !e.IsRemoved)
+            .OrderByDescending(e => e.OccurredAt)
+            .Take(count * ConversationEntriesPerCard)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var runs = await dbContext.CoachEvents
+            .Where(e => e.UserId == userId.Value && e.Kind == CoachRecordKind.Run && !e.IsRemoved)
+            .Where(e => e.OccurredAt >= runSince)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return CoachConversationBuilder
+            .Build(entries.Concat(runs).Select(e => e.ToModel()), Settings.Coach.ConversationGap)
+            .Take(count)
             .ToApiArray();
     }
 

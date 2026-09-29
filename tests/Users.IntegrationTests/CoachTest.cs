@@ -568,4 +568,30 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         var summary = await Coach.GetOwnSummary(tester.Session, CoachWindow.AllTime, null, default);
         summary.Words.Should().Be(140);
     }
+
+    [Fact]
+    public async Task ListOwnConversationsShouldGroupEntriesByChatAndGap()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatA = GroupChatId.New();
+        var chatB = GroupChatId.New();
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatA, 1, 50, 30, T0), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatA, 2, 50, 30, T0 + TimeSpan.FromMinutes(5)), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatB, 1, 20, 10, T0 + TimeSpan.FromHours(2)), false));
+
+        // act
+        var conversations = await TestWait.When(async ct => {
+            var c = await Coach.ListOwnConversations(tester.Session, 10, ct);
+            c.Should().HaveCount(2);
+            return c;
+        });
+
+        // assert
+        conversations[0].ChatId.Should().Be(chatB);
+        conversations[1].Words.Should().Be(100);
+    }
 }

@@ -14,6 +14,9 @@ public interface ICoachBackend : IComputeService, IBackendService
     Task<ApiArray<CoachDay>> ListDays(
         UserId userId, Range<Moment> dayRange, string? language, CancellationToken cancellationToken);
     [ComputeMethod]
+    Task<ApiArray<CoachConversation>> ListConversations(
+        UserId userId, int count, CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<ApiArray<CoachOccurrence>> ListOccurrences(
         UserId userId, string word, Range<Moment> range, int limit, CancellationToken cancellationToken);
 
