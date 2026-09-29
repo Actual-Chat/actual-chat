@@ -96,7 +96,7 @@ public sealed class CoachLabels(IStringLocalizer l)
             (CoachMetricKind.TurnTaking, CoachBand.High) => l.Coach_BandABitMuch,
             (CoachMetricKind.Monologue, CoachBand.Good) => l.Coach_BandFine,
             (CoachMetricKind.SentenceLength, CoachBand.Good) => l.Coach_BandClear,
-            _ => Band(kind, band),
+            _ => Band(kind, band).ToLowerInvariant(),
         };
 
     // The top chips of the metric, quoted, so the caption names the user's own words

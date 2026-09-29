@@ -7,33 +7,41 @@
     var labels = Labels;
 }
 
-<DialogFrame
-    Title="@L.Coach_ScoreSheetTitle"
-    Class="coach-score-sheet modal-sm"
-    NarrowViewSettings="DialogFrameNarrowViewSettings.Bottom">
+<DialogFrame Class="coach-score-sheet modal-sm" Title="@L.Coach_ScoreSheetTitle">
     <Body>
-    <Card>
-        @foreach (var part in State.Value) {
-            <CardItem @key="@part.Kind">
-                <Title>@labels.MetricTitle(part.Kind)</Title>
-                <Caption>@labels.BandWord(part.Kind, part.Band)</Caption>
-                <Right>
-                    <span class="c-points">
-                        @L.Coach_ScorePoints_Format(Math.Round(part.Points), Math.Round(part.MaxPoints))
-                    </span>
-                </Right>
-            </CardItem>
-        }
-    </Card>
+    <FormBlock>
+        <Tile>
+            @foreach (var part in State.Value) {
+                <TileItem @key="@part.Kind" IsHoverable="false" Role="">
+                    <Content>@labels.MetricTitle(part.Kind)</Content>
+                    <Caption><span class="@BandClass(part.Band)">@labels.BandWord(part.Kind, part.Band)</span></Caption>
+                    <Right>
+                        <span class="c-points @BandClass(part.Band)">
+                            @L.Coach_ScorePoints_Format(Math.Round(part.Points), Math.Round(part.MaxPoints))
+                        </span>
+                    </Right>
+                </TileItem>
+            }
+        </Tile>
+    </FormBlock>
     </Body>
-    <Footer>
-        <button type="button" class="btn-modal btn-primary btn" @onclick="@OnOpenSkills">@L.Coach_TabSkills</button>
-    </Footer>
+    <Buttons>
+        <Button Class="btn-modal" Click="@(_ => Modal.Close())">@L.Common_Close</Button>
+        <Button Class="btn-modal btn-primary" Click="@(_ => OnOpenSkills())">@L.Coach_TabSkills</Button>
+    </Buttons>
 </DialogFrame>
 
 @code {
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private static string BandClass(CoachBand band)
+        => band switch {
+            CoachBand.Good => "text-success",
+            CoachBand.Medium => "text-warning",
+            CoachBand.High or CoachBand.Low => "text-danger",
+            _ => "text-03",
+        };
 
     private CoachLabels Labels => field ??= new CoachLabels(L);
 

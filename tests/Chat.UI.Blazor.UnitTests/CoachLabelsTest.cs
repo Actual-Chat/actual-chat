@@ -81,6 +81,9 @@ public class CoachLabelsTest
             ["Coach_BandABitHigh"] = "a bit high",
             ["Coach_BandABitMuch"] = "a bit much",
             ["Coach_PaceComfortableWord"] = "comfortable",
+            ["Coach_BandHigh"] = "High",
+            ["Coach_BandShort"] = "Short",
+            ["Coach_BandBalanced"] = "Balanced",
         }));
         var summary = CoachSummary.None with { PaceSlow = 100, PaceFast = 140, FillerGood = 0.03 };
 
@@ -91,6 +94,9 @@ public class CoachLabelsTest
         l.BandWord(CoachMetricKind.Fillers, CoachBand.Medium).Should().Be("a bit high");
         l.BandWord(CoachMetricKind.TurnTaking, CoachBand.High).Should().Be("a bit much");
         l.BandWord(CoachMetricKind.Pace, CoachBand.Good).Should().Be("comfortable");
+        l.BandWord(CoachMetricKind.Fillers, CoachBand.High).Should().Be("high", "every hint starts lowercase");
+        l.BandWord(CoachMetricKind.SentenceLength, CoachBand.Low).Should().Be("short");
+        l.BandWord(CoachMetricKind.TurnTaking, CoachBand.Good).Should().Be("balanced");
     }
 
     [Fact]
