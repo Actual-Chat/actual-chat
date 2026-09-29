@@ -1,3 +1,13 @@
+<!--
+Generated from CODING_STYLE.md by .claude/hooks/style-check/build-agents-guide.mjs — do not edit.
+Regenerate: node .claude/hooks/style-check/build-agents-guide.mjs
+-->
+
+> The style guide minus the rules `.claude/hooks/style-check/style-check.mjs` checks on every edit.
+> They are gone on purpose: the script counts characters and positions exactly and reports them the
+> moment the file is written, so a second opinion on them is only ever a worse one. What is left here
+> is yours to check, all of it.
+
 # Coding Style Guide
 
 This document describes the coding conventions used in Voxt (formerly Actual Chat) project that differ from standard .NET conventions.
@@ -22,9 +32,6 @@ the script already reported.
 - The coding style documented here takes precedence over standard .NET conventions, so...
 - Follow .NET and C# best practices for code style and structure, BUT if you see a different convention is used here or in the existing source code, stick to it.
 - All modern C# language features are preferred over the legacy ones. In particular:
-<!-- script-checked:begin -->
-  - Use file-scoped namespaces
-<!-- script-checked:end -->
   - Use pattern matching
   - Use record types and default constructors
   - Use expression-bodied members
@@ -210,9 +217,6 @@ public async switchFacing(): Promise<boolean> {
 - `docs/` for documentation
   
 #### Line Lengths and Indentation:
-<!-- script-checked:begin -->
-- **Maximum line length**: **120 characters**
-<!-- script-checked:end -->
 - **Line endings**: use **LF** (`\n`) for all files (not CRLF)
 - **Indent sizes**:
     - **4 spaces** for C#, TypeScript, and CSS code
@@ -223,9 +227,6 @@ public async switchFacing(): Promise<boolean> {
 - Maximum **6 invocation arguments** on a single line (more restrictive than default).
 
 #### Attribute Formatting:
-<!-- script-checked:begin -->
-- Maximum attribute length for the same line: **70 characters** (more restrictive than default)
-<!-- script-checked:end -->
 - Place field attributes on separate lines
 - Place accessor holder attributes on separate lines (unless the owner is single-line).
 
@@ -244,11 +245,6 @@ public async switchFacing(): Promise<boolean> {
   `Platforms/iOS`, even when it would compile for Catalyst.
 - `IOS` is **not** defined for Mac Catalyst (only `MACCATALYST` is), so an `#if IOS` registration
   leaves Catalyst out.
-- Main-thread checks and dispatch go through `ActualChat.Maui.MauiMainThread` (`IsMainThread`,
-  `BeginDispatchToMainThread`, `DispatchToMainThread`; static-imported in `App.Maui`). Essentials'
-  `MainThread` and the AppKit `MacOSMainThread` are banned at build time (`BannedSymbols.txt`):
-  Essentials' is the "not implemented" neutral build on the `macos` TFM, so a direct call there
-  compiles and throws at runtime.
 
 ### Global Usings
 
@@ -295,9 +291,6 @@ Search for `<Using>` to get the full list. Avoid adding explicit usings for glob
 ### Braces and Formatting
 
 **Mixed brace style** that differs from consistent Allman or K&R:
-<!-- script-checked:begin -->
-- **Classes, methods, constructors**: opening brace on **next line** (Allman style)
-<!-- script-checked:end -->
 - **Everything else**: opening brace on **same line** (K&R style)
 - **Any razor code**: opening brace on **same line** (K&R style).
 
@@ -342,67 +335,6 @@ These restate the ReSharper settings in `.editorconfig`, where every number is a
 **Control-flow statement** here means any statement that escapes the enclosing
 block or jumps elsewhere: `return`, `throw`, `break`, `continue`, `goto`,
 `yield return`, and `yield break`.
-
-<!-- script-checked:begin -->
-Such statements are the most important thing to see when you skim a method, so
-the formatting exists to make them stand out. Two rules do that:
-
-**1. A control-flow statement always gets its own line.** Never place it on the
-same line as its `if`, `for`, `while`, `case`, etc.
-
-```csharp
-// Wrong
-if (computed is null) return null;
-
-// Correct
-if (computed is null)
-    return null;
-```
-
-**2. A control-flow statement is followed by a blank line.** The blank line
-separates it from whatever follows, so the statement terminates a visually
-distinct chunk of code:
-
-```csharp
-public CommandHandlerChain GetHandlerChain(ICommand command)
-{
-    if (command is not IEventCommand eventCommand)
-        return SingleHandlerChain;
-
-    var chainId = eventCommand.ChainId;
-    if (chainId.IsNullOrEmpty())
-        return CommandHandlerChain.Empty;
-
-    return HandlerChains.TryGetValue(chainId, out var result)
-        ? result
-        : CommandHandlerChain.Empty;
-}
-```
-
-The blank line is **omitted** when something else already provides the same
-separation, or when adding it would break apart a group that reads as a single
-unit:
-
-- **The enclosing block ends right after the statement.** The closing `}` sits
-  on its own line, which leaves the statement equally visible — so never put a
-  blank line right before a closing brace.
-- **A run of guard clauses.** Consecutive `if (...)` + control-flow pairs form
-  one group; the blank line goes after the last pair, not between them:
-  ```csharp
-  private static object GetParameterValue(ParameterInfo parameter, ...)
-  {
-      if (parameter.ParameterType == typeof(CommandContext))
-          return context;
-      if (parameter.HasDefaultValue)
-          return services.GetService(parameter.ParameterType) ?? parameter.DefaultValue!;
-
-      return services.GetRequiredService(parameter.ParameterType);
-  }
-  ```
-- **The next line is a `case`/`default:` label**, an `else`/`catch`/`finally`
-  clause, or a preprocessor directive such as `#endif` — all of these already
-  read as separators.
-<!-- script-checked:end -->
 
 **3. When the control-flow statement is the last statement of a nested block,
 the blank line goes after that block's closing brace** rather than before it —
@@ -453,15 +385,6 @@ protected override async Task OnRun(CancellationToken cancellationToken)
 
 ### Shared Fields and Memory Ordering
 
-<!-- script-checked:begin -->
-- **Prefer `Volatile.Read` / `Volatile.Write` over the `volatile` modifier.**
-  The modifier is declared once and then silently applies to every access,
-  including the many that don't need it; the explicit calls state the
-  requirement where it actually matters, and make an unfenced access next to a
-  fenced one look deliberate rather than accidental. It's also the only option
-  where the modifier doesn't apply at all: struct-typed fields, array elements,
-  locals, and `Interlocked`-managed fields (`CS0420`).
-<!-- script-checked:end -->
 - When converting, **remove the modifier in the same edit** — keeping both
   double-fences every access and warns on `ref` passing.
 - **A `lock` around the write is not a substitute for the release.** Publishing
@@ -472,12 +395,6 @@ protected override async Task OnRun(CancellationToken cancellationToken)
   [ui/threading.md](ui/threading.md): a `ComputeState` starts on the dispatcher
   and continues on the thread pool, `[ComputeMethod]`s, workers and `GetData` run
   there outright - a field any of them reads that the dispatcher writes is shared.
-
-### Using Directives
-
-<!-- script-checked:begin -->
-- Place using directives **outside namespace** (C# 10+ default is inside).
-<!-- script-checked:end -->
 
 ### Member Ordering
 
@@ -719,7 +636,6 @@ public override async Task Require(CancellationToken cancellationToken)
 - `.SilentAwait(true/false)` awaits a task w/o throwing any exceptions
 - `.ResultAwait(true/false)` awaits a task and returns `Result<T>` w/o throwing any exceptions.
 
-
 6. **Invariant globalization: string comparisons, cultures, and formatting.**
 
    This project uses `<InvariantGlobalization>true</InvariantGlobalization>` on all
@@ -743,10 +659,9 @@ public override async Task Require(CancellationToken cancellationToken)
    | `string.Compare(a, b, StringComparison.Ordinal)` | `string.Compare(a, b)` |
    | `s.GetHashCode(StringComparison.Ordinal)` | `s.GetHashCode()` |
 
-   **Null/empty checks — use the extension methods.** Use `x.IsNullOrEmpty()` /
-   `x.IsNullOrWhiteSpace()` (the ActualLab string extensions) instead of `string.IsNullOrEmpty(x)` /
-   `string.IsNullOrWhiteSpace(x)`. The static calls are banned at build time (`BannedSymbols.txt`
-   at the repo root, analyzer error RS0030), so the build fails on them.
+   **Null/empty checks — prefer the extension methods.** Use `x.IsNullOrEmpty()` /
+   `x.IsNullOrWhiteSpace()` (the ActualLab string extensions) over `string.IsNullOrEmpty(x)` /
+   `string.IsNullOrWhiteSpace(x)`.
 
    **Exception — `StringIdentifier` equality.** The `Equals` implementations of
    `StringIdentifier`-derived id types intentionally keep `string.Equals(Value, other.Value)`
@@ -1200,7 +1115,6 @@ divided by to produce a rate.
 duration or a deadline, and the component has already been broken twice by this - once by the
 resolution and once by the mixed epochs. A use that is genuinely necessary needs explicit approval and
 a comment saying what it is and why the monotonic clock will not do.
-
 
 TypeScript follows the C# [Control-Flow Statements](#control-flow-statements)
 rules verbatim: `return`, `throw`, `break`, `continue`, and `yield` always get
