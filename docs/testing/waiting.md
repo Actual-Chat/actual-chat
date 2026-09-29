@@ -164,6 +164,19 @@ false; it never ran, because something held the dispatcher for the whole budget.
 `WhenRendered` adds a line to such a failure saying whether the dispatcher was free
 right after, which separates a budget that ran out from a dispatcher that's stuck.
 
+The other two counters in that message mislead. `Component render count` includes
+re-renders of the component's children, so a count above one doesn't prove the render
+you waited for happened. `Total render count across all components` is always 0 in
+bUnit 2.7.2; ignore it.
+
+The dispatcher is the bUnit renderer's own, created on the test's first touch of
+`Renderer` or `Render`. Other app hosts and the app's UI services can't hold it; only
+the subtree the test rendered can. A `ComputedStateComponent` renders once inside
+`Render` from its `InitialValue` and again once `ComputeState` returns, and Fusion
+starts `ComputeState` on this same dispatcher. So a busy dispatcher means a slow render
+or a slow synchronous start in that subtree: its first render in the process, or a CPU
+the heartbeat below shows as short.
+
 What else a failed UI test's output now carries:
 
 - **bUnit's own log.** `BlazorTester` routes it to the test output, so the checks,
@@ -177,7 +190,9 @@ What else a failed UI test's output now carries:
   waiting for a CPU and threads blocked on I/O alike, so it can't say which one is
   short; `iowait` (share of the last second) and the instant `run` / `io-blocked`
   thread counts can. `run` above the core count is a CPU queue; `io-blocked` is disk
-  or other I/O. The machine figures are Linux-only.
+  or other I/O. The machine figures are Linux-only. A host the test creates itself
+  writes to the test's output, which xUnit shows only on failure; only fixture hosts
+  also show up in the CI job log of a green run.
 
 ## The wait report
 
