@@ -25,11 +25,11 @@
                     </button>
                 }
             </div>
+        </div>
+        <div class="c-topic-row">
+            <TileTopic Topic="@(Language is null ? "" : L.Coach_SkillsSpeaking_Format(labels.LanguageName(Language)))"/>
             <span class="c-words">@L.Coach_Words(s.Words, s.Words)</span>
         </div>
-        @if (Language is not null) {
-            <TileTopic Topic="@L.Coach_SkillsSpeaking_Format(labels.LanguageName(Language))"/>
-        }
         <Card Class="c-headline">
             @foreach (var kind in headline) {
                 @if (isKnown(kind) is { } metric) {

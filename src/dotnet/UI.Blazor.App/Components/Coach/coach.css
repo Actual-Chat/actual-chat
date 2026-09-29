@@ -168,3 +168,5 @@
 .coach-language-chips .c-chips,
 .coach-skills .c-periods .c-chips { @apply flex-wrap; }
 .coach-score-sheet .c-empty { @apply py-2 text-center; }
+.coach-skills .c-topic-row { @apply flex-x items-center justify-between gap-x-2; }
+.coach-skills .c-periods { @apply justify-start; }
