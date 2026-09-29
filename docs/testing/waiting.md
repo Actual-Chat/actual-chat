@@ -147,6 +147,34 @@ private static Task When(
     => TestWait.When(assertion, TestTimeout, callerFilePath: callerFilePath, callerLine: callerLine);
 ```
 
+## Waiting for a render
+
+A bUnit component waits through `TestWait.WhenRendered`, never through bUnit's own
+`WaitForAssertion`. bUnit's default budget is 1 s everywhere, CI included, which is
+what reddened #4703 and `ErrorBarrierBoundaryTest`. `WhenRendered` takes the usual
+budget and scale, and lands in the wait report like any other wait.
+
+```csharp
+await TestWait.WhenRendered(card, () => card.FindAll(".live.joined").Should().ContainSingle());
+```
+
+bUnit runs the assertion on the renderer's dispatcher: once right away, then after
+every render. So a failure reading `Check count: 0` doesn't mean the assertion was
+false; it never ran, because something held the dispatcher for the whole budget.
+`WhenRendered` adds a line to such a failure saying whether the dispatcher was free
+right after, which separates a budget that ran out from a dispatcher that's stuck.
+
+What else a failed UI test's output now carries:
+
+- **bUnit's own log.** `BlazorTester` routes it to the test output, so the checks,
+  renders and the timeout show up with timestamps.
+- **The host heartbeat.** Each app host writes one line a second:
+  `alive: tick 1.001s, cpu 1.8 of 4 cores, pool 23 threads 0 queued, gc pause +0ms,
+  machine cpu 64%, loadavg 3.21`. A late `tick` means the thread pool was slow to run
+  the timer. An on-time tick says nothing about the CPU, so `cpu` (this process) and
+  `machine cpu` (everything on the runner, over the last second) cover that; `loadavg`
+  is the one-minute average. The machine figures are Linux-only.
+
 ## The wait report
 
 Every budget in the tests was guessed; nothing ever measured how long a wait

@@ -83,6 +83,8 @@ public static class ServiceCollectionExt
             outputAccessor,
             new XUnitLoggerOptions() {
                 Filter = (_, _) => true,
+                // The default "u" has whole seconds, too coarse to order a render against a wait
+                TimestampFormat = "yyyy-MM-dd HH:mm:ss.fffzzz",
             }));
  #pragma warning restore CS0618 // Type or member is obsolete
     }

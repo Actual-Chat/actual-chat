@@ -39,6 +39,8 @@ public class BlazorTester : BunitContext, IWebTester
         Out = @out;
         _serviceScope = AppServices.CreateScope();
         Services.AddFallbackServiceProvider(ScopedAppServices);
+        // bUnit logs its renders and waits via its own LoggerFactory, which has no providers
+        Services.AddSingleton(AppServices.GetRequiredService<ILoggerFactory>());
 
         Session = Session.New();
         var sessionResolver = ScopedAppServices.GetRequiredService<ISessionResolver>();

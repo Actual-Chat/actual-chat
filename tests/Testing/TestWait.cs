@@ -1,16 +1,22 @@
 using ActualLab.IO;
+using Bunit;
+using Bunit.Extensions.WaitForHelpers;
+using Microsoft.AspNetCore.Components;
 
 namespace ActualChat.Testing;
 
 /// <summary>
-/// The tests' one way to wait for a condition: <see cref="When(Func{CancellationToken, Task}, TimeSpan?, bool, string, int)"/>
-/// re-runs its assertion on invalidation, <see cref="WhenPolled(Action, TimeSpan?, bool, string, int)"/> re-runs it on a timer.
+/// The tests' one way to wait for a condition:
+/// <see cref="When(Func{CancellationToken, Task}, TimeSpan?, bool, string, int)"/> re-runs its assertion
+/// on invalidation, <see cref="WhenPolled(Action, TimeSpan?, bool, string, int)"/> on a timer,
+/// <c>WhenRendered</c> after each bUnit render.
 /// Every budget passes through here, so the build-agent scale is applied in one place.
 /// </summary>
 public static class TestWait
 {
     private const string ReportFileNamePrefix = "test-waits-";
     private static readonly object ReportLock = new();
+    private static readonly TimeSpan DispatcherProbeTimeout = TimeSpan.FromSeconds(5);
     private static StreamWriter? _reportWriter;
 
     public static TimeSpan DefaultTimeout { get; set; } = TimeSpan.FromSeconds(10);
@@ -129,6 +135,30 @@ public static class TestWait
         }
     }
 
+    // bUnit's WaitForAssertion, scaled like every other budget here. Its own default is 1s everywhere
+    public static Task WhenRendered<TComponent>(
+        IRenderedComponent<TComponent> component,
+        Action assertion,
+        TimeSpan? timeout = null,
+        bool isExactTimeout = false,
+        [CallerFilePath] string callerFilePath = "",
+        [CallerLineNumber] int callerLine = 0)
+        where TComponent : IComponent
+    {
+        var budget = Budget(timeout, isExactTimeout);
+        return Measured(Wait, budget, callerFilePath, callerLine);
+
+        async Task Wait() {
+            try {
+                await component.WaitForAssertionAsync(assertion, budget).ConfigureAwait(false);
+            }
+            catch (WaitForFailedException e) {
+                var probeResult = await ProbeDispatcher(component).ConfigureAwait(false);
+                throw new WaitForFailedException($"{e.Message}{Environment.NewLine}{probeResult}", e);
+            }
+        }
+    }
+
     // Private methods
 
     private static TimeSpan Budget(TimeSpan? timeout, bool isExactTimeout)
@@ -197,5 +227,18 @@ public static class TestWait
         FilePath path = AppContext.BaseDirectory;
         path &= $"{ReportFileNamePrefix}{DateTime.Now:yyyyMMdd-HHmmss}-{Environment.ProcessId}.log";
         return new StreamWriter(path, append: true) { AutoFlush = true };
+    }
+
+    // bUnit queues its checks on the renderer's dispatcher, so "Check count: 0" means the dispatcher
+    // never got to one. Whether it is free right after tells a short budget from a stuck dispatcher.
+    private static async Task<string> ProbeDispatcher<TComponent>(IRenderedComponent<TComponent> component)
+        where TComponent : IComponent
+    {
+        var startedAt = CpuTimestamp.Now;
+        var probeTask = component.InvokeAsync(static () => { });
+        var completedTask = await Task.WhenAny(probeTask, Task.Delay(DispatcherProbeTimeout)).ConfigureAwait(false);
+        return completedTask == probeTask
+            ? $"Renderer dispatcher: free, a probe ran {startedAt.Elapsed.ToShortString()} after the wait failed."
+            : $"Renderer dispatcher: busy, a probe didn't run in {DispatcherProbeTimeout.ToShortString()}.";
     }
 }
