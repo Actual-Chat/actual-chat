@@ -181,7 +181,9 @@
                         data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
                         <i class="icon-camera-switch text-lg"></i>
                     </HeaderButton>
-                } else {
+                } else if (!m.CanReact) {
+                    @* Holds the slot so the buttons before it stay put when the camera toggles;
+                       it works only as the last item, so the reaction button rules it out *@
                     <div class="btn-incut"></div>
                 }
             } else {
