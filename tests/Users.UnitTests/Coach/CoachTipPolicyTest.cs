@@ -245,4 +245,24 @@ public class CoachTipPolicyTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         tip.Should().BeNull("two of the three uses are in another language");
     }
+
+    [Fact]
+    public void ZeroIntervalShouldMeanOneTipPerConversation()
+    {
+        // arrange
+        var perConversation = OptedIn with { TipInterval = TimeSpan.Zero };
+        var a = Entry(20, 10, Now - TimeSpan.FromMinutes(5), Filler("like"), Filler("like"));
+        var current = Entry(20, 10, Now, Filler("like"));
+        var earlierTip = new UserCoachTip {
+            Kind = CoachTipKind.Filler, ChatId = current.ChatId, LastTipAt = Now - TimeSpan.FromMinutes(6),
+        };
+
+        // act
+        var sameChat = Evaluate(current, [a, current], NoSpans, earlierTip, perConversation);
+        var otherChat = Evaluate(current, [a, current], NoSpans, earlierTip with { ChatId = GroupChatId.New() }, perConversation);
+
+        // assert
+        sameChat.Should().BeNull("a tip already fired in this conversation");
+        otherChat.Should().NotBeNull("another chat is another conversation");
+    }
 }

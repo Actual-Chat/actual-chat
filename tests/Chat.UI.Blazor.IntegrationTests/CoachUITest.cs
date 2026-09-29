@@ -476,4 +476,35 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         await cut.InvokeAsync(() => cut.Find(".coach-skills .c-headline .coach-chip").Click());
         cut.WaitForAssertion(() => cut.Find(".coach-occurrences"), TimeSpan.FromSeconds(10));
     }
+
+    [Fact(Timeout = 60_000)]
+    public async Task SettingsPageShouldSwitchSkipPeersAndChatsAndOfferLanguages()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-settings");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        var hub = tester.ScopedAppServices.AppUIHub();
+        await OptIn(tester);
+        await PostVoice(tester, chatId, Text);
+        var kvas = appHost.Services.GetRequiredService<IServerKvasBackend>().ForUser(account.Id);
+
+        // act
+        var cut = tester.Render<CoachPanel>();
+        InitializeHub(tester, hub, cut.Instance);
+        cut.WaitForAssertion(() => cut.Find(".coach-header .c-settings-btn"), TimeSpan.FromSeconds(30));
+        await cut.InvokeAsync(() => cut.Find(".coach-header .c-settings-btn").Click());
+        cut.WaitForAssertion(() => cut.Find(".coach-settings-page"));
+        await cut.InvokeAsync(() => cut.Find(".coach-settings-page .c-skip-peers").Click());
+        await hub.UICommander.Run(new Coach_SetChatCoaching { Session = hub.Session, ChatId = chatId, IsEnabled = false });
+
+        // assert
+        await TestWait.When(async ct => (await kvas.UserCoachSettings().Get(ct)).SkipPeerChats.Should().BeTrue());
+        cut.WaitForAssertion(() => cut.Find(".coach-settings-page .c-switched-off").TextContent.Should().Contain("Switch on"));
+        cut.Find(".coach-settings-page .c-languages-manage").TextContent.Should().Contain("Manage");
+        cut.FindAll(".coach-settings-page .c-language").Count.Should().BeGreaterThan(0);
+    }
 }

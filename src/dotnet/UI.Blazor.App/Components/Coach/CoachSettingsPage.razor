@@ -1,8 +1,197 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComponentBase<AppUIHub>
+@using ActualChat.UI.Blazor.Events
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, CoachSettingsPage.Model>
+@{
+    var m = State.Value;
+    var s = m.Settings;
+    var labels = Labels;
+    var minutes = (int)s.TipInterval.TotalMinutes;
+}
 
-<div class="coach-settings-page"></div>
+<div class="coach-settings-page">
+    <div class="c-title-row">
+        <ButtonRound Click="@(() => Back.InvokeAsync())" Class="btn-sm btn-transparent c-back">
+            <i class="icon-arrow-left text-2xl"></i>
+        </ButtonRound>
+        <span class="c-title text-03">@L.Coach_Settings</span>
+    </div>
+
+    <Tile Class="c-coaching">
+        <TileItem Click="@(() => Update(x => x with { IsCoachingEnabled = !x.IsCoachingEnabled }))">
+            <Icon><i class="icon-ai-stars text-2xl"></i></Icon>
+            <Content>@L.Coach_Coaching</Content>
+            <Caption>@L.Coach_CoachingCaption2</Caption>
+            <Right>
+                <Toggle IsChecked="@s.IsCoachingEnabled"
+                        IsCheckedChanged="@(_ => Update(x => x with { IsCoachingEnabled = !x.IsCoachingEnabled }))"/>
+            </Right>
+        </TileItem>
+    </Tile>
+
+    <TileTopic Topic="@L.Coach_Where"/>
+    <Tile Class="c-where">
+        <TileItem IsHoverable="false" Role="">
+            <Icon><i class="icon-message-square text-2xl"></i></Icon>
+            <Content>@L.Coach_Everywhere</Content>
+            <Caption>@L.Coach_EverywhereCaption</Caption>
+        </TileItem>
+        <TileItem Class="c-skip-peers" Click="@(() => Update(x => x with { SkipPeerChats = !x.SkipPeerChats }))">
+            <Icon><i class="icon-person text-2xl"></i></Icon>
+            <Content>@L.Coach_SkipPeerChats</Content>
+            <Caption>@L.Coach_SkipPeerChatsCaption</Caption>
+            <Right>
+                <Toggle IsChecked="@s.SkipPeerChats"
+                        IsCheckedChanged="@(_ => Update(x => x with { SkipPeerChats = !x.SkipPeerChats }))"/>
+            </Right>
+        </TileItem>
+        @if (m.SwitchedOff.Count > 0) {
+            <div class="c-switched-off">
+                <div class="c-topic">@L.Coach_SwitchedOff</div>
+                @foreach (var item in m.SwitchedOff) {
+                    <TileItem @key="@item.Id" IsHoverable="false" Role="">
+                        <Icon><ChatIcon Chat="@item.Chat" HideTitle="@true"/></Icon>
+                        <Content>@item.Title</Content>
+                        <Right><a class="c-switch-on" @onclick="@(() => SwitchOn(item.Id))">@L.Coach_SwitchOn</a></Right>
+                    </TileItem>
+                }
+            </div>
+        }
+    </Tile>
+    <div class="c-hint">@L.Coach_SwitchOffHint</div>
+
+    <div class="c-topic-row">
+        <TileTopic Topic="@L.Coach_Languages"/>
+        <a class="c-languages-manage" @onclick="@OnManageLanguages">@L.Coach_Manage</a>
+    </div>
+    <Tile Class="c-languages">
+        @foreach (var language in m.Languages) {
+            <TileItem @key="@language.Iso" Class="c-language" IsHoverable="false" Role="">
+                <Icon><span class="c-iso">@language.Iso.ToUpperInvariant()</span></Icon>
+                <Content>@labels.LanguageName(language.Iso)</Content>
+                <Caption>@L.Coach_WordsIn30Days(language.Words30Days, language.Words30Days)</Caption>
+                <Right>
+                    <select class="c-level" aria-label="@labels.LanguageName(language.Iso)"
+                            value="@language.Level"
+                            @onchange="@(e => OnLevelChanged(language.Iso, e))">
+                        @foreach (var level in Levels) {
+                            <option value="@level" selected="@(level == language.Level)">@labels.Level(level)</option>
+                        }
+                    </select>
+                </Right>
+            </TileItem>
+        }
+    </Tile>
+    <div class="c-hint">@L.Coach_LanguagesCaption</div>
+
+    <TileTopic Topic="@L.Coach_HowYouHear"/>
+    <Tile Class="c-hear">
+        <TileItem Click="@(() => Update(x => x with { AreMarksEnabled = !x.AreMarksEnabled }))">
+            <Icon><i class="icon-edit text-2xl"></i></Icon>
+            <Content>@L.Coach_Marks</Content>
+            <Caption>@L.Coach_MarksCaption</Caption>
+            <Right>
+                <Toggle IsChecked="@s.AreMarksEnabled"
+                        IsCheckedChanged="@(_ => Update(x => x with { AreMarksEnabled = !x.AreMarksEnabled }))"/>
+            </Right>
+        </TileItem>
+        <TileItem Class="c-live-tips" Click="@(() => Update(x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled }))">
+            <Icon><i class="icon-star text-2xl"></i></Icon>
+            <Content>@L.Coach_LiveTips</Content>
+            <Caption>@L.Coach_LiveTipsCaption</Caption>
+            <Right>
+                <Toggle IsChecked="@s.AreLiveTipsEnabled"
+                        IsCheckedChanged="@(_ => Update(x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled }))"/>
+            </Right>
+        </TileItem>
+        <TileItem IsHoverable="false" Role="">
+            <Icon><i class="icon-history text-2xl"></i></Icon>
+            <Content>@L.Coach_AtMost</Content>
+            <Caption>@L.Coach_TipIntervalCaption</Caption>
+            <Right>
+                <select class="c-interval" value="@minutes" @onchange="@OnMinutesChanged">
+                    <option value="0" selected="@(minutes == 0)">@L.Coach_OncePerConversation</option>
+                    @foreach (var item in Intervals) {
+                        <option value="@item" selected="@(item == minutes)">@L.Coach_TipIntervalMinutes(item, item)</option>
+                    }
+                </select>
+            </Right>
+        </TileItem>
+        <TileItem Click="@(() => Update(x => x with { IsWeeklySummaryEnabled = !x.IsWeeklySummaryEnabled }))">
+            <Icon><i class="icon-email text-2xl"></i></Icon>
+            <Content>@L.Coach_WeeklySummary</Content>
+            <Caption>@L.Coach_WeeklySummaryCaption</Caption>
+            <Right>
+                <Toggle IsChecked="@s.IsWeeklySummaryEnabled"
+                        IsCheckedChanged="@(_ => Update(x => x with { IsWeeklySummaryEnabled = !x.IsWeeklySummaryEnabled }))"/>
+            </Right>
+        </TileItem>
+    </Tile>
+
+    <TileTopic Topic="@L.Coach_YourData"/>
+    <Tile Class="c-data">
+        <div class="c-hint">@L.Coach_YourDataCaption</div>
+        <TileItem Class="c-delete item-danger" Click="@OnDelete">
+            <Icon><i class="icon-trash02 text-2xl"></i></Icon>
+            <Content>@L.Coach_DeleteData</Content>
+        </TileItem>
+    </Tile>
+</div>
 
 @code {
+    private static readonly int[] Intervals = [1, 5, 15, 30];
+    private static readonly CoachLanguageLevel[] Levels
+        = [CoachLanguageLevel.Native, CoachLanguageLevel.Learning, CoachLanguageLevel.Off];
+
     [Parameter] public EventCallback Back { get; set; }
+
+    private CoachLabels Labels => field ??= new CoachLabels(L);
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var settings = await UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
+        var languages = await Hub.CoachUI.ListOwnLanguages(cancellationToken).ConfigureAwait(false);
+        var items = new List<SwitchedOffItem>();
+        foreach (var id in settings.SwitchedOff) {
+            var chat = await Hub.Chats.Get(Session, id, cancellationToken).ConfigureAwait(false);
+            items.Add(new SwitchedOffItem(id, chat?.Title ?? id.Value, chat));
+        }
+        return new Model(settings, languages, items);
+    }
+
+    private Task Update(Func<UserCoachSettings, UserCoachSettings> update)
+        => UserSettingsUI.UserCoachSettings().Update(update);
+
+    private Task SwitchOn(ChatId id)
+        => UICommander.Run(new Coach_SetChatCoaching { Session = Session, ChatId = id, IsEnabled = null });
+
+    private Task OnLevelChanged(string iso, ChangeEventArgs e)
+        => Enum.TryParse<CoachLanguageLevel>(e.Value?.ToString(), out var level)
+            ? UICommander.Run(new Coach_SetLanguageLevel { Session = Session, Language = iso, Level = level })
+            : Task.CompletedTask;
+
+    private Task OnMinutesChanged(ChangeEventArgs e)
+        => int.TryParse(e.Value?.ToString(), out var minutes)
+            ? Update(x => x with { TipInterval = TimeSpan.FromMinutes(minutes) })
+            : Task.CompletedTask;
+
+    private Task OnManageLanguages()
+        => UIEventHub.Publish(new ShowSettingsEvent(SettingsTabId.Transcription));
+
+    private void OnDelete()
+        => _ = ModalUI.Show(new ConfirmModal.Model(
+            true,
+            L.Coach_DeleteDataConfirm,
+            () => _ = UICommander.Run(new Coach_DeleteOwnData { Session = Session })) {
+            Title = L.Coach_DeleteData,
+        });
+
+    public sealed record SwitchedOffItem(ChatId Id, string Title, Chat? Chat);
+
+    public sealed record Model(
+        UserCoachSettings Settings, ApiArray<CoachLanguageInfo> Languages, List<SwitchedOffItem> SwitchedOff) {
+        public static readonly Model None = new(new UserCoachSettings(), ApiArray<CoachLanguageInfo>.Empty, []);
+    }
 }

@@ -150,3 +150,15 @@
 .coach-skill .c-chips { @apply flex-x flex-wrap gap-2 pt-1; }
 .coach-skill .c-focus-link { @apply text-sm text-primary cursor-pointer; }
 .coach-score-sheet .c-points { @apply text-sm text-03 whitespace-nowrap; }
+.coach-settings-page { @apply flex-y gap-y-3 px-4 pt-2 pb-4; }
+.coach-settings-page .c-title-row { @apply flex-x items-center gap-x-2; }
+.coach-settings-page .c-title { @apply text-title-500; }
+.coach-settings-page .c-hint { @apply text-caption text-03; }
+.coach-settings-page .c-topic-row { @apply flex-x items-center justify-between; }
+.coach-settings-page .c-languages-manage,
+.coach-settings-page .c-switch-on { @apply text-sm font-medium text-primary cursor-pointer; }
+.coach-settings-page .c-topic { @apply text-caption text-03 px-2 pt-1; }
+.coach-settings-page .c-iso { @apply text-sm font-medium text-01; }
+.coach-settings-page select { @apply bg-transparent text-primary text-sm; }
+.coach-settings-page .c-data .c-hint { @apply px-2 pb-2; }
+.coach-menu-entry { @apply flex-x items-center justify-between gap-x-4 w-full; }

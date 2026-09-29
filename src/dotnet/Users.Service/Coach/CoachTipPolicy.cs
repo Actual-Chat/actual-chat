@@ -22,7 +22,7 @@ public static class CoachTipPolicy
     {
         if (settings is not { IsCoachingEnabled: true, AreLiveTipsEnabled: true } || record.Entry is null)
             return null;
-        if (previous.LastTipAt != default && now - previous.LastTipAt < settings.TipInterval)
+        if (previous.LastTipAt != default && IsWithinInterval(previous, record, settings, s, now))
             return null;
         // Re-tagged or edited old entries are not live feedback
         if (now - record.OccurredAt > s.TipWindow)
@@ -59,6 +59,13 @@ public static class CoachTipPolicy
     }
 
     // Private methods
+
+    // A zero interval means one tip per conversation: quiet for the conversation gap in the same chat
+    private static bool IsWithinInterval(
+        UserCoachTip previous, CoachRecord record, UserCoachSettings settings, CoachScoringSettings s, Moment now)
+        => settings.TipInterval == TimeSpan.Zero
+            ? previous.ChatId == record.ChatId && now - previous.LastTipAt < s.ConversationGap
+            : now - previous.LastTipAt < settings.TipInterval;
 
     private static UserCoachTip? WordTip(
         List<CoachEntryRecord> entries, ApiArray<SpeechSpan> spans, UserCoachTip previous, CoachScoringSettings s, Moment now)

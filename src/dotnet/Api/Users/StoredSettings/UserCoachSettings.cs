@@ -32,6 +32,9 @@ public sealed partial record UserCoachSettings
     public bool AreMarksEnabled { get; init; } = true;
     [DataMember, Key(9)]
     public bool IsWeeklySummaryEnabled { get; init; } = true;
+    // Chats and places the user switched coaching off in, for the settings list
+    [DataMember, Key(10)]
+    public ApiArray<ChatId> SwitchedOff { get; init; }
 
     public CoachLanguageLevel LevelOf(string? language)
         => language is not null && Languages.TryGetValue(Language.GetIsoCode(language), out var level)

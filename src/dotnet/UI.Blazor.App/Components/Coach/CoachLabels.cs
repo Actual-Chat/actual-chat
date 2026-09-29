@@ -19,6 +19,13 @@ public sealed class CoachLabels(IStringLocalizer l)
             _ => l.Coach_WindowAllTime,
         };
 
+    public string Level(CoachLanguageLevel level)
+        => level switch {
+            CoachLanguageLevel.Native => l.Coach_LevelNative,
+            CoachLanguageLevel.Learning => l.Coach_LevelLearning,
+            _ => l.Coach_LevelOff,
+        };
+
     public string Tab(CoachTab tab)
         => tab switch {
             CoachTab.Recent => l.Coach_TabRecent,

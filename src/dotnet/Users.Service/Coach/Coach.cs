@@ -248,8 +248,16 @@ public class Coach(IServiceProvider services) : ICoach
 
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeActive);
-        await ServerKvasBackend.ForUser(account.Id, isOutermost: true).ChatUserSettings(command.ChatId)
+        var kvas = ServerKvasBackend.ForUser(account.Id, isOutermost: true);
+        await kvas.ChatUserSettings(command.ChatId)
             .Update(x => x with { IsCoachingEnabled = command.IsEnabled }, cancellationToken)
+            .ConfigureAwait(false);
+        await kvas.UserCoachSettings()
+            .Update(x => x with {
+                SwitchedOff = command.IsEnabled == false
+                    ? x.SwitchedOff.Where(id => id != command.ChatId).Append(command.ChatId).ToApiArray()
+                    : x.SwitchedOff.Where(id => id != command.ChatId).ToApiArray(),
+            }, cancellationToken)
             .ConfigureAwait(false);
     }
 
