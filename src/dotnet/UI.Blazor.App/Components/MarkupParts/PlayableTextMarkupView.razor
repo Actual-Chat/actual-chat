@@ -12,26 +12,10 @@
     @if (m.Map == null) {
         @Markup.Text
     } else {
-        var wordCount = Markup.Words.Length;
-        RenderFragment<int> renderWord = i =>
-            @<span class="playable-word @(IsHighlighted(i) ? "highlight" : "")">@if (i == wordCount - 1) {
-                <BreakableWord Text="@Markup.Words[i].Value"/>
-            }
-            else {
-                @Markup.Words[i].Value
-            }</span>;
-        foreach (var run in BuildRuns(m.Map, wordCount)) {
-            if (run.Fill == WordPlayback.None) {
-                for (var i = run.Start; i <= run.End; i++) {
-                    @renderWord(i)
-                }
-            }
-            else {
-                var runCls = run.Fill == WordPlayback.Playing ? "playing-run" : "played-run";
-                <span class="@runCls">@for (var i = run.Start; i <= run.End; i++) {
-                    @renderWord(i)
-                }</span>
-            }
+        foreach (var run in BuildRuns(m.Map, Markup.Words.Length)) {
+            var c0 = Markup.Words[run.Start].TextRange.Start;
+            var c1 = Markup.Words[run.End].TextRange.End;
+            <span class="@RunClass(run)" data-c0="@c0">@Markup.Text[c0..c1]</span>
         }
     }
 </span>
@@ -166,18 +150,30 @@
             .ToArray();
     }
 
-    private static List<(WordPlayback Fill, int Start, int End)> BuildRuns(WordPlayback[] map, int count) {
-        var runs = new List<(WordPlayback, int, int)>();
+    private List<Run> BuildRuns(WordPlayback[] map, int count) {
+        var runs = new List<Run>();
         var i = 0;
         while (i < count) {
             var fill = map[i];
+            var highlighted = IsHighlighted(i);
             var j = i + 1;
-            while (j < count && map[j] == fill)
+            while (j < count && map[j] == fill && IsHighlighted(j) == highlighted)
                 j++;
-            runs.Add((fill, i, j - 1));
+            runs.Add(new Run(fill, highlighted, i, j - 1));
             i = j;
         }
         return runs;
+    }
+
+    private static string RunClass(Run run) {
+        var fillCls = run.Fill switch {
+            WordPlayback.Playing => "playing-run",
+            WordPlayback.Played => "played-run",
+            _ => "",
+        };
+        if (!run.Highlighted)
+            return fillCls;
+        return fillCls.Length == 0 ? "highlight" : fillCls + " highlight";
     }
 
     private bool IsHighlighted(int index) {
@@ -195,6 +191,8 @@
     // Nested types
 
     public enum WordPlayback { None, Playing, Played }
+
+    private readonly record struct Run(WordPlayback Fill, bool Highlighted, int Start, int End);
 
     public sealed record Model {
         public static readonly Model None = new();
