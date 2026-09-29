@@ -22,7 +22,7 @@ public class PeerCallGateTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var liveSessions = bobTester.AppServices.GetRequiredService<ILiveSessions>();
 
         // act + assert — Alice hasn't added Bob nor replied, so a call to her is refused.
-        var startCall = () => liveSessions.StartCall(bobTester.Session, chatId, default, false, default);
+        var startCall = () => liveSessions.StartCall(bobTester.Session, chatId, default, false, "test-client", default);
         await startCall.Should().ThrowAsync<InvalidOperationException>();
     }
 
@@ -49,7 +49,7 @@ public class PeerCallGateTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // act + assert — the call now goes through.
         var aliceAuthor = await aliceTester.GetOwnAuthor(chatId);
         var startCall = () => liveSessions.StartCall(
-            bobTester.Session, chatId, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+            bobTester.Session, chatId, new[] { aliceAuthor!.Id }.ToApiArray(), false, "test-client", default);
         await startCall.Should().NotThrowAsync();
     }
 
@@ -84,7 +84,7 @@ public class PeerCallGateTest(ChatCollection.AppHostFixture fixture, ITestOutput
         }, TimeSpan.FromSeconds(10));
 
         // assert — the call to the blocking peer is refused.
-        var startCall = () => liveSessions.StartCall(bobTester.Session, chatId, default, false, default);
+        var startCall = () => liveSessions.StartCall(bobTester.Session, chatId, default, false, "test-client", default);
         await startCall.Should().ThrowAsync<InvalidOperationException>();
     }
 }

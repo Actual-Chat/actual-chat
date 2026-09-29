@@ -3,6 +3,7 @@ using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Diagnostics;
+using ActualLab.Generators;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -32,6 +33,10 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private IAuthors Authors => Hub.Authors;
     private Moment Now => Clocks.CpuClock.Now;
     private ILogger? CallDebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
+
+    // Names this running client to the server, which shows a placed or answered call only to the client
+    // that placed or answered it. It lives exactly as long as the call's audio can: a reload is a new client.
+    public string ClientId { get; } = RandomStringGenerator.Default.Next();
 
     public CallUI(AppUIHub hub) : base(hub)
     {
@@ -113,7 +118,8 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
 
         try {
-            await LiveSessions.StartCall(Session, chatId, invitees, hasVideo, cancellationToken).ConfigureAwait(false);
+            await LiveSessions.StartCall(Session, chatId, invitees, hasVideo, ClientId, cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (Exception e) {
             Release(chatId);
@@ -139,7 +145,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     public Task AcceptCall(ChatId chatId, CancellationToken cancellationToken)
-        => LiveSessions.AcceptCall(Session, chatId, cancellationToken);
+        => LiveSessions.AcceptCall(Session, chatId, ClientId, cancellationToken);
 
     public Task DeclineCall(ChatId chatId, CancellationToken cancellationToken)
         => LiveSessions.DeclineCall(Session, chatId, cancellationToken);

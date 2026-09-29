@@ -1,5 +1,6 @@
 using ActualChat.Comparison;
 using ActualChat.Live;
+using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
@@ -50,11 +51,12 @@ public interface ILiveSessions : IComputeService
     [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<CallStatus> GetCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
-    // The one call this user is in, whichever device they're on and whoever started it. Null means
-    // free - which is also what a disconnected client reads, so it is "unknown" until it reconnects.
+    // The one call this user is in, as the client with this id sees it: a ring on every client, a placed
+    // or answered call only on the client that placed or answered it (#4929). Null means free - which
+    // is also what a disconnected client reads, so it is "unknown" until it reconnects.
     [ComputeMethod(ConsolidationDelay = 0)]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
-    Task<UserCall?> GetMyCall(Session session, CancellationToken cancellationToken);
+    Task<UserCall?> GetMyCall(Session session, string clientId, CancellationToken cancellationToken);
 
     Task SetParticipation(
         Session session,
@@ -87,6 +89,7 @@ public interface ILiveSessions : IComputeService
         ChatId chatId,
         ApiArray<AuthorId> invitees,
         bool hasVideo,
+        string clientId,
         CancellationToken cancellationToken);
     Task CancelCall(Session session, ChatId chatId, CancellationToken cancellationToken);
     // Obsolete: there is no caller-visible status left to dismiss - see GetCallStatus. Kept as a
@@ -94,10 +97,31 @@ public interface ILiveSessions : IComputeService
     [Obsolete("2026.09: Old MAUI clients only. Throws. Remove once no installed app version calls it.")]
     Task DismissCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
     // Callee methods
-    Task AcceptCall(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task AcceptCall(Session session, ChatId chatId, string clientId, CancellationToken cancellationToken);
     Task DeclineCall(Session session, ChatId chatId, CancellationToken cancellationToken);
     Task ConfirmRing(Session session, ChatId chatId, RingAck ack, CancellationToken cancellationToken);
     // Obsolete: hanging up now goes through SetParticipation (see ChatAudioUI/LiveSessionUI). Kept as a
     // throwing stub rather than removed, in case a stale client build still calls it.
     Task LeaveCall(Session session, ChatId chatId, CancellationToken cancellationToken);
+
+    // Legacy methods
+
+    // Pre-#4929 clients send no client id, so their calls are told apart by device only: every tab
+    // of one browser still sees the call any of them placed.
+    [ComputeMethod(ConsolidationDelay = 0)]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    [LegacyName(nameof(GetMyCall))]
+    [Obsolete("2026.09: Old clients only. Remove once no installed app version calls it.")]
+    Task<UserCall?> LegacyGetMyCall(Session session, CancellationToken cancellationToken);
+    [LegacyName(nameof(StartCall))]
+    [Obsolete("2026.09: Old clients only. Remove once no installed app version calls it.")]
+    Task LegacyStartCall(
+        Session session,
+        ChatId chatId,
+        ApiArray<AuthorId> invitees,
+        bool hasVideo,
+        CancellationToken cancellationToken);
+    [LegacyName(nameof(AcceptCall))]
+    [Obsolete("2026.09: Old clients only. Remove once no installed app version calls it.")]
+    Task LegacyAcceptCall(Session session, ChatId chatId, CancellationToken cancellationToken);
 }

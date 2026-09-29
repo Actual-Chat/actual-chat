@@ -104,11 +104,8 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         => Task.FromResult(CallStatus.None);
 
     // [ComputeMethod]
-    public virtual async Task<UserCall?> GetMyCall(Session session, CancellationToken cancellationToken)
-    {
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        return await CallsBackend.GetUserCall(account.Id, cancellationToken).ConfigureAwait(false);
-    }
+    public virtual Task<UserCall?> GetMyCall(Session session, string clientId, CancellationToken cancellationToken)
+        => GetMyCallOnClient(session, clientId, cancellationToken);
 
     public Task DismissCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken)
         // The status it dismissed is gone with the banner that showed it - see GetCallStatus.
@@ -232,46 +229,17 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         await Backend.LowerAllHands(chatId, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task StartCall(
+    public Task StartCall(
         Session session,
         ChatId chatId,
         ApiArray<AuthorId> invitees,
         bool hasVideo,
+        string clientId,
         CancellationToken cancellationToken)
-    {
-        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        chat.Require();
-        if (!chat.IsMember())
-            return;
+        => StartCallOnClient(session, chatId, invitees, hasVideo, clientId, cancellationToken);
 
-        // Same anti-spam gate as peer messaging: in a peer chat the audio/video (and other stream)
-        // permissions are stripped unless the recipient stored the caller's contact or replied to
-        // them (a block by the recipient leaves the contact non-regular too). So CanWriteAudio is the
-        // reused signal that this caller is allowed to reach the peer with a call.
-        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
-        if (chatId is PeerChatId && !chat.Rules.CanWriteAudio())
-            throw StandardError.Constraint(
-                "You can call this user only after they add you to their contacts or reply to you.");
-
-        var callerAuthorId = chat.Rules.Author!.Id;
-        if (invitees.Count == 0) {
-            // Empty = ring every other chat member.
-            var allAuthorIds = await Authors
-                .ListAuthorIds(session, chatId, cancellationToken)
-                .ConfigureAwait(false);
-            invitees = allAuthorIds.Where(id => id != callerAuthorId).ToApiArray();
-        }
-        await Backend
-            .StartCall(chatId, callerAuthorId, invitees, hasVideo, cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    public async Task AcceptCall(Session session, ChatId chatId, CancellationToken cancellationToken)
-    {
-        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
-        if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
-            await Backend.AcceptCall(chatId, authorId, cancellationToken).ConfigureAwait(false);
-    }
+    public Task AcceptCall(Session session, ChatId chatId, string clientId, CancellationToken cancellationToken)
+        => AcceptCallOnClient(session, chatId, clientId, cancellationToken);
 
     public async Task DeclineCall(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
@@ -296,6 +264,23 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         // see ChatAudioUI.SetRecordingChatId / SetListeningState and LiveSessionUI.SyncParticipations.
         => throw StandardError.NotSupported<ILiveSessions>(
             $"{nameof(LeaveCall)} is obsolete and no longer available.");
+
+    // Legacy methods
+
+    // [ComputeMethod]
+    public virtual Task<UserCall?> LegacyGetMyCall(Session session, CancellationToken cancellationToken)
+        => GetMyCallOnClient(session, null, cancellationToken);
+
+    public Task LegacyStartCall(
+        Session session,
+        ChatId chatId,
+        ApiArray<AuthorId> invitees,
+        bool hasVideo,
+        CancellationToken cancellationToken)
+        => StartCallOnClient(session, chatId, invitees, hasVideo, null, cancellationToken);
+
+    public Task LegacyAcceptCall(Session session, ChatId chatId, CancellationToken cancellationToken)
+        => AcceptCallOnClient(session, chatId, null, cancellationToken);
 
     // Protected methods
 
@@ -348,7 +333,73 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
             .ToApiArray();
     }
 
+    // A ring is every client's to answer. Once placed or answered, the call is the client's that did it;
+    // a claim naming no session (a ring, or one taken by a pod predating #4929) or no client (taken by
+    // a client predating it) is shown to every client that could have taken it.
+    internal static bool IsOnClient(UserCall call, string sessionHash, string? clientId)
+        => call.Phase == CallPhase.Ringing
+            || call.SessionHash is null
+            || (call.SessionHash == sessionHash
+                && (clientId is null || call.ClientId is null || call.ClientId == clientId));
+
     // Private methods
+
+    private async Task<UserCall?> GetMyCallOnClient(
+        Session session,
+        string? clientId,
+        CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var call = await CallsBackend.GetUserCall(account.Id, cancellationToken).ConfigureAwait(false);
+        return call is not null && IsOnClient(call, session.Hash, clientId) ? call : null;
+    }
+
+    private async Task StartCallOnClient(
+        Session session,
+        ChatId chatId,
+        ApiArray<AuthorId> invitees,
+        bool hasVideo,
+        string? clientId,
+        CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        if (!chat.IsMember())
+            return;
+
+        // Same anti-spam gate as peer messaging: in a peer chat the audio/video (and other stream)
+        // permissions are stripped unless the recipient stored the caller's contact or replied to
+        // them (a block by the recipient leaves the contact non-regular too). So CanWriteAudio is the
+        // reused signal that this caller is allowed to reach the peer with a call.
+        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
+        if (chatId is PeerChatId && !chat.Rules.CanWriteAudio())
+            throw StandardError.Constraint(
+                "You can call this user only after they add you to their contacts or reply to you.");
+
+        var callerAuthorId = chat.Rules.Author!.Id;
+        if (invitees.Count == 0) {
+            // Empty = ring every other chat member.
+            var allAuthorIds = await Authors
+                .ListAuthorIds(session, chatId, cancellationToken)
+                .ConfigureAwait(false);
+            invitees = allAuthorIds.Where(id => id != callerAuthorId).ToApiArray();
+        }
+        await Backend
+            .StartCall(chatId, callerAuthorId, invitees, hasVideo, session.Hash, clientId, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task AcceptCallOnClient(
+        Session session,
+        ChatId chatId,
+        string? clientId,
+        CancellationToken cancellationToken)
+    {
+        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
+        if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
+            await Backend.AcceptCall(chatId, authorId, session.Hash, clientId, cancellationToken)
+                .ConfigureAwait(false);
+    }
 
     // The in-progress half of the window. Its counterpart skips still-streaming entries, so an
     // utterance is counted here or there, never twice.

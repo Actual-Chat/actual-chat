@@ -64,10 +64,17 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         AuthorId callerAuthorId,
         ApiArray<AuthorId> invitees,
         bool hasVideo,
+        string? sessionHash,
+        string? clientId,
         CancellationToken cancellationToken);
     Task CancelCall(ChatId chatId, AuthorId callerAuthorId, CancellationToken cancellationToken);
     // Callee methods
-    Task AcceptCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken);
+    Task AcceptCall(
+        ChatId chatId,
+        AuthorId inviteeAuthorId,
+        string? sessionHash,
+        string? clientId,
+        CancellationToken cancellationToken);
     Task DeclineCall(ChatId chatId, AuthorId inviteeAuthorId, CancellationToken cancellationToken);
     Task ConfirmRing(ChatId chatId, AuthorId inviteeAuthorId, RingAck ack, CancellationToken cancellationToken);
 
