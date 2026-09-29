@@ -25,11 +25,13 @@ const { debugLog, warnLog } = getLogs('BubbleHost');
 export class BubbleHost {
     private readonly mutationObserver: MutationObserver;
     private readonly disposed$: Subject<void> = new Subject<void>();
+    private readonly domChanged$ = new Subject<void>();
 
     private bubbleHost: HTMLElement;
 
     private _bubbles: BubbleModel[] = [];
     private _clearAutoUpdate?: () => void;
+    private _coverCheckFrame = 0;
     private _suppressAll = false;
 
     public static create(blazorRef: DotNet.DotNetObject, readBubbles: string[], isPaused: boolean): BubbleHost {
@@ -42,17 +44,16 @@ export class BubbleHost {
         private _isPaused: boolean) {
         debugLog?.log('constructor');
 
-        const domChanged$ = new Subject();
         this.mutationObserver = new MutationObserver((mutations) => {
             mutations.forEach(mutation => {
                 if (mutation.addedNodes.length
                     || mutation.removedNodes.length
                     || mutation.type === 'attributes') {
-                    domChanged$.next(undefined);
+                    this.domChanged$.next();
                 }
             });
         });
-        domChanged$
+        this.domChanged$
             .pipe(
                 startWith(undefined),
                 debounceTime(500),
@@ -88,6 +89,7 @@ export class BubbleHost {
         this.disposed$.next();
         this.disposed$.complete();
 
+        this.clearAutoUpdate();
         this.mutationObserver.disconnect();
     }
 
@@ -222,6 +224,28 @@ export class BubbleHost {
             }, {
                 animationFrame: true,
             });
+        this.watchCover(bubble, triggerElement, bubbleElement);
+    }
+
+    // Checked every frame rather than after the DOM debounce, so an opening modal hides the bubble right away;
+    // bringing it back still waits for the debounce, so it doesn't blink meanwhile.
+    // autoUpdate above can't do it: it calls back only when the trigger moves.
+    private watchCover(bubble: BubbleModel, triggerElement: HTMLElement, bubbleElement: HTMLElement): void {
+        const check = () => {
+            if (this.isTopElement(triggerElement) || this.topElementIsBubble(triggerElement)) {
+                this._coverCheckFrame = requestAnimationFrame(check);
+                return;
+            }
+
+            debugLog?.log(`watchCover: covered`, bubble.bubbleRef);
+            this.clearAutoUpdate();
+            bubble.isShown = false;
+            bubble.isTopElement = false;
+            bubbleElement.style.display = 'none';
+            // The cover may be a sliding panel, which changes no DOM, so nothing else would bring the bubble back
+            this.domChanged$.next();
+        };
+        this._coverCheckFrame = requestAnimationFrame(check);
     }
 
     private async updatePosition(
@@ -358,6 +382,13 @@ export class BubbleHost {
         // Marked here rather than in showBubble(): the round trip can outlast the DOM
         // debounce above, and re-requesting the same bubble meanwhile makes it blink
         bubble.isShown = true;
+        if (bubble.bubbleElement?.isConnected) {
+            // Hidden in updateBubbles() while something covered its trigger: Blazor still renders it,
+            // and OnShow with the same Id and parameters wouldn't re-render it to call showBubble()
+            this.showBubble(bubble.bubbleElement.id, bubble.bubbleRef);
+            return;
+        }
+
         void this.blazorRef.invokeMethodAsync(
             'OnShow',
             bubble.bubbleRef,
@@ -415,6 +446,7 @@ export class BubbleHost {
     }
 
     private clearAutoUpdate(): void {
+        cancelAnimationFrame(this._coverCheckFrame);
         if (!this._clearAutoUpdate)
             return;
 
