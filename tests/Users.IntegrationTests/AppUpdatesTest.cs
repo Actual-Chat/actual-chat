@@ -330,6 +330,8 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
     private async Task<IDisposable> NewTestSettings(AppKind appKind, bool isPlayGateEnabled = false)
     {
         Probes.Probes.Clear();
+        // The records have no TTL, so a rerun would otherwise see what the last run settled
+        await Service.RemoveCachedStoreUpdateInfo(appKind, default);
         await Service.RemoveCachedStoreUpdateInfo(AppKind.Android, default);
         var settings = Settings;
         var restore = new SettingsBackup(settings);
@@ -340,10 +342,12 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         if (!isPlayGateEnabled && appKind != AppKind.Android)
             settings.GoogleStoreId = "";
 
-        // Android goes first: with the gate on, appKind's value is computed from Android's
+        // The app host is shared, and the previous test's value outlives its record until the
+        // invalidation this starts has been consolidated - so wait for the cleared state to show
+        await WhenClear(appKind);
         if (isPlayGateEnabled)
             await WhenClear(AppKind.Android);
-        await WhenClear(appKind);
+
         return restore;
     }
 
@@ -363,10 +367,7 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         if (appKind == AppKind.Wasm)
             return Task.CompletedTask;
 
-        // The records have no TTL, and the app host is shared: a store check the previous test
-        // started can still write back the record it read before the removal - so remove until clear
         return WhenPolled(async () => {
-            await Service.RemoveCachedStoreUpdateInfo(appKind, default);
             await Service.Invalidate(appKind);
             var info = await Service.GetLatestUpdateInfo(appKind, default);
             info.Should().BeNull();
