@@ -2,7 +2,7 @@
 
 .call-reactions-menu .reaction-select {
     @apply md:max-w-none;
-    grid-template-columns: repeat(6, 2rem);
+    grid-template-columns: repeat(7, 2rem);
 }
 .call-reactions-menu .ac-menu-item.on {
     @apply text-primary;

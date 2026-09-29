@@ -98,17 +98,17 @@ public class ChatCallReactionsTest(AppHostFixture fixture, ITestOutputHelper @ou
     }
 
     [Fact]
-    public async Task EmojiOutsideTheAllowedSetShouldBeRejected()
+    public async Task AnyCatalogEmojiShouldBeAccepted()
     {
         // arrange
-        var (session, chatId) = await CreateTestChat("Disallowed");
+        var (session, chatId) = await CreateTestChat("AnyEmoji");
 
         // act
-        var send = () => Api.Send(session, chatId, Emojis.Poop, CancellationToken.None);
+        await Api.Send(session, chatId, Emojis.Poop, CancellationToken.None);
 
         // assert
-        await send.Should().ThrowAsync<Exception>();
-        (await Backend.List(chatId, CancellationToken.None)).Should().BeEmpty();
+        var reactions = await Backend.List(chatId, CancellationToken.None);
+        reactions.Select(x => x.Emoji).Should().Equal(Emojis.Poop);
     }
 
     [Fact]
