@@ -245,6 +245,11 @@ public async switchFacing(): Promise<boolean> {
   `Platforms/iOS`, even when it would compile for Catalyst.
 - `IOS` is **not** defined for Mac Catalyst (only `MACCATALYST` is), so an `#if IOS` registration
   leaves Catalyst out.
+- Main-thread checks and dispatch go through `ActualChat.Maui.MauiMainThread` (`IsMainThread`,
+  `BeginDispatchToMainThread`, `DispatchToMainThread`; static-imported in `App.Maui`). Essentials'
+  `MainThread` and the AppKit `MacOSMainThread` are banned at build time (`BannedSymbols.txt`):
+  Essentials' is the "not implemented" neutral build on the `macos` TFM, so a direct call there
+  compiles and throws at runtime.
 
 ### Global Usings
 
@@ -659,9 +664,10 @@ public override async Task Require(CancellationToken cancellationToken)
    | `string.Compare(a, b, StringComparison.Ordinal)` | `string.Compare(a, b)` |
    | `s.GetHashCode(StringComparison.Ordinal)` | `s.GetHashCode()` |
 
-   **Null/empty checks — prefer the extension methods.** Use `x.IsNullOrEmpty()` /
-   `x.IsNullOrWhiteSpace()` (the ActualLab string extensions) over `string.IsNullOrEmpty(x)` /
-   `string.IsNullOrWhiteSpace(x)`.
+   **Null/empty checks — use the extension methods.** Use `x.IsNullOrEmpty()` /
+   `x.IsNullOrWhiteSpace()` (the ActualLab string extensions) instead of `string.IsNullOrEmpty(x)` /
+   `string.IsNullOrWhiteSpace(x)`. The static calls are banned at build time (`BannedSymbols.txt`
+   at the repo root, analyzer error RS0030), so the build fails on them.
 
    **Exception — `StringIdentifier` equality.** The `Equals` implementations of
    `StringIdentifier`-derived id types intentionally keep `string.Equals(Value, other.Value)`

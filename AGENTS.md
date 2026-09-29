@@ -20,20 +20,22 @@ when it isn't. Re-read it any time you're tempted to add a `//`, `///`, or
 JSDoc block.
 
 Two checks run on every `.cs`/`.ts`/`.razor`/`.css` edit, both against
-[docs/CODING_STYLE.md](docs/CODING_STYLE.md). A script checks the mechanical
-rules — line length, control-flow placement, brace placement, `volatile`,
-namespace and `using` placement — on the lines you changed plus three lines
-around them; it answers in milliseconds and counts characters exactly, so its
-verdict on those rules is the final one. An LLM hook checks the rest of the
-guide over the whole file, reading
-[docs/CODING_STYLE.AGENTS.md](docs/CODING_STYLE.AGENTS.md) — the same guide with
-those rules removed, regenerated from it by
-`node .claude/hooks/style-check/build-agents-guide.mjs`. Everything they report is fixed by
-default, including violations outside the lines you changed. If the user
-explicitly decides to keep offending code as-is, record it in
+[docs/CODING_STYLE.md](docs/CODING_STYLE.md).
+
+A script checks the mechanical rules — line length, control-flow placement,
+brace placement, `volatile`, namespace and `using` placement. It counts
+characters exactly and looks only at the lines you changed plus three around
+them, so its verdict on those rules is the final one and everything it reports
+is yours to fix.
+
+An LLM hook checks the rest of the guide, and it still reads the whole file, so
+it will report violations you did not write. **Fix the ones your own change
+introduced; leave the rest as they are** — a drive-by cleanup is not part of
+your task, and it makes the diff harder to review. When a pre-existing
+violation keeps coming back on every edit to that file, or when the user
+decides to keep offending code as-is, record it in
 [.claude/style-bypasses.md](.claude/style-bypasses.md), in the format described
-there. That file is the only thing they skip; without an entry there the
-same violation is reported again on the next edit to that file.
+there — that file is the only thing the hooks skip.
 
 # Type Catalog — Reuse Existing Abstractions (CRITICAL)
 
