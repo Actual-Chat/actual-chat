@@ -634,4 +634,84 @@ public partial class StoredSettingsSerializationTest
         typed.WordTipAt.Should().ContainKey("awesome");
         typed.IsPending.Should().BeTrue();
     }
+
+    private static T UnionRoundTrip<T>(T value) where T : StoredSettings
+    {
+        using var buffer = KvasSerializer.Default.Write<StoredSettings>(value);
+        var bytes = buffer.WrittenMemory;
+        var result = KvasSerializer.Default.Read<StoredSettings>(ref bytes);
+        result.Should().BeOfType<T>();
+        return (T)result!;
+    }
+
+    [Fact]
+    public void UserCoachSettingsShouldRoundTripTheNewKeys()
+    {
+        // arrange
+        var settings = new UserCoachSettings {
+            IsCoachingEnabled = true,
+            SkipPeerChats = true,
+            Languages = new ApiMap<string, CoachLanguageLevel>(new Dictionary<string, CoachLanguageLevel> {
+                ["en"] = CoachLanguageLevel.Learning, ["ru"] = CoachLanguageLevel.Native }),
+            FocusByLanguage = new ApiMap<string, CoachMetricKind>(new Dictionary<string, CoachMetricKind> {
+                ["en"] = CoachMetricKind.WeakWords }),
+            SelectedLanguage = "en",
+            AreMarksEnabled = false,
+            IsWeeklySummaryEnabled = false,
+        };
+
+        // act
+        var copy = UnionRoundTrip(settings);
+
+        // assert
+        copy.SkipPeerChats.Should().BeTrue();
+        copy.Languages["en"].Should().Be(CoachLanguageLevel.Learning);
+        copy.FocusByLanguage["en"].Should().Be(CoachMetricKind.WeakWords);
+        copy.SelectedLanguage.Should().Be("en");
+        copy.AreMarksEnabled.Should().BeFalse();
+        copy.IsWeeklySummaryEnabled.Should().BeFalse();
+        copy.LevelOf("en-US").Should().Be(CoachLanguageLevel.Learning, "the level is keyed by the ISO code");
+        copy.LevelOf("de").Should().Be(CoachLanguageLevel.Native, "absent means native");
+    }
+
+    [Fact]
+    public void UserCoachWeeklyNoteShouldRoundTrip()
+    {
+        // arrange
+        var chatId = GroupChatId.New();
+        var note = new UserCoachWeeklyNote {
+            WeekStart = new DateTime(2026, 9, 21, 0, 0, 0, DateTimeKind.Utc),
+            ScoreDelta = 4,
+            FocusKind = CoachMetricKind.Fillers,
+            FocusDelta = -0.03,
+            BestChatId = chatId,
+            BestStartLid = 12,
+        };
+
+        // act
+        var copy = UnionRoundTrip(note);
+
+        // assert
+        copy.ScoreDelta.Should().Be(4);
+        copy.FocusKind.Should().Be(CoachMetricKind.Fillers);
+        copy.FocusDelta.Should().Be(-0.03);
+        copy.BestChatId.Should().Be(chatId);
+        copy.BestStartLid.Should().Be(12);
+        copy.IsPending.Should().BeTrue();
+        (copy with { IsSeen = true }).IsPending.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ChatUserSettingsShouldRoundTripCoaching()
+    {
+        // arrange
+        var settings = new ChatUserSettings { IsCoachingEnabled = false };
+
+        // act
+        var copy = UnionRoundTrip(settings);
+
+        // assert
+        copy.IsCoachingEnabled.Should().BeFalse();
+        UnionRoundTrip(new ChatUserSettings()).IsCoachingEnabled.Should().BeNull("null means inherit");
+    }
 }

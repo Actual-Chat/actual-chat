@@ -6,6 +6,8 @@ public enum CoachWindow
     Week = 1,
     Month = 2,
     AllTime = 3,
+    Days7 = 4,
+    Days30 = 5,
 }
 
 public enum CoachMetricKind

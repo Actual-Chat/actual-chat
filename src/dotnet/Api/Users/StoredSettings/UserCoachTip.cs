@@ -9,6 +9,7 @@ public enum CoachTipKind
     SpeedUp = 2,
     Filler = 3,
     WeakWord = 4,
+    Clean = 5,
 }
 
 /// <summary>

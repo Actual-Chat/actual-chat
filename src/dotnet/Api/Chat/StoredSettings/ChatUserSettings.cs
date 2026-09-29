@@ -40,4 +40,6 @@ public sealed partial record ChatUserSettings : StoredSettings
     [DataMember, MemoryPackOrder(9), Key(8)] public bool? IsTranslatedVoiceEnabled { get; init; }
     // Set by "Mark as unread", cleared when the chat is shown next
     [DataMember, MemoryPackOrder(10), Key(9)] public bool IsMarkedUnread { get; init; }
+    // null = inherit from the place, then from the user's coach settings
+    [DataMember, MemoryPackOrder(11), Key(10)] public bool? IsCoachingEnabled { get; init; }
 }

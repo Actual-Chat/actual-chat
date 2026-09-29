@@ -47,4 +47,7 @@ public static class UserScopedKvasBackendExt
 
     public static KvasAccessor<UserCoachTip> UserCoachTip(this UserScopedKvasBackend kvas)
         => kvas.AccessorFor<UserCoachTip>();
+
+    public static KvasAccessor<UserCoachWeeklyNote> UserCoachWeeklyNote(this UserScopedKvasBackend kvas)
+        => kvas.AccessorFor<UserCoachWeeklyNote>();
 }

@@ -61,6 +61,7 @@ namespace ActualChat;
 [Union(54, typeof(PttMutedBannerUserSettings))]
 [Union(55, typeof(UserCoachSettings))]
 [Union(56, typeof(UserCoachTip))]
+[Union(57, typeof(UserCoachWeeklyNote))]
 // Local settings
 [Union(100, typeof(LocalAppSettings))]
 [Union(101, typeof(LocalOnboardingSettings))]
