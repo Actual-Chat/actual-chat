@@ -23,9 +23,29 @@ public class RpcProbePolicyTest(ITestOutputHelper @out) : TestBase(@out)
         var policy = new RpcProbePolicy(new CoreServerSettings { RpcProbeCountries = countries });
 
         // act
-        var shouldMeasure = await policy.ShouldMeasure(ipAddress);
+        var shouldMeasure = await policy.ShouldMeasure(ipAddress, "voxt.ai");
 
         // assert
         shouldMeasure.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("RU", BritishIP, "kz1.edge.voxt.ai", true)]
+    [InlineData("", null, "kz1.edge.dev.voxt.ai", true)]
+    [InlineData("RU", BritishIP, "voxt.ai", false)]
+    [InlineData("RU", BritishIP, "edge.voxt.ai", false)]
+    [InlineData("RU", BritishIP, null, false)]
+    public async Task ShouldMeasureAnyClientArrivingViaAnEdgeHost(
+        string countries, string? ipAddress, string? host, bool expected)
+    {
+        // arrange
+        var policy = new RpcProbePolicy(new CoreServerSettings { RpcProbeCountries = countries });
+
+        // act
+        var shouldMeasure = await policy.ShouldMeasure(ipAddress, host);
+
+        // assert
+        shouldMeasure.Should().Be(expected,
+            because: "a relay forwards TLS as-is, so the origin sees the relay's address rather than the client's");
     }
 }

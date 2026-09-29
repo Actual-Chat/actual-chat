@@ -98,7 +98,8 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
             ?? httpContext.TryGetSessionFromCookie();
         return Task.FromResult(session.IsValid()
             ? new RpcBackendConnection(transport, properties, session,
-                RateLimitIdentity.ToChargeableIP(httpContext.GetRemoteIPAddress()))
+                RateLimitIdentity.ToChargeableIP(httpContext.GetRemoteIPAddress()),
+                httpContext.GetOriginalHost())
             : new RpcConnection(transport, properties));
     }
 

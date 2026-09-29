@@ -6,6 +6,18 @@ namespace ActualChat.AspNetCore;
 
 public static class HttpContextExt
 {
+    private const string OriginalHostKey = "OriginalHost";
+
+    public static void RememberOriginalHost(this HttpContext context)
+        // UseBaseUrl normalizes Request.Host to the base host, so the host the client actually
+        // dialed - an edge relay's, say - survives only if the middleware remembers it first.
+        => context.Items[OriginalHostKey] = context.Request.Host.Host;
+
+    public static string GetOriginalHost(this HttpContext context)
+        => context.Items.TryGetValue(OriginalHostKey, out var host) && host is string originalHost
+            ? originalHost
+            : context.Request.Host.Host;
+
     public static void DisableResponseCaching(this HttpContext context)
         => context.Response.OnStarting(() => {
             var headers = context.Response.Headers;

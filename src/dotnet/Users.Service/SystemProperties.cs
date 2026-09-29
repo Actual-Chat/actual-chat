@@ -14,7 +14,6 @@ public class SystemProperties(IServiceProvider services)
 {
     private const int MinProbePayloadSize = 1024;
     private const int MaxProbePayloadSize = 256 * 1024;
-    private const string EdgeHostInfix = ".edge.";
     private const int MaxEdgeNameLength = 16;
     private const double MaxProbeDurationMs = 600_000;
     private static readonly Version MinCompatibleVersion = new(2, 15);
@@ -33,8 +32,9 @@ public class SystemProperties(IServiceProvider services)
     {
         // An empty reply outside the probed countries: the client reads a short payload as
         // "inconclusive", which keeps the endpoint, rather than as a failure.
-        var ipAddress = RpcInboundContext.Current.GetRemoteIPAddress();
-        if (!await ProbePolicy.ShouldMeasure(ipAddress).ConfigureAwait(false))
+        var context = RpcInboundContext.Current;
+        var ipAddress = context.GetRemoteIPAddress();
+        if (!await ProbePolicy.ShouldMeasure(ipAddress, context.GetRequestHost()).ConfigureAwait(false))
             return [];
 
         // Random rather than zeroed: WebSocket deflate would shrink a compressible payload
@@ -150,7 +150,7 @@ public class SystemProperties(IServiceProvider services)
         if (knownHosts.Contains(endpoint))
             return "origin";
 
-        var edgeAt = endpoint.IndexOf(EdgeHostInfix, StringComparison.OrdinalIgnoreCase);
+        var edgeAt = endpoint.IndexOf(RpcProbePolicy.EdgeHostInfix, StringComparison.OrdinalIgnoreCase);
         if (edgeAt <= 0)
             return "other";
 

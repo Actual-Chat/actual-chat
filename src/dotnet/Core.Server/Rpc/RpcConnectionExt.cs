@@ -23,4 +23,15 @@ public static class RpcConnectionExt
 
     public static string? GetRemoteIPAddress(this RpcInboundContext? context)
         => context?.Peer.ConnectionState.Value.Connection.GetRemoteIPAddress();
+
+    public static string? GetRequestHost(this RpcInboundContext? context)
+    {
+        var connection = context?.Peer.ConnectionState.Value.Connection;
+        if (connection is RpcBackendConnection backendConnection)
+            return backendConnection.RequestHost;
+
+        return connection is not null && connection.Properties.KeylessTryGet<HttpContext>(out var httpContext)
+            ? httpContext.GetOriginalHost()
+            : null;
+    }
 }
