@@ -1,7 +1,7 @@
 .coach-panel {
     @apply relative flex-y h-full;
     @apply bg-03;
-    @apply overflow-y-auto;
+    @apply overflow-hidden;
 }
 .coach-header .c-cover {
     @apply relative flex-none h-26;
@@ -178,3 +178,11 @@
 .c-score-ring .c-track { fill: none; stroke: var(--background-02); stroke-width: 4; }
 .c-score-ring .c-arc { fill: none; stroke: var(--primary); stroke-width: 4; stroke-linecap: round; }
 .c-score-ring i { @apply text-xl; }
+/* The header, score card and tab strip stay put, like the chat panel's; only the tab content scrolls */
+.coach-panel > .coach-recent,
+.coach-panel > .coach-progress,
+.coach-panel > .coach-skills,
+.coach-panel > .coach-empty,
+.coach-panel > .coach-settings-page {
+    @apply flex-1 min-h-0 overflow-y-auto custom-scrollbar;
+}
