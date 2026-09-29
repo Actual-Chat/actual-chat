@@ -29,6 +29,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AddToContactsBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AlertConfirmationInfo>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AliasAvailabilityValidator>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AllReactionsSelect>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AlwaysVisibleComponents>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AndroidAppGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AndroidAppLocationGuideContent>();
@@ -861,6 +862,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.AddToContactsBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AlertConfirmationInfo), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AliasAvailabilityValidator), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.AllReactionsSelect), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AlwaysVisibleComponents), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AndroidAppGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AndroidAppLocationGuideContent), AotTypeKind.Component),

@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Live
 @inherits ComputedMenuBase<AppUIHub, CallReactionsMenu.Model>
 @{
     var m = State.Value;
@@ -14,21 +13,38 @@
         Text="@(m.IsOwnHandRaised ? L.Call_LowerHand : L.Call_RaiseHand)"
         Click="@(() => OnHandClick(chatId, !m.IsOwnHandRaised))"/>
     <MenuEntrySeparator/>
-    <ul class="reaction-select">
-        @foreach (var emoji in CallReaction.AllowedEmojis) {
-            <MenuEntry @key="emoji"
-                Class="reaction-select-reaction"
-                Click="@(() => OnEmojiClick(chatId, emoji))">
-                <IconContent>
-                    <EmojiIcon Emoji="@emoji" HasPreview="false" Class="reaction-select-reaction-emoji"/>
-                </IconContent>
-            </MenuEntry>
-        }
-    </ul>
+    @if (_isShowingAll) {
+        <AllReactionsSelect HasPreview="false" Click="@(emoji => OnEmojiClick(chatId, emoji))"/>
+    } else {
+        <ul class="reaction-select">
+            @foreach (var emoji in QuickEmojis) {
+                <MenuEntry @key="emoji"
+                    Class="reaction-select-reaction"
+                    Click="@(() => OnEmojiClick(chatId, emoji))">
+                    <IconContent>
+                        <EmojiIcon Emoji="@emoji" HasPreview="false" Class="reaction-select-reaction-emoji"/>
+                    </IconContent>
+                </MenuEntry>
+            }
+            <li class="reaction-select-toggle" data-menu-keep-open @onclick="@ShowAll" @onclick:stopPropagation>
+                <i class="icon-chevron-right text-3.5xl"></i>
+            </li>
+        </ul>
+    }
 </div>
 
 @code {
+    private static readonly Emoji[] QuickEmojis = [
+        Emojis.ThumbsUp,
+        Emojis.Love,
+        Emojis.Lol,
+        Emojis.Surprise,
+        Emojis.Party,
+        Emojis.Fire,
+    ];
+
     private ChatId? _chatId;
+    private bool _isShowingAll;
 
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
 
@@ -59,6 +75,9 @@
 
     private Task OnEmojiClick(ChatId chatId, Emoji emoji)
         => LiveSessionUI.SendReaction(chatId, emoji, CancellationToken.None);
+
+    private void ShowAll()
+        => _isShowingAll = true;
 
     // Nested types
 

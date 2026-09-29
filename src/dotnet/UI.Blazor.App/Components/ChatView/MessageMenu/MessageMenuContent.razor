@@ -29,23 +29,7 @@
 
 @if (_showAllReactions) {
     <div class="message-menu">
-        <div class="reactions-menu no-scrollbar">
-            @foreach (var group in Enum.GetValues<EmojiGroup>()) {
-                <div @key="group" class="reactions-menu-group">
-                    <div class="reactions-menu-group-items">
-                        @foreach (var emoji in Emojis.GetByGroup(group)) {
-                            <MenuEntry @key="emoji"
-                                Class="reactions-menu-item"
-                                Click="@(_ => React(emoji))">
-                                <IconContent>
-                                    <EmojiIcon Emoji="@emoji" Class="reactions-menu-emoji"/>
-                                </IconContent>
-                            </MenuEntry>
-                        }
-                    </div>
-                </div>
-            }
-        </div>
+        <AllReactionsSelect Click="@React"/>
     </div>
 } else {
     <div class="message-menu">

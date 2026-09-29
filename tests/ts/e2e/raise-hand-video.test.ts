@@ -16,146 +16,18 @@
  *   AC_E2E_SERVER=external npx vitest run tests/ts/e2e/raise-hand-video.test.ts --config vitest.config.e2e.ts
  */
 
-import * as path from 'path';
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import type { BrowserContext, Page } from 'playwright';
 import {
     BASE_URL, TEST_EMAIL, TEST_EMAIL_2, connectBrowser, newUserContext, screenshot, setIncompleteUI,
-    skipOnboarding, waitForChatReady, waitForEditor, type BrowserConnection,
+    type BrowserConnection,
 } from './helpers';
+import {
+    SPEECH_WAV, collapseVideoPanel, countVideoElements, expandVideoPanel, hangUpIfAny, markVideoElements,
+    openCallChat, openCallTab, setGallery, startSession,
+} from './video-call';
 
 const shot = (name: string) => screenshot('e2e-raise-hand', name);
-
-const CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
-const SPEECH_WAV = path.resolve('lib/data/test-audio-1.wav');
-
-async function openChat(page: Page) {
-    await page.goto(CHAT_URL, { waitUntil: 'domcontentloaded' });
-    await waitForChatReady(page);
-    await skipOnboarding(page);
-
-    const joinButton = page.locator('button:has-text("Join this chat")');
-    if (await joinButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await joinButton.click();
-        await page.waitForTimeout(1500);
-    }
-    await waitForEditor(page);
-}
-
-/** The video toggle shows only once the user records (or someone already streams video). */
-async function startRecording(page: Page) {
-    // Recording is restored with the account's active chats, so a blind click can turn it off.
-    const recordOn = page.locator('.chat-audio-panel .recorder-wrapper.record-on').first();
-    if (!await recordOn.waitFor({ state: 'attached', timeout: 3_000 }).then(() => true, () => false))
-        await page.locator('.chat-audio-panel .recorder-wrapper button').first().click();
-    // record-on is the intent; applying-changes lasts until the recorder has really started
-    await page.locator('.chat-audio-panel .recorder-wrapper.record-on:not(.applying-changes)').first()
-        .waitFor({ state: 'attached', timeout: 30_000 });
-}
-
-async function startCamera(page: Page) {
-    await page.locator('.chat-audio-panel .video-wrapper button').first().click();
-    // The first start asks through the join modal; a rejoin after a hang-up resumes without it
-    const modal = page.locator('.modal').filter({ has: page.locator('.camera-preview-video') }).first();
-    const preview = page.locator('.video-panel .video-streaming-preview').first();
-    await expect.poll(async () => await modal.isVisible() || await preview.isVisible(), { timeout: 15_000 })
-        .toBe(true);
-    if (await modal.isVisible()) {
-        const submit = modal.locator('.btn-modal.btn-primary').first();
-        await expect.poll(async () => submit.isEnabled(), { timeout: 15_000 }).toBe(true);
-        await submit.click();
-    }
-    await preview.waitFor({ state: 'visible', timeout: 20_000 });
-}
-
-async function expandVideoPanel(page: Page) {
-    // The expand button fades in (show-with-delay), and a click that lands before then is lost.
-    const panel = page.locator('.video-panel').first();
-    await expect.poll(async () => {
-        if (!(await panel.getAttribute('class'))?.includes('expanded'))
-            await panel.locator('.expand-btn').first().click({ timeout: 2_000 }).catch(() => { /* retried */ });
-        return (await panel.getAttribute('class')) ?? '';
-    }, { timeout: 20_000, interval: 1_000 }).toContain('expanded');
-}
-
-type MarkedElement = Element & { e2eMark?: boolean };
-
-/** Stamps the panel's video and canvas elements, so a later check can tell a re-render (same
- *  elements, still stamped) from a recreated tile (new, unstamped elements). */
-async function markVideoElements(page: Page): Promise<number> {
-    return page.evaluate(() => {
-        const elements = [...document.querySelectorAll('.video-panel video, .video-panel canvas')];
-        elements.forEach(e => { (e as MarkedElement).e2eMark = true; });
-        return elements.length;
-    });
-}
-
-/** How many of the panel's video and canvas elements carry the stamp, and how many don't. */
-async function countVideoElements(page: Page): Promise<{ marked: number; unmarked: number }> {
-    return page.evaluate(() => {
-        const elements = [...document.querySelectorAll('.video-panel video, .video-panel canvas')];
-        const marked = elements.filter(e => (e as MarkedElement).e2eMark === true).length;
-        return { marked, unmarked: elements.length - marked };
-    });
-}
-
-async function collapseVideoPanel(page: Page) {
-    const panel = page.locator('.video-panel').first();
-    if ((await panel.getAttribute('class'))?.includes('expanded'))
-        await panel.locator('.expand-btn').first().click();
-    await expect.poll(async () => (await panel.getAttribute('class')) ?? '', { timeout: 10_000 })
-        .not.toContain('expanded');
-}
-
-async function setGallery(page: Page, isOn: boolean) {
-    const panel = page.locator('.video-panel').first();
-    const isGallery = async () => ((await panel.getAttribute('class')) ?? '').includes('layout-equal');
-    if (await isGallery() !== isOn)
-        await panel.locator('.layout-toggle-btn').first().click();
-    await expect.poll(isGallery, { timeout: 10_000 }).toBe(isOn);
-}
-
-async function openCallTab(page: Page) {
-    // A closed right panel stays in the DOM, parked just past the viewport's right edge, so Playwright
-    // reports it visible - check where it is instead. Its toggle renders only while it's closed, and
-    // right after the video panel collapses it can be mid-transition, so retry until the tab is on screen.
-    await skipOnboarding(page);
-    const width = page.viewportSize()?.width ?? 0;
-    const callTab = page.locator('.chat-side-panel [data-tab-id="call"]').first();
-    const toggle = page.locator('button:has(i.icon-layout)').first();
-    await expect.poll(async () => {
-        const x = (await callTab.boundingBox())?.x ?? width;
-        if (x < width)
-            return true;
-
-        if (await toggle.isVisible())
-            await toggle.click({ timeout: 2_000 }).catch(() => { /* retried */ });
-        return false;
-    }, { timeout: 20_000, interval: 1_000 }).toBe(true);
-    await callTab.click();
-}
-
-// A failed test must not leave a live session in the shared chat: the next run would start
-// with a session it didn't open, and the other account as its host.
-async function hangUpIfAny(page: Page | undefined) {
-    if (!page)
-        return;
-
-    for (let i = 0; i < 2; i++) {
-        await page.keyboard.press('Escape').catch(() => { /* ignore */ });
-        await page.waitForTimeout(300);
-    }
-    const hangUp = page.locator('.video-panel .btn-video-panel.talking').first();
-    if (await hangUp.isVisible({ timeout: 1_000 }).catch(() => false)) {
-        await hangUp.click().catch(() => { /* ignore */ });
-        await page.locator('.video-panel').first()
-            .waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => { /* ignore */ });
-    }
-    // Recording outlives the page (it's restored with the account's active chats), so stop it too.
-    const recordOn = page.locator('.chat-audio-panel .recorder-wrapper.record-on').first();
-    if (await recordOn.isVisible({ timeout: 1_000 }).catch(() => false))
-        await page.locator('.chat-audio-panel .recorder-wrapper button').first().click().catch(() => { /* ignore */ });
-}
 
 describe('raise hand and reactions in a video call', () => {
     let conn: BrowserConnection;
@@ -203,9 +75,9 @@ describe('raise hand and reactions in a video call', () => {
 
     it('a raised hand shows on the tile, reactions float, and the host can lower the hand', async () => {
         // arrange - Alice starts first, so she is the host
-        await openChat(alice);
-        await openChat(bob);
-        await startSession();
+        await openCallChat(alice);
+        await openCallChat(bob);
+        await startSession(alice, bob);
         const aliceBobTile = alice.locator('.video-panel .remote-video-container').first();
         const bobName = (await aliceBobTile.locator('.video-participant-label span').first().innerText()).trim();
         expect(bobName.length).toBeGreaterThan(0);
@@ -285,28 +157,4 @@ describe('raise hand and reactions in a video call', () => {
         await bob.screenshot({ path: shot('7-hand-lowered') });
         expect(await countVideoElements(alice)).toEqual({ marked: aliceVideoCountBeforeLower, unmarked: 0 });
     }, 300_000);
-
-    async function startSession() {
-        // A session has to latch before a hand can go up, and it closes again if nobody is recording
-        // yet when the cameras start. The speech WAV makes that rare; the retry covers the rest.
-        for (let attempt = 1; ; attempt++) {
-            await startRecording(alice);
-            await startRecording(bob);
-            await startCamera(alice);
-            await startCamera(bob);
-            const canReact = await bob.locator('.video-panel-footer .btn-react').first()
-                .waitFor({ state: 'attached', timeout: 20_000 }).then(() => true, () => false);
-            if (canReact)
-                break;
-            if (attempt === 3)
-                throw new Error('The live session never latched: no React button after 3 attempts');
-
-            console.log(`Live session did not latch (attempt ${attempt}), restarting both cameras`);
-            await hangUpIfAny(bob);
-            await hangUpIfAny(alice);
-            await alice.waitForTimeout(3_000);
-        }
-        await alice.locator('.video-panel .remote-video-container').first()
-            .waitFor({ state: 'visible', timeout: 30_000 });
-    }
 });

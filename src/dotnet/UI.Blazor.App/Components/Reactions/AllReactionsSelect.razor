@@ -1,0 +1,24 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="reactions-menu no-scrollbar">
+    @foreach (var group in Enum.GetValues<EmojiGroup>()) {
+        <div @key="group" class="reactions-menu-group">
+            <div class="reactions-menu-group-items">
+                @foreach (var emoji in Emojis.GetByGroup(group)) {
+                    <MenuEntry @key="emoji"
+                        Class="reactions-menu-item"
+                        Click="@(() => Click.InvokeAsync(emoji))">
+                        <IconContent>
+                            <EmojiIcon Emoji="@emoji" HasPreview="@HasPreview" Class="reactions-menu-emoji"/>
+                        </IconContent>
+                    </MenuEntry>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public EventCallback<Emoji> Click { get; set; }
+    [Parameter] public bool HasPreview { get; set; } = true;
+}
