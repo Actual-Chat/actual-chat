@@ -313,6 +313,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `UIHub` — central hub providing access to all UI services
 - `History` — browser navigation history management
 - `ModalUI` — modal dialog management
+- `AttentionUI` — runs the per-account flow for unsolicited UI: wait out any `AttentionHold` (the user came via a notification / link / invite / share / sign-in redirect), then onboarding, then tips and the review prompt; `Suppress` is the debug/test switch
 - `ToastUI` — toast notification management
 - `PanelsUI` — left/middle/right panel management
 - `AccountUI` — account state and authentication flow

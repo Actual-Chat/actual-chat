@@ -195,8 +195,7 @@ public partial class AccountUI
         DebugLog?.LogInformation("Starting OnSignedInWorkflow");
         await PostponeOnSignedInWorkflow().ConfigureAwait(true);
 
-        // We were signed out -> it's a sign-in
-        _ = OnboardingUI.TryShow();
+        // We were signed out -> it's a sign-in; AttentionUI restarts its flow for the new account on its own
         if (_activeSignInRequest.Value != null)
             return; // No auto-navigation in this case
 

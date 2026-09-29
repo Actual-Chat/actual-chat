@@ -23,21 +23,13 @@ public sealed class BubbleUI : UIServiceBase<UIHub>
         Hub.RegisterDisposable(Settings);
     }
 
-    public async Task WhenReadyToShowBubbles()
+    public async Task<IReadOnlyList<Symbol>> GetReadBubbles(CancellationToken cancellationToken)
     {
-        // Wait for sign-in
-        await AccountUI.WhenReady.ConfigureAwait(false);
-        await Clocks.Timeout(2)
-            .ApplyTo(ct => AccountUI.OwnAccount.Computed.When(x => !x.IsGuestOrNull(), ct))
-            .SilentAwait(false);
-        // If there was a recent account change, add a delay to let invalidations propagate
-        await Task.Delay(AccountUI.GetPostChangeInvalidationDelay()).ConfigureAwait(false);
-
-        // Re-synchronize after the invalidation delay to pick up user-specific data
-        await Settings.WhenSynchronized().ConfigureAwait(false);
-
-        // Delay first display to not interfere with permissions
-        await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+        // The current account's, once its settings reached the client:
+        // after a recent account change, invalidations need a moment to propagate
+        await Task.Delay(AccountUI.GetPostChangeInvalidationDelay(), cancellationToken).ConfigureAwait(false);
+        await Settings.WhenSynchronized(cancellationToken).ConfigureAwait(false);
+        return Settings.Value.ReadBubbles;
     }
 
     public void UpdateSettings(UserBubbleSettings value)

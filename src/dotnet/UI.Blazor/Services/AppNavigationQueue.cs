@@ -38,21 +38,25 @@ public static class AppNavigationQueue
             return;
         }
 
-        Func<IServiceProvider, Task> taskFactory = c => {
-            var autoNavigationUI = c.GetRequiredService<AutoNavigationUI>();
-            return autoNavigationUI.DispatchNavigateTo(url, reason);
-        };
-
         Log.LogInformation("EnqueueOrNavigateToUrl, Url: {Url}", url);
+        EnqueueOrRun(
+            nameof(EnqueueOrNavigateToUrl),
+            c => c.GetRequiredService<AutoNavigationUI>().DispatchNavigateTo(url, reason));
+    }
+
+    // Runs on the Blazor dispatcher of the current scope; a task queued before the scope exists
+    // runs while its first render is being prepared, ahead of anything that waits for that render
+    public static void EnqueueOrRun(string name, Func<IServiceProvider, Task> taskFactory)
+    {
         lock (Queue) {
             if (ScopedServices is { } c) {
-                // Navigate right now
+                // Run right now
                 Dispatcher dispatcher;
                 try {
                     dispatcher = c.GetRequiredService<Dispatcher>();
                 }
                 catch (ObjectDisposedException e) {
-                    Log.LogWarning(e, "EnqueueOrNavigateToUrl: ScopedServices is disposed -> ignore");
+                    Log.LogWarning(e, "{Name}: ScopedServices is disposed -> ignore", name);
                     Reset();
                     return;
                 }
@@ -60,7 +64,7 @@ public static class AppNavigationQueue
                 return;
             }
 
-            // Enqueue navigation
+            // Enqueue
             Queue.Add(taskFactory);
         }
     }

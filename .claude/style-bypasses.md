@@ -52,6 +52,17 @@ the original start line and only a hint, since it drifts as the file changes;
 the rule is an abbreviated label, since its wording changes as the guide is
 edited. The reason can be as short as whose decision it was.
 
+## src/dotnet/UI.Blazor.App/Services/IncomingShareUI.cs
+
+- L95 `await SendingMessages.Send(SendMessageRequest.NewMessage(chatId, comment), cancellationToken).ConfigureAwait(true);`
+  — line over 120 chars — pre-existing, outside the change that touched the file; Dmitrii Filippov's decision
+- L96 `await SendingMessages.Send(SendMessageRequest.NewMessage(chatId, text), cancellationToken).ConfigureAwait(true);`
+  — line over 120 chars — same
+- L164 `Log.LogWarning("File size limit exceeded for '{Url}'. Actual size is {FileSize}", fileMetadata.FileName, fileMetadata.Length);`
+  — line over 120 chars — same
+- L168 `var preview = await FilePreviews.Get(fileProvider, fileMetadata.FileType, Hub.StopToken).ConfigureAwait(true);`
+  — line over 120 chars — same
+
 ## src/dotnet/Api/Users/UserLanguageSettings.cs
 
 - L24 `[DataMember, MemoryPackOrder(4), Key(4)]` on `UILanguage`

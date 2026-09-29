@@ -1,4 +1,5 @@
 ﻿using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Services;
 using Android.Content;
 using Android.OS;
 using Java.Lang;
@@ -66,6 +67,7 @@ public static class IncomingShareHandler
     private static void HandlePlainTextSendInternal(string text, ChatId? targetChatId)
     {
         Log.LogInformation("About to send text: '{Text}'", text.ToPrivate());
+        ExpectShare();
         _ = DispatchToBlazor(
                 c => c.GetRequiredService<IncomingShareUI>().ShareText(text, targetChatId),
                 "IncomingShareUI.ShareText(...)",
@@ -92,6 +94,7 @@ public static class IncomingShareHandler
     private static void HandleFilesSendInternal(string mimeType, Uri[] uris, ChatId? targetChatId, bool canPersistGrant)
     {
         Log.LogInformation("About to send {Count} files of type '{MimeType}'", uris.Length, mimeType);
+        ExpectShare();
         _ = DispatchToBlazor(scopedServices => {
                     var downloader = scopedServices.GetRequiredService<AndroidContentDownloader>();
                     var fileInfos = downloader.ConvertToAttachFileInfos(uris, canPersistGrant);
@@ -102,6 +105,18 @@ public static class IncomingShareHandler
                 true)
             .WithErrorLog(Log, "Failed send files")
             .SuppressExceptions();
+    }
+
+    private static void ExpectShare()
+    {
+        // Queued ahead of DispatchToBlazor, which waits for the first render,
+        // so nothing unsolicited opens in between
+        AppNavigationQueue.EnqueueOrRun(
+            nameof(IncomingShareUI.ExpectShare),
+            c => {
+                c.GetRequiredService<IncomingShareUI>().ExpectShare();
+                return Task.CompletedTask;
+            });
     }
 
     private static IList? GetStreams(Intent intent, bool multipleStreams)

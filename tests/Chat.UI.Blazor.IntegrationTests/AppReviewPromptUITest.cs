@@ -5,29 +5,30 @@ using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
-using ActualLab.Fusion.Blazor;
 using Microsoft.Extensions.Localization;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
 // The client half of the review prompt: the server's pending prompt gated by the device facts
-// (foreground, no open modal), the real modal, and the outcome that clears the prompt.
+// (foreground, attention not taken), the real modal, and the outcome that clears the prompt.
 
 [Collection(nameof(ChatUICollection))]
 public sealed class AppReviewPromptUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<ChatAppHostFixture>(fixture, @out)
 {
     [Fact(Timeout = 60_000)]
-    public async Task PendingPromptShouldBeShowableOnlyInTheForegroundWithNoModalOpen()
+    public async Task PendingPromptShouldBeShowableOnlyInTheForegroundWhenAttentionIsFree()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
         var account = await tester.SignInAsUniqueBob();
         var hub = tester.ScopedAppServices.AppUIHub();
+        hub.AttentionUI.Suppress(AttentionKind.Onboarding);
         var promptUI = hub.AppReviewPromptUI;
         var browserInfo = tester.ScopedAppServices.GetRequiredService<BrowserInfo>();
         var chatId = ChatId.Parse("testchatid1234567890");
-        var host = RenderModalHost(tester, hub);
+        var host = tester.RenderModalHost(hub);
+        hub.AttentionUI.Start();
 
         // act
         var beforePending = await promptUI.GetShowablePrompt(default);
@@ -53,6 +54,12 @@ public sealed class AppReviewPromptUITest(ChatAppHostFixture fixture, ITestOutpu
         await TestWait.When(async ct => (await promptUI.GetShowablePrompt(ct)).Should().BeNull());
         await host.InvokeAsync(() => otherModal.Close(true));
         await TestWait.When(async ct => (await promptUI.GetShowablePrompt(ct)).Should().NotBeNull());
+
+        // act - so does an arrival the user came for
+        var hold = hub.AttentionUI.Hold("test");
+        await TestWait.When(async ct => (await promptUI.GetShowablePrompt(ct)).Should().BeNull());
+        hold.Dispose();
+        await TestWait.When(async ct => (await promptUI.GetShowablePrompt(ct)).Should().NotBeNull());
     }
 
     [Fact(Timeout = 60_000)]
@@ -62,8 +69,10 @@ public sealed class AppReviewPromptUITest(ChatAppHostFixture fixture, ITestOutpu
         await using var tester = AppHost.NewBlazorTester(Out);
         var account = await tester.SignInAsUniqueBob();
         var hub = tester.ScopedAppServices.AppUIHub();
+        hub.AttentionUI.Suppress(AttentionKind.Onboarding);
         var usage = hub.Usage;
-        var host = RenderModalHost(tester, hub);
+        var host = tester.RenderModalHost(hub);
+        hub.AttentionUI.Start();
         await MarkPending(account.Id, ChatId.Parse("testchatid1234567890"));
         var outcomes = new List<ReviewPromptOutcome>();
 
@@ -84,17 +93,6 @@ public sealed class AppReviewPromptUITest(ChatAppHostFixture fixture, ITestOutpu
         history.DeclineCount.Should().Be(1);
         history.PendingSince.Should().BeNull();
         (await usage.GetPendingReviewPrompt(tester.Session, default)).Should().BeNull();
-    }
-
-    private static IRenderedComponent<ModalHost> RenderModalHost(BlazorTester tester, AppUIHub hub)
-    {
-        // What AppBase does for the real app: the hub needs a root component's dispatcher before
-        // ModalUI.Show can schedule anything, and ModalHost talks to JS on every render
-        tester.JSInterop.Mode = JSRuntimeMode.Loose;
-        tester.Renderer.SetRendererInfo(new RendererInfo("Server", true));
-        var host = tester.Render<ModalHost>();
-        hub.Initialize(host.Instance, RenderModeDef.GetOrDefault(""));
-        return host;
     }
 
     private async Task MarkPending(UserId userId, ChatId chatId)

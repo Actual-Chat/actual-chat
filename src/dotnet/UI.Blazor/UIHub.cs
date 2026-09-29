@@ -63,6 +63,7 @@ public class UIHub : CircuitHub, IDispatcherResolver
     // UI services
     public FileDownloadUI FileDownloadUI => field ??= Services.GetRequiredService<FileDownloadUI>();
     public LoadingUI LoadingUI => field ??= Services.GetRequiredService<LoadingUI>();
+    public AttentionUI AttentionUI => field ??= Services.GetRequiredService<AttentionUI>();
     public RenderDelayer RenderDelayer => field ??= Services.GetRequiredService<RenderDelayer>();
     public ReloadUI ReloadUI => field ??= Services.GetRequiredService<ReloadUI>();
     public AppUpdateUI AppUpdateUI => field ??= Services.GetRequiredService<AppUpdateUI>();

@@ -124,7 +124,7 @@ public sealed class AppScopedServiceStarter
         // Starts in Blazor dispatcher
         try {
             await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(true);
-            _ = Hub.OnboardingUI.TryShow();
+            Hub.AttentionUI.Start();
             var hostKind = HostInfo.HostKind;
             var baseDelay = TimeSpan.FromSeconds(hostKind.IsServer() ? 0.25 : 1);
 

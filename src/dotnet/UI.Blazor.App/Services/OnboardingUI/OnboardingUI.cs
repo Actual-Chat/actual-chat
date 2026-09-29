@@ -10,9 +10,8 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
 {
     private const int MaxPasskeyNudgeDeclineCount = 3;
     private static readonly TimeSpan PasskeyNudgeInterval = TimeSpan.FromDays(7);
-    private static readonly SemaphoreSlim Lock = new (1);
-    private CancellationTokenSource? _lastTryShowCts;
-    private ModalRef? _lastModalRef;
+    // Offline the decision may never come, and the attention flow waits for it before tips and the review prompt
+    private static readonly TimeSpan DecisionTimeout = TimeSpan.FromSeconds(30);
 
     private LoadingUI LoadingUI => Hub.LoadingUI;
     private PasskeyUI PasskeyUI => Hub.PasskeyUI;
@@ -38,48 +37,24 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
                 InitialValue = new LocalOnboardingSettings(),
                 Category = StateCategories.Get(type, nameof(LocalSettings)),
             });
-        Hub.RegisterDisposable(() => {
-            _lastTryShowCts.CancelAndDisposeSilently();
-            UserSettings.Dispose();
-        });
+        Hub.RegisterDisposable(UserSettings);
     }
 
-    public async Task<bool> TryShow()
+    public async Task<bool> ShouldBeShown(CancellationToken cancellationToken)
     {
-        await Lock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
-
+        using var cts = cancellationToken.CreateLinkedTokenSource(DecisionTimeout);
         try {
-            // Must start in Blazor Dispatcher!
-            if (_lastModalRef is { WhenClosed.IsCompleted: false })
-                return true;
-
-            _lastModalRef?.Close(true);
-            _lastTryShowCts.CancelAndDisposeSilently();
-            var shouldBeShown = false;
-            // We give it 5 seconds to complete, otherwise it won't be shown
-            using var cts = _lastTryShowCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            try {
-                shouldBeShown = await ShouldBeShown(cts.Token)
-                    .ConfigureAwait(true); // true is required here!
-            }
-            catch (OperationCanceledException) { }
-            finally {
-                if (_lastTryShowCts == cts)
-                    _lastTryShowCts = null;
-                cts.DisposeSilently();
-            }
-            if (!shouldBeShown)
-                return false;
-
-            _lastModalRef = await ModalUI
-                .Show(new OnboardingModal.Model(), CancellationToken.None)
-                .ConfigureAwait(false); // Ok (pre-exit)
-            return true;
+            return await ShouldBeShownNow(cts.Token).ConfigureAwait(false);
         }
-        finally {
-            Lock.Release();
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+            Log.LogWarning(
+                "Onboarding is skipped: couldn't decide whether to show it in {Timeout}", DecisionTimeout);
+            return false;
         }
     }
+
+    public Task<ModalRef> Show()
+        => ModalUI.Show(new OnboardingModal.Model());
 
     public void UpdateUserSettings(UserOnboardingSettings value)
         => UserSettings.Set(value);
@@ -139,13 +114,8 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
     private string GetPasskeyNudgeSnoozedAtKey()
         => $"{nameof(OnboardingUI)}.PasskeyNudgeSnoozedAt.{AccountUI.OwnAccount.Value.Id}";
 
-    private async Task<bool> ShouldBeShown(CancellationToken cancellationToken)
+    private async Task<bool> ShouldBeShownNow(CancellationToken cancellationToken)
     {
-        // Wait for sign-in
-        await AccountUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
-        await AccountUI.OwnAccount.Computed
-            .When(x => !x.IsGuest, cancellationToken)
-            .ConfigureAwait(false);
         // If there was a recent account change, add a delay to let them hit the client
         await Task.Delay(AccountUI.GetPostChangeInvalidationDelay(), cancellationToken).ConfigureAwait(false);
 
@@ -210,8 +180,6 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
                 IsPermissionsStepCompleted = true,
                 AreCookiesAccepted = true,
             });
-            // Close the onboarding modal if it's open
-            _lastModalRef?.Close(true);
         }
     }
 }

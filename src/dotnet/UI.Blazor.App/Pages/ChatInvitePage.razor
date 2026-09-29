@@ -23,6 +23,7 @@
     private AccountFull? _account;
 
     private IPlaces Places => Hub.Places;
+    private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private ICommander Commander => Hub.Commander;
 
     private ILogger Log => field ??= Hub.LogFor(GetType());
@@ -48,6 +49,8 @@
         if (mustReport)
             Hub.RecordFunnelEvent(FunnelEvent.JoinOpenedSignedIn);
 
+        // The invite leads to a chat; the hold moves there with the navigation below
+        AutoNavigationUI.HoldAttentionAt(History.LocalUrl, AutoNavigationReason.Invite);
         var useCommand = new Invites_Use { Session = Session, InviteId = InviteId };
         Invite invite;
         try {
@@ -74,17 +77,18 @@
             if (place != null) {
                 var welcomeChatId = await Places.GetWelcomeChatId(Session, place.Id, default);
                 if (welcomeChatId is null) {
+                    // No chat to arrive at, so leaving the invite page releases the hold
                     _ = History.NavigateTo(Links.Chats, true);
                     return;
                 }
 
-                _ = History.NavigateTo(Links.Chat(welcomeChatId), true);
+                _ = AutoNavigationUI.NavigateTo(Links.Chat(welcomeChatId), AutoNavigationReason.Invite, true);
             }
             return;
         }
 
         var chatInvite = invite as ChatInvite ?? throw StandardError.Format<Invite>();
         var chatId = chatInvite.ChatId;
-        _ = History.NavigateTo(Links.Chat(chatId), true);
+        _ = AutoNavigationUI.NavigateTo(Links.Chat(chatId), AutoNavigationReason.Invite, true);
     }
 }

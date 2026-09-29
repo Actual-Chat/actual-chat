@@ -25,11 +25,15 @@
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.BubbleHost.create";
 
     private BubbleModel? _bubble;
+    private bool _isPaused = true;
+    private UserId? _readBubblesAccountId;
+    private readonly CancellationTokenSource _disposeCts = new();
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<BubbleHost> _blazorRef = null!;
 
     [Inject] private UIHub Hub { get; init; } = null!;
     private AccountUI AccountUI => Hub.AccountUI;
+    private AttentionUI AttentionUI => Hub.AttentionUI;
     private BubbleUI BubbleUI => field ??= Hub.BubbleUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
@@ -39,13 +43,11 @@
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BubbleHost))]
     public BubbleHost() { }
 
-    protected override void OnInitialized() {
-        BubbleUI.HostAcceptor.TrySetResult(this);
-        AccountUI.LoginLogout += OnLoginLogout;
-    }
+    protected override void OnInitialized()
+        => BubbleUI.HostAcceptor.TrySetResult(this);
 
     public async ValueTask DisposeAsync() {
-        AccountUI.LoginLogout -= OnLoginLogout;
+        _disposeCts.CancelAndDisposeSilently();
         await _jsRef.DisposeSilentlyAsync("dispose");
         _jsRef = null!;
         _blazorRef.DisposeSilently();
@@ -117,29 +119,62 @@
         if (firstRender) {
             _blazorRef = DotNetObjectReference.Create(this);
             await BrowserInfo.WhenReady;
-            await BubbleUI.WhenReadyToShowBubbles();
-            var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
             if (_blazorRef == null!)
                 return; // Dispose may happen during await above
 
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _blazorRef, readBubbles);
+            // Starts paused: AttentionUI lets bubbles in once the attention flow for the account is done
+            var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _blazorRef, readBubbles, true);
+            _ = PauseWhileAttentionIsTaken(_disposeCts.Token);
         }
     }
 
-    private async void OnLoginLogout(AccountFull? account) {
+    private async Task PauseWhileAttentionIsTaken(CancellationToken cancellationToken) {
         try {
-            _bubble = null;
-            await BubbleUI.WhenReadyToShowBubbles();
-            var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
+            var cIsAvailable = await Computed
+                .New(Hub.Services, ct => AttentionUI.IsAvailableFor(AttentionKind.Bubbles, ct))
+                .Update(cancellationToken)
+                .ConfigureAwait(false);
+            var changes = cIsAvailable.Changes(FixedDelayer.YieldUnsafe, cancellationToken);
+            await foreach (var c in changes.ConfigureAwait(false)) {
+                var isPaused = !c.Value;
+                if (!isPaused)
+                    await ResetForNewAccount(cancellationToken).ConfigureAwait(false);
+                await InvokeAsync(async () => {
+                    if (isPaused == _isPaused || ReferenceEquals(_jsRef, null))
+                        return;
+
+                    _isPaused = isPaused;
+                    if (isPaused) {
+                        _bubble = null;
+                        StateHasChanged();
+                    }
+                    await _jsRef.InvokeVoidAsync("setPaused", CancellationToken.None, isPaused);
+                }).ConfigureAwait(false);
+            }
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogError(e, "PauseWhileAttentionIsTaken failed");
+        }
+    }
+
+    private async Task ResetForNewAccount(CancellationToken cancellationToken) {
+        // The flow restarts for a new account, so bubbles resume with its read ones.
+        // Only then: a reset also lifts the user's own Skip.
+        var accountId = AccountUI.OwnAccount.Value.Id;
+        if (accountId == _readBubblesAccountId)
+            return;
+
+        var readBubbles = await BubbleUI.GetReadBubbles(cancellationToken).ConfigureAwait(false);
+        await InvokeAsync(async () => {
             if (ReferenceEquals(_jsRef, null))
                 return;
 
+            _readBubblesAccountId = accountId;
+            _bubble = null;
             await _jsRef.InvokeVoidAsync("resetBubbles", CancellationToken.None, readBubbles);
             StateHasChanged();
-        }
-        catch (Exception e) {
-            Log.LogError(e, "Error handling OnOwnAccountChanged");
-        }
+        }).ConfigureAwait(false);
     }
 
     // Nested types

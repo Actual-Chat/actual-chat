@@ -9,12 +9,15 @@ public enum AutoNavigationReason
     FixedChatId = 20,
     Notification = 50,
     AppLink = 51,
+    Share = 52,
+    Invite = 53,
     SignOut = 100,
 }
 
 public sealed class AutoNavigationUI(UIHub hub) : UIServiceBase<UIHub>(hub)
 {
     private volatile List<(LocalUrl Url, AutoNavigationReason Reason)>? _autoNavigationCandidates = new();
+    private AttentionHold? _attentionHold;
 
     public Task<LocalUrl> GetAutoNavigationUrl()
         => Dispatcher.InvokeAsync(async () => {
@@ -37,14 +40,17 @@ public sealed class AutoNavigationUI(UIHub hub) : UIServiceBase<UIHub>(hub)
                 throw StandardError.Internal($"{nameof(GetAutoNavigationUrl)} is called twice.");
             Log.LogInformation($"{nameof(GetAutoNavigationUrl)}: navigation candidates are reset");
 
-            var url = candidates.Count > 0
+            var (url, reason) = candidates.Count > 0
                 ? candidates
-                    .Select((t, i) => new { t.Reason, t.Url, Index = i })
+                    .Select((t, i) => (t.Url, t.Reason, Index: i))
                     .OrderByDescending(t => t.Reason)
                     .ThenByDescending(t => t.Index)
-                    .First().Url
-                : defaultUrl;
+                    .Select(t => (t.Url, t.Reason))
+                    .First()
+                : (defaultUrl, AutoNavigationReason.Unknown);
             Log.LogInformation($"{nameof(GetAutoNavigationUrl)}: {{AutoNavigationUrl}}", url);
+            if (HoldsAttention(reason))
+                HoldAttentionAt(url, reason);
             return url;
         });
 
@@ -79,13 +85,15 @@ public sealed class AutoNavigationUI(UIHub hub) : UIServiceBase<UIHub>(hub)
         });
     }
 
-    public Task NavigateTo(LocalUrl url, AutoNavigationReason reason)
+    public Task NavigateTo(LocalUrl url, AutoNavigationReason reason, bool mustReplace = false)
     {
         Dispatcher.AssertAccess();
         if (_autoNavigationCandidates == null) {
             // Initial navigation already happened
             Log.LogInformation("* NavigateTo({Url}, {Reason})", url, reason);
-            return History.NavigateTo(url);
+            if (HoldsAttention(reason))
+                HoldAttentionAt(url, reason);
+            return History.NavigateTo(url, mustReplace);
         }
 
         // Initial navigation hasn't happened yet
@@ -94,7 +102,21 @@ public sealed class AutoNavigationUI(UIHub hub) : UIServiceBase<UIHub>(hub)
         return Task.CompletedTask;
     }
 
+    // Holds unsolicited UI back while the user is at what they came for. A newer hold replaces
+    // the older one; it is taken first, so nothing slips in between.
+    public void HoldAttentionAt(LocalUrl url, AutoNavigationReason reason)
+    {
+        var hold = Hub.AttentionUI.Hold($"{reason}: {url}", leaveTarget: url);
+        Interlocked.Exchange(ref _attentionHold, hold)?.Dispose();
+    }
+
     // Private methods
+
+    private static bool HoldsAttention(AutoNavigationReason reason)
+        => reason is AutoNavigationReason.Notification
+            or AutoNavigationReason.AppLink
+            or AutoNavigationReason.Share
+            or AutoNavigationReason.Invite;
 
     private LocalUrl GetDefaultAutoNavigationUrl()
     {
