@@ -39,7 +39,7 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
                 .StartActivity(ProcessActivityName);
 
             if (value is FlowResumeEvent flowResumeEvent)
-                Log.LogInformation("-> {FlowResumeEvent}", flowResumeEvent);
+                Log.LogInformation("-> {FlowResumeEvent}: {Info}", flowResumeEvent, info);
             else
                 Log.LogInformation("-> {CommandType}: {Info}", command.GetType().GetName(), info);
             try {
