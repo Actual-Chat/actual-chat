@@ -81,6 +81,25 @@ public class RpcCheckTest(ITestOutputHelper @out)
     }
 
     [Fact]
+    public async Task ShouldServeASizedPayloadThroughAnEdgeHost()
+    {
+        // arrange
+        await using var host = await NewAppHost(WithProbeCountries("RU"));
+        using var httpClient = host.NewHttpClient();
+        var session = Session.New();
+        httpClient.DefaultRequestHeaders.Add(Constants.Session.HeaderName, session.Id);
+        httpClient.DefaultRequestHeaders.Add("X-Forwarded-For", BritishIP);
+        httpClient.DefaultRequestHeaders.Host = "kz1.edge.voxt.ai";
+
+        // act
+        var payload = await httpClient.GetByteArrayAsync($"rpc/check?size={ProbeSize}");
+
+        // assert
+        payload.Length.Should().Be(ProbeSize,
+            because: "a relayed request carries the relay's own address, so the host is what says the client is measuring it");
+    }
+
+    [Fact]
     public async Task ShouldNotServeASizedPayloadWhenNoCountryIsListed()
     {
         // arrange

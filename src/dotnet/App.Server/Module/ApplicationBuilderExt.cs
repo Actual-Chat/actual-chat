@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using ActualChat.AspNetCore;
 
 namespace ActualChat.App.Server.Module;
 
@@ -70,6 +71,7 @@ public static partial class ApplicationBuilderExt
             if (hostInfo.GetHosts().Contains(context.Request.Host.Host))
                 return next();
 
+            context.RememberOriginalHost();
             context.Request.Scheme = scheme;
             context.Request.Host = port > 0
                 ? new HostString(host, port)

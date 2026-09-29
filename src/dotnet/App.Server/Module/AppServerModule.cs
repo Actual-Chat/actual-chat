@@ -175,7 +175,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             httpContext.Response.Headers.CacheControl = "no-store";
             if (size is not { } byteCount || httpContext.TryGetSessionFromHeader() is null)
                 return Results.Text("ok");
-            if (!await probePolicy.ShouldMeasure(httpContext.GetRemoteIPAddress()?.ToString()).ConfigureAwait(false))
+            var ipAddress = httpContext.GetRemoteIPAddress()?.ToString();
+            if (!await probePolicy.ShouldMeasure(ipAddress, httpContext.GetOriginalHost()).ConfigureAwait(false))
                 return Results.Text("ok");
 
             return Results.Bytes(ProbePayload.AsMemory(0, Math.Clamp(byteCount, 1024, ProbePayload.Length)));
