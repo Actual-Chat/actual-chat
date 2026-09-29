@@ -65,22 +65,26 @@
         <a class="c-languages-manage" @onclick="@OnManageLanguages">@L.Coach_Manage</a>
     </div>
     <Tile Class="c-languages">
-        @foreach (var language in m.Languages) {
-            <TileItem @key="@language.Iso" Class="c-language" IsHoverable="false" Role="">
-                <Icon><span class="c-iso">@language.Iso.ToUpperInvariant()</span></Icon>
-                <Content>@labels.LanguageName(language.Iso)</Content>
-                <Caption>@L.Coach_WordsIn30Days(language.Words30Days, language.Words30Days)</Caption>
-                <Right>
-                    <select class="c-level" aria-label="@labels.LanguageName(language.Iso)"
-                            value="@language.Level"
-                            @onchange="@(e => OnLevelChanged(language.Iso, e))">
-                        @foreach (var level in Levels) {
-                            <option value="@level" selected="@(level == language.Level)">@labels.Level(level)</option>
-                        }
-                    </select>
-                </Right>
-            </TileItem>
-        }
+        <div class="form-block">
+            @foreach (var language in m.Languages) {
+                <section @key="@language.Iso" class="form-section c-language">
+                    <div class="form-section-content label-inside-input">
+                        <div class="c-left">
+                            <div class="form-section-label">
+                                <label class="internal-label">
+                                    @labels.LanguageName(language.Iso) · @L.Coach_WordsIn30Days(language.Words30Days, language.Words30Days)
+                                </label>
+                            </div>
+                            <select class="c-level" value="@language.Level" @onchange="@(e => OnLevelChanged(language.Iso, e))">
+                                @foreach (var level in Levels) {
+                                    <option value="@level" selected="@(level == language.Level)">@labels.Level(level)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </section>
+            }
+        </div>
     </Tile>
     <div class="c-hint">@L.Coach_LanguagesCaption</div>
 
@@ -104,19 +108,21 @@
                         IsCheckedChanged="@(_ => Update(x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled }))"/>
             </Right>
         </TileItem>
-        <TileItem IsHoverable="false" Role="">
-            <Icon><i class="icon-history text-2xl"></i></Icon>
-            <Content>@L.Coach_AtMost</Content>
-            <Caption>@L.Coach_TipIntervalCaption</Caption>
-            <Right>
-                <select class="c-interval" value="@minutes" @onchange="@OnMinutesChanged">
-                    <option value="0" selected="@(minutes == 0)">@L.Coach_OncePerConversation</option>
-                    @foreach (var item in Intervals) {
-                        <option value="@item" selected="@(item == minutes)">@L.Coach_TipIntervalMinutes(item, item)</option>
-                    }
-                </select>
-            </Right>
-        </TileItem>
+        <div class="form-block c-interval-block">
+            <section class="form-section">
+                <div class="form-section-content label-inside-input">
+                    <div class="c-left">
+                        <div class="form-section-label"><label class="internal-label">@L.Coach_AtMost</label></div>
+                        <select class="c-interval" value="@minutes" @onchange="@OnMinutesChanged">
+                            <option value="0" selected="@(minutes == 0)">@L.Coach_OncePerConversation</option>
+                            @foreach (var item in Intervals) {
+                                <option value="@item" selected="@(item == minutes)">@L.Coach_TipIntervalMinutes(item, item)</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </section>
+        </div>
         <TileItem Click="@(() => Update(x => x with { IsWeeklySummaryDisabled = !x.IsWeeklySummaryDisabled }))">
             <Icon><i class="icon-email text-2xl"></i></Icon>
             <Content>@L.Coach_WeeklySummary</Content>
