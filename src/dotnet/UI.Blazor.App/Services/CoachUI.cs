@@ -1,3 +1,4 @@
+using ActualChat.Chat.Coach;
 using ActualChat.Kvas;
 using ActualChat.Chat;
 using ActualChat.UI.Blazor.Services;
@@ -60,6 +61,22 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
 
     public Task SelectLanguage(string iso)
         => UserSettingsUI.UserCoachSettings().Update(x => x with { SelectedLanguage = iso });
+
+    // null when the coach is off for the user; else whether entries of the chat are analysed
+    [ComputeMethod]
+    public virtual async Task<bool?> IsChatCoached(ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (!await IsEnabled(cancellationToken).ConfigureAwait(false))
+            return null;
+
+        var chatSettings = await UserSettingsUI.ChatUserSettings(chatId).Get(cancellationToken).ConfigureAwait(false);
+        var coachSettings = await UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
+        var root = chatId.RootChatId;
+        var placeSettings = root != chatId
+            ? await UserSettingsUI.ChatUserSettings(root).Get(cancellationToken).ConfigureAwait(false)
+            : null;
+        return CoachScope.IsInScope(chatId, chatSettings, placeSettings, coachSettings);
+    }
 
     [ComputeMethod]
     public virtual async Task<bool> IsMarkingEnabled(CancellationToken cancellationToken)

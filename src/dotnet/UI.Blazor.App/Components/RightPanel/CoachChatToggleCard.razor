@@ -1,0 +1,31 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, bool?>
+@{
+    var isOn = State.Value;
+}
+
+@if (isOn is { } on) {
+    <div class="c-coach-toggle">
+        <Card>
+            <CardItem Click="@(() => OnToggle(!on))">
+                <Left><i class="text-2xl icon-ai-stars @(on ? "text-primary" : "text-03")"></i></Left>
+                <Title>@L.Coach_CoachMeHere</Title>
+                <Caption>@(on ? L.RightPanel_On : L.RightPanel_Off)</Caption>
+                <Right><Toggle IsChecked="@on" IsCheckedChanged="@OnToggle"/></Right>
+            </CardItem>
+        </Card>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
+
+    protected override ComputedState<bool?>.Options GetStateOptions()
+        => new() { InitialValue = null, Category = GetStateCategory(GetType()) };
+
+    protected override Task<bool?> ComputeState(CancellationToken cancellationToken)
+        => Hub.CoachUI.IsChatCoached(ChatId, cancellationToken);
+
+    private Task OnToggle(bool isEnabled)
+        => UICommander.Run(new Coach_SetChatCoaching { Session = Session, ChatId = ChatId, IsEnabled = isEnabled });
+}

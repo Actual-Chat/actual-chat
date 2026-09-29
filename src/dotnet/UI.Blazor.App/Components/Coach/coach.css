@@ -192,3 +192,4 @@
 .coach-panel > .coach-empty > *,
 .coach-panel > .coach-settings-page > * { @apply flex-none; }
 .coach-settings-page .tile > .form-block { @apply p-0; }
+.chat-side-panel .c-coach-toggle { @apply px-4 pb-2; }

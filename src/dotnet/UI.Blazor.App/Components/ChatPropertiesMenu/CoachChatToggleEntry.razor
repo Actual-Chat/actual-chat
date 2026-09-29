@@ -24,16 +24,8 @@
         => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (!await Hub.CoachUI.IsEnabled(cancellationToken).ConfigureAwait(false))
-            return Model.None;
-
-        var chatSettings = await UserSettingsUI.ChatUserSettings(ChatId).Get(cancellationToken).ConfigureAwait(false);
-        var coachSettings = await UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
-        var root = ChatId.RootChatId;
-        var placeSettings = root != ChatId
-            ? await UserSettingsUI.ChatUserSettings(root).Get(cancellationToken).ConfigureAwait(false)
-            : null;
-        return new Model(true, CoachScope.IsInScope(ChatId, chatSettings, placeSettings, coachSettings));
+        var isOn = await Hub.CoachUI.IsChatCoached(ChatId, cancellationToken).ConfigureAwait(false);
+        return isOn is { } on ? new Model(true, on) : Model.None;
     }
 
     private Task OnClick()

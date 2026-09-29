@@ -623,4 +623,34 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         // assert
         views.Get(typeof(CoachScoreSheet.Model)).Should().Be(typeof(CoachScoreSheet));
     }
+
+    [Fact(Timeout = 60_000)]
+    public async Task ChatPanelToggleShouldSwitchCoachingOffAndOnForThatChat()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-chat-toggle");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var kvas = appHost.Services.GetRequiredService<IServerKvasBackend>().ForUser(account.Id);
+
+        // act
+        var cut = tester.Render<CoachChatToggleCard>(p => p.Add(x => x.ChatId, chatId));
+        InitializeHub(tester, hub, cut.Instance);
+        cut.WaitForAssertion(() => cut.Find(".c-coach-toggle .card-item").TextContent.Should().Contain("On"),
+            TimeSpan.FromSeconds(30));
+        await cut.InvokeAsync(() => cut.Find(".c-coach-toggle .card-item").Click());
+
+        // assert
+        await TestWait.When(async ct =>
+            (await kvas.ChatUserSettings(chatId).Get(ct)).IsCoachingEnabled.Should().BeFalse());
+        cut.WaitForAssertion(() => cut.Find(".c-coach-toggle .card-item").TextContent.Should().Contain("Off"),
+            TimeSpan.FromSeconds(10));
+        await cut.InvokeAsync(() => cut.Find(".c-coach-toggle .card-item").Click());
+        await TestWait.When(async ct =>
+            (await kvas.ChatUserSettings(chatId).Get(ct)).IsCoachingEnabled.Should().BeTrue());
+    }
 }
