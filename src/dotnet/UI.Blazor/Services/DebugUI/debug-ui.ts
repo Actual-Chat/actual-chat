@@ -150,12 +150,15 @@ export class DebugUI {
         return this._backendRef.invokeMethodAsync('SetIncompleteUI', enable) as unknown as Promise<void>;
     }
 
-    public static resetOnboarding(enable: boolean): void {
-        void this._backendRef.invokeMethodAsync('ResetOnboarding', enable);
+    /** true brings onboarding back with every step uncompleted, false marks every step completed;
+     *  resolves once that is persisted. */
+    public static resetOnboarding(enable: boolean): Promise<void> {
+        return this._backendRef.invokeMethodAsync('ResetOnboarding', enable) as unknown as Promise<void>;
     }
 
-    public static resetBubbles(enable: boolean): void {
-        void this._backendRef.invokeMethodAsync('ResetBubbles', enable);
+    /** true brings all tips back unread, false marks them read; resolves once that is persisted. */
+    public static resetBubbles(enable: boolean): Promise<void> {
+        return this._backendRef.invokeMethodAsync('ResetBubbles', enable) as unknown as Promise<void>;
     }
 
     public static enableAudioSync(enable = true): void {

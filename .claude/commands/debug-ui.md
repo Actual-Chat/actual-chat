@@ -56,8 +56,8 @@ the conditions above applies:
 - Getting the current user's id → *`await debugUI.getUserId()`*
 - Switching render mode → *`await debugUI.setRenderMode('w')`*
 - Restarting the server → *`debugUI.stopServer()`* (or curl)
-- Skipping onboarding/bubbles → *`debugUI.resetOnboarding(false)` /
-  `resetBubbles(false)` + reload*
+- Skipping onboarding/bubbles → *`await debugUI.resetOnboarding(false)` / `await debugUI.resetBubbles(false)`
+  (written to the account's settings; `debugUI.signIn` does both by default)*
 - Navigating to a chat or settings page → *`location.assign('/chat/...')`*
   (regular browser navigation; `debugUI.navigateTo` exists but goes
   through the server-side `NavigationManager` and is rarely what you
@@ -226,8 +226,8 @@ validation — feature, not bug.
 |---|---|
 | `await debugUI.setRenderMode('a' \| 's' \| 'w')` | Switches Auto / Server / WASM. Mirrors `RenderModeSelector.ChangeMode` and triggers a page reload. |
 | `debugUI.getCurrentRenderMode()` | Returns `'s'` or `'w'` — pure client-side, derived from whether the WASM runtime is loaded. Note: `'a'` (Auto) starts as `'s'` and upgrades to `'w'`. |
-| `debugUI.resetOnboarding(enable)` | `false` skips all onboarding steps; `true` resets them. |
-| `debugUI.resetBubbles(enable)` | Same shape for feature-tip bubbles. |
+| `await debugUI.resetOnboarding(enable)` | `false` marks every step completed for the signed-in account (as in a real finish); while it writes, `AttentionUI` suppresses onboarding, which closes it if open and cancels a show already decided on. `true` resets every step to uncompleted. Both resolve once the settings are persisted; await before navigating. |
+| `await debugUI.resetBubbles(enable)` | Same shape for feature-tip bubbles: `false` marks the tips on the page read, `true` brings them all back unread. |
 | `debugUI.enableAudioSync(enable)` | Toggles the `IDebugAudio` flag. |
 | `debugUI.forceRecordingStatus(status?)` | Forces what every recording control reports. `'<Kind>'` or `'<Kind>:<code>'`, e.g. `'NoMicrophonePermission'`, `'StartFailed:NotReadableError'`; omit to clear. Kinds: `Off`, `Starting`, `Recording`, `Reconnecting`, `Disconnected`, `NoMicrophonePermission`, `NoMicrophone`, `MicrophoneBusy`, `StartFailed`. |
 | `await debugUI.getThreadPoolSettings()` | Inspect current thread-pool min/max/available. |

@@ -43,4 +43,20 @@ public sealed partial record UserOnboardingSettings : StoredSettings, IHasOrigin
         };
         return !areAllFeatureIndependentStepsCompleted;
     }
+
+    public UserOnboardingSettings WithAllStepsCompleted()
+        => this with {
+            IsAvatarStepCompleted = true,
+            IsVerifyPhoneStepCompleted = true,
+            // IsCreateChatsStepCompleted = true, // Disabled
+            IsVerifyEmailStepCompleted = true,
+            // IsTimeZoneStepCompleted = true, // Disabled
+            IsDataCollectionStepCompleted = true,
+            IsLanguagesStepCompleted = true,
+            // Tutorial steps
+            // IsTranscriptReplayTutorialStepCompleted = true, // Disabled
+            IsTranscriptionTutorialStepCompleted = true,
+            IsPlacesTutorialStepCompleted = true,
+            IsSummarizationTutorialStepCompleted = true,
+        };
 }

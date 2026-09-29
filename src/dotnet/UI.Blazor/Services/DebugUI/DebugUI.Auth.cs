@@ -30,12 +30,61 @@ public sealed partial class DebugUI
         if (!HostInfo.IsLocalDevInstance())
             throw StandardError.Unauthorized("SignIn works on local-dev server instances only.");
 
-        var session = Hub.Session;
-        var commander = Hub.Commander;
         var input = (phoneOrEmail ?? "").Trim();
         if (input.Length == 0)
             throw StandardError.Constraint("phoneOrEmail must be non-empty.");
 
+        // Suppressed from before the auth calls, since sign-in is what starts onboarding and tips,
+        // until the skips reach the account's settings, which is possible only after it
+        var suppressedKinds = (skipOnboarding ? AttentionKind.Onboarding : AttentionKind.None)
+            | (skipBubbles ? AttentionKind.Bubbles : AttentionKind.None);
+        using var suppression = Hub.AttentionUI.Suppress(suppressedKinds);
+        // A new account signs in once its registration is confirmed; without an action AccountUI would ask the user
+        if (register)
+            Hub.AccountUI.PendingRegistrationAction = ConfirmRegistration;
+        try {
+            await Authenticate(input).ConfigureAwait(true);
+            // Wait for the client-side AccountUI to observe the new (non-guest)
+            // account, so callers see it signed in. 5s is generous; locally it's typically <1s.
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            try {
+                await Hub.AccountUI.OwnAccount.Computed
+                    .When(x => !x.IsGuest, cts.Token)
+                    .ConfigureAwait(true);
+            }
+            catch (OperationCanceledException) when (cts.IsCancellationRequested) {
+                throw StandardError.Internal(
+                    "SignIn timed out waiting for AccountUI.OwnAccount to become non-guest after 5s.");
+            }
+        }
+        finally {
+            if (register)
+                Hub.AccountUI.PendingRegistrationAction = null;
+        }
+
+        if (skipOnboarding)
+            await Hub.OnboardingUI.ResetOnboarding(false).ConfigureAwait(true);
+        if (skipBubbles)
+            await Hub.BubbleUI.ResetBubbles(false).ConfigureAwait(true);
+
+        Log.LogInformation(
+            "SignIn('{Input}', register={Register}, skipOnboarding={SkipOnboarding}, skipBubbles={SkipBubbles}): done",
+            input, register, skipOnboarding, skipBubbles);
+    }
+
+    [JSInvokable]
+    public async Task SignOut()
+    {
+        await Hub.AccountUI.SignOut().ConfigureAwait(true);
+        Log.LogInformation("SignOut: done");
+    }
+
+    // Private methods
+
+    private async Task Authenticate(string input)
+    {
+        var session = Hub.Session;
+        var commander = Hub.Commander;
         if (input.Contains('@')) {
             var email = Email.Parse(input);
             await commander.Call(new EmailAuth_SendTotp { Session = session, Email = email }).ConfigureAwait(true);
@@ -63,52 +112,8 @@ public sealed partial class DebugUI
                 throw StandardError.Internal(
                     $"PhoneAuth.ValidateTotp failed for '{phone}'.");
         }
-
-        if (register) {
-            var json = await Hub.SessionTemporals
-                .Get(session, Constants.SessionTemporals.PendingRegistrationKey, default)
-                .ConfigureAwait(true);
-            if (PendingRegistrationInfo.TryParseJson(json) is { } info)
-                await commander.Call(new Accounts_ConfirmRegister {
-                    Session = session,
-                    Token = info.Token,
-                }).ConfigureAwait(true);
-        }
-
-        // Wait for the client-side AccountUI to observe the new (non-guest)
-        // account before mutating onboarding/bubble state — those rely on
-        // OwnAccount being settled. 5s is generous; locally it's typically <1s.
-        using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5))) {
-            try {
-                await Hub.AccountUI.OwnAccount.Computed
-                    .When(x => !x.IsGuest, cts.Token)
-                    .ConfigureAwait(true);
-            }
-            catch (OperationCanceledException) when (cts.IsCancellationRequested) {
-                throw StandardError.Internal("SignIn timed out waiting for AccountUI.OwnAccount to become non-guest after 5s.");
-            }
-        }
-
-        // OwnAccount flipping to non-guest fires before the new circuit's
-        // BubbleHost has registered its JS reference. Calling
-        // BubbleUI.ResetBubbles in that window throws ArgumentNullException
-        // ("jsObjectReference is null"). 2s settles things in practice.
-        await Task.Delay(TimeSpan.FromSeconds(2)).ConfigureAwait(true);
-
-        if (skipOnboarding)
-            Hub.OnboardingUI.ResetOnboarding(false);
-        if (skipBubbles)
-            await Hub.BubbleUI.ResetBubbles(false).ConfigureAwait(true);
-
-        Log.LogInformation(
-            "SignIn('{Input}', register={Register}, skipOnboarding={SkipOnboarding}, skipBubbles={SkipBubbles}): done",
-            input, register, skipOnboarding, skipBubbles);
     }
 
-    [JSInvokable]
-    public async Task SignOut()
-    {
-        await Hub.AccountUI.SignOut().ConfigureAwait(true);
-        Log.LogInformation("SignOut: done");
-    }
+    private Task ConfirmRegistration(PendingRegistrationInfo info)
+        => Hub.Commander.Call(new Accounts_ConfirmRegister { Session = Hub.Session, Token = info.Token });
 }

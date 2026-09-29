@@ -2,7 +2,7 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
 
-// Methods that mutate / read configurable client-side state — onboarding,
+// Methods that mutate / read configurable client-side state — unsolicited UI, onboarding,
 // bubbles, audio sync, render mode, thread-pool tuning.
 public sealed partial class DebugUI
 {
@@ -49,9 +49,9 @@ public sealed partial class DebugUI
     }
 
     [JSInvokable]
-    public void ResetOnboarding(bool enable)
+    public async Task ResetOnboarding(bool enable)
     {
-        Hub.OnboardingUI.ResetOnboarding(enable);
+        await Hub.OnboardingUI.ResetOnboarding(enable).ConfigureAwait(true);
         Log.LogInformation("ResetOnboarding({Enable}): done", enable);
     }
 

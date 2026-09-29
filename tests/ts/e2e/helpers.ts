@@ -227,8 +227,6 @@ export async function joinChat(page: Page) {
     await page.waitForTimeout(1_500);
 }
 
-// Re-runs skipOnboarding between waitFor attempts because an OnboardingModal
-// can re-mount after skipOnboarding returns and intercept clicks on the editor.
 // On a final fallback, reloads the page if the editor still hasn't appeared.
 export async function waitForEditor(page: Page, timeout = 30_000) {
     const editor = page.locator('#message-input .editor-content[contenteditable="true"]').first();
@@ -243,14 +241,12 @@ export async function waitForEditor(page: Page, timeout = 30_000) {
             return;
         } catch (e) {
             lastErr = e;
-            await skipOnboarding(page);
             // Halfway through the budget, reload once — sometimes the chat-view
             // RPC hangs and a reload is the only way to get a fresh render.
             if (!reloaded && Date.now() - start > timeout / 2) {
                 reloaded = true;
                 await page.reload({ waitUntil: 'domcontentloaded' });
                 await waitForAppReady(page).catch(() => { /* fallthrough */ });
-                await skipOnboarding(page);
             }
             await page.waitForTimeout(300);
         }
@@ -292,71 +288,23 @@ export async function setIncompleteUI(page: Page, enable: boolean) {
     }, enable);
 }
 
+/** Marks onboarding completed and tips read for the signed-in account; an open onboarding closes right away. */
 export async function skipOnboarding(page: Page) {
-    await page.evaluate(() => {
+    // DebugUI starts about a second after the first render; video diagnostics define window.debugUI
+    // earlier as a getter returning undefined until then, so checking for the property isn't enough
+    await page.waitForFunction(
+        () => (window as unknown as { debugUI?: unknown }).debugUI !== undefined,
+        null,
+        { timeout: 30_000 });
+    await page.evaluate(async () => {
         /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment,
            @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
         const debugUI = (window as any).debugUI;
-        if (debugUI) {
-            debugUI.resetOnboarding(false);
-            debugUI.resetBubbles(false);
-        }
-        // resetOnboarding doesn't unmount the rendered modal — hide it so its overlay stops intercepting clicks.
-        document.querySelectorAll('[id^="Modal-OnboardingModal"]').forEach(el => {
-            (el as HTMLElement).style.display = 'none';
-            (el as HTMLElement).style.pointerEvents = 'none';
-        });
+        await debugUI.resetBubbles(false);
+        await debugUI.resetOnboarding(false);
         /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment,
            @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
     });
-    // Reset is async — modal/bubbles may still render briefly; footer text varies per step.
-    for (let i = 0; i < 20; i++) {
-        const onboardingModal = page.locator('[id^="Modal-OnboardingModal"]').first();
-        const bubbleBtn = page
-            .locator('.bubble-buttons button:has-text("Skip"), .bubble-buttons button:has-text("Ok")')
-            .first();
-
-        if (await onboardingModal.isVisible().catch(() => false)) {
-            const footerBtn = onboardingModal.locator(
-                '.onboarding-footer button:has-text("Start messaging"), ' +
-                '.onboarding-footer button:has-text("Skip"), ' +
-                '.onboarding-footer button:has-text("Decline"), ' +
-                '.onboarding-footer button:has-text("Next"), ' +
-                '.onboarding-footer .btn-cancel, ' +
-                '.onboarding-footer .btn-primary',
-            ).first();
-            const headerClose = onboardingModal.locator('header .icon-close, .dialog-header .icon-close').first();
-            if (await footerBtn.isVisible().catch(() => false)) {
-                await footerBtn.click({ force: true, timeout: 2_000 }).catch(() => { /* ignore */ });
-            } else if (await headerClose.isVisible().catch(() => false)) {
-                await headerClose.click({ force: true, timeout: 2_000 }).catch(() => { /* ignore */ });
-            } else {
-                await page.keyboard.press('Escape').catch(() => { /* ignore */ });
-            }
-            await page.waitForTimeout(400);
-            continue;
-        }
-
-        if (await bubbleBtn.isVisible().catch(() => false)) {
-            await bubbleBtn.click().catch(() => { /* ignore */ });
-            await page.waitForTimeout(300);
-            continue;
-        }
-
-        // Settle: a fresh modal can re-mount between this empty check and the caller's next click.
-        const settleStart = Date.now();
-        let reappeared = false;
-        while (Date.now() - settleStart < 500) {
-            await page.waitForTimeout(50);
-            if (await onboardingModal.isVisible().catch(() => false)
-                || await bubbleBtn.isVisible().catch(() => false)) {
-                reappeared = true;
-                break;
-            }
-        }
-        if (!reappeared)
-            return;
-    }
 }
 
 export async function isSignedIn(page: Page): Promise<boolean> {

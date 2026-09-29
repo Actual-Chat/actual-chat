@@ -9,7 +9,7 @@ public sealed class BubbleUI : UIServiceBase<UIHub>
 {
     public SyncedState<UserBubbleSettings> Settings { get; init; }
     public TaskCompletionSource<BubbleHost> HostAcceptor { get; } = TaskCompletionSourceExt.New<BubbleHost>();
-    public Task WhenReady => HostAcceptor.Task;
+    public Task WhenReady => field ??= WhenHostJSReady();
     public BubbleHost Host => field ??= HostAcceptor.Task.RequireResult();
 
     public BubbleUI(UIHub hub) : base(hub)
@@ -54,21 +54,41 @@ public sealed class BubbleUI : UIServiceBase<UIHub>
     }
 
     /// <summary>
-    /// Resets bubble state.
+    /// Debug and test aid for bubbles.
     /// </summary>
     /// <param name="enable">
-    /// If true, resets all bubbles to unread (re-enables all bubbles).
-    /// If false, marks all bubbles as read (skips all bubbles).
+    /// If true, brings all bubbles back unread.
+    /// If false, marks all bubbles read.
     /// </param>
-    public async Task ResetBubbles(bool enable) {
+    public async Task ResetBubbles(bool enable)
+    {
+        // After sign-in the state re-reads the settings for the new account; a read landing after
+        // the write below would show the old value until the write's own invalidation comes back.
+        // The host calls below render, so they must stay on the Blazor dispatcher
+        await Task.Delay(AccountUI.GetPostChangeInvalidationDelay()).ConfigureAwait(true);
+        if (enable)
+            await ResetSettings().ConfigureAwait(false);
+        else
+            await MarkAllRead().ConfigureAwait(false);
+        // The write is deferred, so a navigation right after the reset would otherwise lose it
+        await Settings.WhenWritten().WaitAsync(TimeSpan.FromSeconds(5)).SilentAwait(false);
+    }
+
+    // Private methods
+
+    private async Task MarkAllRead()
+    {
+        // The host knows only the bubbles on the page, so the ones rendered later would show up after it
+        UpdateSettings(Settings.Value.WithRead(BubbleRegistry.GetAllTypeIds()));
         await WhenReady.ConfigureAwait(true);
-        if (enable) {
-            UpdateSettings(Settings.Value.WithAllUnread());
-            await Host.ResetBubbles().ConfigureAwait(false);
-        }
-        else {
-            // Skip all bubbles by calling SkipBubbles on the host
-            await Host.SkipBubbles().ConfigureAwait(false);
-        }
+        await Host.SkipBubbles().ConfigureAwait(false);
+    }
+
+    private async Task WhenHostJSReady()
+    {
+        // The host is accepted on init, but its JS object is created after the first render;
+        // every Host call before that throws on a null JS reference
+        var host = await HostAcceptor.Task.ConfigureAwait(false);
+        await host.WhenJSReady.ConfigureAwait(false);
     }
 }

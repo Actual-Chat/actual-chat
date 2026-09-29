@@ -7,11 +7,11 @@ public interface IOnboardingUI
     Task<ModalRef> Show();
 
     /// <summary>
-    /// Resets onboarding state.
+    /// Debug and test aid for onboarding.
     /// </summary>
     /// <param name="enable">
-    /// If true, resets all steps to uncompleted (re-enables onboarding).
-    /// If false, marks all steps as completed (skips onboarding).
+    /// If true, brings onboarding back with every step uncompleted.
+    /// If false, marks every step completed.
     /// </param>
-    void ResetOnboarding(bool enable);
+    Task ResetOnboarding(bool enable);
 }

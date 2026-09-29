@@ -13,6 +13,7 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
     // Offline the decision may never come, and the attention flow waits for it before tips and the review prompt
     private static readonly TimeSpan DecisionTimeout = TimeSpan.FromSeconds(30);
 
+    private AttentionUI AttentionUI => Hub.AttentionUI;
     private LoadingUI LoadingUI => Hub.LoadingUI;
     private PasskeyUI PasskeyUI => Hub.PasskeyUI;
     private LocalStorage LocalStorage => Hub.LocalStorage;
@@ -169,34 +170,28 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
         _ = ResetPasskeyNudgeSnoozedAt();
     }
 
-    public void ResetOnboarding(bool enable)
+    public async Task ResetOnboarding(bool enable)
     {
-        if (enable) {
-            // Reset all steps to uncompleted (re-enable onboarding)
-            UserSettings.Set(new UserOnboardingSettings());
-            LocalSettings.Set(new LocalOnboardingSettings());
-            _ = ResetPasskeyNudgeSnoozedAt();
-        }
-        else {
-            // Mark all steps as completed (skip onboarding)
-            UserSettings.Set(new UserOnboardingSettings {
-                IsAvatarStepCompleted = true,
-                // IsCreateChatsStepCompleted = true, // Disabled
-                IsVerifyPhoneStepCompleted = true,
-                IsVerifyEmailStepCompleted = true,
-                // IsTimeZoneStepCompleted = true, // Disabled
-                IsDataCollectionStepCompleted = true,
-                IsTranscriptionTutorialStepCompleted = true,
-                // IsTranscriptReplayTutorialStepCompleted = true, // Disabled
-                IsPlacesTutorialStepCompleted = true,
-                IsLanguagesStepCompleted = true,
-                IsSummarizationTutorialStepCompleted = true,
-                PasskeyNudgeDeclineCount = MaxPasskeyNudgeDeclineCount,
-            });
-            LocalSettings.Set(new LocalOnboardingSettings {
-                IsPermissionsStepCompleted = true,
-                AreCookiesAccepted = true,
-            });
-        }
+        // For a skip, suppression closes the modal if it's open and cancels a show the flow already decided on
+        // with the old settings; once the flow skips onboarding, it doesn't check it again
+        using var _ = enable ? null : AttentionUI.Suppress(AttentionKind.Onboarding);
+        // After sign-in the state re-reads the settings for the new account; a read landing after
+        // the write below would show the old value until the write's own invalidation comes back
+        await Task.Delay(AccountUI.GetPostChangeInvalidationDelay()).ConfigureAwait(false);
+        if (enable)
+            ResetSettings();
+        else
+            MarkStepsCompleted();
+        // Both writes are deferred, so a navigation right after the reset would otherwise lose them
+        await UserSettings.WhenWritten().WaitAsync(TimeSpan.FromSeconds(5)).SilentAwait(false);
+        await Hub.LocalSettings.Flush().ConfigureAwait(false);
+    }
+
+    private void MarkStepsCompleted()
+    {
+        UserSettings.Set(UserSettings.Value.WithAllStepsCompleted() with {
+            PasskeyNudgeDeclineCount = MaxPasskeyNudgeDeclineCount,
+        });
+        LocalSettings.Set(LocalSettings.Value.WithAllStepsCompleted());
     }
 }
