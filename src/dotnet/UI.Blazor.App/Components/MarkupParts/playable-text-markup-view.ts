@@ -1,7 +1,8 @@
 import { fromEvent, Subject, takeUntil } from 'rxjs';
-import { setTimeout } from 'timerQueue';
+import { setTimeout, clearTimeout } from 'timerQueue';
 
-const HIGHLIGHT_CLICKED_WORD = true;
+const HOVER_DWELL_MS = 700;
+const FLASH_BLINK_MS = 450;
 
 interface NumberRange {
     start: number;
@@ -14,11 +15,19 @@ interface Word {
     timeRange: NumberRange;
 }
 
+interface Caret {
+    node: Node;
+    offset: number;
+}
+
 export class PlayableTextMarkupView {
     private blazorRef: DotNet.DotNetObject;
     private readonly element: HTMLElement;
     private readonly words: Word[] = [];
     private disposed$: Subject<void> = new Subject<void>();
+    private readonly authorColorN: number;
+    private hoverTimer: number | null = null;
+    private lastHoverIndex = -1;
 
     static create(blazorRef: DotNet.DotNetObject, element: HTMLElement, words: Word[]): PlayableTextMarkupView {
         return new PlayableTextMarkupView(blazorRef, element, words);
@@ -27,6 +36,7 @@ export class PlayableTextMarkupView {
     constructor(blazorRef: DotNet.DotNetObject, element: HTMLElement, words: Word[]) {
         this.blazorRef = blazorRef;
         this.element = element;
+        this.authorColorN = this.readAuthorColorN(element);
         this.words = words.map(w => ({
             value: w.value,
             textRange: { start: w.textRange.start, end: w.textRange.end },
@@ -36,12 +46,22 @@ export class PlayableTextMarkupView {
         fromEvent(this.element, 'click')
             .pipe(takeUntil(this.disposed$))
             .subscribe((e: Event) => this.onClick(e));
+        fromEvent(this.element, 'pointermove')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((e: Event) => this.onPointerMove(e as PointerEvent));
+        fromEvent(this.element, 'pointerleave')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(() => this.resetHover());
+        fromEvent(window, 'scroll', { capture: true, passive: true })
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(() => this.resetHover());
     }
 
     public dispose() {
         if (this.disposed$.closed)
             return;
 
+        this.resetHover();
         this.disposed$.next();
         this.disposed$.complete();
     }
@@ -52,9 +72,10 @@ export class PlayableTextMarkupView {
         if (this.endsTextSelection())
             return;
 
-        const target = e.target as HTMLElement;
-        const word = this.findWord(target);
-        this.onWordClick(word);
+        this.resetHover();
+        const me = e as MouseEvent;
+        const index = this.wordIndexAtPoint(me.clientX, me.clientY);
+        this.onWordClick(index);
     }
 
     // Selecting text with the mouse ends with a click, which must not start the replay.
@@ -67,55 +88,167 @@ export class PlayableTextMarkupView {
         return selection.getRangeAt(0).intersectsNode(this.element);
     }
 
-    private onWordClick(word: Word | null) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (HIGHLIGHT_CLICKED_WORD && word)
-            this.highlightWord(word);
+    private onWordClick(index: number) {
+        if (index >= 0)
+            this.flashWord(index, this.playingColor(), 1);
 
-        const textRange: NumberRange = word?.textRange ?? { start: 0, end: 0 };
+        const textRange: NumberRange = index >= 0 ? this.words[index].textRange : { start: 0, end: 0 };
         void this.blazorRef.invokeMethodAsync('OnMarkupClick', textRange);
     }
 
-    private findWord(target: HTMLElement): Word | null {
-        // When words are rendered as individual .playable-word spans
-        const wordSpan = target.closest('.playable-word')
-            ?? (target.classList.contains('playable-word') ? target : null);
-        if (wordSpan) {
-            const wordSpans = this.element.querySelectorAll('.playable-word');
-            const index = Array.prototype.indexOf.call(wordSpans, wordSpan) as number;
-            if (index >= 0 && index < this.words.length)
-                return this.words[index];
-        }
+    private onPointerMove = (e: PointerEvent) => {
+        if (e.pointerType !== 'mouse' || !document.body.classList.contains('hoverable'))
+            return;
+        if (this.element.classList.contains('play-disabled'))
+            return;
 
-        // Fallback: use selection offset for plain text nodes
-        const selection = getSelection();
-        if (selection?.rangeCount && selection.focusNode?.nodeType === Node.TEXT_NODE) {
-            const offset = selection.focusOffset;
-            return this.words.find(w => w.textRange.start <= offset && w.textRange.end >= offset) ?? null;
-        }
-
-        return null;
+        if (this.hoverTimer != null)
+            clearTimeout(this.hoverTimer);
+        const x = e.clientX, y = e.clientY;
+        this.hoverTimer = setTimeout(() => this.showHoverFlash(x, y), HOVER_DWELL_MS);
     }
 
-    private highlightWord(word: Word) {
-        const wordSpans = this.element.querySelectorAll('.playable-word');
-        const index = this.words.indexOf(word);
-        const node = index >= 0 ? wordSpans[index] : null;
-        const rect = node?.getBoundingClientRect();
+    private showHoverFlash(x: number, y: number) {
+        this.hoverTimer = null;
+        const index = this.wordIndexAtPoint(x, y);
+        if (index < 0 || index === this.lastHoverIndex)
+            return;
+
+        this.lastHoverIndex = index;
+        this.flashWord(index, this.authorColor(), 1);
+    }
+
+    private resetHover() {
+        if (this.hoverTimer != null) {
+            clearTimeout(this.hoverTimer);
+            this.hoverTimer = null;
+        }
+        this.lastHoverIndex = -1;
+    }
+
+    private flashWord(index: number, color: string, blinks: number) {
+        const rect = this.wordRect(index);
         if (!rect)
             return;
 
-        const floatSpan = document.createElement('span');
-        floatSpan.textContent = word.value;
-        floatSpan.className = 'selected-word-float';
-        Object.assign(floatSpan.style, {
+        const el = this.makeOverlay(rect, 'playable-word-flash');
+        el.style.background = color;
+        el.style.animationIterationCount = String(blinks);
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), blinks * FLASH_BLINK_MS + 50);
+    }
+
+    private authorColor(): string {
+        return `color-mix(in srgb, var(--author-color-${this.authorColorN}) 55%, transparent)`;
+    }
+
+    private playingColor(): string {
+        return `color-mix(in srgb, var(--author-color-${this.authorColorN}) 40%, transparent)`;
+    }
+
+    private readAuthorColorN(element: HTMLElement): number {
+        const match = /playable-text-color-(\d+)/.exec(element.className);
+        return match ? Number(match[1]) : 1;
+    }
+
+    private wordIndexAtPoint(x: number, y: number): number {
+        const caret = this.caretAt(x, y);
+        if (!caret || caret.node.nodeType !== Node.TEXT_NODE)
+            return -1;
+
+        const offset = this.globalOffset(caret.node, caret.offset);
+        return this.wordIndexAt(offset);
+    }
+
+    private caretAt(x: number, y: number): Caret | null {
+        const doc = document as unknown as {
+            caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+            caretRangeFromPoint?: (x: number, y: number) => Range | null;
+        };
+        if (doc.caretPositionFromPoint) {
+            const p = doc.caretPositionFromPoint(x, y);
+            return p && this.element.contains(p.offsetNode) ? { node: p.offsetNode, offset: p.offset } : null;
+        }
+        if (doc.caretRangeFromPoint) {
+            const r = doc.caretRangeFromPoint(x, y);
+            return r && this.element.contains(r.startContainer) ? { node: r.startContainer, offset: r.startOffset } : null;
+        }
+        return null;
+    }
+
+    // A run span holds a slice of the text starting at its data-c0; a caret offset inside that node is
+    // relative to the slice, so the global text offset is data-c0 + offset. Plain text (no active
+    // playback) has no run span, and the caret offset is already global.
+    private globalOffset(node: Node, offset: number): number {
+        const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node as HTMLElement;
+        const runSpan = el?.closest('[data-c0]') as HTMLElement | null;
+        const c0 = runSpan ? Number(runSpan.dataset.c0) : 0;
+        return c0 + offset;
+    }
+
+    private wordIndexAt(offset: number): number {
+        for (let i = 0; i < this.words.length; i++) {
+            const range = this.words[i].textRange;
+            if (offset >= range.start && offset < range.end)
+                return i;
+        }
+        const last = this.words.length - 1;
+        return last >= 0 && offset >= this.words[last].textRange.start ? last : -1;
+    }
+
+    private wordRect(index: number): DOMRect | null {
+        const word = this.words[index];
+        const runSpan = this.runSpanForOffset(word.textRange.start);
+        const c0 = runSpan ? Number(runSpan.dataset.c0) : 0;
+        const textNode = this.firstText(runSpan ?? this.element);
+        if (!textNode)
+            return null;
+
+        const length = textNode.textContent.length;
+        const localStart = word.textRange.start - c0;
+        if (localStart < 0 || localStart >= length)
+            return null;
+
+        const visibleLength = word.value.replace(/[\s\u200B]+$/, '').length;
+        const localEnd = Math.min(localStart + visibleLength, length);
+        const range = document.createRange();
+        range.setStart(textNode, localStart);
+        range.setEnd(textNode, Math.max(localStart, localEnd));
+        return range.getBoundingClientRect();
+    }
+
+    private runSpanForOffset(offset: number): HTMLElement | null {
+        const spans = this.element.querySelectorAll<HTMLElement>('[data-c0]');
+        for (const span of Array.from(spans)) {
+            const c0 = Number(span.dataset.c0);
+            const length = span.textContent.length;
+            if (offset >= c0 && offset < c0 + length)
+                return span;
+        }
+        return null;
+    }
+
+    private firstText(node: Node): Text | null {
+        if (node.nodeType === Node.TEXT_NODE)
+            return node as Text;
+        for (const child of Array.from(node.childNodes)) {
+            const text = this.firstText(child);
+            if (text)
+                return text;
+        }
+        return null;
+    }
+
+    private makeOverlay(rect: DOMRect, className: string): HTMLElement {
+        const el = document.createElement('span');
+        el.className = className;
+        Object.assign(el.style, {
             position: 'absolute',
-            top: `${rect.top + window.scrollY + 4}px`,
-            left: `${rect.left + window.scrollX}px`,
-            width: `${rect.width}px`,
-            height: `${rect.height - 8}px`,
+            top: `${rect.top + window.scrollY - 2}px`,
+            left: `${rect.left + window.scrollX - 5}px`,
+            width: `${rect.width + 10}px`,
+            height: `${rect.height + 4}px`,
         });
-        document.body.appendChild(floatSpan);
-        setTimeout(() => floatSpan.remove(), 400);
+        return el;
     }
 }
