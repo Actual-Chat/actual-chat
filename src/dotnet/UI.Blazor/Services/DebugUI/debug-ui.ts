@@ -49,6 +49,18 @@ interface VideoTraceKillGlobal {
     ) => boolean;
 }
 
+interface VideoDebugConsole {
+    state(): Promise<unknown>;
+    settings(): unknown;
+    setForceDecodeCodec(codec: string | null): void;
+    setPreferredEncodeCodec(codec: string | null): void;
+    restart(): Promise<void>;
+}
+
+interface VideoDebugConsoleGlobal {
+    __videoDebugConsole?: VideoDebugConsole;
+}
+
 export class DebugUI {
     private static _backendRef: DotNet.DotNetObject = null!;
     private static _eventSnifferInstalled = false;
@@ -71,6 +83,11 @@ export class DebugUI {
         infoLog?.log(`init`);
         this._backendRef = backendRef1;
         globalThis.debugUI = this;
+    }
+
+    /** Video codec controls from UI.Blazor.App's video-diagnostics; undefined until that bundle part loads. */
+    public static get video(): VideoDebugConsole | undefined {
+        return (globalThis as VideoDebugConsoleGlobal).__videoDebugConsole;
     }
 
     // Local-dev-only: stops the running server. Mirrors the HTTP /health/stop

@@ -51,9 +51,6 @@ window.blazorApp = blazorApp;
 window.Kvas = Kvas;
 
 blazorApp.initFpsOverlay();
-// After Blazor start: DebugUI.init() creates `globalThis.debugUI`, and this
-// hangs the video debug surface off it.
-void window.App?.whenBlazorReady?.then(() => blazorApp.initVideoDebugConsole());
 blazorApp.initChatViewScroll();
 ui.initKeyboardUI();
 
