@@ -21,7 +21,13 @@
     </div>
     <div class="c-group-items">
         @foreach (var item in Message.Items) {
-            <div @key="@item.Key" class="item" data-key="@item.Key" data-children="conversation-message live-card live-footer live-header show-author conversation-header vl-sticky">
+            @* A streaming entry grows a line at a time; animating its height reflows the whole list
+               on every animation frame (height is a layout property), which a mobile WebView repaints
+               as a flicker of the neighbouring blocks. "none" makes it grow instantly - one reflow per
+               line, not one per frame. A settled entry (null) keeps the normal height animation. *@
+            <div @key="@item.Key" class="item" data-key="@item.Key"
+                 data-vl-h-transition="@(item.Entry.IsContentStreaming ? "none" : null)"
+                 data-children="conversation-message live-card live-footer live-header show-author conversation-header vl-sticky">
                 <ChatEntryMessageView ChatContext="@ChatContext" Message="@item" ShowAuthorBadge="false"/>
             </div>
         }
