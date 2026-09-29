@@ -77,11 +77,12 @@ public sealed class LiveBlockProjectionDelayTest(ITestOutputHelper @out)
         var card = tester.Render<ConversationMessageView>(p => p
             .Add(x => x.Message, new ConversationMessage(live))
             .Add(x => x.ChatContext, chatContext));
-        card.WaitForAssertion(() => card.FindAll(".conversation-message.live.joined").Should().ContainSingle());
+        await TestWait.WhenRendered(card,
+            () => card.FindAll(".conversation-message.live.joined").Should().ContainSingle());
         var header = tester.Render<LiveConversationHeaderView>(p => p
             .Add(x => x.Header, new LiveConversationHeader(live))
             .Add(x => x.ChatContext, chatContext));
-        header.WaitForAssertion(() => header.FindAll(".c-lc-expand").Should().ContainSingle());
+        await TestWait.WhenRendered(header, () => header.FindAll(".c-lc-expand").Should().ContainSingle());
 
         // act
         liveSessionUI.IsBlockStateDelayed.Value = false;
@@ -100,7 +101,8 @@ public sealed class LiveBlockProjectionDelayTest(ITestOutputHelper @out)
             (await liveBlockUI.GetBlock(chat.Id, ct)).Should().BeOfType<OpenLiveBlock>()
                 .Which.HasAttended.Should().BeTrue();
         }, TimeSpan.FromSeconds(5));
-        card.WaitForAssertion(() => card.FindAll(".conversation-message.live.joined").Should().ContainSingle());
+        await TestWait.WhenRendered(card,
+            () => card.FindAll(".conversation-message.live.joined").Should().ContainSingle());
     }
 
     public class DelayedLiveSessionUI(AppUIHub hub) : LiveSessionUI(hub)

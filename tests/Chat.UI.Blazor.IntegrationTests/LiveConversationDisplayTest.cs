@@ -1344,7 +1344,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             .Add(x => x.ChatContext, new ChatContext(
                 Tester.ScopedAppServices.GetRequiredService<AppUIHub>(), chat)));
         var headerState = ((IStatefulComponent<LiveConversationHeaderState>)header.Instance).State;
-        header.WaitForAssertion(() => {
+        await TestWait.WhenRendered(header, () => {
             // The initial placeholder is not the participant title this test must preserve on close.
             headerState.IsInitial(out var state).Should().BeFalse();
             var title = state.Title.NullIfEmpty() ?? state.ParticipantsText;
@@ -1392,7 +1392,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             block.Items.OfType<LiveConversationHeader>().Should().ContainSingle();
             block.Items.SelectMany(i => i.GetLeafMessages()).OfType<ChatEntryMessage>()
                 .Should().NotContain(m => m.Id == afterClose.LocalId);
-            header.WaitForAssertion(() => {
+            await TestWait.WhenRendered(header, () => {
                 header.FindAll(".live-conversation-header.dissolving").Should().ContainSingle();
                 header.Find(".c-lc-name").TextContent.Should().Be(beforeTitle);
                 header.FindAll(".c-lc-join").Should().BeEmpty();

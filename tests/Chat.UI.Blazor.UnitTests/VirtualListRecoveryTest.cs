@@ -16,7 +16,7 @@ public class VirtualListRecoveryTest
         var source = new TestDataSource(initial, new([]), recovered);
         var cut = context.Render<TestList>(p => p
             .Add(x => x.DataSource, source));
-        cut.WaitForAssertion(() => cut.Markup.Should().Be("10"));
+        await TestWait.WhenRendered(cut, () => cut.Markup.Should().Be("10"));
         var query = new VirtualListDataQuery(new("10", "10"), default, new(0, 20));
 
         // act
@@ -24,13 +24,15 @@ public class VirtualListRecoveryTest
 
         // assert
         cut.Instance.CurrentData.Should().BeSameAs(initial);
-        cut.WaitForAssertion(() => cut.Instance.CurrentData.Should().BeSameAs(recovered), TimeSpan.FromSeconds(3));
+        await TestWait.WhenRendered(cut,
+            () => cut.Instance.CurrentData.Should().BeSameAs(recovered),
+            TimeSpan.FromSeconds(3));
         source.Queries.ToArray().Should().Equal(VirtualListDataQuery.None, query, query);
         cut.Markup.Should().Be("11");
     }
 
     [Fact]
-    public void InitiallyUnresolvedWindowShouldRecoverWithoutBrowserRequests()
+    public async Task InitiallyUnresolvedWindowShouldRecoverWithoutBrowserRequests()
     {
         // arrange
         using var context = TestBunitContext.New();
@@ -43,7 +45,9 @@ public class VirtualListRecoveryTest
             .Add(x => x.DataSource, source));
 
         // assert
-        cut.WaitForAssertion(() => cut.Instance.CurrentData.Should().BeSameAs(recovered), TimeSpan.FromSeconds(3));
+        await TestWait.WhenRendered(cut,
+            () => cut.Instance.CurrentData.Should().BeSameAs(recovered),
+            TimeSpan.FromSeconds(3));
         source.Queries.ToArray().Should().Equal(VirtualListDataQuery.None, VirtualListDataQuery.None);
     }
 
@@ -62,13 +66,13 @@ public class VirtualListRecoveryTest
         var source = new TestDataSource(initial, empty);
         var cut = context.Render<TestList>(p => p
             .Add(x => x.DataSource, source));
-        cut.WaitForAssertion(() => cut.Markup.Should().Be("10"));
+        await TestWait.WhenRendered(cut, () => cut.Markup.Should().Be("10"));
 
         // act
         await cut.InvokeAsync(() => cut.Instance.RequestAndWait(new(default, default, default)));
 
         // assert
-        cut.WaitForAssertion(() => cut.Markup.Should().Be("empty"));
+        await TestWait.WhenRendered(cut, () => cut.Markup.Should().Be("empty"));
         await Task.Delay(TimeSpan.FromSeconds(1.3));
         cut.Instance.CurrentData.Should().BeSameAs(empty);
         source.Queries.Should().HaveCount(2);
@@ -85,7 +89,7 @@ public class VirtualListRecoveryTest
         var source = new TestDataSource(initial, new([]), recovered);
         var cut = context.Render<TestList>(p => p
             .Add(x => x.DataSource, source));
-        cut.WaitForAssertion(() => cut.Markup.Should().Be("10"));
+        await TestWait.WhenRendered(cut, () => cut.Markup.Should().Be("10"));
         var oldQuery = new VirtualListDataQuery(new("10", "10"), default, new(0, 20));
         var newQuery = new VirtualListDataQuery(new("30", "30"), default, new(0, 20));
         await cut.InvokeAsync(() => cut.Instance.RequestAndWait(oldQuery));
@@ -94,7 +98,7 @@ public class VirtualListRecoveryTest
         await cut.InvokeAsync(() => cut.Instance.RequestAndWait(newQuery));
 
         // assert
-        cut.WaitForAssertion(() => cut.Instance.CurrentData.Should().BeSameAs(recovered));
+        await TestWait.WhenRendered(cut, () => cut.Instance.CurrentData.Should().BeSameAs(recovered));
         await Task.Delay(TimeSpan.FromSeconds(1.3));
         source.Queries.ToArray().Should().Equal(VirtualListDataQuery.None, oldQuery, newQuery);
     }
