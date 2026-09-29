@@ -82,9 +82,8 @@
     private void OnSettingsClick()
         => _showSettings = !_showSettings;
 
-    // The score sheet arrives with the Skills tab
     private void OnScoreClick()
-        => CoachUI.SelectTab(CoachTab.Skills);
+        => _ = ModalUI.Show(new CoachScoreSheet.Model(State.Value.Language));
 
     private void OnFocusClick()
         => CoachUI.SelectTab(CoachTab.Skills);

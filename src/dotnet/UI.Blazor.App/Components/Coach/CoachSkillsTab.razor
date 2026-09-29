@@ -1,11 +1,129 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Users
-@inherits ComponentBase<AppUIHub>
+@inherits ComputedStateComponent<AppUIHub, CoachSkillsTab.Model>
+@{
+    var m = State.Value;
+    var s = m.Summary;
+    var labels = Labels;
+    var headline = CoachSkillSets.Headline(m.Level);
+    var isKnown = (CoachMetricKind kind) => s.Metrics.FirstOrDefault(x => x.Kind == kind);
+    var rest = s.Metrics
+        .Where(x => !headline.Contains(x.Kind) && !CoachSkillSets.Conversation.Contains(x.Kind))
+        .ToList();
+    var period = new[] { CoachWindow.Days7, CoachWindow.Days30, CoachWindow.AllTime };
+}
 
-<div class="coach-skills"></div>
+<div class="coach-skills">
+    @if (m.Word is { } word) {
+        <CoachOccurrences Word="@word" Window="@m.Window" Back="@OnOccurrencesBack"/>
+    } else {
+        <div class="c-periods">
+            <div class="c-chips">
+                @foreach (var w in period) {
+                    <button type="button" class="chip @(w == m.Window ? "on" : "")" @onclick="@(() => OnWindow(w))">
+                        @labels.Window(w)
+                    </button>
+                }
+            </div>
+            <span class="c-words">@L.Coach_Words(s.Words, s.Words)</span>
+        </div>
+        @if (Language is not null) {
+            <TileTopic Topic="@L.Coach_SkillsSpeaking_Format(labels.LanguageName(Language))"/>
+        }
+        <Card Class="c-headline">
+            @foreach (var kind in headline) {
+                @if (isKnown(kind) is { } metric) {
+                    <CoachSkillRow
+                        @key="@kind"
+                        Metric="@metric"
+                        Summary="@s"
+                        Language="@Language"
+                        IsHeadline="@true"
+                        IsFocus="@(Focus == kind)"
+                        IsNotMeasured="@(!m.IsWordSplittable && CoachSkillSets.IsLanguageBound(kind))"
+                        WordClick="@OnWordClick"
+                        FocusClick="@OnFocusClick"/>
+                }
+            }
+        </Card>
+        <TileTopic Topic="@L.Coach_SkillsInConversations"/>
+        <div class="c-all-languages">@L.Coach_AllLanguages</div>
+        <Card Class="c-conversation">
+            @foreach (var metric in s.Metrics.Where(x => CoachSkillSets.Conversation.Contains(x.Kind))) {
+                <CoachSkillRow @key="@metric.Kind" Metric="@metric" Summary="@s" Language="@Language"/>
+            }
+        </Card>
+        <TileTopic Topic="@L.Coach_More"/>
+        <Card Class="c-more">
+            @foreach (var metric in rest) {
+                <CoachSkillRow
+                    @key="@metric.Kind"
+                    Metric="@metric"
+                    Summary="@s"
+                    Language="@Language"
+                    IsNotMeasured="@(!m.IsWordSplittable && CoachSkillSets.IsLanguageBound(metric.Kind))"/>
+            }
+        </Card>
+        <div class="c-footer">@L.Coach_TapMarkedWord</div>
+    }
+</div>
 
 @code {
     [Parameter] public string? Language { get; set; }
     [Parameter] public CoachSummary Summary { get; set; } = CoachSummary.None;
     [Parameter] public CoachMetricKind? Focus { get; set; }
+
+    private MutableState<CoachWindow> _window = null!;
+    private MutableState<string?> _word = null!;
+
+    private CoachLabels Labels => field ??= new CoachLabels(L);
+
+    protected override void OnInitialized() {
+        _window = StateFactory.NewMutable(CoachWindow.Days7);
+        _word = StateFactory.NewMutable((string?)null);
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var window = await _window.Use(cancellationToken).ConfigureAwait(false);
+        var word = await _word.Use(cancellationToken).ConfigureAwait(false);
+        var summary = await Hub.Coach
+            .GetOwnSummary(Session, window, Language, cancellationToken)
+            .ConfigureAwait(false);
+        var settings = await Hub.UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
+        var languages = await Hub.CoachUI.ListOwnLanguages(cancellationToken).ConfigureAwait(false);
+        var primary = languages.FirstOrDefault()?.Iso ?? "";
+        var iso = Language is null ? primary : ActualChat.Language.GetIsoCode(Language);
+        var isSplittable = languages.FirstOrDefault(x => x.Iso == iso)?.IsWordSplittable ?? true;
+        return new Model(window, word, summary, settings.LevelOf(iso), isSplittable, primary);
+    }
+
+    private void OnWindow(CoachWindow window)
+        => _window.Value = window;
+
+    private void OnWordClick(string word)
+        => _word.Value = word;
+
+    private void OnOccurrencesBack()
+        => _word.Value = null;
+
+    private Task OnFocusClick(CoachMetricKind kind)
+        => UICommander.Run(new Coach_SetFocus {
+            Session = Session,
+            Language = Language ?? State.Value.PrimaryIso,
+            Kind = kind,
+        });
+
+    public sealed record Model(
+        CoachWindow Window,
+        string? Word,
+        CoachSummary Summary,
+        CoachLanguageLevel Level,
+        bool IsWordSplittable,
+        string PrimaryIso) {
+        public static readonly Model None = new(
+            CoachWindow.Days7, null, CoachSummary.None, CoachLanguageLevel.Native, true, "");
+    }
 }

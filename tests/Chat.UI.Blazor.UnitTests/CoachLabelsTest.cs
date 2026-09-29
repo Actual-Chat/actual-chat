@@ -70,4 +70,26 @@ public class CoachLabelsTest
         l.DeltaBadge(same).Should().Be("same");
         l.DeltaValue(unknown).Should().Be("not enough speech");
     }
+
+    [Fact]
+    public void ExplainShouldNameTheLanguageAndItsRange()
+    {
+        // arrange
+        var l = new CoachLabels(new TestStringLocalizer(new() {
+            ["Coach_ExplainPace_Format"] = "Words per minute while you speak. {0} to {1} is easy to follow in {2}.",
+            ["Coach_ExplainFillers_Format"] = "Words that fill a gap: {0}. Under {1}% sounds natural.",
+            ["Coach_BandABitHigh"] = "a bit high",
+            ["Coach_BandABitMuch"] = "a bit much",
+            ["Coach_PaceComfortableWord"] = "comfortable",
+        }));
+        var summary = CoachSummary.None with { PaceSlow = 100, PaceFast = 140, FillerGood = 0.03 };
+
+        // act & assert
+        l.Explain(CoachMetricKind.Pace, "ru", summary)
+            .Should().Be("Words per minute while you speak. 100 to 140 is easy to follow in Russian.");
+        l.Explain(CoachMetricKind.Fillers, "ru", summary).Should().StartWith("Words that fill a gap");
+        l.BandWord(CoachMetricKind.Fillers, CoachBand.Medium).Should().Be("a bit high");
+        l.BandWord(CoachMetricKind.TurnTaking, CoachBand.High).Should().Be("a bit much");
+        l.BandWord(CoachMetricKind.Pace, CoachBand.Good).Should().Be("comfortable");
+    }
 }

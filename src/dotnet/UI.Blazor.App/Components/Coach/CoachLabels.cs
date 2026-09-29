@@ -63,6 +63,39 @@ public sealed class CoachLabels(IStringLocalizer l)
                 : l.Coach_FindingMonologueShort_Format(Clock(c.LongestMonologueSeconds ?? 0)),
         };
 
+    public string Explain(CoachMetricKind kind, string? language, CoachSummary s)
+        => kind switch {
+            CoachMetricKind.Fillers => l.Coach_ExplainFillers_Format(Examples(s, kind), Round(s.FillerGood * 100)),
+            CoachMetricKind.Pace => l.Coach_ExplainPace_Format(
+                Round(s.PaceSlow), Round(s.PaceFast), LanguageName(language ?? "")),
+            CoachMetricKind.TurnTaking => l.Coach_ExplainTalkShare,
+            CoachMetricKind.Monologue => l.Coach_ExplainMonologue,
+            CoachMetricKind.WeakWords => l.Coach_ExplainWeakWords_Format(Examples(s, kind)),
+            CoachMetricKind.Vocabulary => l.Coach_ExplainVocabulary,
+            CoachMetricKind.SentenceLength => l.Coach_ExplainSentence,
+            _ => "",
+        };
+
+    public string BandWord(CoachMetricKind kind, CoachBand band)
+        => (kind, band) switch {
+            (_, CoachBand.None) => "",
+            (CoachMetricKind.Fillers or CoachMetricKind.WeakWords, CoachBand.Good) => l.Coach_BandNatural,
+            (CoachMetricKind.Fillers or CoachMetricKind.WeakWords, CoachBand.Medium) => l.Coach_BandABitHigh,
+            (CoachMetricKind.Pace, CoachBand.Good) => l.Coach_PaceComfortableWord,
+            (CoachMetricKind.Pace, CoachBand.Low) => l.Coach_PaceALittleSlow,
+            (CoachMetricKind.Pace, CoachBand.High) => l.Coach_PaceALittleFast,
+            (CoachMetricKind.TurnTaking, CoachBand.High) => l.Coach_BandABitMuch,
+            (CoachMetricKind.Monologue, CoachBand.Good) => l.Coach_BandFine,
+            (CoachMetricKind.SentenceLength, CoachBand.Good) => l.Coach_BandClear,
+            _ => Band(kind, band),
+        };
+
+    // The top chips of the metric, quoted, so the caption names the user's own words
+    private static string Examples(CoachSummary s, CoachMetricKind kind)
+        => string.Join(", ", (s.Metrics.FirstOrDefault(m => m.Kind == kind)?.Chips ?? ApiArray<CoachChip>.Empty)
+            .Take(3)
+            .Select(c => $"“{c.Word}”"));
+
     public string Milestone(CoachMilestoneKind kind)
         => kind switch {
             CoachMilestoneKind.Words1K => l.Coach_MilestoneWords1K,
@@ -131,7 +164,7 @@ public sealed class CoachLabels(IStringLocalizer l)
             CoachMetricKind.Profanity => l.Coach_MetricProfanity,
             CoachMetricKind.Questions => l.Coach_MetricQuestions,
             CoachMetricKind.SentenceLength => l.Coach_MetricSentenceLength,
-            CoachMetricKind.Vocabulary => l.Coach_MetricVocabulary,
+            CoachMetricKind.Vocabulary => l.Coach_MetricDifferentWords,
             CoachMetricKind.TurnTaking => l.Coach_MetricTurnTaking,
             CoachMetricKind.Patience => l.Coach_MetricPatience,
             CoachMetricKind.Interruptions => l.Coach_MetricInterruptions,
@@ -165,7 +198,7 @@ public sealed class CoachLabels(IStringLocalizer l)
             CoachMetricKind.Fillers or CoachMetricKind.WeakWords or CoachMetricKind.Repetition
                 or CoachMetricKind.Profanity => metric.Rate is null ? l.Coach_NoData : Round(value).ToString(),
             CoachMetricKind.SentenceLength => l.Coach_WordsPerSentence_Format(value.ToString("F1", null)),
-            CoachMetricKind.Vocabulary => l.Coach_Percent_Format(Round(value * 100)),
+            CoachMetricKind.Vocabulary => l.Coach_OfEvery100_Format(Round(value * 100)),
             CoachMetricKind.TurnTaking => l.Coach_PercentOfTalkTime_Format(Round(value * 100)),
             CoachMetricKind.Patience or CoachMetricKind.Monologue => l.Coach_Seconds_Format(value.ToString("F1", null)),
             _ => Round(value).ToString(),

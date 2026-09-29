@@ -62,6 +62,11 @@ public sealed partial record CoachSummary(
     [property: DataMember, Key(5)] int TaggedEntries,
     [property: DataMember, Key(6)] ApiArray<CoachMetric> Metrics)
 {
+    // The comfortable pace band and the good filler rate of the summary's language, so captions quote them
+    [DataMember, Key(7)] public double PaceSlow { get; init; }
+    [DataMember, Key(8)] public double PaceFast { get; init; }
+    [DataMember, Key(9)] public double FillerGood { get; init; }
+
     public static readonly CoachSummary None
         = new (CoachWindow.Today, null, null, 0, 0, 0, ApiArray<CoachMetric>.Empty);
 }

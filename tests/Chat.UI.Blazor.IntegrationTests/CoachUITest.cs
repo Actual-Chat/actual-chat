@@ -446,4 +446,34 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
             cut.Find(".coach-week-deltas").TextContent.Should().Contain("not enough speech");
         }, TimeSpan.FromSeconds(30));
     }
+
+    [Fact(Timeout = 60_000)]
+    public async Task SkillsTabShouldGroupHeadlineAndConversationSkillsAndOpenOccurrences()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-skills");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        var hub = tester.ScopedAppServices.AppUIHub();
+        await OptIn(tester);
+        await PostVoice(tester, chatId, Text);
+
+        // act
+        var cut = tester.Render<CoachPanel>();
+        InitializeHub(tester, hub, cut.Instance);
+        cut.WaitForAssertion(() => cut.Find(".coach-conversation"), TimeSpan.FromSeconds(30));
+        hub.CoachUI.SelectTab(CoachTab.Skills);
+
+        // assert
+        cut.WaitForAssertion(() => {
+            cut.FindAll(".coach-skills .c-headline .coach-skill").Count.Should().Be(4);
+            cut.Find(".coach-skills .c-conversation").Should().NotBeNull();
+            cut.FindAll(".coach-skills .c-headline .coach-chip").Count.Should().BeGreaterThan(0, "the marked words show as chips");
+        }, TimeSpan.FromSeconds(30));
+        await cut.InvokeAsync(() => cut.Find(".coach-skills .c-headline .coach-chip").Click());
+        cut.WaitForAssertion(() => cut.Find(".coach-occurrences"), TimeSpan.FromSeconds(10));
+    }
 }

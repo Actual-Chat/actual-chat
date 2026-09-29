@@ -107,12 +107,17 @@ public class Coach(IServiceProvider services) : ICoach
         var settings = await ServerKvasBackend.ForUser(account.Id).UserCoachSettings()
             .Get(cancellationToken)
             .ConfigureAwait(false);
-        var iso = language.IsNullOrEmpty() ? "" : Language.GetIsoCode(language);
+        var languageSettings = await ServerKvasBackend.ForUser(account.Id)
+            .UserLanguageSettings()
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
+        var effective = language.IsNullOrEmpty() ? languageSettings.Primary.Value : language;
+        var iso = Language.GetIsoCode(effective);
         if (settings.FocusByLanguage.TryGetValue(iso, out var chosen))
             return chosen;
 
         var summary = await GetOwnSummary(session, CoachWindow.Days7, language, cancellationToken).ConfigureAwait(false);
-        return CoachFocus.Pick(summary, settings.LevelOf(language), Settings.Coach);
+        return CoachFocus.Pick(summary, settings.LevelOf(effective), Settings.Coach);
     }
 
     // [ComputeMethod]

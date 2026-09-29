@@ -19,7 +19,12 @@ public static class CoachScoring
             var diff = current - previous;
             delta = Math.Abs(diff) >= s.BadgeMinDelta ? diff : null;
         }
-        return new CoachSummary(window, score, delta, d.Words, d.Entries, d.TaggedEntries, Metrics(d, s, language));
+        var pace = Band(s, language);
+        return new CoachSummary(window, score, delta, d.Words, d.Entries, d.TaggedEntries, Metrics(d, s, language)) {
+            PaceSlow = pace.Slow,
+            PaceFast = pace.Fast,
+            FillerGood = FillerRange(s, language).Good,
+        };
     }
 
     public static int? Score(CoachDay d, CoachScoringSettings s, string? language)

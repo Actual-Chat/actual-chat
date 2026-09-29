@@ -127,3 +127,26 @@
     @apply flex-x items-center justify-center w-5 h-5 rounded-full bg-success text-xs text-white;
 }
 .coach-milestones .c-check.off { @apply bg-transparent border border-separator; }
+.coach-skills { @apply flex-y gap-y-3 px-4 pt-3 pb-4; }
+.coach-skills .c-periods { @apply flex-x items-center justify-between gap-x-2; }
+.coach-skills .c-periods .c-chips { @apply flex-x gap-x-2; }
+.coach-skills .chip { @apply px-3 py-1 rounded-full bg-01 text-sm text-02; }
+.coach-skills .chip.on { @apply bg-primary text-white; }
+.coach-skills .c-words,
+.coach-skills .c-all-languages,
+.coach-skills .c-footer { @apply text-caption text-03; }
+.coach-skills .c-all-languages { @apply -mt-2; }
+.coach-skill { @apply flex-y gap-y-1 px-3 py-2; }
+.coach-skill + .coach-skill { @apply border-t border-separator; }
+.coach-skill .c-row { @apply flex-x items-baseline justify-between gap-x-3; }
+.coach-skill .c-name { @apply text-body-500 text-01; }
+.coach-skill .c-value { @apply text-sm font-medium text-03 text-right; }
+.coach-skill .c-value.band-good { @apply text-success; }
+.coach-skill .c-value.band-medium { @apply text-warning; }
+.coach-skill .c-value.band-high,
+.coach-skill .c-value.band-low { @apply text-danger; }
+.coach-skill.plain .c-name { @apply text-base font-normal; }
+.coach-skill .c-caption { @apply text-caption text-03; }
+.coach-skill .c-chips { @apply flex-x flex-wrap gap-2 pt-1; }
+.coach-skill .c-focus-link { @apply text-sm text-primary cursor-pointer; }
+.coach-score-sheet .c-points { @apply text-sm text-03 whitespace-nowrap; }
