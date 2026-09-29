@@ -91,7 +91,7 @@
     private IReadOnlyList<ChartItem> ScoreItems(ApiArray<CoachWeekScore> scores)
         => scores
             .Select(s => new ChartItem(
-                s.WeekStart.ToDateTime().ToString("d", DateFormatter),
+                s.WeekStart.ToDateTime().ToString("m", DateFormatter),
                 s.Score ?? 0))
             .ToList();
 
