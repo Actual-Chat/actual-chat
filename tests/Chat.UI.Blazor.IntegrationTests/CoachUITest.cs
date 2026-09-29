@@ -605,4 +605,20 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         withoutScore.FindAll(".card-item").Count.Should().Be(1, "no focus row before the first score");
         withScore.FindAll(".card-item").Count.Should().Be(2);
     }
+
+    [Fact(Timeout = 60_000)]
+    public async Task ScoreSheetShouldHaveARegisteredModalView()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-sheet");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+
+        // act
+        var views = tester.ScopedAppServices.GetRequiredService<TypeMapper<IModalView>>();
+
+        // assert
+        views.Get(typeof(CoachScoreSheet.Model)).Should().Be(typeof(CoachScoreSheet));
+    }
 }

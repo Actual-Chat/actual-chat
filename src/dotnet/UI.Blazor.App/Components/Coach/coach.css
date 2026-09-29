@@ -163,3 +163,8 @@
 .coach-settings-page .c-data .c-hint { @apply px-2 pb-2; }
 .coach-menu-entry { @apply flex-x items-center justify-between gap-x-4 w-full; }
 .coach-panel .tab-panel { @apply flex-none; }
+.coach-language-chips { @apply flex-y items-start gap-y-1; }
+.coach-language-chips .chip,
+.coach-skills .chip { @apply whitespace-nowrap flex-none; }
+.coach-language-chips .c-chips,
+.coach-skills .c-periods .c-chips { @apply flex-wrap; }

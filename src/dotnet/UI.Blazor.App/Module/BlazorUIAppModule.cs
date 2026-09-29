@@ -165,6 +165,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         // IModalViews
         services.AddTypeMap<IModalView>(map => map
             .Add<AvatarSelectModal.Model, AvatarSelectModal>()
+            .Add<CoachScoreSheet.Model, CoachScoreSheet>()
             .Add<ChatQuickNavModal.Model, ChatQuickNavModal>()
             .Add<KeyboardShortcutsModal.Model, KeyboardShortcutsModal>()
             .Add<VoiceSettingsModal.Model, VoiceSettingsModal>()

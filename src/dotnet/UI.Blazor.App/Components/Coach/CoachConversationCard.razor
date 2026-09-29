@@ -23,7 +23,6 @@
     }
     <div class="c-links">
         <a href="@Links.Chat(c.ChatId, c.StartEntryLid)">@L.Coach_MarkedTranscript</a>
-        <a class="c-all-numbers" @onclick="@OnAllNumbers">@L.Coach_AllNumbers</a>
     </div>
 </Card>
 
@@ -34,7 +33,4 @@
     [Parameter] public bool IsWeeksBest { get; set; }
 
     private CoachLabels Labels => field ??= new CoachLabels(L);
-
-    private void OnAllNumbers()
-        => Hub.CoachUI.SelectTab(CoachTab.Skills);
 }
