@@ -170,10 +170,14 @@ What else a failed UI test's output now carries:
   renders and the timeout show up with timestamps.
 - **The host heartbeat.** Each app host writes one line a second:
   `alive: tick 1.001s, cpu 1.8 of 4 cores, pool 23 threads 0 queued, gc pause +0ms,
-  machine cpu 64%, loadavg 3.21`. A late `tick` means the thread pool was slow to run
-  the timer. An on-time tick says nothing about the CPU, so `cpu` (this process) and
-  `machine cpu` (everything on the runner, over the last second) cover that; `loadavg`
-  is the one-minute average. The machine figures are Linux-only.
+  machine cpu 64% iowait 12%, run 5 io-blocked 3, loadavg 6.21`. A late `tick` means
+  the thread pool was slow to run the timer. An on-time tick says nothing about the
+  CPU, so `cpu` (this process) and `machine cpu` (everything on the runner, over the
+  last second) cover that. `loadavg` is a one-minute average that counts threads
+  waiting for a CPU and threads blocked on I/O alike, so it can't say which one is
+  short; `iowait` (share of the last second) and the instant `run` / `io-blocked`
+  thread counts can. `run` above the core count is a CPU queue; `io-blocked` is disk
+  or other I/O. The machine figures are Linux-only.
 
 ## The wait report
 
