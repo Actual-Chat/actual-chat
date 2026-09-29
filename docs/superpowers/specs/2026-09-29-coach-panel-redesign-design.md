@@ -223,13 +223,16 @@ new-user check).
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| 4 | `CoachScope Scope` | `Everywhere` | `Everywhere` or `OnlyChosen` |
-| 5 | `bool SkipPeerChats` | `false` | Leave one-to-one chats alone |
-| 6 | `ApiMap<string, CoachLanguageLevel> Languages` | empty | ISO → `Native` / `Learning` / `Off`; absent = `Native` |
-| 7 | `ApiMap<string, CoachMetricKind> FocusByLanguage` | empty | Absent = automatic (§8.1) |
-| 8 | `string SelectedLanguage` | `""` | Chip selection; `""` = most spoken |
-| 9 | `bool AreMarksEnabled` | `true` | Marks in own transcripts |
-| 10 | `bool IsWeeklySummaryEnabled` | `true` | §8.5 |
+| 4 | `bool SkipPeerChats` | `false` | Leave one-to-one chats alone |
+| 5 | `ApiMap<string, CoachLanguageLevel> Languages` | empty | ISO → `Native` / `Learning` / `Off`; absent = `Native` |
+| 6 | `ApiMap<string, CoachMetricKind> FocusByLanguage` | empty | Absent = automatic (§8.1) |
+| 7 | `string SelectedLanguage` | `""` | Chip selection; `""` = most spoken |
+| 8 | `bool AreMarksEnabled` | `true` | Marks in own transcripts |
+| 9 | `bool IsWeeklySummaryEnabled` | `true` | §8.5 |
+
+Coaching runs everywhere by default; the only scope controls are the per-chat and per-place
+flags and `SkipPeerChats`. An allow-list mode ("only where I say") was considered and dropped:
+switching a place off covers the "work place only" case in one tap.
 
 `ChatUserSettings` gains `[Key(9)] bool? IsCoachingEnabled` (null = inherit). A place's flag is the
 same field on the record keyed by the place's root chat id (`ChatId.RootChatId`).
@@ -296,7 +299,7 @@ Behind the gear, replaces the panel body, back arrow plus "Coach settings". Buil
    Off deletes nothing." Its meaning is unchanged from v1: on = immediate tagging, tips and
    marks; off = the background per-conversation analysis still runs, so the panel has history
    the day it is switched on. Stopping analysis for a chat or place is what §9.1 is for.
-2. **Where**: "Coach me in" value row (Everywhere / Only where I say, opens a picker); "Skip
+2. **Where**: a caption row "Everywhere, except the chats and places you switch off"; "Skip
    one-to-one chats" toggle; the list of switched-off chats and places, each with "Switch on".
    Caption: switch any chat or place off from its menu.
 3. **Languages** with a **Manage** link in the topic row that opens Settings › Voice &
@@ -316,7 +319,7 @@ For an entry in chat C of place P (P may be none), the coach analyses and stores
 if the chat is in scope:
 
 `ChatUserSettings(C).IsCoachingEnabled` is true, or null and `ChatUserSettings(P.RootChatId)` is
-true, or both null and (`Scope == Everywhere` and not (`SkipPeerChats` and C is a peer chat)).
+true, or both null and not (`SkipPeerChats` and C is a peer chat).
 
 Out of scope means no row on either shard, on both the immediate and the per-conversation
 path. The check lives in `CoachAnalysisBackend` before analysis. A language whose level is
@@ -334,7 +337,7 @@ all" for that) and re-evaluates nothing.
   in 30 days), `GetOwnWeeklyDeltas(session, language?, ct)`, `ExplainOwnScore(session,
   language?, ct)`, `ListOwnMilestones(session, ct)`.
 - Commands: `Coach_SetFocus(language, kind?)`, `Coach_SetLanguageLevel(language, level)`,
-  `Coach_SetScope(scope, skipPeerChats)`, `Coach_SetChatCoaching(chatId, bool?)`,
+  `Coach_SetChatCoaching(chatId, bool?)`,
   `Coach_DeleteOwnData`. Toggles for marks, tips, interval and weekly summary go through the
   existing settings update path.
 
@@ -381,16 +384,20 @@ menu entry, the new-user state.
   the Manage link opens Voice & Transcription; "Coach me here" from the chat menu.
 - Waits follow `docs/testing/waiting.md`.
 
-## 14. Open questions
+## 14. Decisions and open questions
 
-1. `SkipPeerChats` default. Spec says `false` (coach everywhere) so bilingual and coaching data
-   exists from day one; the research argues casual private talk is where coaching feels wrong.
-2. Weekly summary channel: in-app note only (spec), or also the email digest.
-3. Whether "Coach me in: Only where I say" is worth shipping in v1.1 or the per-chat opt-out
-   alone covers it. Spec keeps it; it is one enum and one picker.
-4. Carried from the v1 ledger: whether the tip's close is a dismiss or a snooze (v1 dismisses;
-   with the 30 s auto-close the difference is small), and the dashed sentence underline in the
-   desktop mock (still no defined meaning, still not implemented).
+Decided 2026-09-29:
+
+1. `SkipPeerChats` defaults to `false`: coaching runs everywhere so bilingual and coaching data
+   exists from day one.
+2. The weekly summary ships as an in-app note; delivery through the email digest is a later
+   addition on the same settings flag.
+3. The allow-list scope mode is dropped (§6.2).
+4. The work stays on `feat/4829-speech-coach` and in PR #4856.
+
+Open, carried from the v1 ledger: whether the tip's close is a dismiss or a snooze (v1
+dismisses; with the 30 s auto-close the difference is small), and the dashed sentence underline
+in the desktop mock (still no defined meaning, still not implemented).
 
 ## 15. Reuse
 
