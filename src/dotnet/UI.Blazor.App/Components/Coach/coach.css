@@ -12,6 +12,7 @@
 .coach-header .c-head { @apply relative px-4; }
 .coach-header .c-head > .c-avatar { @apply absolute left-4 -top-8 z-10; }
 .coach-header .c-buttons { @apply flex-x justify-end gap-x-2 h-12 pt-2; }
+.coach-header .c-settings-btn { @apply relative -top-7 bg-round-right-panel text-primary; }
 .coach-header .c-bottom { @apply flex-x items-center justify-between gap-x-2 pt-2; }
 .coach-header .c-title { @apply text-title-500 text-02 whitespace-nowrap; }
 .coach-panel > .c-body { @apply flex-none flex-y gap-y-3 px-4 pt-3; }
@@ -195,3 +196,5 @@
 .coach-panel .c-coach-toggle { @apply flex-none; }
 .c-score-ring { @apply w-7 h-7; }
 .c-score-ring i { @apply text-sm; }
+.coach-switched-off-sheet .c-switch-on { @apply text-sm font-medium text-primary cursor-pointer; }
+.coach-switched-off-sheet .c-hint { @apply text-caption text-03 pt-2; }

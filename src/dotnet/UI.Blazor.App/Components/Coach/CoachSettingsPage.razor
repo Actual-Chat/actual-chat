@@ -30,19 +30,15 @@
     </Tile>
 
     @if (s.IsCoachingEnabled) {
-        @if (ChatId is not null) {
-            <TileTopic Topic="@L.Coach_Here"/>
-            <Tile Class="c-here">
+        <TileTopic Topic="@L.Coach_Where"/>
+        <div class="c-hint">@L.Coach_WhereHint</div>
+        <Tile Class="c-where">
+            @if (ChatId is not null) {
                 @if (ChatId != ChatId.RootChatId) {
                     <CoachChatToggleCard ChatId="@ChatId" IsPlace="true"/>
                 }
                 <CoachChatToggleCard ChatId="@ChatId"/>
-            </Tile>
-        }
-
-        <TileTopic Topic="@L.Coach_Where"/>
-        <div class="c-hint">@L.Coach_WhereHint</div>
-        <Tile Class="c-where">
+            }
             <TileItem Class="c-skip-peers" Click="@(() => Update(x => x with { SkipPeerChats = !x.SkipPeerChats }))">
                 <Icon><i class="icon-person text-2xl"></i></Icon>
                 <Content>@L.Coach_SkipPeerChats</Content>
@@ -52,21 +48,17 @@
                             IsCheckedChanged="@(_ => Update(x => x with { SkipPeerChats = !x.SkipPeerChats }))"/>
                 </Right>
             </TileItem>
+            @if (s.SwitchedOff.Count > 0) {
+                <TileItem Class="c-switched-off" Click="@OnSwitchedOff">
+                    <Icon><i class="icon-eye-off text-2xl"></i></Icon>
+                    <Content>@L.Coach_SwitchedOff</Content>
+                    <Right>
+                        <span class="text-03">@s.SwitchedOff.Count</span>
+                        <i class="icon-chevron-right text-xl text-03"></i>
+                    </Right>
+                </TileItem>
+            }
         </Tile>
-
-        @if (m.SwitchedOff.Count > 0) {
-            <TileTopic Topic="@L.Coach_SwitchedOff"/>
-            <Tile Class="c-switched-off">
-                @foreach (var item in m.SwitchedOff) {
-                    <TileItem @key="@item.Id" IsHoverable="false" Role="">
-                        <Icon><ChatIcon Chat="@item.Chat" HideTitle="@true"/></Icon>
-                        <Content>@item.Title</Content>
-                        <Right><a class="c-switch-on" @onclick="@(() => SwitchOn(item.Id))">@L.Coach_SwitchOn</a></Right>
-                    </TileItem>
-                }
-            </Tile>
-            <div class="c-hint">@L.Coach_SwitchOffHint</div>
-        }
 
         <div class="c-topic-row">
             <TileTopic Topic="@L.Coach_Languages"/>
@@ -169,19 +161,14 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var settings = await UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
         var languages = await Hub.CoachUI.ListOwnLanguages(cancellationToken).ConfigureAwait(false);
-        var items = new List<SwitchedOffItem>();
-        foreach (var id in settings.SwitchedOff) {
-            var chat = await Hub.Chats.Get(Session, id, cancellationToken).ConfigureAwait(false);
-            items.Add(new SwitchedOffItem(id, chat?.Title ?? id.Value, chat));
-        }
-        return new Model(settings, languages, items);
+        return new Model(settings, languages);
     }
 
     private Task Update(Func<UserCoachSettings, UserCoachSettings> update)
         => UserSettingsUI.UserCoachSettings().Update(update);
 
-    private Task SwitchOn(ChatId id)
-        => UICommander.Run(new Coach_SetChatCoaching { Session = Session, ChatId = id, IsEnabled = null });
+    private void OnSwitchedOff()
+        => _ = ModalUI.Show(new CoachSwitchedOffSheet.Model());
 
     private Task OnLevelChanged(string iso, ChangeEventArgs e)
         => Enum.TryParse<CoachLanguageLevel>(e.Value?.ToString(), out var level)
@@ -204,10 +191,7 @@
             Title = L.Coach_DeleteData,
         });
 
-    public sealed record SwitchedOffItem(ChatId Id, string Title, Chat? Chat);
-
-    public sealed record Model(
-        UserCoachSettings Settings, ApiArray<CoachLanguageInfo> Languages, List<SwitchedOffItem> SwitchedOff) {
-        public static readonly Model None = new(new UserCoachSettings(), ApiArray<CoachLanguageInfo>.Empty, []);
+    public sealed record Model(UserCoachSettings Settings, ApiArray<CoachLanguageInfo> Languages) {
+        public static readonly Model None = new(new UserCoachSettings(), ApiArray<CoachLanguageInfo>.Empty);
     }
 }

@@ -503,7 +503,7 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
 
         // assert
         await TestWait.When(async ct => (await kvas.UserCoachSettings().Get(ct)).SkipPeerChats.Should().BeTrue());
-        cut.WaitForAssertion(() => cut.Find(".coach-settings-page .c-switched-off").TextContent.Should().Contain("Switch on"));
+        cut.WaitForAssertion(() => cut.Find(".coach-settings-page .c-switched-off").TextContent.Should().Contain("Switched off").And.Contain("1"));
         cut.Find(".coach-settings-page .c-languages-manage").TextContent.Should().Contain("Manage");
         cut.FindAll(".coach-settings-page .c-language").Count.Should().BeGreaterThan(0);
     }
