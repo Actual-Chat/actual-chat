@@ -191,3 +191,4 @@
 .coach-panel > .coach-skills > *,
 .coach-panel > .coach-empty > *,
 .coach-panel > .coach-settings-page > * { @apply flex-none; }
+.coach-settings-page .tile > .form-block { @apply p-0; }
