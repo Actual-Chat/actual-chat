@@ -17,6 +17,9 @@
         <span class="c-title text-03">@L.Coach_Settings</span>
     </div>
 
+    @if (ChatId is not null) {
+        <CoachChatToggleCard ChatId="@ChatId"/>
+    }
     <Tile Class="c-coaching">
         <TileItem Click="@(() => Update(x => x with { IsCoachingEnabled = !x.IsCoachingEnabled }))">
             <Icon><i class="icon-ai-stars text-2xl"></i></Icon>
@@ -150,6 +153,7 @@
         = [CoachLanguageLevel.Native, CoachLanguageLevel.Learning, CoachLanguageLevel.Off];
 
     [Parameter] public EventCallback Back { get; set; }
+    [Parameter] public ChatId? ChatId { get; set; }
 
     private CoachLabels Labels => field ??= new CoachLabels(L);
 

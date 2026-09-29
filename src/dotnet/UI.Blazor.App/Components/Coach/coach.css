@@ -193,3 +193,5 @@
 .coach-panel > .coach-settings-page > * { @apply flex-none; }
 .coach-settings-page .tile > .form-block { @apply p-0; }
 .coach-panel .c-coach-toggle { @apply flex-none; }
+.c-score-ring { @apply w-7 h-7; }
+.c-score-ring i { @apply text-sm; }

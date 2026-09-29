@@ -18,9 +18,6 @@
             }
         </div>
         </div>
-        @if (m.Languages.FirstOrDefault(l => l.Iso == selected) is { } current) {
-            <span class="c-words">@L.Coach_WordsIn30Days(current.Words30Days, current.Words30Days)</span>
-        }
     </div>
 }
 

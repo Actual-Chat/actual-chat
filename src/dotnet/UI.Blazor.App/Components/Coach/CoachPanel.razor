@@ -11,14 +11,11 @@
     <ErrorBarrier Name="CoachPanel" Kind="@ErrorBarrierKind.Full">
         <CoachHeader SettingsClick="@OnSettingsClick"/>
         @if (_showSettings) {
-            <CoachSettingsPage Back="@OnSettingsClick"/>
+            <CoachSettingsPage Back="@OnSettingsClick" ChatId="@ChatId"/>
         } else if (!m.HasConversations) {
             <CoachEmptyState/>
         } else {
             <div class="c-body">
-                @if (ChatId is not null) {
-                    <CoachChatToggleCard ChatId="@ChatId"/>
-                }
                 <CoachLanguageChips/>
                 <CoachScoreCard
                     Summary="@m.Summary"

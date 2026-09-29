@@ -655,7 +655,7 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
     }
 
     [Fact(Timeout = 60_000)]
-    public async Task CoachPanelShouldOfferTheSwitchForTheChatItIsOpenedFor()
+    public async Task CoachSettingsShouldOfferTheSwitchForTheChatThePanelIsOpenedFor()
     {
         // arrange
         var appHost = await NewCoachHost("coach-ui-panel-switch");
@@ -673,7 +673,10 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         InitializeHub(tester, hub, cut.Instance);
 
         // assert
-        cut.WaitForAssertion(() => cut.Find(".coach-panel .c-coach-toggle").TextContent.Should().Contain("Coach me here"),
-            TimeSpan.FromSeconds(30));
+        cut.WaitForAssertion(() => cut.Find(".coach-header .c-settings-btn"), TimeSpan.FromSeconds(30));
+        cut.FindAll(".coach-panel .c-coach-toggle").Should().BeEmpty("the switch lives in the settings, not on the panel");
+        await cut.InvokeAsync(() => cut.Find(".coach-header .c-settings-btn").Click());
+        cut.WaitForAssertion(() => cut.Find(".coach-settings-page .c-coach-toggle").TextContent
+            .Should().Contain("Coach me here"), TimeSpan.FromSeconds(10));
     }
 }
