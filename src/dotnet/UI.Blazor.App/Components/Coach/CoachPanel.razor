@@ -16,6 +16,9 @@
             <CoachEmptyState/>
         } else {
             <div class="c-body">
+                @if (ChatId is not null) {
+                    <CoachChatToggleCard ChatId="@ChatId"/>
+                }
                 <CoachLanguageChips/>
                 <CoachScoreCard
                     Summary="@m.Summary"
@@ -49,6 +52,8 @@
 </div>
 
 @code {
+    [Parameter] public ChatId? ChatId { get; set; }
+
     private static readonly CoachTab[] Tabs = [CoachTab.Recent, CoachTab.Progress, CoachTab.Skills];
 
     private bool _showSettings;

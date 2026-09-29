@@ -19,7 +19,7 @@
     Effect="@ContentSwapEffect.WipeRight">
     <ChildContent>
         @if (isCoach) {
-            <CoachPanel/>
+            <CoachPanel ChatId="@ChatContext?.Chat.Id"/>
         } else {
             <CascadingValuePin TValue="ChatContext" RetentionKeySelector="@(c => c?.Chat.Id)">
                 <ChatSidePanel/>
