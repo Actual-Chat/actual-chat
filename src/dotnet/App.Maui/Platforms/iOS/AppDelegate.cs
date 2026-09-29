@@ -24,7 +24,6 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
 
     public override bool FinishedLaunching(UIApplication application, NSDictionary? launchOptions)
     {
-        RegisterBadgeNotifications();
         var result = base.FinishedLaunching(application, launchOptions);
 
         // The root view controller's view is white by default and shows for a frame between the
@@ -168,20 +167,6 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
         => value.IsNullOrEmpty()
             ? []
             : value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-    private static void RegisterBadgeNotifications()
-        => UNUserNotificationCenter.Current.RequestAuthorization(
-            UNAuthorizationOptions.Badge | UNAuthorizationOptions.Alert | UNAuthorizationOptions.Sound,
-            (approved, error) => {
-                if (approved)
-                    return;
-
-                // Handle the case where the user did not grant permission
-                if (error != null!)
-                    Log.LogError("Error requesting notification authorization: {Error}", error);
-                Log.LogWarning("Badge notification authorization denied");
-
-            });
 
     private static void CheckForAppLink(NSUserActivity userActivity)
     {
