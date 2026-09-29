@@ -25,7 +25,10 @@ rules — line length, control-flow placement, brace placement, `volatile`,
 namespace and `using` placement — on the lines you changed plus three lines
 around them; it answers in milliseconds and counts characters exactly, so its
 verdict on those rules is the final one. An LLM hook checks the rest of the
-guide over the whole file. Everything they report is fixed by
+guide over the whole file, reading
+[docs/CODING_STYLE.AGENTS.md](docs/CODING_STYLE.AGENTS.md) — the same guide with
+those rules removed, regenerated from it by
+`node .claude/hooks/style-check/build-agents-guide.mjs`. Everything they report is fixed by
 default, including violations outside the lines you changed. If the user
 explicitly decides to keep offending code as-is, record it in
 [.claude/style-bypasses.md](.claude/style-bypasses.md), in the format described

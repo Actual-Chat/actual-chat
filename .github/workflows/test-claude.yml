@@ -11,6 +11,7 @@ on:
       - "add-hosts.ps1"
       - "tests/ps/**"
       - ".claude/hooks/**"
+      - "docs/CODING_STYLE*.md"
       - ".github/workflows/test-claude.yml"
 
 permissions:

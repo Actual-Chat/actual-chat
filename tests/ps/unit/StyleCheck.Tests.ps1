@@ -122,6 +122,40 @@ import("./.claude/hooks/style-check/style-check.mjs").then(m => {
         }
     }
 
+    Context "the reviewer's copy of the guide" {
+        It "is up to date with CODING_STYLE.md" {
+            & node .claude/hooks/style-check/build-agents-guide.mjs --check
+            $LASTEXITCODE | Should -Be 0
+        }
+
+        It "drops a marked region, and a heading it leaves empty" {
+            $r = & node -e @'
+import("./.claude/hooks/style-check/build-agents-guide.mjs").then(m => {
+    const source = [
+        "## Kept", "", "- a rule", "",
+        "### Gone", "", "<!-- script-checked:begin -->", "- the script does this", "<!-- script-checked:end -->", "",
+        "### Next", "", "- another rule", "",
+    ].join("\n");
+    console.log(JSON.stringify(m.stripScriptChecked(source).split("\n").filter(x => x)));
+});
+'@
+            $r | Should -Be '["## Kept","- a rule","### Next","- another rule"]'
+        }
+
+        It "keeps a heading whose own body is gone but has subsections left" {
+            $r = & node -e @'
+import("./.claude/hooks/style-check/build-agents-guide.mjs").then(m => {
+    const source = [
+        "## Parent", "", "<!-- script-checked:begin -->", "- the script does this", "<!-- script-checked:end -->", "",
+        "### Child", "", "- a rule", "",
+    ].join("\n");
+    console.log(JSON.stringify(m.stripScriptChecked(source).split("\n").filter(x => x)));
+});
+'@
+            $r | Should -Be '["## Parent","### Child","- a rule"]'
+        }
+    }
+
     Context "the hook end to end" {
         It "reports a too-long line the edit introduced" {
             $before = "namespace Sample;`n`npublic class A`n{`n}`n"
