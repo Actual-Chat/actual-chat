@@ -75,6 +75,22 @@ public static class CoachScoring
             : new RateBand { Good = s.FillerGoodRate, High = s.FillerHighRate };
     }
 
+    public static CoachConversation BandConversation(CoachConversation c, CoachScoringSettings s)
+    {
+        var fillerRate = c.Words > 0 ? (double)c.Fillers / c.Words : (double?)null;
+        var filler = FillerRange(s, c.Language);
+        return c with {
+            PaceBand = c.Pace is { } p ? PaceBand(p, s, c.Language) : CoachBand.None,
+            TalkShareBand = c.TalkShare is { } t && c.Participants > 0
+                ? RangeBand(t * c.Participants, s.TurnLowFactor, s.TurnHighFactor)
+                : CoachBand.None,
+            MonologueBand = c.LongestMonologueSeconds is { } m
+                ? (m >= s.MonologueFlagSeconds ? CoachBand.High : CoachBand.Good)
+                : CoachBand.None,
+            FillerBand = RateBand(fillerRate, filler.Good, filler.High),
+        };
+    }
+
     public static ApiArray<CoachScorePart> Explain(CoachDay d, CoachScoringSettings s, string? language)
     {
         if (d.Words < s.MinScoreWords)

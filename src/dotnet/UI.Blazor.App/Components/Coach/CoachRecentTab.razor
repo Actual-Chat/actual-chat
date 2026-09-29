@@ -1,4 +1,59 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComponentBase<AppUIHub>
+@using ActualChat.UI.Blazor.App.Services
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, CoachRecentTab.Model>
+@{
+    var m = State.Value;
+}
 
-<div class="coach-recent"></div>
+<div class="coach-recent">
+    @foreach (var c in m.Conversations) {
+        var level = m.Settings.LevelOf(c.Language);
+        var isBest = c.StartEntryLid == m.BestLid && c.ChatId == m.BestChatId;
+        var focus = m.Settings.FocusByLanguage.TryGetValue(c.Language, out var chosen) ? chosen : (CoachMetricKind?)null;
+        <CoachConversationCard
+            @key="@(c.ChatId.Value + ":" + c.StartEntryLid)"
+            Conversation="@c"
+            Title="@m.Titles.GetValueOrDefault(c.ChatId, "")"
+            Findings="@CoachFindings.Pick(c, focus, level, isBest)"
+            IsWeeksBest="@isBest"/>
+    }
+    <div class="c-older">
+        @L.Coach_OlderInProgress
+        <a @onclick="@OnProgress">@L.Coach_TabProgress</a>
+    </div>
+</div>
+
+@code {
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var conversations = await Hub.Coach.ListOwnConversations(Session, 20, cancellationToken).ConfigureAwait(false);
+        var settings = await Hub.UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
+        var titles = new Dictionary<ChatId, string>();
+        foreach (var chatId in conversations.Select(c => c.ChatId).Distinct()) {
+            var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+            titles[chatId] = chat?.Title ?? "";
+        }
+        var weekAgo = Clocks.SystemClock.Now - TimeSpan.FromDays(7);
+        var best = conversations
+            .Where(c => c.StartedAt >= weekAgo && c.SpeechSeconds >= 60 && c.Words > 0)
+            .OrderBy(c => (double)c.Fillers / c.Words)
+            .FirstOrDefault();
+        return new Model(conversations, titles, settings, best?.ChatId, best?.StartEntryLid ?? 0);
+    }
+
+    private void OnProgress()
+        => Hub.CoachUI.SelectTab(CoachTab.Progress);
+
+    public sealed record Model(
+        ApiArray<CoachConversation> Conversations,
+        Dictionary<ChatId, string> Titles,
+        UserCoachSettings Settings,
+        ChatId? BestChatId,
+        long BestLid) {
+        public static readonly Model None = new(
+            ApiArray<CoachConversation>.Empty, new (), new UserCoachSettings(), null, 0);
+    }
+}

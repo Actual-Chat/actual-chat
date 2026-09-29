@@ -41,6 +41,34 @@ public sealed class CoachLabels(IStringLocalizer l)
             _ => "",
         };
 
+    public string Finding(CoachConversation c, CoachFinding f, bool isWeeksBest)
+        => f.Kind switch {
+            CoachMetricKind.Fillers => c.Fillers <= 2 && c.SpeechSeconds >= 60
+                ? l.Coach_FindingFillersFew_Format(c.Fillers, Round(c.SpeechSeconds / 60))
+                    + (isWeeksBest ? ". " + l.Coach_BestThisWeek : "")
+                : l.Coach_FindingFillers_Format(
+                    c.Fillers, Round(100d * c.Fillers / Math.Max(1, c.Words)), TopWord(c.FillerCounts)),
+            CoachMetricKind.Pace => l.Coach_FindingPace_Format(Round(c.Pace ?? 0), f.Band switch {
+                CoachBand.Low => l.Coach_PaceALittleSlow,
+                CoachBand.High => l.Coach_PaceALittleFast,
+                _ => l.Coach_PaceComfortableWord,
+            }),
+            CoachMetricKind.TurnTaking => f.Band switch {
+                CoachBand.High => l.Coach_FindingTalkShareHigh_Format(Round((c.TalkShare ?? 0) * 100), c.Participants),
+                CoachBand.Low => l.Coach_FindingTalkShareLow_Format(Round((c.TalkShare ?? 0) * 100), c.Participants),
+                _ => l.Coach_FindingTalkShareBalanced_Format(Round((c.TalkShare ?? 0) * 100), c.Participants),
+            },
+            _ => f.Band == CoachBand.High
+                ? l.Coach_FindingMonologueLong_Format(Clock(c.LongestMonologueSeconds ?? 0))
+                : l.Coach_FindingMonologueShort_Format(Clock(c.LongestMonologueSeconds ?? 0)),
+        };
+
+    public static string Clock(double seconds)
+        => $"{(int)seconds / 60}:{(int)seconds % 60:00}";
+
+    private static string TopWord(ApiMap<string, int> counts)
+        => counts.OrderByDescending(x => x.Value).ThenBy(x => x.Key).FirstOrDefault().Key ?? "";
+
     public string MetricTitle(CoachMetricKind kind)
         => kind switch {
             CoachMetricKind.Pace => l.Coach_MetricPace,

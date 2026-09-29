@@ -433,4 +433,31 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         }, TimeSpan.FromSeconds(30));
         summary.Entries.Should().Be(1, "the switched-off chat is skipped");
     }
+
+    [Fact(Timeout = 60_000)]
+    public async Task RecentTabShouldShowOneCardPerConversationWithFindings()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-recent");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        var hub = tester.ScopedAppServices.AppUIHub();
+        await OptIn(tester);
+        await PostVoice(tester, chatId, Text);
+
+        // act
+        var cut = tester.Render<CoachPanel>();
+        InitializeHub(tester, hub, cut.Instance);
+
+        // assert
+        cut.WaitForAssertion(() => {
+            var cards = cut.FindAll(".coach-conversation");
+            cards.Should().HaveCount(1);
+            cards[0].QuerySelectorAll(".c-finding").Length.Should().BeInRange(1, 3);
+            cards[0].TextContent.Should().Contain("Marked transcript");
+        }, TimeSpan.FromSeconds(30));
+    }
 }

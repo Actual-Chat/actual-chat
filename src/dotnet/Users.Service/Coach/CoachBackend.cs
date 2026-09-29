@@ -60,6 +60,7 @@ public class CoachBackend(IServiceProvider services)
         return CoachConversationBuilder
             .Build(entries.Concat(runs).Select(e => e.ToModel()), Settings.Coach.ConversationGap)
             .Take(count)
+            .Select(c => CoachScoring.BandConversation(c, Settings.Coach))
             .ToApiArray();
     }
 
