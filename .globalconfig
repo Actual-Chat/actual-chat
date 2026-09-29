@@ -1,0 +1,7 @@
+is_global = true
+
+# RS0030: The symbol is banned in this project (BannedSymbols.txt).
+# Set here rather than in .editorconfig: source-generated trees (Razor components among them)
+# never receive path-based .editorconfig severities, only global ones, while a
+# /warnaserror:RS0030 compiler switch would override the per-file exemptions in .editorconfig.
+dotnet_diagnostic.rs0030.severity = error
