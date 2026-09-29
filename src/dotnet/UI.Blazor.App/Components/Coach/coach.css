@@ -12,7 +12,8 @@
 .coach-header .c-head { @apply relative px-4; }
 .coach-header .c-head > .c-avatar { @apply absolute left-4 -top-8 z-10; }
 .coach-header .c-buttons { @apply flex-x justify-end gap-x-2 h-12 pt-2; }
-.coach-header .c-settings-btn { @apply relative -top-7 bg-round-right-panel text-primary; }
+.coach-header .c-settings-btn { @apply relative -top-7 bg-round-right-panel text-03; }
+.coach-header .c-settings-btn.is-active { @apply text-primary; }
 .coach-header .c-bottom { @apply flex-x items-center justify-between gap-x-2 pt-2; }
 .coach-header .c-title { @apply text-title-500 text-02 whitespace-nowrap; }
 .coach-panel > .c-body { @apply flex-none flex-y gap-y-3 px-4 pt-3; }

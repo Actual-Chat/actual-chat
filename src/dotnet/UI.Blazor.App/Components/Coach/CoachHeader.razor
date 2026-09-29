@@ -14,7 +14,7 @@
             }
         </div>
         <div class="c-buttons">
-            <ButtonRound Click="@SettingsClick" Class="btn-sm btn-tinted c-settings-btn">
+            <ButtonRound Click="@SettingsClick" Class="@("btn-sm btn-tinted c-settings-btn" + (IsSettingsOpen ? " is-active" : ""))">
                 <i class="icon-settings text-2xl"></i>
             </ButtonRound>
         </div>
@@ -27,6 +27,7 @@
 
 @code {
     [Parameter] public EventCallback SettingsClick { get; set; }
+    [Parameter] public bool IsSettingsOpen { get; set; }
 
     protected override ComputedState<Avatar?>.Options GetStateOptions()
         => new() { InitialValue = null, Category = GetStateCategory(GetType()) };

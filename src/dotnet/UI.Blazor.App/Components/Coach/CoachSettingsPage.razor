@@ -108,6 +108,15 @@
                             IsCheckedChanged="@(_ => Update(x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled }))"/>
                 </Right>
             </TileItem>
+            <TileItem Click="@(() => Update(x => x with { IsWeeklySummaryDisabled = !x.IsWeeklySummaryDisabled }))">
+                <Icon><i class="icon-email text-2xl"></i></Icon>
+                <Content>@L.Coach_WeeklySummary</Content>
+                <Caption>@L.Coach_WeeklySummaryCaption</Caption>
+                <Right>
+                    <Toggle IsChecked="@(!s.IsWeeklySummaryDisabled)"
+                            IsCheckedChanged="@(_ => Update(x => x with { IsWeeklySummaryDisabled = !x.IsWeeklySummaryDisabled }))"/>
+                </Right>
+            </TileItem>
             <div class="form form-y form-block c-interval-block">
                 <section class="form-section">
                     <div class="form-section-content label-inside-input">
@@ -123,15 +132,6 @@
                     </div>
                 </section>
             </div>
-            <TileItem Click="@(() => Update(x => x with { IsWeeklySummaryDisabled = !x.IsWeeklySummaryDisabled }))">
-                <Icon><i class="icon-email text-2xl"></i></Icon>
-                <Content>@L.Coach_WeeklySummary</Content>
-                <Caption>@L.Coach_WeeklySummaryCaption</Caption>
-                <Right>
-                    <Toggle IsChecked="@(!s.IsWeeklySummaryDisabled)"
-                            IsCheckedChanged="@(_ => Update(x => x with { IsWeeklySummaryDisabled = !x.IsWeeklySummaryDisabled }))"/>
-                </Right>
-            </TileItem>
         </Tile>
     }
 

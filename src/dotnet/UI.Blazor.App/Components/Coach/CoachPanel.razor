@@ -9,7 +9,7 @@
 
 <div class="coach-panel">
     <ErrorBarrier Name="CoachPanel" Kind="@ErrorBarrierKind.Full">
-        <CoachHeader SettingsClick="@OnSettingsClick"/>
+        <CoachHeader SettingsClick="@OnSettingsClick" IsSettingsOpen="@_showSettings"/>
         @if (_showSettings) {
             <CoachSettingsPage Back="@OnSettingsClick" ChatId="@ChatId"/>
         } else if (!m.HasConversations) {
