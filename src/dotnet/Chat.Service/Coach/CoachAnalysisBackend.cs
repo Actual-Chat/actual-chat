@@ -104,13 +104,17 @@ public class CoachAnalysisBackend(IServiceProvider services)
         if (author is null || author.UserId.IsGuestOrNull() || author.IsAnonymous == true)
             return;
 
+        var kvas = ServerKvasBackend.ForUser(author.UserId);
+        if (!await CoachScope.IsInScope(kvas, id.ChatId, cancellationToken).ConfigureAwait(false)) {
+            if (existing is not null)
+                await RemoveEntry(id, context, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
         var language = await GetLanguage(id, author.UserId, cancellationToken).ConfigureAwait(false);
         var analysis = Analyze(entry, author.UserId, language, existing);
-        var settings = await ServerKvasBackend.ForUser(author.UserId)
-            .UserCoachSettings()
-            .Get(cancellationToken)
-            .ConfigureAwait(false);
-        if (settings.IsCoachingEnabled)
+        var settings = await kvas.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
+        if (settings.IsCoachingEnabled && settings.LevelOf(language?.Value) != CoachLanguageLevel.Off)
             analysis = await ApplyTags(analysis, entry.Content, cancellationToken).ConfigureAwait(false);
         if (isUnchanged && analysis.TagState == existing!.TagState)
             return;
@@ -173,7 +177,11 @@ public class CoachAnalysisBackend(IServiceProvider services)
             var author = await AuthorsBackend
                 .Get(chatId, authorId, RequestedAuthorKind.Default, cancellationToken)
                 .ConfigureAwait(false);
-            if (author is not null && !author.UserId.IsGuestOrNull() && author.IsAnonymous != true)
+            if (author is null || author.UserId.IsGuestOrNull() || author.IsAnonymous == true)
+                continue;
+
+            var kvas = ServerKvasBackend.ForUser(author.UserId);
+            if (await CoachScope.IsInScope(kvas, chatId, cancellationToken).ConfigureAwait(false))
                 authors.Add((authorId, author.UserId));
         }
         var tagged = await TagPendingEntries(run, authors, cancellationToken).ConfigureAwait(false);
@@ -422,6 +430,13 @@ public class CoachAnalysisBackend(IServiceProvider services)
                 analysis = Analyze(entry, analysis.UserId, language, analysis);
             }
             if (analysis.TagState == CoachTagState.Tagged && analysis.PromptVersion >= promptVersion)
+                continue;
+
+            var settings = await ServerKvasBackend.ForUser(analysis.UserId)
+                .UserCoachSettings()
+                .Get(cancellationToken)
+                .ConfigureAwait(false);
+            if (settings.LevelOf(analysis.Language?.Value) == CoachLanguageLevel.Off)
                 continue;
 
             analysis = await ApplyTags(analysis, entry.Content, cancellationToken).ConfigureAwait(false);

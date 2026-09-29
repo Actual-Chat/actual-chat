@@ -426,4 +426,33 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
             TimeSpan.FromSeconds(10));
         cut.WaitForAssertion(() => cut.FindAll(".banner.coach-tip-bar").Should().BeEmpty());
     }
+
+    [Fact(Timeout = 60_000)]
+    public async Task SwitchingTheChatOffShouldStopAnalysis()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-scope");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(tester);
+        var kvas = appHost.Services.GetRequiredService<IServerKvasBackend>().ForUser(account.Id, isOutermost: true);
+        await kvas.ChatUserSettings(chatId).Set(new ChatUserSettings { IsCoachingEnabled = false });
+        var coach = tester.ScopedAppServices.AppUIHub().Coach;
+
+        var (otherChatId, _) = await tester.CreateChat(true);
+
+        // act
+        await PostVoice(tester, chatId, Text);
+        await PostVoice(tester, otherChatId, Text);
+
+        // assert
+        var summary = await TestWait.When(async ct => {
+            var x = await coach.GetOwnSummary(tester.Session, CoachWindow.AllTime, null, ct);
+            x.Entries.Should().BeGreaterThan(0, "the chat left switched on is analysed");
+            return x;
+        }, TimeSpan.FromSeconds(30));
+        summary.Entries.Should().Be(1, "the switched-off chat is skipped");
+    }
 }
