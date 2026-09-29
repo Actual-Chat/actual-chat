@@ -285,10 +285,12 @@ satisfies it.
 
 ### 8.5 Weekly summary
 
-Monday 09:00 local (reuse the digest's delivery-time and time-zone settings): one in-app note in
-the notifications panel, "Your week with the coach", holding the score delta, the focus skill's
-delta and the best conversation. Sent only if the user spoke at least `MinScoreWords` that week.
-Email delivery is an open question (§14).
+Monday 09:00 local (reuse the digest's delivery-time and time-zone settings): one in-app note,
+"Your week with the coach", holding the score delta, the focus skill's delta and the best
+conversation. Written only if the user spoke at least `MinScoreWords` that week. The note is a
+per-user stored record (`UserCoachWeeklyNote`) shown as the first card of the Progress tab and
+as a dot on the Coach pill until opened; a bell-panel item (a new notification kind) and email
+delivery are later additions on the same flag.
 
 ## 9. Settings page
 
