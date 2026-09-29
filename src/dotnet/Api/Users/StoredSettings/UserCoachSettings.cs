@@ -22,16 +22,17 @@ public sealed partial record UserCoachSettings
     [DataMember, Key(4)]
     public bool SkipPeerChats { get; init; }
     [DataMember, Key(5)]
-    public ApiMap<string, CoachLanguageLevel> Languages { get; init; } = new ();
+    public ApiMap<string, CoachLanguageLevel> Languages { get => field ?? new (); init; } = new ();
     [DataMember, Key(6)]
-    public ApiMap<string, CoachMetricKind> FocusByLanguage { get; init; } = new ();
+    public ApiMap<string, CoachMetricKind> FocusByLanguage { get => field ?? new (); init; } = new ();
     // "" = the language with the most words in the last 30 days
     [DataMember, Key(7)]
-    public string SelectedLanguage { get; init; } = "";
+    public string SelectedLanguage { get => field ?? ""; init; } = "";
     [DataMember, Key(8)]
-    public bool AreMarksEnabled { get; init; } = true;
+    // Negative flags: a blob written before these keys reads them as false, which keeps the feature on
+    public bool AreMarksDisabled { get; init; }
     [DataMember, Key(9)]
-    public bool IsWeeklySummaryEnabled { get; init; } = true;
+    public bool IsWeeklySummaryDisabled { get; init; }
     // Chats and places the user switched coaching off in, for the settings list
     [DataMember, Key(10)]
     public ApiArray<ChatId> SwitchedOff { get; init; }

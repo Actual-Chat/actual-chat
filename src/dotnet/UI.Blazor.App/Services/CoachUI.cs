@@ -68,7 +68,7 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
             return false;
 
         var settings = await UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
-        return settings is { IsCoachingEnabled: true, AreMarksEnabled: true };
+        return settings is { IsCoachingEnabled: true, AreMarksDisabled: false };
     }
 
     [ComputeMethod]

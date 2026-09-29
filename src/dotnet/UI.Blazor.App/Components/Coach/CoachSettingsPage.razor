@@ -86,13 +86,13 @@
 
     <TileTopic Topic="@L.Coach_HowYouHear"/>
     <Tile Class="c-hear">
-        <TileItem Click="@(() => Update(x => x with { AreMarksEnabled = !x.AreMarksEnabled }))">
+        <TileItem Click="@(() => Update(x => x with { AreMarksDisabled = !x.AreMarksDisabled }))">
             <Icon><i class="icon-edit text-2xl"></i></Icon>
             <Content>@L.Coach_Marks</Content>
             <Caption>@L.Coach_MarksCaption</Caption>
             <Right>
-                <Toggle IsChecked="@s.AreMarksEnabled"
-                        IsCheckedChanged="@(_ => Update(x => x with { AreMarksEnabled = !x.AreMarksEnabled }))"/>
+                <Toggle IsChecked="@(!s.AreMarksDisabled)"
+                        IsCheckedChanged="@(_ => Update(x => x with { AreMarksDisabled = !x.AreMarksDisabled }))"/>
             </Right>
         </TileItem>
         <TileItem Class="c-live-tips" Click="@(() => Update(x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled }))">
@@ -117,13 +117,13 @@
                 </select>
             </Right>
         </TileItem>
-        <TileItem Click="@(() => Update(x => x with { IsWeeklySummaryEnabled = !x.IsWeeklySummaryEnabled }))">
+        <TileItem Click="@(() => Update(x => x with { IsWeeklySummaryDisabled = !x.IsWeeklySummaryDisabled }))">
             <Icon><i class="icon-email text-2xl"></i></Icon>
             <Content>@L.Coach_WeeklySummary</Content>
             <Caption>@L.Coach_WeeklySummaryCaption</Caption>
             <Right>
-                <Toggle IsChecked="@s.IsWeeklySummaryEnabled"
-                        IsCheckedChanged="@(_ => Update(x => x with { IsWeeklySummaryEnabled = !x.IsWeeklySummaryEnabled }))"/>
+                <Toggle IsChecked="@(!s.IsWeeklySummaryDisabled)"
+                        IsCheckedChanged="@(_ => Update(x => x with { IsWeeklySummaryDisabled = !x.IsWeeklySummaryDisabled }))"/>
             </Right>
         </TileItem>
     </Tile>

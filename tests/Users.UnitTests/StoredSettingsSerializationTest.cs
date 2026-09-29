@@ -51,6 +51,24 @@ public partial class StoredSettingsSerializationTest
         [Key(3)] public int ListeningMode { get; init; }
     }
 
+    // UserCoachTip as written before the word map (key 14) existed
+    [MessagePackObject]
+    public sealed partial record LegacyUserCoachTipSlots
+    {
+        [Key(0)] public string Origin { get; init; } = "";
+        [Key(1)] public CoachTipKind Kind { get; init; }
+    }
+
+    // UserCoachSettings as written by v1, before the panel redesign added keys 4 and up
+    [MessagePackObject]
+    public sealed partial record LegacyUserCoachSettings
+    {
+        [Key(0)] public string Origin { get; init; } = "";
+        [Key(1)] public bool IsCoachingEnabled { get; init; }
+        [Key(2)] public bool AreLiveTipsEnabled { get; init; } = true;
+        [Key(3)] public TimeSpan TipInterval { get; init; } = TimeSpan.FromMinutes(5);
+    }
+
     // UserLanguageSettings as written before DubVoice (key 7) existed
     [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
     public sealed partial record LegacyUserLanguageSettings
@@ -656,8 +674,8 @@ public partial class StoredSettingsSerializationTest
             FocusByLanguage = new ApiMap<string, CoachMetricKind>(new Dictionary<string, CoachMetricKind> {
                 ["en"] = CoachMetricKind.WeakWords }),
             SelectedLanguage = "en",
-            AreMarksEnabled = false,
-            IsWeeklySummaryEnabled = false,
+            AreMarksDisabled = true,
+            IsWeeklySummaryDisabled = true,
         };
 
         // act
@@ -668,8 +686,8 @@ public partial class StoredSettingsSerializationTest
         copy.Languages["en"].Should().Be(CoachLanguageLevel.Learning);
         copy.FocusByLanguage["en"].Should().Be(CoachMetricKind.WeakWords);
         copy.SelectedLanguage.Should().Be("en");
-        copy.AreMarksEnabled.Should().BeFalse();
-        copy.IsWeeklySummaryEnabled.Should().BeFalse();
+        copy.AreMarksDisabled.Should().BeTrue();
+        copy.IsWeeklySummaryDisabled.Should().BeTrue();
         copy.LevelOf("en-US").Should().Be(CoachLanguageLevel.Learning, "the level is keyed by the ISO code");
         copy.LevelOf("de").Should().Be(CoachLanguageLevel.Native, "absent means native");
     }
@@ -713,5 +731,43 @@ public partial class StoredSettingsSerializationTest
         // assert
         copy.IsCoachingEnabled.Should().BeFalse();
         UnionRoundTrip(new ChatUserSettings()).IsCoachingEnabled.Should().BeNull("null means inherit");
+    }
+
+    [Fact]
+    public void LegacyUserCoachSettingsShouldReadWithEmptyMapsAndDefaults()
+    {
+        // arrange
+        var legacy = new LegacyUserCoachSettings { Origin = "v1", IsCoachingEnabled = true };
+
+        // act
+        using var buffer = MessagePackSerializer.Write(legacy);
+        var bytes = buffer.WrittenMemory.ToArray();
+        var result = (UserCoachSettings?)MessagePackSerializer.Read(bytes, typeof(UserCoachSettings), out _);
+
+        // assert: absent keys read as null and the properties must hide that
+        result!.IsCoachingEnabled.Should().BeTrue();
+        result.LevelOf("en-US").Should().Be(CoachLanguageLevel.Native);
+        result.FocusByLanguage.Should().BeEmpty();
+        result.Languages.Should().BeEmpty();
+        result.SelectedLanguage.Should().Be("");
+        result.SwitchedOff.Should().BeEmpty();
+        result.AreMarksDisabled.Should().BeFalse("marks and the weekly summary stay on for a v1 blob");
+        result.IsWeeklySummaryDisabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void LegacyUserCoachTipShouldReadWithAnEmptyWordMap()
+    {
+        // arrange
+        var legacy = new LegacyUserCoachTipSlots { Origin = "v1", Kind = CoachTipKind.Filler };
+
+        // act
+        using var buffer = MessagePackSerializer.Write(legacy);
+        var bytes = buffer.WrittenMemory.ToArray();
+        var result = (UserCoachTip?)MessagePackSerializer.Read(bytes, typeof(UserCoachTip), out _);
+
+        // assert
+        result!.Kind.Should().Be(CoachTipKind.Filler);
+        result.WordTipAt.Should().BeEmpty();
     }
 }

@@ -33,7 +33,7 @@ public partial class CoachWeeklyNoteFlow : PeriodicFlow
 
         var kvas = Services.GetRequiredService<IServerKvasBackend>().ForUser(userId);
         var settings = await kvas.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
-        if (!settings.IsWeeklySummaryEnabled || !settings.IsCoachingEnabled)
+        if (settings.IsWeeklySummaryDisabled || !settings.IsCoachingEnabled)
             return "Weekly summary is off";
 
         var emails = await kvas.UserEmailsSettings().Get(cancellationToken).ConfigureAwait(false);
