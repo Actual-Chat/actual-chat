@@ -123,10 +123,15 @@ updates rather than once per recheck. That's also why `AppUpdateInfo.Version`
 isn't a cached field — see [The contract](#the-contract).
 
 Consolidation also makes invalidation **asynchronous** — an invalidated value
-is replaced only once the recompute has finished and differed. Tests therefore
-can't read right after `Invalidate()`, and `TestWait.When` can't be used to
-wait for a side effect or for a value that ends up unchanged; `AppUpdatesTest`
-polls instead (`WhenPolled`) — see [Waiting in tests](./testing/waiting.md).
+is replaced only once the recompute has finished and differed, so tests can't
+read right after `Invalidate()`. And `Invalidation.Begin` reaches the source
+computed only through a registered consolidating one: with none, the
+invalidation is lost and the next read reuses a source computed earlier
+([Fusion#168](https://github.com/ActualLab/Fusion/issues/168)). That's why
+`AppUpdates.Invalidate`, the tests' hook, reads the value before invalidating
+it. `TestWait.When` can't wait for a side effect or for a value that ends up
+unchanged either; `AppUpdatesTest` polls instead (`WhenPolled`) — see
+[Waiting in tests](./testing/waiting.md).
 
 Every node runs this loop, so the cluster is kept to one store hit per period by
 an **`IMeshLocks` lock per app kind** (`StoreLocks`, prefix `AppUpdates`) plus

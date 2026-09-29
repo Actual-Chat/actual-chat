@@ -84,12 +84,12 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
 
         // act
         await WhenPolled(async () => {
-            Service.Invalidate(appKind);
+            await Service.Invalidate(appKind);
             var info = await Service.GetLatestUpdateInfo(appKind, default);
             info.Should().NotBeNull();
         });
         for (var i = 0; i < 5; i++) {
-            Service.Invalidate(appKind);
+            await Service.Invalidate(appKind);
             _ = await Service.GetLatestUpdateInfo(appKind, default);
             await Task.Delay(TimeSpan.FromMilliseconds(200));
         }
@@ -141,7 +141,7 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
             info.Should().NotBeNull("Play has to be probed regardless");
         });
         await Task.Delay(TimeSpan.FromSeconds(2));
-        Service.Invalidate(appKind);
+        await Service.Invalidate(appKind);
         _ = await Service.GetLatestUpdateInfo(appKind, default);
         var callCountWhilePlayHasNothingNewer = probe.CallCount;
         playProbe.Result = new(OwnVersion.ToString(), null);
@@ -192,7 +192,7 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         // act
         var info = (AppUpdateInfo?)null;
         await WhenPolled(async () => {
-            Service.Invalidate(appKind);
+            await Service.Invalidate(appKind);
             info = await Service.GetLatestUpdateInfo(appKind, default);
             info.Should().NotBeNull();
         });
@@ -211,7 +211,7 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         var announcedAt = Clocks.SystemClock.Now - TimeSpan.FromDays(1);
         var announced = new AppUpdateInfo(appKind, "1.0.0", "1.0.0.0", announcedAt, announcedAt);
         await Service.SetCachedStoreUpdateInfo(appKind, new AppUpdates.CachedUpdateInfo(announced), default);
-        Service.Invalidate(appKind);
+        await Service.Invalidate(appKind);
         Probes.Script(appKind, new(OwnVersion.ToString(), null));
 
         // act
@@ -222,7 +222,9 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
             var storeInfo = await Service.GetCachedStoreUpdateInfo(appKind, default);
             storeInfo!.PendingInfo!.VersionString.Should()
                 .Be(OwnVersion.ToString(), "the release must be detected first");
+            // Invalidate's consolidation may still be under way, so the value can lag behind the record
             whilePending = await Service.GetLatestUpdateInfo(appKind, default);
+            whilePending!.VersionString.Should().Be("1.0.0", "a detected release is held back for AnnounceDelay");
         });
         var afterDelay = await When(async ct => {
             var info = await Service.GetLatestUpdateInfo(appKind, ct);
@@ -231,7 +233,6 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         });
 
         // assert
-        whilePending!.VersionString.Should().Be("1.0.0", "a detected release is held back for AnnounceDelay");
         afterDelay!.DetectedAt.Should().BeGreaterThan(announcedAt);
     }
 
@@ -241,7 +242,8 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         // arrange - this is what a server bump during the pending window leaves behind
         const AppKind appKind = AppKind.Ios;
         using var __ = await NewTestSettings(appKind);
-        Settings.AnnounceDelay = TimeSpan.FromSeconds(3);
+        // Long enough to outlast any stall of a loaded build agent - the window is ended below
+        Settings.AnnounceDelay = TimeSpan.FromHours(1);
         var now = Clocks.SystemClock.Now;
         var pending = new AppUpdateInfo(appKind, "0.9.0", "0.9.0", now, now);
         var announced = new AppUpdateInfo(appKind, "0.8.0", "0.8.0", now, now);
@@ -251,10 +253,11 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         // act
         var whilePending = (AppUpdateInfo?)null;
         await WhenPolled(async () => {
-            Service.Invalidate(appKind);
+            await Service.Invalidate(appKind);
             whilePending = await Service.GetLatestUpdateInfo(appKind, default);
             whilePending.Should().NotBeNull();
         });
+        Settings.AnnounceDelay = TimeSpan.Zero;
         var afterDelay = (AppUpdateInfo?)null;
         await WhenPolled(async () => {
             afterDelay = await Service.GetLatestUpdateInfo(appKind, default);
@@ -276,14 +279,14 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         // act
         var withinGrace = (AppUpdateInfo?)null;
         await WhenPolled(async () => {
-            Service.Invalidate(AppKind.Wasm);
+            await Service.Invalidate(AppKind.Wasm);
             withinGrace = await Service.GetLatestUpdateInfo(AppKind.Wasm, default);
             withinGrace.Should().BeNull();
         });
         Settings.WasmGracePeriod = TimeSpan.Zero;
         var afterGrace = (AppUpdateInfo?)null;
         await WhenPolled(async () => {
-            Service.Invalidate(AppKind.Wasm);
+            await Service.Invalidate(AppKind.Wasm);
             afterGrace = await Service.GetLatestUpdateInfo(AppKind.Wasm, default);
             afterGrace.Should().NotBeNull();
         });
@@ -304,14 +307,14 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         // act
         var disabled = (AppUpdateInfo?)null;
         await WhenPolled(async () => {
-            Service.Invalidate(appKind);
+            await Service.Invalidate(appKind);
             disabled = await Service.GetLatestUpdateInfo(appKind, default);
             disabled.Should().BeNull();
         });
         Settings.Overrides = new Dictionary<string, string> { { appKind.ToString(), "9.9.9" } };
         var overridden = (AppUpdateInfo?)null;
         await WhenPolled(async () => {
-            Service.Invalidate(appKind);
+            await Service.Invalidate(appKind);
             overridden = await Service.GetLatestUpdateInfo(appKind, default);
             overridden.Should().NotBeNull();
         });
@@ -327,8 +330,6 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
     private async Task<IDisposable> NewTestSettings(AppKind appKind, bool isPlayGateEnabled = false)
     {
         Probes.Probes.Clear();
-        // The records have no TTL, so a rerun would otherwise see what the last run settled
-        await Service.RemoveCachedStoreUpdateInfo(appKind, default);
         await Service.RemoveCachedStoreUpdateInfo(AppKind.Android, default);
         var settings = Settings;
         var restore = new SettingsBackup(settings);
@@ -339,12 +340,10 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         if (!isPlayGateEnabled && appKind != AppKind.Android)
             settings.GoogleStoreId = "";
 
-        // The app host is shared, and the previous test's value outlives its record until the
-        // invalidation this starts has been consolidated - so wait for the cleared state to show
-        await WhenClear(appKind);
+        // Android goes first: with the gate on, appKind's value is computed from Android's
         if (isPlayGateEnabled)
             await WhenClear(AppKind.Android);
-
+        await WhenClear(appKind);
         return restore;
     }
 
@@ -364,8 +363,11 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         if (appKind == AppKind.Wasm)
             return Task.CompletedTask;
 
+        // The records have no TTL, and the app host is shared: a store check the previous test
+        // started can still write back the record it read before the removal - so remove until clear
         return WhenPolled(async () => {
-            Service.Invalidate(appKind);
+            await Service.RemoveCachedStoreUpdateInfo(appKind, default);
+            await Service.Invalidate(appKind);
             var info = await Service.GetLatestUpdateInfo(appKind, default);
             info.Should().BeNull();
         });
