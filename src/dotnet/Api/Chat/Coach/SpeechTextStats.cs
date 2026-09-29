@@ -14,6 +14,9 @@ public sealed record SpeechTextStats(
 {
     private static readonly HashSet<string> NoWordSpaceIsoCodes = ["ja", "zh", "th", "km", "lo", "my"];
 
+    public static bool IsWordSplittable(string iso)
+        => !NoWordSpaceIsoCodes.Contains(iso);
+
     public static bool IsWordSplittable(Language? language)
         => language is null || !NoWordSpaceIsoCodes.Contains(language.IsoCode);
 

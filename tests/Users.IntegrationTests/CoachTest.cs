@@ -594,4 +594,32 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         conversations[0].ChatId.Should().Be(chatB);
         conversations[1].Words.Should().Be(100);
     }
+
+    [Fact]
+    public async Task FocusAndLevelCommandsShouldUpdateSettingsAndDeleteShouldClearEverything()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var commander = AppHost.Services.Commander();
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, 1, 300, 200, T0, 20, "like"), false));
+        await WhenDay(account.Id, UsageDay.DayOf(T0), d => d.Words == 300);
+
+        // act
+        await commander.Call(new Coach_SetLanguageLevel { Session = tester.Session, Language = "en", Level = CoachLanguageLevel.Learning });
+        await commander.Call(new Coach_SetFocus { Session = tester.Session, Language = "en", Kind = CoachMetricKind.Pace });
+        var focus = await Coach.GetOwnFocus(tester.Session, "en-US", default);
+        var languages = await Coach.ListOwnLanguages(tester.Session, default);
+        await commander.Call(new Coach_DeleteOwnData { Session = tester.Session });
+
+        // assert
+        focus.Should().Be(CoachMetricKind.Pace);
+        languages.Should().Contain(l => l.Iso == "en" && l.Level == CoachLanguageLevel.Learning);
+        await TestWait.When(async ct => {
+            var summary = await Coach.GetOwnSummary(tester.Session, CoachWindow.AllTime, null, ct);
+            summary.Words.Should().Be(0);
+        });
+        (await Kvas.ForUser(account.Id).UserCoachSettings().Get(default)).FocusByLanguage.Should().BeEmpty();
+    }
 }

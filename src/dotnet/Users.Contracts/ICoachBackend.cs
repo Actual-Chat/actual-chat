@@ -25,6 +25,8 @@ public interface ICoachBackend : IComputeService, IBackendService
     [CommandHandler]
     Task OnRecord(CoachBackend_Record command, CancellationToken cancellationToken);
     [CommandHandler]
+    Task OnDeleteUserData(CoachBackend_DeleteUserData command, CancellationToken cancellationToken);
+    [CommandHandler]
     Task OnRebuildDays(CoachBackend_RebuildDays command, CancellationToken cancellationToken);
 
     // Events
@@ -55,6 +57,16 @@ public sealed partial record CoachBackend_Record(
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record CoachBackend_RebuildDays(
+    [property: DataMember, Key(0)] UserId UserId
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public ShardKey ShardKey => UserId.ShardKey;
+}
+
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record CoachBackend_DeleteUserData(
     [property: DataMember, Key(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {

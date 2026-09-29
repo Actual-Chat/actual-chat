@@ -28,6 +28,30 @@ public interface ICoach : IComputeService
     Task<ApiArray<CoachOccurrence>> ListOwnOccurrences(
         Session session, string word, CoachWindow window, CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<CoachMetricKind?> GetOwnFocus(Session session, string? language, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<ApiArray<CoachWeekDelta>> GetOwnWeekDeltas(
+        Session session, string? language, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<ApiArray<CoachMilestone>> ListOwnMilestones(Session session, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<ApiArray<CoachWeekScore>> ListOwnWeekScores(Session session, int weeks, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<ApiArray<CoachLanguageInfo>> ListOwnLanguages(Session session, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task OnSetFocus(Coach_SetFocus command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnSetLanguageLevel(Coach_SetLanguageLevel command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnSetChatCoaching(Coach_SetChatCoaching command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnDeleteOwnData(Coach_DeleteOwnData command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnDismissTip(Coach_DismissTip command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -44,3 +68,36 @@ public sealed partial record Coach_DismissTip : ApiCommand<Unit>;
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Coach_RebuildOwnDays : ApiCommand<Unit>;
+
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Coach_SetFocus : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required string Language { get; init; }
+    // null = automatic focus
+    [DataMember(Order = 3), Key(3)] public CoachMetricKind? Kind { get; init; }
+}
+
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Coach_SetLanguageLevel : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required string Language { get; init; }
+    [DataMember(Order = 3), Key(3)] public required CoachLanguageLevel Level { get; init; }
+}
+
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Coach_SetChatCoaching : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
+    // null = inherit from the place, then from the user's coach settings
+    [DataMember(Order = 3), Key(3)] public bool? IsEnabled { get; init; }
+}
+
+/// <summary>
+/// Removes every coaching row, tip and note of the caller; messages stay.
+/// </summary>
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Coach_DeleteOwnData : ApiCommand<Unit>;

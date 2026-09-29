@@ -97,6 +97,179 @@ public class Coach(IServiceProvider services) : ICoach
     }
 
     // [ComputeMethod]
+    public virtual async Task<CoachMetricKind?> GetOwnFocus(
+        Session session, string? language, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull())
+            return null;
+
+        var settings = await ServerKvasBackend.ForUser(account.Id).UserCoachSettings()
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
+        var iso = language.IsNullOrEmpty() ? "" : Language.GetIsoCode(language);
+        if (settings.FocusByLanguage.TryGetValue(iso, out var chosen))
+            return chosen;
+
+        var summary = await GetOwnSummary(session, CoachWindow.Days7, language, cancellationToken).ConfigureAwait(false);
+        return CoachFocus.Pick(summary, settings.LevelOf(language), Settings.Coach);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<CoachWeekDelta>> GetOwnWeekDeltas(
+        Session session, string? language, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull())
+            return ApiArray<CoachWeekDelta>.Empty;
+
+        var now = Clocks.SystemClock.Now;
+        var weekStart = CoachProgressBuilder.WeekStart(UsageDay.DayOf(now));
+        var thisWeek = new Range<Moment>(weekStart, weekStart + TimeSpan.FromDays(7));
+        var lastWeek = new Range<Moment>(weekStart - TimeSpan.FromDays(7), weekStart);
+        var thisDays = await Backend.ListDays(account.Id, thisWeek, language, cancellationToken).ConfigureAwait(false);
+        var lastDays = await Backend.ListDays(account.Id, lastWeek, language, cancellationToken).ConfigureAwait(false);
+        var settings = await ServerKvasBackend.ForUser(account.Id).UserCoachSettings()
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
+        InvalidateAtMidnight(thisWeek);
+        return CoachProgressBuilder.WeekDeltas(
+            CoachDayBuilder.Merge(weekStart, thisDays),
+            CoachDayBuilder.Merge(lastWeek.Start, lastDays),
+            settings.LevelOf(language),
+            Settings.Coach,
+            language);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<CoachMilestone>> ListOwnMilestones(
+        Session session, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull())
+            return ApiArray<CoachMilestone>.Empty;
+
+        var range = new Range<Moment>(Moment.EpochStart, UsageDay.DayOf(Clocks.SystemClock.Now) + TimeSpan.FromDays(1));
+        var days = await Backend.ListDays(account.Id, range, null, cancellationToken).ConfigureAwait(false);
+        var merged = days
+            .GroupBy(d => d.Day)
+            .Select(g => CoachDayBuilder.Merge(g.Key, g))
+            .ToList();
+        return CoachProgressBuilder.Milestones(merged, Settings.Coach, null);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<CoachWeekScore>> ListOwnWeekScores(
+        Session session, int weeks, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull())
+            return ApiArray<CoachWeekScore>.Empty;
+
+        var count = Math.Clamp(weeks, 1, 26);
+        var now = Clocks.SystemClock.Now;
+        var thisWeek = CoachProgressBuilder.WeekStart(UsageDay.DayOf(now));
+        var range = new Range<Moment>(thisWeek - TimeSpan.FromDays(7 * (count - 1)), thisWeek + TimeSpan.FromDays(7));
+        var settings = await ServerKvasBackend.ForUser(account.Id).UserCoachSettings()
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
+        var language = settings.SelectedLanguage.NullIfEmpty();
+        var days = await Backend.ListDays(account.Id, range, language, cancellationToken).ConfigureAwait(false);
+        InvalidateAtMidnight(range);
+        return CoachProgressBuilder.WeeklyScores(days, count, now, Settings.Coach, language);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<CoachLanguageInfo>> ListOwnLanguages(
+        Session session, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull())
+            return ApiArray<CoachLanguageInfo>.Empty;
+
+        var kvas = ServerKvasBackend.ForUser(account.Id);
+        var languageSettings = await kvas.UserLanguageSettings().Get(cancellationToken).ConfigureAwait(false);
+        var settings = await kvas.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
+        var today = UsageDay.DayOf(Clocks.SystemClock.Now);
+        var range = new Range<Moment>(today - TimeSpan.FromDays(29), today + TimeSpan.FromDays(1));
+        var days = await Backend.ListDays(account.Id, range, null, cancellationToken).ConfigureAwait(false);
+        InvalidateAtMidnight(range);
+        return languageSettings.ListSpoken()
+            .Select(l => Language.GetIsoCode(l.Value))
+            .Distinct()
+            .Select(iso => new CoachLanguageInfo(
+                iso,
+                settings.LevelOf(iso),
+                days.Where(d => d.Language == iso).Sum(d => d.Words),
+                SpeechTextStats.IsWordSplittable(iso)))
+            .ToApiArray();
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnSetFocus(Coach_SetFocus command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        account.Require(AccountFull.MustBeActive);
+        var iso = Language.GetIsoCode(command.Language);
+        await ServerKvasBackend.ForUser(account.Id, isOutermost: true).UserCoachSettings()
+            .Update(x => x with { FocusByLanguage = command.Kind is { } kind
+                ? With(x.FocusByLanguage, iso, kind)
+                : Without(x.FocusByLanguage, iso) }, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnSetLanguageLevel(Coach_SetLanguageLevel command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        account.Require(AccountFull.MustBeActive);
+        var iso = Language.GetIsoCode(command.Language);
+        await ServerKvasBackend.ForUser(account.Id, isOutermost: true).UserCoachSettings()
+            .Update(x => x with { Languages = With(x.Languages, iso, command.Level) }, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnSetChatCoaching(Coach_SetChatCoaching command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        account.Require(AccountFull.MustBeActive);
+        await ServerKvasBackend.ForUser(account.Id, isOutermost: true).ChatUserSettings(command.ChatId)
+            .Update(x => x with { IsCoachingEnabled = command.IsEnabled }, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnDeleteOwnData(Coach_DeleteOwnData command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        account.Require(AccountFull.MustBeActive);
+        await Commander.Call(new CoachBackend_DeleteUserData(account.Id), true, cancellationToken).ConfigureAwait(false);
+        var kvas = ServerKvasBackend.ForUser(account.Id, isOutermost: true);
+        await kvas.UserCoachTip().Set(new UserCoachTip(), cancellationToken).ConfigureAwait(false);
+        await kvas.UserCoachWeeklyNote().Set(new UserCoachWeeklyNote(), cancellationToken).ConfigureAwait(false);
+        await kvas.UserCoachSettings()
+            .Update(x => x with {
+                Languages = new (),
+                FocusByLanguage = new (),
+                SelectedLanguage = "",
+            }, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
     public virtual async Task<UserCoachTip?> GetPendingTip(Session session, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -151,6 +324,16 @@ public class Coach(IServiceProvider services) : ICoach
     }
 
     // Private methods
+
+    private static ApiMap<string, T> With<T>(ApiMap<string, T> map, string key, T value)
+    {
+        var copy = map.ToDictionary(x => x.Key, x => x.Value);
+        copy[key] = value;
+        return new ApiMap<string, T>(copy);
+    }
+
+    private static ApiMap<string, T> Without<T>(ApiMap<string, T> map, string key)
+        => new (map.Where(x => x.Key != key).ToDictionary(x => x.Key, x => x.Value));
 
     // The window slides at UTC midnight even when no coach event invalidates the user's days
     private void InvalidateAtMidnight(Range<Moment> window)

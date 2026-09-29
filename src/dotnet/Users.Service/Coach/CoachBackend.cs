@@ -146,6 +146,28 @@ public class CoachBackend(IServiceProvider services)
     }
 
     // [CommandHandler]
+    public virtual async Task OnDeleteUserData(CoachBackend_DeleteUserData command, CancellationToken cancellationToken)
+    {
+        var userId = command.UserId;
+        if (Invalidation.IsActive) {
+            _ = ListAllDays(userId, default);
+            return;
+        }
+
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _1 = dbContext.ConfigureAwait(false);
+        await dbContext.CoachDays.Lock(userId.Value, cancellationToken).ConfigureAwait(false);
+        await dbContext.CoachEvents
+            .Where(e => e.UserId == userId.Value)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+        await dbContext.CoachDays
+            .Where(d => d.UserId == userId.Value)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
     public virtual async Task OnRebuildDays(CoachBackend_RebuildDays command, CancellationToken cancellationToken)
     {
         var userId = command.UserId;
