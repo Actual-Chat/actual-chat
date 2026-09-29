@@ -25,10 +25,15 @@ public class CoachBackend(IServiceProvider services)
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<CoachDay>> ListDays(
-        UserId userId, Range<Moment> dayRange, CancellationToken cancellationToken)
+        UserId userId, Range<Moment> dayRange, string? language, CancellationToken cancellationToken)
     {
         var days = await ListAllDays(userId, cancellationToken).ConfigureAwait(false);
-        return days.Where(d => d.Day >= dayRange.Start && d.Day < dayRange.End).ToApiArray();
+        var iso = language.IsNullOrEmpty() ? null : Language.GetIsoCode(language);
+        // The neutral row holds runs of days without entries in the language, so it always counts
+        return days
+            .Where(d => d.Day >= dayRange.Start && d.Day < dayRange.End)
+            .Where(d => iso is null || d.Language == iso || d.Language == "")
+            .ToApiArray();
     }
 
     // [ComputeMethod]
@@ -204,22 +209,24 @@ public class CoachBackend(IServiceProvider services)
             .Where(e => e.UserId == userId.Value && e.Day == dbDay && !e.IsRemoved)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var row = await dbContext.CoachDays.ForUpdate()
-            .FirstOrDefaultAsync(d => d.UserId == userId.Value && d.Day == dbDay, cancellationToken)
+        var rows = await dbContext.CoachDays.ForUpdate()
+            .Where(d => d.UserId == userId.Value && d.Day == dbDay)
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        if (events.Count == 0) {
-            if (row is not null)
-                dbContext.Remove(row);
-            return;
+        var models = events.Count == 0
+            ? ApiArray<CoachDay>.Empty
+            : CoachDayBuilder.BuildAll(day, events.Select(e => e.ToModel()), Settings.Coach.MinVocabularyWords);
+        foreach (var stale in rows.Where(r => models.All(m => m.Language != r.Language)))
+            dbContext.Remove(stale);
+        foreach (var model in models) {
+            var row = rows.FirstOrDefault(r => r.Language == model.Language);
+            if (row is null) {
+                row = new DbCoachDay { UserId = userId.Value, Day = dbDay, Language = model.Language };
+                dbContext.Add(row);
+            }
+            row.UpdateFrom(model);
+            row.Version = VersionGenerator.NextVersion(row.Version);
         }
-
-        var model = CoachDayBuilder.Build(day, events.Select(e => e.ToModel()), Settings.Coach.MinVocabularyWords);
-        if (row is null) {
-            row = new DbCoachDay { UserId = userId.Value, Day = dbDay };
-            dbContext.Add(row);
-        }
-        row.UpdateFrom(model);
-        row.Version = VersionGenerator.NextVersion(row.Version);
     }
 
     // Runs after the record command, outside any DB operation, the way the review prompt does

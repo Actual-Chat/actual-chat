@@ -101,4 +101,55 @@ public class CoachDayBuilderTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         day.Entries.Should().Be(0);
     }
+
+    private static CoachRecord EntryIn(string language, long lid, int words)
+    {
+        var r = Entry(lid, words, words, true);
+        return r with { Entry = r.Entry! with { Language = language } };
+    }
+
+    [Fact]
+    public void BuildAllShouldSplitEntriesByLanguageAndCopyRunsIntoEachRow()
+    {
+        // arrange
+        var records = new[] {
+            EntryIn("en-US", 1, 100), EntryIn("ru-RU", 2, 50), EntryIn("ru-RU", 3, 20), Run(1, 30, 90, 3),
+        };
+
+        // act
+        var days = CoachDayBuilder.BuildAll(Day, records, 20);
+
+        // assert
+        days.Select(d => d.Language).Should().BeEquivalentTo(["en", "ru"]);
+        days.Single(d => d.Language == "en").Words.Should().Be(100);
+        days.Single(d => d.Language == "ru").Words.Should().Be(70);
+        days.Should().OnlyContain(d => d.Runs == 1 && d.OwnSpeechSeconds == 30, "runs are not language-bound");
+    }
+
+    [Fact]
+    public void MergeShouldCountConversationFieldsOncePerDay()
+    {
+        // arrange
+        var perLanguage = CoachDayBuilder.BuildAll(
+            Day, [EntryIn("en-US", 1, 100), EntryIn("ru-RU", 2, 50), Run(1, 30, 90, 3)], 20);
+
+        // act
+        var merged = CoachDayBuilder.Merge(Day, perLanguage);
+
+        // assert
+        merged.Words.Should().Be(150);
+        merged.Runs.Should().Be(1, "the same run sits in both language rows");
+        merged.OwnSpeechSeconds.Should().Be(30);
+        merged.FairShareSeconds.Should().Be(30);
+    }
+
+    [Fact]
+    public void BuildAllShouldPutRunsWithoutEntriesInTheNeutralRow()
+    {
+        // act
+        var days = CoachDayBuilder.BuildAll(Day, [Run(1, 30, 90, 3)], 20);
+
+        // assert
+        days.Should().ContainSingle().Which.Language.Should().Be("");
+    }
 }

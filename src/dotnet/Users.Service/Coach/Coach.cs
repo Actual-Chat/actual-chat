@@ -32,18 +32,18 @@ public class Coach(IServiceProvider services) : ICoach
 
     // [ComputeMethod]
     public virtual async Task<CoachSummary> GetOwnSummary(
-        Session session, CoachWindow window, CancellationToken cancellationToken)
+        Session session, CoachWindow window, string? language, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account.IsGuestOrNull())
             return CoachSummary.None with { Window = window };
 
         var (range, trailing) = Ranges(window);
-        var days = await Backend.ListDays(account.Id, range, cancellationToken).ConfigureAwait(false);
+        var days = await Backend.ListDays(account.Id, range, language, cancellationToken).ConfigureAwait(false);
         var merged = CoachDayBuilder.Merge(range.Start, days);
         CoachDay? trailingDay = null;
         if (trailing is { } t) {
-            var trailingDays = await Backend.ListDays(account.Id, t, cancellationToken).ConfigureAwait(false);
+            var trailingDays = await Backend.ListDays(account.Id, t, language, cancellationToken).ConfigureAwait(false);
             trailingDay = trailingDays.Count > 0 ? CoachDayBuilder.Merge(t.Start, trailingDays) : null;
         }
         var languageSettings = await ServerKvasBackend.ForUser(account.Id)
@@ -51,17 +51,18 @@ public class Coach(IServiceProvider services) : ICoach
             .Get(cancellationToken)
             .ConfigureAwait(false);
         InvalidateAtMidnight(range);
-        return CoachScoring.Summarize(window, merged, trailingDay, Settings.Coach, languageSettings.Primary.Value);
+        return CoachScoring.Summarize(
+            window, merged, trailingDay, Settings.Coach, language ?? languageSettings.Primary.Value);
     }
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<CoachDay>> ListOwnDays(
-        Session session, Range<Moment> dayRange, CancellationToken cancellationToken)
+        Session session, Range<Moment> dayRange, string? language, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         return account.IsGuestOrNull()
             ? ApiArray<CoachDay>.Empty
-            : await Backend.ListDays(account.Id, dayRange, cancellationToken).ConfigureAwait(false);
+            : await Backend.ListDays(account.Id, dayRange, language, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -135,8 +136,8 @@ public class Coach(IServiceProvider services) : ICoach
         var tomorrow = today + TimeSpan.FromDays(1);
         var start = window switch {
             CoachWindow.Today => today,
-            CoachWindow.Week => today - TimeSpan.FromDays(6),
-            CoachWindow.Month => today - TimeSpan.FromDays(29),
+            CoachWindow.Week or CoachWindow.Days7 => today - TimeSpan.FromDays(6),
+            CoachWindow.Month or CoachWindow.Days30 => today - TimeSpan.FromDays(29),
             _ => Moment.EpochStart,
         };
         var trailing = window == CoachWindow.AllTime

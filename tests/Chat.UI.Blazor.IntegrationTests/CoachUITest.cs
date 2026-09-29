@@ -239,7 +239,7 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
 
         // act - one voice message lands in Today
         await PostVoice(tester, chatId, Text);
-        await TestWait.When(async ct => (await hub.Coach.GetOwnSummary(tester.Session, CoachWindow.Today, ct))
+        await TestWait.When(async ct => (await hub.Coach.GetOwnSummary(tester.Session, CoachWindow.Today, null, ct))
             .Entries.Should().Be(1), TimeSpan.FromSeconds(30));
 
         // assert
@@ -283,7 +283,7 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         var today = UsageDay.DayOf(appHost.Services.Clocks().SystemClock.Now).ToDateTime();
         await PostVoice(tester, chatId, Text);
         var summary = await TestWait.When(async ct => {
-            var s = await coach.GetOwnSummary(tester.Session, CoachWindow.Week, ct);
+            var s = await coach.GetOwnSummary(tester.Session, CoachWindow.Week, null, ct);
             s.Entries.Should().Be(1);
             return s;
         }, TimeSpan.FromSeconds(30));

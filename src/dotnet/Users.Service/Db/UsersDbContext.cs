@@ -103,8 +103,9 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
         coachEvent.Property(e => e.ChatId).UseCollation("C");
 
         var coachDay = model.Entity<DbCoachDay>();
-        coachDay.HasKey(e => new { e.UserId, e.Day });
+        coachDay.HasKey(e => new { e.UserId, e.Day, e.Language });
         coachDay.Property(e => e.UserId).UseCollation("C");
+        coachDay.Property(e => e.Language).UseCollation("C");
 
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");

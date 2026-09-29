@@ -8,8 +8,8 @@ public static class CoachDayRange
 
     public static int DayCount(CoachWindow window)
         => window switch {
-            CoachWindow.Today or CoachWindow.Week => 7,
-            CoachWindow.Month => 30,
+            CoachWindow.Today or CoachWindow.Week or CoachWindow.Days7 => 7,
+            CoachWindow.Month or CoachWindow.Days30 => 30,
             _ => MaxDays,
         };
 

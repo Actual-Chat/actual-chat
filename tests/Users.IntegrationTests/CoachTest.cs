@@ -22,12 +22,12 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     private static CoachEntryAnalysis Entry(
         UserId userId, ChatId chatId, long lid, int words, double seconds, Moment at,
-        int fillers = 0, string? word = null)
+        int fillers = 0, string? word = null, Language? language = null)
         => new (ChatEntryId.New(chatId, lid), 1) {
             AuthorId = AuthorId.New(chatId, 1),
             UserId = userId,
             BeginsAt = at,
-            Language = Languages.English,
+            Language = language ?? Languages.English,
             DurationSeconds = seconds,
             SpeechSeconds = seconds,
             Words = words,
@@ -63,7 +63,7 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     private Task<CoachDay> WhenDay(UserId userId, Moment day, Func<CoachDay, bool> ready)
         => TestWait.When(async ct => {
-            var days = await Backend.ListDays(userId, new Range<Moment>(day, day + TimeSpan.FromDays(1)), ct);
+            var days = await Backend.ListDays(userId, new Range<Moment>(day, day + TimeSpan.FromDays(1)), null, ct);
             days.Should().ContainSingle();
             ready(days[0]).Should().BeTrue();
             return days[0];
@@ -301,7 +301,7 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         await WhenDay(account.Id, UsageDay.DayOf(now), d => d.Entries == 1);
 
         // act
-        var summary = await Coach.GetOwnSummary(tester.Session, CoachWindow.Today, default);
+        var summary = await Coach.GetOwnSummary(tester.Session, CoachWindow.Today, null, default);
         var tip = await TestWait.When(async ct => {
             var t = await Coach.GetPendingTip(tester.Session, ct);
             t.Should().NotBeNull();
@@ -325,7 +325,7 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         await using var tester = AppHost.NewWebClientTester(Out);
 
         // act
-        var summary = await Coach.GetOwnSummary(tester.Session, CoachWindow.Week, default);
+        var summary = await Coach.GetOwnSummary(tester.Session, CoachWindow.Week, null, default);
         var tip = await Coach.GetPendingTip(tester.Session, default);
 
         // assert
@@ -448,7 +448,7 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // assert
         var range = new Range<Moment>(UsageDay.DayOf(T0), UsageDay.DayOf(T0) + TimeSpan.FromDays(1));
-        (await Backend.ListDays(account.Id, range, default)).Should().BeEmpty("a removed message stays removed");
+        (await Backend.ListDays(account.Id, range, null, default)).Should().BeEmpty("a removed message stays removed");
     }
 
     [Fact]
@@ -538,5 +538,34 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         (await focusCoach.IsEnabled(admin.Session, default)).Should().BeTrue();
         (await everyoneCoach.IsEnabled(anyone.Session, default)).Should().BeTrue();
         (await Coach.IsEnabled(bob.Session, default)).Should().BeFalse("the shared host has the master switch off");
+    }
+
+    [Fact]
+    public async Task EntriesInTwoLanguagesShouldBuildOneDayRowPerLanguage()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var day = UsageDay.DayOf(T0);
+
+        // act
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, 1, 100, 60, T0), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 2, 40, 30, T0 + TimeSpan.FromMinutes(1), language: Languages.Russian), false));
+        await Queues.Enqueue(new CoachConversationAnalyzedEvent(Run(account.Id, chatId, 1, T0 + TimeSpan.FromMinutes(2))));
+
+        // assert
+        var range = new Range<Moment>(day, day + TimeSpan.FromDays(1));
+        var rows = await TestWait.When(async ct => {
+            var all = await Backend.ListDays(account.Id, range, null, ct);
+            all.Should().HaveCount(2);
+            all.Should().OnlyContain(d => d.Runs == 1);
+            return all;
+        });
+        rows.Single(d => d.Language == "ru").Words.Should().Be(40);
+        (await Backend.ListDays(account.Id, range, "en-US", default)).Should().ContainSingle().Which.Words.Should().Be(100);
+        var summary = await Coach.GetOwnSummary(tester.Session, CoachWindow.AllTime, null, default);
+        summary.Words.Should().Be(140);
     }
 }

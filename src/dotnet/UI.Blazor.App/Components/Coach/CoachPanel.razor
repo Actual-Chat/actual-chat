@@ -108,7 +108,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var window = await _window.Use(cancellationToken).ConfigureAwait(false);
         var word = await _word.Use(cancellationToken).ConfigureAwait(false);
-        var summary = await Coach.GetOwnSummary(Session, window, cancellationToken).ConfigureAwait(false);
+        var summary = await Coach.GetOwnSummary(Session, window, null, cancellationToken).ConfigureAwait(false);
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         return new Model(window, summary, word, account.IsGuest ? null : account.Avatar);
     }

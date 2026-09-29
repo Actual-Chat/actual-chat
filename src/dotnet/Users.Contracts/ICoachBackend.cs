@@ -11,7 +11,8 @@ namespace ActualChat.Users;
 public interface ICoachBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<ApiArray<CoachDay>> ListDays(UserId userId, Range<Moment> dayRange, CancellationToken cancellationToken);
+    Task<ApiArray<CoachDay>> ListDays(
+        UserId userId, Range<Moment> dayRange, string? language, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<CoachOccurrence>> ListOccurrences(
         UserId userId, string word, Range<Moment> range, int limit, CancellationToken cancellationToken);

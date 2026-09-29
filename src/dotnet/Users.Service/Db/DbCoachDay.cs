@@ -9,6 +9,7 @@ namespace ActualChat.Users.Db;
 public class DbCoachDay : IHasVersion<long>
 {
     public string UserId { get; set; } = "";
+    public string Language { get; set; } = "";
 
     public DateTime Day {
         get => field.DefaultKind(DateTimeKind.Utc);
@@ -25,6 +26,7 @@ public class DbCoachDay : IHasVersion<long>
     public void UpdateFrom(CoachDay day)
     {
         Day = day.Day.ToDateTimeClamped();
+        Language = day.Language;
         Data = SystemJsonSerializer.Default.Write(day);
     }
 }

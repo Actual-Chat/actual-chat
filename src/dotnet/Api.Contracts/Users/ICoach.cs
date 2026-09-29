@@ -10,9 +10,11 @@ public interface ICoach : IComputeService
     [ComputeMethod]
     Task<bool> IsEnabled(Session session, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<CoachSummary> GetOwnSummary(Session session, CoachWindow window, CancellationToken cancellationToken);
+    Task<CoachSummary> GetOwnSummary(
+        Session session, CoachWindow window, string? language, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<CoachDay>> ListOwnDays(Session session, Range<Moment> dayRange, CancellationToken cancellationToken);
+    Task<ApiArray<CoachDay>> ListOwnDays(
+        Session session, Range<Moment> dayRange, string? language, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<UserCoachTip?> GetPendingTip(Session session, CancellationToken cancellationToken);
     [ComputeMethod]

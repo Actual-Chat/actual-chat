@@ -40,10 +40,31 @@ public sealed partial record CoachDay([property: DataMember, Key(0)] Moment Day)
     [DataMember, Key(27)] public ApiMap<string, int> FillerCounts { get; init; } = new ();
     [DataMember, Key(28)] public ApiMap<string, int> WeakWordCounts { get; init; } = new ();
     [DataMember, Key(29)] public int TaggedWords { get; init; }
+    // ISO code of the entries the row sums; "" for entries without a language and for runs alone
+    [DataMember, Key(30)] public string Language { get; init; } = "";
 }
 
 public static class CoachDayBuilder
 {
+    public static ApiArray<CoachDay> BuildAll(Moment day, IEnumerable<CoachRecord> records, int minVocabularyWords)
+    {
+        var list = records.Where(r => r.Day == day).ToList();
+        var runs = list.Where(r => r.Run is not null).ToList();
+        var byLanguage = list
+            .Where(r => r.Entry is not null)
+            .GroupBy(r => r.Entry!.Language is { } l ? ActualChat.Language.GetIsoCode(l) : "")
+            .ToDictionary(g => g.Key, g => g.ToList());
+        if (byLanguage.Count == 0)
+            return runs.Count == 0
+                ? ApiArray<CoachDay>.Empty
+                : ApiArray.New(Build(day, runs, minVocabularyWords));
+
+        return byLanguage
+            .OrderBy(x => x.Key, StringComparer.Ordinal)
+            .Select(x => Build(day, x.Value.Concat(runs), minVocabularyWords) with { Language = x.Key })
+            .ToApiArray();
+    }
+
     public static CoachDay Build(Moment day, IEnumerable<CoachRecord> records, int minVocabularyWords)
     {
         var d = new CoachDay(day);
@@ -108,7 +129,9 @@ public static class CoachDayBuilder
         var d = new CoachDay(day);
         var fillers = new Dictionary<string, int>();
         var weak = new Dictionary<string, int>();
+        var seenRunDays = new HashSet<Moment>();
         foreach (var x in days) {
+            var addRuns = seenRunDays.Add(x.Day);
             d = d with {
                 Entries = d.Entries + x.Entries,
                 TaggedEntries = d.TaggedEntries + x.TaggedEntries,
@@ -122,21 +145,21 @@ public static class CoachDayBuilder
                 Fillers = d.Fillers + x.Fillers,
                 WeakWords = d.WeakWords + x.WeakWords,
                 Profanities = d.Profanities + x.Profanities,
-                Runs = d.Runs + x.Runs,
-                OwnTurns = d.OwnTurns + x.OwnTurns,
-                TotalTurns = d.TotalTurns + x.TotalTurns,
-                Responses = d.Responses + x.Responses,
-                Interruptions = d.Interruptions + x.Interruptions,
+                Runs = d.Runs + (addRuns ? x.Runs : 0),
+                OwnTurns = d.OwnTurns + (addRuns ? x.OwnTurns : 0),
+                TotalTurns = d.TotalTurns + (addRuns ? x.TotalTurns : 0),
+                Responses = d.Responses + (addRuns ? x.Responses : 0),
+                Interruptions = d.Interruptions + (addRuns ? x.Interruptions : 0),
                 DurationSeconds = d.DurationSeconds + x.DurationSeconds,
                 SpeechSeconds = d.SpeechSeconds + x.SpeechSeconds,
                 PauseSeconds = d.PauseSeconds + x.PauseSeconds,
                 VocabularyWords = d.VocabularyWords + x.VocabularyWords,
                 VocabularyDistinct = d.VocabularyDistinct + x.VocabularyDistinct,
-                OwnSpeechSeconds = d.OwnSpeechSeconds + x.OwnSpeechSeconds,
-                TotalSpeechSeconds = d.TotalSpeechSeconds + x.TotalSpeechSeconds,
-                FairShareSeconds = d.FairShareSeconds + x.FairShareSeconds,
+                OwnSpeechSeconds = d.OwnSpeechSeconds + (addRuns ? x.OwnSpeechSeconds : 0),
+                TotalSpeechSeconds = d.TotalSpeechSeconds + (addRuns ? x.TotalSpeechSeconds : 0),
+                FairShareSeconds = d.FairShareSeconds + (addRuns ? x.FairShareSeconds : 0),
                 LongestMonologueSeconds = Math.Max(d.LongestMonologueSeconds, x.LongestMonologueSeconds),
-                ResponseGapSeconds = d.ResponseGapSeconds + x.ResponseGapSeconds,
+                ResponseGapSeconds = d.ResponseGapSeconds + (addRuns ? x.ResponseGapSeconds : 0),
             };
             foreach (var (w, c) in x.FillerCounts)
                 fillers[w] = fillers.GetValueOrDefault(w) + c;
