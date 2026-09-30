@@ -1,0 +1,6 @@
+So, um, I went to the store this morning, and, uh, you know, the line was really long. Like, I waited, um, twenty minutes. It was, uh, kind of annoying, you know.
+um=2 uh=2 "you know"=2 like=1 (filler use)
+Generated with Soniox TTS (voice Nina) from this script; not a human recording.
+Clip recipe: Soniox TTS mp3 -> ffmpeg -map_metadata -1 -c:a libopus -b:a 32k -ar 48000 -ac 1 -f webm, then
+Tags/Cues/SeekHead removed and the trailing BlockGroup rewritten as a SimpleBlock (the app's WebM reader accepts
+only MediaRecorder-style streams).
