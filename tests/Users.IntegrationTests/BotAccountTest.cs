@@ -44,6 +44,29 @@ public class BotAccountTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
+    public async Task GreeterShouldNotKeepCyclingOverBots()
+    {
+        // arrange
+        var userId = UserId.New();
+        var info = new InternalUserInfo(userId, "bot") { IsBot = true };
+        var bot = await InternalAccounts.Create(AppHost.Services, info, CancellationToken.None);
+        if (bot.IsGreetingCompleted) {
+            // The host's own greeter may have reached the account before it became a bot
+            var reset = new AccountsBackend_Update(bot with { IsGreetingCompleted = false }, bot.Version);
+            await AppHost.Services.Commander().Call(reset, true, CancellationToken.None);
+        }
+        bot = await AccountsBackend.Get(userId, CancellationToken.None).Require();
+        bot.IsGreetingCompleted.Should().BeFalse("the test needs a bot the old query would pick up");
+        var greeter = new TestContactGreeter(AppHost.Services);
+
+        // act, assert
+        // Polled: a pass reports whether it found anyone, and accounts other tests left are greeted pass by pass
+        await TestWait.WhenPolled(async ()
+            => (await greeter.RunOnce(CancellationToken.None))
+                .Should().BeTrue("a bot is never greeted, so it must not count as pending"));
+    }
+
+    [Fact]
     public async Task BotShouldNotSignIn()
     {
         // arrange
@@ -72,5 +95,13 @@ public class BotAccountTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // assert
         presence.Should().Be(Presence.Offline);
+    }
+
+    // Nested types
+
+    private sealed class TestContactGreeter(IServiceProvider services) : ContactGreeter(services)
+    {
+        public Task<bool> RunOnce(CancellationToken cancellationToken)
+            => OnActivate(cancellationToken);
     }
 }

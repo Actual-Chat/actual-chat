@@ -16,7 +16,8 @@ public class ContactGreeter(IServiceProvider services) : ActivatedWorkerBase(ser
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
-        var dbAccounts = await dbContext.Accounts.Where(x => !x.IsGreetingCompleted)
+        // A bot is never greeted, so it would stay in this batch forever and keep the worker cycling
+        var dbAccounts = await dbContext.Accounts.Where(x => !x.IsGreetingCompleted && !x.IsBot)
             .Take(BatchSize)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
