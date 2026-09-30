@@ -36,7 +36,7 @@ public sealed class CoachLabels(IStringLocalizer l)
         };
 
     public string LanguageName(string iso)
-        => Languages.All.FirstOrDefault(x => x.IsoCode == iso)?.Title.Split(" (")[0] ?? iso;
+        => Languages.All.FirstOrDefault(x => x.IsoCode == iso)?.NativeName.Split(" (")[0] ?? iso;
 
     public string FocusHint(CoachMetricKind kind, CoachChip? top)
         => kind switch {

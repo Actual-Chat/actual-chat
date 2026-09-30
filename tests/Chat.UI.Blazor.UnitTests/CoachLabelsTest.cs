@@ -11,6 +11,22 @@ public class CoachLabelsTest
             ["Coach_PercentOfSpeech_Format"] = "{0}% of speech",
         }));
 
+    [Theory]
+    [InlineData("ru", "Русский")]
+    [InlineData("en", "English")]
+    [InlineData("xx", "xx")]
+    public void LanguageNameShouldBeTheLanguagesOwnWord(string iso, string expected)
+    {
+        // arrange
+        var labels = NewLabels();
+
+        // act
+        var name = labels.LanguageName(iso);
+
+        // assert
+        name.Should().Be(expected);
+    }
+
     [Fact]
     public void ValueShouldSayNoDataForACountWithoutATaggedShare()
     {
