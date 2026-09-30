@@ -2077,5 +2077,6 @@
   "Coach_TalkOthers": "अन्य",
   "Coach_CoachInPlace": "इस प्लेस में कोच",
   "Coach_OffByPlace": "बंद, प्लेस बंद है",
-  "Coach_WhereHint": "कोच हर जगह सुनता है, सिवाय उन जगहों के जहाँ आप उसे बंद करें।"
+  "Coach_WhereHint": "कोच हर जगह सुनता है, सिवाय उन जगहों के जहाँ आप उसे बंद करें।",
+  "Coach_NothingToCompare": "तुलना के लिए अभी कोई पिछला सप्ताह नहीं है"
 }

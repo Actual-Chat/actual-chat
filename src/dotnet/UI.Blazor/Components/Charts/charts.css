@@ -13,3 +13,4 @@
 .bar-chart .c-bar-track { @apply flex-1 w-full flex-y justify-end; }
 .bar-chart .c-bar { @apply w-full rounded-t-sm; background: currentColor; }
 .bar-chart .c-label { @apply text-xs text-03; }
+.bar-chart .c-value { @apply text-xs text-02 text-center; }

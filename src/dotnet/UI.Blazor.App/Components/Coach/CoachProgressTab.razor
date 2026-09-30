@@ -27,7 +27,7 @@
             </CardItem>
         </Card>
     }
-    @if (m.TalkShare is { } share) {
+    @if (m.TalkShare is { } share and < 0.995) {
         var percent = (int)Math.Round(share * 100);
         <TileTopic Topic="@L.Coach_TalkTime"/>
         <Card Class="coach-talk-time">
@@ -38,9 +38,15 @@
     }
     <TileTopic Topic="@L.Coach_ScoreLastWeeks"/>
     <Card Class="coach-week-scores">
-        <BarChart Items="@ScoreItems(m.Scores)"/>
+        <BarChart Items="@ScoreItems(m.Scores)" ShowValues="@true"/>
     </Card>
+    @if (m.Scores.Where(x => x.Score is > 0).ToList() is [ { Score: { } first }, .., { Score: { } last } ]) {
+        <div class="c-scores-caption">@first → @last</div>
+    }
     <TileTopic Topic="@L.Coach_ThisWeekVsLast"/>
+    @if (m.Deltas.Count > 0 && m.Deltas.All(d => d.Previous is null)) {
+        <div class="c-deltas-hint">@L.Coach_NothingToCompare</div>
+    }
     <CoachWeekDeltas Deltas="@m.Deltas"/>
     <TileTopic Topic="@L.Coach_DaysWithSpeech"/>
     <Card Class="coach-days">

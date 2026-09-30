@@ -2431,5 +2431,6 @@
   "Coach_TalkOthers": "Others",
   "Coach_CoachInPlace": "Coach me in this place",
   "Coach_OffByPlace": "Off, the place is off",
-  "Coach_WhereHint": "Coaching listens everywhere except what you switch off."
+  "Coach_WhereHint": "Coaching listens everywhere except what you switch off.",
+  "Coach_NothingToCompare": "No earlier week to compare with yet"
 }

@@ -11,6 +11,9 @@
         var height = max > 0 ? item.Value / max * 100 : 0;
         <div class="c-column">
             <div class="c-bar-track">
+                @if (ShowValues && item.Value > 0) {
+                    <div class="c-value">@item.Value.ToString(ValueFormat, null)</div>
+                }
                 <div class="c-bar @item.Class" style="height: @(height.ToString("F0", null))%"
                      title="@item.Value.ToString(ValueFormat, null)"></div>
             </div>
@@ -24,4 +27,5 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ValueFormat { get; set; } = "F0";
     [Parameter] public double? ReferenceValue { get; set; }
+    [Parameter] public bool ShowValues { get; set; }
 }

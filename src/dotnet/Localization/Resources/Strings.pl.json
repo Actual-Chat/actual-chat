@@ -2077,5 +2077,6 @@
   "Coach_TalkOthers": "Pozostali",
   "Coach_CoachInPlace": "Trener w tym miejscu",
   "Coach_OffByPlace": "Wyłączone, miejsce jest wyłączone",
-  "Coach_WhereHint": "Trener słucha wszędzie, oprócz miejsc, które wyłączysz."
+  "Coach_WhereHint": "Trener słucha wszędzie, oprócz miejsc, które wyłączysz.",
+  "Coach_NothingToCompare": "Nie ma jeszcze poprzedniego tygodnia do porównania"
 }

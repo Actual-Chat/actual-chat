@@ -124,6 +124,8 @@
 .coach-days .c-day > div { @apply w-full h-6 rounded-md bg-04; }
 .coach-days .c-day.on > div { @apply bg-primary; }
 .coach-progress .c-days-caption { @apply text-caption text-03 -mt-2; }
+.coach-progress .c-deltas-hint { @apply text-caption text-03 -mt-2; }
+.coach-progress .c-scores-caption { @apply text-caption text-03 -mt-2; }
 .coach-week-deltas .c-badge { @apply font-medium min-w-11 text-right; }
 .coach-milestones .c-check {
     @apply flex-x items-center justify-center w-5 h-5 rounded-full bg-success text-xs text-white;

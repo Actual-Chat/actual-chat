@@ -2077,5 +2077,6 @@
   "Coach_TalkOthers": "Altri",
   "Coach_CoachInPlace": "Coach in questo luogo",
   "Coach_OffByPlace": "Off, il luogo è disattivato",
-  "Coach_WhereHint": "Il coach ascolta ovunque, tranne dove lo disattivi."
+  "Coach_WhereHint": "Il coach ascolta ovunque, tranne dove lo disattivi.",
+  "Coach_NothingToCompare": "Ancora nessuna settimana precedente da confrontare"
 }

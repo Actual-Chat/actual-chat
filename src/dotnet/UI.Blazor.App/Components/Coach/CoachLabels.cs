@@ -130,25 +130,39 @@ public sealed class CoachLabels(IStringLocalizer l)
 
     public string DeltaValue(CoachWeekDelta d)
     {
-        if (d.Previous is not { } was || d.Current is not { } now)
+        if (d.Current is not { } now)
             return l.Coach_NotEnoughSpeech;
+        if (d.Previous is not { } was)
+            return DeltaNow(d.Kind, now);
 
-        return d.Kind switch {
+        var before = d.Kind switch {
             CoachMetricKind.Fillers or CoachMetricKind.WeakWords or CoachMetricKind.Repetition
-                => $"{Round(was * 100)}% → " + l.Coach_PercentOfSpeech_Format(Round(now * 100)),
-            CoachMetricKind.TurnTaking => $"{Round(was * 100)}% → " + l.Coach_PercentOfTalkTime_Format(Round(now * 100)),
-            CoachMetricKind.Pace => $"{Round(was)} → " + l.Coach_Wpm_Format(Round(now)),
-            CoachMetricKind.Monologue => $"{Clock(was)} → {Clock(now)}",
-            CoachMetricKind.Vocabulary => $"{Round(was * 100)} → " + l.Coach_OfEvery100_Format(Round(now * 100)),
-            CoachMetricKind.SentenceLength => $"{was.ToString("F1", null)} → "
-                + l.Coach_WordsPerSentence_Format(now.ToString("F1", null)),
-            _ => $"{Round(was)} → {Round(now)}",
+                or CoachMetricKind.TurnTaking => Round(was * 100) + "%",
+            CoachMetricKind.Vocabulary => Round(was * 100).ToString(),
+            CoachMetricKind.Monologue => Clock(was),
+            CoachMetricKind.SentenceLength => was.ToString("F1", null),
+            _ => Round(was).ToString(),
         };
+        return $"{before} → {DeltaNow(d.Kind, now)}";
     }
+
+    private string DeltaNow(CoachMetricKind kind, double now)
+        => kind switch {
+            CoachMetricKind.Fillers or CoachMetricKind.WeakWords or CoachMetricKind.Repetition
+                => l.Coach_PercentOfSpeech_Format(Round(now * 100)),
+            CoachMetricKind.TurnTaking => l.Coach_PercentOfTalkTime_Format(Round(now * 100)),
+            CoachMetricKind.Pace => l.Coach_Wpm_Format(Round(now)),
+            CoachMetricKind.Monologue => Clock(now),
+            CoachMetricKind.Vocabulary => l.Coach_OfEvery100_Format(Round(now * 100)),
+            CoachMetricKind.SentenceLength => l.Coach_WordsPerSentence_Format(now.ToString("F1", null)),
+            _ => Round(now).ToString(),
+        };
 
     public string DeltaBadge(CoachWeekDelta d)
     {
-        if (d.Previous is not { } was || d.Current is not { } now || d.IsBetter is null)
+        if (d.Previous is null)
+            return "";
+        if (d.Current is not { } now || d.Previous is not { } was || d.IsBetter is null)
             return l.Coach_DeltaSame;
 
         var arrow = now < was ? "▼" : "▲";
@@ -221,7 +235,8 @@ public sealed class CoachLabels(IStringLocalizer l)
             CoachMetricKind.SentenceLength => l.Coach_WordsPerSentence_Format(value.ToString("F1", null)),
             CoachMetricKind.Vocabulary => l.Coach_OfEvery100_Format(Round(value * 100)),
             CoachMetricKind.TurnTaking => l.Coach_PercentOfTalkTime_Format(Round(value * 100)),
-            CoachMetricKind.Patience or CoachMetricKind.Monologue => l.Coach_Seconds_Format(value.ToString("F1", null)),
+            CoachMetricKind.Monologue => Clock(value),
+            CoachMetricKind.Patience => l.Coach_Seconds_Format(value.ToString("F1", null)),
             _ => Round(value).ToString(),
         };
     }

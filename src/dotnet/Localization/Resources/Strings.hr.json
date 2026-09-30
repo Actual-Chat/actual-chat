@@ -2077,5 +2077,6 @@
   "Coach_TalkOthers": "Ostali",
   "Coach_CoachInPlace": "Trener u ovom mjestu",
   "Coach_OffByPlace": "Isključeno, mjesto je isključeno",
-  "Coach_WhereHint": "Trener sluša svuda osim tamo gdje ga isključite."
+  "Coach_WhereHint": "Trener sluša svuda osim tamo gdje ga isključite.",
+  "Coach_NothingToCompare": "Još nema prethodne tjedne za poređenje"
 }

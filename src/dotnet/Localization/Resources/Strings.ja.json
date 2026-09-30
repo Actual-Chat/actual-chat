@@ -2077,5 +2077,6 @@
   "Coach_TalkOthers": "ほかの人",
   "Coach_CoachInPlace": "このプレイスでコーチする",
   "Coach_OffByPlace": "オフ（プレイスがオフです）",
-  "Coach_WhereHint": "オフにした場所を除き、どこでもコーチが聞きます。"
+  "Coach_WhereHint": "オフにした場所を除き、どこでもコーチが聞きます。",
+  "Coach_NothingToCompare": "比較できる前の週はまだありません"
 }

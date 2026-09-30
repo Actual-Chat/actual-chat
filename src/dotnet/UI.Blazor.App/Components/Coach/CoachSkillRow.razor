@@ -14,7 +14,7 @@
             @if (IsNotMeasured) {
                 @L.Coach_NotMeasuredFor_Format(labels.LanguageName(Language ?? ""))
             } else {
-                @labels.Value(m)
+                @(labels.Rate(m) is { Length: > 0 } rate ? rate : labels.Value(m))
                 @if (labels.BandWord(m.Kind, m.Band) is { Length: > 0 } word) {
                     <span> · @word</span>
                 }

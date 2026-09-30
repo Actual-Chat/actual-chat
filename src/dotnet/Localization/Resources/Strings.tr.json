@@ -2084,5 +2084,6 @@
   "Coach_TalkOthers": "Diğerleri",
   "Coach_CoachInPlace": "Bu yerde koçluk",
   "Coach_OffByPlace": "Kapalı, yer kapalı",
-  "Coach_WhereHint": "Koç, kapattığınız yerler dışında her yerde dinler."
+  "Coach_WhereHint": "Koç, kapattığınız yerler dışında her yerde dinler.",
+  "Coach_NothingToCompare": "Karşılaştırılacak önceki hafta henüz yok"
 }

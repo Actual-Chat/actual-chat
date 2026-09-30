@@ -2077,5 +2077,6 @@
   "Coach_TalkOthers": "其他人",
   "Coach_CoachInPlace": "在此空间中辅导我",
   "Coach_OffByPlace": "已关闭，该空间已关闭",
-  "Coach_WhereHint": "除你关闭的位置外，教练在所有地方倾听。"
+  "Coach_WhereHint": "除你关闭的位置外，教练在所有地方倾听。",
+  "Coach_NothingToCompare": "还没有上周的数据可供比较"
 }
