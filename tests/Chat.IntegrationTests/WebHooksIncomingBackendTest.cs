@@ -400,4 +400,142 @@ public class WebHooksIncomingBackendTest(ChatCollection.AppHostFixture fixture, 
         last!.Content.Should().Be($"Test message from {alice.Avatar.Name}");
         last.AuthorId.LocalId.Should().BeNegative();
     }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CreateShouldJoinTheBotToAPlaceChatOnly(bool isPublicChat)
+    {
+        // arrange
+        var place = await Alice.CreatePlace(x => x with { Title = "Bot place" });
+        var (chatId, _) = await Alice.CreateChat(x => x with {
+            Title = "Bot chat",
+            Kind = null,
+            PlaceId = place.Id,
+            IsPublic = isPublicChat,
+        });
+        chatId.Should().BeOfType<PlaceChatId>();
+        var alice = await Alice.GetOwnAccount();
+
+        // act
+        var hook = (await Commander.Call(new WebHooksBackend_Change(
+            WebHookScope.Chat, chatId.Value, null, null,
+            Change.Create(new WebHookDiff { Name = "P", Kind = WebHookKind.Incoming, DisplayName = "Place bot" }),
+            alice.Id))).WebHook!;
+
+        // assert
+        var botUserId = hook.Id.ToBotUserId();
+        var author = await AuthorsBackend.GetByUserId(chatId, botUserId, RequestedAuthorKind.Full, default);
+        author!.Id.LocalId.Should().BeNegative();
+        author.Avatar.Name.Should().Be("Place bot");
+        var authorById = await AuthorsBackend.Get(chatId, author.Id, RequestedAuthorKind.Full, default);
+        authorById!.UserId.Should().Be(botUserId);
+        (await AuthorsBackend.ListAuthorIds(chatId, default)).Should().Contain(author.Id);
+        var rootChatId = place.Id.RootChatId;
+        (await AuthorsBackend.GetByUserId(rootChatId, botUserId, RequestedAuthorKind.Full, default))
+            .Should().BeNull("the bot belongs to its chat, not to the place");
+        (await AuthorsBackend.ListAuthorIds(rootChatId, default))
+            .Should().NotContain(x => x.LocalId < 0, "so it must not show up among the place members");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task PlaceChatBotShouldPostAndRetire(bool isPublicChat)
+    {
+        // arrange
+        var place = await Alice.CreatePlace(x => x with { Title = "Bot place" });
+        var (chatId, _) = await Alice.CreateChat(x => x with {
+            Title = "Bot chat",
+            Kind = null,
+            PlaceId = place.Id,
+            IsPublic = isPublicChat,
+        });
+        chatId.Should().BeOfType<PlaceChatId>();
+        var alice = await Alice.GetOwnAccount();
+        var hook = (await Commander.Call(new WebHooksBackend_Change(
+            WebHookScope.Chat, chatId.Value, null, null,
+            Change.Create(new WebHookDiff { Name = "P", Kind = WebHookKind.Incoming }), alice.Id))).WebHook!;
+        var botUserId = hook.Id.ToBotUserId();
+        var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();
+
+        // act
+        var result = await Commander.Call(new WebHooksBackend_Test(hook.Id, chatId.Value, alice.Avatar.Name));
+        var range = await chatsBackend.GetLidRange(chatId, false, default);
+        var last = await chatsBackend.GetEntry(ChatEntryId.New(chatId, range.End - 1), default);
+        await Commander.Call(new WebHooksBackend_Change(
+            WebHookScope.Chat, chatId.Value, hook.Id, hook.Version, Change.Remove<WebHookDiff>(), alice.Id));
+
+        // assert
+        result.IsSuccess.Should().BeTrue();
+        last!.AuthorId.LocalId.Should().BeNegative();
+        await TestWait.When(async ct => {
+            var author = await AuthorsBackend.GetByUserId(chatId, botUserId, RequestedAuthorKind.Full, ct);
+            author!.Id.Should().Be(last.AuthorId);
+            author.HasLeft.Should().BeTrue();
+            (await AuthorsBackend.ListAuthorIds(chatId, ct)).Should().NotContain(author.Id);
+        });
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ThreadOfAPlaceChatShouldSeeItsBot(bool isPublicChat)
+    {
+        // arrange
+        var place = await Alice.CreatePlace(x => x with { Title = "Bot place" });
+        var (chatId, _) = await Alice.CreateChat(x => x with {
+            Title = "Bot chat",
+            Kind = null,
+            PlaceId = place.Id,
+            IsPublic = isPublicChat,
+        });
+        var alice = await Alice.GetOwnAccount();
+        var hook = (await Commander.Call(new WebHooksBackend_Change(
+            WebHookScope.Chat, chatId.Value, null, null,
+            Change.Create(new WebHookDiff { Name = "P", Kind = WebHookKind.Incoming }), alice.Id))).WebHook!;
+        var author = await AuthorsBackend
+            .GetByUserId(chatId, hook.Id.ToBotUserId(), RequestedAuthorKind.Full, default)
+            .Require();
+        var entry = await Alice.Commander.Call(new Chats_UpsertEntry {
+            Session = Alice.Session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "Thread starter",
+        });
+
+        // act
+        var thread = await Alice.Commander.Call(new ChatThreads_Start {
+            Session = Alice.Session,
+            ParentChatId = chatId,
+            Title = "Thread",
+            Description = "",
+            EntryIds = [entry.Id],
+        });
+
+        // assert
+        var threadAuthorId = AuthorId.New(thread.Id, author.LocalId);
+        (await AuthorsBackend.ListAuthorIds(thread.Id, default)).Should().Contain(threadAuthorId);
+        var threadAuthor = await AuthorsBackend.Get(thread.Id, threadAuthorId, RequestedAuthorKind.Full, default);
+        threadAuthor!.UserId.Should().Be(author.UserId);
+    }
+
+    [Fact]
+    public async Task CreateShouldRejectAPlaceRootChat()
+    {
+        // arrange
+        var place = await Alice.CreatePlace(x => x with { Title = "Bot place" });
+        var alice = await Alice.GetOwnAccount();
+        var rootChatId = place.Id.RootChatId;
+
+        // act
+        var create = () => Commander.Call(new WebHooksBackend_Change(
+            WebHookScope.Chat, rootChatId.Value, null, null,
+            Change.Create(new WebHookDiff { Name = "Root", Kind = WebHookKind.Incoming }), alice.Id));
+
+        // assert
+        await create.Should().ThrowAsync<InvalidOperationException>().WithMessage("*root chat*");
+        (await AuthorsBackend.ListAuthorIds(rootChatId, default))
+            .Should().NotContain(x => x.LocalId < 0, "a hook bot must never become a place member");
+    }
 }

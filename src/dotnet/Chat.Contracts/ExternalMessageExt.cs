@@ -73,9 +73,8 @@ public static class ExternalMessageExt
 
     private static ExternalOrigin ToExternalOrigin(this ChatEntry entry, Author author)
     {
-        // Below Sherlock's id: a hook bot. The id alone decides, because a regular user id may
-        // start with the bot prefix by chance
-        if (entry.AuthorId.LocalId < Constants.User.Sherlock.AuthorLocalId) {
+        // The id alone decides, because a regular user id may start with the bot prefix by chance
+        if (Bots.IsHookBot(entry.AuthorId)) {
             if (author is AuthorFull { UserId: var userId } && WebHookId.TryParseBotUserId(userId, out var hookId))
                 return new ExternalOrigin("webhook", hookId.Value);
 
@@ -83,8 +82,7 @@ public static class ExternalMessageExt
             return new ExternalOrigin("webhook");
         }
 
-        // Mirrors Bots.IsBot (Chat.Service, unreachable from Chat.Contracts): a negative local id is a bot's
-        return entry.AuthorId.LocalId < 0 ? new ExternalOrigin("bot")
+        return Bots.IsBot(entry.AuthorId) ? new ExternalOrigin("bot")
             : entry.IsViaApi ? new ExternalOrigin("api")
             : new ExternalOrigin("user");
     }

@@ -168,6 +168,10 @@ public partial class WebHooksBackend(IServiceProvider services)
             if (kind == WebHookKind.Incoming && scope != WebHookScope.Chat)
                 throw StandardError.Constraint("Incoming web hooks are chat-scoped.");
 
+            // Its bot would become a place member, while a hook bot belongs to a single chat
+            if (kind == WebHookKind.Incoming && ChatId.Parse(scopeId) is PlaceChatId { IsRoot: true })
+                throw StandardError.Constraint("An incoming web hook can't post to a place's root chat.");
+
             var webHookId = id ?? WebHookId.New();
             if (kind == WebHookKind.Incoming) {
                 // The bot's user id is derived from the hook id, so a create may only mint a new bot
