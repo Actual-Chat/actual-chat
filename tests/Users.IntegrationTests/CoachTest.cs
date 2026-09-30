@@ -703,6 +703,75 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
+    public async Task ARunArrivingAfterItsConversationWasExcludedShouldStayOutOfTheScores()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var friends = GroupChatId.New();
+        var work = GroupChatId.New();
+        var day = UsageDay.DayOf(T0);
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, friends, 1, 50, 30, T0), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, work, 1, 20, 10, T0 + TimeSpan.FromHours(3)), false));
+        await WhenDay(account.Id, day, d => d.Entries == 2);
+        await AppHost.Services.Commander().Call(new Coach_ExcludeConversation {
+            Session = tester.Session, ChatId = friends, StartEntryLid = 1, Language = "en", IsExcluded = true,
+        });
+        await WhenDay(account.Id, day, d => d.Entries == 1);
+
+        // act: the chat side emits the run only once the conversation has been quiet for a while
+        await Queues.Enqueue(new CoachConversationAnalyzedEvent(
+            Run(account.Id, friends, 1, T0 + TimeSpan.FromMinutes(11))));
+        await Queues.Enqueue(new CoachConversationAnalyzedEvent(
+            Run(account.Id, work, 1, T0 + TimeSpan.FromHours(3) + TimeSpan.FromMinutes(11))));
+
+        // assert
+        var range = new Range<Moment>(day, day + TimeSpan.FromDays(1));
+        var counted = await TestWait.When(async ct => {
+            var english = (await Backend.ListDays(account.Id, range, "en", ct)).Single(d => d.Language == "en");
+            english.Runs.Should().BeGreaterThan(0);
+            return english;
+        });
+        await Queues.WhenProcessing(TimeSpan.FromSeconds(1), default);
+        counted = (await Backend.ListDays(account.Id, range, "en", default)).Single(d => d.Language == "en");
+        counted.Runs.Should().Be(1, "only the run of the conversation that still counts");
+        counted.OwnSpeechSeconds.Should().Be(30);
+    }
+
+    [Fact]
+    public async Task ARunThatMovesToTheNextDayShouldLeaveItsOldDay()
+    {
+        // arrange: a long conversation is analysed before midnight and again after it
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var day = UsageDay.DayOf(T0);
+        var lateEvening = day + TimeSpan.FromHours(23.5);
+        var afterMidnight = day + TimeSpan.FromHours(24.5);
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, 1, 50, 30, lateEvening), false));
+        await Queues.Enqueue(new CoachConversationAnalyzedEvent(Run(account.Id, chatId, 1, lateEvening)));
+        var range = new Range<Moment>(day, day + TimeSpan.FromDays(2));
+        await TestWait.When(async ct => {
+            var all = await Backend.ListDays(account.Id, range, "en", ct);
+            all.Should().Contain(d => d.Language == "en" && d.Runs == 1);
+        });
+
+        // act
+        await Queues.Enqueue(new CoachConversationAnalyzedEvent(
+            Run(account.Id, chatId, 1, afterMidnight) with { Version = 2 }));
+
+        // assert
+        var days = await TestWait.When(async ct => {
+            var all = await Backend.ListDays(account.Id, range, "en", ct);
+            all.Should().Contain(d => d.Day == day + TimeSpan.FromDays(1) && d.Runs == 1);
+            all.Where(d => d.Day == day).Should().OnlyContain(d => d.Runs == 0, "the run left its old day");
+            return all;
+        });
+        days.Single(d => d.Day == day).Entries.Should().Be(1);
+    }
+
+    [Fact]
     public async Task FocusAndLevelCommandsShouldUpdateSettingsAndDeleteShouldClearEverything()
     {
         // arrange
@@ -728,35 +797,6 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
             summary.Words.Should().Be(0);
         });
         (await Kvas.ForUser(account.Id).UserCoachSettings().Get(default)).FocusByLanguage.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task ListDaysShouldRebuildDayRowsThatAreMissingButHaveEvents()
-    {
-        // arrange: one day's row vanishes, as day rows do when the language migration truncates them
-        await using var tester = AppHost.NewWebClientTester(Out);
-        var account = await tester.SignInAsUniqueBob();
-        var chatId = GroupChatId.New();
-        var day = UsageDay.DayOf(T0);
-        await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, 1, 40, 20, T0), false));
-        await WhenDay(account.Id, day, d => d.Entries == 1);
-        var dbHub = AppHost.Services.GetRequiredService<DbHub<UsersDbContext>>();
-        await using (var dbContext = await dbHub.CreateDbContext(true)) {
-            await dbContext.CoachDays.Where(d => d.UserId == account.Id.Value).ExecuteDeleteAsync();
-        }
-
-        // act: a later write invalidates the cached list, and the read finds the first day without a row
-        var later = T0 + TimeSpan.FromDays(2);
-        await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, 2, 40, 20, later), false));
-
-        // assert
-        var range = new Range<Moment>(day, day + TimeSpan.FromDays(3));
-        var days = await TestWait.When(async ct => {
-            var all = await Backend.ListDays(account.Id, range, null, ct);
-            all.Should().HaveCount(2);
-            return all;
-        });
-        days.Select(d => d.Entries).Should().Equal(1, 1);
     }
 
     [Fact]

@@ -5,6 +5,8 @@ namespace ActualChat.Users.Db;
 
 [Table("CoachEvents")]
 [Index(nameof(UserId), nameof(Day))]
+[Index(nameof(UserId), nameof(OccurredAt))]
+[Index(nameof(UserId), nameof(ChatId), nameof(OccurredAt))]
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbCoachEvent : IRequirementTarget
 {

@@ -1,5 +1,4 @@
 using ActualChat.Flows;
-using ActualChat.Queues;
 using System.Collections.Concurrent;
 using ActualChat.Chat;
 using ActualChat.Db;
@@ -25,16 +24,14 @@ public class CoachBackend(IServiceProvider services)
     private const int OccurrenceMaxRows = 5000;
     private const int ConversationEntriesPerCard = 8;
     private const int MinConversationEntries = 400;
-    private static readonly TimeSpan HealRetryDelay = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan ExclusionWindow = TimeSpan.FromDays(1);
 
     private static readonly TimeSpan FlowRestartDelay = TimeSpan.FromHours(6);
 
-    private readonly ConcurrentDictionary<UserId, Moment> _healedAt = new();
     private readonly ConcurrentDictionary<UserId, Moment> _flowStartedAt = new();
 
     private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
-    private IQueues Queues => field ??= Services.Queues();
     private FlowHub FlowHub => field ??= Services.FlowHub();
 
     // [ComputeMethod]
@@ -92,12 +89,19 @@ public class CoachBackend(IServiceProvider services)
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var found = new List<CoachOccurrence>();
-        for (var skip = 0; skip < OccurrenceMaxRows && found.Count < limit; skip += OccurrencePageSize) {
+        var before = end;
+        var beforeSourceId = "";
+        // Keyset pages: each one continues right after the last row of the previous one
+        for (var scanned = 0; scanned < OccurrenceMaxRows && found.Count < limit; scanned += OccurrencePageSize) {
+            var pageBefore = before;
+            var pageBeforeSourceId = beforeSourceId;
             var rows = await dbContext.CoachEvents
                 .Where(e => e.UserId == userId.Value && e.Kind == CoachRecordKind.Entry && !e.IsRemoved && !e.IsExcluded)
-                .Where(e => e.OccurredAt >= start && e.OccurredAt < end)
+                .Where(e => e.OccurredAt >= start)
+                .Where(e => e.OccurredAt < pageBefore
+                    || (e.OccurredAt == pageBefore && string.Compare(e.SourceId, pageBeforeSourceId) < 0))
                 .OrderByDescending(e => e.OccurredAt)
-                .Skip(skip)
+                .ThenByDescending(e => e.SourceId)
                 .Take(OccurrencePageSize)
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
@@ -108,6 +112,9 @@ public class CoachBackend(IServiceProvider services)
                     .Select(s => new CoachOccurrence(r.ChatId, r.Entry.EntryLid, s.Start, s.Length, r.OccurredAt))));
             if (rows.Count < OccurrencePageSize)
                 break;
+
+            before = rows[^1].OccurredAt;
+            beforeSourceId = rows[^1].SourceId;
         }
         return found
             .OrderByDescending(o => o.At)
@@ -140,8 +147,12 @@ public class CoachBackend(IServiceProvider services)
         if (dbEvent is { IsRemoved: true } && record.Version <= dbEvent.Version)
             return;
 
-        record = record with { IsExcluded = await IsExcludedAfter(dbContext, dbEvent, record, cancellationToken)
-            .ConfigureAwait(false) };
+        var isExcluded = await IsExcludedAfter(dbContext, dbEvent, record, cancellationToken).ConfigureAwait(false);
+        record = record with { IsExcluded = isExcluded };
+        // A run is dated by its end, so a later analysis of a run that crossed midnight moves it to the next day
+        Moment? oldDay = dbEvent is { IsRemoved: false } && dbEvent.Day != record.Day.ToDateTimeClamped()
+            ? dbEvent.Day
+            : null;
 
         if (isRemoved) {
             if (dbEvent is null) {
@@ -162,6 +173,8 @@ public class CoachBackend(IServiceProvider services)
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await RebuildDay(dbContext, userId, record.Day, cancellationToken).ConfigureAwait(false);
+        if (oldDay is { } movedFrom)
+            await RebuildDay(dbContext, userId, movedFrom, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation.Items.KeylessSet(true);
     }
@@ -231,8 +244,21 @@ public class CoachBackend(IServiceProvider services)
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
         await dbContext.CoachDays.Lock(userId.Value, cancellationToken).ConfigureAwait(false);
+        var startSourceId = ChatEntryId.New(chatId, startEntryLid).Value;
+        var startedAt = await dbContext.CoachEvents
+            .Where(e => e.UserId == userId.Value && e.SourceId == startSourceId && !e.IsRemoved)
+            .Select(e => (DateTime?)e.OccurredAt)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (startedAt is not { } start)
+            return;
+
+        // A conversation and the runs around it lie well within a day of its first entry
+        var from = start - ExclusionWindow;
+        var to = start + ExclusionWindow;
         var rows = await dbContext.CoachEvents
             .Where(e => e.UserId == userId.Value && e.ChatId == chatId.Value && !e.IsRemoved)
+            .Where(e => e.OccurredAt >= from && e.OccurredAt < to)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var members = CoachConversationBuilder.Members(
@@ -241,9 +267,10 @@ public class CoachBackend(IServiceProvider services)
             chatId,
             startEntryLid,
             Language.GetIsoCode(language));
+        var rowBySourceId = rows.ToDictionary(r => r.SourceId);
         var days = new HashSet<Moment>();
         foreach (var member in members.Where(m => m.IsExcluded != isExcluded)) {
-            rows.First(r => r.SourceId == member.SourceId).UpdateFrom(member with { IsExcluded = isExcluded });
+            rowBySourceId[member.SourceId].UpdateFrom(member with { IsExcluded = isExcluded });
             days.Add(member.Day);
         }
         if (days.Count == 0)
@@ -307,7 +334,6 @@ public class CoachBackend(IServiceProvider services)
             .OrderBy(d => d.Day)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        await HealMissingDays(dbContext, userId, rows, cancellationToken).ConfigureAwait(false);
         return rows.Select(r => r.ToModel()).ToApiArray();
     }
 
@@ -330,29 +356,6 @@ public class CoachBackend(IServiceProvider services)
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             Log.LogWarning(e, "Starting the weekly note flow failed for {UserId}", userId);
         }
-    }
-
-    // Day rows are derived from the log; when a day has events but no row (the language migration
-    // truncates them), rebuild instead of showing a hole
-    private async Task HealMissingDays(
-        UsersDbContext dbContext, UserId userId, List<DbCoachDay> rows, CancellationToken cancellationToken)
-    {
-        var eventDays = await dbContext.CoachEvents
-            .Where(e => e.UserId == userId.Value && !e.IsRemoved && !e.IsExcluded)
-            .Select(e => e.Day)
-            .Distinct()
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        var rowDays = rows.Select(r => r.Day).ToHashSet();
-        if (eventDays.All(rowDays.Contains))
-            return;
-
-        var now = Clocks.SystemClock.Now;
-        if (_healedAt.TryGetValue(userId, out var at) && now - at < HealRetryDelay)
-            return;
-
-        _healedAt[userId] = now;
-        await Queues.Enqueue(new CoachBackend_RebuildDays(userId), cancellationToken).ConfigureAwait(false);
     }
 
     private async Task RebuildDay(
@@ -429,20 +432,20 @@ public class CoachBackend(IServiceProvider services)
         return rows.Select(r => r.ToModel()).ToList();
     }
 
-    // A row keeps the user's exclusion when the chat side sends it again; a new entry that continues an
-    // excluded conversation joins it
     private async Task<bool> IsExcludedAfter(
         UsersDbContext dbContext, DbCoachEvent? dbEvent, CoachRecord record, CancellationToken cancellationToken)
     {
+        // A row keeps the user's exclusion when the chat side sends it again. A new entry that continues an
+        // excluded conversation joins it, and so does the run that arrives once that conversation went quiet.
         if (dbEvent is { IsRemoved: false })
             return dbEvent.IsExcluded;
-        if (record.Entry is null)
-            return false;
 
+        var isRun = record.Entry is null;
+        var occurredAt = record.OccurredAt.ToDateTimeClamped();
         var previous = await dbContext.CoachEvents
             .Where(e => e.UserId == record.UserId.Value && e.ChatId == record.ChatId.Value)
             .Where(e => e.Kind == CoachRecordKind.Entry && !e.IsRemoved && e.SourceId != record.SourceId)
-            .Where(e => e.OccurredAt < record.OccurredAt.ToDateTimeClamped())
+            .Where(e => e.OccurredAt <= occurredAt)
             .OrderByDescending(e => e.OccurredAt)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -451,7 +454,8 @@ public class CoachBackend(IServiceProvider services)
 
         Moment previousStart = previous.OccurredAt;
         var previousEnd = previousStart + TimeSpan.FromSeconds(previous.ToModel().Entry!.DurationSeconds);
-        return record.OccurredAt - previousEnd <= Settings.Coach.ConversationGap;
+        var tolerance = isRun ? CoachConversationBuilder.RunTolerance : Settings.Coach.ConversationGap;
+        return record.OccurredAt - previousEnd <= tolerance;
     }
 
     // jsonb normalises the stored text, so equality is checked on the models

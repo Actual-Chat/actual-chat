@@ -36,7 +36,8 @@ public sealed partial record CoachConversation(
 // entries and runs count only in a conversation made of nothing else.
 public static class CoachConversationBuilder
 {
-    private static readonly TimeSpan RunTolerance = TimeSpan.FromHours(1);
+    // A run counts for a conversation when it ends within this long of the conversation's entries
+    public static readonly TimeSpan RunTolerance = TimeSpan.FromHours(1);
 
     // isLogCut: the records are only the newest ones, so the oldest run may lack its first
     // entries and is left out (unless it is the only one)
@@ -80,12 +81,15 @@ public static class CoachConversationBuilder
         foreach (var chatGroup in list.Where(r => r.Entry is not null).GroupBy(r => r.ChatId)) {
             var runs = list.Where(r => r.Run is not null && r.ChatId == chatGroup.Key).ToList();
             var group = new List<CoachRecord>();
+            var groupEnd = Moment.MinValue;
             foreach (var record in chatGroup.OrderBy(r => r.OccurredAt).ThenBy(r => r.Entry!.EntryLid)) {
-                if (group.Count > 0 && record.OccurredAt - group.Max(EndOf) > gap) {
+                if (group.Count > 0 && record.OccurredAt - groupEnd > gap) {
                     yield return (group, runs);
                     group = [];
+                    groupEnd = Moment.MinValue;
                 }
                 group.Add(record);
+                groupEnd = Moment.Max(groupEnd, EndOf(record));
             }
             if (group.Count > 0)
                 yield return (group, runs);
@@ -112,7 +116,7 @@ public static class CoachConversationBuilder
         var overlapping = Overlapping(group, runs);
         return group
             .GroupBy(IsoOf)
-            .OrderBy(g => g.Key, StringComparer.Ordinal)
+            .OrderBy(g => g.Key)
             .Select(g => CloseLanguage(g.Key, g.ToList(), overlapping))
             .ToList();
     }
