@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using ActualLab.Resilience;
+using ActualLab.Versioning;
 using CommunityToolkit.HighPerformance;
 
 namespace ActualChat.Users;
@@ -30,6 +32,13 @@ public sealed record InternalUserInfo(
 
 public static class InternalAccounts
 {
+    // ContactGreeter picks a new account up as soon as the sign-in commits and writes to it too.
+    // A retry re-reads via Get, so it helps only once that write's invalidation got here: ~1.5 s in total.
+    private static readonly IRetryPolicy UpdateRetryPolicy =
+        new RetryPolicy(6, RetryDelaySeq.Exp(0.05, 1, multiplier: 2)) {
+            RetryOn = (e, _) => e is VersionMismatchException,
+        };
+
     public static async Task<AccountFull> Create(
         IServiceProvider services,
         InternalUserInfo userInfo,
@@ -65,20 +74,12 @@ public static class InternalAccounts
 
         var account = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         account.Require();
-        if (account.Status != AccountStatus.Active) {
-            account = account with { Status = AccountStatus.Active };
-            var updateCommand = new AccountsBackend_Update(account, account.Version);
-            await commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);
-            account = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-        }
+        if (account.Status != AccountStatus.Active)
+            account = await Update(x => x with { Status = AccountStatus.Active }).ConfigureAwait(false);
         account.Require(isAdmin ? AccountFull.MustBeAdmin : AccountFull.MustBeActive);
 
-        if (userInfo.IsBot && !account.IsBot) {
-            var botUpdate = new AccountsBackend_Update(account with { IsBot = true }, account.Version);
-            await commander.Call(botUpdate, true, cancellationToken).ConfigureAwait(false);
-            account = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-            account.Require();
-        }
+        if (userInfo.IsBot && !account.IsBot)
+            account = await Update(x => x with { IsBot = true }).ConfigureAwait(false);
 
         // Re-creating the avatar on a get-or-create call would orphan the old one and repoint the default
         if (account.Avatar is { Id.IsEmpty: false })
@@ -118,5 +119,15 @@ public static class InternalAccounts
             throw StandardError.Internal("Wrong avatar ID.");
 
         return account;
+
+        Task<AccountFull> Update(Func<AccountFull, AccountFull> updater)
+            => UpdateRetryPolicy.Apply(async ct => {
+                var current = await accountsBackend.Get(userId, ct).ConfigureAwait(false);
+                current.Require();
+                var updateCommand = new AccountsBackend_Update(updater(current), current.Version);
+                await commander.Call(updateCommand, true, ct).ConfigureAwait(false);
+                var updated = await accountsBackend.Get(userId, ct).ConfigureAwait(false);
+                return updated.Require();
+            }, cancellationToken);
     }
 }
