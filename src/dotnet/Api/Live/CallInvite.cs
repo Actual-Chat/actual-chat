@@ -31,4 +31,6 @@ public sealed partial record CallInvite
     public RingAck? Ack { get; init; }
     [DataMember(Order = 7), Key(7)]
     public Moment? AckAt { get; init; }
+    [DataMember(Order = 8), Key(8)]
+    public CallId? CallId { get; init; }
 }

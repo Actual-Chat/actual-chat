@@ -121,7 +121,7 @@ public class ConversationStatsTest(AppHostFixture fixture, ITestOutputHelper @ou
         // shortest path to that; ambient sessions get there via two registered audio streams.
         var liveSessions = services.GetRequiredService<ILiveSessions>();
         await liveSessions.StartCall(session, chat.Id, default, false, "test-caller", default);
-        await liveSessions.AcceptCall(otherSession, chat.Id, "test-callee", default);
+        await liveSessions.AcceptCall(otherSession, chat.Id, "test-callee", null, default);
         return (session, chat, author.Id);
     }
 

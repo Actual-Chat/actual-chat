@@ -183,7 +183,8 @@ export class NotificationUI {
             }
             if (event.data?.type === 'INCOMING_CALL_CANCELLED') {
                 // @ts-expect-error TODO: fix errors
-                await this.backendRef.invokeMethodAsync('OnIncomingCallCancelled', event.data.chatId);
+                await this.backendRef.invokeMethodAsync(
+                    'OnIncomingCallCancelled', event.data.chatId, event.data.callId ?? null);
                 return;
             }
 

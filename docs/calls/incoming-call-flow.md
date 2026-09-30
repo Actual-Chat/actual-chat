@@ -14,6 +14,40 @@ Android ring only nudge a client to re-read that answer - none of them decides a
 
 [[toc]]
 
+## Call identity
+
+Every call has a `CallId`: the chat it is placed in plus a local id no other call to that chat
+shares (`<chatId>:<localId>`). `LiveSessionsBackend.StartCall` issues it, and everything that
+refers to the call carries it - the chat's `LiveSessionState`, its `CallState` and `CallInvite`s,
+each party's `UserCall` claim, the ring notification's id and push tag, and the client's slot. So
+"the same call" and "a later call to the same chat" are never confused:
+
+- a claim is backed only by the session of *its* call, and `ReleaseCall` frees a user only from the
+  call it names, so a late release can't free someone who is in the next call by then;
+- `AcceptCall`, `DeclineCall` and `CancelCall` take the id of the call they are about. If the chat
+  is in another call when the request lands, decline and cancel are dropped and accept is refused;
+- a dismissal push names one call's banner, not "whatever rings in this chat".
+
+The local id is opaque to everything but the server. Today it is the call's start time in
+milliseconds, bumped so two calls never share it: it reads in a log, and sorts.
+
+A `StartCall` into a call that is already connected **joins** it and keeps its id: the people in
+it hold claims naming that id, and a new one would drop them. So does a `StartCall` repeated by
+the caller of a call that is still dialing - an RPC resent after a reconnect. Every other `StartCall` places a new
+call - over an ambient session, or over what is left of a call that was cancelled or went
+unanswered while a recorder kept the session open. A new call starts with no outcome and none of
+the previous call's invites. While another call is still dialing in the chat, `StartCall` fails
+with "There's already a call in this chat".
+
+`ConversationId` is *not* a call id: it names the chat block a connected call leaves, moves at
+the latch, and two unanswered calls to a group chat would share it, since nothing is written
+between them.
+
+A request may still name no call - `callId` is nullable in `AcceptCall`, `DeclineCall` and
+`CancelCall`. That is not a fallback for old builds: a client can act before it has been told the
+id (an answer tapped before the first `GetMyCall` lands), and then it means "whatever call the
+chat is in".
+
 ## Overview
 
 ```mermaid
@@ -50,8 +84,10 @@ ring anyone. The public `LiveSessions.StartCall` then checks that:
   Otherwise the call fails with a constraint error whose text is shown to the caller;
 - an empty invitee list means every other member of the chat.
 
-`LiveSessionsBackend.StartCall` claims the user calls first - before the chat's change lock,
-since each claim is an RPC to that user's shard:
+`LiveSessionsBackend.StartCall` decides the `CallId` - a new one, or the connected call's when it
+joins one - and claims the user calls with it. That happens before the chat's change lock, since
+each claim is an RPC to that user's shard; the lock then re-checks that no other call took the
+chat meanwhile, and the claims are released if one did.
 
 - **the caller's own**, as `Caller/Dialing`. A refused claim fails the call with "You're
   already in a call", however many devices that other call is spread across.
@@ -78,9 +114,9 @@ After the lock is released, it enqueues `NotificationsBackend_NotifyCall`.
 
 1. `OnNotifyCall` resolves the invitees' user ids in one batch, localizes the title and the
    text (voice or video call), and builds a `CallNotification` for each invitee. The id is
-   `IncomingCall` plus the call's conversation id, so there is one notification per call per
-   user. Its push tag is `call-<chatId>`. Each notification is enqueued as a
-   `NotificationsBackend_Notify`.
+   `IncomingCall` plus the `CallId`, so there is one notification per call per user. Its push
+   tag is `call-<callId>`, and the push data carries `callId` next to `chatId`. Each
+   notification is enqueued as a `NotificationsBackend_Notify`.
 2. `OnNotify` → `ApplyHardUpdate` commits the notification to the user's active set, which is
    what `INotifications.ListActive` returns. An open client therefore sees the ring
    reactively even when no push arrives. It also emits `NotificationsBackend_Push` as an
@@ -100,7 +136,8 @@ never downgraded to a silent update.
 **Stopping a ring on devices** goes through `DismissRing`. It enqueues
 `NotificationsBackend_CancelCall` for the given invitees, which dismisses the same
 notification id. The notification leaves the active set, and a dismissal push carrying the
-`call-<chatId>` tag goes to the user's devices.
+`call-<callId>` tag goes to the user's devices. Every client ends only the ring that tag names:
+a dismissal that arrives late finds the next call to the chat ringing, and leaves it alone.
 
 ## How the client learns about the ring
 
@@ -130,13 +167,13 @@ another device, therefore produces nothing.
 ## The user's call, and the client slot
 
 **The user's call** is the server's: `CallsBackend` keeps one record per user, keyed by
-`UserId` so it lives on that user's shard - `ChatId`, `AuthorId`, `Role` (`Caller` / `Callee`),
-`Phase` (`Ringing`, `Dialing`, `Active`), with a two-minute TTL.
+`UserId` so it lives on that user's shard - `CallId`, `ChatId`, `AuthorId`, `Role` (`Caller` /
+`Callee`), `Phase` (`Ringing`, `Dialing`, `Active`), with a two-minute TTL.
 
 The record is a **claim, not the truth**. `GetUserCall` answers with it only while the chat's
-live session still backs it: the invite is `Ringing` for a `Ringing` claim, `CallState` is
-still dialing for a `Dialing` one, and for `Active` the invite is accepted or the user is a
-live member. A claim the session no longer backs is released on the spot, so a crashed client
+live session still backs it: the session is in the claim's call, and the invite is `Ringing` for
+a `Ringing` claim, `CallState` is still dialing for a `Dialing` one, and for `Active` the invite
+is accepted or the user is a live member. A claim the session no longer backs is released on the spot, so a crashed client
 can't stay busy. Two exceptions keep that rule workable:
 
 - a claim younger than `ClaimGrace` (10 s) backs itself, because `StartCall` has to know who
@@ -172,10 +209,20 @@ round trip. `CallUI.Reconcile` decides between the two:
 |---|---|---|
 | nothing | fresh, wants a call | the intent - "no call" is also what a disconnected client reads |
 | nothing | stale or none | empty |
-| this chat | fresh, just left it | empty, until the server catches up |
-| this chat | fresh, already `Active` | keep `Active` - a just-accepted ring must not blink back to ringing |
-| this chat | otherwise | the server's |
-| another chat | any | the server's - it arbitrated, and the local claim lost |
+| the call just left | fresh | what the intent wants - empty, or the call placed since - until the server catches up |
+| another call to the chat just left | fresh, wants nothing | the server's - a call back must not wait the grace out |
+| this call | fresh, already `Active` | keep `Active` - a just-accepted ring must not blink back to ringing |
+| this call | otherwise | the server's |
+| another call, or another chat | any | the server's - it arbitrated, and the local claim lost |
+
+A gesture holds the slot before the server has named the call, so an intent's call has no id until
+`StartCall` returns one or a `GetMyCall` answer brings it; until then it matches any call in its
+chat. "The call just left" is
+told by the id the slot held when it was released - or by chat alone, when it held none.
+
+When the slot goes from one call straight to another in the same chat, the screens drop the first
+call's collapsed and muted state and stop its audio, but don't hang up or leave the screen by
+chat - that would do it to the new call. The over-lock flag stays, for the new call's release.
 
 An intent expires on its own timer (`IntentGrace`, 10 s), because the answer that ignores it
 may never change again.
@@ -253,8 +300,8 @@ keyguard and removes the cover.
 
 On the callee's client, `CallScreensUI.Accept`:
 
-1. Re-verifies the ring through `GetRingingCall`. If it is gone, shows a "Call ended" toast
-   instead of joining.
+1. Takes the `CallId` the answer came with (a notification action or CallKit carries it), or
+   the slot's. The server is the one to refuse an answer to a ring that is gone - see below.
 2. Commits the ring to `Active` in the slot (refusing with "You're already in a call" if
    another chat holds it), then clears the ring's collapsed and muted flags and cancels the
    Android system notification. All of it happens before the RPC, so the call screen doesn't
@@ -271,6 +318,7 @@ On the callee's client, `CallScreensUI.Accept`:
 
 On the server, `AcceptCall`:
 
+- refuses an answer naming a call the chat is no longer in;
 - moves the invitee's user call to `Active` and names the answering client in it, so the
   invitee's other clients stop seeing the call;
 - sets the invite to `Accepted`;
@@ -312,6 +360,7 @@ claimed it, has no release, so `Decline` moves it back itself.
 
 On the server, `DeclineCall`:
 
+- does nothing when it names a call the chat is no longer in;
 - sets the invite to `Declined`;
 - records the `Declined` outcome. Recording is first-writer-wins, see
   [Call entries](./call-entries.md);
@@ -321,7 +370,8 @@ On the server, `DeclineCall`:
 
 ### The caller cancels
 
-`CancelCall` is accepted only while the call is `Dialing` or `Connecting`. It:
+`CancelCall` is accepted only while the call is `Dialing` or `Connecting`, and only for the call
+it names. It:
 
 - sets every ringing invite to `Missed`;
 - removes the caller from the participants;
@@ -388,9 +438,10 @@ A refused answer - past the grace, or after a cancel - shows the "Missed call" t
   read failed".
 - **Only one over-lock ring.** If two rings arrive together on a locked device and the search
   claims the other one, the over-lock screen the first one asked for shows nothing.
-- **iOS has no call-specific path**, neither CallKit nor PushKit. A ring is an ordinary alert
-  with a ringtone, and the in-app ring appears only once the app is open, through
-  `ListActive`.
+- **`ConfirmRing` and the `OnRing` hint name no call.** Both are by chat: the ack is telemetry
+  written onto the chat's current invite, and the hint only makes `GetMyCall` re-read.
+- **The screen flags are by chat.** Over-lock, collapsed and muted are keyed by `ChatId` and
+  cleared when the slot's call changes, which is what keeps them from leaking into the next call.
 - **The web OS notification has no Answer/Decline.** Clicking it just opens the chat.
 - **A ring during a call doesn't ring at all** - on any device, and the caller is told "busy"
   right away. Answering it means hanging up first; holding the current call to take another is

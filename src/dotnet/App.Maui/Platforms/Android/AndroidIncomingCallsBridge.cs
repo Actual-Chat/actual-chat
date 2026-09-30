@@ -14,7 +14,7 @@ public sealed class AndroidIncomingCallsBridge : IIncomingCallsBridge, IDisposab
     public void StopRinging()
         => IncomingCallRinger.Stop();
 
-    public Task<bool> OnCallHandled(ChatId chatId, bool isAccepted)
+    public Task<bool> OnCallHandled(ChatId chatId, CallId? callId, bool isAccepted)
     {
         var tcs = TaskCompletionSourceExt.New<bool>();
         BeginDispatchToMainThread(() => {
@@ -65,8 +65,8 @@ public sealed class AndroidIncomingCallsBridge : IIncomingCallsBridge, IDisposab
             }
         });
 
-    public void DismissCallNotification(ChatId chatId)
-        => IncomingCallNotifications.Dismiss(chatId);
+    public void DismissCallNotification(ChatId chatId, CallId? callId)
+        => IncomingCallNotifications.Dismiss(chatId, callId);
 
     public void Dispose()
         => IncomingCallRinger.Stop();

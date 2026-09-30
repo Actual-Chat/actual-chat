@@ -19,8 +19,9 @@ public class CallActionReceiver : BroadcastReceiver
         if (chatId is null)
             return;
 
-        IncomingCallNotifications.MarkRingHandled(chatId);
-        IncomingCallNotifications.Dismiss(chatId);
+        var callId = IncomingCallNotifications.GetCallId(intent);
+        IncomingCallNotifications.MarkRingHandled(chatId, callId);
+        IncomingCallNotifications.Dismiss(chatId, callId);
         IncomingCallRinger.Stop();
 
         // App alive: decline through the live Blazor scope — the same RPC client (and connection)
@@ -28,7 +29,7 @@ public class CallActionReceiver : BroadcastReceiver
         // resolves from may lack the Fusion client stack, so it can't be relied on while alive.
         if (AppServicesAccessor.TryGetScopedServices(out _)) {
             _ = AppServicesAccessor.DispatchToBlazor(
-                c => c.GetRequiredService<CallScreensUI>().Decline(chatId),
+                c => c.GetRequiredService<CallScreensUI>().Decline(chatId, callId),
                 "CallScreensUI.Decline");
             return;
         }
@@ -44,7 +45,8 @@ public class CallActionReceiver : BroadcastReceiver
                     Log.LogWarning("Decline: no session or ILiveSessions client; chat #{ChatId}", chatId);
                     return;
                 }
-                await liveSessions.DeclineCall(session, chatId, CancellationToken.None).ConfigureAwait(false);
+                await liveSessions.DeclineCall(session, chatId, callId, CancellationToken.None)
+                    .ConfigureAwait(false);
             }
             finally {
                 pendingResult?.Finish();

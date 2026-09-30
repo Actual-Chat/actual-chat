@@ -20,6 +20,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Audio.AudioFrame>();
         CodeKeeper.KeepSerializable<global::ActualChat.AuthorId>();
         CodeKeeper.KeepSerializable<global::ActualChat.AvatarQuery>();
+        CodeKeeper.KeepSerializable<global::ActualChat.CallId>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.AddChatMembersBannerUserSettings>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.Author>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.AuthorDiff>();
@@ -301,6 +302,9 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.AvatarQuery>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.AvatarQuery>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.AvatarQuery>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.CallId>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.CallId>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.CallId>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.AddChatMembersBannerUserSettings>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.AddChatMembersBannerUserSettings>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.AddChatMembersBannerUserSettings>>>>();
@@ -1705,6 +1709,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("ActualChat.Contacts.ContactSubset+ContactSubsetFormatter, ActualChat.Api");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.AliasId, ActualChat.Api]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.AuthorId, ActualChat.Api]], ActualChat.Core");
+        CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.CallId, ActualChat.Api]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.ChatEntryId, ActualChat.Api]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.ChatId, ActualChat.Api]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.ContactId, ActualChat.Api]], ActualChat.Core");
@@ -2203,6 +2208,7 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Audio.AudioFrame), AotTypeKind.Serializable),
             (typeof(global::ActualChat.AuthorId), AotTypeKind.Serializable),
             (typeof(global::ActualChat.AvatarQuery), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.CallId), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.AddChatMembersBannerUserSettings), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.Author), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.AuthorDiff), AotTypeKind.Serializable),

@@ -125,7 +125,7 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
 
         // act
         await Commander.Call(new NotificationsBackend_NotifyCall(
-            ConversationId.New(chatId, 1), callerAuthor.Id, new[] { calleeAuthor.Id }.ToApiArray(), false));
+            CallId.New(chatId, "1"), callerAuthor.Id, new[] { calleeAuthor.Id }.ToApiArray(), false));
 
         // assert
         var expectedText = LanguageStringLocalizer.Get(Language.Parse(expected)).Call_Incoming;
@@ -256,7 +256,7 @@ public class NotificationLocalizationTest(AppHostFixture fixture, ITestOutputHel
 
         // act
         await Commander.Call(new NotificationsBackend_NotifyCall(
-            ConversationId.New(chatId, 1), callerAuthor.Id, calleeAuthorIds.ToApiArray(), false));
+            CallId.New(chatId, "1"), callerAuthor.Id, calleeAuthorIds.ToApiArray(), false));
 
         // assert
         var english = LanguageStringLocalizer.Get(Languages.English);

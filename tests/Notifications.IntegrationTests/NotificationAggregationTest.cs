@@ -185,13 +185,13 @@ public class NotificationAggregationTest(ITestOutputHelper @out) : TestBase(@out
     [Fact]
     public void MergeOfOutOfOrderOlderIndividualNotificationKeepsExisting()
     {
-        var conversationId = ConversationId.New(TestChatId, 5);
+        var callId = CallId.New(TestChatId, "5");
         var caller = AuthorId.New(TestChatId, 1);
         var t0 = Moment.Now;
-        var existing = CallNotification.New(TestUserId, conversationId, caller, hasVideo: false) with {
+        var existing = CallNotification.New(TestUserId, callId, caller, hasVideo: false) with {
             SentAt = t0 + TimeSpan.FromSeconds(10),
         };
-        var late = CallNotification.New(TestUserId, conversationId, caller, hasVideo: false) with { SentAt = t0 };
+        var late = CallNotification.New(TestUserId, callId, caller, hasVideo: false) with { SentAt = t0 };
 
         late.MergeWith(existing).Should().BeSameAs(existing);
     }

@@ -1,8 +1,9 @@
 namespace ActualChat.Notifications;
 
 /// <summary>
-/// An incoming voice/video call ring. The similarity key is the call's <see cref="ConversationId"/>,
-/// so the ring and its later dismissal collapse onto a single banner.
+/// An incoming voice/video call ring. The similarity key is the call's <see cref="CallId"/>,
+/// so the ring and its later dismissal collapse onto a single banner - and a dismissal that
+/// arrives late can't take down the ring of the next call to the same chat.
 /// </summary>
 [DataContract, MessagePackObject]
 [method: SerializationConstructor]
@@ -20,11 +21,16 @@ public sealed partial record CallNotification(NotificationId Id, long Version = 
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public override ChatId ChatId => ConversationId.Parse(SimilarityKey).ChatId;
+    public override ChatId ChatId => CallId.ChatId;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public CallId CallId => CallId.Parse(SimilarityKey);
 
-    public static CallNotification New(UserId userId, ConversationId conversationId, AuthorId caller, bool hasVideo)
-        => new(NotificationId.New(userId, NotificationKind.IncomingCall, conversationId.Value)) {
+    public static CallNotification New(UserId userId, CallId callId, AuthorId caller, bool hasVideo)
+        => new(NewId(userId, callId)) {
             AuthorId = caller,
             HasVideo = hasVideo,
         };
+
+    public static NotificationId NewId(UserId userId, CallId callId)
+        => NotificationId.New(userId, NotificationKind.IncomingCall, callId.Value);
 }

@@ -95,6 +95,8 @@ public class FirebaseMessagingClient(
         };
         if (lastEntryLocalId > 0)
             data.Add(Constants.Notification.MessageDataKeys.LastEntryLocalId, lastEntryLocalId.ToString());
+        if (notification is CallNotification call)
+            data.Add(Constants.Notification.MessageDataKeys.CallId, call.CallId.Value);
         // The whole active set, so a client rendering this banner can close what is no longer
         // active - the one clearing path that needs no background push at all, and so the only one
         // Doze and the standby buckets can't hold. Omitted whole when it doesn't fit its share:

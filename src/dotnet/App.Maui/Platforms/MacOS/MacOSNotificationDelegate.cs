@@ -35,14 +35,14 @@ public sealed class MacOSNotificationDelegate : UNUserNotificationCenterDelegate
         Action completionHandler)
     {
         var content = response.Notification.Request.Content;
-        var callChatId = NotificationExt.TryParseCallTag(content.ThreadIdentifier);
+        var ringCallId = NotificationExt.TryParseCallTag(content.ThreadIdentifier);
         switch (response.ActionIdentifier) {
-        case AcceptCallActionId when callChatId is { } chatId:
+        case AcceptCallActionId when ringCallId is { } callId:
             ShowApp();
-            DispatchToCallScreens(x => x.Accept(chatId), "CallScreensUI.Accept");
+            DispatchToCallScreens(x => x.Accept(callId.ChatId, callId), "CallScreensUI.Accept");
             break;
-        case DeclineCallActionId when callChatId is { } chatId:
-            DispatchToCallScreens(x => x.Decline(chatId), "CallScreensUI.Decline");
+        case DeclineCallActionId when ringCallId is { } callId:
+            DispatchToCallScreens(x => x.Decline(callId.ChatId, callId), "CallScreensUI.Decline");
             break;
         default:
             var link = content.UserInfo[Constants.Notification.MessageDataKeys.Link];

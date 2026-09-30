@@ -117,12 +117,12 @@ public class ApnsClientTest(ITestOutputHelper @out) : TestBase(@out)
             var client = new ApnsClient(
                 settings, new FakeHttpClientFactory(handler), null!, NullLogger<ApnsClient>.Instance);
             var chatId = ChatId.Parse("testchatid1234567890");
-            var conversationId = ConversationId.New(chatId, 42);
+            var callId = CallId.New(chatId, "42");
             var caller = AuthorId.New(chatId, 7);
 
             // act
             var sentDeviceIds = await client.SendCallRing(
-                conversationId, caller, "Alice", true, [new Symbol("aabbccdd")], CancellationToken.None);
+                callId, caller, "Alice", true, [new Symbol("aabbccdd")], CancellationToken.None);
 
             // assert
             sentDeviceIds.Should().BeEquivalentTo([new Symbol("aabbccdd")]);
@@ -134,12 +134,11 @@ public class ApnsClientTest(ITestOutputHelper @out) : TestBase(@out)
             request.Headers.GetValues("authorization").Single().Should().StartWith("bearer ");
             var body = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(handler.Bodies.Single())!;
             body["kind"].GetString().Should().Be("IncomingCall");
-            body["conversationId"].GetString().Should().Be(conversationId.Value);
+            body["callId"].GetString().Should().Be(callId.Value);
             body["chatId"].GetString().Should().Be(chatId.Value);
             body["authorId"].GetString().Should().Be(caller.Value);
             body["callerName"].GetString().Should().Be("Alice");
             body["hasVideo"].GetBoolean().Should().BeTrue();
-            body.Should().NotContainKey("callId");
         }
         finally {
             File.Delete(keyPath);
@@ -167,7 +166,7 @@ public class ApnsClientTest(ITestOutputHelper @out) : TestBase(@out)
 
             // act
             var sentDeviceIds = await client.SendCallRing(
-                ConversationId.New(chatId, 42), AuthorId.New(chatId, 7),
+                CallId.New(chatId, "42"), AuthorId.New(chatId, 7),
                 "Alice", false, [new Symbol("aabbccdd")], CancellationToken.None);
 
             // assert
@@ -190,7 +189,7 @@ public class ApnsClientTest(ITestOutputHelper @out) : TestBase(@out)
 
         // act
         var sentDeviceIds = await client.SendCallRing(
-            ConversationId.New(chatId, 42), AuthorId.New(chatId, 7),
+            CallId.New(chatId, "42"), AuthorId.New(chatId, 7),
             "Alice", false, [new Symbol("x")], CancellationToken.None);
 
         // assert

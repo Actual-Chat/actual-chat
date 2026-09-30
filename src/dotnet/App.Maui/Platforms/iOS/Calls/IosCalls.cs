@@ -47,52 +47,53 @@ public sealed class IosCalls : CXProviderDelegate
         _provider.SetDelegate(this, null);
     }
 
-    public void ReportIncomingCall(
-        ConversationId? conversationId, string callerName, bool hasVideo, Action completion)
+    public void ReportIncomingCall(CallId? callId, string callerName, bool hasVideo, Action completion)
     {
-        var handle = conversationId?.ChatId.Value.NullIfEmpty() ?? callerName.NullIfEmpty() ?? FallbackCallerName;
+        var handle = callId?.ChatId.Value.NullIfEmpty() ?? callerName.NullIfEmpty() ?? FallbackCallerName;
         var update = new CXCallUpdate {
             RemoteHandle = new CXHandle(CXHandleType.Generic, handle),
             LocalizedCallerName = callerName.NullIfEmpty() ?? FallbackCallerName,
             HasVideo = hasVideo,
         };
-        if (conversationId is null) {
+        if (callId is null) {
             ReportUnroutableCall(update, completion);
             return;
         }
 
-        var callId = CallId.For(conversationId);
-        if (!_calls.TryAdd(callId, new Call(conversationId.ChatId, hasVideo))) {
+        var chatId = callId.ChatId;
+        var callUuid = CallUuid.For(callId);
+        if (!_calls.TryAdd(callUuid, new Call(chatId, hasVideo, callId: callId))) {
             // CallKit rejects a second report for a UUID it already holds, and a rejected report
             // is exactly what costs the app its VoIP delivery.
-            DebugLog?.LogInformation("ReportIncomingCall: {ConversationId} is already reported", conversationId);
+            DebugLog?.LogInformation("ReportIncomingCall: {CallId} is already reported", callId);
             completion();
             return;
         }
 
-        _provider.ReportNewIncomingCall(new NSUuid(callId.ToString()), update, error => {
+        _provider.ReportNewIncomingCall(new NSUuid(callUuid.ToString()), update, error => {
             if (error.ToException() is { } exc) {
-                // Untracked again, or ListActiveCallChatIds hands the bridge a phantom ring.
-                _calls.TryRemove(callId, out _);
-                Log.LogError(exc, "Failed to report incoming call {ConversationId}", conversationId);
+                // Untracked again, or ListRings hands the bridge a phantom ring.
+                _calls.TryRemove(callUuid, out _);
+                Log.LogError(exc, "Failed to report incoming call {CallId}", callId);
             }
             completion();
         });
         // The ring itself is CallKit's from here; CallScreensUI still needs to know so its
         // reactive state can end it.
         _ = DispatchToBlazor(c => {
-            c.GetRequiredService<CallScreensUI>().OnRing(conversationId.ChatId);
-            c.GetRequiredService<IosCallsBridge>().WatchRing(conversationId.ChatId);
-            c.GetRequiredService<IosCallIntents>()
-                .Donate(conversationId.ChatId, hasVideo, INInteractionDirection.Incoming);
+            c.GetRequiredService<CallScreensUI>().OnRing(chatId);
+            c.GetRequiredService<IosCallsBridge>().WatchRing(chatId, callId);
+            c.GetRequiredService<IosCallIntents>().Donate(chatId, hasVideo, INInteractionDirection.Incoming);
         }, "ReportIncomingCall");
     }
 
-    public bool AnswerCall(ChatId chatId)
+    // A null callId, in every method that takes one, is "whatever incoming call the chat is in": the
+    // in-app UI acted before the server named the call to it.
+    public bool AnswerCall(ChatId chatId, CallId? callId = null)
     {
-        // The in-app UI answered this chat's call; mirror that into CallKit. Returns whether CallKit
-        // still holds a call for the chat - i.e. whether the caller has to watch for its end.
-        if (!TryGetCall(chatId, false, out var callId, out var call))
+        // The in-app UI answered this call; mirror that into CallKit. Returns whether CallKit
+        // still holds a call for it - i.e. whether the caller has to watch for its end.
+        if (!TryGetCall(chatId, false, out var callUuid, out var call, callId))
             return false;
 
         // Answered before the pending flag is dropped: between the two, EndRingingCalls must
@@ -104,37 +105,38 @@ public sealed class IosCalls : CXProviderDelegate
             return true;
 
         AudioSession.IsCallVideo = call.HasVideo;
-        RequestTransaction(callId, call, new CXAnswerCallAction(new NSUuid(callId.ToString())), LocalAction.Answer);
+        RequestTransaction(
+            callUuid, call, new CXAnswerCallAction(new NSUuid(callUuid.ToString())), LocalAction.Answer);
         return true;
     }
 
-    public void DeclineCall(ChatId chatId)
+    public void DeclineCall(ChatId chatId, CallId? callId)
     {
-        if (!TryGetCall(chatId, false, out var callId, out var call) || call.IsAnswered)
+        if (!TryGetCall(chatId, false, out var callUuid, out var call, callId) || call.IsAnswered)
             return;
 
         // A local decline is the user ending the call, which CallKit takes as a transaction
         // rather than a report.
-        RequestTransaction(callId, call, new CXEndCallAction(new NSUuid(callId.ToString())), LocalAction.End);
+        RequestTransaction(callUuid, call, new CXEndCallAction(new NSUuid(callUuid.ToString())), LocalAction.End);
     }
 
-    public void EndAnsweredCall(ChatId chatId)
+    public void EndAnsweredCall(ChatId chatId, CallId? callId)
     {
         // An answer that never became a call: EndRingingCalls skips answered calls and no end
         // watch was started, so nothing else would ever take this one down.
-        if (!TryGetCall(chatId, false, out var callId, out var call) || !call.IsAnswered)
+        if (!TryGetCall(chatId, false, out var callUuid, out var call, callId) || !call.IsAnswered)
             return;
 
         // A transaction rather than a report, exactly as a decline is; the marker keeps
         // PerformEndCallAction from dispatching a hang-up back into a join that already failed.
-        RequestTransaction(callId, call, new CXEndCallAction(new NSUuid(callId.ToString())), LocalAction.End);
+        RequestTransaction(callUuid, call, new CXEndCallAction(new NSUuid(callUuid.ToString())), LocalAction.End);
     }
 
-    public void MarkRingHandledLocally(ChatId chatId)
+    public void MarkRingHandledLocally(ChatId chatId, CallId? callId)
     {
         // The ring bookkeeping says only "this ring is over", never whether it was accepted - the
         // verdict follows in OnCallHandled. Holds EndRingingCalls off until it arrives.
-        if (TryGetCall(chatId, false, out _, out var call))
+        if (TryGetCall(chatId, false, out _, out var call, callId))
             call.MarkVerdictPending();
     }
 
@@ -148,13 +150,14 @@ public sealed class IosCalls : CXProviderDelegate
         }
     }
 
-    public void EndRingingCall(ChatId chatId)
+    public void EndRingingCall(ChatId chatId, CallId? callId)
     {
         // Ringing only: the server dismisses the ring for the accept too, and ending an answered
-        // call here would take the live CallKit call down seconds after the user answered.
-        foreach (var (callId, call) in _calls) {
-            if (call.ChatId == chatId && IsRinging(call))
-                EndCall(callId, CXCallEndedReason.RemoteEnded);
+        // call here would take the live CallKit call down seconds after the user answered. And this
+        // call's ring only: a dismissal can outlive its call and find the next one to the chat ringing.
+        foreach (var (callUuid, call) in _calls) {
+            if (call.IsCall(chatId, callId) && IsRinging(call))
+                EndCall(callUuid, CXCallEndedReason.RemoteEnded);
         }
     }
 
@@ -164,29 +167,29 @@ public sealed class IosCalls : CXProviderDelegate
     public void FailCall(ChatId chatId)
         => EndCalls(chatId, CXCallEndedReason.Failed);
 
-    public void StartOutgoingCall(ChatId chatId, bool hasVideo)
+    public void StartOutgoingCall(ChatId chatId, CallId? callId, bool hasVideo)
     {
-        // Outgoing calls are keyed by a random id rather than CallId.For: the conversation this call
-        // creates doesn't exist yet, and CallKit needs the UUID now. Synchronous, so nothing can report
-        // a status for a call this map doesn't hold yet; the callee's name follows in SetOutgoingCallName.
+        // Keyed like an incoming call, by the id the server gave it; a random one only when it gave
+        // none. Synchronous, so nothing can report a status for a call this map doesn't hold yet; the
+        // callee's name follows in SetOutgoingCallName.
         if (TryGetCall(chatId, true, out _, out _)) {
             DebugLog?.LogInformation("StartOutgoingCall: #{ChatId} is already dialing", chatId);
             return;
         }
 
-        var callId = Guid.NewGuid();
-        var call = new Call(chatId, hasVideo, true);
-        _calls[callId] = call;
+        var callUuid = callId is null ? Guid.NewGuid() : CallUuid.For(callId);
+        var call = new Call(chatId, hasVideo, true, callId);
+        _calls[callUuid] = call;
         var handle = new CXHandle(CXHandleType.Generic, chatId.Value);
-        var action = new CXStartCallAction(new NSUuid(callId.ToString()), handle) {
+        var action = new CXStartCallAction(new NSUuid(callUuid.ToString()), handle) {
             Video = hasVideo,
             ContactIdentifier = FallbackCallerName,
         };
         // No local-action marker: PerformStartCallAction is never the user pressing anything, so
         // there is nothing for it to dispatch back into the app.
-        RequestTransaction(callId, call, action, LocalAction.None);
+        RequestTransaction(callUuid, call, action, LocalAction.None);
         _ = BackgroundTask.Run(
-            () => EndStaleOutgoingCall(callId),
+            () => EndStaleOutgoingCall(callUuid),
             Log, $"Outgoing call backstop failed for chat #{chatId}");
     }
 
@@ -256,12 +259,12 @@ public sealed class IosCalls : CXProviderDelegate
         _ = DispatchToBlazor(c => StartVideoLocally(c, chatId), "ContinueCall");
     }
 
-    public ChatId[] ListActiveCallChatIds()
+    public (ChatId ChatId, CallId? CallId)[] ListRings()
         // Rings only: a replaced scope's bridge re-watches these, and a call the user already
         // answered is not a ring.
         => _calls.Values
             .Where(x => !x.IsOutgoing && !x.IsAnswered)
-            .Select(x => x.ChatId)
+            .Select(x => (x.ChatId, x.CallId))
             .Distinct()
             .ToArray();
 
@@ -306,7 +309,7 @@ public sealed class IosCalls : CXProviderDelegate
             return;
 
         _ = DispatchToBlazor(
-            c => c.GetRequiredService<CallScreensUI>().Accept(call.ChatId),
+            c => c.GetRequiredService<CallScreensUI>().Accept(call.ChatId, call.CallId),
             "PerformAnswerCallAction");
     }
 
@@ -330,9 +333,8 @@ public sealed class IosCalls : CXProviderDelegate
         if (isHandledLocally)
             return;
 
-        var chatId = call.ChatId;
         var isDialingOut = call.IsOutgoing && !isAnswered;
-        _ = DispatchToBlazor(c => EndCallLocally(c, chatId, isAnswered, isDialingOut), "PerformEndCallAction");
+        _ = DispatchToBlazor(c => EndCallLocally(c, call, isAnswered, isDialingOut), "PerformEndCallAction");
     }
 
     public override void PerformStartCallAction(CXProvider provider, CXStartCallAction action)
@@ -402,14 +404,14 @@ public sealed class IosCalls : CXProviderDelegate
         }
     }
 
-    private static Task EndCallLocally(IServiceProvider services, ChatId chatId, bool isAnswered, bool isDialingOut)
+    private static Task EndCallLocally(IServiceProvider services, Call call, bool isAnswered, bool isDialingOut)
     {
         // Decline rejects a ring. HangUp covers the rest, telling the caller taking back a call
         // nobody picked up yet - a cancel - from a hang-up by what the call slot holds.
         var callScreensUI = services.GetRequiredService<CallScreensUI>();
         return isAnswered || isDialingOut
-            ? callScreensUI.HangUp(chatId)
-            : callScreensUI.Decline(chatId);
+            ? callScreensUI.HangUp(call.ChatId)
+            : callScreensUI.Decline(call.ChatId, call.CallId);
     }
 
     private static Task SetMutedLocally(IServiceProvider services, ChatId chatId, bool isMuted)
@@ -468,16 +470,21 @@ public sealed class IosCalls : CXProviderDelegate
         AudioSession.IsCallVideo = false;
     }
 
-    private bool TryGetCall(ChatId chatId, bool isOutgoing, out Guid callId, [NotNullWhen(true)] out Call? call)
+    private bool TryGetCall(
+        ChatId chatId,
+        bool isOutgoing,
+        out Guid callUuid,
+        [NotNullWhen(true)] out Call? call,
+        CallId? callId = null)
     {
         foreach (var (key, value) in _calls) {
-            if (value.ChatId == chatId && value.IsOutgoing == isOutgoing) {
-                (callId, call) = (key, value);
+            if (value.IsCall(chatId, callId) && value.IsOutgoing == isOutgoing) {
+                (callUuid, call) = (key, value);
                 return true;
             }
         }
 
-        (callId, call) = (default, null);
+        (callUuid, call) = (default, null);
         return false;
     }
 
@@ -510,17 +517,22 @@ public sealed class IosCalls : CXProviderDelegate
         End,
     }
 
-    private sealed class Call(ChatId chatId, bool hasVideo, bool isOutgoing = false)
+    private sealed class Call(ChatId chatId, bool hasVideo, bool isOutgoing = false, CallId? callId = null)
     {
         private int _isAnswered;
         private int _isVerdictPending;
         private int _localAction;
 
         public ChatId ChatId { get; } = chatId;
+        // Null only for an outgoing call the server placed none for.
+        public CallId? CallId { get; } = callId;
         public bool HasVideo { get; } = hasVideo;
         public bool IsOutgoing { get; } = isOutgoing;
         public bool IsAnswered => Volatile.Read(ref _isAnswered) != 0;
         public bool IsVerdictPending => Volatile.Read(ref _isVerdictPending) != 0;
+
+        public bool IsCall(ChatId chatId, CallId? callId)
+            => ChatId == chatId && (CallId is null || callId is null || CallId == callId);
 
         public void MarkAnswered()
             => Volatile.Write(ref _isAnswered, 1);

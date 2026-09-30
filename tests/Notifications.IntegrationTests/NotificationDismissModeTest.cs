@@ -138,8 +138,8 @@ public sealed class NotificationDismissModeTest(AppHostFixture fixture, ITestOut
     {
         // arrange
         var alice = await Tester.SignInAsAlice();
-        var conversationId = ConversationId.New(TestChatId, 1);
-        var stale = CallNotification.New(alice.Id, conversationId, AuthorId.New(TestChatId, 1), false) with {
+        var callId = CallId.New(TestChatId, "1");
+        var stale = CallNotification.New(alice.Id, callId, AuthorId.New(TestChatId, 1), false) with {
             Title = "Call",
             Text = "Incoming call",
             SentAt = Moment.Now - Constants.Call.RingTimeout - TimeSpan.FromMinutes(1),
@@ -170,7 +170,8 @@ public sealed class NotificationDismissModeTest(AppHostFixture fixture, ITestOut
         Notification reaction = ReactionNotification.New(userId, entryId) with { SentAt = sentAt };
         Notification attention = AttentionNotification.New(userId, entryId) with { SentAt = sentAt };
         Notification thread = ThreadNotification.New(userId, entryId) with { SentAt = sentAt };
-        Notification call = CallNotification.New(userId, conversationId, default, false) with { SentAt = sentAt };
+        var callId = CallId.New(TestChatId, "1");
+        Notification call = CallNotification.New(userId, callId, default, false) with { SentAt = sentAt };
         Notification invitation = InvitationNotification.New(userId, TestChatId) with { SentAt = sentAt };
 
         // assert
@@ -218,7 +219,7 @@ public sealed class NotificationDismissModeTest(AppHostFixture fixture, ITestOut
             AttentionNotification.New(userId, entryId),
             ReactionNotification.New(userId, entryId),
             ConversationNotification.New(userId, conversationId, 2),
-            CallNotification.New(userId, conversationId, default, false),
+            CallNotification.New(userId, CallId.Parse(conversationId.Value), default, false),
             InvitationNotification.New(userId, TestChatId),
         ];
 

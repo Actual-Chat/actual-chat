@@ -24,10 +24,11 @@ public static class IncomingCallNotifications
     private static readonly TimeSpan RingTimeout = Constants.Call.RingTimeout;
     private static ILogger? _log;
 
-    // The chat whose ring the user has already answered or declined. A full-screen intent
-    // dispatches with whenRendered: true, and on a cold start the render is seconds away - so one
-    // queued before the answer runs after it and puts the ring screen back over a settled call.
-    private static ChatId? _handledRingChatId;
+    // The ring the user has already answered or declined - its call id, or its chat id when the push
+    // named none. A full-screen intent dispatches with whenRendered: true, and on a cold start the
+    // render is seconds away - so one queued before the answer runs after it and puts the ring
+    // screen back over a settled call.
+    private static string? _handledRing;
 
     private static Context Context => Application.Context;
     private static IStringLocalizer L => AppStrings.L;
@@ -37,10 +38,13 @@ public static class IncomingCallNotifications
     public static string DeclineAction => Context.PackageName + ".IncomingCall.Decline";
     public static string AcceptExtraKey => Context.PackageName + ".IncomingCall.Accept";
     public static string ChatIdExtraKey => Context.PackageName + ".IncomingCall.ChatId";
+    public static string CallIdExtraKey => Context.PackageName + ".IncomingCall.CallId";
     public static string FullScreenExtraKey => Context.PackageName + ".IncomingCall.FullScreen";
 
-    public static string CallTag(ChatId chatId)
-        => Constants.Notification.CallTagPrefix + chatId.Value;
+    public static string CallTag(ChatId chatId, CallId? callId)
+        => callId is not null
+            ? NotificationExt.GetCallTag(callId)
+            : Constants.Notification.CallTagPrefix + chatId.Value;
 
     // The single ring melody, shared by the notification channel (background/killed) and the
     // in-app looping ringer (foreground) so both play the same sound: the system default ringtone.
@@ -54,13 +58,15 @@ public static class IncomingCallNotifications
             return;
         }
 
-        var tag = data.Tag ?? CallTag(chatId);
+        var callId = data.CallId;
+        var tag = data.Tag ?? CallTag(chatId, callId);
         var link = data.Link ?? (string)Links.Chat(chatId);
-        Show(chatId, tag, link, data.Title, data.ImageUrl, timeout);
+        Show(chatId, callId, tag, link, data.Title, data.ImageUrl, timeout);
     }
 
     public static void Show(
         ChatId chatId,
+        CallId? callId,
         string tag,
         string link,
         string? title,
@@ -69,18 +75,18 @@ public static class IncomingCallNotifications
     {
         EnsureChannelExists();
         // A fresh ring is a call of its own: whatever the user did to the last one in this chat
-        // must not silence its screen.
-        if (Volatile.Read(ref _handledRingChatId) == chatId)
-            Volatile.Write(ref _handledRingChatId, null);
+        // must not silence its screen. A ring that names its call can't be mistaken for the last one.
+        if (callId is null && Volatile.Read(ref _handledRing) == chatId.Value)
+            Volatile.Write(ref _handledRing, null);
 
         var contentIntent = NotificationHelper.CreateViewIntent(Context, link)!;
-        contentIntent.PutExtra(ChatIdExtraKey, chatId.Value);
+        PutCall(contentIntent);
         var contentPendingIntent = PendingIntent.GetActivity(Context,
             NotificationHelper.RequestCodeProvider.IncrementAndGet(),
             contentIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
         var acceptIntent = NotificationHelper.CreateViewIntent(Context, link)!;
-        acceptIntent.PutExtra(ChatIdExtraKey, chatId.Value);
+        PutCall(acceptIntent);
         acceptIntent.PutExtra(AcceptExtraKey, true);
         var acceptPendingIntent = PendingIntent.GetActivity(Context,
             NotificationHelper.RequestCodeProvider.IncrementAndGet(),
@@ -88,7 +94,7 @@ public static class IncomingCallNotifications
 
         var declineIntent = new Intent(Context, typeof(CallActionReceiver));
         declineIntent.SetAction(DeclineAction);
-        declineIntent.PutExtra(ChatIdExtraKey, chatId.Value);
+        PutCall(declineIntent);
         var declinePendingIntent = PendingIntent.GetBroadcast(Context,
             NotificationHelper.RequestCodeProvider.IncrementAndGet(),
             declineIntent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
@@ -97,7 +103,7 @@ public static class IncomingCallNotifications
         // app there (FullScreenExtraKey makes MainActivity show over the keyguard); on an unlocked
         // screen it degrades to a heads-up banner.
         var fullScreenIntent = NotificationHelper.CreateViewIntent(Context, link)!;
-        fullScreenIntent.PutExtra(ChatIdExtraKey, chatId.Value);
+        PutCall(fullScreenIntent);
         fullScreenIntent.PutExtra(FullScreenExtraKey, true);
         var fullScreenPendingIntent = PendingIntent.GetActivity(Context,
             NotificationHelper.RequestCodeProvider.IncrementAndGet(),
@@ -134,15 +140,37 @@ public static class IncomingCallNotifications
             .SetStyle(callStyle)!;
         NotificationHelper.MarkAsPushBanner(builder, tag);
         NotificationManagerCompat.From(Context)!.Notify(tag, 0, builder.Build());
+        return;
+
+        void PutCall(Intent intent) {
+            intent.PutExtra(ChatIdExtraKey, chatId.Value);
+            if (callId is not null)
+                intent.PutExtra(CallIdExtraKey, callId.Value);
+        }
     }
 
-    public static void Dismiss(ChatId chatId)
-        => NotificationManagerCompat.From(Context)!.Cancel(CallTag(chatId), 0);
+    public static void Dismiss(ChatId chatId, CallId? callId)
+    {
+        var notificationManager = NotificationManagerCompat.From(Context)!;
+        if (callId is not null) {
+            notificationManager.Cancel(CallTag(chatId, callId), 0);
+            return;
+        }
 
-    public static void MarkRingHandled(ChatId chatId)
+        // The ring was handled before anything named its call: whatever rings in this chat goes.
+        foreach (var tag in ListActiveCallTags()) {
+            if (NotificationExt.TryParseCallTag(tag)?.ChatId == chatId)
+                notificationManager.Cancel(tag, 0);
+        }
+    }
+
+    public static void MarkRingHandled(ChatId chatId, CallId? callId)
         // Call before dispatching the answer or the decline, not after: a full-screen intent
         // already waiting for the render has to find the ring spoken for by the time it runs.
-        => Volatile.Write(ref _handledRingChatId, chatId);
+        => Volatile.Write(ref _handledRing, callId?.Value ?? chatId.Value);
+
+    public static CallId? GetCallId(Intent intent)
+        => CallId.TryParse(intent.GetStringExtra(CallIdExtraKey), allowNull: true);
 
     public static void HandleViewIntent(Intent intent)
     {
@@ -150,15 +178,16 @@ public static class IncomingCallNotifications
         if (chatId is null)
             return;
 
+        var callId = GetCallId(intent);
         if (intent.GetBooleanExtra(AcceptExtraKey, false)) {
-            MarkRingHandled(chatId);
-            Dismiss(chatId);
+            MarkRingHandled(chatId, callId);
+            Dismiss(chatId, callId);
             // Blazor starting up sees the call already Active and would never stop a ring it didn't start.
             IncomingCallRinger.Stop();
             // Accept re-verifies the ring against LiveSessionUI.Get once Blazor is up —
             // a stale tap yields a "Call ended" toast, not a phantom join.
             _ = AppServicesAccessor.DispatchToBlazor(
-                c => c.GetRequiredService<CallScreensUI>().Accept(chatId),
+                c => c.GetRequiredService<CallScreensUI>().Accept(chatId, callId),
                 "CallScreensUI.Accept", whenRendered: true);
             return;
         }
@@ -182,7 +211,7 @@ public static class IncomingCallNotifications
             chatId, overLockScreen);
         _ = AppServicesAccessor.DispatchToBlazor(
             c => {
-                if (Volatile.Read(ref _handledRingChatId) == chatId) {
+                if (Volatile.Read(ref _handledRing) == (callId?.Value ?? chatId.Value)) {
                     DebugLog?.LogInformation(
                         "CALL_TRACE: dropping a stale OnRing #{ChatId} - the ring is already handled", chatId);
                     return;
@@ -193,7 +222,7 @@ public static class IncomingCallNotifications
             "CallScreensUI.OnRing", whenRendered: true);
     }
 
-    public static ChatId[] ListActiveCallChatIds()
+    public static string[] ListActiveCallTags()
     {
         var notificationManager = NotificationManagerCompat.From(Context)!;
         var active = notificationManager.ActiveNotifications;
@@ -201,9 +230,9 @@ public static class IncomingCallNotifications
             return [];
 
         return active
-            .Select(n => NotificationExt.TryParseCallTag(n.Tag))
-            .Where(chatId => chatId is not null)
-            .Select(chatId => chatId!)
+            .Select(n => n.Tag)
+            .Where(tag => NotificationExt.IsCallTag(tag))
+            .Select(tag => tag!)
             .ToArray();
     }
 

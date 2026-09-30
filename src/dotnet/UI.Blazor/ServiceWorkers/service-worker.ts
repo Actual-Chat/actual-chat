@@ -148,15 +148,18 @@ onBackgroundMessage(messaging, async payload => {
         // clears at once over the same channel that delivered the ring, instead of waiting on the
         // reactive live-session self-heal. Mirrors Android's ClearForegroundCallRings.
         const callTagPrefix = 'call-'; // Must match Constants.Notification.CallTagPrefix (no AppConstants in a SW)
-        const cancelledCallChatIds = tags
+        // The tag names the call as '<chatId>:<localId>', so a tab can tell a dismissal that outlived
+        // its call from one for the ring it shows.
+        const cancelledCalls = tags
             .filter(tag => tag.startsWith(callTagPrefix))
             .map(tag => tag.substring(callTagPrefix.length))
-            .filter(chatId => chatId.length > 0);
-        if (cancelledCallChatIds.length > 0) {
+            .filter(callId => callId.indexOf(':') > 0)
+            .map(callId => ({ chatId: callId.substring(0, callId.indexOf(':')), callId }));
+        if (cancelledCalls.length > 0) {
             const windowClients = await sw.clients.matchAll({ type: 'window' });
             for (const client of windowClients)
-                for (const chatId of cancelledCallChatIds)
-                    client.postMessage({ type: 'INCOMING_CALL_CANCELLED', chatId });
+                for (const { chatId, callId } of cancelledCalls)
+                    client.postMessage({ type: 'INCOMING_CALL_CANCELLED', chatId, callId });
         }
         return;
     }

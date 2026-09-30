@@ -74,7 +74,7 @@ public class ApnsClient(
     }
 
     public async Task<IReadOnlySet<Symbol>> SendCallRing(
-        ConversationId conversationId,
+        CallId callId,
         AuthorId caller,
         string callerName,
         bool hasVideo,
@@ -96,8 +96,8 @@ public class ApnsClient(
         var payload = JsonSerializer.Serialize(new Dictionary<string, object> {
             { "aps", new Dictionary<string, object>() },
             { Constants.Notification.MessageDataKeys.Kind, NotificationKind.IncomingCall.ToString() },
-            { Constants.Notification.MessageDataKeys.ConversationId, conversationId.Value },
-            { Constants.Notification.MessageDataKeys.ChatId, conversationId.ChatId.Value },
+            { Constants.Notification.MessageDataKeys.CallId, callId.Value },
+            { Constants.Notification.MessageDataKeys.ChatId, callId.ChatId.Value },
             { Constants.Notification.MessageDataKeys.AuthorId, caller.Value },
             { Constants.Notification.MessageDataKeys.CallerName, callerName },
             { Constants.Notification.MessageDataKeys.HasVideo, hasVideo },

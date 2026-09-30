@@ -103,13 +103,13 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
     // timeout) routed through the service worker clears the in-app ring without waiting on the
     // reactive live-session self-heal.
     [JSInvokable]
-    public void OnIncomingCallCancelled(string sChatId)
+    public void OnIncomingCallCancelled(string sChatId, string? sCallId)
     {
         var chatId = ChatId.TryParse(sChatId, allowNull: true);
         if (chatId is null)
             return;
 
-        CallScreensUI.OnCallDismissed(chatId);
+        CallScreensUI.OnCallDismissed(chatId, CallId.TryParse(sCallId, allowNull: true));
     }
 
     public void SetIsGranted(bool? isGranted)

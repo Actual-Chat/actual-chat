@@ -29,7 +29,7 @@ public class CallRingPushTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // act
         await Commander.Call(new NotificationsBackend_NotifyCall(
-            ConversationId.New(chatId, 1), bobAuthor.Id, [aliceAuthor.Id], false));
+            CallId.New(chatId, "1"), bobAuthor.Id, [aliceAuthor.Id], false));
 
         // assert
         await WaitFor(() => ApnsSink.CallRings.Any(r => r.DeviceIds.Contains(voipDeviceId)), RingTimeout);
@@ -37,7 +37,7 @@ public class CallRingPushTest(AppHostFixture fixture, ITestOutputHelper @out)
             .ContainSingle(r => r.DeviceIds.Contains(voipDeviceId)).Subject;
         ring.Caller.Should().Be(bobAuthor.Id);
         ring.CallerName.Should().Be($"{bobAuthor.Avatar.Name} @ Call ring - voip");
-        ring.ConversationId.ChatId.Should().Be(chatId);
+        ring.CallId.ChatId.Should().Be(chatId);
         ring.HasVideo.Should().BeFalse();
 
         await Task.Delay(NoPushDelay);
@@ -60,7 +60,7 @@ public class CallRingPushTest(AppHostFixture fixture, ITestOutputHelper @out)
         try {
             // act
             await Commander.Call(new NotificationsBackend_NotifyCall(
-                ConversationId.New(chatId, 1), bobAuthor.Id, [aliceAuthor.Id], false));
+                CallId.New(chatId, "1"), bobAuthor.Id, [aliceAuthor.Id], false));
 
             // assert
             await WaitFor(
@@ -88,7 +88,7 @@ public class CallRingPushTest(AppHostFixture fixture, ITestOutputHelper @out)
         try {
             // act
             await Commander.Call(new NotificationsBackend_NotifyCall(
-                ConversationId.New(chatId, 1), bobAuthor.Id, [aliceAuthor.Id], false));
+                CallId.New(chatId, "1"), bobAuthor.Id, [aliceAuthor.Id], false));
 
             // assert
             await WaitFor(
@@ -117,7 +117,7 @@ public class CallRingPushTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // act
         await Commander.Call(new NotificationsBackend_NotifyCall(
-            ConversationId.New(chatId, 1), bobAuthor.Id, [aliceAuthor.Id], false));
+            CallId.New(chatId, "1"), bobAuthor.Id, [aliceAuthor.Id], false));
 
         // assert
         await WaitFor(() => ApnsSink.CallRings.Any(r => r.DeviceIds.Contains(voipDeviceId)), RingTimeout);

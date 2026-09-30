@@ -602,6 +602,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ContactKind` (enum) - Specifies the type of contact (user, group, place).
 - `ContactSubset` (enum) - Specifies which subset of contacts to query.
 - `ConversationId` (struct) - Unique identifier for a conversation segment.
+- `CallId` - Identifies one call: its chat plus a local id no other call to that chat shares.
 - `ExplicitNotificationId` (struct) - Unique identifier for an explicit notification.
 - `ExplicitNotificationKind` (enum) - Specifies the type of explicit notification.
 - `ExternalContactId` (class) - Plain string identifier for an external contact; routes with its owner.
