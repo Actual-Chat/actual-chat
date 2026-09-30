@@ -21,17 +21,17 @@
                         }
                         var shortcut = sec.Shortcuts[s];
                         if (shortcut.Caption != null) {
-                            <CardItem>
-                                <Title>@shortcut.Description</Title>
+                            <TileItem>
+                                <Content>@shortcut.Description</Content>
                                 <Caption>@shortcut.Caption</Caption>
                                 <Right>@RenderKeys(shortcut)</Right>
-                            </CardItem>
+                            </TileItem>
                         }
                         else {
-                            <CardItem>
-                                <Title>@shortcut.Description</Title>
+                            <TileItem>
+                                <Content>@shortcut.Description</Content>
                                 <Right>@RenderKeys(shortcut)</Right>
-                            </CardItem>
+                            </TileItem>
                         }
                     }
                 </Card>

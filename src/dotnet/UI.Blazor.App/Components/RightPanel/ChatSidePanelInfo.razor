@@ -5,48 +5,28 @@
         return;
 }
 
-@{
-    var summarizeClick = m.IsOwner
-        ? EventCallback.Factory.Create(this, () => OnSummarizeToggleChanged(!m.IsSummarized))
-        : default;
-    var pttClick = m.IsOwner
-        ? EventCallback.Factory.Create(this, () => OnPttToggleChanged(!m.IsPttEnabled))
-        : default;
-}
 <div class="c-chat-info">
     @if (m.ShowSummarizationToggle || m.ShowPttToggle) {
         <Card>
             @if (m.ShowSummarizationToggle) {
                 var iconCls = m.IsSummarized ? "text-primary" : "text-03";
-                <CardItem Click="@summarizeClick">
-                    <Left>
-                        <i class="text-2xl icon-ai-stars @iconCls"></i>
-                    </Left>
-                    <Title>@L.RightPanel_Summarize</Title>
+                <TileItem ToggleValue="@m.IsSummarized"
+                          ToggleValueChanged="@OnSummarizeToggleChanged"
+                          ToggleDisabled="@(!m.IsOwner)">
+                    <Icon><i class="text-xl icon-ai-stars @iconCls"></i></Icon>
+                    <Content>@L.RightPanel_Summarize</Content>
                     <Caption>@GetStateCaption(m.IsSummarized, m.IsOwner)</Caption>
-                    <Right>
-                        <Toggle
-                            IsDisabled="@(!m.IsOwner)"
-                            IsChecked="@m.IsSummarized"
-                            IsCheckedChanged="@OnSummarizeToggleChanged"/>
-                    </Right>
-                </CardItem>
+                </TileItem>
             }
             @if (m.ShowPttToggle) {
                 var pttIconCls = m.IsPttEnabled ? "text-primary" : "text-03";
-                <CardItem Click="@pttClick">
-                    <Left>
-                        <i class="text-2xl icon-push-to-talk @pttIconCls"></i>
-                    </Left>
-                    <Title>@L.VoiceSettings_Ptt</Title>
+                <TileItem ToggleValue="@m.IsPttEnabled"
+                          ToggleValueChanged="@OnPttToggleChanged"
+                          ToggleDisabled="@(!m.IsOwner)">
+                    <Icon><i class="text-xl icon-push-to-talk @pttIconCls"></i></Icon>
+                    <Content>@L.VoiceSettings_Ptt</Content>
                     <Caption>@GetStateCaption(m.IsPttEnabled, m.IsOwner)</Caption>
-                    <Right>
-                        <Toggle
-                            IsDisabled="@(!m.IsOwner)"
-                            IsChecked="@m.IsPttEnabled"
-                            IsCheckedChanged="@OnPttToggleChanged"/>
-                    </Right>
-                </CardItem>
+                </TileItem>
             }
         </Card>
     }

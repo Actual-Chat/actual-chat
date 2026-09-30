@@ -81,40 +81,31 @@
 
 <TileTopic Topic="@L.Transcription_WhatYouHearTopic"/>
 <Tile>
-    <TileItem Click="@OnToggleSpokenText">
+    <TileItem ToggleValue="@(!m.Languages.IsSpokenTextDisabled)"
+              ToggleValueChanged="@(_ => OnToggleSpokenText())">
         <Icon><i class="icon-volume-up-2 text-2xl"></i></Icon>
         <Content>@L.Transcription_SpokenText</Content>
         <Caption>@L.Transcription_SpokenTextCaption</Caption>
-        <Right>
-            <Toggle IsChecked="@(!m.Languages.IsSpokenTextDisabled)"
-                    IsCheckedChanged="@(_ => OnToggleSpokenText())"/>
-        </Right>
     </TileItem>
-    <TileItem Click="@OnToggleTranslatedVoice">
+    <TileItem ToggleValue="@m.Languages.IsTranslatedVoiceEnabled"
+              ToggleValueChanged="@(_ => OnToggleTranslatedVoice())">
         <Icon><i class="icon-translation text-2xl"></i></Icon>
         <Content>@L.Transcription_TranslatedVoice</Content>
         <Caption>@L.Transcription_TranslatedVoiceCaption</Caption>
-        <Right>
-            <Toggle IsChecked="@m.Languages.IsTranslatedVoiceEnabled"
-                    IsCheckedChanged="@(_ => OnToggleTranslatedVoice())"/>
-        </Right>
     </TileItem>
 </Tile>
 
 <TileTopic Topic="@L.Transcription_HowOthersHearYouTopic"/>
 <Tile>
     @if (m.OwnVoice is { } ownVoice) {
-        <TileItem Click="@OnToggleOwnVoice">
+        <TileItem ToggleValue="@m.IsOwnVoiceEnabled"
+                  ToggleValueChanged="@(_ => OnToggleOwnVoice())">
             <Icon><i class="icon-voice-01 text-2xl"></i></Icon>
             <Content>@L.Transcription_OwnVoice</Content>
             <Caption>
                 @L.Transcription_OwnVoiceCaption
                 <div class="own-voice-status">@FormatOwnVoiceStatus(m, ownVoice)</div>
             </Caption>
-            <Right>
-                <Toggle IsChecked="@m.IsOwnVoiceEnabled"
-                        IsCheckedChanged="@(_ => OnToggleOwnVoice())"/>
-            </Right>
         </TileItem>
         @if (m.IsOwnVoiceEnabled) {
             @if (m.NotesChatId is { } notesChatId) {
@@ -156,13 +147,11 @@
 @if (hasSensors && m.EnableIncompleteUI) {
     <TileTopic Topic="@L.Transcription_MicrophoneTopic"/>
     <Tile>
-        <TileItem Click="@OnToggleFaceDownStop">
+        <TileItem ToggleValue="@m.IsFaceDownMicStopEnabled"
+                  ToggleValueChanged="@(_ => OnToggleFaceDownStop())">
             <Icon><i class="icon-mic-off text-2xl"></i></Icon>
             <Content>@L.Transcription_FaceDownStop</Content>
             <Caption>@L.Transcription_FaceDownStopCaption</Caption>
-            <Right>
-                <Toggle IsChecked="@m.IsFaceDownMicStopEnabled" IsCheckedChanged="@(_ => OnToggleFaceDownStop())"/>
-            </Right>
         </TileItem>
     </Tile>
 }

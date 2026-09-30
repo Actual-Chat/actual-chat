@@ -53,14 +53,14 @@ body.narrow .edit-settings-modal.narrow-view__modal__position-stretch:has(.chat-
     @apply h-16;
     @apply px-4;
 }
-.edit-settings-modal .form-block.with-input-radio .tile-item .tile-item-icon {
+.edit-settings-modal .form-block.with-input-radio .tile-item .ti-left {
     @apply min-w-8;
 }
-.edit-settings-modal .form-block.with-input-radio .tile-item .tile-item-body-content label,
-.edit-settings-modal .form-block.with-input-radio .tile-item .tile-item-body-caption * {
+.edit-settings-modal .form-block.with-input-radio .tile-item .ti-title label,
+.edit-settings-modal .form-block.with-input-radio .tile-item .ti-caption * {
     @apply text-01;
 }
-.edit-settings-modal .form-block.with-input-radio .tile-item .tile-item-body-caption * {
+.edit-settings-modal .form-block.with-input-radio .tile-item .ti-caption * {
     @apply font-normal;
 }
 .chat-settings-container .tile-item {
@@ -74,7 +74,7 @@ body.hoverable .chat-settings-container .tile-item:hover {
 .edit-settings-modal .form-block.with-input-radio .field-chat-alias-id.tile-item {
     @apply pr-2;
 }
-.field-chat-alias-id .tile-item-right {
+.field-chat-alias-id .ti-right {
     @apply hidden;
 }
 .field-chat-alias-id section {
@@ -96,30 +96,30 @@ body.hoverable .chat-settings-container .tile-item:hover {
     @apply h-6;
 }
 
-.tile-item.field-chat-alias-id .tile-item-icon,
-.tile-item.field-chat-alias-id .tile-item-right {
+.tile-item.field-chat-alias-id .ti-left,
+.tile-item.field-chat-alias-id .ti-right {
     @apply my-auto;
 }
 
-.form .field-allow-guest .tile-item-body-caption {
+.form .field-allow-guest .ti-caption {
     @apply text-danger;
 }
 
-.edit-settings-modal .tile-item-icon i {
+.edit-settings-modal .ti-left i {
     @apply text-2xl;
 }
 
-.chat-type-tile-item .tile-item-right {
+.chat-type-tile-item .ti-right {
     @apply text-body-500 text-primary;
 }
 
 /* Edit members page */
 
-.tile-item.item-manage-members .tile-item-right {
+.tile-item.item-manage-members .ti-right {
     @apply min-w-8 justify-end;
     @apply text-03;
 }
-.tile-item.item-manage-members .tile-item-right i {
+.tile-item.item-manage-members .ti-right i {
     @apply -mr-2;
 }
 /* This variant carries a two-line caption, so it grows past the row's fixed h-12 instead of clipping
@@ -139,14 +139,14 @@ body.hoverable .chat-settings-container .tile-item:hover {
 
 /* Integrations row, page (chat) and tab (place) */
 
-.tile-item.item-integrations .tile-item-right {
+.tile-item.item-integrations .ti-right {
     @apply min-w-8 justify-end;
     @apply text-03;
 }
-.tile-item.item-integrations .tile-item-right .c-count {
+.tile-item.item-integrations .ti-right .c-count {
     @apply whitespace-nowrap;
 }
-.tile-item.item-integrations .tile-item-right i {
+.tile-item.item-integrations .ti-right i {
     @apply -mr-2;
 }
 

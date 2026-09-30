@@ -16,8 +16,8 @@
 .block-user-form-block .tile {
     @apply mt-4;
 }
-/* Re-center the icon: the form resets .tile-item-icon to justify-start, but this action
+/* Re-center the icon: the form resets .ti-left to justify-start, but this action
    tile should match the author modal (icon centered in its box). */
-.form .block-user-form-block .tile-item-icon {
+.form .block-user-form-block .ti-left {
     @apply justify-center;
 }

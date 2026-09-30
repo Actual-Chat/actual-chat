@@ -1,36 +1,44 @@
 @namespace ActualChat.UI.Blazor.Components
 
 @{
+    var hasToggle = ToggleValue is not null;
+    var toggleClickable = hasToggle && !ToggleDisabled;
+    var isClickable = Click.HasDelegate || toggleClickable;
     var unselectedCls = IsHoverable ? "" : "unselected";
-    var isClickable = Click.HasDelegate;
     var extraClass = isClickable ? " clickable" : "";
     var bodyClass = Icon == null
         ? "ml-2"
         : "";
-    var hasRight = Right != null;
+    var hasRight = Right != null || hasToggle;
 }
 <div class="tile-item @unselectedCls @extraClass @(hasRight ? "" : "no-right") group @Class"
      tabindex="@(isClickable ? 0 : (int?)null)"
      role="@(isClickable ? Role : null)"
      @attributes="@_resolvedAdditionalAttributes">
     @if (Icon != null) {
-        <div class="tile-item-icon @(IsIconCentered ? "icon-centered" : "")">
+        <div class="ti-left @(IsIconCentered ? "icon-centered" : "")">
             @Icon
         </div>
     }
-    <div class="tile-item-body @bodyClass">
-        <div class="tile-item-body-content">
+    <div class="ti-center @bodyClass">
+        <div class="ti-title">
             @Content
         </div>
         @if (Caption != null) {
-            <div class="tile-item-body-caption">
+            <div class="ti-caption">
                 @Caption
             </div>
         }
     </div>
     @if (hasRight) {
-        <div class="tile-item-right">
-            @Right
+        <div class="ti-right">
+            @if (Right != null) {
+                @Right
+            } else if (ToggleValue is { } toggleValue) {
+                <Toggle IsChecked="@toggleValue"
+                        IsDisabled="@ToggleDisabled"
+                        IsCheckedChanged="@ToggleValueChanged"/>
+            }
         </div>
     }
 </div>
@@ -47,13 +55,21 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback Click { get; set; }
     [Parameter] public string Role { get; set; } = "button";
+    // Set ToggleValue to make the row a toggle: it renders the Toggle in the right slot and a click
+    // anywhere on the row flips it, so callers no longer wire Click and the Toggle to the same handler.
+    [Parameter] public bool? ToggleValue { get; set; }
+    [Parameter] public EventCallback<bool> ToggleValueChanged { get; set; }
+    [Parameter] public bool ToggleDisabled { get; set; }
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     protected override void OnParametersSet() {
+        var rootClick = ToggleValue is { } value && !ToggleDisabled
+            ? EventCallback.Factory.Create(this, () => ToggleValueChanged.InvokeAsync(!value))
+            : Click;
         _resolvedAdditionalAttributes = AttributeMapBuilder
             .From(AdditionalAttributes)
-            .OnClick(this, Click)
+            .OnClick(this, rootClick)
             .Map;
     }
 }

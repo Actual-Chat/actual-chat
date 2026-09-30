@@ -8,6 +8,6 @@
 .new-place-modal .tile-item {
     @apply hover:bg-inherit;
 }
-.new-place-modal .tile-item-icon i {
+.new-place-modal .ti-left i {
     @apply text-2xl;
 }

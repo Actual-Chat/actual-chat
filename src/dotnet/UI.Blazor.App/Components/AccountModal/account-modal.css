@@ -69,7 +69,7 @@
     @apply absolute top-2 right-4 z-10;
 }
 
-.author-modal .header-tile-item .tile-item-body-content {
+.author-modal .header-tile-item .ti-title {
     @apply max-h-8;
     @apply text-title-500 text-02;
 }
@@ -79,14 +79,14 @@
 .author-modal .tile {
     @apply bg-modal;
 }
-.author-modal .tile-item-body-content {
+.author-modal .ti-title {
     @apply max-h-6;
     @apply text-01;
 }
 .author-modal .first-tile-item {
     @apply gap-x-4;
 }
-.author-modal .first-tile-item .tile-item-icon {
+.author-modal .first-tile-item .ti-left {
     @apply max-w-fit;
 }
 body.hoverable .author-modal .tile,
@@ -101,7 +101,7 @@ body.hoverable .author-modal .tile:hover,
 .author-modal .anonymous-bio * {
     @apply text-danger;
 }
-.author-modal .anonymous-bio .tile-item-body-content {
+.author-modal .anonymous-bio .ti-title {
     @apply max-h-max;
     @apply whitespace-normal;
 }
@@ -117,17 +117,17 @@ body.hoverable .author-modal .tile:hover,
 .author-modal .tile-promote-to-owner {
     @apply h-auto;
 }
-.author-modal .tile-promote-to-owner .tile-item-body {
+.author-modal .tile-promote-to-owner .ti-center {
     @apply max-h-none;
 }
-.author-modal .tile-promote-to-owner .tile-item-body-content {
+.author-modal .tile-promote-to-owner .ti-title {
     @apply max-h-max;
     @apply whitespace-normal;
     @apply text-02;
 }
 
-.author-modal .tile-remove-from-group .tile-item-icon,
-.author-modal .tile-remove-from-group .tile-item-body-content {
+.author-modal .tile-remove-from-group .ti-left,
+.author-modal .tile-remove-from-group .ti-title {
     @apply text-danger;
 }
 body.hoverable .author-modal .tile-remove-from-group:hover {
@@ -145,7 +145,7 @@ body.hoverable .author-modal .tile-remove-from-group:hover {
 .tile-item.anonymous-chat-toggle {
     @apply min-h-10 h-auto;
 }
-.tile-item.anonymous-chat-toggle .tile-item-body {
+.tile-item.anonymous-chat-toggle .ti-center {
     @apply max-h-none;
 }
 .tile-item.anonymous-chat-toggle.tile-selected,
