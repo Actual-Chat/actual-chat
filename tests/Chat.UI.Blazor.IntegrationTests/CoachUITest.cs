@@ -1,3 +1,5 @@
+using System.Threading.Channels;
+using ActualChat.Chat.Coach;
 using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Testing.Host;
@@ -35,7 +37,17 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         }
     }
 
-    private Task<TestAppHost> NewCoachHost(string name)
+    private sealed class FakeTranscriptSource : ICoachTranscriptSource
+    {
+        private readonly Channel<string> _texts = Channel.CreateUnbounded<string>();
+
+        public Task<IAsyncEnumerable<string>?> Open(string streamId, CancellationToken cancellationToken)
+            => Task.FromResult<IAsyncEnumerable<string>?>(_texts.Reader.ReadAllAsync(cancellationToken));
+
+        public void Say(string text) => _texts.Writer.TryWrite(text);
+    }
+
+    private Task<TestAppHost> NewCoachHost(string name, ICoachTranscriptSource? source = null)
     {
         var coach = $"{nameof(ChatSettings)}:{nameof(ChatSettings.Coach)}";
         var users = $"{nameof(UsersSettings)}:{nameof(UsersSettings.Coach)}";
@@ -49,6 +61,8 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
                 ($"{nameof(ChatSettings)}:{nameof(ChatSettings.UseFakeLanguageDetection)}", "true")),
             ConfigureServices = (_, services) => {
                 services.Replace(ServiceDescriptor.Singleton<ISpeechTagger>(new FakeTagger()));
+                if (source is not null)
+                    services.Replace(ServiceDescriptor.Singleton(source));
                 // Components rendered through BlazorTester call JS from OnAfterRender; the server's
                 // remote runtime refuses that, a loose bUnit one answers with defaults
                 services.Replace(ServiceDescriptor.Scoped<IJSRuntime>(
@@ -75,6 +89,38 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
     private static Task OptIn(BlazorTester tester)
         => tester.ScopedAppServices.AppUIHub().UserSettingsUI.UserCoachSettings()
             .Set(new UserCoachSettings { IsCoachingEnabled = true });
+
+    [Fact(Timeout = 60_000)]
+    public async Task FindLiveMarksShouldAddTheTaggersMarksToTheWordListWhileTheEntryIsStillStreaming()
+    {
+        // arrange
+        var source = new FakeTranscriptSource();
+        var appHost = await NewCoachHost("coach-ui-live", source);
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        var hub = tester.ScopedAppServices.AppUIHub();
+        await OptIn(tester);
+        var streaming = await tester.CreateStreamingEntry(chatId, Language.Parse("en-US"));
+        var entryId = streaming.ChatEntrySlim.Id;
+        var spoken = "So, um, I went to the store and it was really awesome, you know, and the people were kind. "
+            + "Then we walked home and talked about the plan for next week, which is going to be busy. "
+            + "After that we cooked dinner together and watched a film about the sea.";
+
+        // act: the speaker has finished the sentences above and has begun another
+        source.Say(spoken + " So");
+        var marks = await TestWait.When(async ct => {
+            var found = await hub.CoachUI.FindLiveMarks(entryId, spoken + " So", ct);
+            found.Select(s => s.Word).Should().Contain("awesome");
+            return found;
+        }, TimeSpan.FromSeconds(30));
+
+        // assert: the word list marked "um" at once, the tagger's mark came in while the entry still streams
+        marks.Select(s => s.Word).Should().Contain(["um", "awesome"]);
+        marks.Should().OnlyContain(s => (spoken + " So").Substring(s.Start, s.Length).ToLowerInvariant() == s.Word);
+    }
 
     [Fact(Timeout = 60_000)]
     public async Task GetOwnMarksShouldReturnSpansOnlyForOwnEntriesWhenCoachingIsOn()

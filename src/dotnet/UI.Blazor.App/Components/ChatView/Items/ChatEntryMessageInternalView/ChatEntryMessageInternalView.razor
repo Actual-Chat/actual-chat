@@ -307,7 +307,7 @@
                 .IsChatLanguageSelected(entry.ChatId, cancellationToken)
                 .ConfigureAwait(false);
             var liveMarks = isOwnMessage
-                ? await Hub.CoachUI.FindLiveMarks(entry.ChatId, streamingState.Text, cancellationToken).ConfigureAwait(false)
+                ? await Hub.CoachUI.FindLiveMarks(textEntryId, streamingState.Text, cancellationToken).ConfigureAwait(false)
                 : ApiArray<SpeechSpan>.Empty;
             return new(markup, entry, translationState, streamingState, isUnreadByOthers, isUnreadByOthersBlockStart) {
                 IsChatLanguageSelected = isChatLanguageSelected,

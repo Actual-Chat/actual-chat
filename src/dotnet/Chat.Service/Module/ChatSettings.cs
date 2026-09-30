@@ -93,6 +93,13 @@ public class CoachSettings
     public bool IsChunkedTaggingEnabled { get; set; } = true;
     // Marks filled pauses from the per-language word list at once, before the tagger answers
     public bool IsInstantMarkingEnabled { get; set; } = true;
+    // Tags the sentences of a voice entry that are already finished while the speaker is still talking,
+    // so their marks appear before the entry settles. It calls the tagger during speech; switch it off to
+    // tag only settled entries.
+    public bool IsLiveTaggingEnabled { get; set; } = true;
+    public int MaxLiveTagChunksPerEntry { get; set; } = 12;
+    // How long the settled entry waits for a live tagging that is still finishing its last sentences
+    public TimeSpan LiveTaggingResultWait { get; set; } = TimeSpan.FromSeconds(20);
     public int TagChunkMinWords { get; set; } = 40;
     public int TagChunkMaxWords { get; set; } = 80;
     public int TagChunkContextWords { get; set; } = 40;

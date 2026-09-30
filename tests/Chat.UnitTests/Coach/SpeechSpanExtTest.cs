@@ -129,4 +129,23 @@ public class SpeechSpanExtTest
         // assert
         kinds![2]!.Synonyms.Should().Equal("excellent");
     }
+
+    [Fact]
+    public void AddNonOverlappingShouldKeepTheFirstListWholeAndDropTouchingSpans()
+    {
+        // arrange
+        var model = ApiArray.New(new SpeechSpan(SpeechSpanKind.Filler, "you know", 10, 8, ApiArray<string>.Empty));
+        var list = new[] {
+            new SpeechSpan(SpeechSpanKind.FilledPause, "um", 2, 2, ApiArray<string>.Empty),
+            new SpeechSpan(SpeechSpanKind.FilledPause, "know", 14, 4, ApiArray<string>.Empty),
+            new SpeechSpan(SpeechSpanKind.FilledPause, "uh", 30, 2, ApiArray<string>.Empty),
+        };
+
+        // act
+        var merged = model.AddNonOverlapping(list);
+
+        // assert
+        merged.Select(s => s.Word).Should().Equal("um", "you know", "uh");
+    }
 }
+

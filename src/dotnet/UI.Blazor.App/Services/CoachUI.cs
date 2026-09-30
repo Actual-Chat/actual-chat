@@ -78,9 +78,12 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
         return CoachScope.IsInScope(chatId, chatSettings, placeSettings, coachSettings);
     }
 
-    // A live transcript is marked with the word list only: what needs the model waits for the settled entry
-    public async Task<ApiArray<SpeechSpan>> FindLiveMarks(ChatId chatId, string text, CancellationToken cancellationToken)
+    // The marks of a transcript that is still being spoken: the word list at once, and the tagger's marks of the
+    // sentences it has finished, found again in the text by word and occurrence
+    public async Task<ApiArray<SpeechSpan>> FindLiveMarks(
+        ChatEntryId entryId, string text, CancellationToken cancellationToken)
     {
+        var chatId = entryId.ChatId;
         if (text.IsNullOrEmpty()
             || !await IsMarkingEnabled(cancellationToken).ConfigureAwait(false)
             || await IsChatCoached(chatId, cancellationToken).ConfigureAwait(false) != true)
@@ -88,10 +91,19 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
 
         var language = await Hub.LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
         var settings = await UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
-        return settings.LevelOf(language.Value) == CoachLanguageLevel.Off
-            ? ApiArray<SpeechSpan>.Empty
-            : SpeechLexicon.Default.FindSpans(text, language);
+        if (settings.LevelOf(language.Value) == CoachLanguageLevel.Off)
+            return ApiArray<SpeechSpan>.Empty;
+
+        var instant = SpeechLexicon.Default.FindSpans(text, language);
+        var live = await GetOwnLiveMarks(entryId, cancellationToken).ConfigureAwait(false);
+        return live.Count == 0
+            ? instant
+            : CoachLiveMarks.Locate(text, live, SpeechTextStats.IsWordSplittable(language)).AddNonOverlapping(instant);
     }
+
+    [ComputeMethod]
+    public virtual Task<ApiArray<CoachLiveMark>> GetOwnLiveMarks(ChatEntryId entryId, CancellationToken cancellationToken)
+        => ChatCoach.GetOwnLiveMarks(Session, entryId.ChatId, entryId.LocalId, cancellationToken);
 
     [ComputeMethod]
     public virtual async Task<bool> IsMarkingEnabled(CancellationToken cancellationToken)

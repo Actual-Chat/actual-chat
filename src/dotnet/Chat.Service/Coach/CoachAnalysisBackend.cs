@@ -15,7 +15,7 @@ namespace ActualChat.Chat.Coach;
 /// quiet, their turn-taking in it; every row write emits the matching event to the user shard.
 /// The LLM is always called outside the operation transaction, which only re-checks and stores.
 /// </summary>
-public class CoachAnalysisBackend(IServiceProvider services)
+public partial class CoachAnalysisBackend(IServiceProvider services)
     : DbServiceBase<ChatDbContext>(services), ICoachAnalysisBackend
 {
     // A run is scanned in windows this many lids wide, at most MaxScanLids back from the anchor
@@ -383,7 +383,7 @@ public class CoachAnalysisBackend(IServiceProvider services)
         if (analysis.TagState == CoachTagState.Tagged && analysis.PromptVersion >= Settings.Coach.PromptVersion)
             return analysis;
 
-        var result = await TagText(text, analysis.Language, cancellationToken).ConfigureAwait(false);
+        var result = await TagText(analysis.Id, text, analysis.Language, cancellationToken).ConfigureAwait(false);
         if (result is null)
             return analysis;
 
@@ -406,8 +406,12 @@ public class CoachAnalysisBackend(IServiceProvider services)
 
     // A long text goes to the tagger in chunks, in parallel: the answer is as late as the slowest chunk,
     // not as the whole text. One failed chunk fails the lot, so a row is never half tagged.
-    private async Task<SpeechTagResult?> TagText(string text, Language? language, CancellationToken cancellationToken)
+    private async Task<SpeechTagResult?> TagText(
+        ChatEntryId entryId, string text, Language? language, CancellationToken cancellationToken)
     {
+        if (await TryGetLiveResult(entryId, text, cancellationToken).ConfigureAwait(false) is { } live)
+            return live;
+
         var coach = Settings.Coach;
         var chunks = coach.IsChunkedTaggingEnabled
             ? SpeechChunker.Split(
@@ -449,9 +453,7 @@ public class CoachAnalysisBackend(IServiceProvider services)
         if (!Settings.Coach.IsInstantMarkingEnabled)
             return spans;
 
-        var instant = SpeechLexicon.Default.FindSpans(text, language)
-            .Where(i => !spans.Any(s => s.Start < i.Start + i.Length && i.Start < s.Start + s.Length));
-        return spans.Concat(instant).OrderBy(s => s.Start).ToApiArray();
+        return spans.AddNonOverlapping(SpeechLexicon.Default.FindSpans(text, language));
     }
 
     // An own voice entry the tagger has not marked yet shows the marks the word list finds in it

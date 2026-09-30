@@ -395,6 +395,8 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `ISpeechTagger`, `SpeechTagger` — LLM tagging of fillers, weak words and profanity in a transcript, JSON-schema output re-located in the text by `SpanLocator`
 - `SpeechChunker` — cuts a transcript into sentence-aligned chunks with the previous sentence as context, so the tagger can run on them in parallel
 - `SpeechLexicon` — per-language word patterns (SpeechLexicon.json, shared with the client) that mark filled pauses without the LLM
+- `SpeechLiveTagger` — tags a transcript sentence group by sentence group while it is still being spoken; `CoachLiveMark`/`CoachLiveMarks` carry its marks to the client by word and occurrence
+- `ICoachTranscriptSource` — the live text of a voice entry, a seam over the audio pipeline; `ChatEntryStreamingStartedEvent` announces an entry that has begun to stream
 - `IChatImageDescriber` — describes a chat as the subject of a picture
 - `IEmbeddingsCalculator` — text embeddings
 - `IEntryGroupExtractor`, `EntryGroupBuilder` — group entries for ML

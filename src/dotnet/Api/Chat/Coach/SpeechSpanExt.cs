@@ -2,6 +2,13 @@ namespace ActualChat.Chat;
 
 public static class SpeechSpanExt
 {
+    // The spans of the first list stay whole; a span of the second one that touches any of them is dropped
+    public static ApiArray<SpeechSpan> AddNonOverlapping(this ApiArray<SpeechSpan> spans, IEnumerable<SpeechSpan> extra)
+        => spans
+            .Concat(extra.Where(e => !spans.Any(s => s.Start < e.Start + e.Length && e.Start < s.Start + s.Length)))
+            .OrderBy(s => s.Start)
+            .ToApiArray();
+
     // One slot per markup word holding the span that touches it (its kind, word and synonyms), null
     // where none does; null overall when nothing maps. The words carry trailing whitespace, so a span
     // start inside a word's TextRange is that word, and a phrase ("you know") covers every word its

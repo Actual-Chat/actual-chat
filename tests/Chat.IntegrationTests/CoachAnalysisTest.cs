@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using System.Threading.Channels;
+using ActualChat.Chat.Coach;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
@@ -40,8 +42,25 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         }
     }
 
+    private sealed class FakeTranscriptSource : ICoachTranscriptSource
+    {
+        private readonly ConcurrentDictionary<string, Channel<string>> _channels = new();
+
+        public Task<IAsyncEnumerable<string>?> Open(string streamId, CancellationToken cancellationToken)
+            => Task.FromResult<IAsyncEnumerable<string>?>(ChannelOf(streamId).Reader.ReadAllAsync(cancellationToken));
+
+        public void Say(string streamId, string text) => ChannelOf(streamId).Writer.TryWrite(text);
+        public void End(string streamId) => ChannelOf(streamId).Writer.TryComplete();
+
+        private Channel<string> ChannelOf(string streamId)
+            => _channels.GetOrAdd(streamId, _ => Channel.CreateUnbounded<string>());
+    }
+
     private async Task<(TestAppHost AppHost, FakeTagger Tagger)> NewCoachHost(
-        string name, FakeTagger? tagger = null, params (string Key, string Value)[] coachSettings)
+        string name,
+        FakeTagger? tagger = null,
+        FakeTranscriptSource? source = null,
+        params (string Key, string Value)[] coachSettings)
     {
         tagger ??= new FakeTagger();
         var coach = $"{nameof(ChatSettings)}:{nameof(ChatSettings.Coach)}";
@@ -55,7 +74,11 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
                     ($"{nameof(ChatSettings)}:{nameof(ChatSettings.IsTranslationEnabled)}", "true"),
                     ($"{nameof(ChatSettings)}:{nameof(ChatSettings.UseFakeLanguageDetection)}", "true"),
                 }.Concat(coachSettings.Select(x => ($"{coach}:{x.Key}", (string?)x.Value))).ToArray()),
-            ConfigureServices = (_, services) => services.Replace(ServiceDescriptor.Singleton<ISpeechTagger>(tagger)),
+            ConfigureServices = (_, services) => {
+                services.Replace(ServiceDescriptor.Singleton<ISpeechTagger>(tagger));
+                if (source is not null)
+                    services.Replace(ServiceDescriptor.Singleton<ICoachTranscriptSource>(source));
+            },
         });
         return (appHost, tagger);
     }
@@ -473,7 +496,7 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
     {
         // arrange
         var (appHost, tagger) = await NewCoachHost(
-            "coach-chunks-off", null, (nameof(CoachSettings.IsChunkedTaggingEnabled), "false"));
+            "coach-chunks-off", null, null, (nameof(CoachSettings.IsChunkedTaggingEnabled), "false"));
         await using var _ = appHost;
         await using var tester = appHost.NewBlazorTester(Out);
         var account = await tester.SignInAsUniqueBob();
@@ -525,7 +548,7 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         // arrange
         var gate = new TaskCompletionSource();
         var (appHost, tagger) = await NewCoachHost(
-            "coach-instant-off", new FakeTagger { Gate = gate.Task }, (nameof(CoachSettings.IsInstantMarkingEnabled), "false"));
+            "coach-instant-off", new FakeTagger { Gate = gate.Task }, null, (nameof(CoachSettings.IsInstantMarkingEnabled), "false"));
         await using var _ = appHost;
         await using var tester = appHost.NewBlazorTester(Out);
         var account = await tester.SignInAsUniqueBob();
@@ -545,4 +568,109 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var late = await WhenMarks(backend, entry, m => m.Count == 1);
         late[0].Spans.Should().HaveCount(3);
     }
+
+    private static string LiveSentences(int from, int to)
+        => string.Join(" ", Enumerable.Range(from, to - from + 1).Select(n =>
+            $"So, um, this is sentence number {n} and it goes on for a while longer than usual."));
+
+    private static Task<ApiArray<CoachLiveMark>> WhenLiveMarks(
+        ICoachAnalysisBackend backend, ChatEntry entry, int count)
+        => TestWait.When(async ct => {
+            var marks = await backend.ListLiveMarks(entry.ChatId, entry.AuthorId, entry.LocalId, ct);
+            marks.Count.Should().BeGreaterThanOrEqualTo(count);
+            return marks;
+        }, TimeSpan.FromSeconds(30));
+
+    [Fact]
+    public async Task LiveTaggingShouldMarkFinishedSentencesBeforeTheEntryIsFinalizedAndTheFinalAnalysisShouldReuseIt()
+    {
+        // arrange
+        var source = new FakeTranscriptSource();
+        var (appHost, tagger) = await NewCoachHost("coach-live", null, source);
+        await using var _ = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(appHost, account);
+        var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
+        var streaming = await tester.CreateStreamingEntry(chatId, Language.Parse("en-US"));
+        var entry = streaming.ChatEntrySlim;
+        var streamId = entry.ContentStreamId;
+
+        // act: the first three sentences have settled, the speaker is still talking
+        source.Say(streamId, LiveSentences(1, 3) + " So");
+        var early = await WhenLiveMarks(backend, entry, 1);
+
+        // assert: marks exist while the entry is still streaming, and nothing was analysed as an entry yet
+        early.Should().ContainSingle().Which.Word.Should().Be("um");
+        (await backend.Get(entry.Id, default)).Should().BeNull();
+        tagger.Calls.Should().Be(1);
+        tagger.Requests[0].Context.Should().BeNull();
+
+        // act: three more sentences, then the end of the speech
+        source.Say(streamId, LiveSentences(1, 6) + " So");
+        await WhenLiveMarks(backend, entry, 2);
+        var finalText = LiveSentences(1, 6) + " So it ends.";
+        source.Say(streamId, finalText);
+        source.End(streamId);
+        await TestWait.WhenPolled(() => tagger.Calls.Should().Be(3), TimeSpan.FromSeconds(30));
+        await tester.FinalizeStreamingEntry(streaming, finalText);
+
+        // assert: the settled entry is tagged from the live result, without another pass
+        var analysis = await WhenTagged(backend, entry.Id);
+        tagger.Calls.Should().Be(3, "two settled chunks and the tail, and no whole-entry pass");
+        tagger.Requests[1].Context.Should().Be(
+            "So, um, this is sentence number 3 and it goes on for a while longer than usual.");
+        analysis.FilledPauses.Should().Be(6, "the tagger's first um per chunk plus the word list for the rest");
+    }
+
+    [Fact]
+    public async Task LiveTaggingShouldFallBackToAFullPassWhenTheSettledTextDiffers()
+    {
+        // arrange
+        var source = new FakeTranscriptSource();
+        var (appHost, tagger) = await NewCoachHost("coach-live-refined", null, source);
+        await using var _ = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(appHost, account);
+        var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
+        var streaming = await tester.CreateStreamingEntry(chatId, Language.Parse("en-US"));
+        var streamId = streaming.ChatEntrySlim.ContentStreamId;
+        var realtime = LiveSentences(1, 3) + " So it ends.";
+        source.Say(streamId, realtime);
+        source.End(streamId);
+        await TestWait.WhenPolled(() => tagger.Calls.Should().Be(1), TimeSpan.FromSeconds(30));
+
+        // act: re-transcription rewrote the words
+        await tester.FinalizeStreamingEntry(streaming, realtime.Replace("usual", "usual indeed"));
+
+        // assert
+        await WhenTagged(backend, streaming.ChatEntrySlim.Id);
+        tagger.Calls.Should().Be(2, "a text that differs from the live one is tagged again");
+    }
+
+    [Fact]
+    public async Task LiveTaggingSwitchedOffShouldWaitForTheFinalizedEntry()
+    {
+        // arrange
+        var source = new FakeTranscriptSource();
+        var (appHost, tagger) = await NewCoachHost(
+            "coach-live-off", null, source, (nameof(CoachSettings.IsLiveTaggingEnabled), "false"));
+        await using var _ = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(appHost, account);
+        var streaming = await tester.CreateStreamingEntry(chatId, Language.Parse("en-US"));
+
+        // act
+        source.Say(streaming.ChatEntrySlim.ContentStreamId, LiveSentences(1, 4) + " So");
+        await Task.Delay(700);
+
+        // assert
+        tagger.Calls.Should().Be(0);
+    }
 }
+
