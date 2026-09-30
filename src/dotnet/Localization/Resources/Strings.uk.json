@@ -2075,8 +2075,8 @@
   "Coach_Learning": "та, що вивчається",
   "Coach_TalkTime": "Час мовлення",
   "Coach_TalkOthers": "Інші",
-  "Coach_CoachInPlace": "Тренер у цьому місці",
+  "Coach_CoachInPlace": "Коуч у цьому місці",
   "Coach_OffByPlace": "Вимк., місце вимкнено",
-  "Coach_WhereHint": "Тренер слухає всюди, крім того, що ви вимкнете.",
+  "Coach_WhereHint": "Коуч слухає всюди, крім того, що ви вимкнете.",
   "Coach_NothingToCompare": "Поки немає попереднього тижня для порівняння"
 }

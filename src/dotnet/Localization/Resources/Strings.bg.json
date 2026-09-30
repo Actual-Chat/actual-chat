@@ -2075,8 +2075,8 @@
   "Coach_Learning": "учене",
   "Coach_TalkTime": "Време за говорене",
   "Coach_TalkOthers": "Другите",
-  "Coach_CoachInPlace": "Треньор в това място",
+  "Coach_CoachInPlace": "Коуч в това място",
   "Coach_OffByPlace": "Изкл., мястото е изключено",
-  "Coach_WhereHint": "Треньорът следи навсякъде, освен там, където го изключите.",
+  "Coach_WhereHint": "Коучът следи навсякъде, освен там, където го изключите.",
   "Coach_NothingToCompare": "Още няма предишна седмица за сравнение"
 }
