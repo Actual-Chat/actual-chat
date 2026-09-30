@@ -13,10 +13,6 @@
   </ItemGroup>
   
   <ItemGroup>
-    <EmbeddedResource Include="SpeechLexicon.json" LogicalName="SpeechLexicon.json" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Microsoft.SemanticKernel" />
     <PackageReference Include="Microsoft.SemanticKernel.Agents.Abstractions" />
     <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" />

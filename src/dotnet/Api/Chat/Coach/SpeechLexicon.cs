@@ -1,11 +1,12 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace ActualChat.Chat.ML;
+namespace ActualChat.Chat;
 
 /// <summary>
 /// Words that can be marked without asking the LLM, per language: every entry of SpeechLexicon.json is a
-/// pattern that must match a whole word, or a stretch of text for scripts without word spaces.
+/// pattern that must match a whole word, or a stretch of text for scripts without word spaces. Shared with
+/// the client, which marks a live transcript with it while the words are still arriving.
 /// </summary>
 public sealed class SpeechLexicon
 {
@@ -14,7 +15,7 @@ public sealed class SpeechLexicon
     private static readonly TimeSpan MatchTimeout = TimeSpan.FromMilliseconds(100);
     private static readonly Regex TokenRegex = new(
         @"[\p{L}\p{M}\p{Nd}]+(?:[-'’][\p{L}\p{M}\p{Nd}]+)*",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant,
+        RegexOptions.CultureInvariant,
         MatchTimeout);
 
     private readonly Dictionary<string, LanguageLexicon> _languages;
@@ -27,8 +28,8 @@ public sealed class SpeechLexicon
         => _languages = languages;
 
     public int Count(string iso, SpeechSpanKind kind)
-        => _languages.TryGetValue(iso, out var lexicon) && lexicon.Patterns.TryGetValue(kind, out var group)
-            ? group.Count
+        => _languages.TryGetValue(iso, out var lexicon) && lexicon.Patterns.TryGetValue(kind, out var patterns)
+            ? patterns.Count
             : 0;
 
     public ApiArray<SpeechSpan> FindSpans(string text, Language? language)
@@ -40,12 +41,13 @@ public sealed class SpeechLexicon
             return ApiArray<SpeechSpan>.Empty;
 
         var spans = new List<SpeechSpan>();
-        foreach (var (kind, group) in lexicon.Patterns) {
+        foreach (var (kind, patterns) in lexicon.Patterns) {
+            var regex = patterns.Regex.Value;
             if (lexicon.IsWholeWord)
-                foreach (var token in TokenRegex.Matches(text).Cast<Match>().Where(m => group.Regex.IsMatch(m.Value)))
+                foreach (var token in TokenRegex.Matches(text).Cast<Match>().Where(m => regex.IsMatch(m.Value)))
                     spans.Add(NewSpan(kind, token));
             else
-                foreach (var match in group.Regex.Matches(text).Cast<Match>())
+                foreach (var match in regex.Matches(text).Cast<Match>())
                     spans.Add(NewSpan(kind, match));
         }
         return spans.OrderBy(s => s.Start).ToApiArray();
@@ -64,16 +66,18 @@ public sealed class SpeechLexicon
         var languages = new Dictionary<string, LanguageLexicon>(StringComparer.Ordinal);
         foreach (var language in doc.RootElement.EnumerateObject()) {
             var isWholeWord = true;
-            var patterns = new Dictionary<SpeechSpanKind, PatternGroup>();
+            var lists = new Dictionary<SpeechSpanKind, List<string>>();
             foreach (var property in language.Value.EnumerateObject()) {
                 if (property.Name == WholeWordProperty) {
                     isWholeWord = property.Value.GetBoolean();
                     continue;
                 }
                 var kind = Enum.Parse<SpeechSpanKind>(property.Name, ignoreCase: true);
-                var list = property.Value.EnumerateArray().Select(x => x.GetString()!).ToList();
-                patterns[kind] = new PatternGroup(list.Count, NewRegex(list, isWholeWord));
+                lists[kind] = property.Value.EnumerateArray().Select(x => x.GetString()!).ToList();
             }
+            var patterns = lists.ToDictionary(
+                x => x.Key,
+                x => new PatternGroup(x.Value.Count, new Lazy<Regex>(() => NewRegex(x.Value, isWholeWord))));
             languages[language.Name] = new LanguageLexicon(isWholeWord, patterns);
         }
         return new SpeechLexicon(languages);
@@ -83,15 +87,13 @@ public sealed class SpeechLexicon
     {
         var alternatives = string.Join("|", patterns.Select(p => $"(?:{p})"));
         var pattern = isWholeWord ? $"^(?:{alternatives})$" : $"(?:{alternatives})";
-        return new Regex(
-            pattern,
-            RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
-            MatchTimeout);
+        return new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, MatchTimeout);
     }
 
     // Nested types
 
-    private sealed record PatternGroup(int Count, Regex Regex);
+    // The regex is built when its language is first asked for: a client loads the lexicon at startup
+    private sealed record PatternGroup(int Count, Lazy<Regex> Regex);
 
     private sealed record LanguageLexicon(bool IsWholeWord, Dictionary<SpeechSpanKind, PatternGroup> Patterns);
 }

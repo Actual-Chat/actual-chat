@@ -78,6 +78,21 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
         return CoachScope.IsInScope(chatId, chatSettings, placeSettings, coachSettings);
     }
 
+    // A live transcript is marked with the word list only: what needs the model waits for the settled entry
+    public async Task<ApiArray<SpeechSpan>> FindLiveMarks(ChatId chatId, string text, CancellationToken cancellationToken)
+    {
+        if (text.IsNullOrEmpty()
+            || !await IsMarkingEnabled(cancellationToken).ConfigureAwait(false)
+            || await IsChatCoached(chatId, cancellationToken).ConfigureAwait(false) != true)
+            return ApiArray<SpeechSpan>.Empty;
+
+        var language = await Hub.LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
+        var settings = await UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
+        return settings.LevelOf(language.Value) == CoachLanguageLevel.Off
+            ? ApiArray<SpeechSpan>.Empty
+            : SpeechLexicon.Default.FindSpans(text, language);
+    }
+
     [ComputeMethod]
     public virtual async Task<bool> IsMarkingEnabled(CancellationToken cancellationToken)
     {

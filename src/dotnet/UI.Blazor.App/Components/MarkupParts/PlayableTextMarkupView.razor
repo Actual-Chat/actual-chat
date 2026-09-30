@@ -198,11 +198,7 @@
     }
 
     private string MarkClass(int index)
-        => _rendered?.MarkSpans?[index]?.Kind switch {
-            SpeechSpanKind.FilledPause or SpeechSpanKind.Filler => "coach-filler",
-            SpeechSpanKind.Weak or SpeechSpanKind.Repetition => "coach-weak",
-            _ => "",
-        };
+        => _rendered?.MarkSpans?[index] is { } span ? CoachStreamingMarks.ClassOf(span.Kind) : "";
 
     // A marked word opens its hint on tap instead of starting the replay; the click handler in JS
     // skips words that carry a menu

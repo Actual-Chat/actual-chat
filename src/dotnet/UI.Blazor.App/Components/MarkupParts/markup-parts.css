@@ -165,11 +165,13 @@
 .playable-text-markup .highlight {
     @apply text-primary;
 }
-.playable-text-markup .coach-filler {
+.playable-text-markup .coach-filler,
+.chat-message-markup.streaming .coach-filler {
     @apply line-through decoration-2;
     text-decoration-color: var(--danger);
 }
-.playable-text-markup .coach-weak {
+.playable-text-markup .coach-weak,
+.chat-message-markup.streaming .coach-weak {
     @apply underline decoration-dotted decoration-2 underline-offset-4;
     text-decoration-color: var(--warning);
 }
