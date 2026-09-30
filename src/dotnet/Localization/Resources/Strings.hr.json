@@ -364,6 +364,8 @@
   "ChatMenu_Unpin": "Otkačite",
   "ChatMenu_PinToSidebar": "Zakačite na bočnu traku",
   "ChatMenu_UnpinFromSidebar": "Otkačite s bočne trake",
+  "ChatMenu_MarkAsRead": "Označite kao pročitano",
+  "ChatMenu_MarkAsUnread": "Označite kao nepročitano",
   "ChatMenu_StartAnonymousChat": "Započnite anonimni chat",
   "ChatMenu_StartRecording": "Počnite snimanje",
   "ChatMenu_StopRecording": "Zaustavite snimanje",

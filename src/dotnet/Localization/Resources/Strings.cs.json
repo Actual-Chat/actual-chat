@@ -364,6 +364,8 @@
   "ChatMenu_Unpin": "Odepnout",
   "ChatMenu_PinToSidebar": "Připnout na postranní panel",
   "ChatMenu_UnpinFromSidebar": "Odepnout z postranního panelu",
+  "ChatMenu_MarkAsRead": "Označit jako přečtené",
+  "ChatMenu_MarkAsUnread": "Označit jako nepřečtené",
   "ChatMenu_StartAnonymousChat": "Začít anonymní chat",
   "ChatMenu_StartRecording": "Spustit nahrávání",
   "ChatMenu_StopRecording": "Zastavit nahrávání",

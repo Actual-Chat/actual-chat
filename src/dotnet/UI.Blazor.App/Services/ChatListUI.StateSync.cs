@@ -65,7 +65,9 @@ public partial class ChatListUI
                     }
 
                     var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-                    var hasNewUnreadMessages = prevChatInfo!.UnmutedUnreadCount < chatInfo.UnmutedUnreadCount;
+                    // "Mark as unread" raises the count too, but there's nothing new to notify about
+                    var hasNewUnreadMessages = prevChatInfo!.UnmutedUnreadCount < chatInfo.UnmutedUnreadCount
+                        && !(chatInfo.IsMarkedUnread && !prevChatInfo.IsMarkedUnread);
                     var isLastMessageOwn = chatInfo.LastTextEntry?.AuthorId == ownAuthor?.Id;
                     if (!hasNewUnreadMessages || isLastMessageOwn)
                         continue;

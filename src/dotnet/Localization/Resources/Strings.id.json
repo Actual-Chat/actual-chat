@@ -364,6 +364,8 @@
   "ChatMenu_Unpin": "Lepas sematan",
   "ChatMenu_PinToSidebar": "Sematkan ke bilah sisi",
   "ChatMenu_UnpinFromSidebar": "Lepas sematan dari bilah sisi",
+  "ChatMenu_MarkAsRead": "Tandai sudah dibaca",
+  "ChatMenu_MarkAsUnread": "Tandai belum dibaca",
   "ChatMenu_StartAnonymousChat": "Mulai obrolan anonim",
   "ChatMenu_StartRecording": "Mulai merekam",
   "ChatMenu_StopRecording": "Hentikan perekaman",

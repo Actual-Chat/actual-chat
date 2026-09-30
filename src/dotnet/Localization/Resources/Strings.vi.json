@@ -364,6 +364,8 @@
   "ChatMenu_Unpin": "Bỏ ghim",
   "ChatMenu_PinToSidebar": "Ghim vào thanh bên",
   "ChatMenu_UnpinFromSidebar": "Bỏ ghim khỏi thanh bên",
+  "ChatMenu_MarkAsRead": "Đánh dấu đã đọc",
+  "ChatMenu_MarkAsUnread": "Đánh dấu chưa đọc",
   "ChatMenu_StartAnonymousChat": "Bắt đầu cuộc trò chuyện ẩn danh",
   "ChatMenu_StartRecording": "Bắt đầu ghi âm",
   "ChatMenu_StopRecording": "Dừng ghi âm",
