@@ -19,7 +19,7 @@
     var canCopyMessageLink = !IsSystem;
     var attachmentCount = e.Attachments.Length;
     var canDownloadAttachments = attachmentCount > 0 && !hasSelection;
-    var canForward = !e.IsContentStreaming && !IsSystem && !hasSelection;
+    var canForward = !e.IsContentStreaming && !IsSystem && !hasSelection && e.IsForwardable;
     var canStartThread = !e.IsContentStreaming && !IsSystem && !hasSelection;
     var canPin = CanPin && isTextEntry && !IsSystem && !hasSelection;
     // Selection

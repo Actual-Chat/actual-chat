@@ -77,6 +77,7 @@
   "Error_RootChatCannotHoldMessages": "Im Haupt-Chat eines Place kann nicht geschrieben werden — poste stattdessen in einem der Chats des Place.",
   "Error_CanAttachOwnLocationsOnly": "Du kannst nur deinen eigenen geteilten Standort aus diesem Chat anhängen.",
   "Error_NonContactMessageLimit_Format": "Du kannst bis zu {limit} Nachrichten senden, bis diese Person dich zu ihren Kontakten hinzufügt oder antwortet.",
+  "Error_MessageNotForwardable": "Nachrichten ohne Text und Dateien oder mit Dateien, die noch hochgeladen werden, können nicht weitergeleitet werden.",
   "Error_OnlyOwnersOrModeratorsCanPin": "Nur Chat-Eigentümer und Moderatoren können Nachrichten anheften.",
   "Error_PinLimit_Format": "Du kannst bis zu {limit} Nachrichten anheften.",
 

@@ -77,6 +77,7 @@
   "Error_RootChatCannotHoldMessages": "Bir alanın kök sohbetine mesaj yazılamaz — bunun yerine alanın sohbetlerinden birine yazın.",
   "Error_CanAttachOwnLocationsOnly": "Bu sohbetten yalnızca kendi paylaştığınız konumu ekleyebilirsiniz.",
   "Error_NonContactMessageLimit_Format": "Bu kişi sizi kişilerine ekleyene veya yanıt verene kadar en fazla {limit} mesaj gönderebilirsiniz.",
+  "Error_MessageNotForwardable": "Metin veya dosya içermeyen ya da dosyaları hâlâ yüklenen mesajlar iletilemez.",
   "Error_OnlyOwnersOrModeratorsCanPin": "Mesajları yalnızca sohbet sahipleri ve moderatörler sabitleyebilir.",
   "Error_PinLimit_Format": "En fazla {limit} mesaj sabitleyebilirsiniz.",
 

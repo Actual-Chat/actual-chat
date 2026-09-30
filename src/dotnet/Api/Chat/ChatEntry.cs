@@ -144,6 +144,9 @@ public abstract partial record ChatEntry(
     public bool HasMarkup => this is not SystemEntry && !HasAudio;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsSending => SendingTag is not null;
+    // A forward copies only the text and the attachments, so an entry needs one of them, fully uploaded
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public bool IsForwardable => !HasUploadingAttachments && (!Content.IsNullOrWhiteSpace() || Attachments.Length > 0);
 
     // This record relies on referential equality
     public virtual bool Equals(ChatEntry? other) => ReferenceEquals(this, other);

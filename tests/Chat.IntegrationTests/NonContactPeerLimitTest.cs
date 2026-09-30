@@ -336,6 +336,60 @@ public class NonContactPeerLimitTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task ForwardOverNonContactLimitShouldFailWithoutPosting()
+    {
+        // arrange
+        var appHost = AppHost;
+        await using var aliceTester = appHost.NewBlazorTester(Out);
+        var alice = await aliceTester.SignInAsUniqueAlice();
+        await using var bobTester = appHost.NewBlazorTester(Out);
+        var bob = await bobTester.SignInAsUniqueBob();
+        var peerChatId = PeerChatId.New(alice.Id, bob.Id);
+        var chats = aliceTester.AppServices.GetRequiredService<IChats>();
+        var (sourceChatId, _) = await aliceTester.CreateChat(true);
+        var sourceEntries = new[] {
+            await aliceTester.CreateTextEntry(sourceChatId, "First"),
+            await aliceTester.CreateTextEntry(sourceChatId, "Second"),
+        };
+        await aliceTester.CreateTextEntry(peerChatId, "Hi");
+        var rangeBefore = await chats.GetIdRange(aliceTester.Session, peerChatId, CancellationToken.None);
+
+        // act - one message is left under the cap, and the forward needs two
+        var forward = () => aliceTester.Commander.Call(NewForwardCommand(aliceTester, sourceEntries, peerChatId));
+
+        // assert
+        await forward.Should().ThrowAsync<Exception>().WithMessage("You can send up to *");
+        var rangeAfter = await chats.GetIdRange(aliceTester.Session, peerChatId, CancellationToken.None);
+        rangeAfter.Should().Be(rangeBefore);
+    }
+
+    [Fact]
+    public async Task ForwardWithinNonContactLimitShouldPost()
+    {
+        // arrange
+        var appHost = AppHost;
+        await using var aliceTester = appHost.NewBlazorTester(Out);
+        var alice = await aliceTester.SignInAsUniqueAlice();
+        await using var bobTester = appHost.NewBlazorTester(Out);
+        var bob = await bobTester.SignInAsUniqueBob();
+        var peerChatId = PeerChatId.New(alice.Id, bob.Id);
+        var chats = aliceTester.AppServices.GetRequiredService<IChats>();
+        var (sourceChatId, _) = await aliceTester.CreateChat(true);
+        var sourceEntry = await aliceTester.CreateTextEntry(sourceChatId, "First");
+        await aliceTester.CreateTextEntry(peerChatId, "Hi");
+
+        // act
+        await aliceTester.Commander.Call(NewForwardCommand(aliceTester, [sourceEntry], peerChatId));
+
+        // assert
+        var range = await chats.GetIdRange(aliceTester.Session, peerChatId, CancellationToken.None);
+        var forwarded = await chats.GetEntry(aliceTester.Session, ChatEntryId.New(peerChatId, range.End - 1));
+        forwarded.Should().NotBeNull();
+        forwarded!.Forwarded.Should().NotBeNull();
+        forwarded.Content.Should().Be("First");
+    }
+
+    [Fact]
     public async Task ForwardWithFilesShouldPostWhenSenderIsInRecipientContacts()
     {
         // arrange

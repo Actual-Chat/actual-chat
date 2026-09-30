@@ -1114,8 +1114,13 @@ public partial class Chats(IServiceProvider services) : IChats
                 .AsTask())
             .Collect(cancellationToken)
             .ConfigureAwait(false);
+        if (chatEntries.Any(x => !x.IsForwardable))
+            throw StandardError.Constraint(
+                "Messages with no text or files, or with files still uploading, can't be forwarded.");
+
         var hasAttachments = chatEntries.Any(x => x.Attachments.Length > 0);
-        await RequireForwardDestinations(session, destinationChatIds, hasAttachments, cancellationToken)
+        await RequireForwardDestinations(
+                session, destinationChatIds, chatEntries.Length, hasAttachments, cancellationToken)
             .ConfigureAwait(false);
 
         foreach (var destinationChatId in destinationChatIds) {
@@ -1188,7 +1193,7 @@ public partial class Chats(IServiceProvider services) : IChats
         var attachment = chatEntry.Attachments.FirstOrDefault(a => a.Index == attachmentIndex)
             ?? throw StandardError.NotFound<ChatEntryAttachment>("Attachment not found in the source entry.");
 
-        await RequireForwardDestinations(session, destinationChatIds, true, cancellationToken).ConfigureAwait(false);
+        await RequireForwardDestinations(session, destinationChatIds, 1, true, cancellationToken).ConfigureAwait(false);
 
         foreach (var destinationChatId in destinationChatIds) {
             var cmd = new Chats_UpsertEntry {
@@ -1626,6 +1631,7 @@ public partial class Chats(IServiceProvider services) : IChats
     private async Task RequireForwardDestinations(
         Session session,
         ChatId[] destinationChatIds,
+        int entryCount,
         bool hasAttachments,
         CancellationToken cancellationToken)
     {
@@ -1639,7 +1645,31 @@ public partial class Chats(IServiceProvider services) : IChats
             if (hasAttachments && !destinationChat.Rules.CanUpload())
                 throw StandardError.Constraint(
                     "Files can be sent only after this user adds you to their contacts or replies.");
+            if (destinationChatId is PeerChatId && !destinationChat.Rules.CanWriteAudio()) {
+                var hasRoom = await HasRoomUnderNonContactPeerLimit(destinationChatId, entryCount, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!hasRoom)
+                    throw StandardError.Constraint(
+                        $"You can send up to {Constants.Chat.NonContactPeerMessageLimit} messages until "
+                        + "this user adds you to their contacts or replies.");
+            }
         }
+    }
+
+    private async Task<bool> HasRoomUnderNonContactPeerLimit(
+        ChatId chatId,
+        int entryCount,
+        CancellationToken cancellationToken)
+    {
+        // GetFirstEntryAuthors is non-empty only when the chat already holds at least that many entries
+        var maxExistingCount = Constants.Chat.NonContactPeerMessageLimit - entryCount;
+        if (maxExistingCount < 0)
+            return false;
+
+        var firstAuthors = await Backend
+            .GetFirstEntryAuthors(chatId, maxExistingCount + 1, true, cancellationToken)
+            .ConfigureAwait(false);
+        return firstAuthors.Count == 0;
     }
 
     private async Task<bool> HasReachedNonContactPeerLimit(

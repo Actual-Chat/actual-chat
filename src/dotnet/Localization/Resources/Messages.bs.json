@@ -85,6 +85,7 @@
   "Error_RootChatCannotHoldMessages": "Korijenski chat Mjesta ne može sadržavati poruke — pišite u nekom od chatova tog Mjesta.",
   "Error_CanAttachOwnLocationsOnly": "Možete priložiti samo vlastite lokacije podijeljene u ovom chatu.",
   "Error_NonContactMessageLimit_Format": "Možete poslati do {limit} poruka dok vas ovaj korisnik ne doda u kontakte ili ne odgovori.",
+  "Error_MessageNotForwardable": "Poruke bez teksta i fajlova ili s fajlovima koji se još učitavaju ne mogu se proslijediti.",
   "Error_OnlyOwnersOrModeratorsCanPin": "Ne možete izvesti ovu radnju: nedovoljne dozvole. Potrebna dozvola: poruke mogu kačiti samo vlasnici i moderatori chata.",
   "Error_PinLimit_Format": "Možete zakačiti do {limit} poruka.",
 
