@@ -26,7 +26,4 @@ public class MauiKeepAwakeUI(UIHub hub) : KeepAwakeUI(hub)
         Log.LogInformation("SetKeepAwake({MustKeepAwake})", value);
         DeviceDisplay.Current.KeepScreenOn = value;
     }
-
-    protected ValueTask SetKeepDisplayAwakeViaWeb(bool value)
-        => base.SetKeepAwake(value);
 }

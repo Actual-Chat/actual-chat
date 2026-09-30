@@ -39,5 +39,6 @@ public sealed class AndroidKeepAwakeUI(UIHub hub) : MauiKeepAwakeUI(hub)
     // Protected/internal methods
 
     protected override ValueTask SetKeepDisplayAwake(bool value)
-        => SetKeepDisplayAwakeViaWeb(value);
+        // NoSleep, not KeepScreenOn: the native flag sometimes kept the screen on after idle (#2785).
+        => SetNoSleep(value);
 }
