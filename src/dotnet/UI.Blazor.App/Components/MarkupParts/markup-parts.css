@@ -178,7 +178,7 @@
 
 .playable-text-markup .coach-profane,
 .chat-message-markup.streaming .coach-profane {
-    @apply underline decoration-wavy decoration-2 underline-offset-4;
+    @apply underline decoration-dashed decoration-2 underline-offset-4;
     text-decoration-color: var(--danger);
 }
 
