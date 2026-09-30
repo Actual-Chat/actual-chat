@@ -83,10 +83,18 @@ public static class ChatEntryOperations
         return new (textEntry, entryLanguage);
     }
 
+    public static Task<StreamingEntry> FinalizeStreamingEntry(
+        this IWebTester tester,
+        StreamingEntry streamingEntry,
+        string text,
+        CancellationToken cancellationToken = default)
+        => tester.FinalizeStreamingEntry(streamingEntry, text, default, cancellationToken);
+
     public static async Task<StreamingEntry> FinalizeStreamingEntry(
         this IWebTester tester,
         StreamingEntry streamingEntry,
         string text,
+        LinearMap timeMap,
         CancellationToken cancellationToken = default)
     {
         var clocks = tester.AppServices.Clocks();
@@ -96,7 +104,7 @@ public static class ChatEntryOperations
         textEntry = await tester.Commander.Call(new ChatsBackend_ChangeEntry(textEntry.Id, textEntry.Version, Change.Update(new ChatEntryDiff {
             Content = text,
             ContentStreamId = "",
-            Audio = new ChatEntryAudio { MediaId = MediaId.Parse("fake:mediaid") },
+            Audio = new ChatEntryAudio { MediaId = MediaId.Parse("fake:mediaid"), TimeMap = timeMap },
             EndsAt = now,
         })), cancellationToken);
 

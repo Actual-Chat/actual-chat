@@ -29,6 +29,8 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
     public DbSet<DbSharedLocation> SharedLocations { get; protected set; } = null!;
     public DbSet<DbWebHook> WebHooks { get; protected set; } = null!;
     public DbSet<DbWebHookDelivery> WebHookDeliveries { get; protected set; } = null!;
+    public DbSet<DbCoachEntry> CoachEntries { get; protected set; } = null!;
+    public DbSet<DbCoachConversation> CoachConversations { get; protected set; } = null!;
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
@@ -165,6 +167,18 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         var webHookDelivery = model.Entity<DbWebHookDelivery>();
         webHookDelivery.Property(e => e.Id).UseCollation("C");
         webHookDelivery.Property(e => e.WebHookId).UseCollation("C");
+
+        var coachEntry = model.Entity<DbCoachEntry>();
+        coachEntry.Property(e => e.Id).UseCollation("C");
+        coachEntry.Property(e => e.ChatId).UseCollation("C");
+        coachEntry.Property(e => e.AuthorId).UseCollation("C");
+        coachEntry.Property(e => e.UserId).UseCollation("C");
+
+        var coachConversation = model.Entity<DbCoachConversation>();
+        coachConversation.Property(e => e.Id).UseCollation("C");
+        coachConversation.Property(e => e.ChatId).UseCollation("C");
+        coachConversation.Property(e => e.AuthorId).UseCollation("C");
+        coachConversation.Property(e => e.UserId).UseCollation("C");
 
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");

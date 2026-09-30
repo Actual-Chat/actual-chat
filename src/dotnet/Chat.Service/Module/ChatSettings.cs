@@ -11,6 +11,7 @@ public sealed class ChatSettings
     public LanguageDetectionSettings LanguageDetection { get; set; } = new ();
     public bool IsSummarizationEnabled { get; set; }
     public SummarizationSettings Summarization { get; set; } = new ();
+    public CoachSettings Coach { get; set; } = new ();
     public bool IsChatContentItemIndexingEnabled { get; set; }
     // How much of a chat's tail the describer reads. The lower bound is the client's - see
     // Constants.Chat.MinImageSuggestionEntries.
@@ -70,3 +71,24 @@ public class SummarizationSettings
         => words < MinConversationWords || entryCount < MinConversationEntries;
 }
 
+public class CoachSettings
+{
+    public bool IsEnabled { get; set; }
+    public string OpenAIModel { get; set; } = "gpt-5.6-luna";
+    public FilePath PromptFile { get; set; } = "coach-tag-speech.md";
+    public int PromptVersion { get; set; } = 1;
+    public TimeSpan HttpTimeout { get; set; } = TimeSpan.FromSeconds(60);
+    public double MinPauseSeconds { get; set; } = 1;
+    public double MaxResponseGapSeconds { get; set; } = 10;
+    // Voice entries are cut at Constants.Chat.MaxEntryDuration; entries of one author closer than this are
+    // one monologue
+    public double MonologueJoinGapSeconds { get; set; } = 5;
+    public TimeSpan ConversationMaturity { get; set; } = TimeSpan.FromMinutes(10);
+    public TimeSpan MaxConversationWait { get; set; } = TimeSpan.FromHours(2);
+    // Counted per server node: a user whose chats live on several nodes gets this many on each
+    public int MaxTaggerCallsPerUserPerDay { get; set; } = 500;
+    public int MaxRunEntries { get; set; } = 400;
+    // Attempts, not successes; the run also gives up after MaxTaggerFailuresPerRun failures in a row
+    public int MaxTaggerCallsPerRun { get; set; } = 50;
+    public int MaxTaggerFailuresPerRun { get; set; } = 3;
+}
