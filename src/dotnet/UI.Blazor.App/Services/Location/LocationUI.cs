@@ -11,6 +11,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
     private const string OwnMarkerId = "own-location";
+    private const string PendingMarkerId = "pending-location";
     private static readonly TimeSpan RemainingTextUpdatePeriod = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan CurrentLocationRefreshPeriod = TimeSpan.FromSeconds(10);
 
@@ -198,6 +199,23 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     }
 
     [ComputeMethod]
+    public virtual async Task<MapMarker> GetPendingMarker(
+        ChatId chatId,
+        GeoPoint point,
+        bool isPlace,
+        CancellationToken cancellationToken)
+    {
+        // The pin of a queued send, before its shared location exists: styled like the posted one will be.
+        if (isPlace)
+            return new MapMarker(PendingMarkerId, point);
+
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return ownAuthor is null
+            ? new MapMarker(PendingMarkerId, point)
+            : ToMapMarker(PendingMarkerId, point, ownAuthor);
+    }
+
+    [ComputeMethod]
     public virtual async Task<GeoPoint?> GetOwnCurrentOrSharedLocation(
         ChatId chatId,
         CancellationToken cancellationToken)
@@ -309,25 +327,21 @@ public class LocationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         bool isPlace,
         CancellationToken cancellationToken)
     {
-        var change = Change.Create(new SharedLocationDiff {
-            Point = point,
-            LiveDuration = TimeSpan.Zero,
-            IsPlace = isPlace,
-        });
-        var shared = await Commander.Call(
-                new SharedLocations_Change { Session = Session, ChatId = chatId, Id = null, Change = change },
-                cancellationToken)
-            .ConfigureAwait(false);
-        if (shared is null)
-            return;
-
-        var command = new Chats_UpsertEntry {
-            Session = Session,
-            ChatId = chatId,
-            LocalId = null,
-            LocationId = shared.Id,
-        };
-        await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+        // Returns once the send is queued: the entry shows up as sending right away, and the
+        // shared location and the entry are created by the queue with its retries.
+        var request = SendMessageRequest.NewLocation(chatId, point, isPlace);
+        var postTask = await Hub.SendingMessages.Send(request, cancellationToken).ConfigureAwait(false);
+        _ = ForegroundTask.Run(async () => {
+            try {
+                await postTask.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                // The user cancelled the send from the message menu
+            }
+            catch (Exception e) {
+                UICommander.ShowError(e);
+            }
+        }, Hub.StopToken);
     }
 
     public async Task RunLocationRefreshLoop(bool mustTroubleshootOnFirstRun, CancellationToken cancellationToken)

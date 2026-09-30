@@ -8,7 +8,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// Owns the local user's live-location shares — the device-local list of chats being shared, persisted
 /// and resumed on restart — and reports positions: while any chat is shared it runs the platform
 /// <see cref="ILocationTracker"/> and reports each share's position once per
-/// <see cref="Constants.Location.UpdatePeriod"/>. The first fix mints the share id and posts a chat entry.
+/// <see cref="Constants.Location.UpdatePeriod"/>. The first fix queues the share's chat entry; the sending
+/// queue creates the share on the server, and its id is adopted from the posted entry.
 /// </summary>
 public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
 {
@@ -24,6 +25,8 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
     private LocationPermissionHandler LocationPermission
         => field ??= Hub.Services.GetRequiredService<LocationPermissionHandler>();
     private ISharedLocations SharedLocations => Hub.SharedLocations;
+    private SendingMessages SendingMessages => Hub.SendingMessages;
+    private IAuthors Authors => Hub.Authors;
     private Moment ServerNow => Clocks.ServerClock.Now;
 
     public LiveLocationReporter(AppUIHub hub) : base(hub)
@@ -147,9 +150,28 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
 
     private async Task StopServerShares(ActiveShare[] shares, CancellationToken cancellationToken)
     {
-        foreach (var share in shares)
+        foreach (var share in shares) {
             if (share.LocationId is { } locationId)
                 await StopServerShare(share.ChatId, locationId, cancellationToken).ConfigureAwait(false);
+            else if (!share.SendUuid.IsNullOrEmpty())
+                await StopQueuedShare(share, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task StopQueuedShare(ActiveShare share, CancellationToken cancellationToken)
+    {
+        var sending = SendingMessages.TryGetSendingMessage(share.ChatId, share.SendUuid);
+        if (sending is null) {
+            // Pruned after completing, or never stored: the server's own live share is the one to stop
+            if (await GetOwnLiveId(share.ChatId, cancellationToken).ConfigureAwait(false) is { } ownLiveId)
+                await StopServerShare(share.ChatId, ownLiveId, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        if (sending.PostedChatEntry?.LocationId is { } locationId)
+            await StopServerShare(share.ChatId, locationId, cancellationToken).ConfigureAwait(false);
+        else
+            SendingMessages.Cancel(sending); // The queue stops the share it created, if it got that far
     }
 
     private Task StopServerShare(ChatId chatId, SharedLocationId locationId, CancellationToken cancellationToken)
@@ -387,25 +409,63 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
     {
         if (share.LocationId is not null)
             return share;
+        if (share.SendUuid.IsNullOrEmpty())
+            return await QueueShareEntry(share, point, cancellationToken).ConfigureAwait(false);
 
-        var diff = new SharedLocationDiff { Point = point, LiveDuration = share.Duration };
-        var change = Change.Create(diff);
-        var sharedLocation = await Commander.Call(
-                new SharedLocations_Change { Session = Session, ChatId = share.ChatId, Id = null, Change = change },
-                cancellationToken)
-            .ConfigureAwait(false);
-        if (sharedLocation is null)
+        var sending = SendingMessages.TryGetSendingMessage(share.ChatId, share.SendUuid);
+        if (sending is null) {
+            // Pruned after completing, or never stored: what the server has for this author is the answer
+            var ownLiveId = await GetOwnLiveId(share.ChatId, cancellationToken).ConfigureAwait(false);
+            return ownLiveId is null
+                ? RequeueShareEntry(share)
+                : AdoptLocationId(share, ownLiveId);
+        }
+        if (sending.PostedChatEntry?.LocationId is { } locationId)
+            return AdoptLocationId(share, locationId);
+        if (sending.Error is OperationCanceledException) {
+            // Cancelled from the message menu: that is a stop, not a retry
+            DropShare(share);
             return share;
+        }
+        if (sending.Error is not null)
+            return RequeueShareEntry(share);
 
-        var command = new Chats_UpsertEntry {
-            Session = Session,
-            ChatId = share.ChatId,
-            LocalId = null,
-            LocationId = sharedLocation.Id,
-        };
-        await Commander.Call(command, cancellationToken).ConfigureAwait(false);
-        SetSharedLocationId(share.ChatId, sharedLocation.Id);
-        return share with { LocationId = sharedLocation.Id };
+        return share; // Still in the queue
+    }
+
+    private async Task<ActiveShare> QueueShareEntry(
+        ActiveShare share,
+        GeoPoint point,
+        CancellationToken cancellationToken)
+    {
+        // Stored before the send is queued: a restart in between must find the request, not queue another
+        var uuid = Ulid.NewUlid().ToString();
+        UpdatePendingShare(share.ChatId, x => x with { SendUuid = uuid });
+        var request = SendMessageRequest.NewLiveLocation(share.ChatId, point, share.Duration, uuid);
+        await SendingMessages.Send(request, cancellationToken).ConfigureAwait(false);
+        return share with { SendUuid = uuid };
+    }
+
+    private ActiveShare RequeueShareEntry(ActiveShare share)
+    {
+        UpdatePendingShare(share.ChatId, x => x with { SendUuid = "" });
+        return share with { SendUuid = "" };
+    }
+
+    private ActiveShare AdoptLocationId(ActiveShare share, SharedLocationId locationId)
+    {
+        UpdatePendingShare(share.ChatId, x => x with { LocationId = locationId });
+        return share with { LocationId = locationId };
+    }
+
+    private async Task<SharedLocationId?> GetOwnLiveId(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (ownAuthor is null)
+            return null;
+
+        var liveLocations = await SharedLocations.ListLive(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return liveLocations.FirstOrDefault(x => x.AuthorId == ownAuthor.Id)?.Id;
     }
 
     private async Task<GeoPoint?> GetPoint(CancellationToken cancellationToken)
@@ -419,13 +479,19 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
             : point;
     }
 
-    private void SetSharedLocationId(ChatId chatId, SharedLocationId locationId)
+    private void UpdatePendingShare(ChatId chatId, Func<ActiveShare, ActiveShare> update)
     {
         lock (_lock)
             _shares.Value = _shares.Value
-                .Select(x => x.ChatId == chatId && x.LocationId is null
-                    ? x with { LocationId = locationId }
-                    : x)
+                .Select(x => x.ChatId == chatId && x.LocationId is null ? update(x) : x)
+                .ToArray();
+    }
+
+    private void DropShare(ActiveShare share)
+    {
+        lock (_lock)
+            _shares.Value = _shares.Value
+                .Where(x => x.ChatId != share.ChatId || x.StartedAt != share.StartedAt)
                 .ToArray();
     }
 

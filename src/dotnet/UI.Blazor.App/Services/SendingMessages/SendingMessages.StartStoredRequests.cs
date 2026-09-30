@@ -71,6 +71,7 @@ partial class SendingMessages
             ClientId = clientId,
             AfterSendMessageHandlerKey = cmd.AfterSendMessageHandler?.Key ?? "",
             AfterSendMessageHandlerArgs = cmd.AfterSendMessageHandler?.Args ?? "",
+            LocationDiff = cmd.LocationDiff,
         };
         return entry;
     }

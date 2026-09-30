@@ -8,37 +8,50 @@ partial class SendingMessages
 
     private async Task<object?> ProcessQueueItem(PostMessageQueueItem command, CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("-> ProcessQueueItem. Text: '{Text}'", command.Request.Text.ToPrivate());
+        var request = command.Request;
+        DebugLog?.LogDebug("-> ProcessQueueItem. Text: '{Text}'", request.Text.ToPrivate());
         while (true) {
             using var cts = cancellationToken.CreateLinkedTokenSource();
             cts.CancelAfter(ProcessCommandTimeout);
             try {
-                ChatEntry chatEntry = await ProcessCommand(command, cts.Token).ConfigureAwait(false);
-                DebugLog?.LogDebug("<- ProcessQueueItem. Text: '{Text}'", command.Request.Text.ToPrivate());
+                // The request that carries the created location's id replaces the original, so a retry
+                // after a failed post doesn't create the location again
+                request = await EnsureSharedLocation(request, cts.Token).ConfigureAwait(false);
+                ChatEntry chatEntry = await ProcessCommand(request, cts.Token).ConfigureAwait(false);
+                DebugLog?.LogDebug("<- ProcessQueueItem. Text: '{Text}'", request.Text.ToPrivate());
                 return chatEntry;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested
+                && !_cancellationTokenSource.IsCancellationRequested) {
+                // The send was cancelled rather than the service stopped: a live share created above
+                // must not run on without its entry, and nothing else knows its id
+                if (request.LocationDiff?.LiveDuration > TimeSpan.Zero && request.NewLocationId is { } createdId)
+                    await StopSharedLocation(request.ChatId, createdId).ConfigureAwait(false);
+                throw;
             }
             catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
                 if (!IsTransientError(e)) {
                     Log.LogError(e,
                         "ProcessQueueItem permanently failed for '{Text}'",
-                        command.Request.Text.ToPrivate());
+                        request.Text.ToPrivate());
                     throw;
                 }
                 if (e is OperationCanceledException)
                     Log.LogInformation("ProcessQueueItem failed (OperationCanceledException) for '{Text}', retrying in {Delay}s",
-                        command.Request.Text.ToPrivate(), ProcessCommandRetryDelay.TotalSeconds);
+                        request.Text.ToPrivate(), ProcessCommandRetryDelay.TotalSeconds);
                 else
                     Log.LogWarning(e,
                         "ProcessQueueItem failed for '{Text}', retrying in {Delay}s",
-                        command.Request.Text.ToPrivate(), ProcessCommandRetryDelay.TotalSeconds);
+                        request.Text.ToPrivate(), ProcessCommandRetryDelay.TotalSeconds);
                 await Task.Delay(ProcessCommandRetryDelay, cancellationToken).ConfigureAwait(false);
             }
         }
     }
 
-    private async Task<ChatEntry> ProcessCommand(PostMessageQueueItem item, CancellationToken cancellationToken)
+    private async Task<ChatEntry> ProcessCommand(
+        PostMessageRequestInternal request,
+        CancellationToken cancellationToken)
     {
-        var request = item.Request;
         if (request.CheckResend) {
             var chatEntry1 = await TryFindPreviouslySentEntry(request.ChatId, request.ClientId, cancellationToken).ConfigureAwait(false);
             if (chatEntry1 is not null)
@@ -65,6 +78,7 @@ partial class SendingMessages
             ClientId = request.ClientId,
             Attachments = attachments,
             HasUploadingAttachments = request.AttachmentUploads is not null,
+            LocationId = request.NewLocationId,
         };
         // // Simulate long sending
         // await Task.Delay(5000, cancellationToken).ConfigureAwait(false);
@@ -77,7 +91,7 @@ partial class SendingMessages
                 chatEntry = chatEntry1;
         }
         var isNewMessage = cmd.LocalId is null;
-        if (isNewMessage)
+        if (isNewMessage && request.NewLocationId is null)
             AnalyticEvents.RaiseMessagePosted(
                 cmd.RepliedEntryLid.HasValue,
                 !cmd.Text.IsNullOrEmpty(),
@@ -112,6 +126,49 @@ partial class SendingMessages
                 break;
         }
         return null;
+    }
+
+    private async Task<PostMessageRequestInternal> EnsureSharedLocation(
+        PostMessageRequestInternal request,
+        CancellationToken cancellationToken)
+    {
+        if (request.NewLocationId is not null || request.LocationDiff is not { } locationDiff)
+            return request;
+
+        // The Uuid is derived from the request's, so a resend of a create the server already applied
+        // replays its result instead of minting a second location; the suffix keeps it apart from the
+        // entry's own upsert, which the server deduplicates by the same key.
+        var cmd = new SharedLocations_Change {
+            Uuid = request.Uuid + "-location",
+            Session = Session,
+            ChatId = request.ChatId,
+            Id = null,
+            Change = Change.Create(locationDiff),
+        };
+        var created = await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        if (created is null)
+            throw StandardError.Internal("Failed to create a shared location.");
+
+        await _requestsRepo.MarkLocationWasCreated(request.Uuid, created.Id, cancellationToken)
+            .ConfigureAwait(false);
+        return request with { NewLocationId = created.Id };
+    }
+
+    private async Task StopSharedLocation(ChatId chatId, SharedLocationId locationId)
+    {
+        try {
+            using var cts = new CancellationTokenSource(ProcessCommandTimeout);
+            var cmd = new SharedLocations_Change {
+                Session = Session,
+                ChatId = chatId,
+                Id = locationId,
+                Change = Change.Remove<SharedLocationDiff>(),
+            };
+            await Commander.Call(cmd, cts.Token).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to stop the shared location '{LocationId}' of a cancelled send", locationId);
+        }
     }
 
     private async Task<MediaId[]> ReserveMediaIds(PostMessageRequestInternal request, CancellationToken cancellationToken)

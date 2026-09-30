@@ -20,14 +20,14 @@ public class SendMessageRequestsRepo
 
     public async Task Add(SendMessageRequestEntry entry, CancellationToken cancellationToken)
     {
-        using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
+        using var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
         await _internal.Set(entry.Uuid, entry, cancellationToken).ConfigureAwait(false);
         await _internal.Flush(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task RemoveAttachRequest(string entryUuid, AttachFileRequestEntry fileRequestEntry, CancellationToken cancellationToken)
     {
-        using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
+        using var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
         var entry = await _internal.Get<SendMessageRequestEntry>(entryUuid, cancellationToken).ConfigureAwait(false);
         if (entry == null)
             return; // Nothing do. Everything is cleaned up.
@@ -47,7 +47,7 @@ public class SendMessageRequestsRepo
 
     public async Task MarkMessageWasCreated(string requestUuid, long chatEntryLocalId, CancellationToken cancellationToken)
     {
-        using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
+        using var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
         var entry = await _internal.Get<SendMessageRequestEntry>(requestUuid, cancellationToken).ConfigureAwait(false);
         if (entry == null)
             throw StandardError.Internal("Can not find given send message request entry.");
@@ -58,9 +58,27 @@ public class SendMessageRequestsRepo
         await _internal.Flush(cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task MarkLocationWasCreated(
+        string requestUuid,
+        SharedLocationId locationId,
+        CancellationToken cancellationToken)
+    {
+        using var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
+        var entry = await _internal.Get<SendMessageRequestEntry>(requestUuid, cancellationToken).ConfigureAwait(false);
+        // Nothing stored means nothing to resume from - a non-interactive host, or a request already discarded.
+        if (entry == null)
+            return;
+
+        entry = entry with {
+            NewLocationId = locationId,
+        };
+        await _internal.Set(entry.Uuid, entry, cancellationToken).ConfigureAwait(false);
+        await _internal.Flush(cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<IEnumerable<KeyValuePair<string, SendMessageRequestEntry?>>> GetStored(CancellationToken cancellationToken)
     {
-        using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
+        using var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
         return (await _internal.ListAllEntries<SendMessageRequestEntry>(cancellationToken).ConfigureAwait(false))
             .Select(c => new KeyValuePair<string, SendMessageRequestEntry?>(c.Item1, c.Item2))
             .ToArray();
@@ -68,7 +86,7 @@ public class SendMessageRequestsRepo
 
     public async Task Remove(string uuid, CancellationToken cancellationToken)
     {
-        using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
+        using var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
         await _internal.Set(uuid, null, cancellationToken).ConfigureAwait(false);
         await _internal.Flush(cancellationToken).ConfigureAwait(false);
     }
@@ -110,6 +128,8 @@ public sealed partial record SendMessageRequestEntry : IHasId<string>, ISanitize
     [DataMember, Key(10)] public long? NewChatEntryLocalId { get; init; }
     [DataMember, Key(11)] public MediaRef[] ExistingMedia { get; init; } = [];
     [DataMember, Key(12)] public string? QuotedText { get; init; }
+    [DataMember, Key(13)] public SharedLocationDiff? LocationDiff { get; init; }
+    [DataMember, Key(14)] public SharedLocationId? NewLocationId { get; init; }
 
     string IHasId<string>.Id => Uuid;
 
