@@ -4,6 +4,7 @@ public class RightPanel
 {
     private readonly MutableState<bool> _isVisible;
     private readonly MutableState<bool> _isSearchMode;
+    private readonly MutableState<RightPanelMode> _mode;
     private readonly RightPanelStoredState _storedState;
 
     private UIHub Hub { get; }
@@ -15,6 +16,7 @@ public class RightPanel
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<bool> IsVisible => _isVisible;
     public IState<bool> IsSearchMode => _isSearchMode;
+    public IState<RightPanelMode> Mode => _mode;
 
     public RightPanel(PanelsUI owner)
     {
@@ -33,6 +35,11 @@ public class RightPanel
         }
         _isVisible = stateFactory.NewMutable(isVisibleInitState, StateCategories.Get(GetType(), nameof(IsVisible)));
         _isSearchMode = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchMode)));
+        var modeInitState = _storedState.WhenRead.IsCompletedSuccessfully ? _storedState.Mode : RightPanelMode.Chat;
+        _mode = stateFactory.NewMutable(modeInitState, StateCategories.Get(GetType(), nameof(Mode)));
+        // Restored once History is ready, i.e. once the hub has a dispatcher to schedule on
+        _ = Task.WhenAll(_storedState.WhenRead, Hub.History.WhenReady)
+            .ContinueWith(_1 => SetMode(_storedState.Mode), TaskScheduler.Default);
         var initialState = new OwnHistoryState(this, isVisibleInitState);
         History.Register(initialState);
 
@@ -47,6 +54,21 @@ public class RightPanel
 
     public void Toggle()
         => SetIsVisible(!IsVisible.Value);
+
+    public void Open(RightPanelMode mode)
+    {
+        SetMode(mode);
+        SetIsVisible(true);
+    }
+
+    public void SetMode(RightPanelMode value)
+        => _ = Dispatcher.InvokeSafeAsync(() => {
+            if (_mode.Value == value)
+                return;
+
+            _mode.Value = value;
+            _storedState.Mode = value;
+        }, Log);
 
     public void SearchToggle()
         => SetSearchMode(!IsSearchMode.Value);
