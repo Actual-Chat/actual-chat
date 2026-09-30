@@ -53,7 +53,7 @@ public class ChatPositions(IServiceProvider services) : DbServiceBase<UsersDbCon
                 position = position with { EntryLid = maxLid };
         }
 
-        var backendCommand = new ChatPositionsBackend_Set(account.Id, chatId, kind, position, command.Force);
+        var backendCommand = new ChatPositionsBackend_Set(account.Id, chatId, kind, position);
         await Commander.Call(backendCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

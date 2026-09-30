@@ -147,7 +147,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             var chatUserSettings = await chatUserSettingsTask.ConfigureAwait(false);
             var lastMention = await lastMentionTask.ConfigureAwait(false);
             var readEntryLid = await readEntryLidTask.ConfigureAwait(false);
-            var unreadCount = ComputeUnreadCount(chatId, news, readEntryLid);
+            var unreadCount = ComputeUnreadCount(chatId, news, readEntryLid, chatUserSettings.IsMarkedUnread);
 
             var hasUnreadMentions = false;
             if (lastMention is { } mention && chatUserSettings.NotificationMode is not ChatNotificationMode.Muted)
@@ -447,6 +447,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 && n.ChatId == chatId)
                 _ = UICommander.Run(new Notifications_Dismiss { Session = Session, NotificationId = n.Id });
         }
+        await SetMarkedUnread(chatId, false).ConfigureAwait(false);
         await UICommander.Run(new ChatPositions_Set {
             Session = Session,
             ChatId = chatId,
@@ -455,25 +456,8 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }).ConfigureAwait(false);
     }
 
-    public async Task MarkAsUnread(ChatId chatId)
-    {
-        // Leaves just the last message unread. The local read position must drop first: GetReadEntryLid
-        // takes the max of it and the server one, so a stale local position would keep the chat read.
-        var chatInfo = await Get(chatId).ConfigureAwait(false);
-        if (chatInfo?.LastTextEntry is not { } lastEntry)
-            return;
-
-        var readEntryLid = lastEntry.LocalId - 1;
-        using (var lease = await LeaseReadPositionState(chatId, CancellationToken.None).ConfigureAwait(false))
-            lease.Resource.Value = new ReadPosition(chatId, readEntryLid);
-        await UICommander.Run(new ChatPositions_Set {
-            Session = Session,
-            ChatId = chatId,
-            Kind = ChatPositionKind.Read,
-            Position = new ChatPosition(readEntryLid),
-            Force = true,
-        }).ConfigureAwait(false);
-    }
+    public Task MarkAsUnread(ChatId chatId)
+        => SetMarkedUnread(chatId, true);
 
     // Chat: leave, archive, delete
 
@@ -904,7 +888,8 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     // Not compute method!
-    private static Trimmed<int> ComputeUnreadCount(ChatId chatId, ChatNews? chatNews, long readEntryLid)
+    private static Trimmed<int> ComputeUnreadCount(
+        ChatId chatId, ChatNews? chatNews, long readEntryLid, bool isMarkedUnread)
     {
         // A negative lid is ChatPosition.None - nothing was ever stored, so the chat was never
         // opened and counting all of it as unread would flood the badge on first sight. A stored 0
@@ -918,6 +903,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             var lastId = chatNews.TextEntryLidRange.End - 1;
             unreadCount = (int)(lastId - Math.Max(0, readEntryLid)).Clamp(0, ChatInfo.MaxUnreadCount);
         }
+        // "Mark as unread" is a flag rather than a read position, so every badge and counter shows it as one
+        if (isMarkedUnread && unreadCount == 0)
+            unreadCount = 1;
         return new Trimmed<int>(unreadCount, ChatInfo.MaxUnreadCount);
     }
 
@@ -1066,6 +1054,18 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                     : Constants.Chat.AnnouncementsChatId;
             return lastSelectedChatId;
         }
+    }
+
+    private async Task SetMarkedUnread(ChatId chatId, bool isMarkedUnread)
+    {
+        var settings = UserSettingsUI.ChatUserSettings(chatId);
+        var wasMarkedUnread = await settings.Get(x => x.IsMarkedUnread, CancellationToken.None).ConfigureAwait(false);
+        if (wasMarkedUnread == isMarkedUnread)
+            return;
+
+        await settings
+            .Update(x => x with { IsMarkedUnread = isMarkedUnread }, CancellationToken.None)
+            .ConfigureAwait(false);
     }
 
     private async Task LeaveChatInternal(

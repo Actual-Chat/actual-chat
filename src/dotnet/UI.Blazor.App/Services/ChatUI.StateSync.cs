@@ -32,6 +32,7 @@ public partial class ChatUI
             AsyncChain.From(SynchronizeSelectedChatIdAndActivePlaceId),
             AsyncChain.From(PrefetchChatTails),
             AsyncChain.From(MonitorDetectedLanguage),
+            AsyncChain.From(ClearMarkedUnreadOnShow),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         await (
@@ -236,6 +237,28 @@ public partial class ChatUI
 
     private bool IsRecentDetection(Moment timestamp)
         => (Clocks.SystemClock.Now - timestamp).Positive().TotalSeconds < 60;
+
+    private async Task ClearMarkedUnreadOnShow(CancellationToken cancellationToken)
+    {
+        // Only a chat coming on screen clears the mark: one that stays there keeps it,
+        // otherwise the open chat couldn't be marked unread at all
+        ChatId? shownChatId = null;
+        var cItemVisibility = await Computed
+            .Capture(() => ItemVisibility.Use(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        await foreach (var c in cItemVisibility.Changes(cancellationToken).ConfigureAwait(false)) {
+            if (c.HasError)
+                continue;
+
+            var chatId = c.Value.IsEmpty ? null : c.Value.ChatId;
+            if (chatId == shownChatId)
+                continue;
+
+            shownChatId = chatId;
+            if (chatId is not null)
+                await SetMarkedUnread(chatId, false).ConfigureAwait(false);
+        }
+    }
 
     private async Task PrefetchChatTails(CancellationToken cancellationToken)
     {

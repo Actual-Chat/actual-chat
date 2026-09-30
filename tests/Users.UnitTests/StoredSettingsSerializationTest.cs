@@ -251,6 +251,16 @@ public partial class StoredSettingsSerializationTest
     }
 
     [Fact]
+    public void ChatUserSettingsShouldKeepIsMarkedUnread()
+    {
+        // arrange
+        var settings = new Chat.ChatUserSettings { IsMarkedUnread = true };
+
+        // act + assert
+        settings.AssertPassesThroughSerializers(x => x.IsMarkedUnread.Should().BeTrue());
+    }
+
+    [Fact]
     public void LegacyUserLanguageSettingsDeserializesWithEmptyDubVoice()
     {
         // arrange

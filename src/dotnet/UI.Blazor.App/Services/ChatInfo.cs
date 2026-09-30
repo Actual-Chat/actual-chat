@@ -21,6 +21,7 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
     public ChatId Id => Contact.Id.ChatId;
     public Chat.Chat Chat => Contact.Chat;
     public ChatEntry? LastTextEntry => News?.LastTextEntry;
+    public bool IsMarkedUnread => ChatUserSettings.IsMarkedUnread;
 
     // Computed
     public bool HasUnreadOwnMention => LastMention is { } m && m.EntryId.LocalId > ReadEntryLid;

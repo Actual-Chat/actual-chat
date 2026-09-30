@@ -121,19 +121,6 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     }
 
     [Fact]
-    public void ChatPositions_Set_Forced()
-    {
-        var cmd = new ChatPositions_Set {
-            Session = TestSession,
-            ChatId = TestChatId,
-            Kind = ChatPositionKind.Read,
-            Position = new ChatPosition(42),
-            Force = true,
-        };
-        cmd.AssertPassesThroughSerializers();
-    }
-
-    [Fact]
     public void ChatPositions_Set_Heard()
     {
         var position = new ChatPosition(42, "origin");

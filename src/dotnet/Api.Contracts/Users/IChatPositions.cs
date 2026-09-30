@@ -22,6 +22,4 @@ public sealed partial record ChatPositions_Set : ApiCommand<Unit>, INotDeduplica
     [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
     [DataMember(Order = 3), Key(3)] public required ChatPositionKind Kind { get; init; }
     [DataMember(Order = 4), Key(4)] public required ChatPosition Position { get; init; }
-    // Read positions are forward-only unless forced - "Mark as unread" is what moves one back
-    [DataMember(Order = 5), Key(5)] public bool Force { get; init; }
 }

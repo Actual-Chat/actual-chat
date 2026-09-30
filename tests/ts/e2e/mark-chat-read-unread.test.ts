@@ -1,10 +1,10 @@
 /**
  * E2E test: "Mark as read" / "Mark as unread" in a chat list item's context menu.
  *
- * Alice watches the default chat from another chat - the open one can't be marked unread - while
- * Bob reacts to her message, mentions her and posts. Each badge is cleared by "Mark as read",
- * including the reaction one, which the read position alone doesn't clear. Then "Mark as unread"
- * shows a "1" badge that survives a reload.
+ * Alice watches the default chat from another chat while Bob reacts to her message, mentions her
+ * and posts. Each badge is cleared by "Mark as read", including the reaction one, which the read
+ * position alone doesn't clear. Then "Mark as unread" shows a "1" badge that survives a reload and
+ * is cleared by opening the chat; the open chat itself keeps the mark until it's left and reopened.
  *
  * Run:
  *   AC_E2E_SERVER=external npx vitest run tests/ts/e2e/mark-chat-read-unread.test.ts --config vitest.config.e2e.ts
@@ -183,6 +183,28 @@ describe('mark chat as read / unread', () => {
         await alice.screenshot({ path: shot('4-marked-unread') });
         await alice.reload();
         await item.waitFor({ state: 'visible', timeout: 30_000 });
+        await expect.poll(() => badge.first().textContent().catch(() => ''), { timeout: 15_000 }).toBe('1');
+
+        // act - opening the chat clears the mark
+        await openChat(alice);
+        await openChat(alice, OTHER_CHAT_URL);
+
+        // assert
+        await item.waitFor({ state: 'visible', timeout: 15_000 });
+        await expectAllRead();
+
+        // act - the open chat can be marked unread too, and keeps the mark while it stays open
+        await openChat(alice);
+        await item.waitFor({ state: 'visible', timeout: 15_000 });
+        await (await openMenu(alice, item, 'Mark as unread')).click();
+        await alice.waitForTimeout(2_000);
+        entry = await openMenu(alice, item, 'Mark as read');
+        await alice.screenshot({ path: shot('5-open-chat-marked-unread-menu') });
+        await alice.keyboard.press('Escape');
+        await openChat(alice, OTHER_CHAT_URL);
+
+        // assert
+        await item.waitFor({ state: 'visible', timeout: 15_000 });
         await expect.poll(() => badge.first().textContent().catch(() => ''), { timeout: 15_000 }).toBe('1');
         await (await openMenu(alice, item, 'Mark as read')).click();
         await expectAllRead();
