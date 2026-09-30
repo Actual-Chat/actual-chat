@@ -653,7 +653,10 @@ body.narrow .page-with-header-and-footer[data-has-left-panel-open][data-has-test
 .page-with-header-and-footer .layout-body .test-page-btn-group > .btn {
     @apply min-w-full md:min-w-40;
 }
-@media (min-width: 820px) {
+/* Only where the middle column is narrower than the message max-width, so opening/closing the
+   right panel actually rewraps messages. At xl+ the open column still clears the 768px cap, so
+   the content only re-margins - the blink would hide nothing and just flashes the chat. */
+@media (min-width: 820px) and (max-width: 1535.98px) {
     .page-with-header-and-footer[data-has-right-panel-open] > .list-view-layout {
         @apply opacity-0;
         animation: animated-text-1 400ms ease-in-out forwards;
