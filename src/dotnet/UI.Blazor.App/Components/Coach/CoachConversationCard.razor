@@ -28,7 +28,10 @@
     }
     <div class="c-links">
         <a href="@Links.Chat(c.ChatId, c.StartEntryLid)">@L.Coach_MarkedTranscript</a>
-        <a @onclick="@OnToggleExcluded">@(c.IsExcluded ? L.Coach_CountAgain : L.Coach_DontCount)</a>
+        <a class="c-exclude" @onclick="@OnToggleExcluded">
+            <i class="@(c.IsExcluded ? "icon-refresh" : "icon-close")"></i>
+            @(c.IsExcluded ? L.Coach_CountAgain : L.Coach_DontCount)
+        </a>
     </div>
 </Card>
 
