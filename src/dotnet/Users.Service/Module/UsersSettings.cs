@@ -38,6 +38,7 @@ public sealed class UsersSettings
     public AppUpdateSettings AppUpdates { get; set; } = new();
     public ReviewPromptSettings ReviewPrompt { get; set; } = new();
     public UsageSettings Usage { get; set; } = new();
+    public CoachScoringSettings Coach { get; set; } = new();
     // A kill switch: MauiAuthController.Start assumes every browser component the app can reach
     // reports Sec-Fetch-Site: none. Turn this off if some platform turns out not to.
     public bool IsMauiAuthFetchSiteCheckEnabled { get; set; } = true;
@@ -108,4 +109,83 @@ public sealed class ReviewPromptSettings
     public int MaxDeclines { get; set; } = 2;
     // A pending prompt older than this is dropped: a backgrounded app must not pop it up hours later
     public TimeSpan PendingTtl { get; set; } = TimeSpan.FromMinutes(10);
+}
+
+public enum CoachRollout
+{
+    AdminsAndFocusGroup = 0,
+    Everyone = 1,
+}
+
+public sealed class RateBand
+{
+    public double Good { get; set; } = 0.03;
+    public double High { get; set; } = 0.06;
+}
+
+public sealed class PaceBand
+{
+    public double Slow { get; set; } = 110;
+    public double Fast { get; set; } = 160;
+}
+
+/// <summary>
+/// Speech-coach bands, weights and tip thresholds; the same bands serve the tab, the trends and
+/// the tips. Pace bands can be overridden per ISO language code.
+/// </summary>
+public sealed class CoachScoringSettings
+{
+    public int MinScoreWords { get; set; } = 200;
+    public int MinVocabularyWords { get; set; } = 20;
+    public int BadgeMinDelta { get; set; } = 3;
+    public int TrailingDays { get; set; } = 30;
+    public double PaceSlowWpm { get; set; } = 110;
+    public double PaceFastWpm { get; set; } = 160;
+    // Comfortable spoken pace differs with word length; languages without an entry use the global band
+    public Dictionary<string, PaceBand> PaceByLanguage { get; set; } = new() {
+        ["en"] = new PaceBand { Slow = 130, Fast = 170 },
+        ["ru"] = new PaceBand { Slow = 100, Fast = 140 },
+        ["uk"] = new PaceBand { Slow = 100, Fast = 140 },
+        ["pl"] = new PaceBand { Slow = 100, Fast = 140 },
+        ["cs"] = new PaceBand { Slow = 100, Fast = 140 },
+        ["de"] = new PaceBand { Slow = 110, Fast = 150 },
+        ["es"] = new PaceBand { Slow = 150, Fast = 200 },
+        ["it"] = new PaceBand { Slow = 150, Fast = 200 },
+        ["fr"] = new PaceBand { Slow = 140, Fast = 180 },
+        ["pt"] = new PaceBand { Slow = 140, Fast = 180 },
+    };
+    public Dictionary<string, RateBand> FillerByLanguage { get; set; } = new() {
+        ["en"] = new RateBand(),
+        ["ru"] = new RateBand(),
+    };
+    public double FillerGoodRate { get; set; } = 0.03;
+    public double FillerHighRate { get; set; } = 0.06;
+    public double WeakGoodRate { get; set; } = 0.04;
+    public double WeakHighRate { get; set; } = 0.06;
+    public double RepetitionGoodRate { get; set; } = 0.04;
+    public double SentenceShort { get; set; } = 8;
+    public double SentenceLong { get; set; } = 20;
+    public double TurnLowFactor { get; set; } = 0.5;
+    public double TurnHighFactor { get; set; } = 1.5;
+    public double PatienceLowSeconds { get; set; } = 0.5;
+    public double PatienceHighSeconds { get; set; } = 1.5;
+    public double MonologueFlagSeconds { get; set; } = 150;
+    public int WeightFillers { get; set; } = 30;
+    public int WeightPace { get; set; } = 25;
+    public int WeightWeakWords { get; set; } = 20;
+    public int WeightTurnTaking { get; set; } = 15;
+    public int WeightSentenceLength { get; set; } = 10;
+    public int TipPaceFastWpm { get; set; } = 170;
+    public int TipPaceSlowWpm { get; set; } = 100;
+    // Live tips judge the last TipWindow of the user's own speech, not the day's totals
+    public TimeSpan TipWindow { get; set; } = TimeSpan.FromMinutes(20);
+    public int TipMinWords { get; set; } = 30;
+    public int TipWordCount { get; set; } = 3;
+    public int CleanTipMinWords { get; set; } = 150;
+    // Own entries of one chat closer than this belong to one conversation card
+    public TimeSpan ConversationGap { get; set; } = TimeSpan.FromMinutes(30);
+    public int RecentConversations { get; set; } = 20;
+    public TimeSpan TipWordCooldown { get; set; } = TimeSpan.FromMinutes(60);
+    public CoachRollout Rollout { get; set; } = CoachRollout.AdminsAndFocusGroup;
+    public string[] FocusGroupEmails { get; set; } = [];
 }

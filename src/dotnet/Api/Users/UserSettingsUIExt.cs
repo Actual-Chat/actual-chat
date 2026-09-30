@@ -61,4 +61,11 @@ public static class UserSettingsUIExt
     public static UserSettingsAccessor<UserCarAudioSettings> UserCarAudioSettings(
         this UserSettingsUI settingsUI)
         => new(settingsUI, nameof(UserCarAudioSettings));
+
+    public static UserSettingsAccessor<UserCoachSettings> UserCoachSettings(this UserSettingsUI settingsUI)
+        => new(settingsUI, nameof(UserCoachSettings));
+
+    public static UserSettingsAccessor<UserCoachWeeklyNote> UserCoachWeeklyNote(this UserSettingsUI settingsUI)
+        => new(settingsUI, nameof(UserCoachWeeklyNote));
+
 }

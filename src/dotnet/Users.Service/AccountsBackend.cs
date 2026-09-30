@@ -476,6 +476,14 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .Where(a => a.UserId == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
+        await dbContext.CoachEvents
+            .Where(e => e.UserId == userId.Value)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+        await dbContext.CoachDays
+            .Where(d => d.UserId == userId.Value)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
 
         await dbContext.Accounts
             .Where(a => a.Id == userId.Value)

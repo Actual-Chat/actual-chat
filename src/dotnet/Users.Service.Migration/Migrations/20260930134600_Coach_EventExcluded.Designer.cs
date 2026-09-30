@@ -3,6 +3,7 @@ using System;
 using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,14 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Users.Migrations;
 
 [DbContext(typeof(UsersDbContext))]
-partial class UsersDbContextModelSnapshot : ModelSnapshot
+[Migration("20260930134600_Coach_EventExcluded")]
+partial class _20260930134600_Coach_EventExcluded
 {
-    // If you encounter a merge conflict in the line below, it means you need to
-    // discard one of the migration branches and recreate its migrations on top of
-    // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20260930152734_Coach_EventIndexes";
-
-    protected override void BuildModel(ModelBuilder modelBuilder)
+    /// <inheritdoc />
+    protected override void BuildTargetModel(ModelBuilder modelBuilder)
     {
 #pragma warning disable 612, 618
         modelBuilder
@@ -344,12 +342,6 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
 
                 b.HasIndex("UserId", "Day")
                     .HasDatabaseName("ix_coach_events_user_id_day");
-
-                b.HasIndex("UserId", "OccurredAt")
-                    .HasDatabaseName("ix_coach_events_user_id_occurred_at");
-
-                b.HasIndex("UserId", "ChatId", "OccurredAt")
-                    .HasDatabaseName("ix_coach_events_user_id_chat_id_occurred_at");
 
                 b.ToTable("coach_events");
             });

@@ -51,6 +51,24 @@ public partial class StoredSettingsSerializationTest
         [Key(3)] public int ListeningMode { get; init; }
     }
 
+    // UserCoachTip as written before the word map (key 14) existed
+    [MessagePackObject]
+    public sealed partial record LegacyUserCoachTipSlots
+    {
+        [Key(0)] public string Origin { get; init; } = "";
+        [Key(1)] public CoachTipKind Kind { get; init; }
+    }
+
+    // UserCoachSettings as written by v1, before the panel redesign added keys 4 and up
+    [MessagePackObject]
+    public sealed partial record LegacyUserCoachSettings
+    {
+        [Key(0)] public string Origin { get; init; } = "";
+        [Key(1)] public bool IsCoachingEnabled { get; init; }
+        [Key(2)] public bool AreLiveTipsEnabled { get; init; } = true;
+        [Key(3)] public TimeSpan TipInterval { get; init; } = TimeSpan.FromMinutes(5);
+    }
+
     // UserLanguageSettings as written before DubVoice (key 7) existed
     [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
     public sealed partial record LegacyUserLanguageSettings
@@ -571,5 +589,185 @@ public partial class StoredSettingsSerializationTest
         // Structural equivalence — records with array members default to reference equality
         // on the arrays, so two structurally identical instances aren't `Equals`.
         read.Should().BeEquivalentTo(value);
+    }
+
+    [Fact]
+    public void UserCoachSettingsUnionRoundTrip()
+    {
+        // arrange
+        var settings = new UserCoachSettings {
+            Origin = "union-coach-test",
+            IsCoachingEnabled = true,
+            AreLiveTipsEnabled = false,
+            TipInterval = TimeSpan.FromMinutes(15),
+        };
+
+        // act
+        using var buffer = KvasSerializer.Default.Write<StoredSettings>(settings);
+        var bytes = buffer.WrittenMemory;
+        var result = KvasSerializer.Default.Read<StoredSettings>(ref bytes);
+
+        // assert
+        result.Should().BeOfType<UserCoachSettings>();
+        var typed = (UserCoachSettings)result!;
+        typed.Origin.Should().Be(settings.Origin);
+        typed.IsCoachingEnabled.Should().BeTrue();
+        typed.AreLiveTipsEnabled.Should().BeFalse();
+        typed.TipInterval.Should().Be(TimeSpan.FromMinutes(15));
+    }
+
+    [Fact]
+    public void UserCoachTipUnionRoundTrip()
+    {
+        // arrange
+        var chatId = GroupChatId.New();
+        var tip = new UserCoachTip {
+            Origin = "union-tip-test",
+            Kind = CoachTipKind.WeakWord,
+            ChatId = chatId,
+            EntryLid = 42,
+            Word = "awesome",
+            Count = 10,
+            Synonyms = ApiArray.New("excellent"),
+            ShownAt = new DateTime(2026, 9, 26, 12, 0, 0, DateTimeKind.Utc),
+            LastTipAt = new DateTime(2026, 9, 26, 12, 0, 0, DateTimeKind.Utc),
+            WindowMinutes = 20,
+            WordTipAt = new ApiMap<string, Moment>(new Dictionary<string, Moment> {
+                ["awesome"] = new DateTime(2026, 9, 26, 12, 0, 0, DateTimeKind.Utc),
+            }),
+        };
+
+        // act
+        using var buffer = KvasSerializer.Default.Write<StoredSettings>(tip);
+        var bytes = buffer.WrittenMemory;
+        var result = KvasSerializer.Default.Read<StoredSettings>(ref bytes);
+
+        // assert
+        result.Should().BeOfType<UserCoachTip>();
+        var typed = (UserCoachTip)result!;
+        typed.ChatId.Should().Be(chatId);
+        typed.Kind.Should().Be(CoachTipKind.WeakWord);
+        typed.Synonyms.Should().Equal("excellent");
+        typed.WindowMinutes.Should().Be(20);
+        typed.WordTipAt.Should().ContainKey("awesome");
+        typed.IsPending.Should().BeTrue();
+    }
+
+    private static T UnionRoundTrip<T>(T value) where T : StoredSettings
+    {
+        using var buffer = KvasSerializer.Default.Write<StoredSettings>(value);
+        var bytes = buffer.WrittenMemory;
+        var result = KvasSerializer.Default.Read<StoredSettings>(ref bytes);
+        result.Should().BeOfType<T>();
+        return (T)result!;
+    }
+
+    [Fact]
+    public void UserCoachSettingsShouldRoundTripTheNewKeys()
+    {
+        // arrange
+        var settings = new UserCoachSettings {
+            IsCoachingEnabled = true,
+            SkipPeerChats = true,
+            Languages = new ApiMap<string, CoachLanguageLevel>(new Dictionary<string, CoachLanguageLevel> {
+                ["en"] = CoachLanguageLevel.Learning, ["ru"] = CoachLanguageLevel.Native }),
+            FocusByLanguage = new ApiMap<string, CoachMetricKind>(new Dictionary<string, CoachMetricKind> {
+                ["en"] = CoachMetricKind.WeakWords }),
+            SelectedLanguage = "en",
+            AreMarksDisabled = true,
+            IsWeeklySummaryDisabled = true,
+        };
+
+        // act
+        var copy = UnionRoundTrip(settings);
+
+        // assert
+        copy.SkipPeerChats.Should().BeTrue();
+        copy.Languages["en"].Should().Be(CoachLanguageLevel.Learning);
+        copy.FocusByLanguage["en"].Should().Be(CoachMetricKind.WeakWords);
+        copy.SelectedLanguage.Should().Be("en");
+        copy.AreMarksDisabled.Should().BeTrue();
+        copy.IsWeeklySummaryDisabled.Should().BeTrue();
+        copy.LevelOf("en-US").Should().Be(CoachLanguageLevel.Learning, "the level is keyed by the ISO code");
+        copy.LevelOf("de").Should().Be(CoachLanguageLevel.Native, "absent means native");
+    }
+
+    [Fact]
+    public void UserCoachWeeklyNoteShouldRoundTrip()
+    {
+        // arrange
+        var chatId = GroupChatId.New();
+        var note = new UserCoachWeeklyNote {
+            WeekStart = new DateTime(2026, 9, 21, 0, 0, 0, DateTimeKind.Utc),
+            ScoreDelta = 4,
+            FocusKind = CoachMetricKind.Fillers,
+            FocusDelta = -0.03,
+            BestChatId = chatId,
+            BestStartLid = 12,
+        };
+
+        // act
+        var copy = UnionRoundTrip(note);
+
+        // assert
+        copy.ScoreDelta.Should().Be(4);
+        copy.FocusKind.Should().Be(CoachMetricKind.Fillers);
+        copy.FocusDelta.Should().Be(-0.03);
+        copy.BestChatId.Should().Be(chatId);
+        copy.BestStartLid.Should().Be(12);
+        copy.IsPending.Should().BeTrue();
+        (copy with { IsSeen = true }).IsPending.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ChatUserSettingsShouldRoundTripCoaching()
+    {
+        // arrange
+        var settings = new ChatUserSettings { IsCoachingEnabled = false };
+
+        // act
+        var copy = UnionRoundTrip(settings);
+
+        // assert
+        copy.IsCoachingEnabled.Should().BeFalse();
+        UnionRoundTrip(new ChatUserSettings()).IsCoachingEnabled.Should().BeNull("null means inherit");
+    }
+
+    [Fact]
+    public void LegacyUserCoachSettingsShouldReadWithEmptyMapsAndDefaults()
+    {
+        // arrange
+        var legacy = new LegacyUserCoachSettings { Origin = "v1", IsCoachingEnabled = true };
+
+        // act
+        using var buffer = MessagePackSerializer.Write(legacy);
+        var bytes = buffer.WrittenMemory.ToArray();
+        var result = (UserCoachSettings?)MessagePackSerializer.Read(bytes, typeof(UserCoachSettings), out _);
+
+        // assert: absent keys read as null and the properties must hide that
+        result!.IsCoachingEnabled.Should().BeTrue();
+        result.LevelOf("en-US").Should().Be(CoachLanguageLevel.Native);
+        result.FocusByLanguage.Should().BeEmpty();
+        result.Languages.Should().BeEmpty();
+        result.SelectedLanguage.Should().Be("");
+        result.SwitchedOff.Should().BeEmpty();
+        result.AreMarksDisabled.Should().BeFalse("marks and the weekly summary stay on for a v1 blob");
+        result.IsWeeklySummaryDisabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void LegacyUserCoachTipShouldReadWithAnEmptyWordMap()
+    {
+        // arrange
+        var legacy = new LegacyUserCoachTipSlots { Origin = "v1", Kind = CoachTipKind.Filler };
+
+        // act
+        using var buffer = MessagePackSerializer.Write(legacy);
+        var bytes = buffer.WrittenMemory.ToArray();
+        var result = (UserCoachTip?)MessagePackSerializer.Read(bytes, typeof(UserCoachTip), out _);
+
+        // assert
+        result!.Kind.Should().Be(CoachTipKind.Filler);
+        result.WordTipAt.Should().BeEmpty();
     }
 }
