@@ -43,6 +43,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<IRoles>();
         fusion.AddClient<IMentions>();
         fusion.AddClient<IReactions>();
+        fusion.AddClient<IChatCoach>();
         fusion.AddClient<IImageSuggestions>();
         fusion.AddClient<ISharedLocations>();
         fusion.AddClient<IWebHooks>();
@@ -90,6 +91,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<IChatPositions>();
         fusion.AddClient<IChatUsages>();
         fusion.AddClient<IUsage>();
+        fusion.AddClient<ICoach>();
 
         // Auth-related
         rpc.AddClient<ISecureTokens>();

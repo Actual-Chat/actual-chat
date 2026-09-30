@@ -184,6 +184,10 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<IUsage, Usage>();
         rpcHost.AddBackend<IUsageBackend, UsageBackend>();
 
+        // Coach
+        rpcHost.AddApi<ICoach, Coach>();
+        rpcHost.AddBackend<ICoachBackend, CoachBackend>();
+
         // UserVoices
         rpcHost.AddBackend<IUserVoicesBackend, UserVoicesBackend>();
 
@@ -246,6 +250,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             services.AddFlows()
                 .Add<UserSignInFlow>()
                 .Add<DigestFlow>()
+                .Add<CoachWeeklyNoteFlow>()
                 .Add<AccountMigrationFlow>()
                 .Add<UsageContactsBackfillFlow>();
         }

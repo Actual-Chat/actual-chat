@@ -3,6 +3,7 @@ using System;
 using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,14 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Users.Migrations;
 
 [DbContext(typeof(UsersDbContext))]
-partial class UsersDbContextModelSnapshot : ModelSnapshot
+[Migration("20260928103414_Add_Coach")]
+partial class _20260928103414_Add_Coach
 {
-    // If you encounter a merge conflict in the line below, it means you need to
-    // discard one of the migration branches and recreate its migrations on top of
-    // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20260930152734_Coach_EventIndexes";
-
-    protected override void BuildModel(ModelBuilder modelBuilder)
+    /// <inheritdoc />
+    protected override void BuildTargetModel(ModelBuilder modelBuilder)
     {
 #pragma warning disable 612, 618
         modelBuilder
@@ -273,11 +271,6 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("day");
 
-                b.Property<string>("Language")
-                    .HasColumnType("text")
-                    .HasColumnName("language")
-                    .UseCollation("C");
-
                 b.Property<string>("Data")
                     .IsRequired()
                     .HasColumnType("jsonb")
@@ -288,7 +281,7 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("bigint")
                     .HasColumnName("version");
 
-                b.HasKey("UserId", "Day", "Language");
+                b.HasKey("UserId", "Day");
 
                 b.ToTable("coach_days");
             });
@@ -315,10 +308,6 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("day");
 
-                b.Property<bool>("IsExcluded")
-                    .HasColumnType("boolean")
-                    .HasColumnName("is_excluded");
-
                 b.Property<bool>("IsRemoved")
                     .HasColumnType("boolean")
                     .HasColumnName("is_removed");
@@ -344,12 +333,6 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
 
                 b.HasIndex("UserId", "Day")
                     .HasDatabaseName("ix_coach_events_user_id_day");
-
-                b.HasIndex("UserId", "OccurredAt")
-                    .HasDatabaseName("ix_coach_events_user_id_occurred_at");
-
-                b.HasIndex("UserId", "ChatId", "OccurredAt")
-                    .HasDatabaseName("ix_coach_events_user_id_chat_id_occurred_at");
 
                 b.ToTable("coach_events");
             });
