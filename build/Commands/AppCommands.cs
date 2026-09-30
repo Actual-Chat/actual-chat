@@ -75,6 +75,14 @@ public sealed class AppSettings : PlanSettings
     [Description("Windows: build an MSIX package instead of the unpackaged app; implied elsewhere")]
     public bool MustPackage { get; init; }
 
+    [CommandOption("--ci")]
+    [Description("Android only: install the APK CI built on dev (newest release/* with --prod) instead of building")]
+    public bool UseCiBuild { get; init; }
+
+    [CommandOption("--ci-branch <BRANCH>")]
+    [Description("Like --ci, but the APK CI built on this branch")]
+    public string? CiBranch { get; init; }
+
     [CommandOption("-l|--launch")]
     [Description("Launch the app after installing it (the default for 'app run')")]
     public bool MustLaunch { get; init; }
@@ -85,6 +93,7 @@ public sealed class AppSettings : PlanSettings
 
     public string ResolvedConfiguration => IsRelease ? "Release" : Configuration;
     public bool IsDev => !IsProd;
+    public bool MustUseCiBuild => UseCiBuild || CiBranch is not null;
     public bool MustUsePublish
         // Android is always published: that's where the signed APK comes from, in Debug too.
         => !MustNotPublish
@@ -119,6 +128,11 @@ public sealed class AppSettings : PlanSettings
             return ValidationResult.Error("--catalyst is only supported for the macos platform.");
         if (UseNativeAot && Platform is AppPlatform.Mac)
             return ValidationResult.Error("--aot is not wired for the macos platform.");
+        if (MustUseCiBuild && Platform != AppPlatform.Android)
+            return ValidationResult.Error("--ci is only supported for the android platform.");
+        if (MustUseCiBuild && (UseNativeAot || MustPublish || MustNotPublish
+                || !OrdinalIgnoreCaseEquals(ResolvedConfiguration, "Debug")))
+            return ValidationResult.Error("--ci installs the APK CI built, so build options don't apply to it.");
         if (!OrdinalIgnoreCaseEquals(ResolvedConfiguration, "Debug")
             && !OrdinalIgnoreCaseEquals(ResolvedConfiguration, "Release"))
             return ValidationResult.Error($"Unknown configuration: {ResolvedConfiguration}.");

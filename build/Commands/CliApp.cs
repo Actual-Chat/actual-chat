@@ -50,11 +50,14 @@ public static class CliApp
                     .WithDescription("Build, install & launch the app on a device")
                     .WithExample("app", "run", "android")
                     .WithExample("app", "run", "android", "--release", "--prod")
+                    .WithExample("app", "run", "android", "--ci", "--prod")
                     .WithExample("app", "run", "ios", "--simulator")
                     .WithExample("app", "run", "windows", "--release", "--aot");
                 b.AddCommand<AppInstallCommand>("install")
                     .WithDescription("Build & install the app on a device, without launching it")
-                    .WithExample("app", "install", "android", "--release");
+                    .WithExample("app", "install", "android", "--release")
+                    .WithExample("app", "install", "android", "--ci")
+                    .WithExample("app", "install", "android", "--ci-branch", "feat/some-branch");
                 b.AddCommand<AppBuildCommand>("build")
                     .WithDescription("Build (or publish) the app, without installing it")
                     .WithExample("app", "build", "android", "--release");

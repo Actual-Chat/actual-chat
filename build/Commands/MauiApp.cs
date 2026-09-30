@@ -43,10 +43,13 @@ internal static class MauiApp
                 "A Native AOT Windows build has nothing to install - it runs from artifacts/ as-is."
                 + " Drop --aot, or use 'b app build windows --aot'.");
 
-        if (!settings.MustSkipWebBuild)
-            plan.AddRun(Utils.FindNpmExe(), ["run", $"build:{settings.ResolvedConfiguration}"]);
-
-        AddDotnet(plan, settings, isPackaged);
+        if (settings.MustUseCiBuild)
+            AddCiDownload(plan, settings);
+        else {
+            if (!settings.MustSkipWebBuild)
+                plan.AddRun(Utils.FindNpmExe(), ["run", $"build:{settings.ResolvedConfiguration}"]);
+            AddDotnet(plan, settings, isPackaged);
+        }
         // Announced before the install step, so the path stays visible once the app takes over the console.
         if (GetArtifactPath(settings) is { } artifactPath)
             plan.AddOutput(artifactPath);
@@ -59,6 +62,14 @@ internal static class MauiApp
     }
 
     // Private methods
+
+    private static void AddCiDownload(CommandPlan plan, AppSettings settings)
+    {
+        var appId = GetAppId(settings);
+        var branch = settings.CiBranch ?? (settings.IsDev ? "dev" : AndroidCiApk.LatestReleaseBranch);
+        plan.AddAction($"gh: download the newest {appId} APK CI built on {branch}",
+            ct => AndroidCiApk.Download(appId, branch, ct));
+    }
 
     private static void AddDotnet(CommandPlan plan, AppSettings settings, bool isPackaged)
     {
@@ -153,6 +164,7 @@ internal static class MauiApp
 
     private static string? GetArtifactPath(AppSettings settings)
         => settings.Platform switch {
+            AppPlatform.Android when settings.MustUseCiBuild => AndroidCiApk.GetApkPath(GetAppId(settings)),
             AppPlatform.Android => Path.Combine(GetOutputDir(settings), $"{GetAppId(settings)}-Signed.apk"),
             AppPlatform.Windows => Path.Combine(GetOutputDir(settings), "ActualChat.exe"),
             _ => null,
