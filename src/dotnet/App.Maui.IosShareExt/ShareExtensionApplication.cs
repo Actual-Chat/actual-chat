@@ -164,7 +164,7 @@ public sealed class ShareExtensionApplication : IHasServices, IAsyncDisposable
             logging.AddFilter("System", LogLevel.Warning);
             logging.AddFilter("Microsoft", LogLevel.Warning);
             // Serilog writes to the Apple unified log too (MauiDiagnostics.AddPlatformLoggerSinks),
-            // and going through it is what gets warnings and errors to Sentry - AddAppleUnifiedLog
+            // and going through it is what gets errors (and their breadcrumbs) to Sentry - AddAppleUnifiedLog
             // reached os_log only, so nothing the extension logged was ever reported.
             logging.AddFilteringSerilog(Serilog.Log.Logger);
         });
