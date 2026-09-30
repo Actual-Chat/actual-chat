@@ -227,20 +227,20 @@ form .form-section {
     @apply h-auto;
 }
 
-.form .tile-item-icon {
+.form .ti-left {
     @apply justify-start;
 }
 
-.form .tile-item-body {
+.form .ti-center {
     @apply grow;
     @apply max-h-max;
 }
 
-.form .tile-item-body-content {
+.form .ti-title {
     @apply max-h-max;
 }
 
-.form .tile-item-right {
+.form .ti-right {
     @apply grow-0;
 }
 

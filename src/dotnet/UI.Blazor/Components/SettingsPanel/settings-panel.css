@@ -175,87 +175,6 @@ body.wide .settings-tab {
     @apply bg-transparent;
     @apply font-medium text-02;
 }
-.tile-item {
-    @apply flex-x items-center justify-center gap-x-2;
-    @apply min-h-10 w-full;
-    @apply pr-2;
-    @apply rounded-lg;
-}
-body.hoverable .tile-item.clickable:hover,
-.touch-capable .tile-item.clickable:active {
-    @apply bg-hover;
-}
-body.hoverable .tile-item.clickable:not(.selected),
-body.hoverable .tile-item.clickable:not(.selected) span {
-    @apply cursor-pointer;
-}
-body.hoverable .tile-item.clickable.transparent:hover,
-.touch-capable .tile-item.clickable.transparent:active {
-    @apply bg-transparent;
-}
-body.hoverable .tile-item.clickable.item-danger:hover,
-.touch-capable .tile-item.clickable.item-danger:active {
-    @apply bg-menuitem-hover-warning;
-}
-.tile-item.item-danger .tile-item-icon,
-.tile-item.item-danger .tile-item-body-content {
-    @apply text-danger;
-}
-.tile-item-icon {
-    @apply flex-none flex justify-center;
-    @apply min-w-10 max-w-10;
-    @apply text-03;
-}
-.first-tile-item .tile-item-icon {
-    @apply justify-center;
-}
-.tile-item .tile-item-icon.icon-centered {
-    @apply justify-center;
-}
-.tile-item-body {
-    @apply grid;
-    @apply max-w-full;
-}
-.tile-item-body-content {
-    @apply w-full min-h-5 max-h-5;
-    @apply truncate;
-    @apply text-body-500 text-02;
-}
-/* Option labels differ only in their tail ("... via Soniox" vs "... via OpenAI"), so the one-line
-   ellipsis every other row keeps would render two different options as the same text. */
-.tile-item:has(input[type="radio"], input[type="checkbox"]) .tile-item-body-content {
-    @apply max-h-none h-auto;
-    @apply whitespace-normal line-clamp-2;
-}
-/* An info row is prose, not a one-line setting label, so it wraps and grows
-   instead of truncating. */
-.info-tile-item .tile-item-body-content {
-    @apply max-h-none h-auto;
-    @apply whitespace-normal;
-}
-.tile-item-body-caption {
-    @apply text-caption-500 font-normal text-03;
-}
-.tile-item-right {
-    @apply flex-1 flex-x justify-end items-center;
-    @apply min-h-6;
-}
-/* No value slot: the empty flex-1 spacer is gone, so let the body take the full row instead of
-   centering (justify-center) - otherwise a wrapping label like the empty-state text is squeezed. */
-.tile-item.no-right .tile-item-body {
-    @apply flex-1;
-}
-/* A bare value is an anonymous flex item with a flex-basis of 0 and no min-width floor, so a long
-   label starves it down to its min-content - one word, or one glyph in CJK. The floor plus the
-   ellipsis keep it readable and make the label (already truncate) give way first. :not(:empty)
-   leaves the rows with no value at all alone - there the slot is a spacer, and a floor on it would
-   truncate their labels for nothing. */
-.tile-item-right:not(:empty):not(:has(*)) {
-    @apply block;
-    @apply min-w-24;
-    @apply truncate;
-    @apply leading-6 text-right;
-}
 .tile-hidden-btn {
     @apply md:invisible group-hover:md:visible;
 }
@@ -346,43 +265,6 @@ body.narrow .settings-tab-header {
     @apply block md:hidden;
 }
 
-.header-tile-item .tile-item-icon {
-    @apply hidden;
-}
-
-.tile-item.tile-item-share i,
-.tile-item.tile-item-edit i {
-    @apply text-primary;
-}
-.tile-item.tile-item-share .tile-item-body-content,
-.tile-item.tile-item-edit .tile-item-body-content {
-    @apply text-primary;
-}
-
-.tile-item-my-account-link {
-    @apply h-auto;
-    @apply p-2;
-    @apply border border-separator rounded-xl;
-}
-.tile-item-my-account-link .tile-item-icon {
-    @apply max-w-none;
-}
-.tile-item-my-account-link .tile-item-body {
-    @apply flex-auto;
-    @apply min-w-24;
-}
-.tile-item-my-account-link .tile-item-body-content {
-    @apply text-01 text-body;
-}
-/* The share button is decoration, the account name is the identity, so the button yields first -
-   but by a factor that lets its label ellipsise on the way rather than snap to icon-only. */
-.tile-item-my-account-link .tile-item-right {
-    @apply pr-1;
-}
-.tile-item-my-account-link .btn.btn-share-action {
-    @apply mr-0.5 md:mr-0;
-}
-
 .theme-toggle .settings-tab-item .c-comment {
     @apply absolute left-36;
 }
@@ -401,16 +283,3 @@ body.narrow .settings-tab-header {
     @apply bg-transparent;
 }
 
-.tile-item.chat-roulette-is-enabled {
-    @apply h-auto;
-    @apply py-1;
-}
-
-.tile-item .btn.btn-round.selected {
-    @apply text-primary;
-    @apply cursor-default;
-}
-body.hoverable .tile-item .btn.btn-round.selected:hover,
-.touch-capable .tile-item .btn.btn-round.selected:active {
-    @apply text-primary;
-}

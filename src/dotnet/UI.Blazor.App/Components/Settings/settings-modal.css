@@ -28,7 +28,7 @@ body.narrow .close-settings-btn {
 }
 /* first-tile-item (the account header) keeps the base left-aligned icon; every other form icon,
    which .form left-aligns via justify-start, falls back to the base centered slot. */
-.settings-modal .tile-item:not(.first-tile-item) .tile-item-icon {
+.settings-modal .tile-item:not(.first-tile-item) .ti-left {
     @apply justify-center;
 }
 /* A block of tile rows keeps a little vertical air so it doesn't butt against the section gap. */
@@ -101,7 +101,7 @@ body.narrow .close-settings-btn {
 .settings-tab .app-settings .tile-item {
     @apply h-auto;
 }
-.settings-tab .app-settings .tile-item-body {
+.settings-tab .app-settings .ti-center {
     @apply max-h-none;
 }
 .settings-tab .app-settings .auto-start .disable-reason {
@@ -128,7 +128,7 @@ body.narrow .close-settings-btn {
     @apply text-caption-500 text-03;
 }
 .clickable.transparent.tile-item:not(.selected):hover label,
-.clickable.transparent.tile-item:not(.selected):hover .tile-item-body-caption {
+.clickable.transparent.tile-item:not(.selected):hover .ti-caption {
     @apply text-01;
 }
 .clickable.transparent.tile-item:not(.selected):hover .c-comment {
@@ -177,7 +177,7 @@ body.narrow .close-settings-btn {
 
 /* ── Your Account tab ── */
 
-.your-account-tile .tile-item-icon i {
+.your-account-tile .ti-left i {
     @apply text-xl;
 }
 .your-account-tile .c-actions {
@@ -186,17 +186,17 @@ body.narrow .close-settings-btn {
 
 /* ── Sessions tab ── */
 
-.sessions-tile-item .tile-item-body {
+.sessions-tile-item .ti-center {
     @apply w-full;
 }
-.sessions-tile-item .tile-item-body-caption {
+.sessions-tile-item .ti-caption {
     @apply flex-x items-center justify-between gap-2;
 }
-.sessions-tile-item .tile-item-body-content {
+.sessions-tile-item .ti-title {
     @apply max-h-10;
     @apply text-caption;
 }
-.sessions-tile-item .tile-item-body-content .c-description {
+.sessions-tile-item .ti-title .c-description {
     @apply whitespace-normal;
 }
 .sessions-tile-item .sign-out-btn {
@@ -218,13 +218,13 @@ body.hoverable .sessions-tile-item .sign-out-btn:hover,
 .api-key-tile .tile-item {
     @apply relative;
 }
-.api-key-tile .tile-item-body-content {
+.api-key-tile .ti-title {
     @apply max-h-none;
 }
-.api-key-tile:has(.c-deactivate) .tile-item-body-content {
+.api-key-tile:has(.c-deactivate) .ti-title {
     @apply pr-12;
 }
-.api-key-tile .tile-item-body-caption {
+.api-key-tile .ti-caption {
     @apply flex-y;
 }
 .api-key-tile .c-key-info {
@@ -258,8 +258,8 @@ body.hoverable .sessions-tile-item .sign-out-btn:hover,
 .connected-apps-tile .tile-item {
     @apply relative;
 }
-.connected-apps-tile .tile-item-body-content,
-.connected-apps-tile .tile-item-body-caption {
+.connected-apps-tile .ti-title,
+.connected-apps-tile .ti-caption {
     @apply max-h-none;
     @apply pr-12;
 }
@@ -290,8 +290,8 @@ body.hoverable .sessions-tile-item .sign-out-btn:hover,
 .passkey-tile .tile-item {
     @apply relative;
 }
-.passkey-tile .tile-item-body-content,
-.passkey-tile .tile-item-body-caption {
+.passkey-tile .ti-title,
+.passkey-tile .ti-caption {
     @apply max-h-none;
     @apply pr-12;
 }
@@ -409,6 +409,6 @@ body.narrow .docs-tab .docs-content {
 .settings-tab .tile-item.permission-item {
     @apply py-2;
 }
-.settings-tab .tile-item.permission-item .tile-item-body-caption {
+.settings-tab .tile-item.permission-item .ti-caption {
     @apply whitespace-normal;
 }

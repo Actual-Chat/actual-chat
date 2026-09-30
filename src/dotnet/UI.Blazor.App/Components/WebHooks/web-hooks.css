@@ -1,13 +1,13 @@
 /* ── Hook list ── */
 
-.web-hook-tile .tile-item-body {
+.web-hook-tile .ti-center {
     @apply flex-1 min-w-0;
 }
-.web-hook-tile .tile-item-body-content {
+.web-hook-tile .ti-title {
     @apply flex-x items-baseline gap-x-2;
     @apply max-h-none;
 }
-.web-hook-tile .tile-item-body-caption {
+.web-hook-tile .ti-caption {
     @apply flex-y;
     @apply max-h-none;
 }
@@ -44,7 +44,7 @@
     @apply text-sm text-03;
     @apply whitespace-normal;
 }
-.web-hook-tile .tile-item-right {
+.web-hook-tile .ti-right {
     @apply min-w-8 justify-end;
     @apply text-03;
 }
@@ -164,10 +164,10 @@ body.hoverable .web-hook-chat-picker .c-item:hover,
 .web-hook-detail {
     @apply flex-y gap-y-4;
 }
-.web-hook-detail .tile-item-body-caption {
+.web-hook-detail .ti-caption {
     @apply max-h-none;
 }
-.web-hook-detail .tile-item-right {
+.web-hook-detail .ti-right {
     @apply min-w-8 justify-end;
     @apply text-03;
 }
@@ -175,11 +175,11 @@ body.hoverable .web-hook-chat-picker .c-item:hover,
 .web-hook-delivery-tile .tile-item {
     @apply relative;
 }
-.web-hook-delivery-tile .tile-item-body-content {
+.web-hook-delivery-tile .ti-title {
     @apply flex-x items-center gap-x-2;
     @apply max-h-none;
 }
-.web-hook-delivery-tile .tile-item-body-caption {
+.web-hook-delivery-tile .ti-caption {
     @apply max-h-none;
 }
 .web-hook-delivery-tile .c-time {

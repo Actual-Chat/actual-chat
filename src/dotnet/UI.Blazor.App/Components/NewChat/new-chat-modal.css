@@ -8,7 +8,7 @@
 .new-chat-modal .tile-item {
     @apply hover:bg-inherit;
 }
-.new-chat-modal .tile-item-icon i {
+.new-chat-modal .ti-left i {
     @apply text-2xl;
 }
 .new-chat-modal .contact-selector-list-item {

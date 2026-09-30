@@ -13,14 +13,14 @@
     @apply gap-x-4;
     @apply p-0;
 }
-.invite-list-item .tile-item-icon {
+.invite-list-item .ti-left {
     @apply justify-center;
     @apply min-w-0 max-w-none;
 }
-.invite-list-item .tile-item-right {
+.invite-list-item .ti-right {
     @apply flex-x gap-x-4;
 }
 
-.invite-list-item .tile-item-right > * {
+.invite-list-item .ti-right > * {
     @apply grow;
 }
