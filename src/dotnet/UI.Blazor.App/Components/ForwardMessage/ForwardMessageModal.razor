@@ -18,6 +18,7 @@
         <ContactSelector
             @ref="@_contactSelectorRef"
             ExcludeChatIds="@ModalModel.ExcludedChatIds"
+            RequiredPermissions="@(ModalModel.HasAttachments ? ChatPermissions.Upload : default)"
             ChatListPreOrder="@ChatListPreOrder.NotesFirst"
             SearchQuery="@_searchQuery"
             Changed="@StateHasChanged">
@@ -69,6 +70,7 @@
         public required string Title { get; init; } = "";
         public required string SubmitTitle { get; init; } = "";
         public required string SearchPlaceholder { get; init; } = "";
+        public bool HasAttachments { get; init; }
 
         public Model(ChatId chatId) : this(ImmutableHashSet.Create(chatId)) { }
     };

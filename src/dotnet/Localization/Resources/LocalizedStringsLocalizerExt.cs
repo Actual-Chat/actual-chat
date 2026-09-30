@@ -1329,6 +1329,8 @@ public static class LocalizedStringsLocalizerExt
         public string Share_WhoToShareWith => l["Share_WhoToShareWith"].Value;
         public string Share_AddComment => l["Share_AddComment"].Value;
         public string Share_SendToSelected => l["Share_SendToSelected"].Value;
+        public string Share_NoFilesYet => l["Share_NoFilesYet"].Value;
+        public string Share_NoFilesYetReason => l["Share_NoFilesYetReason"].Value;
 
         public string ShareExt_ShareWith => l["ShareExt_ShareWith"].Value;
         public string ShareExt_SignInPrompt_Format(object arg0) => l["ShareExt_SignInPrompt_Format", arg0].Value;

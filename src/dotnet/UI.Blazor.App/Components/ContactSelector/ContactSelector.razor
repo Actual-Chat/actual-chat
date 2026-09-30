@@ -17,6 +17,8 @@
     [Parameter] public ChatListPreOrder ChatListPreOrder { get; set; } = ChatListPreOrder.ChatList;
     [Parameter] public ChatListFilter Filter { get; set; } = ChatListFilter.None;
     [Parameter] public bool UseCanWriteFilter { get; set; } = true;
+    // Chats lacking any of these stay listed but can't be selected
+    [Parameter] public ChatPermissions RequiredPermissions { get; set; }
     [Parameter] public IReadOnlySet<ChatId>? ExcludeChatIds { get; set; }
     [Parameter] public SearchQuery SearchQuery { get; set; }
     [Parameter] public EventCallback Changed { get; set; }
@@ -31,15 +33,27 @@
     // how a consumer tells "the list is for the place I picked" from "the list is still the old one"
     public PlaceId? ContactsPlaceId { get; private set; }
 
-    public void Toggle(ChatId chatId)
-        => _selectedChatIds.Set(
+    public ChatPermissions GetMissingPermissions(ContactInfo contact)
+        => RequiredPermissions & ~contact.Chat.Rules.Permissions;
+
+    public bool IsDisabled(ContactInfo contact)
+        => GetMissingPermissions(contact) != default;
+
+    public void Toggle(ChatId chatId) {
+        if (IsDisabled(chatId))
+            return;
+
+        _selectedChatIds.Set(
             chatId,
             static (chatId1, x) => x.Value.Contains(chatId1)
                 ? x.Value.Remove(chatId1)
                 : x.Value.Add(chatId1));
+    }
 
-    public void Add(ChatId chatId)
-        => _selectedChatIds.Set(chatId, static (chatId1, x) => x.Value.Add(chatId1));
+    public void Add(ChatId chatId) {
+        if (!IsDisabled(chatId))
+            _selectedChatIds.Set(chatId, static (chatId1, x) => x.Value.Add(chatId1));
+    }
 
     public void Remove(ChatId chatId)
         => _selectedChatIds.Set(chatId, static (chatId1, x) => x.Value.Remove(chatId1));
@@ -101,4 +115,9 @@
         ContactsPlaceId = placeId;
         return contacts.ToList();
     }
+
+    // Private methods
+
+    private bool IsDisabled(ChatId chatId)
+        => _allContacts.Value.TryGetValue(chatId, out var contact) && IsDisabled(contact);
 }

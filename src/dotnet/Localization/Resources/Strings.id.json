@@ -1261,6 +1261,8 @@
   "Share_WhoToShareWith": "Ingin berbagi dengan siapa",
   "Share_AddComment": "Tambahkan komentar",
   "Share_SendToSelected": "Kirim ke kontak terpilih",
+  "Share_NoFilesYet": "Belum bisa mengirim file",
+  "Share_NoFilesYetReason": "File hanya bisa dikirim setelah pengguna ini menambahkan Anda ke kontaknya atau membalas.",
 
   // The iOS share extension - native UIKit, so it renders outside the app's WebView.
   "ShareExt_ShareWith": "Bagikan ke",

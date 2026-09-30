@@ -200,10 +200,12 @@ public class SelectionUI : UIServiceBase<AppUIHub>
             return;
 
         var chatId = selection.First().ChatId;
+        var hasAttachments = await HasAttachments(selection).ConfigureAwait(true);
         var modalModel = new ForwardMessageModal.Model(chatId) {
             Title = L.Selection_ForwardTitle,
             SubmitTitle = L.Selection_ForwardSubmit,
             SearchPlaceholder = L.Selection_ForwardSearchPlaceholder,
+            HasAttachments = hasAttachments,
         };
         await (await ModalUI.Show(modalModel).ConfigureAwait(true)).WhenClosed.ConfigureAwait(true);
         var selectedChatIds = modalModel.SelectedChatIds;
@@ -239,6 +241,17 @@ public class SelectionUI : UIServiceBase<AppUIHub>
                 ? L.Selection_ForwardedToChat_Format(messages, chat.Title)
                 : L.Selection_ForwardedToChats_Format(messages, selectedChatIds.Count);
         }
+    }
+
+    private async Task<bool> HasAttachments(IReadOnlySet<ChatEntryId> selection)
+    {
+        foreach (var chatEntryId in selection) {
+            var chatEntry = await Chats.GetEntry(Session, chatEntryId).ConfigureAwait(false);
+            if (chatEntry is { Attachments.Length: > 0 })
+                return true;
+        }
+
+        return false;
     }
 
     public Task StartThread(ChatEntryId chatEntryId)

@@ -6,11 +6,15 @@
     <span class="contact-view-headline">
         <SearchMatchHighlighter Match="@GetMatch(ContactInfo.Chat.Title)"/>
     </span>
+    @if (!Note.IsNullOrEmpty()) {
+        <span class="contact-view-note">@Note</span>
+    }
 </div>
 
 @code {
     [Parameter, EditorRequired] public ContactInfo ContactInfo { get; set; } = null!;
     [Parameter] public SearchQuery SearchQuery { get; set; }
+    [Parameter] public string Note { get; set; } = "";
 
     private SearchMatch GetMatch(string text)
         => new(text, SearchQuery);

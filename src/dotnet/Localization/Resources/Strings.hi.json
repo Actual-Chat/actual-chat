@@ -1261,6 +1261,8 @@
   "Share_WhoToShareWith": "आप किसके साथ साझा करना चाहेंगे",
   "Share_AddComment": "टिप्पणी जोड़ें",
   "Share_SendToSelected": "चुने गए संपर्कों को भेजें",
+  "Share_NoFilesYet": "अभी फ़ाइलें नहीं भेज सकते",
+  "Share_NoFilesYetReason": "फ़ाइलें तभी भेजी जा सकती हैं जब यह व्यक्ति आपको संपर्कों में जोड़ ले या जवाब दे।",
 
   // The iOS share extension - native UIKit, so it renders outside the app's WebView.
   "ShareExt_ShareWith": "साझा करें",

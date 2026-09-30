@@ -1467,6 +1467,10 @@
   "Share_WhoToShareWith": "Who would you like to share with",
   "Share_AddComment": "Add a comment",
   "Share_SendToSelected": "Send to selected contacts",
+  // A chat the share or forward picker shows but can't send files to yet: the note under its
+  // name, and the explanation a tap on it pops up.
+  "Share_NoFilesYet": "Can't send files yet",
+  "Share_NoFilesYetReason": "Files can be sent only after this user adds you to their contacts or replies.",
 
   // The iOS share extension - native UIKit, so it renders outside the app's WebView.
   "ShareExt_ShareWith": "Share with",
