@@ -1114,14 +1114,11 @@ public partial class Chats(IServiceProvider services) : IChats
                 .AsTask())
             .Collect(cancellationToken)
             .ConfigureAwait(false);
+        var hasAttachments = chatEntries.Any(x => x.Attachments.Length > 0);
+        await RequireForwardDestinations(session, destinationChatIds, hasAttachments, cancellationToken)
+            .ConfigureAwait(false);
 
         foreach (var destinationChatId in destinationChatIds) {
-            var destinationChat = await Get(session, destinationChatId, cancellationToken)
-                .Require()
-                .ConfigureAwait(false);
-            await Authors.EnsureJoined(session, destinationChatId, cancellationToken).ConfigureAwait(false);
-            destinationChat.Rules.Permissions.Require(ChatPermissions.Write);
-
             foreach (var chatEntry in chatEntries) {
                 var forwarded = chatEntry.Forwarded;
                 var forwardedChatTitle = forwarded?.ChatTitle.NullIfEmpty() ?? chat.Title;
@@ -1160,7 +1157,7 @@ public partial class Chats(IServiceProvider services) : IChats
                     }).ToArray(),
                 };
                 // NOTE: may stick due to infinite connect timeout for the command
-                await Commander.Run(cmd, CancellationToken.None).ConfigureAwait(false);
+                await Commander.Call(cmd, CancellationToken.None).ConfigureAwait(false);
             }
         }
 
@@ -1191,13 +1188,9 @@ public partial class Chats(IServiceProvider services) : IChats
         var attachment = chatEntry.Attachments.FirstOrDefault(a => a.Index == attachmentIndex)
             ?? throw StandardError.NotFound<ChatEntryAttachment>("Attachment not found in the source entry.");
 
-        foreach (var destinationChatId in destinationChatIds) {
-            var destinationChat = await Get(session, destinationChatId, cancellationToken)
-                .Require()
-                .ConfigureAwait(false);
-            await Authors.EnsureJoined(session, destinationChatId, cancellationToken).ConfigureAwait(false);
-            destinationChat.Rules.Permissions.Require(ChatPermissions.Write);
+        await RequireForwardDestinations(session, destinationChatIds, true, cancellationToken).ConfigureAwait(false);
 
+        foreach (var destinationChatId in destinationChatIds) {
             var cmd = new Chats_UpsertEntry {
                 Session = session,
                 ChatId = destinationChatId,
@@ -1210,7 +1203,7 @@ public partial class Chats(IServiceProvider services) : IChats
                     },
                 ],
             };
-            await Commander.Run(cmd, CancellationToken.None).ConfigureAwait(false);
+            await Commander.Call(cmd, CancellationToken.None).ConfigureAwait(false);
         }
 
         return default;
@@ -1628,6 +1621,25 @@ public partial class Chats(IServiceProvider services) : IChats
     {
         var rules = await GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         return rules.CanRead();
+    }
+
+    private async Task RequireForwardDestinations(
+        Session session,
+        ChatId[] destinationChatIds,
+        bool hasAttachments,
+        CancellationToken cancellationToken)
+    {
+        // All destinations are checked before anything is posted, so a rejected one leaves no partial forward
+        foreach (var destinationChatId in destinationChatIds) {
+            var destinationChat = await Get(session, destinationChatId, cancellationToken)
+                .Require()
+                .ConfigureAwait(false);
+            await Authors.EnsureJoined(session, destinationChatId, cancellationToken).ConfigureAwait(false);
+            destinationChat.Rules.Permissions.Require(ChatPermissions.Write);
+            if (hasAttachments && !destinationChat.Rules.CanUpload())
+                throw StandardError.Constraint(
+                    "Files can be sent only after this user adds you to their contacts or replies.");
+        }
     }
 
     private async Task<bool> HasReachedNonContactPeerLimit(

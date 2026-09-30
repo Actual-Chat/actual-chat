@@ -112,6 +112,7 @@
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Threads can be started only after this user adds you to their contacts or replies.",
+  "Error_FilesRequireContact": "Files can be sent only after this user adds you to their contacts or replies.",
   "Error_SignInToFollowThread": "You must sign-in to follow chat thread.",
   "Error_OnlyPeerContactCanBeBlocked": "Only peer contacts can be blocked.",
   "Error_SignInToChat": "You must sign-in to chat with another user.",

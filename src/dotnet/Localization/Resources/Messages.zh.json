@@ -100,6 +100,7 @@
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "只有在对方将您加为联系人或回复后，才能创建话题。",
+  "Error_FilesRequireContact": "只有在对方将您加为联系人或回复后，才能发送文件。",
   "Error_SignInToFollowThread": "请登录后再关注话题。",
   "Error_OnlyPeerContactCanBeBlocked": "只能屏蔽私聊联系人。",
   "Error_SignInToChat": "请登录后再与其他用户聊天。",

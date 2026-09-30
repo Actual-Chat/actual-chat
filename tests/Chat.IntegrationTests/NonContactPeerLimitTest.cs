@@ -280,6 +280,87 @@ public class NonContactPeerLimitTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task ForwardWithFilesShouldFailWithoutPostingForNonContactPeer()
+    {
+        // arrange
+        var appHost = AppHost;
+        await using var aliceTester = appHost.NewBlazorTester(Out);
+        var alice = await aliceTester.SignInAsUniqueAlice();
+        await using var bobTester = appHost.NewBlazorTester(Out);
+        var bob = await bobTester.SignInAsUniqueBob();
+        var peerChatId = PeerChatId.New(alice.Id, bob.Id);
+        var chats = aliceTester.AppServices.GetRequiredService<IChats>();
+        var sourceEntry = await CreateFileEntry(aliceTester);
+        await aliceTester.CreateTextEntry(peerChatId, "Hi");
+        var rangeBefore = await chats.GetIdRange(aliceTester.Session, peerChatId, CancellationToken.None);
+
+        // act
+        var forward = () => aliceTester.Commander.Call(NewForwardCommand(aliceTester, [sourceEntry], peerChatId));
+
+        // assert
+        await forward.Should().ThrowAsync<Exception>().WithMessage("Files can be sent only after*");
+        var rangeAfter = await chats.GetIdRange(aliceTester.Session, peerChatId, CancellationToken.None);
+        rangeAfter.Should().Be(rangeBefore);
+    }
+
+    [Fact]
+    public async Task ForwardAttachmentShouldFailWithoutPostingForNonContactPeer()
+    {
+        // arrange
+        var appHost = AppHost;
+        await using var aliceTester = appHost.NewBlazorTester(Out);
+        var alice = await aliceTester.SignInAsUniqueAlice();
+        await using var bobTester = appHost.NewBlazorTester(Out);
+        var bob = await bobTester.SignInAsUniqueBob();
+        var peerChatId = PeerChatId.New(alice.Id, bob.Id);
+        var chats = aliceTester.AppServices.GetRequiredService<IChats>();
+        var sourceEntry = await CreateFileEntry(aliceTester);
+        await aliceTester.CreateTextEntry(peerChatId, "Hi");
+        var rangeBefore = await chats.GetIdRange(aliceTester.Session, peerChatId, CancellationToken.None);
+
+        // act
+#pragma warning disable CS0618 // Old clients still send it
+        var command = new Chats_ForwardAttachment {
+            Session = aliceTester.Session,
+            ChatEntryId = sourceEntry.Id,
+            AttachmentIndex = sourceEntry.Attachments[0].Index,
+            DestinationChatIds = [peerChatId],
+        };
+#pragma warning restore CS0618
+        var forward = () => aliceTester.Commander.Call(command);
+
+        // assert
+        await forward.Should().ThrowAsync<Exception>().WithMessage("Files can be sent only after*");
+        var rangeAfter = await chats.GetIdRange(aliceTester.Session, peerChatId, CancellationToken.None);
+        rangeAfter.Should().Be(rangeBefore);
+    }
+
+    [Fact]
+    public async Task ForwardWithFilesShouldPostWhenSenderIsInRecipientContacts()
+    {
+        // arrange
+        var appHost = AppHost;
+        await using var aliceTester = appHost.NewBlazorTester(Out);
+        var alice = await aliceTester.SignInAsUniqueAlice();
+        await using var bobTester = appHost.NewBlazorTester(Out);
+        var bob = await bobTester.SignInAsUniqueBob();
+        await bobTester.CreatePeerContact(bob, alice);
+        var peerChatId = PeerChatId.New(alice.Id, bob.Id);
+        var chats = aliceTester.AppServices.GetRequiredService<IChats>();
+        var sourceEntry = await CreateFileEntry(aliceTester);
+
+        // act
+        await aliceTester.Commander.Call(NewForwardCommand(aliceTester, [sourceEntry], peerChatId));
+
+        // assert
+        var range = await chats.GetIdRange(aliceTester.Session, peerChatId, CancellationToken.None);
+        var forwarded = await chats.GetEntry(aliceTester.Session, ChatEntryId.New(peerChatId, range.End - 1));
+        forwarded.Should().NotBeNull();
+        forwarded!.Forwarded.Should().NotBeNull();
+        forwarded.Attachments.Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task GroupChatShouldNotBeAffectedByNonContactCap()
     {
         // arrange
@@ -299,4 +380,30 @@ public class NonContactPeerLimitTest(ChatCollection.AppHostFixture fixture, ITes
         rules.CanWriteAudio().Should().BeTrue();
         rules.CanWriteVideo().Should().BeTrue();
     }
+
+    // Private methods
+
+    private static async Task<ChatEntry> CreateFileEntry(IWebTester tester)
+    {
+        var (chatId, _) = await tester.CreateChat(true);
+        var fileId = await tester.SaveTextFile(chatId, "notes.txt", "file content");
+        return await tester.Commander.Call(new Chats_UpsertEntry {
+            Session = tester.Session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "Message with a file",
+            Attachments = [new ChatEntryAttachment { MediaId = fileId }],
+        });
+    }
+
+    private static Chats_ForwardEntries NewForwardCommand(
+        IWebTester tester,
+        ChatEntry[] entries,
+        ChatId destinationChatId)
+        => new() {
+            Session = tester.Session,
+            ChatId = entries[0].ChatId,
+            ChatEntries = entries.Select(x => x.Id).ToArray(),
+            DestinationChatIds = [destinationChatId],
+        };
 }

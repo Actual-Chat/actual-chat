@@ -100,6 +100,7 @@
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Konu başlatabilmeniz için bu kişinin sizi kişilerine eklemesi veya yanıt vermesi gerekir.",
+  "Error_FilesRequireContact": "Dosya gönderebilmeniz için bu kişinin sizi kişilerine eklemesi veya yanıt vermesi gerekir.",
   "Error_SignInToFollowThread": "Bir konuyu takip etmek için giriş yapın.",
   "Error_OnlyPeerContactCanBeBlocked": "Yalnızca kişisel kişiler engellenebilir.",
   "Error_SignInToChat": "Başka biriyle sohbet etmek için giriş yapın.",

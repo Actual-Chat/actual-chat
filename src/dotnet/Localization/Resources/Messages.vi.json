@@ -100,6 +100,7 @@
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Bạn chỉ có thể bắt đầu chủ đề sau khi người này thêm bạn vào liên hệ hoặc trả lời.",
+  "Error_FilesRequireContact": "Bạn chỉ có thể gửi tệp sau khi người này thêm bạn vào liên hệ hoặc trả lời.",
   "Error_SignInToFollowThread": "Hãy đăng nhập để theo dõi chủ đề.",
   "Error_OnlyPeerContactCanBeBlocked": "Chỉ chặn được liên hệ cá nhân.",
   "Error_SignInToChat": "Hãy đăng nhập để trò chuyện với người khác.",

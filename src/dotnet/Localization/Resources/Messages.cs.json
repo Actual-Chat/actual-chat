@@ -108,6 +108,7 @@
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Vlákna lze založit až poté, co si vás tento uživatel přidá do kontaktů nebo odpoví.",
+  "Error_FilesRequireContact": "Soubory lze posílat až poté, co si vás tento uživatel přidá do kontaktů nebo odpoví.",
   "Error_SignInToFollowThread": "Pro sledování vlákna chatu se musíte přihlásit.",
   "Error_OnlyPeerContactCanBeBlocked": "Blokovat lze jen soukromé kontakty.",
   "Error_SignInToChat": "Pro chat s jiným uživatelem se musíte přihlásit.",
