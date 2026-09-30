@@ -1261,6 +1261,8 @@
   "Share_WhoToShareWith": "С кем поделиться",
   "Share_AddComment": "Добавить комментарий",
   "Share_SendToSelected": "Отправить выбранным контактам",
+  "Share_NoFilesYet": "Пока нельзя отправлять файлы",
+  "Share_NoFilesYetReason": "Отправлять файлы можно только после того, как этот человек добавит вас в контакты или ответит.",
 
   // The iOS share extension - native UIKit, so it renders outside the app's WebView.
   "ShareExt_ShareWith": "Поделиться",

@@ -18,6 +18,13 @@ body.hoverable .contact-selector-list-item:hover,
 .contact-selector-list-item[aria-selected="true"] {
     @apply bg-selected;
 }
+.contact-selector-list-item[aria-disabled="true"] {
+    @apply opacity-60;
+}
+/* A disabled input swallows clicks, so a tap on it falls through to the row, which explains why */
+.contact-selector-list-item[aria-disabled="true"] .checkbox {
+    @apply pointer-events-none;
+}
 .contact-selector-list-item,
 .contact-selector-list-item * {
     @apply cursor-pointer;
