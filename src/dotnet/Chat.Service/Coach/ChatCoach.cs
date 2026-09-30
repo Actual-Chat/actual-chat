@@ -38,4 +38,17 @@ public class ChatCoach(IServiceProvider services) : IChatCoach
         }
         return marks.ToApiArray();
     }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<CoachLiveMark>> GetOwnLiveMarks(
+        Session session, ChatId chatId, long entryLid, CancellationToken cancellationToken)
+    {
+        if (!Settings.Coach.IsEnabled)
+            return ApiArray<CoachLiveMark>.Empty;
+
+        var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
+        return author is null
+            ? ApiArray<CoachLiveMark>.Empty
+            : await Backend.ListLiveMarks(chatId, author.Id, entryLid, cancellationToken).ConfigureAwait(false);
+    }
 }

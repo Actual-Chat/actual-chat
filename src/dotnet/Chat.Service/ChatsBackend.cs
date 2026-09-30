@@ -1449,8 +1449,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return entry;
         }
 
-        if (entry.IsContentStreaming)
+        if (entry.IsContentStreaming) {
+            if (changeKind == ChangeKind.Create && Settings.Coach is { IsEnabled: true, IsLiveTaggingEnabled: true })
+                await EnqueueStreamingStartedEvent().ConfigureAwait(false);
             return entry;
+        }
 
         // Clean up Media when audio is stripped from an entry during update
         if (changeKind == ChangeKind.Update && oldEntry is not null) {
@@ -1540,6 +1543,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var authorId = entry.AuthorId;
             var author = await AuthorsBackend.Get(authorId.ChatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
             context.Operation.AddEvent(new ChatEntryChangedEvent(entry, author!, changeKind, oldEntry));
+        }
+
+        async Task EnqueueStreamingStartedEvent() {
+            var authorId = entry.AuthorId;
+            var author = await AuthorsBackend
+                .Get(authorId.ChatId, authorId, RequestedAuthorKind.Full, cancellationToken)
+                .ConfigureAwait(false);
+            if (author is not null)
+                context.Operation.AddEvent(new ChatEntryStreamingStartedEvent(entry, author));
         }
 
         async Task StorePreviousAndNextEntryIds(long localEntryLid)

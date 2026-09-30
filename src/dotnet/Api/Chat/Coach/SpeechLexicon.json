@@ -1,0 +1,24 @@
+{
+  "bg": { "filledPause": ["ъ+(-ъ+)*м*", "е{3,}", "х+м+", "м{2,}"] },
+  "bs": { "filledPause": ["e{2,}m*", "e+h+m+", "h+m+", "m{2,}"] },
+  "cs": { "filledPause": ["e{2,}m*", "e+h+m+", "h+m+", "m{2,}"] },
+  "de": { "filledPause": ["ä+h+m*", "ö+h+m*", "ää+", "e+h+m+", "h+m+"] },
+  "en": { "filledPause": ["u+h+m*", "u+m+h*", "e+r+m*", "h+m+"] },
+  "es": { "filledPause": ["e+h+m*", "e+m+", "e{2,}", "h+m+", "m{2,}"] },
+  "fr": { "filledPause": ["e+u+h+", "h+e+u+h*", "h+u+m+", "h+m+"] },
+  "hi": { "filledPause": ["उम्म", "उम्", "अम्म", "हम्म", "ऊं", "आँ"] },
+  "id": { "filledPause": ["e+h+m*", "e+m+", "e{2,}m*", "h+m+", "m{2,}"] },
+  "it": { "filledPause": ["e+h+m*", "e{2,}m*", "h+m+", "m{2,}"] },
+  "ja": {
+    "wholeWord": false,
+    "filledPause": ["えーっと", "えーと", "えっと", "ええと", "そのー+", "えー+", "うーん", "んー+"]
+  },
+  "ko": { "filledPause": ["으+음+", "음+", "어{2,}"] },
+  "pl": { "filledPause": ["y{2,}m*", "e{2,}m*", "h+m+", "m{2,}"] },
+  "pt": { "filledPause": ["h+u+m+", "h+m+", "a+h+n+", "ã+h+", "é{2,}", "e{3,}", "m{2,}"] },
+  "ru": { "filledPause": ["э+(-э+)*м*", "х+м+", "г+м+", "м{2,}", "(м-)+м+"] },
+  "tr": { "filledPause": ["ı{2,}", "e{3,}", "h+m+", "m{2,}"] },
+  "uk": { "filledPause": ["е{2,}м*", "(е-)+е+м*", "х+м+", "г+м+", "м{2,}", "(м-)+м+"] },
+  "vi": { "filledPause": ["ờ+m*", "ừm+", "ưm+", "ơ+m*", "h+m+", "m{2,}"] },
+  "zh": { "wholeWord": false, "filledPause": ["呃+", "嗯嗯+"] }
+}

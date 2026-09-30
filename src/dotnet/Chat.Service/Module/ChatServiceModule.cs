@@ -171,6 +171,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
                 c.GetRequiredService<IEmbeddingsCalculator>(),
                 c.LogFor<EntryGroupExtractor>()));
 
+        services.AddSingleton<ICoachTranscriptSource, CoachTranscriptSource>();
         if (Settings.Coach.IsEnabled && !CoreServerSettings.OpenAIKey.IsNullOrEmpty()) {
             AddKeyedOpenAI(services, SpeechTagger.ServiceKey, Settings.Coach.OpenAIModel, Settings.Coach.HttpTimeout);
             services.AddSingleton<ISpeechTagger>(c => new SpeechTagger(
