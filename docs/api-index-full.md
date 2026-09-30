@@ -1010,6 +1010,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `OpenAITranscriber` - Transcriber using OpenAI API.
 - `TokenEstimator` - Estimates token counts for prompts.
 - `ISpeechTagger`, `SpeechTagger`, `SpeechTaggerStub` - LLM tagging of fillers, weak words and profanity in a transcript.
+- `SpeechChunker` (static class), `SpeechChunk` - Cuts a transcript into sentence-aligned chunks with the previous sentence as context.
+- `SpeechLexicon` - Per-language word patterns that mark filled pauses without the LLM.
 
 ## ActualChat.Localization
 

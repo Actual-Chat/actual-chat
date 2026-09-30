@@ -100,4 +100,45 @@ public class SpeechTaggerTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         result.Should().BeNull("a stub result would mark rows as tagged with zero fillers");
     }
+
+    [Fact]
+    public void BuildUserMessageShouldSendTheTextAloneWithoutContext()
+    {
+        // act
+        var message = SpeechTagger.BuildUserMessage(new SpeechTagRequest("Um, hello.", null));
+
+        // assert
+        message.Should().Be("Um, hello.");
+    }
+
+    [Fact]
+    public void BuildUserMessageShouldMarkTheContextAsReadOnly()
+    {
+        // arrange
+        var request = new SpeechTagRequest("Well, it works.", null, "I tried it yesterday.");
+
+        // act
+        var message = SpeechTagger.BuildUserMessage(request);
+
+        // assert
+        message.Should().Contain("I tried it yesterday.").And.Contain("Well, it works.");
+        message.IndexOf("I tried it yesterday.", StringComparison.Ordinal)
+            .Should().BeLessThan(message.IndexOf("Well, it works.", StringComparison.Ordinal));
+        message.Should().StartWith(SpeechTagger.ContextHeader);
+        message.Should().Contain(SpeechTagger.TextHeader);
+    }
+
+    [Fact]
+    public void ParseResponseShouldIgnoreAWordThatIsOnlyInTheContext()
+    {
+        // arrange: the chunk holds no "like"; the model returned one from the context sentence
+        const string chunk = "It was fine.";
+        const string json = """{"items":[{"class":"filler","word":"like","occurrence":1,"synonyms":[]}]}""";
+
+        // act
+        var spans = SpeechTagger.ParseResponse(chunk, json);
+
+        // assert
+        spans.Should().BeEmpty();
+    }
 }

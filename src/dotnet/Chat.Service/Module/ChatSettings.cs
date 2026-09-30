@@ -88,4 +88,14 @@ public class CoachSettings
     public int MaxTaggerCallsPerUserPerDay { get; set; } = 500;
     public int MaxRunEntries { get; set; } = 400;
     public int MaxTaggerCallsPerRun { get; set; } = 50;
+    // Tags a long entry in chunks the tagger takes in parallel, each with the sentence before it as context.
+    // It multiplies the tagger calls; switch it off to tag every entry in one call.
+    public bool IsChunkedTaggingEnabled { get; set; } = true;
+    // Marks filled pauses from the per-language word list at once, before the tagger answers
+    public bool IsInstantMarkingEnabled { get; set; } = true;
+    public int TagChunkMinWords { get; set; } = 40;
+    public int TagChunkMaxWords { get; set; } = 80;
+    public int TagChunkContextWords { get; set; } = 40;
+    public int MaxTagChunksPerEntry { get; set; } = 12;
+    public int MaxParallelTagChunks { get; set; } = 4;
 }

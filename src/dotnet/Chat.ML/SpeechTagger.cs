@@ -11,7 +11,7 @@ namespace ActualChat.Chat.ML;
 
 #pragma warning disable OPENAI001
 
-public sealed record SpeechTagRequest(string Text, Language? Language);
+public sealed record SpeechTagRequest(string Text, Language? Language, string? Context = null);
 
 public sealed record SpeechTagResult(ApiArray<SpeechSpan> Spans, int PromptVersion);
 
@@ -33,6 +33,11 @@ public class SpeechTagger(SpeechTagger.Options settings, IServiceProvider servic
     }
 
     public const string ServiceKey = nameof(SpeechTagger);
+    public const string ContextHeader = "Previous sentence (context only, never tag it):";
+    public const string TextHeader = "Text to tag:";
+    private const string ContextInstruction =
+        "The user message may start with a previous sentence given as context only. "
+        + "Return items only for words that appear in the text to tag, never for the context.";
     private const int MaxSynonyms = 3;
 
     private static readonly JsonElement ResponseSchema = JsonDocument.Parse(
@@ -78,8 +83,10 @@ public class SpeechTagger(SpeechTagger.Options settings, IServiceProvider servic
                 { "LANGUAGE", request.Language?.ToString() ?? "unknown" },
             });
             var history = new ChatHistory();
-            history.AddSystemMessage(systemMessage);
-            history.AddUserMessage(request.Text);
+            history.AddSystemMessage(request.Context.IsNullOrEmpty()
+                ? systemMessage
+                : systemMessage + "\n\n" + ContextInstruction);
+            history.AddUserMessage(BuildUserMessage(request));
             var executionSettings = new OpenAIPromptExecutionSettings {
                 Temperature = 0,
                 ReasoningEffort = OpenAIModels.GetLowestReasoningEffort(Completion.GetModelId()),
@@ -98,6 +105,11 @@ public class SpeechTagger(SpeechTagger.Options settings, IServiceProvider servic
             return null;
         }
     }
+
+    public static string BuildUserMessage(SpeechTagRequest request)
+        => request.Context.IsNullOrEmpty()
+            ? request.Text
+            : $"{ContextHeader}\n{request.Context}\n\n{TextHeader}\n{request.Text}";
 
     public static ApiArray<SpeechSpan> ParseResponse(string text, string json, bool isWordSplittable = true)
     {

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
@@ -18,34 +19,42 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
     private sealed class FakeTagger : ISpeechTagger
     {
+        private readonly ConcurrentQueue<SpeechTagRequest> _requests = new();
         private int _calls;
 
         public int Calls => Volatile.Read(ref _calls);
+        public IReadOnlyList<SpeechTagRequest> Requests => _requests.ToList();
+        public Task Gate { get; set; } = Task.CompletedTask;
 
-        public Task<SpeechTagResult?> Tag(SpeechTagRequest request, CancellationToken cancellationToken)
+        public async Task<SpeechTagResult?> Tag(SpeechTagRequest request, CancellationToken cancellationToken)
         {
+            _requests.Enqueue(request);
             Interlocked.Increment(ref _calls);
+            await Gate.ConfigureAwait(false);
             var spans = SpeechTagger.ParseResponse(request.Text, """
                 {"items":[{"class":"filledPause","word":"um","occurrence":1,"synonyms":[]},
                           {"class":"filler","word":"you know","occurrence":1,"synonyms":[]},
                           {"class":"weak","word":"awesome","occurrence":1,"synonyms":["excellent"]}]}
                 """);
-            return Task.FromResult<SpeechTagResult?>(new SpeechTagResult(spans, 1));
+            return new SpeechTagResult(spans, 1);
         }
     }
 
-    private async Task<(TestAppHost AppHost, FakeTagger Tagger)> NewCoachHost(string name)
+    private async Task<(TestAppHost AppHost, FakeTagger Tagger)> NewCoachHost(
+        string name, FakeTagger? tagger = null, params (string Key, string Value)[] coachSettings)
     {
-        var tagger = new FakeTagger();
+        tagger ??= new FakeTagger();
         var coach = $"{nameof(ChatSettings)}:{nameof(ChatSettings.Coach)}";
         var appHost = await NewAppHost(name, options => options with {
             UseNatsQueues = false,
             ConfigureHost = (_, cfg) => cfg.AddInMemoryCollection(
-                ($"{coach}:{nameof(CoachSettings.IsEnabled)}", "true"),
-                ($"{coach}:{nameof(CoachSettings.ConversationMaturity)}", "00:00:01"),
-                ($"{coach}:{nameof(CoachSettings.MaxRunEntries)}", "3"),
-                ($"{nameof(ChatSettings)}:{nameof(ChatSettings.IsTranslationEnabled)}", "true"),
-                ($"{nameof(ChatSettings)}:{nameof(ChatSettings.UseFakeLanguageDetection)}", "true")),
+                new (string Key, string? Value)[] {
+                    ($"{coach}:{nameof(CoachSettings.IsEnabled)}", "true"),
+                    ($"{coach}:{nameof(CoachSettings.ConversationMaturity)}", "00:00:01"),
+                    ($"{coach}:{nameof(CoachSettings.MaxRunEntries)}", "3"),
+                    ($"{nameof(ChatSettings)}:{nameof(ChatSettings.IsTranslationEnabled)}", "true"),
+                    ($"{nameof(ChatSettings)}:{nameof(ChatSettings.UseFakeLanguageDetection)}", "true"),
+                }.Concat(coachSettings.Select(x => ($"{coach}:{x.Key}", (string?)x.Value))).ToArray()),
             ConfigureServices = (_, services) => services.Replace(ServiceDescriptor.Singleton<ISpeechTagger>(tagger)),
         });
         return (appHost, tagger);
@@ -302,7 +311,7 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         // act
         var bobMarks = await TestWait.When(async ct => {
             var marks = await chatCoach.GetOwnMarks(bob.Session, chatId, lidRange, ct);
-            marks.Should().ContainSingle();
+            marks.Should().ContainSingle().Which.Spans.Should().HaveCount(3, "the tagger's answer follows the instant marks");
             return marks;
         }, TimeSpan.FromSeconds(30));
         var aliceMarks = await chatCoach.GetOwnMarks(alice.Session, chatId, lidRange, default);
@@ -416,5 +425,124 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var midId = ConversationId.New(chatId, first.LocalId + 2);
         var midRow = await backend.GetConversation(midId, first.AuthorId, default);
         midRow.Should().BeNull("a capped scan must not mint a second identity inside the same run");
+    }
+
+    private static string LongText()
+        => string.Join(" ", Enumerable.Range(1, 12).Select(n =>
+            $"So, um, this is sentence number {n} and it goes on for a while longer than usual."));
+
+    private static Task<ApiArray<CoachEntryMarks>> WhenMarks(
+        ICoachAnalysisBackend backend, ChatEntry entry, Func<ApiArray<CoachEntryMarks>, bool> isReady)
+        => TestWait.When(async ct => {
+            var tile = Constants.Chat.EntryIdTiles.GetTile(entry.LocalId).Range;
+            var marks = await backend.ListMarks(entry.ChatId, entry.AuthorId, tile, ct);
+            isReady(marks).Should().BeTrue();
+            return marks;
+        }, TimeSpan.FromSeconds(30));
+
+    [Fact]
+    public async Task LongEntryShouldBeTaggedInChunksWithThePreviousSentenceAsContext()
+    {
+        // arrange
+        var (appHost, tagger) = await NewCoachHost("coach-chunks");
+        await using var _ = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(appHost, account);
+        var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
+        var text = LongText();
+
+        // act
+        var entry = await PostVoice(tester, chatId, text);
+
+        // assert
+        var analysis = await WhenTagged(backend, entry.Id);
+        tagger.Calls.Should().Be(4, "204 words in chunks of about 50");
+        var requests = tagger.Requests.OrderBy(r => text.IndexOf(r.Text, StringComparison.Ordinal)).ToList();
+        string.Concat(requests.Select(r => r.Text)).Should().Be(text);
+        requests[0].Context.Should().BeNull();
+        requests[1].Context.Should().Be("So, um, this is sentence number 3 and it goes on for a while longer than usual.");
+        requests.Skip(1).Should().OnlyContain(r => !r.Context.IsNullOrEmpty());
+        analysis.Spans.Should().OnlyContain(s => text.Substring(s.Start, s.Length).ToLowerInvariant() == s.Word);
+        analysis.FilledPauses.Should().Be(12, "the tagger's first um per chunk plus the instant list for the rest");
+    }
+
+    [Fact]
+    public async Task ChunkedTaggingSwitchedOffShouldTagTheWholeEntryInOneCall()
+    {
+        // arrange
+        var (appHost, tagger) = await NewCoachHost(
+            "coach-chunks-off", null, (nameof(CoachSettings.IsChunkedTaggingEnabled), "false"));
+        await using var _ = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(appHost, account);
+        var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
+        var text = LongText();
+
+        // act
+        var entry = await PostVoice(tester, chatId, text);
+
+        // assert
+        await WhenTagged(backend, entry.Id);
+        tagger.Calls.Should().Be(1);
+        tagger.Requests.Single().Text.Should().Be(text);
+        tagger.Requests.Single().Context.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task InstantMarksShouldShowBeforeTheTaggerAnswers()
+    {
+        // arrange
+        var gate = new TaskCompletionSource();
+        var (appHost, tagger) = await NewCoachHost("coach-instant", new FakeTagger { Gate = gate.Task });
+        await using var _ = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(appHost, account);
+        var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
+
+        // act
+        var entry = await PostVoice(tester, chatId, Text);
+        var early = await WhenMarks(backend, entry, m => m.Count == 1);
+
+        // assert
+        early[0].Spans.Should().ContainSingle().Which.Word.Should().Be("um");
+        (await backend.Get(entry.Id, default))?.TagState.Should().NotBe(CoachTagState.Tagged);
+        gate.SetResult();
+        await WhenTagged(backend, entry.Id);
+        var late = await WhenMarks(backend, entry, m => m.Count == 1 && m[0].Spans.Count == 3);
+        late[0].Spans.Select(s => s.Word).Should().BeEquivalentTo(["um", "you know", "awesome"]);
+        tagger.Calls.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task InstantMarksSwitchedOffShouldShowNothingUntilTagged()
+    {
+        // arrange
+        var gate = new TaskCompletionSource();
+        var (appHost, tagger) = await NewCoachHost(
+            "coach-instant-off", new FakeTagger { Gate = gate.Task }, (nameof(CoachSettings.IsInstantMarkingEnabled), "false"));
+        await using var _ = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(appHost, account);
+        var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
+
+        // act
+        var entry = await PostVoice(tester, chatId, Text);
+        await TestWait.WhenPolled(() => tagger.Calls.Should().BeGreaterThan(0), TimeSpan.FromSeconds(30));
+        var tile = Constants.Chat.EntryIdTiles.GetTile(entry.LocalId).Range;
+
+        // assert
+        (await backend.ListMarks(chatId, entry.AuthorId, tile, default)).Should().BeEmpty();
+        gate.SetResult();
+        await WhenTagged(backend, entry.Id);
+        var late = await WhenMarks(backend, entry, m => m.Count == 1);
+        late[0].Spans.Should().HaveCount(3);
     }
 }
