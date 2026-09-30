@@ -14,29 +14,28 @@
     </Card>
     <TileTopic Topic="@L.Coach_WhatYouWillSee"/>
     <Card>
-        <CardItem>
-            <Left><i class="text-2xl icon-message-square text-03"></i></Left>
-            <Title>@L.Coach_SeeCardTitle</Title>
+        <TileItem IsHoverable="false">
+            <Icon><i class="text-xl icon-message-square text-03"></i></Icon>
+            <Content>@L.Coach_SeeCardTitle</Content>
             <Caption>@L.Coach_SeeCardBody</Caption>
-        </CardItem>
-        <CardItem>
-            <Left><i class="text-2xl icon-star text-03"></i></Left>
-            <Title>@L.Coach_SeeProgressTitle</Title>
+        </TileItem>
+        <TileItem IsHoverable="false">
+            <Icon><i class="text-xl icon-star text-03"></i></Icon>
+            <Content>@L.Coach_SeeProgressTitle</Content>
             <Caption>@L.Coach_SeeProgressBody</Caption>
-        </CardItem>
-        <CardItem>
-            <Left><i class="text-2xl icon-ai-stars text-03"></i></Left>
-            <Title>@L.Coach_SeeTipTitle</Title>
+        </TileItem>
+        <TileItem IsHoverable="false">
+            <Icon><i class="text-xl icon-ai-stars text-03"></i></Icon>
+            <Content>@L.Coach_SeeTipTitle</Content>
             <Caption>@L.Coach_SeeTipBody</Caption>
-        </CardItem>
+        </TileItem>
     </Card>
     <Card Class="c-coaching">
-        <CardItem Click="@OnToggle">
-            <Left><i class="text-2xl icon-ai-stars @(State.Value ? "text-primary" : "text-03")"></i></Left>
-            <Title>@L.Coach_Coaching</Title>
+        <TileItem ToggleValue="@State.Value" ToggleValueChanged="@(_ => OnToggle())">
+            <Icon><i class="text-xl icon-ai-stars @(State.Value ? "text-primary" : "text-03")"></i></Icon>
+            <Content>@L.Coach_Coaching</Content>
             <Caption>@(State.Value ? L.RightPanel_On : L.RightPanel_Off)</Caption>
-            <Right><Toggle IsChecked="@State.Value" IsCheckedChanged="@(_ => OnToggle())"/></Right>
-        </CardItem>
+        </TileItem>
     </Card>
 </div>
 

@@ -11,20 +11,20 @@
 <div class="coach-progress">
     @if (m.Note.IsPending) {
         <Card Class="coach-note">
-            <CardItem Click="@OnNoteSeen">
-                <Left><i class="text-2xl icon-star text-primary"></i></Left>
-                <Title>@L.Coach_WeekNoteTitle</Title>
+            <TileItem Click="@OnNoteSeen">
+                <Icon><i class="text-xl icon-star text-primary"></i></Icon>
+                <Content>@L.Coach_WeekNoteTitle</Content>
                 <Caption>@labels.NoteCaption(m.Note)</Caption>
-            </CardItem>
+            </TileItem>
         </Card>
     }
     @if (best is not null) {
         <Card Class="coach-better">
-            <CardItem>
-                <Left><img class="c-mascot" src="/dist/images/kitties/coach-cat.png" alt="" draggable="false"></Left>
-                <Title>@L.Coach_GettingBetter</Title>
+            <TileItem IsHoverable="false">
+                <Icon><img class="c-mascot" src="/dist/images/kitties/coach-cat.png" alt="" draggable="false"></Icon>
+                <Content>@L.Coach_GettingBetter</Content>
                 <Caption>@labels.BetterCaption(best, speakingDays)</Caption>
-            </CardItem>
+            </TileItem>
         </Card>
     }
     @if (m.TalkShare is { } share and < 0.995) {

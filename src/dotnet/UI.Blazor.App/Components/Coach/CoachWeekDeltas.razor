@@ -5,11 +5,11 @@
 <Card Class="coach-week-deltas">
     @foreach (var d in Deltas) {
         var cls = d.IsBetter switch { true => "text-success", false => "text-danger", _ => "text-03" };
-        <CardItem @key="@d.Kind">
-            <Title>@Labels.MetricTitle(d.Kind)</Title>
+        <TileItem @key="@d.Kind" IsHoverable="false">
+            <Content>@Labels.MetricTitle(d.Kind)</Content>
             <Caption>@Labels.DeltaValue(d)</Caption>
             <Right><span class="c-badge @cls">@Labels.DeltaBadge(d)</span></Right>
-        </CardItem>
+        </TileItem>
     }
 </Card>
 

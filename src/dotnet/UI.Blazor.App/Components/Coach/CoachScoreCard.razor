@@ -8,8 +8,8 @@
 }
 
 <Card Class="coach-score-card">
-    <CardItem Click="@ScoreClick">
-        <Left>
+    <TileItem Click="@ScoreClick">
+        <Icon>
             @if (s.Score is { } ring) {
                 <span class="c-score-ring">
                     <svg viewBox="0 0 42 42">
@@ -20,16 +20,16 @@
                     <i class="icon-star text-primary"></i>
                 </span>
             } else {
-                <i class="text-2xl icon-star text-primary"></i>
+                <i class="text-xl icon-star text-primary"></i>
             }
-        </Left>
-        <Title>
+        </Icon>
+        <Content>
             @if (s.Score is { } score) {
                 @(Language is null ? L.Coach_Score_Format(score) : L.Coach_ScoreOf_Format(labels.LanguageName(Language), score))
             } else {
                 @L.Coach_ScoreAfterWords(missing, missing)
             }
-        </Title>
+        </Content>
         <Caption>
             @if (s.ScoreDelta is { } delta) {
                 var text = delta > 0 ? "+" + delta : delta.ToString();
@@ -39,14 +39,14 @@
             @L.Coach_WhatMovesIt
         </Caption>
         <Right><i class="icon-chevron-right text-xl text-03"></i></Right>
-    </CardItem>
+    </TileItem>
     @if (Focus is { } focus && s.Score is not null) {
-        <CardItem Click="@FocusClick">
-            <Left><i class="text-2xl icon-ai-stars text-primary"></i></Left>
-            <Title>@L.Coach_WorkingOn_Format(labels.MetricTitle(focus).ToLowerInvariant())</Title>
+        <TileItem Click="@FocusClick">
+            <Icon><i class="text-xl icon-ai-stars text-primary"></i></Icon>
+            <Content>@L.Coach_WorkingOn_Format(labels.MetricTitle(focus).ToLowerInvariant())</Content>
             <Caption>@labels.FocusHint(focus, s.Metrics.FirstOrDefault(m => m.Kind == focus)?.Chips.FirstOrDefault())</Caption>
             <Right><i class="icon-chevron-right text-xl text-03"></i></Right>
-        </CardItem>
+        </TileItem>
     }
 </Card>
 

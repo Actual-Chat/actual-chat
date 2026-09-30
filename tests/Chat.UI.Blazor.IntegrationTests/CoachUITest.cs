@@ -515,7 +515,7 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         // assert
         cut.WaitForAssertion(() => {
             cut.FindAll(".coach-progress .coach-days .c-day.on").Count.Should().BeGreaterThan(0);
-            cut.FindAll(".coach-milestones .card-item").Count.Should().Be(7);
+            cut.FindAll(".coach-milestones .tile-item").Count.Should().Be(7);
             cut.Find(".coach-week-deltas").TextContent.Should().Contain("not enough speech");
         }, TimeSpan.FromSeconds(30));
     }
@@ -610,7 +610,7 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         mode.WaitForAssertion(() => mode.Find(".btn-mode .c-dot"), TimeSpan.FromSeconds(10));
         cut.WaitForAssertion(() => cut.Find(".coach-note").TextContent.Should().Contain("Your week with the coach"),
             TimeSpan.FromSeconds(10));
-        await cut.InvokeAsync(() => cut.Find(".coach-note .card-item").Click());
+        await cut.InvokeAsync(() => cut.Find(".coach-note .tile-item").Click());
         mode.WaitForAssertion(() => mode.FindAll(".btn-mode .c-dot").Should().BeEmpty(), TimeSpan.FromSeconds(10));
     }
 
@@ -675,8 +675,8 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
 
         // assert
         cleared.Should().Equal(CoachMetricKind.Fillers);
-        withoutScore.FindAll(".card-item").Count.Should().Be(1, "no focus row before the first score");
-        withScore.FindAll(".card-item").Count.Should().Be(2);
+        withoutScore.FindAll(".tile-item").Count.Should().Be(1, "no focus row before the first score");
+        withScore.FindAll(".tile-item").Count.Should().Be(2);
         withScore.Find(".c-score-ring .c-arc").GetAttribute("stroke-dasharray").Should().Be("70.00 30.00");
         withoutScore.FindAll(".c-score-ring").Should().BeEmpty("no ring before the first score");
     }
