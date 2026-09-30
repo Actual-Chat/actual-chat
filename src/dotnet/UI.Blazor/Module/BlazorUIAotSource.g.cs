@@ -436,6 +436,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.DoubleConverter, System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.EnumConverter`1[[ActualChat.Live.TypingActivityKind, ActualChat.Api]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.EnumConverter`1[[ActualChat.UI.Blazor.App.Components.MarkupEditorListCommandKind, ActualChat.UI.Blazor.App]], System.Text.Json");
+        CodeKeeper.Keep("System.Text.Json.Serialization.Converters.EnumConverter`1[[ActualChat.UI.Blazor.App.Services.VideoRecorderError, ActualChat.UI.Blazor.App]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.EnumConverter`1[[ActualChat.UI.Blazor.Components.SideNav.SideNavSide, ActualChat.UI.Blazor]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.EnumConverter`1[[ActualChat.UI.Blazor.Components.VirtualListEdge, ActualChat.UI.Blazor]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.EnumConverter`1[[ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor]], System.Text.Json");

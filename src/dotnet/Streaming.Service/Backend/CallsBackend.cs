@@ -60,8 +60,9 @@ public class CallsBackend : ShardComputeService, ICallsBackend
 
         // The session that justified this claim is gone (the client crashed mid-call, a host died
         // before releasing it): drop it rather than keep the user busy until the TTL lapses.
-        Log.LogWarning("GetUserCall: dropping the {Role} claim of user #{UserId} in chat #{ChatId}, {Age} old",
-            call.Role, userId, call.ChatId, (Clocks.SystemClock.Now - call.SinceAt).ToShortString());
+        Log.LogWarning("GetUserCall: dropping the {Role} claim of user #{UserId} in call #{CallId}, {Age} old",
+            call.Role, userId, call.CallId?.Value ?? call.ChatId.Value,
+            (Clocks.SystemClock.Now - call.SinceAt).ToShortString());
         _ = ReleaseIfUnchanged(userId, call);
         return null;
     }
@@ -72,7 +73,7 @@ public class CallsBackend : ShardComputeService, ICallsBackend
         using (await _claimLocks.Lock(userId, cancellationToken).ConfigureAwait(false)) {
             var existing = await SafeGet(userId).ConfigureAwait(false);
             if (existing is not null
-                && existing.ChatId != call.ChatId
+                && !existing.IsSameCall(call.ChatId, call.CallId)
                 && await GetPhase(existing, cancellationToken).ConfigureAwait(false) is not null)
                 return false;
 
@@ -84,12 +85,12 @@ public class CallsBackend : ShardComputeService, ICallsBackend
         }
     }
 
-    public virtual async Task Release(UserId userId, ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task ReleaseCall(UserId userId, CallId callId, CancellationToken cancellationToken)
     {
         using (Computed.BeginIsolation())
         using (await _claimLocks.Lock(userId, cancellationToken).ConfigureAwait(false)) {
             var call = await SafeGet(userId).ConfigureAwait(false);
-            if (call is null || call.ChatId != chatId)
+            if (call is null || !call.IsSameCall(callId.ChatId, callId))
                 return;
 
             await _userCalls.Remove(userId.Value).ConfigureAwait(false);
@@ -117,6 +118,9 @@ public class CallsBackend : ShardComputeService, ICallsBackend
     internal static CallPhase? GetPhase(UserCall call, LiveSession? live, CallState? callState)
     {
         if (live is not { Kind: LiveSessionKind.Call })
+            return null;
+        // The chat is in another call by now: the session there is, however live, isn't this claim's.
+        if (call.CallId is { } callId && live.CallId is { } liveCallId && callId != liveCallId)
             return null;
 
         var isConnected = live.Conversation is not null;

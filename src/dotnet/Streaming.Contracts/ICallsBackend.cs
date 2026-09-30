@@ -17,8 +17,10 @@ public interface ICallsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<UserCall?> GetUserCall(UserId userId, CancellationToken cancellationToken);
 
-    // Reports whether the user's call is this one now: true when it was free, held by this chat
+    // Reports whether the user's call is this one now: true when it was free, held by this call
     // already, or held by a claim the chat's session no longer backs.
     Task<bool> TryClaim(UserId userId, UserCall call, CancellationToken cancellationToken);
-    Task Release(UserId userId, ChatId chatId, CancellationToken cancellationToken);
+    // Releases the claim only while it is still this call's: a release that arrives late must not
+    // free a user who is in the next call to the same chat by then.
+    Task ReleaseCall(UserId userId, CallId callId, CancellationToken cancellationToken);
 }

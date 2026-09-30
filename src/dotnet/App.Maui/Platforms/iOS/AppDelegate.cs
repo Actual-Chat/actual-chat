@@ -7,6 +7,7 @@ using UIKit;
 using UserNotifications;
 using DeviceType = ActualChat.Notifications.DeviceType;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
+using NotificationExt = ActualChat.Notifications.NotificationExt;
 
 namespace ActualChat.App.Maui;
 
@@ -120,11 +121,8 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
         // arrives even when the reactive state is slow. Ringing calls only - the accept the user
         // just made is dismissed exactly the same way, and ending that one kills a live call.
         foreach (var tag in dismissedTags) {
-            if (!tag.StartsWith(Constants.Notification.CallTagPrefix))
-                continue;
-
-            if (ChatId.TryParse(tag[Constants.Notification.CallTagPrefix.Length..], allowNull: true) is { } chatId)
-                IosCalls.Instance.EndRingingCall(chatId);
+            if (NotificationExt.TryParseCallTag(tag) is { } callId)
+                IosCalls.Instance.EndRingingCall(callId.ChatId, callId);
         }
     }
 #endif

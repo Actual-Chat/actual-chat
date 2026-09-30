@@ -14,14 +14,22 @@ public static class NotificationExt
             ChatEntryNotification n => n.EntryId.Value,
             // A call's ring and its dismissal must collapse onto a banner of their own —
             // the chat-wide tag would make a call dismissal close the chat's message banners too.
-            CallNotification n => Constants.Notification.CallTagPrefix + n.ChatId.Value,
+            // By call rather than by chat, for the same reason: a dismissal names the banner it closes,
+            // and one for an earlier call must not name the ring of the next call to that chat.
+            CallNotification n => GetCallTag(n.CallId),
             _ => notification.GetChatTag(),
         };
 
-    public static ChatId? TryParseCallTag(string? tag)
-        => tag is null || !tag.StartsWith(Constants.Notification.CallTagPrefix, StringComparison.Ordinal)
-            ? null
-            : ChatId.TryParse(tag[Constants.Notification.CallTagPrefix.Length..], allowNull: true);
+    public static string GetCallTag(CallId callId)
+        => Constants.Notification.CallTagPrefix + callId.Value;
+
+    public static bool IsCallTag([NotNullWhen(true)] string? tag)
+        => tag is not null && tag.StartsWith(Constants.Notification.CallTagPrefix);
+
+    public static CallId? TryParseCallTag(string? tag)
+        => IsCallTag(tag)
+            ? CallId.TryParse(tag[Constants.Notification.CallTagPrefix.Length..], allowNull: true)
+            : null;
 
     public static NotificationDismissMode GetDismissMode(NotificationKind kind)
         // What Notification.DismissMode says, for a caller holding only a kind - a push payload on

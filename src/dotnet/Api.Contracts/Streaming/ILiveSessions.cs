@@ -83,22 +83,33 @@ public interface ILiveSessions : IComputeService
     Task LowerAllHands(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     // Voice-call ring lifecycle (StartCall invitees empty = every other chat member).
+    // callId names the call the request is about - the one GetMyCall reported. The chat may be in the
+    // next call by the time it arrives: the request is then dropped (AcceptCall throws) rather than
+    // applied to a call it was never meant for. Null is "whatever call the chat is in": a client
+    // can act before it has been told the id.
     // Caller methods
-    Task StartCall(
+    // Answers with the call placed - or joined, when the chat is already in a connected one. Null
+    // when nothing was placed, because the caller isn't a member of the chat.
+    Task<CallId?> StartCall(
         Session session,
         ChatId chatId,
         ApiArray<AuthorId> invitees,
         bool hasVideo,
         string clientId,
         CancellationToken cancellationToken);
-    Task CancelCall(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task CancelCall(Session session, ChatId chatId, CallId? callId, CancellationToken cancellationToken);
     // Obsolete: there is no caller-visible status left to dismiss - see GetCallStatus. Kept as a
     // throwing stub rather than removed, in case a stale client build still calls it.
     [Obsolete("2026.09: Old MAUI clients only. Throws. Remove once no installed app version calls it.")]
     Task DismissCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
     // Callee methods
-    Task AcceptCall(Session session, ChatId chatId, string clientId, CancellationToken cancellationToken);
-    Task DeclineCall(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task AcceptCall(
+        Session session,
+        ChatId chatId,
+        string clientId,
+        CallId? callId,
+        CancellationToken cancellationToken);
+    Task DeclineCall(Session session, ChatId chatId, CallId? callId, CancellationToken cancellationToken);
     Task ConfirmRing(Session session, ChatId chatId, RingAck ack, CancellationToken cancellationToken);
     // Obsolete: hanging up now goes through SetParticipation (see ChatAudioUI/LiveSessionUI). Kept as a
     // throwing stub rather than removed, in case a stale client build still calls it.

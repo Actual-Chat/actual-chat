@@ -279,14 +279,14 @@ public sealed partial record NotificationsBackend_NotifyConversation(
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_NotifyCall(
-    [property: DataMember, Key(0)] ConversationId ConversationId,
+    [property: DataMember, Key(0)] CallId CallId,
     [property: DataMember, Key(1)] AuthorId Caller,
     [property: DataMember, Key(2)] IReadOnlyList<AuthorId> Invitees,
     [property: DataMember, Key(3)] bool HasVideo
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ShardKey ShardKey => ConversationId.ChatId.ShardKey;
+    public ShardKey ShardKey => CallId.ChatId.ShardKey;
 }
 
 /// <summary>
@@ -295,12 +295,12 @@ public sealed partial record NotificationsBackend_NotifyCall(
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_CancelCall(
-    [property: DataMember, Key(0)] ConversationId ConversationId,
+    [property: DataMember, Key(0)] CallId CallId,
     [property: DataMember, Key(1)] IReadOnlyList<AuthorId> Invitees
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ShardKey ShardKey => ConversationId.ChatId.ShardKey;
+    public ShardKey ShardKey => CallId.ChatId.ShardKey;
 }
 
 /// <summary>

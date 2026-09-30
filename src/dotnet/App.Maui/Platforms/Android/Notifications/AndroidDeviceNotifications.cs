@@ -36,7 +36,7 @@ public class AndroidDeviceNotifications : IDeviceNotifications
                 // Closing it costs the only way to answer wherever that intent is gated off.
                 // The ring ends on its own SetTimeoutAfter(RingTimeout), on the dismissal push,
                 // or when the call screen takes over.
-                if (activeTags.Contains(tag) || NotificationExt.TryParseCallTag(tag) is not null)
+                if (activeTags.Contains(tag) || NotificationExt.IsCallTag(tag))
                     shownTags.Add(tag);
                 else
                     notificationManager?.Cancel(tag, statusBarNotification.Id);
@@ -49,10 +49,10 @@ public class AndroidDeviceNotifications : IDeviceNotifications
             if (info == null)
                 continue;
 
-            if (NotificationExt.TryParseCallTag(tag) is { } callChatId)
+            if (NotificationExt.TryParseCallTag(tag) is { } callId)
                 // A ring must come back as a ring — CallStyle, action buttons, full-screen intent —
                 // and it must alert: unlike a message banner, a silent call is useless.
-                IncomingCallNotifications.Show(callChatId, tag, info.Url, info.Title, info.IconUrl);
+                IncomingCallNotifications.Show(callId.ChatId, callId, tag, info.Url, info.Title, info.IconUrl);
             else
                 // Healing a dropped banner must not alert — it's a reconcile, not a new event.
                 NotificationHelper.ShowChatNotification(

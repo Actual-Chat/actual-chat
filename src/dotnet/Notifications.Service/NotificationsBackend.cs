@@ -630,8 +630,8 @@ public class NotificationsBackend(IServiceProvider services)
         if (Invalidation.IsActive)
             return;
 
-        var (conversationId, caller, invitees, hasVideo) = command;
-        var chatId = conversationId.ChatId;
+        var (callId, caller, invitees, hasVideo) = command;
+        var chatId = callId.ChatId;
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null)
             return;
@@ -659,7 +659,7 @@ public class NotificationsBackend(IServiceProvider services)
         foreach (var inviteeUserId in inviteeUserIds) {
             var userGroupTitle = groupTitleByUserId?[inviteeUserId] ?? groupTitle;
             var title = NotificationHelper.GetTitle(NotificationKind.IncomingCall, senderName, userGroupTitle);
-            var notification = CallNotification.New(inviteeUserId, conversationId, caller, hasVideo) with {
+            var notification = CallNotification.New(inviteeUserId, callId, caller, hasVideo) with {
                 Title = title,
                 SenderName = senderName,
                 Text = textByUserId[inviteeUserId],
@@ -679,16 +679,16 @@ public class NotificationsBackend(IServiceProvider services)
         if (Invalidation.IsActive)
             return;
 
-        var (conversationId, invitees) = command;
-        var chatId = conversationId.ChatId;
+        var (callId, invitees) = command;
+        var chatId = callId.ChatId;
         var inviteeUserIds = await AuthorsBackend
             .ListUserIds(chatId, invitees, RequestedAuthorKind.Default, cancellationToken)
             .ConfigureAwait(false);
         foreach (var userId in inviteeUserIds) {
-            // Same id as the ring (keyed by the call's ConversationId): handling it drops the ring
+            // Same id as the ring (keyed by the call's id): handling it drops the ring
             // from the active set (so it can't linger in ListActive / the in-app list) and closes
             // the device banner via the dismissal push ApplyHardUpdate emits for a removed notification.
-            var notificationId = NotificationId.New(userId, NotificationKind.IncomingCall, conversationId.Value);
+            var notificationId = CallNotification.NewId(userId, callId);
             await Queues
                 .Enqueue(new NotificationsBackend_Dismiss(notificationId), cancellationToken)
                 .ConfigureAwait(false);
@@ -1438,11 +1438,11 @@ public class NotificationsBackend(IServiceProvider services)
         if (voipDeviceIds.Count == 0)
             return NoDeviceIds;
 
-        var conversationId = ConversationId.Parse(notification.SimilarityKey);
+        var callId = notification.CallId;
         try {
             return await ApnsClient
                 .SendCallRing(
-                    conversationId,
+                    callId,
                     notification.AuthorId.Require(),
                     notification.Title,
                     notification.HasVideo,
@@ -1451,7 +1451,7 @@ public class NotificationsBackend(IServiceProvider services)
                 .ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e, "Call ring failed for conversation '{ConversationId}'", conversationId);
+            Log.LogError(e, "Call ring failed for call '{CallId}'", callId);
             return NoDeviceIds;
         }
     }

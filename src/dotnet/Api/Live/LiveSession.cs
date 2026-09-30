@@ -28,6 +28,8 @@ public sealed partial record LiveSession
     public LiveSessionKind Kind { get; init; } = LiveSessionKind.Ambient;
     [DataMember(Order = 9), Key(9)]
     public IReadOnlyList<CallInvite> Invites { get; init; } = [];
+    [DataMember(Order = 10), Key(10)]
+    public CallId? CallId { get; init; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ConversationId? ConversationId => Conversation?.Id;
 }

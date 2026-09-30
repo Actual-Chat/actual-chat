@@ -113,20 +113,20 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
 
         if (data.DismissedTags.Count > 0) {
             // Read before cancelling: afterwards nothing tells which call notification was on screen.
-            ChatId[] shownCallChatIds;
+            string[] shownCallTags;
             try {
-                shownCallChatIds = IncomingCallNotifications.ListActiveCallChatIds();
+                shownCallTags = IncomingCallNotifications.ListActiveCallTags();
             }
             catch (Exception e) {
                 Log.LogWarning(e, "Couldn't list the shown call notifications; dismissing without stopping the ring");
-                shownCallChatIds = [];
+                shownCallTags = [];
             }
             var notificationManager = NotificationManagerCompat.From(this)!;
             foreach (var tag in data.DismissedTags)
                 notificationManager.Cancel(tag, 0);
             ClearAttentionRequests(data.DismissedTags);
             ClearForegroundCallRings(data.DismissedTags);
-            StopRingForDismissedCalls(data.DismissedTags, shownCallChatIds);
+            StopRingForDismissedCalls(data.DismissedTags, shownCallTags);
 
             return;
         }
@@ -246,26 +246,21 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
             return;
 
         foreach (var tag in dismissedTags) {
-            if (!tag.StartsWith(Constants.Notification.CallTagPrefix))
-                continue;
-
-            var chatId = ChatId.TryParse(tag[Constants.Notification.CallTagPrefix.Length..], allowNull: true);
-            if (chatId is null)
+            if (NotificationExt.TryParseCallTag(tag) is not { } callId)
                 continue;
 
             _ = DispatchToBlazor(
-                c => c.GetRequiredService<CallScreensUI>().OnCallDismissed(chatId),
+                c => c.GetRequiredService<CallScreensUI>().OnCallDismissed(callId.ChatId, callId),
                 "CallScreensUI.OnCallDismissed");
         }
     }
 
-    private static void StopRingForDismissedCalls(IReadOnlyList<string> dismissedTags, ChatId[] shownCallChatIds)
+    private static void StopRingForDismissedCalls(IReadOnlyList<string> dismissedTags, string[] shownCallTags)
     {
-        // The ringtone that started with a shown call notification goes with it. A ring Blazor drives is stopped
-        // by CallScreensUI too; a double stop is harmless.
-        var isShownCallDismissed = dismissedTags
-            .Select(NotificationExt.TryParseCallTag)
-            .Any(chatId => chatId is not null && shownCallChatIds.Contains(chatId));
+        // The ringtone that started with a shown call notification goes with it - and only with it: a
+        // dismissal for an earlier call to the chat names another tag. A ring Blazor drives is stopped by
+        // CallScreensUI too; a double stop is harmless.
+        var isShownCallDismissed = dismissedTags.Any(tag => shownCallTags.Contains(tag));
         if (isShownCallDismissed)
             IncomingCallRinger.Stop();
     }

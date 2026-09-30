@@ -29,6 +29,9 @@ public class NotificationData(string messageId, Dictionary<string, string> data)
         }
     }
 
+    public CallId? CallId
+        => CallId.TryParse(data.GetValueOrDefault(Constants.Notification.MessageDataKeys.CallId, ""), allowNull: true);
+
     public long LastEntryLocalId {
         get {
             data.TryGetValue(Constants.Notification.MessageDataKeys.LastEntryLocalId, out var sLastEntryLocalId);

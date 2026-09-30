@@ -101,7 +101,7 @@ public class MacOSDeviceNotifications(IServiceProvider services) : IDeviceNotifi
 
     private async Task<bool> Post(ActiveNotificationInfo info)
     {
-        var isCall = NotificationExt.TryParseCallTag(info.Tag) is not null;
+        var isCall = NotificationExt.IsCallTag(info.Tag);
         using var content = new UNMutableNotificationContent {
             Title = info.Title,
             Body = info.Text,

@@ -906,8 +906,9 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
 
         // the ring is published under this id while dialing; it must stay put for the whole call
         var dialing = await backend.GetState(chatId, default);
-        var ringId = dialing!.RingConversationId;
-        dialing.ConversationId.Should().Be(ringId, "during dialing the block id and ring id coincide");
+        var callId = dialing!.CallId;
+        var dialingBlockId = dialing.ConversationId;
+        callId.Should().NotBeNull();
 
         // act — a chat entry lands during the ring, advancing the chat end, then Alice answers
         await bob.CreateTextEntry(chatId, "grows the chat end during the ring");
@@ -915,9 +916,9 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
 
         // assert — the block id moved to the answer point, but the ring id did NOT (so dismissals still match)
         var connected = await backend.GetState(chatId, default);
-        connected!.RingConversationId.Should()
-            .Be(ringId, "the ring id is latch-stable so DismissRing matches NotifyCall");
-        connected.ConversationId.Should().NotBe(ringId, "the block id legitimately moves to the answer's chat end");
+        connected!.CallId.Should().Be(callId, "the call id is latch-stable so DismissRing matches NotifyCall");
+        connected.ConversationId.Should()
+            .NotBe(dialingBlockId, "the block id legitimately moves to the answer's chat end");
     }
 
     [Fact]

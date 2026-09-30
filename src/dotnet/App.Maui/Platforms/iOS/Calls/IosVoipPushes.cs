@@ -60,15 +60,14 @@ public sealed class IosVoipPushes : PKPushRegistryDelegate
         PKPushRegistry registry, PKPushPayload payload, string type, Action completion)
     {
         var dict = payload.DictionaryPayload;
-        var conversationId = ConversationId.TryParse(
-            dict[MessageDataKeys.ConversationId]?.ToString(), allowNull: true);
+        var callId = CallId.TryParse(dict[MessageDataKeys.CallId]?.ToString(), allowNull: true);
         var callerName = dict[MessageDataKeys.CallerName]?.ToString() ?? "";
         var hasVideo = dict[MessageDataKeys.HasVideo] is NSNumber { BoolValue: true };
-        Log.LogInformation("DidReceiveIncomingPush: {ConversationId}, {CallerName}, hasVideo={HasVideo}",
-            conversationId, callerName, hasVideo);
+        Log.LogInformation("DidReceiveIncomingPush: {CallId}, {CallerName}, hasVideo={HasVideo}",
+            callId, callerName, hasVideo);
         // Reporting is not optional and cannot be deferred to a scope that may not exist:
         // a push that returns without one costs the app its VoIP delivery.
-        IosCalls.Instance.ReportIncomingCall(conversationId, callerName, hasVideo, completion);
+        IosCalls.Instance.ReportIncomingCall(callId, callerName, hasVideo, completion);
     }
 
     // Private methods

@@ -14,15 +14,17 @@ public interface IIncomingCallsBridge
     void StartRinging();
     void StopRinging();
     // Fires on every local ring-end - accepted and declined alike - so it carries no verdict.
-    void DismissCallNotification(ChatId chatId);
-    // Carries the ring's verdict for chatId: accepted or not. On Android it resolves the
+    // A null callId, here and below, is "whatever call the chat is in": the ring was handled before
+    // anything named it.
+    void DismissCallNotification(ChatId chatId, CallId? callId);
+    // Carries the ring's verdict for the call: accepted or not. On Android it resolves the
     // over-lock-screen call UI — on accept it dismisses the keyguard so the user lands in the app,
     // and the returned task completes once the screen is unlocked (or immediately if it wasn't)
     // with whether the app is now foreground-ready to start the audio foreground service; false
     // when the user cancelled unlocking, so the caller must not start it from a background state.
     // On a non-accept end it releases the app from over the lock screen. On CallKit it mirrors the
     // verdict into the system call, which outlives the ring.
-    Task<bool> OnCallHandled(ChatId chatId, bool isAccepted);
+    Task<bool> OnCallHandled(ChatId chatId, CallId? callId, bool isAccepted);
     // Called once the call screen has actually rendered: brings the app over the keyguard (for a warm
     // start, where it wasn't shown over-lock eagerly to avoid a cover) and removes the cold-start
     // cover. So the lock screen reveals the drawn call screen, never the app's content.

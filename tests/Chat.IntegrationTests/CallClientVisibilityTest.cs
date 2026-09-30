@@ -19,14 +19,16 @@ public sealed class CallClientVisibilityTest(ChatCollection.AppHostFixture fixtu
         var liveSessions = bobPhone.AppServices.GetRequiredService<ILiveSessions>();
 
         // act
-        await liveSessions.StartCall(
+        var callId = await liveSessions.StartCall(
             bobPhone.Session, chatId, new[] { alice.Id }.ToApiArray(), false, "phone", default);
 
         // assert
+        callId.Should().NotBeNull();
         await TestWait.When(async ct => {
             var onPhone = await liveSessions.GetMyCall(bobPhone.Session, "phone", ct);
             onPhone.Should().NotBeNull();
             onPhone!.Role.Should().Be(CallRole.Caller);
+            onPhone.CallId.Should().Be(callId, "StartCall names the call the caller is then shown");
         });
         var onDesktop = await liveSessions.GetMyCall(bobDesktop.Session, "desktop", default);
         var onPhoneOtherTab = await liveSessions.GetMyCall(bobPhone.Session, "phone-tab-2", default);
@@ -56,7 +58,7 @@ public sealed class CallClientVisibilityTest(ChatCollection.AppHostFixture fixtu
         });
 
         // act
-        await liveSessions.AcceptCall(aliceTester.Session, chatId, "alice-phone", default);
+        await liveSessions.AcceptCall(aliceTester.Session, chatId, "alice-phone", null, default);
 
         // assert
         await TestWait.When(async ct => {

@@ -43,24 +43,37 @@ public partial class CallUI
             // "No call" is also what a disconnected client reads, so a fresh gesture outlives it.
             return intent is { IsFresh: true, Call: { } intended } ? intended : null;
 
-        var server = new ActiveCall(myCall.ChatId, myCall.Role, myCall.Phase, myCall.PeerId, myCall.HasVideo);
-        if (!intent.IsFresh || intent.ChatId != myCall.ChatId)
+        var server = new ActiveCall(
+            myCall.ChatId, myCall.Role, myCall.Phase, myCall.PeerId, myCall.HasVideo, myCall.CallId);
+        if (!intent.IsFresh)
             return server;
+        if (IsLeftCall(myCall, intent))
+            return intent.Call; // Just left this call, and the server hasn't caught up yet
+        if (intent.ChatId != myCall.ChatId)
+            return server;
+
         if (intent.Call is null)
-            return null; // Just left this call, and the server hasn't caught up yet
+            // Without ids any call to the chat just left reads as the one left. With them, this is
+            // another one - a call back, say - and it must not wait the grace out.
+            return intent.LeftCallId is not null && myCall.CallId is not null ? server : null;
+        if (!intent.Call.IsSameCall(server))
+            return server;
 
         // A just-accepted ring is Active here before the server says so - keep the phase that went further.
         return intent.Call.Phase == CallPhase.Active && server.Phase != CallPhase.Active
-            ? intent.Call
+            ? intent.Call with { CallId = server.CallId }
             : server;
     }
+
+    internal static bool IsLeftCall(UserCall? myCall, CallIntentView intent)
+        => intent.LeftCallId is { } leftCallId && myCall?.CallId == leftCallId;
 
     // Placing a call is itself the intent to talk, so an answered one puts the caller on the line - once.
     // Read from the slot it replaced, not latched: a latch outlives a slot this client frees itself, and
     // the next call to that chat then connects with no audio.
     internal static bool ShouldStartCallAudio(ActiveCall? held, [NotNullWhen(true)] ActiveCall? next)
         => next is { Role: CallRole.Caller, Phase: CallPhase.Active }
-            && (held is not { Role: CallRole.Caller, Phase: CallPhase.Active } || held.ChatId != next.ChatId);
+            && (held is not { Role: CallRole.Caller, Phase: CallPhase.Active } || !held.IsSameCall(next));
 
     // Private methods
 
@@ -114,10 +127,12 @@ public partial class CallUI
             var intent = CallIntentView.Of(_intent, Now, IntentGrace);
             var next = Reconcile(myCall, intent);
             CallDebugLog?.LogInformation(
-                "CALL_TRACE: MyCall #{ChatId} {Role}/{Phase} → slot #{Next}",
-                myCall?.ChatId, myCall?.Role, myCall?.Phase, next?.ChatId);
+                "CALL_TRACE: MyCall #{CallId} {Role}/{Phase} → slot #{Next}",
+                myCall?.CallId?.Value ?? myCall?.ChatId.Value, myCall?.Role, myCall?.Phase,
+                next?.CallId?.Value ?? next?.ChatId.Value);
             // The intent stops competing once it's been answered - confirmed or overruled - or aged out.
-            if (!intent.IsFresh || myCall?.ChatId == intent.ChatId)
+            // An answer still naming the call just left is neither: the next one may name it again.
+            if (!intent.IsFresh || (myCall?.ChatId == intent.ChatId && !IsLeftCall(myCall, intent)))
                 _intent = null;
             // Set before the early return below: the slot can stay put while the server's answer for it
             // arrives, and that arrival is exactly what the outgoing screens wait for.
@@ -132,7 +147,7 @@ public partial class CallUI
                 joinedChatId = next.ChatId;
             // A dialing call that leaves the slot was never picked up - a decline reads the same to the
             // caller. The user's own cancel never gets here: CancelCall frees the slot first.
-            if (held is { Role: CallRole.Caller, Phase: CallPhase.Dialing } && next?.ChatId != held.ChatId)
+            if (held is { Role: CallRole.Caller, Phase: CallPhase.Dialing } && !held.IsSameCall(next))
                 unansweredChatId = held.ChatId;
         }
         if (ringingChatId is { } chatId)
@@ -173,11 +188,15 @@ public partial class CallUI
 
     // The intent as the pure reconciliation rule sees it: what it wanted, for which chat, and whether it
     // is still young enough to outrank the server's answer.
-    internal readonly record struct CallIntentView(ActiveCall? Call, ChatId ChatId, bool IsFresh)
+    internal readonly record struct CallIntentView(
+        ActiveCall? Call,
+        ChatId ChatId,
+        bool IsFresh,
+        CallId? LeftCallId = null)
     {
         public static CallIntentView Of(CallIntent? intent, Moment now, TimeSpan grace)
             => intent is null
                 ? default
-                : new CallIntentView(intent.Call, intent.ChatId, now - intent.At < grace);
+                : new CallIntentView(intent.Call, intent.ChatId, now - intent.At < grace, intent.LeftCallId);
     }
 }

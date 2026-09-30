@@ -8,12 +8,42 @@ public class CallNotificationTagTests(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void PushTagIsCallScoped()
     {
-        var conversationId = ConversationId.New(TestChatId, 2067);
+        var callId = CallId.New(TestChatId, "2067");
         var caller = AuthorId.New(TestChatId, 5);
-        var ring = CallNotification.New(TestUserId, conversationId, caller, hasVideo: false);
+        var ring = CallNotification.New(TestUserId, callId, caller, hasVideo: false);
 
-        ring.GetPushTag().Should().Be("call-" + TestChatId.Value);
+        ring.GetPushTag().Should().Be("call-" + callId.Value);
         ring.GetChatTag().Should().Be(TestChatId.Value);
+    }
+
+    [Fact]
+    public void TwoCallsToOneChatShouldNotShareTheirTagOrId()
+    {
+        // arrange
+        var caller = AuthorId.New(TestChatId, 5);
+
+        // act
+        var first = CallNotification.New(TestUserId, CallId.New(TestChatId, "2067"), caller, hasVideo: false);
+        var second = CallNotification.New(TestUserId, CallId.New(TestChatId, "2068"), caller, hasVideo: false);
+
+        // assert
+        second.Id.Should().NotBe(first.Id, "dismissing the first call must not dismiss the second one's ring");
+        second.GetPushTag().Should().NotBe(first.GetPushTag(), "a dismissal closes banners by tag");
+        second.GetChatTag().Should().Be(first.GetChatTag());
+    }
+
+    [Fact]
+    public void CallTagShouldParseBackToItsCall()
+    {
+        // arrange
+        var callId = CallId.New(TestChatId, "2067");
+
+        // act
+        var parsed = NotificationExt.TryParseCallTag(NotificationExt.GetCallTag(callId));
+
+        // assert
+        parsed.Should().Be(callId);
+        NotificationExt.TryParseCallTag(TestChatId.Value).Should().BeNull("it is not a call tag");
     }
 
     [Fact]
@@ -39,11 +69,10 @@ public class CallNotificationTagTests(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void DismissalSharesRingTag()
     {
-        var conversationId = ConversationId.New(TestChatId, 2067);
+        var callId = CallId.New(TestChatId, "2067");
         var caller = AuthorId.New(TestChatId, 5);
-        var ring = CallNotification.New(TestUserId, conversationId, caller, hasVideo: true);
-        var dismissal = new CallNotification(
-            NotificationId.New(TestUserId, NotificationKind.IncomingCall, conversationId.Value));
+        var ring = CallNotification.New(TestUserId, callId, caller, hasVideo: true);
+        var dismissal = new CallNotification(CallNotification.NewId(TestUserId, callId));
 
         dismissal.GetPushTag().Should().Be(ring.GetPushTag());
         dismissal.GetPushTag().Should().NotBeNull();

@@ -9,14 +9,15 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public interface ISystemCallUI
 {
-    void OnOutgoingCallStarted(ChatId chatId, bool hasVideo);
+    // callId is null only when the server placed no call and named none.
+    void OnOutgoingCallStarted(ChatId chatId, CallId? callId, bool hasVideo);
     void OnOutgoingCallStatusChanged(ChatId chatId, CallerStatus status);
     void OnOutgoingCallCancelled(ChatId chatId);
 }
 
 public sealed class DefaultSystemCallUI : ISystemCallUI
 {
-    public void OnOutgoingCallStarted(ChatId chatId, bool hasVideo)
+    public void OnOutgoingCallStarted(ChatId chatId, CallId? callId, bool hasVideo)
     { }
 
     public void OnOutgoingCallStatusChanged(ChatId chatId, CallerStatus status)

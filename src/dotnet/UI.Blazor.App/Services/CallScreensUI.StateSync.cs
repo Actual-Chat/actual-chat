@@ -90,22 +90,53 @@ public partial class CallScreensUI
 
     private void OnCallViewChanged(CallView last, CallView view)
     {
-        if (last.Call is { } lastCall && lastCall.ChatId != view.Call?.ChatId)
-            OnCallReleased(lastCall, last);
+        if (last.Call is { } lastCall && !lastCall.IsSameCall(view.Call)) {
+            if (lastCall.ChatId == view.Call?.ChatId)
+                OnCallReplacedInChat(lastCall, view.Call);
+            else
+                OnCallReleased(lastCall, last);
+        }
         if (view is not { Kind: CallViewKind.Modal, Call: { } call })
             return;
 
-        // The modal closes itself once the view moves on, so it opens only on the switch to it.
+        // The modal closes itself once the view moves on, so it opens only on the switch to it. It is
+        // the chat's, not the call's: one already up for this chat shows the next call to it as well.
         var wasModal = last.Kind == CallViewKind.Modal && last.Call?.ChatId == call.ChatId;
         if (!wasModal)
             ShowModal(new CallModal.Model(call.ChatId));
+    }
+
+    private void OnCallReplacedInChat(ActiveCall call, ActiveCall next)
+    {
+        // The next call to the same chat took the slot with no release between. Hanging up or leaving
+        // the screen by chat would do it to the new call, so only what was the old call's alone goes:
+        // its collapsed and muted state, and its audio - which would otherwise answer the new ring.
+        // Over-lock stays: the app is still over the keyguard, and the new call's release takes it back.
+        var chatId = call.ChatId;
+        CallDebugLog?.LogInformation(
+            "CALL_TRACE: slot call #{CallId} replaced by #{NextCallId}", call.CallId, next.CallId);
+        ClearIf(_collapsedChatId, chatId);
+        ClearIf(_mutedRingChatId, chatId);
+        if (call.Phase == CallPhase.Active && next.Phase != CallPhase.Active)
+            _ = Hub.Dispatcher.InvokeAsync(() => StopReplacedCallAudio(chatId));
+    }
+
+    private async Task StopReplacedCallAudio(ChatId chatId)
+    {
+        try {
+            await CallUI.StopCallAudio(chatId).ConfigureAwait(true);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Stopping the replaced call's audio failed for chat #{ChatId}", chatId);
+        }
     }
 
     private void OnCallReleased(ActiveCall call, CallView last)
     {
         // The one place a call's screens are torn down, however the call ended.
         var chatId = call.ChatId;
-        CallDebugLog?.LogInformation("CALL_TRACE: slot released #{ChatId} from {Phase}", chatId, call.Phase);
+        CallDebugLog?.LogInformation(
+            "CALL_TRACE: slot released #{CallId} from {Phase}", call.CallId?.Value ?? chatId.Value, call.Phase);
         ClearCallFlags(chatId);
         if (last.IsOverLock)
             Bridge?.MoveBehindLockScreen();

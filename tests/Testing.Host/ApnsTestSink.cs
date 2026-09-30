@@ -9,7 +9,7 @@ public sealed record ApnsPttWakeMessage(
     IReadOnlyList<Symbol> DeviceIds);
 
 public sealed record ApnsCallRingMessage(
-    ConversationId ConversationId,
+    CallId CallId,
     AuthorId Caller,
     string CallerName,
     bool HasVideo,
@@ -46,7 +46,7 @@ public sealed class ApnsTestSink(ILogger<ApnsTestSink> log) : IApnsClient
     }
 
     public Task<IReadOnlySet<Symbol>> SendCallRing(
-        ConversationId conversationId,
+        CallId callId,
         AuthorId caller,
         string callerName,
         bool hasVideo,
@@ -56,13 +56,12 @@ public sealed class ApnsTestSink(ILogger<ApnsTestSink> log) : IApnsClient
         if (MustFailCallRings)
             throw new InvalidOperationException("APNs call ring failed");
 
-        log.LogInformation("SendCallRing: conversation {ConversationId} -> {DeviceCount} device(s)",
-            conversationId, deviceIds.Count);
+        log.LogInformation("SendCallRing: call {CallId} -> {DeviceCount} device(s)", callId, deviceIds.Count);
         if (!IsConfigured)
             return Task.FromResult<IReadOnlySet<Symbol>>(new HashSet<Symbol>());
 
         _callRings.Enqueue(
-            new ApnsCallRingMessage(conversationId, caller, callerName, hasVideo, [..deviceIds]));
+            new ApnsCallRingMessage(callId, caller, callerName, hasVideo, [..deviceIds]));
         return Task.FromResult<IReadOnlySet<Symbol>>(deviceIds.ToHashSet());
     }
 }

@@ -108,7 +108,7 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
             ReactionNotification.New(TestUserId, entryId, authorId),
             AttentionNotification.New(TestUserId, entryId, authorId),
             ConversationNotification.New(TestUserId, conversationId, 2100),
-            CallNotification.New(TestUserId, conversationId, authorId, true),
+            CallNotification.New(TestUserId, CallId.Parse(conversationId.Value), authorId, true),
         ];
         foreach (var n in notifications) {
             var notification = n with {

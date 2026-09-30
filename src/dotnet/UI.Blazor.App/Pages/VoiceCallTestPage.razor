@@ -232,11 +232,11 @@ else {
         if (State.Value.Incoming is not { } incoming)
             return;
 
-        await Run(incoming.ChatId, id => CallUI.AcceptCall(id, default));
+        await Run(incoming.ChatId, id => CallUI.AcceptCall(id, null, default));
         OpenChat(incoming.ChatId);
     }
     private Task Decline()
-        => Run(State.Value.Incoming?.ChatId, id => CallUI.DeclineCall(id, default));
+        => Run(State.Value.Incoming?.ChatId, id => CallUI.DeclineCall(id, null, default));
     private Task Cancel()
         => Run(_chatId, id => CallUI.CancelCall(id, default));
     private Task Stop()

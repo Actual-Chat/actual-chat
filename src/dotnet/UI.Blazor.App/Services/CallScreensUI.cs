@@ -90,7 +90,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     {
         var call = await CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
         return call is { Role: CallRole.Callee, Phase: CallPhase.Ringing, PeerId: { } callerId }
-            ? new IncomingCall(call.ChatId, callerId, call.HasVideo)
+            ? new IncomingCall(call.ChatId, callerId, call.HasVideo, call.CallId)
             : null;
     }
 
@@ -111,13 +111,21 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         }
     }
 
-    public void OnCallDismissed(ChatId chatId)
+    public void OnCallDismissed(ChatId chatId, CallId? callId = null)
     {
         if (chatId.Value.IsNullOrEmpty())
             return;
 
-        EndRing(chatId);
-        _ = Bridge?.OnCallHandled(chatId, false);
+        if (CallUI.GetActiveCallNonComputed() is { } held && held.ChatId == chatId && !held.IsCall(chatId, callId)) {
+            // A dismissal that outlived its call: the chat rings, or talks, in the next one by now.
+            CallDebugLog?.LogInformation(
+                "CALL_TRACE: OnCallDismissed #{CallId} - stale, the slot holds #{HeldCallId}", callId, held.CallId);
+            Bridge?.DismissCallNotification(chatId, callId);
+            return;
+        }
+
+        EndRing(chatId, callId);
+        _ = Bridge?.OnCallHandled(chatId, callId, false);
     }
 
     public void OnOverLockScreenRendered()
@@ -128,15 +136,17 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         _ = RevealCallScreenAfterPaint();
     }
 
-    public async Task Accept(ChatId chatId)
+    public async Task Accept(ChatId chatId, CallId? callId = null)
     {
+        // An answer from the app's own screens names no call: it is for the one the slot shows.
+        callId ??= CallUI.GetCallIdNonComputed(chatId);
         var isOverLock = _overLockRingChatId.Value == chatId;
-        Log.LogInformation("Accept: chat #{ChatId}, overLock={IsOverLock}", chatId, isOverLock);
+        Log.LogInformation("Accept: call #{CallId}, overLock={IsOverLock}", callId?.Value ?? chatId.Value, isOverLock);
 
         // Read before the commit, which makes the slot Active either way: a stale Answer - a second tap,
         // or a notification action the user hits again - must not end the call it is already holding.
         var wasInCall = CallUI.GetActiveCallNonComputed() is { Phase: CallPhase.Active } held
-            && held.ChatId == chatId;
+            && held.IsCall(chatId, callId);
 
         // The answer ends the ring for the user right here, but the slot stays Ringing until the accept
         // round trip lands - and on Android the notification's own ringer has already stopped by then,
@@ -145,7 +155,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
 
         // Committed before the ring is dropped and before the accept RPC starts: the view, derived from
         // the slot, must not blink off between "ring ended" and "audio started".
-        if (!CallUI.TryCommitAccept(chatId)) {
+        if (!CallUI.TryCommitAccept(chatId, callId)) {
             ClearIf(_mutedRingChatId, chatId);
             ShowToast(L.Call_AlreadyInCall);
             return;
@@ -155,9 +165,9 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         // The ring mute is NOT cleared here - it has to outlast the accept round trip, which can put the
         // slot back to Ringing for a beat; the release teardown clears it through ClearCallFlags.
         ClearIf(_collapsedChatId, chatId);
-        Bridge?.DismissCallNotification(chatId);
+        Bridge?.DismissCallNotification(chatId, callId);
         try {
-            await CallUI.AcceptCall(chatId, CancellationToken.None).ConfigureAwait(true);
+            await CallUI.AcceptCall(chatId, callId, CancellationToken.None).ConfigureAwait(true);
         }
         catch (Exception e) {
             // Also where "there was no ring left" lands: the server decides that under its change
@@ -167,7 +177,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
                 return;
 
             CallUI.Release(chatId);
-            _ = Bridge?.OnCallHandled(chatId, false);
+            _ = Bridge?.OnCallHandled(chatId, callId, false);
             // The server's refusal is a StandardError.Constraint: the ring ran out, or the caller hung up.
             ShowToast(e is InvalidOperationException ? L.Call_Entry_Missed : L.Call_Ended);
             return;
@@ -179,7 +189,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
             return;
 
         try {
-            await JoinAcceptedCall(chatId, isOverLock).ConfigureAwait(true);
+            await JoinAcceptedCall(chatId, callId, isOverLock).ConfigureAwait(true);
         }
         catch {
             CallUI.Release(chatId);
@@ -187,16 +197,17 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         }
     }
 
-    public async Task Decline(ChatId chatId)
+    public async Task Decline(ChatId chatId, CallId? callId = null)
     {
+        callId ??= CallUI.GetCallIdNonComputed(chatId);
         // A held over-lock ring goes back behind the lock screen in the release teardown, as a ring that ends
         // on its own does; a ring the slot never held has no release, so it goes back here.
         var isOverLock = _overLockRingChatId.Value == chatId;
-        var isHeld = EndRing(chatId);
+        var isHeld = EndRing(chatId, callId);
         if (!isOverLock || !isHeld)
-            _ = Bridge?.OnCallHandled(chatId, false);
+            _ = Bridge?.OnCallHandled(chatId, callId, false);
         try {
-            await CallUI.DeclineCall(chatId, CancellationToken.None).ConfigureAwait(false);
+            await CallUI.DeclineCall(chatId, callId, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogWarning(e, "DeclineCall failed for chat #{ChatId}", chatId);
@@ -237,7 +248,8 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     {
         if (_overLockRingChatId.Value == chatId) {
             // The chat is behind the keyguard; a cancelled PIN keeps the call screen up.
-            var isUnlocked = Bridge is null || await Bridge.OnCallHandled(chatId, true).ConfigureAwait(true);
+            var isUnlocked = Bridge is null
+                || await Bridge.OnCallHandled(chatId, CallUI.GetCallIdNonComputed(chatId), true).ConfigureAwait(true);
             if (!isUnlocked)
                 return;
         }
@@ -273,14 +285,14 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         Bridge?.RevealCallScreen();
     }
 
-    private async Task JoinAcceptedCall(ChatId chatId, bool isOverLock)
+    private async Task JoinAcceptedCall(ChatId chatId, CallId? callId, bool isOverLock)
     {
         // Over the lock screen the activity shown via SetShowWhenLocked counts as foreground, so the mic FGS
         // starts without unlocking; anywhere else the keyguard goes first, as the FGS can't start from the
         // background. The chat opens under the call; over the lock screen it waits for the user to unlock.
         var canStartAudio = isOverLock
             || Bridge is null
-            || await Bridge.OnCallHandled(chatId, true).ConfigureAwait(true);
+            || await Bridge.OnCallHandled(chatId, callId, true).ConfigureAwait(true);
         Log.LogInformation("Accept: chat #{ChatId}, canStartAudio={CanStartAudio}", chatId, canStartAudio);
         if (!isOverLock)
             await OpenChat(chatId).ConfigureAwait(true);
@@ -298,13 +310,13 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         }
     }
 
-    private bool EndRing(ChatId chatId)
+    private bool EndRing(ChatId chatId, CallId? callId)
     {
         // A ring the slot never held (e.g. declined before the search claimed it) has no release to clear
-        // its flags, so they go here.
-        var isHeld = CallUI.DropRing(chatId);
-        Bridge?.DismissCallNotification(chatId);
-        if (!isHeld)
+        // its flags, so they go here - unless the slot holds another call to this chat, whose flags they are.
+        var isHeld = CallUI.DropRing(chatId, callId);
+        Bridge?.DismissCallNotification(chatId, callId);
+        if (!isHeld && CallUI.GetCallChatIdNonComputed() != chatId)
             ClearCallFlags(chatId);
         return isHeld;
     }

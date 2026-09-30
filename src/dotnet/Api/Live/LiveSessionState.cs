@@ -61,6 +61,9 @@ public sealed partial record LiveSessionState
     // another participant when the host of a group call hangs up while others stay on.
     [DataMember(Order = 24), Key(24)]
     public AuthorId? CallerId { get; init; }
+    // Null in an ambient session.
+    [DataMember(Order = 25), Key(25)]
+    public CallId? CallId { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public long EffectiveVisibleStartLid => VisibleStartLid > 0 ? VisibleStartLid : StartEntryLid;
@@ -69,9 +72,6 @@ public sealed partial record LiveSessionState
         => new(EffectiveVisibleStartLid, Math.Max(EndEntryLid, EffectiveVisibleStartLid) + 1);
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ConversationId ConversationId => ConversationId.New(ChatId, EffectiveVisibleStartLid);
-    // Ring id must stay fixed for the whole call, unlike ConversationId, which jumps at the latch.
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ConversationId RingConversationId => ConversationId.New(ChatId, StartEntryLid);
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsCall => Kind == LiveSessionKind.Call;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
