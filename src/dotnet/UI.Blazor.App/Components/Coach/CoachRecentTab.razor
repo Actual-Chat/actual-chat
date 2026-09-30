@@ -18,10 +18,6 @@
             Findings="@CoachFindings.Pick(c, focus, level, isBest)"
             IsWeeksBest="@isBest"/>
     }
-    <div class="c-older">
-        @L.Coach_OlderInProgress
-        <a @onclick="@OnProgress">@L.Coach_TabProgress</a>
-    </div>
 </div>
 
 @code {
@@ -46,9 +42,6 @@
             .FirstOrDefault();
         return new Model(conversations, titles, settings, best?.ChatId, best?.StartEntryLid ?? 0);
     }
-
-    private void OnProgress()
-        => Hub.CoachUI.SelectTab(CoachTab.Progress);
 
     public sealed record Model(
         ApiArray<CoachConversation> Conversations,

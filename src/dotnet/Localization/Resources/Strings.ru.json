@@ -1965,7 +1965,6 @@
   "Coach_SpokeMinutes_Format": "Наговорено: {0} мин",
   "Coach_MarkedTranscript": "Размеченная расшифровка",
   "Coach_AllNumbers": "Все показатели",
-  "Coach_OlderInProgress": "Более старые разговоры учтены в разделе «Прогресс»",
   "Coach_FindingFillers_Format": "Слов-паразитов: {0}, это {1}% речи, чаще всего «{2}»",
   "Coach_FindingFillersFew_Format": "Слов-паразитов: {0} за {1} мин",
   "Coach_FindingPace_Format": "{0} сл/мин, {1}",

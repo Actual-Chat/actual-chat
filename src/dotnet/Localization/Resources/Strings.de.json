@@ -1966,7 +1966,6 @@
   "Coach_SpokeMinutes_Format": "{0} Min. gesprochen",
   "Coach_MarkedTranscript": "Markiertes Transkript",
   "Coach_AllNumbers": "Alle Zahlen",
-  "Coach_OlderInProgress": "Ältere Gespräche sind unter „Fortschritt“ zusammengefasst",
   "Coach_FindingFillers_Format": "{0} Füllwörter, {1} % der Rede, meist „{2}“",
   "Coach_FindingFillersFew_Format": "{0} Füllwörter in {1} Minuten",
   "Coach_FindingPace_Format": "{0} WPM, {1}",

@@ -1972,7 +1972,6 @@
   "Coach_SpokeMinutes_Format": "{0} dk konuşma",
   "Coach_MarkedTranscript": "İşaretli metin",
   "Coach_AllNumbers": "Tüm sayılar",
-  "Coach_OlderInProgress": "Eski sohbetler İlerleme sekmesinde özetlenir",
   "Coach_FindingFillers_Format": "{0} dolgu kelime, konuşmanın %{1}’i, çoğunlukla “{2}”",
   "Coach_FindingFillersFew_Format": "{1} dakikada {0} dolgu kelime",
   "Coach_FindingPace_Format": "{0} kelime/dk, {1}",

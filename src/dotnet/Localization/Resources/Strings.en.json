@@ -2319,7 +2319,6 @@
   "Coach_SpokeMinutes_Format": "{0} min spoken",
   "Coach_MarkedTranscript": "Marked transcript",
   "Coach_AllNumbers": "All numbers",
-  "Coach_OlderInProgress": "Older conversations are summed up in Progress",
   "Coach_FindingFillers_Format": "{0} filler words, {1}% of speech, mostly “{2}”",
   "Coach_FindingFillersFew_Format": "{0} filler words in {1} minutes",
   "Coach_FindingPace_Format": "{0} wpm, {1}",

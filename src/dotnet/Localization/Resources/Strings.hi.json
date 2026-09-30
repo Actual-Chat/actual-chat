@@ -1965,7 +1965,6 @@
   "Coach_SpokeMinutes_Format": "{0} मिनट बोले",
   "Coach_MarkedTranscript": "चिह्नित ट्रांसक्रिप्ट",
   "Coach_AllNumbers": "सभी आँकड़े",
-  "Coach_OlderInProgress": "पुरानी बातचीत का सार प्रगति में है",
   "Coach_FindingFillers_Format": "{0} भराव शब्द, बोली का {1}%, ज़्यादातर “{2}”",
   "Coach_FindingFillersFew_Format": "{1} मिनट में {0} भराव शब्द",
   "Coach_FindingPace_Format": "{0} शब्द/मिनट, {1}",

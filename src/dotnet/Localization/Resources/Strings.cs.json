@@ -1965,7 +1965,6 @@
   "Coach_SpokeMinutes_Format": "{0} min mluvení",
   "Coach_MarkedTranscript": "Označený přepis",
   "Coach_AllNumbers": "Všechna čísla",
-  "Coach_OlderInProgress": "Starší konverzace jsou shrnuty v Pokroku",
   "Coach_FindingFillers_Format": "{0} vycpávkových slov, {1} % řeči, nejčastěji „{2}“",
   "Coach_FindingFillersFew_Format": "{0} vycpávkových slov za {1} minut",
   "Coach_FindingPace_Format": "{0} slov/min, {1}",

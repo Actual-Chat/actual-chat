@@ -1965,7 +1965,6 @@
   "Coach_SpokeMinutes_Format": "{0} min govora",
   "Coach_MarkedTranscript": "Označeni transkript",
   "Coach_AllNumbers": "Svi brojevi",
-  "Coach_OlderInProgress": "Starije razgovore sažimamo u Napretku",
   "Coach_FindingFillers_Format": "{0} poštapalica, {1}% govora, najviše „{2}“",
   "Coach_FindingFillersFew_Format": "{0} poštapalica u {1} minuta",
   "Coach_FindingPace_Format": "{0} riječi/min, {1}",

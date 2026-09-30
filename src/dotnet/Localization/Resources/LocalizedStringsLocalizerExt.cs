@@ -2059,7 +2059,6 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_SpokeMinutes_Format(object arg0) => l["Coach_SpokeMinutes_Format", arg0].Value;
         public string Coach_MarkedTranscript => l["Coach_MarkedTranscript"].Value;
         public string Coach_AllNumbers => l["Coach_AllNumbers"].Value;
-        public string Coach_OlderInProgress => l["Coach_OlderInProgress"].Value;
         public string Coach_FindingFillers_Format(object arg0, object arg1, object arg2)
             => l["Coach_FindingFillers_Format", arg0, arg1, arg2].Value;
         public string Coach_FindingFillersFew_Format(object arg0, object arg1)

@@ -1965,7 +1965,6 @@
   "Coach_SpokeMinutes_Format": "{0}분 말함",
   "Coach_MarkedTranscript": "표시된 대화 기록",
   "Coach_AllNumbers": "모든 수치",
-  "Coach_OlderInProgress": "이전 대화는 진행 탭에 요약되어 있어요",
   "Coach_FindingFillers_Format": "군더더기 말 {0}회, 발화의 {1}%, 주로 “{2}”",
   "Coach_FindingFillersFew_Format": "{1}분 동안 군더더기 말 {0}회",
   "Coach_FindingPace_Format": "{0} wpm, {1}",

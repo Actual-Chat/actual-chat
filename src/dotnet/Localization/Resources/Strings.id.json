@@ -1965,7 +1965,6 @@
   "Coach_SpokeMinutes_Format": "{0} mnt berbicara",
   "Coach_MarkedTranscript": "Transkrip bertanda",
   "Coach_AllNumbers": "Semua angka",
-  "Coach_OlderInProgress": "Percakapan lama diringkas di Kemajuan",
   "Coach_FindingFillers_Format": "{0} kata pengisi, {1}% dari ucapan, kebanyakan “{2}”",
   "Coach_FindingFillersFew_Format": "{0} kata pengisi dalam {1} menit",
   "Coach_FindingPace_Format": "{0} kpm, {1}",

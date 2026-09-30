@@ -1965,7 +1965,6 @@
   "Coach_SpokeMinutes_Format": "{0} min mówienia",
   "Coach_MarkedTranscript": "Transkrypcja z oznaczeniami",
   "Coach_AllNumbers": "Wszystkie liczby",
-  "Coach_OlderInProgress": "Starsze rozmowy są podsumowane w Postępach",
   "Coach_FindingFillers_Format": "{0} słów wypełniaczy, {1}% wypowiedzi, głównie „{2}”",
   "Coach_FindingFillersFew_Format": "{0} słów wypełniaczy w {1} min",
   "Coach_FindingPace_Format": "{0} słów/min, {1}",

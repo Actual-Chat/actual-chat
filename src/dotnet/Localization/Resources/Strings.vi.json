@@ -1965,7 +1965,6 @@
   "Coach_SpokeMinutes_Format": "Đã nói {0} phút",
   "Coach_MarkedTranscript": "Bản ghi có đánh dấu",
   "Coach_AllNumbers": "Tất cả chỉ số",
-  "Coach_OlderInProgress": "Các cuộc trò chuyện cũ hơn được tổng hợp trong mục Tiến bộ",
   "Coach_FindingFillers_Format": "{0} từ đệm, chiếm {1}% lời nói, chủ yếu là “{2}”",
   "Coach_FindingFillersFew_Format": "{0} từ đệm trong {1} phút",
   "Coach_FindingPace_Format": "{0} từ/phút, {1}",

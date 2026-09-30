@@ -2319,7 +2319,6 @@
   "Coach_SpokeMinutes_Format": "Наговорено: {0} мин",
   "Coach_MarkedTranscript": "Размеченная расшифровка",
   "Coach_AllNumbers": "Todos os números",
-  "Coach_OlderInProgress": "Các cuộc trò chuyện cũ hơn được tổng hợp trong mục Tiến bộ",
   "Coach_FindingFillers_Format": "{0} mots de remplissage, {1} % de la parole, surtout « {2} »",
   "Coach_FindingFillersFew_Format": "{0} mots de remplissage en {1} minutes",
   "Coach_FindingPace_Format": "{0} शब्द/मिनट, {1}",

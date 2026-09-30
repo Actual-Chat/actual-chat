@@ -1965,7 +1965,6 @@
   "Coach_SpokeMinutes_Format": "{0} мин говорене",
   "Coach_MarkedTranscript": "Маркиран препис",
   "Coach_AllNumbers": "Всички числа",
-  "Coach_OlderInProgress": "По-старите разговори са обобщени в „Напредък“",
   "Coach_FindingFillers_Format": "{0} думи-паразити, {1}% от речта, най-вече „{2}“",
   "Coach_FindingFillersFew_Format": "{0} думи-паразити за {1} минути",
   "Coach_FindingPace_Format": "{0} думи/мин, {1}",

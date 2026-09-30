@@ -1965,7 +1965,6 @@
   "Coach_SpokeMinutes_Format": "Сказано: {0} хв",
   "Coach_MarkedTranscript": "Розмічена розшифровка",
   "Coach_AllNumbers": "Усі показники",
-  "Coach_OlderInProgress": "Старіші розмови враховано в розділі «Прогрес»",
   "Coach_FindingFillers_Format": "Слів-паразитів: {0}, це {1}% мовлення, найчастіше «{2}»",
   "Coach_FindingFillersFew_Format": "Слів-паразитів: {0} за {1} хв",
   "Coach_FindingPace_Format": "{0} сл/хв, {1}",

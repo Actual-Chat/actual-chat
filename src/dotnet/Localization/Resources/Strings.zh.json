@@ -1965,7 +1965,6 @@
   "Coach_SpokeMinutes_Format": "已说 {0} 分钟",
   "Coach_MarkedTranscript": "已标记的转写",
   "Coach_AllNumbers": "全部数据",
-  "Coach_OlderInProgress": "较早的对话已汇总在“进度”中",
   "Coach_FindingFillers_Format": "填充词 {0} 个，占讲话的 {1}%，主要是“{2}”",
   "Coach_FindingFillersFew_Format": "{1} 分钟内有 {0} 个填充词",
   "Coach_FindingPace_Format": "{0} 词/分钟，{1}",

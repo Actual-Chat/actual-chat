@@ -1965,7 +1965,6 @@
   "Coach_SpokeMinutes_Format": "{0} min falados",
   "Coach_MarkedTranscript": "Transcrição marcada",
   "Coach_AllNumbers": "Todos os números",
-  "Coach_OlderInProgress": "As conversas mais antigas estão resumidas em Progresso",
   "Coach_FindingFillers_Format": "{0} vícios de linguagem, {1}% da fala, principalmente “{2}”",
   "Coach_FindingFillersFew_Format": "{0} vícios de linguagem em {1} minutos",
   "Coach_FindingPace_Format": "{0} ppm, {1}",

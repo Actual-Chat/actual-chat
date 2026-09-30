@@ -1965,7 +1965,6 @@
   "Coach_SpokeMinutes_Format": "{0} 分話した",
   "Coach_MarkedTranscript": "マーク付き文字起こし",
   "Coach_AllNumbers": "すべての数値",
-  "Coach_OlderInProgress": "以前の会話は「進捗」にまとめられています",
   "Coach_FindingFillers_Format": "つなぎ言葉 {0} 回、発話の {1}%、多いのは「{2}」",
   "Coach_FindingFillersFew_Format": "{1} 分間でつなぎ言葉 {0} 回",
   "Coach_FindingPace_Format": "{0} 語/分、{1}",
