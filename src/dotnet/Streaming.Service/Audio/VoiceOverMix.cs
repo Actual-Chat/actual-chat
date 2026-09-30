@@ -39,6 +39,9 @@ public sealed class VoiceOverMix(
     private DubActivity Activity { get; } = activity;
     private MomentClock Clock { get; } = clocks.CpuClock;
     private ILogger Log { get; } = log;
+    private bool IsDubPending
+        // The reader's completion is set only once the channel is drained: no dub audio is left to come
+        => IsDubExpected && !_dubPcm.Reader.Completion.IsCompleted;
 
     public ChannelWriter<byte[]> DubPcm => _dubPcm.Writer;
     // How far the voice is behind the text it was given: speech already synthesized and waiting to
@@ -47,6 +50,13 @@ public sealed class VoiceOverMix(
     // Completes with the number of frames emitted so far once the frames the original had buffered
     // when Run started are replayed - from then on the mix follows the original live - or when Run ends
     public Task<int> WhenCaughtUp => _whenCaughtUpSource.Task;
+
+    // Keeps the original ducked from its first frame until the dub's audio is all in, so it isn't at
+    // full volume before the dub's first word or between its clauses. Written by the dub worker.
+    public bool IsDubExpected {
+        get => Volatile.Read(ref field);
+        set => Volatile.Write(ref field, value);
+    }
 
     public event Action? Ducked;
     public event Action? Mixed;
@@ -132,12 +142,12 @@ public sealed class VoiceOverMix(
         DrainDubPcm();
         var now = Clock.Now;
         var original = hasOriginal ? _originalPcm : ReadOnlySpan<short>.Empty;
-        var isDubFrameMixed = _mixer.Mix(original, _mixedPcm, Activity.IsSpeaking(now));
+        var isDubFrameMixed = _mixer.Mix(original, _mixedPcm, IsDubPending || Activity.IsSpeaking(now));
         // Only this mix's own dub audio marks the activity: the activity feeds back into the mixer
-        // as isDubSpeakingElsewhere, and marking on the mixer's duck would re-arm the hold forever
+        // as mustDuck, and marking on the mixer's duck would re-arm the hold forever
         if (isDubFrameMixed)
             Activity.MarkSpeaking(now + Constants.Audio.VoiceOverDuckHold);
-        if (_mixer.IsDubSpeaking && !_isDucked) {
+        if (_mixer.IsDucked && !_isDucked) {
             _isDucked = true;
             Ducked?.Invoke();
         }

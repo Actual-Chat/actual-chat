@@ -618,6 +618,70 @@ public class DubbingTranslationFlowTest(
     }
 
     [Fact(Timeout = 60_000)]
+    public async Task FirstUtteranceShouldBeDuckedForTheDubItExpects()
+    {
+        // arrange - the author's first utterance: real audio, nothing decided about it yet
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var backend = Tester.AppServices.GetRequiredService<IAudioStreamingBackend>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var ct = cts.Token;
+        var sourceId = await Tester.RecordVoiceOnlyUtterance(
+            chatId, Languages.Russian, frameCount: 50, cancellationToken: ct);
+        var dubId = StreamId.New(sourceId, Languages.English);
+
+        // act
+        var stream = await backend.GetAudio(dubId, TimeSpan.Zero, ct);
+        var frames = await stream!.ToListAsync(ct);
+
+        // assert
+        var mixed = frames.Where(x => x.Offset >= TimeSpan.Zero).ToList();
+        mixed.Should().HaveCount(50, "every original frame is mixed through");
+        var plain = await backend.GetAudio(sourceId, TimeSpan.Zero, ct);
+        var plainFrames = (await plain!.ToListAsync(ct)).Where(x => x.Offset >= TimeSpan.Zero).ToList();
+        AudioFrameRms.Of(mixed).Should().BeLessThan(AudioFrameRms.Of(plainFrames) * 0.3,
+            "a dubbed stream is requested for a speaker of another language, so the original waits for "
+            + "its dub ducked rather than at full volume");
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task UtteranceAfterAnUndubbedOneShouldStartAtFullVolume()
+    {
+        // arrange - utterance 1 is decided NoDub on its English transcript, for an English listener
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var backend = Tester.AppServices.GetRequiredService<IAudioStreamingBackend>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+        var ct = cts.Token;
+        var first = await Tester.RecordVoiceOnlyUtterance(
+            chatId, Languages.English, frameCount: 20, cancellationToken: ct);
+        var source = Channel.CreateUnbounded<TranscriptDiff>();
+        var pushSourceTask = BackgroundTask.Run(
+            () => backend.PushTranscript(first, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
+            ct);
+        source.Writer.TryWrite(Unstable("Hi, how are you today?", language: Languages.English) - Transcript.Empty);
+        await backend.WhenTranscriptPublished(first, ct);
+        var firstStream = await backend.GetAudio(StreamId.New(first, Languages.English), TimeSpan.Zero, ct);
+        await firstStream!.ToListAsync(ct);
+        source.Writer.Complete();
+        await pushSourceTask.SilentAwait(false);
+
+        // act - utterance 2 of the same author, nothing decided about it
+        var second = await Tester.RecordVoiceOnlyUtterance(
+            chatId, Languages.English, frameCount: 50, cancellationToken: ct);
+        var secondStream = await backend.GetAudio(StreamId.New(second, Languages.English), TimeSpan.Zero, ct);
+        var frames = await secondStream!.ToListAsync(ct);
+
+        // assert
+        var mixed = frames.Where(x => x.Offset >= TimeSpan.Zero).ToList();
+        mixed.Should().HaveCount(50, "every original frame is mixed through");
+        var plain = await backend.GetAudio(second, TimeSpan.Zero, ct);
+        var plainFrames = (await plain!.ToListAsync(ct)).Where(x => x.Offset >= TimeSpan.Zero).ToList();
+        AudioFrameRms.Of(mixed).Should().BeGreaterThan(AudioFrameRms.Of(plainFrames) * 0.8,
+            "an author whose last utterance needed no dub is not ducked for one that may never come");
+    }
+
+    [Fact(Timeout = 60_000)]
     public async Task SynthesisFailureShouldLeaveTheOriginalPlaying()
     {
         // arrange - real audio with a Russian transcript the test keeps live (a recording's own

@@ -99,7 +99,7 @@ live-audio docs.
 | `SonioxSpeechSynthesizer`, `FakeSpeechSynthesizer` | `Transcription.Service/Synthesis/` | Soniox TTS; test double |
 | `OpusFramePump` | `Core.Server/Audio/` | PCM → paced 20 ms Opus frames (the TTS one-shots; the live dub uses only its `NewEncoder()`) |
 | `VoiceOverMixer` | `Core.Server/Audio/` | Sums the dub PCM onto the original frame by frame, ducking the original with a ramp and a hold |
-| `VoiceOverMix` | `Streaming.Service/Audio/` | The `S~lang` stream: decodes the original, mixes the dub over it, encodes once; clocked by the original, ticks the tail |
+| `VoiceOverMix` | `Streaming.Service/Audio/` | The `S~lang` stream: decodes the original, mixes the dub over it, encodes once; clocked by the original, ticks the tail; keeps the original ducked while a dub is expected (`IsDubExpected`) |
 | `DubActivity` | `Streaming.Service/Audio/` | Per-(author, language) "a dub is speaking" signal, so the next utterance's mix starts ducked |
 | `SonioxTtsClient` | `Transcription.Service/Transcribers/` | One `tts-rt-v2` WebSocket connection and stream per utterance; idle (2.5 s) and duration (100 s) rollovers |
 | `DubStabilizer` / `DubDecision` | `Streaming.Service/Audio/` | Stable-prefix feed + dub / no-dub decision |

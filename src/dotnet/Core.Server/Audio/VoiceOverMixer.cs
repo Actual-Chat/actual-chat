@@ -1,9 +1,9 @@
 namespace ActualChat.Audio;
 
 /// <summary>
-/// Sums a dub onto an original, 20 ms frame by frame, ducking the original while the dub speaks:
-/// the gain ramps between 1 and the duck gain over a fixed number of samples, and the duck outlives
-/// the last dub audio by a hold, so gaps between TTS chunks don't pump the original up and down.
+/// Sums a dub onto an original, 20 ms frame by frame, ducking the original while the dub speaks or
+/// the caller asks for it: the gain ramps between 1 and the duck gain over a fixed number of samples,
+/// and the duck outlives the last dub audio by a hold, so gaps between TTS chunks don't pump it.
 /// </summary>
 public sealed class VoiceOverMixer
 {
@@ -16,6 +16,7 @@ public sealed class VoiceOverMixer
     private readonly short[] _dubFrame = new short[FrameLength];
     private float _gain = 1f;
     private int _framesSinceDubAudio;
+    private bool _isStarted;
 
     public bool HasDubAudio
         // A lone byte is not a sample: it only becomes one if a next chunk pairs it up
@@ -27,7 +28,7 @@ public sealed class VoiceOverMixer
     public TimeSpan BufferedDubDuration
         => TimeSpan.FromSeconds(
             (double)_dub.Length / sizeof(short) / Constants.Audio.PlaybackSampleRate);
-    public bool IsDubSpeaking { get; private set; }
+    public bool IsDucked { get; private set; }
 
     public VoiceOverMixer(float duckGain, int holdFrameCount, int rampSampleCount)
     {
@@ -41,13 +42,18 @@ public sealed class VoiceOverMixer
         => _dub.Append(pcm);
 
     // True when a frame of this mixer's own dub audio went into the output: the hold and
-    // isDubSpeakingElsewhere keep the duck on, but only consumed dub audio counts as speech
-    public bool Mix(ReadOnlySpan<short> original, Span<short> output, bool isDubSpeakingElsewhere)
+    // mustDuck keep the duck on, but only consumed dub audio counts as speech
+    public bool Mix(ReadOnlySpan<short> original, Span<short> output, bool mustDuck)
     {
         var hasDubFrame = _dub.TryTake(_dubFrame);
         _framesSinceDubAudio = hasDubFrame ? 0 : _framesSinceDubAudio + 1;
-        IsDubSpeaking = isDubSpeakingElsewhere || _framesSinceDubAudio <= _holdFrameCount;
-        var targetGain = IsDubSpeaking ? _duckGain : 1f;
+        IsDucked = mustDuck || _framesSinceDubAudio <= _holdFrameCount;
+        var targetGain = IsDucked ? _duckGain : 1f;
+        if (!_isStarted) {
+            // Nothing precedes the first frame, so a mix that starts ducked has no level to ramp from
+            _isStarted = true;
+            _gain = targetGain;
+        }
         for (var i = 0; i < FrameLength; i++) {
             if (_gain > targetGain)
                 _gain = Math.Max(targetGain, _gain - _gainStep);

@@ -3,7 +3,8 @@
 A listener with **Translated voice** on hears, in a live session, every
 speaker of another language dubbed into the listener's translation
 language by a Soniox TTS voice — as a voice-over: the original from its
-first frame, ducked under the translation once that starts. The mix is a
+first frame, ducked for as long as a translation is expected or speaking,
+so it never plays at full volume ahead of its dub. The mix is a
 derived audio stream that rides the fan-out described in
 [doc 06](./06-server-fanout-and-replay.md): no new stream type crosses
 the wire, the listening muxer just asks for a different stream id.
@@ -271,16 +272,18 @@ per stream, and the dub worker publishes that as `S~lang`.
 Frame by frame (`FrameLength` = `Constants.Audio.PcmFrameLength`, 960
 samples at 48 kHz), `Mix` sums the buffered dub PCM onto the original
 and ducks the original's gain while the dub speaks: `VoiceOverDuckGain`
-(0.25) is the original's gain floor, reached and left by a linear ramp
-over `VoiceOverDuckRamp` (50 ms) so the level change isn't audible as a
-click. `IsDubSpeaking` — and so the duck — stays true for
+(0.25, about −12 dB) is the original's gain floor, reached and left by a
+linear ramp over `VoiceOverDuckRamp` (50 ms) so the level change isn't
+audible as a click. The first frame is the exception: nothing precedes
+it, so a mix that starts ducked starts *at* the duck gain instead of
+ramping down from full volume. `IsDucked` stays true for
 `VoiceOverDuckHold` (1 s) after the last buffered dub sample, so a gap
 between TTS chunks doesn't pump the original up and down; a caller can
-also force the duck via `isDubSpeakingElsewhere`, for a dub whose speech
-this mixer instance doesn't itself receive as PCM. `Mix` returns whether
-a frame of the buffered dub went into this output frame — distinct from
-`IsDubSpeaking`, which the hold and the forced duck keep true without
-any dub audio.
+also force the duck via `mustDuck`, for a dub whose speech this mixer
+instance doesn't itself hold as PCM — one that is still to come, or one
+speaking in another mix. `Mix` returns whether a frame of the buffered
+dub went into this output frame — distinct from `IsDucked`, which the
+hold and the forced duck keep true without any dub audio.
 
 ### `VoiceOverMix` — the `S~lang` stream, clocked by the original
 
@@ -329,6 +332,21 @@ with what it has: the original stays intact and the output isn't
 faulted. With no original (`null`), the mix is dub-only on the tick from
 the start.
 
+**Expected dub.** `IsDubExpected` is what keeps the original from
+playing at full volume ahead of its dub. While it is set and `DubPcm` is
+not yet completed and drained (`IsDubPending`), every frame is mixed
+with `mustDuck`, so the original sits at the duck gain from its first
+frame, through the 2–3 s before the dub's first word, and through the
+gaps between its clauses — one steady level instead of a loud lead-in
+that drops when the dub starts. The dub worker owns the flag (see
+[`RunDub`](#rundub)): it starts from what the author's last decided
+utterance was, and the decision on this one overwrites it. The duck
+ends when the flag is cleared (`NoDub`, or the synthesizer is down) or
+when `DubPcm` completes — every path of the worker completes it — after
+which only the mixer's own hold over the last dub audio is left. A mix
+constructed without the flag (the default, and what `RunSpeak` uses: it
+has no original) behaves as before.
+
 **`DubActivity`** (`src/dotnet/Streaming.Service/Audio/DubActivity.cs`)
 is the per-`(author, language)` "a dub is speaking" signal, shared by
 every mix of that author: `MarkSpeaking(until)` is a monotonic max over
@@ -336,11 +354,11 @@ a volatile tick count, `IsSpeaking(now)` compares. Every frame into
 which the mixer consumed a frame of *this mix's own* dub audio
 (`Mix` returns true) marks the activity for `VoiceOverDuckHold` past
 now, and every frame passes `IsSpeaking(now)` to the mixer as
-`isDubSpeakingElsewhere` — so the next utterance's mix starts ducked
-from its first frame while the previous utterance's dub is still
-draining, instead of popping up for the ramp and dropping again. The
+`mustDuck` (next to `IsDubPending`) — so the next utterance's mix stays
+ducked while the previous utterance's dub is still draining even when
+no dub is expected for it. The
 mark must come from consumed dub audio only, never from the mixer's
-`IsDubSpeaking`: that is true because of the hold and because of the
+`IsDucked`: that is true because of the hold and because of the
 activity itself, so marking on it re-armed the hold on every frame — a
 mix that ducked once stayed ducked to the end of its original and
 handed the duck to the author's next utterance (the fix wave's item 1;
@@ -407,7 +425,12 @@ utterance rather than a failed TTS stream each.
    takes the author's `DubActivity` for the language from `_dubActivities`
    (keyed like the dub chain, `{authorId}~{lang}`; a source with no author
    gets a private one), builds the `VoiceOverMix` with the latency trace's
-   `OnMixed`/`OnDucked` on its events, and calls `PublishMix`: the
+   `OnMixed`/`OnDucked` on its events and `IsDubExpected` read from
+   `_isDubExpectedByChain` under the same key — `true` when the key has
+   no entry, or the source has no author: the muxer asks for `S~lang`
+   only when none of the speaker's declared languages is the listener's
+   (`MustDub`), so a dub is the likely outcome until this author's
+   utterances say otherwise — and calls `PublishMix`: the
    `ActualOpusStreamHeader(ServerClock.Now, AudioSource.DefaultFormat)`
    frame at `Offset = -1 ms` prepended to the mix's frame channel,
    memoized and published into `_audioStreams` under `S~lang`, with
@@ -473,6 +496,19 @@ utterance rather than a failed TTS stream each.
    translation") and completes the text channel normally with nothing
    written, so the synthesis ends cleanly; the mix goes on with the
    original alone.
+   Every decision, here or in step 4, also sets the duck: `ApplyDecision`
+   writes "a dub is coming" (`Dub` and the synthesizer is up) to
+   `mix.IsDubExpected` and to `_isDubExpectedByChain` for the author and
+   language. So a `NoDub` releases an utterance that started ducked about
+   as soon as the transcriber has heard 10 characters of it, and the
+   author's next utterance starts at full volume; a `Dub` after a `NoDub`
+   ducks at the decision rather than at the dub's first audio, and the
+   next one starts ducked again. `_isDubExpectedByChain` is a
+   `ConcurrentLruCache` (8192 entries) rather than a field of
+   `DubActivity`, because the activity is dropped with the author's last
+   dub stream (`ForgetDubs`, ~60 s after it ends) and the decision has to
+   survive a longer pause in the conversation. An utterance that is never
+   decided (no transcript, too short) changes neither.
 4. **Feed.** The worker awaits the translation and folds every translated
    diff into the running `Transcript`. While still undecided it calls
    `DubStabilizer.Decide(Fold(source), translated, language)` — the
@@ -885,9 +921,10 @@ behind the speech the first chunk covered — the number a listener feels.
 fired by `VoiceOverMix.Mixed`): expected `+0.0s`, since the mix starts
 with the original the moment it is published — a larger number means the
 original's share wait, not the dub. `ducked` is where in the speech the
-original first went under the dub (`OnDucked`, from `VoiceOverMix.Ducked`;
-`now − recordedAt` at that frame), or `-` for a mix that never ducked — a
-`NoDub` utterance, or one whose dub never produced audio. `voice` closes
+original was first ducked (`OnDucked`, from `VoiceOverMix.Ducked`;
+`now − recordedAt` at that frame): next to `mixed` for an utterance that
+started with a dub expected, at the decision for one that didn't, or `-`
+for a mix that never ducked. `voice` closes
 the line: the Soniox voice id the dub spoke with (a clone, see
 [Own voice](#own-voice-cloning)) or `stock` when the speaker got the
 stock voice, whether by choice or by fallback — the only place the Ready
@@ -1937,7 +1974,7 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 | `Constants.Audio.ReplayDubSynthesisTimeout` | 5 min | Upper bound on synthesis + upload + stamp counted from slot acquisition (the translation wait + slot wait before that get the same budget separately), linked to host shutdown; synthesis streams at spoken pace, so it must clear `Chat.MaxEntryDuration` (3 min) |
 | `Constants.Audio.ReplayDubLookahead` | 2 | Entries the replay muxer keeps synthesizing ahead of the one currently streaming |
 | `Constants.Audio.ReplayDubMaxConcurrentSynthesis` | 2 | Caps concurrent replay-dub syntheses; shares Soniox's 3-stream quota with live dubbing |
-| `Constants.Audio.VoiceOverDuckGain` | 0.25 | `VoiceOverMixer`: the original's gain floor while the dub speaks |
+| `Constants.Audio.VoiceOverDuckGain` | 0.25 | `VoiceOverMixer`: the original's gain floor while the dub speaks or is expected |
 | `Constants.Audio.VoiceOverDuckHold` | 1 s | `VoiceOverMixer`: how long the duck outlives the last buffered dub audio, so gaps between TTS chunks don't pump the original |
 | `Constants.Audio.VoiceOverDuckRamp` | 50 ms | `VoiceOverMixer`: how long each gain transition (duck / release) takes |
 | `Constants.Transcription.Soniox.TtsChunkTimeout` | 30 s | Live WebSocket: the longest an open stream may go without any message from Soniox; replay's REST `Generate`: inactivity between body pieces. Exceeded = error, not hang |
@@ -2074,7 +2111,12 @@ dub arriving after the original ended still plays and is paced rather
 than burst, a faulted `DubPcm` ends the tail with the original intact, a
 stray trailing byte doesn't hold the tail, dub-only and no-dub ends, the
 activity ducks the next utterance from its first frame and is marked
-while the dub speaks, the original's failure reaches the output). The
+while the dub speaks, an expected dub ducks the original from its first
+frame and the duck is released once the dub is ruled out or its channel
+completes without audio, the original's failure reaches the output).
+`DubbingTranslationFlowTest` covers the worker's side of it: an author's
+first utterance is served ducked, and one that follows a `NoDub` is
+served at full volume. The
 signals are
 tones, not constants — Opus high-passes a constant away — and levels
 are asserted as RMS bands after decoding the whole stream in order,
@@ -2115,7 +2157,14 @@ tick-driven tests run on the real clock: a frozen `TestClock` can't
 - Replay is still substitution: a replayed dub replaces the original's
   audio instead of playing over it; the voice-over is live-only.
 - The duck level is fixed server-side (`VoiceOverDuckGain`); a listener
-  can't choose how much of the original they hear under the dub.
+  can't choose how much of the original they hear under the dub. Neither
+  side is level-matched: the dub is summed in at the TTS's own level, so
+  the balance still depends on how loud the recording is.
+- An utterance that starts ducked and turns out `NoDub` — a speaker whose
+  settings say another language speaking the listener's — is quiet for
+  the second or two the decision takes. Only an utterance that follows a
+  dubbed one, or the first one `_isDubExpectedByChain` knows of the
+  author, pays it; the cache is per pod, like the dub chain.
 - `ClauseTranslator` runs one translation at a time per stream (a single
   lane): a clause that completes while the previous one's translation is
   still in flight queues behind it rather than translating in parallel —
