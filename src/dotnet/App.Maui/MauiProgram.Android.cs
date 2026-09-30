@@ -144,10 +144,17 @@ public static partial class MauiProgram
 
     private static void OnPostCreate(Activity activity, Bundle? savedInstanceState)
     {
-        NotificationHelper.EnsureDefaultNotificationChannelExist(
-            activity,
-            NotificationHelper.Constants.DefaultChannelId);
-        NotificationHelper.EnsureActivityChannelsExist(activity);
+        // Binder calls plus the first use of the localizer: on a low-tier phone's cold start they
+        // held the main thread ~2.5s between onStart and onResume, inside the 5s an unfocused
+        // window gets before an input ANR. Channels persist across runs, so only a first-ever
+        // launch lacks them - and that one has no push token yet to be notified through.
+        var context = Android.App.Application.Context;
+        _ = BackgroundTask.Run(() => {
+            NotificationHelper.EnsureDefaultNotificationChannelExist(
+                context, NotificationHelper.Constants.DefaultChannelId);
+            NotificationHelper.EnsureActivityChannelsExist(context);
+            return Task.CompletedTask;
+        }, Log, "Failed to create the notification channels");
         ChatAttentionService.Instance.Init();
     }
 
