@@ -10,19 +10,36 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 public class FlowsListTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(FlowsListTest)}", TestAppHostOptions.Default, @out)
 {
+    private TestAppHost AppHost { get; set; } = null!;
+
+    protected override async Task InitializeAsync()
+    {
+        await base.InitializeAsync();
+        // Done here to keep the host's startup out of the test's timeout. ListStats and List also
+        // wait for the flow backend's shard, which a fresh host takes a while to own.
+        // xUnit runs this before every test, so a second test here should move the host to a fixture.
+        AppHost = await NewAppHost();
+        await AppHost.Services.WhenFlowsStarted();
+    }
+
+    protected override async Task DisposeAsync()
+    {
+        await AppHost.DisposeSilentlyAsync();
+        await base.DisposeAsync();
+    }
+
     [Fact(Timeout = 60_000)]
     public async Task ListReportsStatuses()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(55));
         var cancellationToken = cts.Token;
 
-        await using var h = await NewAppHost();
-        var clock = h.Services.Clocks().SystemClock;
-        var now = clock.Now;
+        var services = AppHost.Services;
+        var now = services.Clocks().SystemClock.Now;
 
         // FlowBackend.List derives UpdatedAt from Version, assuming Version == clock-based epoch ticks.
-        var backend = h.Services.GetRequiredService<IFlowBackend>();
-        var dbHub = h.Services.DbHub<FlowsDbContext>();
+        var backend = services.GetRequiredService<IFlowBackend>();
+        var dbHub = services.DbHub<FlowsDbContext>();
 
         var ticks = now.EpochOffset.Ticks;
         var prefix = $"FlowsListTest{Guid.NewGuid():N}";
