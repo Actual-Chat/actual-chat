@@ -100,7 +100,11 @@ public class CoachSettings
     // so their marks appear before the entry settles. It calls the tagger during speech; switch it off to
     // tag only settled entries.
     public bool IsLiveTaggingEnabled { get; set; } = true;
-    public int MaxLiveTagChunksPerEntry { get; set; } = 12;
+    public int MaxLiveTagChunksPerEntry { get; set; } = 16;
+    // The first LiveTagFastChunks live chunks go to the tagger with this many words, so the first marks show
+    // after a sentence or two; later ones wait for TagChunkMinWords. More calls for earlier marks.
+    public int LiveTagFirstChunkMinWords { get; set; } = 12;
+    public int LiveTagFastChunks { get; set; } = 3;
     // How long the settled entry waits for a live tagging that is still finishing its last sentences
     public TimeSpan LiveTaggingResultWait { get; set; } = TimeSpan.FromSeconds(20);
     public int TagChunkMinWords { get; set; } = 40;

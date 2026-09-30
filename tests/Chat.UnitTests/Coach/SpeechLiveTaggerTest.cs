@@ -44,7 +44,7 @@ public class SpeechLiveTaggerTest(ITestOutputHelper @out) : TestBase(@out)
 
         private static ApiArray<SpeechSpan>? FindUm(string chunk)
         {
-            var i = chunk.IndexOf("um", StringComparison.Ordinal);
+            var i = chunk.IndexOf("um");
             return i < 0
                 ? ApiArray<SpeechSpan>.Empty
                 : ApiArray.New(new SpeechSpan(SpeechSpanKind.FilledPause, "um", i, 2, ApiArray<string>.Empty));
@@ -172,22 +172,53 @@ public class SpeechLiveTaggerTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public async Task RunShouldDropTheSpansWhenTheTaggedTextWasRevised()
+    public async Task RunShouldTagAgainFromTheFirstChangedSentenceWhenTheTaggedTextIsRevised()
     {
         // arrange
         var rig = new Rig();
         var run = rig.Start();
+        var revised = "Changed sentence two has um different words in it now.";
 
-        // act: the words already tagged are rewritten in the final text
+        // act: the second sentence, already tagged, is rewritten
         rig.Say(Sentence(1) + " " + Sentence(2) + " Then");
         await rig.WhenProgress(1);
-        rig.Say("Something else entirely was said, um, in the end.");
+        rig.Say(Sentence(1) + " " + revised + " Then");
         rig.End();
         var result = await run;
 
-        // assert
-        result.IsComplete.Should().BeFalse();
-        result.Text.Should().Be("Something else entirely was said, um, in the end.");
-        result.Spans.Should().BeEmpty();
+        // assert: the first sentence keeps its mark, the rewritten one is tagged again
+        result.IsComplete.Should().BeTrue();
+        result.Restarts.Should().Be(1);
+        result.Spans.Select(s => s.Start).Should().Equal(
+            Sentence(1).IndexOf("um"),
+            Sentence(1).Length + 1 + revised.IndexOf("um"));
+        rig.Calls[1].Text.Should().StartWith(revised);
+        rig.Calls[1].Context.Should().Be(Sentence(1));
+    }
+
+    [Fact]
+    public async Task RunShouldSendTheFirstChunksEarlyAndTheLaterOnesAtFullSize()
+    {
+        // arrange: a sentence has 11 words
+        var rig = new Rig();
+        var run = rig.Start(new LiveTagOptions(30, 60, 30, 12, true) { FirstMinWords = 5, FastChunks = 2 });
+        string Text(int count) => string.Join(" ", Enumerable.Range(1, count).Select(Sentence)) + " Then";
+
+        // act & assert: the first two sentences go out one by one
+        rig.Say(Text(1));
+        await rig.WhenProgress(1);
+        rig.Say(Text(2));
+        await rig.WhenProgress(2);
+        rig.Calls.Select(c => c.Text.Trim()).Should().Equal(Sentence(1), Sentence(2));
+
+        // act & assert: after that a chunk waits for the full size
+        rig.Say(Text(4));
+        await Task.Delay(200);
+        rig.Calls.Should().HaveCount(2, "22 more words are fewer than the 30 a later chunk needs");
+        rig.Say(Text(5));
+        await rig.WhenProgress(3);
+        rig.Calls[2].Text.Trim().Should().Be(string.Join(" ", Enumerable.Range(3, 3).Select(Sentence)));
+        rig.End();
+        (await run).Outcome.Should().Be(LiveTagOutcome.Complete);
     }
 }

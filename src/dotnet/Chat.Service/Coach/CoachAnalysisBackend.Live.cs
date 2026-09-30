@@ -81,15 +81,26 @@ public partial class CoachAnalysisBackend
                 coach.TagChunkMaxWords,
                 coach.TagChunkContextWords,
                 coach.MaxLiveTagChunksPerEntry,
-                isWordSplittable);
+                isWordSplittable) {
+                FirstMinWords = coach.LiveTagFirstChunkMinWords,
+                FastChunks = coach.LiveTagFastChunks,
+            };
+            var startedAt = CpuTimestamp.Now;
             result = await SpeechLiveTagger.Run(
                 texts,
                 async (chunk, context, token) => {
                     if (!TryTakeTaggerCalls(live.UserId, 1))
                         return null;
 
+                    var callStartedAt = CpuTimestamp.Now;
                     var request = new SpeechTagRequest(chunk, language, context);
-                    return (await Tagger.Tag(request, token).ConfigureAwait(false))?.Spans;
+                    var spans = (await Tagger.Tag(request, token).ConfigureAwait(false))?.Spans;
+                    Log.LogDebug(
+                        "Live tagging of #{EntryId}: {Length} chars tagged in {Duration}, {SpanCount} span(s), "
+                        + "{Elapsed} since the start",
+                        entry.Id, chunk.Length, callStartedAt.Elapsed.ToShortString(), spans?.Count,
+                        startedAt.Elapsed.ToShortString());
+                    return spans;
                 },
                 (text, spans) => PublishLiveMarks(entry, live, text, spans, isWordSplittable),
                 options,
@@ -99,6 +110,11 @@ public partial class CoachAnalysisBackend
             Log.LogWarning(e, "Live tagging of #{EntryId} failed", entry.Id);
         }
         finally {
+            if (result is not null)
+                Log.LogInformation(
+                    "Live tagging of #{EntryId} ended: {Outcome}, {Calls} call(s), {Restarts} restart(s), "
+                    + "{SpanCount} span(s), {Length} chars",
+                    entry.Id, result.Outcome, result.Calls, result.Restarts, result.Spans.Count, result.Text.Length);
             live.Done.TrySetResult(result);
             _ = BackgroundTask.Run(() => RemoveLiveEntryLater(entry, live), CancellationToken.None);
         }

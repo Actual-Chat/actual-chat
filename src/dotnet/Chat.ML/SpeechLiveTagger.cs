@@ -1,10 +1,34 @@
 namespace ActualChat.Chat.ML;
 
-public sealed record LiveTagOptions(int MinWords, int MaxWords, int ContextWords, int MaxChunks, bool IsWordSplittable);
+public sealed record LiveTagOptions(
+    int MinWords,
+    int MaxWords,
+    int ContextWords,
+    int MaxChunks,
+    bool IsWordSplittable)
+{
+    // The first FastChunks chunks go out as soon as they have FirstMinWords, so the first marks show early
+    public int FirstMinWords { get; init; } = MinWords;
+    public int FastChunks { get; init; }
+}
+
+public enum LiveTagOutcome
+{
+    Complete = 0,
+    ChunkLimit,
+    TaggerFailed,
+    StreamBroken,
+}
 
 // Spans are in the offsets of Text; IsComplete is false when some of the text could not be tagged,
 // and the caller must then tag the settled text itself
-public sealed record LiveTagResult(string Text, ApiArray<SpeechSpan> Spans, bool IsComplete);
+public sealed record LiveTagResult(string Text, ApiArray<SpeechSpan> Spans, bool IsComplete)
+{
+    public LiveTagOutcome Outcome { get; init; }
+    public int Calls { get; init; }
+    // How many times text that was already tagged got rewritten, and tagging went back to the change
+    public int Restarts { get; init; }
+}
 
 /// <summary>
 /// Tags a transcript while it is still being spoken: whenever enough whole sentences have settled, they go to
@@ -49,8 +73,9 @@ public static class SpeechLiveTagger
         var taggedUpTo = 0;
         var taggedPrefix = "";
         var calls = 0;
+        var restarts = 0;
         var failures = 0;
-        var isComplete = true;
+        var outcome = LiveTagOutcome.Complete;
         var isGivenUp = false;
         string text;
         while (true) {
@@ -60,29 +85,32 @@ public static class SpeechLiveTagger
                 final = isFinal;
             }
             if (taggedUpTo > 0 && !text.StartsWith(taggedPrefix)) {
-                // The words already tagged were rewritten: nothing tagged so far can be trusted
-                spans.Clear();
-                taggedUpTo = 0;
-                taggedPrefix = "";
-                isComplete = false;
-                isGivenUp = true;
+                // Words already tagged were rewritten: the sentences before the change keep their tags, and
+                // tagging starts again from the first changed one
+                var common = taggedPrefix.AsSpan().CommonPrefixLength(text);
+                taggedUpTo = SpeechChunker.SentenceEnds(text, options.IsWordSplittable).LastOrDefault(e => e <= common);
+                taggedPrefix = text[..taggedUpTo];
+                spans.RemoveAll(s => s.Start + s.Length > taggedUpTo);
+                restarts++;
+                onProgress(taggedPrefix, spans.ToApiArray());
             }
+            var minWords = calls < options.FastChunks ? options.FirstMinWords : options.MinWords;
             var end = final ? text.Length : StableEnd(text, options.IsWordSplittable);
             var isReady = !isGivenUp
                 && end > taggedUpTo
                 && SpeechChunker.CountUnits(text, taggedUpTo, end, options.IsWordSplittable)
-                    >= (final ? 1 : options.MinWords);
+                    >= (final ? 1 : minWords);
             if (isReady) {
                 var chunks = SpeechChunker.Split(
                     text[taggedUpTo..end],
                     options.IsWordSplittable,
-                    options.MinWords,
+                    minWords,
                     options.MaxWords,
                     options.ContextWords,
                     int.MaxValue);
                 foreach (var chunk in chunks) {
                     if (calls >= options.MaxChunks) {
-                        isComplete = false;
+                        outcome = LiveTagOutcome.ChunkLimit;
                         isGivenUp = true;
                         break;
                     }
@@ -97,7 +125,7 @@ public static class SpeechLiveTagger
                         .ConfigureAwait(false);
                     if (tagged is null) {
                         if (final || ++failures >= MaxFailures) {
-                            isComplete = false;
+                            outcome = LiveTagOutcome.TaggerFailed;
                             isGivenUp = true;
                         }
                         break;
@@ -124,9 +152,14 @@ public static class SpeechLiveTagger
         lock (gate) {
             text = latest;
             if (isBroken)
-                isComplete = false;
+                outcome = LiveTagOutcome.StreamBroken;
         }
-        return new LiveTagResult(text, spans.ToApiArray(), isComplete && taggedUpTo == text.Length);
+        var isComplete = outcome == LiveTagOutcome.Complete && taggedUpTo == text.Length;
+        return new LiveTagResult(text, spans.ToApiArray(), isComplete) {
+            Outcome = outcome,
+            Calls = calls,
+            Restarts = restarts,
+        };
     }
 
     // Private methods

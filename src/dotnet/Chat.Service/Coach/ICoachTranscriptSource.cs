@@ -3,8 +3,8 @@ using ActualChat.Transcription;
 
 namespace ActualChat.Chat.Coach;
 
-// The text of a voice entry as it is being transcribed, the whole text so far on every update; null when
-// the stream is unknown. A seam so the live tagging can be driven without the audio pipeline.
+// The settled text of a voice entry as it is being transcribed, the whole text so far on every update;
+// null when the stream is unknown. A seam so the live tagging can be driven without the audio pipeline.
 public interface ICoachTranscriptSource
 {
     Task<IAsyncEnumerable<string>?> Open(string streamId, CancellationToken cancellationToken);
@@ -19,14 +19,26 @@ public sealed class CoachTranscriptSource(IServiceProvider services) : ICoachTra
         var diffs = await StreamingBackend
             .GetTranscript(StreamId.Parse(streamId), cancellationToken)
             .ConfigureAwait(false);
-        return diffs is null ? null : Texts(diffs, cancellationToken);
+        return diffs is null ? null : StableTexts(diffs.ToTranscripts(cancellationToken), cancellationToken);
     }
 
-    private static async IAsyncEnumerable<string> Texts(
-        IAsyncEnumerable<TranscriptDiff> diffs,
+    // A transcript that is not stable ends in words the recognizer may still rewrite, so only the stable
+    // ones are passed on; the very last text is, whatever it is
+    public static async IAsyncEnumerable<string> StableTexts(
+        IAsyncEnumerable<Transcript> transcripts,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await foreach (var transcript in diffs.ToTranscripts(cancellationToken).ConfigureAwait(false))
+        string? unstable = null;
+        await foreach (var transcript in transcripts.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            if (!transcript.IsStable) {
+                unstable = transcript.Text;
+                continue;
+            }
+
+            unstable = null;
             yield return transcript.Text;
+        }
+        if (unstable is not null)
+            yield return unstable;
     }
 }
