@@ -8,7 +8,7 @@ public class CoachScopeTest(ITestOutputHelper @out) : TestBase(@out)
     private static readonly ChatUserSettings Inherit = new();
     private static readonly ChatUserSettings On = new() { IsCoachingEnabled = true };
     private static readonly ChatUserSettings Off = new() { IsCoachingEnabled = false };
-    private static readonly UserCoachSettings User = new();
+    private static readonly UserCoachSettings User = new() { IsCoachingEnabled = true };
 
     [Theory]
     [InlineData(null, null, false, true)]
@@ -42,5 +42,17 @@ public class CoachScopeTest(ITestOutputHelper @out) : TestBase(@out)
         CoachScope.IsInScope(peer, Inherit, null, User with { SkipPeerChats = true }).Should().BeFalse();
         CoachScope.IsInScope(peer, On, null, User with { SkipPeerChats = true }).Should().BeTrue("the chat flag wins");
         CoachScope.IsInScope(peer, Off, null, User).Should().BeFalse();
+    }
+
+    [Fact]
+    public void NothingShouldBeInScopeWhileTheUserHasCoachingOff()
+    {
+        // arrange
+        var user = User with { IsCoachingEnabled = false };
+        var chatId = PlaceChatId.New(PlaceId.New());
+
+        // act & assert
+        CoachScope.IsInScope(chatId, Inherit, null, user).Should().BeFalse();
+        CoachScope.IsInScope(chatId, On, On, user).Should().BeFalse("no chat flag can start coaching on its own");
     }
 }

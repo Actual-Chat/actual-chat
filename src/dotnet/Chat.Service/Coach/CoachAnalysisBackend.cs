@@ -280,7 +280,7 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
 
         await Queues.Enqueue(new CoachAnalysisBackend_AnalyzeEntry(entry.Id, false), cancellationToken)
             .ConfigureAwait(false);
-        // An edit after the run went quiet must also re-tag a non-opted-in user's row; its delay counts
+        // An edit after the run went quiet must also re-tag the row; its delay counts
         // from now so the run command finds the row already reset by the entry command
         var anchor = isFinalized ? entry.EndsAt ?? Clocks.SystemClock.Now : Clocks.SystemClock.Now;
         var delayUntil = anchor + Settings.Coach.ConversationMaturity;

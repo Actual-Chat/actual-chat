@@ -2079,5 +2079,8 @@
   "Coach_WhereHint": "El coach escucha en todas partes, salvo donde lo desactives.",
   "Coach_NothingToCompare": "Aún no hay una semana anterior con la que comparar",
   "Coach_MarkProfanityTitle": "Palabrota",
-  "Coach_MarkProfanityBody_Format": "«{0}» es una palabrota; una más suave puede funcionar mejor."
+  "Coach_MarkProfanityBody_Format": "«{0}» es una palabrota; una más suave puede funcionar mejor.",
+  "Coach_NotCounted": "No cuenta en tus puntuaciones",
+  "Coach_DontCount": "No contar",
+  "Coach_CountAgain": "Contar de nuevo"
 }

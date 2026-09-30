@@ -2079,5 +2079,8 @@
   "Coach_WhereHint": "끈 곳을 제외하고 어디서나 코치가 듣습니다.",
   "Coach_NothingToCompare": "아직 비교할 지난주 데이터가 없습니다",
   "Coach_MarkProfanityTitle": "욕설",
-  "Coach_MarkProfanityBody_Format": "“{0}”은(는) 욕설입니다. 더 순한 표현이 나을 수 있어요."
+  "Coach_MarkProfanityBody_Format": "“{0}”은(는) 욕설입니다. 더 순한 표현이 나을 수 있어요.",
+  "Coach_NotCounted": "점수에 반영되지 않았어요",
+  "Coach_DontCount": "집계 제외",
+  "Coach_CountAgain": "다시 집계"
 }

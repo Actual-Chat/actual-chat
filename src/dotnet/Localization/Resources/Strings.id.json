@@ -2079,5 +2079,8 @@
   "Coach_WhereHint": "Coach mendengarkan di mana saja kecuali yang Anda matikan.",
   "Coach_NothingToCompare": "Belum ada minggu sebelumnya untuk dibandingkan",
   "Coach_MarkProfanityTitle": "Kata kasar",
-  "Coach_MarkProfanityBody_Format": "“{0}” adalah kata kasar; kata yang lebih halus mungkin lebih baik."
+  "Coach_MarkProfanityBody_Format": "“{0}” adalah kata kasar; kata yang lebih halus mungkin lebih baik.",
+  "Coach_NotCounted": "Tidak dihitung dalam skor Anda",
+  "Coach_DontCount": "Jangan hitung",
+  "Coach_CountAgain": "Hitung lagi"
 }

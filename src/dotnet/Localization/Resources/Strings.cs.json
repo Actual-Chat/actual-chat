@@ -2079,5 +2079,8 @@
   "Coach_WhereHint": "Kouč poslouchá všude, kromě míst, která vypnete.",
   "Coach_NothingToCompare": "Zatím není předchozí týden ke srovnání",
   "Coach_MarkProfanityTitle": "Nadávka",
-  "Coach_MarkProfanityBody_Format": "„{0}“ je nadávka; mírnější slovo může znít lépe."
+  "Coach_MarkProfanityBody_Format": "„{0}“ je nadávka; mírnější slovo může znít lépe.",
+  "Coach_NotCounted": "Nezapočítává se do vašeho skóre",
+  "Coach_DontCount": "Nezapočítávat",
+  "Coach_CountAgain": "Znovu započítat"
 }

@@ -133,10 +133,10 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
     }
 
     [Fact]
-    public async Task VoiceEntryOfNonOptedInUserShouldStayPendingUntilConversationMatures()
+    public async Task VoiceEntryOfAUserWithCoachingOffShouldNeverBeAnalyzed()
     {
         // arrange
-        var (appHost, tagger) = await NewCoachHost("coach-batch");
+        var (appHost, tagger) = await NewCoachHost("coach-off");
         await using var _ = appHost;
         await using var tester = appHost.NewBlazorTester(Out);
         await tester.SignInAsUniqueBob();
@@ -145,19 +145,11 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         // act
         var entry = await PostVoice(tester, chatId, Text);
+        await appHost.Services.Queues().WhenProcessing(TimeSpan.FromSeconds(1), default);
 
         // assert
-        var pending = await TestWait.When(async ct => {
-            var analysis = await backend.Get(entry.Id, ct);
-            analysis.Should().NotBeNull();
-            return analysis!;
-        });
-        pending.TagState.Should().Be(CoachTagState.Pending, "the immediate path is for opted-in users only");
-        pending.Words.Should().Be(12);
+        (await backend.Get(entry.Id, default)).Should().BeNull("coaching is off until the user turns it on");
         tagger.Calls.Should().Be(0);
-        var tagged = await WhenTagged(backend, entry.Id);
-        tagged.Fillers.Should().Be(1);
-        tagger.Calls.Should().Be(1);
     }
 
     [Fact]
@@ -262,8 +254,9 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var (appHost, _) = await NewCoachHost("coach-conversation");
         await using var _1 = appHost;
         await using var bob = appHost.NewBlazorTester(Out);
-        await bob.SignInAsUniqueBob();
+        var bobAccount = await bob.SignInAsUniqueBob();
         var (chatId, inviteId) = await bob.CreateChat(true);
+        await OptIn(appHost, bobAccount);
         await using var alice = appHost.NewBlazorTester(Out);
         await alice.SignInAsAlice();
         await alice.JoinChat(chatId, inviteId);
@@ -388,43 +381,15 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
     }
 
     [Fact]
-    public async Task EditAfterTheRunClosedShouldReTagANonOptedInEntry()
-    {
-        // arrange
-        var (appHost, tagger) = await NewCoachHost("coach-edit-after-close");
-        await using var _1 = appHost;
-        await using var tester = appHost.NewBlazorTester(Out);
-        await tester.SignInAsUniqueBob();
-        var (chatId, _) = await tester.CreateChat(true);
-        var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
-        var entry = await PostVoice(tester, chatId, Text);
-        await WhenTagged(backend, entry.Id);
-        tagger.Calls.Should().Be(1);
-
-        // act
-        var edited = await tester.Commander.Call(new ChatsBackend_ChangeEntry(entry.Id, null,
-            Change.Update(new ChatEntryDiff { Content = "So, um, a shorter one." })));
-
-        // assert
-        var reanalyzed = await TestWait.When(async ct => {
-            var analysis = await backend.Get(entry.Id, ct);
-            analysis!.ContentHash.Should().Be(edited.ContentHash);
-            analysis.TagState.Should().Be(CoachTagState.Tagged);
-            return analysis;
-        }, TimeSpan.FromSeconds(30));
-        reanalyzed.Words.Should().Be(5);
-        tagger.Calls.Should().Be(2);
-    }
-
-    [Fact]
     public async Task CappedRunShouldAnalyseItsTailUnderItsTrueStart()
     {
         // arrange: MaxRunEntries is 3 in this host; five alternating turns, so a capped tail has three
         var (appHost, _) = await NewCoachHost("coach-capped-run");
         await using var _1 = appHost;
         await using var bob = appHost.NewBlazorTester(Out);
-        await bob.SignInAsUniqueBob();
+        var bobAccount = await bob.SignInAsUniqueBob();
         var (chatId, inviteId) = await bob.CreateChat(true);
+        await OptIn(appHost, bobAccount);
         await using var alice = appHost.NewBlazorTester(Out);
         await alice.SignInAsAlice();
         await alice.JoinChat(chatId, inviteId);

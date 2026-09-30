@@ -15,6 +15,8 @@ public class DbCoachEvent : IRequirementTarget
     public long Version { get; set; }
     // A tombstone: the row stays so a late delivery of an older version cannot bring the data back
     public bool IsRemoved { get; set; }
+    // The user took this row out of every score; it is the truth, the payload copy only rides along
+    public bool IsExcluded { get; set; }
 
     public DateTime Day {
         get => field.DefaultKind(DateTimeKind.Utc);
@@ -33,7 +35,7 @@ public class DbCoachEvent : IRequirementTarget
     public DbCoachEvent(CoachRecord record) => UpdateFrom(record);
 
     public CoachRecord ToModel()
-        => SystemJsonSerializer.Default.Read<CoachRecord>(Payload);
+        => SystemJsonSerializer.Default.Read<CoachRecord>(Payload) with { IsExcluded = IsExcluded };
 
     public void MarkRemoved()
     {
@@ -44,6 +46,7 @@ public class DbCoachEvent : IRequirementTarget
     public void UpdateFrom(CoachRecord record)
     {
         IsRemoved = false;
+        IsExcluded = record.IsExcluded;
         Version = record.Version;
         UserId = record.UserId.Value;
         SourceId = record.SourceId;

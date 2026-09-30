@@ -28,6 +28,9 @@ public interface ICoachBackend : IComputeService, IBackendService
     Task OnDeleteUserData(CoachBackend_DeleteUserData command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRebuildDays(CoachBackend_RebuildDays command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnSetConversationExcluded(
+        CoachBackend_SetConversationExcluded command, CancellationToken cancellationToken);
 
     // Events
 
@@ -68,6 +71,23 @@ public sealed partial record CoachBackend_RebuildDays(
 // ReSharper disable once InconsistentNaming
 public sealed partial record CoachBackend_DeleteUserData(
     [property: DataMember, Key(0)] UserId UserId
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public ShardKey ShardKey => UserId.ShardKey;
+}
+
+/// <summary>
+/// Flags or unflags the entries and runs of one conversation, then rebuilds their days.
+/// </summary>
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record CoachBackend_SetConversationExcluded(
+    [property: DataMember, Key(0)] UserId UserId,
+    [property: DataMember, Key(1)] ChatId ChatId,
+    [property: DataMember, Key(2)] long StartEntryLid,
+    [property: DataMember, Key(3)] string Language,
+    [property: DataMember, Key(4)] bool IsExcluded
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]

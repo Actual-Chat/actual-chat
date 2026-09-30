@@ -2080,5 +2080,8 @@
   "Coach_WhereHint": "Der Coach hört überall zu, außer wo du ihn ausschaltest.",
   "Coach_NothingToCompare": "Noch keine frühere Woche zum Vergleichen",
   "Coach_MarkProfanityTitle": "Schimpfwort",
-  "Coach_MarkProfanityBody_Format": "„{0}“ ist ein Schimpfwort; ein milderes passt vielleicht besser."
+  "Coach_MarkProfanityBody_Format": "„{0}“ ist ein Schimpfwort; ein milderes passt vielleicht besser.",
+  "Coach_NotCounted": "Zählt nicht für Ihre Werte",
+  "Coach_DontCount": "Nicht zählen",
+  "Coach_CountAgain": "Wieder zählen"
 }

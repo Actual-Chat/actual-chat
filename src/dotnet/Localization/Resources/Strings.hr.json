@@ -2079,5 +2079,8 @@
   "Coach_WhereHint": "Coach sluša svuda osim tamo gdje ga isključite.",
   "Coach_NothingToCompare": "Još nema prethodne tjedne za poređenje",
   "Coach_MarkProfanityTitle": "Psovka",
-  "Coach_MarkProfanityBody_Format": "„{0}“ je psovka; blaža riječ može biti bolja."
+  "Coach_MarkProfanityBody_Format": "„{0}“ je psovka; blaža riječ može biti bolja.",
+  "Coach_NotCounted": "Ne računa se u vaše ocjene",
+  "Coach_DontCount": "Ne računaj",
+  "Coach_CountAgain": "Računaj ponovo"
 }

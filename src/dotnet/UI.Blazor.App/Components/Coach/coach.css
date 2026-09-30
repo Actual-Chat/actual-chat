@@ -113,6 +113,8 @@
 .coach-conversation .c-dot.band-medium { @apply bg-warning; }
 .coach-conversation .c-dot.band-good { @apply bg-success; }
 .coach-conversation .c-links { @apply flex-x gap-x-4 text-sm; }
+.coach-conversation.excluded { @apply opacity-70; }
+.coach-conversation .c-excluded { @apply text-sm text-03; }
 .coach-conversation .c-links a { @apply text-primary cursor-pointer; }
 .coach-progress { @apply flex-y gap-y-3 px-4 pt-3 pb-4; }
 .coach-better .c-mascot { width: 48px; height: 38px; @apply object-contain; }

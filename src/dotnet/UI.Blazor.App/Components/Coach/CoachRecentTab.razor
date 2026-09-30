@@ -37,7 +37,7 @@
         }
         var weekAgo = Clocks.SystemClock.Now - TimeSpan.FromDays(7);
         var best = conversations
-            .Where(c => c.StartedAt >= weekAgo && c.SpeechSeconds >= 60 && c.Words > 0)
+            .Where(c => !c.IsExcluded && c.StartedAt >= weekAgo && c.SpeechSeconds >= 60 && c.Words > 0)
             .OrderBy(c => (double)c.Fillers / c.Words)
             .FirstOrDefault();
         return new Model(conversations, titles, settings, best?.ChatId, best?.StartEntryLid ?? 0);

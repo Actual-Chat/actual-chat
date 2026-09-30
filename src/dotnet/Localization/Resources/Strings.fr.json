@@ -2079,5 +2079,8 @@
   "Coach_WhereHint": "Le coach écoute partout, sauf là où vous le désactivez.",
   "Coach_NothingToCompare": "Pas encore de semaine précédente à comparer",
   "Coach_MarkProfanityTitle": "Gros mot",
-  "Coach_MarkProfanityBody_Format": " {0}  est un gros mot ; un terme plus doux passera mieux."
+  "Coach_MarkProfanityBody_Format": " {0}  est un gros mot ; un terme plus doux passera mieux.",
+  "Coach_NotCounted": "Ne compte pas dans vos scores",
+  "Coach_DontCount": "Ne pas compter",
+  "Coach_CountAgain": "Compter à nouveau"
 }

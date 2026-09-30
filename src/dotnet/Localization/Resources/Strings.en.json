@@ -2433,5 +2433,8 @@
   "Coach_WhereHint": "Coaching listens everywhere except what you switch off.",
   "Coach_NothingToCompare": "No earlier week to compare with yet",
   "Coach_MarkProfanityTitle": "Swear word",
-  "Coach_MarkProfanityBody_Format": "“{0}” is a swear word; a milder one may serve better."
+  "Coach_MarkProfanityBody_Format": "“{0}” is a swear word; a milder one may serve better.",
+  "Coach_NotCounted": "Not counted in your scores",
+  "Coach_DontCount": "Don't count",
+  "Coach_CountAgain": "Count again"
 }

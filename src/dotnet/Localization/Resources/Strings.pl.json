@@ -2079,5 +2079,8 @@
   "Coach_WhereHint": "Coach słucha wszędzie, oprócz miejsc, które wyłączysz.",
   "Coach_NothingToCompare": "Nie ma jeszcze poprzedniego tygodnia do porównania",
   "Coach_MarkProfanityTitle": "Przekleństwo",
-  "Coach_MarkProfanityBody_Format": "„{0}” to przekleństwo; łagodniejsze słowo może brzmieć lepiej."
+  "Coach_MarkProfanityBody_Format": "„{0}” to przekleństwo; łagodniejsze słowo może brzmieć lepiej.",
+  "Coach_NotCounted": "Nie wlicza się do Twoich wyników",
+  "Coach_DontCount": "Nie licz",
+  "Coach_CountAgain": "Licz ponownie"
 }

@@ -2079,5 +2079,8 @@
   "Coach_WhereHint": "Coach lắng nghe ở mọi nơi, trừ nơi bạn tắt.",
   "Coach_NothingToCompare": "Chưa có tuần trước để so sánh",
   "Coach_MarkProfanityTitle": "Từ thô tục",
-  "Coach_MarkProfanityBody_Format": "“{0}” là từ thô tục; một từ nhẹ nhàng hơn có thể tốt hơn."
+  "Coach_MarkProfanityBody_Format": "“{0}” là từ thô tục; một từ nhẹ nhàng hơn có thể tốt hơn.",
+  "Coach_NotCounted": "Không tính vào điểm của bạn",
+  "Coach_DontCount": "Không tính",
+  "Coach_CountAgain": "Tính lại"
 }

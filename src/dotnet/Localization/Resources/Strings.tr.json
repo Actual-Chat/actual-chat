@@ -2086,5 +2086,8 @@
   "Coach_WhereHint": "Koç, kapattığınız yerler dışında her yerde dinler.",
   "Coach_NothingToCompare": "Karşılaştırılacak önceki hafta henüz yok",
   "Coach_MarkProfanityTitle": "Küfür",
-  "Coach_MarkProfanityBody_Format": "“{0}” bir küfürdür; daha yumuşak bir söz daha iyi olabilir."
+  "Coach_MarkProfanityBody_Format": "“{0}” bir küfürdür; daha yumuşak bir söz daha iyi olabilir.",
+  "Coach_NotCounted": "Puanlarınıza sayılmıyor",
+  "Coach_DontCount": "Sayma",
+  "Coach_CountAgain": "Yeniden say"
 }

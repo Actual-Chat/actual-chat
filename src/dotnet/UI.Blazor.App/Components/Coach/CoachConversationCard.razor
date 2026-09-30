@@ -10,19 +10,25 @@
         DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now));
 }
 
-<Card Class="coach-conversation">
+<Card Class="@("coach-conversation" + (c.IsExcluded ? " excluded" : ""))">
     <div class="c-head">
         <span class="c-title text-01">@Title</span>
         <span class="c-when">@when · @L.Coach_SpokeMinutes_Format(minutes)</span>
     </div>
-    @foreach (var f in Findings) {
-        <div class="c-finding">
-            <span class="c-dot band-@f.Band.ToString().ToLowerInvariant()"></span>
-            <span>@Labels.Finding(c, f, IsWeeksBest)</span>
-        </div>
+    @if (c.IsExcluded) {
+        <div class="c-excluded">@L.Coach_NotCounted</div>
+    }
+    else {
+        @foreach (var f in Findings) {
+            <div class="c-finding">
+                <span class="c-dot band-@f.Band.ToString().ToLowerInvariant()"></span>
+                <span>@Labels.Finding(c, f, IsWeeksBest)</span>
+            </div>
+        }
     }
     <div class="c-links">
         <a href="@Links.Chat(c.ChatId, c.StartEntryLid)">@L.Coach_MarkedTranscript</a>
+        <a @onclick="@OnToggleExcluded">@(c.IsExcluded ? L.Coach_CountAgain : L.Coach_DontCount)</a>
     </div>
 </Card>
 
@@ -31,6 +37,15 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public IReadOnlyList<CoachFinding> Findings { get; set; } = [];
     [Parameter] public bool IsWeeksBest { get; set; }
+
+    private Task OnToggleExcluded()
+        => UICommander.Run(new Coach_ExcludeConversation {
+            Session = Session,
+            ChatId = Conversation.ChatId,
+            StartEntryLid = Conversation.StartEntryLid,
+            Language = Conversation.Language,
+            IsExcluded = !Conversation.IsExcluded,
+        });
 
     private CoachLabels Labels => field ??= new CoachLabels(L);
 }

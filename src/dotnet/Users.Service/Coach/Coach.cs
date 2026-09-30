@@ -250,11 +250,27 @@ public class Coach(IServiceProvider services) : ICoach
             .ConfigureAwait(false);
         await kvas.UserCoachSettings()
             .Update(x => x with {
+                // Switching a chat on is asking for coaching, so it cannot stay behind a switched-off master toggle
+                IsCoachingEnabled = x.IsCoachingEnabled || command.IsEnabled == true,
                 SwitchedOff = command.IsEnabled == false
                     ? x.SwitchedOff.Where(id => id != command.ChatId).Append(command.ChatId).ToApiArray()
                     : x.SwitchedOff.Where(id => id != command.ChatId).ToApiArray(),
             }, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnExcludeConversation(
+        Coach_ExcludeConversation command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        account.Require(AccountFull.MustBeActive);
+        var backendCommand = new CoachBackend_SetConversationExcluded(
+            account.Id, command.ChatId, command.StartEntryLid, command.Language, command.IsExcluded);
+        await Commander.Call(backendCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

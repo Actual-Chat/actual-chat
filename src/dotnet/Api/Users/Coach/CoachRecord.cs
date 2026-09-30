@@ -59,6 +59,8 @@ public sealed partial record CoachRecord(
     [DataMember, Key(6)] public CoachRunRecord? Run { get; init; }
     // The chat-side analysis version: a lower one is a late or duplicate delivery and is ignored
     [DataMember, Key(7)] public long Version { get; init; }
+    // Set by the user: the row stays in the log but counts in no score, progress or tip
+    [DataMember, Key(8)] public bool IsExcluded { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public Moment Day => UsageDay.DayOf(OccurredAt);

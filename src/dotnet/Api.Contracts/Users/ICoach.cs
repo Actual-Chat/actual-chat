@@ -52,6 +52,8 @@ public interface ICoach : IComputeService
     [CommandHandler]
     Task OnSetChatCoaching(Coach_SetChatCoaching command, CancellationToken cancellationToken);
     [CommandHandler]
+    Task OnExcludeConversation(Coach_ExcludeConversation command, CancellationToken cancellationToken);
+    [CommandHandler]
     Task OnDeleteOwnData(Coach_DeleteOwnData command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnDismissTip(Coach_DismissTip command, CancellationToken cancellationToken);
@@ -94,6 +96,20 @@ public sealed partial record Coach_SetChatCoaching : ApiCommand<Unit>
     [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
     // null = inherit from the place, then from the user's coach settings
     [DataMember(Order = 3), Key(3)] public bool? IsEnabled { get; init; }
+}
+
+/// <summary>
+/// Takes one conversation out of the caller's scores, progress and tips, or puts it back; the
+/// conversation stays listed either way.
+/// </summary>
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Coach_ExcludeConversation : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
+    [DataMember(Order = 3), Key(3)] public required long StartEntryLid { get; init; }
+    [DataMember(Order = 4), Key(4)] public required string Language { get; init; }
+    [DataMember(Order = 5), Key(5)] public required bool IsExcluded { get; init; }
 }
 
 /// <summary>

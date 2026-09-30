@@ -2079,5 +2079,8 @@
   "Coach_WhereHint": "Коуч слухає всюди, крім того, що ви вимкнете.",
   "Coach_NothingToCompare": "Поки немає попереднього тижня для порівняння",
   "Coach_MarkProfanityTitle": "Грубе слово",
-  "Coach_MarkProfanityBody_Format": "«{0}» — грубе слово; м’якше може прозвучати краще."
+  "Coach_MarkProfanityBody_Format": "«{0}» — грубе слово; м’якше може прозвучати краще.",
+  "Coach_NotCounted": "Не враховується у ваших оцінках",
+  "Coach_DontCount": "Не враховувати",
+  "Coach_CountAgain": "Враховувати знову"
 }

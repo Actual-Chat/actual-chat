@@ -2079,5 +2079,8 @@
   "Coach_WhereHint": "除你关闭的位置外，教练在所有地方倾听。",
   "Coach_NothingToCompare": "还没有上周的数据可供比较",
   "Coach_MarkProfanityTitle": "脏话",
-  "Coach_MarkProfanityBody_Format": "“{0}”是脏话；换个温和点的说法可能更好。"
+  "Coach_MarkProfanityBody_Format": "“{0}”是脏话；换个温和点的说法可能更好。",
+  "Coach_NotCounted": "不计入你的得分",
+  "Coach_DontCount": "不计入",
+  "Coach_CountAgain": "重新计入"
 }

@@ -2433,5 +2433,8 @@
   "Coach_WhereHint": "Coach mendengarkan di mana saja kecuali yang Anda matikan.",
   "Coach_NothingToCompare": "Ancora nessuna settimana precedente da confrontare",
   "Coach_MarkProfanityTitle": "Грубое слово",
-  "Coach_MarkProfanityBody_Format": "「{0}」は汚い言葉です。もっと穏やかな言い方のほうが伝わるかもしれません。"
+  "Coach_MarkProfanityBody_Format": "「{0}」は汚い言葉です。もっと穏やかな言い方のほうが伝わるかもしれません。",
+  "Coach_NotCounted": "Не враховується у ваших оцінках",
+  "Coach_DontCount": "カウントしない",
+  "Coach_CountAgain": "Compter à nouveau"
 }

@@ -2079,5 +2079,8 @@
   "Coach_WhereHint": "कोच हर जगह सुनता है, सिवाय उन जगहों के जहाँ आप उसे बंद करें।",
   "Coach_NothingToCompare": "तुलना के लिए अभी कोई पिछला सप्ताह नहीं है",
   "Coach_MarkProfanityTitle": "गाली",
-  "Coach_MarkProfanityBody_Format": "“{0}” एक गाली है; कोई नरम शब्द बेहतर रहेगा।"
+  "Coach_MarkProfanityBody_Format": "“{0}” एक गाली है; कोई नरम शब्द बेहतर रहेगा।",
+  "Coach_NotCounted": "आपके स्कोर में नहीं गिना जाता",
+  "Coach_DontCount": "न गिनें",
+  "Coach_CountAgain": "फिर से गिनें"
 }

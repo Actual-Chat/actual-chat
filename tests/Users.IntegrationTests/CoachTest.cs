@@ -624,6 +624,85 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
+    public async Task ExcludingAConversationShouldTakeItOutOfTheScoresButKeepItListed()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var friends = GroupChatId.New();
+        var work = GroupChatId.New();
+        var commander = AppHost.Services.Commander();
+        var day = UsageDay.DayOf(T0);
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, friends, 1, 50, 30, T0, 2, "like"), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, friends, 2, 50, 30, T0 + TimeSpan.FromMinutes(5), 1, "like"), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, work, 1, 20, 10, T0 + TimeSpan.FromHours(2)), false));
+        await WhenDay(account.Id, day, d => d.Entries == 3);
+
+        // act
+        await commander.Call(new Coach_ExcludeConversation {
+            Session = tester.Session, ChatId = friends, StartEntryLid = 1, Language = "en", IsExcluded = true,
+        });
+
+        // assert
+        var excluded = await WhenDay(account.Id, day, d => d.Entries == 1);
+        excluded.Words.Should().Be(20);
+        var conversations = await Coach.ListOwnConversations(tester.Session, 10, null, default);
+        conversations.Should().HaveCount(2);
+        conversations.Single(c => c.ChatId == friends).IsExcluded.Should().BeTrue();
+        conversations.Single(c => c.ChatId == work).IsExcluded.Should().BeFalse();
+        var range = new Range<Moment>(T0 - TimeSpan.FromDays(1), T0 + TimeSpan.FromDays(1));
+        (await Backend.ListOccurrences(account.Id, "like", range, 10, default)).Should().BeEmpty();
+
+        // act
+        await commander.Call(new Coach_ExcludeConversation {
+            Session = tester.Session, ChatId = friends, StartEntryLid = 1, Language = "en", IsExcluded = false,
+        });
+
+        // assert
+        var restored = await WhenDay(account.Id, day, d => d.Entries == 3);
+        restored.Words.Should().Be(120);
+    }
+
+    [Fact]
+    public async Task AnExcludedConversationShouldStayExcludedWhenItsRowsAreSentAgainOrItContinues()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var commander = AppHost.Services.Commander();
+        var day = UsageDay.DayOf(T0);
+        var other = GroupChatId.New();
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, 1, 50, 30, T0), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, other, 1, 20, 10, T0 + TimeSpan.FromHours(3)), false));
+        await WhenDay(account.Id, day, d => d.Entries == 2);
+        await commander.Call(new Coach_ExcludeConversation {
+            Session = tester.Session, ChatId = chatId, StartEntryLid = 1, Language = "en", IsExcluded = true,
+        });
+        await WhenDay(account.Id, day, d => d.Entries == 1);
+
+        // act
+        var resent = Entry(account.Id, chatId, 1, 50, 30, T0, 3, "um") with { Version = 2 };
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(resent, false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 2, 40, 20, T0 + TimeSpan.FromMinutes(10)), false));
+        await Queues.WhenProcessing(TimeSpan.FromSeconds(1), default);
+
+        // assert
+        var conversations = await TestWait.When(async ct => {
+            var c = await Coach.ListOwnConversations(tester.Session, 10, null, ct);
+            c.Single(x => x.ChatId == chatId).Words.Should().Be(90);
+            return c;
+        });
+        conversations.Single(c => c.ChatId == chatId).IsExcluded.Should().BeTrue();
+        var days = await Backend.ListDays(account.Id, new Range<Moment>(day, day + TimeSpan.FromDays(1)), null, default);
+        days.Should().ContainSingle().Which.Words.Should().Be(20);
+    }
+
+    [Fact]
     public async Task FocusAndLevelCommandsShouldUpdateSettingsAndDeleteShouldClearEverything()
     {
         // arrange

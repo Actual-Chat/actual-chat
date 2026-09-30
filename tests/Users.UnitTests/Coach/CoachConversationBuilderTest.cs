@@ -139,4 +139,66 @@ public class CoachConversationBuilderTest(ITestOutputHelper @out) : TestBase(@ou
         // assert
         cut.Select(c => c.StartEntryLid).Should().Equal(5);
     }
+
+    [Fact]
+    public void AnExcludedConversationShouldStayListedFlaggedAndKeepItsNumbers()
+    {
+        // arrange
+        var records = new[] {
+            Entry(ChatA, 1, T0, 100) with { IsExcluded = true },
+            Entry(ChatA, 2, T0 + TimeSpan.FromMinutes(5), 50) with { IsExcluded = true },
+            Entry(ChatA, 3, T0 + TimeSpan.FromHours(3), 30),
+        };
+
+        // act
+        var conversations = CoachConversationBuilder.Build(records, Gap);
+
+        // assert
+        conversations.Should().HaveCount(2);
+        conversations[0].IsExcluded.Should().BeFalse();
+        conversations[1].IsExcluded.Should().BeTrue();
+        conversations[1].Words.Should().Be(150);
+    }
+
+    [Fact]
+    public void AnExcludedEntryShouldNotCountInAConversationThatContinuedAfterIt()
+    {
+        // arrange
+        var records = new[] {
+            Entry(ChatA, 1, T0, 100, fillers: 5) with { IsExcluded = true },
+            Entry(ChatA, 2, T0 + TimeSpan.FromMinutes(5), 50, fillers: 1),
+        };
+
+        // act
+        var conversations = CoachConversationBuilder.Build(records, Gap);
+
+        // assert
+        conversations.Should().ContainSingle();
+        conversations[0].IsExcluded.Should().BeFalse();
+        conversations[0].Words.Should().Be(50);
+        conversations[0].Fillers.Should().Be(1);
+        conversations[0].StartEntryLid.Should().Be(1, "the conversation keeps its identity");
+    }
+
+    [Fact]
+    public void MembersShouldBeTheEntriesOfOneLanguageOfOneConversationAndTheRunsAroundIt()
+    {
+        // arrange
+        var records = new[] {
+            Entry(ChatA, 1, T0, 100, "ru-RU"),
+            Entry(ChatA, 2, T0 + TimeSpan.FromMinutes(1), 60, "en-US"),
+            Entry(ChatA, 3, T0 + TimeSpan.FromHours(3), 40, "ru-RU"),
+            Run(ChatA, 1, T0 + TimeSpan.FromMinutes(3), 30, 90, 20),
+            Run(ChatA, 3, T0 + TimeSpan.FromHours(3), 30, 90, 20),
+        };
+
+        // act
+        var members = CoachConversationBuilder.Members(records, Gap, ChatA, 1, "ru");
+
+        // assert
+        members.Select(r => r.SourceId).Should().BeEquivalentTo([
+            $"{ChatA}:1",
+            $"{ChatA}:run:1",
+        ]);
+    }
 }

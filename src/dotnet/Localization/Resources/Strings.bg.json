@@ -2079,5 +2079,8 @@
   "Coach_WhereHint": "Коучът следи навсякъде, освен там, където го изключите.",
   "Coach_NothingToCompare": "Още няма предишна седмица за сравнение",
   "Coach_MarkProfanityTitle": "Ругатня",
-  "Coach_MarkProfanityBody_Format": "„{0}“ е ругатня; по-мек израз може да звучи по-добре."
+  "Coach_MarkProfanityBody_Format": "„{0}“ е ругатня; по-мек израз може да звучи по-добре.",
+  "Coach_NotCounted": "Не се отчита в резултатите ви",
+  "Coach_DontCount": "Не отчитай",
+  "Coach_CountAgain": "Отчитай отново"
 }
