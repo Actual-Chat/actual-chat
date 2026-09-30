@@ -76,7 +76,7 @@ public sealed class CoachLabels(IStringLocalizer l)
         => kind switch {
             CoachMetricKind.Fillers => l.Coach_ExplainFillers_Format(Examples(s, kind), Round(s.FillerGood * 100)),
             CoachMetricKind.Pace => l.Coach_ExplainPace_Format(
-                Round(s.PaceSlow), Round(s.PaceFast), LanguageName(language ?? "")),
+                Round(s.PaceSlow), Round(s.PaceFast), LanguageTitle(language ?? "")),
             CoachMetricKind.TurnTaking => l.Coach_ExplainTalkShare,
             CoachMetricKind.Monologue => l.Coach_ExplainMonologue,
             CoachMetricKind.WeakWords => l.Coach_ExplainWeakWords_Format(Examples(s, kind)),
@@ -100,6 +100,10 @@ public sealed class CoachLabels(IStringLocalizer l)
         };
 
     // The top chips of the metric, quoted, so the caption names the user's own words
+    // Inside a sentence the language's own word would need its grammatical case, so the sentence keeps the title
+    private static string LanguageTitle(string iso)
+        => Languages.All.FirstOrDefault(x => x.IsoCode == iso)?.Title.Split(" (")[0] ?? iso;
+
     private static string Examples(CoachSummary s, CoachMetricKind kind)
         => string.Join(", ", (s.Metrics.FirstOrDefault(m => m.Kind == kind)?.Chips ?? ApiArray<CoachChip>.Empty)
             .Take(3)
