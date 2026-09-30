@@ -1575,6 +1575,7 @@
   "Ptt_HushDuration": "Hush mutes for",
   "Ptt_HushedFor_Format": "Push-to-talk muted for {0}",
   "Ptt_Undo": "Undo",
+  "Ptt_ConsentExpired_Format": "Push-to-talk was turned on again in {0}. Allow it to keep listening?",
   "Ptt_Minutes_Format": "{0} minute|{0} minutes",
   "Ptt_Hours_Format": "{0} hour|{0} hours",
   "Ptt_NoMotionSensor": "This device has no motion sensor, so gestures are unavailable.",

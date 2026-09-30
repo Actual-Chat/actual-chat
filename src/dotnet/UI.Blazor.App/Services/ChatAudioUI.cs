@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using ActualChat.Audio;
 using ActualChat.Kvas;
 using ActualChat.Live;
+using ActualChat.Localization;
 using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor.App.Components.AudioPanel;
 using ActualChat.UI.Blazor.Services;
@@ -146,8 +147,10 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         // PTT is per-device opt-in: a disabled device is fully inert whatever the account consents
         // say. Consent-driven UI (the settings roster, the join banner) must use
         // GetConsentedPttChatIds instead, or it would misread "device off" as "no consent".
-        if (!await IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false))
+        if (!await IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false)) {
+            Log.LogInformation("GetPttChatIds: PTT is off on this device");
             return [];
+        }
 
         return await FilterConsentedPttChatIds(isMuted: false, cancellationToken).ConfigureAwait(false);
     }
@@ -197,6 +200,30 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             var chat = await Chats.Get(Session, pttChat.ChatId, cancellationToken).ConfigureAwait(false);
             if (chat != null && UserPttSettings.IsArmed(chat.PttEnabledAt, pttChat.JoinedAt))
                 result.Add(pttChat);
+            else
+                Log.LogInformation(
+                    "GetConsentedPttChats: {ChatId} isn't armed - "
+                    + "chat: {Chat}, PttEnabledAt: {PttEnabledAt}, JoinedAt: {JoinedAt}",
+                    pttChat.ChatId, chat is null ? "null" : "ok", chat?.PttEnabledAt, pttChat.JoinedAt);
+        }
+        return result;
+    }
+
+    [ComputeMethod(MinCacheDuration = 300)] // Synced
+    public virtual async Task<List<ChatId>> GetExpiredPttConsentChatIds(CancellationToken cancellationToken)
+    {
+        // Consents the chat's re-enable left behind: the entry is still there, the chat is on, but
+        // the entry predates the current epoch. Nothing else can put a chat here - leaving removes
+        // the entry, and a mute or the device switch never touch JoinedAt.
+        await Hub.ChatUI.WhenReady.ConfigureAwait(false);
+        var pttChats = await UserSettingsUI.UserPttSettings()
+            .Get(x => x.PttChats, cancellationToken)
+            .ConfigureAwait(false);
+        var result = new List<ChatId>();
+        foreach (var pttChat in pttChats) {
+            var chat = await Chats.Get(Session, pttChat.ChatId, cancellationToken).ConfigureAwait(false);
+            if (chat?.PttEnabledAt is { } enabledAt && pttChat.JoinedAt < enabledAt)
+                result.Add(pttChat.ChatId);
         }
         return result;
     }
@@ -275,6 +302,32 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             .Update(x => x.WithPttChatsUnmuted(chatIds), cancellationToken)
             .ConfigureAwait(false);
         await ResumeListening(chatIds, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> ConsentPtt(ChatId chatId, Moment enabledAt, CancellationToken cancellationToken)
+    {
+        // Consented, not armed: with the device switch off the armed set is empty, and updating
+        // consents against it would wipe every other chat's consent for the user's other devices.
+        var consentedChatIds = await GetConsentedPttChatIds(cancellationToken).ConfigureAwait(false);
+        if (consentedChatIds.Contains(chatId))
+            return true;
+
+        if (consentedChatIds.Count >= UserPttSettings.MaxChatCount) {
+            Hub.ToastUI.Show(
+                Hub.StringLocalizer.Ptt_MaxChatsReached_Format(UserPttSettings.MaxChatCount),
+                "icon-alert-circle",
+                ToastDismissDelay.Long);
+            return false;
+        }
+
+        // Never a raw client clock: JoinedAt must land within the current epoch (>= enabledAt).
+        var joinedAt = Moment.Max(ServerNow, enabledAt);
+        await UserSettingsUI.UserPttSettings()
+            .Update(
+                x => x.WithOnlyPttChats(consentedChatIds.ToHashSet()).WithPttChat(chatId, joinedAt),
+                cancellationToken)
+            .ConfigureAwait(false);
+        return true;
     }
 
     [ComputeMethod] // Synced
@@ -599,6 +652,22 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     // Private methods
 
+    private async Task NotifyPttConsentExpired(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat?.PttEnabledAt is not { } enabledAt)
+            return;
+
+        var l = Hub.StringLocalizer;
+        Hub.ToastUI.Show(
+            l.Ptt_ConsentExpired_Format(chat.Title),
+            () => _ = BackgroundTask.Run(
+                () => ConsentPtt(chatId, enabledAt, CancellationToken.None),
+                Log, "PTT re-consent failed", CancellationToken.None),
+            l.Common_Allow,
+            ToastDismissDelay.Long);
+    }
+
     private async Task ResumeListening(IReadOnlyCollection<ChatId> chatIds, CancellationToken cancellationToken)
     {
         // A hush stopped these players; lifting the mute must bring the ones it re-armed back,
@@ -619,6 +688,9 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         Moment? nextMuteEnd = null;
         foreach (var pttChat in pttChats) {
             var isChatMuted = pttChat.IsMutedAt(now);
+            if (isChatMuted && !isMuted)
+                Log.LogInformation("FilterConsentedPttChatIds: {ChatId} is muted until {MutedUntil}",
+                    pttChat.ChatId, pttChat.MutedUntil);
             if (isChatMuted == isMuted)
                 result.Add(pttChat.ChatId);
             if (isChatMuted && (nextMuteEnd is null || pttChat.MutedUntil < nextMuteEnd))

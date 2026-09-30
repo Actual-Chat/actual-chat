@@ -1364,6 +1364,7 @@
   "Ptt_HushDuration": "शांत करने की अवधि",
   "Ptt_HushedFor_Format": "पुश टू टॉक {0} के लिए म्यूट",
   "Ptt_Undo": "पूर्ववत करें",
+  "Ptt_ConsentExpired_Format": "{0} में पुश टू टॉक फिर से चालू किया गया। सुनते रहने के लिए इसे अनुमति दें?",
   "Ptt_Minutes_Format": "{0} मिनट",
   "Ptt_Hours_Format": "{0} घंटा|{0} घंटे",
   "Ptt_NoMotionSensor": "इस डिवाइस में मोशन सेंसर नहीं है, इसलिए जेस्चर उपलब्ध नहीं हैं।",

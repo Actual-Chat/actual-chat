@@ -1365,6 +1365,7 @@
   "Ptt_HushDuration": "Ruhe schaltet stumm für",
   "Ptt_HushedFor_Format": "Push-to-Talk für {0} stummgeschaltet",
   "Ptt_Undo": "Rückgängig",
+  "Ptt_ConsentExpired_Format": "Push-to-Talk wurde in {0} erneut eingeschaltet. Erlauben, um weiter zuzuhören?",
   "Ptt_Minutes_Format": "{0} Minute|{0} Minuten",
   "Ptt_Hours_Format": "{0} Stunde|{0} Stunden",
   "Ptt_NoMotionSensor": "Dieses Gerät hat keinen Bewegungssensor, daher sind Gesten nicht verfügbar.",

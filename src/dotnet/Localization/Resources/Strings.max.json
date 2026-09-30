@@ -1575,6 +1575,7 @@
   "Ptt_HushDuration": "Ruhe schaltet stumm für",
   "Ptt_HushedFor_Format": "プッシュ・トゥ・トークを{0}ミュートしました",
   "Ptt_Undo": "Rückgängig",
+  "Ptt_ConsentExpired_Format": "Натисни и говори беше включено отново в {0}. Да го разрешим, за да продължите да слушате?",
   "Ptt_Minutes_Format": "{0} хвилини",
   "Ptt_Hours_Format": "{0} Stunden",
   "Ptt_NoMotionSensor": "Este dispositivo no tiene sensor de movimiento, así que los gestos no están disponibles.",

@@ -1364,6 +1364,7 @@
   "Ptt_HushDuration": "Ztišení ztlumí na",
   "Ptt_HushedFor_Format": "Stiskni a mluv ztlumeno na {0}",
   "Ptt_Undo": "Zpět",
+  "Ptt_ConsentExpired_Format": "Stiskni a mluv bylo v {0} znovu zapnuto. Povolit ho, abyste dál poslouchali?",
   "Ptt_Minutes_Format": "{0} minuty|{0} minut|{0} minut",
   "Ptt_Hours_Format": "{0} hodiny|{0} hodin|{0} hodin",
   "Ptt_NoMotionSensor": "Toto zařízení nemá pohybový senzor, takže gesta nejsou dostupná.",

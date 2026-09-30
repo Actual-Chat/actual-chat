@@ -23,6 +23,8 @@
 </Banner>
 
 @code {
+    private static readonly TimeSpan ShowDelay = TimeSpan.FromSeconds(2);
+
     private StoredState<PttJoinBannerUserSettings> _settings = null!;
 
     private Chat Chat => ChatContext.Chat;
@@ -59,13 +61,26 @@
         if (!_settings.WhenRead.IsCompleted)
             await _settings.WhenRead.ConfigureAwait(false);
 
-        var settings = await _settings.Use(cancellationToken).ConfigureAwait(false);
+        var kind = await GetKind(enabledAt).ConfigureAwait(false);
+        if (kind == PttJoinBannerKind.None || State.Value != PttJoinBannerKind.None)
+            return kind;
+
+        // The owner's own toggle lands as two writes: the chat's new epoch first, the auto-consent a
+        // round trip later - so a fresh ask waits out that gap instead of flashing through it.
+        await Clocks.CpuClock.Delay(ShowDelay, cancellationToken).ConfigureAwait(false);
+        return await GetKind(enabledAt).ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private async Task<PttJoinBannerKind> GetKind(Moment enabledAt) {
+        var settings = await _settings.Use(CancellationToken.None).ConfigureAwait(false);
         var pttSettings = await UserSettingsUI.UserPttSettings()
-            .Get(cancellationToken)
+            .Get(CancellationToken.None)
             .ConfigureAwait(false);
-        var isDeviceEnabled = await ChatAudioUI.IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false);
+        var isDeviceEnabled = await ChatAudioUI.IsPttEnabledOnDevice(CancellationToken.None).ConfigureAwait(false);
         return Ptt.GetJoinBannerKind(
-            pttSettings.IsArmedIn(chat.Id, enabledAt),
+            pttSettings.IsArmedIn(Chat.Id, enabledAt),
             isDeviceEnabled,
             settings.DismissedAt,
             enabledAt);
@@ -78,24 +93,8 @@
         if (chat.PttEnabledAt is not { } enabledAt)
             return;
 
-        // Consented, not armed: with the device switch off the armed set is empty, and updating
-        // consents against it would wipe every other chat's consent for the user's other devices.
-        var consentedChatIds = await ChatAudioUI.GetConsentedPttChatIds(CancellationToken.None).ConfigureAwait(true);
-        if (!consentedChatIds.Contains(chat.Id)) {
-            if (consentedChatIds.Count >= UserPttSettings.MaxChatCount) {
-                ToastUI.Show(
-                    L.Ptt_MaxChatsReached_Format(UserPttSettings.MaxChatCount),
-                    "icon-alert-circle",
-                    ToastDismissDelay.Long);
-                return;
-            }
-
-            // Never a raw client clock: JoinedAt must land within the current epoch (>= enabledAt).
-            var joinedAt = Moment.Max(Clocks.ServerClock.Now, enabledAt);
-            await UserSettingsUI.UserPttSettings().Update(
-                x => x.WithOnlyPttChats(consentedChatIds.ToHashSet()).WithPttChat(chat.Id, joinedAt),
-                CancellationToken.None);
-        }
+        if (!await ChatAudioUI.ConsentPtt(chat.Id, enabledAt, CancellationToken.None).ConfigureAwait(true))
+            return;
 
         // The banner is the confirmation: whichever wording it showed, Allow enrols this device, and
         // the settings page is where a user who only meant their other devices turns it back off.

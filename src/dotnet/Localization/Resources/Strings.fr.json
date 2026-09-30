@@ -1364,6 +1364,7 @@
   "Ptt_HushDuration": "Le silence dure",
   "Ptt_HushedFor_Format": "Push-to-Talk coupé pendant {0}",
   "Ptt_Undo": "Annuler",
+  "Ptt_ConsentExpired_Format": "Le Push-to-Talk a été réactivé dans {0}. L'autoriser pour continuer à écouter ?",
   "Ptt_Minutes_Format": "{0} minute|{0} minutes",
   "Ptt_Hours_Format": "{0} heure|{0} heures",
   "Ptt_NoMotionSensor": "Cet appareil n'a pas de capteur de mouvement, les gestes sont donc indisponibles.",

@@ -1364,6 +1364,7 @@
   "Ptt_HushDuration": "Заглушать на",
   "Ptt_HushedFor_Format": "Push-to-Talk заглушён на {0}",
   "Ptt_Undo": "Отменить",
+  "Ptt_ConsentExpired_Format": "Push-to-Talk снова включён в {0}. Разрешить его, чтобы продолжать слушать?",
   "Ptt_Minutes_Format": "{0} минуты|{0} минут|{0} минут",
   "Ptt_Hours_Format": "{0} часа|{0} часов|{0} часов",
   "Ptt_NoMotionSensor": "На этом устройстве нет датчика движения, поэтому жесты недоступны.",

@@ -1364,6 +1364,7 @@
   "Ptt_HushDuration": "Вимикати звук на",
   "Ptt_HushedFor_Format": "Push-to-Talk вимкнено на {0}",
   "Ptt_Undo": "Скасувати",
+  "Ptt_ConsentExpired_Format": "Push-to-Talk знову увімкнено в {0}. Дозволити його, щоб продовжити слухати?",
   "Ptt_Minutes_Format": "{0} хвилини|{0} хвилин|{0} хвилин",
   "Ptt_Hours_Format": "{0} години|{0} годин|{0} годин",
   "Ptt_NoMotionSensor": "На цьому пристрої немає датчика руху, тож жести недоступні.",

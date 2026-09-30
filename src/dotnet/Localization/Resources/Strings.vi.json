@@ -1364,6 +1364,7 @@
   "Ptt_HushDuration": "Tắt tiếng trong",
   "Ptt_HushedFor_Format": "Nhấn để nói đã tắt tiếng trong {0}",
   "Ptt_Undo": "Hoàn tác",
+  "Ptt_ConsentExpired_Format": "Nhấn để nói đã được bật lại trong {0}. Cho phép để tiếp tục nghe?",
   "Ptt_Minutes_Format": "{0} phút",
   "Ptt_Hours_Format": "{0} giờ",
   "Ptt_NoMotionSensor": "Thiết bị này không có cảm biến chuyển động nên không dùng được cử chỉ.",

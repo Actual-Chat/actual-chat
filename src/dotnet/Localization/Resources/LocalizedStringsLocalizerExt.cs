@@ -1424,6 +1424,7 @@ public static class LocalizedStringsLocalizerExt
         public string Ptt_HushDuration => l["Ptt_HushDuration"].Value;
         public string Ptt_HushedFor_Format(object arg0) => l["Ptt_HushedFor_Format", arg0].Value;
         public string Ptt_Undo => l["Ptt_Undo"].Value;
+        public string Ptt_ConsentExpired_Format(object arg0) => l["Ptt_ConsentExpired_Format", arg0].Value;
         public string Ptt_Minutes_Format(long count, object arg0) => l.Plural("Ptt_Minutes_Format", count, arg0);
         public string Ptt_Hours_Format(long count, object arg0) => l.Plural("Ptt_Hours_Format", count, arg0);
         public string Ptt_NoMotionSensor => l["Ptt_NoMotionSensor"].Value;

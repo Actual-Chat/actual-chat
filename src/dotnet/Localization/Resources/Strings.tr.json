@@ -1371,6 +1371,7 @@
   "Ptt_HushDuration": "Susturma süresi",
   "Ptt_HushedFor_Format": "Bas-Konuş {0} boyunca susturuldu",
   "Ptt_Undo": "Geri al",
+  "Ptt_ConsentExpired_Format": "{0} sohbetinde Bas-Konuş yeniden açıldı. Dinlemeye devam etmek için izin verilsin mi?",
   "Ptt_Minutes_Format": "{0} dakika",
   "Ptt_Hours_Format": "{0} saat",
   "Ptt_NoMotionSensor": "Bu cihazda hareket sensörü yok, bu yüzden hareketler kullanılamıyor.",
