@@ -1360,6 +1360,7 @@
   "Ptt_HushDuration": "ミュートする時間",
   "Ptt_HushedFor_Format": "プッシュ・トゥ・トークを{0}ミュートしました",
   "Ptt_Undo": "元に戻す",
+  "Ptt_ConsentExpired_Format": "{0}でプッシュ・トゥ・トークが再びオンになりました。聞き続けるには許可しますか？",
   "Ptt_Minutes_Format": "{0}分",
   "Ptt_Hours_Format": "{0}時間",
   "Ptt_NoMotionSensor": "この端末にはモーションセンサーがないため、ジェスチャーは利用できません。",

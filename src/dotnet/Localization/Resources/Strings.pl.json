@@ -1360,6 +1360,7 @@
   "Ptt_HushDuration": "Wyciszenie na",
   "Ptt_HushedFor_Format": "Naciśnij i mów wyciszone na {0}",
   "Ptt_Undo": "Cofnij",
+  "Ptt_ConsentExpired_Format": "Naciśnij i mów zostało ponownie włączone w {0}. Zezwolić, aby dalej słuchać?",
   "Ptt_Minutes_Format": "{0} minutę|{0} minuty|{0} minut",
   "Ptt_Hours_Format": "{0} godzinę|{0} godziny|{0} godzin",
   "Ptt_NoMotionSensor": "To urządzenie nie ma czujnika ruchu, więc gesty są niedostępne.",

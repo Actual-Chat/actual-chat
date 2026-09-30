@@ -1360,6 +1360,7 @@
   "Ptt_HushDuration": "Silenciar por",
   "Ptt_HushedFor_Format": "Pressione para falar silenciado por {0}",
   "Ptt_Undo": "Desfazer",
+  "Ptt_ConsentExpired_Format": "Pressione para falar foi ativado novamente em {0}. Permitir para continuar ouvindo?",
   "Ptt_Minutes_Format": "{0} minuto|{0} minutos",
   "Ptt_Hours_Format": "{0} hora|{0} horas",
   "Ptt_NoMotionSensor": "Este dispositivo não tem sensor de movimento, então os gestos não estão disponíveis.",

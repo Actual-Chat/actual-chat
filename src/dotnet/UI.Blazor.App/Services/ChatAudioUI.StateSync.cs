@@ -28,7 +28,8 @@ public partial class ChatAudioUI
         var baseChains = new[] {
             AsyncChain.From(InitializeListening),
             AsyncChain.From(StopChatsInMaintenance),
-            AsyncChain.From(StopListeningWhenPttDisarmed),
+            AsyncChain.From(SyncListeningWithPttArming),
+            AsyncChain.From(NotifyOnExpiredPttConsents),
             AsyncChain.From(InvalidateActiveChatDependencies),
             AsyncChain.From(InvalidateReplayDependencies),
             AsyncChain.From(PushRecordingState),
@@ -65,7 +66,7 @@ public partial class ChatAudioUI
         await RestoreKeepListeningChats(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task StopListeningWhenPttDisarmed(CancellationToken cancellationToken)
+    private async Task SyncListeningWithPttArming(CancellationToken cancellationToken)
     {
         var cKeepListeningChatIds = await Computed
             .Capture(() => GetChatsYouNeedToKeepListeningTo(cancellationToken), cancellationToken)
@@ -78,10 +79,33 @@ public partial class ChatAudioUI
                 // deliberately runs no watcher for it - so leaving PTT is what must end that listening,
                 // ongoing conversation or not.
                 foreach (var chatId in oldChatIds.Except(chatIds)) {
-                    Log.LogInformation("StopListeningWhenPttDisarmed: {ChatId} left the keep-listening set", chatId);
+                    Log.LogInformation("SyncListeningWithPttArming: {ChatId} left the keep-listening set", chatId);
                     await SetListeningState(chatId, false).ConfigureAwait(false);
                 }
+                // The mirror: an armed chat is a listened chat, and InitializeListening covers only
+                // the ones armed at startup.
+                foreach (var chatId in chatIds.Except(oldChatIds))
+                    await SetListeningState(chatId, true).ConfigureAwait(false);
             }
+            oldChatIds = chatIds;
+        }
+    }
+
+    private async Task NotifyOnExpiredPttConsents(CancellationToken cancellationToken)
+    {
+        // Someone else's off-and-on expires this user's consent in two steps, neither chosen here, so
+        // the expiry gets a toast; a consent already expired at startup is the join banner's to ask.
+        var cExpiredChatIds = await Computed
+            .Capture(() => GetExpiredPttConsentChatIds(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        var oldChatIds = (HashSet<ChatId>?)null;
+        await foreach (var c in cExpiredChatIds.Changes(cancellationToken).ConfigureAwait(false)) {
+            var chatIds = c.Value.ToHashSet();
+            if (oldChatIds is not null)
+                foreach (var chatId in chatIds.Except(oldChatIds)) {
+                    Log.LogInformation("NotifyOnExpiredPttConsents: consent for {ChatId} expired", chatId);
+                    await NotifyPttConsentExpired(chatId, cancellationToken).ConfigureAwait(false);
+                }
             oldChatIds = chatIds;
         }
     }

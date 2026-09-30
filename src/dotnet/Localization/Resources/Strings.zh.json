@@ -1360,6 +1360,7 @@
   "Ptt_HushDuration": "静音时长",
   "Ptt_HushedFor_Format": "按住说话已静音 {0}",
   "Ptt_Undo": "撤销",
+  "Ptt_ConsentExpired_Format": "{0} 中的按住说话已重新开启。要允许以继续收听吗？",
   "Ptt_Minutes_Format": "{0} 分钟",
   "Ptt_Hours_Format": "{0} 小时",
   "Ptt_NoMotionSensor": "此设备没有运动传感器，因此无法使用手势。",

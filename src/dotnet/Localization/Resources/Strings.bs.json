@@ -1360,6 +1360,7 @@
   "Ptt_HushDuration": "Utišavanje traje",
   "Ptt_HushedFor_Format": "Pritisni i govori je utišan na {0}",
   "Ptt_Undo": "Poništi",
+  "Ptt_ConsentExpired_Format": "Pritisni i govori je ponovo uključen u {0}. Dozvoliti ga da nastavite slušati?",
   "Ptt_Minutes_Format": "{0} minutu|{0} minute|{0} minuta",
   "Ptt_Hours_Format": "{0} sat|{0} sata|{0} sati",
   "Ptt_NoMotionSensor": "Ovaj uređaj nema senzor pokreta, pa pokreti nisu dostupni.",

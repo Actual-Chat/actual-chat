@@ -1360,6 +1360,7 @@
   "Ptt_HushDuration": "Bisukan selama",
   "Ptt_HushedFor_Format": "Tekan untuk bicara dibisukan selama {0}",
   "Ptt_Undo": "Urungkan",
+  "Ptt_ConsentExpired_Format": "Tekan untuk bicara diaktifkan lagi di {0}. Izinkan agar tetap mendengarkan?",
   "Ptt_Minutes_Format": "{0} menit",
   "Ptt_Hours_Format": "{0} jam",
   "Ptt_NoMotionSensor": "Perangkat ini tidak punya sensor gerak, jadi gerakan tidak tersedia.",

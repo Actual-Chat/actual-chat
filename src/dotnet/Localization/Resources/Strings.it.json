@@ -1360,6 +1360,7 @@
   "Ptt_HushDuration": "Silenzia per",
   "Ptt_HushedFor_Format": "Push-to-Talk silenziato per {0}",
   "Ptt_Undo": "Annulla",
+  "Ptt_ConsentExpired_Format": "Il Push-to-Talk è stato riattivato in {0}. Consentirlo per continuare ad ascoltare?",
   "Ptt_Minutes_Format": "{0} minuto|{0} minuti",
   "Ptt_Hours_Format": "{0} ora|{0} ore",
   "Ptt_NoMotionSensor": "Questo dispositivo non ha un sensore di movimento, quindi i gesti non sono disponibili.",

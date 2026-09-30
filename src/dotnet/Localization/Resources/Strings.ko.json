@@ -1360,6 +1360,7 @@
   "Ptt_HushDuration": "음소거 시간",
   "Ptt_HushedFor_Format": "푸시 투 토크가 {0} 동안 음소거됨",
   "Ptt_Undo": "실행 취소",
+  "Ptt_ConsentExpired_Format": "{0}에서 푸시 투 토크가 다시 켜졌습니다. 계속 들으려면 허용할까요?",
   "Ptt_Minutes_Format": "{0}분",
   "Ptt_Hours_Format": "{0}시간",
   "Ptt_NoMotionSensor": "이 기기에는 모션 센서가 없어 제스처를 사용할 수 없습니다.",
