@@ -37,21 +37,19 @@ public class LocationUITest(ChatAppHostFixture fixture, ITestOutputHelper @out)
             cancellationToken);
         var locationId = entry.LocationId.Require();
 
-        var computed = await Computed.Capture(
-            () => LocationUI.GetCountdown(chatId, locationId, cancellationToken),
-            cancellationToken);
-        computed.Value.Should().NotBeNull();
-        computed.Value!.GetText(LanguageStringLocalizer.Get(Languages.English)).Should().NotBeEmpty();
-        computed.IsConsistent().Should().BeTrue();
+        var countdown = await LocationUI.GetCountdown(chatId, locationId, cancellationToken);
+        countdown.Should().NotBeNull();
+        countdown!.GetText(LanguageStringLocalizer.Get(Languages.English)).Should().NotBeEmpty();
 
         // act
         await Tester.StopSharingLocation(chatId, locationId, cancellationToken);
 
-        // assert
-        computed.IsConsistent().Should().BeFalse();
-        computed = await computed.Update(cancellationToken);
-        computed.Value.Should().BeNull();
-        computed.IsConsistent().Should().BeTrue();
+        // assert - the budget stays under the countdown's own 60 s refresh, so only the stop's invalidation
+        // passes it. Not IsConsistent: a late unrelated change, e.g. the new account's greeting, invalidates it too.
+        await TestWait.When(
+            async ct => (await LocationUI.GetCountdown(chatId, locationId, ct)).Should().BeNull(),
+            TimeSpan.FromSeconds(20),
+            isExactTimeout: true);
     }
 
     [Fact]
