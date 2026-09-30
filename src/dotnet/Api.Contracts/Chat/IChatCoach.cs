@@ -10,4 +10,8 @@ public interface IChatCoach : IComputeService
     [ComputeMethod]
     Task<ApiArray<CoachEntryMarks>> GetOwnMarks(
         Session session, ChatId chatId, Range<long> lidRange, CancellationToken cancellationToken);
+    // The marks of an entry of the caller that is still being spoken; empty once it has settled
+    [ComputeMethod]
+    Task<ApiArray<CoachLiveMark>> GetOwnLiveMarks(
+        Session session, ChatId chatId, long entryLid, CancellationToken cancellationToken);
 }

@@ -16,6 +16,11 @@ public interface ICoachAnalysisBackend : IComputeService, IBackendService
     Task<ApiArray<CoachEntryMarks>> ListMarks(
         ChatId chatId, AuthorId authorId, Range<long> lidTileRange, CancellationToken cancellationToken);
 
+    // The marks of an entry that is still being spoken, tagged sentence by sentence as they finish
+    [ComputeMethod]
+    Task<ApiArray<CoachLiveMark>> ListLiveMarks(
+        ChatId chatId, AuthorId authorId, long entryLid, CancellationToken cancellationToken);
+
     [CommandHandler]
     Task OnAnalyzeEntry(CoachAnalysisBackend_AnalyzeEntry command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -25,6 +30,9 @@ public interface ICoachAnalysisBackend : IComputeService, IBackendService
 
     [EventHandler]
     Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnChatEntryStreamingStartedEvent(
+        ChatEntryStreamingStartedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MessagePackObject]

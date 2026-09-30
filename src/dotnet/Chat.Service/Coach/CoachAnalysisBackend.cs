@@ -15,7 +15,7 @@ namespace ActualChat.Chat.Coach;
 /// quiet, their turn-taking in it; every row write emits the matching event to the user shard.
 /// The LLM is always called outside the operation transaction, which only re-checks and stores.
 /// </summary>
-public class CoachAnalysisBackend(IServiceProvider services)
+public partial class CoachAnalysisBackend(IServiceProvider services)
     : DbServiceBase<ChatDbContext>(services), ICoachAnalysisBackend
 {
     // A run is scanned in windows this many lids wide, at most MaxScanLids each way from the anchor
@@ -75,6 +75,8 @@ public class CoachAnalysisBackend(IServiceProvider services)
                 .ConfigureAwait(false);
         }
         var marks = rows.Select(r => r.ToModel()).Select(m => new CoachEntryMarks(m.Id.LocalId, m.Spans)).ToList();
+        if (Settings.Coach.IsInstantMarkingEnabled)
+            await AddInstantMarks(chatId, authorId, tile.Range, marks, cancellationToken).ConfigureAwait(false);
         return marks.OrderBy(m => m.EntryLid).ToApiArray();
     }
 
@@ -458,13 +460,13 @@ public class CoachAnalysisBackend(IServiceProvider services)
         if (analysis.TagState == CoachTagState.Tagged && analysis.PromptVersion >= Settings.Coach.PromptVersion)
             return analysis;
 
-        var result = await TagText(analysis.UserId, text, analysis.Language, cancellationToken)
+        var result = await TagText(analysis.Id, analysis.UserId, text, analysis.Language, cancellationToken)
             .ConfigureAwait(false);
         if (result is null)
             return analysis;
 
         var repetitions = analysis.Spans.Where(s => s.Kind == SpeechSpanKind.Repetition);
-        var spans = result.Spans
+        var spans = AddInstantSpans(result.Spans, text, analysis.Language)
             .Concat(repetitions)
             .OrderBy(s => s.Start)
             .ToApiArray();
@@ -481,12 +483,48 @@ public class CoachAnalysisBackend(IServiceProvider services)
     }
 
     private async Task<SpeechTagResult?> TagText(
-        UserId userId, string text, Language? language, CancellationToken cancellationToken)
+        ChatEntryId entryId, UserId userId, string text, Language? language, CancellationToken cancellationToken)
     {
-        if (!TryTakeTaggerCalls(userId, 1))
+        // A long text goes to the tagger in chunks, in parallel: the answer is as late as the slowest chunk,
+        // not as the whole text. One failed chunk fails the lot, so a row is never half tagged.
+        if (await TryGetLiveResult(entryId, text, cancellationToken).ConfigureAwait(false) is { } live)
+            return live;
+
+        var coach = Settings.Coach;
+        var chunks = coach.IsChunkedTaggingEnabled
+            ? SpeechChunker.Split(
+                text,
+                SpeechTextStats.IsWordSplittable(language),
+                coach.TagChunkMinWords,
+                coach.TagChunkMaxWords,
+                coach.TagChunkContextWords,
+                coach.MaxTagChunksPerEntry)
+            : [];
+        if (!TryTakeTaggerCalls(userId, Math.Max(1, chunks.Count)))
+            return null;
+        if (chunks.Count <= 1)
+            return await Tagger.Tag(new SpeechTagRequest(text, language), cancellationToken).ConfigureAwait(false);
+
+        using var gate = new SemaphoreSlim(Math.Max(1, coach.MaxParallelTagChunks));
+        var results = await Task.WhenAll(chunks.Select(async chunk => {
+            await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try {
+                var request = new SpeechTagRequest(chunk.Text, language, chunk.Context.NullIfEmpty());
+                return await Tagger.Tag(request, cancellationToken).ConfigureAwait(false);
+            }
+            finally {
+                gate.Release();
+            }
+        })).ConfigureAwait(false);
+        if (results.Any(r => r is null))
             return null;
 
-        return await Tagger.Tag(new SpeechTagRequest(text, language), cancellationToken).ConfigureAwait(false);
+        var spans = chunks
+            .Zip(results)
+            .SelectMany(x => x.Second!.Spans.Select(s => s with { Start = s.Start + x.First.Start }))
+            .OrderBy(s => s.Start)
+            .ToApiArray();
+        return new SpeechTagResult(spans, results.Max(r => r!.PromptVersion));
     }
 
     private bool TryTakeTaggerCalls(UserId userId, int count)
@@ -507,6 +545,57 @@ public class CoachAnalysisBackend(IServiceProvider services)
             }
             _taggerCalls[userId] = used + count;
             return true;
+        }
+    }
+
+    private ApiArray<SpeechSpan> AddInstantSpans(ApiArray<SpeechSpan> spans, string text, Language? language)
+    {
+        // The tagger's own spans win where they overlap the word list
+        if (!Settings.Coach.IsInstantMarkingEnabled)
+            return spans;
+
+        return spans.AddNonOverlapping(SpeechLexicon.Default.FindSpans(text, language));
+    }
+
+    private async Task AddInstantMarks(
+        ChatId chatId, AuthorId authorId, Range<long> tileRange, List<CoachEntryMarks> marks,
+        CancellationToken cancellationToken)
+    {
+        // An own voice entry the tagger has not marked yet shows the marks the word list finds in it, and the
+        // live ones
+        var window = await ReadWindow(chatId, tileRange.Start, tileRange.End, cancellationToken).ConfigureAwait(false);
+        var entries = window
+            .Where(e => e.AuthorId == authorId && IsAnalyzable(e) && marks.All(m => m.EntryLid != e.LocalId))
+            .ToList();
+        if (entries.Count == 0)
+            return;
+
+        var author = await AuthorsBackend
+            .Get(chatId, authorId, RequestedAuthorKind.Default, cancellationToken)
+            .ConfigureAwait(false);
+        if (author is null || author.UserId.IsGuestOrNull() || author.IsAnonymous == true)
+            return;
+
+        var kvas = ServerKvasBackend.ForUser(author.UserId);
+        if (!await CoachScopeKvas.IsInScope(kvas, chatId, cancellationToken).ConfigureAwait(false))
+            return;
+
+        var settings = await kvas.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
+        if (!settings.IsCoachingEnabled)
+            return;
+
+        foreach (var entry in entries) {
+            var language = await GetLanguage(entry.Id, author.UserId, cancellationToken).ConfigureAwait(false);
+            if (settings.LevelOf(language?.Value) == CoachLanguageLevel.Off)
+                continue;
+
+            // The model's marks found while the entry was still being spoken stay until its own analysis lands
+            var live = await ListLiveMarks(chatId, authorId, entry.LocalId, cancellationToken).ConfigureAwait(false);
+            var spans = CoachLiveMarks
+                .Locate(entry.Content, live, SpeechTextStats.IsWordSplittable(language))
+                .AddNonOverlapping(SpeechLexicon.Default.FindSpans(entry.Content, language));
+            if (spans.Count > 0)
+                marks.Add(new CoachEntryMarks(entry.LocalId, spans));
         }
     }
 
