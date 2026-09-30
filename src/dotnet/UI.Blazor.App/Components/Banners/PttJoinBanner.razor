@@ -56,10 +56,6 @@
         if (chat.PttEnabledAt is not { } enabledAt)
             return PttJoinBannerKind.None;
 
-        var isIncompleteUIEnabled = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
-        if (!isIncompleteUIEnabled)
-            return PttJoinBannerKind.None;
-
         if (!_settings.WhenRead.IsCompleted)
             await _settings.WhenRead.ConfigureAwait(false);
 
