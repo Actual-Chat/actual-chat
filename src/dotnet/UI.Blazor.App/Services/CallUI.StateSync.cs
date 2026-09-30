@@ -26,6 +26,7 @@ public partial class CallUI
             AsyncChain.From(SyncCallActivity),
             AsyncChain.From(SyncOutputRoute),
             AsyncChain.From(SyncOutputRouteTakeover),
+            AsyncChain.From(SyncScreenOffAtEar),
         };
         var retryDelays = RetryDelaySeq.Exp(0.5, 10);
         return (

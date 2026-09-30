@@ -52,6 +52,17 @@ public partial class CallUI
         return await _pickedOutputRouteId.Use(cancellationToken).ConfigureAwait(false);
     }
 
+    [ComputeMethod]
+    protected virtual async Task<bool> MustTurnScreenOffAtEar(CancellationToken cancellationToken)
+    {
+        var activity = await GetCallActivity(cancellationToken).ConfigureAwait(false);
+        if (!activity.IsCallActive)
+            return false;
+
+        var routes = await GetOutputRoutes(cancellationToken).ConfigureAwait(false);
+        return routes.Current?.Kind == AudioOutputKind.Phone;
+    }
+
     // Private methods
 
     private async Task SyncCallActivity(CancellationToken cancellationToken)
@@ -88,6 +99,28 @@ public partial class CallUI
 
             routeId = c.Value;
             await AudioFocusUI.ApplyOutputRoute(routeId).ConfigureAwait(false);
+        }
+    }
+
+    private async Task SyncScreenOffAtEar(CancellationToken cancellationToken)
+    {
+        var cMustTurnOff = await Computed
+            .Capture(() => MustTurnScreenOffAtEar(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        var mustTurnOff = false;
+        try {
+            await foreach (var c in cMustTurnOff.Changes(cancellationToken).ConfigureAwait(false)) {
+                if (c.Value == mustTurnOff)
+                    continue;
+
+                mustTurnOff = c.Value;
+                await Hub.KeepAwakeUI.SetScreenOffAtEar(mustTurnOff).ConfigureAwait(false);
+            }
+        }
+        finally {
+            // A screen left blankable by a dead scope would go dark at every cover until the app restarts.
+            if (mustTurnOff)
+                await Hub.KeepAwakeUI.SetScreenOffAtEar(false).SilentAwait(false);
         }
     }
 

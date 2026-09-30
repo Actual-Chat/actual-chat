@@ -754,6 +754,13 @@ sensor spike can no longer wipe a gesture in progress. The proximity *level* sur
 `GestureRecognizer`'s sample-gap reset: it is edge-driven, so forgetting it would read as
 "uncovered" until the sensor next changed its mind.
 
+On iOS the sensor can only be read through `UIDevice.ProximityMonitoringEnabled`, which also
+lets iOS blank the screen while it is covered — so the stop gesture blanks it too, speaker
+calls included. An earpiece call turns the same switch on for the whole call
+(`CallUI.SyncScreenOffAtEar` → `KeepAwakeUI.SetScreenOffAtEar`; Android uses a
+`PROXIMITY_SCREEN_OFF_WAKE_LOCK` instead), so `IosProximityMonitoring` counts both holders:
+closing the mic must not switch it off under a call that still needs it.
+
 `GestureUI.GetHeadsetButtonState` publishes `IsEnabled` / `HasAnswerWindow` with
 `Volatile` reads/writes, since the native handler calls it off any of our
 threads. `HeadsetButtonPolicy.GetState` deliberately uses `HasAnswerWindow`

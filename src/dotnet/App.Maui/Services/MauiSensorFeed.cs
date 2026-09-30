@@ -209,7 +209,7 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
         // so _proximityObserver is touched from that thread alone.
         BeginDispatchToMainThread(() => {
             try {
-                UIKit.UIDevice.CurrentDevice.ProximityMonitoringEnabled = true;
+                IosProximityMonitoring.Acquire();
                 _proximityObserver ??= Foundation.NSNotificationCenter.DefaultCenter.AddObserver(
                     UIKit.UIDevice.ProximityStateDidChangeNotification,
                     _ => OnProximityChanged(UIKit.UIDevice.CurrentDevice.ProximityState));
@@ -235,7 +235,7 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
                 if (_proximityObserver is { } observer)
                     Foundation.NSNotificationCenter.DefaultCenter.RemoveObserver(observer);
                 _proximityObserver = null;
-                UIKit.UIDevice.CurrentDevice.ProximityMonitoringEnabled = false;
+                IosProximityMonitoring.Release();
             }
             catch (Exception e) {
                 Log.LogWarning(e, "Failed to stop proximity monitoring");
