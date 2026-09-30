@@ -82,12 +82,14 @@ public class CoachSettings
     public double MaxResponseGapSeconds { get; set; } = 10;
     // Voice entries are cut at Constants.Chat.MaxEntryDuration; entries of one author closer than this are one monologue
     public double MonologueJoinGapSeconds { get; set; } = 5;
-    public int BatchChunkWords { get; set; } = 2000;
     public TimeSpan ConversationMaturity { get; set; } = TimeSpan.FromMinutes(10);
     public TimeSpan MaxConversationWait { get; set; } = TimeSpan.FromHours(2);
+    // Counted per server node: a user whose chats live on several nodes gets this many on each
     public int MaxTaggerCallsPerUserPerDay { get; set; } = 500;
     public int MaxRunEntries { get; set; } = 400;
+    // Attempts, not successes; the run also gives up after MaxTaggerFailuresPerRun failures in a row
     public int MaxTaggerCallsPerRun { get; set; } = 50;
+    public int MaxTaggerFailuresPerRun { get; set; } = 3;
     // Tags a long entry in chunks the tagger takes in parallel, each with the sentence before it as context.
     // It multiplies the tagger calls; switch it off to tag every entry in one call.
     public bool IsChunkedTaggingEnabled { get; set; } = true;

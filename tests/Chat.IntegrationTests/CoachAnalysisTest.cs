@@ -27,12 +27,16 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         public int Calls => Volatile.Read(ref _calls);
         public IReadOnlyList<SpeechTagRequest> Requests => _requests.ToList();
         public Task Gate { get; set; } = Task.CompletedTask;
+        public bool IsFailing { get; set; }
 
         public async Task<SpeechTagResult?> Tag(SpeechTagRequest request, CancellationToken cancellationToken)
         {
             _requests.Enqueue(request);
             Interlocked.Increment(ref _calls);
             await Gate.ConfigureAwait(false);
+            if (IsFailing)
+                return null;
+
             var spans = SpeechTagger.ParseResponse(request.Text, """
                 {"items":[{"class":"filledPause","word":"um","occurrence":1,"synonyms":[]},
                           {"class":"filler","word":"you know","occurrence":1,"synonyms":[]},
@@ -150,6 +154,114 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         // assert
         (await backend.Get(entry.Id, default)).Should().BeNull("coaching is off until the user turns it on");
         tagger.Calls.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task EntryInALanguageSwitchedOffShouldNotBeAnalyzed()
+    {
+        // arrange
+        var (appHost, tagger) = await NewCoachHost("coach-language-off");
+        await using var _ = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        await appHost.Services.GetRequiredService<IServerKvasBackend>()
+            .ForUser(account.Id, isOutermost: true)
+            .UserCoachSettings()
+            .Set(new UserCoachSettings {
+                IsCoachingEnabled = true,
+                Languages = new ApiMap<string, CoachLanguageLevel> { ["en"] = CoachLanguageLevel.Off },
+            });
+        var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
+
+        // act
+        var entry = await PostVoice(tester, chatId, Text);
+        await appHost.Services.Queues().WhenProcessing(TimeSpan.FromSeconds(1), default);
+
+        // assert
+        (await backend.Get(entry.Id, default)).Should().BeNull("a language switched off leaves no row at all");
+        tagger.Calls.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DeletingOwnDataShouldRemoveTheChatSideRowsAndMarks()
+    {
+        // arrange
+        var (appHost, _) = await NewCoachHost("coach-delete-data");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(appHost, account);
+        var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
+        var entry = await PostVoice(tester, chatId, Text);
+        await WhenTagged(backend, entry.Id);
+        await WhenMarks(backend, entry, m => m.Count == 1 && m[0].Spans.Count == 3);
+
+        // act
+        await tester.Commander.Call(new Coach_DeleteOwnData { Session = tester.Session });
+
+        // assert
+        await TestWait.When(async ct => (await backend.Get(entry.Id, ct)).Should().BeNull());
+        var marks = await WhenMarks(backend, entry, m => m.Count == 1 && m[0].Spans.Count == 1);
+        marks[0].Spans[0].Word.Should().Be("um", "only the word list is left to mark the entry");
+    }
+
+    [Fact]
+    public async Task TaggerCallsShouldStopAtTheDailyCeilingOfTheUser()
+    {
+        // arrange
+        var (appHost, tagger) = await NewCoachHost(
+            "coach-daily-ceiling", null, null, (nameof(CoachSettings.MaxTaggerCallsPerUserPerDay), "1"));
+        await using var _ = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(appHost, account);
+        var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
+
+        // act
+        var first = await PostVoice(tester, chatId, Text);
+        await WhenTagged(backend, first.Id);
+        var second = await PostVoice(tester, chatId, Text + " So, um, again.");
+
+        // assert
+        var pending = await TestWait.When(async ct => {
+            var analysis = await backend.Get(second.Id, ct);
+            analysis.Should().NotBeNull();
+            return analysis!;
+        });
+        await appHost.Services.Queues().WhenProcessing(TimeSpan.FromSeconds(2), default);
+        pending.TagState.Should().Be(CoachTagState.Pending);
+        tagger.Calls.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AFailingTaggerShouldBeGivenUpOnAfterAFewEntriesOfARun()
+    {
+        // arrange
+        var (appHost, tagger) = await NewCoachHost("coach-failing-tagger", new FakeTagger { IsFailing = true });
+        await using var _ = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(appHost, account);
+        var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
+
+        // act: each of the six entries is tried once as it lands, then the run tries again
+        ChatEntry first = null!;
+        for (var i = 0; i < 6; i++) {
+            var entry = await PostVoice(tester, chatId, $"{Text} Number {i}.");
+            if (i == 0)
+                first = entry;
+        }
+
+        // assert
+        await TestWait.When(async ct => {
+            var row = await backend.GetConversation(ConversationId.New(chatId, first.LocalId), first.AuthorId, ct);
+            row.Should().NotBeNull();
+        }, TimeSpan.FromSeconds(30));
+        tagger.Calls.Should().Be(6 + 3, "the run stops after three failures in a row");
     }
 
     [Fact]

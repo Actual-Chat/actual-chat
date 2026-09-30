@@ -13,3 +13,9 @@ internal sealed partial record CoachRunTouch(
 internal sealed partial record CoachTaggedEntry(
     [property: DataMember(Order = 0), Key(0)] ChatEntryId Id,
     [property: DataMember(Order = 1), Key(1)] AuthorId AuthorId);
+
+// The rows DeleteUserData removed, for its invalidation phase
+[DataContract, MessagePackObject(AllowPrivate = true)]
+internal sealed partial record CoachUserDataTouch(
+    [property: DataMember(Order = 0), Key(0)] ApiArray<CoachTaggedEntry> Entries,
+    [property: DataMember(Order = 1), Key(1)] ApiArray<CoachRunTouch> Runs);

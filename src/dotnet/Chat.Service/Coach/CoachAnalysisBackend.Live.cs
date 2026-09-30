@@ -30,7 +30,9 @@ public partial class CoachAnalysisBackend
             return;
 
         var (entry, author) = eventCommand;
-        if (entry is not TextEntry || entry.IsSystemEntry || author.UserId.IsGuestOrNull() || author.IsAnonymous == true)
+        if (entry is not TextEntry || entry.IsSystemEntry)
+            return;
+        if (author.UserId.IsGuestOrNull() || author.IsAnonymous == true)
             return;
 
         await StartLiveTagging(entry, author, cancellationToken).ConfigureAwait(false);
@@ -53,14 +55,15 @@ public partial class CoachAnalysisBackend
         var language = await GetLanguage(entry.Id, author.UserId, cancellationToken).ConfigureAwait(false);
         if (settings.LevelOf(language?.Value) == CoachLanguageLevel.Off)
             return;
-        var live = new LiveEntry(entry.AuthorId);
+        var live = new LiveEntry(entry.AuthorId, author.UserId);
         if (!_live.TryAdd(entry.Id, live))
             return;
         var stopToken = HostLifetime.ApplicationStopping;
         _ = BackgroundTask.Run(() => RunLiveTagging(entry, live, language, stopToken), CancellationToken.None);
     }
 
-    private async Task RunLiveTagging(ChatEntry entry, LiveEntry live, Language? language, CancellationToken stopToken)
+    private async Task RunLiveTagging(
+        ChatEntry entry, LiveEntry live, Language? language, CancellationToken stopToken)
     {
         LiveTagResult? result = null;
         try {
@@ -81,9 +84,13 @@ public partial class CoachAnalysisBackend
                 isWordSplittable);
             result = await SpeechLiveTagger.Run(
                 texts,
-                async (chunk, context, token) => (await Tagger
-                    .Tag(new SpeechTagRequest(chunk, language, context), token)
-                    .ConfigureAwait(false))?.Spans,
+                async (chunk, context, token) => {
+                    if (!TryTakeTaggerCalls(live.UserId, 1))
+                        return null;
+
+                    var request = new SpeechTagRequest(chunk, language, context);
+                    return (await Tagger.Tag(request, token).ConfigureAwait(false))?.Spans;
+                },
                 (text, spans) => PublishLiveMarks(entry, live, text, spans, isWordSplittable),
                 options,
                 cts.Token).ConfigureAwait(false);
@@ -117,10 +124,11 @@ public partial class CoachAnalysisBackend
             _ = ListLiveMarks(entry.ChatId, live.AuthorId, entry.LocalId, default);
     }
 
-    // The tags the live tagging produced for exactly this text, or null when there are none to trust: the text
-    // settled differently (re-transcription), or some of it could not be tagged
-    private async Task<SpeechTagResult?> TryGetLiveResult(ChatEntryId entryId, string text, CancellationToken cancellationToken)
+    private async Task<SpeechTagResult?> TryGetLiveResult(
+        ChatEntryId entryId, string text, CancellationToken cancellationToken)
     {
+        // The tags the live tagging produced for exactly this text, or null when there are none to trust: the
+        // text settled differently (re-transcription), or some of it could not be tagged
         if (!Settings.Coach.IsLiveTaggingEnabled || !_live.TryGetValue(entryId, out var live))
             return null;
 
@@ -131,17 +139,18 @@ public partial class CoachAnalysisBackend
                 return null;
         }
         var result = whenDone.IsCompletedSuccessfully ? whenDone.Result : null;
-        return result is { IsComplete: true } && string.Equals(result.Text, text, StringComparison.Ordinal)
+        return result is { IsComplete: true } && result.Text == text
             ? new SpeechTagResult(result.Spans, Settings.Coach.PromptVersion)
             : null;
     }
 
     // Nested types
 
-    private sealed class LiveEntry(AuthorId authorId)
+    private sealed class LiveEntry(AuthorId authorId, UserId userId)
     {
         public AuthorId AuthorId { get; } = authorId;
+        public UserId UserId { get; } = userId;
         public ApiArray<CoachLiveMark> Marks { get; set; }
-        public TaskCompletionSource<LiveTagResult?> Done { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource<LiveTagResult?> Done { get; } = TaskCompletionSourceExt.New<LiveTagResult?>();
     }
 }

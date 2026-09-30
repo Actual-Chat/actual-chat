@@ -25,6 +25,8 @@ public interface ICoachAnalysisBackend : IComputeService, IBackendService
     Task OnAnalyzeEntry(CoachAnalysisBackend_AnalyzeEntry command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnAnalyzeConversation(CoachAnalysisBackend_AnalyzeConversation command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnDeleteUserData(CoachAnalysisBackend_DeleteUserData command, CancellationToken cancellationToken);
 
     [EventHandler]
     Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken);
@@ -71,4 +73,18 @@ public sealed partial record CoachAnalysisBackend_AnalyzeConversation(
         ? $"coach:{ChatId}:{EntryLid / LidBucket}"
         : $"coach:{ChatId}:{EntryLid / LidBucket}:{Salt}";
     TimeSpan? IHasTimeout.Timeout => TimeSpan.FromMinutes(5);
+}
+
+/// <summary>
+/// Removes every analysis row of the user's own speech, in every chat. No event follows: the caller
+/// clears the user-side log itself.
+/// </summary>
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record CoachAnalysisBackend_DeleteUserData(
+    [property: DataMember, Key(0)] UserId UserId
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public ShardKey ShardKey => UserId.ShardKey;
 }

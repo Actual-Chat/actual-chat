@@ -18,9 +18,14 @@ namespace ActualChat.Chat.Coach;
 public partial class CoachAnalysisBackend(IServiceProvider services)
     : DbServiceBase<ChatDbContext>(services), ICoachAnalysisBackend
 {
-    // A run is scanned in windows this many lids wide, at most MaxScanLids back from the anchor
+    // A run is scanned in windows this many lids wide, at most MaxScanLids each way from the anchor
     private const long ScanWindow = 50;
     private const long MaxScanLids = 5000;
+
+    private readonly Lock _taggerCallsLock = new();
+    private readonly Dictionary<UserId, int> _taggerCalls = new();
+    private readonly HashSet<UserId> _taggerCallsWarned = new();
+    private Moment _taggerCallsDay;
 
     private ChatSettings Settings { get; } = services.GetRequiredService<ChatSettings>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
@@ -118,10 +123,15 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
         }
 
         var language = await GetLanguage(id, author.UserId, cancellationToken).ConfigureAwait(false);
-        var analysis = Analyze(entry, author.UserId, language, existing);
         var settings = await kvas.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
-        if (settings.IsCoachingEnabled && settings.LevelOf(language?.Value) != CoachLanguageLevel.Off)
-            analysis = await ApplyTags(analysis, entry.Content, cancellationToken).ConfigureAwait(false);
+        if (settings.LevelOf(language?.Value) == CoachLanguageLevel.Off) {
+            if (existing is not null)
+                await RemoveEntry(id, context, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var analysis = Analyze(entry, author.UserId, language, existing);
+        analysis = await ApplyTags(analysis, entry.Content, cancellationToken).ConfigureAwait(false);
         if (isUnchanged && analysis.TagState == existing!.TagState)
             return;
 
@@ -190,7 +200,10 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             if (await CoachScopeKvas.IsInScope(kvas, chatId, cancellationToken).ConfigureAwait(false))
                 authors.Add((authorId, author.UserId));
         }
-        var tagged = await TagPendingEntries(run, authors, cancellationToken).ConfigureAwait(false);
+        var (tagged, analyzedAuthors) = await TagPendingEntries(run, authors, cancellationToken).ConfigureAwait(false);
+        // An author with no analysed entry in the run (all of them in a language switched off, or the data
+        // deleted since) gets no turn-taking row either
+        authors.RemoveAll(a => !analyzedAuthors.Contains(a.Id));
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
@@ -251,6 +264,65 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             new CoachRunTouch(conversationId, touchedAuthors.ToApiArray(), touchedEntries.ToApiArray()));
     }
 
+    // [CommandHandler]
+    public virtual async Task OnDeleteUserData(
+        CoachAnalysisBackend_DeleteUserData command, CancellationToken cancellationToken)
+    {
+        var userId = command.UserId;
+        var context = CommandContext.GetCurrent();
+        if (Invalidation.IsActive) {
+            var touch = context.Operation.Items.KeylessGet<CoachUserDataTouch?>();
+            if (touch is null)
+                return;
+
+            foreach (var entry in touch.Entries)
+                InvalidateEntry(entry.Id, entry.AuthorId);
+            foreach (var run in touch.Runs)
+                foreach (var authorId in run.AuthorIds)
+                    _ = GetConversation(run.Id, authorId, default);
+            return;
+        }
+
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _1 = dbContext.ConfigureAwait(false);
+        var authors = await dbContext.Authors
+            .Where(a => a.UserId == userId.Value)
+            .Select(a => new { a.ChatId, a.Id })
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var entries = new List<CoachTaggedEntry>();
+        var runs = new List<CoachRunTouch>();
+        foreach (var author in authors) {
+            var chatId = ChatId.Parse(author.ChatId);
+            var authorId = AuthorId.Parse(author.Id);
+            var lids = await dbContext.CoachEntries
+                .Where(x => x.ChatId == author.ChatId && x.AuthorId == author.Id)
+                .Select(x => x.LocalId)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            var startLids = await dbContext.CoachConversations
+                .Where(x => x.ChatId == author.ChatId && x.AuthorId == author.Id)
+                .Select(x => x.StartEntryLid)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (lids.Count == 0 && startLids.Count == 0)
+                continue;
+
+            await dbContext.CoachEntries
+                .Where(x => x.ChatId == author.ChatId && x.AuthorId == author.Id)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+            await dbContext.CoachConversations
+                .Where(x => x.ChatId == author.ChatId && x.AuthorId == author.Id)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+            entries.AddRange(lids.Select(lid => new CoachTaggedEntry(ChatEntryId.New(chatId, lid), authorId)));
+            runs.AddRange(startLids.Select(
+                lid => new CoachRunTouch(ConversationId.New(chatId, lid), ApiArray.New(authorId), default)));
+        }
+        context.Operation.Items.KeylessSet(new CoachUserDataTouch(entries.ToApiArray(), runs.ToApiArray()));
+    }
+
     // [EventHandler]
     public virtual async Task OnChatEntryChangedEvent(
         ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
@@ -276,6 +348,11 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             && oldEntry.ContentHash != entry.ContentHash
             && entry is { HasAudio: true, IsContentStreaming: false, EndsAt: not null };
         if (!isFinalized && !isEdited)
+            return;
+
+        // Nothing is queued, read or scanned for an author who has not turned coaching on for this chat
+        var kvas = ServerKvasBackend.ForUser(author.UserId);
+        if (!await CoachScopeKvas.IsInScope(kvas, entry.ChatId, cancellationToken).ConfigureAwait(false))
             return;
 
         await Queues.Enqueue(new CoachAnalysisBackend_AnalyzeEntry(entry.Id, false), cancellationToken)
@@ -383,7 +460,8 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
         if (analysis.TagState == CoachTagState.Tagged && analysis.PromptVersion >= Settings.Coach.PromptVersion)
             return analysis;
 
-        var result = await TagText(analysis.Id, text, analysis.Language, cancellationToken).ConfigureAwait(false);
+        var result = await TagText(analysis.Id, analysis.UserId, text, analysis.Language, cancellationToken)
+            .ConfigureAwait(false);
         if (result is null)
             return analysis;
 
@@ -404,11 +482,11 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
         };
     }
 
-    // A long text goes to the tagger in chunks, in parallel: the answer is as late as the slowest chunk,
-    // not as the whole text. One failed chunk fails the lot, so a row is never half tagged.
     private async Task<SpeechTagResult?> TagText(
-        ChatEntryId entryId, string text, Language? language, CancellationToken cancellationToken)
+        ChatEntryId entryId, UserId userId, string text, Language? language, CancellationToken cancellationToken)
     {
+        // A long text goes to the tagger in chunks, in parallel: the answer is as late as the slowest chunk,
+        // not as the whole text. One failed chunk fails the lot, so a row is never half tagged.
         if (await TryGetLiveResult(entryId, text, cancellationToken).ConfigureAwait(false) is { } live)
             return live;
 
@@ -422,6 +500,8 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
                 coach.TagChunkContextWords,
                 coach.MaxTagChunksPerEntry)
             : [];
+        if (!TryTakeTaggerCalls(userId, Math.Max(1, chunks.Count)))
+            return null;
         if (chunks.Count <= 1)
             return await Tagger.Tag(new SpeechTagRequest(text, language), cancellationToken).ConfigureAwait(false);
 
@@ -445,6 +525,27 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             .OrderBy(s => s.Start)
             .ToApiArray();
         return new SpeechTagResult(spans, results.Max(r => r!.PromptVersion));
+    }
+
+    private bool TryTakeTaggerCalls(UserId userId, int count)
+    {
+        // The daily ceiling of tagger calls for one user; the counts live in memory and start over each UTC day
+        var day = UsageDay.DayOf(Clocks.SystemClock.Now);
+        lock (_taggerCallsLock) {
+            if (_taggerCallsDay != day) {
+                _taggerCallsDay = day;
+                _taggerCalls.Clear();
+                _taggerCallsWarned.Clear();
+            }
+            var used = _taggerCalls.GetValueOrDefault(userId);
+            if (used + count > Settings.Coach.MaxTaggerCallsPerUserPerDay) {
+                if (_taggerCallsWarned.Add(userId))
+                    Log.LogWarning("Tagger call ceiling reached for {UserId}", userId);
+                return false;
+            }
+            _taggerCalls[userId] = used + count;
+            return true;
+        }
     }
 
     // The tagger's own spans win where they overlap the word list
@@ -497,12 +598,12 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
         }
     }
 
-    // Reads the rows without locks and tags them outside any transaction; the caller re-checks each
-    // row under a lock before storing. A row whose text hash is stale (the entry was edited and the
-    // entry command has not run yet) is re-analysed here rather than waited for.
-    private async Task<List<CoachEntryAnalysis>> TagPendingEntries(
+    private async Task<(List<CoachEntryAnalysis> Tagged, HashSet<AuthorId> AnalyzedAuthors)> TagPendingEntries(
         List<ChatEntry> run, List<(AuthorId Id, UserId UserId)> authors, CancellationToken cancellationToken)
     {
+        // Reads the rows without locks and tags them outside any transaction; the caller re-checks each
+        // row under a lock before storing. A row whose text hash is stale (the entry was edited and the
+        // entry command has not run yet) is re-analysed here rather than waited for.
         var userIds = authors.ToDictionary(a => a.Id, a => a.UserId);
         var own = run
             .Where(e => IsAnalyzable(e) && userIds.ContainsKey(e.AuthorId))
@@ -519,10 +620,13 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
                 .ConfigureAwait(false);
         }
 
-        var promptVersion = Settings.Coach.PromptVersion;
+        var coach = Settings.Coach;
+        var analyzedAuthors = rows.Select(r => own[r.Id].AuthorId).ToHashSet();
         var tagged = new List<CoachEntryAnalysis>();
+        var attempts = 0;
+        var failuresInARow = 0;
         foreach (var dbEntry in rows) {
-            if (tagged.Count >= Settings.Coach.MaxTaggerCallsPerRun)
+            if (attempts >= coach.MaxTaggerCallsPerRun || failuresInARow >= coach.MaxTaggerFailuresPerRun)
                 break;
 
             var entry = own[dbEntry.Id];
@@ -531,7 +635,7 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
                 var language = await GetLanguage(entry.Id, analysis.UserId, cancellationToken).ConfigureAwait(false);
                 analysis = Analyze(entry, analysis.UserId, language, analysis);
             }
-            if (analysis.TagState == CoachTagState.Tagged && analysis.PromptVersion >= promptVersion)
+            if (analysis.TagState == CoachTagState.Tagged && analysis.PromptVersion >= coach.PromptVersion)
                 continue;
 
             var settings = await ServerKvasBackend.ForUser(analysis.UserId)
@@ -541,11 +645,17 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             if (settings.LevelOf(analysis.Language?.Value) == CoachLanguageLevel.Off)
                 continue;
 
+            attempts++;
             analysis = await ApplyTags(analysis, entry.Content, cancellationToken).ConfigureAwait(false);
-            if (analysis.TagState == CoachTagState.Tagged)
-                tagged.Add(analysis);
+            if (analysis.TagState != CoachTagState.Tagged) {
+                failuresInARow++;
+                continue;
+            }
+
+            failuresInARow = 0;
+            tagged.Add(analysis);
         }
-        return tagged;
+        return (tagged, analyzedAuthors);
     }
 
     // The coaching "conversation" is a run of entries with no quiet gap of ConversationMaturity
@@ -588,8 +698,9 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
         }
 
         var windowEnd = entryLid + 1;
-        while (windowEnd < lidRange.End) {
-            var to = Math.Min(lidRange.End, windowEnd + ScanWindow);
+        var scanCeiling = Math.Min(lidRange.End, entryLid + 1 + MaxScanLids);
+        while (windowEnd < scanCeiling) {
+            var to = Math.Min(scanCeiling, windowEnd + ScanWindow);
             var window = await ReadWindow(chatId, windowEnd, to, cancellationToken).ConfigureAwait(false);
             var isClosed = false;
             foreach (var candidate in window) {

@@ -281,6 +281,10 @@ public class Coach(IServiceProvider services) : ICoach
 
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeActive);
+        // The chat side goes first: its rows are what would refill the log on the next re-analysis
+        await Commander
+            .Call(new CoachAnalysisBackend_DeleteUserData(account.Id), true, cancellationToken)
+            .ConfigureAwait(false);
         await Commander.Call(new CoachBackend_DeleteUserData(account.Id), true, cancellationToken).ConfigureAwait(false);
         var kvas = ServerKvasBackend.ForUser(account.Id, isOutermost: true);
         await kvas.UserCoachTip().Set(new UserCoachTip(), cancellationToken).ConfigureAwait(false);
