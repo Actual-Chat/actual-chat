@@ -1,0 +1,41 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Chat.Coach
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, CoachChatToggleEntry.Model>
+@{
+    var m = State.Value;
+}
+
+@if (m.IsVisible) {
+    <MenuEntry Icon="icon-ai-stars text-2xl" Click="@OnClick">
+        <TextContent>
+            <div class="coach-menu-entry">
+                <span>@L.Coach_CoachMeHere</span>
+                <Toggle IsChecked="@m.IsOn"/>
+            </div>
+        </TextContent>
+    </MenuEntry>
+}
+
+@code {
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var isOn = await Hub.CoachUI.IsChatCoached(ChatId, cancellationToken).ConfigureAwait(false);
+        return isOn is { } on ? new Model(true, on) : Model.None;
+    }
+
+    private Task OnClick()
+        => UICommander.Run(new Coach_SetChatCoaching {
+            Session = Session,
+            ChatId = ChatId,
+            IsEnabled = !State.Value.IsOn,
+        });
+
+    public sealed record Model(bool IsVisible, bool IsOn) {
+        public static readonly Model None = new(false, false);
+    }
+}

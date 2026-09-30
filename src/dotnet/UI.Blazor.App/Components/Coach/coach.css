@@ -1,0 +1,210 @@
+.coach-panel {
+    @apply relative flex-y h-full;
+    @apply bg-03;
+    @apply overflow-hidden;
+}
+.coach-header .c-cover {
+    @apply relative flex-none h-26;
+    background: linear-gradient(
+        120deg,
+        var(--primary) 0%,
+        var(--primary-hover, var(--primary)) 60%,
+        var(--background-03) 100%
+    );
+    padding-top: var(--safe-area-top);
+}
+.coach-header .c-cover .right-panel-close-btn { @apply absolute top-2 right-2; }
+.coach-header .c-head { @apply relative px-4; }
+.coach-header .c-head > .c-avatar { @apply absolute left-4 -top-8 z-10; }
+.coach-header .c-buttons { @apply flex-x justify-end gap-x-2 h-12 pt-2; }
+.coach-header .c-settings-btn { @apply relative -top-7 bg-round-right-panel text-03; }
+.coach-header .c-settings-btn.is-active { @apply text-primary; }
+.coach-header .c-bottom { @apply flex-x items-center justify-between gap-x-2 pt-2; }
+.coach-header .c-title { @apply text-title-500 text-02 whitespace-nowrap; }
+.coach-panel > .c-body { @apply flex-none flex-y gap-y-3 px-4 pt-3; }
+.coach-language-chips { @apply flex-x items-center justify-between gap-x-2; }
+.coach-language-chips .c-chips { @apply flex-x flex-wrap gap-2; }
+.coach-language-chips .chip {
+    @apply px-3 py-1 rounded-full bg-01 text-sm text-02;
+}
+.coach-language-chips .chip.on { @apply bg-primary text-white; }
+.coach-language-chips .c-level { @apply opacity-80; }
+.coach-language-chips .c-words { @apply text-caption text-03; }
+.coach-tabs { @apply mt-3; }
+.coach-empty { @apply flex-y gap-y-4 px-4 pt-4 pb-4; }
+.coach-empty .c-promise { @apply flex-y items-center text-center gap-y-3 p-4; }
+.coach-empty .c-mascot { width: 80px; height: 64px; @apply object-contain; }
+.coach-empty .c-title { @apply text-title-500 text-02; }
+.coach-empty .c-privacy,
+.coach-empty .c-first { @apply text-caption text-03; }
+.coach-window-tabs { @apply -mx-4; }
+.coach-metrics { @apply flex-y; }
+.coach-metric-row { @apply flex-y border-b border-separator; }
+.coach-metric-row .c-head {
+    @apply flex-x items-center gap-x-2;
+    @apply min-h-12 py-2;
+}
+.coach-metric-row.expandable .c-head { @apply cursor-pointer; }
+.coach-metric-row .c-chevron { @apply w-5 text-03; }
+.coach-metric-row .c-title { @apply flex-1 text-body-500 text-02; }
+.coach-metric-row .c-value { @apply text-03 font-normal; }
+.coach-metric-row .c-aside { @apply text-sm; }
+.coach-metric-row .c-aside.band-good { @apply text-success; }
+.coach-metric-row .c-aside.band-medium { @apply text-warning; }
+.coach-metric-row .c-aside.band-high,
+.coach-metric-row .c-aside.band-low { @apply text-danger; }
+.coach-metric-row .c-aside.band-none { @apply text-03; }
+.coach-metric-row .c-chips { @apply flex-x flex-wrap gap-2 pb-3 pl-7; }
+.coach-chip {
+    @apply flex-x items-center gap-x-1;
+    @apply px-3 py-1 rounded-full bg-01 text-sm;
+}
+.coach-chip .c-count { @apply text-03; }
+.coach-metric-row .coach-day-chart { @apply mb-3 ml-7 p-3 rounded-lg bg-01; }
+.coach-occurrences { @apply flex-y gap-y-2; }
+.coach-occurrences .c-head { @apply flex-x items-center gap-x-2; }
+.coach-occurrences .c-title { @apply text-body-500 text-02; }
+.coach-occurrences .c-no-data { @apply text-caption text-03; }
+.coach-occurrence {
+    @apply flex-x items-center justify-between;
+    @apply w-full p-3 rounded-lg bg-01 text-left;
+}
+.coach-occurrence .c-time { @apply text-caption text-03; }
+/* The snackbar from the mock: a dark card in both themes, 12 px padding, the word in pink, a ringed close */
+.banner.coach-tip-bar {
+    @apply relative w-auto h-auto mx-2 mb-1 p-3;
+    @apply rounded-xl border-0;
+    background: linear-gradient(180deg, #4a4a57 0%, #43434e 100%);
+    color: #e8e8e9;
+}
+.banner.coach-tip-bar > .c-content { @apply justify-start items-start p-0; }
+.banner.coach-tip-bar .banner-lead { @apply items-start gap-0; }
+.banner.coach-tip-bar .banner-lead > :not(.banner-body) { @apply hidden; }
+.banner.coach-tip-bar .banner-body { @apply flex-y gap-y-1 ml-0; }
+.banner.coach-tip-bar .c-tip-title {
+    @apply flex-x items-center gap-x-2 pr-8;
+    @apply text-base font-medium;
+    color: #f4f4f5;
+}
+.banner.coach-tip-bar .c-tip-mascot { @apply flex-none; width: 30px; height: 24px; }
+.banner.coach-tip-bar .c-tip-body { @apply text-sm leading-tight; }
+.banner.coach-tip-bar .c-tip-value { @apply font-semibold mr-2; color: #d25e8c; }
+.banner.coach-tip-bar .c-word { @apply font-semibold; color: #d25e8c; }
+.banner.coach-tip-bar .c-synonyms { @apply flex-x flex-wrap gap-1 mt-1; }
+.banner.coach-tip-bar .coach-chip { @apply bg-01 text-02; }
+/* The timer button's ring is drawn at 2rem for btn-sm, so the button keeps that size */
+.banner.coach-tip-bar .c-tip-close {
+    @apply absolute top-2 right-2;
+    @apply w-8 h-8 min-w-0 min-h-0 p-0;
+    color: #e9e9ec;
+}
+.banner.coach-tip-bar .c-tip-close i { @apply text-base; color: #e9e9ec; }
+.coach-mark-menu {
+    @apply flex-y gap-y-1;
+    @apply max-w-80 p-3;
+}
+.coach-mark-menu .c-title { @apply text-body-500 text-02; }
+.coach-mark-menu .c-body { @apply text-sm text-03; }
+.coach-mark-menu .c-synonyms { @apply flex-x flex-wrap gap-1 mt-1; }
+.coach-recent { @apply flex-y gap-y-2 px-4 pt-3 pb-4; }
+.coach-conversation { @apply flex-y gap-y-2 px-3 py-2; }
+.coach-conversation .c-head { @apply flex-x items-baseline justify-between gap-x-2; }
+.coach-conversation .c-title { @apply text-body-500; }
+.coach-conversation .c-when { @apply text-caption text-03 whitespace-nowrap; }
+.coach-conversation .c-finding { @apply flex-x items-start gap-x-2 text-sm text-01; }
+.coach-conversation .c-dot { @apply flex-none w-2 h-2 mt-1.5 rounded-full bg-03; }
+.coach-conversation .c-dot.band-high,
+.coach-conversation .c-dot.band-low { @apply bg-danger; }
+.coach-conversation .c-dot.band-medium { @apply bg-warning; }
+.coach-conversation .c-dot.band-good { @apply bg-success; }
+.coach-conversation .c-links { @apply flex-x gap-x-4 text-sm; }
+.coach-conversation.excluded { @apply opacity-70; }
+.coach-conversation .c-excluded { @apply text-sm text-03; }
+.coach-conversation .c-links a { @apply text-primary cursor-pointer; }
+.coach-conversation .c-links a.c-exclude { @apply flex-x items-center gap-x-1 ml-auto leading-none text-03; }
+.coach-conversation .c-links a.c-exclude i { @apply flex-none text-sm leading-none; }
+.coach-progress { @apply flex-y gap-y-3 px-4 pt-3 pb-4; }
+.coach-better .c-mascot { width: 48px; height: 38px; @apply object-contain; }
+.coach-week-scores { @apply p-3; }
+.coach-days { @apply flex-x gap-x-1.5 p-3; }
+.coach-days .c-day { @apply flex-1 flex-y items-center gap-y-1 text-micro-500 text-03; }
+.coach-days .c-day > div { @apply w-full h-6 rounded-md bg-04; }
+.coach-days .c-day.on > div { @apply bg-primary; }
+.coach-progress .c-days-caption { @apply text-caption text-03 -mt-2; }
+.coach-progress .c-deltas-hint { @apply text-caption text-03 -mt-2; }
+.coach-progress .c-scores-caption { @apply text-caption text-03 -mt-2; }
+.coach-week-deltas .c-badge { @apply font-medium min-w-11 text-right; }
+.coach-milestones .c-check {
+    @apply flex-x items-center justify-center w-5 h-5 rounded-full bg-success text-xs text-white;
+}
+.coach-milestones .c-check.off { @apply bg-transparent border border-separator; }
+.coach-skills { @apply flex-y gap-y-3 px-4 pt-3 pb-4; }
+.coach-skills .c-periods { @apply flex-x items-center justify-between gap-x-2; }
+.coach-skills .c-periods .c-chips { @apply flex-x gap-x-2; }
+.coach-skills .chip { @apply px-3 py-1 rounded-full bg-01 text-sm text-02; }
+.coach-skills .chip.on { @apply bg-primary text-white; }
+.coach-skills .c-words,
+.coach-skills .c-all-languages,
+.coach-skills .c-footer { @apply text-caption text-03; }
+.coach-skills .c-all-languages { @apply -mt-2; }
+.coach-skill { @apply flex-y gap-y-1 px-3 py-2; }
+.coach-skill + .coach-skill { @apply border-t border-separator; }
+.coach-skill .c-row { @apply flex-x items-baseline justify-between gap-x-3; }
+.coach-skill .c-name { @apply text-body-500 text-01; }
+.coach-skill .c-value { @apply text-sm font-medium text-03 text-right; }
+.coach-skill .c-value.band-good { @apply text-success; }
+.coach-skill .c-value.band-medium { @apply text-warning; }
+.coach-skill .c-value.band-high,
+.coach-skill .c-value.band-low { @apply text-danger; }
+.coach-skill.plain .c-name { @apply text-base font-normal; }
+.coach-skill .c-caption { @apply text-caption text-03; }
+.coach-skill .c-chips { @apply flex-x flex-wrap gap-2 pt-1; }
+.coach-skill .c-focus-link { @apply text-sm text-primary cursor-pointer; }
+.coach-score-sheet .c-points { @apply text-sm text-03 whitespace-nowrap; }
+.coach-settings-page { @apply flex-y gap-y-3 px-4 pt-2 pb-4; }
+.coach-settings-page .c-title-row { @apply flex-x items-center gap-x-2; }
+.coach-settings-page .c-title { @apply text-title-500; }
+.coach-settings-page .c-hint { @apply text-caption text-03; }
+.coach-settings-page .c-topic-row { @apply flex-x items-center justify-between; }
+.coach-settings-page .c-languages-manage,
+.coach-settings-page .c-switch-on { @apply text-sm font-medium text-primary cursor-pointer; }
+.coach-settings-page .c-topic { @apply text-caption text-03 px-2 pt-1; }
+.coach-settings-page .c-iso { @apply text-sm font-medium text-01; }
+.coach-settings-page .c-data .c-hint { @apply px-2 pb-2; }
+.coach-menu-entry { @apply flex-x items-center justify-between gap-x-4 w-full; }
+.coach-panel .tab-panel { @apply flex-none; }
+.coach-language-chips { @apply flex-y items-start gap-y-1; }
+.coach-language-chips .chip,
+.coach-skills .chip { @apply whitespace-nowrap flex-none; }
+.coach-language-chips .c-chips,
+.coach-skills .c-periods .c-chips { @apply flex-wrap; }
+.coach-score-sheet .c-empty { @apply py-2 text-center; }
+.coach-skills .c-topic-row { @apply flex-x items-center justify-between gap-x-2; }
+.coach-skills .c-periods { @apply justify-start; }
+.coach-talk-time { @apply p-3 items-center; }
+.coach-talk-time .donut-chart .c-ring { @apply w-24 h-24; }
+.coach-talk-time .donut-chart .c-center { @apply text-title-500 text-01; }
+.c-score-ring { @apply relative flex-none flex items-center justify-center w-10 h-10; }
+.c-score-ring > svg { @apply absolute inset-0 w-full h-full; transform: rotate(-90deg); }
+.c-score-ring .c-track { fill: none; stroke: var(--background-02); stroke-width: 4; }
+.c-score-ring .c-arc { fill: none; stroke: var(--primary); stroke-width: 4; stroke-linecap: round; }
+.c-score-ring i { @apply text-xl; }
+/* The header, score card and tab strip stay put, like the chat panel's; only the tab content scrolls */
+.coach-panel > .coach-recent,
+.coach-panel > .coach-progress,
+.coach-panel > .coach-skills,
+.coach-panel > .coach-empty,
+.coach-panel > .coach-settings-page {
+    @apply flex-1 min-h-0 overflow-y-auto custom-scrollbar;
+}
+.coach-panel > .coach-recent > *,
+.coach-panel > .coach-progress > *,
+.coach-panel > .coach-skills > *,
+.coach-panel > .coach-empty > *,
+.coach-panel > .coach-settings-page > * { @apply flex-none; }
+.coach-settings-page .tile > .form-block { @apply p-0; }
+.coach-panel .c-coach-toggle { @apply flex-none; }
+.c-score-ring { @apply w-7 h-7; }
+.c-score-ring i { @apply text-sm; }
+.coach-switched-off-sheet .c-switch-on { @apply text-sm font-medium text-primary cursor-pointer; }
+.coach-switched-off-sheet .c-hint { @apply text-caption text-03 pt-2; }

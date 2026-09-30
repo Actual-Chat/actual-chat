@@ -1,0 +1,68 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@implements IModalView<CoachScoreSheet.Model>
+@using ActualChat.UI.Blazor.App.Services
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, ApiArray<CoachScorePart>>
+@{
+    var labels = Labels;
+}
+
+<DialogFrame Class="coach-score-sheet modal-sm" Title="@L.Coach_ScoreSheetTitle">
+    <Body>
+    <FormBlock>
+        @if (State.Value.Count == 0) {
+            var missing = Math.Max(1, MinScoreWords - ModalModel.Words);
+            <div class="c-empty text-03">@L.Coach_ScoreAfterWords(missing, missing)</div>
+        } else {
+        <Tile>
+            @foreach (var part in State.Value) {
+                <TileItem @key="@part.Kind" IsHoverable="false" Role="">
+                    <Content>@labels.MetricTitle(part.Kind)</Content>
+                    <Caption><span class="@BandClass(part.Band)">@labels.BandWord(part.Kind, part.Band)</span></Caption>
+                    <Right>
+                        <span class="c-points @BandClass(part.Band)">
+                            @L.Coach_ScorePoints_Format(Math.Round(part.Points), Math.Round(part.MaxPoints))
+                        </span>
+                    </Right>
+                </TileItem>
+            }
+        </Tile>
+        }
+    </FormBlock>
+    </Body>
+    <Buttons>
+        <Button Class="btn-modal" Click="@(_ => Modal.Close())">@L.Common_Close</Button>
+        <Button Class="btn-modal btn-primary" Click="@(_ => OnOpenSkills())">@L.Coach_TabSkills</Button>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    // The server's CoachScoringSettings.MinScoreWords, as the score card copy also assumes
+    private const int MinScoreWords = 200;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private static string BandClass(CoachBand band)
+        => band switch {
+            CoachBand.Good => "text-success",
+            CoachBand.Medium => "text-warning",
+            CoachBand.High or CoachBand.Low => "text-danger",
+            _ => "text-03",
+        };
+
+    private CoachLabels Labels => field ??= new CoachLabels(L);
+
+    protected override ComputedState<ApiArray<CoachScorePart>>.Options GetStateOptions()
+        => new() { InitialValue = ApiArray<CoachScorePart>.Empty, Category = GetStateCategory(GetType()) };
+
+    protected override Task<ApiArray<CoachScorePart>> ComputeState(CancellationToken cancellationToken)
+        => Hub.Coach.ExplainOwnScore(Session, ModalModel.Language, cancellationToken);
+
+    private void OnOpenSkills() {
+        Hub.CoachUI.SelectTab(CoachTab.Skills);
+        Modal.Close();
+    }
+
+    public sealed record Model(string? Language, int Words);
+}

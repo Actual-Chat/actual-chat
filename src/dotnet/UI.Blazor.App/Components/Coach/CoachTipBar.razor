@@ -1,0 +1,135 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, UserCoachTip?>
+@{
+    var tip = State.Value;
+}
+
+@if (tip is not null) {
+    <Banner
+        Class="coach-tip-bar"
+        Severity="BannerSeverity.Info">
+        <Body>
+            <TimerCloseButton
+                @key="@tip.ShownAt"
+                Class="c-tip-close btn-sm"
+                CircleClass="btn-sm"
+                TimerButtonColor="#e9e9ec"
+                Delay="@AutoDismissDelay"
+                Click="@(_ => OnDismiss())"/>
+            <div class="c-tip-title">
+                <img class="c-tip-mascot" src="/dist/images/kitties/coach-cat.png" alt=""
+                     draggable="false"><span>@Title(tip)</span>
+            </div>
+            <div class="c-tip-body">
+                @switch (tip.Kind) {
+                    case CoachTipKind.SlowDown:
+                    case CoachTipKind.SpeedUp:
+                        <span class="c-tip-value">@L.Coach_TipWpm_Format(tip.Wpm)</span>
+                        <span class="c-tip-range">
+                            @L.Coach_TipRecommended_Format(tip.PaceSlowWpm, tip.PaceFastWpm)
+                        </span>
+                        <div>@(tip.Kind == CoachTipKind.SlowDown ? L.Coach_TipTooFast : L.Coach_TipTooSlow)</div>
+                        break;
+                    case CoachTipKind.Filler:
+                        <div>@Highlight(L.Coach_TipFillerBody(tip.Count, tip.Word, tip.Count), tip.Word) @(
+                            L.Coach_TipInWindow(tip.WindowMinutes, tip.WindowMinutes)).</div>
+                        break;
+                    case CoachTipKind.Clean:
+                        <div>@L.Coach_TipCleanBody_Format(tip.WindowMinutes)</div>
+                        break;
+                    default:
+                        <div>@Highlight(L.Coach_TipWeakWordBody_Format(tip.Word), tip.Word)</div>
+                        @if (tip.Synonyms.Count > 0) {
+                            <div class="c-synonyms">
+                                @foreach (var synonym in tip.Synonyms) {
+                                    <span class="coach-chip">@synonym</span>
+                                }
+                            </div>
+                        }
+                        break;
+                }
+            </div>
+        </Body>
+    </Banner>
+}
+
+@code {
+    private readonly CancellationTokenSource _disposeCts = new ();
+    private Moment _autoDismissScheduledFor;
+
+    private ICoach Coach => Hub.Coach;
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    // Seconds the card stays before it dismisses itself, the way a toast does but longer
+    [Parameter] public double AutoDismissDelay { get; set; } = 30;
+
+    protected override ComputedState<UserCoachTip?>.Options GetStateOptions()
+        => new() { UpdateDelayer = FixedDelayer.NextTick, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<UserCoachTip?> ComputeState(CancellationToken cancellationToken) {
+        var chatId = ChatId;
+        if (!await Hub.CoachUI.IsEnabled(cancellationToken).ConfigureAwait(false))
+            return null;
+
+        var settings = await UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
+        if (settings is not { IsCoachingEnabled: true, AreLiveTipsEnabled: true })
+            return null;
+
+        var tip = await Coach.GetPendingTip(Session, cancellationToken).ConfigureAwait(false);
+        return tip is { IsPending: true } && tip.ChatId == chatId ? tip : null;
+    }
+
+    private string Title(UserCoachTip tip)
+        => tip.Kind switch {
+            CoachTipKind.SlowDown => L.Coach_TipSlowDownTitle,
+            CoachTipKind.SpeedUp => L.Coach_TipSpeedUpTitle,
+            CoachTipKind.Filler => L.Coach_TipFillerTitle,
+            CoachTipKind.Clean => L.Coach_TipCleanTitle,
+            _ => L.Coach_TipWeakWordTitle,
+        };
+
+    // The sentence comes from the catalog with the word already inside it, so the word is found
+    // back in the text rather than assembled from fragments: every language keeps its own order
+    private static RenderFragment Highlight(string text, string word)
+        => builder => {
+            var at = word.IsNullOrEmpty() ? -1 : text.IndexOf(word);
+            if (at < 0) {
+                builder.AddContent(0, text);
+                return;
+            }
+
+            builder.AddContent(0, text[..at]);
+            builder.OpenElement(1, "span");
+            builder.AddAttribute(2, "class", "c-word");
+            builder.AddContent(3, word);
+            builder.CloseElement();
+            builder.AddContent(4, text[(at + word.Length)..]);
+        };
+
+    protected override void OnAfterRender(bool firstRender) {
+        var tip = State.Value;
+        if (tip is null || tip.ShownAt == _autoDismissScheduledFor)
+            return;
+
+        _autoDismissScheduledFor = tip.ShownAt;
+        _ = AutoDismiss(tip.ShownAt, TimeSpan.FromSeconds(AutoDismissDelay), _disposeCts.Token);
+    }
+
+    public override async ValueTask DisposeAsync() {
+        _disposeCts.CancelAndDisposeSilently();
+        await base.DisposeAsync();
+    }
+
+    // The dismiss goes through the server, so every open client clears the same tip
+    private async Task AutoDismiss(Moment shownAt, TimeSpan delay, CancellationToken cancellationToken) {
+        await Task.Delay(delay, cancellationToken).SilentAwait(false);
+        if (cancellationToken.IsCancellationRequested || State.Value?.ShownAt != shownAt)
+            return;
+
+        await OnDismiss().ConfigureAwait(false);
+    }
+
+    private Task OnDismiss()
+        => UICommander.Run(new Coach_DismissTip { Session = Session });
+}

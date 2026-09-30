@@ -22,6 +22,9 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `ShardKey` — Unsigned 32-bit routing key with hexadecimal prefix and slice formatting
 - `ISymbolIdentifier<T>` / `SymbolIdentifier` — Symbol-based identifier contract and parsing helpers
 
+### Text
+- `SpanLocator` — n-th whole-word occurrence of a word or phrase as a char range; validates LLM-returned spans
+
 ### Async & Concurrency
 - `Debouncer<T>` — delays action execution until interval passes without new items
 - `Throttler<T>` — limits action execution to at most once per interval
@@ -133,6 +136,8 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `Author` (record) — author in a chat (user link, avatar, rules)
 - `ChatEntry` — base for chat entries (TextEntry, SystemEntry)
 - `TextEntry` (record) — text message with markup, attachments, reactions
+- `CoachEntryAnalysis` / `CoachConversationAnalysis` (records) — speech-coach analysis of one voice entry (metrics + `SpeechSpan`s) and one author's turn-taking over a quiet run of entries; `CoachEntryMarks` is the per-entry span list served to the client
+- `SpeechTextStats` / `SpeechTimingStats` / `SpeechMetrics` — word, sentence, repetition, pause and pace numbers over `PlayableTextMarkup.Words`
 - `Place` (record) — community/place information
 - `Role` (record) — role definition with permissions; system roles are `Anyone`,
   `Guest`/`User`/`AnonymousUser` (automatic membership), and `Moderator`/`Owner`
@@ -192,10 +197,12 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `IPlaces` — place (community) management; `ListOwnerIds`/`ListModeratorIds` forward to the place root chat
 - `IRoles` — role management; `ListOwnerIds`/`ListModeratorIds` mask anonymous members from non-owner callers (use `IRolesBackend` when that masking would be a hole)
 - `IReactions` — message reactions
+- `IChatCoach` — the caller's own speech-coach marks in a chat (`GetOwnMarks`), plus `IsEnabled`
 - `IImageSuggestions` — AI picture suggestions for a chat (generate, accept, dismiss)
 - `IMentions` — mention queries
 
 ### User Services
+- `ICoach` — the caller's speech-coach score and skills per window and language, conversations, focus, week deltas, milestones, pending live tip, jump-to-audio occurrences; commands for focus, language level, per-chat coaching, data deletion; `IsEnabled` is the per-user rollout verdict
 - `IAccounts` — account management
 - `IPasskeyAuth` — passkey (WebAuthn) registration and sign-in
 - `IAvatars` — avatar management
@@ -222,8 +229,8 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 ## Backend Contracts (`*.Contracts`)
 
 Backend interfaces follow the pattern `I{Service}Backend` for internal service communication:
-- `IChatsBackend`, `IAuthorsBackend`, `IPlacesBackend`, `IChatThreadsBackend`, `IChatEntryLanguagesBackend`, `IWebHooksBackend` — chat backends
-- `IAccountsBackend`, `IAvatarsBackend`, `ISessionTemporalsBackend`, `UserScopedKvasBackend`, `IPasskeysBackend` — user backends
+- `IChatsBackend`, `IAuthorsBackend`, `IPlacesBackend`, `IChatThreadsBackend`, `IChatEntryLanguagesBackend`, `IWebHooksBackend`, `ICoachAnalysisBackend` — chat backends
+- `IAccountsBackend`, `IAvatarsBackend`, `ISessionTemporalsBackend`, `UserScopedKvasBackend`, `IPasskeysBackend`, `ICoachBackend` — user backends; the coach backend keeps a per-user log of the chat-side analyses keyed by source id and rebuilds day rows from it
 - `IContactsBackend` — contact backend
 - `IMediaBackend`, `IMediaProgressBackend`, `IUploadsBackend` — media backends
 - `IImageSuggestionsBackend` — one pending generated image per opaque key, plus its dismissal
@@ -315,7 +322,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `ModalUI` — modal dialog management
 - `AttentionUI` — runs the per-account flow for unsolicited UI: wait out any `AttentionHold` (the user came via a notification / link / invite / share / sign-in redirect), then onboarding, then tips and the review prompt; `Suppress` is the debug/test switch
 - `ToastUI` — toast notification management
-- `PanelsUI` — left/middle/right panel management
+- `PanelsUI` — left/middle/right panel management; `RightPanel.Mode` (`RightPanelMode` Chat | Coach) persists which content the right panel shows
 - `AccountUI` — account state and authentication flow
 - `PasskeyUI` — passkey list/register/rename/delete/sign-in over `IPasskeyAuth`
 - `IPasskeyClient` — platform passkey (WebAuthn) ceremonies, one implementation per platform (web/Android/Apple)
@@ -335,12 +342,14 @@ Resolving *which* language a given user reads is `UserLocalizers`
 ### Caching
 - `WebRemoteComputedCache` — IndexedDB-based remote computed cache
 
+- `DonutChart` / `BarChart` / `ChartItem` — inline SVG donut and div bar chart; colors come from the `Class` the caller passes (`currentColor`)
 
 ## Blazor App (`ActualChat.UI.Blazor.App`)
 
 ### Core Services
 - `AppUIHub` — extended UI hub with chat-specific services
 - `ChatUI` — chat selection, read positions, chat state
+- `CoachUI` — speech-coach client verdicts (flag + Coaching toggle), per-tile marks cache behind inline marking, jump-to-audio from an occurrence
 - `ChatAudioUI` — audio listening/recording state
 - `ChatListUI` — chat list filtering and sorting
 - `SearchUI` — unified search across chats
@@ -383,6 +392,12 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `IConversationSummarizer`, `ConversationSummarizer` — AI conversation summarization
 - `IChatDigestSummarizer` — chat digest summarization
 - `IThreadInsightExtractor` — thread insight extraction
+- `ISpeechTagger`, `SpeechTagger` — LLM tagging of fillers, weak words and profanity in a transcript, JSON-schema output re-located in the text by `SpanLocator`
+- `SpeechChunker` — cuts a transcript into sentence-aligned chunks with the previous sentence as context, so the tagger can run on them in parallel
+- `SpeechLexicon` — per-language word patterns (SpeechLexicon.json, shared with the client) that mark filled pauses without the LLM
+- `SpeechLexiconScanner` — marks a growing transcript with `SpeechLexicon`, rescanning only the text that changed since the last call
+- `SpeechLiveTagger` — tags a transcript sentence group by sentence group while it is still being spoken; `CoachLiveMark`/`CoachLiveMarks` carry its marks to the client by word and occurrence
+- `ICoachTranscriptSource` — the live text of a voice entry, a seam over the audio pipeline; `ChatEntryStreamingStartedEvent` announces an entry that has begun to stream
 - `IChatImageDescriber` — describes a chat as the subject of a picture
 - `IEmbeddingsCalculator` — text embeddings
 - `IEntryGroupExtractor`, `EntryGroupBuilder` — group entries for ML
@@ -404,6 +419,7 @@ Resolving *which* language a given user reads is `UserLocalizers`
 ### Flows (`ActualChat.Flows.Service`)
 - `FlowBackend`, `FlowsServiceModule` — flow execution backend
 
+- `CoachPanel` (shell) with `CoachRecentTab`, `CoachProgressTab`, `CoachSkillsTab`, `CoachSettingsPage`, `CoachScoreSheet`, `CoachChatToggleEntry`, `CoachOccurrences`, `CoachTipBar`, `CoachLabels` — the speech-coach surfaces: right-panel Coach mode with Recent / Progress / Skills, settings behind the gear, the "Coach me here" menu entry, chip occurrences, the tip bar above the composer; `CoachLabels` maps metric kinds, bands and windows to catalog text
 
 ## Email Templates (`ActualChat.Mjml.Blazor`, `ActualChat.Users.Templates`)
 

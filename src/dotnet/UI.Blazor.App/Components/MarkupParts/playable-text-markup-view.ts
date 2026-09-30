@@ -72,6 +72,10 @@ export class PlayableTextMarkupView {
         if (this.endsTextSelection())
             return;
 
+        // A coach-marked word carries a menu: the tap opens its hint, not the replay
+        if ((e.target as HTMLElement).closest('[data-menu]'))
+            return;
+
         this.resetHover();
         const me = e as MouseEvent;
         const index = this.wordIndexAtPoint(me.clientX, me.clientY);

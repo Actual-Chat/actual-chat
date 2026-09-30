@@ -77,6 +77,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<VideoPanelLayoutCalculator>(ServiceLifetime.Transient);
         fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
         fusion.AddService<HighlightUI>(ServiceLifetime.Scoped);
+        fusion.AddService<CoachUI>(ServiceLifetime.Scoped);
         fusion.AddService<LocalSearchUI>(ServiceLifetime.Scoped);
         services.AddScoped<RecentMentionsUI>();
         services.AddScoped<RecentGifsUI>();
@@ -164,6 +165,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         // IModalViews
         services.AddTypeMap<IModalView>(map => map
             .Add<AvatarSelectModal.Model, AvatarSelectModal>()
+            .Add<CoachScoreSheet.Model, CoachScoreSheet>()
+            .Add<CoachSwitchedOffSheet.Model, CoachSwitchedOffSheet>()
             .Add<ChatQuickNavModal.Model, ChatQuickNavModal>()
             .Add<KeyboardShortcutsModal.Model, KeyboardShortcutsModal>()
             .Add<VoiceSettingsModal.Model, VoiceSettingsModal>()

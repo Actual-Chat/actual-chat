@@ -1,0 +1,52 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@implements IModalView<CoachSwitchedOffSheet.Model>
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, List<CoachSwitchedOffSheet.Item>>
+
+<DialogFrame Class="coach-switched-off-sheet modal-sm" Title="@L.Coach_SwitchedOff">
+    <Body>
+    <FormBlock>
+        <Tile>
+            @foreach (var item in State.Value) {
+                <TileItem @key="@item.Id" IsHoverable="false" Role="">
+                    <Icon><ChatIcon Chat="@item.Chat" HideTitle="@true"/></Icon>
+                    <Content>@item.Title</Content>
+                    <Right><a class="c-switch-on" @onclick="@(() => SwitchOn(item.Id))">@L.Coach_SwitchOn</a></Right>
+                </TileItem>
+            }
+        </Tile>
+        <div class="c-hint">@L.Coach_SwitchOffHint</div>
+    </FormBlock>
+    </Body>
+    <Buttons>
+        <Button Class="btn-modal" Click="@(_ => Modal.Close())">@L.Common_Close</Button>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override ComputedState<List<Item>>.Options GetStateOptions()
+        => new() { InitialValue = [], Category = GetStateCategory(GetType()) };
+
+    protected override async Task<List<Item>> ComputeState(CancellationToken cancellationToken) {
+        var settings = await UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
+        var items = new List<Item>();
+        foreach (var id in settings.SwitchedOff) {
+            var chat = await Hub.Chats.Get(Session, id, cancellationToken).ConfigureAwait(false);
+            items.Add(new Item(id, chat?.Title ?? id.Value, chat));
+        }
+        return items;
+    }
+
+    private async Task SwitchOn(ChatId id) {
+        var isLast = State.Value.Count <= 1;
+        await UICommander.Run(new Coach_SetChatCoaching { Session = Session, ChatId = id, IsEnabled = null });
+        if (isLast)
+            Modal.Close();
+    }
+
+    public sealed record Model;
+    public sealed record Item(ChatId Id, string Title, Chat? Chat);
+}

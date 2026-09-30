@@ -1,0 +1,98 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@using ActualChat.UI.Blazor.App.Services
+@inherits ComputedStateComponent<AppUIHub, CoachPanel.Model>
+@{
+    var m = State.Value;
+    var tabs = Tabs.Select(t => new TabDef(t.ToString(), Labels.Tab(t))).ToList();
+}
+
+<div class="coach-panel">
+    <ErrorBarrier Name="CoachPanel" Kind="@ErrorBarrierKind.Full">
+        <CoachHeader SettingsClick="@OnSettingsClick" IsSettingsOpen="@_showSettings"/>
+        @if (_showSettings) {
+            <CoachSettingsPage Back="@OnSettingsClick" ChatId="@ChatId"/>
+        } else if (!m.HasConversations) {
+            <CoachEmptyState/>
+        } else {
+            <div class="c-body">
+                <CoachLanguageChips/>
+                <CoachScoreCard
+                    Summary="@m.Summary"
+                    Focus="@m.Focus"
+                    Language="@m.Language"
+                    ScoreClick="@OnScoreClick"
+                    FocusClick="@OnFocusClick"/>
+            </div>
+            <TabPanel
+                @key="@m.Tab"
+                Tabs="@tabs"
+                TabsClass="left-panel-tabs wide-left-panel-tabs coach-tabs"
+                BottomHill="true"
+                DefaultTabId="@m.Tab.ToString()"
+                SwapKind="@TabContentSwap.None"
+                SelectedTabIdChanged="@OnTabChanged"/>
+            @switch (m.Tab) {
+                case CoachTab.Recent:
+                    <CoachRecentTab/>
+                    break;
+                case CoachTab.Progress:
+                    <CoachProgressTab Language="@m.Language"/>
+                    break;
+                default:
+                    <CoachSkillsTab Language="@m.Language" Summary="@m.Summary" Focus="@m.Focus"/>
+                    break;
+            }
+        }
+        <div class="safe-area-bottom safe-area-bottom-overlay"></div>
+    </ErrorBarrier>
+</div>
+
+@code {
+    [Parameter] public ChatId? ChatId { get; set; }
+
+    private static readonly CoachTab[] Tabs = [CoachTab.Recent, CoachTab.Progress, CoachTab.Skills];
+
+    private bool _showSettings;
+
+    private CoachLabels Labels => field ??= new CoachLabels(L);
+    private ICoach Coach => Hub.Coach;
+    private CoachUI CoachUI => Hub.CoachUI;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var tab = await CoachUI.UseSelectedTab(cancellationToken).ConfigureAwait(false);
+        var language = await CoachUI.GetSelectedLanguage(cancellationToken).ConfigureAwait(false);
+        var conversations = await Coach.ListOwnConversations(Session, 1, null, cancellationToken).ConfigureAwait(false);
+        var summary = await Coach
+            .GetOwnSummary(Session, CoachWindow.Days7, language, cancellationToken)
+            .ConfigureAwait(false);
+        var focus = await Coach.GetOwnFocus(Session, language, cancellationToken).ConfigureAwait(false);
+        return new Model(tab, language, summary, focus, conversations.Count > 0);
+    }
+
+    private void OnTabChanged(string? tabId) {
+        if (Enum.TryParse<CoachTab>(tabId, out var tab))
+            CoachUI.SelectTab(tab);
+    }
+
+    private void OnSettingsClick()
+        => _showSettings = !_showSettings;
+
+    private void OnScoreClick()
+        => _ = ModalUI.Show(new CoachScoreSheet.Model(State.Value.Language, State.Value.Summary.Words));
+
+    private void OnFocusClick()
+        => CoachUI.SelectTab(CoachTab.Skills);
+
+    public sealed record Model(
+        CoachTab Tab, string? Language, CoachSummary Summary, CoachMetricKind? Focus, bool HasConversations) {
+        public static readonly Model None = new(CoachTab.Recent, null, CoachSummary.None, null, true);
+    }
+}
