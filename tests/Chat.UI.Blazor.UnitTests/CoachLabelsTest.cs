@@ -134,7 +134,7 @@ public class CoachLabelsTest
             ["Coach_WindowWeek"] = "Week",
             ["Coach_WindowMonth"] = "Month",
             ["Coach_WindowAllTime"] = "All time",
-            ["Coach_WindowDays7"] = "Last 7 days",
+            ["Coach_WindowDays7"] = "7 days",
             ["Coach_WindowDays30"] = "30 days",
         }));
 
@@ -142,6 +142,6 @@ public class CoachLabelsTest
         var labels = new[] { CoachWindow.Days7, CoachWindow.Days30, CoachWindow.AllTime }.Select(l.Window).ToList();
 
         // assert
-        labels.Should().Equal("Last 7 days", "30 days", "All time");
+        labels.Should().Equal("7 days", "30 days", "All time");
     }
 }
