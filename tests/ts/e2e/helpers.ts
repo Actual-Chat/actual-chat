@@ -112,12 +112,15 @@ function getCdpHosts(): string[] {
 }
 
 /** AC_E2E_HOST_RESOLVER_RULES: Chromium's --host-resolver-rules, e.g. "MAP *.local.voxt.ai 127.0.0.1"
- *  when the worktree's /etc/hosts entry points at a LAN IP the machine no longer has. */
+ *  when the worktree's /etc/hosts entry points at a LAN IP the machine no longer has.
+ *  AC_E2E_HEADED=1 launches a visible Chromium instead: the headless shell has no working WebGL,
+ *  so without a CDP Chrome the map tests can't paint a map or place a marker. */
 async function launchHeadless(options: ConnectBrowserOptions): Promise<BrowserConnection> {
     try {
         const hostResolverRules = process.env.AC_E2E_HOST_RESOLVER_RULES;
+        const isHeaded = process.env.AC_E2E_HEADED === '1';
         const browser = await chromium.launch({
-            headless: true,
+            headless: !isHeaded,
             args: [
                 '--no-sandbox', '--disable-setuid-sandbox',
                 // A grantable fake mic, so tests can start recording (call activity)
@@ -129,7 +132,7 @@ async function launchHeadless(options: ConnectBrowserOptions): Promise<BrowserCo
         // Pinned locale: the UI follows the browser's when the account has no language set,
         // and a developer machine's own locale would then break every English selector.
         const context = await browser.newContext({ ignoreHTTPSErrors: true, locale: 'en-US' });
-        console.log('Launched headless Chromium');
+        console.log(isHeaded ? 'Launched headed Chromium' : 'Launched headless Chromium');
         return { browser, context, ownsBrowser: true };
     } catch (e: unknown) {
         if (e instanceof Error

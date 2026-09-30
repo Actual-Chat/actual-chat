@@ -10,11 +10,13 @@
     // Plain text keeps the per-character animation below; there's no markup to lose.
     var streamingMarkup = StreamingMarkupExt.ParseOrNullIfPlainText(sm.RetainedText + sm.ChangedText + sm.AnimatedText);
     var entry = m.Entry;
+    // A queued location send has no LocationId yet; its point rides on the sending message.
+    var hasLocation = entry.HasLocation || entry.GetSendingMessage()?.LocationDiff is not null;
     // The server fills a location entry's content with a maps-link fallback for clients that don't
     // understand location entries; here we render the map instead, so that content stays hidden
     // (status still shows). TODO: 2026-07, remove when all clients support location entries.
-    var markup = entry.HasLocation ? Markup.EmptyText : m.Markup;
-    var trimmedContent = entry.HasLocation ? "" : entry.Content.Trim();
+    var markup = hasLocation ? Markup.EmptyText : m.Markup;
+    var trimmedContent = hasLocation ? "" : entry.Content.Trim();
     var isSoleEmojiMention = markup.IsSoleEmojiMention();
     // Plain-text zoom only for an actual unicode emoji glyph — not a slug id like "ginger-clown".
     var isEmojiOnly = Emojis.BySymbol.GetValueOrDefault(trimmedContent) != null || isSoleEmojiMention;
@@ -65,7 +67,7 @@
     var showTextStatus = status == ChatMessageSendingStatus.MessageStatus.Unread && IsUnreadByOthersBlockStart;
     // Message kinds that shouldn't carry an inline status in the chat view (the chat-list preview
     // still shows its own status — it's a separate ChatListItem render).
-    var hideInlineStatus = entry.HasLocation || isGifOnly || isEmojiOnly;
+    var hideInlineStatus = hasLocation || isGifOnly || isEmojiOnly;
 
     // Both marks can be absent, and then there is nothing to place - no suffix node, no span.
     var hasSuffix = m.Translation != TranslationState.None
@@ -86,7 +88,7 @@
     // messages render ~1 text line taller, then collapse — re-anchoring the list (a jump).
     var isEmptyMarkup = !m.IsStreaming
         && trimmedContent.IsNullOrEmpty()
-        && !entry.HasLocation
+        && !hasLocation
         && m.Translation == TranslationState.None
         && status == ChatMessageSendingStatus.MessageStatus.Default;
 }
@@ -150,7 +152,7 @@
                 </CascadingValue>
             </CascadingValue>
         </CascadingValue>
-        @if (entry.HasLocation) {
+        @if (hasLocation) {
             <LocationMessageView Entry="@entry"/>
         }
     }

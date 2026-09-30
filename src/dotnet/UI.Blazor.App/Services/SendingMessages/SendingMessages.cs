@@ -97,7 +97,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         var now = Clocks.SystemClock.Now;
         var resultSource = TaskCompletionSourceExt.New<ChatEntry?>();
         await _whenStoredRequestsProcessed.ConfigureAwait(false);
-        var uuid = Ulid.NewUlid().ToString();
+        var uuid = cmd.Uuid.NullIfEmpty() ?? Ulid.NewUlid().ToString();
         var filesUpload = cmd.Uploads is not null ? _filesUploadRegistry.Get(cmd.Uploads) : null;
         var entry = CreateStoredSendRequest(uuid, now, cmd, filesUpload);
         DebugLog?.LogDebug("About to store post request '{Text}'", cmd.Text.ToPrivate());
@@ -149,6 +149,8 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             ExistingMedia = entry.ExistingMedia,
             ClientId = entry.ClientId,
             NewChatEntryLocalId = entry.NewChatEntryLocalId,
+            LocationDiff = entry.LocationDiff,
+            NewLocationId = entry.NewLocationId,
             AfterSendMessageHandler = !entry.AfterSendMessageHandlerKey.IsNullOrEmpty()
                 ? new AfterSendMessageHandler(entry.AfterSendMessageHandlerKey, entry.AfterSendMessageHandlerArgs)
                 : null,
@@ -603,6 +605,10 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         public IReadOnlyList<MediaRef> ExistingMedia { get; init; } = [];
         public string ClientId { get; init; } = "";
         public long? NewChatEntryLocalId { get; init; }
+        public SharedLocationDiff? LocationDiff { get; init; }
+        // Set once the shared location exists, so a retry or a restart posts the entry for it
+        // instead of minting a second one
+        public SharedLocationId? NewLocationId { get; init; }
         public AfterSendMessageHandler? AfterSendMessageHandler { get; init; }
         public bool CheckResend { get; init; }
 
