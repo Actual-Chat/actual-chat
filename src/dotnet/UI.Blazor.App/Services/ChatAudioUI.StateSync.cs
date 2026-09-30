@@ -77,8 +77,10 @@ public partial class ChatAudioUI
                 // Arming is the only thing that keeps such a chat listening, and StopListeningWhenIdle
                 // deliberately runs no watcher for it - so leaving PTT is what must end that listening,
                 // ongoing conversation or not.
-                foreach (var chatId in oldChatIds.Except(chatIds))
+                foreach (var chatId in oldChatIds.Except(chatIds)) {
+                    Log.LogInformation("StopListeningWhenPttDisarmed: {ChatId} left the keep-listening set", chatId);
                     await SetListeningState(chatId, false).ConfigureAwait(false);
+                }
             }
             oldChatIds = chatIds;
         }
@@ -389,6 +391,10 @@ public partial class ChatAudioUI
             try {
                 var removedChatIds = lastChatIds.Except(newChatIds);
                 var addedChatIds = newChatIds.Except(lastChatIds);
+                if (!removedChatIds.IsEmpty || !addedChatIds.IsEmpty)
+                    Log.LogInformation("Listening chats: +[{Added}] -[{Removed}] = [{All}]",
+                        addedChatIds.ToDelimitedString(), removedChatIds.ToDelimitedString(),
+                        newChatIds.ToDelimitedString());
 
                 if (!removedChatIds.IsEmpty) {
                     await StopPlayers(removedChatIds, ChatPlayerKind.Listening).ConfigureAwait(false);
