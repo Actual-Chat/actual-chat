@@ -49,7 +49,8 @@ public static class NSItemProviderExt
             var inPlaceResult = await item.LoadInPlaceFileRepresentationAsync(contentType.Identifier).ConfigureAwait(false);
             var fileName = inPlaceResult.GetSuggestedFileName(item);
             var filePath = inPlaceResult.Path;
-            var mimeType = contentType.PreferredMimeType.RequireNonEmpty();
+            // Declared Apple types like com.apple.ips (crash reports) have no MIME type
+            var mimeType = contentType.PreferredMimeType.NullIfEmpty() ?? MediaMimeTypes.GetMimeType(fileName);
             var metadata = new UploadSourceMetadata(mimeType, filePath.FileSize, fileName);
             return new UploadSource(metadata, new FileUploadSource(filePath));
         }
