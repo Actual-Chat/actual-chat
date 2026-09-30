@@ -1694,10 +1694,12 @@ public partial class Chats(IServiceProvider services) : IChats
         if (contact.IsRegular || contact.IsBlocked)
             return;
 
+        // Create promotes an existing Temporary contact from the row it reads itself. An update pinned
+        // to the version read above loses to the touch this very entry's ChatEntryChangedEvent triggers.
         var command = new ContactsBackend_Change(
             contactId,
-            contact.HasVersion() ? contact.Version : null,
-            Change.Upsert(contact with { State = ContactState.Regular }));
+            null,
+            Change.Create(contact with { State = ContactState.Regular }));
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
