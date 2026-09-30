@@ -1012,6 +1012,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ISpeechTagger`, `SpeechTagger`, `SpeechTaggerStub` - LLM tagging of fillers, weak words and profanity in a transcript.
 - `SpeechChunker` (static class), `SpeechChunk` - Cuts a transcript into sentence-aligned chunks with the previous sentence as context.
 - `SpeechLexicon` - Per-language word patterns that mark filled pauses without the LLM.
+- `SpeechLexiconScanner` - Incremental `SpeechLexicon` scan of a transcript that keeps growing.
 
 ## ActualChat.Localization
 

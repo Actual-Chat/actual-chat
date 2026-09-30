@@ -57,11 +57,11 @@ public static class CoachConversationBuilder
             .ToApiArray();
     }
 
-    // The entries of the conversation that starts with the entry given in the language given, and the
-    // runs around it: what excluding that conversation flags
     public static List<CoachRecord> Members(
         IEnumerable<CoachRecord> records, TimeSpan gap, ChatId chatId, long startEntryLid, string iso)
     {
+        // The entries of the conversation that starts with the entry given in the language given, and the
+        // runs around it: what excluding that conversation flags
         var list = records.Where(r => r.ChatId == chatId).ToList();
         foreach (var (group, runs) in Group(list, gap)) {
             var entries = group.Where(r => IsoOf(r) == iso).ToList();

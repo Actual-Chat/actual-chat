@@ -16,7 +16,9 @@ public sealed class CoachTranscriptSource(IServiceProvider services) : ICoachTra
 
     public async Task<IAsyncEnumerable<string>?> Open(string streamId, CancellationToken cancellationToken)
     {
-        var diffs = await StreamingBackend.GetTranscript(StreamId.Parse(streamId), cancellationToken).ConfigureAwait(false);
+        var diffs = await StreamingBackend
+            .GetTranscript(StreamId.Parse(streamId), cancellationToken)
+            .ConfigureAwait(false);
         return diffs is null ? null : Texts(diffs, cancellationToken);
     }
 

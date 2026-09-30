@@ -15,7 +15,8 @@ public sealed class CoachMarkHint(IStringLocalizer l)
 
     public Hint For(SpeechSpan span)
         => span.Kind switch {
-            SpeechSpanKind.Weak => new Hint(l.Coach_TipWeakWordTitle, l.Coach_TipWeakWordBody_Format(span.Word), span.Synonyms),
+            SpeechSpanKind.Weak => new Hint(
+                l.Coach_TipWeakWordTitle, l.Coach_TipWeakWordBody_Format(span.Word), span.Synonyms),
             SpeechSpanKind.Profanity => new Hint(
                 l.Coach_MarkProfanityTitle, l.Coach_MarkProfanityBody_Format(span.Word), span.Synonyms),
             SpeechSpanKind.Repetition => new Hint(

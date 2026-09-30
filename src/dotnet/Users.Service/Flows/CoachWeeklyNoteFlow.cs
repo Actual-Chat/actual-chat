@@ -9,16 +9,16 @@ namespace ActualChat.Users.Flows;
 // One note on Monday at the user's digest time, about the week before; it lands in the user's
 // stored settings and the Progress tab shows it
 [Flow(DelayQuanta = 3600)] // 1 Hour
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[DataContract, MessagePackObject(true)]
 public partial class CoachWeeklyNoteFlow : PeriodicFlow
 {
     protected override TimeSpan MaxResumeDelay => TimeSpan.FromDays(8);
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     private UserId UserId { get; set; }
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     private TimeZoneInfo TimeZoneInfo { get; set; } = null!;
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     private TimeSpan DeliveryTime { get; set; }
 
     protected override async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
@@ -60,7 +60,11 @@ public partial class CoachWeeklyNoteFlow : PeriodicFlow
         var lastWeekStart = thisWeekStart - TimeSpan.FromDays(7);
         var language = userSettings.SelectedLanguage.NullIfEmpty();
         var thisDays = await backend
-            .ListDays(UserId, new Range<Moment>(thisWeekStart, thisWeekStart + TimeSpan.FromDays(7)), language, cancellationToken)
+            .ListDays(
+                UserId,
+                new Range<Moment>(thisWeekStart, thisWeekStart + TimeSpan.FromDays(7)),
+                language,
+                cancellationToken)
             .ConfigureAwait(false);
         var lastDays = await backend
             .ListDays(UserId, new Range<Moment>(lastWeekStart, thisWeekStart), language, cancellationToken)
@@ -115,20 +119,21 @@ public partial class CoachWeeklyNoteFlow : PeriodicFlow
         };
     }
 
-    // The latest Monday at the delivery time, in the user's zone, that is not after now
     internal static Moment LastMondayAt(TimeZoneInfo timeZoneInfo, TimeSpan deliveryTime, Moment now)
     {
+        // The latest Monday at the delivery time, in the user's zone, that is not after now
         var local = TimeZoneInfo.ConvertTimeFromUtc(now.ToDateTime(), timeZoneInfo);
         var monday = local.Date.AddDays(-(((int)local.DayOfWeek + 6) % 7)) + deliveryTime;
         if (monday > local)
             monday = monday.AddDays(-7);
-        return new Moment(TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(monday, DateTimeKind.Unspecified), timeZoneInfo));
+        var unspecified = DateTime.SpecifyKind(monday, DateTimeKind.Unspecified);
+        return new Moment(TimeZoneInfo.ConvertTimeToUtc(unspecified, timeZoneInfo));
     }
 
-    // The note is delivered on the user's Monday, so the reported week is the one before that local
-    // Monday; the day rows are UTC days, so the local date is taken as a UTC day
     internal static Moment ReportedWeekStart(TimeZoneInfo timeZoneInfo, Moment lastDue)
     {
+        // The note is delivered on the user's Monday, so the reported week is the one before that local
+        // Monday; the day rows are UTC days, so the local date is taken as a UTC day
         var localMonday = TimeZoneInfo.ConvertTimeFromUtc(lastDue.ToDateTime(), timeZoneInfo).Date;
         return new Moment(DateTime.SpecifyKind(localMonday, DateTimeKind.Utc)) - TimeSpan.FromDays(7);
     }

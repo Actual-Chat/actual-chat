@@ -96,12 +96,12 @@ public sealed class CoachLabels(IStringLocalizer l)
             (CoachMetricKind.TurnTaking, CoachBand.High) => l.Coach_BandABitMuch,
             (CoachMetricKind.Monologue, CoachBand.Good) => l.Coach_BandFine,
             (CoachMetricKind.SentenceLength, CoachBand.Good) => l.Coach_BandClear,
-            _ => Band(kind, band).ToLowerInvariant(),
+            _ => Band(kind, band).ToLower(),
         };
 
-    // The top chips of the metric, quoted, so the caption names the user's own words
-    // Inside a sentence the language's own word would need its grammatical case, so the sentence keeps the title
     private static string LanguageTitle(string iso)
+        // The top chips of the metric, quoted, so the caption names the user's own words
+        // Inside a sentence the language's own word would need its grammatical case, so the sentence keeps the title
         => Languages.All.FirstOrDefault(x => x.IsoCode == iso)?.Title.Split(" (")[0] ?? iso;
 
     private static string Examples(CoachSummary s, CoachMetricKind kind)
@@ -210,8 +210,8 @@ public sealed class CoachLabels(IStringLocalizer l)
             _ => l.Coach_MetricMonologue,
         };
 
-    // High doubles as fast/long and Low as slow/short, so the label depends on the kind too
     public string Band(CoachMetricKind kind, CoachBand band)
+        // High doubles as fast/long and Low as slow/short, so the label depends on the kind too
         => (kind, band) switch {
             (_, CoachBand.None) => "",
             (CoachMetricKind.Pace, CoachBand.High) => l.Coach_BandFast,
@@ -245,8 +245,8 @@ public sealed class CoachLabels(IStringLocalizer l)
         };
     }
 
-    // No rate means no tagged words yet, so a zero count is absence of data rather than a clean sheet
     public string Rate(CoachMetric metric)
+        // No rate means no tagged words yet, so a zero count is absence of data rather than a clean sheet
         => metric.Kind is CoachMetricKind.Fillers or CoachMetricKind.WeakWords or CoachMetricKind.Repetition
             or CoachMetricKind.Profanity && metric.Rate is { } rate
             ? l.Coach_PercentOfSpeech_Format(Round(rate * 100))

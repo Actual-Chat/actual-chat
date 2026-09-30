@@ -58,16 +58,16 @@ public static class SpeechChunker
         return chunks;
     }
 
-    // Where each sentence of the text ends, the whitespace after it included
     internal static IReadOnlyList<int> SentenceEnds(string text, bool isWordSplittable)
+        // Where each sentence of the text ends, the whitespace after it included
         => FindSentences(text, isWordSplittable).Select(s => s.End).ToList();
 
     internal static int CountUnits(string text, int start, int end, bool isWordSplittable)
         => Units(text, start, end, isWordSplittable);
 
-    // The sentence that ends at the position, cut to its last words
     internal static string SentenceBefore(string text, int position, int contextWords, bool isWordSplittable)
     {
+        // The sentence that ends at the position, cut to its last words
         var sentence = FindSentences(text, isWordSplittable).LastOrDefault(s => s.End <= position);
         return sentence is null ? "" : Context(text, sentence.Start, sentence.End, contextWords, isWordSplittable);
     }

@@ -32,38 +32,47 @@ public sealed class SpeechLexicon
             ? patterns.Count
             : 0;
 
-    public ApiArray<SpeechSpan> FindSpans(string text, Language? language)
-    {
-        if (language is null || text.IsNullOrEmpty())
-            return ApiArray<SpeechSpan>.Empty;
+    public bool IsWholeWord(Language language)
+        => !_languages.TryGetValue(language.IsoCode, out var lexicon) || lexicon.IsWholeWord;
 
+    // startIndex must be a word boundary for a whole-word language
+    public ApiArray<SpeechSpan> FindSpans(string text, Language? language, int startIndex = 0)
+    {
+        if (language is null || text.IsNullOrEmpty() || startIndex >= text.Length)
+            return ApiArray<SpeechSpan>.Empty;
         if (!_languages.TryGetValue(language.IsoCode, out var lexicon))
             return ApiArray<SpeechSpan>.Empty;
 
         var spans = new List<SpeechSpan>();
-        foreach (var (kind, patterns) in lexicon.Patterns) {
-            var regex = patterns.Regex.Value;
-            if (lexicon.IsWholeWord)
-                foreach (var token in TokenRegex.Matches(text).Cast<Match>().Where(m => regex.IsMatch(m.Value)))
-                    spans.Add(NewSpan(kind, token));
-            else
-                foreach (var match in regex.Matches(text).Cast<Match>())
+        if (!lexicon.IsWholeWord) {
+            foreach (var (kind, patterns) in lexicon.Patterns)
+                for (var match = patterns.Regex.Value.Match(text, startIndex); match.Success; match = match.NextMatch())
                     spans.Add(NewSpan(kind, match));
+            return spans.OrderBy(s => s.Start).ToApiArray();
         }
-        return spans.OrderBy(s => s.Start).ToApiArray();
+
+        for (var token = TokenRegex.Match(text, startIndex); token.Success; token = token.NextMatch())
+            foreach (var (kind, patterns) in lexicon.Patterns) {
+                if (!patterns.Regex.Value.IsMatch(token.ValueSpan))
+                    continue;
+
+                spans.Add(NewSpan(kind, token));
+                break;
+            }
+        return spans.ToApiArray();
     }
 
     // Private methods
 
     private static SpeechSpan NewSpan(SpeechSpanKind kind, Match match)
-        => new (kind, match.Value.ToLowerInvariant(), match.Index, match.Length, ApiArray<string>.Empty);
+        => new (kind, match.Value.ToLower(), match.Index, match.Length, ApiArray<string>.Empty);
 
     private static SpeechLexicon Load()
     {
         using var stream = typeof(SpeechLexicon).Assembly.GetManifestResourceStream(ResourceName)
             ?? throw new InvalidOperationException($"Resource '{ResourceName}' is missing.");
         using var doc = JsonDocument.Parse(stream);
-        var languages = new Dictionary<string, LanguageLexicon>(StringComparer.Ordinal);
+        var languages = new Dictionary<string, LanguageLexicon>();
         foreach (var language in doc.RootElement.EnumerateObject()) {
             var isWholeWord = true;
             var lists = new Dictionary<SpeechSpanKind, List<string>>();

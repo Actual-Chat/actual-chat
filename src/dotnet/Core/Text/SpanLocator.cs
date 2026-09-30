@@ -12,46 +12,51 @@ public static class SpanLocator
     // is the only kind there is.
     public static Range<int>? Locate(string text, string word, int occurrence, bool isWholeWord = true)
     {
-        if (occurrence < 1 || text.IsNullOrEmpty() || word.IsNullOrWhiteSpace())
+        if (occurrence < 1)
             return null;
-        if (!isWholeWord)
-            return LocateSubstring(text, word.Trim(), occurrence);
+
+        foreach (var range in LocateAll(text, word, isWholeWord))
+            if (--occurrence == 0)
+                return range;
+        return null;
+    }
+
+    public static IEnumerable<Range<int>> LocateAll(string text, string word, bool isWholeWord = true)
+    {
+        // Every occurrence in text order, found in one pass
+        if (text.IsNullOrEmpty() || word.IsNullOrWhiteSpace())
+            yield break;
+
+        if (!isWholeWord) {
+            var substring = word.Trim();
+            var at = 0;
+            while ((at = text.IndexOf(substring, at, StringComparison.OrdinalIgnoreCase)) >= 0) {
+                yield return new Range<int>(at, at + substring.Length);
+
+                at += substring.Length;
+            }
+            yield break;
+        }
 
         var parts = word.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var seen = 0;
         var i = 0;
         while (i < text.Length) {
             var start = SkipNonWord(text, i);
             if (start >= text.Length)
-                return null;
+                yield break;
 
             var end = MatchPhrase(text, start, parts);
             if (end > 0) {
-                if (++seen == occurrence)
-                    return new Range<int>(start, end);
+                yield return new Range<int>(start, end);
 
                 i = end;
                 continue;
             }
             i = SkipWord(text, start);
         }
-        return null;
     }
 
     // Private methods
-
-    private static Range<int>? LocateSubstring(string text, string word, int occurrence)
-    {
-        var seen = 0;
-        var i = 0;
-        while ((i = text.IndexOf(word, i, StringComparison.OrdinalIgnoreCase)) >= 0) {
-            if (++seen == occurrence)
-                return new Range<int>(i, i + word.Length);
-
-            i += word.Length;
-        }
-        return null;
-    }
 
     private static int MatchPhrase(string text, int start, string[] parts)
     {
@@ -89,10 +94,10 @@ public static class SpanLocator
         return i;
     }
 
-    // An apostrophe or hyphen counts as part of a word only between two letters ("don't", "э-э"),
-    // so "(um)" and "- word" still split where a reader expects.
     private static bool IsWordChar(string text, int i)
     {
+        // An apostrophe or hyphen counts as part of a word only between two letters ("don't", "э-э"),
+        // so "(um)" and "- word" still split where a reader expects.
         var c = text[i];
         if (char.IsLetterOrDigit(c))
             return true;

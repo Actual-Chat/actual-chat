@@ -40,7 +40,10 @@ public class DbCoachConversation : IHasId<string>, IHasVersion<long>, IRequireme
         => $"{conversationId}:{authorId}";
 
     public CoachConversationAnalysis ToModel()
-        => new (ConversationId.New(ActualChat.ChatId.Parse(ChatId), StartEntryLid), ActualChat.AuthorId.Parse(AuthorId), Version) {
+        => new (
+            ConversationId.New(ActualChat.ChatId.Parse(ChatId), StartEntryLid),
+            ActualChat.AuthorId.Parse(AuthorId),
+            Version) {
             UserId = ActualChat.UserId.Parse(UserId),
             ConversationVersion = ConversationVersion,
             EndsAt = EndsAt,

@@ -60,15 +60,19 @@ public static class CoachTipPolicy
 
     // Private methods
 
-    // A zero interval means one tip per conversation: quiet for the conversation gap in the same chat
     private static bool IsWithinInterval(
         UserCoachTip previous, CoachRecord record, UserCoachSettings settings, CoachScoringSettings s, Moment now)
+        // A zero interval means one tip per conversation: quiet for the conversation gap in the same chat
         => settings.TipInterval == TimeSpan.Zero
             ? previous.ChatId == record.ChatId && now - previous.LastTipAt < s.ConversationGap
             : now - previous.LastTipAt < settings.TipInterval;
 
     private static UserCoachTip? WordTip(
-        List<CoachEntryRecord> entries, ApiArray<SpeechSpan> spans, UserCoachTip previous, CoachScoringSettings s, Moment now)
+        List<CoachEntryRecord> entries,
+        ApiArray<SpeechSpan> spans,
+        UserCoachTip previous,
+        CoachScoringSettings s,
+        Moment now)
     {
         var filler = TopWord(entries, s, previous, now, SpeechSpanKind.Filler, SpeechSpanKind.FilledPause);
         if (filler is { } f)
@@ -78,7 +82,12 @@ public static class CoachTipPolicy
         if (weak is { } w) {
             var synonyms = Synonyms(spans, w.Word);
             if (synonyms.Count > 0)
-                return new UserCoachTip { Kind = CoachTipKind.WeakWord, Word = w.Word, Count = w.Count, Synonyms = synonyms };
+                return new UserCoachTip {
+                    Kind = CoachTipKind.WeakWord,
+                    Word = w.Word,
+                    Count = w.Count,
+                    Synonyms = synonyms,
+                };
         }
         return null;
     }

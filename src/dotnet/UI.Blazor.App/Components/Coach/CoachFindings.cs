@@ -8,10 +8,10 @@ public static class CoachFindings
 {
     private const int Count = 3;
 
-    // Problems first, then the focus skill, then good news, then whatever else has data
     public static IReadOnlyList<CoachFinding> Pick(
         CoachConversation c, CoachMetricKind? focus, CoachLanguageLevel level, bool isWeeksBest)
     {
+        // Problems first, then the focus skill, then good news, then whatever else has data
         var all = new List<CoachFinding> {
             new (CoachMetricKind.Fillers, c.FillerBand),
             new (CoachMetricKind.Pace, c.PaceBand),

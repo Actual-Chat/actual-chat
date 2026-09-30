@@ -62,7 +62,7 @@ public static class CoachDayBuilder
         // Runs are not language-bound: the neutral row carries them alone, so a filter by any language
         // (which always includes the neutral row) sees the day's turn-taking even without its own entries
         var rows = byLanguage
-            .OrderBy(x => x.Key, StringComparer.Ordinal)
+            .OrderBy(x => x.Key)
             .Select(x => Build(day, x.Value.Concat(runs), minVocabularyWords) with { Language = x.Key })
             .ToList();
         if (runs.Count > 0 && !byLanguage.ContainsKey(""))

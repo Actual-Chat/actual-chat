@@ -42,4 +42,20 @@ public class SpanLocatorTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void LocateShouldStillRequireWholeWordsByDefault()
         => SpanLocator.Locate("あの私はあの店に", "あの", 2).Should().BeNull("kana runs have no word boundaries");
+
+    [Fact]
+    public void LocateAllShouldListEveryOccurrenceInTextOrder()
+    {
+        // arrange
+        var text = "You know, I mean, you know what? You knows.";
+
+        // act
+        var phrase = SpanLocator.LocateAll(text, "you know").ToList();
+        var inside = SpanLocator.LocateAll("ええと、ええ", "ええ", false).ToList();
+
+        // assert
+        phrase.Select(r => r.Start).Should().Equal(0, 18);
+        inside.Select(r => r.Start).Should().Equal(0, 4);
+        SpanLocator.LocateAll(text, " ").Should().BeEmpty();
+    }
 }

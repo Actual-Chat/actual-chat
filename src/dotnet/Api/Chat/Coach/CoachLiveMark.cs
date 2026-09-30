@@ -13,9 +13,21 @@ public sealed partial record CoachLiveMark(
 public static class CoachLiveMarks
 {
     public static ApiArray<CoachLiveMark> FromSpans(string text, IEnumerable<SpeechSpan> spans, bool isWholeWord)
-        => spans
-            .Select(s => new CoachLiveMark(s.Kind, s.Word, OccurrenceOf(text, s, isWholeWord), s.Synonyms))
-            .ToApiArray();
+    {
+        // The occurrences of each distinct word are found once, however many spans repeat it
+        var startsByWord = new Dictionary<string, List<int>>();
+        var marks = new List<CoachLiveMark>();
+        foreach (var span in spans) {
+            if (!startsByWord.TryGetValue(span.Word, out var starts)) {
+                starts = SpanLocator.LocateAll(text, span.Word, isWholeWord).Select(r => r.Start).ToList();
+                startsByWord[span.Word] = starts;
+            }
+            var index = starts.BinarySearch(span.Start);
+            var occurrence = (index >= 0 ? index : ~index) + 1;
+            marks.Add(new CoachLiveMark(span.Kind, span.Word, occurrence, span.Synonyms));
+        }
+        return marks.ToApiArray();
+    }
 
     public static ApiArray<SpeechSpan> Locate(string text, IEnumerable<CoachLiveMark> marks, bool isWholeWord)
     {
@@ -32,15 +44,5 @@ public static class CoachLiveMarks
             if (result.Count == 0 || span.Start >= result[^1].Start + result[^1].Length)
                 result.Add(span);
         return result.ToApiArray();
-    }
-
-    // Private methods
-
-    private static int OccurrenceOf(string text, SpeechSpan span, bool isWholeWord)
-    {
-        var occurrence = 1;
-        while (SpanLocator.Locate(text, span.Word, occurrence, isWholeWord) is { } range && range.Start < span.Start)
-            occurrence++;
-        return occurrence;
     }
 }

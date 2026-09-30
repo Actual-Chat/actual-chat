@@ -116,7 +116,8 @@ public class Coach(IServiceProvider services) : ICoach
         if (settings.FocusByLanguage.TryGetValue(iso, out var chosen))
             return chosen;
 
-        var summary = await GetOwnSummary(session, CoachWindow.Days7, language, cancellationToken).ConfigureAwait(false);
+        var summary = await GetOwnSummary(session, CoachWindow.Days7, language, cancellationToken)
+            .ConfigureAwait(false);
         return CoachFocus.Pick(summary, settings.LevelOf(effective), Settings.Coach);
     }
 
@@ -285,7 +286,9 @@ public class Coach(IServiceProvider services) : ICoach
         await Commander
             .Call(new CoachAnalysisBackend_DeleteUserData(account.Id), true, cancellationToken)
             .ConfigureAwait(false);
-        await Commander.Call(new CoachBackend_DeleteUserData(account.Id), true, cancellationToken).ConfigureAwait(false);
+        await Commander
+            .Call(new CoachBackend_DeleteUserData(account.Id), true, cancellationToken)
+            .ConfigureAwait(false);
         var kvas = ServerKvasBackend.ForUser(account.Id, isOutermost: true);
         await kvas.UserCoachTip().Set(new UserCoachTip(), cancellationToken).ConfigureAwait(false);
         await kvas.UserCoachWeeklyNote().Set(new UserCoachWeeklyNote(), cancellationToken).ConfigureAwait(false);
@@ -364,17 +367,17 @@ public class Coach(IServiceProvider services) : ICoach
     private static ApiMap<string, T> Without<T>(ApiMap<string, T> map, string key)
         => new (map.Where(x => x.Key != key).ToDictionary(x => x.Key, x => x.Value));
 
-    // The window slides at UTC midnight even when no coach event invalidates the user's days
     private void InvalidateAtMidnight(Range<Moment> window)
     {
+        // The window slides at UTC midnight even when no coach event invalidates the user's days
         var delay = window.End - Clocks.SystemClock.Now;
         if (delay > TimeSpan.Zero)
             Computed.GetCurrent().Invalidate(delay);
     }
 
-    // "Today" is the UTC day; the client's local day is a later refinement
     private (Range<Moment> Window, Range<Moment>? Trailing) Ranges(CoachWindow window)
     {
+        // "Today" is the UTC day; the client's local day is a later refinement
         var today = UsageDay.DayOf(Clocks.SystemClock.Now);
         var tomorrow = today + TimeSpan.FromDays(1);
         var start = window switch {

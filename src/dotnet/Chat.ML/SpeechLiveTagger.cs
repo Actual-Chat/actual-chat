@@ -59,7 +59,7 @@ public static class SpeechLiveTagger
                 text = latest;
                 final = isFinal;
             }
-            if (taggedUpTo > 0 && !text.StartsWith(taggedPrefix, StringComparison.Ordinal)) {
+            if (taggedUpTo > 0 && !text.StartsWith(taggedPrefix)) {
                 // The words already tagged were rewritten: nothing tagged so far can be trusted
                 spans.Clear();
                 taggedUpTo = 0;
@@ -70,7 +70,8 @@ public static class SpeechLiveTagger
             var end = final ? text.Length : StableEnd(text, options.IsWordSplittable);
             var isReady = !isGivenUp
                 && end > taggedUpTo
-                && SpeechChunker.CountUnits(text, taggedUpTo, end, options.IsWordSplittable) >= (final ? 1 : options.MinWords);
+                && SpeechChunker.CountUnits(text, taggedUpTo, end, options.IsWordSplittable)
+                    >= (final ? 1 : options.MinWords);
             if (isReady) {
                 var chunks = SpeechChunker.Split(
                     text[taggedUpTo..end],
@@ -89,9 +90,11 @@ public static class SpeechLiveTagger
                     var chunkStart = taggedUpTo;
                     var context = chunkStart == 0
                         ? null
-                        : SpeechChunker.SentenceBefore(text, chunkStart, options.ContextWords, options.IsWordSplittable);
+                        : SpeechChunker.SentenceBefore(
+                            text, chunkStart, options.ContextWords, options.IsWordSplittable);
                     calls++;
-                    var tagged = await tagChunk(chunk.Text, context.NullIfEmpty(), cancellationToken).ConfigureAwait(false);
+                    var tagged = await tagChunk(chunk.Text, context.NullIfEmpty(), cancellationToken)
+                        .ConfigureAwait(false);
                     if (tagged is null) {
                         if (final || ++failures >= MaxFailures) {
                             isComplete = false;

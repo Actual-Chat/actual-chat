@@ -102,7 +102,8 @@ public static class CoachProgressBuilder
         return new Moment(new DateTime(date.Year, date.Month, 1, 0, 0, 0, DateTimeKind.Utc));
     }
 
-    private static bool? IsBetter(CoachMetricKind kind, double? was, double? now, CoachScoringSettings s, string? language)
+    private static bool? IsBetter(
+        CoachMetricKind kind, double? was, double? now, CoachScoringSettings s, string? language)
     {
         if (was is not { } before || now is not { } after || Math.Abs(before - after) < 1e-9)
             return null;

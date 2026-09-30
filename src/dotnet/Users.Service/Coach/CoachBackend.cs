@@ -96,8 +96,8 @@ public class CoachBackend(IServiceProvider services)
             var pageBefore = before;
             var pageBeforeSourceId = beforeSourceId;
             var rows = await dbContext.CoachEvents
-                .Where(e => e.UserId == userId.Value && e.Kind == CoachRecordKind.Entry && !e.IsRemoved && !e.IsExcluded)
-                .Where(e => e.OccurredAt >= start)
+                .Where(e => e.UserId == userId.Value && e.Kind == CoachRecordKind.Entry)
+                .Where(e => !e.IsRemoved && !e.IsExcluded && e.OccurredAt >= start)
                 .Where(e => e.OccurredAt < pageBefore
                     || (e.OccurredAt == pageBefore && string.Compare(e.SourceId, pageBeforeSourceId) < 0))
                 .OrderByDescending(e => e.OccurredAt)
@@ -339,10 +339,10 @@ public class CoachBackend(IServiceProvider services)
 
     // Private methods
 
-    // Users who coached before the weekly note existed have no flow until something starts one; a
-    // finished entry is the sign they are active, and the flow itself checks the settings
     private async Task EnsureWeeklyNoteFlow(UserId userId, CancellationToken cancellationToken)
     {
+        // Users who coached before the weekly note existed have no flow until something starts one; a
+        // finished entry is the sign they are active, and the flow itself checks the settings
         var now = Clocks.SystemClock.Now;
         if (_flowStartedAt.TryGetValue(userId, out var at) && now - at < FlowRestartDelay)
             return;
@@ -386,9 +386,9 @@ public class CoachBackend(IServiceProvider services)
         }
     }
 
-    // Runs after the record command, outside any DB operation, the way the review prompt does
     private async Task EvaluateTip(CoachEntryAnalysis analysis, CoachRecord record, CancellationToken cancellationToken)
     {
+        // Runs after the record command, outside any DB operation, the way the review prompt does
         try {
             var kvas = ServerKvasBackend.ForUser(analysis.UserId);
             var settings = await kvas.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
@@ -418,9 +418,10 @@ public class CoachBackend(IServiceProvider services)
         }
     }
 
-    // The latest version of each entry the user spoke since the moment given, for the tip window
-    private async Task<List<CoachRecord>> ListRecentEntries(UserId userId, Moment since, CancellationToken cancellationToken)
+    private async Task<List<CoachRecord>> ListRecentEntries(
+        UserId userId, Moment since, CancellationToken cancellationToken)
     {
+        // The latest version of each entry the user spoke since the moment given, for the tip window
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var sinceDb = since.ToDateTimeClamped();
@@ -458,8 +459,8 @@ public class CoachBackend(IServiceProvider services)
         return record.OccurredAt - previousEnd <= tolerance;
     }
 
-    // jsonb normalises the stored text, so equality is checked on the models
     private static bool IsSameRecord(DbCoachEvent dbEvent, CoachRecord record)
+        // jsonb normalises the stored text, so equality is checked on the models
         => SystemJsonSerializer.Default.Write(dbEvent.ToModel()) == SystemJsonSerializer.Default.Write(record);
 
     private static bool IsTrackedUser(UserId userId)

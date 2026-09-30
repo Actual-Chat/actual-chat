@@ -51,10 +51,10 @@ public static class CoachScoring
         }
     }
 
-    // 100 inside [goodLow, goodHigh], 0 once the value is a full band width (or, for a band starting
-    // at 0, twice the edge) past an edge, linear in between
     public static double SubScore(double value, double goodLow, double goodHigh)
     {
+        // 100 inside [goodLow, goodHigh], 0 once the value is a full band width (or, for a band starting
+        // at 0, twice the edge) past an edge, linear in between
         if (value >= goodLow && value <= goodHigh)
             return 100;
 

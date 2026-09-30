@@ -9,7 +9,12 @@ public static class CoachSkillSets
 
     public static CoachMetricKind[] Headline(CoachLanguageLevel level)
         => level == CoachLanguageLevel.Learning
-            ? [CoachMetricKind.WeakWords, CoachMetricKind.Vocabulary, CoachMetricKind.SentenceLength, CoachMetricKind.Pace]
+            ? [
+                CoachMetricKind.WeakWords,
+                CoachMetricKind.Vocabulary,
+                CoachMetricKind.SentenceLength,
+                CoachMetricKind.Pace,
+            ]
             : [CoachMetricKind.Fillers, CoachMetricKind.Pace, CoachMetricKind.TurnTaking, CoachMetricKind.Monologue];
 
     public static bool IsLanguageBound(CoachMetricKind kind)

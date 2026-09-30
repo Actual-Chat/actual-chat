@@ -24,6 +24,11 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
     private readonly StoredState<Box<CoachTab>> _selectedTab = hub.StateFactory.NewKvasStored<Box<CoachTab>>(
         new (hub.LocalSettings, "Coach.Tab") { InitialValue = Box.New(CoachTab.Recent) });
 
+    // The transcript being spoken is rescanned on every update, so its scanner is kept between them
+    private readonly Lock _liveScanLock = new();
+    private SpeechLexiconScanner? _liveScanner;
+    private ChatEntryId? _liveScanEntryId;
+
     private IChats Chats => Hub.Chats;
     private IChatCoach ChatCoach => Hub.ChatCoach;
     private ChatUI ChatUI => Hub.ChatUI;
@@ -43,11 +48,11 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
     public virtual async Task<ApiArray<CoachLanguageInfo>> ListOwnLanguages(CancellationToken cancellationToken)
         => await Hub.Coach.ListOwnLanguages(Session, cancellationToken).ConfigureAwait(false);
 
-    // The chip selection: the remembered language while it still has words, else the most spoken one;
-    // null when fewer than two languages have words, so callers ask for "all"
     [ComputeMethod]
     public virtual async Task<string?> GetSelectedLanguage(CancellationToken cancellationToken)
     {
+        // The chip selection: the remembered language while it still has words, else the most spoken one;
+        // null when fewer than two languages have words, so callers ask for "all"
         var languages = (await ListOwnLanguages(cancellationToken).ConfigureAwait(false))
             .Where(l => l.Words30Days > 0)
             .ToList();
@@ -62,10 +67,10 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
     public Task SelectLanguage(string iso)
         => UserSettingsUI.UserCoachSettings().Update(x => x with { SelectedLanguage = iso });
 
-    // null when the coach is off for the user; else whether entries of the chat are analysed
     [ComputeMethod]
     public virtual async Task<bool?> IsChatCoached(ChatId chatId, CancellationToken cancellationToken)
     {
+        // null when the coach is off for the user; else whether entries of the chat are analysed
         if (!await IsEnabled(cancellationToken).ConfigureAwait(false))
             return null;
 
@@ -78,11 +83,11 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
         return CoachScope.IsInScope(chatId, chatSettings, placeSettings, coachSettings);
     }
 
-    // The marks of a transcript that is still being spoken: the word list at once, and the tagger's marks of the
-    // sentences it has finished, found again in the text by word and occurrence
     public async Task<ApiArray<SpeechSpan>> FindLiveMarks(
         ChatEntryId entryId, string text, CancellationToken cancellationToken)
     {
+        // The marks of a transcript that is still being spoken: the word list at once, and the tagger's marks of the
+        // sentences it has finished, found again in the text by word and occurrence
         var chatId = entryId.ChatId;
         if (text.IsNullOrEmpty()
             || !await IsMarkingEnabled(cancellationToken).ConfigureAwait(false)
@@ -93,10 +98,18 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
         var spoken = await Hub.LanguageUI.ListSpoken(cancellationToken).ConfigureAwait(false);
         var settings = await UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
         // The language of a recording is only settled with the entry, so every language the user speaks is tried
-        var instant = ApiArray<SpeechSpan>.Empty;
-        foreach (var candidate in spoken.Prepend(language).DistinctBy(l => l.IsoCode))
-            if (settings.LevelOf(candidate.Value) != CoachLanguageLevel.Off)
-                instant = instant.AddNonOverlapping(SpeechLexicon.Default.FindSpans(text, candidate));
+        var candidates = spoken
+            .Prepend(language)
+            .Where(l => settings.LevelOf(l.Value) != CoachLanguageLevel.Off)
+            .ToList();
+        ApiArray<SpeechSpan> instant;
+        lock (_liveScanLock) {
+            if (_liveScanner is null || _liveScanEntryId != entryId) {
+                _liveScanner = new SpeechLexiconScanner(SpeechLexicon.Default);
+                _liveScanEntryId = entryId;
+            }
+            instant = _liveScanner.Scan(text, candidates);
+        }
         var live = await GetOwnLiveMarks(entryId, cancellationToken).ConfigureAwait(false);
         return live.Count == 0
             ? instant
@@ -104,7 +117,8 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
     }
 
     [ComputeMethod]
-    public virtual Task<ApiArray<CoachLiveMark>> GetOwnLiveMarks(ChatEntryId entryId, CancellationToken cancellationToken)
+    public virtual Task<ApiArray<CoachLiveMark>> GetOwnLiveMarks(
+        ChatEntryId entryId, CancellationToken cancellationToken)
         => ChatCoach.GetOwnLiveMarks(Session, entryId.ChatId, entryId.LocalId, cancellationToken);
 
     [ComputeMethod]
@@ -159,9 +173,9 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
 
     // Protected methods
 
-    // One RPC per 5-lid tile; the entries of a tile share it through the compute cache
     [ComputeMethod]
     protected virtual Task<ApiArray<CoachEntryMarks>> GetOwnMarksTile(
         ChatId chatId, Range<long> lidTileRange, CancellationToken cancellationToken)
+        // One RPC per 5-lid tile; the entries of a tile share it through the compute cache
         => ChatCoach.GetOwnMarks(Session, chatId, lidTileRange, cancellationToken);
 }

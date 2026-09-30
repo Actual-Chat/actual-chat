@@ -44,7 +44,8 @@ public sealed record SpeechTextStats(
         for (var i = 1; i < words.Count; i++) {
             var (core, start) = words[i];
             if (core == words[i - 1].Core)
-                repetitionSpans.Add(new SpeechSpan(SpeechSpanKind.Repetition, core, start, core.Length, ApiArray<string>.Empty));
+                repetitionSpans.Add(new SpeechSpan(
+                    SpeechSpanKind.Repetition, core, start, core.Length, ApiArray<string>.Empty));
         }
 
         return new SpeechTextStats(

@@ -64,4 +64,23 @@ public class CoachLiveMarksTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         spans.Should().ContainSingle().Which.Start.Should().Be(2);
     }
+
+    [Fact]
+    public void FromSpansShouldNumberARepeatedWordByItsPlaceInTheText()
+    {
+        // arrange
+        var text = "um, so, um, well, um. Yes, um.";
+        var starts = new[] { 0, 8, 18, 27 };
+        var spans = starts
+            .Select(start => new SpeechSpan(SpeechSpanKind.FilledPause, "um", start, 2, ApiArray<string>.Empty))
+            .Reverse()
+            .ToList();
+
+        // act
+        var marks = CoachLiveMarks.FromSpans(text, spans, true);
+
+        // assert
+        marks.Select(m => m.Occurrence).Should().Equal(4, 3, 2, 1);
+        CoachLiveMarks.Locate(text, marks, true).Select(s => s.Start).Should().Equal(starts);
+    }
 }

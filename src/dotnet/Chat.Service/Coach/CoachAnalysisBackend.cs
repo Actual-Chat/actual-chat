@@ -380,11 +380,11 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             }
             && !entry.Content.IsNullOrWhiteSpace();
 
-    // The entry may have been edited while the LLM was running (then the analysis is stale), or a
-    // concurrent command may already have stored the same tags
     private static bool IsStillWorthWriting(
         DbCoachEntry? dbEntry, CoachEntryAnalysis analysis, HashString currentContentHash)
     {
+        // The entry may have been edited while the LLM was running (then the analysis is stale), or a
+        // concurrent command may already have stored the same tags
         if (analysis.ContentHash != currentContentHash)
             return false;
         if (dbEntry is null || dbEntry.ContentHash != analysis.ContentHash.Value)
@@ -548,22 +548,23 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
         }
     }
 
-    // The tagger's own spans win where they overlap the word list
     private ApiArray<SpeechSpan> AddInstantSpans(ApiArray<SpeechSpan> spans, string text, Language? language)
     {
+        // The tagger's own spans win where they overlap the word list
         if (!Settings.Coach.IsInstantMarkingEnabled)
             return spans;
 
         return spans.AddNonOverlapping(SpeechLexicon.Default.FindSpans(text, language));
     }
 
-    // An own voice entry the tagger has not marked yet shows the marks the word list finds in it, and the
-    // live ones
     private async Task AddInstantMarks(
         ChatId chatId, AuthorId authorId, Range<long> tileRange, List<CoachEntryMarks> marks,
         CancellationToken cancellationToken)
     {
-        var entries = (await ReadWindow(chatId, tileRange.Start, tileRange.End, cancellationToken).ConfigureAwait(false))
+        // An own voice entry the tagger has not marked yet shows the marks the word list finds in it, and the
+        // live ones
+        var window = await ReadWindow(chatId, tileRange.Start, tileRange.End, cancellationToken).ConfigureAwait(false);
+        var entries = window
             .Where(e => e.AuthorId == authorId && IsAnalyzable(e) && marks.All(m => m.EntryLid != e.LocalId))
             .ToList();
         if (entries.Count == 0)
@@ -658,14 +659,14 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
         return (tagged, analyzedAuthors);
     }
 
-    // The coaching "conversation" is a run of entries with no quiet gap of ConversationMaturity
-    // between neighbours; the summarizer's conversations exist only for long threads, so they
-    // cannot be the unit here. The run is identified by its true first lid; when it is longer than
-    // MaxRunEntries only its tail is analysed, so the identity never depends on which entry
-    // triggered the command.
     private async Task<(long FirstLid, List<ChatEntry> Entries)> FindRun(
         ChatId chatId, long entryLid, CancellationToken cancellationToken)
     {
+        // The coaching "conversation" is a run of entries with no quiet gap of ConversationMaturity
+        // between neighbours; the summarizer's conversations exist only for long threads, so they
+        // cannot be the unit here. The run is identified by its true first lid; when it is longer than
+        // MaxRunEntries only its tail is analysed, so the identity never depends on which entry
+        // triggered the command.
         var maturity = Settings.Coach.ConversationMaturity;
         var lidRange = await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
         if (entryLid < lidRange.Start || entryLid >= lidRange.End)
@@ -737,10 +738,10 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             .ToList();
     }
 
-    // The entry's detected language, else the language the user records in: an entry has no
-    // language row while translation is off or before detection lands.
     private async Task<Language?> GetLanguage(ChatEntryId id, UserId userId, CancellationToken cancellationToken)
     {
+        // The entry's detected language, else the language the user records in: an entry has no
+        // language row while translation is off or before detection lands.
         var tile = await LanguagesBackend
             .GetTile(id.ChatId, Constants.Chat.EntryIdTiles.GetTile(id.LocalId).Range, cancellationToken)
             .ConfigureAwait(false);
