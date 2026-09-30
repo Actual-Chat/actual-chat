@@ -150,7 +150,10 @@ public static class MauiDiagnostics
         // Global Mode makes sense for client apps
         options.IsGlobalModeEnabled = true;
 
-        options.MinimumEventLevel = LogEventLevel.Warning;
+        // Warnings stay breadcrumbs (the sink's default for Information and up) and travel with
+        // the error they preceded. As events they were 92% of what every client sent - connectivity
+        // blips, diagnostics - and burned the org quota by the 18th, dropping the errors too.
+        options.MinimumEventLevel = LogEventLevel.Error;
 
         // We'll use an event processor to set things like SDK name
         options.AddEventProcessor(new SentryMauiEventProcessor(options));
