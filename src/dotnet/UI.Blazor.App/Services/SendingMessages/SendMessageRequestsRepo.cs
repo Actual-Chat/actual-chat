@@ -128,10 +128,8 @@ public sealed partial record SendMessageRequestEntry : IHasId<string>, ISanitize
     [DataMember, Key(10)] public long? NewChatEntryLocalId { get; init; }
     [DataMember, Key(11)] public MediaRef[] ExistingMedia { get; init; } = [];
     [DataMember, Key(12)] public string? QuotedText { get; init; }
-    [DataMember, Key(13)] public GeoPoint? LocationPoint { get; init; }
-    [DataMember, Key(14)] public bool IsLocationPlace { get; init; }
-    [DataMember, Key(15)] public SharedLocationId? LocationId { get; init; }
-    [DataMember, Key(16)] public TimeSpan LocationLiveDuration { get; init; }
+    [DataMember, Key(13)] public SharedLocationDiff? Location { get; init; }
+    [DataMember, Key(14)] public SharedLocationId? LocationId { get; init; }
 
     string IHasId<string>.Id => Uuid;
 

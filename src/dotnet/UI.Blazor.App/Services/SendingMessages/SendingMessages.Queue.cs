@@ -25,7 +25,7 @@ partial class SendingMessages
                 && !_cancellationTokenSource.IsCancellationRequested) {
                 // The send was cancelled rather than the service stopped: a live share created above
                 // must not run on without its entry, and nothing else knows its id
-                if (request.LocationLiveDuration > TimeSpan.Zero && request.LocationId is { } createdId)
+                if (request.Location?.LiveDuration > TimeSpan.Zero && request.LocationId is { } createdId)
                     await StopSharedLocation(request.ChatId, createdId).ConfigureAwait(false);
                 throw;
             }
@@ -132,7 +132,7 @@ partial class SendingMessages
         PostMessageRequestInternal request,
         CancellationToken cancellationToken)
     {
-        if (request.LocationId is not null || request.LocationPoint is not { } point)
+        if (request.LocationId is not null || request.Location is not { } location)
             return request;
 
         // The Uuid is derived from the request's, so a resend of a create the server already applied
@@ -143,19 +143,15 @@ partial class SendingMessages
             Session = Session,
             ChatId = request.ChatId,
             Id = null,
-            Change = Change.Create(new SharedLocationDiff {
-                Point = point,
-                LiveDuration = request.LocationLiveDuration,
-                IsPlace = request.IsLocationPlace,
-            }),
+            Change = Change.Create(location),
         };
-        var location = await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
-        if (location is null)
+        var created = await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        if (created is null)
             throw StandardError.Internal("Failed to create a shared location.");
 
-        await _requestsRepo.MarkLocationWasCreated(request.Uuid, location.Id, cancellationToken)
+        await _requestsRepo.MarkLocationWasCreated(request.Uuid, created.Id, cancellationToken)
             .ConfigureAwait(false);
-        return request with { LocationId = location.Id };
+        return request with { LocationId = created.Id };
     }
 
     private async Task StopSharedLocation(ChatId chatId, SharedLocationId locationId)

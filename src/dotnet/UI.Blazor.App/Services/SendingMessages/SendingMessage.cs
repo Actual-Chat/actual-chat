@@ -15,9 +15,7 @@ public record SendingMessage(
     AttachmentUploads? AttachmentUploads,
     Action CancelSendRequested)
 {
-    public GeoPoint? LocationPoint { get; init; }
-    public bool IsLocationPlace { get; init; }
-    public TimeSpan LocationLiveDuration { get; init; }
+    public SharedLocationDiff? Location { get; init; }
     public ChatEntry? PostedChatEntry { get; private set; }
     public Exception? Error { get; private set; }
     public Moment? SentMoment { get; private set; }

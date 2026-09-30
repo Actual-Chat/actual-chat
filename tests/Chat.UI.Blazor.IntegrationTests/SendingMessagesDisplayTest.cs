@@ -175,8 +175,7 @@ public class SendingMessagesDisplayTest(ChatAppHostFixture fixture, ITestOutputH
             HashString.None,
             null,
             () => { }) {
-            LocationPoint = point,
-            IsLocationPlace = true,
+            Location = new SharedLocationDiff { Point = point, IsPlace = true },
         });
 
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
@@ -189,8 +188,8 @@ public class SendingMessagesDisplayTest(ChatAppHostFixture fixture, ITestOutputH
             .SkipNullItems()
             .ToList();
         sending.Should().ContainSingle();
-        sending[0].LocationPoint.Should().Be(point);
-        sending[0].IsLocationPlace.Should().BeTrue();
+        sending[0].Location!.Point.Should().Be(point);
+        sending[0].Location!.IsPlace.Should().BeTrue();
     }
 
     // The queue creates the shared location and posts the entry for it: both must land, and the

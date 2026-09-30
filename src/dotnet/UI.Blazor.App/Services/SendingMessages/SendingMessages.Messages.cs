@@ -65,9 +65,7 @@ partial class SendingMessages
             textHash,
             request.AttachmentUploads,
             cancelSendRequested) {
-            LocationPoint = request.LocationPoint,
-            IsLocationPlace = request.IsLocationPlace,
-            LocationLiveDuration = request.LocationLiveDuration,
+            Location = request.Location,
         };
         return sendingMessage;
     }
