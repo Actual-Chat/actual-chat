@@ -36,6 +36,49 @@ public class ConversationStatsTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
+    public void ComputeShouldKeepAForceSplitMonologueWhole()
+    {
+        // arrange: one 8 min talk cut into entries of at most 3 min, boundaries half a second apart
+        var entries = new[] { Voice(1, Me, 0, 180), Voice(2, Me, 180.5, 360.5), Voice(3, Me, 361, 480) };
+
+        // act
+        var s = ConversationStats.Compute(entries, Me, 5, monologueJoinGapSeconds: 5)!;
+
+        // assert
+        s.LongestMonologueSeconds.Should().Be(480);
+        s.OwnTurns.Should().Be(1, "the split does not create turns");
+    }
+
+    [Fact]
+    public void ComputeShouldNotJoinMessagesRecordedFarApart()
+    {
+        // arrange: two 1 min voice messages ten minutes apart, nobody replied in between
+        var entries = new[] { Voice(1, Me, 0, 60), Voice(2, Me, 660, 720) };
+
+        // act
+        var s = ConversationStats.Compute(entries, Me, 5, monologueJoinGapSeconds: 5)!;
+
+        // assert
+        s.LongestMonologueSeconds.Should().Be(60, "the silence between two messages is not a monologue");
+        s.OwnTurns.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData(5, 65)]
+    [InlineData(5.5, 30)]
+    public void ComputeShouldJoinOnlyWithinTheGap(double gap, double expectedMonologue)
+    {
+        // arrange
+        var entries = new[] { Voice(1, Me, 0, 30), Voice(2, Me, 30 + gap, 60 + gap) };
+
+        // act
+        var s = ConversationStats.Compute(entries, Me, 5, monologueJoinGapSeconds: 5)!;
+
+        // assert
+        s.LongestMonologueSeconds.Should().Be(expectedMonologue);
+    }
+
+    [Fact]
     public void ComputeShouldMeasurePatienceAsGapAfterTheOtherStops()
     {
         // arrange: other ends at 20, me starts at 21 (gap 1); the 9 s gap later is above the cap

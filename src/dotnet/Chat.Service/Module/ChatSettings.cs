@@ -80,6 +80,8 @@ public class CoachSettings
     public TimeSpan HttpTimeout { get; set; } = TimeSpan.FromSeconds(60);
     public double MinPauseSeconds { get; set; } = 1;
     public double MaxResponseGapSeconds { get; set; } = 10;
+    // Voice entries are cut at Constants.Chat.MaxEntryDuration; entries of one author closer than this are one monologue
+    public double MonologueJoinGapSeconds { get; set; } = 5;
     public int BatchChunkWords { get; set; } = 2000;
     public TimeSpan ConversationMaturity { get; set; } = TimeSpan.FromMinutes(10);
     public TimeSpan MaxConversationWait { get; set; } = TimeSpan.FromHours(2);

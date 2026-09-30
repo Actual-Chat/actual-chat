@@ -15,7 +15,10 @@ public sealed record ConversationStats(
     int Interruptions)
 {
     public static ConversationStats? Compute(
-        IReadOnlyList<ChatEntry> entries, AuthorId authorId, double maxResponseGapSeconds)
+        IReadOnlyList<ChatEntry> entries,
+        AuthorId authorId,
+        double maxResponseGapSeconds,
+        double monologueJoinGapSeconds = 5)
     {
         var voice = entries
             .Where(e => e is { HasAudio: true, IsRemoved: false, EndsAt: not null })
@@ -64,6 +67,11 @@ public sealed record ConversationStats(
                         }
                     }
                 }
+            }
+            else if (isOwn && (e.BeginsAt - turnEnd).TotalSeconds > monologueJoinGapSeconds) {
+                // Same turn, but the silence in between is not part of one stretch of talk
+                CloseTurn();
+                turnStart = e.BeginsAt;
             }
             turnEnd = endsAt;
             if (!isOwn)

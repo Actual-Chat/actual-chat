@@ -213,7 +213,8 @@ public class CoachAnalysisBackend(IServiceProvider services)
             if (dbRow is not null && dbRow.ConversationVersion == runVersion)
                 continue;
 
-            var stats = ConversationStats.Compute(run, authorId, Settings.Coach.MaxResponseGapSeconds);
+            var stats = ConversationStats.Compute(
+                run, authorId, Settings.Coach.MaxResponseGapSeconds, Settings.Coach.MonologueJoinGapSeconds);
             if (stats is null)
                 continue;
 

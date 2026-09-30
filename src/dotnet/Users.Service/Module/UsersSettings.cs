@@ -169,7 +169,7 @@ public sealed class CoachScoringSettings
     public double TurnHighFactor { get; set; } = 1.5;
     public double PatienceLowSeconds { get; set; } = 0.5;
     public double PatienceHighSeconds { get; set; } = 1.5;
-    public double MonologueFlagSeconds { get; set; } = 90;
+    public double MonologueFlagSeconds { get; set; } = 150;
     public int WeightFillers { get; set; } = 30;
     public int WeightPace { get; set; } = 25;
     public int WeightWeakWords { get; set; } = 20;
