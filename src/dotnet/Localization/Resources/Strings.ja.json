@@ -364,6 +364,8 @@
   "ChatMenu_Unpin": "ピン留めを解除",
   "ChatMenu_PinToSidebar": "サイドバーにピン留め",
   "ChatMenu_UnpinFromSidebar": "サイドバーから外す",
+  "ChatMenu_MarkAsRead": "既読にする",
+  "ChatMenu_MarkAsUnread": "未読にする",
   "ChatMenu_StartAnonymousChat": "匿名チャットを開始",
   "ChatMenu_StartRecording": "録音を開始",
   "ChatMenu_StopRecording": "録音を停止",

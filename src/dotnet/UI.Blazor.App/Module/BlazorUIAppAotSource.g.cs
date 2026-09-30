@@ -111,6 +111,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuBlock>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuLeave>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuListen>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuMarkRead>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuNavbarPin>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuPin>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatMenuRecord>();
@@ -944,6 +945,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuBlock), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuLeave), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuListen), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuMarkRead), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuNavbarPin), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuPin), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatMenuRecord), AotTypeKind.Component),

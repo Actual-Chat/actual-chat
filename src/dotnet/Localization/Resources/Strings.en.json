@@ -442,6 +442,8 @@
   "ChatMenu_Unpin": "Unpin",
   "ChatMenu_PinToSidebar": "Pin to Sidebar",
   "ChatMenu_UnpinFromSidebar": "Unpin from Sidebar",
+  "ChatMenu_MarkAsRead": "Mark as read",
+  "ChatMenu_MarkAsUnread": "Mark as unread",
   "ChatMenu_StartAnonymousChat": "Start anonymous chat",
   "ChatMenu_StartRecording": "Start recording",
   "ChatMenu_StopRecording": "Stop recording",

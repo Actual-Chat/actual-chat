@@ -364,6 +364,8 @@
   "ChatMenu_Unpin": "取消置顶",
   "ChatMenu_PinToSidebar": "固定到侧边栏",
   "ChatMenu_UnpinFromSidebar": "从侧边栏取消固定",
+  "ChatMenu_MarkAsRead": "标为已读",
+  "ChatMenu_MarkAsUnread": "标为未读",
   "ChatMenu_StartAnonymousChat": "发起匿名聊天",
   "ChatMenu_StartRecording": "开始录音",
   "ChatMenu_StopRecording": "停止录音",

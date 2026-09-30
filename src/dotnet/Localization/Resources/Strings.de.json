@@ -364,6 +364,8 @@
   "ChatMenu_Unpin": "Lösen",
   "ChatMenu_PinToSidebar": "An Seitenleiste anheften",
   "ChatMenu_UnpinFromSidebar": "Von Seitenleiste lösen",
+  "ChatMenu_MarkAsRead": "Als gelesen markieren",
+  "ChatMenu_MarkAsUnread": "Als ungelesen markieren",
   "ChatMenu_StartAnonymousChat": "Anonymen Chat starten",
   "ChatMenu_StartRecording": "Aufnahme starten",
   "ChatMenu_StopRecording": "Aufnahme beenden",

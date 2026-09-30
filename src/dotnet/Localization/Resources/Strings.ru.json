@@ -364,6 +364,8 @@
   "ChatMenu_Unpin": "Открепить",
   "ChatMenu_PinToSidebar": "Закрепить в боковой панели",
   "ChatMenu_UnpinFromSidebar": "Открепить от боковой панели",
+  "ChatMenu_MarkAsRead": "Пометить как прочитанное",
+  "ChatMenu_MarkAsUnread": "Пометить как непрочитанное",
   "ChatMenu_StartAnonymousChat": "Начать анонимный чат",
   "ChatMenu_StartRecording": "Начать запись",
   "ChatMenu_StopRecording": "Остановить запись",

@@ -442,6 +442,8 @@
   "ChatMenu_Unpin": "Sabitlemeyi kaldırın",
   "ChatMenu_PinToSidebar": "Закачете в страничната лента",
   "ChatMenu_UnpinFromSidebar": "Откачете от страничната лента",
+  "ChatMenu_MarkAsRead": "Маркирайте като прочетено",
+  "ChatMenu_MarkAsUnread": "Маркирайте като непрочетено",
   "ChatMenu_StartAnonymousChat": "Démarrer une discussion anonyme",
   "ChatMenu_StartRecording": "Démarrer l'enregistrement",
   "ChatMenu_StopRecording": "Arrêter l'enregistrement",

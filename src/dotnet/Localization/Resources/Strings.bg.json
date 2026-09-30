@@ -364,6 +364,8 @@
   "ChatMenu_Unpin": "Откачете",
   "ChatMenu_PinToSidebar": "Закачете в страничната лента",
   "ChatMenu_UnpinFromSidebar": "Откачете от страничната лента",
+  "ChatMenu_MarkAsRead": "Маркирайте като прочетено",
+  "ChatMenu_MarkAsUnread": "Маркирайте като непрочетено",
   "ChatMenu_StartAnonymousChat": "Започнете анонимен чат",
   "ChatMenu_StartRecording": "Започнете запис",
   "ChatMenu_StopRecording": "Спрете записа",

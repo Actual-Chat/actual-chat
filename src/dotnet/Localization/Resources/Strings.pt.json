@@ -364,6 +364,8 @@
   "ChatMenu_Unpin": "Desafixar",
   "ChatMenu_PinToSidebar": "Fixar na barra lateral",
   "ChatMenu_UnpinFromSidebar": "Desafixar da barra lateral",
+  "ChatMenu_MarkAsRead": "Marcar como lido",
+  "ChatMenu_MarkAsUnread": "Marcar como não lido",
   "ChatMenu_StartAnonymousChat": "Iniciar chat anônimo",
   "ChatMenu_StartRecording": "Iniciar gravação",
   "ChatMenu_StopRecording": "Parar gravação",

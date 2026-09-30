@@ -364,6 +364,8 @@
   "ChatMenu_Unpin": "고정 해제",
   "ChatMenu_PinToSidebar": "사이드바에 고정",
   "ChatMenu_UnpinFromSidebar": "사이드바에서 고정 해제",
+  "ChatMenu_MarkAsRead": "읽음으로 표시",
+  "ChatMenu_MarkAsUnread": "읽지 않음으로 표시",
   "ChatMenu_StartAnonymousChat": "익명 채팅 시작",
   "ChatMenu_StartRecording": "녹음 시작",
   "ChatMenu_StopRecording": "녹음 중지",

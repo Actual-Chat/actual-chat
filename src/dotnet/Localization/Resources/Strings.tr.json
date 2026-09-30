@@ -364,6 +364,8 @@
   "ChatMenu_Unpin": "Sabitlemeyi kaldırın",
   "ChatMenu_PinToSidebar": "Kenar çubuğuna sabitleyin",
   "ChatMenu_UnpinFromSidebar": "Kenar çubuğundan kaldırın",
+  "ChatMenu_MarkAsRead": "Okundu olarak işaretleyin",
+  "ChatMenu_MarkAsUnread": "Okunmadı olarak işaretleyin",
   "ChatMenu_StartAnonymousChat": "Anonim sohbet başlatın",
   "ChatMenu_StartRecording": "Kaydı başlatın",
   "ChatMenu_StopRecording": "Kaydı durdurun",
