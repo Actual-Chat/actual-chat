@@ -31,9 +31,5 @@ public sealed partial record UserCall
     [DataMember(Order = 8), Key(8)]
     public string? ClientId { get; init; }
     [DataMember(Order = 9), Key(9)]
-    public CallId? CallId { get; init; }
-
-    // A null callId asks about any call in the chat: the asker hasn't been told the id yet.
-    public bool IsSameCall(ChatId chatId, CallId? callId)
-        => ChatId == chatId && (CallId is null || callId is null || CallId == callId);
+    public CallId CallId { get; init; } = null!;
 }

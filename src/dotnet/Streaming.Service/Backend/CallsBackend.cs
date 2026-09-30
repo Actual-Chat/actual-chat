@@ -73,7 +73,7 @@ public class CallsBackend : ShardComputeService, ICallsBackend
         using (await _claimLocks.Lock(userId, cancellationToken).ConfigureAwait(false)) {
             var existing = await SafeGet(userId).ConfigureAwait(false);
             if (existing is not null
-                && !existing.IsSameCall(call.ChatId, call.CallId)
+                && existing.CallId != call.CallId
                 && await GetPhase(existing, cancellationToken).ConfigureAwait(false) is not null)
                 return false;
 
@@ -90,7 +90,7 @@ public class CallsBackend : ShardComputeService, ICallsBackend
         using (Computed.BeginIsolation())
         using (await _claimLocks.Lock(userId, cancellationToken).ConfigureAwait(false)) {
             var call = await SafeGet(userId).ConfigureAwait(false);
-            if (call is null || !call.IsSameCall(callId.ChatId, callId))
+            if (call is null || call.CallId != callId)
                 return;
 
             await _userCalls.Remove(userId.Value).ConfigureAwait(false);

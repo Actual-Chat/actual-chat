@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="ActualChat.Chat.UI.Blazor.UnitTests" />
+    <InternalsVisibleTo Include="ActualChat.Chat.UI.Blazor.IntegrationTests" />
   </ItemGroup>
 
 </Project>

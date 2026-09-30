@@ -50,7 +50,7 @@ public sealed class CallClientVisibilityTest(ChatCollection.AppHostFixture fixtu
         await using var aliceTester = AppHost.NewBlazorTester(Out);
         var (chatId, _, alice) = await NewPeerChat(bobPhone, bobDesktop, aliceTester);
         var liveSessions = bobPhone.AppServices.GetRequiredService<ILiveSessions>();
-        await liveSessions.StartCall(
+        var callId = await liveSessions.StartCall(
             bobPhone.Session, chatId, new[] { alice.Id }.ToApiArray(), false, "phone", default);
         await TestWait.When(async ct => {
             var ring = await liveSessions.GetMyCall(aliceTester.Session, "alice-phone", ct);
@@ -58,7 +58,7 @@ public sealed class CallClientVisibilityTest(ChatCollection.AppHostFixture fixtu
         });
 
         // act
-        await liveSessions.AcceptCall(aliceTester.Session, chatId, "alice-phone", null, default);
+        await liveSessions.AcceptCall(aliceTester.Session, callId, "alice-phone", default);
 
         // assert
         await TestWait.When(async ct => {

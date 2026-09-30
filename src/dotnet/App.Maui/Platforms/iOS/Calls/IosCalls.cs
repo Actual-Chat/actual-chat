@@ -167,7 +167,7 @@ public sealed class IosCalls : CXProviderDelegate
     public void FailCall(ChatId chatId)
         => EndCalls(chatId, CXCallEndedReason.Failed);
 
-    public void StartOutgoingCall(ChatId chatId, CallId? callId, bool hasVideo)
+    public void StartOutgoingCall(ChatId chatId, CallId callId, bool hasVideo)
     {
         // Keyed like an incoming call, by the id the server gave it; a random one only when it gave
         // none. Synchronous, so nothing can report a status for a call this map doesn't hold yet; the

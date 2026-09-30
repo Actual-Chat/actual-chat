@@ -66,11 +66,9 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
         var (chatId, bobAuthor, aliceAuthor) = await NewGroupChat(bob, alice);
         var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
         var invitees = new[] { aliceAuthor.Id }.ToApiArray();
-        await backend.StartCall(chatId, bobAuthor.Id, invitees, false, default);
-        var firstCallId = (await backend.GetState(chatId, default))!.CallId;
+        var firstCallId = await backend.StartCall(chatId, bobAuthor.Id, invitees, false, default);
         await backend.CancelCall(chatId, bobAuthor.Id, default);
-        await backend.StartCall(chatId, bobAuthor.Id, invitees, false, default);
-        var secondCallId = (await backend.GetState(chatId, default))!.CallId;
+        var secondCallId = await backend.StartCall(chatId, bobAuthor.Id, invitees, false, default);
 
         // act
         await backend.DeclineCall(chatId, aliceAuthor.Id, firstCallId, default);
@@ -100,8 +98,7 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
         var (chatId, bobAuthor, aliceAuthor) = await NewGroupChat(bob, alice);
         var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
         var invitees = new[] { aliceAuthor.Id }.ToApiArray();
-        await backend.StartCall(chatId, bobAuthor.Id, invitees, false, default);
-        var firstCallId = (await backend.GetState(chatId, default))!.CallId;
+        var firstCallId = await backend.StartCall(chatId, bobAuthor.Id, invitees, false, default);
         await backend.CancelCall(chatId, bobAuthor.Id, default);
         await backend.StartCall(chatId, bobAuthor.Id, invitees, false, default);
 
@@ -178,8 +175,7 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
         var (chatId, bobAuthor, aliceAuthor) = await NewGroupChat(bob, alice);
         var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
         var invitees = new[] { aliceAuthor.Id }.ToApiArray();
-        await backend.StartCall(chatId, bobAuthor.Id, invitees, false, default);
-        var firstCallId = (await backend.GetState(chatId, default))!.CallId;
+        var firstCallId = await backend.StartCall(chatId, bobAuthor.Id, invitees, false, default);
         await backend.CancelCall(chatId, bobAuthor.Id, default);
         await backend.StartCall(chatId, bobAuthor.Id, invitees, false, default);
 
@@ -191,6 +187,29 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
         state.Should().NotBeNull();
         state!.IsDialing.Should().BeTrue();
         state.Outcome.Should().Be(CallOutcome.None);
+    }
+
+    [Fact]
+    public async Task CancelByAnInviteeShouldLeaveTheCallRinging()
+    {
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        var (chatId, bobAuthor, aliceAuthor) = await NewGroupChat(bob, alice);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var invitees = new[] { aliceAuthor.Id }.ToApiArray();
+        var callId = await backend.StartCall(chatId, bobAuthor.Id, invitees, false, default);
+
+        // act
+        await backend.CancelCall(chatId, aliceAuthor.Id, callId, default);
+
+        // assert
+        var state = await backend.GetState(chatId, default);
+        state.Should().NotBeNull();
+        state!.IsDialing.Should().BeTrue();
+        state.Outcome.Should().Be(CallOutcome.None);
+        var live = await backend.Get(chatId, default);
+        live!.Invites.Single(x => x.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Ringing);
     }
 
     [Fact]

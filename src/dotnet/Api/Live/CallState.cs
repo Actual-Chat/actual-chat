@@ -34,5 +34,5 @@ public sealed partial record CallState
     [DataMember(Order = 5), Key(5)]
     public Moment? CanceledAt { get; init; }
     [DataMember(Order = 6), Key(6)]
-    public CallId? CallId { get; init; }
+    public CallId CallId { get; init; } = null!;
 }

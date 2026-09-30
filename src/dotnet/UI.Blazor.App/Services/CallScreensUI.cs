@@ -89,8 +89,8 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     public virtual async Task<IncomingCall?> GetIncomingCall(CancellationToken cancellationToken)
     {
         var call = await CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
-        return call is { Role: CallRole.Callee, Phase: CallPhase.Ringing, PeerId: { } callerId }
-            ? new IncomingCall(call.ChatId, callerId, call.HasVideo, call.CallId)
+        return call is { Role: CallRole.Callee, Phase: CallPhase.Ringing, PeerId: { } callerId, CallId: { } callId }
+            ? new IncomingCall(callId, callerId, call.HasVideo)
             : null;
     }
 
@@ -167,7 +167,11 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         ClearIf(_collapsedChatId, chatId);
         Bridge?.DismissCallNotification(chatId, callId);
         try {
-            await CallUI.AcceptCall(chatId, callId, CancellationToken.None).ConfigureAwait(true);
+            // No id - no ring: the slot never held one, so there is nothing the server could connect.
+            if (callId is null)
+                throw StandardError.Constraint("There's no ring left to accept in this chat.");
+
+            await CallUI.AcceptCall(callId, CancellationToken.None).ConfigureAwait(true);
         }
         catch (Exception e) {
             // Also where "there was no ring left" lands: the server decides that under its change
@@ -206,8 +210,11 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         var isHeld = EndRing(chatId, callId);
         if (!isOverLock || !isHeld)
             _ = Bridge?.OnCallHandled(chatId, callId, false);
+        if (callId is null)
+            return; // The slot never held a ring, so there is no call to tell the server about
+
         try {
-            await CallUI.DeclineCall(chatId, callId, CancellationToken.None).ConfigureAwait(false);
+            await CallUI.DeclineCall(callId, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogWarning(e, "DeclineCall failed for chat #{ChatId}", chatId);

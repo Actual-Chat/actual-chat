@@ -104,8 +104,13 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         => Task.FromResult(CallStatus.None);
 
     // [ComputeMethod]
-    public virtual Task<UserCall?> GetMyCall(Session session, string clientId, CancellationToken cancellationToken)
-        => GetMyCallOnClient(session, clientId, cancellationToken);
+    public virtual async Task<UserCall?> GetMyCall(
+        Session session, string clientId, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var call = await CallsBackend.GetUserCall(account.Id, cancellationToken).ConfigureAwait(false);
+        return call is not null && IsOnClient(call, session.Hash, clientId) ? call : null;
+    }
 
     public Task DismissCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken)
         // The status it dismissed is gone with the banner that showed it - see GetCallStatus.
@@ -229,26 +234,53 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         await Backend.LowerAllHands(chatId, cancellationToken).ConfigureAwait(false);
     }
 
-    public Task<CallId?> StartCall(
+    public async Task<CallId> StartCall(
         Session session,
         ChatId chatId,
         ApiArray<AuthorId> invitees,
         bool hasVideo,
         string clientId,
         CancellationToken cancellationToken)
-        => StartCallOnClient(session, chatId, invitees, hasVideo, clientId, cancellationToken);
-
-    public Task AcceptCall(
-        Session session,
-        ChatId chatId,
-        string clientId,
-        CallId? callId,
-        CancellationToken cancellationToken)
-        => AcceptCallOnClient(session, chatId, clientId, callId, cancellationToken);
-
-    public async Task DeclineCall(Session session, ChatId chatId, CallId? callId, CancellationToken cancellationToken)
     {
-        RequireCallInChat(chatId, callId);
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        if (!chat.IsMember())
+            throw StandardError.Constraint("Join this chat to call its members.");
+
+        // Same anti-spam gate as peer messaging: in a peer chat the audio/video (and other stream)
+        // permissions are stripped unless the recipient stored the caller's contact or replied to
+        // them (a block by the recipient leaves the contact non-regular too). So CanWriteAudio is the
+        // reused signal that this caller is allowed to reach the peer with a call.
+        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
+        if (chatId is PeerChatId && !chat.Rules.CanWriteAudio())
+            throw StandardError.Constraint(
+                "You can call this user only after they add you to their contacts or reply to you.");
+
+        var callerAuthorId = chat.Rules.Author!.Id;
+        if (invitees.Count == 0) {
+            // Empty = ring every other chat member.
+            var allAuthorIds = await Authors
+                .ListAuthorIds(session, chatId, cancellationToken)
+                .ConfigureAwait(false);
+            invitees = allAuthorIds.Where(id => id != callerAuthorId).ToApiArray();
+        }
+        return await Backend
+            .StartCall(chatId, callerAuthorId, invitees, hasVideo, session.Hash, clientId, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task AcceptCall(Session session, CallId callId, string clientId, CancellationToken cancellationToken)
+    {
+        var chatId = callId.ChatId;
+        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
+        if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
+            await Backend.AcceptCall(chatId, authorId, session.Hash, clientId, callId, cancellationToken)
+                .ConfigureAwait(false);
+    }
+
+    public async Task DeclineCall(Session session, CallId callId, CancellationToken cancellationToken)
+    {
+        var chatId = callId.ChatId;
         if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
             await Backend.DeclineCall(chatId, authorId, callId, cancellationToken).ConfigureAwait(false);
     }
@@ -259,9 +291,9 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
             await Backend.ConfirmRing(chatId, authorId, ack, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task CancelCall(Session session, ChatId chatId, CallId? callId, CancellationToken cancellationToken)
+    public async Task CancelCall(Session session, CallId callId, CancellationToken cancellationToken)
     {
-        RequireCallInChat(chatId, callId);
+        var chatId = callId.ChatId;
         if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
             await Backend.CancelCall(chatId, authorId, callId, cancellationToken).ConfigureAwait(false);
     }
@@ -271,23 +303,6 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         // see ChatAudioUI.SetRecordingChatId / SetListeningState and LiveSessionUI.SyncParticipations.
         => throw StandardError.NotSupported<ILiveSessions>(
             $"{nameof(LeaveCall)} is obsolete and no longer available.");
-
-    // Legacy methods
-
-    // [ComputeMethod]
-    public virtual Task<UserCall?> LegacyGetMyCall(Session session, CancellationToken cancellationToken)
-        => GetMyCallOnClient(session, null, cancellationToken);
-
-    public Task LegacyStartCall(
-        Session session,
-        ChatId chatId,
-        ApiArray<AuthorId> invitees,
-        bool hasVideo,
-        CancellationToken cancellationToken)
-        => StartCallOnClient(session, chatId, invitees, hasVideo, null, cancellationToken);
-
-    public Task LegacyAcceptCall(Session session, ChatId chatId, CancellationToken cancellationToken)
-        => AcceptCallOnClient(session, chatId, null, null, cancellationToken);
 
     // Protected methods
 
@@ -341,81 +356,13 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     }
 
     // A ring is every client's to answer. Once placed or answered, the call is the client's that did it;
-    // a claim naming no session (a ring, or one taken by a pod predating #4929) or no client (taken by
-    // a client predating it) is shown to every client that could have taken it.
-    internal static bool IsOnClient(UserCall call, string sessionHash, string? clientId)
+    // a claim naming no session or no client is shown to every client that could have taken it.
+    internal static bool IsOnClient(UserCall call, string sessionHash, string clientId)
         => call.Phase == CallPhase.Ringing
             || call.SessionHash is null
-            || (call.SessionHash == sessionHash
-                && (clientId is null || call.ClientId is null || call.ClientId == clientId));
+            || (call.SessionHash == sessionHash && (call.ClientId is null || call.ClientId == clientId));
 
     // Private methods
-
-    private async Task<UserCall?> GetMyCallOnClient(
-        Session session,
-        string? clientId,
-        CancellationToken cancellationToken)
-    {
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var call = await CallsBackend.GetUserCall(account.Id, cancellationToken).ConfigureAwait(false);
-        return call is not null && IsOnClient(call, session.Hash, clientId) ? call : null;
-    }
-
-    private async Task<CallId?> StartCallOnClient(
-        Session session,
-        ChatId chatId,
-        ApiArray<AuthorId> invitees,
-        bool hasVideo,
-        string? clientId,
-        CancellationToken cancellationToken)
-    {
-        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        chat.Require();
-        if (!chat.IsMember())
-            return null;
-
-        // Same anti-spam gate as peer messaging: in a peer chat the audio/video (and other stream)
-        // permissions are stripped unless the recipient stored the caller's contact or replied to
-        // them (a block by the recipient leaves the contact non-regular too). So CanWriteAudio is the
-        // reused signal that this caller is allowed to reach the peer with a call.
-        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
-        if (chatId is PeerChatId && !chat.Rules.CanWriteAudio())
-            throw StandardError.Constraint(
-                "You can call this user only after they add you to their contacts or reply to you.");
-
-        var callerAuthorId = chat.Rules.Author!.Id;
-        if (invitees.Count == 0) {
-            // Empty = ring every other chat member.
-            var allAuthorIds = await Authors
-                .ListAuthorIds(session, chatId, cancellationToken)
-                .ConfigureAwait(false);
-            invitees = allAuthorIds.Where(id => id != callerAuthorId).ToApiArray();
-        }
-        return await Backend
-            .StartCall(chatId, callerAuthorId, invitees, hasVideo, session.Hash, clientId, cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    private async Task AcceptCallOnClient(
-        Session session,
-        ChatId chatId,
-        string? clientId,
-        CallId? callId,
-        CancellationToken cancellationToken)
-    {
-        RequireCallInChat(chatId, callId);
-        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
-        if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
-            await Backend.AcceptCall(chatId, authorId, session.Hash, clientId, callId, cancellationToken)
-                .ConfigureAwait(false);
-    }
-
-    private static void RequireCallInChat(ChatId chatId, CallId? callId)
-    {
-        // The chat is what access is checked against, so a call id must not name another one.
-        if (callId is not null && callId.ChatId != chatId)
-            throw new ArgumentOutOfRangeException(nameof(callId));
-    }
 
     // The in-progress half of the window. Its counterpart skips still-streaming entries, so an
     // utterance is counted here or there, never twice.

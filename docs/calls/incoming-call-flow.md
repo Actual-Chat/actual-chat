@@ -43,10 +43,12 @@ with "There's already a call in this chat".
 the latch, and two unanswered calls to a group chat would share it, since nothing is written
 between them.
 
-A request may still name no call - `callId` is nullable in `AcceptCall`, `DeclineCall` and
-`CancelCall`. That is not a fallback for old builds: a client can act before it has been told the
-id (an answer tapped before the first `GetMyCall` lands), and then it means "whatever call the
-chat is in".
+The id is required in all three: there is no "whatever call the chat is in". A callee always has
+it - the ring's `GetMyCall` answer and its push both carry it. A caller gets it from `StartCall`,
+so a call hung up before `StartCall` answered is cancelled once it has: `CallUI.CancelCall` frees
+the slot on the click and sends the request when the id arrives (never, if `StartCall` failed).
+`CallUI` sends its `StartCall`s and `CancelCall`s in the order they were made, so a redial right
+after a cancel can't reach the server first.
 
 ## Overview
 
@@ -196,8 +198,7 @@ stays busy on every client all the same: `StartCall` is still arbitrated by the 
 
 A reloaded tab or a restarted app is a new client and doesn't see the call it had - the call's
 audio died with it anyway, and the call closes on the missing presence. A claim that names no
-session (taken by a server predating these fields) or no client (placed by an app predating
-them, through the legacy `StartCall` / `AcceptCall` / `GetMyCall` overloads) is shown to every
+session or no client - one taken through the backend directly, as tests do - is shown to every
 client that could have made it.
 
 **The client slot** is `CallUI._activeCall`, and it is a projection of `GetMyCall` plus the
@@ -301,7 +302,8 @@ keyguard and removes the cover.
 On the callee's client, `CallScreensUI.Accept`:
 
 1. Takes the `CallId` the answer came with (a notification action or CallKit carries it), or
-   the slot's. The server is the one to refuse an answer to a ring that is gone - see below.
+   the slot's. With neither there is no ring to answer, and it ends as a refused answer does.
+   The server is the one to refuse an answer to a ring that is gone - see below.
 2. Commits the ring to `Active` in the slot (refusing with "You're already in a call" if
    another chat holds it), then clears the ring's collapsed and muted flags and cancels the
    Android system notification. All of it happens before the RPC, so the call screen doesn't
@@ -370,8 +372,8 @@ On the server, `DeclineCall`:
 
 ### The caller cancels
 
-`CancelCall` is accepted only while the call is `Dialing` or `Connecting`, and only for the call
-it names. It:
+`CancelCall` is accepted only while the call is `Dialing` or `Connecting`, only for the call
+it names, and only from that call's caller. It:
 
 - sets every ringing invite to `Missed`;
 - removes the caller from the participants;

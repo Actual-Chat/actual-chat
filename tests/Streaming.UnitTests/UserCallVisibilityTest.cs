@@ -91,21 +91,6 @@ public class UserCallVisibilityTest
         isOnPhone.Should().BeFalse();
     }
 
-    [Fact]
-    public void OldClientShouldSeeItsSessionCallOnly()
-    {
-        // arrange — an old client reads without a client id
-        var call = Call(CallRole.Caller, CallPhase.Active, Phone, "phone-app");
-
-        // act
-        var isOnOldDesktop = LiveSessions.IsOnClient(call, Desktop, null);
-        var isOnOldPhone = LiveSessions.IsOnClient(call, Phone, null);
-
-        // assert
-        isOnOldDesktop.Should().BeFalse();
-        isOnOldPhone.Should().BeTrue();
-    }
-
     private static UserCall Call(CallRole role, CallPhase phase, string? sessionHash, string? clientId)
         => new() {
             ChatId = ChatA,

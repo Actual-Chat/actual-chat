@@ -27,6 +27,24 @@ public class PeerCallGateTest(ChatCollection.AppHostFixture fixture, ITestOutput
     }
 
     [Fact]
+    public async Task CallByNonMemberIsRejected()
+    {
+        // arrange - a public chat Bob can read and join, but hasn't joined
+        await using var aliceTester = AppHost.NewBlazorTester(Out);
+        await using var bobTester = AppHost.NewBlazorTester(Out);
+        await aliceTester.SignInAsUniqueAlice();
+        await bobTester.SignInAsUniqueBob();
+        var (chatId, _) = await aliceTester.CreateChat(x => x with { Title = "Public", IsPublic = true });
+        var liveSessions = bobTester.AppServices.GetRequiredService<ILiveSessions>();
+
+        // act
+        var startCall = () => liveSessions.StartCall(bobTester.Session, chatId, default, false, "test-client", default);
+
+        // assert
+        await startCall.Should().ThrowAsync<InvalidOperationException>().WithMessage("Join this chat*");
+    }
+
+    [Fact]
     public async Task PeerCallAllowedAfterRecipientReplies()
     {
         // arrange — Bob greets Alice and Alice replies, which stores Bob as a regular contact.
