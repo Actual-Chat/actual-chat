@@ -295,7 +295,7 @@ public class NonContactPeerLimitTest(ChatCollection.AppHostFixture fixture, ITes
         var rangeBefore = await chats.GetIdRange(aliceTester.Session, peerChatId, CancellationToken.None);
 
         // act
-        var forward = () => aliceTester.Commander.Call(NewForwardCommand(aliceTester, sourceEntry, peerChatId));
+        var forward = () => aliceTester.Commander.Call(NewForwardCommand(aliceTester, [sourceEntry], peerChatId));
 
         // assert
         await forward.Should().ThrowAsync<Exception>().WithMessage("Files can be sent only after*");
@@ -336,6 +336,60 @@ public class NonContactPeerLimitTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task ForwardOverNonContactLimitShouldFailWithoutPosting()
+    {
+        // arrange
+        var appHost = AppHost;
+        await using var aliceTester = appHost.NewBlazorTester(Out);
+        var alice = await aliceTester.SignInAsUniqueAlice();
+        await using var bobTester = appHost.NewBlazorTester(Out);
+        var bob = await bobTester.SignInAsUniqueBob();
+        var peerChatId = PeerChatId.New(alice.Id, bob.Id);
+        var chats = aliceTester.AppServices.GetRequiredService<IChats>();
+        var (sourceChatId, _) = await aliceTester.CreateChat(true);
+        var sourceEntries = new[] {
+            await aliceTester.CreateTextEntry(sourceChatId, "First"),
+            await aliceTester.CreateTextEntry(sourceChatId, "Second"),
+        };
+        await aliceTester.CreateTextEntry(peerChatId, "Hi");
+        var rangeBefore = await chats.GetIdRange(aliceTester.Session, peerChatId, CancellationToken.None);
+
+        // act - one message is left under the cap, and the forward needs two
+        var forward = () => aliceTester.Commander.Call(NewForwardCommand(aliceTester, sourceEntries, peerChatId));
+
+        // assert
+        await forward.Should().ThrowAsync<Exception>().WithMessage("You can send up to *");
+        var rangeAfter = await chats.GetIdRange(aliceTester.Session, peerChatId, CancellationToken.None);
+        rangeAfter.Should().Be(rangeBefore);
+    }
+
+    [Fact]
+    public async Task ForwardWithinNonContactLimitShouldPost()
+    {
+        // arrange
+        var appHost = AppHost;
+        await using var aliceTester = appHost.NewBlazorTester(Out);
+        var alice = await aliceTester.SignInAsUniqueAlice();
+        await using var bobTester = appHost.NewBlazorTester(Out);
+        var bob = await bobTester.SignInAsUniqueBob();
+        var peerChatId = PeerChatId.New(alice.Id, bob.Id);
+        var chats = aliceTester.AppServices.GetRequiredService<IChats>();
+        var (sourceChatId, _) = await aliceTester.CreateChat(true);
+        var sourceEntry = await aliceTester.CreateTextEntry(sourceChatId, "First");
+        await aliceTester.CreateTextEntry(peerChatId, "Hi");
+
+        // act
+        await aliceTester.Commander.Call(NewForwardCommand(aliceTester, [sourceEntry], peerChatId));
+
+        // assert
+        var range = await chats.GetIdRange(aliceTester.Session, peerChatId, CancellationToken.None);
+        var forwarded = await chats.GetEntry(aliceTester.Session, ChatEntryId.New(peerChatId, range.End - 1));
+        forwarded.Should().NotBeNull();
+        forwarded!.Forwarded.Should().NotBeNull();
+        forwarded.Content.Should().Be("First");
+    }
+
+    [Fact]
     public async Task ForwardWithFilesShouldPostWhenSenderIsInRecipientContacts()
     {
         // arrange
@@ -350,7 +404,7 @@ public class NonContactPeerLimitTest(ChatCollection.AppHostFixture fixture, ITes
         var sourceEntry = await CreateFileEntry(aliceTester);
 
         // act
-        await aliceTester.Commander.Call(NewForwardCommand(aliceTester, sourceEntry, peerChatId));
+        await aliceTester.Commander.Call(NewForwardCommand(aliceTester, [sourceEntry], peerChatId));
 
         // assert
         var range = await chats.GetIdRange(aliceTester.Session, peerChatId, CancellationToken.None);
@@ -396,11 +450,14 @@ public class NonContactPeerLimitTest(ChatCollection.AppHostFixture fixture, ITes
         });
     }
 
-    private static Chats_ForwardEntries NewForwardCommand(IWebTester tester, ChatEntry entry, ChatId destinationChatId)
+    private static Chats_ForwardEntries NewForwardCommand(
+        IWebTester tester,
+        ChatEntry[] entries,
+        ChatId destinationChatId)
         => new() {
             Session = tester.Session,
-            ChatId = entry.ChatId,
-            ChatEntries = [entry.Id],
+            ChatId = entries[0].ChatId,
+            ChatEntries = entries.Select(x => x.Id).ToArray(),
             DestinationChatIds = [destinationChatId],
         };
 }

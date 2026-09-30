@@ -77,6 +77,7 @@
   "Error_RootChatCannotHoldMessages": "स्पेस की मुख्य चैट में संदेश नहीं भेजे जा सकते — स्पेस की किसी चैट में भेजें।",
   "Error_CanAttachOwnLocationsOnly": "इस चैट से आप केवल अपनी साझा की गई लोकेशन संलग्न कर सकते हैं।",
   "Error_NonContactMessageLimit_Format": "जब तक यह व्यक्ति आपको संपर्कों में नहीं जोड़ता या जवाब नहीं देता, आप अधिकतम {limit} संदेश भेज सकते हैं।",
+  "Error_MessageNotForwardable": "बिना टेक्स्ट या फ़ाइलों वाले संदेश, या जिनकी फ़ाइलें अभी अपलोड हो रही हैं, फ़ॉरवर्ड नहीं किए जा सकते।",
   "Error_OnlyOwnersOrModeratorsCanPin": "संदेश केवल चैट के स्वामी और मॉडरेटर ही पिन कर सकते हैं।",
   "Error_PinLimit_Format": "आप अधिकतम {limit} संदेश पिन कर सकते हैं।",
 

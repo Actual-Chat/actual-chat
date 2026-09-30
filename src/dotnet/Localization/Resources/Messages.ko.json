@@ -77,6 +77,7 @@
   "Error_RootChatCannotHoldMessages": "스페이스의 기본 채팅에는 메시지를 올릴 수 없습니다 — 스페이스의 다른 채팅에 올려 주세요.",
   "Error_CanAttachOwnLocationsOnly": "이 채팅에서는 자신이 공유한 위치만 첨부할 수 있습니다.",
   "Error_NonContactMessageLimit_Format": "상대가 회원님을 연락처에 추가하거나 답장할 때까지 최대 {limit}개의 메시지를 보낼 수 있습니다.",
+  "Error_MessageNotForwardable": "텍스트나 파일이 없는 메시지, 또는 파일이 아직 업로드 중인 메시지는 전달할 수 없습니다.",
   "Error_OnlyOwnersOrModeratorsCanPin": "메시지는 채팅 소유자와 모더레이터만 고정할 수 있습니다.",
   "Error_PinLimit_Format": "메시지는 최대 {limit}개까지 고정할 수 있습니다.",
 

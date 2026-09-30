@@ -77,6 +77,7 @@
   "Error_RootChatCannotHoldMessages": "Le chat principal d’un espace ne peut pas contenir de messages — publiez plutôt dans l’un des chats de l’espace.",
   "Error_CanAttachOwnLocationsOnly": "Vous ne pouvez joindre que votre propre position partagée depuis ce chat.",
   "Error_NonContactMessageLimit_Format": "Vous pouvez envoyer jusqu’à {limit} messages tant que cette personne ne vous a pas ajouté à ses contacts ou ne vous a pas répondu.",
+  "Error_MessageNotForwardable": "Impossible de transférer des messages sans texte ni fichiers, ou dont les fichiers sont encore en cours d'envoi.",
   "Error_OnlyOwnersOrModeratorsCanPin": "Seuls les propriétaires et modérateurs du chat peuvent épingler des messages.",
   "Error_PinLimit_Format": "Vous pouvez épingler jusqu’à {limit} messages.",
 

@@ -85,6 +85,7 @@
   "Error_RootChatCannotHoldMessages": "Kořenový chat Místa nemůže obsahovat zprávy — pište do některého z chatů daného Místa.",
   "Error_CanAttachOwnLocationsOnly": "Připojit můžete jen vlastní polohy sdílené v tomto chatu.",
   "Error_NonContactMessageLimit_Format": "Můžete poslat až {limit} zpráv, dokud si vás tento uživatel nepřidá do kontaktů nebo neodpoví.",
+  "Error_MessageNotForwardable": "Zprávy bez textu a souborů nebo se soubory, které se ještě nahrávají, nelze přeposlat.",
   "Error_OnlyOwnersOrModeratorsCanPin": "Tuto akci nemůžete provést: nedostatečná oprávnění. Požadované oprávnění: připínat zprávy mohou jen vlastníci a moderátoři chatu.",
   "Error_PinLimit_Format": "Připnout můžete až {limit} zpráv.",
 

@@ -85,6 +85,7 @@
   "Error_RootChatCannotHoldMessages": "Obrolan utama sebuah Tempat tidak bisa memuat pesan — kirim ke salah satu obrolan di Tempat itu.",
   "Error_CanAttachOwnLocationsOnly": "Anda hanya bisa melampirkan lokasi yang Anda bagikan sendiri di obrolan ini.",
   "Error_NonContactMessageLimit_Format": "Anda bisa mengirim hingga {limit} pesan sampai pengguna ini menambahkan Anda ke kontaknya atau membalas.",
+  "Error_MessageNotForwardable": "Pesan tanpa teks atau file, atau dengan file yang masih diunggah, tidak bisa diteruskan.",
   "Error_OnlyOwnersOrModeratorsCanPin": "Anda tidak bisa melakukan tindakan ini: izin tidak mencukupi. Izin yang diminta: hanya pemilik dan moderator obrolan yang bisa menyematkan pesan.",
   "Error_PinLimit_Format": "Anda bisa menyematkan hingga {limit} pesan.",
 

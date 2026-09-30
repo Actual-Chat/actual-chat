@@ -77,6 +77,7 @@
   "Error_RootChatCannotHoldMessages": "La chat principale di uno spazio non può contenere messaggi: scrivi in una delle chat dello spazio.",
   "Error_CanAttachOwnLocationsOnly": "Puoi allegare solo la tua posizione condivisa da questa chat.",
   "Error_NonContactMessageLimit_Format": "Puoi inviare fino a {limit} messaggi finché questa persona non ti aggiunge ai contatti o non risponde.",
+  "Error_MessageNotForwardable": "Non puoi inoltrare messaggi senza testo né file, o con file ancora in caricamento.",
   "Error_OnlyOwnersOrModeratorsCanPin": "Solo i proprietari e i moderatori della chat possono fissare i messaggi.",
   "Error_PinLimit_Format": "Puoi fissare fino a {limit} messaggi.",
 
