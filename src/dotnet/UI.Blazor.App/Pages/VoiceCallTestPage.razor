@@ -181,8 +181,8 @@ else {
                 continue;
 
             var invite = live.Invites.FirstOrDefault(i => i.InviteeId == ownAuthor.Id);
-            if (invite is { Status: CallInviteStatus.Ringing })
-                return new IncomingCall(chatId, live.Host, live.Rules.VideoAllowed);
+            if (invite is { Status: CallInviteStatus.Ringing, CallId: { } callId })
+                return new IncomingCall(callId, live.Host, live.Rules.VideoAllowed);
         }
         return null;
     }
@@ -232,11 +232,13 @@ else {
         if (State.Value.Incoming is not { } incoming)
             return;
 
-        await Run(incoming.ChatId, id => CallUI.AcceptCall(id, null, default));
+        await Run(incoming.ChatId, _ => CallUI.AcceptCall(incoming.CallId, default));
         OpenChat(incoming.ChatId);
     }
     private Task Decline()
-        => Run(State.Value.Incoming?.ChatId, id => CallUI.DeclineCall(id, null, default));
+        => State.Value.Incoming is { } incoming
+            ? Run(incoming.ChatId, _ => CallUI.DeclineCall(incoming.CallId, default))
+            : Task.CompletedTask;
     private Task Cancel()
         => Run(_chatId, id => CallUI.CancelCall(id, default));
     private Task Stop()
@@ -263,7 +265,10 @@ else {
 
     // Nested types
 
-    public sealed record IncomingCall(ChatId ChatId, AuthorId Caller, bool HasVideo);
+    public sealed record IncomingCall(CallId CallId, AuthorId Caller, bool HasVideo)
+    {
+        public ChatId ChatId => CallId.ChatId;
+    }
 
     public sealed record Model {
         public static readonly Model None = new();

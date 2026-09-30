@@ -53,9 +53,9 @@ public partial class CallUI
             return server;
 
         if (intent.Call is null)
-            // Without ids any call to the chat just left reads as the one left. With them, this is
-            // another one - a call back, say - and it must not wait the grace out.
-            return intent.LeftCallId is not null && myCall.CallId is not null ? server : null;
+            // Left before the server named the call, any call to the chat reads as the one left. Left
+            // once it had, this is another one - a call back, say - and it must not wait the grace out.
+            return intent.LeftCallId is not null ? server : null;
         if (!intent.Call.IsSameCall(server))
             return server;
 

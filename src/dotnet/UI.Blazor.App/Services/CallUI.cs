@@ -24,6 +24,11 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     // yet, so it can't tell the two apart - and a screen that must wait for the server needs to.
     private readonly MutableState<ChatId?> _serverCallChatId;
     private CallIntent? _intent;
+    // The StartCall still on its way, and the last CancelCall sent. The two go to the server in the
+    // order they were made: a cancel needs the id its StartCall answers with, and a redial must not
+    // get ahead of the cancel before it.
+    private PlacedCall? _placedCall;
+    private Task _whenCancelled = Task.CompletedTask;
 
     private IIncomingCallsBridge? Bridge { get; }
     private ISystemCallUI SystemCallUI => field ??= Hub.Services.GetRequiredService<ISystemCallUI>();
@@ -121,15 +126,20 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return;
         }
 
-        CallId? callId;
+        var whenPlaced = PlaceCall(chatId, invitees, hasVideo, cancellationToken);
+        CallId callId;
         try {
-            callId = await LiveSessions.StartCall(Session, chatId, invitees, hasVideo, ClientId, cancellationToken)
-                .ConfigureAwait(false);
+            callId = await whenPlaced.ConfigureAwait(false);
         }
         catch (Exception e) {
-            Release(chatId);
+            // Cancelled meanwhile: the slot is free, or already taken by the next call.
+            var isCancelled = !EndPlacing(whenPlaced);
+            if (!isCancelled)
+                Release(chatId);
             if (e is OperationCanceledException)
                 throw;
+            if (isCancelled)
+                return;
 
             // Only StandardError.Constraint carries user-facing text - the peer-call gate, or this
             // user being in a call already, possibly on another device.
@@ -139,26 +149,47 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return;
         }
 
-        if (callId is not null)
-            NameOutgoing(chatId, callId);
+        if (!EndPlacing(whenPlaced))
+            return; // Cancelled meanwhile: the cancel took the id and the slot is no longer this call's
+        if (!NameOutgoing(chatId, callId))
+            return;
+
         SystemCallUI.OnOutgoingCallStarted(chatId, callId, hasVideo);
     }
 
     public Task CancelCall(ChatId chatId, CancellationToken cancellationToken)
     {
-        // Read before the release: the server must cancel the call this client held, not whichever
-        // one the chat is in by the time the request lands.
-        var callId = GetCallIdNonComputed(chatId);
-        Release(chatId);
+        Task whenCancelled;
+        lock (_lock) {
+            // Read before the release: the server must cancel the call this client held, not whichever
+            // one the chat is in by the time the request lands.
+            var callId = GetCallIdNonComputed(chatId);
+            var placedCall = _placedCall is { } call && call.ChatId == chatId ? call : null;
+            if (placedCall is not null)
+                _placedCall = null;
+            if (_activeCall.Value?.ChatId == chatId)
+                ReleaseUnsafe(chatId);
+            whenCancelled = _whenCancelled = Cancel(callId, placedCall?.WhenPlaced);
+        }
         SystemCallUI.OnOutgoingCallCancelled(chatId);
-        return LiveSessions.CancelCall(Session, chatId, callId, cancellationToken);
+        return whenCancelled;
+
+        async Task Cancel(CallId? callId, Task<CallId>? whenPlaced) {
+            // The slot is free already; the server hears of it once it has said which call it placed.
+            if (callId is null && whenPlaced is not null)
+                callId = (await whenPlaced.ResultAwait(false)).ValueOrDefault;
+            if (callId is null)
+                return; // StartCall failed
+
+            await LiveSessions.CancelCall(Session, callId, cancellationToken).ConfigureAwait(false);
+        }
     }
 
-    public Task AcceptCall(ChatId chatId, CallId? callId, CancellationToken cancellationToken)
-        => LiveSessions.AcceptCall(Session, chatId, ClientId, callId, cancellationToken);
+    public Task AcceptCall(CallId callId, CancellationToken cancellationToken)
+        => LiveSessions.AcceptCall(Session, callId, ClientId, cancellationToken);
 
-    public Task DeclineCall(ChatId chatId, CallId? callId, CancellationToken cancellationToken)
-        => LiveSessions.DeclineCall(Session, chatId, callId, cancellationToken);
+    public Task DeclineCall(CallId callId, CancellationToken cancellationToken)
+        => LiveSessions.DeclineCall(Session, callId, cancellationToken);
 
     public Task ConfirmRing(ChatId chatId, RingAck ack, CancellationToken cancellationToken)
         => LiveSessions.ConfirmRing(Session, chatId, ack, cancellationToken);
@@ -245,16 +276,51 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
     }
 
+    // Sends StartCall in its turn - after the cancel made before it, if that one is still on its way.
+    internal Task<CallId> PlaceCall(
+        ChatId chatId,
+        ApiArray<AuthorId> invitees,
+        bool hasVideo,
+        CancellationToken cancellationToken)
+    {
+        lock (_lock) {
+            var whenPlaced = Place(_whenCancelled);
+            _placedCall = new PlacedCall(chatId, whenPlaced);
+            return whenPlaced;
+        }
+
+        async Task<CallId> Place(Task whenCancelled) {
+            await whenCancelled.SilentAwait(false);
+            return await LiveSessions.StartCall(Session, chatId, invitees, hasVideo, ClientId, cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
+
     // Private methods
 
-    private void NameOutgoing(ChatId chatId, CallId callId)
+    // Reports whether the placing is still this client's to finish - false once CancelCall took it over.
+    private bool EndPlacing(Task<CallId> whenPlaced)
+    {
+        lock (_lock) {
+            if (!ReferenceEquals(_placedCall?.WhenPlaced, whenPlaced))
+                return false;
+
+            _placedCall = null;
+            return true;
+        }
+    }
+
+    // Reports whether the slot holds the call.
+    private bool NameOutgoing(ChatId chatId, CallId callId)
     {
         // The slot was claimed on the click, before the server had a call to name. Only that claim
         // takes the id: if GetMyCall got here first, the slot already has it.
         var isRejoined = false;
         lock (_lock) {
-            if (_activeCall.Value is not { Role: CallRole.Caller, CallId: null } call || call.ChatId != chatId)
-                return;
+            if (_activeCall.Value is not { Role: CallRole.Caller } call || call.ChatId != chatId)
+                return false;
+            if (call.CallId is not null)
+                return call.CallId == callId;
 
             call = call with { CallId = callId };
             if (_intent is { Call: not null } intent && intent.ChatId == chatId) {
@@ -268,6 +334,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // The answers naming it were kept off the slot as the left call's; nothing else re-reads them.
         if (isRejoined)
             Touch();
+        return true;
     }
 
     // Caller must hold _lock.
@@ -295,4 +362,6 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     // What this client last did to the slot, and when. A null Call means "I just left this chat's call";
     // LeftCallId names that call when the server had, so that it alone is kept off the slot.
     internal sealed record CallIntent(ActiveCall? Call, ChatId ChatId, Moment At, CallId? LeftCallId = null);
+
+    private sealed record PlacedCall(ChatId ChatId, Task<CallId> WhenPlaced);
 }

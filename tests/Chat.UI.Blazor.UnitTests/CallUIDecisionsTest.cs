@@ -276,7 +276,7 @@ public class CallUIDecisionsTest
 
     private static UserCall MyCall(ChatId chatId, CallRole role, CallPhase phase, CallId? callId = null)
         => new() {
-            CallId = callId,
+            CallId = callId ?? CallId.New(chatId, "0"),
             ChatId = chatId,
             AuthorId = AuthorId.New(chatId, 2),
             Role = role,

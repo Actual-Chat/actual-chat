@@ -23,8 +23,8 @@ public sealed class IncomingCallAcceptTest(ChatAppHostFixture fixture, ITestOutp
     public async Task AcceptShouldJoinARingTheClientHasNotReadYet()
     {
         // arrange - a client woken by the call push reads "no call" until its first real answer
-        // lands, so the answer from the notification can come first. Accept doesn't read the
-        // session at all any more: the server decides, and it knows before the push goes out.
+        // lands, so the answer from the notification can come first - naming the call the push named.
+        // Accept doesn't read the session at all: the server decides, and it knows before the push goes out.
         await Bob.SignInAsUniqueBob();
         await Alice.SignInAsUniqueAlice();
         var (chatId, inviteId) = await Bob.CreateChat(false);
@@ -36,8 +36,9 @@ public sealed class IncomingCallAcceptTest(ChatAppHostFixture fixture, ITestOutp
 
         // act - the ring exists server-side; Alice answers without her client having read it
         // (the join itself can fail in a test host - there is no audio there)
-        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
-        await callScreensUI.Accept(chatId).SilentAwait();
+        var callId = await backend.StartCall(
+            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await callScreensUI.Accept(chatId, callId).SilentAwait();
 
         // assert - the ring was answered rather than called over
         await TestWait.When(async ct => {
@@ -45,6 +46,36 @@ public sealed class IncomingCallAcceptTest(ChatAppHostFixture fixture, ITestOutp
             var invite = live?.Invites.FirstOrDefault(x => x.InviteeId == aliceAuthor.Id);
             invite.Should().NotBeNull();
             invite!.Status.Should().Be(CallInviteStatus.Accepted);
+        });
+    }
+
+    [Fact]
+    public async Task CancelShouldReachTheCallStillBeingPlaced()
+    {
+        // arrange
+        await Bob.SignInAsUniqueBob();
+        await Alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await Bob.CreateChat(false);
+        await Alice.JoinChat(chatId, inviteId);
+        var aliceAuthor = await Alice.GetOwnAuthor(chatId);
+        var backend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        var callUI = Bob.ScopedAppServices.AppUIHub().CallUI;
+        callUI.TryClaimOutgoing(chatId, aliceAuthor!.Id, false).Should().BeTrue();
+
+        // act - hung up on the click, before the server has said which call it placed
+        var whenPlaced = callUI.PlaceCall(chatId, new[] { aliceAuthor.Id }.ToApiArray(), false, default);
+        await callUI.CancelCall(chatId, default);
+
+        // assert
+        var callId = await whenPlaced;
+        callId.Should().NotBeNull();
+        callUI.GetCallChatIdNonComputed().Should().BeNull();
+        await TestWait.When(async ct => {
+            var state = await backend.GetState(chatId, ct);
+            (state?.CallId == callId && state!.Outcome == CallOutcome.None).Should().BeFalse();
+            var live = await backend.Get(chatId, ct);
+            var invite = live?.Invites.FirstOrDefault(x => x.InviteeId == aliceAuthor.Id);
+            invite?.Status.Should().NotBe(CallInviteStatus.Ringing);
         });
     }
 

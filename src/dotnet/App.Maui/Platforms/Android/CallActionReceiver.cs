@@ -41,12 +41,11 @@ public class CallActionReceiver : BroadcastReceiver
             try {
                 var session = await MauiSession.ReadStored().ConfigureAwait(false);
                 var liveSessions = IPlatformApplication.Current?.Services.GetService<ILiveSessions>();
-                if (session is null || liveSessions is null) {
-                    Log.LogWarning("Decline: no session or ILiveSessions client; chat #{ChatId}", chatId);
+                if (session is null || liveSessions is null || callId is null) {
+                    Log.LogWarning("Decline: no session, ILiveSessions client or call id; chat #{ChatId}", chatId);
                     return;
                 }
-                await liveSessions.DeclineCall(session, chatId, callId, CancellationToken.None)
-                    .ConfigureAwait(false);
+                await liveSessions.DeclineCall(session, callId, CancellationToken.None).ConfigureAwait(false);
             }
             finally {
                 pendingResult?.Finish();

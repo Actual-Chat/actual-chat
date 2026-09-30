@@ -2,7 +2,10 @@ using ActualChat.Live;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed record IncomingCall(ChatId ChatId, AuthorId Caller, bool HasVideo, CallId? CallId = null);
+public sealed record IncomingCall(CallId CallId, AuthorId Caller, bool HasVideo)
+{
+    public ChatId ChatId => CallId.ChatId;
+}
 
 // PeerId is the caller of an incoming call; an outgoing call holds the slot before anyone answers.
 // CallId is null until the server names the call: a call placed or answered here holds the slot before that.

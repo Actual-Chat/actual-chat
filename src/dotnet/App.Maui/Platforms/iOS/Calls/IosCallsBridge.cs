@@ -103,7 +103,7 @@ public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDispo
 
     // ISystemCallUI
 
-    public void OnOutgoingCallStarted(ChatId chatId, CallId? callId, bool hasVideo)
+    public void OnOutgoingCallStarted(ChatId chatId, CallId callId, bool hasVideo)
     {
         // Placed synchronously: a status reported into a call CallKit doesn't hold yet is dropped,
         // and the chat lookup the callee's name comes from is far slower than the first invalidation.
@@ -266,5 +266,7 @@ public sealed class IosCallsBridge : IIncomingCallsBridge, ISystemCallUI, IDispo
 
     private static bool IsRing(UserCall? call, ChatId chatId, CallId? callId)
         // The next call to the chat ringing is this ring over, as much as nothing ringing is.
-        => call is { Role: CallRole.Callee, Phase: CallPhase.Ringing } && call.IsSameCall(chatId, callId);
+        // A ring pushed with no id is any ring in its chat.
+        => call is { Role: CallRole.Callee, Phase: CallPhase.Ringing }
+            && (callId is null ? call.ChatId == chatId : call.CallId == callId);
 }

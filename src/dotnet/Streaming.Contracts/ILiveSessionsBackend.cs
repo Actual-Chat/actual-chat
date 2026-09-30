@@ -58,9 +58,7 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     Task FinalizeSession(ChatId chatId, CancellationToken cancellationToken);
 
     // Voice-call ring lifecycle (StartCall invitees empty = every other chat member).
-    // A null callId means "whatever call the chat is in" - what a client asks for before it is told
-    // the id; a given one makes the request a no-op (a refusal, for AcceptCall) once the chat is in
-    // another call.
+    // callId makes the request a no-op (a refusal, for AcceptCall) once the chat isn't in that call.
     // Caller methods
     Task<CallId> StartCall(
         ChatId chatId,
@@ -73,7 +71,7 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     Task CancelCall(
         ChatId chatId,
         AuthorId callerAuthorId,
-        CallId? callId,
+        CallId callId,
         CancellationToken cancellationToken);
     // Callee methods
     Task AcceptCall(
@@ -81,12 +79,12 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         AuthorId inviteeAuthorId,
         string? sessionHash,
         string? clientId,
-        CallId? callId,
+        CallId callId,
         CancellationToken cancellationToken);
     Task DeclineCall(
         ChatId chatId,
         AuthorId inviteeAuthorId,
-        CallId? callId,
+        CallId callId,
         CancellationToken cancellationToken);
     Task ConfirmRing(ChatId chatId, AuthorId inviteeAuthorId, RingAck ack, CancellationToken cancellationToken);
 
