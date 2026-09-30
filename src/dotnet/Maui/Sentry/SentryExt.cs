@@ -12,9 +12,14 @@ public static class SentryExt
     private const string UIDsn = "https://7bcdf3ac9a774dfab54df0e0a9865a20@o4504632882233344.ingest.sentry.io/4504639283789824";
     private const int ThrottleMaxPerWindow = 5;
     private const int ThrottleMaxFingerprints = 256;
+    private const int DevBudgetMaxPerWindow = 30;
     private static readonly TimeSpan ThrottleWindow = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan DevBudgetWindow = TimeSpan.FromHours(1);
     private static readonly ConcurrentDictionary<string, ThrottleEntry> ThrottleTracker = new();
+    private static readonly Lock DevBudgetLock = new();
     private static long _lastThrottleSweepAtTicks = DateTime.UtcNow.Ticks;
+    private static DateTime _devBudgetWindowStart = DateTime.UtcNow;
+    private static int _devBudgetCount;
 
     public static void ConfigureForApp(this SentryOptions options, bool useOpenTelemetry)
     {
@@ -24,10 +29,15 @@ public static class SentryExt
                 return null;
             if (IsThrottled(e))
                 return null;
+            if (IsOverDevBudget(e))
+                return null;
 
             return e;
         });
         options.AddExceptionFilterForType<OperationCanceledException>();
+        // Thrown by every interop call that outlives its WebView - a backgrounded or reloaded
+        // app, not a defect - and a third of what arrived at Error level
+        options.AddExceptionFilterForType<Microsoft.JSInterop.JSDisconnectedException>();
         options.Debug = false;
         options.DiagnosticLevel = SentryLevel.Error;
         if (MauiSettings.IsDevApp)
@@ -91,12 +101,32 @@ public static class SentryExt
 
     private static string TryGetThrottleKey(SentryEvent e)
     {
+        // The template, not the formatted text: a line carrying a chat id or a duration is unique
+        // every time it's rendered, so keyed on that it was never throttled at all.
         var ex = e.SentryExceptions?.FirstOrDefault();
         if (ex == null)
-            return e.Message?.Formatted ?? "";
+            return e.Message?.Message ?? e.Message?.Formatted ?? "";
 
         var topFrame = ex.Stacktrace?.Frames.LastOrDefault();
         return $"{ex.Type}|{ex.Value}|{topFrame?.Module}.{topFrame?.Function}";
+    }
+
+    private static bool IsOverDevBudget(SentryEvent e)
+    {
+        // The dev flavor shares the prod project and its quota, and Sentry can't rate-limit by
+        // environment: a team phone in an error loop used to outspend every real user. The cap
+        // is per process; fatals always go through.
+        if (!MauiSettings.IsDevApp || e.Level == SentryLevel.Fatal)
+            return false;
+
+        var now = DateTime.UtcNow;
+        lock (DevBudgetLock) {
+            if (now - _devBudgetWindowStart > DevBudgetWindow) {
+                _devBudgetWindowStart = now;
+                _devBudgetCount = 0;
+            }
+            return ++_devBudgetCount > DevBudgetMaxPerWindow;
+        }
     }
 
     /// <summary>
