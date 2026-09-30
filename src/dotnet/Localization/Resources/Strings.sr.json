@@ -2077,5 +2077,7 @@
   "Coach_CoachInPlace": "Цоацх у овом месту",
   "Coach_OffByPlace": "Искључено, место је искључено",
   "Coach_WhereHint": "Цоацх слуша свуда осим тамо где га искључите.",
-  "Coach_NothingToCompare": "Још нема претходне седмице за поређење"
+  "Coach_NothingToCompare": "Још нема претходне седмице за поређење",
+  "Coach_MarkProfanityTitle": "Псовка",
+  "Coach_MarkProfanityBody_Format": "„{0}“ је псовка; блажа реч може бити боља."
 }

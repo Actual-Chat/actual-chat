@@ -2077,5 +2077,7 @@
   "Coach_CoachInPlace": "Коуч в этом месте",
   "Coach_OffByPlace": "Выкл., место отключено",
   "Coach_WhereHint": "Коуч слушает везде, кроме того, что вы отключите.",
-  "Coach_NothingToCompare": "Пока нет прошлой недели для сравнения"
+  "Coach_NothingToCompare": "Пока нет прошлой недели для сравнения",
+  "Coach_MarkProfanityTitle": "Грубое слово",
+  "Coach_MarkProfanityBody_Format": "«{0}» — грубое слово; помягче может прозвучать лучше."
 }

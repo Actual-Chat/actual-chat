@@ -123,6 +123,33 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
     }
 
     [Fact(Timeout = 60_000)]
+    public async Task FindLiveMarksShouldUseEveryLanguageTheUserSpeaksNotOnlyTheChatOne()
+    {
+        // arrange: the chat is set to Russian, the speaker switched to English mid-way
+        var appHost = await NewCoachHost("coach-ui-live-languages");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        var hub = tester.ScopedAppServices.AppUIHub();
+        await OptIn(tester);
+        await hub.LanguageUI.UpdateSettings(x => x with { Primary = Language.Parse("ru-RU"), Secondary = Language.Parse("en-US") });
+        var entryId = ChatEntryId.New(chatId, 1);
+        const string text = "Ну, um, я думаю, uh, что так.";
+
+        // act
+        var marks = await TestWait.When(async ct => {
+            var found = await hub.CoachUI.FindLiveMarks(entryId, text, ct);
+            found.Should().NotBeEmpty();
+            return found;
+        }, TimeSpan.FromSeconds(30));
+
+        // assert
+        marks.Select(s => text.Substring(s.Start, s.Length)).Should().Equal("um", "uh");
+    }
+
+    [Fact(Timeout = 60_000)]
     public async Task GetOwnMarksShouldReturnSpansOnlyForOwnEntriesWhenCoachingIsOn()
     {
         // arrange

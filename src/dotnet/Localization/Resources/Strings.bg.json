@@ -2077,5 +2077,7 @@
   "Coach_CoachInPlace": "Коуч в това място",
   "Coach_OffByPlace": "Изкл., мястото е изключено",
   "Coach_WhereHint": "Коучът следи навсякъде, освен там, където го изключите.",
-  "Coach_NothingToCompare": "Още няма предишна седмица за сравнение"
+  "Coach_NothingToCompare": "Още няма предишна седмица за сравнение",
+  "Coach_MarkProfanityTitle": "Ругатня",
+  "Coach_MarkProfanityBody_Format": "„{0}“ е ругатня; по-мек израз може да звучи по-добре."
 }

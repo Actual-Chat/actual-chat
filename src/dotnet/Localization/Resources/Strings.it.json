@@ -2077,5 +2077,7 @@
   "Coach_CoachInPlace": "Coach in questo luogo",
   "Coach_OffByPlace": "Off, il luogo è disattivato",
   "Coach_WhereHint": "Il coach ascolta ovunque, tranne dove lo disattivi.",
-  "Coach_NothingToCompare": "Ancora nessuna settimana precedente da confrontare"
+  "Coach_NothingToCompare": "Ancora nessuna settimana precedente da confrontare",
+  "Coach_MarkProfanityTitle": "Parolaccia",
+  "Coach_MarkProfanityBody_Format": "“{0}” è una parolaccia; una più mite può funzionare meglio."
 }

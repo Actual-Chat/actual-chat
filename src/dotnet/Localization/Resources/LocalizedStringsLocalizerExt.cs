@@ -2186,6 +2186,8 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_OffByPlace => l["Coach_OffByPlace"].Value;
         public string Coach_WhereHint => l["Coach_WhereHint"].Value;
         public string Coach_NothingToCompare => l["Coach_NothingToCompare"].Value;
+        public string Coach_MarkProfanityTitle => l["Coach_MarkProfanityTitle"].Value;
+        public string Coach_MarkProfanityBody_Format(object arg0) => l["Coach_MarkProfanityBody_Format", arg0].Value;
 
     }
 }

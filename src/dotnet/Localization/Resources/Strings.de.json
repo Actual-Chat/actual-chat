@@ -2078,5 +2078,7 @@
   "Coach_CoachInPlace": "Coach in diesem Place",
   "Coach_OffByPlace": "Aus, der Place ist aus",
   "Coach_WhereHint": "Der Coach hört überall zu, außer wo du ihn ausschaltest.",
-  "Coach_NothingToCompare": "Noch keine frühere Woche zum Vergleichen"
+  "Coach_NothingToCompare": "Noch keine frühere Woche zum Vergleichen",
+  "Coach_MarkProfanityTitle": "Schimpfwort",
+  "Coach_MarkProfanityBody_Format": "„{0}“ ist ein Schimpfwort; ein milderes passt vielleicht besser."
 }

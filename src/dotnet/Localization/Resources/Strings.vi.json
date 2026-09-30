@@ -2077,5 +2077,7 @@
   "Coach_CoachInPlace": "Coach trong không gian này",
   "Coach_OffByPlace": "Tắt, nơi này đang tắt",
   "Coach_WhereHint": "Coach lắng nghe ở mọi nơi, trừ nơi bạn tắt.",
-  "Coach_NothingToCompare": "Chưa có tuần trước để so sánh"
+  "Coach_NothingToCompare": "Chưa có tuần trước để so sánh",
+  "Coach_MarkProfanityTitle": "Từ thô tục",
+  "Coach_MarkProfanityBody_Format": "“{0}” là từ thô tục; một từ nhẹ nhàng hơn có thể tốt hơn."
 }

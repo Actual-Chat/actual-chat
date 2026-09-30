@@ -13,6 +13,8 @@ public class CoachMarkHintTest
             ["Coach_MarkFillerBody_Format"] = "“{0}” carries no meaning here.",
             ["Coach_MarkRepetitionTitle"] = "You said it twice in a row",
             ["Coach_MarkRepetitionBody_Format"] = "“{0}” came twice; once is enough.",
+            ["Coach_MarkProfanityTitle"] = "Swear word",
+            ["Coach_MarkProfanityBody_Format"] = "“{0}” is a swear word; a milder one may serve better.",
         }));
 
     [Fact]
@@ -63,4 +65,20 @@ public class CoachMarkHintTest
         back.Word.Should().Be("awesome");
         back.Synonyms.Should().Equal("excellent", "superb");
     }
+
+    [Fact]
+    public void ProfanityHintShouldOfferMilderAlternatives()
+    {
+        // arrange
+        var span = new SpeechSpan(SpeechSpanKind.Profanity, "damn", 0, 4, ApiArray.New("darn", "rats"));
+
+        // act
+        var hint = NewHint().For(span);
+
+        // assert
+        hint.Title.Should().Be("Swear word");
+        hint.Body.Should().Be("“damn” is a swear word; a milder one may serve better.");
+        hint.Synonyms.Should().Equal("darn", "rats");
+    }
 }
+

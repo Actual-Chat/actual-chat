@@ -62,4 +62,14 @@ public class CoachStreamingMarksTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void SplitShouldReturnNothingForAnEmptySegment()
         => CoachStreamingMarks.Split("", 0, ApiArray.New(Span(SpeechSpanKind.Filler, 0, 2))).Should().BeEmpty();
+
+    [Theory]
+    [InlineData(SpeechSpanKind.FilledPause, "coach-filler")]
+    [InlineData(SpeechSpanKind.Filler, "coach-filler")]
+    [InlineData(SpeechSpanKind.Weak, "coach-weak")]
+    [InlineData(SpeechSpanKind.Repetition, "coach-weak")]
+    [InlineData(SpeechSpanKind.Profanity, "coach-profane")]
+    public void ClassOfShouldGiveEveryKindItsOwnStyle(SpeechSpanKind kind, string expected)
+        => CoachStreamingMarks.ClassOf(kind).Should().Be(expected);
 }
+

@@ -90,11 +90,13 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
             return ApiArray<SpeechSpan>.Empty;
 
         var language = await Hub.LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
+        var spoken = await Hub.LanguageUI.ListSpoken(cancellationToken).ConfigureAwait(false);
         var settings = await UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
-        if (settings.LevelOf(language.Value) == CoachLanguageLevel.Off)
-            return ApiArray<SpeechSpan>.Empty;
-
-        var instant = SpeechLexicon.Default.FindSpans(text, language);
+        // The language of a recording is only settled with the entry, so every language the user speaks is tried
+        var instant = ApiArray<SpeechSpan>.Empty;
+        foreach (var candidate in spoken.Prepend(language).DistinctBy(l => l.IsoCode))
+            if (settings.LevelOf(candidate.Value) != CoachLanguageLevel.Off)
+                instant = instant.AddNonOverlapping(SpeechLexicon.Default.FindSpans(text, candidate));
         var live = await GetOwnLiveMarks(entryId, cancellationToken).ConfigureAwait(false);
         return live.Count == 0
             ? instant

@@ -203,7 +203,7 @@
     // A marked word opens its hint on tap instead of starting the replay; the click handler in JS
     // skips words that carry a menu
     private bool HasMenu(int index)
-        => _rendered?.MarkSpans?[index] is { } span && span.Kind != SpeechSpanKind.Profanity;
+        => _rendered?.MarkSpans?[index] is not null;
 
     private Dictionary<string, object>? MarkAttributes(int index)
     {

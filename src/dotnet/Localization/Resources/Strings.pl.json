@@ -2077,5 +2077,7 @@
   "Coach_CoachInPlace": "Coach w tym miejscu",
   "Coach_OffByPlace": "Wyłączone, miejsce jest wyłączone",
   "Coach_WhereHint": "Coach słucha wszędzie, oprócz miejsc, które wyłączysz.",
-  "Coach_NothingToCompare": "Nie ma jeszcze poprzedniego tygodnia do porównania"
+  "Coach_NothingToCompare": "Nie ma jeszcze poprzedniego tygodnia do porównania",
+  "Coach_MarkProfanityTitle": "Przekleństwo",
+  "Coach_MarkProfanityBody_Format": "„{0}” to przekleństwo; łagodniejsze słowo może brzmieć lepiej."
 }

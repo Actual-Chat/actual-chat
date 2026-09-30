@@ -35,6 +35,7 @@ public static class CoachStreamingMarks
         => kind switch {
             SpeechSpanKind.FilledPause or SpeechSpanKind.Filler => "coach-filler",
             SpeechSpanKind.Weak or SpeechSpanKind.Repetition => "coach-weak",
+            SpeechSpanKind.Profanity => "coach-profane",
             _ => "",
         };
 }

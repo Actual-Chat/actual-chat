@@ -2084,5 +2084,7 @@
   "Coach_CoachInPlace": "Bu yerde koçluk",
   "Coach_OffByPlace": "Kapalı, yer kapalı",
   "Coach_WhereHint": "Koç, kapattığınız yerler dışında her yerde dinler.",
-  "Coach_NothingToCompare": "Karşılaştırılacak önceki hafta henüz yok"
+  "Coach_NothingToCompare": "Karşılaştırılacak önceki hafta henüz yok",
+  "Coach_MarkProfanityTitle": "Küfür",
+  "Coach_MarkProfanityBody_Format": "“{0}” bir küfürdür; daha yumuşak bir söz daha iyi olabilir."
 }

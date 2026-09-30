@@ -176,6 +176,12 @@
     text-decoration-color: var(--warning);
 }
 
+.playable-text-markup .coach-profane,
+.chat-message-markup.streaming .coach-profane {
+    @apply underline decoration-wavy decoration-2 underline-offset-4;
+    text-decoration-color: var(--danger);
+}
+
 .playable-word-flash {
     @apply absolute z-modal-overlay;
     @apply pointer-events-none;

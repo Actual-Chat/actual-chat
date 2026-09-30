@@ -2077,5 +2077,7 @@
   "Coach_CoachInPlace": "Coach di tempat ini",
   "Coach_OffByPlace": "Nonaktif, tempat ini nonaktif",
   "Coach_WhereHint": "Coach mendengarkan di mana saja kecuali yang Anda matikan.",
-  "Coach_NothingToCompare": "Belum ada minggu sebelumnya untuk dibandingkan"
+  "Coach_NothingToCompare": "Belum ada minggu sebelumnya untuk dibandingkan",
+  "Coach_MarkProfanityTitle": "Kata kasar",
+  "Coach_MarkProfanityBody_Format": "“{0}” adalah kata kasar; kata yang lebih halus mungkin lebih baik."
 }
