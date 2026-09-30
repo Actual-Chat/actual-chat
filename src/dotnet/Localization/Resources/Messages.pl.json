@@ -108,6 +108,7 @@
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Wątki można rozpocząć dopiero, gdy ten użytkownik doda Cię do kontaktów lub odpowie.",
+  "Error_FilesRequireContact": "Pliki można wysyłać dopiero, gdy ten użytkownik doda Cię do kontaktów lub odpowie.",
   "Error_SignInToFollowThread": "Aby obserwować wątek czatu, musisz się zalogować.",
   "Error_OnlyPeerContactCanBeBlocked": "Blokować można tylko kontakty prywatne.",
   "Error_SignInToChat": "Aby rozmawiać z innym użytkownikiem, musisz się zalogować.",

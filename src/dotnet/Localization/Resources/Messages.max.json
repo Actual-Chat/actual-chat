@@ -112,6 +112,7 @@
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Vous pourrez démarrer des fils quand cette personne vous aura ajouté à ses contacts ou vous aura répondu.",
+  "Error_FilesRequireContact": "Vous pourrez envoyer des fichiers quand cette personne vous aura ajouté à ses contacts ou vous aura répondu.",
   "Error_SignInToFollowThread": "スレッドをフォローするにはサインインしてください。",
   "Error_OnlyPeerContactCanBeBlocked": "Seuls les contacts personnels peuvent être bloqués.",
   "Error_SignInToChat": "Щоб написати іншому користувачу, увійдіть в обліковий запис.",

@@ -24,6 +24,7 @@
                 @ref="@_contactSelectorRef"
                 SearchQuery="_searchQuery"
                 ChatListPreOrder="@ChatListPreOrder.ChatList"
+                UseCanUploadFilter="@ModalModel.Request.HasMedia()"
                 Changed="@StateHasChanged">
                 <SearchBox
                     Placeholder="@L.Share_WhoToShareWith"

@@ -100,6 +100,7 @@
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "थ्रेड तभी शुरू किए जा सकते हैं जब यह व्यक्ति आपको संपर्कों में जोड़ ले या जवाब दे।",
+  "Error_FilesRequireContact": "फ़ाइलें तभी भेजी जा सकती हैं जब यह व्यक्ति आपको संपर्कों में जोड़ ले या जवाब दे।",
   "Error_SignInToFollowThread": "थ्रेड फ़ॉलो करने के लिए साइन इन करें।",
   "Error_OnlyPeerContactCanBeBlocked": "केवल व्यक्तिगत संपर्क ही ब्लॉक किए जा सकते हैं।",
   "Error_SignInToChat": "किसी दूसरे व्यक्ति से चैट करने के लिए साइन इन करें।",

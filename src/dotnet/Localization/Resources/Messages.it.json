@@ -100,6 +100,7 @@
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Potrai avviare thread quando questa persona ti aggiungerà ai contatti o ti risponderà.",
+  "Error_FilesRequireContact": "Potrai inviare file quando questa persona ti aggiungerà ai contatti o ti risponderà.",
   "Error_SignInToFollowThread": "Accedi per seguire un thread.",
   "Error_OnlyPeerContactCanBeBlocked": "Si possono bloccare solo i contatti personali.",
   "Error_SignInToChat": "Accedi per scrivere a un’altra persona.",

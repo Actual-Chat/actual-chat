@@ -17,6 +17,7 @@
     [Parameter] public ChatListPreOrder ChatListPreOrder { get; set; } = ChatListPreOrder.ChatList;
     [Parameter] public ChatListFilter Filter { get; set; } = ChatListFilter.None;
     [Parameter] public bool UseCanWriteFilter { get; set; } = true;
+    [Parameter] public bool UseCanUploadFilter { get; set; }
     [Parameter] public IReadOnlySet<ChatId>? ExcludeChatIds { get; set; }
     [Parameter] public SearchQuery SearchQuery { get; set; }
     [Parameter] public EventCallback Changed { get; set; }
@@ -93,6 +94,8 @@
         contacts = contacts.Where(filter.Invoke);
         if (UseCanWriteFilter)
             contacts = contacts.Where(c => c.Chat.Rules.CanWrite());
+        if (UseCanUploadFilter)
+            contacts = contacts.Where(c => c.Chat.Rules.CanUpload());
 
         contacts = contacts.OrderBy(chatListOrder, chatListPreOrder);
         if (!searchQuery.IsEmpty)
