@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using ActualChat.Audio;
 using ActualChat.Kvas;
 using ActualChat.Live;
@@ -380,8 +381,14 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             .Select(c => c.ChatId)
             .ToImmutableHashSet());
 
-    public ValueTask SetListeningState(ChatId chatId, bool mustListen)
+    public ValueTask SetListeningState(
+        ChatId chatId,
+        bool mustListen,
+        [CallerMemberName] string caller = "",
+        [CallerFilePath] string callerFile = "")
     {
+        Log.LogInformation("SetListeningState({ChatId}, {MustListen}) <- {Caller}",
+            chatId, mustListen, $"{Path.GetFileNameWithoutExtension(callerFile)}.{caller}");
         if (mustListen)
             Hub.AudioAttachmentPlayer.OnConversationJoined();
         var now = CpuNow;
@@ -403,8 +410,13 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         });
     }
 
-    public ValueTask ClearListeningChats()
-        => ActiveChatsUI.UpdateActiveChats(activeChats => {
+    public ValueTask ClearListeningChats(
+        [CallerMemberName] string caller = "",
+        [CallerFilePath] string callerFile = "")
+    {
+        Log.LogInformation("ClearListeningChats() <- {Caller}",
+            $"{Path.GetFileNameWithoutExtension(callerFile)}.{caller}");
+        return ActiveChatsUI.UpdateActiveChats(activeChats => {
             var newActiveChats = new List<ActiveChat>(activeChats.Length);
             var isUpdated = false;
             foreach (var chat in activeChats) {
@@ -417,6 +429,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             }
             return isUpdated ? newActiveChats.ToArray() : activeChats;
         });
+    }
 
     [ComputeMethod] // Synced
     public virtual Task<ChatId?> GetRecordingChatId()

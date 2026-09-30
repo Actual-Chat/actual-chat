@@ -217,7 +217,10 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         ParticipationKind kind,
         bool isActive,
         CancellationToken cancellationToken)
-        => LiveSessions.SetParticipation(Session, chatId, kind, isActive, cancellationToken);
+    {
+        Log.LogInformation("SetParticipation({ChatId}, {Kind}, {IsActive})", chatId, kind, isActive);
+        return LiveSessions.SetParticipation(Session, chatId, kind, isActive, cancellationToken);
+    }
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
