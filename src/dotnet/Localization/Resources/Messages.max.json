@@ -89,6 +89,7 @@
   "Error_RootChatCannotHoldMessages": "Cuộc trò chuyện gốc của không gian không chứa tin nhắn — hãy đăng vào một trong các cuộc trò chuyện của không gian.",
   "Error_CanAttachOwnLocationsOnly": "Може да прикачите само собствените си споделени местоположения от този чат.",
   "Error_NonContactMessageLimit_Format": "Vous pouvez envoyer jusqu’à {limit} messages tant que cette personne ne vous a pas ajouté à ses contacts ou ne vous a pas répondu.",
+  "Error_MessageNotForwardable": "Nachrichten ohne Text und Dateien oder mit Dateien, die noch hochgeladen werden, können nicht weitergeleitet werden.",
   "Error_OnlyOwnersOrModeratorsCanPin": "Nie możesz wykonać tej czynności: brak wystarczających uprawnień. Wymagane uprawnienie: przypinać wiadomości mogą tylko właściciele i moderatorzy czatu.",
   "Error_PinLimit_Format": "Можна закріпити не більше ніж {limit} повідомлень.",
 

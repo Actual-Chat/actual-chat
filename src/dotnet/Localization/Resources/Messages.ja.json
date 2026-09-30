@@ -77,6 +77,7 @@
   "Error_RootChatCannotHoldMessages": "スペースのルートチャットには投稿できません。スペース内のいずれかのチャットに投稿してください。",
   "Error_CanAttachOwnLocationsOnly": "このチャットから添付できるのは自分が共有した位置情報だけです。",
   "Error_NonContactMessageLimit_Format": "相手があなたを連絡先に追加するか返信するまで、送信できるのは{limit}件までです。",
+  "Error_MessageNotForwardable": "テキストもファイルもないメッセージや、ファイルのアップロード中のメッセージは転送できません。",
   "Error_OnlyOwnersOrModeratorsCanPin": "メッセージをピン留めできるのは、チャットのオーナーとモデレーターだけです。",
   "Error_PinLimit_Format": "ピン留めできるメッセージは{limit}件までです。",
 

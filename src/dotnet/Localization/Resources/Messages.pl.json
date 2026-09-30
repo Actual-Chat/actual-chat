@@ -85,6 +85,7 @@
   "Error_RootChatCannotHoldMessages": "Główny czat Miejsca nie może zawierać wiadomości — napisz w jednym z czatów tego Miejsca.",
   "Error_CanAttachOwnLocationsOnly": "Możesz załączyć tylko własne lokalizacje udostępnione w tym czacie.",
   "Error_NonContactMessageLimit_Format": "Możesz wysłać maksymalnie {limit} wiadomości, dopóki ten użytkownik nie doda Cię do kontaktów lub nie odpowie.",
+  "Error_MessageNotForwardable": "Nie można przekazać wiadomości bez tekstu i plików ani takich, których pliki wciąż się przesyłają.",
   "Error_OnlyOwnersOrModeratorsCanPin": "Nie możesz wykonać tej czynności: brak wystarczających uprawnień. Wymagane uprawnienie: przypinać wiadomości mogą tylko właściciele i moderatorzy czatu.",
   "Error_PinLimit_Format": "Możesz przypiąć maksymalnie {limit} wiadomości.",
 

@@ -89,6 +89,7 @@
   "Error_RootChatCannotHoldMessages": "A place's root chat can't hold messages — post to one of the place's chats instead.",
   "Error_CanAttachOwnLocationsOnly": "You can attach only your own shared locations from this chat.",
   "Error_NonContactMessageLimit_Format": "You can send up to {limit} messages until this user adds you to their contacts or replies.",
+  "Error_MessageNotForwardable": "Messages with no text or files, or with files still uploading, can't be forwarded.",
   "Error_OnlyOwnersOrModeratorsCanPin": "You can't perform this action: not enough permissions. Requested permission: Only chat Owners and Moderators can pin messages.",
   "Error_PinLimit_Format": "You can pin up to {limit} messages.",
 

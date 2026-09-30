@@ -77,6 +77,7 @@
   "Error_RootChatCannotHoldMessages": "Cuộc trò chuyện gốc của không gian không chứa tin nhắn — hãy đăng vào một trong các cuộc trò chuyện của không gian.",
   "Error_CanAttachOwnLocationsOnly": "Bạn chỉ có thể đính kèm vị trí bạn chia sẻ từ cuộc trò chuyện này.",
   "Error_NonContactMessageLimit_Format": "Bạn có thể gửi tối đa {limit} tin nhắn cho đến khi người này thêm bạn vào liên hệ hoặc trả lời.",
+  "Error_MessageNotForwardable": "Không thể chuyển tiếp tin nhắn không có văn bản hoặc tệp, hoặc có tệp vẫn đang tải lên.",
   "Error_OnlyOwnersOrModeratorsCanPin": "Chỉ chủ sở hữu và người kiểm duyệt cuộc trò chuyện mới ghim được tin nhắn.",
   "Error_PinLimit_Format": "Bạn có thể ghim tối đa {limit} tin nhắn.",
 

@@ -77,6 +77,7 @@
   "Error_RootChatCannotHoldMessages": "空间的根聊天不能发布消息 — 请发到空间中的某个聊天。",
   "Error_CanAttachOwnLocationsOnly": "您只能附加自己在该聊天中共享的位置。",
   "Error_NonContactMessageLimit_Format": "在对方将您加为联系人或回复之前，您最多可发送 {limit} 条消息。",
+  "Error_MessageNotForwardable": "无法转发没有文字和文件的消息，或文件仍在上传中的消息。",
   "Error_OnlyOwnersOrModeratorsCanPin": "只有聊天拥有者和版主才能置顶消息。",
   "Error_PinLimit_Format": "您最多可以置顶 {limit} 条消息。",
 

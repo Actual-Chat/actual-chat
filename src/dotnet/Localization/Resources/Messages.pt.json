@@ -77,6 +77,7 @@
   "Error_RootChatCannotHoldMessages": "O chat raiz de um espaço não aceita mensagens — publique em um dos chats do espaço.",
   "Error_CanAttachOwnLocationsOnly": "Você só pode anexar a sua própria localização compartilhada deste chat.",
   "Error_NonContactMessageLimit_Format": "Você pode enviar até {limit} mensagens até que esta pessoa adicione você aos contatos ou responda.",
+  "Error_MessageNotForwardable": "Não é possível encaminhar mensagens sem texto nem arquivos, ou com arquivos ainda sendo enviados.",
   "Error_OnlyOwnersOrModeratorsCanPin": "Só proprietários e moderadores do chat podem fixar mensagens.",
   "Error_PinLimit_Format": "Você pode fixar até {limit} mensagens.",
 
