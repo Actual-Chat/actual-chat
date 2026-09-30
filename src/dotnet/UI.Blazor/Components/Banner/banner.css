@@ -55,18 +55,28 @@
 .banner.banner-wrap .banner-buttons {
     @apply ml-auto;
 }
+/* Top-right on both platforms: a wrap banner can grow to two rows (a long message pushes the
+   action buttons onto their own row), and centering the button vertically then drops it into the
+   gap between the rows instead of a corner. */
 .banner.banner-wrap .close-banner-abs {
     @apply absolute top-2 right-2;
-}
-/* Desktop: the close button sits at the banner's vertical center; mobile keeps it top-right */
-body.wide .banner.banner-wrap .close-banner-abs {
-    @apply top-1/2 right-2;
-    transform: translateY(-50%);
 }
 /* Desktop: the lead (icon + message) keeps its natural width, so a long message pushes the action
    buttons onto their own row - like mobile - instead of squeezing the text into a narrow column. */
 body.wide .banner.banner-wrap .banner-lead {
     flex: 1 1 auto;
+}
+/* The close reservation (c-content pr-9) sits on every row, which keeps an inline button row clear of
+   the top-right close but leaves a wrapped button row stopping short of the edge under the now-empty
+   close column. The close only occupies the first row, so once the buttons wrap onto their own row the
+   BannerStack controller flags .buttons-wrapped - we then move the reservation onto the body (text still
+   clears the close) and let the button row run flush to the right edge. Flex can't express a first-row-
+   only reservation, hence the measured class. */
+body.wide .banner.banner-wrap.banner-dismissible.buttons-wrapped > .c-content {
+    @apply pr-0;
+}
+body.wide .banner.banner-wrap.banner-dismissible.buttons-wrapped .banner-body {
+    @apply pr-9;
 }
 /* The query sees the content box, 20px narrower than the banner, so 22rem still fired up to a 380px
    viewport and cost English a row on every phone. A translation that doesn't fit wraps regardless -

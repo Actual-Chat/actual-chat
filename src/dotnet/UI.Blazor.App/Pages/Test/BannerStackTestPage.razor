@@ -41,7 +41,7 @@
                 <Body>@kind.Text</Body>
                 <Buttons>
                     @foreach (var action in kind.Actions) {
-                        <BannerButton Class="@action.Cls">@action.Label</BannerButton>
+                        <BannerButton Class="@action.Cls" Primary="@action.Primary">@action.Label</BannerButton>
                     }
                 </Buttons>
             </Banner>
@@ -84,19 +84,31 @@
 </div>
 
 @code {
-    // Every banner kind that can live in the BannerStack, in the order they're rendered in Banners.razor.
-    // Button classes mirror the real components so the test matches production styling.
+    // Every banner kind that can live in the BannerStack, in the order they're rendered in Banners.razor,
+    // followed by extra severity/layout variants so the page exercises all four banner colours and a
+    // no-button banner. Severities and button classes mirror the real components.
     private static readonly NudgeKind[] NudgeKinds = [
-        new("add-members", "You're the only person in this chat", BannerSeverity.Warning,
-            [new("Add members", "")]),
-        new("add-contacts", "This user is not in your contacts", BannerSeverity.Info,
-            [new("Block", "btn-danger"), new("Add", "")]),
-        new("ptt", "Enable your device to use push-to-talk in this chat", BannerSeverity.Info,
-            [new("Allow", "")]),
         new("chat-copy", "This chat was copied to the place — publish it when you're ready", BannerSeverity.Info,
-            [new("Update", ""), new("Publish", "")]),
-        new("notifications", "Turn on notifications so you don't miss messages in this chat and others you follow", BannerSeverity.Info,
-            [new("Configure", "")]),
+            [new("Update"), new("Publish")]),
+        new("add-contacts", "This user is not in your contacts", BannerSeverity.Info,
+            [new("Block", "btn-danger"), new("Add")]),
+        new("add-members", "You're the only person in this chat", BannerSeverity.Warning,
+            [new("Add members")]),
+        new("picture-suggestion", "We suggested a picture for this chat", BannerSeverity.Info,
+            [new("Use picture"), new("Edit", Primary: false)]),
+        new("ptt-join", "Enable your device to use push-to-talk in this chat", BannerSeverity.Info,
+            [new("Allow")]),
+        new("ptt-muted", "You're muted in push-to-talk for this chat", BannerSeverity.Info,
+            [new("Unmute")]),
+        new("notifications", "Turn on notifications so you don't miss messages you follow", BannerSeverity.Info,
+            [new("Configure")]),
+        new("lock-screen", "Allow incoming calls to show on your lock screen", BannerSeverity.Info,
+            [new("Settings")]),
+        new("success", "All set — your changes were saved", BannerSeverity.Success,
+            [new("Got it")]),
+        new("error", "Something went wrong while saving — please try again", BannerSeverity.Error,
+            [new("Retry"), new("Dismiss", Primary: false)]),
+        new("plain", "A plain informational banner with no action buttons", BannerSeverity.Info, []),
     ];
 
     private readonly List<NudgeKind> _addedNudges = [];
@@ -138,6 +150,6 @@
         _pinCount = 0;
     }
 
-    private sealed record NudgeAction(string Label, string Cls);
+    private sealed record NudgeAction(string Label, string Cls = "", bool Primary = true);
     private sealed record NudgeKind(string Key, string Text, BannerSeverity Severity, NudgeAction[] Actions);
 }

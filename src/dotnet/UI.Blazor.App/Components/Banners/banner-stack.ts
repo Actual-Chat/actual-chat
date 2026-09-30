@@ -103,6 +103,8 @@ export class BannerStack implements Disposable {
         this.root.classList.toggle('is-empty', count === 0);
         this.root.classList.toggle('expanded', isExpanded);
         this.reconcileObserved(banners);
+        for (const banner of banners)
+            this.updateButtonsWrap(banner);
 
         if (count === 0) {
             this.root.style.setProperty('--bs-height', '0px');
@@ -146,5 +148,15 @@ export class BannerStack implements Disposable {
             }
         });
         this.root.style.setProperty('--bs-height', `${topHeight + peekCount * PeekOffsetPx}px`);
+    }
+
+    // A wrap banner reserves the top-right close column on every row (CSS can't reserve just the first
+    // row in flex), so a button row that spills onto its own line stops short of the edge. The close
+    // only sits on the first row, so flag the wrapped state and let the CSS run that row flush instead.
+    private updateButtonsWrap(banner: HTMLElement): void {
+        const lead = banner.querySelector<HTMLElement>('.banner-lead');
+        const buttons = banner.querySelector<HTMLElement>('.banner-buttons');
+        const wrapped = lead != null && buttons != null && buttons.offsetTop > lead.offsetTop;
+        banner.classList.toggle('buttons-wrapped', wrapped);
     }
 }
