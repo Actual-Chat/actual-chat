@@ -25,7 +25,7 @@ partial class SendingMessages
                 && !_cancellationTokenSource.IsCancellationRequested) {
                 // The send was cancelled rather than the service stopped: a live share created above
                 // must not run on without its entry, and nothing else knows its id
-                if (request.Location?.LiveDuration > TimeSpan.Zero && request.LocationId is { } createdId)
+                if (request.LocationDiff?.LiveDuration > TimeSpan.Zero && request.NewLocationId is { } createdId)
                     await StopSharedLocation(request.ChatId, createdId).ConfigureAwait(false);
                 throw;
             }
@@ -78,7 +78,7 @@ partial class SendingMessages
             ClientId = request.ClientId,
             Attachments = attachments,
             HasUploadingAttachments = request.AttachmentUploads is not null,
-            LocationId = request.LocationId,
+            LocationId = request.NewLocationId,
         };
         // // Simulate long sending
         // await Task.Delay(5000, cancellationToken).ConfigureAwait(false);
@@ -91,7 +91,7 @@ partial class SendingMessages
                 chatEntry = chatEntry1;
         }
         var isNewMessage = cmd.LocalId is null;
-        if (isNewMessage && request.LocationId is null)
+        if (isNewMessage && request.NewLocationId is null)
             AnalyticEvents.RaiseMessagePosted(
                 cmd.RepliedEntryLid.HasValue,
                 !cmd.Text.IsNullOrEmpty(),
@@ -132,7 +132,7 @@ partial class SendingMessages
         PostMessageRequestInternal request,
         CancellationToken cancellationToken)
     {
-        if (request.LocationId is not null || request.Location is not { } location)
+        if (request.NewLocationId is not null || request.LocationDiff is not { } locationDiff)
             return request;
 
         // The Uuid is derived from the request's, so a resend of a create the server already applied
@@ -143,7 +143,7 @@ partial class SendingMessages
             Session = Session,
             ChatId = request.ChatId,
             Id = null,
-            Change = Change.Create(location),
+            Change = Change.Create(locationDiff),
         };
         var created = await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
         if (created is null)
@@ -151,7 +151,7 @@ partial class SendingMessages
 
         await _requestsRepo.MarkLocationWasCreated(request.Uuid, created.Id, cancellationToken)
             .ConfigureAwait(false);
-        return request with { LocationId = created.Id };
+        return request with { NewLocationId = created.Id };
     }
 
     private async Task StopSharedLocation(ChatId chatId, SharedLocationId locationId)

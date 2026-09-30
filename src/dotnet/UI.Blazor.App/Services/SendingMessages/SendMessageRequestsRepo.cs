@@ -70,7 +70,7 @@ public class SendMessageRequestsRepo
             return;
 
         entry = entry with {
-            LocationId = locationId,
+            NewLocationId = locationId,
         };
         await _internal.Set(entry.Uuid, entry, cancellationToken).ConfigureAwait(false);
         await _internal.Flush(cancellationToken).ConfigureAwait(false);
@@ -128,8 +128,8 @@ public sealed partial record SendMessageRequestEntry : IHasId<string>, ISanitize
     [DataMember, Key(10)] public long? NewChatEntryLocalId { get; init; }
     [DataMember, Key(11)] public MediaRef[] ExistingMedia { get; init; } = [];
     [DataMember, Key(12)] public string? QuotedText { get; init; }
-    [DataMember, Key(13)] public SharedLocationDiff? Location { get; init; }
-    [DataMember, Key(14)] public SharedLocationId? LocationId { get; init; }
+    [DataMember, Key(13)] public SharedLocationDiff? LocationDiff { get; init; }
+    [DataMember, Key(14)] public SharedLocationId? NewLocationId { get; init; }
 
     string IHasId<string>.Id => Uuid;
 

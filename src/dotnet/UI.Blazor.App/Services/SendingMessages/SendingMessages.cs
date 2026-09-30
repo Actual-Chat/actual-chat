@@ -149,8 +149,8 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             ExistingMedia = entry.ExistingMedia,
             ClientId = entry.ClientId,
             NewChatEntryLocalId = entry.NewChatEntryLocalId,
-            Location = entry.Location,
-            LocationId = entry.LocationId,
+            LocationDiff = entry.LocationDiff,
+            NewLocationId = entry.NewLocationId,
             AfterSendMessageHandler = !entry.AfterSendMessageHandlerKey.IsNullOrEmpty()
                 ? new AfterSendMessageHandler(entry.AfterSendMessageHandlerKey, entry.AfterSendMessageHandlerArgs)
                 : null,
@@ -605,10 +605,10 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         public IReadOnlyList<MediaRef> ExistingMedia { get; init; } = [];
         public string ClientId { get; init; } = "";
         public long? NewChatEntryLocalId { get; init; }
-        public SharedLocationDiff? Location { get; init; }
+        public SharedLocationDiff? LocationDiff { get; init; }
         // Set once the shared location exists, so a retry or a restart posts the entry for it
         // instead of minting a second one
-        public SharedLocationId? LocationId { get; init; }
+        public SharedLocationId? NewLocationId { get; init; }
         public AfterSendMessageHandler? AfterSendMessageHandler { get; init; }
         public bool CheckResend { get; init; }
 

@@ -11,7 +11,7 @@
     var streamingMarkup = StreamingMarkupExt.ParseOrNullIfPlainText(sm.RetainedText + sm.ChangedText + sm.AnimatedText);
     var entry = m.Entry;
     // A queued location send has no LocationId yet; its point rides on the sending message.
-    var hasLocation = entry.HasLocation || entry.GetSendingMessage()?.Location is not null;
+    var hasLocation = entry.HasLocation || entry.GetSendingMessage()?.LocationDiff is not null;
     // The server fills a location entry's content with a maps-link fallback for clients that don't
     // understand location entries; here we render the map instead, so that content stays hidden
     // (status still shows). TODO: 2026-07, remove when all clients support location entries.

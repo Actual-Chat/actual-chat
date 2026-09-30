@@ -82,7 +82,7 @@
             });
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        if (Entry.GetSendingMessage()?.Location is { Point: { } } pendingLocation)
+        if (Entry.GetSendingMessage()?.LocationDiff is { Point: { } } pendingLocation)
             return await GetSendingModel(pendingLocation, cancellationToken).ConfigureAwait(false);
         if (Entry.LocationId is not { } locationId)
             return null;
