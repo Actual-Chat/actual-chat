@@ -15,12 +15,17 @@ public class KeepAwakeUI(UIHub hub)
     protected ILogger Log => field ??= hub.LogFor(GetType());
 
     public virtual ValueTask SetKeepAwake(bool mustKeepAwake)
-    {
-        Log.LogInformation("SetKeepAwake({MustKeepAwake})", mustKeepAwake);
-        return JS.InvokeVoidAsync(JSSetKeepAwakeMethod, mustKeepAwake);
-    }
+        => SetNoSleep(mustKeepAwake);
 
     public virtual ValueTask SetScreenOffAtEar(bool isEnabled)
         // Lets the proximity sensor blank the screen and block touches, as in a phone call.
         => default;
+
+    // Protected/internal methods
+
+    protected ValueTask SetNoSleep(bool mustKeepAwake)
+    {
+        Log.LogInformation("SetKeepAwake({MustKeepAwake})", mustKeepAwake);
+        return JS.InvokeVoidAsync(JSSetKeepAwakeMethod, Hub.StopToken, mustKeepAwake);
+    }
 }

@@ -48,7 +48,15 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // Scoped in WASM/SSB, singleton in MAUI
         services.AddSingleton<ScopedServicesAccessor>(_ => static () => TryGetScopedServices(out var c) ? c : null);
         services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c.UIHub()));
+#if ANDROID
+        services.AddScoped<KeepAwakeUI>(c => new AndroidKeepAwakeUI(c.UIHub()));
+#elif IOS
+        services.AddScoped<KeepAwakeUI>(c => new IosKeepAwakeUI(c.UIHub()));
+#elif WINDOWS
+        services.AddScoped<KeepAwakeUI>(c => new WindowsKeepAwakeUI(c.UIHub()));
+#else
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c.UIHub()));
+#endif
         services.AddScoped<KeepWebViewAliveUI>(c => new (c.UIHub()));
         services.AddScoped<IMauiShare>(c => new MauiShare(c));
         services.AddScoped<AppServerInstanceSelector>(c => new MauiAppServerInstanceSelector(c.UIHub()));
