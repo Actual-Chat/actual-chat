@@ -15,18 +15,22 @@
         <div class="contact-selector-list" role="listbox" aria-multiselectable="true" data-child="contact-list">
             @foreach (var contact in contacts) {
                 var isSelected = selectedChatIds.Contains(contact.Id);
+                var isDisabled = Selector.IsDisabled(contact);
                 <div class="contact-selector-list-item"
                      role="option"
                      tabindex="0"
                      aria-selected="@(isSelected ? "true" : "false")"
-                     @onclick="() => OnContactClick(contact.Id)">
+                     aria-disabled="@(isDisabled ? "true" : "false")"
+                     @onclick="() => OnContactClick(contact)">
                     <ContactView
                         ContactInfo="contact"
-                        SearchQuery="Selector.SearchQuery"/>
+                        SearchQuery="Selector.SearchQuery"
+                        Note="@(isDisabled ? L.Share_NoFilesYet : "")"/>
                     <Checkbox
                         IsChecked="@isSelected"
+                        IsDisabled="@isDisabled"
                         Class="!flex-none"
-                        Change="() => OnContactClick(contact.Id)"/>
+                        Change="() => OnContactClick(contact)"/>
                 </div>
             }
         </div>
@@ -54,6 +58,12 @@
         return null;
     }
 
-    private void OnContactClick(ChatId chatId)
-        => Selector.Toggle(chatId);
+    private void OnContactClick(ContactInfo contact) {
+        if (Selector.IsDisabled(contact)) {
+            ToastUI.Show(L.Share_NoFilesYetReason, "icon-alert-circle", ToastDismissDelay.Short);
+            return;
+        }
+
+        Selector.Toggle(contact.Id);
+    }
 }

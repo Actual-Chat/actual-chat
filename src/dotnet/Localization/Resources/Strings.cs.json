@@ -1261,6 +1261,8 @@
   "Share_WhoToShareWith": "Komu chcete sdílet",
   "Share_AddComment": "Přidat komentář",
   "Share_SendToSelected": "Odeslat vybraným kontaktům",
+  "Share_NoFilesYet": "Zatím nelze posílat soubory",
+  "Share_NoFilesYetReason": "Soubory lze posílat až poté, co si vás tento uživatel přidá do kontaktů nebo odpoví.",
 
   // The iOS share extension - native UIKit, so it renders outside the app's WebView.
   "ShareExt_ShareWith": "Sdílet",

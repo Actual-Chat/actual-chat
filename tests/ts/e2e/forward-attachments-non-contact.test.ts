@@ -4,7 +4,8 @@
  *
  * A fresh account is a non-contact for Bob by construction, and non-contacts can't send files.
  * It posts a text message and a file message into the shared chat and opens the peer chat with
- * Bob: the forward picker must list Bob for the text message and leave him out for the file one.
+ * Bob: the forward picker must offer Bob for the text message, and for the file one list him
+ * disabled, with a note saying why and a toast explaining it when tapped.
  *
  * Run:
  *   AC_E2E_SERVER=external npx vitest run tests/ts/e2e/forward-attachments-non-contact.test.ts \
@@ -92,7 +93,7 @@ describe('forward attachments to a non-contact peer chat', () => {
         }
     });
 
-    it('leaves the non-contact peer out of the picker when the message has files', async () => {
+    it('disables the non-contact peer in the picker when the message has files', async () => {
         // arrange - Alice posts a text message and a file message into the shared chat
         await openChat(alice);
         await joinChat(alice);
@@ -146,9 +147,23 @@ describe('forward attachments to a non-contact peer chat', () => {
         // act - forward the file message
         modal = await openForwardModal(alice, fileSource, bobName);
 
-        // assert - Bob isn't offered, so the forward can't even be attempted
+        // assert - Bob is listed but disabled, with the reason under his name
+        const bobItem = modal.locator(bobItemSelector).first();
+        await bobItem.waitFor({ state: 'visible', timeout: 15_000 });
+        expect(await bobItem.getAttribute('aria-disabled')).toBe('true');
+        expect(await bobItem.locator('.contact-view-note').innerText()).toBe("Can't send files yet");
+        const checkmark = await bobItem.locator('.checkbox > .x').evaluate(el => getComputedStyle(el).backgroundImage);
+        expect(checkmark).toBe('none');
+
+        // act - tap his checkbox; force, as Playwright won't click a disabled element on its own
+        await bobItem.locator('.checkbox').click({ force: true });
+
+        // assert - the tap explains why and selects nothing
+        const toast = alice.locator('.toast-container:has-text("Files can be sent only after")').first();
+        await toast.waitFor({ state: 'visible', timeout: 10_000 });
         await alice.screenshot({ path: shot('3-alice-forward-file') });
-        expect(await modal.locator(bobItemSelector).count()).toBe(0);
+        expect(await bobItem.getAttribute('aria-selected')).toBe('false');
+        expect(await modal.locator('button.btn-primary:not([disabled])').count()).toBe(0);
         await alice.keyboard.press('Escape');
     }, 240_000);
 });

@@ -1261,6 +1261,8 @@
   "Share_WhoToShareWith": "Bạn muốn chia sẻ với ai",
   "Share_AddComment": "Thêm bình luận",
   "Share_SendToSelected": "Gửi đến các liên hệ đã chọn",
+  "Share_NoFilesYet": "Chưa thể gửi tệp",
+  "Share_NoFilesYetReason": "Bạn chỉ có thể gửi tệp sau khi người này thêm bạn vào liên hệ hoặc trả lời.",
 
   // The iOS share extension - native UIKit, so it renders outside the app's WebView.
   "ShareExt_ShareWith": "Chia sẻ với",

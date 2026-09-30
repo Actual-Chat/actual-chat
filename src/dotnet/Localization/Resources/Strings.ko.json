@@ -1261,6 +1261,8 @@
   "Share_WhoToShareWith": "누구와 공유할까요",
   "Share_AddComment": "댓글 추가",
   "Share_SendToSelected": "선택한 연락처로 보내기",
+  "Share_NoFilesYet": "아직 파일을 보낼 수 없습니다",
+  "Share_NoFilesYetReason": "상대가 회원님을 연락처에 추가하거나 답장한 후에 파일을 보낼 수 있습니다.",
 
   // The iOS share extension - native UIKit, so it renders outside the app's WebView.
   "ShareExt_ShareWith": "공유 대상",

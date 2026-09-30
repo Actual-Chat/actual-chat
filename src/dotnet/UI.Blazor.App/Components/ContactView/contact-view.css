@@ -6,3 +6,7 @@
     @apply truncate;
     @apply text-body-500 text-02;
 }
+.contact-view-note {
+    @apply truncate;
+    @apply text-caption-400 text-03;
+}

@@ -1268,6 +1268,8 @@
   "Share_WhoToShareWith": "Kiminle paylaşmak istersiniz",
   "Share_AddComment": "Yorum ekleyin",
   "Share_SendToSelected": "Seçili kişilere gönderin",
+  "Share_NoFilesYet": "Henüz dosya gönderemezsiniz",
+  "Share_NoFilesYetReason": "Dosya gönderebilmeniz için bu kişinin sizi kişilerine eklemesi veya yanıt vermesi gerekir.",
 
   // The iOS share extension - native UIKit, so it renders outside the app's WebView.
   "ShareExt_ShareWith": "Paylaşın",
