@@ -1023,11 +1023,14 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         // Logged as the pair to EnforceCallParties' verdict: the two lines bracket the window a client has
         // to get (or get back) its presence up, which is what a slow accept or a presence dip loses.
         => BackgroundTask.Run(async () => {
+            // The check is for the call the chat is in now: by the time it runs, that one may be over
+            // and the next one connecting - with a grace of its own.
+            var callId = (await SafeGet(chatId).ConfigureAwait(false))?.CallId;
             Log.LogInformation(
-                "{CheckName}: chat #{ChatId} - checking back in {Grace}",
-                checkName, chatId, grace.ToShortString());
+                "{CheckName}: call #{CallId} - checking back in {Grace}",
+                checkName, callId?.Value ?? chatId.Value, grace.ToShortString());
             await Task.Delay(grace).ConfigureAwait(false);
-            await EnforceCallParties(chatId, checkName, grace).ConfigureAwait(false);
+            await EnforceCallParties(chatId, checkName, grace, callId).ConfigureAwait(false);
         }, Log, $"{checkName} check failed for chat #{chatId}");
 
     private Task ScheduleAnswerGraceEnd(ChatId chatId)
@@ -1048,14 +1051,19 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     internal Task EnforceCallLeaveGrace(ChatId chatId)
         => EnforceCallParties(chatId, nameof(EnforceCallLeaveGrace), CallLeaveGrace);
 
-    private async Task EnforceCallParties(ChatId chatId, string checkName, TimeSpan grace)
+    private async Task EnforceCallParties(ChatId chatId, string checkName, TimeSpan grace, CallId? callId = null)
     {
         try {
             var shouldClose = false;
             using (Computed.BeginIsolation())
             using (await _changeLocks.Lock(chatId, CancellationToken.None).ConfigureAwait(false)) {
                 var state = await SafeGet(chatId).ConfigureAwait(false);
-                if (state is { Kind: LiveSessionKind.Call }) {
+                if (callId is not null && state is not null && state.CallId != callId)
+                    Log.LogInformation(
+                        "{CheckName}: call #{CallId} is over, chat #{ChatId} is in #{CurrentCallId} - nothing to check",
+                        checkName, callId, chatId, state.CallId);
+                else if (state is { Kind: LiveSessionKind.Call }) {
+                    callId = state.CallId;
                     var participants = await GetFreshParticipantIds(chatId).ConfigureAwait(false);
                     if (participants.Count < 2)
                         shouldClose = true;
@@ -1076,7 +1084,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                         checkName, chatId, state?.Kind);
             }
             if (shouldClose)
-                await CloseCall(chatId, mustRecheckParties: true).ConfigureAwait(false);
+                await CloseCall(chatId, mustRecheckParties: true, callId).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "{CheckName} failed for chat #{ChatId}", checkName, chatId);
@@ -1897,14 +1905,16 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     // Call teardown: unlike CloseNow it doesn't require the session to be empty first - a call left with
     // a single participant is already over, so it winds down with them still present. mustRecheckParties
     // is for a close decided by headcount: it counts again under the lock, and a party back by then keeps it.
-    private async Task CloseCall(ChatId chatId, bool mustRecheckParties = false)
+    // callId names the call the close was decided for: the next call to the chat is not its to close.
+    private async Task CloseCall(ChatId chatId, bool mustRecheckParties = false, CallId? callId = null)
     {
         try {
             var state = await SafeGet(chatId).ConfigureAwait(false);
             if (state is null)
                 return;
 
-            await CloseAndMaterialize(state, CancellationToken.None, mustRecheckParties).ConfigureAwait(false);
+            await CloseAndMaterialize(state, CancellationToken.None, mustRecheckParties, callId)
+                .ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "CloseCall failed for chat #{ChatId}", chatId);
@@ -1930,7 +1940,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     private async Task CloseAndMaterialize(
         LiveSessionState state,
         CancellationToken cancellationToken,
-        bool mustRecheckParties = false)
+        bool mustRecheckParties = false,
+        CallId? callId = null)
     {
         if (state.IsCall) {
             // Dropping the session key is the atomic claim that picks one closer out of the several
@@ -1940,6 +1951,8 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             using (Computed.BeginIsolation())
             using (await _changeLocks.Lock(state.ChatId, CancellationToken.None).ConfigureAwait(false)) {
                 if (await SafeGet(state.ChatId).ConfigureAwait(false) is not { } current)
+                    return;
+                if (callId is not null && current.CallId != callId)
                     return;
 
                 // A presence-driven close was decided before this lock: a party back by now keeps the call.
@@ -2003,7 +2016,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 // session, so a failed ring dismissal, entry or materialization must not also cost the
                 // participants, the invites and the invalidation that tells clients the call is over.
                 try {
-                    await Close(state.ChatId, CancellationToken.None).ConfigureAwait(false);
+                    await Close(state.ChatId, state.CallId, CancellationToken.None).ConfigureAwait(false);
                 }
                 catch (Exception e) {
                     // Swallowed so a teardown failure doesn't replace whatever the body threw.
@@ -2108,10 +2121,20 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         return entry.LocalId;
     }
 
-    private async Task Close(ChatId chatId, CancellationToken cancellationToken)
+    private async Task Close(ChatId chatId, CallId? callId, CancellationToken cancellationToken)
     {
         using var _ = Computed.BeginIsolation();
         using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
+        // The closed call's session key went first, and the chat has been free since: a call placed
+        // meanwhile wrote its own session, invites and participants, which aren't this close's to drop.
+        if (callId is not null
+            && await SafeGet(chatId).ConfigureAwait(false) is { CallId: { } currentCallId }
+            && currentCallId != callId) {
+            Log.LogInformation(
+                "Close: call #{CallId} is closed, keeping the session of #{CurrentCallId}", callId, currentCallId);
+            return;
+        }
+
         await RemoveSession(chatId).ConfigureAwait(false);
     }
 
