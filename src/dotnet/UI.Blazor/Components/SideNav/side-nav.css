@@ -61,7 +61,6 @@ body.narrow .side-nav.side-nav-left[data-side-nav="closed"] {
     @apply lg:transition-[margin-right] lg:duration-200 lg:ease-[cubic-bezier(0.32,0.54,0.4,0.9)];
 }
 .side-nav.side-nav-right[data-side-nav="open"] {
-    @apply lg:w-88;
     @apply md:shadow-[-1px_0_0_var(--separator)] lg:shadow-none;
 }
 .side-nav.side-nav-right[data-side-nav="closed"] {
