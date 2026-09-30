@@ -456,7 +456,8 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
         return spans.AddNonOverlapping(SpeechLexicon.Default.FindSpans(text, language));
     }
 
-    // An own voice entry the tagger has not marked yet shows the marks the word list finds in it
+    // An own voice entry the tagger has not marked yet shows the marks the word list finds in it, and the
+    // live ones
     private async Task AddInstantMarks(
         ChatId chatId, AuthorId authorId, Range<long> tileRange, List<CoachEntryMarks> marks,
         CancellationToken cancellationToken)
@@ -486,7 +487,11 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             if (settings.LevelOf(language?.Value) == CoachLanguageLevel.Off)
                 continue;
 
-            var spans = SpeechLexicon.Default.FindSpans(entry.Content, language);
+            // The model's marks found while the entry was still being spoken stay until its own analysis lands
+            var live = await ListLiveMarks(chatId, authorId, entry.LocalId, cancellationToken).ConfigureAwait(false);
+            var spans = CoachLiveMarks
+                .Locate(entry.Content, live, SpeechTextStats.IsWordSplittable(language))
+                .AddNonOverlapping(SpeechLexicon.Default.FindSpans(entry.Content, language));
             if (spans.Count > 0)
                 marks.Add(new CoachEntryMarks(entry.LocalId, spans));
         }

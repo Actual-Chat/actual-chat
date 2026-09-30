@@ -617,6 +617,44 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
     }
 
     [Fact]
+    public async Task MarksOfAFinalizedEntryShouldKeepTheLiveModelMarksWhileTheFinalAnalysisReusesTheLiveTagging()
+    {
+        // arrange: the first chunk is tagged live, then the tagger stalls on the tail
+        var source = new FakeTranscriptSource();
+        var (appHost, tagger) = await NewCoachHost("coach-live-handover", null, source);
+        await using var _ = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(appHost, account);
+        var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
+        var streaming = await tester.CreateStreamingEntry(chatId, Language.Parse("en-US"));
+        var entry = streaming.ChatEntrySlim;
+        var streamId = entry.ContentStreamId;
+        var head = "So, um, it was awesome, you know, and it goes on for a while longer than usual. "
+            + LiveSentences(2, 3);
+        source.Say(streamId, head + " So");
+        await WhenLiveMarks(backend, entry, 3);
+        var gate = new TaskCompletionSource();
+        tagger.Gate = gate.Task;
+        var text = head + " So it ends.";
+        source.Say(streamId, text);
+        source.End(streamId);
+        await TestWait.WhenPolled(() => tagger.Calls.Should().Be(2), TimeSpan.FromSeconds(30));
+
+        // act: the entry is finalized with the text the live tagging saw, while its tail is still being tagged
+        await tester.FinalizeStreamingEntry(streaming, text);
+
+        // assert: the model's marks stay on the finalized entry, and the entry has no analysis of its own yet
+        var marks = await WhenMarks(
+            backend, entry, m => m.Count == 1 && m[0].Spans.Any(s => s is { Kind: SpeechSpanKind.Weak, Word: "awesome" }));
+        (await backend.Get(entry.Id, default)).Should().BeNull();
+        gate.SetResult();
+        await WhenTagged(backend, entry.Id);
+        tagger.Calls.Should().Be(2, "the final analysis reuses the live tagging");
+    }
+
+    [Fact]
     public async Task LiveTaggingSwitchedOffShouldWaitForTheFinalizedEntry()
     {
         // arrange
