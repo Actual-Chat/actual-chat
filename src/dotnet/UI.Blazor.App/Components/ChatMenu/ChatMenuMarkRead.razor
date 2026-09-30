@@ -1,0 +1,38 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, ChatUnreadState?>
+@{
+    if (State.Value is not { } unreadState)
+        return;
+
+    var isUnread = unreadState.Count > 0
+        || unreadState.HasOwnMention
+        || unreadState.ReactionEmoji is not null
+        || unreadState.HasAttention;
+    // The open chat would read its last message again right away, and the Notes chat is always read
+    var canMarkUnread = !ChatState.IsSelected
+        && !ChatState.Chat.HasSingleAuthor
+        && ChatState.Info.LastTextEntry is not null;
+}
+
+@if (isUnread) {
+    <MenuEntry
+        Icon="icon-checkmark-circle"
+        Text="@L.ChatMenu_MarkAsRead"
+        Click="@(() => _ = ChatUI.MarkAsRead(ChatState.Id))">
+    </MenuEntry>
+} else if (canMarkUnread) {
+    <MenuEntry
+        Icon="icon-unread"
+        Text="@L.ChatMenu_MarkAsUnread"
+        Click="@(() => _ = ChatUI.MarkAsUnread(ChatState.Id))">
+    </MenuEntry>
+}
+
+@code {
+    private ChatUI ChatUI => Hub.ChatUI;
+
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
+
+    protected override async Task<ChatUnreadState?> ComputeState(CancellationToken cancellationToken)
+        => await ChatUI.GetUnreadState(ChatState.Id, cancellationToken).ConfigureAwait(false);
+}

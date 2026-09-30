@@ -364,6 +364,8 @@
   "ChatMenu_Unpin": "अनपिन करें",
   "ChatMenu_PinToSidebar": "साइडबार में पिन करें",
   "ChatMenu_UnpinFromSidebar": "साइडबार से अनपिन करें",
+  "ChatMenu_MarkAsRead": "पढ़ा हुआ मार्क करें",
+  "ChatMenu_MarkAsUnread": "न पढ़ा हुआ मार्क करें",
   "ChatMenu_StartAnonymousChat": "गुमनाम चैट शुरू करें",
   "ChatMenu_StartRecording": "रिकॉर्डिंग शुरू करें",
   "ChatMenu_StopRecording": "रिकॉर्डिंग रोकें",

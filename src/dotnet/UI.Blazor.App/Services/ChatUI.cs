@@ -1,6 +1,7 @@
 using ActualChat.Contacts;
 using ActualChat.Kvas;
 using ActualChat.Localization;
+using ActualChat.Notifications;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.App.Events;
 using ActualChat.UI.Blazor.Diagnostics;
@@ -43,6 +44,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private UserActivityUI UserActivityUI => Hub.UserActivityUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private NotificationsUI NotificationsUI => Hub.NotificationsUI;
+    private INotifications Notifications => Hub.Notifications;
     private IAvatars Avatars => Hub.Avatars;
     private IAuthors Authors => Hub.Authors;
     private IContacts Contacts => Hub.Contacts;
@@ -432,6 +434,45 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             if (_reportedItemVisibility.Value.ChatId == chatId)
                 _reportedItemVisibility.Value = ChatViewItemVisibility.Empty;
         }
+    }
+
+    // Chat: mark as read / unread
+
+    public async Task MarkAsRead(ChatId chatId)
+    {
+        // Reactions and attention pings don't follow the read position - otherwise they're cleared once seen
+        var active = await Notifications.ListActive(Session, default).ConfigureAwait(false);
+        foreach (var notification in active) {
+            if (notification is ChatEntryNotification { DismissMode: NotificationDismissMode.OnView } n
+                && n.ChatId == chatId)
+                _ = UICommander.Run(new Notifications_Dismiss { Session = Session, NotificationId = n.Id });
+        }
+        await UICommander.Run(new ChatPositions_Set {
+            Session = Session,
+            ChatId = chatId,
+            Kind = ChatPositionKind.Read,
+            Position = new ChatPosition(long.MaxValue), // ChatPositions.OnSet clamps it to the last entry
+        }).ConfigureAwait(false);
+    }
+
+    public async Task MarkAsUnread(ChatId chatId)
+    {
+        // Leaves just the last message unread. The local read position must drop first: GetReadEntryLid
+        // takes the max of it and the server one, so a stale local position would keep the chat read.
+        var chatInfo = await Get(chatId).ConfigureAwait(false);
+        if (chatInfo?.LastTextEntry is not { } lastEntry)
+            return;
+
+        var readEntryLid = lastEntry.LocalId - 1;
+        using (var lease = await LeaseReadPositionState(chatId, CancellationToken.None).ConfigureAwait(false))
+            lease.Resource.Value = new ReadPosition(chatId, readEntryLid);
+        await UICommander.Run(new ChatPositions_Set {
+            Session = Session,
+            ChatId = chatId,
+            Kind = ChatPositionKind.Read,
+            Position = new ChatPosition(readEntryLid),
+            Force = true,
+        }).ConfigureAwait(false);
     }
 
     // Chat: leave, archive, delete

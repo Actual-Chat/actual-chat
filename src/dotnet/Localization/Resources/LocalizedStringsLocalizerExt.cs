@@ -402,6 +402,8 @@ public static class LocalizedStringsLocalizerExt
         public string ChatMenu_Unpin => l["ChatMenu_Unpin"].Value;
         public string ChatMenu_PinToSidebar => l["ChatMenu_PinToSidebar"].Value;
         public string ChatMenu_UnpinFromSidebar => l["ChatMenu_UnpinFromSidebar"].Value;
+        public string ChatMenu_MarkAsRead => l["ChatMenu_MarkAsRead"].Value;
+        public string ChatMenu_MarkAsUnread => l["ChatMenu_MarkAsUnread"].Value;
         public string ChatMenu_StartAnonymousChat => l["ChatMenu_StartAnonymousChat"].Value;
         public string ChatMenu_StartRecording => l["ChatMenu_StartRecording"].Value;
         public string ChatMenu_StopRecording => l["ChatMenu_StopRecording"].Value;

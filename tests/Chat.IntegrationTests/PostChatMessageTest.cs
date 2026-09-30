@@ -500,6 +500,50 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         });
     }
 
+    [Fact]
+    public async Task ReadPositionShouldMoveBackwardOnlyWhenForced()
+    {
+        // arrange
+        var appHost = AppHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        _ = await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var commander = tester.Commander;
+        var chatPositions = tester.AppServices.GetRequiredService<IChatPositions>();
+        var (chatId, _) = await tester.CreateChat(true);
+        var lastEntry = await commander.Call(new Chats_UpsertEntry {
+            Session = session,
+            ChatId = chatId,
+            LocalId = null,
+            Text = "Last",
+        });
+        await CatchUp(tester, chatId);
+        var unreadLid = lastEntry.LocalId - 1;
+
+        // act
+        await commander.Call(new ChatPositions_Set {
+            Session = session,
+            ChatId = chatId,
+            Kind = ChatPositionKind.Read,
+            Position = new ChatPosition(unreadLid),
+        });
+        var unforcedPosition = await chatPositions.GetOwn(session, chatId, ChatPositionKind.Read, default);
+        await commander.Call(new ChatPositions_Set {
+            Session = session,
+            ChatId = chatId,
+            Kind = ChatPositionKind.Read,
+            Position = new ChatPosition(unreadLid),
+            Force = true,
+        });
+
+        // assert
+        unforcedPosition.EntryLid.Should().Be(lastEntry.LocalId, "read positions are forward-only by default");
+        await TestWait.When(async ct => {
+            var position = await chatPositions.GetOwn(session, chatId, ChatPositionKind.Read, ct);
+            position.EntryLid.Should().Be(unreadLid);
+        });
+    }
+
     private static Task<MediaId> SaveTextFile(IWebTester tester, ChatId chatId, string fileName)
         => tester.SaveTextFile(chatId, fileName, $"Test content for {fileName}");
 
