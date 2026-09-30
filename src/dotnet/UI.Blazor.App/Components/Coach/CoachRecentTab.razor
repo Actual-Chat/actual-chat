@@ -29,7 +29,10 @@
         => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var conversations = await Hub.Coach.ListOwnConversations(Session, 20, cancellationToken).ConfigureAwait(false);
+        var language = await Hub.CoachUI.GetSelectedLanguage(cancellationToken).ConfigureAwait(false);
+        var conversations = await Hub.Coach
+            .ListOwnConversations(Session, 20, language, cancellationToken)
+            .ConfigureAwait(false);
         var settings = await Hub.UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
         var titles = new Dictionary<ChatId, string>();
         foreach (var chatId in conversations.Select(c => c.ChatId).Distinct()) {

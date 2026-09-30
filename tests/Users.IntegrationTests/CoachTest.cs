@@ -587,7 +587,7 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // act
         var conversations = await TestWait.When(async ct => {
-            var c = await Coach.ListOwnConversations(tester.Session, 10, ct);
+            var c = await Coach.ListOwnConversations(tester.Session, 10, null, ct);
             c.Should().HaveCount(2);
             return c;
         });
@@ -595,6 +595,32 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         // assert
         conversations[0].ChatId.Should().Be(chatB);
         conversations[1].Words.Should().Be(100);
+    }
+
+    [Fact]
+    public async Task ListOwnConversationsShouldSplitAMixedRunAndFilterByLanguage()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, 1, 50, 30, T0), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 2, 70, 40, T0 + TimeSpan.FromMinutes(2), language: Languages.Russian), false));
+
+        // act
+        var all = await TestWait.When(async ct => {
+            var c = await Coach.ListOwnConversations(tester.Session, 10, null, ct);
+            c.Should().HaveCount(2);
+            return c;
+        });
+        var russian = await Coach.ListOwnConversations(tester.Session, 10, "ru-RU", default);
+        var english = await Coach.ListOwnConversations(tester.Session, 10, "en", default);
+
+        // assert
+        all.Select(c => c.Language).Should().BeEquivalentTo(["en", "ru"]);
+        russian.Should().ContainSingle().Which.Words.Should().Be(70);
+        english.Should().ContainSingle().Which.Words.Should().Be(50);
     }
 
     [Fact]

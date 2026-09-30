@@ -21,6 +21,7 @@ public static class CoachFindings
         var order = CoachSkillSets.Headline(level).Concat(all.Select(f => f.Kind)).Distinct().ToList();
         var available = all
             .Where(f => f.Band != CoachBand.None)
+            .Where(f => f.Kind != CoachMetricKind.TurnTaking || c.Participants >= 2)
             .OrderBy(f => order.IndexOf(f.Kind))
             .ToList();
         var picked = new List<CoachFinding>();

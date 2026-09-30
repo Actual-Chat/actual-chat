@@ -49,21 +49,31 @@ public class CoachConversationBuilderTest(ITestOutputHelper @out) : TestBase(@ou
     }
 
     [Fact]
-    public void MajorityLanguageShouldWinAndAMinorityAboveAQuarterShouldBeSecondary()
+    public void AMixedLanguageRunShouldSplitIntoOneConversationPerLanguage()
     {
         // arrange
         var records = new[] {
-            Entry(ChatA, 1, T0, 100, "ru-RU"),
-            Entry(ChatA, 2, T0 + TimeSpan.FromMinutes(1), 60, "en-US"),
-            Entry(ChatA, 3, T0 + TimeSpan.FromMinutes(2), 10, "de-DE"),
+            Entry(ChatA, 1, T0, 100, "ru-RU", fillers: 4),
+            Entry(ChatA, 2, T0 + TimeSpan.FromMinutes(1), 60, "en-US", fillers: 1),
+            Entry(ChatA, 3, T0 + TimeSpan.FromMinutes(2), 40, "ru-RU"),
+            Run(ChatA, 1, T0 + TimeSpan.FromMinutes(3), 30, 90, 20),
         };
 
         // act
-        var conversation = CoachConversationBuilder.Build(records, Gap).Single();
+        var conversations = CoachConversationBuilder.Build(records, Gap);
 
         // assert
-        conversation.Language.Should().Be("ru");
-        conversation.SecondaryLanguage.Should().Be("en", "60 of 170 words is above a quarter");
+        conversations.Should().HaveCount(2, "one run, two languages");
+        var en = conversations.Single(c => c.Language == "en");
+        var ru = conversations.Single(c => c.Language == "ru");
+        en.Words.Should().Be(60);
+        en.Fillers.Should().Be(1);
+        ru.Words.Should().Be(140);
+        ru.Fillers.Should().Be(4);
+        ru.Pace.Should().BeApproximately(140 * 60 / 120d, 1e-9, "only its own entries set the pace");
+        en.TalkShare.Should().Be(ru.TalkShare, "turn-taking belongs to the whole run");
+        en.SecondaryLanguage.Should().BeNull();
+        conversations[0].StartedAt.Should().BeGreaterThan(conversations[1].StartedAt, "newest first");
     }
 
     [Fact]
@@ -111,5 +121,22 @@ public class CoachConversationBuilderTest(ITestOutputHelper @out) : TestBase(@ou
         whole.Select(c => c.StartEntryLid).Should().Equal(5, 4);
         cut.Select(c => c.StartEntryLid).Should().Equal(5);
         onlyOne.Should().ContainSingle("a lone conversation stays, however incomplete");
+    }
+
+    [Fact]
+    public void ACutLogShouldDropEveryLanguageOfItsOldestRun()
+    {
+        // arrange
+        var records = new[] {
+            Entry(ChatA, 5, T0 + TimeSpan.FromHours(3), 30),
+            Entry(ChatA, 4, T0 + TimeSpan.FromHours(1), 30, "ru-RU"),
+            Entry(ChatA, 3, T0 + TimeSpan.FromHours(1), 30, "en-US"),
+        };
+
+        // act
+        var cut = CoachConversationBuilder.Build(records, Gap, isLogCut: true);
+
+        // assert
+        cut.Select(c => c.StartEntryLid).Should().Equal(5);
     }
 }

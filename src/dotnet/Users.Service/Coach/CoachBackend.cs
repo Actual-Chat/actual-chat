@@ -52,10 +52,11 @@ public class CoachBackend(IServiceProvider services)
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<CoachConversation>> ListConversations(
-        UserId userId, int count, CancellationToken cancellationToken)
+        UserId userId, int count, string? language, CancellationToken cancellationToken)
     {
         // Every write invalidates ListAllDays, so depending on it keeps this fresh
         await ListAllDays(userId, cancellationToken).ConfigureAwait(false);
+        var iso = language.IsNullOrEmpty() ? null : ActualChat.Language.GetIsoCode(language);
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var runSince = (Clocks.SystemClock.Now - TimeSpan.FromDays(30)).ToDateTimeClamped();
@@ -74,6 +75,7 @@ public class CoachBackend(IServiceProvider services)
             .ConfigureAwait(false);
         return CoachConversationBuilder
             .Build(entries.Concat(runs).Select(e => e.ToModel()), Settings.Coach.ConversationGap, isTruncated)
+            .Where(c => iso is null || c.Language == iso)
             .Take(count)
             .Select(c => CoachScoring.BandConversation(c, Settings.Coach))
             .ToApiArray();

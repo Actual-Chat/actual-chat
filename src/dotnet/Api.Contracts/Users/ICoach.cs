@@ -20,7 +20,7 @@ public interface ICoach : IComputeService
 
     [ComputeMethod]
     Task<ApiArray<CoachConversation>> ListOwnConversations(
-        Session session, int count, CancellationToken cancellationToken);
+        Session session, int count, string? language, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<UserCoachTip?> GetPendingTip(Session session, CancellationToken cancellationToken);

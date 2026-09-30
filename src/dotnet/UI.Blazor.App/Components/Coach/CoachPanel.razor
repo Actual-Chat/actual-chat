@@ -69,7 +69,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var tab = await CoachUI.UseSelectedTab(cancellationToken).ConfigureAwait(false);
         var language = await CoachUI.GetSelectedLanguage(cancellationToken).ConfigureAwait(false);
-        var conversations = await Coach.ListOwnConversations(Session, 1, cancellationToken).ConfigureAwait(false);
+        var conversations = await Coach.ListOwnConversations(Session, 1, null, cancellationToken).ConfigureAwait(false);
         var summary = await Coach
             .GetOwnSummary(Session, CoachWindow.Days7, language, cancellationToken)
             .ConfigureAwait(false);

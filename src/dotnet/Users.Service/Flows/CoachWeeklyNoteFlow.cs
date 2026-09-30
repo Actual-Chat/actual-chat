@@ -66,7 +66,7 @@ public partial class CoachWeeklyNoteFlow : PeriodicFlow
             .ListDays(UserId, new Range<Moment>(lastWeekStart, thisWeekStart), language, cancellationToken)
             .ConfigureAwait(false);
         var conversations = await backend
-            .ListConversations(UserId, settings.RecentConversations, cancellationToken)
+            .ListConversations(UserId, settings.RecentConversations, language, cancellationToken)
             .ConfigureAwait(false);
         var note = Compose(
             thisWeekStart,

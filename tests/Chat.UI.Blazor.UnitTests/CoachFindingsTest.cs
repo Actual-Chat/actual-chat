@@ -44,4 +44,17 @@ public class CoachFindingsTest(ITestOutputHelper @out) : TestBase(@out)
         CoachFindings.Pick(c, null, CoachLanguageLevel.Native, false).Select(f => f.Kind)
             .Should().Equal(CoachMetricKind.Fillers);
     }
+
+    [Fact]
+    public void PickShouldNotJudgeTalkShareOfAConversationWithOneParticipant()
+    {
+        // arrange
+        var c = Conversation(CoachBand.Good, CoachBand.Good, CoachBand.Good, CoachBand.Good) with { Participants = 1 };
+
+        // act
+        var findings = CoachFindings.Pick(c, null, CoachLanguageLevel.Native, false);
+
+        // assert
+        findings.Select(f => f.Kind).Should().NotContain(CoachMetricKind.TurnTaking, "solo talk has no share to judge");
+    }
 }
