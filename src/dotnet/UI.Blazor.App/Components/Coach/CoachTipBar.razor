@@ -17,17 +17,23 @@
                 TimerButtonColor="#e9e9ec"
                 Delay="@AutoDismissDelay"
                 Click="@(_ => OnDismiss())"/>
-            <div class="c-tip-title"><img class="c-tip-mascot" src="/dist/images/kitties/coach-cat.png" alt="" draggable="false"><span>@Title(tip)</span></div>
+            <div class="c-tip-title">
+                <img class="c-tip-mascot" src="/dist/images/kitties/coach-cat.png" alt=""
+                     draggable="false"><span>@Title(tip)</span>
+            </div>
             <div class="c-tip-body">
                 @switch (tip.Kind) {
                     case CoachTipKind.SlowDown:
                     case CoachTipKind.SpeedUp:
                         <span class="c-tip-value">@L.Coach_TipWpm_Format(tip.Wpm)</span>
-                        <span class="c-tip-range">@L.Coach_TipRecommended_Format(tip.PaceSlowWpm, tip.PaceFastWpm)</span>
+                        <span class="c-tip-range">
+                            @L.Coach_TipRecommended_Format(tip.PaceSlowWpm, tip.PaceFastWpm)
+                        </span>
                         <div>@(tip.Kind == CoachTipKind.SlowDown ? L.Coach_TipTooFast : L.Coach_TipTooSlow)</div>
                         break;
                     case CoachTipKind.Filler:
-                        <div>@Highlight(L.Coach_TipFillerBody(tip.Count, tip.Word, tip.Count), tip.Word) @L.Coach_TipInWindow(tip.WindowMinutes, tip.WindowMinutes).</div>
+                        <div>@Highlight(L.Coach_TipFillerBody(tip.Count, tip.Word, tip.Count), tip.Word) @(
+                            L.Coach_TipInWindow(tip.WindowMinutes, tip.WindowMinutes)).</div>
                         break;
                     case CoachTipKind.Clean:
                         <div>@L.Coach_TipCleanBody_Format(tip.WindowMinutes)</div>

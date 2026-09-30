@@ -30,7 +30,8 @@ public class SpeechTextStatsTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         stats!.Repetitions.Should().Be(3);
         stats.RepetitionSpans.Should().HaveCount(3);
-        stats.RepetitionSpans[0].Should().Be(new SpeechSpan(SpeechSpanKind.Repetition, "so", 3, 2, ApiArray<string>.Empty));
+        stats.RepetitionSpans[0]
+            .Should().Be(new SpeechSpan(SpeechSpanKind.Repetition, "so", 3, 2, ApiArray<string>.Empty));
         stats.RepetitionSpans[2].Word.Should().Be("think", "the comma between the two must not hide the repeat");
     }
 

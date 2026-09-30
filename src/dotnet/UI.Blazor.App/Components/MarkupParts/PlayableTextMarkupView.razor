@@ -16,7 +16,9 @@
         foreach (var run in BuildRuns(m.Map ?? new WordPlayback[wordCount], wordCount)) {
             var c0 = Markup.Words[run.Start].TextRange.Start;
             var c1 = Markup.Words[run.End].TextRange.End;
-            <span class="@RunClass(run)" data-c0="@c0" @attributes="@MarkAttributes(run.Start)">@Markup.Text[c0..c1]</span>
+            <span class="@RunClass(run)"
+                  data-c0="@c0"
+                  @attributes="@MarkAttributes(run.Start)">@Markup.Text[c0..c1]</span>
         }
     }
 </span>
@@ -89,7 +91,8 @@
             if (!hasAudio || markup.Text != entry.Content)
                 return null;
 
-            var spans = await Hub.CoachUI.GetOwnMarks(entryId, entry.AuthorId, cancellationToken1).ConfigureAwait(false);
+            var spans = await Hub.CoachUI.GetOwnMarks(entryId, entry.AuthorId, cancellationToken1)
+                .ConfigureAwait(false);
             return spans.MapToWords(markup);
         }
 

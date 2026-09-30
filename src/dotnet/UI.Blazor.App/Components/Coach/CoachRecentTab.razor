@@ -10,7 +10,9 @@
     @foreach (var c in m.Conversations) {
         var level = m.Settings.LevelOf(c.Language);
         var isBest = c.StartEntryLid == m.BestLid && c.ChatId == m.BestChatId;
-        var focus = m.Settings.FocusByLanguage.TryGetValue(c.Language, out var chosen) ? chosen : (CoachMetricKind?)null;
+        var focus = m.Settings.FocusByLanguage.TryGetValue(c.Language, out var chosen)
+            ? chosen
+            : (CoachMetricKind?)null;
         <CoachConversationCard
             @key="@(c.ChatId.Value + ":" + c.StartEntryLid)"
             Conversation="@c"

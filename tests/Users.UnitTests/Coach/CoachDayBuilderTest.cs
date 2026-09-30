@@ -120,7 +120,8 @@ public class CoachDayBuilderTest(ITestOutputHelper @out) : TestBase(@out)
         var days = CoachDayBuilder.BuildAll(Day, records, 20);
 
         // assert
-        days.Select(d => d.Language).Should().BeEquivalentTo(["", "en", "ru"], "a runs-only neutral row joins the language rows");
+        days.Select(d => d.Language)
+            .Should().BeEquivalentTo(["", "en", "ru"], "a runs-only neutral row joins the language rows");
         days.Single(d => d.Language == "en").Words.Should().Be(100);
         days.Single(d => d.Language == "ru").Words.Should().Be(70);
         days.Should().OnlyContain(d => d.Runs == 1 && d.OwnSpeechSeconds == 30, "runs are not language-bound");

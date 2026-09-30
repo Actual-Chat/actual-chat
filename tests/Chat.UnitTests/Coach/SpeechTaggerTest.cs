@@ -58,7 +58,8 @@ public class SpeechTaggerTest(ITestOutputHelper @out) : TestBase(@out)
     public void ParseResponseShouldCapSynonymsAtThree()
     {
         // arrange
-        const string json = """{"items":[{"class":"weak","word":"awesome","occurrence":1,"synonyms":["a","b","c","d"]}]}""";
+        const string json =
+            """{"items":[{"class":"weak","word":"awesome","occurrence":1,"synonyms":["a","b","c","d"]}]}""";
 
         // act
         var spans = SpeechTagger.ParseResponse(Text, json);

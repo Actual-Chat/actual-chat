@@ -134,7 +134,10 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         var (chatId, _) = await tester.CreateChat(true);
         var hub = tester.ScopedAppServices.AppUIHub();
         await OptIn(tester);
-        await hub.LanguageUI.UpdateSettings(x => x with { Primary = Language.Parse("ru-RU"), Secondary = Language.Parse("en-US") });
+        await hub.LanguageUI.UpdateSettings(x => x with {
+            Primary = Language.Parse("ru-RU"),
+            Secondary = Language.Parse("en-US"),
+        });
         var entryId = ChatEntryId.New(chatId, 1);
         const string text = "Ну, um, я думаю, uh, что так.";
 
@@ -170,7 +173,8 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         await OptIn(bob);
         var marks = await TestWait.When(async ct => {
             var m = await bobUI.GetOwnMarks(entry.Id, entry.AuthorId, ct);
-            m.Select(s => s.Kind).Should().Contain(SpeechSpanKind.FilledPause, "the code spans land before the tagger's");
+            m.Select(s => s.Kind)
+                .Should().Contain(SpeechSpanKind.FilledPause, "the code spans land before the tagger's");
             return m;
         }, TimeSpan.FromSeconds(30));
         await OptIn(alice);
@@ -243,8 +247,10 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
             .Add(x => x.Value, entry)
             .Add(x => x.IsFixed, true)
             .AddChildContent<PlayableTextMarkupView>(c => c.Add(x => x.Markup, translated)));
-        var view = (IStatefulComponent<PlayableTextMarkupView.Model>)cut.FindComponent<PlayableTextMarkupView>().Instance;
-        cut.WaitForAssertion(() => view.State.Snapshot.UpdateCount.Should().BePositive("the view must have computed once"));
+        var view = (IStatefulComponent<PlayableTextMarkupView.Model>)
+            cut.FindComponent<PlayableTextMarkupView>().Instance;
+        cut.WaitForAssertion(() => view.State.Snapshot.UpdateCount
+            .Should().BePositive("the view must have computed once"));
 
         // assert
         cut.FindAll(".coach-filler").Should().BeEmpty("the spans index the original text, not the translation");
@@ -305,12 +311,15 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         // act
         var cut = tester.Render<CoachPanel>();
         InitializeHub(tester, hub, cut.Instance);
-        cut.WaitForAssertion(() => cut.Find(".coach-empty").TextContent.Should().Contain("Your speech, read back to you"));
+        cut.WaitForAssertion(() => cut.Find(".coach-empty").TextContent
+            .Should().Contain("Your speech, read back to you"));
         await PostVoice(tester, chatId, Text);
 
         // assert
         cut.WaitForAssertion(() => {
-            cut.FindAll(".coach-tabs .btn-tab").Select(t => t.TextContent.Trim()).Should().Equal("Recent", "Progress", "Skills");
+            cut.FindAll(".coach-tabs .btn-tab")
+                .Select(t => t.TextContent.Trim())
+                .Should().Equal("Recent", "Progress", "Skills");
             cut.Find(".coach-score-card").TextContent.Should().Contain("Score after");
             cut.Find(".coach-header .status-badge").TextContent.Should().Contain("Only you");
         }, TimeSpan.FromSeconds(30));
@@ -330,8 +339,10 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         var hub = tester.ScopedAppServices.AppUIHub();
         await OptIn(tester);
         var entry = await PostVoice(tester, chatId, Text);
-        await TestWait.When(async ct => (await hub.Coach.ListOwnOccurrences(tester.Session, "um", CoachWindow.Today, ct))
-            .Should().ContainSingle(), TimeSpan.FromSeconds(30));
+        await TestWait.When(
+            async ct => (await hub.Coach.ListOwnOccurrences(tester.Session, "um", CoachWindow.Today, ct))
+                .Should().ContainSingle(),
+            TimeSpan.FromSeconds(30));
         var cut = tester.Render<CoachOccurrences>(p => p
             .Add(x => x.Word, "um")
             .Add(x => x.Window, CoachWindow.Today));
@@ -387,7 +398,8 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
             "the word is highlighted inside the sentence, whatever the language puts around it");
         var otherBar = (IStatefulComponent<UserCoachTip?>)inOtherChat.Instance;
         inOtherChat.WaitForAssertion(() => otherBar.State.Snapshot.UpdateCount.Should().BePositive());
-        inOtherChat.FindAll(".coach-tip-bar").Should().BeEmpty("the tip belongs to another chat, and nothing reserves space");
+        inOtherChat.FindAll(".coach-tip-bar")
+            .Should().BeEmpty("the tip belongs to another chat, and nothing reserves space");
 
         // act - live tips off hides it, on brings it back
         await hub.UserSettingsUI.UserCoachSettings().Update(x => x with { AreLiveTipsEnabled = false });
@@ -544,7 +556,8 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         cut.WaitForAssertion(() => {
             cut.FindAll(".coach-skills .c-headline .coach-skill").Count.Should().Be(4);
             cut.Find(".coach-skills .c-conversation").Should().NotBeNull();
-            cut.FindAll(".coach-skills .c-headline .coach-chip").Count.Should().BeGreaterThan(0, "the marked words show as chips");
+            cut.FindAll(".coach-skills .c-headline .coach-chip").Count
+                .Should().BeGreaterThan(0, "the marked words show as chips");
         }, TimeSpan.FromSeconds(30));
         await cut.InvokeAsync(() => cut.Find(".coach-skills .c-headline .coach-chip").Click());
         cut.WaitForAssertion(() => cut.Find(".coach-occurrences"), TimeSpan.FromSeconds(10));
@@ -572,11 +585,17 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         await cut.InvokeAsync(() => cut.Find(".coach-header .c-settings-btn").Click());
         cut.WaitForAssertion(() => cut.Find(".coach-settings-page"));
         await cut.InvokeAsync(() => cut.Find(".coach-settings-page .c-skip-peers").Click());
-        await hub.UICommander.Run(new Coach_SetChatCoaching { Session = hub.Session, ChatId = chatId, IsEnabled = false });
+        await hub.UICommander.Run(new Coach_SetChatCoaching {
+            Session = hub.Session,
+            ChatId = chatId,
+            IsEnabled = false,
+        });
 
         // assert
         await TestWait.When(async ct => (await kvas.UserCoachSettings().Get(ct)).SkipPeerChats.Should().BeTrue());
-        cut.WaitForAssertion(() => cut.Find(".coach-settings-page .c-switched-off").TextContent.Should().Contain("Switched off").And.Contain("1"));
+        cut.WaitForAssertion(() => cut.Find(".coach-settings-page .c-switched-off").TextContent
+            .Should().Contain("Switched off")
+            .And.Contain("1"));
         cut.Find(".coach-settings-page .c-languages-manage").TextContent.Should().Contain("Manage");
         cut.FindAll(".coach-settings-page .c-language").Count.Should().BeGreaterThan(0);
     }
@@ -808,7 +827,8 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
 
         // assert
         cut.WaitForAssertion(() => cut.Find(".coach-header .c-settings-btn"), TimeSpan.FromSeconds(30));
-        cut.FindAll(".coach-panel .c-coach-toggle").Should().BeEmpty("the switch lives in the settings, not on the panel");
+        cut.FindAll(".coach-panel .c-coach-toggle")
+            .Should().BeEmpty("the switch lives in the settings, not on the panel");
         await cut.InvokeAsync(() => cut.Find(".coach-header .c-settings-btn").Click());
         cut.WaitForAssertion(() => cut.Find(".coach-settings-page .c-coach-toggle").TextContent
             .Should().Contain("Coach me here"), TimeSpan.FromSeconds(10));

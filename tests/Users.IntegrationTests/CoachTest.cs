@@ -223,7 +223,8 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Queues.Enqueue(new CoachEntryAnalyzedEvent(earlier, false));
         await WhenDay(account.Id, UsageDay.DayOf(now), d => d.Entries == 1);
         await Queues.WhenProcessing(TimeSpan.FromSeconds(1), default);
-        (await Kvas.ForUser(account.Id).UserCoachTip().Get(default)).IsPending.Should().BeFalse("two uses are below the count");
+        (await Kvas.ForUser(account.Id).UserCoachTip().Get(default)).IsPending
+            .Should().BeFalse("two uses are below the count");
 
         // act
         var current = Entry(account.Id, chatId, 2, 20, 10, now, 2, "like");
@@ -553,7 +554,8 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, 1, 100, 60, T0), false));
         await Queues.Enqueue(new CoachEntryAnalyzedEvent(
             Entry(account.Id, chatId, 2, 40, 30, T0 + TimeSpan.FromMinutes(1), language: Languages.Russian), false));
-        await Queues.Enqueue(new CoachConversationAnalyzedEvent(Run(account.Id, chatId, 1, T0 + TimeSpan.FromMinutes(2))));
+        await Queues.Enqueue(new CoachConversationAnalyzedEvent(
+            Run(account.Id, chatId, 1, T0 + TimeSpan.FromMinutes(2))));
 
         // assert
         var range = new Range<Moment>(day, day + TimeSpan.FromDays(1));
@@ -698,7 +700,8 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
             return c;
         });
         conversations.Single(c => c.ChatId == chatId).IsExcluded.Should().BeTrue();
-        var days = await Backend.ListDays(account.Id, new Range<Moment>(day, day + TimeSpan.FromDays(1)), null, default);
+        var days = await Backend.ListDays(
+            account.Id, new Range<Moment>(day, day + TimeSpan.FromDays(1)), null, default);
         days.Should().ContainSingle().Which.Words.Should().Be(20);
     }
 
@@ -779,12 +782,21 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         var account = await tester.SignInAsUniqueBob();
         var chatId = GroupChatId.New();
         var commander = AppHost.Services.Commander();
-        await Queues.Enqueue(new CoachEntryAnalyzedEvent(Entry(account.Id, chatId, 1, 300, 200, T0, 20, "like"), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 1, 300, 200, T0, 20, "like"), false));
         await WhenDay(account.Id, UsageDay.DayOf(T0), d => d.Words == 300);
 
         // act
-        await commander.Call(new Coach_SetLanguageLevel { Session = tester.Session, Language = "en", Level = CoachLanguageLevel.Learning });
-        await commander.Call(new Coach_SetFocus { Session = tester.Session, Language = "en", Kind = CoachMetricKind.Pace });
+        await commander.Call(new Coach_SetLanguageLevel {
+            Session = tester.Session,
+            Language = "en",
+            Level = CoachLanguageLevel.Learning,
+        });
+        await commander.Call(new Coach_SetFocus {
+            Session = tester.Session,
+            Language = "en",
+            Kind = CoachMetricKind.Pace,
+        });
         var focus = await Coach.GetOwnFocus(tester.Session, "en-US", default);
         var languages = await Coach.ListOwnLanguages(tester.Session, default);
         await commander.Call(new Coach_DeleteOwnData { Session = tester.Session });

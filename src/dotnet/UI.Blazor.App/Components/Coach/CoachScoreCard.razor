@@ -25,7 +25,9 @@
         </Icon>
         <Content>
             @if (s.Score is { } score) {
-                @(Language is null ? L.Coach_Score_Format(score) : L.Coach_ScoreOf_Format(labels.LanguageName(Language), score))
+                @(Language is null
+                    ? L.Coach_Score_Format(score)
+                    : L.Coach_ScoreOf_Format(labels.LanguageName(Language), score))
             } else {
                 @L.Coach_ScoreAfterWords(missing, missing)
             }
@@ -44,7 +46,9 @@
         <TileItem Click="@FocusClick">
             <Icon><i class="text-xl icon-ai-stars text-primary"></i></Icon>
             <Content>@L.Coach_WorkingOn_Format(labels.MetricTitle(focus).ToLowerInvariant())</Content>
-            <Caption>@labels.FocusHint(focus, s.Metrics.FirstOrDefault(m => m.Kind == focus)?.Chips.FirstOrDefault())</Caption>
+            <Caption>
+                @labels.FocusHint(focus, s.Metrics.FirstOrDefault(m => m.Kind == focus)?.Chips.FirstOrDefault())
+            </Caption>
             <Right><i class="icon-chevron-right text-xl text-03"></i></Right>
         </TileItem>
     }

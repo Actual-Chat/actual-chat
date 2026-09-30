@@ -15,10 +15,18 @@ public class CoachTipPolicyTest(ITestOutputHelper @out) : TestBase(@out)
         int words, double speechSeconds, Moment? at = null, params (SpeechSpanKind Kind, string Word)[] spans)
     {
         var occurredAt = at ?? Now;
-        var apiSpans = spans.Select(s => new SpeechSpan(s.Kind, s.Word, 0, s.Word.Length, ApiArray<string>.Empty)).ToApiArray();
+        var apiSpans = spans
+            .Select(s => new SpeechSpan(s.Kind, s.Word, 0, s.Word.Length, ApiArray<string>.Empty))
+            .ToApiArray();
         var fillers = spans.Count(s => s.Kind is SpeechSpanKind.Filler or SpeechSpanKind.FilledPause);
         var weak = spans.Count(s => s.Kind == SpeechSpanKind.Weak);
-        return new (CoachRecordKind.Entry, $"e{occurredAt.EpochOffset.Ticks}", UserId.New(), GroupChatId.New(), occurredAt) {
+        return new (
+            CoachRecordKind.Entry,
+            $"e{occurredAt.EpochOffset.Ticks}",
+            UserId.New(),
+            GroupChatId.New(),
+            occurredAt
+        ) {
             Entry = new CoachEntryRecord(1, "en-US", speechSeconds, speechSeconds, words, 2, 0, 0, words, 0, 0, true,
                 0, fillers, weak, 0, apiSpans),
         };
@@ -73,7 +81,9 @@ public class CoachTipPolicyTest(ITestOutputHelper @out) : TestBase(@out)
         var previous = new UserCoachTip {
             Kind = CoachTipKind.Filler, Word = "you know", IsDismissed = true,
             LastTipAt = Now - TimeSpan.FromMinutes(30),
-            WordTipAt = new ApiMap<string, Moment>(new Dictionary<string, Moment> { ["you know"] = Now - TimeSpan.FromMinutes(30) }),
+            WordTipAt = new ApiMap<string, Moment>(new Dictionary<string, Moment> {
+                ["you know"] = Now - TimeSpan.FromMinutes(30),
+            }),
         };
         var current = Entry(20, 10, Now, Filler("you know"), Filler("you know"), Filler("you know"));
 
@@ -91,7 +101,9 @@ public class CoachTipPolicyTest(ITestOutputHelper @out) : TestBase(@out)
         var previous = new UserCoachTip {
             Kind = CoachTipKind.Filler, Word = "you know", IsDismissed = true,
             LastTipAt = Now - TimeSpan.FromMinutes(30),
-            WordTipAt = new ApiMap<string, Moment>(new Dictionary<string, Moment> { ["you know"] = Now - TimeSpan.FromMinutes(30) }),
+            WordTipAt = new ApiMap<string, Moment>(new Dictionary<string, Moment> {
+                ["you know"] = Now - TimeSpan.FromMinutes(30),
+            }),
         };
         var current = Entry(20, 10, Now, Filler("you know"), Filler("you know"), Filler("you know"),
             Filler("like"), Filler("like"), Filler("like"));
@@ -161,7 +173,9 @@ public class CoachTipPolicyTest(ITestOutputHelper @out) : TestBase(@out)
     public void TipsShouldRespectTheInterval()
     {
         // arrange
-        var recent = new UserCoachTip { Kind = CoachTipKind.SpeedUp, LastTipAt = Now - TimeSpan.FromMinutes(2), IsDismissed = true };
+        var recent = new UserCoachTip {
+            Kind = CoachTipKind.SpeedUp, LastTipAt = Now - TimeSpan.FromMinutes(2), IsDismissed = true,
+        };
         var current = Entry(60, 10, Now, Filler("like"), Filler("like"), Filler("like"));
 
         // act
@@ -216,7 +230,8 @@ public class CoachTipPolicyTest(ITestOutputHelper @out) : TestBase(@out)
 
         // act
         var tip = Evaluate(current, [earlier, current], NoSpans, NoTip);
-        var again = Evaluate(current, [earlier, current], NoSpans, tip! with { LastTipAt = Now - TimeSpan.FromHours(1) });
+        var again = Evaluate(
+            current, [earlier, current], NoSpans, tip! with { LastTipAt = Now - TimeSpan.FromHours(1) });
 
         // assert
         tip!.Kind.Should().Be(CoachTipKind.Clean);
@@ -259,7 +274,8 @@ public class CoachTipPolicyTest(ITestOutputHelper @out) : TestBase(@out)
 
         // act
         var sameChat = Evaluate(current, [a, current], NoSpans, earlierTip, perConversation);
-        var otherChat = Evaluate(current, [a, current], NoSpans, earlierTip with { ChatId = GroupChatId.New() }, perConversation);
+        var otherChat = Evaluate(
+            current, [a, current], NoSpans, earlierTip with { ChatId = GroupChatId.New() }, perConversation);
 
         // assert
         sameChat.Should().BeNull("a tip already fired in this conversation");

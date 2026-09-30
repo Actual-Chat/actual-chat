@@ -84,7 +84,8 @@ public class CoachLabelsTest
         l.DeltaValue(monologue).Should().Be("3:10 → 2:20");
         l.DeltaBadge(monologue).Should().Be("▼ 0:50");
         l.DeltaBadge(same).Should().Be("same");
-        l.DeltaValue(unknown).Should().Be("4% of speech", "the current value stands alone until there is an earlier week");
+        l.DeltaValue(unknown)
+            .Should().Be("4% of speech", "the current value stands alone until there is an earlier week");
         l.DeltaBadge(unknown).Should().BeEmpty("there is no earlier week to be better or worse than");
     }
 

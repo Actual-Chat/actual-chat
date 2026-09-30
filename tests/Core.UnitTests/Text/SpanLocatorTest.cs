@@ -23,7 +23,8 @@ public class SpanLocatorTest(ITestOutputHelper @out) : TestBase(@out)
     [InlineData("", "um", 1)]
     [InlineData("um", "um", 0)]
     public void LocateShouldReturnNullWhenAbsent(string text, string word, int n)
-        => SpanLocator.Locate(text, word, n).Should().BeNull("a partial match or a missing occurrence must not produce a span");
+        => SpanLocator.Locate(text, word, n)
+            .Should().BeNull("a partial match or a missing occurrence must not produce a span");
 
     [Fact]
     public void LocateShouldIgnoreCaseAndSurroundingPunctuation()
@@ -36,7 +37,12 @@ public class SpanLocatorTest(ITestOutputHelper @out) : TestBase(@out)
     [Theory]
     [InlineData("あの私はあの店に行きました", "あの", 2, 4, 6)]
     [InlineData("えっと私は店に", "えっと", 1, 0, 3)]
-    public void LocateShouldMatchSubstringsWhenWordsAreNotSpaceDelimited(string text, string word, int n, int start, int end)
+    public void LocateShouldMatchSubstringsWhenWordsAreNotSpaceDelimited(
+        string text,
+        string word,
+        int n,
+        int start,
+        int end)
         => SpanLocator.Locate(text, word, n, isWholeWord: false).Should().Be(new Range<int>(start, end));
 
     [Fact]

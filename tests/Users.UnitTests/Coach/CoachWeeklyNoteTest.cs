@@ -26,7 +26,12 @@ public class CoachWeeklyNoteTest(ITestOutputHelper @out) : TestBase(@out)
 
         // act
         var note = CoachWeeklyNoteFlow.Compose(
-            WeekStart, Week(WeekStart, 1000, 40), Week(WeekStart - TimeSpan.FromDays(7), 1000, 70), [best], settings, S);
+            WeekStart,
+            Week(WeekStart, 1000, 40),
+            Week(WeekStart - TimeSpan.FromDays(7), 1000, 70),
+            [best],
+            settings,
+            S);
 
         // assert
         note!.ScoreDelta.Should().BePositive();
@@ -59,7 +64,9 @@ public class CoachWeeklyNoteTest(ITestOutputHelper @out) : TestBase(@out)
         CoachWeeklyNoteFlow.IsDue(due, due + TimeSpan.FromMinutes(1), now).Should().BeFalse("already sent this week");
         CoachWeeklyNoteFlow.LastMondayAt(zone, TimeSpan.FromHours(9),
             new Moment(new DateTime(2026, 9, 28, 5, 0, 0, DateTimeKind.Utc))).Should()
-            .Be(new Moment(new DateTime(2026, 9, 21, 6, 0, 0, DateTimeKind.Utc)), "before 09:00 local it is still last week");
+            .Be(
+                new Moment(new DateTime(2026, 9, 21, 6, 0, 0, DateTimeKind.Utc)),
+                "before 09:00 local it is still last week");
     }
 
     [Fact]

@@ -72,12 +72,17 @@
                             <div class="c-left">
                                 <div class="form-section-label">
                                     <label class="internal-label">
-                                        @labels.LanguageName(language.Iso) · @L.Coach_WordsIn30Days(language.Words30Days, language.Words30Days)
+                                        @labels.LanguageName(language.Iso) · @(
+                                            L.Coach_WordsIn30Days(language.Words30Days, language.Words30Days))
                                     </label>
                                 </div>
-                                <select class="c-level" value="@language.Level" @onchange="@(e => OnLevelChanged(language.Iso, e))">
+                                <select class="c-level"
+                                        value="@language.Level"
+                                        @onchange="@(e => OnLevelChanged(language.Iso, e))">
                                     @foreach (var level in Levels) {
-                                        <option value="@level" selected="@(level == language.Level)">@labels.Level(level)</option>
+                                        <option value="@level" selected="@(level == language.Level)">
+                                            @labels.Level(level)
+                                        </option>
                                     }
                                 </select>
                             </div>
@@ -99,13 +104,15 @@
                             IsCheckedChanged="@(_ => Update(x => x with { AreMarksDisabled = !x.AreMarksDisabled }))"/>
                 </Right>
             </TileItem>
-            <TileItem Class="c-live-tips" Click="@(() => Update(x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled }))">
+            <TileItem Class="c-live-tips"
+                      Click="@(() => Update(x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled }))">
                 <Icon><i class="icon-star text-2xl"></i></Icon>
                 <Content>@L.Coach_LiveTips</Content>
                 <Caption>@L.Coach_LiveTipsCaption</Caption>
                 <Right>
                     <Toggle IsChecked="@s.AreLiveTipsEnabled"
-                            IsCheckedChanged="@(_ => Update(x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled }))"/>
+                            IsCheckedChanged="@(_ => Update(
+                                x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled }))"/>
                 </Right>
             </TileItem>
             <TileItem Click="@(() => Update(x => x with { IsWeeklySummaryDisabled = !x.IsWeeklySummaryDisabled }))">
@@ -114,7 +121,8 @@
                 <Caption>@L.Coach_WeeklySummaryCaption</Caption>
                 <Right>
                     <Toggle IsChecked="@(!s.IsWeeklySummaryDisabled)"
-                            IsCheckedChanged="@(_ => Update(x => x with { IsWeeklySummaryDisabled = !x.IsWeeklySummaryDisabled }))"/>
+                            IsCheckedChanged="@(_ => Update(
+                                x => x with { IsWeeklySummaryDisabled = !x.IsWeeklySummaryDisabled }))"/>
                 </Right>
             </TileItem>
             <div class="form form-y form-block c-interval-block">
@@ -125,7 +133,9 @@
                             <select class="c-interval" value="@minutes" @onchange="@OnMinutesChanged">
                                 <option value="0" selected="@(minutes == 0)">@L.Coach_OncePerConversation</option>
                                 @foreach (var item in Intervals) {
-                                    <option value="@item" selected="@(item == minutes)">@L.Coach_TipIntervalMinutes(item, item)</option>
+                                    <option value="@item" selected="@(item == minutes)">
+                                        @L.Coach_TipIntervalMinutes(item, item)
+                                    </option>
                                 }
                             </select>
                         </div>

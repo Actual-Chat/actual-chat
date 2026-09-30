@@ -5,7 +5,8 @@ namespace ActualChat.Chat.UnitTests.Coach;
 public class SpeechLexiconTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private static readonly string[] Isos = [
-        "bg", "bs", "cs", "de", "en", "es", "fr", "hi", "id", "it", "ja", "ko", "pl", "pt", "ru", "tr", "uk", "vi", "zh",
+        "bg", "bs", "cs", "de", "en", "es", "fr", "hi", "id", "it",
+        "ja", "ko", "pl", "pt", "ru", "tr", "uk", "vi", "zh",
     ];
 
     [Fact]

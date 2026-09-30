@@ -8,7 +8,8 @@ public class CoachSkillSetsTest(ITestOutputHelper @out) : TestBase(@out)
         CoachSkillSets.Headline(CoachLanguageLevel.Native).Should().Equal(
             CoachMetricKind.Fillers, CoachMetricKind.Pace, CoachMetricKind.TurnTaking, CoachMetricKind.Monologue);
         CoachSkillSets.Headline(CoachLanguageLevel.Learning).Should().Equal(
-            CoachMetricKind.WeakWords, CoachMetricKind.Vocabulary, CoachMetricKind.SentenceLength, CoachMetricKind.Pace);
+            CoachMetricKind.WeakWords, CoachMetricKind.Vocabulary,
+            CoachMetricKind.SentenceLength, CoachMetricKind.Pace);
     }
 
     [Fact]

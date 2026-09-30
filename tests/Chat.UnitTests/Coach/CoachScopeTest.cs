@@ -25,7 +25,8 @@ public class CoachScopeTest(ITestOutputHelper @out) : TestBase(@out)
         var placeSettings = new ChatUserSettings { IsCoachingEnabled = place };
 
         // act
-        var inScope = CoachScope.IsInScope(chatId, chatSettings, placeSettings, User with { SkipPeerChats = skipPeers });
+        var inScope = CoachScope.IsInScope(
+            chatId, chatSettings, placeSettings, User with { SkipPeerChats = skipPeers });
 
         // assert
         inScope.Should().Be(expected);

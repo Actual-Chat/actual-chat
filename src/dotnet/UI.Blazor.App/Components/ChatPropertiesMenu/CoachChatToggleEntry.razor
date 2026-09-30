@@ -29,7 +29,11 @@
     }
 
     private Task OnClick()
-        => UICommander.Run(new Coach_SetChatCoaching { Session = Session, ChatId = ChatId, IsEnabled = !State.Value.IsOn });
+        => UICommander.Run(new Coach_SetChatCoaching {
+            Session = Session,
+            ChatId = ChatId,
+            IsEnabled = !State.Value.IsOn,
+        });
 
     public sealed record Model(bool IsVisible, bool IsOn) {
         public static readonly Model None = new(false, false);

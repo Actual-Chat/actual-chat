@@ -5,7 +5,8 @@ namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
 public class CoachFindingsTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    private static CoachConversation Conversation(CoachBand pace, CoachBand share, CoachBand monologue, CoachBand filler)
+    private static CoachConversation Conversation(
+        CoachBand pace, CoachBand share, CoachBand monologue, CoachBand filler)
         => new (GroupChatId.New(), 1, Moment.EpochStart, Moment.EpochStart, "en", null, 200, 100, 2, 0, 120,
             0.6, 100, new ApiMap<string, int>(), new ApiMap<string, int>()) {
             PaceBand = pace,
@@ -25,7 +26,8 @@ public class CoachFindingsTest(ITestOutputHelper @out) : TestBase(@out)
         var findings = CoachFindings.Pick(c, CoachMetricKind.Fillers, CoachLanguageLevel.Native, isWeeksBest: false);
 
         // assert
-        findings.Select(f => f.Kind).Should().Equal(CoachMetricKind.TurnTaking, CoachMetricKind.Fillers, CoachMetricKind.Pace);
+        findings.Select(f => f.Kind)
+            .Should().Equal(CoachMetricKind.TurnTaking, CoachMetricKind.Fillers, CoachMetricKind.Pace);
     }
 
     [Fact]

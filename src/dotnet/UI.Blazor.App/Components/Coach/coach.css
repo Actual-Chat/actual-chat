@@ -5,7 +5,12 @@
 }
 .coach-header .c-cover {
     @apply relative flex-none h-26;
-    background: linear-gradient(120deg, var(--primary) 0%, var(--primary-hover, var(--primary)) 60%, var(--background-03) 100%);
+    background: linear-gradient(
+        120deg,
+        var(--primary) 0%,
+        var(--primary-hover, var(--primary)) 60%,
+        var(--background-03) 100%
+    );
     padding-top: var(--safe-area-top);
 }
 .coach-header .c-cover .right-panel-close-btn { @apply absolute top-2 right-2; }

@@ -36,7 +36,8 @@
         @if (!IsFocus) {
             <a class="c-focus-link" @onclick="@(() => FocusClick.InvokeAsync(m.Kind))">@L.Coach_MakeFocus</a>
         } else if (IsFocusOverridden) {
-            <a class="c-focus-link c-focus-clear" @onclick="@(() => FocusClear.InvokeAsync(m.Kind))">@L.Coach_FocusAutomatic</a>
+            <a class="c-focus-link c-focus-clear"
+               @onclick="@(() => FocusClear.InvokeAsync(m.Kind))">@L.Coach_FocusAutomatic</a>
         }
     } else if (m.Kind == CoachMetricKind.Vocabulary) {
         <div class="c-caption">@labels.Explain(m.Kind, Language, Summary)</div>

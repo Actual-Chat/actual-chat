@@ -29,7 +29,8 @@ public class CoachProgressBuilderTest(ITestOutputHelper @out) : TestBase(@out)
         fillers.Previous.Should().BeApproximately(0.07, 1e-9);
         fillers.Current.Should().BeApproximately(0.04, 1e-9);
         fillers.IsBetter.Should().BeTrue();
-        deltas.Single(d => d.Kind == CoachMetricKind.Pace).IsBetter.Should().BeTrue("100 → 120 wpm moves toward the band");
+        deltas.Single(d => d.Kind == CoachMetricKind.Pace).IsBetter
+            .Should().BeTrue("100 → 120 wpm moves toward the band");
     }
 
     [Fact]

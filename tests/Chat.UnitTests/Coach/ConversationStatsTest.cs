@@ -21,7 +21,9 @@ public class ConversationStatsTest(ITestOutputHelper @out) : TestBase(@out)
     public void ComputeShouldGiveShareTurnsAndMonologue()
     {
         // arrange: me 0-10 and 10-15 (one 15 s turn), other 16-20, me 21-24
-        var entries = new[] { Voice(1, Me, 0, 10), Voice(2, Me, 10, 15), Voice(3, Other, 16, 20), Voice(4, Me, 21, 24) };
+        var entries = new[] {
+            Voice(1, Me, 0, 10), Voice(2, Me, 10, 15), Voice(3, Other, 16, 20), Voice(4, Me, 21, 24),
+        };
 
         // act
         var s = ConversationStats.Compute(entries, Me, maxResponseGapSeconds: 5)!;
@@ -82,7 +84,9 @@ public class ConversationStatsTest(ITestOutputHelper @out) : TestBase(@out)
     public void ComputeShouldMeasurePatienceAsGapAfterTheOtherStops()
     {
         // arrange: other ends at 20, me starts at 21 (gap 1); the 9 s gap later is above the cap
-        var entries = new[] { Voice(1, Other, 16, 20), Voice(2, Me, 21, 24), Voice(3, Other, 30, 31), Voice(4, Me, 40, 41) };
+        var entries = new[] {
+            Voice(1, Other, 16, 20), Voice(2, Me, 21, 24), Voice(3, Other, 30, 31), Voice(4, Me, 40, 41),
+        };
 
         // act
         var s = ConversationStats.Compute(entries, Me, 5)!;

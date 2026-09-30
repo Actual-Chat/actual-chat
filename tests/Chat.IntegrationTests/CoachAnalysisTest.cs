@@ -439,7 +439,8 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         // act
         var bobMarks = await TestWait.When(async ct => {
             var marks = await chatCoach.GetOwnMarks(bob.Session, chatId, lidRange, ct);
-            marks.Should().ContainSingle().Which.Spans.Should().HaveCount(3, "the tagger's answer follows the instant marks");
+            marks.Should().ContainSingle().Which.Spans
+                .Should().HaveCount(3, "the tagger's answer follows the instant marks");
             return marks;
         }, TimeSpan.FromSeconds(30));
         var aliceMarks = await chatCoach.GetOwnMarks(alice.Session, chatId, lidRange, default);
@@ -562,7 +563,8 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var requests = tagger.Requests.OrderBy(r => text.IndexOf(r.Text, StringComparison.Ordinal)).ToList();
         string.Concat(requests.Select(r => r.Text)).Should().Be(text);
         requests[0].Context.Should().BeNull();
-        requests[1].Context.Should().Be("So, um, this is sentence number 3 and it goes on for a while longer than usual.");
+        requests[1].Context
+            .Should().Be("So, um, this is sentence number 3 and it goes on for a while longer than usual.");
         requests.Skip(1).Should().OnlyContain(r => !r.Context.IsNullOrEmpty());
         analysis.Spans.Should().OnlyContain(s => text.Substring(s.Start, s.Length).ToLowerInvariant() == s.Word);
         analysis.FilledPauses.Should().Be(12, "the tagger's first um per chunk plus the instant list for the rest");
@@ -625,7 +627,10 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         // arrange
         var gate = new TaskCompletionSource();
         var (appHost, tagger) = await NewCoachHost(
-            "coach-instant-off", new FakeTagger { Gate = gate.Task }, null, (nameof(CoachSettings.IsInstantMarkingEnabled), "false"));
+            "coach-instant-off",
+            new FakeTagger { Gate = gate.Task },
+            null,
+            (nameof(CoachSettings.IsInstantMarkingEnabled), "false"));
         await using var _ = appHost;
         await using var tester = appHost.NewBlazorTester(Out);
         var account = await tester.SignInAsUniqueBob();
@@ -759,7 +764,9 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         // assert: the model's marks stay on the finalized entry, and the entry has no analysis of its own yet
         var marks = await WhenMarks(
-            backend, entry, m => m.Count == 1 && m[0].Spans.Any(s => s is { Kind: SpeechSpanKind.Weak, Word: "awesome" }));
+            backend,
+            entry,
+            m => m.Count == 1 && m[0].Spans.Any(s => s is { Kind: SpeechSpanKind.Weak, Word: "awesome" }));
         (await backend.Get(entry.Id, default)).Should().BeNull();
         gate.SetResult();
         await WhenTagged(backend, entry.Id);

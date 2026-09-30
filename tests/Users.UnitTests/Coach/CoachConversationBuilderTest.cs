@@ -11,7 +11,8 @@ public class CoachConversationBuilderTest(ITestOutputHelper @out) : TestBase(@ou
     private static CoachRecord Entry(ChatId chatId, long lid, Moment at, int words, string language = "en-US",
         int fillers = 0, double seconds = 60)
         => new (CoachRecordKind.Entry, $"{chatId}:{lid}", UserId.New(), chatId, at) {
-            Entry = new CoachEntryRecord(lid, language, seconds, seconds, words, 3, 0, 0, words, 0, 0, true, 0, fillers, 0, 0,
+            Entry = new CoachEntryRecord(
+                lid, language, seconds, seconds, words, 3, 0, 0, words, 0, 0, true, 0, fillers, 0, 0,
                 Enumerable.Range(0, fillers)
                     .Select(i => new SpeechSpan(SpeechSpanKind.Filler, "like", i * 5, 4, ApiArray<string>.Empty))
                     .ToApiArray()),

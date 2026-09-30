@@ -5,8 +5,12 @@
 <Card Class="coach-milestones">
     @foreach (var m in Milestones) {
         <TileItem @key="@m.Kind" IsHoverable="false">
-            <Icon><span class="c-check @(m.AchievedAt is null ? "off" : "")">@(m.AchievedAt is null ? "" : "✓")</span></Icon>
-            <Content><span class="@(m.AchievedAt is null ? "text-03" : "text-01")">@Labels.Milestone(m.Kind)</span></Content>
+            <Icon>
+                <span class="c-check @(m.AchievedAt is null ? "off" : "")">@(m.AchievedAt is null ? "" : "✓")</span>
+            </Icon>
+            <Content>
+                <span class="@(m.AchievedAt is null ? "text-03" : "text-01")">@Labels.Milestone(m.Kind)</span>
+            </Content>
             <Right>
                 @if (m.AchievedAt is { } at) {
                     <span class="text-caption text-03">

@@ -35,8 +35,12 @@
                 placeName = place?.Title ?? "";
             }
             else {
-                var chatSettings = await Hub.UserSettingsUI.ChatUserSettings(ChatId).Get(cancellationToken).ConfigureAwait(false);
-                var placeSettings = await Hub.UserSettingsUI.ChatUserSettings(ChatId.RootChatId).Get(cancellationToken).ConfigureAwait(false);
+                var chatSettings = await Hub.UserSettingsUI.ChatUserSettings(ChatId)
+                    .Get(cancellationToken)
+                    .ConfigureAwait(false);
+                var placeSettings = await Hub.UserSettingsUI.ChatUserSettings(ChatId.RootChatId)
+                    .Get(cancellationToken)
+                    .ConfigureAwait(false);
                 isOffByPlace = chatSettings.IsCoachingEnabled == null && placeSettings.IsCoachingEnabled == false;
             }
         }

@@ -14,7 +14,9 @@
             }
         </div>
         <div class="c-buttons">
-            <ButtonRound Click="@SettingsClick" Class="@("btn-sm btn-tinted c-settings-btn" + (IsSettingsOpen ? " is-active" : ""))">
+            <ButtonRound
+                Click="@SettingsClick"
+                Class="@("btn-sm btn-tinted c-settings-btn" + (IsSettingsOpen ? " is-active" : ""))">
                 <i class="icon-settings text-2xl"></i>
             </ButtonRound>
         </div>

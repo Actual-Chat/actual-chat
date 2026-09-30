@@ -77,7 +77,9 @@
         var milestones = await Hub.Coach.ListOwnMilestones(Session, cancellationToken).ConfigureAwait(false);
         var today = UsageDay.DayOf(Clocks.SystemClock.Now);
         var weekStart = CoachWeek.StartOf(today);
-        var range = new Range<Moment>(weekStart - TimeSpan.FromDays(7 * (HistoryWeeks - 1)), today + TimeSpan.FromDays(1));
+        var range = new Range<Moment>(
+            weekStart - TimeSpan.FromDays(7 * (HistoryWeeks - 1)),
+            today + TimeSpan.FromDays(1));
         var days = await Hub.Coach.ListOwnDays(Session, range, Language, cancellationToken).ConfigureAwait(false);
         var perDay = days.GroupBy(d => d.Day).ToDictionary(g => g.Key, g => g.Sum(d => d.Words));
         var cells = Enumerable.Range(0, 7)
