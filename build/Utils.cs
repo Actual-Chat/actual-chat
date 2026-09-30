@@ -16,6 +16,11 @@ internal static class Utils {
         => TryFindCommandPath("npm")
             ?? throw new WithoutStackException(new FileNotFoundException("'npm' command isn't found. Install nodejs from https://nodejs.org/"));
 
+    public static string FindGhExe()
+        => TryFindCommandPath("gh")
+            ?? throw new WithoutStackException(new FileNotFoundException(
+                "'gh' command isn't found. Install GitHub CLI from https://cli.github.com/"));
+
     public static string GetEnv(string name, string? @default = null)
         => Environment.GetEnvironmentVariable(name)
             ?? @default

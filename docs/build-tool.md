@@ -100,12 +100,14 @@ Common flags:
 | `--no-web` | skip the npm web asset build |
 | `--package` | Windows — build an MSIX package instead of the unpackaged app; implied on the other platforms |
 | `--publish` / `--no-publish` | force `dotnet publish` / `dotnet build` |
+| `--ci` / `--ci-branch <BRANCH>` | Android only — install the APK CI built instead of building one; see [CI builds](#ci-builds-android) |
 
 Examples:
 
 ```bash
 b app run android                        # dev build on a connected device
 b app run android --release --prod       # production build, signed
+b app run android --ci                   # the APK CI built on dev, no local build
 b app run ios --simulator                # iOS simulator
 b app run windows                        # Windows, unpackaged - just runs the .exe
 b app run windows --package              # ... packaged (MSIX): installs, then launches
@@ -124,6 +126,23 @@ Output: artifacts/publish/App.Maui/release_net11.0-android/chat.actual.app-Signe
 
 `--prod` Android builds need `ActualChat_AndroidSigningKeyPass` and
 `ActualChat_AndroidSigningStorePass` in the environment.
+
+### CI builds (Android)
+
+`--ci` skips the local build and installs the binary CI shipped instead: the
+newest `<appId>.<version>.apk` artifact of `build-test-deploy-dev.yml`, found and
+downloaded with `gh` into `artifacts/ci/<appId>/`.
+
+```bash
+b app run android --ci                          # chat.actual.dev.app, built on dev
+b app run android --ci --prod                   # chat.actual.app, built on the newest release/*
+b app install android --ci-branch feat/foo      # a branch's workflow_dispatch build
+b app build android --ci                        # download only
+```
+
+It needs `gh` logged in to GitHub (or `GH_TOKEN` set). CI keeps the APKs for 10
+days, so older builds can't be installed. Build options (`--release`, `--aot`,
+`--publish`) don't apply and are rejected.
 
 ### Windows
 
@@ -246,6 +265,8 @@ b
 │   │   ├── --no-publish  Force dotnet build
 │   │   ├── --no-web  Skip the npm web asset build
 │   │   ├── --package     Windows: build an MSIX package instead of the unpackaged app; implied elsewhere
+│   │   ├── --ci  Android only: install the APK CI built on dev (newest release/* with --prod) instead of building
+│   │   ├── --ci-branch  Like --ci, but the APK CI built on this branch
 │   │   ├── -l|--launch  Launch the app after installing it (the default for 'app run')
 │   │   ├── --no-launch  Don't launch the app (the default for 'app build' and 'app install')
 │   │   └── --dry-run  Print the commands that would run, without running them

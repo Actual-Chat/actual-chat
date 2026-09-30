@@ -73,6 +73,8 @@ b
 | `--no-web` | skip the npm web asset build (much faster when only C# changed) |
 | `--package` | Windows — build an MSIX package instead of the unpackaged app; implied on the other platforms |
 | `-l`, `--launch` / `--no-launch` | override whether it launches |
+| `--ci` | Android — install the newest CI-built APK (dev, or the newest `release/*` with `--prod`) instead of building; needs `gh` auth |
+| `--ci-branch <BRANCH>` | like `--ci`, but the APK CI built on that branch |
 
 The three commands differ only in how far they go; `--launch` implies install, so
 `b app build android -l` == `b app run android`, and `b app run android
