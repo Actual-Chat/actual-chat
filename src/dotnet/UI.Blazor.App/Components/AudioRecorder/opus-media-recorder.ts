@@ -234,8 +234,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
             }
         });
 
-        // Better integration with native mobile audio pipeline
-        if ('audioSession' in navigator && typeof navigator.audioSession === 'object') {
+        // Better integration with native mobile audio pipeline; iOS only - see AudioContextSource's constructor
+        if (DeviceInfo.isIos && 'audioSession' in navigator && typeof navigator.audioSession === 'object') {
             (navigator.audioSession as any)['type'] = 'playback';
             (navigator.audioSession as any)['type'] = 'auto'; // Hack for iOS Safari
             (navigator.audioSession as any)['type'] = 'playback';
@@ -292,7 +292,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
             }
             stream ??= await navigator.mediaDevices.getUserMedia(constraints);
             // Better integration with native mobile audio pipeline - SHOULD BE AFTER ACQUIRING THE STREAM!
-            if ('audioSession' in navigator) {
+            if (DeviceInfo.isIos && 'audioSession' in navigator) {
                 (navigator.audioSession as any)['type'] = 'play-and-record';
             }
             const tracks = stream.getAudioTracks();

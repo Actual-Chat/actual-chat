@@ -3,6 +3,7 @@ import { audioContextSource, AppAudioContext, AudioContextAction } from '../../.
 import { DestinationFallbackTrait } from '../../../UI.Blazor.App/Services/audio-context-traits';
 import { getLogs } from 'logging';
 import { AUDIO } from 'app-constants';
+import { Disposable, Disposables } from 'disposable';
 
 const { debugLog, warnLog } = getLogs('SoundsPlayer');
 const DEFAULT_COOLDOWN = 3; // 3s
@@ -69,6 +70,39 @@ export class SoundPlayer {
             action?.dispose();
         }
         debugLog?.log('<- play', url);
+    }
+
+    /**
+     * Loops the sound until disposed. Web Audio rather than an HTMLAudioElement: WebKit makes a playing
+     * element the system Now Playing target, so media keys would pause it and later resume it.
+     */
+    public loop(sound: string | AudioBuffer): Disposable {
+        const whenStopped = new PromiseSource<void>();
+        const action = audioContextSource.run(async (context) => {
+            const buffer = typeof sound === 'string' ? await this.getSound(sound) : sound;
+            if (whenStopped.isCompleted)
+                return;
+
+            const source = context.createBufferSource();
+            try {
+                source.buffer = buffer;
+                source.loop = true;
+                source.connect(DestinationFallbackTrait.getDestination(context as AppAudioContext));
+                source.start();
+                await whenStopped;
+            } finally {
+                try {
+                    source.stop();
+                } catch {
+                    // Ignore stop errors on never started sources
+                }
+                source.disconnect();
+            }
+        });
+        return Disposables.fromAction(() => {
+            whenStopped.resolve(undefined);
+            action.dispose();
+        });
     }
 
     private async getSound(url: string): Promise<AudioBuffer> {
