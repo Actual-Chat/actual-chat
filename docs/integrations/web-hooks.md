@@ -352,7 +352,9 @@ Source:
 
 An incoming hook is a secret URL bound to one chat. Any `POST` to it posts a
 message into that chat under the hook's own bot, which has the display name
-and avatar you set on the hook and appears in the member list.
+and avatar you set on the hook and appears in the member list. In a chat that
+belongs to a place the bot is a member of that chat alone: it never joins the
+place and does not show up among the place members.
 
 ### URL and auth
 

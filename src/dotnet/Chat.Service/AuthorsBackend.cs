@@ -55,8 +55,14 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         if (chatId is PeerChatId peerChatId)
             return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.Id).ToArray();
 
-        var authorChatId = await GetAuthorChatId(chatId, cancellationToken).ConfigureAwait(false);
+        var ownChatId = chatId.GetThreadOutermostParentOrSelf();
+        var authorChatId = await GetAuthorChatId(ownChatId, cancellationToken).ConfigureAwait(false);
         var authorIds = await ListAuthorIdsInternal(authorChatId, cancellationToken).ConfigureAwait(false);
+        if (authorChatId != ownChatId) {
+            // Place members stand in for the authors of a public place chat, but its hook bots are its own
+            var ownAuthorIds = await ListAuthorIdsInternal(ownChatId, cancellationToken).ConfigureAwait(false);
+            authorIds = [..authorIds, ..ownAuthorIds.Where(Bots.IsHookBot)];
+        }
 
         if (authorChatId != chatId && authorIds.Length > 0)
             authorIds = RemapList(authorIds, chatId);
@@ -112,8 +118,9 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         else {
             if (authorId.ChatId != chatId)
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid AuthorId.");
+
             // Wall-E (-1) and Sherlock (-2) are immutable; hook bots (-3 and below) are real author rows
-            if (Bots.IsBot(authorId) && authorId.LocalId >= Constants.User.Sherlock.AuthorLocalId)
+            if (Bots.IsBot(authorId) && !Bots.IsHookBot(authorId))
                 throw new ArgumentOutOfRangeException(nameof(command), "System authors cannot be modified.");
         }
 
@@ -148,11 +155,16 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             ).ConfigureAwait(false);
         var existingAuthor = dbAuthor?.ToModel() ?? defaultAuthor;
         var authorHasLeft = false;
+        bool isBot;
 
         if (existingAuthor != null) {
             // Update existing author, incl. one of the default ones in a peer chat
             existingAuthor.RequireVersion(expectedVersion).RequireValid(userId!);
-            var account = await AccountsBackend.Get(existingAuthor.UserId, cancellationToken).Require().ConfigureAwait(false);
+            var account = await AccountsBackend
+                .Get(existingAuthor.UserId, cancellationToken)
+                .Require()
+                .ConfigureAwait(false);
+            isBot = account.IsBot;
 
             var author = DiffEngine.Patch(existingAuthor, diff) with {
                 Version = VersionGenerator.NextVersion(existingAuthor.Version),
@@ -185,7 +197,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
             await dbContext.Authors.Lock(chatId, userId, cancellationToken).ConfigureAwait(false);
             var account = await AccountsBackend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
-            var isBot = account.IsBot;
+            isBot = account.IsBot;
             var skipSingleAuthorCheck = isBot || userId == Constants.User.Sherlock.UserId;
             if (!skipSingleAuthorCheck) {
                 // Get chat directly in transaction instead of calling Backend
@@ -263,7 +275,9 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             existingAuthor = dbAuthor.Require().ToModel().RequireValid(userId!);
         }
 
-        if (chatId is PlaceChatId { IsRoot: false } placeChatId) {
+        // A hook bot is an author of its own chat only, never a place member, so it has no root author to match
+        var isHookBot = isBot && Bots.IsHookBot(AuthorId.Parse(dbAuthor.Id));
+        if (chatId is PlaceChatId { IsRoot: false } placeChatId && !isHookBot) {
             // NOTE(DF): Place chat author local_id must match to the root place chat author local_id for the same user.
             var rootChatId = placeChatId.PlaceId.RootChatId;
             var rootAuthor = await GetByUserId(rootChatId, UserId.Parse(dbAuthor.UserId!), default, cancellationToken)
@@ -655,8 +669,15 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         return Math.Min(minLocalId ?? 0, Constants.User.Sherlock.AuthorLocalId) - 1;
     }
 
-    private async Task<AuthorFull?> GetPlaceChatAuthor(PlaceChatId chatId, PrincipalId principalId, CancellationToken cancellationToken)
+    private async Task<AuthorFull?> GetPlaceChatAuthor(
+        PlaceChatId chatId,
+        PrincipalId principalId,
+        CancellationToken cancellationToken)
     {
+        var bot = await GetPlaceChatBot(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        if (bot is not null)
+            return bot;
+
         var rootChatId = chatId.RootChatId;
         var rootAuthor = await GetInternal(rootChatId, Remap(principalId, rootChatId), cancellationToken)
             .ConfigureAwait(false);
@@ -673,6 +694,28 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         // If it's a private Chat on the Place, then we should have explicit author on the Chat.
         var author = await GetInternal(chatId, principalId, cancellationToken).ConfigureAwait(false);
         return CreatePrivateChatAuthor(author, rootAuthor);
+    }
+
+    private async Task<AuthorFull?> GetPlaceChatBot(
+        PlaceChatId chatId,
+        PrincipalId principalId,
+        CancellationToken cancellationToken)
+    {
+        // A hook bot is an author of its own chat only, so there is no place member to take it from.
+        // A regular user id may carry the bot prefix by chance, hence the check of what was found.
+        var mayBeHookBot = principalId switch {
+            AuthorId authorId => Bots.IsHookBot(authorId),
+            UserId userId => WebHookId.TryParseBotUserId(userId, out _),
+            _ => false,
+        };
+        if (!mayBeHookBot)
+            return null;
+
+        var author = await GetInternal(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        if (author is null || !Bots.IsHookBot(author.Id))
+            return null;
+
+        return await AddAvatar(author, cancellationToken).ConfigureAwait(false);
     }
 
     private async ValueTask<AuthorFull> AddAvatar(AuthorFull author, CancellationToken cancellationToken)
