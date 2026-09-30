@@ -17,8 +17,8 @@
     [Parameter] public ChatListPreOrder ChatListPreOrder { get; set; } = ChatListPreOrder.ChatList;
     [Parameter] public ChatListFilter Filter { get; set; } = ChatListFilter.None;
     [Parameter] public bool UseCanWriteFilter { get; set; } = true;
-    // Chats that can't take files stay listed but can't be selected
-    [Parameter] public bool HasFiles { get; set; }
+    // Chats lacking any of these stay listed but can't be selected
+    [Parameter] public ChatPermissions RequiredPermissions { get; set; }
     [Parameter] public IReadOnlySet<ChatId>? ExcludeChatIds { get; set; }
     [Parameter] public SearchQuery SearchQuery { get; set; }
     [Parameter] public EventCallback Changed { get; set; }
@@ -33,8 +33,11 @@
     // how a consumer tells "the list is for the place I picked" from "the list is still the old one"
     public PlaceId? ContactsPlaceId { get; private set; }
 
+    public ChatPermissions GetMissingPermissions(ContactInfo contact)
+        => RequiredPermissions & ~contact.Chat.Rules.Permissions;
+
     public bool IsDisabled(ContactInfo contact)
-        => HasFiles && !contact.Chat.Rules.CanUpload();
+        => GetMissingPermissions(contact) != default;
 
     public void Toggle(ChatId chatId) {
         if (IsDisabled(chatId))

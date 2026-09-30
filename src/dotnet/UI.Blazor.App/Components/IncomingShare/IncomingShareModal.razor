@@ -25,7 +25,7 @@
                 @ref="@_contactSelectorRef"
                 Changed="StateHasChanged"
                 ChatListPreOrder="@ChatListPreOrder.ChatList"
-                HasFiles="@ModalModel.HasFiles"
+                RequiredPermissions="@(ModalModel.HasFiles ? ChatPermissions.Upload : default)"
                 SearchQuery="@_searchQuery">
                 <SearchBox
                     Placeholder="@L.Share_WhoToShareWith"
