@@ -111,11 +111,13 @@
                 <MarkupView Markup="@streamingMarkup"/>
             </CascadingValue>
         } else {
+            var changedOffset = sm.RetainedText.Length;
+            var animatedOffset = changedOffset + sm.ChangedText.Length;
             @if (!sm.RetainedText.IsNullOrEmpty()) {
-                <span class="retained">@sm.RetainedText</span>
+                <span class="retained">@MarkedText(sm.RetainedText, 0, m.LiveMarks)</span>
             }
             <span class="changes @(_isAltAnimation ? "c-alt" : "")">
-                <span class="changed-item">@sm.ChangedText</span>
+                <span class="changed-item">@MarkedText(sm.ChangedText, changedOffset, m.LiveMarks)</span>
                 @{
                     for (var spanIndex = 0; spanIndex < AnimationSpanCount; spanIndex++) {
                         var spanStart = sm.AnimatedText.Length * spanIndex / AnimationSpanCount;
@@ -123,7 +125,7 @@
                         var spanDelay = (int)Math.Round(AnimationSpanDurationMs * spanIndex);
                         var spanDuration = (int)Math.Round(AnimationSpanDurationMs);
                         var style = $"animation-delay: {spanDelay}ms; animation-duration: {spanDuration}ms;";
-                        <span class="change-item" style="@style">@sm.AnimatedText[spanStart..spanEnd]</span>
+                        <span class="change-item" style="@style">@MarkedText(sm.AnimatedText[spanStart..spanEnd], animatedOffset + spanStart, m.LiveMarks)</span>
                     }
                 }
             </span>
@@ -200,6 +202,17 @@
     [Parameter] public bool IsUnreadByOthersBlockStart { get; set; }
     [Parameter] public bool IsOwnMessage { get; set; }
 
+    private static RenderFragment MarkedText(string text, int offset, ApiArray<SpeechSpan> marks)
+        => __builder => {
+            foreach (var piece in CoachStreamingMarks.Split(text, offset, marks)) {
+                if (piece.Class.Length == 0) {
+                    @piece.Text
+                } else {
+                    <span class="@piece.Class">@piece.Text</span>
+                }
+            }
+        };
+
     public bool MustSyncRender
         // Only a streaming message renders often enough to be worth pacing, and only once it is on
         // screen: the first render is the one the reader is waiting for.
@@ -260,6 +273,7 @@
         var message = Message;
         var isUnreadByOthers = IsUnreadByOthers;
         var isUnreadByOthersBlockStart = IsUnreadByOthersBlockStart;
+        var isOwnMessage = IsOwnMessage;
         var textEntryId = _textEntryId;
         // When entry isSending, it's a local chat entry. It does not exist on the server side.
         if (message.Entry.IsSending)
@@ -292,8 +306,12 @@
             var isChatLanguageSelected = await LanguageUI
                 .IsChatLanguageSelected(entry.ChatId, cancellationToken)
                 .ConfigureAwait(false);
+            var liveMarks = isOwnMessage
+                ? await Hub.CoachUI.FindLiveMarks(textEntryId, streamingState.Text, cancellationToken).ConfigureAwait(false)
+                : ApiArray<SpeechSpan>.Empty;
             return new(markup, entry, translationState, streamingState, isUnreadByOthers, isUnreadByOthersBlockStart) {
                 IsChatLanguageSelected = isChatLanguageSelected,
+                LiveMarks = liveMarks,
             };
         }
 
@@ -358,6 +376,7 @@
         bool IsUnreadBlockStart)
     {
         public bool IsChatLanguageSelected { get; init; }
+        public ApiArray<SpeechSpan> LiveMarks { get; init; }
         public bool IsStreaming => Entry.IsContentStreaming || Streaming.IsStreaming;
     }
 }

@@ -1,0 +1,20 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComponentBase<AppUIHub>
+
+<Card Class="coach-week-deltas">
+    @foreach (var d in Deltas) {
+        var cls = d.IsBetter switch { true => "text-success", false => "text-danger", _ => "text-03" };
+        <TileItem @key="@d.Kind" IsHoverable="false">
+            <Content>@Labels.MetricTitle(d.Kind)</Content>
+            <Caption>@Labels.DeltaValue(d)</Caption>
+            <Right><span class="c-badge @cls">@Labels.DeltaBadge(d)</span></Right>
+        </TileItem>
+    }
+</Card>
+
+@code {
+    [Parameter, EditorRequired] public ApiArray<CoachWeekDelta> Deltas { get; set; }
+
+    private CoachLabels Labels => field ??= new CoachLabels(L);
+}

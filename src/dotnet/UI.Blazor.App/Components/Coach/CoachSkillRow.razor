@@ -1,0 +1,60 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComponentBase<AppUIHub>
+@{
+    var labels = Labels;
+    var m = Metric;
+    var band = m.Band.ToString().ToLowerInvariant();
+}
+
+<div class="coach-skill @(IsHeadline ? "headline" : "plain")" data-metric="@m.Kind">
+    <div class="c-row">
+        <span class="c-name">@labels.MetricTitle(m.Kind)</span>
+        <span class="c-value band-@band">
+            @if (IsNotMeasured) {
+                @L.Coach_NotMeasuredFor_Format(labels.LanguageName(Language ?? ""))
+            } else {
+                @(labels.Rate(m) is { Length: > 0 } rate ? rate : labels.Value(m))
+                @if (labels.BandWord(m.Kind, m.Band) is { Length: > 0 } word) {
+                    <span> · @word</span>
+                }
+            }
+        </span>
+    </div>
+    @if (IsHeadline) {
+        <div class="c-caption">@labels.Explain(m.Kind, Language, Summary)</div>
+        @if (m.Chips.Count > 0) {
+            <div class="c-chips">
+                @foreach (var chip in m.Chips) {
+                    <button type="button" class="coach-chip" @onclick="@(() => WordClick.InvokeAsync(chip.Word))">
+                        <span>@chip.Word</span>
+                        <span class="c-count">· @chip.Count</span>
+                    </button>
+                }
+            </div>
+        }
+        @if (!IsFocus) {
+            <a class="c-focus-link" @onclick="@(() => FocusClick.InvokeAsync(m.Kind))">@L.Coach_MakeFocus</a>
+        } else if (IsFocusOverridden) {
+            <a class="c-focus-link c-focus-clear"
+               @onclick="@(() => FocusClear.InvokeAsync(m.Kind))">@L.Coach_FocusAutomatic</a>
+        }
+    } else if (m.Kind == CoachMetricKind.Vocabulary) {
+        <div class="c-caption">@labels.Explain(m.Kind, Language, Summary)</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public CoachMetric Metric { get; set; } = null!;
+    [Parameter] public CoachSummary Summary { get; set; } = CoachSummary.None;
+    [Parameter] public string? Language { get; set; }
+    [Parameter] public bool IsHeadline { get; set; }
+    [Parameter] public bool IsFocus { get; set; }
+    [Parameter] public bool IsFocusOverridden { get; set; }
+    [Parameter] public bool IsNotMeasured { get; set; }
+    [Parameter] public EventCallback<string> WordClick { get; set; }
+    [Parameter] public EventCallback<CoachMetricKind> FocusClick { get; set; }
+    [Parameter] public EventCallback<CoachMetricKind> FocusClear { get; set; }
+
+    private CoachLabels Labels => field ??= new CoachLabels(L);
+}

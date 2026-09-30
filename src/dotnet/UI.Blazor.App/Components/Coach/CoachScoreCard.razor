@@ -1,0 +1,74 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComponentBase<AppUIHub>
+@{
+    var s = Summary;
+    var labels = Labels;
+    var missing = Math.Max(0, MinScoreWords - s.Words);
+}
+
+<Card Class="coach-score-card">
+    <TileItem Click="@ScoreClick">
+        <Icon>
+            @if (s.Score is { } ring) {
+                <span class="c-score-ring">
+                    <svg viewBox="0 0 42 42">
+                        <circle class="c-track" cx="21" cy="21" r="18"/>
+                        <circle class="c-arc" cx="21" cy="21" r="18" pathLength="100"
+                                stroke-dasharray="@Dash(ring)"/>
+                    </svg>
+                    <i class="icon-star text-primary"></i>
+                </span>
+            } else {
+                <i class="text-xl icon-star text-primary"></i>
+            }
+        </Icon>
+        <Content>
+            @if (s.Score is { } score) {
+                @(Language is null
+                    ? L.Coach_Score_Format(score)
+                    : L.Coach_ScoreOf_Format(labels.LanguageName(Language), score))
+            } else {
+                @L.Coach_ScoreAfterWords(missing, missing)
+            }
+        </Content>
+        <Caption>
+            @if (s.ScoreDelta is { } delta) {
+                var text = delta > 0 ? "+" + delta : delta.ToString();
+                <span class="@(delta > 0 ? "text-success" : "text-danger")">@L.Coach_ScoreThisWeek_Format(text)</span>
+                <span> · </span>
+            }
+            @L.Coach_WhatMovesIt
+        </Caption>
+        <Right><i class="icon-chevron-right text-xl text-03"></i></Right>
+    </TileItem>
+    @if (Focus is { } focus && s.Score is not null) {
+        <TileItem Click="@FocusClick">
+            <Icon><i class="text-xl icon-ai-stars text-primary"></i></Icon>
+            <Content>@L.Coach_WorkingOn_Format(labels.MetricTitle(focus).ToLowerInvariant())</Content>
+            <Caption>
+                @labels.FocusHint(focus, s.Metrics.FirstOrDefault(m => m.Kind == focus)?.Chips.FirstOrDefault())
+            </Caption>
+            <Right><i class="icon-chevron-right text-xl text-03"></i></Right>
+        </TileItem>
+    }
+</Card>
+
+@code {
+    // The server's CoachScoringSettings.MinScoreWords; the client has no access to it, so the
+    // copy shows the default and the server decides whether a score exists
+    private const int MinScoreWords = 200;
+
+    [Parameter, EditorRequired] public CoachSummary Summary { get; set; } = CoachSummary.None;
+    [Parameter] public CoachMetricKind? Focus { get; set; }
+    [Parameter] public string? Language { get; set; }
+    [Parameter] public EventCallback ScoreClick { get; set; }
+    [Parameter] public EventCallback FocusClick { get; set; }
+
+    private static string Dash(int score) {
+        var value = Math.Clamp(score, 0, 100);
+        return value.ToString("F2", null) + " " + (100 - value).ToString("F2", null);
+    }
+
+    private CoachLabels Labels => field ??= new CoachLabels(L);
+}

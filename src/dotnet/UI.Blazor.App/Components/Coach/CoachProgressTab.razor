@@ -1,0 +1,145 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, CoachProgressTab.Model>
+@{
+    var m = State.Value;
+    var labels = Labels;
+    var best = m.Deltas.FirstOrDefault(d => d.IsBetter == true);
+    var speakingDays = m.WeekDays.Count(d => d.Words > 0);
+}
+
+<div class="coach-progress">
+    @if (m.Note.IsPending) {
+        <Card Class="coach-note">
+            <TileItem Click="@OnNoteSeen">
+                <Icon><i class="text-xl icon-star text-primary"></i></Icon>
+                <Content>@L.Coach_WeekNoteTitle</Content>
+                <Caption>@labels.NoteCaption(m.Note)</Caption>
+            </TileItem>
+        </Card>
+    }
+    @if (best is not null) {
+        <Card Class="coach-better">
+            <TileItem IsHoverable="false">
+                <Icon><img class="c-mascot" src="/dist/images/kitties/coach-cat.png" alt="" draggable="false"></Icon>
+                <Content>@L.Coach_GettingBetter</Content>
+                <Caption>@labels.BetterCaption(best, speakingDays)</Caption>
+            </TileItem>
+        </Card>
+    }
+    @if (m.TalkShare is { } share and < 0.995) {
+        var percent = (int)Math.Round(share * 100);
+        <TileTopic Topic="@L.Coach_TalkTime"/>
+        <Card Class="coach-talk-time">
+            <DonutChart Items="@TalkItems(share)">
+                <Center>@percent%</Center>
+            </DonutChart>
+        </Card>
+    }
+    <TileTopic Topic="@L.Coach_ScoreLastWeeks"/>
+    <Card Class="coach-week-scores">
+        <BarChart Items="@ScoreItems(m.Scores)" ShowValues="@true"/>
+    </Card>
+    @if (m.Scores.Where(x => x.Score is > 0).ToList() is [ { Score: { } first }, .., { Score: { } last } ]) {
+        <div class="c-scores-caption">@first → @last</div>
+    }
+    <TileTopic Topic="@L.Coach_ThisWeekVsLast"/>
+    @if (m.Deltas.Count > 0 && m.Deltas.All(d => d.Previous is null)) {
+        <div class="c-deltas-hint">@L.Coach_NothingToCompare</div>
+    }
+    <CoachWeekDeltas Deltas="@m.Deltas"/>
+    <TileTopic Topic="@L.Coach_DaysWithSpeech"/>
+    <Card Class="coach-days">
+        @foreach (var day in m.WeekCells) {
+            <div class="c-day @(day.HasSpeech ? "on" : "")"><div></div><span>@day.Label</span></div>
+        }
+    </Card>
+    <div class="c-days-caption">
+        @L.Coach_DaysOfSeven_Format(speakingDays) · @L.Coach_WeeksInARow(m.WeeksInARow, m.WeeksInARow)
+    </div>
+    <TileTopic Topic="@L.Coach_Milestones"/>
+    <CoachMilestones Milestones="@m.Milestones"/>
+</div>
+
+@code {
+    private const int HistoryWeeks = 12;
+
+    [Parameter] public string? Language { get; set; }
+
+    private CoachLabels Labels => field ??= new CoachLabels(L);
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var deltas = await Hub.Coach.GetOwnWeekDeltas(Session, Language, cancellationToken).ConfigureAwait(false);
+        var scores = await Hub.Coach.ListOwnWeekScores(Session, 4, Language, cancellationToken).ConfigureAwait(false);
+        var milestones = await Hub.Coach.ListOwnMilestones(Session, cancellationToken).ConfigureAwait(false);
+        var today = UsageDay.DayOf(Clocks.SystemClock.Now);
+        var weekStart = CoachWeek.StartOf(today);
+        var range = new Range<Moment>(
+            weekStart - TimeSpan.FromDays(7 * (HistoryWeeks - 1)),
+            today + TimeSpan.FromDays(1));
+        var days = await Hub.Coach.ListOwnDays(Session, range, Language, cancellationToken).ConfigureAwait(false);
+        var perDay = days.GroupBy(d => d.Day).ToDictionary(g => g.Key, g => g.Sum(d => d.Words));
+        var cells = Enumerable.Range(0, 7)
+            .Select(i => weekStart + TimeSpan.FromDays(i))
+            .Select(d => new DayCell(
+                d.ToDateTime().ToString("ddd", DateFormatter),
+                perDay.GetValueOrDefault(d) > 0))
+            .ToList();
+        var weekDays = days.Where(d => d.Day >= weekStart).ToApiArray();
+        var week = CoachDayBuilder.Merge(weekStart, weekDays);
+        double? talkShare = week.TotalSpeechSeconds > 0 ? week.OwnSpeechSeconds / week.TotalSpeechSeconds : null;
+        var streak = 0;
+        for (var i = 0; i < HistoryWeeks; i++) {
+            var start = weekStart - TimeSpan.FromDays(7 * i);
+            var end = start + TimeSpan.FromDays(7);
+            if (!perDay.Any(x => x.Key >= start && x.Key < end && x.Value > 0))
+                break;
+
+            streak++;
+        }
+        var note = await UserSettingsUI.UserCoachWeeklyNote().Get(cancellationToken).ConfigureAwait(false);
+        return new Model(deltas, scores, milestones, weekDays, cells, streak, note, talkShare);
+    }
+
+    private IReadOnlyList<ChartItem> TalkItems(double share)
+        => [
+            new ChartItem(L.ChatView_You, share, "text-primary"),
+            new ChartItem(L.Coach_TalkOthers, 1 - share, "text-03"),
+        ];
+
+    private Task OnNoteSeen()
+        => UserSettingsUI.UserCoachWeeklyNote().Update(x => x with { IsSeen = true });
+
+    private IReadOnlyList<ChartItem> ScoreItems(ApiArray<CoachWeekScore> scores)
+        => scores
+            .Select(s => new ChartItem(
+                s.WeekStart.ToDateTime().ToString("m", DateFormatter),
+                s.Score ?? 0,
+                "text-primary"))
+            .ToList();
+
+    public sealed record DayCell(string Label, bool HasSpeech);
+
+    public sealed record Model(
+        ApiArray<CoachWeekDelta> Deltas,
+        ApiArray<CoachWeekScore> Scores,
+        ApiArray<CoachMilestone> Milestones,
+        ApiArray<CoachDay> WeekDays,
+        List<DayCell> WeekCells,
+        int WeeksInARow,
+        UserCoachWeeklyNote Note,
+        double? TalkShare) {
+        public static readonly Model None = new(
+            ApiArray<CoachWeekDelta>.Empty,
+            ApiArray<CoachWeekScore>.Empty,
+            ApiArray<CoachMilestone>.Empty,
+            ApiArray<CoachDay>.Empty,
+            [],
+            0,
+            new UserCoachWeeklyNote(),
+            null);
+    }
+}

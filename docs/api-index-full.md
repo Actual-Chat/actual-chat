@@ -233,6 +233,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `TranscriberExt` (static class) - Extension methods for transcibers.
 - `DeepgramTranscriber` - Deepgram speech-to-text transcriber.
 - `GoogleTranscriber` - Google speech-to-text transcriber.
+- `SpanLocator` (static class) - Locates the n-th whole-word occurrence of a word or phrase in a text.
 - `AliasId` (class) - Plain string identifier for an alias.
 - `AliasInfo` (record) - Alias information.
 
@@ -361,6 +362,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ShardScheme` - Sharding scheme configuration.
 - `ShardSchemeFlags` (enum) - Flags configuring a shard scheme's behavior.
 - `ServerHashInputExt` (static class) - Server-side hash input extensions.
+- `CoachEntryAnalyzedEvent` (record) - A voice entry's speech-coach analysis was written or removed; routed to the author's user shard.
+- `CoachConversationAnalyzedEvent` (record) - An author's turn-taking row over a run of entries was written; routed to the user shard.
 
 ## ActualChat.Db
 
@@ -424,6 +427,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ServerApiInfo` (record) - Server API version and compatibility information.
 - `ITimeZones` - Service for time zone lookup and conversion.
 - `IUserPresences` - Service for tracking and querying user online presence.
+- `IChatCoach` - The caller's own speech-coach marks in a chat.
+- `ICoach` - The caller's speech-coach score, per-language days, conversations, focus, week deltas, milestones, languages, pending tip and occurrences; commands set focus, language level and per-chat coaching and delete the data.
   
 
 ## ActualChat.Api
@@ -662,6 +667,25 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `StringDiffHandler` - Handler for string diffs.
 - `IDiffHandler<T>` - Interface for diff handlers.
 - `ThreadContact` (record) - Contact information for a thread.
+- `SpeechSpanKind` (enum) - Kind of a tagged span: filled pause, filler, weak word, profanity, repetition.
+- `SpeechSpan` (record) - A tagged word in a transcript with its char range and synonyms.
+- `SpeechTextStats` (record) - Word, sentence, question, repetition and vocabulary counts of a transcript.
+- `SpeechSpanExt` - Maps speech spans to `PlayableTextMarkup` word indices for inline marking.
+- `SpeechTimingStats` (record) - Speech time and pauses of a transcript from its time map.
+- `SpeechMetrics` (record) - Duration, text and timing stats of a transcript with words per minute.
+- `CoachTagState` (enum) - Whether an entry's LLM tagging is pending, done or skipped.
+- `CoachEntryAnalysis` (record) - Speech-coach analysis of one voice entry.
+- `CoachConversationAnalysis` (record) - One author's turn-taking numbers over one run of entries.
+- `CoachEntryMarks` (record) - Spans of one entry, served to the client for inline marking.
+- `CoachRecordKind` (enum) - Entry or run log record.
+- `CoachEntryRecord` / `CoachRunRecord` / `CoachRecord` (records) - A user's speech-coach log row as emitted by the chat side.
+- `CoachDay` (record) - One user's speech-coach numbers for one UTC day; `CoachDayBuilder` builds and merges them.
+- `CoachWindow` / `CoachMetricKind` / `CoachBand` (enums), `CoachChip`, `CoachMetric`, `CoachSummary`, `CoachOccurrence` (records) - The scored window served to the Coach tab.
+- `CoachTipKind` (enum), `UserCoachTip` (record) - The user's latest live coaching tip, stored in KVAS.
+- `CoachConversation` (record), `CoachConversationBuilder` - A run of one user's entries in one chat with no long gap; derived from the log, never stored.
+- `CoachLanguageLevel` (enum), `CoachLanguageInfo`, `CoachScorePart`, `CoachWeekDelta`, `CoachWeekScore`, `CoachMilestone` / `CoachMilestoneKind` - Per-language level, score explanation, week-over-week deltas and milestones served to the panel.
+- `CoachSkillSets` (static class) - Which skills are headline per language level and which are conversation-bound; `CoachWeek` - ISO week start in UTC.
+- `UserCoachSettings` (record) - Coaching, tips, marks, skip-one-to-one, per-language level and focus, weekly summary; `UserCoachWeeklyNote` (record) - The Monday note.
 
 ## ActualChat.Chat.Contracts
 
@@ -688,6 +712,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `RequestedAuthorKind` (enum) - Specifies the level of detail to return for author queries.
 - `AuthorsBackendExt` (static class) - Extension methods for IAuthorsBackend.
 - `ChatsBackendExt` (static class) - Extension methods for IChatsBackend.
+- `ICoachAnalysisBackend` - Analyses voice entries and quiet runs of entries for the speech coach; serves per-tile marks.
 - `PlacesBackendExt` (static class) - Extension methods for IPlacesBackend.
 - `RolesBackendExt` (static class) - Extension methods for IRolesBackend.
 
@@ -709,6 +734,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `UserScopedKvasBackend` - User-scoped wrapper around IServerKvasBackend.
 - `ServerKvasBackendExt` (static class) - Extension methods for IServerKvasBackend.
 - `AccountsBackendExt` (static class) - Extension methods for IAccountsBackend.
+- `ICoachBackend` - Per-user speech-coach log keyed by source id, day rows rebuilt from it, occurrences for jump-to-audio.
 
 ## ActualChat.Contacts.Contracts
 
@@ -788,6 +814,13 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `SessionsBackend` - Implementation of ISessionsBackend.
 - `UserPresences` - Implementation of IUserPresences for presence tracking.
 - `UserPresencesBackend` - Implementation of IUserPresencesBackend.
+- `Coach` - Implementation of ICoach.
+- `CoachBackend` - Implementation of ICoachBackend.
+- `CoachScoring` (static class) - Per-language bands, sub-scores, the 0-100 score, its explanation and conversation bands.
+- `CoachFocus` / `CoachProgressBuilder` (static classes) - Automatic focus skill; week deltas, milestones and weekly scores.
+- `CoachWeeklyNoteFlow` - Writes the Monday coaching note for each user at their digest time.
+- `CoachTipPolicy` (static class) - Decides whether a fresh log record earns a live tip.
+- `CoachScoringSettings` / `PaceBand` / `CoachRollout` - Speech-coach bands, weights, tip thresholds and rollout rule (UsersSettings:Coach).
 
 ## ActualChat.Chat.Service
 
@@ -811,6 +844,9 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `PlacesBackend` - Implementation of IPlacesBackend.
 - `Reactions` - Implementation of IReactions for message reactions.
 - `ReactionsBackend` - Implementation of IReactionsBackend.
+- `ChatCoach` - Implementation of IChatCoach.
+- `CoachAnalysisBackend` - Implementation of ICoachAnalysisBackend.
+- `ConversationStats` (record) - Turn-taking, patience and interruptions for one author over timed entries.
 - `Roles` - Implementation of IRoles for role management.
 - `RolesBackend` - Implementation of IRolesBackend.
 - `Translations` - Implementation of ITranslations.
@@ -973,6 +1009,10 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ChatCompletionServiceExt` (static class) - Extensions for chat completion service.
 - `OpenAITranscriber` - Transcriber using OpenAI API.
 - `TokenEstimator` - Estimates token counts for prompts.
+- `ISpeechTagger`, `SpeechTagger`, `SpeechTaggerStub` - LLM tagging of fillers, weak words and profanity in a transcript.
+- `SpeechChunker` (static class), `SpeechChunk` - Cuts a transcript into sentence-aligned chunks with the previous sentence as context.
+- `SpeechLexicon` - Per-language word patterns that mark filled pauses without the LLM.
+- `SpeechLexiconScanner` - Incremental `SpeechLexicon` scan of a transcript that keeps growing.
 
 ## ActualChat.Localization
 
@@ -1018,6 +1058,8 @@ Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 - `ModalUI` - Modal dialog management.
 - `NavbarUI` - Navbar management.
 - `PanelsUI` - Panel management.
+- `RightPanelMode` (enum) - What the right panel shows: Chat or Coach; persisted by `RightPanelStoredState`.
+- `DonutChart` / `BarChart` / `ChartItem` - Inline donut and bar charts with no domain knowledge.
 - `PasskeyUI` - Passkey list/register/rename/delete/sign-in over `IPasskeyAuth`.
 - `PermissionHandler` (abstract class) - Permission request handling base.
 - `ReconnectUI` - RPC connection state monitoring.
@@ -1033,6 +1075,7 @@ Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 - `FiniteList<T>` - Known length, uniform item height, real scrollbar; item position is a pure function of index.
 - `InfiniteList<T>` - Unbounded feed: no scrollbar, fixed huge virtual space, items held by anchoring.
 - `WebRemoteComputedCache` - IndexedDB-based remote computed cache.
+- `Features_EnableSpeechCoach` - Client flag: the server's per-user speech-coach verdict.
 
 ## ActualChat.UI.Blazor.App
 
@@ -1044,6 +1087,12 @@ Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 - `ChatPlayer` (abstract class) - Base class for playing audio entries.
 - `ChatPlayers` - Orchestrates audio playback across chats.
 - `ChatUI` - Chat selection, read positions, and chat state.
+- `CoachUI` - Speech-coach client verdicts, per-tile marks cache and jump-to-audio.
+- `CoachPanel` / `CoachHeader` / `CoachScoreCard` / `CoachLanguageChips` / `CoachEmptyState` - The Coach panel shell.
+- `CoachRecentTab` / `CoachConversationCard`, `CoachProgressTab` / `CoachWeekDeltas` / `CoachMilestones`, `CoachSkillsTab` / `CoachSkillRow` / `CoachScoreSheet` - The three tabs.
+- `CoachSettingsPage` / `CoachChatToggleEntry` / `CoachOccurrences` / `CoachTipBar` - Settings behind the gear, the "Coach me here" menu entry, jump-to-audio list and the tip bar.
+- `CoachLabels` - Metric kind, band and window text for the coach surfaces.
+- `RightPanelModeSwitch` - The Chat | Coach switch, with a dot while a weekly note is unread.
 - `ChatView` - Main chat view component.
 - `EditMembersUI` - Member editing utilities.
 - `ImageAttachmentProcessor` - Runs an attachment image through the JS image processor (resize, jpegli, metadata strip).

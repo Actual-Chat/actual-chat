@@ -1,0 +1,60 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@using ActualChat.UI.Blazor.App.Events
+@inherits ComputedStateComponent<AppUIHub, bool>
+
+<div class="coach-empty">
+    <Card Class="c-promise">
+        <img class="c-mascot" src="/dist/images/kitties/coach-cat.png" alt="" draggable="false">
+        <div class="c-title">@L.Coach_NewUserTitle</div>
+        <div class="c-body">@L.Coach_NewUserBody</div>
+        <div class="c-privacy">@L.Coach_NewUserPrivacy</div>
+        <button type="button" class="btn-modal btn-primary btn" @onclick="@OnRecord">@L.Coach_RecordAMessage</button>
+        <div class="c-first">@L.Coach_FirstCardAfter_Format(MinCardWords)</div>
+    </Card>
+    <TileTopic Topic="@L.Coach_WhatYouWillSee"/>
+    <Card>
+        <TileItem IsHoverable="false">
+            <Icon><i class="text-xl icon-message-square text-03"></i></Icon>
+            <Content>@L.Coach_SeeCardTitle</Content>
+            <Caption>@L.Coach_SeeCardBody</Caption>
+        </TileItem>
+        <TileItem IsHoverable="false">
+            <Icon><i class="text-xl icon-star text-03"></i></Icon>
+            <Content>@L.Coach_SeeProgressTitle</Content>
+            <Caption>@L.Coach_SeeProgressBody</Caption>
+        </TileItem>
+        <TileItem IsHoverable="false">
+            <Icon><i class="text-xl icon-ai-stars text-03"></i></Icon>
+            <Content>@L.Coach_SeeTipTitle</Content>
+            <Caption>@L.Coach_SeeTipBody</Caption>
+        </TileItem>
+    </Card>
+    <Card Class="c-coaching">
+        <TileItem ToggleValue="@State.Value" ToggleValueChanged="@(_ => OnToggle())">
+            <Icon><i class="text-xl icon-ai-stars @(State.Value ? "text-primary" : "text-03")"></i></Icon>
+            <Content>@L.Coach_Coaching</Content>
+            <Caption>@(State.Value ? L.RightPanel_On : L.RightPanel_Off)</Caption>
+        </TileItem>
+    </Card>
+</div>
+
+@code {
+    private const int MinCardWords = 30;
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => new() { InitialValue = false, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var settings = await UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
+        return settings.IsCoachingEnabled;
+    }
+
+    private void OnRecord() {
+        PanelsUI.HidePanels();
+        _ = Hub.UIEventHub.Publish<FocusChatMessageEditorEvent>();
+    }
+
+    private Task OnToggle()
+        => UserSettingsUI.UserCoachSettings().Update(x => x with { IsCoachingEnabled = !x.IsCoachingEnabled });
+}

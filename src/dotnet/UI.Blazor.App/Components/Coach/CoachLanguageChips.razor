@@ -1,0 +1,42 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, CoachLanguageChips.Model>
+@{
+    var m = State.Value;
+}
+
+@if (m.Selected is { } selected) {
+    <div class="coach-language-chips">
+        <div class="c-chips-row">
+        <div class="c-chips">
+            @foreach (var language in m.Languages) {
+                var isOn = language.Iso == selected;
+                var level = language.Level == CoachLanguageLevel.Learning ? L.Coach_Learning : L.Coach_Native;
+                <button type="button" class="chip @(isOn ? "on" : "")" @onclick="@(() => OnSelect(language.Iso))">
+                    @Labels.LanguageName(language.Iso) <span class="c-level">· @level</span>
+                </button>
+            }
+        </div>
+        </div>
+    </div>
+}
+
+@code {
+    private CoachLabels Labels => field ??= new CoachLabels(L);
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var languages = await Hub.CoachUI.ListOwnLanguages(cancellationToken).ConfigureAwait(false);
+        var selected = await Hub.CoachUI.GetSelectedLanguage(cancellationToken).ConfigureAwait(false);
+        return new Model(languages.Where(l => l.Words30Days > 0).ToApiArray(), selected);
+    }
+
+    private Task OnSelect(string iso)
+        => Hub.CoachUI.SelectLanguage(iso);
+
+    public sealed record Model(ApiArray<CoachLanguageInfo> Languages, string? Selected) {
+        public static readonly Model None = new(ApiArray<CoachLanguageInfo>.Empty, null);
+    }
+}

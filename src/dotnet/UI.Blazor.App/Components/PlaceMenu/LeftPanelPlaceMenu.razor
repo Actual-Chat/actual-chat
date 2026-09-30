@@ -7,6 +7,7 @@
     Text="@L.Place_NewChat"
     Click="OnCreateChatClick">
 </MenuEntry>
+<CoachChatToggleEntry ChatId="@_placeId.RootChatId"/>
 @if (_canShare) {
     <MenuEntry
         Icon="icon-share-2 text-2xl"

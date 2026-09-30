@@ -32,6 +32,8 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public IContacts Contacts => field ??= Services.GetRequiredService<IContacts>();
     public IChatUsages ChatUsages => field ??= Services.GetRequiredService<IChatUsages>();
     public IUsage Usage => field ??= Services.GetRequiredService<IUsage>();
+    public ICoach Coach => field ??= Services.GetRequiredService<ICoach>();
+    public IChatCoach ChatCoach => field ??= Services.GetRequiredService<IChatCoach>();
     public INotifications Notifications => field ??= Services.GetRequiredService<INotifications>();
     public ITranslations Translations => field ??= Services.GetRequiredService<ITranslations>();
     public ILiveAudioStreams LiveAudioStreams => field ??= Services.GetRequiredService<ILiveAudioStreams>();
@@ -82,6 +84,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public LocalizationUI LocalizationUI => field ??= Services.GetRequiredService<LocalizationUI>();
     public EditMembersUI EditMembersUI => field ??= Services.GetRequiredService<EditMembersUI>();
     public HighlightUI HighlightUI => field ??= Services.GetRequiredService<HighlightUI>();
+    public CoachUI CoachUI => field ??= Services.GetRequiredService<CoachUI>();
     public new OnboardingUI OnboardingUI => (OnboardingUI)base.OnboardingUI;
     public SearchUI SearchUI => field ??= Services.GetRequiredService<SearchUI>();
     public AppReviewUI AppReviewUI => field ??= Services.GetRequiredService<AppReviewUI>();
