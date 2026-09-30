@@ -56,4 +56,51 @@ public class MauiKeepAwakeUI(UIHub hub) : KeepAwakeUI(hub)
         DeviceDisplay.Current.KeepScreenOn = value;
     }
 #endif
+
+#if IOS
+    // Written on the main thread only, like the switch it guards.
+    private bool _isScreenOffAtEar;
+
+    public override ValueTask SetScreenOffAtEar(bool isEnabled)
+        => DispatchToMainThread(() => {
+            if (_isScreenOffAtEar == isEnabled)
+                return;
+
+            Log.LogInformation("SetScreenOffAtEar({IsEnabled})", isEnabled);
+            _isScreenOffAtEar = isEnabled;
+            if (isEnabled)
+                IosProximityMonitoring.Acquire();
+            else
+                IosProximityMonitoring.Release();
+        }).ToValueTask();
+#elif ANDROID
+    private Android.OS.PowerManager.WakeLock? _screenOffAtEarLock;
+
+    public override ValueTask SetScreenOffAtEar(bool isEnabled)
+    {
+        if (isEnabled == _screenOffAtEarLock is not null)
+            return default;
+
+        Log.LogInformation("SetScreenOffAtEar({IsEnabled})", isEnabled);
+        if (!isEnabled) {
+            // Like a phone call: a call that ends at the ear leaves the screen off until it's taken away.
+            _screenOffAtEarLock!.Release(Android.OS.WakeLockFlags.ReleaseFlagWaitForNoProximity);
+            _screenOffAtEarLock = null;
+            return default;
+        }
+
+        var powerManager = Android.App.Application.Context.GetSystemService(Android.Content.Context.PowerService)
+            as Android.OS.PowerManager;
+        if (powerManager?.IsWakeLockLevelSupported((int)Android.OS.WakeLockFlags.ProximityScreenOff) != true) {
+            Log.LogWarning("SetScreenOffAtEar: no proximity wake lock on this device");
+            return default;
+        }
+
+        var wakeLock = powerManager.NewWakeLock(Android.OS.WakeLockFlags.ProximityScreenOff, "voxt:ScreenOffAtEar")!;
+        wakeLock.SetReferenceCounted(false);
+        wakeLock.Acquire();
+        _screenOffAtEarLock = wakeLock;
+        return default;
+    }
+#endif
 }
