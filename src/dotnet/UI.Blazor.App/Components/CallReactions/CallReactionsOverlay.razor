@@ -9,7 +9,7 @@
     @foreach (var (reaction, authorName) in m.Reactions) {
         var svgName = Emojis.TryGetSvgName(reaction.Emoji);
         <div @key="@(reaction.AuthorId.Value + "/" + reaction.SentAt.EpochOffsetTicks)"
-             class="c-reaction" style="left: @GetLeftPercent(reaction)%">
+             class="c-reaction" style="--left: @GetLeftPercent(reaction)%">
             @if (svgName is not null) {
                 <img class="c-emoji" src="/dist/images/emoji/@(svgName)-animated.svg" alt="@reaction.Emoji.Title"
                      draggable="false"/>

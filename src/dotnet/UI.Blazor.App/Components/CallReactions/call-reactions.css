@@ -15,9 +15,13 @@
     @apply overflow-hidden pointer-events-none;
 }
 .call-reactions-overlay .c-reaction {
-    @apply absolute bottom-16;
+    @apply absolute bottom-16 max-w-full;
     @apply flex-y items-center gap-1;
     @apply opacity-0;
+    /* The same fraction of the panel and of the reaction itself, so a wide label never
+       leaves the panel: at 0% its left edge is on the panel's edge, at 100% its right one is */
+    left: var(--left);
+    translate: calc(-1 * var(--left)) 0;
     will-change: transform, opacity;
     animation: callReactionFloat 3s ease-out forwards;
 }
@@ -29,7 +33,7 @@
     @apply px-1.5 py-0.5 rounded;
     @apply text-caption text-white whitespace-nowrap;
     @apply overflow-hidden;
-    max-width: 12ch;
+    max-width: min(100%, 16ch);
     text-overflow: ellipsis;
     background: rgba(0, 0, 0, 0.5);
 }
