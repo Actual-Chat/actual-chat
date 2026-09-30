@@ -29,8 +29,9 @@ interface NotificationEvent extends ExtendableEvent {
     readonly notification: Notification;
 }
 
-sw.addEventListener('install', () => {
+sw.addEventListener('install', (event: ExtendableEvent) => {
     infoLog?.log(`install: installing updated service worker`);
+    event.waitUntil(precacheImages());
     void sw.skipWaiting();
 });
 
@@ -218,6 +219,39 @@ onBackgroundMessage(messaging, async payload => {
     }
     await sw.registration.showNotification(data.title, options);
 });
+
+// The reconnect and app-recovery overlays show this cat via a CSS background-image, i.e. exactly
+// when the network is down, so it must be available offline. Give it a dedicated URL-matched route
+// (destination-agnostic) and cache, registered before the images route so it wins. ignoreVary and
+// no ExpirationPlugin so the entry cache.addAll writes (Accept: */*, no expiry metadata) is still
+// served for the <img>/background-image request (Accept: image/...). Paths are the ones esbuild
+// rewrites kitty.css url()s to (assetNames "assets/[ext]/[name]", unhashed), not source images/kitties/.
+const kittyCacheName = 'kitty-precache';
+const precacheImageUrls = [
+    '/dist/assets/svg/loading-cat.svg',
+    '/dist/assets/svg/loading-cat-dark.svg',
+];
+const kittyRoute = new Route(
+    ({ url }) => precacheImageUrls.includes(url.pathname),
+    new CacheFirst({
+        cacheName: kittyCacheName,
+        matchOptions: { ignoreVary: true },
+        plugins: [
+            new CacheableResponsePlugin({
+                statuses: [200],
+            }),
+        ],
+    }),
+);
+registerRoute(kittyRoute);
+const precacheImages = async function(): Promise<void> {
+    try {
+        const cache = await caches.open(kittyCacheName);
+        await cache.addAll(precacheImageUrls);
+    } catch (e) {
+        debugLog?.log(`precacheImages: failed to warm kitty cache`, e);
+    }
+}
 
 const imagesCacheStrategy = new CacheFirst({
     cacheName: 'images-cache',
