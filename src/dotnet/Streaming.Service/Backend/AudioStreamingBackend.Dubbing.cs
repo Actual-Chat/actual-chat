@@ -12,6 +12,9 @@ public partial class AudioStreamingBackend
     private readonly ConcurrentDictionary<StreamId, DubEntry> _dubs = new();
     private readonly ConcurrentDictionary<string, Task> _dubChains = new();
     private readonly ConcurrentDictionary<string, DubActivity> _dubActivities = new();
+    // Whether the author's last decided utterance in the language was dubbed, by dub chain key: their
+    // next one starts ducked or not accordingly. It outlives the activity, hence a cache of its own.
+    private readonly ConcurrentLruCache<string, bool> _isDubExpectedByChain = new(8192);
     // Written by the synthesis task, read by every RunDub
     private long _synthesizerDownUntilTicks;
 
@@ -92,6 +95,7 @@ public partial class AudioStreamingBackend
         Language language;
         DubLatencyTrace? latencyTrace;
         AsyncMemoizer<AudioFrame>? original;
+        string? chainKey;
         VoiceOverMix mix;
         Task mixTask;
         AsyncMemoizer<AudioFrame> memoizer;
@@ -102,10 +106,17 @@ public partial class AudioStreamingBackend
                 : null;
             latencyTrace?.OnRequested();
             original = await WaitForOriginal(sourceStreamId, cancellationToken).ConfigureAwait(false);
-            var activity = GetDubChainKey(dubStreamId) is { } chainKey
+            chainKey = GetDubChainKey(dubStreamId);
+            var activity = chainKey != null
                 ? _dubActivities.GetOrAdd(chainKey, static _ => new DubActivity())
                 : new DubActivity();
-            mix = new VoiceOverMix(original, activity, Clocks, Log);
+            mix = new VoiceOverMix(original, activity, Clocks, Log) {
+                // A dub is requested only for a speaker whose languages the listener doesn't speak,
+                // so until this author's utterances say otherwise, one is the likely outcome
+                IsDubExpected = chainKey == null
+                    || !_isDubExpectedByChain.TryGetValue(chainKey, out var isDubExpected)
+                    || isDubExpected,
+            };
             if (latencyTrace != null) {
                 mix.Mixed += latencyTrace.OnMixed;
                 mix.Ducked += latencyTrace.OnDucked;
@@ -154,7 +165,11 @@ public partial class AudioStreamingBackend
             bool ApplyDecision(DubDecision decision) {
                 var downUntil = new Moment(Volatile.Read(ref _synthesizerDownUntilTicks));
                 var isSynthesizerDown = downUntil > Clocks.CpuClock.Now;
-                latencyTrace?.OnDecided(decision == DubDecision.Dub && !isSynthesizerDown);
+                var isDubbing = decision == DubDecision.Dub && !isSynthesizerDown;
+                latencyTrace?.OnDecided(isDubbing);
+                mix.IsDubExpected = isDubbing;
+                if (chainKey != null)
+                    _isDubExpectedByChain[chainKey] = isDubbing;
                 if (decision == DubDecision.NoDub) {
                     Log.LogInformation("RunDub: #{StreamId} - already in {Language}", dubStreamId, language);
                     return false;

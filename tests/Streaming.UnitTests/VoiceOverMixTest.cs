@@ -97,7 +97,9 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task DubShouldBeMixedInAndTheTailDrainedOnTheTick()
     {
         // arrange - 5 frames of original, 10 frames of a quiet dub arriving at once
-        var original = OpusFrames(5, 4000).AsAsyncEnumerable().Memoize();
+        var originalFrames = OpusFrames(5, 4000);
+        var plain = await MixAlone(originalFrames);
+        var original = originalFrames.AsAsyncEnumerable().Memoize();
         var mix = new VoiceOverMix(original, new DubActivity(), TickingClocks, Log);
         var output = Channel.CreateUnbounded<AudioFrame>();
         mix.DubPcm.TryWrite(Pcm(10, 500));
@@ -111,9 +113,9 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
         frames.Should().HaveCount(10);
         frames.Select(x => x.Offset).Should().Equal(Enumerable.Range(0, 10).Select(i => FrameDuration * i));
         frames[5].Offset.Should().Be(frames[4].Offset + FrameDuration, "the tail continues the last original offset");
-        // Opus' first frame after the encoder starts is quieter (lookahead), so frame 1 is the reference
-        AudioFrameRms.Of(frames, 1..2).Should().BeGreaterThan(AudioFrameRms.Of(frames, 4..5) * 1.5,
-            "the original is ducked once the dub has ramped in");
+        // Opus' first frame after the encoder starts is quieter (lookahead), so it is left out
+        AudioFrameRms.Of(frames, 1..5).Should().BeLessThan(AudioFrameRms.Of(plain, 1..5) * 0.5,
+            "the original is ducked under the dub from the first frame the dub speaks in");
         AudioFrameRms.Of(frames, 5..).Should().BeInRange(200, 600, "the tail is the dub alone, at full gain");
     }
 
@@ -260,9 +262,69 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
         await mix.Run(output.Writer, CancellationToken.None);
         var frames = await output.Reader.ReadAllAsync().ToListAsync();
 
-        // assert - after the 50 ms ramp (frames 0-2) the original sits at a quarter
+        // assert - there is no ramp at the start: the original sits at the duck gain from frame 0
         isDucked.Should().BeTrue();
-        AudioFrameRms.Of(frames, 4..).Should().BeLessThan(1500, "the original is held at the duck gain");
+        AudioFrameRms.Of(frames, 1..).Should().BeLessThan(1000, "the original is held at the duck gain");
+    }
+
+    [Fact(Timeout = 20_000)]
+    public async Task ExpectedDubShouldDuckTheOriginalFromItsFirstFrame()
+    {
+        // arrange - a live original and a dub that is expected, but has no audio yet
+        using var clock = new TestClock(multiplier: 0);
+        var frames = OpusFrames(10, 4000);
+        var plain = await MixAlone(frames);
+        var source = Channel.CreateUnbounded<AudioFrame>();
+        var mix = new VoiceOverMix(source.Reader.Memoize(), new DubActivity(), new MomentClockSet(clock), Log) {
+            IsDubExpected = true,
+        };
+        var output = Channel.CreateUnbounded<AudioFrame>();
+        var isDucked = false;
+        mix.Ducked += () => isDucked = true;
+        var runTask = mix.Run(output.Writer, CancellationToken.None);
+
+        // act - the dub channel stays open until the whole original went through
+        var mixed = await MixThrough(source, output, frames);
+        source.Writer.Complete();
+        mix.DubPcm.TryComplete();
+        await runTask;
+
+        // assert
+        isDucked.Should().BeTrue();
+        AudioFrameRms.Of(mixed, 1..).Should().BeLessThan(AudioFrameRms.Of(plain, 1..) * 0.3,
+            "the original waits for its dub at the duck gain rather than at full volume");
+    }
+
+    [Fact(Timeout = 20_000)]
+    public Task DuckShouldBeReleasedOnceTheDubIsNoLongerExpected()
+        => AssertExpectedDubDuckIsReleased(mix => mix.IsDubExpected = false);
+
+    [Fact(Timeout = 20_000)]
+    public Task DuckShouldBeReleasedOnceTheExpectedDubEndsWithoutAudio()
+        => AssertExpectedDubDuckIsReleased(mix => mix.DubPcm.TryComplete());
+
+    [Fact(Timeout = 20_000)]
+    public async Task UnexpectedDubShouldLeaveTheOriginalAtFullGain()
+    {
+        // arrange - the dub channel is open, but the author's last utterance was not dubbed
+        using var clock = new TestClock(multiplier: 0);
+        var frames = OpusFrames(10, 4000);
+        var plain = await MixAlone(frames);
+        var source = Channel.CreateUnbounded<AudioFrame>();
+        var mix = new VoiceOverMix(source.Reader.Memoize(), new DubActivity(), new MomentClockSet(clock), Log) {
+            IsDubExpected = false,
+        };
+        var output = Channel.CreateUnbounded<AudioFrame>();
+        var runTask = mix.Run(output.Writer, CancellationToken.None);
+
+        // act
+        var mixed = await MixThrough(source, output, frames);
+        source.Writer.Complete();
+        mix.DubPcm.TryComplete();
+        await runTask;
+
+        // assert
+        AudioFrameRms.Of(mixed, 1..).Should().BeGreaterThan(AudioFrameRms.Of(plain, 1..) * 0.9);
     }
 
     [Fact(Timeout = 20_000)]
@@ -380,6 +442,48 @@ public class VoiceOverMixTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     // Private methods
+
+    private async Task AssertExpectedDubDuckIsReleased(Action<VoiceOverMix> release)
+    {
+        // arrange - 8 of 20 frames go through while the dub is expected
+        using var clock = new TestClock(multiplier: 0);
+        var frames = OpusFrames(20, 4000);
+        var plain = await MixAlone(frames);
+        var source = Channel.CreateUnbounded<AudioFrame>();
+        var mix = new VoiceOverMix(source.Reader.Memoize(), new DubActivity(), new MomentClockSet(clock), Log) {
+            IsDubExpected = true,
+        };
+        var output = Channel.CreateUnbounded<AudioFrame>();
+        var runTask = mix.Run(output.Writer, CancellationToken.None);
+        var mixed = await MixThrough(source, output, frames.Take(8));
+
+        // act
+        release.Invoke(mix);
+        mixed.AddRange(await MixThrough(source, output, frames.Skip(8)));
+        source.Writer.Complete();
+        mix.DubPcm.TryComplete();
+        await runTask;
+
+        // assert - the release ramps over 50 ms, frames 8-10
+        AudioFrameRms.Of(mixed, 1..8).Should().BeLessThan(AudioFrameRms.Of(plain, 1..8) * 0.3,
+            "the original is ducked while its dub is expected");
+        AudioFrameRms.Of(mixed, 12..).Should().BeGreaterThan(AudioFrameRms.Of(plain, 12..) * 0.9,
+            "the original is back at full gain once no dub is coming");
+    }
+
+    private static async Task<List<AudioFrame>> MixThrough(
+        Channel<AudioFrame> source,
+        Channel<AudioFrame> output,
+        IEnumerable<AudioFrame> frames)
+    {
+        // One mixed frame per original frame: once it is read, the mix has processed exactly that much
+        var mixed = new List<AudioFrame>();
+        foreach (var frame in frames) {
+            source.Writer.TryWrite(frame);
+            mixed.Add(await output.Reader.ReadAsync());
+        }
+        return mixed;
+    }
 
     private static async Task WhenEmitted(Channel<AudioFrame> output, int frameCount)
     {

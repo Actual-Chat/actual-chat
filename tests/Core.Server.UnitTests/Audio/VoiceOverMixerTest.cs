@@ -18,21 +18,22 @@ public class VoiceOverMixerTest
         var output = new short[FrameLength];
 
         // act
-        mixer.Mix(original, output, isDubSpeakingElsewhere: false);
+        mixer.Mix(original, output, mustDuck: false);
 
         // assert
         output.Should().AllBeEquivalentTo((short)1000);
-        mixer.IsDubSpeaking.Should().BeFalse();
+        mixer.IsDucked.Should().BeFalse();
     }
 
     [Fact]
     public void DubShouldBeSummedAndTheOriginalDuckedOverTheRamp()
     {
-        // arrange
+        // arrange - the dub arrives once the original is already playing at full gain
         var mixer = NewMixer();
-        mixer.AddDubPcm(Bytes(Constant(2000, 3 * FrameLength)));
         var original = Constant(1000);
         var output = new short[FrameLength];
+        mixer.Mix(original, output, false);
+        mixer.AddDubPcm(Bytes(Constant(2000, 3 * FrameLength)));
 
         // act - three frames of dub: the ramp spans the first two
         mixer.Mix(original, output, false);
@@ -47,7 +48,7 @@ public class VoiceOverMixerTest
         first[^1].Should().BeLessThan(first[0]);
         second[^1].Should().BeCloseTo((short)(2000 + 250), 20);
         third.Should().AllSatisfy(x => x.Should().BeCloseTo((short)2250, 5));
-        mixer.IsDubSpeaking.Should().BeTrue();
+        mixer.IsDucked.Should().BeTrue();
         mixer.HasDubAudio.Should().BeFalse();
     }
 
@@ -60,7 +61,7 @@ public class VoiceOverMixerTest
         var original = Constant(1000);
         var output = new short[FrameLength];
         mixer.Mix(original, output, false); // S = 0: the dub frame itself, hold counts from here
-        mixer.Mix(original, output, false); // S = 1: ramp completes here (2 frames)
+        mixer.Mix(original, output, false); // S = 1
 
         // act - S = 2..HoldFrameCount (HoldFrameCount - 1 more frames) without dub keep the duck,
         // the next one (S = HoldFrameCount + 1) starts the release
@@ -69,7 +70,7 @@ public class VoiceOverMixerTest
             mixer.Mix(original, output, false);
             heldGains.Add(output[^1]);
         }
-        var isSpeakingAfterHold = mixer.IsDubSpeaking;
+        var isDuckedAfterHold = mixer.IsDucked;
         mixer.Mix(original, output, false);
         var releasing = output[^1];
         mixer.Mix(original, output, false);
@@ -77,27 +78,42 @@ public class VoiceOverMixerTest
 
         // assert
         heldGains.Should().AllSatisfy(x => x.Should().BeCloseTo((short)250, 5));
-        isSpeakingAfterHold.Should().BeTrue();
+        isDuckedAfterHold.Should().BeTrue();
         releasing.Should().BeGreaterThan((short)250).And.BeLessThan((short)1000);
         released.Should().BeCloseTo((short)1000, 5);
-        mixer.IsDubSpeaking.Should().BeFalse();
+        mixer.IsDucked.Should().BeFalse();
     }
 
     [Fact]
-    public void SpeakingElsewhereShouldDuckWithoutDubSamples()
+    public void MustDuckShouldDuckWithoutDubSamples()
     {
-        // arrange
+        // arrange - the original is already playing at full gain
         var mixer = NewMixer();
         var original = Constant(1000);
         var output = new short[FrameLength];
+        mixer.Mix(original, output, mustDuck: false);
 
         // act
-        mixer.Mix(original, output, isDubSpeakingElsewhere: true);
-        mixer.Mix(original, output, isDubSpeakingElsewhere: true);
+        mixer.Mix(original, output, mustDuck: true);
+        mixer.Mix(original, output, mustDuck: true);
 
         // assert
         output[^1].Should().BeCloseTo((short)250, 5);
-        mixer.IsDubSpeaking.Should().BeTrue();
+        mixer.IsDucked.Should().BeTrue();
+    }
+
+    [Fact]
+    public void FirstFrameShouldStartAtTheDuckGainWhenDucked()
+    {
+        // arrange
+        var mixer = NewMixer();
+        var output = new short[FrameLength];
+
+        // act
+        mixer.Mix(Constant(1000), output, mustDuck: true);
+
+        // assert
+        output.Should().AllBeEquivalentTo((short)250, "nothing precedes the first frame to ramp down from");
     }
 
     [Fact]
@@ -110,15 +126,15 @@ public class VoiceOverMixerTest
         var output = new short[FrameLength];
 
         // act
-        var isElsewhereOwn = mixer.Mix(original, output, isDubSpeakingElsewhere: true);
-        var isElsewhereOwnAgain = mixer.Mix(original, output, isDubSpeakingElsewhere: true);
-        var isHoldOwn = mixer.Mix(original, output, isDubSpeakingElsewhere: false);
+        var isForcedOwn = mixer.Mix(original, output, mustDuck: true);
+        var isForcedOwnAgain = mixer.Mix(original, output, mustDuck: true);
+        var isHoldOwn = mixer.Mix(original, output, mustDuck: false);
 
         // assert - the duck is on throughout, but only the call that mixed a dub frame reports it
-        isElsewhereOwn.Should().BeTrue("the first call consumed the one dub frame");
-        isElsewhereOwnAgain.Should().BeFalse("a duck forced from elsewhere is not this mixer's own speech");
+        isForcedOwn.Should().BeTrue("the first call consumed the one dub frame");
+        isForcedOwnAgain.Should().BeFalse("a duck forced by the caller is not this mixer's own speech");
         isHoldOwn.Should().BeFalse("the hold keeps the duck on without any dub audio");
-        mixer.IsDubSpeaking.Should().BeTrue();
+        mixer.IsDucked.Should().BeTrue();
     }
 
     [Fact]
@@ -144,7 +160,7 @@ public class VoiceOverMixerTest
         mixer.AddDubPcm(Bytes(Constant(30000)));
         var output = new short[FrameLength];
 
-        // act - the ramp starts at full gain, so the first sample is 30000 + 30000
+        // act - even ducked, the original on top of the dub is past the range
         mixer.Mix(Constant(30000), output, false);
 
         // assert
