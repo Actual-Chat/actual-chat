@@ -368,7 +368,9 @@ export class AudioContextSource {
         // Subscribe to device wake events - no need to store the handler since this is a singleton
         OnDeviceAwake.events.add((durationMs) => this.onDeviceAwake(durationMs));
         if (purpose === 'playback') {
-            if ('audioSession' in navigator && typeof navigator.audioSession === 'object') {
+            // iOS only: on macOS a 'playback' session makes every AudioContext the system Now Playing
+            // target, so media keys would suspend our sounds (the ringtone, too) instead of the user's music
+            if (DeviceInfo.isIos && 'audioSession' in navigator && typeof navigator.audioSession === 'object') {
                 (navigator.audioSession as any)['type'] = 'playback';
                 (navigator.audioSession as any)['type'] = 'auto'; // Hack for iOS Safari
                 (navigator.audioSession as any)['type'] = 'playback';
