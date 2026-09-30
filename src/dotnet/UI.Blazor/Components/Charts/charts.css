@@ -1,0 +1,16 @@
+.donut-chart { @apply flex-x items-center gap-x-4; }
+.donut-chart .c-ring { @apply relative w-28 h-28; }
+.donut-chart .c-ring > svg { @apply absolute inset-0 w-full h-full; transform: rotate(-90deg); }
+.donut-chart .c-track { fill: none; stroke: var(--background-02); stroke-width: 6; }
+.donut-chart .c-slice { fill: none; stroke: currentColor; stroke-width: 6; }
+.donut-chart .c-center { @apply absolute inset-0 flex items-center justify-center text-center text-sm; }
+.donut-chart .c-legend { @apply flex-y gap-y-1 text-sm; }
+.donut-chart .c-legend li { @apply flex-x items-center gap-x-2; }
+.donut-chart .c-swatch { @apply w-3 h-3 rounded-sm; background: currentColor; }
+.bar-chart { @apply relative flex-x items-end gap-x-1 h-32; }
+.bar-chart .c-reference { @apply absolute left-0 right-0 border-t border-dashed opacity-60 pointer-events-none; margin-bottom: 1.25rem; }
+.bar-chart .c-column { @apply flex-1 flex-y items-center gap-y-1 h-full; }
+.bar-chart .c-bar-track { @apply flex-1 w-full flex-y justify-end; }
+.bar-chart .c-bar { @apply w-full rounded-t-sm; background: currentColor; }
+.bar-chart .c-label { @apply text-xs text-03; }
+.bar-chart .c-value { @apply text-xs text-02 text-center; }
