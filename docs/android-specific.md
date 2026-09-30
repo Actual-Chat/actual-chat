@@ -71,7 +71,7 @@ sequenceDiagram
     Note over Main: splash removed — 1103 ms
 ```
 
-The two things that used to block the main thread and no longer do:
+What used to block the main thread and no longer does:
 
 - **The Blazor DI container.** `EnsureStarted` now runs at the end of `CreateMauiApp`, so
   the container builds on the pool *alongside* MAUI's own startup and is typically ready
@@ -86,6 +86,12 @@ The two things that used to block the main thread and no longer do:
   `AndroidUtils.IsUnderMemoryPressure()` (a `Running*` trim in the last minute, or
   `MemoryInfo.LowMemory`) says the OS is asking for less work. Until it completes,
   `MauiProgram.IsFirebaseAnalyticsReady` is false and analytics events are dropped, not queued.
+- **Notification channels.** `MauiProgram.OnPostCreate` used to create the default and upload
+  channels inline: two binder calls plus the first use of the localizer, which a cold start on
+  a Snapdragon 460 class phone stretched to ~2.5 s between `onStart` and `onResume` — inside the
+  5 s an unfocused window gets before an input ANR. They are created on a worker now. Channels
+  persist across runs, so only a first-ever launch is without them, and that launch has no push
+  token to be notified through either.
 
 ::: warning
 Nothing may block the main thread on the warm-up task. Chromium posts its native init back
