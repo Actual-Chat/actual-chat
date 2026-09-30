@@ -216,7 +216,10 @@ public class SelectionUI : UIServiceBase<AppUIHub>
             ChatEntries = selection.ToArray(),
             DestinationChatIds = selectedChatIds.ToArray(),
         };
-        await UICommander.Run(cmd, CancellationToken.None).ConfigureAwait(true);
+        var result = await UICommander.Run(cmd, CancellationToken.None).ConfigureAwait(true);
+        if (result.HasError)
+            return;
+
         var firstChatId = selectedChatIds.First();
         var info = await BuildInfoMessage().ConfigureAwait(true);
         ToastUI.Show(info, NavigateAction, L.Selection_Navigate, ToastDismissDelay.Long);

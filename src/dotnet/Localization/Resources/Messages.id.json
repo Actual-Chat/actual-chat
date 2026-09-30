@@ -108,6 +108,7 @@
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Utas hanya bisa dimulai setelah pengguna ini menambahkan Anda ke kontaknya atau membalas.",
+  "Error_FilesRequireContact": "File hanya bisa dikirim setelah pengguna ini menambahkan Anda ke kontaknya atau membalas.",
   "Error_SignInToFollowThread": "Anda harus masuk untuk mengikuti utas obrolan.",
   "Error_OnlyPeerContactCanBeBlocked": "Hanya kontak pribadi yang bisa diblokir.",
   "Error_SignInToChat": "Anda harus masuk untuk mengobrol dengan pengguna lain.",

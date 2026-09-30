@@ -100,6 +100,7 @@
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "スレッドを開始できるのは、相手があなたを連絡先に追加するか返信した後です。",
+  "Error_FilesRequireContact": "ファイルを送信できるのは、相手があなたを連絡先に追加するか返信した後です。",
   "Error_SignInToFollowThread": "スレッドをフォローするにはサインインしてください。",
   "Error_OnlyPeerContactCanBeBlocked": "ブロックできるのは個人の連絡先だけです。",
   "Error_SignInToChat": "他のユーザーとチャットするにはサインインしてください。",

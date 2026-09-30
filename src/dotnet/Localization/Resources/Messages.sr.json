@@ -108,6 +108,7 @@
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Нити се могу започети тек након што вас овај корисник дода у контакте или одговори.",
+  "Error_FilesRequireContact": "Фајлови се могу слати тек након што вас овај корисник дода у контакте или одговори.",
   "Error_SignInToFollowThread": "Да бисте пратили нит чета, морате се пријавити.",
   "Error_OnlyPeerContactCanBeBlocked": "Блокирати се могу само приватни контакти.",
   "Error_SignInToChat": "Да бисте писали другом кориснику, морате се пријавити.",

@@ -100,6 +100,7 @@
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Threads kannst du erst starten, wenn diese Person dich zu ihren Kontakten hinzufügt oder antwortet.",
+  "Error_FilesRequireContact": "Dateien kannst du erst senden, wenn diese Person dich zu ihren Kontakten hinzufügt oder antwortet.",
   "Error_SignInToFollowThread": "Melde dich an, um einem Thread zu folgen.",
   "Error_OnlyPeerContactCanBeBlocked": "Nur persönliche Kontakte können blockiert werden.",
   "Error_SignInToChat": "Melde dich an, um einer anderen Person zu schreiben.",

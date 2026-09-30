@@ -100,6 +100,7 @@
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Você poderá iniciar tópicos quando esta pessoa adicionar você aos contatos ou responder.",
+  "Error_FilesRequireContact": "Você poderá enviar arquivos quando esta pessoa adicionar você aos contatos ou responder.",
   "Error_SignInToFollowThread": "Entre na sua conta para seguir um tópico.",
   "Error_OnlyPeerContactCanBeBlocked": "Só contatos pessoais podem ser bloqueados.",
   "Error_SignInToChat": "Entre na sua conta para conversar com outra pessoa.",
