@@ -1,0 +1,41 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, RightPanelModeSwitch.Model>
+@{
+    var mode = State.Value.Mode;
+}
+
+<div class="right-panel-mode-switch" role="tablist">
+    <Button Class="@ButtonClass(mode, RightPanelMode.Chat)" Click="@(_ => Select(RightPanelMode.Chat))">
+        @L.Coach_ModeChat
+    </Button>
+    <Button Class="@ButtonClass(mode, RightPanelMode.Coach)" Click="@(_ => Select(RightPanelMode.Coach))">
+        @L.Coach_ModeCoach
+        @if (State.Value.HasNote) {
+            <span class="c-dot"></span>
+        }
+    </Button>
+</div>
+
+@code {
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new Model(PanelsUI.Right.Mode.Value, false),
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var mode = await PanelsUI.Right.Mode.Use(cancellationToken).ConfigureAwait(false);
+        var note = await UserSettingsUI.UserCoachWeeklyNote().Get(cancellationToken).ConfigureAwait(false);
+        return new Model(mode, note.IsPending);
+    }
+
+    private void Select(RightPanelMode mode)
+        => PanelsUI.Right.SetMode(mode);
+
+    private static string ButtonClass(RightPanelMode current, RightPanelMode mode)
+        => current == mode ? "btn-mode on" : "btn-mode";
+
+    public sealed record Model(RightPanelMode Mode, bool HasNote);
+}

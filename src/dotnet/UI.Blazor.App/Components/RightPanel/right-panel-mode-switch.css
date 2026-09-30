@@ -1,0 +1,20 @@
+/* Floats over the panel cover, centred, as the mock draws it; the close button stays at the right */
+.right-panel-mode-switch {
+    @apply absolute z-30 left-1/2 flex-x items-center justify-center gap-x-1;
+    @apply p-1 rounded-full;
+    @apply bg-01 bg-opacity-70;
+    top: calc(0.5rem + var(--safe-area-top));
+    transform: translateX(-50%);
+    backdrop-filter: blur(6px);
+}
+.right-panel-mode-switch .btn.btn-mode {
+    @apply min-h-8 px-4;
+    @apply rounded-full border-0 bg-transparent no-sheen;
+    @apply text-03 text-sm;
+}
+.right-panel-mode-switch .btn.btn-mode.on {
+    @apply bg-primary text-01 shadow-sm;
+}
+.right-panel-mode-switch .btn.btn-mode .c-dot {
+    @apply inline-block w-2 h-2 ml-1 rounded-full bg-danger;
+}
