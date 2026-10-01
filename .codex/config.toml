@@ -1,5 +1,6 @@
 [mcp_servers.chrome-devtools-1]
 url = "http://localhost:8765/mcp"
+default_tools_approval_mode = "approve"
 
 [mcp_servers.chrome-devtools-2]
 url = "http://localhost:8766/mcp"
@@ -28,7 +29,9 @@ command = "tools/seq-mcp-mcp-wrapper"
 [mcp_servers.voxt-robokitty]
 url = "https://voxt.ai/mcp"
 bearer_token_env_var = "ActualChat_RoboKitty_API_Key"
+default_tools_approval_mode = "approve"
 
 [mcp_servers.voxt-robokitty-dev]
 url = "https://dev.voxt.ai/mcp"
 bearer_token_env_var = "ActualChat_RoboKitty_Dev_API_Key"
+default_tools_approval_mode = "approve"
