@@ -4,13 +4,18 @@
     var isInnerStep = Modal.Ref.StepRef != null;
 }
 
-<div class="modal-header">
+<div class="modal-header @(Caption.IsNullOrEmpty() ? "" : "has-caption")">
     @if (isInnerStep && !HideBackButton) {
         <HeaderButton Click="OnBackClick" Class="btn-header-back">
             <i class="icon-arrow-left"></i>
         </HeaderButton>
     }
-    <h3 class="modal-title">@Title</h3>
+    <div class="modal-title-group">
+        <h3 class="modal-title">@Title</h3>
+        @if (!Caption.IsNullOrEmpty()) {
+            <div class="modal-caption">@Caption</div>
+        }
+    </div>
     @* × only on the start page; on inner steps navigation is Back (footer/arrow), no × clutter. *@
     @if (HasCloseButton && !isInnerStep) {
         <HeaderButton Click="OnCloseClick">
@@ -24,6 +29,7 @@
     [Parameter] public bool HasCloseButton { get; set; }
     [Parameter] public bool HideBackButton { get; set; }
     [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Caption { get; set; } = "";
 
     private void OnCloseClick()
         => Modal.Close();

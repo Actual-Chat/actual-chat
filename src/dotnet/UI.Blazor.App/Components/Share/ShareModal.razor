@@ -16,6 +16,7 @@
     BodyVariant="BodyVariant.Flush"
     HasCloseButton="true"
     Title="@(ModalModel.Title.NullIfEmpty() ?? L.Common_Share)"
+    Caption="@ModalModel.Caption"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
     <Body>
     <FormBlock Class="with-contact-list">

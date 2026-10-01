@@ -95,11 +95,12 @@ public static class ShareUIExt
             var localUrl = Links.Chat(chat.AliasInfo, place?.AliasInfo);
             return new ShareModalModel(
                 ShareKind.Chat,
-                l.Share_Chat,
+                l.MessageMenu_ShareLink,
                 targetTitle,
                 new (text, localUrl),
                 null,
-                imageUrl);
+                imageUrl,
+                l.Chat_PublicChat);
         }
 
         var invites = services.GetRequiredService<IInvites>();
@@ -111,11 +112,12 @@ public static class ShareUIExt
         var shareModalSelectorPrefs = ShareWithPlaceMembersOnly.GetFor(chat, place);
         return new ShareModalModel(
             ShareKind.ChatInvite,
-            l.Share_PrivateChatJoinLink,
+            l.MessageMenu_ShareLink,
             targetTitle,
             new (text, Links.Invite(InviteLinkFormat.PrivateChat, invite.Id)),
             shareModalSelectorPrefs,
-            imageUrl);
+            imageUrl,
+            l.Chat_PrivateChat);
     }
 
     public static async ValueTask<ShareModalModel?> GetModel(
@@ -140,11 +142,12 @@ public static class ShareUIExt
 
             return new ShareModalModel(
                 ShareKind.Place,
-                l.Share_Place,
+                l.MessageMenu_ShareLink,
                 place.Title,
                 new (text, Links.Chat(welcomeChatId)),
                 null,
-                imageUrl);
+                imageUrl,
+                l.Place_PublicPlace);
         }
 
         var invites = services.GetRequiredService<IInvites>();
@@ -154,11 +157,12 @@ public static class ShareUIExt
 
         return new ShareModalModel(
             ShareKind.PlaceInvite,
-            l.Share_PrivatePlaceJoinLink,
+            l.MessageMenu_ShareLink,
             place.Title,
             new(text, Links.Invite(InviteLinkFormat.PrivatePlace, invite.Id)),
             null,
-            imageUrl);
+            imageUrl,
+            l.Place_PrivatePlace);
     }
 
     public static async ValueTask<ShareModalModel?> GetModel(
@@ -184,13 +188,13 @@ public static class ShareUIExt
 
         var l = hub.StringLocalizer;
         var name = account.Avatar.Name;
-        var title = l.Share_ContactOf_Format(name);
         var text = l.Share_TextNamed_Format(name, CoreConstants.AppName);
         return new ShareModalModel(
-            ShareKind.Contact, title, name,
+            ShareKind.Contact, l.MessageMenu_ShareLink, name,
             new(text, Links.User(account.Id)),
             null,
-            GetAccountImageUrl(hub, account));
+            GetAccountImageUrl(hub, account),
+            name);
     }
 
     public static async ValueTask<ShareModalModel?> GetOwnAccountModel(
@@ -204,13 +208,13 @@ public static class ShareUIExt
 
         var l = shareUI.Hub.StringLocalizer;
         var name = ownAccount.Avatar.Name;
-        var title = l.YourAccount_ShareYourContact;
         var text = l.Share_TextNamed_Format(name, CoreConstants.AppName);
         return new ShareModalModel(
-            ShareKind.Contact, title, name,
+            ShareKind.Contact, l.MessageMenu_ShareLink, name,
             new(text, Links.User(ownAccount.AliasInfo)),
             null,
-            GetAccountImageUrl(shareUI.Hub, ownAccount));
+            GetAccountImageUrl(shareUI.Hub, ownAccount),
+            name);
     }
 
     // Private methods
