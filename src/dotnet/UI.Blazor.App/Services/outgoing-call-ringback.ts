@@ -4,8 +4,8 @@ import { SoundPlayer } from '../../UI.Blazor/Services/TuneUI/sound-player';
 
 const { logScope, debugLog } = getLogs('OutgoingCallRingback');
 
-// European ringback tone: a 425 Hz sine, 1s on / 4s off. Synthesized (a standard telephony
-// signal - no asset or licensing needed) and looped the same way as the incoming ringtone.
+// European ringback tone: a 425 Hz sine, 1s on / 4s off. Synthesized into a short WAV (a standard
+// telephony signal - no asset or licensing needed) and looped the same way as the incoming ringtone.
 const SampleRate = 8000;
 const Frequency = 425;
 const ToneSec = 1;
@@ -22,7 +22,7 @@ export class OutgoingCallRingback {
             return;
 
         debugLog?.log(`${logScope}.start`);
-        this.ring = SoundPlayer.instance.loop(buildRingback());
+        this.ring = SoundPlayer.instance.loop(buildRingbackWav());
     }
 
     /** Called by blazor */
@@ -37,19 +37,45 @@ export class OutgoingCallRingback {
     }
 }
 
-function buildRingback(): AudioBuffer {
+function buildRingbackWav(): Blob {
     const total = Math.floor(SampleRate * (ToneSec + PauseSec));
     const toneSamples = Math.floor(SampleRate * ToneSec);
     const rampSamples = Math.max(1, Math.floor(SampleRate * RampSec));
-    const buffer = new AudioBuffer({ length: total, sampleRate: SampleRate });
-    const samples = buffer.getChannelData(0); // the pause segment stays zero-filled (silence)
+    const samples = new Int16Array(total); // the pause segment stays zero-filled (silence)
     for (let i = 0; i < toneSamples; i++) {
         let amp = Volume;
         if (i < rampSamples)
             amp = Volume * (i / rampSamples);
         else if (i > toneSamples - rampSamples)
             amp = Volume * ((toneSamples - i) / rampSamples);
-        samples[i] = Math.sin(2 * Math.PI * Frequency * (i / SampleRate)) * amp;
+        const value = Math.sin(2 * Math.PI * Frequency * (i / SampleRate)) * amp;
+        samples[i] = Math.round(Math.max(-1, Math.min(1, value)) * 0x7fff);
     }
-    return buffer;
+    return encodeWav(samples, SampleRate);
+}
+
+function encodeWav(samples: Int16Array, sampleRate: number): Blob {
+    const dataBytes = samples.length * 2;
+    const buffer = new ArrayBuffer(44 + dataBytes);
+    const view = new DataView(buffer);
+    const writeStr = (offset: number, text: string) => {
+        for (let i = 0; i < text.length; i++)
+            view.setUint8(offset + i, text.charCodeAt(i));
+    };
+    writeStr(0, 'RIFF');
+    view.setUint32(4, 36 + dataBytes, true);
+    writeStr(8, 'WAVE');
+    writeStr(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); // PCM
+    view.setUint16(22, 1, true); // mono
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true); // byte rate
+    view.setUint16(32, 2, true); // block align
+    view.setUint16(34, 16, true); // bits per sample
+    writeStr(36, 'data');
+    view.setUint32(40, dataBytes, true);
+    for (let i = 0; i < samples.length; i++)
+        view.setInt16(44 + i * 2, samples[i], true);
+    return new Blob([buffer], { type: 'audio/wav' });
 }
