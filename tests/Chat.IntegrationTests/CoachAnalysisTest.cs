@@ -720,17 +720,21 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
         var streaming = await tester.CreateStreamingEntry(chatId, Language.Parse("en-US"));
         var streamId = streaming.ChatEntrySlim.ContentStreamId;
-        var realtime = LiveSentences(1, 3) + " So it ends.";
+        var realtime = LiveSentences(1, 1);
         source.Say(streamId, realtime);
         source.End(streamId);
-        await TestWait.WhenPolled(() => tagger.Calls.Should().Be(1), TimeSpan.FromSeconds(30));
+        await WhenLiveMarks(backend, streaming.ChatEntrySlim, 1);
+        tagger.Calls.Should().Be(1);
+        tagger.Requests[0].Text.Should().Be(realtime);
 
         // act: re-transcription rewrote the words
-        await tester.FinalizeStreamingEntry(streaming, realtime.Replace("usual", "usual indeed"));
+        var settled = realtime.Replace("usual", "usual indeed");
+        await tester.FinalizeStreamingEntry(streaming, settled);
 
         // assert
         await WhenTagged(backend, streaming.ChatEntrySlim.Id);
         tagger.Calls.Should().Be(2, "a text that differs from the live one is tagged again");
+        tagger.Requests[1].Text.Should().Be(settled);
     }
 
     [Fact]
