@@ -39,7 +39,7 @@ export async function startRecording(page: Page) {
 
 export async function startCamera(page: Page) {
     await page.locator('.chat-audio-panel .video-wrapper button').first().click();
-    // The first start asks through the join modal; a rejoin after a hang-up resumes without it
+    // A start with the mic closed asks through the join modal; on the air, or on a rejoin, it starts at once
     const modal = page.locator('.modal').filter({ has: page.locator('.camera-preview-video') }).first();
     const preview = page.locator('.video-panel .video-streaming-preview').first();
     await expect.poll(async () => await modal.isVisible() || await preview.isVisible(), { timeout: 15_000 })

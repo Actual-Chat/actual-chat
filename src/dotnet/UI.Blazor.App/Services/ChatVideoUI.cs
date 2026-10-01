@@ -1,4 +1,5 @@
-﻿using ActualChat.Streaming;
+﻿using ActualChat.Live;
+using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Components.VideoPanel;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
@@ -215,6 +216,16 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
             if (chat is null || !IsVideoAvailableNonComputed(chat))
                 return;
+
+            // Already on the air in this chat - on a call, or with the mic open - so the camera just
+            // joins in: the preview's mic choice is made, and the camera is the last session's.
+            var isOnAir = Hub.CallUI.GetActiveCallNonComputed() is { Phase: CallPhase.Active } call
+                && call.ChatId == chatId;
+            isOnAir = isOnAir || await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) == chatId;
+            if (isOnAir) {
+                await StartVideoCaptureInternal(chatId, cancellationToken).ConfigureAwait(false);
+                return;
+            }
 
             var chatContext = new ChatContext(Hub, chat);
             var model = new JoinVideoCallModal.Model(chatContext, JoinVideoCallModal.VideoCallMode.Join);
