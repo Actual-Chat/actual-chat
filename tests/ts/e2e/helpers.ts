@@ -320,6 +320,33 @@ export async function isSignedIn(page: Page): Promise<boolean> {
 }
 
 export async function signIn(page: Page, email: string = TEST_EMAIL, otp: string = TEST_OTP) {
+    const otpDigits = await requestEmailCode(page, email);
+
+    // fill() bypasses pointer events, so digits land even if the "Register new
+    // account?" ConfirmModal has already rendered on top of the TOTP step.
+    for (let i = 0; i < 6; i++) {
+        await otpDigits.nth(i).fill(otp[i]);
+        await page.waitForTimeout(50);
+    }
+
+    // Unknown emails → AccountUI.MonitorPendingRegistration shows a ConfirmModal
+    // ("Register new account?"); confirm to create the account. Existing accounts
+    // skip the modal and sign-in completes directly.
+    const registerModal = page.locator('[id^="Modal-ConfirmModal"]:has-text("Register new account")').first();
+    const signedInLandmark = page.locator('.chat-list, .account-dropdown').first();
+    await Promise.race([
+        registerModal.waitFor({ state: 'visible', timeout: 30_000 })
+            .then(async () => {
+                await registerModal.locator('button:has-text("Register")').click({ timeout: 5_000 });
+                await registerModal.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
+            }),
+        signedInLandmark.waitFor({ state: 'visible', timeout: 30_000 }),
+    ]).catch(() => { /* caller verifies */ });
+}
+
+/** Goes through the sign-in modal up to the point where the server has sent the code, and returns
+ *  the code inputs. Works in any UI language: every step is located by class or type. */
+export async function requestEmailCode(page: Page, email: string): Promise<Locator> {
     const signInButton = page.locator('button.signin-button-group, button.signin-button').first();
     await signInButton.waitFor({ state: 'visible', timeout: 10000 });
     // force: a stale OnboardingModal overlay can still intercept clicks on a fresh context.
@@ -345,27 +372,7 @@ export async function signIn(page: Page, email: string = TEST_EMAIL, otp: string
     // TotpInput auto-verifies when all 6 digits are entered — no separate verify button.
     const otpDigits = page.locator('.totp-input input[inputmode="numeric"]');
     await otpDigits.first().waitFor({ state: 'visible', timeout: 30_000 });
-
-    // fill() bypasses pointer events, so digits land even if the "Register new
-    // account?" ConfirmModal has already rendered on top of the TOTP step.
-    for (let i = 0; i < 6; i++) {
-        await otpDigits.nth(i).fill(otp[i]);
-        await page.waitForTimeout(50);
-    }
-
-    // Unknown emails → AccountUI.MonitorPendingRegistration shows a ConfirmModal
-    // ("Register new account?"); confirm to create the account. Existing accounts
-    // skip the modal and sign-in completes directly.
-    const registerModal = page.locator('[id^="Modal-ConfirmModal"]:has-text("Register new account")').first();
-    const signedInLandmark = page.locator('.chat-list, .account-dropdown').first();
-    await Promise.race([
-        registerModal.waitFor({ state: 'visible', timeout: 30_000 })
-            .then(async () => {
-                await registerModal.locator('button:has-text("Register")').click({ timeout: 5_000 });
-                await registerModal.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
-            }),
-        signedInLandmark.waitFor({ state: 'visible', timeout: 30_000 }),
-    ]).catch(() => { /* caller verifies */ });
+    return otpDigits;
 }
 
 export async function ensureSignedIn(page: Page, email: string = TEST_EMAIL, otp: string = TEST_OTP) {
