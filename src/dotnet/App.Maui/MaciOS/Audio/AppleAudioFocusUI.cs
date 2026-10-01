@@ -140,6 +140,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     public override Task SetCallActive(bool isCallActive, bool hasVideo)
     {
         Log.LogInformation("SetCallActive: {IsCallActive}, video={HasVideo}", isCallActive, hasVideo);
+        var isVideoOnlyChange = isCallActive && AudioSession.IsCallActive;
         AudioSession.IsCallActive = isCallActive;
         // CallKit sets this for its own calls; an app-owned call only ever reports it here.
         AudioSession.IsCallVideo = hasVideo;
@@ -150,8 +151,15 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         // earlier sits on the speaker - so it's brought to the call's configuration right away.
         return _interruptionQueue.Enqueue(async _ => {
             using (await _lock.Lock(StopToken).ConfigureAwait(false)) {
-                if (!_activeScopes.IsEmpty)
-                    await SetModeUnsafe(_activeScopes.GetMode()).ConfigureAwait(false);
+                if (!_activeScopes.IsEmpty) {
+                    // Video turned on mid-call changes neither the mode nor the options of a live
+                    // call, only the built-in output - and a full reconfigure restarts the recorder.
+                    var mode = _activeScopes.GetMode();
+                    if (isVideoOnlyChange)
+                        await AudioSession.ApplyOutputRoute(mode).ConfigureAwait(false);
+                    else
+                        await SetModeUnsafe(mode).ConfigureAwait(false);
+                }
             }
             await RefreshOutputRoutes().ConfigureAwait(false);
         });
