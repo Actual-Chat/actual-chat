@@ -13,4 +13,4 @@ public interface IEmails : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Emails_SendDigest : ApiCommand<Moment>;
+public sealed partial record Emails_SendDigest : ApiCommand<Unit>;
