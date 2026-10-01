@@ -400,6 +400,7 @@
     [JSInvokable]
     public async Task OnExpanded() {
         ChatActivityUI.SetPanelMode(Chat.Id, VisualActivityPanelMode.Expanded);
+        Hub.CallScreensUI.OnVideoExpanded(Chat.Id);
         _lastExpanded = true;
         _expandStepRef = HistoryStepper.StepIn("VideoPanel");
         _ = WaitForExpandStepClosed(_expandStepRef);

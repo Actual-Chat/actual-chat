@@ -4,7 +4,8 @@
  *
  * Two users at a phone-sized viewport (the full-screen call view exists only on the narrow
  * layout) are on a call; the caller taps the camera on the call screen. The join preview must
- * not show, and the caller's own video must be streaming in the expanded video panel.
+ * not show, the caller's own video must be streaming in the expanded video panel, and the call
+ * screen must stay up until that panel covers the screen - the chat never shows in between.
  *
  * Prerequisites:
  * - Server running (server-loop / run-watch), locally: calls are incomplete UI, which the test
@@ -78,6 +79,16 @@ async function hangUpIfAny(page: Page | undefined) {
     }
 }
 
+/** Expanded and opaque: `isVisible` alone is true for a panel that is still fading in over the chat. */
+function isVideoCoveringScreen(page: Page): Promise<boolean> {
+    return page.evaluate(() => {
+        const panel = document.querySelector('.video-panel.expanded');
+        const content = panel?.querySelector('.video-panel-content');
+        return !!panel && !!content && getComputedStyle(panel).opacity === '1'
+            && getComputedStyle(content).opacity === '1';
+    }).catch(() => false);
+}
+
 describe('camera on during a call', () => {
     let conn: BrowserConnection;
     let callerCtx: BrowserContext;
@@ -135,15 +146,23 @@ describe('camera on during a call', () => {
 
         // act - the caller turns the camera on from the call screen
         let hasSeenJoinPreview = false;
+        let hasSeenChat = false;
         await caller.locator(`${CALL_SCREEN} .c-toolbar .btn-video-toggle`).first().click();
-        const ownVideo = caller.locator('.video-panel.expanded .video-streaming-preview').first();
+        const callScreen = caller.locator(CALL_SCREEN).first();
         await expect.poll(async () => {
             hasSeenJoinPreview ||= await caller.locator(JOIN_PREVIEW).first().isVisible().catch(() => false);
-            return ownVideo.isVisible().catch(() => false);
+            const isCovered = await isVideoCoveringScreen(caller);
+            // Neither the call screen nor the video covering the screen means the chat showed in between
+            hasSeenChat ||= !isCovered && !await callScreen.isVisible().catch(() => false);
+            return isCovered;
         }, { timeout: 30_000, interval: 50 }).toBe(true);
 
         // assert - the camera is on, full-screen, with nothing asked in between; the other side gets the video
         expect(hasSeenJoinPreview, 'mid-call the camera starts without the join preview').toBe(false);
+        expect(hasSeenChat, 'the call screen stays up until the video covers the screen').toBe(false);
+        await callScreen.waitFor({ state: 'hidden', timeout: 10_000 });
+        await caller.locator('.video-panel.expanded .video-streaming-preview').first()
+            .waitFor({ state: 'visible', timeout: 20_000 });
         await caller.screenshot({ path: shot('caller-video-on') });
         await callee.locator(`${CALL_SCREEN} .c-call-bar .btn-video-panel`).first().click();
         await callee.locator('.video-panel .remote-video-container').first()

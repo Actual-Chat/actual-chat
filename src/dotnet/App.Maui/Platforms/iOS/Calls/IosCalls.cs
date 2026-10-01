@@ -433,7 +433,9 @@ public sealed class IosCalls : CXProviderDelegate
     private static async Task StartVideoLocally(IServiceProvider services, ChatId chatId)
     {
         // The same as the call screen's own video button: the video panel lives in the chat, under it.
-        await services.GetRequiredService<CallScreensUI>().LeaveCallScreen(chatId).ConfigureAwait(true);
+        if (!await services.GetRequiredService<CallScreensUI>().OpenChatUnderCallScreen(chatId).ConfigureAwait(true))
+            return;
+
         await services.GetRequiredService<ChatVideoUI>().StartVideoCapture(chatId, true).ConfigureAwait(false);
     }
 
