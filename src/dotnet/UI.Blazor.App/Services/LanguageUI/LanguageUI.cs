@@ -168,6 +168,9 @@ public class LanguageUI : UIWorkerBase<AppUIHub>, IComputeService, IDisposable
             Primary = languages.Count > 0 ? languages[0] : Languages.Main,
             Secondary = languages.Count > 1 ? (Language?) languages[1] : null,
             Tertiary = languages.Count > 2 ? (Language?) languages[2] : null,
+            // Set here, not left to SyncDetectedUILanguage: on a first visit its write races the one in
+            // EnsureUserLanguageSettingsPersisted and loses, and the server words a guest's sign-in mail from this.
+            DetectedUILanguage = Languages.DetectUILanguage(BrowserInfo.ClientLanguages),
         };
     }
 
