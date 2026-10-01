@@ -2,62 +2,56 @@ import { getLogs } from 'logging';
 
 const { warnLog } = getLogs('RecaptchaHandler');
 
+/**
+ * Hides the "Could not connect to the reCAPTCHA service" text reCAPTCHA appends to <body>.
+ * It may be inserted before this module loads, or get its text after insertion,
+ * so every unmarked <body> div stays watched until it's identified.
+ */
 export class RecaptchaHandler {
-    public static observer: MutationObserver;
+    private static readonly hiddenAttribute = 'data-recaptcha-error';
+    private static readonly watched = new WeakSet<HTMLDivElement>();
 
     public static init() {
-        this.observer = new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-                for (const node of Array.from(mutation.addedNodes)) {
-                    if (node.nodeType !== Node.ELEMENT_NODE)
-                        continue;
-
-                    const outerDiv = node as HTMLElement;
-
-                    if (outerDiv.tagName !== 'DIV')
-                        continue;
-
-                    this.checkOuterDiv(outerDiv);
-                }
-            }
-        });
-
-        this.observer.observe(document.body, {
-            childList: true
-        });
+        new MutationObserver(mutations => {
+            for (const mutation of mutations)
+                for (const node of Array.from(mutation.addedNodes))
+                    this.watch(node);
+        }).observe(document.body, { childList: true });
+        for (const node of Array.from(document.body.children))
+            this.watch(node);
     }
 
-    private static checkOuterDiv(outerDiv: HTMLElement) {
-        if (outerDiv.style.display == 'none')
+    // Private methods
+
+    private static watch(node: Node) {
+        if (!(node instanceof HTMLDivElement) || node.id || node.classList.length !== 0)
+            return;
+        if (this.watched.has(node) || this.isResolved(node))
             return;
 
-        if (outerDiv.children.length !== 1)
-            return;
-
-        const innerDiv = outerDiv.children[0] as HTMLElement;
-        if (innerDiv.tagName !== 'DIV')
-            return;
-
-        if (outerDiv.classList.length !== 0 || innerDiv.classList.length !== 0)
-            return;
-
-        const rawText = innerDiv.textContent;
-        if (!rawText)
-            return;
-
-        const text = this.normalizeText(rawText);
-        if (text.includes('recaptcha')) {
-            outerDiv.style.display = 'none';
-            warnLog?.log('reCAPTCHA error detected and hidden:', rawText);
-        }
+        this.watched.add(node);
+        const observer = new MutationObserver(() => {
+            if (this.isResolved(node))
+                observer.disconnect();
+        });
+        observer.observe(node, { childList: true, subtree: true, characterData: true });
     }
 
-    private static normalizeText(text: string): string {
-        return text
-            .toLowerCase()
-            .replace(/\u00a0/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim();
+    private static isResolved(div: HTMLDivElement): boolean {
+        if (!div.isConnected)
+            return true;
+
+        const inner = div.firstElementChild;
+        if (div.childElementCount !== 1 || !(inner instanceof HTMLDivElement) || inner.classList.length !== 0)
+            return false;
+
+        const text = div.textContent;
+        if (!text.toLowerCase().includes('recaptcha'))
+            return false;
+
+        div.setAttribute(this.hiddenAttribute, '');
+        warnLog?.log('reCAPTCHA error detected and hidden:', text);
+        return true;
     }
 }
 
