@@ -253,13 +253,8 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
 
     public async Task LeaveCallScreen(ChatId chatId)
     {
-        if (_overLockRingChatId.Value == chatId) {
-            // The chat is behind the keyguard; a cancelled PIN keeps the call screen up.
-            var isUnlocked = Bridge is null
-                || await Bridge.OnCallHandled(chatId, CallUI.GetCallIdNonComputed(chatId), true).ConfigureAwait(true);
-            if (!isUnlocked)
-                return;
-        }
+        if (!await LeaveLockScreen(chatId).ConfigureAwait(true))
+            return;
 
         // Collapsed goes first: the over-lock flag cleared alone would bring the narrow full-screen view back.
         _collapsedChatId.Value = chatId;
@@ -267,7 +262,40 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         await OpenChat(chatId).ConfigureAwait(true);
     }
 
+    public async Task<bool> OpenChatUnderCallScreen(ChatId chatId)
+    {
+        // For what needs the chat mounted but takes the screen itself, as the expanded video panel does:
+        // the call screen stays up meanwhile. False when the chat stays behind the keyguard.
+        if (!await LeaveLockScreen(chatId).ConfigureAwait(true))
+            return false;
+
+        ClearIf(_overLockRingChatId, chatId);
+        await OpenChat(chatId).ConfigureAwait(true);
+        return true;
+    }
+
+    public void OnVideoExpanded(ChatId chatId)
+    {
+        // The call screen gives way only now, with the video panel already covering the screen, so
+        // the chat between them never shows.
+        if (CallUI.GetActiveCallNonComputed() is not { } call || call.ChatId != chatId)
+            return;
+
+        // Only what DecideView shows full-screen: a ring keeps its modal, a wide screen has no call screen.
+        if (call.Phase != CallPhase.Ringing && Hub.BrowserInfo.ScreenSize.Value.IsNarrow())
+            _collapsedChatId.Value = chatId;
+    }
+
     // Private methods
+
+    private async Task<bool> LeaveLockScreen(ChatId chatId)
+    {
+        // The chat is behind the keyguard; a cancelled PIN keeps the call screen up.
+        if (_overLockRingChatId.Value != chatId || Bridge is null)
+            return true;
+
+        return await Bridge.OnCallHandled(chatId, CallUI.GetCallIdNonComputed(chatId), true).ConfigureAwait(true);
+    }
 
     private async Task ClearOverLockAfterRing(ChatId chatId, int generation)
     {
