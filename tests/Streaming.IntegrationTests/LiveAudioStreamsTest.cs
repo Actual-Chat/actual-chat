@@ -362,20 +362,26 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
             SystemClock.Instance.Now.EpochOffset.TotalSeconds,
             null);
         var streamId = OpenAudioSegment.GetStreamId(record, 0).Value;
+        const int producedBeforeRequest = 10;
+        var liveEdge = Constants.Audio.OpusFrameDuration * producedBeforeRequest;
+        var producerGate = TaskCompletionSourceExt.New();
+        var frames = GetFrames(producerGate.Task, producedBeforeRequest);
         var processTask = BackgroundTask.Run(
-            () => backend.ProcessAudio(record, 0, new RpcStream<AudioFrame>(GetFrames()), cts.Token),
+            () => backend.ProcessAudio(record, 0, new RpcStream<AudioFrame>(frames), cts.Token),
             cts.Token);
-        _ = await WaitForStream(liveStreams, session, streamId, cts.Token);
-        await Task.Delay(TimeSpan.FromMilliseconds(200), cts.Token);
+        var fullStream = await WaitForStream(liveStreams, session, streamId, cts.Token);
+        // A full replay that reaches the last frame before the gate proves the memoizer holds them all
+        _ = await fullStream!.FirstAsync(f => f.Offset >= liveEdge - Constants.Audio.OpusFrameDuration, cts.Token);
 
         // act
         var stream = await liveStreams.GetStream(session, streamId, Constants.Audio.SkipToLive, cts.Token);
+        producerGate.SetResult();
         var firstDataFrame = await stream!
             .FirstAsync(f => f.Offset >= TimeSpan.Zero, cts.Token);
 
         // assert
-        firstDataFrame.Offset.Should().BeGreaterThan(TimeSpan.FromMilliseconds(100),
-            "frames produced before the request must not be replayed");
+        firstDataFrame.Offset.Should().Be(liveEdge,
+            "frames produced before the request must not be replayed, and the first live one must not be lost");
 
         await cts.CancelAsync();
         await processTask.SilentAwait(false);
@@ -398,10 +404,13 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
         }
     }
 
-    private static async IAsyncEnumerable<AudioFrame> GetFrames()
+    private static async IAsyncEnumerable<AudioFrame> GetFrames(Task? gate = null, int gateIndex = 0)
     {
         var offset = TimeSpan.Zero;
         for (var i = 0; i < 25; i++) {
+            if (gate != null && i == gateIndex)
+                await gate.ConfigureAwait(false);
+
             var data = new byte[100];
             Array.Fill(data, (byte)i);
             yield return new AudioFrame {
