@@ -226,15 +226,14 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             if (chat is null || !IsVideoAvailableNonComputed(chat))
                 return;
 
-            // Already on the air in this chat - on a call, or with the mic open - so the camera just
-            // joins in: the preview's mic choice is made, and the camera is the last session's.
+            // On a call in this chat the camera just joins in, with the last session's camera and blur.
+            // An open mic alone doesn't count: outside a call the preview is the only place to pick them.
             var isOnCall = Hub.CallUI.GetActiveCallNonComputed() is { Phase: CallPhase.Active } call
                 && call.ChatId == chatId;
-            var isOnAir = isOnCall || await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) == chatId;
-            if (isOnAir) {
+            if (isOnCall) {
                 // A call's video opens full-screen - unless its panel is already up, in the mode the
                 // user left it in.
-                var isExpanded = isOnCall && _watchingChatId.Value != chatId;
+                var isExpanded = _watchingChatId.Value != chatId;
                 await StartVideoCapture(chatId, isExpanded, cancellationToken).ConfigureAwait(false);
                 return;
             }

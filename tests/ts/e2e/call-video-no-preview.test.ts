@@ -9,6 +9,9 @@
  *     open in the expanded video panel there too.
  * In both the join preview must not show.
  *
+ * Outside a call the preview stays (#5016): with only the mic open in a chat, the camera button
+ * must open the join preview on both layouts, and the camera goes live only once it is confirmed.
+ *
  * Screenshots go to tmp/e2e-call-video/.
  *
  * Prerequisites:
@@ -28,7 +31,7 @@ import {
     withUILanguage,
     type BrowserConnection,
 } from './helpers';
-import { SPEECH_WAV } from './video-call';
+import { SPEECH_WAV, hangUpIfAny as leaveVideoSession, openCallChat, startRecording } from './video-call';
 
 const SHOTS_DIR = path.join(process.cwd(), 'tmp', 'e2e-call-video');
 fs.mkdirSync(SHOTS_DIR, { recursive: true });
@@ -167,6 +170,69 @@ function isVideoCoveringScreen(page: Page): Promise<boolean> {
 function isShown(page: Page, selector: string): Promise<boolean> {
     return page.locator(selector).first().isVisible().catch(() => false);
 }
+
+// Its own contexts, apart from the call tests: confirming the preview saves the camera, and headless
+// Chromium renames its fake camera on every page load - a later start without the preview would fail.
+describe('camera on with only the mic open', () => {
+    let conn: BrowserConnection;
+
+    beforeAll(async () => {
+        conn = await connectBrowser({ fakeAudioFile: SPEECH_WAV });
+    }, 60_000);
+
+    afterAll(async () => {
+        if (conn.ownsBrowser) {
+            await conn.context.close().catch(() => { /* ignore */ });
+            await conn.browser.close().catch(() => { /* ignore */ });
+        }
+    }, 60_000);
+
+    it.each([
+        ['narrow', NARROW],
+        ['wide', WIDE],
+    ] as const)('asks through the join preview first, %s screen', async (layout, viewport) => {
+        // arrange - no call and no video session in the chat, just this user recording
+        const { context, page } = await newUserPage(conn, TEST_EMAIL, viewport);
+        try {
+            await openCallChat(page);
+            await startRecording(page);
+            const videoToggle = page.locator('.chat-audio-panel .video-wrapper button').first();
+            await videoToggle.waitFor({ state: 'visible', timeout: 30_000 });
+            await page.screenshot({ path: shot(`${layout}-mic-1-mic-open`) });
+
+            // act
+            await videoToggle.click();
+            await expect.poll(async () => await isShown(page, JOIN_PREVIEW) || await isShown(page, OWN_VIDEO), {
+                timeout: 30_000,
+                interval: 50,
+            }).toBe(true);
+
+            // assert - the preview asks first, and nothing is live behind it
+            expect(await isShown(page, OWN_VIDEO), 'outside a call the camera does not go live unasked').toBe(false);
+            expect(await isShown(page, JOIN_PREVIEW), 'outside a call the camera button opens the preview').toBe(true);
+            const modal = page.locator('.modal').filter({ has: page.locator('.camera-preview-video') }).first();
+            const submit = modal.locator('.btn-modal.btn-primary').first();
+            await expect.poll(async () => submit.isEnabled(), { timeout: 15_000 }).toBe(true);
+            await page.waitForTimeout(1_500);
+            await page.screenshot({ path: shot(`${layout}-mic-2-join-preview`) });
+
+            // act - the preview is confirmed
+            await submit.click();
+
+            // assert - the camera goes live, in the chat rather than full-screen
+            await page.locator(OWN_VIDEO).first().waitFor({ state: 'visible', timeout: 20_000 });
+            await page.waitForTimeout(1_500);
+            expect(await isShown(page, '.video-panel.expanded'), 'video outside a call opens inline').toBe(false);
+            await page.screenshot({ path: shot(`${layout}-mic-3-video-inline`) });
+        }
+        finally {
+            await leaveVideoSession(page);
+            // Unload before closing, so the circuit doesn't keep recording as this account into the call tests
+            await page.goto('about:blank').catch(() => { /* ignore */ });
+            await context.close().catch(() => { /* ignore */ });
+        }
+    }, 180_000);
+});
 
 describe('camera on during a call, narrow screen', () => {
     let users: Users;
