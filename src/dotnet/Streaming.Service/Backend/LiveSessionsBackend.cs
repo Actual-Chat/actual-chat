@@ -373,8 +373,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         CancellationToken cancellationToken)
     {
         bool emptiedByLeave;
-        var shouldCloseAsCall = false;
-        var mustCheckCallLeave = false;
+        int? callPartiesLeft = null;
         var startedClosing = false;
         using (Computed.BeginIsolation())
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
@@ -413,39 +412,24 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             InvalidateListParticipants(chatId);
             InvalidateHasRecorder(chatId);
             InvalidateGet(chatId);
-            // A Call needs >= 2 genuinely present participants, whether the departure was an explicit
-            // hang-up or a connection that just died - both reach this the same way. Scoped to Call:
-            // Dialing keeps its own ExpireRings path, and Ambient has no such invariant (solo dictation
-            // is legitimate). One party left gets CallLeaveGrace to come back; none left closes now.
-            if (!isActive) {
-                var state = await SafeGet(chatId).ConfigureAwait(false);
-                if (state is { Kind: LiveSessionKind.Call } callState) {
-                    var participantCount = (await GetFreshParticipantIds(chatId).ConfigureAwait(false)).Count;
-                    if (participantCount == 0)
-                        shouldCloseAsCall = true;
-                    else if (participantCount == 1)
-                        mustCheckCallLeave = true;
-                    else if (callState.Host == authorId)
-                        // The host left but the call goes on - without this the host slot would keep
-                        // pointing at someone who already left.
-                        await ReassignHost(chatId, callState, cancellationToken).ConfigureAwait(false);
-                }
-            }
+            // Whether the departure was an explicit hang-up or a connection that just died - both reach
+            // this the same way. Dialing keeps its own ExpireRings path.
+            if (!isActive)
+                callPartiesLeft = await CountCallPartiesLeft(chatId, authorId, cancellationToken)
+                    .ConfigureAwait(false);
             // A join/heartbeat, or a leave with someone still streaming, just re-evaluates liveness; the
             // grace there is the safety net for crashed/stale clients. A leave that stops the last stream
             // closes it outright below - no waiting on the grace or on a UI observer. EvaluateLiveness only
             // marks a still-populated session closing (recoverable if a recorder returns), so a transient
             // not-live blip never tears down a live recording - unlike an unconditional CloseNow here would.
             // A call leave skips all of this: it would close or mark closing the call CallLeaveGrace may keep.
-            var isCallLeave = shouldCloseAsCall || mustCheckCallLeave;
+            var isCallLeave = callPartiesLeft is 0 or 1;
             emptiedByLeave = !isActive && !isCallLeave && !await IsSessionLive(chatId).ConfigureAwait(false);
             if (!emptiedByLeave && !isCallLeave)
                 startedClosing = await EvaluateLiveness(chatId).ConfigureAwait(false);
         }
-        if (shouldCloseAsCall)
-            await CloseCall(chatId, mustRecheckParties: true).ConfigureAwait(false);
-        else if (mustCheckCallLeave)
-            _ = ScheduleCallPartiesCheck(chatId, nameof(EnforceCallLeaveGrace), CallLeaveGrace);
+        if (callPartiesLeft is { } partiesLeft and (0 or 1))
+            await OnCallPartyLeft(chatId, partiesLeft).ConfigureAwait(false);
         else if (emptiedByLeave)
             await CloseNow(chatId).ConfigureAwait(false);
         else if (startedClosing)
@@ -862,6 +846,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         // The caller hangs up: stop every still-ringing invitee, drop the caller, then close if empty.
         LiveSessionState? state;
         var ringing = new List<AuthorId>();
+        int? callPartiesLeft = null;
         using (Computed.BeginIsolation())
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
             state = await SafeGet(chatId).ConfigureAwait(false);
@@ -877,25 +862,37 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             }
 
             var callState = await SafeGetCallState(chatId).ConfigureAwait(false);
-            var isValidStatus = callState is null or { Status: CallStatus.Dialing or CallStatus.Connecting };
+            // The client cancels while its slot still reads Dialing, which can outlast the answer by a
+            // round trip: the caller is then leaving a connected call, as a hang-up from it would (#4984).
+            var isLeave = callState is { Status: CallStatus.Active };
+            var isValidStatus = isLeave
+                || callState is null or { Status: CallStatus.Dialing or CallStatus.Connecting };
             if (!EnsureValidTransition(chatId, callerAuthorId, nameof(CancelCall),
                     callState?.Status ?? CallStatus.None, isValidStatus))
                 return;
 
-            var now = Clocks.SystemClock.Now;
-            foreach (var info in (await SafeGetInvites(chatId).ConfigureAwait(false)).Values) {
-                if (info is not { Status: CallInviteStatus.Ringing })
-                    continue;
+            if (!isLeave) {
+                var now = Clocks.SystemClock.Now;
+                foreach (var info in (await SafeGetInvites(chatId).ConfigureAwait(false)).Values) {
+                    if (info is not { Status: CallInviteStatus.Ringing })
+                        continue;
 
-                ringing.Add(info.InviteeId);
-                await _invites.Set(chatId.Value, info.InviteeId.Value,
-                        info with { Status = CallInviteStatus.Missed, RespondedAt = now })
-                    .ConfigureAwait(false);
+                    ringing.Add(info.InviteeId);
+                    await _invites.Set(chatId.Value, info.InviteeId.Value,
+                            info with { Status = CallInviteStatus.Missed, RespondedAt = now })
+                        .ConfigureAwait(false);
+                }
             }
             await _participants.Remove(chatId.Value, callerAuthorId.Value).ConfigureAwait(false);
-            // Hanging up myself needs no status, and it must beat a decline that just landed.
-            await SetCallState(chatId, null).ConfigureAwait(false);
-            await SetOutcome(chatId, state, CallOutcome.Canceled).ConfigureAwait(false);
+            if (isLeave) {
+                callPartiesLeft = await CountCallPartiesLeft(chatId, callerAuthorId, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else {
+                // Hanging up myself needs no status, and it must beat a decline that just landed.
+                await SetCallState(chatId, null).ConfigureAwait(false);
+                await SetOutcome(chatId, state, CallOutcome.Canceled).ConfigureAwait(false);
+            }
             InvalidateState(chatId);
             InvalidateListParticipants(chatId);
             InvalidateHasRecorder(chatId);
@@ -904,7 +901,10 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             .ConfigureAwait(false);
         if (ringing.Count > 0)
             await DismissRing(state, ringing, cancellationToken).ConfigureAwait(false);
-        await CloseNow(chatId).ConfigureAwait(false);
+        if (callPartiesLeft is { } partiesLeft)
+            await OnCallPartyLeft(chatId, partiesLeft).ConfigureAwait(false);
+        else
+            await CloseNow(chatId).ConfigureAwait(false);
     }
 
     // Legacy methods
@@ -990,6 +990,32 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         => FlowHub.NewResumeEvent(new FlowId(LiveFlows.CallTailFlowName, conversationId.Value))
             .WithDelay(Clocks.SystemClock.Now + CallTailDelay, TimeSpan.Zero)
             .Schedule(CancellationToken.None);
+
+    // Caller must hold the change lock. Null when the chat holds no call.
+    private async Task<int?> CountCallPartiesLeft(
+        ChatId chatId, AuthorId leaverId, CancellationToken cancellationToken)
+    {
+        // Ambient sessions have no two-party invariant: solo dictation is legitimate.
+        var state = await SafeGet(chatId).ConfigureAwait(false);
+        if (state is not { Kind: LiveSessionKind.Call })
+            return null;
+
+        var count = (await GetFreshParticipantIds(chatId).ConfigureAwait(false)).Count;
+        if (count >= 2 && state.Host == leaverId)
+            await ReassignHost(chatId, state, cancellationToken).ConfigureAwait(false);
+        return count;
+    }
+
+    // Outside the change lock: CloseCall takes it.
+    private async Task OnCallPartyLeft(ChatId chatId, int partiesLeft)
+    {
+        // A Call needs >= 2 genuinely present parties. One left gets CallLeaveGrace to come back;
+        // none left closes now.
+        if (partiesLeft == 0)
+            await CloseCall(chatId, mustRecheckParties: true).ConfigureAwait(false);
+        else if (partiesLeft == 1)
+            _ = ScheduleCallPartiesCheck(chatId, nameof(EnforceCallLeaveGrace), CallLeaveGrace);
+    }
 
     private async Task ReassignHost(ChatId chatId, LiveSessionState state, CancellationToken cancellationToken)
     {
