@@ -1492,6 +1492,21 @@ public static class LocalizedStringsLocalizerExt
             => l["Notification_AttentionRequested_Format", arg0].Value;
         public string Notification_Reaction_Format(object arg0, object arg1)
             => l["Notification_Reaction_Format", arg0, arg1].Value;
+        public string EmailCode_SignInSubject_Format(object arg0)
+            => l["EmailCode_SignInSubject_Format", arg0].Value;
+        public string EmailCode_VerifySubject_Format(object arg0)
+            => l["EmailCode_VerifySubject_Format", arg0].Value;
+        public string EmailCode_Title => l["EmailCode_Title"].Value;
+        public string EmailCode_Prompt_Format(object arg0) => l["EmailCode_Prompt_Format", arg0].Value;
+        public string EmailCode_Warning => l["EmailCode_Warning"].Value;
+        public string EmailDigest_Subject_Format(object arg0) => l["EmailDigest_Subject_Format", arg0].Value;
+        public string EmailDigest_OpenChat_Format(object arg0) => l["EmailDigest_OpenChat_Format", arg0].Value;
+        public string EmailDigest_OpenUnread(long count, object arg0, object arg1)
+            => l.Plural("EmailDigest_OpenUnread", count, arg0, arg1);
+        public string EmailDigest_OtherUnread(long count, object arg0)
+            => l.Plural("EmailDigest_OtherUnread", count, arg0);
+        public string EmailDigest_Reason_Format(object arg0) => l["EmailDigest_Reason_Format", arg0].Value;
+        public string EmailDigest_TurnOff => l["EmailDigest_TurnOff"].Value;
         public string EmptyEntry_SentLocation => l["EmptyEntry_SentLocation"].Value;
         public string EmptyEntry_SentLiveLocation => l["EmptyEntry_SentLiveLocation"].Value;
         public string EmptyEntry_YourLocation => l["EmptyEntry_YourLocation"].Value;

@@ -1429,6 +1429,17 @@
   "Notification_ThreadCreated_Format": "Utworzono wątek „{0}”",
   "Notification_AttentionRequested_Format": "{0} prosi o uwagę",
   "Notification_Reaction_Format": "{0} na {1}",
+  "EmailCode_SignInSubject_Format": "{0}: kod logowania",
+  "EmailCode_VerifySubject_Format": "{0}: weryfikacja adresu e-mail",
+  "EmailCode_Title": "Twój kod weryfikacyjny adresu e-mail",
+  "EmailCode_Prompt_Format": "Wpisz ten kod w aplikacji {0}, gdy pojawi się prośba:",
+  "EmailCode_Warning": "Jeśli to nie Ty prosisz o kod, możesz zignorować tę wiadomość. Aby chronić swoje konto, nie przekazuj tej wiadomości dalej i nie podawaj nikomu tego kodu.",
+  "EmailDigest_Subject_Format": "{0}: podsumowanie",
+  "EmailDigest_OpenChat_Format": "Otwórz czat: {0}",
+  "EmailDigest_OpenUnread": "{1}: {0} nowa wiadomość|{1}: {0} nowe wiadomości|{1}: {0} nowych wiadomości",
+  "EmailDigest_OtherUnread": "Jeszcze {0} nieprzeczytany czat|Jeszcze {0} nieprzeczytane czaty|Jeszcze {0} nieprzeczytanych czatów",
+  "EmailDigest_Reason_Format": "Otrzymujesz to codzienne podsumowanie, ponieważ masz nieprzeczytane czaty w {0}.",
+  "EmailDigest_TurnOff": "Wyłącz e-maile z podsumowaniem",
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.

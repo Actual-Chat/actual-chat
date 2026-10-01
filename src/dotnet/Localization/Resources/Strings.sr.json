@@ -1429,6 +1429,17 @@
   "Notification_ThreadCreated_Format": "Нит „{0}“ је креирана",
   "Notification_AttentionRequested_Format": "{0} тражи пажњу",
   "Notification_Reaction_Format": "{0} на {1}",
+  "EmailCode_SignInSubject_Format": "{0}: код за пријаву",
+  "EmailCode_VerifySubject_Format": "{0}: потврда емаила",
+  "EmailCode_Title": "Ваш код за потврду емаила",
+  "EmailCode_Prompt_Format": "Унесите овај код у апликацији {0} када то буде затражено:",
+  "EmailCode_Warning": "Ако нисте затражили код, можете занемарити овај емаил. Да бисте заштитили свој рачун, не просљеђујте овај емаил и никоме не дајте овај код.",
+  "EmailDigest_Subject_Format": "{0}: сажетак",
+  "EmailDigest_OpenChat_Format": "Отворите разговор: {0}",
+  "EmailDigest_OpenUnread": "{1}: {0} нова порука|{1}: {0} нове поруке|{1}: {0} нових порука",
+  "EmailDigest_OtherUnread": "Још {0} непрочитан разговор|Још {0} непрочитана разговора|Још {0} непрочитаних разговора",
+  "EmailDigest_Reason_Format": "Овај дневни сажетак добијате јер имате непрочитане разговоре у {0}.",
+  "EmailDigest_TurnOff": "Искључите емаилове са сажетком",
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.

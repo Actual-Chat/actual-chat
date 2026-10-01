@@ -319,7 +319,12 @@ homogeneous one by its kind (`Sent 2 images`). The reaction line drops the count
 entirely - `your images`, not `your 2 images` - because it names a target rather
 than reporting a quantity.
 
-### Email — no device, so language comes from the content
+### Email — chrome in the recipient's UI language — done (#4258)
+
+The five templates read `EmailCode_*` / `EmailDigest_*` keys through a localizer
+`UserLocalizers` resolves for the recipient; subjects too. The per-chat AI summary keeps
+its own rule, described below. [i18n.md](../i18n.md#how-the-catalog-works) has the
+mechanism; what follows is the history of the decision.
 
 Already implemented for the part that matters: `EmailsBackend.cs:215` uses
 `GetDominantLanguage(chatId, …) ?? userLanguage`, so each chat's AI summary is
@@ -573,8 +578,7 @@ why #3721 dropped the keys instead of relocating them. Now:
 ---
 
 ## Suggested order
-1. §3's email track — the chrome language is settled (#4125); what is left is
-   the 5 templates, using the same `LanguageStringLocalizer`.
+1. ~~§3's email track~~ — done (#4258): the 5 templates and both subject lines.
 2. ~~§4's `Info.plist` strings~~ — done (#4259): per-language `InfoPlist.strings`.
 3. ~~§4's in-process subset (Android dialogs, local notifications, Live Activity)~~
    — done (#4260): `AppStrings` moved from the share extension to `ActualChat.Maui`

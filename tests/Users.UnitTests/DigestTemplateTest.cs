@@ -1,3 +1,4 @@
+using ActualChat.Localization;
 using ActualChat.Users.Templates;
 using Mjml.Net;
 
@@ -24,7 +25,7 @@ public class DigestTemplateTest
         };
 
         // act
-        await using var renderer = new BlazorRenderer();
+        await using var renderer = new BlazorRenderer(LanguageStringLocalizer.Get(Languages.English));
         var mjml = await renderer.RenderComponent<Digest>(new Dictionary<string, object?> {
             { nameof(Digest.Parameters), parameters },
         });

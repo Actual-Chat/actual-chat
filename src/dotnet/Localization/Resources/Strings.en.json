@@ -1664,6 +1664,24 @@
   "Notification_AttentionRequested_Format": "{0} asks for attention",
   "Notification_Reaction_Format": "{0} to {1}",
 
+  // Emails composed on the server, in the recipient's UI language: the sign-in / verification
+  // code mail (EmailCode_*) and the daily digest of unread chats (EmailDigest_*). A *Subject*
+  // value is the mail's subject line, where {0} is the product name. In EmailDigest_OpenChat_Format
+  // and EmailDigest_OpenUnread the chat name ({0} and {1} respectively) is user content: it stays
+  // untranslated and cannot be inflected, so put it where no case is required - after a colon.
+  // Both, and EmailDigest_OtherUnread, are button labels: keep them to one short line.
+  "EmailCode_SignInSubject_Format": "{0}: sign-in code",
+  "EmailCode_VerifySubject_Format": "{0}: email verification",
+  "EmailCode_Title": "Your email verification code",
+  "EmailCode_Prompt_Format": "Enter this code in the {0} app when prompted:",
+  "EmailCode_Warning": "If you didn't request a code, you can ignore this email. To protect your account, don't forward this email or give this code to anyone.",
+  "EmailDigest_Subject_Format": "{0}: digest",
+  "EmailDigest_OpenChat_Format": "Open {0}",
+  "EmailDigest_OpenUnread": "Open {0} new from {1}",
+  "EmailDigest_OtherUnread": "Discover {0} more unread chat|Discover {0} more unread chats",
+  "EmailDigest_Reason_Format": "You receive this daily digest because you have unread chats in {0}.",
+  "EmailDigest_TurnOff": "Turn off digest emails",
+
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.

@@ -1429,6 +1429,17 @@
   "Notification_ThreadCreated_Format": "Il thread '{0}' è stato creato",
   "Notification_AttentionRequested_Format": "{0} chiede attenzione",
   "Notification_Reaction_Format": "{0} a {1}",
+  "EmailCode_SignInSubject_Format": "{0}: codice di accesso",
+  "EmailCode_VerifySubject_Format": "{0}: verifica dell'email",
+  "EmailCode_Title": "Il tuo codice di verifica dell'email",
+  "EmailCode_Prompt_Format": "Inserisci questo codice nell'app {0} quando ti viene richiesto:",
+  "EmailCode_Warning": "Se non hai richiesto un codice, puoi ignorare questa email. Per proteggere il tuo account, non inoltrare questa email e non comunicare questo codice a nessuno.",
+  "EmailDigest_Subject_Format": "{0}: riepilogo",
+  "EmailDigest_OpenChat_Format": "Apri {0}",
+  "EmailDigest_OpenUnread": "{1}: {0} nuovo messaggio|{1}: {0} nuovi messaggi",
+  "EmailDigest_OtherUnread": "Vedi {0} altra chat non letta|Vedi altre {0} chat non lette",
+  "EmailDigest_Reason_Format": "Ricevi questo riepilogo giornaliero perché hai chat non lette in {0}.",
+  "EmailDigest_TurnOff": "Disattiva le email di riepilogo",
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.

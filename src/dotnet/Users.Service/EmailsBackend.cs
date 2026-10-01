@@ -3,6 +3,7 @@ using ActualChat.Contacts;
 using ActualChat.Localization;
 using ActualChat.Users.Email;
 using ActualChat.Users.Templates;
+using Microsoft.Extensions.Localization;
 using Mjml.Net;
 using Unit = System.Reactive.Unit;
 
@@ -19,6 +20,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private IChatDigestSummarizer ChatDigestSummarizer { get; } = services.GetRequiredService<IChatDigestSummarizer>();
     private DigestUnsubscribeTokens UnsubscribeTokens { get; } = services.GetRequiredService<DigestUnsubscribeTokens>();
+    private UserLocalizers UserLocalizers { get; } = services.GetRequiredService<UserLocalizers>();
     private MomentClockSet Clocks { get; } = services.Clocks();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
     private ILogger Log { get; } = services.LogFor<EmailsBackend>();
@@ -26,26 +28,26 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
     public virtual async Task<DigestPreview> GetDigestPreview(
         UserId userId, ChatId[] chatIds, DateTime? asOf, CancellationToken cancellationToken)
     {
-        var userLanguage = await GetUserLanguage(userId, cancellationToken).ConfigureAwait(false);
+        var reader = await GetReader(userId, cancellationToken).ConfigureAwait(false);
         var unsubscribeLink = GetUnsubscribeLink(userId);
         DigestParameters digestParameters;
         if (chatIds.Length > 0) {
             var now = asOf ?? Clocks.SystemClock.Now;
             digestParameters = await BuildSpecificChatsDigest(
-                chatIds, now, userLanguage, unsubscribeLink, cancellationToken).ConfigureAwait(false);
+                chatIds, now, reader, unsubscribeLink, cancellationToken).ConfigureAwait(false);
         }
         else {
             var account = await AccountsBackend
                 .Get(userId, cancellationToken)
                 .Require()
                 .ConfigureAwait(false);
-            digestParameters = await BuildUnreadChatsDigest(account, userLanguage, unsubscribeLink, cancellationToken)
+            digestParameters = await BuildUnreadChatsDigest(account, reader, unsubscribeLink, cancellationToken)
                 .ConfigureAwait(false);
         }
 
         var html = "";
         if (digestParameters.UnreadChats.Count > 0)
-            html = await RenderDigest(digestParameters, cancellationToken).ConfigureAwait(false);
+            html = await RenderDigest(digestParameters, reader.L, cancellationToken).ConfigureAwait(false);
         var digestPreviewChats = digestParameters.UnreadChats
             .Select(c => new DigestPreviewChat {
                 ChatId = c.Link, // link contains chat ID info
@@ -83,9 +85,9 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             return default;
         }
 
-        var userLanguage = await GetUserLanguage(account.Id, cancellationToken).ConfigureAwait(false);
+        var reader = await GetReader(account.Id, cancellationToken).ConfigureAwait(false);
         var unsubscribeLink = GetUnsubscribeLink(account.Id);
-        var digestParameters = await BuildUnreadChatsDigest(account, userLanguage, unsubscribeLink, cancellationToken)
+        var digestParameters = await BuildUnreadChatsDigest(account, reader, unsubscribeLink, cancellationToken)
             .ConfigureAwait(false);
         if (digestParameters.UnreadChats.Count == 0) {
             diagLog?.LogInformation("<- OnSendDigest. No unread chats");
@@ -93,9 +95,10 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             return default;
         }
 
-        var html = await RenderDigest(digestParameters, cancellationToken).ConfigureAwait(false);
+        var html = await RenderDigest(digestParameters, reader.L, cancellationToken).ConfigureAwait(false);
+        var subject = reader.L.EmailDigest_Subject_Format(CoreConstants.AppName);
         await EmailSender
-            .Send("", account.Email, $"{CoreConstants.AppName}: digest", html, unsubscribeLink, cancellationToken)
+            .Send("", account.Email, subject, html, unsubscribeLink, cancellationToken)
             .ConfigureAwait(false);
 
         diagLog?.LogInformation("<- OnSendDigest. Completed");
@@ -104,7 +107,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
     }
 
     private async Task<DigestParameters> BuildUnreadChatsDigest(
-        AccountFull account, Language userLanguage, string unsubscribeLink, CancellationToken cancellationToken)
+        AccountFull account, DigestReader reader, string unsubscribeLink, CancellationToken cancellationToken)
     {
         const int takeChats = 5;
         var totalUnreadCount = 0;
@@ -167,7 +170,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
                 return default;
 
             var unreadCount = maxEntryId - chatPosition.EntryLid;
-            return await BuildDigestChat(chatId, now, unreadCount, userLanguage, cancellationToken).ConfigureAwait(false);
+            return await BuildDigestChat(chatId, now, unreadCount, reader, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -177,13 +180,13 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
     private async Task<DigestParameters> BuildSpecificChatsDigest(
         IEnumerable<ChatId> chatIds,
         DateTime asOf,
-        Language userLanguage,
+        DigestReader reader,
         string unsubscribeLink,
         CancellationToken cancellationToken)
     {
         var unreadChats = new List<DigestParameters.DigestChat>();
         foreach (var chatId in chatIds) {
-            var digestChat = await BuildDigestChat(chatId, asOf, 0, userLanguage, cancellationToken).ConfigureAwait(false);
+            var digestChat = await BuildDigestChat(chatId, asOf, 0, reader, cancellationToken).ConfigureAwait(false);
             if (digestChat is not null)
                 unreadChats.Add(digestChat);
         }
@@ -196,7 +199,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
     }
 
     private async Task<DigestParameters.DigestChat?> BuildDigestChat(
-        ChatId chatId, DateTime now, long unreadCount, Language userLanguage, CancellationToken cancellationToken)
+        ChatId chatId, DateTime now, long unreadCount, DigestReader reader, CancellationToken cancellationToken)
     {
         var minBeginsAt = now + TimeSpan.FromDays(-1);
         var chat = await ChatsBackend
@@ -228,7 +231,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
                 .Where(x => !x.Content.IsNullOrEmpty())
                 .ToList();
             var digestLanguage = await GetDominantLanguage(chatId, summarizable, cancellationToken).ConfigureAwait(false)
-                ?? userLanguage;
+                ?? reader.SpokenLanguage;
             bulletPoints = await ChatDigestSummarizer
                 .Summarize(summarizable, digestLanguage, cancellationToken)
                 .ConfigureAwait(false);
@@ -238,7 +241,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             if (mediaEntries.Count == 0)
                 return default;
             var summary = await ChatDigestSummarizer
-                .SummarizeMediaShares(mediaEntries, userLanguage, cancellationToken)
+                .SummarizeMediaShares(mediaEntries, reader.SpokenLanguage, cancellationToken)
                 .ConfigureAwait(false);
             bulletPoints = summary.IsNullOrEmpty() ? [] : [summary];
         }
@@ -246,7 +249,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             return default;
 
         return new DigestParameters.DigestChat {
-            Name = LanguageStringLocalizer.Get(userLanguage).LocalizeTitle(chat).Title,
+            Name = reader.L.LocalizeTitle(chat).Title,
             Link = UrlMapper.ToAbsolute(Links.Chat(chat.Id)),
             UnreadCount = unreadCount,
             BulletPoints = bulletPoints,
@@ -282,14 +285,15 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
     private string GetUnsubscribeLink(UserId userId)
         => UrlMapper.ToAbsolute(DigestEmailEndpointExt.GetUnsubscribePath(UnsubscribeTokens.Create(userId)));
 
-    private async Task<Language> GetUserLanguage(UserId userId, CancellationToken cancellationToken)
+    private async Task<DigestReader> GetReader(UserId userId, CancellationToken cancellationToken)
     {
         var settings = await ServerKvasBackend
             .ForUser(userId)
             .UserLanguageSettings()
             .Get(cancellationToken)
             .ConfigureAwait(false);
-        return settings.Primary;
+        var l = await UserLocalizers.Get(userId, cancellationToken).ConfigureAwait(false);
+        return new DigestReader(settings.Primary, l);
     }
 
     private static ChatEntry WithMediaHint(ChatEntry entry)
@@ -342,12 +346,13 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         return $"[{body}]";
     }
 
-    private static async Task<string> RenderDigest(DigestParameters digestParameters, CancellationToken cancellationToken)
+    private static async Task<string> RenderDigest(
+        DigestParameters digestParameters, IStringLocalizer l, CancellationToken cancellationToken)
     {
         var parameters = new Dictionary<string, object?> {
             { nameof(Digest.Parameters), digestParameters },
         };
-        var renderer = new BlazorRenderer();
+        var renderer = new BlazorRenderer(l);
         await using var _ = renderer.ConfigureAwait(false);
         var mjml = await renderer.RenderComponent<Digest>(parameters).ConfigureAwait(false);
         var mjmlRenderer = new MjmlRenderer();
@@ -357,4 +362,12 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             .ConfigureAwait(false);
         return renderResult.Html;
     }
+
+    // Nested types
+
+    /// <summary>
+    /// A summary is worded in a language the reader speaks; everything around it is app chrome,
+    /// so it follows the language their UI is in.
+    /// </summary>
+    private sealed record DigestReader(Language SpokenLanguage, IStringLocalizer L);
 }

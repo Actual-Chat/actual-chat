@@ -1429,6 +1429,17 @@
   "Notification_ThreadCreated_Format": "话题“{0}”已创建",
   "Notification_AttentionRequested_Format": "{0} 请求大家注意",
   "Notification_Reaction_Format": "{0} 回应 {1}",
+  "EmailCode_SignInSubject_Format": "{0}：登录验证码",
+  "EmailCode_VerifySubject_Format": "{0}：邮箱验证",
+  "EmailCode_Title": "您的邮箱验证码",
+  "EmailCode_Prompt_Format": "请按提示在 {0} 应用中输入此验证码：",
+  "EmailCode_Warning": "如果您没有请求验证码，可以忽略此邮件。为保护您的账户，请勿转发此邮件或将验证码告知任何人。",
+  "EmailDigest_Subject_Format": "{0}：摘要",
+  "EmailDigest_OpenChat_Format": "打开 {0}",
+  "EmailDigest_OpenUnread": "打开 {1} 的 {0} 条新消息",
+  "EmailDigest_OtherUnread": "查看另外 {0} 个未读聊天",
+  "EmailDigest_Reason_Format": "您收到这封每日摘要，是因为您在 {0} 中有未读聊天。",
+  "EmailDigest_TurnOff": "关闭摘要邮件",
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.Users.Templates;
 
@@ -9,10 +10,11 @@ public class BlazorRenderer : IAsyncDisposable
     private readonly ILoggerFactory _loggerFactory;
     private readonly HtmlRenderer _htmlRenderer;
 
-    public BlazorRenderer()
+    public BlazorRenderer(IStringLocalizer localizer)
     {
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddSingleton(localizer);
         _serviceProvider = services.BuildServiceProvider();
         _loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
         _htmlRenderer = new HtmlRenderer(_serviceProvider, _loggerFactory);

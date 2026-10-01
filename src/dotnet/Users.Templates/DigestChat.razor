@@ -1,6 +1,8 @@
+@using ActualChat.Localization
 @using ActualChat.Mjml.Blazor.Components
 @using ActualChat.Mjml.Blazor.Enums
 @namespace ActualChat.Users.Templates
+@inherits EmailTemplateBase
 
 <MjmlSection
     Padding="5px 10px"
@@ -25,12 +27,12 @@
         @if (Chat.UnreadCount > 0) {
             <DigestButton
                 Link="@Chat.Link">
-                Open @Chat.UnreadCount new from @Chat.Name
+                @L.EmailDigest_OpenUnread(Chat.UnreadCount, Chat.UnreadCount, Chat.Name)
             </DigestButton>
         } else {
             <DigestButton
                 Link="@Chat.Link">
-                Open @Chat.Name
+                @L.EmailDigest_OpenChat_Format(Chat.Name)
             </DigestButton>
         }
     </MjmlColumn>

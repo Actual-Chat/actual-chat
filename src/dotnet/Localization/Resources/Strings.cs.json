@@ -1429,6 +1429,17 @@
   "Notification_ThreadCreated_Format": "Vlákno „{0}“ bylo vytvořeno",
   "Notification_AttentionRequested_Format": "{0} žádá o pozornost",
   "Notification_Reaction_Format": "{0} na {1}",
+  "EmailCode_SignInSubject_Format": "{0}: přihlašovací kód",
+  "EmailCode_VerifySubject_Format": "{0}: ověření e-mailu",
+  "EmailCode_Title": "Váš kód pro ověření e-mailu",
+  "EmailCode_Prompt_Format": "Zadejte tento kód v aplikaci {0}, až k tomu budete vyzváni:",
+  "EmailCode_Warning": "Pokud jste o kód nežádali, můžete tento e-mail ignorovat. V zájmu ochrany účtu tento e-mail nepřeposílejte a kód nikomu nesdělujte.",
+  "EmailDigest_Subject_Format": "{0}: souhrn",
+  "EmailDigest_OpenChat_Format": "Otevřít chat: {0}",
+  "EmailDigest_OpenUnread": "{1}: {0} nová zpráva|{1}: {0} nové zprávy|{1}: {0} nových zpráv",
+  "EmailDigest_OtherUnread": "Ještě {0} nepřečtený chat|Ještě {0} nepřečtené chaty|Ještě {0} nepřečtených chatů",
+  "EmailDigest_Reason_Format": "Tento denní souhrn dostáváte, protože máte nepřečtené chaty v {0}.",
+  "EmailDigest_TurnOff": "Vypnout e-maily se souhrnem",
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.
