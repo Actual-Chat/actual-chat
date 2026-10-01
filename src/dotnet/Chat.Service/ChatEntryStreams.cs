@@ -54,9 +54,13 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
         var chunks = lease.Chunks.Reader
             .ReadAllAsync(stopToken)
             .RequireAvailable(Maintenances, chatId, stopToken);
+        // Logged here because nothing else may ever await it: an abandoned lease is only disposed
         lease.StreamTask = Streamer.Stream(
-            chatId, authorId, entryToUpdate, chunks, stopToken,
-            isViaApi: isViaApi, entryCreatedSource: lease.EntryCreatedSource, language: language);
+                chatId, authorId, entryToUpdate, chunks, stopToken,
+                isViaApi: isViaApi, entryCreatedSource: lease.EntryCreatedSource, language: language)
+            .WithErrorHandler(
+                e => Log.LogError(e, "Entry stream #{StreamId} in chat {ChatId} failed", streamId, chatId),
+                stopToken);
 
         try {
             var entry = await lease.EntryCreatedSource.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
