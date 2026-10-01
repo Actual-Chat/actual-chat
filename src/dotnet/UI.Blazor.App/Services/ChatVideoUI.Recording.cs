@@ -185,7 +185,7 @@ public partial class ChatVideoUI
 
         // Resume recording without overwriting camera/blur settings preserved from the previous recording
         _recordingChatId.Value = chatId;
-        await OpenVideoPanelInternal(chatId, cancellationToken).ConfigureAwait(false);
+        await OpenVideoPanelInternal(chatId, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     private async Task StartVideoCaptureInternal(ChatId chatId, CancellationToken cancellationToken = default)

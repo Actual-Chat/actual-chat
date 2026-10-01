@@ -159,7 +159,11 @@
                 var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken)
                     .ConfigureAwait(false);
                 if (hasRemoteStreams) {
-                    ChatVideoUI.OpenVideoPanel(chatId);
+                    // Under the call screen the video opens full-screen, and the call screen gives way to
+                    // it - see CallScreensUI.OnVideoExpanded. Inline, it would play there unseen.
+                    var isOnCallScreen = await Hub.CallScreensUI.IsOnCallScreen(chatId, cancellationToken)
+                        .ConfigureAwait(false);
+                    ChatVideoUI.OpenVideoPanel(chatId, isOnCallScreen);
                     isWatching = true;
                 }
             }

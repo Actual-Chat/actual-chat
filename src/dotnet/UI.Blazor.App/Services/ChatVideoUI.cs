@@ -149,8 +149,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     // State mutators
 
-    public void OpenVideoPanel(ChatId chatId)
-        => _ = OpenVideoPanelInternal(chatId);
+    public void OpenVideoPanel(ChatId chatId, bool isExpanded = false)
+        => _ = OpenVideoPanelInternal(chatId, isExpanded);
 
     public void CloseVideoPanel()
         => SetWatching(null);
@@ -190,13 +190,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             ? ResumeVideoStreamingInternal(chatId, cancellationToken)
             : StartVideoCaptureInternal(chatId, cancellationToken);
         await startTask.ConfigureAwait(false);
-        if (!isExpanded)
-            return;
-
-        // Opened here rather than left to the start above: a panel that opens later resets its mode.
-        await OpenVideoPanelInternal(chatId, cancellationToken).ConfigureAwait(false);
-        if (_watchingChatId.Value == chatId)
-            ChatActivityUI.SetPanelMode(chatId, VisualActivityPanelMode.Expanded);
+        if (isExpanded)
+            await OpenVideoPanelInternal(chatId, true, cancellationToken).ConfigureAwait(false);
     }
 
     public void ToggleScreenCast(ChatId chatId)
@@ -314,12 +309,16 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         }
     }
 
-    private async Task OpenVideoPanelInternal(ChatId chatId, CancellationToken cancellationToken = default)
+    private async Task OpenVideoPanelInternal(
+        ChatId chatId, bool isExpanded = false, CancellationToken cancellationToken = default)
     {
         if (!await IsVideoAvailable(chatId, cancellationToken).ConfigureAwait(false))
             return;
 
         SetWatching(chatId);
+        // Set after the open, which resets the mode - and on a panel that is already up as well.
+        if (isExpanded && _watchingChatId.Value == chatId)
+            ChatActivityUI.SetPanelMode(chatId, VisualActivityPanelMode.Expanded);
     }
 }
 
