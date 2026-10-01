@@ -49,7 +49,7 @@
   "Settings_Title": "Налаштування",
   "Settings_Language": "Ngôn ngữ",
   "Settings_UILanguage": "ユーザーインターフェースの言語",
-  "Settings_UILanguageApplyTitle": "Appliquer le changement de langue maintenant ?",
+  "Settings_UILanguageApplyTitle": "Appliquer maintenant ?",
   "Settings_UILanguageReloadText": "Laden Sie die Benutzeroberfläche neu, um die ausgewählte Sprache zu verwenden. Andernfalls wird die Änderung beim nächsten Neuladen der Benutzeroberfläche wirksam.",
   "Settings_Language_Auto": "Автоматически",
   "Settings_YourAccount": "Ваш обліковий запис",
@@ -206,7 +206,7 @@
   "Sessions_NoOtherSessions": "Keine anderen Sitzungen gefunden.",
   "Sessions_SignOutAll": "他のすべてのセッションをサインアウト",
   "Sessions_SignOutAllConfirm": "他のすべてのセッションがサインアウトされます。続行しますか？",
-  "Sessions_SignOutAllTitle": "모든 세션을 로그아웃하시겠습니까?",
+  "Sessions_SignOutAllTitle": "Tüm oturumlar kapatılsın mı?",
 
   // Settings > Passkeys - the passkey list. Intro/Add sit above it; the rest describe one row
   // (its sync state and last-used date) and its rename/delete actions.
@@ -221,7 +221,7 @@
   "Passkeys_Added_Format": "Hinzugefügt am {0}",
   "Passkeys_LastUsed_Format": "आख़िरी बार {0} को इस्तेमाल की गई",
   "Passkeys_NeverUsed": "Ще не використовувався",
-  "Passkeys_RenameTitle": "Erişim Anahtarını Yeniden Adlandırın",
+  "Passkeys_RenameTitle": "Zmień nazwę klucza dostępu",
   "Passkeys_Name": "Nombre",
   "Passkeys_Delete": "Избришите",
   "Passkeys_DeleteConfirm_Format": "「{0}」を削除しますか？ このパスキーではサインインできなくなります。",
@@ -231,13 +231,13 @@
   // after this one.
   "ApiKeys_CreateApiKey": "API-Schlüssel erstellen",
   "ApiKeys_YourApiKeys": "Вашите API ключове",
-  "ApiKeys_Deactivated": "Devre dışı bırakıldı",
+  "ApiKeys_Deactivated": "रद्द किया गया",
   "ApiKeys_UnnamedKey": "Unbenannter Schlüssel",
-  "ApiKeys_Deactivate": "Devre dışı bırakın",
+  "ApiKeys_Deactivate": "Відкликати",
   "ApiKeys_Expires_Format": "Son kullanma: {0}",
-  "ApiKeys_DeactivateAll": "Tüm API anahtarlarını devre dışı bırakın",
-  "ApiKeys_DeactivateAllConfirm": "Spowoduje to dezaktywację wszystkich Twoich kluczy API. Kontynuować?",
-  "ApiKeys_DeactivateAllTitle": "Tüm API anahtarları devre dışı bırakılsın mı?",
+  "ApiKeys_DeactivateAll": "すべてのAPIキーを取り消す",
+  "ApiKeys_DeactivateAllConfirm": "Това ще отнеме всички ваши API ключове. Да продължим ли?",
+  "ApiKeys_DeactivateAllTitle": "すべてのAPIキーを取り消す？",
 
   // Connected apps (Settings → API & apps)
   "ConnectedApps_Title": "Подключённые приложения",
@@ -422,7 +422,7 @@
   "ChatList_InviteFriends": "Laden Sie Freunde ein, indem Sie einen Link zu Ihrem Konto teilen oder ihnen einen QR-Code zeigen, wenn sie in der Nähe sind.",
   // A secondary action under the invite text: it opens an explanation, then asks for the phone's
   // contacts permission. "Hashed" means a one-way fingerprint of each number, not the number itself.
-  "ChatList_FindContacts": "Пронађите пријатеље из контаката",
+  "ChatList_FindContacts": "Намерете приятели",
   "ChatList_FindContactsPrivacy": "Os números de telefone e endereços de e-mail são convertidos em hash no seu dispositivo antes de serem enviados.",
   "ChatList_FindContactsVerifyPhone_Format": "Seus amigos encontram você no {0} pelo seu número de telefone, então verifique-o primeiro.",
   "ShareQr_Show": "Прикажите",
@@ -450,7 +450,7 @@
   "ChatMenu_RemoveFromActiveChats": "Xóa khỏi cuộc trò chuyện đang hoạt động",
 
   // The toast shown when an action fails and carries no better message of its own.
-  "ErrorToast_ActionFailed": "Не удалось выполнить действие!",
+  "ErrorToast_ActionFailed": "Действието е неуспешно!",
   "ErrorToast_UnknownError": "Kesalahan tidak dikenal.",
 
   // The chat transcript: empty-chat placeholders, the scroll buttons, and per-message chrome.
@@ -620,7 +620,7 @@
   "Alert_TargetEveryone": "tout le monde",
   "Alert_TargetCompanion": "den Gesprächspartner",
   "Alert_Confirm": "Benachrichtigen",
-  "Alert_ConfirmTitle": "Підтвердження термінового сповіщення",
+  "Alert_ConfirmTitle": "Подтвердить оповещение",
   "Alert_ConfirmUnread_Prefix": "Наистина ли искате да предупредите ",
   "Alert_ConfirmUnread_Suffix": " için acil bildirim göndermek istediğinizden emin misiniz?",
   "Alert_ConfirmRead": "Ihre Nachrichten wurden vor Kurzem gelesen. Möchten Sie trotzdem alle dringend benachrichtigen?",
@@ -633,7 +633,7 @@
   "Alert_InfoConsider_Prefix": "Si vous n’avez pas besoin de déranger ",
   "Alert_InfoConsider_Suffix": "。いま中断させる必要がなければ、送らないことを検討してください。",
   "Alert_AlertMentioned": "Báo động cho người được nhắc đến",
-  "Alert_AlertMentionedMembers": "Erwähnte Mitglieder dringend benachrichtigen",
+  "Alert_AlertMentionedMembers": "Термінове сповіщення згаданим",
   "Alert_ConfirmMentioned": "Möchten Sie die erwähnten Mitglieder wirklich dringend benachrichtigen?",
   "Alert_AlertEveryone": "Beri peringatan ke semua orang",
   "Alert_NotifyPanel": "Benachrichtigungsleiste",
@@ -1072,8 +1072,8 @@
   "Onboarding_SecondLanguage": "Ngôn ngữ thứ 2",
   "Onboarding_ThirdLanguage": "Ngôn ngữ thứ 3",
   "Onboarding_NoLanguage": "Không có",
-  "Onboarding_EmailVerificationTitle": "Підтвердження електронної пошти",
-  "Onboarding_PhoneVerificationTitle": "Потвърждаване на телефонен номер",
+  "Onboarding_EmailVerificationTitle": "Потвърждаване на пощата",
+  "Onboarding_PhoneVerificationTitle": "Потвърждаване на телефона",
   "Onboarding_EnterCode": "Introduce el código",
   "Onboarding_VerifyPhoneText_Format": "Vérifiez votre numéro de téléphone pour pouvoir vous connecter avec et permettre à vos amis de trouver votre compte dans leurs contacts sur {0}.",
 
@@ -1271,7 +1271,7 @@
   "Place_InviteMembers": "Пригласить участников",
   "Place_AddMembers": "Добавить участников",
   "Place_AddMember": "Добавить участника",
-  "Place_CopyChatInto": "Sao chép cuộc trò chuyện vào Địa điểm này",
+  "Place_CopyChatInto": "Sao chép cuộc trò chuyện",
   "Place_Leave": "Напуснете Мястото",
   "Place_Public": "Herkese açık",
   "Place_Private": "Затворено",
@@ -1291,10 +1291,10 @@
   "Place_EditPlace": "Редактирайте Мястото",
   "Place_InfoTitle": "Informações do Lugar",
   "Place_SettingsTitle": "Configurações do Lugar",
-  "Place_EditSettingsTitle": "Променете настройките на Мястото",
+  "Place_EditSettingsTitle": "Editar configurações do Lugar",
   "Place_TypeTitle": "Вид на Мястото",
-  "Place_CopyChatToPlaceTitle": "Sao chép cuộc trò chuyện vào Địa điểm",
-  "Place_CopyErrorTitle": "チャットのコピーで問題が発生しました",
+  "Place_CopyChatToPlaceTitle": "Sao chép cuộc trò chuyện",
+  "Place_CopyErrorTitle": "Kopieren fehlgeschlagen",
   "Place_CopyErrorText_Format": "Un problème est survenu lors de la copie de la discussion « {0} » dans le Lieu « {1} ».",
   "Place_CopyPartialSuccess": "Kopiowanie zakończyło się tylko częściowym powodzeniem.",
   "Place_CopyErrorHelp": "Скористайтеся кодом нижче, щоб звернутися по допомогу до адміністратора.",
@@ -1349,7 +1349,7 @@
   "Call_MirrorPreview": "Отразить предпросмотр",
   "Call_OpenSettings": "Відкрити налаштування",
   "Call_Proceed": "Продовжити",
-  "Call_ScreenShareActiveTitle": "La condivisione dello schermo è già attiva",
+  "Call_ScreenShareActiveTitle": "Wird bereits geteilt",
   "Call_ScreenShareActiveText": "В этом чате одновременно можно демонстрировать только один экран.",
   "Call_Fullscreen": "Pantalla completa",
   "Call_Float": "Jendela mengambang",
@@ -1856,7 +1856,7 @@
   "Unavailable_Title": "Không khả dụng",
   "Unavailable_PageNotFound": "Такой страницы не существует.",
   "Unavailable_NotFound_Format": "No se ha encontrado: {0}",
-  "Unavailable_Chat": "Cuộc trò chuyện này không khả dụng",
+  "Unavailable_Chat": "Trò chuyện không khả dụng",
 
   // Error pages, and the error barrier that replaces a component which failed to render.
   "Error_AwSnap": "エラーが発生しました",
@@ -1991,7 +1991,7 @@
   "Members_NoLongerModerator_Format": "{0} のモデレーターを解除しました",
 
   // The prompt before starting a replay, and the pin/unpin toasts.
-  "Replay_ConfirmTitle": "Да започнем ли възпроизвеждането?",
+  "Replay_ConfirmTitle": "Yeniden oynatma başlasın mı?",
   "Replay_ConfirmText": "Възпроизвеждането ще спре слушането и ще го възобнови, след като приключите. Да продължим ли?",
   "Pin_MessagePinned": "メッセージを固定しました",
   "Pin_MessageUnpinned": "メッセージの固定を解除しました",
@@ -2120,7 +2120,7 @@
   "Share_ThreadText_Format": "{1} üzerindeki \"{0}\" konusu: {2}",
 
   // Shown when someone signs in with an identity that has no account yet.
-  "Account_RegisterTitle": "Зареєструвати новий обліковий запис?",
+  "Account_RegisterTitle": "Hesap oluşturulsun mu?",
   "Account_RegisterText_Format": "Nous n'avons pas trouvé de compte pour {0}. Voulez-vous en créer un nouveau ?",
   "Account_RegisterThisAccount": "цього облікового запису",
   "Account_Register": "Зарегистрировать",
@@ -2414,7 +2414,7 @@
   "Coach_WeeklySummaryCaption": "Eine Nachricht am Montag mit dem, was sich geändert hat",
   "Coach_YourData": "あなたのデータ",
   "Coach_YourDataCaption": "Apenas as suas próprias mensagens são analisadas e só você vê o resultado. As pessoas com quem você conversa nunca são avaliadas.",
-  "Coach_DeleteData": "Supprimer toutes les données de coaching",
+  "Coach_DeleteData": "Избриши податке о цоацхингу",
   "Coach_DeleteDataConfirm": "Damit werden alle Coaching-Zahlen und Markierungen entfernt. Deine Nachrichten bleiben erhalten.",
   "Coach_CoachMeHere": "Burada bana koçluk yap",
   "Coach_TipCleanTitle": "Без слов-паразитов",
@@ -2423,7 +2423,7 @@
   "Coach_WeekNoteScore_Format": "Puntuación {0}",
   "Coach_WeekNoteFocus_Format": "{0}：{1}",
   "Coach_WeekNoteBest": "Cuộc trò chuyện hay nhất",
-  "Coach_ScoreSheetTitle": "Điều gì ảnh hưởng đến điểm của bạn",
+  "Coach_ScoreSheetTitle": "Cosa fa cambiare il tuo punteggio",
   "Coach_ScorePoints_Format": "{1} puanın {0} tanesi",
   "Coach_Native": "Muttersprache",
   "Coach_Learning": "та, що вивчається",
