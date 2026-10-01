@@ -1,6 +1,7 @@
 import { PromiseSource, PromiseSourceWithTimeout } from 'actuallab-core';
 import { audioContextSource, AppAudioContext, AudioContextAction } from '../../../UI.Blazor.App/Services/audio-context-source';
 import { DestinationFallbackTrait } from '../../../UI.Blazor.App/Services/audio-context-traits';
+import { BrowserInfo } from '../BrowserInfo/browser-info';
 import { getLogs } from 'logging';
 import { AUDIO } from 'app-constants';
 import { Disposable, Disposables } from 'disposable';
@@ -73,13 +74,48 @@ export class SoundPlayer {
     }
 
     /**
-     * Loops the sound until disposed. Web Audio rather than an HTMLAudioElement: WebKit makes a playing
-     * element the system Now Playing target, so media keys would pause it and later resume it.
+     * Loops the sound until disposed. Web Audio when its context is running: WebKit makes a playing
+     * HTMLAudioElement the system Now Playing target, so media keys would pause it. The element is
+     * the fallback - MAUI hosts have no context, and a background tab keeps it suspended.
      */
-    public loop(sound: string | AudioBuffer): Disposable {
+    public loop(sound: string | Blob): Disposable {
+        if (BrowserInfo.useWebAudio && audioContextSource.isContextRunning)
+            return this.loopViaContext(sound);
+
+        const url = typeof sound === 'string' ? sound : URL.createObjectURL(sound);
+        const audio = new Audio(url);
+        audio.loop = true;
+        let isStopped = false;
+        let contextLoop: Disposable | null = null;
+        audio.play().catch((e: unknown) => {
+            if (isStopped)
+                return;
+
+            warnLog?.log('loop: failed to play sound', sound, e);
+            // Autoplay is blocked: the context starts the loop once a user gesture resumes it
+            if (BrowserInfo.useWebAudio)
+                contextLoop = this.loopViaContext(sound);
+        });
+        return Disposables.fromAction(() => {
+            isStopped = true;
+            contextLoop?.dispose();
+            audio.pause();
+            // Releases the element: a paused one stays resumable by media keys
+            audio.removeAttribute('src');
+            audio.load();
+            if (typeof sound !== 'string')
+                URL.revokeObjectURL(url);
+        });
+    }
+
+    // Private methods
+
+    private loopViaContext(sound: string | Blob): Disposable {
         const whenStopped = new PromiseSource<void>();
         const action = audioContextSource.run(async (context) => {
-            const buffer = typeof sound === 'string' ? await this.getSound(sound) : sound;
+            const buffer = typeof sound === 'string'
+                ? await this.getSound(sound)
+                : await this.offlineContext.decodeAudioData(await sound.arrayBuffer());
             if (whenStopped.isCompleted)
                 return;
 
