@@ -158,6 +158,11 @@
         @* Footer for mobile full-screen video *@
         <div class="video-panel-toolbar video-panel-footer">
             @if (isMobileOrNarrow) {
+                @* Left counterweight: the record button has one control on its left and, once the
+                   camera is on, two on its right (switch + react). This slot re-centers it on them. *@
+                @if (isOwnCameraStreaming && m.CanReact) {
+                    <div class="btn-incut"></div>
+                }
                 <HeaderButton
                     Click="@(() => OnVideoClick(!isOwnCameraStreaming))"
                     Class="@("btn-video-panel btn-video-toggle " + videoBtnCls)">
