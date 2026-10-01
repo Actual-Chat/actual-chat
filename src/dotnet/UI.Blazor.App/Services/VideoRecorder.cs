@@ -178,6 +178,12 @@ public sealed class VideoRecorder : IAsyncDisposable
         return _jsRef.InvokeVoidAsync("switchCamera", cancellationToken, deviceId).AsTask();
     }
 
+    public void ReplaceStaleCamera(string staleDeviceId, string deviceId)
+    {
+        if (_deviceId == staleDeviceId)
+            _deviceId = deviceId;
+    }
+
     public Task ToggleBlur(bool enabled, CancellationToken cancellationToken)
     {
         if (_isBlurEnabled == enabled)
@@ -681,14 +687,22 @@ public sealed class VideoRecorder : IAsyncDisposable
         }
 
         [JSInvokable]
-        public void OnTrackSettings(string? deviceId, string? facingMode)
+        public void OnTrackSettings(string? deviceId, string? facingMode, string? staleDeviceId)
         {
             // Fires from JS after a camera track is acquired (start or camera
             // switch). Lets CameraUI resolve per-camera display preferences
             // (mirror) from current device + facingMode. Not called for
             // screencast — its display is never mirrored.
-            if (kind == VideoSourceKind.Camera)
-                hub.CameraUI.OnTrackSettings(deviceId, facingMode);
+            if (kind != VideoSourceKind.Camera)
+                return;
+
+            if (!staleDeviceId.IsNullOrEmpty() && !deviceId.IsNullOrEmpty()) {
+                // The recorder goes first: once it holds the granted id, the state sync
+                // CameraUI triggers finds nothing to switch and leaves the new track alone.
+                videoRecorder.ReplaceStaleCamera(staleDeviceId, deviceId);
+                hub.CameraUI.ReplaceStaleCamera(staleDeviceId, deviceId);
+            }
+            hub.CameraUI.OnTrackSettings(deviceId, facingMode);
         }
 
         [JSInvokable]

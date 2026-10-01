@@ -93,6 +93,20 @@ public class CameraUI : UIServiceBase<AppUIHub>, IComputeService
         SetSelectedDevice(deviceId);
     }
 
+    internal void ReplaceStaleCamera(string staleDeviceId, string deviceId)
+    {
+        // The browser no longer knows staleDeviceId, so the recorder fell back to deviceId.
+        // Both writes compare first: a camera the user picked in the meantime wins.
+        if (_selectedDeviceId.Value == staleDeviceId)
+            SetSelectedDevice(deviceId);
+        _ = BackgroundTask.Run(
+            () => LocalSettings.LocalAppSettings().Update(s => s.SelectedCameraDeviceId == staleDeviceId
+                ? s with { SelectedCameraDeviceId = deviceId }
+                : s),
+            Log,
+            $"{nameof(ReplaceStaleCamera)} failed");
+    }
+
     internal void OnTrackSettings(string? deviceId, string? facingMode)
     {
         // Called by the active camera recorder after each track acquisition

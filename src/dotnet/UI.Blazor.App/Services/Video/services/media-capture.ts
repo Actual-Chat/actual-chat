@@ -44,11 +44,16 @@ export class MediaCapture {
             }
             catch (e) {
                 lastError = e;
+                if (options.deviceId && MediaCapture.isUnknownDeviceError(e, candidate)) {
+                    infoLog?.log(`${tag}: camera ${options.deviceId} is unknown, retrying with the default one`);
+                    return MediaCapture.captureCameraStream({ ...options, deviceId: undefined });
+                }
+                const errorJson = JSON.stringify(e, ['name', 'message', 'constraint']);
                 if (candidate.fallbackOnFailure) {
-                    infoLog?.log(`${tag}: ${candidate.name} failed, trying next candidate. Error:`, JSON.stringify(e, ['name', 'message', 'constraint']));
+                    infoLog?.log(`${tag}: ${candidate.name} failed, trying next candidate. Error:`, errorJson);
                     continue;
                 }
-                infoLog?.log(`${tag}: failed to capture camera stream. Error:`, JSON.stringify(e, ['name', 'message', 'constraint']));
+                infoLog?.log(`${tag}: failed to capture camera stream. Error:`, errorJson);
                 throw e;
             }
         }
@@ -105,6 +110,20 @@ export class MediaCapture {
                 throw e;
             }
         }
+    }
+
+    /**
+     * A stored device id goes stale (WebView data reset, a camera unplugged), and `exact` then fails
+     * every candidate. The last candidate has no other mandatory constraint, so there the
+     * error means the same even when the browser leaves `constraint` empty.
+     */
+    private static isUnknownDeviceError(error: unknown, candidate: CameraConstraintCandidate): boolean {
+        // No instanceof: OverconstrainedError isn't an Error in every browser
+        const e = error as Partial<OverconstrainedError> | null;
+        if (e?.name !== 'OverconstrainedError')
+            return false;
+
+        return e.constraint === 'deviceId' || !candidate.fallbackOnFailure;
     }
 
     private static buildCameraConstraintCandidates(options: CameraCaptureOptions): CameraConstraintCandidate[] {

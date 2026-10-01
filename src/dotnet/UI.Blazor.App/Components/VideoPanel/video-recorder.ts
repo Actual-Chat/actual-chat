@@ -979,8 +979,9 @@ export class VideoRecorder {
             }), codecString);
             infoLog?.log(`Warmup codec=${codecString} (hw=${this.currentCodecHardwareAccel}) at ${requestSize.width}x${requestSize.height}, full ladder ${warmupTierCeiling} tier(s)`);
 
+            const requestedDeviceId = this.selectedCameraDeviceId;
             const track = await MediaCapture.captureCameraStream({
-                deviceId: this.selectedCameraDeviceId ?? undefined,
+                deviceId: requestedDeviceId ?? undefined,
                 frameRate: targetFramerate,
                 width: requestSize.width,
                 height: requestSize.height,
@@ -1036,7 +1037,8 @@ export class VideoRecorder {
             void this.blazorRef.invokeMethodAsync(
                 'OnTrackSettings',
                 trackSettings.deviceId ?? null,
-                trackSettings.facingMode ?? null);
+                trackSettings.facingMode ?? null,
+                this.adoptGrantedCamera(requestedDeviceId, trackSettings.deviceId));
 
             track.onended = () => {
                 infoLog?.log('Warmup camera track ended externally — stopping recording');
@@ -1350,8 +1352,9 @@ export class VideoRecorder {
             infoLog?.log(`Capture ladder (bottom-first): [${ladder.map(l => `${l.width}x${l.height}`).join(', ')}], capture ${captureWidth}x${captureHeight}`);
 
             // Acquire the camera track on main thread.
+            const requestedDeviceId = this.selectedCameraDeviceId;
             const track = await MediaCapture.captureCameraStream({
-                deviceId: this.selectedCameraDeviceId ?? undefined,
+                deviceId: requestedDeviceId ?? undefined,
                 frameRate: targetFramerate,
                 width: captureWidth,
                 height: captureHeight,
@@ -1397,7 +1400,8 @@ export class VideoRecorder {
             void this.blazorRef.invokeMethodAsync(
                 'OnTrackSettings',
                 trackSettings.deviceId ?? null,
-                trackSettings.facingMode ?? null);
+                trackSettings.facingMode ?? null,
+                this.adoptGrantedCamera(requestedDeviceId, trackSettings.deviceId));
 
             // External track death (permission revoked, camera unplugged).
             track.onended = () => {
@@ -3076,6 +3080,19 @@ export class VideoRecorder {
         for (const cb of this.previewPresentationListeners) {
             try { cb(presentation); } catch (e) { warnLog?.log('preview presentation listener threw', e); }
         }
+    }
+
+    /**
+     * MediaCapture falls back to the default camera when the browser no longer knows the requested id.
+     * Returns that stale id, so C# replaces it too; null when the requested camera was granted.
+     */
+    private adoptGrantedCamera(requestedDeviceId: string | null, grantedDeviceId?: string): string | null {
+        if (!requestedDeviceId || !grantedDeviceId || grantedDeviceId === requestedDeviceId)
+            return null;
+
+        if (this.selectedCameraDeviceId === requestedDeviceId)
+            this.selectedCameraDeviceId = grantedDeviceId;
+        return requestedDeviceId;
     }
 
     private async reportStartError(cause: unknown): Promise<void> {
