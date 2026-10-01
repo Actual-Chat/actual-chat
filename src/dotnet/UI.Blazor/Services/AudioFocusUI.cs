@@ -88,8 +88,15 @@ public class AudioFocusUI : ProcessorBase
     // nothing to choose from. Which output a call should be on is CallUI's business.
     public virtual IState<AudioOutputRoutes>? OutputRoutes => null;
 
+    // Where the sound plays right now, calls or not; null where the platform doesn't tell.
+    public virtual IState<AudioOutputKind?>? OutputKind => null;
+
     // Null puts the call back on the platform's defaults.
     public virtual Task ApplyOutputRoute(string? routeId)
+        => Task.CompletedTask;
+
+    // Moves playback outside a call to the earpiece and back, as a phone held to the ear asks for.
+    public virtual Task SetPlaybackAtEar(bool isAtEar)
         => Task.CompletedTask;
 
     public virtual AudioFocusDiagnostics GetDiagnostics()

@@ -25,6 +25,10 @@ public sealed class AudioEngine : IDisposable
     private static readonly AVAudioFormat SilentOutputFormat =
         new (AVAudioCommonFormat.PCMFloat32, Constants.Audio.PlaybackSampleRate, 2, false);
 
+    // A switch's configuration change lands 0.6-0.7s after it; one that arrives sooner belongs to
+    // an earlier switch, and the stop this hold is waiting for is still ahead.
+    private static readonly TimeSpan PlayerHoldSettleTime = TimeSpan.FromMilliseconds(300);
+
     private readonly Lock _lock = new ();
     private readonly ComputedState<bool> _isRunning;
     private readonly Debouncer<Unit> _idleReleaseDebouncer;
@@ -35,6 +39,9 @@ public sealed class AudioEngine : IDisposable
     private InputNode? _inputNode;
     private bool _isStarted;
     private bool _isDisposed;
+    private int _playerHoldId;
+    private bool _isHoldingPlayers;
+    private CpuTimestamp _playersHeldAt;
     private AudioFocusMode Mode { get; }
     private AppUIHub Hub { get; }
     private ILogger Log => field ??= Hub.LogFor(GetType());
@@ -138,6 +145,39 @@ public sealed class AudioEngine : IDisposable
         }
     }
 
+    public int HoldPlayers()
+    {
+        // Called ahead of a session switch: the engine stops itself once the switch lands, and
+        // only a node on hold keeps its queue through that - see PlayerNode.Hold. Reconnect lets
+        // them go; the id is for UnholdPlayers, the fallback for a switch that stops nothing.
+        PlayerNode[] playerNodes;
+        int holdId;
+        lock (_lock) {
+            playerNodes = [.. _playerNodes];
+            holdId = ++_playerHoldId;
+            _isHoldingPlayers = true;
+            _playersHeldAt = CpuTimestamp.Now;
+        }
+        foreach (var playerNode in playerNodes)
+            playerNode.Hold();
+        return holdId;
+    }
+
+    public void UnholdPlayers(int holdId)
+    {
+        PlayerNode[] playerNodes;
+        lock (_lock) {
+            if (!_isHoldingPlayers || _playerHoldId != holdId)
+                return;
+
+            _isHoldingPlayers = false;
+            playerNodes = [.. _playerNodes];
+        }
+        Log.LogInformation("{Mode}.UnholdPlayers: no engine stop followed the switch", Mode);
+        foreach (var playerNode in playerNodes)
+            playerNode.Unhold();
+    }
+
     public void Reconnect()
     {
         // A configuration change stops the engine itself and drops its connections to the I/O
@@ -146,11 +186,16 @@ public sealed class AudioEngine : IDisposable
             return;
 
         PlayerNode[] playerNodes;
+        var mustUnholdPlayers = false;
         lock (_lock) {
             if (!_isStarted)
                 return;
 
             playerNodes = [.. _playerNodes];
+            if (_isHoldingPlayers && _playersHeldAt.Elapsed >= PlayerHoldSettleTime) {
+                _isHoldingPlayers = false;
+                mustUnholdPlayers = true;
+            }
             var engine = EngineUnsafe;
             if (!engine.Running) {
                 // Rebuilding player -> main mixer is what a freshly built player node does, and
@@ -167,6 +212,9 @@ public sealed class AudioEngine : IDisposable
             }
         }
         // Outside the lock: a node takes its own lock and then this one when it's disposed.
+        if (mustUnholdPlayers)
+            foreach (var playerNode in playerNodes)
+                playerNode.Unhold();
         var requestedCount = playerNodes.Count(x => x.IsPlayRequested);
         var restartedCount = playerNodes.Count(x => x.RestorePlayState());
         Log.LogInformation(
@@ -229,11 +277,17 @@ public sealed class AudioEngine : IDisposable
     public PlayerNode NewPlayer(AVAudioFormat format, bool connectToMainOutput = true)
     {
         var node = new PlayerNode(new AVAudioPlayerNode(), format, DisposePlayerNode, Hub);
-        lock (_lock)
+        bool mustHold;
+        lock (_lock) {
             _playerNodes.Add(node);
+            mustHold = _isHoldingPlayers;
+        }
         AttachNode(node.Node);
         if (connectToMainOutput)
             ConnectToMainMixer(node, format);
+        // A player built mid-switch faces the same engine stop as the ones already playing.
+        if (mustHold)
+            node.Hold();
         return node;
     }
 
