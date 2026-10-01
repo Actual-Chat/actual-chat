@@ -184,6 +184,14 @@ body.wide .video-panel.expanded[data-has-video-panel-chat] > .c-container {
     clip-path: inset(50% 50% round 9999px);
     animation: smoothShowVideoPanel 0.3s ease-in-out 0.2s forwards;
 }
+/* Opened straight into full screen, the panel takes over from the call screen: fading in would
+   show the chat through it. */
+.video-panel.expanded.first-time-open,
+.video-panel.expanded.first-time-open .video-panel-content {
+    @apply opacity-100;
+    clip-path: none;
+    animation: none;
+}
 .video-panel.closing .video-panel-content {
     animation: smoothHideVideoPanel 0.35s ease-in-out forwards;
 }

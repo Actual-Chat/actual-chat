@@ -338,9 +338,9 @@
             return;
         }
 
-        // The video panel lives in the chat, under this screen.
+        // The video panel lives in the chat, under this screen; it opens full-screen, as this screen is.
         await CallScreensUI.LeaveCallScreen(chat.Id).ConfigureAwait(true);
-        ChatVideoUI.ToggleVideoCapture(chat.Id);
+        await ChatVideoUI.StartVideoCapture(chat.Id, true).ConfigureAwait(true);
     }
 
     private Task OnSwitchCameraClick()

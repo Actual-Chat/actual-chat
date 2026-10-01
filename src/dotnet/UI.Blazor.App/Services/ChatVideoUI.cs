@@ -1,4 +1,5 @@
-﻿using ActualChat.Streaming;
+﻿using ActualChat.Live;
+using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Components.VideoPanel;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
@@ -177,16 +178,25 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             JoinVideoSession(chatId);
     }
 
-    public Task StartVideoCapture(ChatId chatId, CancellationToken cancellationToken = default)
+    public async Task StartVideoCapture(
+        ChatId chatId, bool isExpanded = false, CancellationToken cancellationToken = default)
     {
         // No join preview: for a gesture that already said "video on", such as the system call UI's
         // video button. The camera and blur are the ones the last session saved.
         if (_recordingChatId.Value == chatId)
-            return Task.CompletedTask;
+            return;
 
-        return HasJoinedVideoSession(chatId)
+        var startTask = HasJoinedVideoSession(chatId)
             ? ResumeVideoStreamingInternal(chatId, cancellationToken)
             : StartVideoCaptureInternal(chatId, cancellationToken);
+        await startTask.ConfigureAwait(false);
+        if (!isExpanded)
+            return;
+
+        // Opened here rather than left to the start above: a panel that opens later resets its mode.
+        await OpenVideoPanelInternal(chatId, cancellationToken).ConfigureAwait(false);
+        if (_watchingChatId.Value == chatId)
+            ChatActivityUI.SetPanelMode(chatId, VisualActivityPanelMode.Expanded);
     }
 
     public void ToggleScreenCast(ChatId chatId)
@@ -215,6 +225,16 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
             if (chat is null || !IsVideoAvailableNonComputed(chat))
                 return;
+
+            // Already on the air in this chat - on a call, or with the mic open - so the camera just
+            // joins in: the preview's mic choice is made, and the camera is the last session's.
+            var isOnAir = Hub.CallUI.GetActiveCallNonComputed() is { Phase: CallPhase.Active } call
+                && call.ChatId == chatId;
+            isOnAir = isOnAir || await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) == chatId;
+            if (isOnAir) {
+                await StartVideoCaptureInternal(chatId, cancellationToken).ConfigureAwait(false);
+                return;
+            }
 
             var chatContext = new ChatContext(Hub, chat);
             var model = new JoinVideoCallModal.Model(chatContext, JoinVideoCallModal.VideoCallMode.Join);
