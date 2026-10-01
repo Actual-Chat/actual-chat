@@ -195,11 +195,16 @@ public sealed class IosCalls : CXProviderDelegate
 
     public void SetOutgoingCallName(ChatId chatId, string calleeName)
     {
-        if (calleeName.IsNullOrEmpty() || !TryGetCall(chatId, true, out var callId, out _))
+        if (calleeName.IsNullOrEmpty() || !TryGetCall(chatId, true, out var callId, out var call))
             return;
 
-        var update = new CXCallUpdate { LocalizedCallerName = calleeName };
-        _provider.ReportCall(new NSUuid(callId.ToString()), update);
+        // Kept as well as reported: a chat read from the cache gets here before CallKit holds the
+        // call, and a report for a call it doesn't hold is dropped. PerformStartCallAction repeats it.
+        lock (call) {
+            call.CalleeName = calleeName;
+            var update = new CXCallUpdate { LocalizedCallerName = calleeName };
+            _provider.ReportCall(new NSUuid(callId.ToString()), update);
+        }
     }
 
     public bool ReportOutgoingCallStatus(ChatId chatId, CallerStatus status)
@@ -340,8 +345,15 @@ public sealed class IosCalls : CXProviderDelegate
     public override void PerformStartCallAction(CXProvider provider, CXStartCallAction action)
     {
         // Same as an answer: CallKit activates the session for a start action it fulfilled.
-        if (TryGetCall(action.CallUuid, out var call))
+        if (TryGetCall(action.CallUuid, out var call)) {
             AudioSession.IsCallVideo = call.HasVideo;
+            // A call with no name shows its handle, which is the chat id. The lock keeps the fallback
+            // from landing after the name SetOutgoingCallName reports.
+            lock (call) {
+                var update = new CXCallUpdate { LocalizedCallerName = call.CalleeName ?? FallbackCallerName };
+                provider.ReportCall(action.CallUuid, update);
+            }
+        }
         AudioSession.PrepareForCall();
         provider.ReportConnectingOutgoingCall(action.CallUuid, null);
         action.Fulfill();
@@ -528,6 +540,8 @@ public sealed class IosCalls : CXProviderDelegate
         public CallId? CallId { get; } = callId;
         public bool HasVideo { get; } = hasVideo;
         public bool IsOutgoing { get; } = isOutgoing;
+        // Read and written under a lock on the call.
+        public string? CalleeName { get; set; }
         public bool IsAnswered => Volatile.Read(ref _isAnswered) != 0;
         public bool IsVerdictPending => Volatile.Read(ref _isVerdictPending) != 0;
 
