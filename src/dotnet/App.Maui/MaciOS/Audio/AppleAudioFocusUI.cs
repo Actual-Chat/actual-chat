@@ -16,6 +16,9 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     // through that thread: the pick's checkmark, the toggle's icon and the menu closing - which
     // CallUI shows from the tap itself - all wait for the switch unless it lets them through first.
     private static readonly TimeSpan OutputPickPaintDelay = TimeSpan.FromMilliseconds(100);
+    // Twice what the engine's stop takes to follow a session switch; a switch that undoes the
+    // one before it brings no stop at all, and the held players wait this long for nothing.
+    private static readonly TimeSpan PlayerHoldTimeout = TimeSpan.FromSeconds(1.5);
 
     private readonly AsyncLock _lock = new(LockReentryMode.CheckedFail);
     private readonly ActiveScopes _activeScopes;
@@ -25,6 +28,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     private readonly Disposable<NSObject> _routeChangeSubscription;
     private readonly TaskSerializer _interruptionQueue = new();
     private readonly MutableState<AudioOutputRoutes> _outputRoutes;
+    private readonly MutableState<AudioOutputKind?> _outputKind;
     private long _interruptedAt;
     private bool _isSuspended;
     private bool _isSessionConfigured;
@@ -38,6 +42,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
 
     public override bool IsSuspended => _isSuspended || IsInterrupted;
     public override IState<AudioOutputRoutes>? OutputRoutes => _outputRoutes;
+    public override IState<AudioOutputKind?> OutputKind => _outputKind;
 
     public AppleAudioFocusUI(AppUIHub hub)
     {
@@ -45,6 +50,8 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         _activeScopes = new ActiveScopes(Hub.LogFor(GetType()));
         _outputRoutes = Hub.StateFactory.NewMutable(
             AudioOutputRoutes.None, StateCategories.Get(GetType(), nameof(OutputRoutes)));
+        _outputKind = Hub.StateFactory.NewMutable(
+            (AudioOutputKind?)null, StateCategories.Get(GetType(), nameof(OutputKind)));
         _interruptionSubscription = Disposable.New(
             AVAudioSession.Notifications.ObserveInterruption(OnInterruption),
             NSNotificationCenter.DefaultCenter.RemoveObserver);
@@ -165,6 +172,32 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         });
     }
 
+    public override Task SetPlaybackAtEar(bool isAtEar)
+    {
+        if (AudioSession.IsPlaybackAtEar == isAtEar)
+            return Task.CompletedTask;
+
+        Log.LogInformation("SetPlaybackAtEar: {IsAtEar}", isAtEar);
+        AudioSession.IsPlaybackAtEar = isAtEar;
+        // Only PlayAndRecord reaches the receiver, so this is a category switch both ways. The
+        // engine stops itself when the switch lands, a moment after it's back up, so the players
+        // are held from here until that stop is behind them - or a replay loses all it has queued.
+        return _interruptionQueue.Enqueue(async _ => {
+            using (await _lock.Lock(StopToken).ConfigureAwait(false)) {
+                if (!_activeScopes.IsEmpty) {
+                    var holdId = AudioEngines.Playback.HoldPlayers();
+                    try {
+                        await SetModeUnsafe(_activeScopes.GetMode()).ConfigureAwait(false);
+                    }
+                    finally {
+                        UnholdPlayersOnTimeout(holdId);
+                    }
+                }
+            }
+            await RefreshOutputRoutes().ConfigureAwait(false);
+        });
+    }
+
     public void OnCallSessionActivated()
     {
         // An incoming ring interrupts whatever session the app held, and iOS never posts the end
@@ -235,6 +268,12 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
                 Log.LogError(e, "Failed to release scope {Scope} for {Mode}", scope, requester.Kind);
         }
     }
+
+    private void UnholdPlayersOnTimeout(int holdId)
+        => _ = BackgroundTask.Run(async () => {
+            await Task.Delay(PlayerHoldTimeout, StopToken).ConfigureAwait(false);
+            AudioEngines.Playback.UnholdPlayers(holdId);
+        }, Log, "Failed to unhold the players", StopToken);
 
     private async Task SetModeUnsafe(AudioFocusMode mode)
     {
@@ -471,6 +510,8 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
     {
         var outputRoutes = await AudioSession.GetOutputRoutes().ConfigureAwait(false);
         _outputRoutes.Value = outputRoutes;
+        // The route list is empty outside PlayAndRecord, and the kind is known in any category.
+        _outputKind.Value = AudioSession.GetCurrentOutputKind();
         Log.LogInformation("OutputRoutes: current={CurrentId}, routes=[{Routes}]",
             outputRoutes.CurrentId,
             string.Join(", ", outputRoutes.Routes.Select(x => $"{x.Kind}:{x.Id}:{x.Name}")));

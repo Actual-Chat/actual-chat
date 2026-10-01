@@ -12,17 +12,24 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
 
     private readonly AndroidAudioFocusHelper _focusHelper;
     private readonly MutableState<AudioOutputRoutes> _outputRoutes;
+    private readonly MutableState<AudioOutputKind?> _outputKind;
     private MauiAudioFocusHandle? _handle;
     private CarAudioRoute _carAudioRoute = CarAudioRoute.Default;
     private int _isTrackingCarAudioRoute;
     private int _isCallVideo;
+    private int _isCallActive;
     // Non-null while a call is on: all its audio then takes the communication route, and the route
     // only picks the device. A call's playback is one long track, so its usage can't follow a focus
-    // change mid-call.
+    // change mid-call. A replay held to the ear borrows the same route for the earpiece.
     private CallAudioRoute? _callAudioRoute;
     public override bool IsCommunicationFocus => _focusHelper.IsCommunicationFocus;
     // Nothing to pick from without an earpiece - a tablet - so the call screen shows no button there.
     public override IState<AudioOutputRoutes>? OutputRoutes => _focusHelper.HasEarpiece ? _outputRoutes : null;
+    public override IState<AudioOutputKind?> OutputKind => _outputKind;
+
+    // Raised once playback outside a call has moved onto the communication route or off it: a
+    // track's usage is fixed when it's built, so the playing ones have to be rebuilt to follow.
+    public event Action? PlaybackRouteChanged;
 
     public AndroidAudioFocusUI(AppUIHub hub)
         : base(hub)
@@ -30,6 +37,8 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
         _focusHelper = new AndroidAudioFocusHelper(Platform.AppContext, hub.LogFor<AndroidAudioFocusHelper>());
         _outputRoutes = hub.StateFactory.NewMutable(
             AudioOutputRoutes.None, StateCategories.Get(GetType(), nameof(OutputRoutes)));
+        _outputKind = hub.StateFactory.NewMutable(
+            (AudioOutputKind?)null, StateCategories.Get(GetType(), nameof(OutputKind)));
         _focusHelper.OnFocusChanged += OnFocusChanged;
         _focusHelper.OnOutputDevicesChanged += OnOutputDevicesChanged;
         RefreshOutputRoutes();
@@ -100,6 +109,7 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     public override Task SetCallActive(bool isCallActive, bool hasVideo)
     {
         Volatile.Write(ref _isCallVideo, hasVideo ? 1 : 0);
+        Volatile.Write(ref _isCallActive, isCallActive ? 1 : 0);
         // Only a forced pick survives: the default one follows video turned on mid-call.
         var route = !isCallActive ? (CallAudioRoute?)null
             : _callAudioRoute is { IsBuiltinForced: true } pickedRoute ? pickedRoute
@@ -122,6 +132,18 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
             _ => route with { IsBuiltinForced = false },
         };
         await SetCallAudioRoute(route).ConfigureAwait(false);
+    }
+
+    public override async Task SetPlaybackAtEar(bool isAtEar)
+    {
+        // A call owns the communication route, and it's the call that lets it go.
+        if (Volatile.Read(ref _isCallActive) != 0)
+            return;
+
+        Log.LogInformation("SetPlaybackAtEar: {IsAtEar}", isAtEar);
+        // Not forced: a headset put on at the ear is where the user now listens.
+        await SetCallAudioRoute(isAtEar ? new CallAudioRoute(true, false) : null).ConfigureAwait(false);
+        PlaybackRouteChanged?.Invoke();
     }
 
     public override AudioOutputKind? GetCurrentOutputKind()
@@ -219,6 +241,9 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
             : route.IsEarpiece ? AudioOutputRoute.PhoneId
             : AudioOutputRoute.SpeakerId;
         _outputRoutes.Value = new AudioOutputRoutes(routes, currentId);
+        _outputKind.Value = externalKind is not null && !route.IsBuiltinForced ? externalKind
+            : route.IsEarpiece ? AudioOutputKind.Phone
+            : AudioOutputKind.Speaker;
     }
 
     private static FocusRequestKind GetFocusRequestKind(
