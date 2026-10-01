@@ -1360,9 +1360,13 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task CancelCallAfterActiveIsRejectedAsInvalidTransition()
+    public async Task CancelCallAfterActiveShouldLeaveTheCall()
     {
-        // arrange - a connected call
+        // The caller's client sends CancelCall while its slot still reads Dialing, and the server may have
+        // made the call Active by then - StartCall registered the caller, so the answer alone does it.
+        // Kept, the call and the caller's claim outlive the hang-up and the client rejoins it (#4984).
+
+        // arrange
         await using var bob = AppHost.NewBlazorTester(Out);
         await using var alice = AppHost.NewBlazorTester(Out);
         await bob.SignInAsUniqueBob();
@@ -1371,19 +1375,28 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await alice.JoinChat(chatId, inviteId);
         var bobAuthor = await bob.GetOwnAuthor(chatId);
         var aliceAuthor = await alice.GetOwnAuthor(chatId);
-        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
         await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
         await backend.AcceptCall(chatId, aliceAuthor.Id, default);
-        await backend.SetParticipation(chatId, bobAuthor.Id, ParticipationKind.Record, true, default);
         await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, true, default);
-        await backend.Get(chatId, default); // let GetState's self-heal promote both invites to Active
+        var state = await backend.GetState(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, state!, default);
+        (await backend.GetCallState(chatId, default))!.Status.Should().Be(CallStatus.Active);
 
-        // act - CancelCall arrives late, after the call is genuinely connected
+        // act
         await backend.CancelCall(chatId, bobAuthor.Id, default);
 
-        // assert - the session is untouched by CancelCall; it's still there and still Active
-        var state = await backend.GetState(chatId, default);
-        state.Should().NotBeNull();
+        // assert
+        (await callsBackend.GetUserCall(bobAuthor.UserId, default)).Should()
+            .BeNull("a claim left behind is what puts the call back on the caller's screens");
+        await TestWait.When(async ct => (await backend.ListParticipants(chatId, ct)).Should().Equal(aliceAuthor.Id));
+
+        // act - EnforceCallLeaveGrace is internal so the test runs the check instead of waiting it out
+        await backend.EnforceCallLeaveGrace(chatId);
+
+        // assert
+        await TestWait.When(async ct => (await backend.GetState(chatId, ct)).Should().BeNull());
     }
 
     [Fact]
