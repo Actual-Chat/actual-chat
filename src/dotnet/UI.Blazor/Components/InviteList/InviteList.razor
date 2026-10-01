@@ -84,13 +84,13 @@
                 var targetTitle = place is null
                     ? chat.Title
                     : string.Concat(place.Title, "/", chat.Title);
-                var title = L.Share_PrivateChatJoinLink;
                 var text = L.Share_TextTitled_Format(targetTitle, CoreConstants.AppName);
                 var shareModalSelectorPrefs = ShareWithPlaceMembersOnly.GetFor(chat, place);
                 var shareModel = new ShareModalModel(
-                    ShareKind.ChatInvite, title, targetTitle,
+                    ShareKind.ChatInvite, L.MessageMenu_ShareLink, targetTitle,
                     new(text, link),
-                    shareModalSelectorPrefs);
+                    shareModalSelectorPrefs,
+                    Caption: L.Chat_PrivateChat);
                 _ = ShareUI.Share(shareModel);
                 return;
             }
@@ -100,12 +100,12 @@
                 if (place == null || !place.Rules.CanInvite())
                     return;
 
-                var title = L.Share_PrivatePlaceJoinLink;
                 var text = L.Share_TextTitled_Format(place.Title, CoreConstants.AppName);
                 var shareModel = new ShareModalModel(
-                    ShareKind.PlaceInvite, title, place.Title,
+                    ShareKind.PlaceInvite, L.MessageMenu_ShareLink, place.Title,
                     new(text, link),
-                    null);
+                    null,
+                    Caption: L.Place_PrivatePlace);
                 _ = ShareUI.Share(shareModel);
                 return;
             }

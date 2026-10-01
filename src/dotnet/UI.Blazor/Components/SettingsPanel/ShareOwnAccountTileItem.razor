@@ -52,7 +52,7 @@
         var shareUI = Services.GetRequiredService<ShareUI>();
         var request = new ShareRequest(
             L.Share_TextNamed_Format(name, CoreConstants.AppName), Links.User(account.AliasInfo));
-        shareUI.Share(ShareKind.Contact, L.YourAccount_ShareYourContact, name, request);
+        shareUI.Share(ShareKind.Contact, L.MessageMenu_ShareLink, name, request, caption: name);
     }
 
     private void OnShowQrClick(AccountFull account) {

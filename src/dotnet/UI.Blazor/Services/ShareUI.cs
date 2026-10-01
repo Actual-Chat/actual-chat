@@ -9,8 +9,9 @@ public sealed class ShareUI(UIHub hub) : UIServiceBase<UIHub>(hub)
 
     public Task<ModalRef> Share(ShareModalModel model)
         => ModalUI.Show(model);
-    public Task<ModalRef> Share(ShareKind kind, string title, string targetTitle, ShareRequest request)
-        => ModalUI.Show(new ShareModalModel(kind, title, targetTitle, request, null));
+    public Task<ModalRef> Share(
+        ShareKind kind, string title, string targetTitle, ShareRequest request, string caption = "")
+        => ModalUI.Show(new ShareModalModel(kind, title, targetTitle, request, null, Caption: caption));
 
     public Task<ModalRef> Share(ChatEntryAttachment attachment, string targetTitle = "")
     {

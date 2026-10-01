@@ -26,6 +26,7 @@
         else if (HasHeader && HeaderMode != HeaderMode.None) {
             <DialogHeader
                 Title="@Title"
+                Caption="@Caption"
                 HasCloseButton="@HasCloseButton"
                 HideBackButton="@HideHeaderBackButton" />
         }
@@ -66,6 +67,7 @@
     [Parameter] public bool FullBleed { get; set; }
     [Parameter] public bool HasCloseButton { get; set; }
     [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Caption { get; set; } = "";
     [Parameter] public RenderFragment? Body { get; set; }
     [Parameter] public RenderFragment? Footer { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }
