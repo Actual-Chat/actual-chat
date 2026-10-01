@@ -1711,9 +1711,10 @@ following it.
 
 ### 3.12 Rules that came from painful debugging
 
-*Four things that look like they should work and do not: freezing `style.height` does not freeze
+*Five things that look like they should work and do not: freezing `style.height` does not freeze
 `scrollHeight`; a 4M length does not survive a style round-trip; a boundary at the scroller's own end
-cannot rubber-band; and a touch keeps the target it started on.*
+cannot rubber-band; a touch keeps the target it started on; and a key that moves between two markup
+branches takes the item's attributes with it.*
 
 #### `scrollHeight` does not follow `style.height`
 
@@ -1763,6 +1764,25 @@ stay disarmed: the list ends up parked off its own content with no way back.
 There is also a `TouchStaleMs` (3s) backstop, checked while `following`: if the finger has not moved the
 scroller for that long, whatever we are waiting on is not a gesture. *Known limitation:* a genuinely
 resting finger — a long press while holding a pull — trips it.
+
+#### One key, one markup branch
+
+The list's model is built from `.item[data-key]` elements and nothing else (`rebuildItems`), so an item
+wrapper that loses its `class` or `data-key` drops out of the model while staying in the DOM. Every
+offset after it is then short by its height: the bottom scroll limit sits above the real end, and a
+touch scroll down bounces back before reaching it.
+
+Blazor does exactly that to a wrapper whose `@key` moves between two `if`/`else` branches of the
+markup. It matches the two elements by key, but diffs their attributes by sequence number, and the
+branches have different ones: it sets the new branch's attributes, then removes the old branch's **by
+name**. Every attribute the branches have in common ends up removed. It happens in one direction only —
+towards the branch that comes first in the markup — which is why it can sit unnoticed.
+
+So an item whose kind can change under the same key is rendered by **one** element, with the
+differences expressed as attribute values (`class="@(isHeader ? … : …)"`), never by a branch per kind.
+In the chat this is the live card of a call's block, which becomes a regular conversation header with
+the same `<lid>-conversation` key when the call ends (`ChatView.razor`). The consistency checker reports
+the result as `model drift` (§5).
 
 ---
 

@@ -3,7 +3,12 @@
 
 @* ReSharper disable once UnusedParameter.Local *@
 @code {
-    public static readonly RenderFragment<(ChatMessage Item, ChatContext Context)> RenderChatMessage = context => __builder => {
+    private const string GroupChildren = "live-block unjoined-live-block live-block-dissolving joined-live-card";
+    private const string ItemChildren =
+        "conversation-message live-card live-footer live-header show-author conversation-header vl-sticky";
+
+    public static readonly RenderFragment<(ChatMessage Item, ChatContext Context)> RenderChatMessage =
+        context => __builder => {
         var item = context.Item;
         var chatContext = context.Context;
         if (item is ChatEntryMessage message) {
@@ -35,21 +40,18 @@
         }
         else if (item is ExpandedConversationMessage expandedConversationMessage) {
             foreach (var childItem in expandedConversationMessage.Items) {
-                @if (childItem is ConversationHeader or LiveConversationHeader) {
-                    <div @key="@childItem.Key" class="item expanded" data-key="@childItem.Key" data-skip="true"
-                         data-children="conversation-message live-card live-footer live-header show-author conversation-header vl-sticky"
-                         data-vl-h-transition="@(childItem.MustAnimateAppearance ? null : "change")">
-                        @RenderChatMessage!((childItem, chatContext))
-                    </div>
-                }
-                else if (childItem.IsGroup) {
-                    <div @key="@childItem.Key" class="group" data-children="live-block unjoined-live-block live-block-dissolving joined-live-card">
+                @if (childItem.IsGroup) {
+                    <div @key="@childItem.Key" class="group" data-children="@GroupChildren">
                         @RenderChatMessage!((childItem, chatContext))
                     </div>
                 }
                 else {
-                    <div @key="@childItem.Key" class="item" data-key="@childItem.Key" data-skip="@childItem.ShouldSkipKey"
-                         data-children="conversation-message live-card live-footer live-header show-author conversation-header vl-sticky"
+                    @* One element for all item kinds: a live card and its ended call's header share a key, and
+                       Blazor merges same-key elements of two branches by dropping the attributes they share. *@
+                    var isHeader = childItem is ConversationHeader or LiveConversationHeader;
+                    <div @key="@childItem.Key" class="@(isHeader ? "item expanded" : "item")"
+                         data-key="@childItem.Key" data-skip="@childItem.ShouldSkipKey"
+                         data-children="@ItemChildren"
                          data-vl-h-transition="@(childItem.MustAnimateAppearance ? null : "change")">
                         @RenderChatMessage!((childItem, chatContext))
                     </div>
@@ -74,8 +76,8 @@
         DataSource="@this"
         Identity="@Chat.Id.Value"
         IsContentSwapDependency="true"
-        GroupChildren="live-block unjoined-live-block live-block-dissolving joined-live-card"
-        ItemChildren="conversation-message live-card live-footer live-header show-author conversation-header vl-sticky"
+        GroupChildren="@GroupChildren"
+        ItemChildren="@ItemChildren"
         DefaultEdge="@VirtualListEdge.End"
         RenderDirection="@VirtualListRenderDirection.Reverse"
         AnimateItemHeight="true"
