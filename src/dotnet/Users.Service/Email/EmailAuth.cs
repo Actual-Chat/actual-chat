@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ActualChat.Hashing;
+using ActualChat.Localization;
 using ActualChat.Resilience;
 using ActualChat.Rpc;
 using ActualChat.Users.Db;
@@ -26,6 +27,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private TotpCodes TotpCodes { get; } = services.GetRequiredService<TotpCodes>();
     private CaptchaProofValidator CaptchaProofs { get; } = services.GetRequiredService<CaptchaProofValidator>();
     private RateLimitPolicy RateLimitPolicy => field ??= Services.GetRequiredService<RateLimitPolicy>();
+    private UserLocalizers UserLocalizers => field ??= Services.GetRequiredService<UserLocalizers>();
     private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
 
     // [ComputeMethod]
@@ -97,16 +99,17 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (!HostInfo.IsProductionInstance)
             Log.LogWarning("!!! Email verification code for {Email}: {Code}", email, sTotp);
 
-        var subject = purpose switch {
-            TotpPurpose.SignInEmail => $"{CoreConstants.AppName}: sign-in code",
-            TotpPurpose.VerifyEmail => $"{CoreConstants.AppName}: email verification",
-            _ => $"{CoreConstants.AppName}: code",
-        };
+        // A guest's settings carry the language their device resolved to, so this covers the sign-in mail too
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var l = await UserLocalizers.Get(account.Id, cancellationToken).ConfigureAwait(false);
+        var subject = purpose == TotpPurpose.SignInEmail
+            ? l.EmailCode_SignInSubject_Format(CoreConstants.AppName)
+            : l.EmailCode_VerifySubject_Format(CoreConstants.AppName);
 
         var parameters = new Dictionary<string, object?>() {
             { nameof(EmailVerification.Token), sTotp },
         };
-        var blazorRenderer = new BlazorRenderer();
+        var blazorRenderer = new BlazorRenderer(l);
         await using var _ = blazorRenderer.ConfigureAwait(false);
         var mjml = await blazorRenderer.RenderComponent<EmailVerification>(parameters).ConfigureAwait(false);
         var mjmlRenderer = new MjmlRenderer();

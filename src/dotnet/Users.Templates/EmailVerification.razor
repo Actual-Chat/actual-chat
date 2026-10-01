@@ -1,6 +1,8 @@
+@using ActualChat.Localization
 @using ActualChat.Mjml.Blazor.Components
 @using ActualChat.Mjml.Blazor.Enums
 @namespace ActualChat.Users.Templates
+@inherits EmailTemplateBase
 @{
     var imgSrc = $"https://{Constants.Hosts.Voxt}/dist/images/emails/email-cat.png";
 }
@@ -19,7 +21,7 @@
         FontWeight="600"
         LineHeight="30px"
         Color="#AE00CA">
-        Your email verification code
+        @L.EmailCode_Title
     </MjmlText>
     <MjmlText
         Align="MjmlTextAlign.Center"
@@ -28,7 +30,7 @@
         FontWeight="400"
         LineHeight="20px"
         Color="#1C1C1C">
-        Please enter your verification code in @CoreConstants.AppName app when prompted:
+        @L.EmailCode_Prompt_Format(CoreConstants.AppName)
     </MjmlText>
     <MjmlText
         Align="MjmlTextAlign.Center"
@@ -47,8 +49,7 @@
         LineHeight="20px"
         FontFamily="Arial"
         Color="#1C1C1C">
-        If you didn`t request a code, you can ignore this email. To protect your account, don`t forward
-        this email or give this code to anyone.
+        @L.EmailCode_Warning
     </MjmlText>
 </EmailBody>
 

@@ -1436,6 +1436,17 @@
   "Notification_ThreadCreated_Format": "'{0}' konusu oluşturuldu",
   "Notification_AttentionRequested_Format": "{0} dikkatinizi rica ediyor",
   "Notification_Reaction_Format": "{1} mesajına {0}",
+  "EmailCode_SignInSubject_Format": "{0}: giriş kodu",
+  "EmailCode_VerifySubject_Format": "{0}: e-posta doğrulama",
+  "EmailCode_Title": "E-posta doğrulama kodunuz",
+  "EmailCode_Prompt_Format": "İstendiğinde bu kodu {0} uygulamasına girin:",
+  "EmailCode_Warning": "Kod istemediyseniz bu e-postayı yok sayabilirsiniz. Hesabınızı korumak için bu e-postayı iletmeyin ve bu kodu kimseyle paylaşmayın.",
+  "EmailDigest_Subject_Format": "{0}: özet",
+  "EmailDigest_OpenChat_Format": "Sohbeti açın: {0}",
+  "EmailDigest_OpenUnread": "{1}: {0} yeni mesaj",
+  "EmailDigest_OtherUnread": "{0} okunmamış sohbet daha",
+  "EmailDigest_Reason_Format": "{0} uygulamasında okunmamış sohbetleriniz olduğu için bu günlük özeti alıyorsunuz.",
+  "EmailDigest_TurnOff": "Özet e-postalarını kapatın",
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.

@@ -1429,6 +1429,17 @@
   "Notification_ThreadCreated_Format": "Создан тред «{0}»",
   "Notification_AttentionRequested_Format": "{0} просит внимания",
   "Notification_Reaction_Format": "{0} на {1}",
+  "EmailCode_SignInSubject_Format": "{0}: код для входа",
+  "EmailCode_VerifySubject_Format": "{0}: подтверждение эл. почты",
+  "EmailCode_Title": "Ваш код подтверждения эл. почты",
+  "EmailCode_Prompt_Format": "Введите этот код в приложении {0}, когда оно его запросит:",
+  "EmailCode_Warning": "Если вы не запрашивали код, просто проигнорируйте это письмо. Чтобы защитить аккаунт, не пересылайте это письмо и никому не сообщайте код.",
+  "EmailDigest_Subject_Format": "{0}: дайджест",
+  "EmailDigest_OpenChat_Format": "Открыть чат: {0}",
+  "EmailDigest_OpenUnread": "{1}: {0} новое сообщение|{1}: {0} новых сообщения|{1}: {0} новых сообщений",
+  "EmailDigest_OtherUnread": "Ещё {0} непрочитанный чат|Ещё {0} непрочитанных чата|Ещё {0} непрочитанных чатов",
+  "EmailDigest_Reason_Format": "Вы получаете этот ежедневный дайджест, потому что у вас есть непрочитанные чаты в {0}.",
+  "EmailDigest_TurnOff": "Отключить дайджест на почту",
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.

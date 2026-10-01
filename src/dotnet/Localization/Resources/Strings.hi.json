@@ -1429,6 +1429,17 @@
   "Notification_ThreadCreated_Format": "थ्रेड '{0}' बनाया गया",
   "Notification_AttentionRequested_Format": "{0} ने ध्यान देने का अनुरोध किया",
   "Notification_Reaction_Format": "{1} पर {0}",
+  "EmailCode_SignInSubject_Format": "{0}: साइन-इन कोड",
+  "EmailCode_VerifySubject_Format": "{0}: ईमेल सत्यापन",
+  "EmailCode_Title": "आपका ईमेल सत्यापन कोड",
+  "EmailCode_Prompt_Format": "पूछे जाने पर यह कोड {0} ऐप में दर्ज करें:",
+  "EmailCode_Warning": "अगर आपने कोड नहीं माँगा है, तो आप इस ईमेल को अनदेखा कर सकते हैं। अपने खाते की सुरक्षा के लिए, यह ईमेल किसी को फ़ॉरवर्ड न करें और यह कोड किसी को न बताएँ।",
+  "EmailDigest_Subject_Format": "{0}: डाइजेस्ट",
+  "EmailDigest_OpenChat_Format": "{0} खोलें",
+  "EmailDigest_OpenUnread": "{1}: {0} नया संदेश|{1}: {0} नए संदेश",
+  "EmailDigest_OtherUnread": "{0} और अपठित चैट देखें",
+  "EmailDigest_Reason_Format": "आपको यह दैनिक डाइजेस्ट इसलिए मिल रहा है क्योंकि {0} में आपकी अपठित चैट हैं।",
+  "EmailDigest_TurnOff": "डाइजेस्ट ईमेल बंद करें",
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.

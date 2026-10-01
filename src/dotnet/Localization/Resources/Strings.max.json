@@ -1664,6 +1664,24 @@
   "Notification_AttentionRequested_Format": "{0} さんが注目を求めています",
   "Notification_Reaction_Format": "{1} mesajına {0}",
 
+  // Emails composed on the server, in the recipient's UI language: the sign-in / verification
+  // code mail (EmailCode_*) and the daily digest of unread chats (EmailDigest_*). A *Subject*
+  // value is the mail's subject line, where {0} is the product name. In EmailDigest_OpenChat_Format
+  // and EmailDigest_OpenUnread the chat name ({0} and {1} respectively) is user content: it stays
+  // untranslated and cannot be inflected, so put it where no case is required - after a colon.
+  // Both, and EmailDigest_OtherUnread, are button labels: keep them to one short line.
+  "EmailCode_SignInSubject_Format": "{0}: código de inicio de sesión",
+  "EmailCode_VerifySubject_Format": "{0}: підтвердження електронної пошти",
+  "EmailCode_Title": "Ваш код підтвердження електронної пошти",
+  "EmailCode_Prompt_Format": "Geben Sie diesen Code in der {0}-App ein, wenn Sie dazu aufgefordert werden:",
+  "EmailCode_Warning": "コードをリクエストしていない場合は、このメールを無視してかまいません。アカウントを保護するため、このメールを転送したり、コードを他人に教えたりしないでください。",
+  "EmailDigest_Subject_Format": "{0}: Zusammenfassung",
+  "EmailDigest_OpenChat_Format": "Отворите разговор: {0}",
+  "EmailDigest_OpenUnread": "{1} の新着メッセージ {0} 件を開く",
+  "EmailDigest_OtherUnread": "Xem thêm {0} cuộc trò chuyện chưa đọc",
+  "EmailDigest_Reason_Format": "Вы получаете этот ежедневный дайджест, потому что у вас есть непрочитанные чаты в {0}.",
+  "EmailDigest_TurnOff": "E-Mail-Zusammenfassungen deaktivieren",
+
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.

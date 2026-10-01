@@ -1,9 +1,11 @@
+@using ActualChat.Localization
 @using ActualChat.Mjml.Blazor.Components
 @using ActualChat.Mjml.Blazor.Enums
 @using Constants = Constants
 @namespace ActualChat.Users.Templates
+@inherits EmailTemplateBase
 
-<Mjml>
+<Mjml Lang="@LanguageCode">
     <MjmlHead>
         <MjmlStyle Inline="MjmlStyleInline.Inline">
             .gradient-background {
@@ -17,6 +19,8 @@
                 font-weight: 400;
                 font-family: 'Arial', serif;
                 line-height: 14px;
+                display: inline-block;
+                margin: 0 5px;
             }
 
             @@supports (background-clip: text) {
@@ -91,21 +95,13 @@
                             </td>
                         </tr>
                     </MjmlTable>
-                    <MjmlTable
-                        Width="220px"
-                        Align="MjmlTableAlign.Center"
+                    <MjmlText
+                        Align="MjmlTextAlign.Center"
+                        LineHeight="22px"
                         CssClass="grey-text">
-                        <tr>
-                            <td>
-                                <a href="https://@Constants.Hosts.Voxt/docs/privacy">Privacy Policy</a>
-                            </td>
-                            <td width="10px">
-                            </td>
-                            <td>
-                                <a href="https://@Constants.Hosts.Voxt/docs/terms">Terms and Conditions</a>
-                            </td>
-                        </tr>
-                    </MjmlTable>
+                        <a href="https://@Constants.Hosts.Voxt/docs/privacy">@L.Documents_PrivacyPolicy</a>
+                        <a href="https://@Constants.Hosts.Voxt/docs/terms">@L.Documents_TermsConditions</a>
+                    </MjmlText>
                     <MjmlText
                         Align="MjmlTextAlign.Center"
                         FontSize="12px"

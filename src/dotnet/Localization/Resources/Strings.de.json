@@ -1430,6 +1430,17 @@
   "Notification_ThreadCreated_Format": "Thread '{0}' wurde erstellt",
   "Notification_AttentionRequested_Format": "{0} bittet um Aufmerksamkeit",
   "Notification_Reaction_Format": "{0} auf {1}",
+  "EmailCode_SignInSubject_Format": "{0}: Anmeldecode",
+  "EmailCode_VerifySubject_Format": "{0}: E-Mail-Bestätigung",
+  "EmailCode_Title": "Ihr E-Mail-Bestätigungscode",
+  "EmailCode_Prompt_Format": "Geben Sie diesen Code in der {0}-App ein, wenn Sie dazu aufgefordert werden:",
+  "EmailCode_Warning": "Wenn Sie keinen Code angefordert haben, können Sie diese E-Mail ignorieren. Zum Schutz Ihres Kontos leiten Sie diese E-Mail bitte nicht weiter und teilen Sie den Code niemandem mit.",
+  "EmailDigest_Subject_Format": "{0}: Zusammenfassung",
+  "EmailDigest_OpenChat_Format": "{0} öffnen",
+  "EmailDigest_OpenUnread": "{1}: {0} neue Nachricht|{1}: {0} neue Nachrichten",
+  "EmailDigest_OtherUnread": "{0} weiteren ungelesenen Chat ansehen|{0} weitere ungelesene Chats ansehen",
+  "EmailDigest_Reason_Format": "Sie erhalten diese tägliche Zusammenfassung, weil Sie ungelesene Chats in {0} haben.",
+  "EmailDigest_TurnOff": "E-Mail-Zusammenfassungen deaktivieren",
   // Stands in for an entry with no text of its own - a shared location, or attachments
   // only. Read in the chat list, in quotes and in notifications, so each value is one line.
   // The Your* forms are the object of Notification_Reaction_Format - mind the case it governs.

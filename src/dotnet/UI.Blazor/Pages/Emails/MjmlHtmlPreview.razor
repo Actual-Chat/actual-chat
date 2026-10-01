@@ -2,6 +2,7 @@
 @using ActualChat.Users.Templates
 @using global::Mjml.Net
 @namespace ActualChat.UI.Blazor.Pages.Emails
+@inherits ComponentBase<UIHub>
 
 <iframe
     srcdoc="@_html"
@@ -16,7 +17,7 @@
     public Type ComponentType { get; set; } = null!;
 
     protected override async Task OnParametersSetAsync() {
-        var blazorRenderer = new BlazorRenderer();
+        var blazorRenderer = new BlazorRenderer(L);
         await using var _ = blazorRenderer.ConfigureAwait(false);
         var mjml = await blazorRenderer.RenderComponent(ComponentType).ConfigureAwait(false);
         var mjmlRenderer = new MjmlRenderer();
