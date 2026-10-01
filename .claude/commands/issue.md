@@ -80,7 +80,11 @@ Then set the org-level **issue type** (not labels — labels are ignored in this
 gh api -X PATCH repos/Actual-Chat/actual-chat/issues/<NUMBER> -f type=Bug --jq '.type.name'
 ```
 
-Pick `Bug` for defects, `Feature` for new user-visible capability, `Task` for everything else. The type is mandatory: an issue is not done until the call above echoes the type back. Do not go through GraphQL for it — the `organization.issueTypes` lookup is refused for the usual personal access tokens, while the REST call is not.
+Pick `Bug` for defects in the product, `Feature` for new user-visible capability, `Task` for everything else.
+
+A failing, flaky or outdated **test** is a `Task`, not a `Bug` — e2e specs, integration and unit tests, test rigs and CI checks alike. `Bug` means the product misbehaves for a user; when only the test is wrong (a stale selector, a race in a wait, a spec that no longer matches intended behavior), nothing is broken for users, so the fix is maintenance work. If the failing test exposed a real product defect, file that defect as a `Bug` and describe the user-visible symptom, not the red test.
+
+The type is mandatory: an issue is not done until the call above echoes the type back. Do not go through GraphQL for it — the `organization.issueTypes` lookup is refused for the usual personal access tokens, while the REST call is not.
 
 Do **not** pass `--label` — this repo doesn't use labels for triage.
 
