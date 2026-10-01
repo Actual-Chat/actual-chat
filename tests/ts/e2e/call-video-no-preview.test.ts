@@ -1,10 +1,13 @@
 /**
  * E2E test: turning the camera on mid-call starts video at once, without the join preview (#4932).
  *
- * Two users at a phone-sized viewport are on a call, and the caller turns the camera on from the
- * full-screen call screen, which only the narrow layout has. The join preview must not show, video
- * must open in the expanded video panel, and the call screen must stay up until that panel covers
- * the screen - the chat never shows in between.
+ * Two users are on a call, and the caller turns the camera on:
+ *   - narrow (phone-sized viewport): from the full-screen call screen, which only the narrow
+ *     layout has. Video must open in the expanded video panel, and the call screen must stay up
+ *     until that panel covers the screen - the chat never shows in between.
+ *   - wide: from the chat's audio panel, where an active call lives on a wide screen. Video must
+ *     open in the expanded video panel there too.
+ * In both the join preview must not show.
  *
  * Screenshots go to tmp/e2e-call-video/.
  *
@@ -33,9 +36,11 @@ const shot = (name: string) => path.join(SHOTS_DIR, `${name}.png`);
 
 const CALL_SCREEN = '.full-screen-call-view.in-call';
 const JOIN_PREVIEW = '.modal .camera-preview-video';
+const OWN_VIDEO = '.video-panel .video-streaming-preview';
 const REMOTE_VIDEO = '.video-panel .remote-video-container';
 
 const NARROW = { width: 390, height: 844 };
+const WIDE = { width: 1440, height: 900 };
 
 interface Users {
     conn: BrowserConnection;
@@ -214,5 +219,53 @@ describe('camera on during a call, narrow screen', () => {
         await callee.locator(REMOTE_VIDEO).first().waitFor({ state: 'visible', timeout: 30_000 });
         await callee.waitForTimeout(1_500);
         await callee.screenshot({ path: shot('narrow-4-callee-video-in-chat') });
+    }, 180_000);
+});
+
+describe('camera on during a call, wide screen', () => {
+    let users: Users;
+
+    beforeAll(async () => {
+        users = await signInBoth(WIDE);
+    }, 180_000);
+
+    afterEach(async () => {
+        await hangUpIfAny(users.caller);
+        await hangUpIfAny(users.callee);
+    }, 30_000);
+
+    afterAll(async () => {
+        await signOutBoth(users);
+    }, 60_000);
+
+    it('starts video at once, full-screen, without the join preview', async () => {
+        // arrange - on a wide screen an active call has no call screen: it is in the chat
+        const { caller, callee } = users;
+        await startCall(users);
+        const videoToggle = caller.locator('.chat-audio-panel .video-wrapper button').first();
+        await caller.locator('.chat-audio-panel .recorder-wrapper.record-on:not(.applying-changes)').first()
+            .waitFor({ state: 'attached', timeout: 30_000 });
+        await videoToggle.waitFor({ state: 'visible', timeout: 30_000 });
+        await caller.screenshot({ path: shot('wide-1-caller-in-call') });
+
+        // act - the caller turns the camera on from the chat's audio panel
+        let hasSeenJoinPreview = false;
+        await videoToggle.click();
+        await expect.poll(async () => {
+            hasSeenJoinPreview ||= await isShown(caller, JOIN_PREVIEW);
+            return isShown(caller, OWN_VIDEO);
+        }, { timeout: 30_000, interval: 50 }).toBe(true);
+
+        // assert - the camera is on with nothing asked, and a call's video opens full-screen
+        expect(hasSeenJoinPreview, 'mid-call the camera starts without the join preview').toBe(false);
+        await caller.locator('.video-panel.expanded .video-streaming-preview').first()
+            .waitFor({ state: 'visible', timeout: 20_000 });
+        await caller.waitForTimeout(1_500);
+        await caller.screenshot({ path: shot('wide-2-caller-video-full-screen') });
+
+        // assert - the other side gets the video
+        await callee.locator(REMOTE_VIDEO).first().waitFor({ state: 'visible', timeout: 30_000 });
+        await callee.waitForTimeout(1_500);
+        await callee.screenshot({ path: shot('wide-3-callee-video-inline') });
     }, 180_000);
 });
