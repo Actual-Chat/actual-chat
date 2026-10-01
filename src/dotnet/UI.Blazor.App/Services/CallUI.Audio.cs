@@ -11,7 +11,6 @@ public partial class CallUI
     private readonly MutableState<string?> _pickedOutputRouteId;
 
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
-    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
 
     // Public methods
 

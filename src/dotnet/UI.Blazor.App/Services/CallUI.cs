@@ -34,6 +34,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private ISystemCallUI SystemCallUI => field ??= Hub.Services.GetRequiredService<ISystemCallUI>();
     private ILiveSessions LiveSessions => Hub.LiveSessions;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private IAuthors Authors => Hub.Authors;
     private Moment Now => Clocks.CpuClock.Now;
@@ -212,11 +213,13 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // path as any other presence change - see LiveSessionUI.SyncParticipations. The server's claim
         // goes with that presence, on its next read of this call.
         Release(chatId);
-        return StopCallAudio(chatId);
+        return StopCallMedia(chatId);
     }
 
-    public async Task StopCallAudio(ChatId chatId)
+    public async Task StopCallMedia(ChatId chatId)
     {
+        // The camera and the screencast belong to the chat, not the call, so nothing else stops them.
+        ChatVideoUI.LeaveVideoSession(chatId);
         await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(true);
         await ChatAudioUI.SetListeningState(chatId, false).ConfigureAwait(true);
     }
