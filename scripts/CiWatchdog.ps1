@@ -49,28 +49,43 @@ function Get-CiFailureCategory {
     return 'Unknown'
 }
 
-function Get-CiFlakePatterns {
+function Get-CiFlakes {
     <#
     .SYNOPSIS
-        Extracts test-name patterns from the titles of the known-flake issues.
+        Turns the known-flake issues into registry entries.
     .DESCRIPTION
         The pattern is whatever the title carries inside its first pair of
         backticks, so prose around it is free: "Flaky test: `*.TimerFlowTest.*`".
         A title without backticks names no test and is skipped.
-    #>
-    param([Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Titles)
 
-    return @($Titles | ForEach-Object {
-        if ($_ -match '`(?<pattern>[^`]+)`') {
-            $Matches.pattern.Trim()
+        The body may add a line "Symptom: `<regex>`": then only a failure whose
+        error matches it is the known flake, and any other failure of the same
+        test is reported as new.
+    .PARAMETER Issues
+        Objects with .number, .title and .body, as `gh issue list --json` prints them.
+    #>
+    param([Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Issues)
+
+    return @($Issues | ForEach-Object {
+        if ($_.title -match '`(?<pattern>[^`]+)`') {
+            $pattern = $Matches.pattern.Trim()
+            $symptom = ''
+            if ($_.body -match '(?m)^\s*Symptom:\s*`(?<symptom>[^`]+)`') {
+                $symptom = $Matches.symptom.Trim()
+            }
+            [PSCustomObject]@{
+                Issue = [int]$_.number
+                Pattern = $pattern
+                Symptom = $symptom
+            }
         }
     })
 }
 
-function Get-CiFlakeTitles {
+function Get-CiFlakeIssues {
     <#
     .SYNOPSIS
-        Issue titles out of what `gh issue list --json title` printed.
+        Issues out of what `gh issue list --json number,title,body` printed.
     .DESCRIPTION
         A zero exit code does not promise JSON — `gh` puts its deprecation and
         rate-limit warnings on the same stream we capture. Losing the registry
@@ -79,7 +94,7 @@ function Get-CiFlakeTitles {
     param([Parameter(Mandatory)][AllowEmptyString()][string]$Json)
 
     try {
-        return @($Json | ConvertFrom-Json | ForEach-Object { $_.title } | Where-Object { $_ })
+        return @($Json | ConvertFrom-Json | ForEach-Object { $_ } | Where-Object { $_.title })
     }
     catch {
         Write-Warning "The '$script:FlakeLabel' issue list did not parse, so no test counts as a known flake: $_"
@@ -90,32 +105,74 @@ function Get-CiFlakeTitles {
 function Get-CiKnownFlakes {
     <#
     .SYNOPSIS
-        The known-flake patterns, read from the open issues that carry them.
+        The known-flake registry, read from the open issues that carry it.
     .DESCRIPTION
         The registry is the open `ci-flaky` issues, so a fix that closes its
         issue drops the test from the list with no separate step to forget.
         A failed lookup yields nothing: an extra report costs a reader a minute,
         while a wrongly silent re-run hides a regression for good.
     #>
-    $found = & gh issue list --repo $script:Repo --label $script:FlakeLabel --state open --limit 200 --json title 2>&1
+    $found = & gh issue list --repo $script:Repo --label $script:FlakeLabel --state open --limit 200 `
+        --json number,title,body 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "Could not read the '$script:FlakeLabel' issues, so no test counts as a known flake: $found"
         return @()
     }
-    return Get-CiFlakePatterns @(Get-CiFlakeTitles ($found -join "`n"))
+    return Get-CiFlakes @(Get-CiFlakeIssues ($found -join "`n"))
 }
 
-function Test-CiKnownFlake {
+function Test-CiFlakeSymptom {
+    <#
+    .SYNOPSIS
+        Whether a failure's error is the symptom its registry entry describes.
+    .DESCRIPTION
+        An entry without a symptom, or a failure whose log gave no error text,
+        matches by name alone — there is nothing to compare. A symptom that is
+        not a valid regex matches nothing, so the mistake surfaces as a report.
+    #>
+    param(
+        [Parameter(Mandatory)][object]$Flake,
+        [AllowEmptyString()][AllowNull()][string]$ErrorText)
+
+    if (-not $Flake.Symptom -or -not $ErrorText) {
+        return $true
+    }
+    try {
+        return $ErrorText -match $Flake.Symptom
+    }
+    catch {
+        Write-Warning "Symptom of #$($Flake.Issue) is not a valid regex: $($Flake.Symptom)"
+        return $false
+    }
+}
+
+function Find-CiFlake {
+    <#
+    .SYNOPSIS
+        Matches one failed test against the registry.
+    .DESCRIPTION
+        Returns the issue the test matched by name (0 if none) and whether the
+        failure is the known flake. A test matching by name with another symptom
+        keeps its issue number, so the report can say which entry it slipped past.
+    #>
     param(
         [Parameter(Mandatory)][AllowEmptyString()][string]$TestName,
-        [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Patterns)
+        [AllowEmptyString()][AllowNull()][string]$ErrorText,
+        [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Flakes)
 
-    foreach ($pattern in $Patterns) {
-        if ($TestName -like $pattern) {
-            return $true
-        }
+    $byName = @($Flakes | Where-Object { $TestName -like $_.Pattern })
+    $known = @($byName | Where-Object { Test-CiFlakeSymptom $_ $ErrorText })
+    $issue = 0
+    if ($known.Count -gt 0) {
+        $issue = $known[0].Issue
     }
-    return $false
+    elseif ($byName.Count -gt 0) {
+        $issue = $byName[0].Issue
+    }
+    return [PSCustomObject]@{
+        Issue = $issue
+        Known = $known.Count -gt 0
+    }
 }
 
 function ConvertTo-CiPlainText {
@@ -171,7 +228,7 @@ function Get-CiFailedTests {
     #>
     param(
         [Parameter(Mandatory)][AllowEmptyString()][string]$LogText,
-        [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Patterns)
+        [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Flakes)
 
     $lines = @($LogText -split "`r?`n" | ForEach-Object { ConvertTo-CiPlainText $_ })
     $durations = @{}
@@ -212,11 +269,13 @@ function Get-CiFailedTests {
     }
 
     return @($order | ForEach-Object {
+        $flake = Find-CiFlake $_ $errors[$_] $Flakes
         [PSCustomObject]@{
             Name = $_
             Duration = $durations[$_]
             Error = $errors[$_]
-            KnownFlake = Test-CiKnownFlake $_ $Patterns
+            KnownFlake = $flake.Known
+            FlakeIssue = $flake.Issue
         }
     })
 }
@@ -245,7 +304,9 @@ function Get-CiRunVerdict {
     .PARAMETER Jobs
         Objects with .Category and .Tests, as produced by Get-CiRunRecord.
     #>
-    param([Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Jobs)
+    param(
+        [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Jobs,
+        [int]$RunAttempt = 1)
 
     if ($Jobs.Count -eq 0) {
         return 'None'
@@ -274,10 +335,15 @@ function Get-CiRunVerdict {
     if ($tests.Count -eq 0) {
         return 'Unparsed'
     }
-    if (@($tests | Where-Object { -not $_.KnownFlake }).Count -eq 0) {
-        return 'KnownFlake'
+    if (@($tests | Where-Object { -not $_.KnownFlake }).Count -gt 0) {
+        return 'NewFailure'
     }
-    return 'NewFailure'
+    # A flake does not fail twice on one commit. A known flake failing again on
+    # a re-run is most likely a real break that its registry entry would hide.
+    if ($RunAttempt -gt 1) {
+        return 'RepeatedFlake'
+    }
+    return 'KnownFlake'
 }
 
 function Get-CiBranchSha {
@@ -357,7 +423,7 @@ function New-CiRunRecord {
         [Parameter(Mandatory)][object]$Run,
         [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Jobs,
         [Parameter(Mandatory)][AllowEmptyString()][string]$Log,
-        [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Patterns)
+        [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Flakes)
 
     $sections = Split-CiLogByJob $Log
 
@@ -375,7 +441,7 @@ function New-CiRunRecord {
                 Write-Warning "The log carries no section for job '$($job.name)'; its tests stay unparsed."
                 $jobLog = ''
             }
-            $tests = @(Get-CiFailedTests $jobLog $Patterns)
+            $tests = @(Get-CiFailedTests $jobLog $Flakes)
             $totals = @(Get-CiAssemblyTotals $jobLog)
         }
 
@@ -400,7 +466,7 @@ function New-CiRunRecord {
         CreatedAt = $Run.created_at
         Url = $Run.html_url
         Jobs = $failed
-        Verdict = Get-CiRunVerdict $failed
+        Verdict = Get-CiRunVerdict $failed ([int]$Run.run_attempt)
         # Set by Invoke-CiWatchdog once the re-run has actually been asked for.
         Rerun = $false
     }
@@ -415,7 +481,7 @@ function Get-CiRunRecord {
 
     $needsLog = @($failed | Where-Object { (Get-CiFailureCategory (Get-CiFailedStepName $_)) -eq 'Test' }).Count -gt 0
     $log = ''
-    $patterns = @()
+    $flakes = @()
     if ($needsLog) {
         # `workflow_run: completed` arrives while GitHub is often still
         # archiving the logs, and a download that 404s must not cost the run
@@ -426,10 +492,10 @@ function Get-CiRunRecord {
         catch {
             Write-Warning "Could not download the log of run ${RunId}: $_"
         }
-        $patterns = @(Get-CiKnownFlakes)
+        $flakes = @(Get-CiKnownFlakes)
     }
 
-    return New-CiRunRecord $run $failed $log $patterns
+    return New-CiRunRecord $run $failed $log $flakes
 }
 
 function Get-CiRecordPath {
@@ -500,7 +566,15 @@ function Format-CiJournalNote {
     foreach ($job in $Record.Jobs) {
         $lines.Add("- **$($job.Name)** — $($job.Category), failed at ``$($job.FailedStep)``")
         foreach ($test in $job.Tests) {
-            $flag = if ($test.KnownFlake) { 'known flake' } else { '**new**' }
+            $flag = if ($test.KnownFlake) {
+                "known flake #$($test.FlakeIssue)"
+            }
+            elseif ($test.FlakeIssue) {
+                "**new symptom** — not the one #$($test.FlakeIssue) describes"
+            }
+            else {
+                '**new**'
+            }
             $lines.Add("  - ``$($test.Name)`` [$($test.Duration)] — $flag")
             if ($test.Error) {
                 $lines.Add("    - $($test.Error)")
@@ -561,7 +635,8 @@ function Invoke-CiWatchdog {
 
     # A re-run that could not be started leaves red nobody was told about, so
     # it is worth a note even though its verdict on its own is not.
-    $notable = $record.Branch -eq 'dev' -and $record.Verdict -in @('NewFailure', 'Collapse', 'Build', 'Deploy', 'Mixed', 'Unparsed', 'Unknown')
+    $notable = $record.Branch -eq 'dev' -and $record.Verdict -in @(
+        'NewFailure', 'RepeatedFlake', 'Collapse', 'Build', 'Deploy', 'Mixed', 'Unparsed', 'Unknown')
     if ((-not $DryRun) -and ($notable -or $record.Rerun -or $rerunFailed)) {
         $journal = Get-CiJournalIssue
         if ($journal -eq 0) {
