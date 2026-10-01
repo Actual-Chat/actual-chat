@@ -124,6 +124,11 @@ public static partial class StringExt
     public static string Truncate(this string source, int maxLength, string ellipsis)
         => source.Length <= maxLength ? source : source[..maxLength] + ellipsis;
 
+    public static string MaskMiddle(this string source, int visible = 5, string ellipsis = "…")
+        => source.Length <= visible * 2
+            ? source
+            : string.Concat(source.AsSpan(0, visible), ellipsis, source.AsSpan(source.Length - visible));
+
     public static string TrimNonLetterOrDigits(this string s)
     {
         var iStart = s.FirstIndexOf(char.IsLetterOrDigit);

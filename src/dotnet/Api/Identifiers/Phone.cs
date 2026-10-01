@@ -181,4 +181,18 @@ public sealed partial class Phone : StringIdentifier, IStringIdentifier<Phone>
             }
         }
     }
+
+    public string ToReadableMasked(int visibleTailDigits = 4, bool withSpaces = true, string ellipsis = "…")
+    {
+        const int areaCodeLength = 3;
+        var space = withSpaces ? " " : "";
+        var displayCode = PhoneCodes.GetByCode(Code)?.DisplayCode ?? $"+{Code}";
+        // Too few digits to hide the middle without exposing it anyway - show the full readable form.
+        if (Number.Length <= areaCodeLength + visibleTailDigits)
+            return ToReadable(withSpaces);
+
+        var areaCode = Number.AsSpan(0, areaCodeLength);
+        var tail = Number.AsSpan(Number.Length - visibleTailDigits);
+        return $"{displayCode}{space}({areaCode}){space}{ellipsis}{tail}";
+    }
 }

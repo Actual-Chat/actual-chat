@@ -49,7 +49,7 @@
             <i class="icon-at"></i>
         </Icon>
         <Content>
-            @account.Email
+            @account.Email.MaskMiddle(8)
         </Content>
         <Caption>
             @L.YourAccount_Email
@@ -81,7 +81,7 @@
             }
         </Right>
         <Content>
-            @account.Phone?.ToReadable()
+            @account.Phone?.ToReadableMasked()
         </Content>
         <Caption>
             @L.YourAccount_Phone
