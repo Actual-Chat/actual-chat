@@ -376,12 +376,14 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
         // act
         var stream = await liveStreams.GetStream(session, streamId, Constants.Audio.SkipToLive, cts.Token);
         producerGate.SetResult();
-        var firstDataFrame = await stream!
-            .FirstAsync(f => f.Offset >= TimeSpan.Zero, cts.Token);
+        var leadingFrames = await stream!.Take(2).ToListAsync(cts.Token);
 
         // assert
-        firstDataFrame.Offset.Should().Be(liveEdge,
-            "frames produced before the request must not be replayed, and the first live one must not be lost");
+        leadingFrames[0].Offset.Should().BeLessThan(TimeSpan.Zero,
+            "a listener joining mid-stream still needs the stream header first");
+        leadingFrames[1].Offset.Should().Be(liveEdge,
+            "the header must come once, frames produced before the request must not be replayed, "
+            + "and the first live one must not be lost");
 
         await cts.CancelAsync();
         await processTask.SilentAwait(false);
