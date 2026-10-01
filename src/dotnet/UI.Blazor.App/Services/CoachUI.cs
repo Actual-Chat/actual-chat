@@ -150,7 +150,7 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
         return ApiArray<SpeechSpan>.Empty;
     }
 
-    public async Task JumpTo(CoachOccurrence occurrence, CancellationToken cancellationToken)
+    public async Task JumpTo(CoachOccurrence occurrence, CancellationToken cancellationToken, bool play = true)
     {
         var entryId = ChatEntryId.New(occurrence.ChatId, occurrence.EntryLid);
         // Navigation and replay need the Blazor dispatcher, so the awaits keep the context
@@ -164,7 +164,7 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
             await History.NavigateTo(Links.Chat(occurrence.ChatId, occurrence.EntryLid)).ConfigureAwait(true);
         PanelsUI.HidePanels();
 
-        if (entry.Audio?.TimeMap.TryMap(occurrence.Start) is not { } startTime)
+        if (!play || entry.Audio?.TimeMap.TryMap(occurrence.Start) is not { } startTime)
             return;
 
         var startAt = entry.BeginsAt + TimeSpan.FromSeconds(startTime - ReplayLeadSeconds);

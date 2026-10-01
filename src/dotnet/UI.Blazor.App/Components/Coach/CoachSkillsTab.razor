@@ -63,7 +63,8 @@
                     Metric="@metric"
                     Summary="@s"
                     Language="@Language"
-                    IsNotMeasured="@(!m.IsWordSplittable && CoachSkillSets.IsLanguageBound(metric.Kind))"/>
+                    IsNotMeasured="@(!m.IsWordSplittable && CoachSkillSets.IsLanguageBound(metric.Kind))"
+                    WordClick="@OnWordClick"/>
             }
         </Card>
         <div class="c-footer">@L.Coach_TapMarkedWord</div>

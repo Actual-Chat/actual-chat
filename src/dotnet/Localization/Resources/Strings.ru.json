@@ -1930,6 +1930,7 @@
   "Coach_TrendsNoDays": "В этом периоде нет голосовых сообщений",
   "Coach_Occurrences_Format": "Где вы сказали «{0}»",
   "Coach_OccurrencesEmpty": "В этом периоде нет вхождений",
+  "Coach_OccurrencesLimit_Format": "Показаны только {0} последних употреблений.",
   "Coach_OpenCoach": "Речевой коуч",
   "Coach_Trends": "Тренды",
   "Coach_TrendsTurnTaking": "Очерёдность по дням",

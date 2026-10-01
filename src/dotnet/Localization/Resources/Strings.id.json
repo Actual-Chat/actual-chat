@@ -1930,6 +1930,7 @@
   "Coach_TrendsNoDays": "Tidak ada pesan suara dalam periode ini",
   "Coach_Occurrences_Format": "Di mana Anda mengatakan “{0}”",
   "Coach_OccurrencesEmpty": "Tidak ada kemunculan dalam periode ini",
+  "Coach_OccurrencesLimit_Format": "Hanya {0} kemunculan terbaru yang ditampilkan.",
   "Coach_OpenCoach": "Coach bicara",
   "Coach_Trends": "Tren",
   "Coach_TrendsTurnTaking": "Giliran bicara per hari",

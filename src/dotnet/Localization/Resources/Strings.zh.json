@@ -1930,6 +1930,7 @@
   "Coach_TrendsNoDays": "此时段没有语音消息",
   "Coach_Occurrences_Format": "你说“{0}”的位置",
   "Coach_OccurrencesEmpty": "此时段没有出现",
+  "Coach_OccurrencesLimit_Format": "仅显示最近的 {0} 次出现。",
   "Coach_OpenCoach": "演讲教练",
   "Coach_Trends": "趋势",
   "Coach_TrendsTurnTaking": "每日发言轮换",

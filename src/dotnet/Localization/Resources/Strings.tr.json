@@ -1937,6 +1937,7 @@
   "Coach_TrendsNoDays": "Bu dönemde sesli mesaj yok",
   "Coach_Occurrences_Format": "“{0}” dediğiniz yerler",
   "Coach_OccurrencesEmpty": "Bu dönemde kayıt yok",
+  "Coach_OccurrencesLimit_Format": "Yalnızca en son {0} kullanım gösteriliyor.",
   "Coach_OpenCoach": "Konuşma koçu",
   "Coach_Trends": "Eğilimler",
   "Coach_TrendsTurnTaking": "Güne göre söz sırası",

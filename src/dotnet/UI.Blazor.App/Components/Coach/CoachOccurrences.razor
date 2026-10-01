@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Chat
 @using ActualChat.Users
 @inherits ComputedStateComponent<AppUIHub, CoachOccurrences.Model>
 @{
@@ -16,12 +17,33 @@
         <div class="c-no-data">@L.Coach_OccurrencesEmpty</div>
     } else {
         @foreach (var item in m.Items) {
-            <button type="button" class="coach-occurrence" @onclick="@(() => OnClick(item.Occurrence))">
-                <span class="c-chat">@item.ChatTitle</span>
-                <span class="c-time">
-                    @DateTimeConverter.ToLocalTime(item.Occurrence.At).ToString("g", DateFormatter)
-                </span>
-            </button>
+            var hint = Hints.For(item.Span);
+            <Card Class="coach-occurrence">
+                <div class="c-head">
+                    <span class="c-chat">@item.ChatTitle</span>
+                    <span class="c-time">
+                        @DateTimeConverter.ToLocalTime(item.Occurrence.At).ToString("g", DateFormatter)
+                    </span>
+                </div>
+                <p class="c-context">@item.Context.Before<button type="button" class="c-word"
+                    title="@L.Content_GoToMessage" @onclick="@(() => OnWordClick(item.Occurrence))"
+                    ><mark>@item.Context.Word</mark></button>@item.Context.After</p>
+                <div class="c-recommendation">@hint.Body</div>
+                @if (hint.Synonyms.Count > 0) {
+                    <div class="c-synonyms">
+                        @foreach (var synonym in hint.Synonyms) {
+                            <span>@synonym</span>
+                        }
+                    </div>
+                }
+                <Button Click="@(() => OnClick(item.Occurrence))" Class="btn-text btn-open-occurrence">
+                    <i class="@(item.CanReplay ? "icon-play-fill" : "icon-text-message")"></i>
+                    <span>@(item.CanReplay ? L.MessageMenu_Play : L.Content_GoToMessage)</span>
+                </Button>
+            </Card>
+        }
+        @if (m.Items.Count == ICoach.MaxOccurrences) {
+            <div class="c-limit">@L.Coach_OccurrencesLimit_Format(ICoach.MaxOccurrences)</div>
         }
     }
 </div>
@@ -29,6 +51,7 @@
 @code {
     private ICoach Coach => Hub.Coach;
     private IChats Chats => Hub.Chats;
+    private CoachMarkHint Hints => field ??= new CoachMarkHint(L);
 
     [Parameter, EditorRequired] public string Word { get; set; } = "";
     [Parameter] public CoachWindow Window { get; set; }
@@ -43,17 +66,46 @@
         var occurrences = await Coach.ListOwnOccurrences(Session, word, window, cancellationToken)
             .ConfigureAwait(false);
         var items = new List<Item>(occurrences.Count);
-        foreach (var occurrence in occurrences) {
-            var chat = await Chats.Get(Session, occurrence.ChatId, cancellationToken).ConfigureAwait(false);
-            items.Add(new Item(occurrence, chat?.Title ?? ""));
+        foreach (var chatGroup in occurrences.GroupBy(o => o.ChatId)) {
+            var chat = await Chats.Get(Session, chatGroup.Key, cancellationToken).ConfigureAwait(false);
+            if (chat is null)
+                continue;
+
+            foreach (var entryGroup in chatGroup.GroupBy(o => o.EntryLid)) {
+                var entryId = ChatEntryId.New(chatGroup.Key, entryGroup.Key);
+                var entry = await Hub.ChatUI.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
+                if (entry is null || entry.IsRemoved)
+                    continue;
+
+                var marks = await Hub.ChatCoach.GetOwnMarks(
+                    Session, chatGroup.Key, new Range<long>(entryGroup.Key, entryGroup.Key + 1), cancellationToken)
+                    .ConfigureAwait(false);
+                var spans = marks.FirstOrDefault(m => m.EntryLid == entryGroup.Key)?.Spans
+                    ?? ApiArray<SpeechSpan>.Empty;
+                foreach (var occurrence in entryGroup) {
+                    var span = spans.FirstOrDefault(s => s.Start == occurrence.Start && s.Length == occurrence.Length
+                        && s.Word.Equals(word, StringComparison.OrdinalIgnoreCase));
+                    if (span is null || CoachMarkHint.GetContext(entry.Content, span) is not { } context)
+                        continue;
+
+                    var canReplay = entry.Audio?.TimeMap.TryMap(span.Start) is not null;
+                    items.Add(new Item(occurrence, chat.Title, span, context, canReplay));
+                }
+            }
         }
-        return new Model(items);
+        return new Model(items.OrderByDescending(i => i.Occurrence.At)
+            .ThenByDescending(i => i.Occurrence.Start).ToList());
     }
 
     private Task OnClick(CoachOccurrence occurrence)
         => Hub.CoachUI.JumpTo(occurrence, CancellationToken.None);
 
-    public sealed record Item(CoachOccurrence Occurrence, string ChatTitle);
+    private Task OnWordClick(CoachOccurrence occurrence)
+        => Hub.CoachUI.JumpTo(occurrence, CancellationToken.None, play: false);
+
+    public sealed record Item(
+        CoachOccurrence Occurrence, string ChatTitle, SpeechSpan Span,
+        CoachMarkHint.Context Context, bool CanReplay);
 
     public sealed record Model(List<Item> Items) {
         public static readonly Model None = new([]);

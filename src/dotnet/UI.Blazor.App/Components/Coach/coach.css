@@ -65,11 +65,19 @@
 .coach-occurrences .c-head { @apply flex-x items-center gap-x-2; }
 .coach-occurrences .c-title { @apply text-body-500 text-02; }
 .coach-occurrences .c-no-data { @apply text-caption text-03; }
+.coach-occurrences .c-limit { @apply text-caption text-03 py-2; }
 .coach-occurrence {
-    @apply flex-x items-center justify-between;
-    @apply w-full p-3 rounded-lg bg-01 text-left;
+    @apply flex-y gap-y-3 w-full p-3 text-left;
 }
+.coach-occurrence .c-head { @apply flex-x items-baseline justify-between gap-x-2; }
+.coach-occurrence .c-chat { @apply text-body-500 text-02; }
 .coach-occurrence .c-time { @apply text-caption text-03; }
+.coach-occurrence .c-context { @apply text-base text-01 whitespace-pre-wrap break-words; }
+.coach-occurrence .c-context mark { @apply bg-transparent font-medium; color: var(--danger-light); }
+.coach-occurrence .c-word { @apply cursor-pointer underline decoration-dotted underline-offset-4; }
+.coach-occurrence .c-recommendation { @apply text-sm text-03; }
+.coach-occurrence .c-synonyms { @apply flex-x flex-wrap gap-x-3 text-sm text-02; }
+.coach-occurrence .btn-open-occurrence { @apply self-start; }
 /* The snackbar from the mock: a dark card in both themes, 12 px padding, the word in pink, a ringed close */
 .banner.coach-tip-bar {
     @apply relative w-auto h-auto mx-2 mb-1 p-3;

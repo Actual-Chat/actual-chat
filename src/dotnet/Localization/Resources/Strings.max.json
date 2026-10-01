@@ -2286,6 +2286,7 @@
   "Coach_TrendsNoDays": "У цьому періоді немає голосових повідомлень",
   "Coach_Occurrences_Format": "Di mana Anda mengatakan “{0}”",
   "Coach_OccurrencesEmpty": "Tidak ada kemunculan dalam periode ini",
+  "Coach_OccurrencesLimit_Format": "Seules les {0} occurrences les plus récentes sont affichées.",
   "Coach_OpenCoach": "スピーチコーチ",
   "Coach_Trends": "Tendencias",
   "Coach_TrendsTurnTaking": "दिन के अनुसार बारी-बारी बोलना",

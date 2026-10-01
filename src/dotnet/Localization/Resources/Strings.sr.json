@@ -1930,6 +1930,7 @@
   "Coach_TrendsNoDays": "Нема гласовних порука у овом периоду",
   "Coach_Occurrences_Format": "Где сте рекли „{0}“",
   "Coach_OccurrencesEmpty": "Нема појављивања у овом периоду",
+  "Coach_OccurrencesLimit_Format": "Приказано је само {0} најновијих појављивања.",
   "Coach_OpenCoach": "Говорни цоацх",
   "Coach_Trends": "Трендови",
   "Coach_TrendsTurnTaking": "Измјена говорника по данима",

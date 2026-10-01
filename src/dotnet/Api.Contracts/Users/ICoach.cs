@@ -6,6 +6,8 @@ namespace ActualChat.Users;
 /// </summary>
 public interface ICoach : IComputeService
 {
+    public const int MaxOccurrences = 20;
+
     // The per-user verdict: the chat-side master switch and the rollout rule
     [ComputeMethod]
     Task<bool> IsEnabled(Session session, CancellationToken cancellationToken);
