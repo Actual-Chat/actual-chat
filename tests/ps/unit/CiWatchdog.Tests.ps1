@@ -35,8 +35,13 @@ Describe "CiWatchdog.ps1" {
             '[xUnit.net 00:00:37.78]     ActualChat.Core.Server.IntegrationTests.Flows.FailingThrottledUpdateFlowTest.RetryAndRecoverTest [FAIL]'
         )
 
+        function New-Flake {
+            param([string]$Pattern, [string]$Symptom = '', [int]$Issue = 4645)
+            return [PSCustomObject]@{ Issue = $Issue; Pattern = $Pattern; Symptom = $Symptom }
+        }
+
         # Stands in for what Get-CiKnownFlakes reads off the open ci-flaky issues.
-        $script:knownPatterns = @('*.FailingThrottledUpdateFlowTest.*')
+        $script:knownFlakes = @(New-Flake '*.FailingThrottledUpdateFlowTest.*')
     }
 
     Context "Get-CiFailureCategory" {
@@ -77,37 +82,61 @@ Describe "CiWatchdog.ps1" {
         }
     }
 
-    Context "Get-CiFlakePatterns" {
+    Context "Get-CiFlakes" {
+        BeforeAll {
+            function New-Issue {
+                param([int]$Number, [string]$Title, [string]$Body = '')
+                return [PSCustomObject]@{ number = $Number; title = $Title; body = $Body }
+            }
+        }
+
         It "takes the pattern from the backticks, whatever prose surrounds it" {
-            $titles = @(
-                'Flaky test: `*.TimerFlowTest.*`'
-                '`*.ExternalContactsTest.UpdateExternalContactNameTest` fails about once a week'
+            $issues = @(
+                (New-Issue 4646 'Flaky test: `*.TimerFlowTest.*`')
+                (New-Issue 4655 '`*.ExternalContactsTest.UpdateExternalContactNameTest` fails about once a week')
             )
-            Get-CiFlakePatterns $titles | Should -Be @('*.TimerFlowTest.*', '*.ExternalContactsTest.UpdateExternalContactNameTest')
+            $flakes = Get-CiFlakes $issues
+            $flakes.Pattern | Should -Be @('*.TimerFlowTest.*', '*.ExternalContactsTest.UpdateExternalContactNameTest')
+            $flakes.Issue | Should -Be @(4646, 4655)
+        }
+
+        It "reads the symptom off its own line in the body" {
+            $body = "Fails about once a week.`n`nSymptom: ``Expected .* to be empty``  `nMore prose with `inline` code."
+            $flake = Get-CiFlakes @((New-Issue 4655 'Flaky test: `*.ExternalContactsTest.*`' $body))
+            $flake.Symptom | Should -Be 'Expected .* to be empty'
+        }
+
+        It "leaves the symptom empty when the body has none" {
+            $flake = Get-CiFlakes @((New-Issue 4646 'Flaky test: `*.TimerFlowTest.*`' 'The word Symptom: in prose, no backticks.'))
+            $flake.Symptom | Should -Be ''
+            $flake = Get-CiFlakes @([PSCustomObject]@{ number = 4646; title = 'Flaky test: `*.TimerFlowTest.*`'; body = $null })
+            $flake.Symptom | Should -Be ''
         }
 
         It "skips a title that names no test" {
-            @(Get-CiFlakePatterns @('Some CI issue with no pattern in it')).Count | Should -Be 0
+            @(Get-CiFlakes @((New-Issue 1 'Some CI issue with no pattern in it'))).Count | Should -Be 0
         }
 
         It "returns nothing for no issues" {
-            @(Get-CiFlakePatterns @()).Count | Should -Be 0
+            @(Get-CiFlakes @()).Count | Should -Be 0
         }
     }
 
-    Context "Get-CiFlakeTitles" {
-        It "reads the titles out of what gh printed" {
-            $json = '[{"title":"Flaky test: `*.TimerFlowTest.*`"},{"title":"Another one"}]'
-            Get-CiFlakeTitles $json | Should -Be @('Flaky test: `*.TimerFlowTest.*`', 'Another one')
+    Context "Get-CiFlakeIssues" {
+        It "reads the issues out of what gh printed" {
+            $json = '[{"number":4646,"title":"Flaky test: `*.TimerFlowTest.*`","body":"b"},{"number":1,"title":"Another one","body":""}]'
+            $issues = Get-CiFlakeIssues $json
+            $issues.title | Should -Be @('Flaky test: `*.TimerFlowTest.*`', 'Another one')
+            $issues[0].number | Should -Be 4646
         }
 
         It "gives up the registry rather than the run when gh prints a warning" {
-            $titles = Get-CiFlakeTitles 'gh: warning: rate limit exceeded' -WarningAction SilentlyContinue
-            @($titles).Count | Should -Be 0
+            $issues = Get-CiFlakeIssues 'gh: warning: rate limit exceeded' -WarningAction SilentlyContinue
+            @($issues).Count | Should -Be 0
         }
 
         It "returns nothing for an empty list" {
-            @(Get-CiFlakeTitles '[]').Count | Should -Be 0
+            @(Get-CiFlakeIssues '[]').Count | Should -Be 0
         }
     }
 
@@ -134,47 +163,93 @@ Describe "CiWatchdog.ps1" {
         }
     }
 
-    Context "Test-CiKnownFlake" {
+    Context "Find-CiFlake" {
         BeforeAll {
-            $script:patterns = @(
-                '*.TimerFlowTest.*'
-                '*.ExternalContactsTest.UpdateExternalContactNameTest'
+            $script:flakes = @(
+                (New-Flake '*.TimerFlowTest.*' -Issue 4646)
+                (New-Flake '*.ExternalContactsTest.UpdateExternalContactNameTest' 'to be empty, but found' -Issue 4655)
             )
+            $script:timerTest = 'ActualChat.Core.Server.IntegrationTests.Flows.TimerFlowTest.TwoFlowsTest'
+            $script:contactTest = 'ActualChat.Contacts.IntegrationTests.ExternalContactsTest.UpdateExternalContactNameTest'
         }
 
         It "matches a known offender by wildcard" {
-            Test-CiKnownFlake 'ActualChat.Core.Server.IntegrationTests.Flows.TimerFlowTest.TwoFlowsTest' $script:patterns | Should -BeTrue
+            $flake = Find-CiFlake $script:timerTest 'Expected flow.UntypedResult not to be <null>.' $script:flakes
+            $flake.Known | Should -BeTrue
+            $flake.Issue | Should -Be 4646
         }
 
         It "matches a single named test but not its neighbours" {
-            Test-CiKnownFlake 'ActualChat.Contacts.IntegrationTests.ExternalContactsTest.UpdateExternalContactNameTest' $script:patterns | Should -BeTrue
-            Test-CiKnownFlake 'ActualChat.Contacts.IntegrationTests.ExternalContactsTest.DeleteExternalContactTest' $script:patterns | Should -BeFalse
+            (Find-CiFlake $script:contactTest '' $script:flakes).Known | Should -BeTrue
+            $test = 'ActualChat.Contacts.IntegrationTests.ExternalContactsTest.DeleteExternalContactTest'
+            (Find-CiFlake $test '' $script:flakes).Known | Should -BeFalse
         }
 
         It "does not match an unrelated test" {
-            Test-CiKnownFlake 'ActualChat.Users.IntegrationTests.AccountsTest.BasicTest' $script:patterns | Should -BeFalse
+            $flake = Find-CiFlake 'ActualChat.Users.IntegrationTests.AccountsTest.BasicTest' '' $script:flakes
+            $flake.Known | Should -BeFalse
+            $flake.Issue | Should -Be 0
         }
 
         It "counts nothing as known when the registry came back empty" {
-            Test-CiKnownFlake 'ActualChat.Core.Server.IntegrationTests.Flows.TimerFlowTest.TwoFlowsTest' @() | Should -BeFalse
+            (Find-CiFlake $script:timerTest '' @()).Known | Should -BeFalse
+        }
+
+        It "knows the flake by its symptom" {
+            $message = 'Expected contact1.ExternalContactName to be empty, but found "Jack Awesome Super".'
+            (Find-CiFlake $script:contactTest $message $script:flakes).Known | Should -BeTrue
+        }
+
+        It "reports another symptom of a known test as new, naming the entry it slipped past" {
+            $flake = Find-CiFlake $script:contactTest 'System.NullReferenceException : Object reference not set' $script:flakes
+            $flake.Known | Should -BeFalse
+            $flake.Issue | Should -Be 4655
+        }
+
+        It "falls back to the name when the log gave no error text" {
+            (Find-CiFlake $script:contactTest '' $script:flakes).Known | Should -BeTrue
+            (Find-CiFlake $script:contactTest $null $script:flakes).Known | Should -BeTrue
+        }
+
+        It "lets any entry of the test vouch for the failure" {
+            $flakes = $script:flakes + @(New-Flake '*.ExternalContactsTest.*' 'TimeoutException' -Issue 4999)
+            $flake = Find-CiFlake $script:contactTest 'System.TimeoutException : The operation has timed out.' $flakes
+            $flake.Known | Should -BeTrue
+            $flake.Issue | Should -Be 4999
+        }
+
+        It "treats a broken symptom regex as no match" {
+            $flakes = @(New-Flake '*.TimerFlowTest.*' '([unclosed' -Issue 4646)
+            $flake = Find-CiFlake $script:timerTest 'anything' $flakes -WarningAction SilentlyContinue
+            $flake.Known | Should -BeFalse
+            $flake.Issue | Should -Be 4646
         }
     }
 
     Context "Get-CiFailedTests" {
         It "reports each failed test once, however often the log repeats it" {
-            $tests = Get-CiFailedTests $script:oneFailureLog $script:knownPatterns
+            $tests = Get-CiFailedTests $script:oneFailureLog $script:knownFlakes
             $tests.Count | Should -Be 1
             $tests[0].Name | Should -Be 'ActualChat.Core.Server.IntegrationTests.Flows.FailingThrottledUpdateFlowTest.RetryAndRecoverTest'
         }
 
         It "picks up the duration and the error message" {
-            $tests = Get-CiFailedTests $script:oneFailureLog $script:knownPatterns
+            $tests = Get-CiFailedTests $script:oneFailureLog $script:knownFlakes
             $tests[0].Duration | Should -Be '11 s'
             $tests[0].Error | Should -Be 'Expected FailingThrottledUpdateFlow.CallCounts.GetValueOrDefault(target) to be 3, but found 4.'
         }
 
-        It "flags a known flake" {
-            (Get-CiFailedTests $script:oneFailureLog $script:knownPatterns)[0].KnownFlake | Should -BeTrue
+        It "flags a known flake and names its issue" {
+            $test = (Get-CiFailedTests $script:oneFailureLog $script:knownFlakes)[0]
+            $test.KnownFlake | Should -BeTrue
+            $test.FlakeIssue | Should -Be 4645
+        }
+
+        It "checks the symptom against the error the log carried" {
+            $flakes = @(New-Flake '*.FailingThrottledUpdateFlowTest.*' 'TimeoutException')
+            $test = (Get-CiFailedTests $script:oneFailureLog $flakes)[0]
+            $test.KnownFlake | Should -BeFalse
+            $test.FlakeIssue | Should -Be 4645
         }
 
         It "is not confused by the assembly summary line" {
@@ -226,6 +301,16 @@ Describe "CiWatchdog.ps1" {
         It "says KnownFlake when every failed test is on the list" {
             $job = New-Job 'Test' @((New-Test 'a.TimerFlowTest.X' $true), (New-Test 'b.ObserveTest1' $true))
             Get-CiRunVerdict @($job) | Should -Be 'KnownFlake'
+        }
+
+        It "says RepeatedFlake when a known flake fails again on a re-run" {
+            $job = New-Job 'Test' @((New-Test 'a.TimerFlowTest.X' $true))
+            Get-CiRunVerdict @($job) -RunAttempt 2 | Should -Be 'RepeatedFlake'
+        }
+
+        It "keeps NewFailure on a re-run when a test is not on the list" {
+            $job = New-Job 'Test' @((New-Test 'a.TimerFlowTest.X' $true), (New-Test 'b.BrandNewTest' $false))
+            Get-CiRunVerdict @($job) -RunAttempt 2 | Should -Be 'NewFailure'
         }
 
         It "says NewFailure as soon as one test is not on the list" {
@@ -289,25 +374,33 @@ Describe "CiWatchdog.ps1" {
         }
 
         It "blames the earliest failed step, not the last one" {
-            $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog $script:knownPatterns
+            $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog $script:knownFlakes
             $record.Jobs[0].FailedStep | Should -Be 'Run tests'
             $record.Jobs[0].Category | Should -Be 'Test'
         }
 
         It "keeps Tests and Totals as arrays even with a single element" {
-            $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog $script:knownPatterns
+            $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog $script:knownFlakes
             $json = $record | ConvertTo-Json -Depth 8 -Compress
             $json | Should -Match '"Tests":\['
             $json | Should -Match '"Totals":\['
         }
 
         It "survives a round trip through JSON" {
-            $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog $script:knownPatterns
+            $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog $script:knownFlakes
             $back = $record | ConvertTo-Json -Depth 8 | ConvertFrom-Json
             @($back.Jobs).Count | Should -Be 1
             @($back.Jobs[0].Tests).Count | Should -Be 1
             $back.Verdict | Should -Be 'KnownFlake'
             $back.Branch | Should -Be 'dev'
+            $back.Jobs[0].Tests[0].FlakeIssue | Should -Be 4645
+        }
+
+        It "reads the attempt off the run when it reduces the verdict" {
+            $rerun = $script:run.PSObject.Copy()
+            $rerun.run_attempt = 2
+            $record = New-CiRunRecord $rerun @($script:testJob) $script:oneFailureLog $script:knownFlakes
+            $record.Verdict | Should -Be 'RepeatedFlake'
         }
 
         It "does not read the log for a job that is not a test job" {
@@ -315,7 +408,7 @@ Describe "CiWatchdog.ps1" {
                 name = 'Build image for dev'; html_url = 'https://example.invalid/job/2'
                 steps = @([PSCustomObject]@{ name = 'Checkout'; conclusion = 'failure'; number = 1 })
             }
-            $record = New-CiRunRecord $script:run @($job) $script:oneFailureLog $script:knownPatterns
+            $record = New-CiRunRecord $script:run @($job) $script:oneFailureLog $script:knownFlakes
             @($record.Jobs[0].Tests).Count | Should -Be 0
             $record.Verdict | Should -Be 'Garbage'
         }
@@ -362,10 +455,19 @@ Describe "CiWatchdog.ps1" {
 
     Context "Format-CiJournalNote" {
         It "mentions a re-run only when the record carries one" {
-            $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog $script:knownPatterns
+            $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog $script:knownFlakes
             Format-CiJournalNote $record | Should -Not -Match 're-run automatically'
             $record.Rerun = $true
             Format-CiJournalNote $record | Should -Match 're-run automatically'
+        }
+
+        It "names the entry a failure matched, or slipped past" {
+            $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog $script:knownFlakes
+            Format-CiJournalNote $record | Should -Match 'known flake #4645'
+
+            $flakes = @(New-Flake '*.FailingThrottledUpdateFlowTest.*' 'TimeoutException')
+            $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog $flakes
+            Format-CiJournalNote $record | Should -Match 'new symptom.*#4645'
         }
     }
 
