@@ -8,7 +8,8 @@
  * from the incoming-call modal, both reach the in-call toolbar.
  *
  * Prerequisites:
- * - Server running (server-loop / run-watch).
+ * - Server running (server-loop / run-watch), locally: calls are incomplete UI, which the test
+ *   turns on for both accounts - test agents are admins only on a local server.
  *
  * Run:
  *   npx vitest run tests/ts/e2e/call-audio-output-web.test.ts --config vitest.config.e2e.ts
@@ -17,9 +18,10 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import type { BrowserContext, Page } from 'playwright';
 import {
-    BASE_URL, TEST_EMAIL, TEST_EMAIL_2, connectBrowser, ensureSignedIn, screenshot, withUILanguage,
+    TEST_EMAIL, TEST_EMAIL_2, connectBrowser, ensureSignedIn, screenshot, setIncompleteUI,
     type BrowserConnection,
 } from './helpers';
+import { openPeerChat } from './peer-call';
 
 const shot = (name: string) => screenshot('e2e-call', name);
 
@@ -46,21 +48,6 @@ async function newPhoneContext(
     return { context, page };
 }
 
-async function send(page: Page, text: string) {
-    // Focused, not clicked: the record button overlaps the editor on the narrow layout.
-    const editor = page.locator('#message-input .editor-content[contenteditable="true"]').first();
-    await editor.waitFor({ state: 'visible', timeout: 30_000 });
-    await editor.focus();
-    await page.keyboard.type(text, { delay: 20 });
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(1_500);
-}
-
-async function getUserId(page: Page): Promise<string> {
-    return await page.evaluate(() => (window as unknown as { debugUI: { getUserId(): Promise<string> } })
-        .debugUI.getUserId());
-}
-
 async function hangUpIfAny(page: Page | undefined) {
     if (!page)
         return;
@@ -82,6 +69,8 @@ describe('call audio output on the web', () => {
         // Sequential sign-ins: parallel ones race on the shared server flow (see vitest.config.e2e.ts).
         ({ context: callerCtx, page: caller } = await newPhoneContext(conn, TEST_EMAIL));
         ({ context: calleeCtx, page: callee } = await newPhoneContext(conn, TEST_EMAIL_2));
+        for (const page of [caller, callee])
+            await setIncompleteUI(page, true);
     }, 180_000);
 
     afterEach(async () => {
@@ -90,6 +79,8 @@ describe('call audio output on the web', () => {
     }, 30_000);
 
     afterAll(async () => {
+        for (const page of [caller, callee])
+            await setIncompleteUI(page, false).catch(() => { /* ignore */ });
         await callerCtx.close().catch(() => { /* ignore */ });
         await calleeCtx.close().catch(() => { /* ignore */ });
         if (conn.ownsBrowser) {
@@ -100,13 +91,7 @@ describe('call audio output on the web', () => {
 
     it('shows no speaker button on either side of a call', async () => {
         // arrange - a reply from the callee opens the peer-call gate for the caller
-        const userIds = [await getUserId(caller), await getUserId(callee)].sort();
-        const pm = withUILanguage(`${BASE_URL}/chat/p-${userIds.join('-')}`);
-        await caller.goto(pm, { waitUntil: 'domcontentloaded' });
-        await send(caller, 'call test');
-        await callee.goto(pm, { waitUntil: 'domcontentloaded' });
-        await send(callee, 'call test reply');
-        await caller.reload({ waitUntil: 'domcontentloaded' });
+        await openPeerChat(caller, callee);
 
         // act - dial, accept from the incoming-call modal
         const callButton = caller.locator('.btn-start-call').first();

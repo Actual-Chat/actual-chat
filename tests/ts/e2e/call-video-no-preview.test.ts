@@ -28,9 +28,9 @@ import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import type { BrowserContext, Page } from 'playwright';
 import {
     BASE_URL, TEST_EMAIL, TEST_EMAIL_2, connectBrowser, ensureSignedIn, setIncompleteUI, skipOnboarding,
-    withUILanguage,
     type BrowserConnection,
 } from './helpers';
+import { startPeerCall } from './peer-call';
 import { SPEECH_WAV, hangUpIfAny as leaveVideoSession, openCallChat, startRecording } from './video-call';
 
 const SHOTS_DIR = path.join(process.cwd(), 'tmp', 'e2e-call-video');
@@ -104,39 +104,6 @@ async function signOutBoth(users: Users | undefined) {
         await users.conn.context.close().catch(() => { /* ignore */ });
         await users.conn.browser.close().catch(() => { /* ignore */ });
     }
-}
-
-async function send(page: Page, text: string) {
-    // Focused, not clicked: the record button overlaps the editor on the narrow layout.
-    const editor = page.locator('#message-input .editor-content[contenteditable="true"]').first();
-    await editor.waitFor({ state: 'visible', timeout: 30_000 });
-    await editor.focus();
-    await page.keyboard.type(text, { delay: 20 });
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(1_500);
-}
-
-async function getUserId(page: Page): Promise<string> {
-    return await page.evaluate(() => (window as unknown as { debugUI: { getUserId(): Promise<string> } })
-        .debugUI.getUserId());
-}
-
-/** Opens the peer chat on both sides, dials from the caller and accepts on the callee. */
-async function startCall({ caller, callee }: Users) {
-    // A reply from the callee opens the peer-call gate for the caller
-    const userIds = [await getUserId(caller), await getUserId(callee)].sort();
-    const pm = withUILanguage(`${BASE_URL}/chat/p-${userIds.join('-')}`);
-    await caller.goto(pm, { waitUntil: 'domcontentloaded' });
-    await send(caller, 'video call test');
-    await callee.goto(pm, { waitUntil: 'domcontentloaded' });
-    await send(callee, 'video call test reply');
-    await caller.reload({ waitUntil: 'domcontentloaded' });
-    const callButton = caller.locator('.btn-start-call').first();
-    await callButton.waitFor({ state: 'visible', timeout: 30_000 });
-    await callButton.click();
-    const accept = callee.locator('.btn-call.c-accept').first();
-    await accept.waitFor({ state: 'visible', timeout: 30_000 });
-    await accept.click();
 }
 
 async function hangUpIfAny(page: Page | undefined) {
@@ -253,7 +220,7 @@ describe('camera on during a call, narrow screen', () => {
     it('starts video at once, full-screen, without the join preview', async () => {
         // arrange
         const { caller, callee } = users;
-        await startCall(users);
+        await startPeerCall(caller, callee);
         for (const page of [caller, callee])
             await page.locator(`${CALL_SCREEN} .c-toolbar`).first().waitFor({ state: 'visible', timeout: 30_000 });
         await caller.screenshot({ path: shot('narrow-1-caller-call-screen') });
@@ -307,7 +274,7 @@ describe('camera on during a call, wide screen', () => {
     it('starts video at once, full-screen, without the join preview', async () => {
         // arrange - on a wide screen an active call has no call screen: it is in the chat
         const { caller, callee } = users;
-        await startCall(users);
+        await startPeerCall(caller, callee);
         const videoToggle = caller.locator('.chat-audio-panel .video-wrapper button').first();
         await caller.locator('.chat-audio-panel .recorder-wrapper.record-on:not(.applying-changes)').first()
             .waitFor({ state: 'attached', timeout: 30_000 });
