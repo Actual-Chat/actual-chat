@@ -6,6 +6,7 @@ using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Components.MarkupParts;
+using ActualChat.UI.Blazor.App.Events;
 using ActualLab.Fusion.Blazor;
 using Bunit;
 using Microsoft.AspNetCore.Components;
@@ -348,10 +349,27 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
             .Add(x => x.Window, CoachWindow.Today));
         InitializeHub(tester, hub, cut.Instance);
         hub.ChatUI.SelectChatOnNavigation(chatId);
-        cut.WaitForAssertion(() => cut.FindAll(".coach-occurrence").Should().ContainSingle());
+        await TestWait.WhenRendered(cut, () => cut.FindAll(".coach-occurrence").Should().ContainSingle());
+        NavigateToChatEntryEvent? navigation = null;
+        hub.UIEventHub.Subscribe<NavigateToChatEntryEvent>((e, _) => {
+            navigation = e;
+            return Task.CompletedTask;
+        });
 
         // act
-        await cut.InvokeAsync(() => cut.Find(".coach-occurrence").Click());
+        await cut.InvokeAsync(() => cut.Find(".coach-occurrence .c-word").Click());
+
+        // assert
+        await TestWait.WhenPolled(() => {
+            navigation.Should().NotBeNull();
+            navigation!.ChatEntryId.Should().Be(entry.Id);
+            navigation.MustHighlight.Should().BeTrue();
+            return Task.CompletedTask;
+        });
+        hub.ChatAudioUI.ReplayState.Value.Should().BeNull("word navigation must not start playback");
+
+        // act
+        await cut.InvokeAsync(() => cut.Find(".coach-occurrence .btn-open-occurrence").Click());
 
         // assert
         var replay = await TestWait.When(_ => {
@@ -532,8 +550,10 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         }, TimeSpan.FromSeconds(30));
     }
 
-    [Fact(Timeout = 60_000)]
-    public async Task SkillsTabShouldGroupHeadlineAndConversationSkillsAndOpenOccurrences()
+    [Theory(Timeout = 60_000)]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task SkillsTabShouldGroupHeadlineAndConversationSkillsAndOpenOccurrences(bool isHeadline)
     {
         // arrange
         var appHost = await NewCoachHost("coach-ui-skills");
@@ -549,18 +569,25 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         // act
         var cut = tester.Render<CoachPanel>();
         InitializeHub(tester, hub, cut.Instance);
-        cut.WaitForAssertion(() => cut.Find(".coach-conversation"), TimeSpan.FromSeconds(30));
+        await TestWait.WhenRendered(cut, () => cut.Find(".coach-conversation"), TimeSpan.FromSeconds(30));
         hub.CoachUI.SelectTab(CoachTab.Skills);
+        var chipSelector = isHeadline
+            ? ".coach-skills .c-headline .coach-chip"
+            : ".coach-skills .c-more [data-metric=WeakWords] .coach-chip";
 
         // assert
-        cut.WaitForAssertion(() => {
+        await TestWait.WhenRendered(cut, () => {
             cut.FindAll(".coach-skills .c-headline .coach-skill").Count.Should().Be(4);
             cut.Find(".coach-skills .c-conversation").Should().NotBeNull();
-            cut.FindAll(".coach-skills .c-headline .coach-chip").Count
+            cut.FindAll(chipSelector).Count
                 .Should().BeGreaterThan(0, "the marked words show as chips");
         }, TimeSpan.FromSeconds(30));
-        await cut.InvokeAsync(() => cut.Find(".coach-skills .c-headline .coach-chip").Click());
-        cut.WaitForAssertion(() => cut.Find(".coach-occurrences"), TimeSpan.FromSeconds(10));
+        await cut.InvokeAsync(() => cut.Find(chipSelector).Click());
+        await TestWait.WhenRendered(cut, () => {
+            cut.Find(".coach-occurrences .c-context").TextContent.Should().Contain(isHeadline ? "um" : "awesome");
+            if (!isHeadline)
+                cut.Find(".coach-occurrences .c-synonyms").TextContent.Should().Contain("excellent");
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact(Timeout = 60_000)]
