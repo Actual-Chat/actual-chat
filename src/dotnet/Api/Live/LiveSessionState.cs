@@ -64,6 +64,10 @@ public sealed partial record LiveSessionState
     // Null in an ambient session.
     [DataMember(Order = 25), Key(25)]
     public CallId? CallId { get; init; }
+    // A call placed into a session that had already latched rings like any other, though the session's
+    // conversation stays up meanwhile. The first answer clears it; an unanswered end reverts the session.
+    [DataMember(Order = 26), Key(26)]
+    public bool IsDialingIntoSession { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public long EffectiveVisibleStartLid => VisibleStartLid > 0 ? VisibleStartLid : StartEntryLid;
@@ -75,7 +79,7 @@ public sealed partial record LiveSessionState
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsCall => Kind == LiveSessionKind.Call;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public bool IsDialing => Kind == LiveSessionKind.Call && SessionStartedAt is null;
+    public bool IsDialing => Kind == LiveSessionKind.Call && (SessionStartedAt is null || IsDialingIntoSession);
 
     public Conversation ToConversation()
         => new(ConversationId, Version) {

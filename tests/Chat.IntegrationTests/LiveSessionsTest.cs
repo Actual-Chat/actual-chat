@@ -1459,34 +1459,106 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task StartCallOnLatchedSessionShouldStayConnected()
+    public async Task CallIntoLatchedSessionShouldDialAndKeepItsBlock()
     {
-        // arrange — a 2-party ambient session is already latched (block visible) when a call starts
-        await using var bob = AppHost.NewBlazorTester(Out);
-        await using var alice = AppHost.NewBlazorTester(Out);
-        await bob.SignInAsUniqueBob();
-        await alice.SignInAsUniqueAlice();
-        var (chatId, inviteId) = await bob.CreateChat(true);
-        await alice.JoinChat(chatId, inviteId);
-        var bobAuthor = await bob.GetOwnAuthor(chatId);
-        var aliceAuthor = await alice.GetOwnAuthor(chatId);
-        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
-        await backend.OnStreamRegistered(chatId, bobAuthor!.Id, null, true, true, default);
-        await backend.OnStreamRegistered(chatId, aliceAuthor!.Id, null, true, true, default);
-        var latched = await backend.GetState(chatId, default);
-        latched!.SessionStartedAt.Should().NotBeNull("two streamers latched the ambient session");
-        var startedAt = latched.SessionStartedAt;
+        // arrange — Bob and Alice already talk in a latched ambient session (block visible)
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bobAuthor, aliceAuthor, startedAt) = await NewLatchedPeerSession(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
 
-        // act — Bob rings a third-party author id while that session is live
-        await backend.StartCall(
-            chatId, bobAuthor.Id, new[] { AuthorId.New(chatId, 777_055) }.ToApiArray(), false, default);
+        // act — Bob rings Alice in it
+        var callId = await backend.StartCall(
+            chatId, bobAuthor.Id, new[] { aliceAuthor.Id }.ToApiArray(), false, default);
 
-        // assert — monotonic: it stays a connected Call with its latch preserved (block stays)
+        // assert — a ring like any other, the block kept as it was
         var state = await backend.GetState(chatId, default);
         state!.Kind.Should().Be(LiveSessionKind.Call);
+        state.IsDialing.Should().BeTrue();
         state.SessionStartedAt.Should().Be(startedAt);
-        // an already-latched session isn't newly Dialing, so no CallState should be written for it
-        (await backend.GetCallState(chatId, default)).Should().BeNull();
+        var live = await backend.Get(chatId, default);
+        live!.Conversation.Should().NotBeNull("the session's block stays up while the call rings");
+        var callState = await backend.GetCallState(chatId, default);
+        callState!.Status.Should().Be(CallStatus.Dialing);
+        // What GetUserCall falls back to once ClaimGrace is over: no phase there drops the caller (#5000)
+        var callerClaim = new UserCall {
+            ChatId = chatId, AuthorId = bobAuthor.Id, Role = CallRole.Caller, Phase = CallPhase.Dialing,
+            CallId = callId,
+        };
+        CallsBackend.GetPhase(callerClaim, live, callState).Should().Be(CallPhase.Dialing);
+    }
+
+    [Fact]
+    public async Task AnsweredCallIntoLatchedSessionShouldPutBothOnTheLine()
+    {
+        // arrange — Bob rings Alice in the session they already talk in
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bobAuthor, aliceAuthor, startedAt) = await NewLatchedPeerSession(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var callsBackend = tester.AppServices.GetRequiredService<ICallsBackend>();
+        await backend.StartCall(chatId, bobAuthor.Id, new[] { aliceAuthor.Id }.ToApiArray(), false, default);
+
+        // act
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+
+        // assert
+        var state = await backend.GetState(chatId, default);
+        state!.IsDialing.Should().BeFalse();
+        state.SessionStartedAt.Should().Be(startedAt, "the answer keeps the block the session already had");
+        (await backend.GetCallState(chatId, default))!.Status.Should().Be(CallStatus.Connecting);
+        (await callsBackend.GetUserCall(aliceAuthor.UserId, default))!.Phase.Should().Be(CallPhase.Active);
+        (await callsBackend.GetUserCall(bobAuthor.UserId, default))!.Phase.Should().Be(CallPhase.Active);
+    }
+
+    [Fact]
+    public async Task PresentInviteeShouldNotAnswerACallIntoLatchedSession()
+    {
+        // arrange — Alice is present in the session for her own reasons when Bob rings her in it
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bobAuthor, aliceAuthor, _) = await NewLatchedPeerSession(tester);
+        var backend = (LiveSessionsBackend)tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor.Id, new[] { aliceAuthor.Id }.ToApiArray(), false, default);
+        await WaitForParticipantPresence(backend, chatId, bobAuthor.Id, isPresent: true);
+        await WaitForParticipantPresence(backend, chatId, aliceAuthor.Id, isPresent: true);
+
+        // act — a presence-sync tick, as GetState's self-heal would run
+        var state = await backend.GetState(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, state!, default);
+
+        // assert — still ringing her, and the caller isn't taken for a party of a call nobody answered
+        var live = await backend.Get(chatId, default);
+        live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Ringing);
+        (await backend.GetCallState(chatId, default))!.Status.Should().Be(CallStatus.Dialing);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnansweredCallIntoLatchedSessionShouldHandTheSessionBack(bool isCanceled)
+    {
+        // arrange — Bob rings Alice in the session they already talk in
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bobAuthor, aliceAuthor, startedAt) = await NewLatchedPeerSession(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var callsBackend = tester.AppServices.GetRequiredService<ICallsBackend>();
+        await backend.StartCall(chatId, bobAuthor.Id, new[] { aliceAuthor.Id }.ToApiArray(), false, default);
+
+        // act
+        if (isCanceled)
+            await backend.CancelCall(chatId, bobAuthor.Id, default);
+        else
+            await backend.DeclineCall(chatId, aliceAuthor.Id, default);
+
+        // assert — the call is over, the session it rang into goes on as it was
+        var state = await backend.GetState(chatId, default);
+        state.Should().NotBeNull("Alice still streams in the session");
+        state!.Kind.Should().Be(LiveSessionKind.Ambient);
+        state.CallId.Should().BeNull();
+        state.SessionStartedAt.Should().Be(startedAt);
+        var live = await backend.Get(chatId, default);
+        live!.Invites.Should().BeEmpty();
+        live.Conversation.Should().NotBeNull();
+        (await callsBackend.GetUserCall(bobAuthor.UserId, default)).Should().BeNull();
+        (await callsBackend.GetUserCall(aliceAuthor.UserId, default)).Should().BeNull();
     }
 
     [Fact]
@@ -2861,6 +2933,18 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         var bobAuthor = await authors.EnsureJoined(chatId, bob.Id, default);
         var aliceAuthor = await authors.EnsureJoined(chatId, alice.Id, default);
         return (chatId, bobAuthor, aliceAuthor);
+    }
+
+    private static async Task<(ChatId ChatId, AuthorFull Bob, AuthorFull Alice, Moment StartedAt)>
+        NewLatchedPeerSession(IWebTester tester)
+    {
+        var (chatId, bobAuthor, aliceAuthor) = await NewTwoPartyCall(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, bobAuthor.Id, null, true, true, default);
+        await backend.OnStreamRegistered(chatId, aliceAuthor.Id, null, true, true, default);
+        var state = await backend.GetState(chatId, default);
+        state!.SessionStartedAt.Should().NotBeNull("two streamers latch an ambient session");
+        return (chatId, bobAuthor, aliceAuthor, state.SessionStartedAt!.Value);
     }
 
     private static (UserCall Callee, UserCall Caller, AuthorId CalleeId) NewPeerCallClaims()
