@@ -110,7 +110,7 @@ public partial class CallScreensUI
     {
         // The next call to the same chat took the slot with no release between. Hanging up or leaving
         // the screen by chat would do it to the new call, so only what was the old call's alone goes:
-        // its collapsed and muted state, and its audio - which would otherwise answer the new ring.
+        // its collapsed and muted state, and its audio and video - which would otherwise answer the new ring.
         // Over-lock stays: the app is still over the keyguard, and the new call's release takes it back.
         var chatId = call.ChatId;
         CallDebugLog?.LogInformation(
@@ -118,16 +118,16 @@ public partial class CallScreensUI
         ClearIf(_collapsedChatId, chatId);
         ClearIf(_mutedRingChatId, chatId);
         if (call.Phase == CallPhase.Active && next.Phase != CallPhase.Active)
-            _ = Hub.Dispatcher.InvokeAsync(() => StopReplacedCallAudio(chatId));
+            _ = Hub.Dispatcher.InvokeAsync(() => StopReplacedCallMedia(chatId));
     }
 
-    private async Task StopReplacedCallAudio(ChatId chatId)
+    private async Task StopReplacedCallMedia(ChatId chatId)
     {
         try {
-            await CallUI.StopCallAudio(chatId).ConfigureAwait(true);
+            await CallUI.StopCallMedia(chatId).ConfigureAwait(true);
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Stopping the replaced call's audio failed for chat #{ChatId}", chatId);
+            Log.LogWarning(e, "Stopping the replaced call's media failed for chat #{ChatId}", chatId);
         }
     }
 
