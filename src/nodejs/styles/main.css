@@ -688,6 +688,8 @@ body.narrow .page-with-header-and-footer[data-has-left-panel-open][data-has-test
 
 /* Hide Google Recaptcha V3 anchor badge */
 .grecaptcha-badge { visibility: hidden; }
+/* Marked by recaptcha-handler.ts; !important beats reCAPTCHA re-showing it via inline style */
+body > div[data-recaptcha-error] { display: none !important; }
 
 
 /* Landing Test Page */
