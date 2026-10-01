@@ -1919,6 +1919,7 @@
   "Coach_TrendsNoDays": "Aucun message vocal sur cette période",
   "Coach_Occurrences_Format": "Où vous avez dit « {0} »",
   "Coach_OccurrencesEmpty": "Aucune occurrence sur cette période",
+  "Coach_OccurrencesLimit_Format": "Seules les {0} occurrences les plus récentes sont affichées.",
   "Coach_OpenCoach": "Coach vocal",
   "Coach_Trends": "Tendances",
   "Coach_TrendsTurnTaking": "Prise de parole par jour",

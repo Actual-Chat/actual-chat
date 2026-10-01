@@ -2268,6 +2268,7 @@
   "Coach_TrendsNoDays": "No voice messages in this period",
   "Coach_Occurrences_Format": "Where you said “{0}”",
   "Coach_OccurrencesEmpty": "No occurrences in this period",
+  "Coach_OccurrencesLimit_Format": "Showing only the {0} most recent occurrences.",
   "Coach_OpenCoach": "Speech coach",
   "Coach_Trends": "Trends",
   "Coach_TrendsTurnTaking": "Turn-taking by day",

@@ -1919,6 +1919,7 @@
   "Coach_TrendsNoDays": "Nenhuma mensagem de voz neste período",
   "Coach_Occurrences_Format": "Onde você disse “{0}”",
   "Coach_OccurrencesEmpty": "Nenhuma ocorrência neste período",
+  "Coach_OccurrencesLimit_Format": "São mostradas apenas as {0} ocorrências mais recentes.",
   "Coach_OpenCoach": "Coach de fala",
   "Coach_Trends": "Tendências",
   "Coach_TrendsTurnTaking": "Alternância de fala por dia",

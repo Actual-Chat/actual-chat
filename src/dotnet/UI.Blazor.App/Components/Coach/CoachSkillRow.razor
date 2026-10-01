@@ -23,16 +23,18 @@
     </div>
     @if (IsHeadline) {
         <div class="c-caption">@labels.Explain(m.Kind, Language, Summary)</div>
-        @if (m.Chips.Count > 0) {
-            <div class="c-chips">
-                @foreach (var chip in m.Chips) {
-                    <button type="button" class="coach-chip" @onclick="@(() => WordClick.InvokeAsync(chip.Word))">
-                        <span>@chip.Word</span>
-                        <span class="c-count">· @chip.Count</span>
-                    </button>
-                }
-            </div>
-        }
+    }
+    @if (m.Chips.Count > 0 && WordClick.HasDelegate && !IsNotMeasured) {
+        <div class="c-chips">
+            @foreach (var chip in m.Chips) {
+                <button type="button" class="coach-chip" @onclick="@(() => WordClick.InvokeAsync(chip.Word))">
+                    <span>@chip.Word</span>
+                    <span class="c-count">· @chip.Count</span>
+                </button>
+            }
+        </div>
+    }
+    @if (IsHeadline) {
         @if (!IsFocus) {
             <a class="c-focus-link" @onclick="@(() => FocusClick.InvokeAsync(m.Kind))">@L.Coach_MakeFocus</a>
         } else if (IsFocusOverridden) {

@@ -5,6 +5,58 @@ namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
 public class CoachMarkHintTest
 {
+    [Theory]
+    [InlineData("First. I like like this! Next.", "like", 14, "I like ", "like", " this!")]
+    [InlineData("前句。我那个想试试。后句。", "那个", 4, "我", "那个", "想试试。")]
+    [InlineData("I KIND OF agree", "kind of", 2, "I ", "KIND OF", " agree")]
+    public void ContextShouldHighlightTheSelectedOccurrence(
+        string text, string word, int start,
+        string before, string selected, string after)
+    {
+        // arrange
+        var span = new SpeechSpan(SpeechSpanKind.Filler, word, start, word.Length, ApiArray<string>.Empty);
+
+        // act
+        var context = CoachMarkHint.GetContext(text, span);
+
+        // assert
+        context.Should().Be(new CoachMarkHint.Context(before, selected, after));
+    }
+
+    [Theory]
+    [InlineData(-1, 4)]
+    [InlineData(2, 0)]
+    [InlineData(2, 20)]
+    [InlineData(20, 4)]
+    [InlineData(0, 4)]
+    public void ContextShouldRejectStaleOrInvalidOffsets(int start, int length)
+    {
+        // arrange
+        var span = new SpeechSpan(SpeechSpanKind.Filler, "like", start, length, ApiArray<string>.Empty);
+
+        // act
+        var context = CoachMarkHint.GetContext("I like this", span);
+
+        // assert
+        context.Should().BeNull();
+    }
+
+    [Fact]
+    public void ContextShouldLimitLongMessagesWithoutSplittingEmoji()
+    {
+        // arrange
+        var before = new string('a', 120) + "😀" + new string('b', 99);
+        var after = new string('c', 99) + "😀" + new string('d', 120);
+        var span = new SpeechSpan(SpeechSpanKind.Filler, "like", before.Length, 4, ApiArray<string>.Empty);
+
+        // act
+        var context = CoachMarkHint.GetContext(before + "like" + after, span);
+
+        // assert
+        context.Should().Be(new CoachMarkHint.Context("…" + new string('b', 99), "like",
+            new string('c', 99) + "…"));
+    }
+
     private static CoachMarkHint NewHint()
         => new (new TestStringLocalizer(new() {
             ["Coach_TipWeakWordTitle"] = "Choose a different word next",
@@ -81,4 +133,3 @@ public class CoachMarkHintTest
         hint.Synonyms.Should().Equal("darn", "rats");
     }
 }
-

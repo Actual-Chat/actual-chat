@@ -1920,6 +1920,7 @@
   "Coach_TrendsNoDays": "Keine Sprachnachrichten in diesem Zeitraum",
   "Coach_Occurrences_Format": "Wo du „{0}“ gesagt hast",
   "Coach_OccurrencesEmpty": "Keine Vorkommen in diesem Zeitraum",
+  "Coach_OccurrencesLimit_Format": "Es werden nur die {0} neuesten Vorkommen angezeigt.",
   "Coach_OpenCoach": "Sprechcoach",
   "Coach_Trends": "Trends",
   "Coach_TrendsTurnTaking": "Redeanteil nach Tag",

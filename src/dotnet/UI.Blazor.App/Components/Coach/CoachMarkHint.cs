@@ -12,6 +12,40 @@ public sealed class CoachMarkHint(IStringLocalizer l)
     private const char SynonymSeparator = '\n';
 
     public sealed record Hint(string Title, string Body, ApiArray<string> Synonyms);
+    public sealed record Context(string Before, string Word, string After);
+
+    public static Context? GetContext(string text, SpeechSpan span)
+    {
+        if (span.Start < 0 || span.Length <= 0 || span.Start > text.Length
+            || span.Length > text.Length - span.Start)
+            return null;
+
+        var word = text.Substring(span.Start, span.Length);
+        if (!word.Equals(span.Word, StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var start = span.Start;
+        var end = span.Start + span.Length;
+        while (start > 0 && span.Start - start < 100 && !IsBoundary(text[start - 1]))
+            start--;
+        while (end < text.Length && end - span.Start - span.Length < 100 && !IsBoundary(text[end]))
+            end++;
+        if (start > 0 && char.IsLowSurrogate(text[start]))
+            start++;
+        if (end < text.Length && char.IsHighSurrogate(text[end - 1]))
+            end--;
+
+        var before = text[start..span.Start].TrimStart();
+        var after = text[(span.Start + span.Length)..end].TrimEnd();
+        if (start > 0 && !IsBoundary(text[start - 1]))
+            before = "…" + before;
+        if (end < text.Length)
+            after += IsBoundary(text[end]) ? text[end].ToString() : "…";
+
+        return new Context(before, word, after);
+
+        static bool IsBoundary(char c) => c is '.' or '!' or '?' or '。' or '！' or '？' or '\n' or '\r';
+    }
 
     public Hint For(SpeechSpan span)
         => span.Kind switch {

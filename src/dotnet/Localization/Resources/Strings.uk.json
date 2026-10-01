@@ -1919,6 +1919,7 @@
   "Coach_TrendsNoDays": "У цьому періоді немає голосових повідомлень",
   "Coach_Occurrences_Format": "Де ви сказали «{0}»",
   "Coach_OccurrencesEmpty": "У цьому періоді немає входжень",
+  "Coach_OccurrencesLimit_Format": "Показано лише {0} останніх уживань.",
   "Coach_OpenCoach": "Мовний коуч",
   "Coach_Trends": "Тренди",
   "Coach_TrendsTurnTaking": "Черговість за днями",

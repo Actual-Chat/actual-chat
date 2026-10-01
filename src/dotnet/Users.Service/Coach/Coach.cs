@@ -5,8 +5,6 @@ namespace ActualChat.Users;
 
 public class Coach(IServiceProvider services) : ICoach
 {
-    private const int MaxOccurrences = 20;
-
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IChatCoach ChatCoach { get; } = services.GetRequiredService<IChatCoach>();
     private ICoachBackend Backend { get; } = services.GetRequiredService<ICoachBackend>();
@@ -326,7 +324,7 @@ public class Coach(IServiceProvider services) : ICoach
         var (range, _) = Ranges(window);
         InvalidateAtMidnight(range);
         return await Backend
-            .ListOccurrences(account.Id, word.Trim().ToLower(), range, MaxOccurrences, cancellationToken)
+            .ListOccurrences(account.Id, word.Trim().ToLower(), range, ICoach.MaxOccurrences, cancellationToken)
             .ConfigureAwait(false);
     }
 

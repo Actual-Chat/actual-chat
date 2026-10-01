@@ -1919,6 +1919,7 @@
   "Coach_TrendsNoDays": "この期間に音声メッセージはありません",
   "Coach_Occurrences_Format": "「{0}」と言った場所",
   "Coach_OccurrencesEmpty": "この期間に該当箇所はありません",
+  "Coach_OccurrencesLimit_Format": "直近の{0}件のみ表示しています。",
   "Coach_OpenCoach": "スピーチコーチ",
   "Coach_Trends": "傾向",
   "Coach_TrendsTurnTaking": "日ごとの発言の交代",

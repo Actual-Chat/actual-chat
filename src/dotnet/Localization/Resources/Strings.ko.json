@@ -1919,6 +1919,7 @@
   "Coach_TrendsNoDays": "이 기간에 음성 메시지가 없습니다",
   "Coach_Occurrences_Format": "“{0}”라고 말한 곳",
   "Coach_OccurrencesEmpty": "이 기간에 해당 항목이 없습니다",
+  "Coach_OccurrencesLimit_Format": "최근 사용 사례 {0}개만 표시됩니다.",
   "Coach_OpenCoach": "스피치 코치",
   "Coach_Trends": "추세",
   "Coach_TrendsTurnTaking": "일별 발언 교대",

@@ -1919,6 +1919,7 @@
   "Coach_TrendsNoDays": "Không có tin nhắn thoại trong kỳ này",
   "Coach_Occurrences_Format": "Nơi bạn đã nói “{0}”",
   "Coach_OccurrencesEmpty": "Không có lần xuất hiện nào trong kỳ này",
+  "Coach_OccurrencesLimit_Format": "Chỉ hiển thị {0} lần xuất hiện gần đây nhất.",
   "Coach_OpenCoach": "Coach nói",
   "Coach_Trends": "Xu hướng",
   "Coach_TrendsTurnTaking": "Luân phiên nói theo ngày",

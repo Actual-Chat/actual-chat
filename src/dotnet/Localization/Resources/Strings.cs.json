@@ -1919,6 +1919,7 @@
   "Coach_TrendsNoDays": "V tomto období nejsou žádné hlasové zprávy",
   "Coach_Occurrences_Format": "Kde jste řekli „{0}“",
   "Coach_OccurrencesEmpty": "V tomto období žádné výskyty",
+  "Coach_OccurrencesLimit_Format": "Zobrazuje se pouze {0} nejnovějších výskytů.",
   "Coach_OpenCoach": "Řečový kouč",
   "Coach_Trends": "Trendy",
   "Coach_TrendsTurnTaking": "Střídání podle dnů",

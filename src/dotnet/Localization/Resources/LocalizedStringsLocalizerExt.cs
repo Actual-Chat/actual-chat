@@ -2009,6 +2009,7 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_TrendsNoDays => l["Coach_TrendsNoDays"].Value;
         public string Coach_Occurrences_Format(object arg0) => l["Coach_Occurrences_Format", arg0].Value;
         public string Coach_OccurrencesEmpty => l["Coach_OccurrencesEmpty"].Value;
+        public string Coach_OccurrencesLimit_Format(object arg0) => l["Coach_OccurrencesLimit_Format", arg0].Value;
         public string Coach_OpenCoach => l["Coach_OpenCoach"].Value;
         public string Coach_Trends => l["Coach_Trends"].Value;
         public string Coach_TrendsTurnTaking => l["Coach_TrendsTurnTaking"].Value;

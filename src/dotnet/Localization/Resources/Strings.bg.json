@@ -1919,6 +1919,7 @@
   "Coach_TrendsNoDays": "Няма гласови съобщения за този период",
   "Coach_Occurrences_Format": "Къде казахте „{0}“",
   "Coach_OccurrencesEmpty": "Няма срещания за този период",
+  "Coach_OccurrencesLimit_Format": "Показани са само последните {0} срещания.",
   "Coach_OpenCoach": "Речев коуч",
   "Coach_Trends": "Тенденции",
   "Coach_TrendsTurnTaking": "Редуване по дни",
