@@ -11,6 +11,7 @@ public partial class CallUI
     private readonly MutableState<string?> _pickedOutputRouteId;
 
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
 
     // Public methods
 
@@ -37,9 +38,14 @@ public partial class CallUI
     protected virtual async Task<CallActivity> GetCallActivity(CancellationToken cancellationToken)
     {
         var call = await GetActiveCall(cancellationToken).ConfigureAwait(false);
-        return call is { Phase: CallPhase.Active or CallPhase.Dialing }
-            ? new CallActivity(true, call.HasVideo)
-            : CallActivity.None;
+        if (call is not { Phase: CallPhase.Active or CallPhase.Dialing })
+            return CallActivity.None;
+
+        // HasVideo is how the call was placed; a camera turned on mid-call holds the phone out all the same.
+        var hasVideo = call.HasVideo
+            || await ChatVideoUI.IsOwnCameraRecording(call.ChatId, cancellationToken).ConfigureAwait(false)
+            || await ChatVideoUI.IsAnyoneVideoStreaming(call.ChatId, cancellationToken).ConfigureAwait(false);
+        return new CallActivity(true, hasVideo);
     }
 
     [ComputeMethod]
@@ -76,13 +82,23 @@ public partial class CallUI
             .ConfigureAwait(false);
         var activity = CallActivity.None;
         await foreach (var c in cActivity.Changes(cancellationToken).ConfigureAwait(false)) {
-            if (c.Value == activity)
+            // Video sticks for the rest of the call: a camera toggled off and on again mustn't bounce
+            // the sound between the ear and the speaker.
+            var nextActivity = c.Value.IsCallActive && activity.HasVideo
+                ? c.Value with { HasVideo = true }
+                : c.Value;
+            if (nextActivity == activity)
                 continue;
 
-            activity = c.Value;
+            var isVideoStarted = activity.IsCallActive && !activity.HasVideo && nextActivity.HasVideo;
+            activity = nextActivity;
             // The pick belongs to the call that just ended; the next one starts from the defaults.
             if (!activity.IsCallActive)
                 _pickedOutputRouteId.Value = null;
+            else if (isVideoStarted && _pickedOutputRouteId.Value == AudioOutputRoute.PhoneId) {
+                Log.LogInformation("Video started mid-call, dropping the earpiece pick");
+                _pickedOutputRouteId.Value = null;
+            }
             await AudioFocusUI.SetCallActive(activity.IsCallActive, activity.HasVideo).ConfigureAwait(false);
         }
     }

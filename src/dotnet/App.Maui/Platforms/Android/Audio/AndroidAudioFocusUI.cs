@@ -100,7 +100,11 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     public override Task SetCallActive(bool isCallActive, bool hasVideo)
     {
         Volatile.Write(ref _isCallVideo, hasVideo ? 1 : 0);
-        return SetCallAudioRoute(isCallActive ? _callAudioRoute ?? GetDefaultCallAudioRoute() : null);
+        // Only a forced pick survives: the default one follows video turned on mid-call.
+        var route = !isCallActive ? (CallAudioRoute?)null
+            : _callAudioRoute is { IsBuiltinForced: true } pickedRoute ? pickedRoute
+            : GetDefaultCallAudioRoute();
+        return SetCallAudioRoute(route);
     }
 
     public override async Task ApplyOutputRoute(string? routeId)
