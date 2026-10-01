@@ -261,6 +261,19 @@ The first matching row wins:
 The width is reactive: narrowing the window mid-call brings up the full-screen view, widening it
 swaps the dialing full-screen view for the modal.
 
+On a narrow screen the call has a second full-screen surface, the expanded video panel, which lives
+in the chat under the full-screen view. The two hand the screen to each other through the collapsed
+flag, and each stays up until the other covers it, so the chat between them doesn't show:
+
+- **Video starts** — the own camera turned on from the full-screen view, or a remote stream arriving
+  while it is up (`CallScreensUI.IsOnCallScreen`): the panel opens expanded, and
+  `OnVideoExpanded` sets the flag once the panel reports it covers the screen.
+- **The last video stops** while the panel is expanded: `VideoPanel` clears the flag
+  (`CallScreensUI.Expand`) before it closes, so the full-screen view is back first.
+
+A panel that is inline when its video stops leaves the user in the chat, and over the lock screen
+the full-screen view stays: the chat, and the panel in it, are behind the keyguard.
+
 | Surface | What it shows |
 |---|---|
 | `CallModal` | Decline, Mute, Message and Accept for a ring; Hang up while dialing. |

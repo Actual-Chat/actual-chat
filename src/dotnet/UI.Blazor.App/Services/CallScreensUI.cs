@@ -52,6 +52,16 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     }
 
     [ComputeMethod]
+    public virtual async Task<bool> IsOnCallScreen(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // The in-app screen of a call that is on. Over the lock screen doesn't count: the chat, and the
+        // video panel in it, are behind the keyguard there.
+        var view = await GetCallView(cancellationToken).ConfigureAwait(false);
+        return view is { Kind: CallViewKind.FullScreen, IsOverLock: false, Call: { Phase: CallPhase.Active } call }
+            && call.ChatId == chatId;
+    }
+
+    [ComputeMethod]
     public virtual async Task<AuthorId?> GetCallPeerId(CancellationToken cancellationToken)
     {
         // The caller of a ring; for my own call, whoever I'm calling.

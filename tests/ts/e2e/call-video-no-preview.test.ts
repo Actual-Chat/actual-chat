@@ -25,118 +25,17 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
-import type { BrowserContext, Page } from 'playwright';
+import { TEST_EMAIL, connectBrowser, type BrowserConnection } from './helpers';
 import {
-    BASE_URL, TEST_EMAIL, TEST_EMAIL_2, connectBrowser, ensureSignedIn, setIncompleteUI, skipOnboarding,
-    type BrowserConnection,
-} from './helpers';
-import { startPeerCall } from './peer-call';
+    CALL_SCREEN, JOIN_PREVIEW, NARROW, OWN_VIDEO, REMOTE_VIDEO, WIDE, hangUpIfAny, isShown, isVideoCoveringScreen,
+    newUserPage, signInBoth, signOutBoth, startPeerCall,
+    type Users,
+} from './peer-call';
 import { SPEECH_WAV, hangUpIfAny as leaveVideoSession, openCallChat, startRecording } from './video-call';
 
 const SHOTS_DIR = path.join(process.cwd(), 'tmp', 'e2e-call-video');
 fs.mkdirSync(SHOTS_DIR, { recursive: true });
 const shot = (name: string) => path.join(SHOTS_DIR, `${name}.png`);
-
-const CALL_SCREEN = '.full-screen-call-view.in-call';
-const JOIN_PREVIEW = '.modal .camera-preview-video';
-const OWN_VIDEO = '.video-panel .video-streaming-preview';
-const REMOTE_VIDEO = '.video-panel .remote-video-container';
-
-const NARROW = { width: 390, height: 844 };
-const WIDE = { width: 1440, height: 900 };
-
-interface Users {
-    conn: BrowserConnection;
-    contexts: BrowserContext[];
-    caller: Page;
-    callee: Page;
-}
-
-async function newUserPage(
-    conn: BrowserConnection,
-    email: string,
-    viewport: { width: number; height: number },
-): Promise<{ context: BrowserContext; page: Page }> {
-    const isNarrow = viewport.width < 768;
-    // No touch: the ring buttons attach a swipe-to-answer controller on touch devices.
-    const context = await conn.browser.newContext({
-        ignoreHTTPSErrors: true,
-        locale: 'en-US',
-        viewport,
-        deviceScaleFactor: isNarrow ? 2 : 1,
-        isMobile: isNarrow,
-        hasTouch: false,
-    });
-    // The fake-device flags answer getUserMedia, but the app reads the Permissions API first.
-    await context.grantPermissions(['microphone', 'camera'], { origin: BASE_URL });
-    const page = await context.newPage();
-    page.on('pageerror', e => console.log(`PAGEERROR[${email}]:`, e.message));
-    await ensureSignedIn(page, email);
-    return { context, page };
-}
-
-async function signInBoth(viewport: { width: number; height: number }): Promise<Users> {
-    // Real speech, not the fake mic's beep: a silent recording idles out, and the call with it.
-    const conn = await connectBrowser({ fakeAudioFile: SPEECH_WAV });
-    // Sequential sign-ins: parallel ones race on the shared server flow (see vitest.config.e2e.ts).
-    const caller = await newUserPage(conn, TEST_EMAIL, viewport);
-    const callee = await newUserPage(conn, TEST_EMAIL_2, viewport);
-    for (const page of [caller.page, callee.page]) {
-        await skipOnboarding(page);
-        await setIncompleteUI(page, true);
-    }
-    return { conn, contexts: [caller.context, callee.context], caller: caller.page, callee: callee.page };
-}
-
-async function signOutBoth(users: Users | undefined) {
-    if (!users)
-        return;
-
-    // Unload before closing: a context closed outright leaves its server-side circuit alive for
-    // about a minute, still ringing and heartbeating as this account into the next run.
-    for (const page of [users.caller, users.callee]) {
-        await setIncompleteUI(page, false).catch(() => { /* ignore */ });
-        await page.goto('about:blank').catch(() => { /* ignore */ });
-    }
-    for (const context of users.contexts)
-        await context.close().catch(() => { /* ignore */ });
-    if (users.conn.ownsBrowser) {
-        await users.conn.context.close().catch(() => { /* ignore */ });
-        await users.conn.browser.close().catch(() => { /* ignore */ });
-    }
-}
-
-async function hangUpIfAny(page: Page | undefined) {
-    if (!page)
-        return;
-
-    const hangUps = [
-        page.locator(`${CALL_SCREEN} .c-call-bar .btn-video-panel.talking`).first(),
-        page.locator('.video-panel .btn-video-panel.talking').first(),
-    ];
-    for (const hangUp of hangUps) {
-        if (await hangUp.isVisible().catch(() => false))
-            await hangUp.click().catch(() => { /* ignore */ });
-    }
-    // On a wide screen an active call has no screen of its own: it ends with the recording
-    const recordOn = page.locator('.chat-audio-panel .recorder-wrapper.record-on').first();
-    if (await recordOn.isVisible().catch(() => false))
-        await page.locator('.chat-audio-panel .recorder-wrapper button').first().click().catch(() => { /* ignore */ });
-}
-
-/** Expanded and opaque: `isVisible` alone is true for a panel that is still fading in over the chat. */
-function isVideoCoveringScreen(page: Page): Promise<boolean> {
-    return page.evaluate(() => {
-        const panel = document.querySelector('.video-panel.expanded');
-        const content = panel?.querySelector('.video-panel-content');
-        return !!panel && !!content && getComputedStyle(panel).opacity === '1'
-            && getComputedStyle(content).opacity === '1';
-    }).catch(() => false);
-}
-
-function isShown(page: Page, selector: string): Promise<boolean> {
-    return page.locator(selector).first().isVisible().catch(() => false);
-}
 
 // Its own contexts, apart from the call tests: confirming the preview saves the camera, and headless
 // Chromium renames its fake camera on every page load - a later start without the preview would fail.
@@ -246,12 +145,11 @@ describe('camera on during a call, narrow screen', () => {
         await caller.waitForTimeout(1_500);
         await caller.screenshot({ path: shot('narrow-2-caller-video-full-screen') });
 
-        // assert - the other side gets the video, in its chat under the call screen
-        await callee.screenshot({ path: shot('narrow-3-callee-still-on-call-screen') });
-        await callee.locator(`${CALL_SCREEN} .c-call-bar .btn-video-panel`).first().click();
-        await callee.locator(REMOTE_VIDEO).first().waitFor({ state: 'visible', timeout: 30_000 });
+        // assert - the other side gets the video, full-screen as well (see call-screen-follows-video.test.ts)
+        await callee.locator('.video-panel.expanded .remote-video-container').first()
+            .waitFor({ state: 'visible', timeout: 30_000 });
         await callee.waitForTimeout(1_500);
-        await callee.screenshot({ path: shot('narrow-4-callee-video-in-chat') });
+        await callee.screenshot({ path: shot('narrow-3-callee-video-full-screen') });
     }, 180_000);
 });
 

@@ -42,8 +42,7 @@
 
     if (m != Model.Loading && !isOwnStreaming && !hasRemoteStreams && !_showConnecting && !_endingGraceActive) {
         // TODO(DF): move this logic to ChatVideoUI
-        _skipCloseAnimation = m.IsExpanded || m.IsCollapsed || m.IsHidden;
-        ChatVideoUI.CloseVideoPanel();
+        CloseWithoutStreams(m);
     }
 
     var recordingCls = isOwnCameraStreaming ? "recording" : "";
@@ -667,20 +666,25 @@
         _showConnecting = false;
         _noStreamsTimedOut = true;
         var m = State.Value;
-        if (m.RemoteStreams.Length == 0 && !m.IsOwnRecording && !m.IsOwnScreenCasting) {
-            _skipCloseAnimation = m.IsExpanded || m.IsCollapsed || m.IsHidden;
-            ChatVideoUI.CloseVideoPanel();
-        }
+        if (m.RemoteStreams.Length == 0 && !m.IsOwnRecording && !m.IsOwnScreenCasting)
+            CloseWithoutStreams(m);
     }
 
     private void OnEndingGraceTimeout() {
         _endingGraceActive = false;
         _noStreamsTimedOut = true;
         var m = State.Value;
-        if (m.RemoteStreams.Length == 0 && !m.IsOwnRecording && !m.IsOwnScreenCasting) {
-            _skipCloseAnimation = m.IsExpanded || m.IsCollapsed || m.IsHidden;
-            ChatVideoUI.CloseVideoPanel();
-        }
+        if (m.RemoteStreams.Length == 0 && !m.IsOwnRecording && !m.IsOwnScreenCasting)
+            CloseWithoutStreams(m);
+    }
+
+    private void CloseWithoutStreams(Model m) {
+        _skipCloseAnimation = m.IsExpanded || m.IsCollapsed || m.IsHidden;
+        // A video that ends full-screen hands the screen back to the call screen it took over from,
+        // which comes up before the panel goes: the chat between them doesn't show.
+        if (m.IsExpanded)
+            Hub.CallScreensUI.Expand(Chat.Id);
+        ChatVideoUI.CloseVideoPanel();
     }
 
     // Nested types
