@@ -322,17 +322,17 @@ export async function isSignedIn(page: Page): Promise<boolean> {
 export async function signIn(page: Page, email: string = TEST_EMAIL, otp: string = TEST_OTP) {
     const otpDigits = await requestEmailCode(page, email);
 
-    // fill() bypasses pointer events, so digits land even if the "Register new
-    // account?" ConfirmModal has already rendered on top of the TOTP step.
+    // fill() bypasses pointer events, so digits land even if the registration
+    // ConfirmModal has already rendered on top of the TOTP step.
     for (let i = 0; i < 6; i++) {
         await otpDigits.nth(i).fill(otp[i]);
         await page.waitForTimeout(50);
     }
 
-    // Unknown emails → AccountUI.MonitorPendingRegistration shows a ConfirmModal
-    // ("Register new account?"); confirm to create the account. Existing accounts
-    // skip the modal and sign-in completes directly.
-    const registerModal = page.locator('[id^="Modal-ConfirmModal"]:has-text("Register new account")').first();
+    // Unknown emails → AccountUI.MonitorPendingRegistration shows a ConfirmModal; confirm to create
+    // the account. Existing accounts skip the modal and sign-in completes directly.
+    // Matched by its button: the title's wording has changed before, and no account got registered.
+    const registerModal = page.locator('[id^="Modal-ConfirmModal"]:has(button:has-text("Register"))').first();
     const signedInLandmark = page.locator('.chat-list, .account-dropdown').first();
     await Promise.race([
         registerModal.waitFor({ state: 'visible', timeout: 30_000 })
