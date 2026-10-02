@@ -7,6 +7,7 @@
  *   - Bob sends an emoji -> it floats over Alice's video panel with his name.
  *   - Alice, the host (she streamed first), lowers Bob's hand from the Call tab
  *     -> the badge goes away and Bob is told his hand was lowered.
+ *   - Bob raises his hand while muted, then unmutes and talks -> the hand lowers by itself (#5037).
  *
  * Prerequisites:
  * - Server running (server-loop / run-watch), locally: the feature is incomplete UI, which the
@@ -24,7 +25,7 @@ import {
 } from './helpers';
 import {
     SPEECH_WAV, collapseVideoPanel, countVideoElements, expandVideoPanel, hangUpIfAny, markVideoElements,
-    openCallChat, openCallTab, setGallery, startSession,
+    openCallChat, openCallTab, setGallery, startRecording, startSession, stopRecording,
 } from './video-call';
 
 const shot = (name: string) => screenshot('e2e-raise-hand', name);
@@ -81,6 +82,8 @@ describe('raise hand and reactions in a video call', () => {
         const aliceBobTile = alice.locator('.video-panel .remote-video-container').first();
         const bobName = (await aliceBobTile.locator('.video-participant-label span').first().innerText()).trim();
         expect(bobName.length).toBeGreaterThan(0);
+        // The fake mic never stops talking, and a hand lowers itself once its owner says a few words
+        await stopRecording(bob);
 
         // act - Bob expands the panel (the React button lives in its footer) and raises his hand
         await expandVideoPanel(bob);
@@ -156,5 +159,44 @@ describe('raise hand and reactions in a video call', () => {
             .not.toContain(' on');
         await bob.screenshot({ path: shot('7-hand-lowered') });
         expect(await countVideoElements(alice)).toEqual({ marked: aliceVideoCountBeforeLower, unmarked: 0 });
+    }, 300_000);
+
+    it('a raised hand lowers itself once its owner says several words', async () => {
+        // arrange - Bob is muted, so his hand stays up for as long as he says nothing
+        await openCallChat(alice);
+        await openCallChat(bob);
+        await startSession(alice, bob);
+        await stopRecording(bob);
+        const aliceBobTile = alice.locator('.video-panel .remote-video-container').first();
+        const aliceBadge = aliceBobTile.locator('.video-tile-caption .video-hand-badge');
+        const reactButton = bob.locator('.video-panel-footer .btn-react').first();
+        await expandVideoPanel(bob);
+        await reactButton.waitFor({ state: 'visible', timeout: 20_000 });
+        await reactButton.click();
+        const bobMenu = bob.locator('.call-reactions-menu').first();
+        await bobMenu.waitFor({ state: 'visible', timeout: 10_000 });
+        await bobMenu.locator('.ac-menu-item:has(.icon-hand)').first().click();
+        await aliceBadge.waitFor({ state: 'visible', timeout: 15_000 });
+        await expect.poll(async () => reactButton.getAttribute('class'), { timeout: 10_000 }).toContain('on');
+        // The hand must outlast the echo of Bob's own raise before the wait below means anything
+        await alice.waitForTimeout(5_000);
+        expect(await aliceBadge.count()).toBe(1);
+        await alice.screenshot({ path: shot('8-raised-while-muted') });
+        await bob.screenshot({ path: shot('9-raised-while-muted-own') });
+
+        // act - Bob unmutes, and the fake mic starts talking
+        await collapseVideoPanel(bob);
+        await startRecording(bob);
+        // Off the record button: its tooltip covers the toast
+        await bob.mouse.move(640, 300);
+
+        // assert - nobody touched the hand, yet it's down on both sides and Bob is told so
+        await bob.getByText('Your hand was lowered').first().waitFor({ state: 'visible', timeout: 60_000 });
+        await bob.screenshot({ path: shot('10-lowered-after-speaking-own') });
+        await expect.poll(async () => aliceBadge.count(), { timeout: 15_000 }).toBe(0);
+        await expandVideoPanel(bob);
+        await expect.poll(async () => reactButton.getAttribute('class'), { timeout: 10_000 })
+            .not.toContain(' on');
+        await alice.screenshot({ path: shot('11-lowered-after-speaking') });
     }, 300_000);
 });

@@ -139,6 +139,74 @@ public sealed class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, IT
     }
 
     [Fact]
+    public async Task ShouldLowerARaisedHandOnceItsOwnerSaysSeveralWords()
+    {
+        // arrange
+        var (backend, _, record) = await NewRecording();
+        var (liveSessions, authorId) = await RaiseHand(record);
+        var whenChecked = TaskCompletionSourceExt.New();
+
+        // act - the audio stays open, since a hand also goes away with the stream that held its owner in
+        var processTask = backend.ProcessAudioWithTranscript(
+            record,
+            0,
+            new RpcStream<AudioFrame>(WithTrailingPause(await ReadFrames(), whenChecked.Task)),
+            new RpcStream<ExternalTranscriptChunk>(new[] {
+                new ExternalTranscriptChunk("Thanks, so what I wanted to say", true, 0.5, true),
+            }.ToAsyncEnumerable()),
+            null,
+            CancellationToken.None);
+
+        // assert
+        try {
+            await TestWait.When(async ct => {
+                var live = await liveSessions.Get(record.ChatId, ct);
+                live!.Members.Single(m => m.AuthorId == authorId).IsHandRaised.Should()
+                    .BeFalse("whoever speaks has the floor already");
+            }, WaitTimeout);
+        }
+        finally {
+            whenChecked.TrySetResult();
+            await processTask;
+        }
+    }
+
+    [Fact]
+    public async Task ShouldKeepARaisedHandWhenItsOwnerSaysJustAFewWords()
+    {
+        // arrange
+        var (backend, chatsBackend, record) = await NewRecording();
+        var (liveSessions, authorId) = await RaiseHand(record);
+        var whenChecked = TaskCompletionSourceExt.New();
+
+        // act
+        var processTask = backend.ProcessAudioWithTranscript(
+            record,
+            0,
+            new RpcStream<AudioFrame>(WithTrailingPause(await ReadFrames(), whenChecked.Task)),
+            new RpcStream<ExternalTranscriptChunk>(new[] {
+                new ExternalTranscriptChunk("Yes, I agree", true, 0.5, true),
+            }.ToAsyncEnumerable()),
+            null,
+            CancellationToken.None);
+
+        // assert - the entry is created from the words the hand is judged by, so they were seen by now
+        try {
+            await TestWait.When(async ct => {
+                var entries = await ListEntries(chatsBackend, record.ChatId, ct);
+                entries.Should().Contain(e => e.IsContentStreaming);
+            }, WaitTimeout);
+            var live = await liveSessions.Get(record.ChatId, CancellationToken.None);
+            live!.Members.Single(m => m.AuthorId == authorId).IsHandRaised.Should()
+                .BeTrue("a short remark isn't taking the floor");
+        }
+        finally {
+            whenChecked.TrySetResult();
+            await processTask;
+        }
+    }
+
+    [Fact]
     public async Task ShouldWaitWhileAProducerFillsItsNextOggPage()
     {
         // A producer hands over whole Ogg pages, so nothing decodes until a page completes - and
@@ -203,6 +271,21 @@ public sealed class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, IT
         return (backend, chatsBackend, record);
     }
 
+    private async Task<(ILiveSessionsBackend, AuthorId)> RaiseHand(AudioRecord record)
+    {
+        var chatId = record.ChatId;
+        var liveSessions = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        var author = await Tester.Authors.GetOwn(Tester.Session, chatId, CancellationToken.None);
+        // A hand needs a session, and a session needs a second voice
+        await liveSessions.OnStreamRegistered(chatId, author!.Id, null, true, true, CancellationToken.None);
+        await liveSessions.OnStreamRegistered(
+            chatId, AuthorId.New(chatId, 777_051), null, true, true, CancellationToken.None);
+        await liveSessions.SetHandRaised(chatId, author.Id, true, CancellationToken.None);
+        var live = await liveSessions.Get(chatId, CancellationToken.None);
+        live!.Members.Single(m => m.AuthorId == author.Id).IsHandRaised.Should().BeTrue();
+        return (liveSessions, author.Id);
+    }
+
     private static async IAsyncEnumerable<VoiceStreamPart> Parts(byte[] ogg)
     {
         const int chunkSize = 4 * 1024;
@@ -220,6 +303,15 @@ public sealed class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, IT
         await Task.Delay(delay).ConfigureAwait(false);
         await foreach (var frame in frames.ConfigureAwait(false))
             yield return frame;
+    }
+
+    private static async IAsyncEnumerable<AudioFrame> WithTrailingPause(
+        IAsyncEnumerable<AudioFrame> frames,
+        Task whenResumed)
+    {
+        await foreach (var frame in frames.ConfigureAwait(false))
+            yield return frame;
+        await whenResumed.ConfigureAwait(false);
     }
 
     private async Task<IAsyncEnumerable<AudioFrame>> ReadFrames()

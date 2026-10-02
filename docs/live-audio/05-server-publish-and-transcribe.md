@@ -290,6 +290,16 @@ Two things happen on the **first non-empty transcript**:
    for live captions. The `Audio.StreamId` points at the live audio
    stream — readers can listen too.
 
+Every transcript also goes through `LowerHandIfSpoken`: a speaker whose
+hand is raised in the chat's live session and who has said
+`Constants.Call.MinWordsToLowerHand` (5) words since raising it has the
+floor, so the hand is lowered via `ILiveSessionsBackend.SetHandRaised`.
+Words are dated through the transcript's time map
+(`Transcript.CountWordsSince`), so the ones said before the hand went up
+don't count. The count is per audio segment — short remarks split by
+pauses never add up — and with the transcript off (`JustVoice`) there are
+no words to count, so the hand stays up.
+
 ### Finalisation
 
 ```csharp

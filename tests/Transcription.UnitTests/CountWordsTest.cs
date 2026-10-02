@@ -1,3 +1,4 @@
+using System.Numerics;
 using ActualChat.Streaming;
 
 namespace ActualChat.Transcription.UnitTests;
@@ -26,4 +27,25 @@ public sealed class CountWordsTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void PunctuationIsNotAWord()
         => "... --- ?!".CountWords().Should().Be(0);
+
+    [Theory]
+    [InlineData(-1f, 6)]
+    [InlineData(0f, 6)]
+    [InlineData(2f, 3)]
+    [InlineData(2.8f, 1)]
+    [InlineData(3f, 0)]
+    public void CountWordsSinceShouldSkipWordsSaidEarlier(float time, int expected)
+    {
+        // arrange - "one two three " takes the first two seconds, "four five six" the third
+        var transcript = new Transcript(
+            "one two three four five six",
+            new LinearMap(new Vector2(0, 0), new Vector2(14, 2), new Vector2(27, 3)),
+            []);
+
+        // act
+        var count = transcript.CountWordsSince(time);
+
+        // assert
+        count.Should().Be(expected);
+    }
 }

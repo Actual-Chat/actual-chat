@@ -1,3 +1,5 @@
+using ActualChat.Transcription;
+
 namespace ActualChat.Streaming;
 
 internal static class TranscriptRefineExt
@@ -47,6 +49,22 @@ internal static class TranscriptRefineExt
         }
 
         return words;
+    }
+
+    public static int CountWordsSince(this Transcript transcript, float time)
+    {
+        // TimeMap goes from a text position to the moment it was said, so the position is searched for.
+        // A word the moment falls inside of counts as one.
+        var (start, end) = (0, transcript.Length);
+        while (start < end) {
+            var middle = (start + end) / 2;
+            if (transcript.TimeMap.Map(middle) < time)
+                start = middle + 1;
+            else
+                end = middle;
+        }
+
+        return transcript.Text[start..].CountWords();
     }
 
     public static TextScript GetDominantScript(this string text)
