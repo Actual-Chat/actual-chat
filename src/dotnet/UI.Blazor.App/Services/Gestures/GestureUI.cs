@@ -303,8 +303,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
             Log.LogWarning("{Kind} fired: {Info}; samples: {Samples}",
                 gesture.Kind, _recognizer.FaceDownLastFireInfo, FormatRecentSamples());
         if (gesture.Kind == GestureKind.Pocket) {
-            // Read at fire time rather than tracked: the route is a native query, too costly per sample
-            var outputKind = Hub.AudioFocusUI.GetCurrentOutputKind();
+            var outputKind = Hub.AudioFocusUI.OutputKind?.Value;
             var isCarProjectionActive = Volatile.Read(ref _isCarProjectionActive);
             if (!GestureActivationPolicy.IsPocketPlausible(outputKind, isCarProjectionActive)) {
                 Log.LogInformation("Pocket ignored: output={OutputKind}, car={IsCarProjectionActive}",

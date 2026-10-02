@@ -700,7 +700,7 @@ window. `GestureUI` also drops a `Pocket` fire when
 (`AudioOutputKind.Phone` — the phone is at the ear), on any external device
 (headphones, Bluetooth, car, other), or car projection active in any car audio
 mode — with a headset or in a car the phone can rest anywhere while the user
-keeps talking. The kind comes from `AudioFocusUI.GetCurrentOutputKind`, read at
+keeps talking. The kind comes from the `AudioFocusUI.OutputKind` state, read at
 fire time. A slow entry (a recline, not a flip) additionally needs `StillDwell`.
 
 `ShouldSenseShake(isDoubleShakeEnabled, mustSenseStart, mustSenseStop, isMicOpen)`
