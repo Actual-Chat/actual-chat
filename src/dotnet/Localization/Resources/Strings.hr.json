@@ -75,6 +75,8 @@
   "YourAccount_DigestTopic": "Email sažetak",
   "YourAccount_DigestCaption": "Na dane kad imate nepročitane razgovore, a niste bili u aplikaciji",
   "YourAccount_DigestTime": "Vrijeme slanja",
+  "YourAccount_DigestLanguage": "Jezik sažetka",
+  "YourAccount_DigestLanguage_AutoCaption": "Svaki razgovor na svom jeziku",
   "YourAccount_DigestVerifyEmail": "Dodajte i potvrdite email da biste primali sažetak",
   "YourAccount_Phone": "Telefon",
   "YourAccount_TimeZone": "Vremenska zona",

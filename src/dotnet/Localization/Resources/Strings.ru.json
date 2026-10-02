@@ -75,6 +75,8 @@
   "YourAccount_DigestTopic": "Дайджест на почту",
   "YourAccount_DigestCaption": "В дни, когда есть непрочитанные чаты, а вы не заходили в приложение",
   "YourAccount_DigestTime": "Время отправки",
+  "YourAccount_DigestLanguage": "Язык дайджеста",
+  "YourAccount_DigestLanguage_AutoCaption": "Каждый чат на своём языке",
   "YourAccount_DigestVerifyEmail": "Добавьте и подтвердите электронную почту, чтобы получать дайджест",
   "YourAccount_Phone": "Телефон",
   "YourAccount_TimeZone": "Часовой пояс",

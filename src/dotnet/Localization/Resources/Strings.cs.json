@@ -75,6 +75,8 @@
   "YourAccount_DigestTopic": "E-mailový souhrn",
   "YourAccount_DigestCaption": "Ve dnech, kdy máte nepřečtené chaty a nebyli jste v aplikaci",
   "YourAccount_DigestTime": "Čas odeslání",
+  "YourAccount_DigestLanguage": "Jazyk souhrnu",
+  "YourAccount_DigestLanguage_AutoCaption": "Každý chat ve svém jazyce",
   "YourAccount_DigestVerifyEmail": "Přidejte a ověřte svůj e-mail, abyste dostávali souhrn",
   "YourAccount_Phone": "Telefon",
   "YourAccount_TimeZone": "Časové pásmo",

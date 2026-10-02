@@ -7,6 +7,8 @@
  * - The email verification code and the daily digest go to a signed-in account, in the UI
  *   language chosen in its settings. One throwaway account gets an unread chat, then each case
  *   signs in again (a session may request one code a minute), picks a language, and triggers both.
+ * - A digest language picked in Settings > Account overrides that for the digest alone: the last
+ *   case keeps the UI in one language, picks another for the digest, and expects the digest in it.
  *
  * The mails are read back from smtp4dev - the mail catcher docker-compose runs on :25 (SMTP) and
  * :5080 (web UI + API), where every mail the local server sends ends up - and each one is
@@ -142,6 +144,21 @@ async function openOwnAccountEditor(page: Page) {
     }
     await modal.waitFor({ state: 'visible', timeout: 5_000 });
     return modal;
+}
+
+/** Opens Settings > Account and returns the digest language row, found by its icon: its text is localized. */
+async function openDigestLanguageTile(page: Page) {
+    const tile = page.locator('.your-account-tile .tile-item', { has: page.locator('i.icon-translate') }).first();
+    for (let attempt = 0; attempt < 3; attempt++) {
+        await page.goto(`${BASE_URL}/settings/account`, { waitUntil: 'domcontentloaded' });
+        await waitForAppReady(page).catch(() => { /* ignore */ });
+        await skipOnboarding(page);
+        const isShown = await tile.waitFor({ state: 'visible', timeout: 15_000 }).then(() => true, () => false);
+        if (isShown)
+            break;
+    }
+    await tile.waitFor({ state: 'visible', timeout: 5_000 });
+    return tile;
 }
 
 describe('email localization', () => {
@@ -311,6 +328,70 @@ describe('email localization', () => {
                 expect(mail.subject).toBe(strings['EmailCode_VerifySubject_Format'].replace('{0}', APP_NAME));
                 expectCodeMail(text, language.subtag, strings, english);
             }, 120_000);
+        });
+
+        describe('with a digest language of its own', () => {
+            const uiLanguage = UI_LANGUAGES.find(x => x.code === 'es-ES')!;
+            const digestLanguage = UI_LANGUAGES.find(x => x.code === 'ru-RU')!;
+            const uiStrings = loadStrings(uiLanguage.subtag);
+            const strings = loadStrings(digestLanguage.subtag);
+            let context: BrowserContext | undefined;
+            let page: Page | undefined;
+
+            beforeAll(async () => {
+                if (!smtp4DevUrl)
+                    return;
+
+                ({ context, page } = await newUserContext(conn, accountEmail));
+                await setUILanguage(page, uiLanguage.code);
+            }, 240_000);
+
+            afterAll(async () => {
+                await context?.close().catch(() => { /* ignore */ });
+            });
+
+            it('gets the digest in the language picked for it', async ({ skip }) => {
+                if (!smtp4DevUrl || !context || !page || !writer) {
+                    skip();
+                    return;
+                }
+
+                // arrange
+                const tile = await openDigestLanguageTile(page);
+                await expect.poll(() => tile.locator('.ti-title').innerText(), { timeout: 10_000 })
+                    .toContain(uiStrings['Settings_Language_Auto']);
+                await tile.evaluate(el => el.scrollIntoView({ block: 'center' }));
+                await page.screenshot({ path: screenshot('e2e-digest-language', 'settings-auto') });
+                await tile.click({ force: true });
+                const modal = page.locator('.digest-language-editor-modal');
+                await modal.waitFor({ state: 'visible', timeout: 10_000 });
+                await expect.poll(() => modal.locator('.c-item.selected').innerText(), { timeout: 10_000 })
+                    .toContain(uiStrings['YourAccount_DigestLanguage_AutoCaption']);
+                await page.screenshot({ path: screenshot('e2e-digest-language', 'modal') });
+                await modal.locator(`.c-item[lang="${digestLanguage.subtag}"]`).click();
+                await modal.waitFor({ state: 'hidden', timeout: 10_000 });
+                await expect.poll(() => tile.locator('.ti-title').innerText(), { timeout: 10_000 })
+                    .toContain(digestLanguage.nativeName);
+                await page.screenshot({ path: screenshot('e2e-digest-language', 'settings-picked') });
+                await page.goto(`${BASE_URL}/test/email-templates`, { waitUntil: 'domcontentloaded' });
+                const sendButton = page.locator('button:has-text("Send Digest")').first();
+                await sendButton.waitFor({ state: 'visible', timeout: 30_000 });
+                await openChat(writer.page);
+                await postMessage(writer.page, `Digest language check at ${new Date().toISOString()}`);
+                const since = new Date();
+
+                // act
+                await sendButton.click();
+
+                // assert
+                const mail = await waitForMail(currentEmail, since, 60_000,
+                    'A digest needs an unread chat and a working summarizer (CoreSettings__OpenAIKey).');
+                const text = await readMail(context, mail, 'digest-language', digestLanguage.subtag);
+                expect(mail.subject).toBe(strings['EmailDigest_Subject_Format'].replace('{0}', APP_NAME));
+                expectLocalizedChrome(text, digestLanguage.subtag, strings);
+                expect(text).toContain(strings['EmailDigest_TurnOff']);
+                expect(text).not.toContain(uiStrings['EmailDigest_TurnOff']);
+            }, 240_000);
         });
     });
 });

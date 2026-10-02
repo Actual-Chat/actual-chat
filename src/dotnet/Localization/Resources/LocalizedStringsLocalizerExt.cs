@@ -89,6 +89,8 @@ public static class LocalizedStringsLocalizerExt
         public string YourAccount_DigestTopic => l["YourAccount_DigestTopic"].Value;
         public string YourAccount_DigestCaption => l["YourAccount_DigestCaption"].Value;
         public string YourAccount_DigestTime => l["YourAccount_DigestTime"].Value;
+        public string YourAccount_DigestLanguage => l["YourAccount_DigestLanguage"].Value;
+        public string YourAccount_DigestLanguage_AutoCaption => l["YourAccount_DigestLanguage_AutoCaption"].Value;
         public string YourAccount_DigestVerifyEmail => l["YourAccount_DigestVerifyEmail"].Value;
         public string YourAccount_Phone => l["YourAccount_Phone"].Value;
         public string YourAccount_TimeZone => l["YourAccount_TimeZone"].Value;

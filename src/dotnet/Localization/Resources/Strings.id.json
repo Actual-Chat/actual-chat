@@ -75,6 +75,8 @@
   "YourAccount_DigestTopic": "Ringkasan email",
   "YourAccount_DigestCaption": "Pada hari Anda punya obrolan belum dibaca dan tidak membuka aplikasi",
   "YourAccount_DigestTime": "Waktu pengiriman",
+  "YourAccount_DigestLanguage": "Bahasa ringkasan",
+  "YourAccount_DigestLanguage_AutoCaption": "Setiap obrolan dalam bahasanya sendiri",
   "YourAccount_DigestVerifyEmail": "Tambahkan dan verifikasi email Anda untuk menerima ringkasan",
   "YourAccount_Phone": "Telepon",
   "YourAccount_TimeZone": "Zona waktu",

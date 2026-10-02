@@ -75,6 +75,8 @@
   "YourAccount_DigestTopic": "Podsumowanie e-mail",
   "YourAccount_DigestCaption": "W dni, gdy masz nieprzeczytane czaty i nie było Cię w aplikacji",
   "YourAccount_DigestTime": "Godzina wysyłki",
+  "YourAccount_DigestLanguage": "Język podsumowania",
+  "YourAccount_DigestLanguage_AutoCaption": "Każdy czat w swoim języku",
   "YourAccount_DigestVerifyEmail": "Dodaj i zweryfikuj swój e-mail, aby otrzymywać podsumowanie",
   "YourAccount_Phone": "Telefon",
   "YourAccount_TimeZone": "Strefa czasowa",

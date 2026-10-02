@@ -75,6 +75,8 @@
   "YourAccount_DigestTopic": "メールダイジェスト",
   "YourAccount_DigestCaption": "未読のチャットがあり、アプリを開かなかった日に",
   "YourAccount_DigestTime": "送信時刻",
+  "YourAccount_DigestLanguage": "ダイジェストの言語",
+  "YourAccount_DigestLanguage_AutoCaption": "チャットごとにその言語で",
   "YourAccount_DigestVerifyEmail": "ダイジェストを受け取るにはメールアドレスを追加して確認してください",
   "YourAccount_Phone": "電話番号",
   "YourAccount_TimeZone": "タイムゾーン",

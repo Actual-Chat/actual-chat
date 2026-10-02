@@ -420,6 +420,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.AppSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.ConnectedAppsSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DeveloperTools>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DigestLanguageEditorModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DigestSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DigestTimeEditorModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsModal>();
@@ -1254,6 +1255,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.AppSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.ConnectedAppsSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DeveloperTools), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DigestLanguageEditorModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DigestSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DigestTimeEditorModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Settings.DocumentsModal), AotTypeKind.Component),

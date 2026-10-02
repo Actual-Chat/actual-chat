@@ -75,6 +75,8 @@
   "YourAccount_DigestTopic": "Riepilogo via email",
   "YourAccount_DigestCaption": "Nei giorni in cui hai chat non lette e non hai aperto l'app",
   "YourAccount_DigestTime": "Ora di invio",
+  "YourAccount_DigestLanguage": "Lingua del riepilogo",
+  "YourAccount_DigestLanguage_AutoCaption": "Ogni chat nella propria lingua",
   "YourAccount_DigestVerifyEmail": "Aggiungi e verifica la tua email per ricevere il riepilogo",
   "YourAccount_Phone": "Telefono",
   "YourAccount_TimeZone": "Fuso orario",

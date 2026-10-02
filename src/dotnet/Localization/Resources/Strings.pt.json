@@ -75,6 +75,8 @@
   "YourAccount_DigestTopic": "Resumo por e-mail",
   "YourAccount_DigestCaption": "Nos dias em que você tiver chats não lidos e não abrir o app",
   "YourAccount_DigestTime": "Horário de envio",
+  "YourAccount_DigestLanguage": "Idioma do resumo",
+  "YourAccount_DigestLanguage_AutoCaption": "Cada chat no seu próprio idioma",
   "YourAccount_DigestVerifyEmail": "Adicione e verifique seu e-mail para receber o resumo",
   "YourAccount_Phone": "Telefone",
   "YourAccount_TimeZone": "Fuso horário",

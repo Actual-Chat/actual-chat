@@ -75,6 +75,8 @@
   "YourAccount_DigestTopic": "Емаил сажетак",
   "YourAccount_DigestCaption": "На дане кад имате непрочитане разговоре, а нисте били у апликацији",
   "YourAccount_DigestTime": "Вријеме слања",
+  "YourAccount_DigestLanguage": "Језик сажетка",
+  "YourAccount_DigestLanguage_AutoCaption": "Сваки разговор на свом језику",
   "YourAccount_DigestVerifyEmail": "Додајте и потврдите емаил да бисте примали сажетак",
   "YourAccount_Phone": "Телефон",
   "YourAccount_TimeZone": "Временска зона",
