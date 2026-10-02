@@ -70,6 +70,22 @@ public sealed partial record Transcript(
     public float GetContentEndTime()
         => TimeMap.Map(GetContentEnd());
 
+    public int CountWordsSince(float time)
+    {
+        // TimeMap goes from a text position to the moment it was said, so the position is searched for.
+        // A word the moment falls inside of counts as one.
+        var (start, end) = (0, Length);
+        while (start < end) {
+            var middle = (start + end) / 2;
+            if (TimeMap.Map(middle) < time)
+                start = middle + 1;
+            else
+                end = middle;
+        }
+
+        return Text[start..].CountWords();
+    }
+
     public Transcript GetPrefix(int length, float? duration = null)
     {
         var vDuration = duration ?? TimeMap.Map(length);
