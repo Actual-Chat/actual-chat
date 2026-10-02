@@ -24,6 +24,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
 
     private IIncomingCallsBridge? Bridge { get; }
     private CallUI CallUI => Hub.CallUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ILogger? CallDebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
     public CallScreensUI(AppUIHub hub) : base(hub)
@@ -255,6 +256,24 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     public void Expand(ChatId chatId)
         => ClearIf(_collapsedChatId, chatId);
 
+    public async Task ExpandToFullScreen(ChatId chatId)
+    {
+        // What the island expands into: the call's video where there is one - the screen the video
+        // panel's own expand button leads to - and the call screen otherwise.
+        var isActive = CallUI.GetActiveCallNonComputed() is { Phase: CallPhase.Active } call && call.ChatId == chatId;
+        if (!isActive || !await HasVideo(chatId).ConfigureAwait(true)) {
+            Expand(chatId);
+            return;
+        }
+
+        // A panel that is up expands in place; otherwise the call screen covers the chat while the
+        // panel mounts there, and gives way to it in OnVideoExpanded.
+        if (ChatVideoUI.WatchingChatId != chatId)
+            Expand(chatId);
+        await OpenChat(chatId).ConfigureAwait(true);
+        ChatVideoUI.OpenVideoPanel(chatId, true);
+    }
+
     public Task HangUp(ChatId chatId)
         => CallUI.GetActiveCallNonComputed() is { Role: CallRole.Caller, Phase: CallPhase.Dialing } call
             && call.ChatId == chatId
@@ -297,6 +316,11 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     }
 
     // Private methods
+
+    private async Task<bool> HasVideo(ChatId chatId)
+        => ChatVideoUI.WatchingChatId == chatId
+            || await ChatVideoUI.GetOwnSourceKind(chatId).ConfigureAwait(true) is not null
+            || await ChatVideoUI.HasRemoteStreams(chatId).ConfigureAwait(true);
 
     private async Task<bool> LeaveLockScreen(ChatId chatId)
     {

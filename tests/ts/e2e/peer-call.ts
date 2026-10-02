@@ -125,22 +125,37 @@ export async function startPeerCall(caller: Page, callee: Page) {
     await dialPeerCall(caller, callee);
 }
 
+/**
+ * Ends whatever the page still holds of a call, one control at a time, until the chat is quiet.
+ * A call left live keeps the chat busy, and the next test finds no call button there.
+ */
 export async function hangUpIfAny(page: Page | undefined) {
     if (!page)
         return;
 
-    const hangUps = [
+    // Most specific first: the recorder toggle would restart a recording that a hang-up is still stopping.
+    const controls = [
         page.locator(`${CALL_SCREEN} .c-call-bar .btn-video-panel.talking`).first(),
         page.locator('.video-panel .btn-video-panel.talking').first(),
+        page.locator('.chat-audio-controls .c-hangup').first(),
+        // On a wide screen an active call has no screen of its own: it ends with the recording
+        page.locator('.chat-audio-panel .recorder-wrapper.record-on button').first(),
     ];
-    for (const hangUp of hangUps) {
-        if (await hangUp.isVisible().catch(() => false))
-            await hangUp.click().catch(() => { /* ignore */ });
+    let quietPolls = 0;
+    for (let i = 0; i < 24 && quietPolls < 2; i++) {
+        let hasClicked = false;
+        for (const control of controls) {
+            if (!await control.isVisible().catch(() => false))
+                continue;
+
+            await control.click({ timeout: 2_000 }).catch(() => { /* retried */ });
+            hasClicked = true;
+            break;
+        }
+        const isInCall = hasClicked || await isShown(page, '.collapsed-call-view');
+        quietPolls = isInCall ? 0 : quietPolls + 1;
+        await page.waitForTimeout(500);
     }
-    // On a wide screen an active call has no screen of its own: it ends with the recording
-    const recordOn = page.locator('.chat-audio-panel .recorder-wrapper.record-on').first();
-    if (await recordOn.isVisible().catch(() => false))
-        await page.locator('.chat-audio-panel .recorder-wrapper button').first().click().catch(() => { /* ignore */ });
 }
 
 /** Expanded, opaque and not hidden: `isVisible` alone is true for a panel still fading in over the chat. */
