@@ -224,6 +224,8 @@ public partial class AccountUI
             }) {
             Title = L.Account_RegisterTitle,
             ConfirmButtonText = L.Account_Register,
+            // No styles use it: e2e sign-in (tests/ts/e2e/helpers.ts, signIn) finds the modal by it
+            Class = "register-account-modal",
         };
         var modalRef = await Hub.ModalUI.Show(model).ConfigureAwait(true);
         await modalRef.WhenClosed.ConfigureAwait(true);

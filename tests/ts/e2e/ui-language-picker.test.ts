@@ -55,7 +55,7 @@ describe('UI language picker', () => {
 
         // assert
         const promptText = await prompt.innerText();
-        expect(promptText).toContain('Apply language change now?');
+        expect(promptText).toContain('Apply now?');
         expect(promptText).toContain('Reload the UI to use the selected language.');
         expect(promptText).toContain('Later');
         expect(promptText).toContain('Reload');
