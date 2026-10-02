@@ -43,7 +43,6 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
     // the original AsyncMemoizer bug needed thousands of attempts under CPU
     // contention to reproduce reliably.
     private static readonly TimeSpan ReplayTimeout = TimeSpan.FromSeconds(5).CiScaled();
-
     protected abstract IAsyncMemoizer<T> Memoize<T>(
         IAsyncEnumerable<T> source,
         int capacity = int.MaxValue,
@@ -74,7 +73,7 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
                 source.Writer.TryWrite(i);
 
             var memoizer = Memoize(source.Reader.ReadAllAsync());
-            await SpinWaitForBuffered(memoizer, 5);
+            await memoizer.WhenBuffered(5);
 
             // Race the consumer start against the source completion.
             source.Writer.Complete();
@@ -106,7 +105,7 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
                 source.Writer.TryWrite(i);
 
             var memoizer = Memoize(source.Reader.ReadAllAsync());
-            await SpinWaitForBuffered(memoizer, 10);
+            await memoizer.WhenBuffered(10);
 
             var startSignal = TaskCompletionSourceExt.New();
             var tasks = new Task<List<int>>[consumers];
@@ -226,7 +225,7 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
                 source.Writer.TryWrite(i);
 
             var memoizer = Memoize(source.Reader.ReadAllAsync());
-            await SpinWaitForBuffered(memoizer, 5);
+            await memoizer.WhenBuffered(5);
 
             source.Writer.Complete();
 
@@ -238,20 +237,5 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
             items.Should().Equal(1, 2, 3, 4, 5);
             await memoizer.DisposeAsync();
         }
-    }
-
-    // === Helpers ===
-
-    protected static async Task SpinWaitForBuffered<T>(
-        IAsyncMemoizer<T> memoizer, int expectedCount, int timeoutMs = 5000)
-    {
-        var sw = Stopwatch.StartNew();
-        while (sw.ElapsedMilliseconds < timeoutMs) {
-            if (memoizer.BufferedCount >= expectedCount)
-                return;
-            await Task.Yield();
-        }
-        throw new TimeoutException(
-            $"Timed out waiting for {expectedCount} buffered items, got {memoizer.BufferedCount}");
     }
 }

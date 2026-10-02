@@ -10,7 +10,7 @@ public class FoldingAsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         foreach (var i in Enumerable.Range(1, 5))
             source.Writer.TryWrite(i);
         await using var memoizer = NewSum(source);
-        await SpinWaitForBuffered(memoizer, 5);
+        await memoizer.WhenBuffered(5);
 
         // act
         var (sum, producedCount) = memoizer.Fold();
@@ -44,7 +44,7 @@ public class FoldingAsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         foreach (var i in Enumerable.Range(1, 10))
             source.Writer.TryWrite(i);
         await using var memoizer = NewSum(source, () => folderCalls++);
-        await SpinWaitForBuffered(memoizer, 10);
+        await memoizer.WhenBuffered(10);
         memoizer.Fold().Value.Should().Be(55);
         folderCalls.Should().Be(10);
 
@@ -52,7 +52,7 @@ public class FoldingAsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         folderCalls = 0;
         foreach (var i in Enumerable.Range(11, 3))
             source.Writer.TryWrite(i);
-        await SpinWaitForBuffered(memoizer, 13);
+        await memoizer.WhenBuffered(13);
         var (sum, producedCount) = memoizer.Fold();
 
         // assert
@@ -69,7 +69,7 @@ public class FoldingAsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         var source = Channel.CreateUnbounded<int>();
         source.Writer.TryWrite(7);
         await using var memoizer = NewSum(source, () => folderCalls++);
-        await SpinWaitForBuffered(memoizer, 1);
+        await memoizer.WhenBuffered(1);
         memoizer.Fold();
 
         // act
@@ -198,7 +198,7 @@ public class FoldingAsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         await using var memoizer = new FoldingAsyncMemoizer<int, int>(
             source.Reader.ReadAllAsync(), 0, (state, item) => state + item, capacity: 2);
         source.Writer.TryWrite(1);
-        await SpinWaitForBuffered(memoizer, 1);
+        await memoizer.WhenBuffered(1);
         memoizer.Fold().Should().Be((1, 1));
 
         // act - evicts past the checkpoint, so the fold restarts over what survived
@@ -222,15 +222,18 @@ public class FoldingAsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         foreach (var i in Enumerable.Range(1, 10))
             source.Writer.TryWrite(i);
         await using var memoizer = NewSum(source, toItem: state => state);
-        await SpinWaitForBuffered(memoizer, 10);
+        await memoizer.WhenBuffered(10);
 
         // act
         var items = new List<int>();
+        var firstItemSource = TaskCompletionSourceExt.New();
         var readTask = Task.Run(async () => {
-            await foreach (var item in memoizer.Replay())
+            await foreach (var item in memoizer.Replay()) {
                 items.Add(item);
+                firstItemSource.TrySetResult();
+            }
         });
-        await SpinWaitForCount(items, 1);
+        await firstItemSource.Task.WaitAsync(TimeSpan.FromSeconds(5).CiScaled());
         source.Writer.TryWrite(11);
         source.Writer.TryWrite(12);
         source.Writer.Complete();
@@ -308,7 +311,7 @@ public class FoldingAsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         source.Writer.TryWrite(new object());
         await using var memoizer = new FoldingAsyncMemoizer<object, int>(
             source.Reader.ReadAllAsync(), 0, (state, _) => state + 1, capacity: 10);
-        await SpinWaitForBuffered(memoizer, 1);
+        await memoizer.WhenBuffered(1);
         memoizer.Fold(); // parks a checkpoint on the oldest node
 
         // act
@@ -351,28 +354,4 @@ public class FoldingAsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
                 return state + item;
             },
             toItem);
-
-    private static async Task SpinWaitForBuffered<T>(AsyncMemoizer<T> memoizer, int expectedCount)
-    {
-        var sw = Stopwatch.StartNew();
-        while (sw.ElapsedMilliseconds < 5000) {
-            if (memoizer.BufferedCount >= expectedCount)
-                return;
-
-            await Task.Yield();
-        }
-        throw new TimeoutException($"Timed out waiting for {expectedCount} buffered items");
-    }
-
-    private static async Task SpinWaitForCount<T>(List<T> items, int expectedCount)
-    {
-        var sw = Stopwatch.StartNew();
-        while (sw.ElapsedMilliseconds < 5000) {
-            if (items.Count >= expectedCount)
-                return;
-
-            await Task.Yield();
-        }
-        throw new TimeoutException($"Timed out waiting for {expectedCount} replayed items");
-    }
 }
