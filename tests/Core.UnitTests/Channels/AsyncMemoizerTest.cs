@@ -19,7 +19,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : AsyncMemoizerTestBase(@
         var source = Channel.CreateUnbounded<object>();
         source.Writer.TryWrite(new object());
         await using var memoizer = Memoize(source, 10);
-        await SpinWaitForBuffered(memoizer, 1);
+        await memoizer.WhenBuffered(1);
 
         var firstItem = new TaskCompletionSource();
         var gate = new TaskCompletionSource();
@@ -63,7 +63,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : AsyncMemoizerTestBase(@
         source.Writer.TryWrite(2);
         source.Writer.TryWrite(3);
         await using var memoizer = new AsyncMemoizer<int>(source.Reader.ReadAllAsync());
-        await SpinWaitForBuffered(memoizer, 3);
+        await memoizer.WhenBuffered(3);
 
         // act - the source is still open, so only the buffered prefix must be folded
         var (sum, producedCount) = memoizer.FoldBuffered(0, static (state, item) => state + item);
@@ -81,14 +81,14 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : AsyncMemoizerTestBase(@
         var source = Channel.CreateUnbounded<int>();
         source.Writer.TryWrite(1);
         await using var memoizer = new AsyncMemoizer<int>(source.Reader.ReadAllAsync());
-        await SpinWaitForBuffered(memoizer, 1);
+        await memoizer.WhenBuffered(1);
         var (sum, producedCount) = memoizer.FoldBuffered(0, static (state, item) => state + item);
         sum.Should().Be(1);
         producedCount.Should().Be(1);
 
         // act
         source.Writer.TryWrite(2);
-        await SpinWaitForBuffered(memoizer, 2);
+        await memoizer.WhenBuffered(2);
         (sum, producedCount) = memoizer.FoldBuffered(0, static (state, item) => state + item);
 
         // assert
@@ -123,7 +123,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : AsyncMemoizerTestBase(@
         var source = Channel.CreateUnbounded<int>();
         source.Writer.TryWrite(1);
         await using var memoizer = new AsyncMemoizer<int>(source.Reader.ReadAllAsync());
-        await SpinWaitForBuffered(memoizer, 1);
+        await memoizer.WhenBuffered(1);
 
         // act
         var whenChanged = memoizer.WhenChanged(1);
@@ -143,7 +143,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : AsyncMemoizerTestBase(@
         source.Writer.TryWrite(1);
         source.Writer.TryWrite(2);
         await using var memoizer = new AsyncMemoizer<int>(source.Reader.ReadAllAsync());
-        await SpinWaitForBuffered(memoizer, 2);
+        await memoizer.WhenBuffered(2);
 
         // act
         var whenChanged = memoizer.WhenChanged(1);
@@ -159,7 +159,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : AsyncMemoizerTestBase(@
         var source = Channel.CreateUnbounded<int>();
         source.Writer.TryWrite(1);
         await using var memoizer = new AsyncMemoizer<int>(source.Reader.ReadAllAsync());
-        await SpinWaitForBuffered(memoizer, 1);
+        await memoizer.WhenBuffered(1);
         var whenChanged = memoizer.WhenChanged(1);
 
         // act
@@ -518,7 +518,7 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
         source.Writer.TryWrite(1);
         source.Writer.TryWrite(2);
 
-        await SpinWaitForBuffered(memoizer, 2);
+        await memoizer.WhenBuffered(2);
 
         var consumer2 = Task.Run(async () => await memoizer.Replay().ToListAsync());
         await Task.Yield();
@@ -811,17 +811,20 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
         source.Writer.TryWrite(1);
         await using var memoizer = Memoize(source, 10);
 
-        await SpinWaitForBuffered(memoizer, 1);
+        await memoizer.WhenBuffered(1);
 
         using var cts = new CancellationTokenSource();
         var items = new List<int>();
+        var firstItemSource = TaskCompletionSourceExt.New();
         var replayTask = Task.Run(async () => {
-            await foreach (var item in memoizer.Replay(cancellationToken: cts.Token))
+            await foreach (var item in memoizer.Replay(cancellationToken: cts.Token)) {
                 items.Add(item);
+                firstItemSource.TrySetResult();
+            }
         });
 
-        await Task.Delay(100);
-        items.Count.Should().Be(1);
+        await firstItemSource.Task.WaitAsync(TimeSpan.FromSeconds(5).CiScaled());
+        items.Should().Equal(1);
 
         await cts.CancelAsync();
 
@@ -840,7 +843,7 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
         source.Writer.TryWrite(2);
         await using var memoizer = Memoize(source, 10, cts.Token);
 
-        await SpinWaitForBuffered(memoizer, 2);
+        await memoizer.WhenBuffered(2);
 
         await cts.CancelAsync();
 
@@ -857,7 +860,7 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
             source.Writer.TryWrite(i);
 
         await using var memoizer = Memoize(source, 10, cts.Token);
-        await SpinWaitForBuffered(memoizer, 5);
+        await memoizer.WhenBuffered(5);
 
         await cts.CancelAsync();
         await memoizer.WhenRunning!.WaitAsync(TimeSpan.FromSeconds(5));
@@ -881,7 +884,7 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
                 source.Writer.TryWrite(i);
 
             await using var memoizer = Memoize(source, 10);
-            await SpinWaitForBuffered(memoizer, 5);
+            await memoizer.WhenBuffered(5);
 
             source.Writer.Complete();
 
@@ -1029,7 +1032,7 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
 
         for (var i = 1; i <= 5; i++)
             source.Writer.TryWrite(i);
-        await SpinWaitForBuffered(memoizer, 5);
+        await memoizer.WhenBuffered(5);
 
         var firstItem = new TaskCompletionSource<int>();
         var gate = new TaskCompletionSource();
@@ -1084,7 +1087,7 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
 
         for (var i = 1; i <= 5; i++)
             source.Writer.TryWrite(i);
-        await SpinWaitForBuffered(memoizer, 5);
+        await memoizer.WhenBuffered(5);
 
         var replayChannel = Channel.CreateUnbounded<int>(new UnboundedChannelOptions { SingleReader = true });
         var copyTask = Task.Run(() => memoizer.AddReplayTarget(replayChannel.Writer, 0));
@@ -1130,7 +1133,7 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
             var source = Channel.CreateUnbounded<object>();
             var weakRefs = PopulateChannelWithTrackedObjects(source, 20);
             var m = Memoize(source);
-            await SpinWaitForBuffered(m, 20);
+            await m.WhenBuffered(20);
 
             source.Writer.Complete();
             await m.DisposeAsync();
@@ -1146,7 +1149,7 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
         for (var i = 1; i < 20; i++)
             source.Writer.TryWrite(new object());
         var memoizer = Memoize(source);
-        await SpinWaitForBuffered(memoizer, 20);
+        await memoizer.WhenBuffered(20);
 
         GC.Collect(2, GCCollectionMode.Forced, true);
         GC.WaitForPendingFinalizers();
@@ -1175,22 +1178,26 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
         }
 
         var memoizer = Memoize(SlowSource(), 10);
-        await SpinWaitForBuffered(memoizer, 1);
+        await memoizer.WhenBuffered(1);
 
         var items = new List<int>();
+        var firstItemSource = TaskCompletionSourceExt.New();
         var replayTask = Task.Run(async () => {
-            await foreach (var item in memoizer.Replay())
+            await foreach (var item in memoizer.Replay()) {
                 items.Add(item);
+                firstItemSource.TrySetResult();
+            }
         });
-
-        await Task.Delay(50);
+        // A Replay that starts only after DisposeAsync is empty by design, so the consumer must be mid-iteration
+        await firstItemSource.Task.WaitAsync(TimeSpan.FromSeconds(5).CiScaled());
 
         gate.SetResult();
-        await SpinWaitForBuffered(memoizer, 2);
+        await memoizer.WhenBuffered(2);
         await memoizer.DisposeAsync();
 
-        var consumerCompleted = replayTask.Wait(TimeSpan.FromSeconds(2));
-        consumerCompleted.Should().BeTrue("consumer should complete even after DisposeAsync");
+        var act = () => replayTask;
+        await act.Should().CompleteWithinAsync(
+            TimeSpan.FromSeconds(5).CiScaled(), "consumer should complete even after DisposeAsync");
         items.Should().Equal(1, 2);
     }
 
@@ -1207,7 +1214,7 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
             source.Writer.TryWrite(new object());
 
         await using var memoizer = Memoize(source);
-        await SpinWaitForBuffered(memoizer, initialItems);
+        await memoizer.WhenBuffered(initialItems);
 
         var replayTask = Task.Run(async () => {
             var collected = new List<object>();
@@ -1248,7 +1255,7 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
         }
 
         await using var memoizer = Memoize(SlowSource());
-        await SpinWaitForBuffered(memoizer, 15);
+        await memoizer.WhenBuffered(15);
 
         var channel = Channel.CreateUnbounded<object>(new UnboundedChannelOptions { SingleReader = true });
         var copyTask = Task.Run(() => memoizer.AddReplayTarget(channel, int.MaxValue));
@@ -1288,17 +1295,6 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
             channel.Writer.TryWrite(obj);
         }
         return weakRefs;
-    }
-
-    protected static async Task SpinWaitForBuffered<T>(IAsyncMemoizer<T> memoizer, int expectedCount, int timeoutMs = 5000)
-    {
-        var sw = Stopwatch.StartNew();
-        while (sw.ElapsedMilliseconds < timeoutMs) {
-            if (memoizer.BufferedCount >= expectedCount)
-                return;
-            await Task.Yield();
-        }
-        throw new TimeoutException($"Timed out waiting for {expectedCount} buffered items, got {memoizer.BufferedCount}");
     }
 
     protected static async IAsyncEnumerable<T> CreateFailingSource<T>(
