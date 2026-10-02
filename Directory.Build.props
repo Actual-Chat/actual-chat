@@ -71,6 +71,7 @@
     <!-- Key folders -->
     <RepoRoot>$([MSBuild]::EnsureTrailingSlash('$(MSBuildThisFileDirectory)'))</RepoRoot>
     <SolutionDir Condition="$(SolutionDir) == ''">$(RepoRoot)</SolutionDir>
+    <DefaultItemExcludes>$(DefaultItemExcludes);$(RepoRoot)tmp/**</DefaultItemExcludes>
 
     <!-- Assembly name & root namespace -->
     <BaseName>ActualChat</BaseName>

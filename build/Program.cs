@@ -110,10 +110,6 @@ internal static class Program
         var dotnet = Utils.FindDotnetExe();
 
         Target(Targets.Watch, DependsOn(Targets.CleanDist, Targets.NpmInstall), async () => {
-
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && !RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                throw new WithoutStackException($"Watch is not implemented for '{RuntimeInformation.OSDescription}'. Use dotnet watch + web watch without build system");
-
             // Re-enable build server reuse for faster hot-reload rebuilds in watch mode
             // (globally disabled in SetEnvVariables for CI/non-watch targets)
             Environment.SetEnvironmentVariable("UseRazorBuildServer", "true");

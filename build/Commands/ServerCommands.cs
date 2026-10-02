@@ -174,7 +174,7 @@ public sealed class ServerLoopCommand(CliContext context) : PlanCommand<ServerLo
     {
         [CommandOption("-c|--configuration <CONFIGURATION>")]
         [Description("Debug or Release")]
-        [DefaultValue("Release")]
-        public string Configuration { get; init; } = "Release";
+        [DefaultValue("Debug")]
+        public string Configuration { get; init; } = "Debug";
     }
 }

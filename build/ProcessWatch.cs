@@ -98,7 +98,9 @@ public class ProcessWatch : IDisposable
     {
         try {
             if (!process.HasExited && process.Id != 0) {
-                var children = GetChildProcesses((uint)process.Id);
+                var children = OperatingSystem.IsWindows()
+                    ? GetChildProcesses((uint)process.Id)
+                    : [];
                 process.Kill(entireProcessTree: true);
                 foreach (var child in children) {
                     try {

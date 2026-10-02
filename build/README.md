@@ -43,11 +43,33 @@ b server run --published                  # run artifacts/publish/App.Server/rel
 b server run --urls http://localhost:7086 # a second instance on another port
 b server run --open                       # ... and open it in a browser 10s in
 b server publish                          # publish into artifacts/publish
-b server loop                             # hand off to server-loop.ps1
+b server loop                             # hand off to server-loop.ps1, Debug
+b watch                                   # watch .NET and TS/CSS together, Debug
 ```
 
 `b server loop` deliberately shells out rather than reimplementing the loop —
 `/server-loop` and other tooling reference that script directly.
+
+`b watch` runs `dotnet watch run` for `App.Server` and `npm run watch`
+in parallel on Windows, macOS, and Linux. The server runs in Debug with
+`ASPNETCORE_ENVIRONMENT=Development`. C# and Razor changes use .NET hot reload
+or restart the server when required; the frontend watcher rebuilds TS/CSS and
+watches Razor files for Tailwind class changes. Reload the browser if needed
+to pick up a new bundle.
+
+Output appears in the terminal and in `tmp/watch-dotnet.log` and
+`tmp/watch-web.log`. Each log rotates to a `.prev` file when it reaches its
+size limit. The repository's `tmp/` folder is excluded from .NET watching so
+log writes do not trigger rebuilds. Agents can use these logs to check build
+errors and hot reload results, then verify the resulting behavior in the browser.
+
+Run only one `b watch` instance and stop `b server loop` or another server on
+the same port before starting it. Ctrl+C stops both watchers; if either watcher
+exits, the other is stopped too. `b server loop` rebuilds on requested restarts,
+while `b watch` reacts automatically to file changes.
+
+The frontend watcher does not run TypeScript type checking or ESLint.
+Use `npm run build:Verify` for that validation.
 
 ## Layout
 
