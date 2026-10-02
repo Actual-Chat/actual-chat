@@ -270,6 +270,10 @@ flag, and each stays up until the other covers it, so the chat between them does
   `OnVideoExpanded` sets the flag once the panel reports it covers the screen.
 - **The last video stops** while the panel is expanded: `VideoPanel` clears the flag
   (`CallScreensUI.Expand`) before it closes, so the full-screen view is back first.
+- **The island is expanded** in a call with video (`CallScreensUI.ExpandToFullScreen`): the panel
+  expands, as its own expand button makes it, instead of the full-screen view coming back. A panel
+  that isn't up - the user is in another chat - opens expanded under the full-screen view, as when
+  video starts.
 
 A panel that is inline when its video stops leaves the user in the chat, and over the lock screen
 the full-screen view stays: the chat, and the panel in it, are behind the keyguard.

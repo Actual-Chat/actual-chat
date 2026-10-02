@@ -10,7 +10,8 @@
 
 <div class="collapsed-call-view @(m.IsInCall ? "in-call" : "")" @ref="Ref">
     @if (m.IsInCall) {
-        @* Hanging up is left to the chat underneath: the whole island only expands the call back. *@
+        @* Hanging up is left to the chat underneath: the whole island only expands the call back -
+           into its video when it has one, into the call screen otherwise. *@
         <div class="c-in-call" @onclick="@OnExpandClick">
             <i class="icon-phone text-xl"></i>
             <span class="c-status">@L.Call_InCall</span>
@@ -94,10 +95,8 @@
         await base.DisposeAsync().ConfigureAwait(true);
     }
 
-    private void OnExpandClick() {
-        if (State.Value.ChatId is { } chatId)
-            CallScreensUI.Expand(chatId);
-    }
+    private Task OnExpandClick()
+        => State.Value.ChatId is { } chatId ? CallScreensUI.ExpandToFullScreen(chatId) : Task.CompletedTask;
 
     private Task OnAcceptClick()
         => State.Value.ChatId is { } chatId ? CallScreensUI.Accept(chatId) : Task.CompletedTask;
