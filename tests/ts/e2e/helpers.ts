@@ -331,13 +331,13 @@ export async function signIn(page: Page, email: string = TEST_EMAIL, otp: string
 
     // Unknown emails → AccountUI.MonitorPendingRegistration shows a ConfirmModal; confirm to create
     // the account. Existing accounts skip the modal and sign-in completes directly.
-    // Matched by its button: the title's wording has changed before, and no account got registered.
-    const registerModal = page.locator('[id^="Modal-ConfirmModal"]:has(button:has-text("Register"))').first();
+    // Matched by class, not text: a reworded title once left every CI run signed out.
+    const registerModal = page.locator('.register-account-modal').first();
     const signedInLandmark = page.locator('.chat-list, .account-dropdown').first();
     await Promise.race([
         registerModal.waitFor({ state: 'visible', timeout: 30_000 })
             .then(async () => {
-                await registerModal.locator('button:has-text("Register")').click({ timeout: 5_000 });
+                await registerModal.locator('button.btn-primary').click({ timeout: 5_000 });
                 await registerModal.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
             }),
         signedInLandmark.waitFor({ state: 'visible', timeout: 30_000 }),
@@ -376,7 +376,7 @@ export async function requestEmailCode(page: Page, email: string): Promise<Locat
 }
 
 export async function ensureSignedIn(page: Page, email: string = TEST_EMAIL, otp: string = TEST_OTP) {
-    // English for the sign-in flow itself: signIn clicks "Register" by its text.
+    // English for the sign-in flow itself: dismissCookieConsent clicks its buttons by their text.
     await page.goto(withUILanguage(BASE_URL), { waitUntil: 'domcontentloaded' });
     await waitForAppReady(page);
     await dismissCookieConsent(page);
