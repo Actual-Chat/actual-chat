@@ -2,6 +2,7 @@ using ActualChat.Comparison;
 using ActualChat.Localization;
 using ActualChat.Live;
 using ActualChat.Streaming;
+using ActualChat.Transcription;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 
@@ -230,6 +231,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             AsyncChain.From(SyncParticipations),
             AsyncChain.From(StopRecordingWhenMuted),
             AsyncChain.From(NotifyWhenHandLowered),
+            AsyncChain.From(LowerOwnHandWhenSpoken),
         };
         var retryDelays = RetryDelaySeq.Exp(0.5, 8);
         return (
@@ -346,6 +348,77 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         }
     }
 
+    private async Task LowerOwnHandWhenSpoken(CancellationToken cancellationToken)
+    {
+        // Whoever raised a hand and went on to say a few words has the floor, so the hand is stale.
+        // Runs one watcher per raised own hand, so the own transcript is followed only while a hand is up.
+        var cHand = await Computed
+            .Capture(() => GetOwnRaisedHand(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        // Distinct by value: it's recomputed whenever anything about the call's members changes,
+        // and restarting on each would reopen the transcript mid-message
+        var changes = cHand.Changes(cancellationToken).AdjacentDistinctBy(x => x.Value);
+        FuncWorker? watcher = null;
+        try {
+            await foreach (var (hand, _) in changes.ConfigureAwait(false)) {
+                await watcher.DisposeSilentlyAsync().ConfigureAwait(false);
+                watcher = null;
+                if (hand is not var (chatId, authorId, raisedAt))
+                    continue;
+
+                // Retried on its own: nobody observes a failed FuncWorker, so the hand would stay up for good
+                var chain = AsyncChain.From(async ct => {
+                        await WhenSpokenSince(chatId, authorId, raisedAt, ct).ConfigureAwait(false);
+                        await SetOwnHandRaised(chatId, false, ct).ConfigureAwait(false);
+                    })
+                    .Log(LogLevel.Debug, Log)
+                    .RetryForever(RetryDelaySeq.Exp(0.5, 8), Log);
+                watcher = FuncWorker.Start(chain.Run, cancellationToken);
+            }
+        }
+        finally {
+            await watcher.DisposeSilentlyAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task WhenSpokenSince(
+        ChatId chatId,
+        AuthorId ownAuthorId,
+        Moment since,
+        CancellationToken cancellationToken)
+    {
+        // The words have to come in one message: short remarks across several don't add up
+        var cEntry = await Computed
+            .Capture(() => GetOwnStreamingEntry(chatId, ownAuthorId, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        while (true) {
+            cEntry = await cEntry.When(x => x is not null, cancellationToken).ConfigureAwait(false);
+            var entry = cEntry.Value!;
+            if (await HasSpokenIn(entry).ConfigureAwait(false))
+                return;
+
+            cEntry = await cEntry.When(x => x?.Id != entry.Id, cancellationToken).ConfigureAwait(false);
+        }
+
+        async Task<bool> HasSpokenIn(ChatEntry entry) {
+            var diffs = await Hub.LiveAudioStreams
+                .GetTranscriptStream(Session, entry.ContentStreamId, cancellationToken)
+                .ConfigureAwait(false);
+            if (diffs is null)
+                return false;
+
+            await foreach (var transcript in diffs.ToTranscripts(cancellationToken).ConfigureAwait(false)) {
+                // The time map counts from the start of the audio; the entry begins at its first word
+                var audioBeginsAt = entry.BeginsAt - TimeSpan.FromSeconds(transcript.TimeRange.Start);
+                var wordCount = transcript.CountWordsSince((float)(since - audioBeginsAt).TotalSeconds);
+                if (wordCount >= Constants.Call.MinWordsToLowerHand)
+                    return true;
+            }
+
+            return false;
+        }
+    }
+
     // Protected/internal methods
 
     // It's internal to be accessible from tests
@@ -386,6 +459,41 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
                 result.Add(chatId);
         }
         return result.ToImmutable();
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<(ChatId ChatId, AuthorId AuthorId, Moment RaisedAt)?> GetOwnRaisedHand(
+        CancellationToken cancellationToken)
+    {
+        var participations = await GetMyParticipations(cancellationToken).ConfigureAwait(false);
+        foreach (var chatId in participations.Keys) {
+            var me = await GetOwnMember(chatId, cancellationToken).ConfigureAwait(false);
+            if (me is { HandRaisedAt: { } raisedAt })
+                return (chatId, me.AuthorId, raisedAt);
+        }
+
+        return null;
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<ChatEntry?> GetOwnStreamingEntry(
+        ChatId chatId,
+        AuthorId ownAuthorId,
+        CancellationToken cancellationToken)
+    {
+        const int maxScan = 32;
+        var idRange = await Hub.Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (idRange.IsEmptyOrNegative)
+            return null;
+
+        var startId = Math.Max(idRange.Start, idRange.End - maxScan);
+        return await Hub.NewEntryReader(chatId)
+            .GetLast(
+                (startId, idRange.End),
+                e => e.AuthorId == ownAuthorId && e.IsContentStreaming,
+                maxScan,
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
     [ComputeMethod]

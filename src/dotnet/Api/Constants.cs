@@ -405,6 +405,8 @@ public static partial class Constants
         public static readonly TimeSpan ReactionDuration = TimeSpan.FromSeconds(5);
         // An author's reactions closer together than this are dropped, so spam can't churn every viewer's list.
         public static readonly TimeSpan ReactionMinInterval = TimeSpan.FromSeconds(0.5);
+        // Words a participant says after raising a hand before it's lowered for them: they have the floor.
+        public const int MinWordsToLowerHand = 5;
     }
 
     public static class Notification

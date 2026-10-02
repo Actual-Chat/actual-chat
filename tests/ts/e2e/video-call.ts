@@ -37,6 +37,15 @@ export async function startRecording(page: Page) {
         .waitFor({ state: 'attached', timeout: 30_000 });
 }
 
+/** Mutes the mic and leaves the camera on, so the user stays in the session without saying a word. */
+export async function stopRecording(page: Page) {
+    const recordOn = page.locator('.chat-audio-panel .recorder-wrapper.record-on').first();
+    if (await recordOn.waitFor({ state: 'attached', timeout: 3_000 }).then(() => true, () => false))
+        await page.locator('.chat-audio-panel .recorder-wrapper button').first().click();
+    await page.locator('.chat-audio-panel .recorder-wrapper:not(.record-on):not(.applying-changes)').first()
+        .waitFor({ state: 'attached', timeout: 30_000 });
+}
+
 export async function startCamera(page: Page) {
     await page.locator('.chat-audio-panel .video-wrapper button').first().click();
     // The first start asks through the join modal; a rejoin after a hang-up resumes without it
