@@ -75,6 +75,8 @@
   "YourAccount_DigestTopic": "Имейл обобщение",
   "YourAccount_DigestCaption": "В дните, когато имате непрочетени чатове и не сте били в приложението",
   "YourAccount_DigestTime": "Час на изпращане",
+  "YourAccount_DigestLanguage": "Език на обобщението",
+  "YourAccount_DigestLanguage_AutoCaption": "Всеки чат на своя език",
   "YourAccount_DigestVerifyEmail": "Добавете и потвърдете имейла си, за да получавате обобщението",
   "YourAccount_Phone": "Телефон",
   "YourAccount_TimeZone": "Часова зона",

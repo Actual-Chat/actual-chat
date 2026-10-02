@@ -129,6 +129,7 @@ public partial class StoredSettingsSerializationTest
         result.Origin.Should().Be(legacy.Origin);
         result.DigestTime.Should().Be(legacy.DigestTime);
         result.IsDigestEnabled.Should().Be(legacy.IsDigestEnabled);
+        result.DigestLanguage.Should().BeNull("a blob written before the setting existed keeps the automatic language");
     }
 
     [Fact]
@@ -393,6 +394,7 @@ public partial class StoredSettingsSerializationTest
             Origin = "round-trip",
             DigestTime = new TimeSpan(7, 15, 0),
             IsDigestEnabled = false,
+            DigestLanguage = Languages.German,
         };
 
         // act

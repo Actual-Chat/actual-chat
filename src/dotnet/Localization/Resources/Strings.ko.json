@@ -75,6 +75,8 @@
   "YourAccount_DigestTopic": "이메일 요약",
   "YourAccount_DigestCaption": "읽지 않은 채팅이 있고 앱을 열지 않은 날에",
   "YourAccount_DigestTime": "발송 시간",
+  "YourAccount_DigestLanguage": "요약 언어",
+  "YourAccount_DigestLanguage_AutoCaption": "채팅마다 해당 언어로",
   "YourAccount_DigestVerifyEmail": "요약을 받으려면 이메일을 추가하고 인증하세요",
   "YourAccount_Phone": "전화번호",
   "YourAccount_TimeZone": "시간대",

@@ -90,17 +90,7 @@ public class EmailLocalizationTest(ITestOutputHelper @out)
             Primary = Languages.English,
             UILanguage = Languages.Spanish,
         });
-        var (chatId, _) = await tester.CreateChat(x => x with { Title = "Digest chat" });
-        await h.Services.WaitForOpeningEntry(chatId);
-        var entries = await tester.CreateTextEntries(chatId, "message", 3);
-        var readPosition = new ChatPosition(entries[0].LocalId);
-        await h.Services.Commander().Call(
-            new ChatPositionsBackend_Set(account.Id, chatId, ChatPositionKind.Read, readPosition, true));
-        var contactsBackend = h.Services.GetRequiredService<IContactsBackend>();
-        await TestWait.When(async ct => {
-            var contactIds = await contactsBackend.ListIdsForSearch(account.Id, ContactSubset.All(), true, ct);
-            contactIds.Should().Contain(x => x.ChatId == chatId, "the digest lists chats from the contact list");
-        });
+        await CreateChatWithUnreadEntries(h, tester, account.Id);
         var l = LanguageStringLocalizer.Get(Languages.Spanish);
 
         // act
@@ -118,6 +108,41 @@ public class EmailLocalizationTest(ITestOutputHelper @out)
             "the summary follows the spoken language, only the chrome follows the UI language");
     }
 
+    [Fact]
+    public async Task DigestShouldUseChosenDigestLanguageForChromeAndSummary()
+    {
+        // arrange
+        var sender = new CapturingEmailSender();
+        var summarizer = new FakeDigestSummarizer();
+        await using var h = await NewAppHost(sender, summarizer);
+        await using var tester = h.NewWebClientTester(Out);
+        var account = await tester.SignInAsNew("DigestLanguage");
+        await SetLanguageSettings(h, account.Id, x => x with {
+            Primary = Languages.English,
+            UILanguage = Languages.Spanish,
+        });
+        await h.Services.GetRequiredService<IServerKvasBackend>()
+            .ForUser(account.Id)
+            .UserEmailsSettings()
+            .Update(x => x with { DigestLanguage = Languages.German }, default);
+        await CreateChatWithUnreadEntries(h, tester, account.Id);
+        var l = LanguageStringLocalizer.Get(Languages.German);
+        var uiL = LanguageStringLocalizer.Get(Languages.Spanish);
+
+        // act
+        await h.Services.Commander().Call(new EmailsBackend_SendDigest(account.Id));
+
+        // assert
+        var mail = sender.Sent.Should().ContainSingle().Subject;
+        mail.Subject.Should().Be(l.EmailDigest_Subject_Format(CoreConstants.AppName));
+        mail.Text.Should().Contain("lang=\"de\"");
+        mail.Text.Should().Contain(l.EmailDigest_OpenUnread(2, 2, "Digest chat"));
+        mail.Text.Should().Contain(l.EmailDigest_TurnOff);
+        mail.Text.Should().NotContain(uiL.EmailDigest_TurnOff, "the chosen digest language replaces the UI language");
+        summarizer.Languages.Should().Equal([Languages.German],
+            "the chosen digest language replaces the spoken one in the summary as well");
+    }
+
     // Private methods
 
     private Task<TestAppHost> NewAppHost(CapturingEmailSender sender, FakeDigestSummarizer? summarizer = null)
@@ -128,6 +153,21 @@ public class EmailLocalizationTest(ITestOutputHelper @out)
                     services.Replace(ServiceDescriptor.Singleton<IChatDigestSummarizer>(summarizer));
             },
         });
+
+    private static async Task CreateChatWithUnreadEntries(TestAppHost h, IWebClientTester tester, UserId userId)
+    {
+        var (chatId, _) = await tester.CreateChat(x => x with { Title = "Digest chat" });
+        await h.Services.WaitForOpeningEntry(chatId);
+        var entries = await tester.CreateTextEntries(chatId, "message", 3);
+        var readPosition = new ChatPosition(entries[0].LocalId);
+        await h.Services.Commander().Call(
+            new ChatPositionsBackend_Set(userId, chatId, ChatPositionKind.Read, readPosition, true));
+        var contactsBackend = h.Services.GetRequiredService<IContactsBackend>();
+        await TestWait.When(async ct => {
+            var contactIds = await contactsBackend.ListIdsForSearch(userId, ContactSubset.All(), true, ct);
+            contactIds.Should().Contain(x => x.ChatId == chatId, "the digest lists chats from the contact list");
+        });
+    }
 
     private static Task SetLanguageSettings(
         TestAppHost h, UserId userId, Func<UserLanguageSettings, UserLanguageSettings> updater)

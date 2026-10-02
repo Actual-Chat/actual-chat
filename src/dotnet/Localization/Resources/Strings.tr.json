@@ -75,6 +75,8 @@
   "YourAccount_DigestTopic": "E-posta özeti",
   "YourAccount_DigestCaption": "Okunmamış sohbetlerinizin olduğu ve uygulamaya girmediğiniz günlerde",
   "YourAccount_DigestTime": "Gönderim saati",
+  "YourAccount_DigestLanguage": "Özet dili",
+  "YourAccount_DigestLanguage_AutoCaption": "Her sohbet kendi dilinde",
   "YourAccount_DigestVerifyEmail": "Özeti almak için e-postanızı ekleyin ve doğrulayın",
   "YourAccount_Phone": "Telefon",
   "YourAccount_TimeZone": "Saat dilimi",

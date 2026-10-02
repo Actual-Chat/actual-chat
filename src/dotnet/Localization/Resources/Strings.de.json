@@ -75,6 +75,8 @@
   "YourAccount_DigestTopic": "E-Mail-Zusammenfassung",
   "YourAccount_DigestCaption": "An Tagen mit ungelesenen Chats, an denen Sie nicht in der App waren",
   "YourAccount_DigestTime": "Sendezeit",
+  "YourAccount_DigestLanguage": "Sprache der Zusammenfassung",
+  "YourAccount_DigestLanguage_AutoCaption": "Jeder Chat in seiner eigenen Sprache",
   "YourAccount_DigestVerifyEmail": "Fügen Sie Ihre E-Mail hinzu und bestätigen Sie sie, um die Zusammenfassung zu erhalten",
   "YourAccount_Phone": "Telefon",
   "YourAccount_TimeZone": "Zeitzone",

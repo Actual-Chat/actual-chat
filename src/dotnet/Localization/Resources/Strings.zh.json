@@ -75,6 +75,8 @@
   "YourAccount_DigestTopic": "邮件摘要",
   "YourAccount_DigestCaption": "在您有未读聊天且未打开应用的日子",
   "YourAccount_DigestTime": "发送时间",
+  "YourAccount_DigestLanguage": "摘要语言",
+  "YourAccount_DigestLanguage_AutoCaption": "每个聊天使用其自身的语言",
   "YourAccount_DigestVerifyEmail": "添加并验证您的电子邮箱以接收摘要",
   "YourAccount_Phone": "电话",
   "YourAccount_TimeZone": "时区",

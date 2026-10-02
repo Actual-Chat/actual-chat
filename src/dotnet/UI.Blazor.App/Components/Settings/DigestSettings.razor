@@ -58,6 +58,18 @@
             @L.YourAccount_TimeZone
         </Caption>
     </TileItem>
+
+    <TileItem Click="@OnLanguageClick">
+        <Icon>
+            <i class="icon-translate"></i>
+        </Icon>
+        <Content>
+            @(m.DigestLanguage?.NativeName ?? L.Settings_Language_Auto)
+        </Content>
+        <Caption>
+            @L.YourAccount_DigestLanguage
+        </Caption>
+    </TileItem>
 </Tile>
 
 @code {
@@ -75,7 +87,12 @@
         var timeZones = await Hub.TimeZones.List("en-US", cancellationToken);
         var timeZone = timeZones.FirstOrDefault(z => z.Id == account.TimeZone);
         return new(
-            account.IsEmailVerified(), settings.IsDigestEnabled, settings.DigestTime, timeZone, timeZones);
+            account.IsEmailVerified(),
+            settings.IsDigestEnabled,
+            settings.DigestTime,
+            timeZone,
+            timeZones,
+            settings.DigestLanguage);
     }
 
     private void OnDigestClick() {
@@ -106,6 +123,9 @@
     private void OnTimeZoneClick()
         => ModalUI.Show(new TimeZoneEditorModal.Model(State.Value.TimeZones));
 
+    private void OnLanguageClick()
+        => ModalUI.Show(new DigestLanguageEditorModal.Model(State.Value.DigestLanguage));
+
     // Nested types
 
     public sealed record Model(
@@ -113,8 +133,9 @@
         bool IsEnabled,
         TimeSpan DigestTime,
         TimeZone? TimeZone,
-        IReadOnlyCollection<TimeZone> TimeZones)
+        IReadOnlyCollection<TimeZone> TimeZones,
+        Language? DigestLanguage)
     {
-        public static readonly Model None = new(false, false, TimeSpan.Zero, null, []);
+        public static readonly Model None = new(false, false, TimeSpan.Zero, null, [], null);
     }
 }

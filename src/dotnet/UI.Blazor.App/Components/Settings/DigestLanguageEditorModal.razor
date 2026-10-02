@@ -1,0 +1,50 @@
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<DigestLanguageEditorModal.Model>
+@{
+    var isAutoSelected = ModalModel.DigestLanguage is null;
+}
+
+<DialogFrame
+    Class="digest-language-editor-modal"
+    Title="@L.YourAccount_DigestLanguage"
+    HasCloseButton="true"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
+    <Body>
+        <div class="c-list" role="listbox">
+            <div class="c-item @(isAutoSelected ? "selected" : "")"
+                 role="option"
+                 tabindex="0"
+                 aria-selected="@(isAutoSelected ? "true" : "false")"
+                 @onclick="@(() => OnLanguageSelected(null))">
+                <div class="c-name">@L.Settings_Language_Auto</div>
+                <div class="c-caption">@L.YourAccount_DigestLanguage_AutoCaption</div>
+            </div>
+            @foreach (var language in Languages.AllUI) {
+                var isSelected = language == ModalModel.DigestLanguage;
+                <div class="c-item @(isSelected ? "selected" : "")"
+                     role="option"
+                     tabindex="0"
+                     lang="@language.IsoCode"
+                     aria-selected="@(isSelected ? "true" : "false")"
+                     @onclick="@(() => OnLanguageSelected(language))">
+                    <div class="c-name">@language.NativeName</div>
+                </div>
+            }
+        </div>
+    </Body>
+</DialogFrame>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private async Task OnLanguageSelected(Language? language) {
+        await UserSettingsUI.UserEmailsSettings()
+            .Update(x => x with { DigestLanguage = language }, CancellationToken.None);
+        Modal.Close();
+    }
+
+    // Nested types
+
+    public sealed record Model(Language? DigestLanguage);
+}

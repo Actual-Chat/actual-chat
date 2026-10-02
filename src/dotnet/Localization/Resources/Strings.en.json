@@ -107,6 +107,8 @@
   "YourAccount_DigestTopic": "Email digest",
   "YourAccount_DigestCaption": "On days when you have unread chats and haven't opened the app",
   "YourAccount_DigestTime": "Delivery time",
+  "YourAccount_DigestLanguage": "Digest language",
+  "YourAccount_DigestLanguage_AutoCaption": "Each chat in its own language",
   "YourAccount_DigestVerifyEmail": "Add and verify your email to receive the digest",
   "YourAccount_Phone": "Phone",
   "YourAccount_TimeZone": "Time zone",

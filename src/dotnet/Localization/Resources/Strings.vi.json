@@ -75,6 +75,8 @@
   "YourAccount_DigestTopic": "Bản tóm tắt email",
   "YourAccount_DigestCaption": "Vào những ngày bạn có cuộc trò chuyện chưa đọc và không mở ứng dụng",
   "YourAccount_DigestTime": "Giờ gửi",
+  "YourAccount_DigestLanguage": "Ngôn ngữ bản tóm tắt",
+  "YourAccount_DigestLanguage_AutoCaption": "Mỗi cuộc trò chuyện theo ngôn ngữ của nó",
   "YourAccount_DigestVerifyEmail": "Thêm và xác minh email để nhận bản tóm tắt",
   "YourAccount_Phone": "Điện thoại",
   "YourAccount_TimeZone": "Múi giờ",

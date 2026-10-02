@@ -121,6 +121,7 @@ public class UserModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Origin = "https://actual.chat",
             DigestTime = new TimeSpan(9, 0, 0),
             IsDigestEnabled = true,
+            DigestLanguage = Languages.Japanese,
         };
         settings.AssertPassesThroughSerializers();
     }

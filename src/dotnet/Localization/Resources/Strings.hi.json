@@ -75,6 +75,8 @@
   "YourAccount_DigestTopic": "ईमेल डाइजेस्ट",
   "YourAccount_DigestCaption": "उन दिनों जब आपके पास अपठित चैट हों और आप ऐप में न आए हों",
   "YourAccount_DigestTime": "भेजने का समय",
+  "YourAccount_DigestLanguage": "डाइजेस्ट की भाषा",
+  "YourAccount_DigestLanguage_AutoCaption": "हर चैट अपनी भाषा में",
   "YourAccount_DigestVerifyEmail": "डाइजेस्ट पाने के लिए अपना ईमेल जोड़ें और सत्यापित करें",
   "YourAccount_Phone": "फ़ोन",
   "YourAccount_TimeZone": "समय क्षेत्र",

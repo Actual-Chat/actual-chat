@@ -75,6 +75,8 @@
   "YourAccount_DigestTopic": "Résumé par e-mail",
   "YourAccount_DigestCaption": "Les jours où vous avez des discussions non lues sans avoir ouvert l'app",
   "YourAccount_DigestTime": "Heure d'envoi",
+  "YourAccount_DigestLanguage": "Langue du résumé",
+  "YourAccount_DigestLanguage_AutoCaption": "Chaque discussion dans sa propre langue",
   "YourAccount_DigestVerifyEmail": "Ajoutez et vérifiez votre e-mail pour recevoir le résumé",
   "YourAccount_Phone": "Téléphone",
   "YourAccount_TimeZone": "Fuseau horaire",

@@ -230,8 +230,10 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
                 .Select(WithMediaHint)
                 .Where(x => !x.Content.IsNullOrEmpty())
                 .ToList();
-            var digestLanguage = await GetDominantLanguage(chatId, summarizable, cancellationToken).ConfigureAwait(false)
-                ?? reader.SpokenLanguage;
+            var digestLanguage = reader.IsLanguageChosen
+                ? reader.SpokenLanguage
+                : await GetDominantLanguage(chatId, summarizable, cancellationToken).ConfigureAwait(false)
+                    ?? reader.SpokenLanguage;
             bulletPoints = await ChatDigestSummarizer
                 .Summarize(summarizable, digestLanguage, cancellationToken)
                 .ConfigureAwait(false);
@@ -287,13 +289,14 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
 
     private async Task<DigestReader> GetReader(UserId userId, CancellationToken cancellationToken)
     {
-        var settings = await ServerKvasBackend
-            .ForUser(userId)
-            .UserLanguageSettings()
-            .Get(cancellationToken)
-            .ConfigureAwait(false);
+        var userSettings = ServerKvasBackend.ForUser(userId);
+        var emailsSettings = await userSettings.UserEmailsSettings().Get(cancellationToken).ConfigureAwait(false);
+        if (emailsSettings.DigestLanguage is { } digestLanguage)
+            return new DigestReader(digestLanguage, LanguageStringLocalizer.Get(digestLanguage), true);
+
+        var settings = await userSettings.UserLanguageSettings().Get(cancellationToken).ConfigureAwait(false);
         var l = await UserLocalizers.Get(userId, cancellationToken).ConfigureAwait(false);
-        return new DigestReader(settings.Primary, l);
+        return new DigestReader(settings.Primary, l, false);
     }
 
     private static ChatEntry WithMediaHint(ChatEntry entry)
@@ -367,7 +370,8 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
 
     /// <summary>
     /// A summary is worded in a language the reader speaks; everything around it is app chrome,
-    /// so it follows the language their UI is in.
+    /// so it follows the language their UI is in. A digest language the reader chose overrides
+    /// both, and the language a chat is written in as well.
     /// </summary>
-    private sealed record DigestReader(Language SpokenLanguage, IStringLocalizer L);
+    private sealed record DigestReader(Language SpokenLanguage, IStringLocalizer L, bool IsLanguageChosen);
 }
