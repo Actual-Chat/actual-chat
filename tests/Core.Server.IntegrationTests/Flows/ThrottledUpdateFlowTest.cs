@@ -167,7 +167,7 @@ public sealed class ThrottledUpdateFlowTest(ThrottledUpdateFlowFixture fixture, 
         var target = $"test-{RandomStringGenerator.Default.Next()}";
         var args = ThrottledUpdateFlow.GetArguments(target);
         await FlowHub.TryScheduleUpdate<GatedThrottledUpdateFlow>(target);
-        await WhenFirstRunCompleted(args);
+        var firstRun = await WhenFirstRunCompleted(args);
 
         // act
         var markerScheduledAt = FlowHub.SystemNow;
@@ -176,13 +176,23 @@ public sealed class ThrottledUpdateFlowTest(ThrottledUpdateFlowFixture fixture, 
         // assert
         // A second chain's resume is sent with the first commit, well ahead of the marker.
         // Polled: the resume times are a plain in-memory list, nothing invalidates on it
+        var resumesWhenHandled = "";
         await TestWait.WhenPolled(
-            () => GatedThrottledUpdateFlow.GetResumeTimes(target)
-                .Should().Contain(x => x >= markerScheduledAt, "the marker resume must be handled"),
+            () => {
+                var resumes = GatedThrottledUpdateFlow.GetResumes(target);
+                resumesWhenHandled = GatedThrottledUpdateFlow.Describe(target, resumes);
+                resumes.Should().Contain(x => x.ResumedAt >= markerScheduledAt, "the marker resume must be handled");
+            },
             DefaultTimeout);
 
-        GatedThrottledUpdateFlow.GetResumeTimes(target)
-            .Should().HaveCount(2, "the first resume and the marker are the only ones asked for");
+        // #4945: this failed with the marker wait passed and a single resume here - the details tell
+        // which of the moments, the flow seen as completed or the two reads of the list is off
+        var finalResumes = GatedThrottledUpdateFlow.GetResumes(target);
+        finalResumes.Should().HaveCount(2,
+            "the first resume and the marker are the only ones asked for; the first run was seen as "
+            + "v.{0} with NextRunAt {1}, the marker was scheduled at {2}, the wait passed on {3}, now {4}",
+            firstRun.Version, firstRun.NextRunAt, markerScheduledAt,
+            resumesWhenHandled, GatedThrottledUpdateFlow.Describe(target, finalResumes));
     }
 
     [Fact]
@@ -229,7 +239,7 @@ public sealed class ThrottledUpdateFlowTest(ThrottledUpdateFlowFixture fixture, 
             () => gate.Entered.Task.IsCompleted.Should().BeTrue("the first resume must reach Run()"),
             DefaultTimeout, callerFilePath: callerFilePath, callerLine: callerLine);
 
-    private Task WhenFirstRunCompleted(
+    private Task<GatedThrottledUpdateFlow> WhenFirstRunCompleted(
         string args,
         [CallerFilePath] string callerFilePath = "",
         [CallerLineNumber] int callerLine = 0)
@@ -237,6 +247,7 @@ public sealed class ThrottledUpdateFlowTest(ThrottledUpdateFlowFixture fixture, 
             var flow = await FlowHub.TryGet<GatedThrottledUpdateFlow>(args, ct);
             flow.Should().NotBeNull("the first resume must store the flow");
             flow!.SuccessCount.Should().Be(1, "the first run must complete once the gate opens");
+            return flow;
         }, DefaultTimeout, callerFilePath: callerFilePath, callerLine: callerLine);
 }
 

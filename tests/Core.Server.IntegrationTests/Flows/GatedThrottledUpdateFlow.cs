@@ -1,3 +1,4 @@
+using System.Runtime.Loader;
 using ActualChat.Flows;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
@@ -11,20 +12,35 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 public sealed partial class GatedThrottledUpdateFlow : ThrottledUpdateFlow
 {
     private static readonly ConcurrentDictionary<string, Gate> Gates = new();
-    private static readonly ConcurrentDictionary<string, ConcurrentQueue<Moment>> Resumes = new();
+    private static readonly ConcurrentDictionary<string, ConcurrentQueue<ResumeRecord>> Resumes = new();
 
     protected override TimeSpan ThrottlePeriod => TimeSpan.FromSeconds(2);
 
     public static Gate Close(string target)
         => Gates.GetOrAdd(target, static t => new Gate(t));
 
-    public static Moment[] GetResumeTimes(string target)
+    public static ResumeRecord[] GetResumes(string target)
         => Resumes.TryGetValue(target, out var resumes) ? resumes.ToArray() : [];
+
+    public static string Describe(string target, ResumeRecord[] resumes)
+    {
+        // A record whose QueueId differs from the queue read here was written somewhere the test can't see
+        var queueId = Resumes.TryGetValue(target, out var queue) ? RuntimeHelpers.GetHashCode(queue) : 0;
+        var loadContext = AssemblyLoadContext.GetLoadContext(typeof(GatedThrottledUpdateFlow).Assembly)?.Name;
+        return $"queue {queueId:x8} (pid {Environment.ProcessId}, ALC {loadContext}): "
+            + $"[{string.Join("; ", resumes.Select(x => x.ToString()))}]";
+    }
 
     protected override ValueTask Resume(CancellationToken cancellationToken)
     {
         // Counted outside the flow's state: with two chains, its stored console lost a resume's line
-        Resumes.GetOrAdd(Target, static _ => new()).Enqueue(ResumedAt);
+        var resumes = Resumes.GetOrAdd(Target, static _ => new());
+        resumes.Enqueue(new ResumeRecord(
+            ResumedAt,
+            Hub.SystemNow,
+            RuntimeHelpers.GetHashCode(this),
+            RuntimeHelpers.GetHashCode(resumes),
+            Environment.CurrentManagedThreadId));
         return base.Resume(cancellationToken);
     }
 
@@ -38,6 +54,12 @@ public sealed partial class GatedThrottledUpdateFlow : ThrottledUpdateFlow
     }
 
     // Nested types
+
+    public sealed record ResumeRecord(Moment ResumedAt, Moment RecordedAt, int InstanceId, int QueueId, int ThreadId)
+    {
+        public override string ToString()
+            => $"{ResumedAt} (recorded {RecordedAt}, flow {InstanceId:x8}, queue {QueueId:x8}, thread {ThreadId})";
+    }
 
     public sealed class Gate(string target) : IDisposable
     {
