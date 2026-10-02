@@ -185,13 +185,15 @@ describe('mark chat as read / unread', () => {
         await item.waitFor({ state: 'visible', timeout: 30_000 });
         await expect.poll(() => badge.first().textContent().catch(() => ''), { timeout: 15_000 }).toBe('1');
 
-        // act - opening the chat clears the mark
-        await openChat(alice);
-        await openChat(alice, OTHER_CHAT_URL);
+        // act - opening the chat clears the mark. It's opened in a second tab: the chat's own page drops
+        // the badge before the server has the change, and a page load right after loses that command
+        const visit = await aliceCtx.newPage();
+        await openChat(visit);
 
         // assert
-        await item.waitFor({ state: 'visible', timeout: 15_000 });
         await expectAllRead();
+        await visit.close();
+        await alice.bringToFront();
 
         // act - the open chat can be marked unread too, and keeps the mark while it stays open
         await openChat(alice);
