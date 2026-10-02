@@ -45,6 +45,8 @@ public sealed partial record LiveSessionState
     public SessionRules Rules { get; init; } = SessionRules.Default;
     [DataMember(Order = 17), Key(17)]
     public Moment? SessionStartedAt { get; init; }
+    // What started the session, never changed after: a call placed into an ambient session leaves it
+    // Ambient. Whether a call is in the session now is the chat's LiveCall, not this.
     [DataMember(Order = 18), Key(18)]
     public LiveSessionKind Kind { get; init; } = LiveSessionKind.Ambient;
     [DataMember(Order = 19), Key(19)]
@@ -53,17 +55,11 @@ public sealed partial record LiveSessionState
     public long ContextStartLid { get; init; }
     [DataMember(Order = 21), Key(21)]
     public bool IsExpandedByDefault { get; init; }
-    [DataMember(Order = 22), Key(22)]
-    public CallOutcome Outcome { get; init; }
-    [DataMember(Order = 23), Key(23)]
-    public bool HasVideo { get; init; }
-    // Set once when the call is dialled and never moved, unlike Host, which ReassignHost hands to
-    // another participant when the host of a group call hangs up while others stay on.
+    // Keys 22 (Outcome), 23 (HasVideo) and 25 (CallId) moved to LiveCall. Retired, never reused.
+    // Set once when an answer starts the session and never moved, unlike Host, which ReassignHost hands
+    // to another participant; it outlives the LiveCall, which a group call's session does too.
     [DataMember(Order = 24), Key(24)]
     public AuthorId? CallerId { get; init; }
-    // Null in an ambient session.
-    [DataMember(Order = 25), Key(25)]
-    public CallId? CallId { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public long EffectiveVisibleStartLid => VisibleStartLid > 0 ? VisibleStartLid : StartEntryLid;
@@ -74,8 +70,6 @@ public sealed partial record LiveSessionState
     public ConversationId ConversationId => ConversationId.New(ChatId, EffectiveVisibleStartLid);
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsCall => Kind == LiveSessionKind.Call;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public bool IsDialing => Kind == LiveSessionKind.Call && SessionStartedAt is null;
 
     public Conversation ToConversation()
         => new(ConversationId, Version) {
@@ -88,7 +82,7 @@ public sealed partial record LiveSessionState
             MessageCount = MessageCount,
             AuthorIds = AuthorIds,
             IsExpandedByDefault = IsExpandedByDefault,
-            CallerId = IsCall ? CallerId ?? Host : null,
+            CallerId = IsCall ? CallerId : null,
         };
 
     public Conversation ToMaterializedConversation()
@@ -102,8 +96,6 @@ public sealed partial record LiveSessionState
             MessageCount = MessageCount,
             AuthorIds = AuthorIds,
             IsExpandedByDefault = IsExpandedByDefault,
-            // Host stands in only for a session dialled by a build that predates CallerId: without it
-            // such a call would materialize as an ordinary conversation and fail its title check.
-            CallerId = IsCall ? CallerId ?? Host : null,
+            CallerId = IsCall ? CallerId : null,
         };
 }

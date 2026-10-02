@@ -54,7 +54,7 @@ public static class LiveSessionsBackendTestExt
         await backend.CancelCall(chatId, callerAuthorId, callId, cancellationToken).ConfigureAwait(false);
     }
 
-    // The id StartCall above answered with is preferred to a read: GetState isn't one a test can make
+    // The id StartCall above answered with is preferred to a read: GetCall isn't one a test can make
     // unnoticed - it syncs the call's status and expires its rings. A chat in no call gets an id no
     // call has: the request is then one for a call that is over.
     private static async Task<CallId> GetCallId(
@@ -65,7 +65,7 @@ public static class LiveSessionsBackendTestExt
         if (LastCallIds.TryGetValue(chatId, out var callId))
             return callId;
 
-        var state = await backend.GetState(chatId, cancellationToken).ConfigureAwait(false);
-        return state?.CallId ?? CallId.New(chatId, "none");
+        var call = await backend.GetCall(chatId, cancellationToken).ConfigureAwait(false);
+        return call?.Id ?? CallId.New(chatId, "none");
     }
 }

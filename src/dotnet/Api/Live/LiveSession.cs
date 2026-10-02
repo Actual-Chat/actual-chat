@@ -26,10 +26,7 @@ public sealed partial record LiveSession
     public bool TranscriptionOn { get; init; }
     [DataMember(Order = 8), Key(8)]
     public LiveSessionKind Kind { get; init; } = LiveSessionKind.Ambient;
-    [DataMember(Order = 9), Key(9)]
-    public IReadOnlyList<CallInvite> Invites { get; init; } = [];
-    [DataMember(Order = 10), Key(10)]
-    public CallId? CallId { get; init; }
+    // Keys 9 (Invites) and 10 (CallId) are retired: a call's own record and invites are backend-only.
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ConversationId? ConversationId => Conversation?.Id;
 }

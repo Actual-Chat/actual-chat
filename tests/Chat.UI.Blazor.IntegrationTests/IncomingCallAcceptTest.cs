@@ -42,8 +42,7 @@ public sealed class IncomingCallAcceptTest(ChatAppHostFixture fixture, ITestOutp
 
         // assert - the ring was answered rather than called over
         await TestWait.When(async ct => {
-            var live = await backend.Get(chatId, ct);
-            var invite = live?.Invites.FirstOrDefault(x => x.InviteeId == aliceAuthor.Id);
+            var invite = (await backend.ListInvites(chatId, ct)).FirstOrDefault(x => x.InviteeId == aliceAuthor.Id);
             invite.Should().NotBeNull();
             invite!.Status.Should().Be(CallInviteStatus.Accepted);
         });
@@ -71,10 +70,9 @@ public sealed class IncomingCallAcceptTest(ChatAppHostFixture fixture, ITestOutp
         callId.Should().NotBeNull();
         callUI.GetCallChatIdNonComputed().Should().BeNull();
         await TestWait.When(async ct => {
-            var state = await backend.GetState(chatId, ct);
-            (state?.CallId == callId && state!.Outcome == CallOutcome.None).Should().BeFalse();
-            var live = await backend.Get(chatId, ct);
-            var invite = live?.Invites.FirstOrDefault(x => x.InviteeId == aliceAuthor.Id);
+            var call = await backend.GetCall(chatId, ct);
+            (call?.Id == callId && call!.Outcome == CallOutcome.None).Should().BeFalse();
+            var invite = (await backend.ListInvites(chatId, ct)).FirstOrDefault(x => x.InviteeId == aliceAuthor.Id);
             invite?.Status.Should().NotBe(CallInviteStatus.Ringing);
         });
     }
@@ -99,8 +97,7 @@ public sealed class IncomingCallAcceptTest(ChatAppHostFixture fixture, ITestOutp
 
         // assert - the same answer, not an error: CallScreensUI.Accept hangs the call up on a throw
         await again.Should().NotThrowAsync();
-        var live = await backend.Get(chatId, default);
-        live!.Invites.Single(x => x.InviteeId == aliceAuthor.Id)
+        (await backend.ListInvites(chatId, default)).Single(x => x.InviteeId == aliceAuthor.Id)
             .Status.Should().BeOneOf(CallInviteStatus.Accepted, CallInviteStatus.Active);
         (await backend.GetState(chatId, default))!.SessionStartedAt.Should().NotBeNull();
     }
@@ -122,7 +119,7 @@ public sealed class IncomingCallAcceptTest(ChatAppHostFixture fixture, ITestOutp
         // assert - it says so rather than reporting success and leaving the caller in a call that
         // never was; CallScreensUI.Accept releases the slot on exactly this.
         await accept.Should().ThrowAsync<Exception>();
-        var live = await backend.Get(chatId, default);
-        live?.Invites.FirstOrDefault(x => x.InviteeId == aliceAuthor!.Id).Should().BeNull();
+        (await backend.ListInvites(chatId, default)).FirstOrDefault(x => x.InviteeId == aliceAuthor!.Id)
+            .Should().BeNull();
     }
 }

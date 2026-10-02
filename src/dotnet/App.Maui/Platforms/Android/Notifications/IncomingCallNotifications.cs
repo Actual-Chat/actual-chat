@@ -184,7 +184,7 @@ public static class IncomingCallNotifications
             Dismiss(chatId, callId);
             // Blazor starting up sees the call already Active and would never stop a ring it didn't start.
             IncomingCallRinger.Stop();
-            // Accept re-verifies the ring against LiveSessionUI.Get once Blazor is up —
+            // Accept re-verifies the ring with the server once Blazor is up —
             // a stale tap yields a "Call ended" toast, not a phantom join.
             _ = AppServicesAccessor.DispatchToBlazor(
                 c => c.GetRequiredService<CallScreensUI>().Accept(chatId, callId),

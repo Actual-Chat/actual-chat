@@ -5,7 +5,7 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 /// <summary>
 /// The one place the outcome-by-reader wording table lives. Both render paths call it — the card
-/// for a call that never connected, and the conversation item's call mode for one that did.
+/// for a call with no call card of its own, and the conversation item's call mode for one with it.
 /// </summary>
 public static class CallCardFormat
 {

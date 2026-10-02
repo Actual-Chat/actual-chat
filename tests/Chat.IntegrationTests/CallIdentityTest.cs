@@ -20,19 +20,17 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
 
         // act
         await backend.StartCall(chatId, bobAuthor.Id, invitees, false, default);
-        var first = await backend.GetState(chatId, default);
+        var first = await backend.GetCall(chatId, default);
         await backend.CancelCall(chatId, bobAuthor.Id, default);
         await backend.StartCall(chatId, bobAuthor.Id, invitees, false, default);
-        var second = await backend.GetState(chatId, default);
+        var second = await backend.GetCall(chatId, default);
 
         // assert
-        first!.CallId.Should().NotBeNull();
-        first.CallId!.ChatId.Should().Be(chatId);
-        second!.CallId.Should().NotBeNull();
-        second.CallId.Should().NotBe(first.CallId, "no chat entry separates two unanswered group calls");
-        var live = await backend.Get(chatId, default);
-        live!.CallId.Should().Be(second.CallId);
-        live.Invites.Should().ContainSingle(i => i.CallId == second.CallId);
+        first.Should().NotBeNull();
+        first!.Id.ChatId.Should().Be(chatId);
+        second.Should().NotBeNull();
+        second!.Id.Should().NotBe(first.Id, "no chat entry separates two unanswered group calls");
+        (await backend.ListInvites(chatId, default)).Should().ContainSingle(i => i.CallId == second.Id);
     }
 
     [Fact]
@@ -49,11 +47,11 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.StartCall(chatId, bobAuthor.Id, new[] { aliceAuthor.Id }.ToApiArray(), false, default);
 
         // assert
-        var state = await backend.GetState(chatId, default);
+        var call = await backend.GetCall(chatId, default);
         await TestWait.When(async ct => {
             var ring = await liveSessions.GetMyCall(alice.Session, "alice-phone", ct);
             ring.Should().NotBeNull();
-            ring!.CallId.Should().Be(state!.CallId);
+            ring!.CallId.Should().Be(call!.Id);
         });
     }
 
@@ -74,8 +72,7 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.DeclineCall(chatId, aliceAuthor.Id, firstCallId, default);
 
         // assert
-        var live = await backend.Get(chatId, default);
-        live!.Invites.Should().ContainSingle(
+        (await backend.ListInvites(chatId, default)).Should().ContainSingle(
             i => i.InviteeId == aliceAuthor.Id && i.Status == CallInviteStatus.Ringing,
             "the decline was for a call that is over");
 
@@ -84,8 +81,8 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
 
         // assert
         await TestWait.When(async ct => {
-            var state = await backend.GetState(chatId, ct);
-            state.Should().BeNull("a declined two-party call is over");
+            var call = await backend.GetCall(chatId, ct);
+            call.Should().BeNull("a declined two-party call is over");
         });
     }
 
@@ -108,8 +105,8 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
 
         // assert
         await accept.Should().ThrowAsync<InvalidOperationException>();
-        var state = await backend.GetState(chatId, default);
-        state!.IsDialing.Should().BeTrue("the ring that is going was not the one answered");
+        var call = await backend.GetCall(chatId, default);
+        call!.IsAnswered.Should().BeFalse("the ring that is going was not the one answered");
     }
 
     [Fact]
@@ -128,8 +125,7 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
 
         // assert
         repeatedCallId.Should().Be(callId);
-        var live = await backend.Get(chatId, default);
-        live!.Invites.Should().ContainSingle(
+        (await backend.ListInvites(chatId, default)).Should().ContainSingle(
             i => i.InviteeId == aliceAuthor.Id && i.Status == CallInviteStatus.Ringing);
     }
 
@@ -157,9 +153,9 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
 
         // assert
         await start.Should().ThrowAsync<InvalidOperationException>();
-        var state = await backend.GetState(chatId, default);
-        state!.CallId.Should().Be(callId, "the call that was dialing keeps the chat");
-        state.CallerId.Should().Be(bobAuthor.Id);
+        var call = await backend.GetCall(chatId, default);
+        call!.Id.Should().Be(callId, "the call that was dialing keeps the chat");
+        call.CallerId.Should().Be(bobAuthor.Id);
         var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
         var carolAccount = await carol.GetOwnAccount();
         (await callsBackend.GetUserCall(carolAccount.Id, default))
@@ -183,10 +179,10 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.CancelCall(chatId, bobAuthor.Id, firstCallId, default);
 
         // assert
-        var state = await backend.GetState(chatId, default);
-        state.Should().NotBeNull();
-        state!.IsDialing.Should().BeTrue();
-        state.Outcome.Should().Be(CallOutcome.None);
+        var call = await backend.GetCall(chatId, default);
+        call.Should().NotBeNull();
+        call!.IsAnswered.Should().BeFalse();
+        call.Outcome.Should().Be(CallOutcome.None);
     }
 
     [Fact]
@@ -204,12 +200,12 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.CancelCall(chatId, aliceAuthor.Id, callId, default);
 
         // assert
-        var state = await backend.GetState(chatId, default);
-        state.Should().NotBeNull();
-        state!.IsDialing.Should().BeTrue();
-        state.Outcome.Should().Be(CallOutcome.None);
-        var live = await backend.Get(chatId, default);
-        live!.Invites.Single(x => x.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Ringing);
+        var call = await backend.GetCall(chatId, default);
+        call.Should().NotBeNull();
+        call!.IsAnswered.Should().BeFalse();
+        call.Outcome.Should().Be(CallOutcome.None);
+        (await backend.ListInvites(chatId, default)).Single(x => x.InviteeId == aliceAuthor.Id)
+            .Status.Should().Be(CallInviteStatus.Ringing);
     }
 
     [Fact]
@@ -222,19 +218,20 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
         var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
         var invitees = new[] { aliceAuthor.Id }.ToApiArray();
         await backend.OnStreamRegistered(chatId, aliceAuthor.Id, null, false, true, default);
-        await backend.StartCall(chatId, bobAuthor.Id, invitees, false, default);
+        var firstCallId = await backend.StartCall(chatId, bobAuthor.Id, invitees, false, default);
         await backend.CancelCall(chatId, bobAuthor.Id, default);
+        (await backend.GetCall(chatId, default)).Should().BeNull("a cancelled call is over");
         var left = await backend.GetState(chatId, default);
         left.Should().NotBeNull("the recorder holds the session");
-        left!.Outcome.Should().Be(CallOutcome.Canceled);
+        left!.Kind.Should().Be(LiveSessionKind.Ambient, "the call never touched the session");
 
         // act
         await backend.StartCall(chatId, bobAuthor.Id, invitees, false, default);
 
         // assert
-        var state = await backend.GetState(chatId, default);
-        state!.CallId.Should().NotBe(left.CallId);
-        state.Outcome.Should().Be(CallOutcome.None, "the outcome is first-writer-wins, and this call has none yet");
+        var call = await backend.GetCall(chatId, default);
+        call!.Id.Should().NotBe(firstCallId);
+        call.Outcome.Should().Be(CallOutcome.None, "the outcome is first-writer-wins, and this call has none yet");
     }
 
     [Fact]

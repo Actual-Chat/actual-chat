@@ -5,10 +5,11 @@ both sides. What a finished call leaves in the chat is covered separately, in
 [Call entries](./call-entries.md).
 
 **The short version.** `StartCall` first claims the **user call** of the caller and of every
-invitee - one per user, kept on that user's own shard - and only then writes the call into the
-chat's live session and queues a notification. A user already in a call isn't claimed: their
-invite is closed as `Busy` and they are left out of the notification batch, so no device of
-theirs is pushed at all. Every client then follows one reactive answer,
+invitee - one per user, kept on that user's own shard - and only then writes the chat's
+`LiveCall` and queues a notification. The call has no live session until it is answered: the
+answer starts one, or joins the session already going in the chat. A user already in a call
+isn't claimed: their invite is closed as `Busy` and they are left out of the notification batch,
+so no device of theirs is pushed at all. Every client then follows one reactive answer,
 `ILiveSessions.GetMyCall`, and shows the call it names. Pushes, notification lists and the
 Android ring only nudge a client to re-read that answer - none of them decides anything.
 
@@ -18,11 +19,11 @@ Android ring only nudge a client to re-read that answer - none of them decides a
 
 Every call has a `CallId`: the chat it is placed in plus a local id no other call to that chat
 shares (`<chatId>:<localId>`). `LiveSessionsBackend.StartCall` issues it, and everything that
-refers to the call carries it - the chat's `LiveSessionState`, its `CallState` and `CallInvite`s,
+refers to the call carries it - the chat's `LiveCall`, its `CallState` and `CallInvite`s,
 each party's `UserCall` claim, the ring notification's id and push tag, and the client's slot. So
 "the same call" and "a later call to the same chat" are never confused:
 
-- a claim is backed only by the session of *its* call, and `ReleaseCall` frees a user only from the
+- a claim is backed only by *its* call, and `ReleaseCall` frees a user only from the
   call it names, so a late release can't free someone who is in the next call by then;
 - `AcceptCall`, `DeclineCall` and `CancelCall` take the id of the call they are about. If the chat
   is in another call when the request lands, decline and cancel are dropped and accept is refused;
@@ -31,17 +32,15 @@ each party's `UserCall` claim, the ring notification's id and push tag, and the 
 The local id is opaque to everything but the server. Today it is the call's start time in
 milliseconds, bumped so two calls never share it: it reads in a log, and sorts.
 
-A `StartCall` into a call that is already connected **joins** it and keeps its id: the people in
+A `StartCall` into a call that is already answered **joins** it and keeps its id: the people in
 it hold claims naming that id, and a new one would drop them. So does a `StartCall` repeated by
-the caller of a call that is still dialing - an RPC resent after a reconnect. Every other `StartCall` places a new
-call - over an ambient session, or over what is left of a call that was cancelled or went
-unanswered while a recorder kept the session open. A new call starts with no outcome and none of
-the previous call's invites. While another call is still dialing in the chat, `StartCall` fails
-with "There's already a call in this chat".
+the caller of a call that is still dialing - an RPC resent after a reconnect. Every other
+`StartCall` places a new call, whatever session the chat has - none, or an ambient one. A new
+call starts with no outcome and none of the previous call's invites. While another call is still
+dialing in the chat, `StartCall` fails with "There's already a call in this chat".
 
-`ConversationId` is *not* a call id: it names the chat block a connected call leaves, moves at
-the latch, and two unanswered calls to a group chat would share it, since nothing is written
-between them.
+`ConversationId` is *not* a call id: it names a chat block, which an unanswered call doesn't
+have at all, and a call into an ongoing session shares with that session.
 
 The id is required in all three: there is no "whatever call the chat is in". A callee always has
 it - the ring's `GetMyCall` answer and its push both carry it. A caller gets it from `StartCall`,
@@ -64,7 +63,7 @@ sequenceDiagram
     Caller->>LS: StartCall
     LS->>CB: TryClaim - the caller, then each invitee
     CB-->>LS: free or busy, per user
-    LS->>LS: session Kind=Call, CallState Dialing, invites Ringing (Busy for the busy ones)
+    LS->>LS: LiveCall, CallState Dialing, invites Ringing (Busy for the busy ones)
     LS->>NB: NotificationsBackend_NotifyCall - only the invitees that were free
     NB->>NB: CallNotification per invitee, commit to active set
     NB->>Push: NotificationsBackend_Push
@@ -100,17 +99,25 @@ chat meanwhile, and the claims are released if one did.
 
 Then, under the lock:
 
-- **Live session state.** `Kind = Call`, `CallerId` and `Host` are the caller, and
-  `SessionStartedAt` stays `null`. A call with no `SessionStartedAt` is dialing
-  (`IsDialing`); the first accept sets it. Promoting an already-latched ambient session keeps
-  its `SessionStartedAt`, so that call doesn't go back to dialing.
+- **The `LiveCall`** - its id, the caller, whether it has video, when it started - with a
+  Redis TTL of `RingTtl + AnswerGrace`: an unanswered call outlives its ring and the late-answer
+  window, then lapses on its own. It is the call's own record, kept apart from the chat's live
+  session, which `StartCall` doesn't touch: a call has no session until it is answered, and a
+  session already going in the chat stays exactly as it was.
 - **`CallState` with `Dialing`.** This is the caller-facing status, and only the caller can
   read it, through `GetCallStatus`.
-- **The caller as a participant.**
 - **One `CallInvite { Status = Ringing, RingingAt = now }` per invitee.** Each is stored with
   a Redis field TTL of `RingTtl`. The list is deduplicated and never contains the caller.
 
-After the lock is released, it enqueues `NotificationsBackend_NotifyCall`.
+After the lock is released, it enqueues `NotificationsBackend_NotifyCall` and starts the ring
+timer (see [Nobody answers](#nobody-answers)).
+
+`LiveSessionsBackend.GetCall` is the call's compute method, and `ListInvites` lists its invites,
+ordered by `RingingAt`; both are backend-only. `Get` - the `LiveSession` the clients read - shows
+the call only as `Kind = Call`: a call with no session yet reads as a `Kind = Call` session with the
+caller in `Members` and no `Conversation`, and a call into an ongoing session overlays `Kind = Call`
+on that session's own view until it ends. A client learns its own part in a call - ringing, dialing,
+in it, and who the other side is - from its `UserCall` claim, not from the session.
 
 ## Delivering the ring
 
@@ -156,13 +163,13 @@ straight to `CallScreensUI.Accept`.
 | Android, opened from the launcher after a push | Nothing special: the first `GetMyCall` on start returns the call, if it is still ringing. |
 | Web, tab in the foreground | Firebase `onMessage` → `NotificationUI.OnIncomingCall`. |
 | Web, tab in the background or closed | The service worker posts `INCOMING_CALL` to every open tab and shows an OS notification. |
-| Every platform | `GetMyCall` is a compute method, so it arrives on its own when the claim or the session changes - no notification list is involved. |
+| Every platform | `GetMyCall` is a compute method, so it arrives on its own when the claim or the call changes - no notification list is involved. |
 
 ::: info The push is only a hint
 A push can't make a client ring: `Touch()` invalidates the `GetMyCall` computed and nothing
 more. The answer comes from `CallsBackend.GetUserCall`, which returns the claim only while the
-chat's session still backs it - the reader's invite is `Ringing`, or they are the dialing
-caller, or they are present in the conversation. A stale push, or a call already answered on
+chat's call still backs it - the reader's invite is `Ringing`, or they are the dialing
+caller, or the call is answered and they are in it. A stale push, or a call already answered on
 another device, therefore produces nothing.
 :::
 
@@ -173,18 +180,22 @@ another device, therefore produces nothing.
 `Callee`), `Phase` (`Ringing`, `Dialing`, `Active`), with a two-minute TTL.
 
 The record is a **claim, not the truth**. `GetUserCall` answers with it only while the chat's
-live session still backs it: the session is in the claim's call, and the invite is `Ringing` for
-a `Ringing` claim, `CallState` is still dialing for a `Dialing` one, and for `Active` the invite
-is accepted or the user is a live member. A claim the session no longer backs is released on the spot, so a crashed client
-can't stay busy. Two exceptions keep that rule workable:
+call still backs it (`CallsBackend.GetPhase`, which reads `GetCall`, the `Get` projection's members
+and, for a callee, `ListInvites`):
+the chat's `LiveCall` is the claim's call, and the invite is `Ringing` for a `Ringing` claim,
+the call is unanswered and has no outcome yet for the caller's `Dialing` one, and for `Active`
+the call is answered and the user is its caller, an invitee who accepted, or a live member. A
+claim the call no longer backs is released on the spot, so a crashed client can't stay busy.
+Two exceptions keep that rule workable:
 
 - a claim younger than `ClaimGrace` (10 s) backs itself, because `StartCall` has to know who
-  is free *before* it writes the session the claim would be checked against;
+  is free *before* it writes the call the claim would be checked against;
 - a live claim re-checks itself every `ClaimSelfHeal` (10 s), since nothing invalidates a
   claim that lapsed with its Redis TTL or outlived its call.
 
 Ambient live sessions never claim anything: recording or listening in a chat without a call
-doesn't make anyone busy.
+doesn't make anyone busy - nor does being in the session a call rang into, unless you are one of
+the call's own parties.
 
 **Whose call it is.** The claim is per user, but a call runs on one client: the one that placed
 it or answered the ring. The claim names that client - `SessionHash` for the device, and
@@ -337,32 +348,94 @@ On the server, `AcceptCall`:
 - moves the invitee's user call to `Active` and names the answering client in it, so the
   invitee's other clients stop seeing the call;
 - sets the invite to `Accepted`;
-- on the first accept, latches the call: `SessionStartedAt = now`, `VisibleStartLid` at the
-  chat's end, and the invitee added to `AuthorIds`. `RecomputeCallStatus` moves the caller's
-  status to `Connecting`;
+- on the first accept, answers the call: `AnsweredAt = now` on the `LiveCall`, under the same
+  lock that records outcomes, so an answer and a ring timing out can't both win. The answer
+  gives the call its session (`JoinSession`):
+  - with no session in the chat it starts one of `Kind = Call`, `SessionStartedAt = now`,
+    `VisibleStartLid` at the chat's end and the caller and the invitee in `AuthorIds`, and
+    registers the caller as present - their client joins only on hearing of the answer;
+  - with a session already going it joins that one and changes nothing in it (see
+    [A call into an ongoing session](#a-call-into-an-ongoing-session)).
+
+  `RecomputeCallStatus` moves the caller's status to `Connecting`;
 - deliberately doesn't register the invitee's presence. Presence comes only from the
   invitee's client once it listens or records, which is what lets the next check tell
   "accepted" from "accepted and connected";
 - calls `DismissRing` for this invitee, which clears the ring on their other devices;
-- `CallConnectGrace` (3 s) later, runs `EnforceCallConnectGrace`. Fewer than two fresh
-  participants close the call; otherwise the status is recomputed.
+- `CallConnectGrace` (5 s) later, runs `EnforceCallConnectGrace`. Fewer of the call's own parties
+  present than the call needs (see below) close it; otherwise the status is recomputed.
 
 From there the call runs on presence. The client's listening and recording flags drive
-`LiveSessionUI.SyncParticipations`, which reports `SetParticipation` with a heartbeat.
-`GetState`'s self-heal runs `SyncCallParticipantActivity`, which marks the caller and the
-invitee `Active`, and the status becomes `Active`. The caller's holding loop in `CallUI` sees
-that and joins the conversation, moving the slot to `Active`. Only the client the call was
+`LiveSessionUI.SyncParticipations`, which reports `SetParticipation` with a heartbeat, and the
+heartbeat also keeps the answered call's record alive. `GetCall`'s self-heal runs
+`SyncCallParticipantActivity`, which marks the caller and the invitee `Active`, and the status
+becomes `Active`. The caller's claim reads `Active` from the answer on, so their holding loop in
+`CallUI` joins the conversation and moves the slot to `Active`. Only the client the call was
 placed from sees it at all - see "Whose call it is" above.
+
+**The call's parties** are its caller and the invitees who accepted. Everything that counts
+presence for a call counts only them: someone else present in the session the call rang into
+neither holds the call open nor makes anyone busy. The same self-heal ends a call whose parties
+are gone without saying so - a crashed client - once `CallConnectGrace` after the answer is over.
 
 Presence has exactly two sources: that client report, and `PeerParticipations` releasing what a
 peer claimed once its connection stays down past `ParticipationDisconnectGrace`. The listening
 stream itself doesn't touch it. It closes on every re-subscribe, and when it used to drop the
 listener's presence, calls ended on their own (#4835).
 
+How many present parties a call needs is `MinCallParties`: two in a peer chat, where the call is
+its two parties, and one anywhere else, where a call goes on while anyone is in it and ends once the
+last one leaves. Nobody is then left on a group call that ended under them without a word, their
+mic still on: they are on the call until they hang up themselves.
+
 Hanging up is a presence drop too. A leave that leaves the call with nobody closes it at once.
-A leave that leaves one party schedules `EnforceCallLeaveGrace` `CallLeaveGrace` later, and the
-call closes only if fewer than two are still present then. `CloseAndMaterialize` counts once
+A leave that leaves it short of `MinCallParties` schedules `EnforceCallLeaveGrace`
+`CallLeaveGrace` later, and the call closes only if it is still short then. `EndCall` counts once
 more under the change lock, so a party back by then keeps the call.
+
+### When the call ends, and its session
+
+`EndCall` ends the call alone. The session goes on without it, whatever started it, and closes by
+the one rule every session closes by: once nobody records. A session the call's answer started
+(`Kind = Call`) then closes through `CloseCallSession`, which keeps its block as the call's card - a
+call's card needs no summary to be kept. Any other session closes as an ambient one, summary and
+all.
+
+What decides when that happens is the clients' media. The hang-up button stops all of it: leaving a
+call is stopping its audio. A call that ends without this client's hang-up goes through
+`CallUI.EndCallMedia`:
+
+- **In a peer chat** it takes the recording, the listening and the video along. One party leaving
+  ends the call, the call's end stops the other's media, and with nobody recording the session
+  closes for both. Whoever has more to say starts a new call, or records in the chat, which starts
+  a new session.
+- **Elsewhere** it touches nothing. Such a call ends only once its last party has hung up, so
+  whatever media a client still runs there is its own.
+
+Membership in a call and media are one and the same, so a recording that predates a group call
+stops on one's own hang-up as well. Telling the two apart is #5053.
+
+### A call into an ongoing session
+
+A chat can already have a live session when a call is placed into it - two people talking in a
+peer chat, say. The call doesn't take that session over:
+
+- **While it rings** the session stays exactly as it was: its kind, its block, its host. The
+  invitee gets the incoming-call modal like any other ring, even when they are already in the
+  session, and answering is the same `AcceptCall`. The `Get` projection shows the ring on top of
+  the session - `Kind = Call` over the session's own members and conversation.
+- **Answered,** the call joins the session, and the session stays an ambient one: its block is
+  the session's ordinary conversation, summarized as usual, never a call card. The call's parties
+  hold the session open while the call lasts.
+- **When the call ends** - unanswered, declined, cancelled or hung up - only the call goes. The
+  session carries on by its own rule, a recorder keeping it open, and is re-evaluated at once. An
+  answered peer call still ends it for both: its end stops both clients' media, as above. The call
+  leaves its `CallEntry` in the chat, with the talk time when it was answered (see
+  [Call entries](./call-entries.md)).
+
+`LiveSessionState.Kind` is what started the session, never changed after: `Call` only for a
+session a call's answer started. The `LiveSession` clients read reports `Kind = Call` while a call
+overlays it, whichever session that is.
 
 ### Decline
 
@@ -380,20 +453,23 @@ On the server, `DeclineCall`:
 - records the `Declined` outcome. Recording is first-writer-wins, see
   [Call entries](./call-entries.md);
 - calls `DismissRing` for this invitee;
-- if no other invite is still ringing and fewer than two people are present
+- if no other invite is still ringing and the call can't have the parties it needs any more
   (`IsCallAbandoned`), recomputes the status and closes the call.
 
 ### The caller cancels
 
-`CancelCall` is accepted only while the call is `Dialing` or `Connecting`, only for the call
-it names, and only from that call's caller. It:
+`CancelCall` is accepted only for the call it names, and only from that call's caller. On a call
+that hasn't been answered it:
 
 - sets every ringing invite to `Missed`;
-- removes the caller from the participants;
 - clears `CallState`;
 - records the `Canceled` outcome;
 - calls `DismissRing` for the invitees that were still ringing;
-- closes the session.
+- ends the call. The session the chat may have had is left alone.
+
+On an answered call - the client cancels while its slot still reads Dialing, which can outlast the
+answer by a round trip (#4984) - it is the caller leaving: their presence is dropped, and the call
+goes on or ends as any party leaving it would.
 
 On the callee's side two paths race, and either one ends the ring:
 
@@ -402,13 +478,14 @@ On the callee's side two paths race, and either one ends the ring:
     `CallScreensUI.OnCallDismissed` through `ClearForegroundCallRings`.
   - The web service worker closes the OS notification and posts `INCOMING_CALL_CANCELLED` to
     every open tab.
-- **The reactive session.** `LiveSessions.Get` is invalidated, `GetRingingCall` returns
+- **The reactive call.** `LiveSessions.Get` is invalidated, `GetRingingCall` returns
   nothing, and the ringtone and the modal stop on their own.
 
 ### Nobody answers
 
-While someone observes the session, `GetState`'s self-heal runs `ExpireRings`. Once a ringing
-invite is older than `RingTimeout`:
+`StartCall` starts a ring timer (`ScheduleRingTimeout`) that runs `ExpireRings` once
+`RingTimeout` is over, and while someone observes the call, `GetCall`'s self-heal runs it too.
+Once a ringing invite is older than `RingTimeout`:
 
 1. The invite becomes `Missed`, and `DismissRing` is called: the callee's ring stops on time.
 2. For `AnswerGrace` (10 s) after that the call stays open, and the caller keeps dialing. An
@@ -421,9 +498,12 @@ invite is older than `RingTimeout`:
    is abandoned and still dialing by then, it gets the `NoAnswer` status and outcome, and the
    call closes.
 
-A dialing call with no fresh ring left is finalized the same way. When nobody observes the
-session, two backstops remain: the Redis TTL on the invite (`RingTtl`) and the Android
-notification's own `SetTimeoutAfter`. That timeout counts from the moment the push was sent, not
+A dialing call with no fresh ring left is finalized the same way. The timer lives in memory, so
+a restart or a shard move between the ring and its timeout loses it; then only an observer's
+self-heal finalizes the call, and when nobody observes it, two backstops remain: the Redis TTLs on
+the invite (`RingTtl`) and on the call itself, and the Android notification's own
+`SetTimeoutAfter`. A call finalized only by its TTL leaves no `CallEntry` - a durable backstop is
+#5045. That timeout counts from the moment the push was sent, not
 from when it was shown, so the Answer button doesn't outlive the server's ring by the delivery
 time. Before the server clock is synced (a cold start) the device clock is used, and the ring
 never shrinks below half of `RingTimeout`.
@@ -436,12 +516,13 @@ A refused answer - past the grace, or after a cancel - shows the "Missed call" t
 |---|---|---|
 | `Constants.Call.RingTimeout` | 20 s | How long an invite rings before it becomes `Missed`. |
 | `AnswerGrace` | 10 s | How long past `RingTimeout` a `Missed` invite can still be answered, and the call stays open for it. |
-| `Constants.Call.RingTtl` | 60 s | Redis field TTL on a ringing invite: the backstop when nobody observes the session. |
-| `CallConnectGrace` | 3 s | After the first accept, both sides must be present by then, or the call closes. |
-| `CallLeaveGrace` | 2 s | After a leave that left one party, how long the other has to come back before the call closes. |
+| `Constants.Call.RingTtl` | 60 s | Redis field TTL on a ringing invite: the backstop when nobody observes the call. |
+| `RingTtl + AnswerGrace` | 70 s | Redis TTL on an unanswered `LiveCall`. Answered, it takes the session's TTL and is refreshed by the same heartbeat. |
+| `CallConnectGrace` | 5 s | After the first accept, both sides must be present by then, or the call closes. Long enough for the "Connecting" screen to read as a step, not a flash. |
+| `CallLeaveGrace` | 2 s | After a leave that left a call short of `MinCallParties`, how long it has to fill back up before it closes. |
 | `CallsBackend.ClaimTtl` | 2 min | Redis TTL on a user call, refreshed while the call lives. |
-| `CallsBackend.ClaimGrace` | 10 s | How long a fresh claim backs itself, before the session has to. |
-| `CallsBackend.ClaimSelfHeal` | 10 s | How often a live claim re-checks itself against the session. |
+| `CallsBackend.ClaimGrace` | 10 s | How long a fresh claim backs itself, before the call has to. |
+| `CallsBackend.ClaimSelfHeal` | 10 s | How often a live claim re-checks itself against the call. |
 | `CallUI.IntentGrace` | 10 s | How long a gesture's own view of the slot outlives an answer that ignores it. |
 
 ## Known gaps
@@ -463,8 +544,10 @@ A refused answer - past the grace, or after a cancel - shows the "Missed call" t
   a later feature. An *unanswered* ring counts the same way, so the first ring wins and a
   second caller is turned away while it is still going.
 - **A hang-up frees the user only as fast as presence travels.** The claim goes when the
-  session stops backing it, which follows the participation the client drops on hang-up; the
+  call stops backing it, which follows the participation the client drops on hang-up; the
   self-heal bounds the worst case at `ClaimSelfHeal`.
+- **"Connecting" isn't shown yet.** Between the answer and both sides' presence the caller's
+  status is `Connecting`, but neither side's screens tell it apart from a connected call.
 
 ## Related
 

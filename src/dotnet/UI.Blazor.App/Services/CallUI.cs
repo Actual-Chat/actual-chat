@@ -118,7 +118,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return;
         }
         // Taken before the RPC, so the screens follow the gesture rather than the round trip. A single
-        // invitee is the peer the screens name; for a group the server's invites decide, so it waits.
+        // invitee, or a peer chat's other side, is the peer the screens name; a call to several has none.
         var peerId = invitees.Count == 1
             ? invitees[0]
             : GetPeerAuthorId(chatId, Hub.AccountUI.OwnAccount.Value.Id);
@@ -215,6 +215,11 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         Release(chatId);
         return StopCallMedia(chatId);
     }
+
+    public Task EndCallMedia(ChatId chatId)
+        // A peer call ends when either party leaves, so it takes the other's media along. Any other call ends
+        // only once its last party has hung up, so whatever media this client still runs there is its own.
+        => chatId.Kind == ChatKind.Peer ? StopCallMedia(chatId) : Task.CompletedTask;
 
     public async Task StopCallMedia(ChatId chatId)
     {

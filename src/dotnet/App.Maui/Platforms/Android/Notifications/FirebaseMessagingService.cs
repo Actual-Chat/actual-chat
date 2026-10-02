@@ -241,7 +241,7 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
     {
         // A foreground ring lives in the in-app call UI/ringer, not a system notification, so a
         // cancel/decline/timeout dismissal must reach CallScreensUI directly — the reactive
-        // live-session computed (NoCache) would otherwise clear the ring only on its slow self-heal.
+        // call computed (NoCache) would otherwise clear the ring only on its slow self-heal.
         if (!(AndroidUtils.IsAppForeground() ?? false) || !TryGetScopedServices(out _))
             return;
 

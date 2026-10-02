@@ -124,7 +124,7 @@ public partial class CallScreensUI
     private async Task StopReplacedCallMedia(ChatId chatId)
     {
         try {
-            await CallUI.StopCallMedia(chatId).ConfigureAwait(true);
+            await CallUI.EndCallMedia(chatId).ConfigureAwait(true);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Stopping the replaced call's media failed for chat #{ChatId}", chatId);
@@ -148,8 +148,10 @@ public partial class CallScreensUI
     private async Task CloseCall(ActiveCall call, bool mustOpenChat)
     {
         try {
-            if (call.Phase == CallPhase.Active)
-                await CallUI.HangUp(call.ChatId).ConfigureAwait(true);
+            if (call.Phase == CallPhase.Active) {
+                CallUI.Release(call.ChatId);
+                await CallUI.EndCallMedia(call.ChatId).ConfigureAwait(true);
+            }
             if (mustOpenChat)
                 await OpenChat(call.ChatId).ConfigureAwait(true);
         }

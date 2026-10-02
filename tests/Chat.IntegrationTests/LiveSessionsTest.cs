@@ -741,17 +741,15 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.StartCall(
             chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
 
-        // assert — a fresh call is Dialing: the session exists (Call tab works) but no live conversation
-        // is surfaced yet, so SessionStartedAt stays null until someone answers.
-        var state = await backend.GetState(chatId, default);
-        state.Should().NotBeNull();
-        state!.Kind.Should().Be(LiveSessionKind.Call);
-        state.SessionStartedAt.Should().BeNull();
+        // assert — a fresh call exists only as itself: no session until someone answers
+        (await backend.GetState(chatId, default)).Should().BeNull();
+        (await backend.GetCall(chatId, default))!.IsAnswered.Should().BeFalse();
         // the Call tab still gets a projection while dialing, with the ring visible and no conversation
         var live = await backend.Get(chatId, default);
         live.Should().NotBeNull();
-        live!.Conversation.Should().BeNull();
-        live.Invites.Should().ContainSingle(i =>
+        live!.Kind.Should().Be(LiveSessionKind.Call);
+        live.Conversation.Should().BeNull();
+        (await backend.ListInvites(chatId, default)).Should().ContainSingle(i =>
             i.InviteeId == aliceAuthor.Id && i.Status == CallInviteStatus.Ringing);
     }
 
@@ -781,8 +779,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // self-heal is fire-and-forget, and GetConsolidatedParticipants needs its own ~200ms to settle.
         var status = CallInviteStatus.New;
         for (var attempt = 0; attempt < 30 && status != CallInviteStatus.Active; attempt++) {
-            var polled = await backend.Get(chatId, default);
-            status = polled!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status;
+            status = (await backend.ListInvites(chatId, default)).Single(i => i.InviteeId == aliceAuthor.Id).Status;
             if (status != CallInviteStatus.Active)
                 await Task.Delay(100);
         }
@@ -804,14 +801,9 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // waiting out the real 3s delay - see AcceptCall's scheduling call for context.
 
         // arrange
+        // A peer chat: elsewhere a call goes on until its last party leaves
         await using var bob = AppHost.NewBlazorTester(Out);
-        await using var alice = AppHost.NewBlazorTester(Out);
-        await bob.SignInAsUniqueBob();
-        await alice.SignInAsUniqueAlice();
-        var (chatId, inviteId) = await bob.CreateChat(false);
-        await alice.JoinChat(chatId, inviteId);
-        var bobAuthor = await bob.GetOwnAuthor(chatId);
-        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var (chatId, bobAuthor, aliceAuthor) = await NewTwoPartyCall(bob);
         var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
 
@@ -821,7 +813,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.EnforceCallConnectGrace(chatId);
 
         // assert - the grace window found only Bob genuinely present, so the call closes
-        (await backend.GetState(chatId, default)).Should().BeNull();
+        (await backend.GetCall(chatId, default)).Should().BeNull();
     }
 
     [Fact]
@@ -855,7 +847,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     [Fact]
     public async Task AcceptShouldLatchDialingCallToConnected()
     {
-        // arrange — Bob dials Alice; while ringing the session is Dialing (no block: SessionStartedAt null)
+        // arrange — Bob dials Alice; while ringing there is no session, so no block
         await using var bob = AppHost.NewBlazorTester(Out);
         await using var alice = AppHost.NewBlazorTester(Out);
         await bob.SignInAsUniqueBob();
@@ -869,8 +861,8 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.StartCall(
             chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
 
-        // assert — dialing: no live conversation is surfaced (SessionStartedAt gates every block path)
-        (await backend.GetState(chatId, default))!.SessionStartedAt.Should().BeNull();
+        // assert — dialing: no live conversation is surfaced
+        (await backend.GetState(chatId, default)).Should().BeNull();
 
         // act — Alice answers
         var chatEnd = (await chatsBackend.GetLidRange(chatId, false, default)).End;
@@ -878,7 +870,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
 
         var chatEndAfter = (await chatsBackend.GetLidRange(chatId, false, default)).End;
 
-        // assert — latched: Connected, block surfaced (SessionStartedAt set), VisibleStartLid = answer's chat end
+        // assert — the answer starts the call's session: block surfaced, VisibleStartLid = answer's chat end
         var state = await backend.GetState(chatId, default);
         state!.Kind.Should().Be(LiveSessionKind.Call);
         state.SessionStartedAt.Should().NotBeNull();
@@ -905,20 +897,20 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
 
         // the ring is published under this id while dialing; it must stay put for the whole call
-        var dialing = await backend.GetState(chatId, default);
-        var callId = dialing!.CallId;
-        var dialingBlockId = dialing.ConversationId;
-        callId.Should().NotBeNull();
+        var callId = (await backend.GetCall(chatId, default))!.Id;
+        (await backend.GetState(chatId, default)).Should().BeNull("a ringing call has no session yet");
 
         // act — a chat entry lands during the ring, advancing the chat end, then Alice answers
         await bob.CreateTextEntry(chatId, "grows the chat end during the ring");
+        var chatEnd = (await bob.AppServices.GetRequiredService<IChatsBackend>()
+            .GetLidRange(chatId, false, default)).End;
         await backend.AcceptCall(chatId, aliceAuthor.Id, default);
 
-        // assert — the block id moved to the answer point, but the ring id did NOT (so dismissals still match)
+        // assert — the block starts at the answer, and the ring id did NOT move (so dismissals still match)
+        (await backend.GetCall(chatId, default))!.Id.Should()
+            .Be(callId, "the call id is answer-stable so DismissRing matches NotifyCall");
         var connected = await backend.GetState(chatId, default);
-        connected!.CallId.Should().Be(callId, "the call id is latch-stable so DismissRing matches NotifyCall");
-        connected.ConversationId.Should()
-            .NotBe(dialingBlockId, "the block id legitimately moves to the answer's chat end");
+        connected!.EffectiveVisibleStartLid.Should().Be(chatEnd, "the block starts at the answer's chat end");
     }
 
     [Fact]
@@ -945,9 +937,10 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.DeclineCall(chatId, aliceAuthor.Id, default);
 
         // assert — Alice's invite is declined but the call lives on for Carol
-        var live = await backend.Get(chatId, default);
-        live!.Invites.Should().Contain(i => i.InviteeId == aliceAuthor.Id && i.Status == CallInviteStatus.Declined);
-        live.Invites.Should().Contain(i => i.InviteeId == carolAuthor.Id && i.Status == CallInviteStatus.Ringing);
+        (await backend.ListInvites(chatId, default))
+            .Should().Contain(i => i.InviteeId == aliceAuthor.Id && i.Status == CallInviteStatus.Declined);
+        (await backend.ListInvites(chatId, default))
+            .Should().Contain(i => i.InviteeId == carolAuthor.Id && i.Status == CallInviteStatus.Ringing);
     }
 
     [Fact]
@@ -1006,8 +999,8 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // assert — she was never rung, and Bob is told rather than left dialing
         var callState = await backend.GetCallState(chatId, default);
         callState!.Status.Should().Be(CallStatus.Busy);
-        (await backend.GetState(chatId, default)).Should().BeNull("a call nobody can answer is closed at once");
-        (await backend.GetState(busyChatId, default)).Should().NotBeNull("Alice's own call is untouched");
+        (await backend.GetCall(chatId, default)).Should().BeNull("a call nobody can answer is closed at once");
+        (await backend.GetCall(busyChatId, default)).Should().NotBeNull("Alice's own call is untouched");
     }
 
     [Fact]
@@ -1041,9 +1034,10 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
             chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id, carolAuthor!.Id }.ToApiArray(), false, default);
 
         // assert
-        var live = await backend.Get(chatId, default);
-        live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Busy);
-        live.Invites.Single(i => i.InviteeId == carolAuthor.Id).Status.Should().Be(CallInviteStatus.Ringing);
+        (await backend.ListInvites(chatId, default)).Single(i => i.InviteeId == aliceAuthor.Id)
+            .Status.Should().Be(CallInviteStatus.Busy);
+        (await backend.ListInvites(chatId, default)).Single(i => i.InviteeId == carolAuthor.Id)
+            .Status.Should().Be(CallInviteStatus.Ringing);
     }
 
     [Fact]
@@ -1072,8 +1066,8 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
             otherChatId, carolOtherAuthor!.Id, new[] { aliceOtherAuthor!.Id }.ToApiArray(), false, default);
 
         // assert — the first ring wins, so every device agrees which call is hers
-        var firstLive = await backend.Get(chatId, default);
-        firstLive!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Ringing);
+        (await backend.ListInvites(chatId, default)).Single(i => i.InviteeId == aliceAuthor.Id)
+            .Status.Should().Be(CallInviteStatus.Ringing);
         (await backend.GetCallState(otherChatId, default))!.Status.Should().Be(CallStatus.Busy);
     }
 
@@ -1104,8 +1098,8 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
             otherChatId, carolOtherAuthor!.Id, new[] { aliceOtherAuthor!.Id }.ToApiArray(), false, default);
 
         // assert — the claim was released with the call, so this one rings
-        var live = await backend.Get(otherChatId, default);
-        live!.Invites.Single(i => i.InviteeId == aliceOtherAuthor!.Id).Status.Should().Be(CallInviteStatus.Ringing);
+        (await backend.ListInvites(otherChatId, default)).Single(i => i.InviteeId == aliceOtherAuthor!.Id)
+            .Status.Should().Be(CallInviteStatus.Ringing);
     }
 
     [Fact]
@@ -1274,21 +1268,21 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
 
         // act — the ring is fresh; repeated observation must not trip the no-fresh-ring finalizer
         for (var i = 0; i < 3; i++) {
-            var state = await backend.GetState(chatId, default);
-            state.Should().NotBeNull("a still-ringing dialing call must stay alive");
-            state!.IsDialing.Should().BeTrue();
+            var call = await backend.GetCall(chatId, default);
+            call.Should().NotBeNull("a still-ringing dialing call must stay alive");
+            call!.IsAnswered.Should().BeFalse();
         }
         (await backend.GetCallState(chatId, default))!.Status.Should()
             .Be(CallStatus.Dialing, "nobody has failed to answer yet");
     }
 
     [Fact]
-    public async Task CallStateShouldInvalidateWheneverStateDoes()
+    public async Task CallStateShouldInvalidateWheneverTheCallDoes()
     {
         // Regression test for the root cause behind 9e0b87186c: GetCallState used to invalidate
-        // completely independently of GetState/Kind, so an RPC client's two subscriptions could
-        // observe them out of order. GetCallState now depends on GetState, so any invalidation of
-        // the session state also invalidates the call state - even one that never touches CallState.
+        // completely independently of the call, so an RPC client's two subscriptions could observe them
+        // out of order. GetCallState depends on GetCall, so any invalidation of the call also
+        // invalidates the call state - even one that never touches CallState.
 
         // arrange
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -1299,16 +1293,17 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await alice.JoinChat(chatId, inviteId);
         var bobAuthor = await bob.GetOwnAuthor(chatId);
         var aliceAuthor = await alice.GetOwnAuthor(chatId);
-        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
 
         var cCallState = await Computed.Capture(() => backend.GetCallState(chatId, default));
         cCallState.Value!.Status.Should().Be(CallStatus.Dialing);
 
-        // act - SetRules never touches CallState at all, only LiveSessionState
-        await backend.SetRules(chatId, new SessionRules { VoiceModeOverride = Users.VoiceMode.JustText }, default);
+        // act - recording an outcome never touches CallState at all, only the call
+        var call = await backend.GetCall(chatId, default);
+        await backend.SetOutcome(chatId, call!, CallOutcome.Declined);
 
-        // assert - GetCallState still invalidates, because it now depends on GetState
+        // assert - GetCallState still invalidates, because it depends on GetCall
         await cCallState.WhenInvalidated(default).WaitAsync(TimeSpan.FromSeconds(1));
     }
 
@@ -1355,8 +1350,8 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.DeclineCall(chatId, aliceAuthor.Id, default);
 
         // assert - no-op, stays Accepted (today's behavior, must not regress)
-        var live = await backend.Get(chatId, default);
-        live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Accepted);
+        (await backend.ListInvites(chatId, default)).Single(i => i.InviteeId == aliceAuthor.Id)
+            .Status.Should().Be(CallInviteStatus.Accepted);
     }
 
     [Fact]
@@ -1367,21 +1362,16 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // Kept, the call and the caller's claim outlive the hang-up and the client rejoins it (#4984).
 
         // arrange
+        // A peer chat: elsewhere a call goes on until its last party leaves
         await using var bob = AppHost.NewBlazorTester(Out);
-        await using var alice = AppHost.NewBlazorTester(Out);
-        await bob.SignInAsUniqueBob();
-        await alice.SignInAsUniqueAlice();
-        var (chatId, inviteId) = await bob.CreateChat(false);
-        await alice.JoinChat(chatId, inviteId);
-        var bobAuthor = await bob.GetOwnAuthor(chatId);
-        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var (chatId, bobAuthor, aliceAuthor) = await NewTwoPartyCall(bob);
         var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
         var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
         await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
         await backend.AcceptCall(chatId, aliceAuthor.Id, default);
         await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, true, default);
-        var state = await backend.GetState(chatId, default);
-        await backend.SyncCallParticipantActivity(chatId, state!, default);
+        var call = await backend.GetCall(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, call!, default);
         (await backend.GetCallState(chatId, default))!.Status.Should().Be(CallStatus.Active);
 
         // act
@@ -1395,15 +1385,15 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // act - EnforceCallLeaveGrace is internal so the test runs the check instead of waiting it out
         await backend.EnforceCallLeaveGrace(chatId);
 
-        // assert
-        await TestWait.When(async ct => (await backend.GetState(chatId, ct)).Should().BeNull());
+        // assert - the session waits for Alice's client to stop recording, so it's the call that must be gone
+        await TestWait.When(async ct => (await backend.GetCall(chatId, ct)).Should().BeNull());
     }
 
     [Fact]
-    public async Task StreamBeforeAcceptShouldLatchDialingCallToConnected()
+    public async Task StreamsBeforeAcceptShouldStartAnAmbientSessionAndKeepTheRing()
     {
-        // A dialing call reaching the 2-party stream latch (both parties stream before a formal Accept)
-        // must become Connected - never left as Dialing with SessionStartedAt set (invariant).
+        // Both parties streaming before a formal Accept is a voice chat, not an answer: the session they
+        // start is an ambient one, and the ring goes on - only an Accept answers a call.
 
         // arrange
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -1417,22 +1407,21 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.StartCall(
             chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
-        var dialingState = await backend.GetState(chatId, default);
-        dialingState!.Kind.Should().Be(LiveSessionKind.Call);
-        dialingState.SessionStartedAt.Should().BeNull();
+        (await backend.GetState(chatId, default)).Should().BeNull("a ringing call has no session");
 
         // act — both parties stream (no explicit AcceptCall)
         await backend.OnStreamRegistered(chatId, bobAuthor.Id, null, false, true, default);
         await backend.OnStreamRegistered(chatId, aliceAuthor.Id, null, false, true, default);
 
-        // assert — invariant holds: latched → Connected, not Dialing-with-SessionStartedAt
+        // assert
         var state = await backend.GetState(chatId, default);
         state!.SessionStartedAt.Should().NotBeNull();
-        state.Kind.Should().Be(LiveSessionKind.Call);
+        state.Kind.Should().Be(LiveSessionKind.Ambient);
+        (await backend.GetCall(chatId, default))!.IsAnswered.Should().BeFalse();
     }
 
     [Fact]
-    public async Task StartCallShouldPromoteExistingSession()
+    public async Task StartCallShouldLeaveExistingSessionAlone()
     {
         // arrange — an ambient live session is already running when a call starts
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -1450,16 +1439,20 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // act — Bob rings Alice while that session is live
         await backend.StartCall(chatId, bobAuthor.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
 
-        // assert — promoting an unlatched (solo) ambient session gives a Dialing call: ring/close paths
-        // apply (via IsCall) but no block is surfaced until someone answers.
+        // assert — the call rings on its own; the session is what it was until someone answers
         var state = await backend.GetState(chatId, default);
-        state!.Kind.Should().Be(LiveSessionKind.Call);
+        state!.Kind.Should().Be(LiveSessionKind.Ambient);
         state.SessionStartedAt.Should().BeNull();
         state.Host.Should().Be(bobAuthor.Id);
+        var call = await backend.GetCall(chatId, default);
+        call!.IsAnswered.Should().BeFalse();
+        var live = await backend.Get(chatId, default);
+        live!.Kind.Should().Be(LiveSessionKind.Call, "the ring is what the chat shows");
+        live.Conversation.Should().BeNull("an unlatched session has no block to show");
     }
 
     [Fact]
-    public async Task StartCallOnLatchedSessionShouldStayConnected()
+    public async Task StartCallIntoLatchedSessionShouldRingWithoutTouchingIt()
     {
         // arrange — a 2-party ambient session is already latched (block visible) when a call starts
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -1481,12 +1474,12 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.StartCall(
             chatId, bobAuthor.Id, new[] { AuthorId.New(chatId, 777_055) }.ToApiArray(), false, default);
 
-        // assert — monotonic: it stays a connected Call with its latch preserved (block stays)
+        // assert — the session and its block are as they were, and the call rings like any other (#5000)
         var state = await backend.GetState(chatId, default);
-        state!.Kind.Should().Be(LiveSessionKind.Call);
+        state!.Kind.Should().Be(LiveSessionKind.Ambient);
         state.SessionStartedAt.Should().Be(startedAt);
-        // an already-latched session isn't newly Dialing, so no CallState should be written for it
-        (await backend.GetCallState(chatId, default)).Should().BeNull();
+        (await backend.GetCall(chatId, default))!.IsAnswered.Should().BeFalse();
+        (await backend.GetCallState(chatId, default))!.Status.Should().Be(CallStatus.Dialing);
     }
 
     [Fact]
@@ -1748,9 +1741,9 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // act — Alice declines while Carol is still ringing, so the call is not abandoned
         await backend.DeclineCall(chatId, aliceAuthor.Id, default);
 
-        // assert — Carol is still ringing, so the call isn't abandoned and the state is never closed
-        var state = await backend.GetState(chatId, default);
-        state!.Outcome.Should().Be(CallOutcome.Declined);
+        // assert — Carol is still ringing, so the call isn't abandoned and is never closed
+        var call = await backend.GetCall(chatId, default);
+        call!.Outcome.Should().Be(CallOutcome.Declined);
     }
 
     [Fact]
@@ -1778,15 +1771,15 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.StartCall(
             chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id, carolAuthor!.Id }.ToApiArray(), false, default);
         await backend.DeclineCall(chatId, aliceAuthor.Id, default);
-        var declined = await backend.GetState(chatId, default);
+        var declined = await backend.GetCall(chatId, default);
         declined!.Outcome.Should().Be(CallOutcome.Declined);
 
         // act — Carol's ring times out: this is the exact write ExpireRings would make if it could
         await backend.SetOutcome(chatId, declined, CallOutcome.NoAnswer);
 
         // assert — the earlier decline still wins
-        var state = await backend.GetState(chatId, default);
-        state!.Outcome.Should().Be(CallOutcome.Declined);
+        var call = await backend.GetCall(chatId, default);
+        call!.Outcome.Should().Be(CallOutcome.Declined);
     }
 
     [Fact]
@@ -1801,8 +1794,8 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.StartCall(chatId, bobAuthor.Id, new[] { aliceAuthor.Id }.ToApiArray(), true, default);
 
         // assert
-        var state = await backend.GetState(chatId, default);
-        state!.HasVideo.Should().BeTrue();
+        var call = await backend.GetCall(chatId, default);
+        call!.HasVideo.Should().BeTrue();
     }
 
     [Fact]
@@ -1814,14 +1807,9 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
 
         // arrange - Bob records (stays live), Alice listens then drops. This isolates the new
         // shouldCloseAsCall path: the old emptiedByLeave wouldn't fire, but the >=2 check does.
+        // A peer chat: elsewhere a call goes on until its last party leaves
         await using var bob = AppHost.NewBlazorTester(Out);
-        await using var alice = AppHost.NewBlazorTester(Out);
-        await bob.SignInAsUniqueBob();
-        await alice.SignInAsUniqueAlice();
-        var (chatId, inviteId) = await bob.CreateChat(false);
-        await alice.JoinChat(chatId, inviteId);
-        var bobAuthor = await bob.GetOwnAuthor(chatId);
-        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var (chatId, bobAuthor, aliceAuthor) = await NewTwoPartyCall(bob);
         var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.StartCall(
             chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
@@ -1837,7 +1825,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
 
         // assert - the call closes on the leave-grace path since the fresh participant count drops
         // below 2, regardless of IsSessionLive (which would still be true due to Bob recording)
-        await TestWait.When(async ct => (await backend.GetState(chatId, ct)).Should().BeNull());
+        await TestWait.When(async ct => (await backend.GetCall(chatId, ct)).Should().BeNull());
     }
 
     [Fact]
@@ -1847,14 +1835,9 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // roster for a moment after a change - the hang-up must not count the leaver as still present.
 
         // arrange
+        // A peer chat: elsewhere a call goes on until its last party leaves
         await using var bob = AppHost.NewBlazorTester(Out);
-        await using var alice = AppHost.NewBlazorTester(Out);
-        await bob.SignInAsUniqueBob();
-        await alice.SignInAsUniqueAlice();
-        var (chatId, inviteId) = await bob.CreateChat(false);
-        await alice.JoinChat(chatId, inviteId);
-        var bobAuthor = await bob.GetOwnAuthor(chatId);
-        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var (chatId, bobAuthor, aliceAuthor) = await NewTwoPartyCall(bob);
         var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.StartCall(
             chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
@@ -1870,7 +1853,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
             chatId, aliceAuthor.Id, ParticipationKind.AudioListen, false, default);
 
         // assert
-        await TestWait.When(async ct => (await backend.GetState(chatId, ct)).Should().BeNull());
+        await TestWait.When(async ct => (await backend.GetCall(chatId, ct)).Should().BeNull());
     }
 
     [Fact]
@@ -1988,8 +1971,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.ExpireRings(chatId);
 
         // assert - the ring is missed, but the call stays open for a late answer (AnswerGrace)
-        var live = await backend.Get(chatId, default);
-        live!.Invites.Single().Status.Should().Be(CallInviteStatus.Missed);
+        (await backend.ListInvites(chatId, default)).Single().Status.Should().Be(CallInviteStatus.Missed);
         (await backend.GetCallState(chatId, default))?.Status.Should().NotBe(CallStatus.NoAnswer);
 
         // assert - once the grace is over, the call is fully abandoned (nobody ever answered), so
@@ -2027,8 +2009,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.AcceptCall(chatId, aliceAuthor.Id, default);
 
         // assert - the call connects, and the callee's claim, released with the missed ring, is back
-        var live = await backend.Get(chatId, default);
-        live!.Invites.Single().Status.Should().Be(CallInviteStatus.Accepted);
+        (await backend.ListInvites(chatId, default)).Single().Status.Should().Be(CallInviteStatus.Accepted);
         (await backend.GetState(chatId, default))!.SessionStartedAt.Should().NotBeNull();
         (await callsBackend.GetUserCall(aliceAuthor.UserId, default))!.Phase.Should().Be(CallPhase.Active);
         (await callsBackend.GetUserCall(bobAuthor.UserId, default))!.Phase.Should().Be(CallPhase.Active);
@@ -2068,8 +2049,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
 
         // assert
         await accept.Should().ThrowAsync<InvalidOperationException>();
-        var live = await backend.Get(chatId, default);
-        live!.Invites.Single().Status.Should().Be(CallInviteStatus.Missed);
+        (await backend.ListInvites(chatId, default)).Single().Status.Should().Be(CallInviteStatus.Missed);
         (await callsBackend.GetUserCall(aliceAuthor.UserId, default))!.ChatId.Should().Be(otherChatId);
     }
 
@@ -2145,11 +2125,29 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     [Theory]
     [InlineData("bob,alice", false)]
     [InlineData("bob", true)]
-    [InlineData("bob,carol", true)]
-    public async Task ConnectedCallShouldHoldOnlyWhileTwoOfItsPartiesListen(string listeners, bool mustClose)
+    public async Task ConnectedPeerCallShouldHoldOnlyWhileBothPartiesListen(string listeners, bool mustClose)
     {
-        // arrange - a connected call where nobody records: both mics idle, or denied. Carol is in the
-        // chat but not in the call
+        // arrange - a connected call where nobody records: both mics idle, or denied
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewTwoPartyCall(tester);
+        var authors = new Dictionary<string, AuthorId> { ["bob"] = bob.Id, ["alice"] = alice.Id };
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+
+        // act - the caller's Record registration from the answer turns into listening
+        foreach (var name in listeners.Split(','))
+            await backend.SetParticipation(chatId, authors[name], ParticipationKind.AudioListen, true, default);
+
+        // assert - SetParticipation re-evaluates liveness under its lock, so the verdict is already in
+        var state = await backend.GetState(chatId, default);
+        state!.IsClosing.Should().Be(mustClose);
+    }
+
+    [Fact]
+    public async Task GroupCallShouldGoOnUntilItsLastPartyLeaves()
+    {
+        // arrange - Carol is in the chat, listening, but not in the call
         await using var bob = AppHost.NewBlazorTester(Out);
         await using var alice = AppHost.NewBlazorTester(Out);
         await using var carol = AppHost.NewBlazorTester(Out);
@@ -2159,22 +2157,28 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         var (chatId, inviteId) = await bob.CreateChat(false);
         await alice.JoinChat(chatId, inviteId);
         await carol.JoinChat(chatId, inviteId);
-        var authors = new Dictionary<string, AuthorId> {
-            ["bob"] = (await bob.GetOwnAuthor(chatId))!.Id,
-            ["alice"] = (await alice.GetOwnAuthor(chatId))!.Id,
-            ["carol"] = (await carol.GetOwnAuthor(chatId))!.Id,
-        };
-        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
-        await backend.StartCall(chatId, authors["bob"], new[] { authors["alice"] }.ToApiArray(), false, default);
-        await backend.AcceptCall(chatId, authors["alice"], default);
+        var bobId = (await bob.GetOwnAuthor(chatId))!.Id;
+        var aliceId = (await alice.GetOwnAuthor(chatId))!.Id;
+        var carolId = (await carol.GetOwnAuthor(chatId))!.Id;
+        var backend = (LiveSessionsBackend)bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobId, new[] { aliceId }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, aliceId, default);
+        await backend.SetParticipation(chatId, bobId, ParticipationKind.AudioListen, true, default);
+        await backend.SetParticipation(chatId, aliceId, ParticipationKind.AudioListen, true, default);
+        await backend.SetParticipation(chatId, carolId, ParticipationKind.AudioListen, true, default);
 
-        // act - the caller's Record registration from StartCall turns into listening
-        foreach (var name in listeners.Split(','))
-            await backend.SetParticipation(chatId, authors[name], ParticipationKind.AudioListen, true, default);
+        // act - Alice leaves, Bob stays on alone
+        await backend.SetParticipation(chatId, aliceId, ParticipationKind.AudioListen, false, default);
+        await backend.EnforceCallLeaveGrace(chatId);
 
-        // assert - SetParticipation re-evaluates liveness under its lock, so the verdict is already in
-        var state = await backend.GetState(chatId, default);
-        state!.IsClosing.Should().Be(mustClose);
+        // assert - nobody is left on a call that ended under them: it goes on while Bob is in it
+        (await backend.GetCall(chatId, default)).Should().NotBeNull();
+
+        // act - Bob, the last party, leaves; Carol listening isn't one
+        await backend.SetParticipation(chatId, bobId, ParticipationKind.AudioListen, false, default);
+
+        // assert
+        (await backend.GetCall(chatId, default)).Should().BeNull();
     }
 
     [Fact]
@@ -2244,32 +2248,32 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     {
         // arrange - the claim's stored phase is Ringing throughout: only the invite may decide
         var (claim, _, calleeId) = NewPeerCallClaims();
-        var live = NewCallSession(claim.ChatId, isConnected: inviteStatus != CallInviteStatus.Ringing) with {
-            Invites = [new CallInvite { InviteeId = calleeId, Status = inviteStatus }],
-        };
+        var call = NewCall(claim.ChatId, claim.PeerId!, isAnswered: inviteStatus != CallInviteStatus.Ringing);
+        var live = NewCallSession(claim.ChatId, isConnected: call.IsAnswered);
+        var invites = new[] { new CallInvite { InviteeId = calleeId, Status = inviteStatus } }.ToApiArray();
 
         // act
-        var phase = CallsBackend.GetPhase(claim, live, callState: null);
+        var phase = CallsBackend.GetPhase(claim, call, live, invites);
 
         // assert
         phase.Should().Be(expected);
     }
 
     [Theory]
-    [InlineData(CallStatus.Dialing, false, CallPhase.Dialing)]
-    [InlineData(CallStatus.Connecting, true, CallPhase.Active)]
-    [InlineData(CallStatus.Active, true, CallPhase.Active)]
-    [InlineData(CallStatus.NoAnswer, false, null)]
-    [InlineData(CallStatus.Declined, false, null)]
-    public void CallerPhaseShouldFollowTheCallState(CallStatus status, bool isConnected, CallPhase? expected)
+    [InlineData(false, CallOutcome.None, CallPhase.Dialing)]
+    [InlineData(true, CallOutcome.None, CallPhase.Active)]
+    [InlineData(false, CallOutcome.NoAnswer, null)]
+    [InlineData(false, CallOutcome.Declined, null)]
+    [InlineData(false, CallOutcome.Canceled, null)]
+    public void CallerPhaseShouldFollowTheCall(bool isAnswered, CallOutcome outcome, CallPhase? expected)
     {
-        // arrange
+        // arrange - the caller isn't present in the session: their own call is theirs regardless
         var (_, claim, _) = NewPeerCallClaims();
-        var live = NewCallSession(claim.ChatId, isConnected);
-        var callState = new CallState { CallerId = claim.AuthorId, Status = status };
+        var call = NewCall(claim.ChatId, claim.AuthorId, isAnswered) with { Outcome = outcome };
+        var live = NewCallSession(claim.ChatId, isAnswered);
 
         // act
-        var phase = CallsBackend.GetPhase(claim, live, callState);
+        var phase = CallsBackend.GetPhase(claim, call, live, default);
 
         // assert
         phase.Should().Be(expected);
@@ -2395,22 +2399,22 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // ExpireRingsRecomputesStatusToNoAnswer's real ring-timeout wait, just a much shorter window).
         await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, true, default);
         await WaitForParticipantPresence(backend, chatId, aliceAuthor.Id, isPresent: true);
-        var state = await backend.GetState(chatId, default);
-        await backend.SyncCallParticipantActivity(chatId, state!, default);
+        var call = await backend.GetCall(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, call!, default);
 
         // assert - promoted straight to Active, not stuck at Accepted
-        var live = await backend.Get(chatId, default);
-        live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Active);
+        (await backend.ListInvites(chatId, default)).Single(i => i.InviteeId == aliceAuthor.Id)
+            .Status.Should().Be(CallInviteStatus.Active);
 
         // act - Alice's presence deactivates
         await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, false, default);
         await WaitForParticipantPresence(backend, chatId, aliceAuthor.Id, isPresent: false);
-        state = await backend.GetState(chatId, default);
-        await backend.SyncCallParticipantActivity(chatId, state!, default);
+        call = await backend.GetCall(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, call!, default);
 
         // assert - Ended, not reverted to Accepted or left at Active
-        live = await backend.Get(chatId, default);
-        live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Ended);
+        (await backend.ListInvites(chatId, default)).Single(i => i.InviteeId == aliceAuthor.Id)
+            .Status.Should().Be(CallInviteStatus.Ended);
     }
 
     [Fact]
@@ -2435,22 +2439,22 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.SetParticipation(chatId, boosterId, ParticipationKind.Record, true, default);
         await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, true, default);
         await WaitForParticipantPresence(backend, chatId, aliceAuthor.Id, isPresent: true);
-        var state = await backend.GetState(chatId, default);
-        await backend.SyncCallParticipantActivity(chatId, state!, default);
+        var call = await backend.GetCall(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, call!, default);
         await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, false, default);
         await WaitForParticipantPresence(backend, chatId, aliceAuthor.Id, isPresent: false);
-        state = await backend.GetState(chatId, default);
-        await backend.SyncCallParticipantActivity(chatId, state!, default);
+        call = await backend.GetCall(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, call!, default);
 
         // act - Alice's presence somehow comes back (e.g. a stray late heartbeat)
         await backend.SetParticipation(chatId, aliceAuthor.Id, ParticipationKind.Record, true, default);
         await WaitForParticipantPresence(backend, chatId, aliceAuthor.Id, isPresent: true);
-        state = await backend.GetState(chatId, default);
-        await backend.SyncCallParticipantActivity(chatId, state!, default);
+        call = await backend.GetCall(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, call!, default);
 
         // assert - stays Ended, not resurrected to Active
-        var live = await backend.Get(chatId, default);
-        live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Ended);
+        (await backend.ListInvites(chatId, default)).Single(i => i.InviteeId == aliceAuthor.Id)
+            .Status.Should().Be(CallInviteStatus.Ended);
     }
 
     [Fact]
@@ -2475,8 +2479,8 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
 
         // act - nobody has answered yet; drive the sync directly, as GetState's self-heal would
-        var state = await backend.GetState(chatId, default);
-        await backend.SyncCallParticipantActivity(chatId, state!, default);
+        var call = await backend.GetCall(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, call!, default);
 
         // assert - still Dialing, not prematurely Ended
         var callState = await backend.GetCallState(chatId, default);
@@ -2511,8 +2515,8 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         // nobody has answered Bob's ring yet
         await backend.SetParticipation(chatId, carolAuthor!.Id, ParticipationKind.Record, true, default);
         await WaitForParticipantPresence(backend, chatId, carolAuthor.Id, isPresent: true);
-        var state = await backend.GetState(chatId, default);
-        await backend.SyncCallParticipantActivity(chatId, state!, default);
+        var call = await backend.GetCall(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, call!, default);
 
         // assert - still Dialing: Carol's unrelated presence must not satisfy the roster-scoped gate
         var callState = await backend.GetCallState(chatId, default);
@@ -2543,36 +2547,34 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.SetParticipation(chatId, aliceAuthor!.Id, ParticipationKind.AudioListen, true, default);
         await WaitForParticipantPresence(backend, chatId, aliceAuthor.Id, isPresent: true);
 
-        // act - Bob rings Alice, then a presence-sync tick runs (as GetState's self-heal would). Wait
-        // for Bob's own presence (registered by StartCall's EnsureParticipant) to clear
-        // GetConsolidatedParticipants' ConsolidationDelay first - otherwise callRosterFreshCount would
-        // read < 2 regardless of the fix under test, making the assertion below a false positive.
-        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor.Id }.ToApiArray(), false, default);
+        // act - Bob, present too, rings Alice, then a presence-sync tick runs (as GetCall's self-heal
+        // would). Two of the call's roster are fresh, so only the unanswered-call gate keeps her ringing.
+        await backend.SetParticipation(chatId, bobAuthor!.Id, ParticipationKind.AudioListen, true, default);
         await WaitForParticipantPresence(backend, chatId, bobAuthor.Id, isPresent: true);
-        var state = await backend.GetState(chatId, default);
-        await backend.SyncCallParticipantActivity(chatId, state!, default);
+        await backend.StartCall(chatId, bobAuthor.Id, new[] { aliceAuthor.Id }.ToApiArray(), false, default);
+        var call = await backend.GetCall(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, call!, default);
 
         // assert - still Ringing: her pre-existing, unrelated presence must not silently answer for her
-        var live = await backend.Get(chatId, default);
-        live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Ringing);
+        (await backend.ListInvites(chatId, default)).Single(i => i.InviteeId == aliceAuthor.Id)
+            .Status.Should().Be(CallInviteStatus.Ringing);
 
         // act - Alice genuinely accepts
         await backend.AcceptCall(chatId, aliceAuthor.Id, default);
 
         // assert - accepting still works, and the call latches. Active passes too: a sync left queued on
         // this chat's lock by GetState's self-heal promotes a present invitee the moment the call latches.
-        var accepted = await backend.Get(chatId, default);
-        accepted!.Invites.Single(i => i.InviteeId == aliceAuthor.Id)
+        (await backend.ListInvites(chatId, default)).Single(i => i.InviteeId == aliceAuthor.Id)
             .Status.Should().BeOneOf(CallInviteStatus.Accepted, CallInviteStatus.Active);
         (await backend.GetState(chatId, default))!.SessionStartedAt.Should().NotBeNull();
 
         // act - a further presence-sync tick, now that the call has latched and she's still present
-        state = await backend.GetState(chatId, default);
-        await backend.SyncCallParticipantActivity(chatId, state!, default);
+        call = await backend.GetCall(chatId, default);
+        await backend.SyncCallParticipantActivity(chatId, call!, default);
 
         // assert - promoted to Active now that she's genuinely present on a latched call
-        var final = await backend.Get(chatId, default);
-        final!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status.Should().Be(CallInviteStatus.Active);
+        (await backend.ListInvites(chatId, default)).Single(i => i.InviteeId == aliceAuthor.Id)
+            .Status.Should().Be(CallInviteStatus.Active);
     }
 
     [Fact]
@@ -2632,8 +2634,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         var status = CallInviteStatus.New;
         for (var attempt = 0; attempt < 50 && status != CallInviteStatus.Active; attempt++) {
             await backend.GetState(chatId, default);
-            var live = await backend.Get(chatId, default);
-            status = live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id).Status;
+            status = (await backend.ListInvites(chatId, default)).Single(i => i.InviteeId == aliceAuthor.Id).Status;
             if (status != CallInviteStatus.Active)
                 await Task.Delay(100);
         }
@@ -2661,8 +2662,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.ConfirmRing(chatId, aliceAuthor.Id, RingAck.Ringing, default);
 
         // assert
-        var live = await backend.Get(chatId, default);
-        var invite = live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id);
+        var invite = (await backend.ListInvites(chatId, default)).Single(i => i.InviteeId == aliceAuthor.Id);
         invite.Ack.Should().Be(RingAck.Ringing);
         invite.AckAt.Should().NotBeNull();
 
@@ -2691,8 +2691,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.ConfirmRing(chatId, aliceAuthor.Id, RingAck.Busy, default);
 
         // assert - ignored, invite unchanged
-        var live = await backend.Get(chatId, default);
-        var invite = live!.Invites.Single(i => i.InviteeId == aliceAuthor.Id);
+        var invite = (await backend.ListInvites(chatId, default)).Single(i => i.InviteeId == aliceAuthor.Id);
         invite.Ack.Should().BeNull();
     }
 
@@ -2876,6 +2875,13 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         };
         return (callee, caller, calleeId);
     }
+
+    private static LiveCall NewCall(ChatId chatId, AuthorId callerId, bool isAnswered)
+        => new() {
+            Id = CallId.New(chatId, "1"),
+            CallerId = callerId,
+            AnsweredAt = isAnswered ? Moment.Now : null,
+        };
 
     private static LiveSession NewCallSession(ChatId chatId, bool isConnected)
         => new() {
