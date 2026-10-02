@@ -652,7 +652,6 @@ public partial class AudioStreamingBackend
         try {
             await foreach (var transcript in transcripts.Replay(cancellationToken).ConfigureAwait(false)) {
                 lastTranscript = transcript;
-                await LowerHandIfSpoken(chatId, authorId, beginsAt, transcript).ConfigureAwait(false);
                 if (transcriptionOptions.DetectLanguage && detectedLanguage is null)
                     detectedLanguage = TryApplyDetectedLanguage(transcript);
                 // NOTE(DF): in detect language mode, we should persist languages only on text entry finalization.
@@ -866,34 +865,6 @@ public partial class AudioStreamingBackend
                 ? ChatEntryLanguagesBackend_Change.Remove(entryLanguage)
                 : ChatEntryLanguagesBackend_Change.Upsert(entryLanguage);
             return Commander.Call(cmd, true, CancellationToken.None);
-        }
-    }
-
-    private async Task LowerHandIfSpoken(ChatId chatId, AuthorId authorId, Moment beginsAt, Transcript transcript)
-    {
-        // Whoever raised a hand and went on to say a few words has the floor, so the hand is stale.
-        var minWords = Constants.Call.MinWordsToLowerHand;
-        if (transcript.Text.CountWords() < minWords)
-            return;
-
-        try {
-            var live = await LiveSessionsBackend.Get(chatId, CancellationToken.None).ConfigureAwait(false);
-            var handRaisedAt = live?.Members.FirstOrDefault(m => m.AuthorId == authorId)?.HandRaisedAt;
-            if (handRaisedAt is not { } raisedAt)
-                return;
-
-            // Only words said after the hand went up count: it can be raised mid-sentence
-            var raisedAtOffset = (float)(raisedAt - beginsAt).TotalSeconds;
-            if (transcript.CountWordsSince(raisedAtOffset) < minWords)
-                return;
-
-            await LiveSessionsBackend
-                .SetHandRaised(chatId, authorId, false, CancellationToken.None)
-                .ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            // Must not end the transcript loop it's called from: the entry would never be finalized
-            Log.LogWarning(e, "Couldn't lower the hand of author #{AuthorId} who started speaking", authorId);
         }
     }
 

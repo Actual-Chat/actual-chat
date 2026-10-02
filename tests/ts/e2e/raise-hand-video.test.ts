@@ -187,16 +187,17 @@ describe('raise hand and reactions in a video call', () => {
         // act - Bob unmutes, and the fake mic starts talking
         await collapseVideoPanel(bob);
         await startRecording(bob);
-        // Off the record button: its tooltip covers the toast
-        await bob.mouse.move(640, 300);
 
-        // assert - nobody touched the hand, yet it's down on both sides and Bob is told so
-        await bob.getByText('Your hand was lowered').first().waitFor({ state: 'visible', timeout: 60_000 });
-        await bob.screenshot({ path: shot('10-lowered-after-speaking-own') });
-        await expect.poll(async () => aliceBadge.count(), { timeout: 15_000 }).toBe(0);
+        // assert - nobody touched the hand, yet it's down on both sides
+        await expect.poll(async () => aliceBadge.count(), { timeout: 60_000 }).toBe(0);
+        await alice.screenshot({ path: shot('10-lowered-after-speaking') });
+        await expect.poll(async () => bob.locator('.video-panel .video-hand-badge').count(), { timeout: 15_000 })
+            .toBe(0);
+        // It was Bob's own client that lowered it, so the "lowered by someone else" notice must not show
+        expect(await bob.getByText('Your hand was lowered').count()).toBe(0);
+        await bob.screenshot({ path: shot('11-lowered-after-speaking-own') });
         await expandVideoPanel(bob);
         await expect.poll(async () => reactButton.getAttribute('class'), { timeout: 10_000 })
             .not.toContain(' on');
-        await alice.screenshot({ path: shot('11-lowered-after-speaking') });
     }, 300_000);
 });
