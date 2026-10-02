@@ -66,23 +66,16 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     public virtual async Task<AuthorId?> GetCallPeerId(CancellationToken cancellationToken)
     {
         // The caller of a ring; for my own call, whoever I'm calling.
+        // A ring carries its caller, and a call placed to one invitee carries them from the gesture; a call
+        // to several has no one peer to show.
         var call = await CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
-        if (call is null)
-            return null;
-        // A ring carries its caller, and a call placed to one invitee carries them from the gesture.
-        if (call.PeerId is { } peerId)
-            return peerId;
-        if (call.Role == CallRole.Callee)
-            return null;
-
-        var live = await Hub.LiveSessionUI.Get(call.ChatId, cancellationToken).ConfigureAwait(false);
-        return live is { Invites.Count: > 0 } ? live.Invites[0].InviteeId : null;
+        return call?.PeerId;
     }
 
     [ComputeMethod]
     public virtual async Task<Moment?> GetOwnJoinedAt(ChatId chatId, CancellationToken cancellationToken)
     {
-        // The session itself can predate the call - an ambient one gets promoted - so a call timer
+        // The session itself can predate the call - a call can ring into an ongoing one - so a call timer
         // counts from my own join, not from LiveSession.StartedAt.
         var live = await Hub.LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (live is null)
@@ -186,7 +179,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         }
         catch (Exception e) {
             // Also where "there was no ring left" lands: the server decides that under its change
-            // lock, and it's the only reading of it that can't race the session it came from.
+            // lock, and it's the only reading of it that can't race the call it came from.
             Log.LogWarning(e, "AcceptCall failed for chat #{ChatId}", chatId);
             if (wasInCall)
                 return;

@@ -100,47 +100,51 @@ public class CallsBackend : ShardComputeService, ICallsBackend
 
     // Private methods
 
-    // Null when the chat's live session no longer backs the claim. The phase stored with the claim
-    // is only its initial one, and holds only for ClaimGrace, before the session exists.
+    // Null when the chat's call no longer backs the claim. The phase stored with the claim is only its
+    // initial one, and holds only for ClaimGrace, before the call exists.
     private async Task<CallPhase?> GetPhase(UserCall call, CancellationToken cancellationToken)
     {
-        var live = await LiveSessionsBackend.Get(call.ChatId, cancellationToken).ConfigureAwait(false);
-        var callState = call.Role == CallRole.Caller
-            ? await LiveSessionsBackend.GetCallState(call.ChatId, cancellationToken).ConfigureAwait(false)
-            : null;
-        var phase = GetPhase(call, live, callState);
+        var liveCall = await LiveSessionsBackend.GetCall(call.ChatId, cancellationToken).ConfigureAwait(false);
+        var live = liveCall is null
+            ? null
+            : await LiveSessionsBackend.Get(call.ChatId, cancellationToken).ConfigureAwait(false);
+        var invites = liveCall is null || call.Role != CallRole.Callee
+            ? default
+            : await LiveSessionsBackend.ListInvites(call.ChatId, cancellationToken).ConfigureAwait(false);
+        var phase = GetPhase(call, liveCall, live, invites);
         if (phase is null && Clocks.SystemClock.Now - call.SinceAt < ClaimGrace)
             return call.Phase;
 
         return phase;
     }
 
-    internal static CallPhase? GetPhase(UserCall call, LiveSession? live, CallState? callState)
+    internal static CallPhase? GetPhase(
+        UserCall call, LiveCall? liveCall, LiveSession? live, ApiArray<CallInvite> invites)
     {
-        if (live is not { Kind: LiveSessionKind.Call })
-            return null;
-        // The chat is in another call by now: the session there is, however live, isn't this claim's.
-        if (call.CallId is { } callId && live.CallId is { } liveCallId && callId != liveCallId)
+        if (liveCall is null)
             return null;
 
-        var isConnected = live.Conversation is not null;
-        var isPresent = live.Members.Any(m => m.AuthorId == call.AuthorId && (m.IsMicOpen || m.IsListening));
+        // The chat is in another call by now: that one, however live, isn't this claim's.
+        if (call.CallId is { } callId && callId != liveCall.Id)
+            return null;
+
+        var isPresent = live?.Members.Any(m => m.AuthorId == call.AuthorId && (m.IsMicOpen || m.IsListening))
+            ?? false;
         if (call.Role == CallRole.Callee) {
-            var invite = live.Invites.FirstOrDefault(i => i.InviteeId == call.AuthorId);
+            var invite = invites.FirstOrDefault(i => i.InviteeId == call.AuthorId);
             return invite?.Status switch {
                 CallInviteStatus.Ringing => CallPhase.Ringing,
                 CallInviteStatus.Accepted or CallInviteStatus.Active => CallPhase.Active,
-                _ => isConnected && isPresent ? CallPhase.Active : null,
+                _ => liveCall.IsAnswered && isPresent ? CallPhase.Active : null,
             };
         }
 
-        // A resolved status (no answer, declined, busy) outlives the call, so it backs nothing.
-        var isOwnCall = callState?.CallerId == call.AuthorId;
-        if (isOwnCall && callState!.Status == CallStatus.Dialing)
-            return CallPhase.Dialing;
+        // An outcome means the call is ending: it backs nothing, however long its record takes to go.
+        var isOwnCall = liveCall.CallerId == call.AuthorId;
+        if (!liveCall.IsAnswered)
+            return isOwnCall && liveCall.Outcome == CallOutcome.None ? CallPhase.Dialing : null;
 
-        var isAnswered = isOwnCall && callState!.Status is CallStatus.Connecting or CallStatus.Active;
-        return isConnected && (isAnswered || isPresent) ? CallPhase.Active : null;
+        return isOwnCall || isPresent ? CallPhase.Active : null;
     }
 
     // The claim was judged from a read that a TryClaim may have overtaken since: whatever is there now

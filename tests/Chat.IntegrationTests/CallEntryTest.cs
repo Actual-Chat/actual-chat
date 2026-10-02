@@ -164,7 +164,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
     [Fact]
     public async Task ACallConversationShouldExpandByDefaultOnlyWhileItIsShort()
     {
-        // A call is never summarized, so the tier the summary flow would have picked has to be
+        // A call gets no finalizing summary pass, so the tier that pass would have picked has to be
         // computed at materialization instead - from the same thresholds, so the two can't drift.
 
         // arrange
@@ -238,8 +238,8 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
     [Fact]
     public async Task CallerHangingUpAnAnsweredCallShouldBeEndedNotCanceled()
     {
-        // CancelCall is also the caller's hang-up, so a connected call reaches the close with
-        // Canceled recorded on it. The split is decided by SessionStartedAt, not by that outcome.
+        // CancelCall is also the caller's hang-up: on an answered call it is a party leaving, and an
+        // answer already took the place of any outcome the call could have had.
 
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
@@ -251,7 +251,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         await backend.AcceptCall(chatId, alice.Id, default);
         await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, true, default);
         await backend.CancelCall(chatId, bob.Id, default);
-        (await backend.GetState(chatId, default))!.Outcome.Should().Be(CallOutcome.Canceled);
+        (await backend.GetCall(chatId, default))?.Outcome.Should().Be(CallOutcome.None);
         await HangUp(backend, chatId, alice.Id);
 
         // assert
@@ -270,34 +270,25 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
 
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
-        var aliceAccount = await tester.SignInAsUniqueAlice();
-        var carolAccount = await tester.SignInAsNew("Carol");
-        await tester.SignInAsUniqueBob();
-        var (chatId, _) = await tester.CreateChat(false);
-        var authors = tester.AppServices.GetRequiredService<IAuthorsBackend>();
-        var bob = (await tester.GetOwnAuthor(chatId))!;
-        var alice = await authors.EnsureJoined(chatId, aliceAccount.Id, default);
-        var carol = await authors.EnsureJoined(chatId, carolAccount.Id, default);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
         var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
         await backend.AcceptCall(chatId, alice.Id, default);
-        // Nobody records, and Bob is the call's only party present - Carol is in the chat, not in the
-        // call - so FinalizeSession gets past its own liveness guard. Carol is the ghost to clear.
+        // Nobody records, and Bob is the only one of a peer call's two parties present, so FinalizeSession
+        // gets past its own liveness guard. Bob's listening is the ghost to clear.
         await backend.SetParticipation(chatId, bob.Id, ParticipationKind.AudioListen, true, default);
-        await backend.SetParticipation(chatId, carol.Id, ParticipationKind.AudioListen, true, default);
 
         // act
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
         await backend.FinalizeSession(chatId, cts.Token).SilentAwait(false);
 
-        // assert - the next call in this chat starts with its caller alone, not with the ghosts of
-        // the one that was torn down
-        await backend.StartCall(chatId, bob.Id, ApiArray<AuthorId>.Empty, false, default);
+        // assert - the call is over, and the chat is left without the ghosts of the session it started
         await TestWait.When(async ct => {
+            (await backend.GetCall(chatId, ct)).Should().BeNull();
             var participants = await backend.ListParticipants(chatId, ct);
-            participants.Should().Equal(bob.Id);
-        }, TimeSpan.FromSeconds(5));
+            participants.Should().BeEmpty();
+        }, TimeSpan.FromSeconds(2));
     }
 
     [Fact]
@@ -563,6 +554,9 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         // EnforceCallLeaveGrace is internal so the test runs that check now instead of waiting it out.
         await backend.SetParticipation(chatId, authorId, ParticipationKind.Record, false, default);
         await ((LiveSessionsBackend)backend).EnforceCallLeaveGrace(chatId);
+        // A peer call's end stops the other party's media on their client, and that closes the session.
+        foreach (var otherId in await backend.ListParticipants(chatId, default))
+            await backend.SetParticipation(chatId, otherId, ParticipationKind.Record, false, default);
     }
 
     private async Task RunCallTailFlow(IWebTester tester, ConversationId conversationId)

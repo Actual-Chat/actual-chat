@@ -80,7 +80,7 @@ The other three origin classes:
 |---|---|---|
 | Command invalidation block | `Invalidation.IsActive` | all `*Backend.OnXxx` handlers |
 | Completion handler | `context.Operation.AddCompletionHandler` + `Invalidation.Begin()` | `UserPresencesBackend.OnCheckIn` (`UserPresencesBackend.cs:64`) |
-| Self-invalidation (timer) | `Computed.GetCurrent().Invalidate(delay)` | `UserPresences.Get`, `LiveSessionsBackend.GetState`/`GetConsolidatedParticipants`/`GetConsolidatedHasRecorder`/`GetCallState`, `SharedLocationsBackend`, `LiveVideoBackend`, `LiveTime` |
+| Self-invalidation (timer) | `Computed.GetCurrent().Invalidate(delay)` | `UserPresences.Get`, `LiveSessionsBackend.GetState`/`GetCall`/`GetConsolidatedParticipants`/`GetConsolidatedHasRecorder`/`GetCallState`, `SharedLocationsBackend`, `LiveVideoBackend`, `LiveTime` |
 | Non-command direct invalidation | `using (Invalidation.Begin())` outside a handler | `ChatUI.EnableSearch` (`ChatUI.cs:250`), `LiveSessionsBackend.InvalidateState` |
 
 Once a root is invalidated, Fusion walks its **dependents** transitively. Every
@@ -387,11 +387,17 @@ copying elsewhere.
 
 ### 4.7 Live sessions / calls — `LiveSessionsBackend` (`LiveSessionsBackend.cs:1084-1120`)
 
-Three explicit invalidators: `InvalidateState`, `InvalidateGet`,
-`InvalidateListParticipants` / `InvalidateHasRecorder`, called from ~15 sites. On top
-of that, four compute methods **self-invalidate on a timer** (`GetState`,
+Five explicit invalidators: `InvalidateState`, `InvalidateCall`, `InvalidateInvites`,
+`InvalidateGet`, `InvalidateListParticipants` / `InvalidateHasRecorder`, called from ~15 sites. On top
+of that, five compute methods **self-invalidate on a timer** (`GetState`, `GetCall`,
 `GetConsolidatedParticipants`, `GetConsolidatedHasRecorder`, `GetCallState`) so stale
-state heals without an explicit signal. During an active call this is a continuous
+state heals without an explicit signal. A call lives in its own `LiveCall`, read through
+`GetCall`, and the session it answers into in `LiveSessionState`; `Get` - the projection
+clients read - depends on both, and `GetCallState` depends on `GetCall`, so the caller's
+status and the call it belongs to invalidate together. `ListInvites` depends on `GetCall` too,
+so a call's change reaches its invites; `InvalidateInvites` covers a write to an invite alone (a
+ring's ack, `SyncInviteeActivity`). `CallsBackend.GetUserCall` depends on `GetCall`, `Get` and
+`ListInvites` through `GetPhase`. During an active call this is a continuous
 background invalidation source, per chat, independent of user activity — but most of
 it now stops at the consolidating layer (§10) instead of reaching the conversation
 metadata cache. `InvalidateLiveView` is gone: `GetVisibleStartLid` /

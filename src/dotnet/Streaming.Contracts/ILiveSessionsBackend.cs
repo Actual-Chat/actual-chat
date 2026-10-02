@@ -26,6 +26,10 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     Task<bool> HasRecorder(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<CallState?> GetCallState(ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<LiveCall?> GetCall(ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<ApiArray<CallInvite>> ListInvites(ChatId chatId, CancellationToken cancellationToken);
 
     Task OnStreamRegistered(
         ChatId chatId,

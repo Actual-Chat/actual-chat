@@ -86,20 +86,8 @@ else {
 
 @if (isCall) {
     <div class="mt-4 flex flex-col gap-1">
-        <div class="font-bold">Invites</div>
-        @if (live!.Invites.Count == 0) {
-            <div class="text-gray-500">No invites.</div>
-        }
-        else {
-            @foreach (var invite in live.Invites) {
-                <div class="flex gap-2 items-center" @key="@($"invite-{invite.InviteeId.Value}")">
-                    <AuthorBadge AuthorId="@invite.InviteeId" ShowPresence="true"/>
-                    <span class="text-gray-600">@invite.Status</span>
-                </div>
-            }
-        }
-        <div class="font-bold mt-2">Members</div>
-        @if (live.Members.Count == 0) {
+        <div class="font-bold">Members</div>
+        @if (live!.Members.Count == 0) {
             <div class="text-gray-500">No members yet.</div>
         }
         else {
@@ -126,8 +114,8 @@ else {
     private string? _error;
 
     private IAuthors Authors => Hub.Authors;
-    private ChatListUI ChatListUI => Hub.ChatListUI;
     private CallUI CallUI => Hub.CallUI;
+    private CallScreensUI CallScreensUI => Hub.CallScreensUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
@@ -145,7 +133,7 @@ else {
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = _chatId;
 
-        var incoming = await FindIncomingCall(cancellationToken).ConfigureAwait(false);
+        var incoming = await CallScreensUI.GetIncomingCall(cancellationToken).ConfigureAwait(false);
         if (chatId is not { } id || id.Value.IsNullOrEmpty())
             return Model.None with { Incoming = incoming };
 
@@ -164,27 +152,6 @@ else {
             SelectedInvitees = selected,
             Incoming = incoming,
         };
-    }
-
-    // Scans the user's chats for a call that is currently ringing them, so the callee can
-    // answer without knowing the caller's chat id.
-    private async Task<IncomingCall?> FindIncomingCall(CancellationToken cancellationToken) {
-        var chats = await ChatListUI.ListAllUnordered(cancellationToken).ConfigureAwait(true);
-        foreach (var chatInfo in chats.Values) {
-            var chatId = chatInfo.Id;
-            var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(true);
-            if (live is not { Kind: LiveSessionKind.Call })
-                continue;
-
-            var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(true);
-            if (ownAuthor is null)
-                continue;
-
-            var invite = live.Invites.FirstOrDefault(i => i.InviteeId == ownAuthor.Id);
-            if (invite is { Status: CallInviteStatus.Ringing, CallId: { } callId })
-                return new IncomingCall(callId, live.Host, live.Rules.VideoAllowed);
-        }
-        return null;
     }
 
     private void ApplyChatIfSet() {
@@ -264,11 +231,6 @@ else {
     }
 
     // Nested types
-
-    public sealed record IncomingCall(CallId CallId, AuthorId Caller, bool HasVideo)
-    {
-        public ChatId ChatId => CallId.ChatId;
-    }
 
     public sealed record Model {
         public static readonly Model None = new();

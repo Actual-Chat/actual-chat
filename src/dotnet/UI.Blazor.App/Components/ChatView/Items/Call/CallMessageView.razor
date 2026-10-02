@@ -13,6 +13,10 @@
     // than no offer: the header button greys itself out on the same rule.
     if (isCallBack && !canCall)
         hint = null;
+    // An answered call is drawn here only when it rang into an ongoing session: no call card frames it,
+    // so its own span is the duration a card would have shown.
+    if (Entry is { Outcome: CallOutcome.Ended, EndsAt: { } endsAt })
+        hint = DateFormatter.FormatDuration(endsAt - Entry.BeginsAt);
     var startsAt = DateTimeConverter.ToLocalTime(Entry.BeginsAt);
     var now = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now.ToDateTime());
     var startedAt = L.Date_At_Format(

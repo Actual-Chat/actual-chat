@@ -35,12 +35,19 @@ reader placed, `icon-call-arrow-in` for one they received, and `icon-call-cross`
 own caller dropped. That is why `Declined` resolves per side even though both sides read the
 same words.
 
-`Ended` is the exception: its card is built from the conversation, which carries no caller,
-so both readers see the same neutral `icon-phone-call`. An arrow there would be a guess.
+`Ended` is drawn one of two ways, depending on the session the call had:
 
-Duration appears only on `Ended`, where the conversation supplies it. A ring lasts at most
-`Constants.Call.RingTimeout` (20s), so a duration on a failed call would be noise rather
-than information.
+- **A call that started its own session** gets the conversation card. It carries no caller, so
+  both readers see the same neutral `icon-phone-call`. An arrow there would be a guess.
+- **A call that rang into an ongoing session** leaves that session's block an ordinary one (see
+  [Incoming call flow](./incoming-call-flow.md#a-call-into-an-ongoing-session)). There is no call
+  card around it, so the entry gets the small card itself, with the arrow and the talk time.
+
+Duration appears only on `Ended`. A ring lasts at most `Constants.Call.RingTimeout` (20s), so a
+duration on a failed call would be noise rather than information. The entry carries its own: an
+answered call's entry spans the talk time, `BeginsAt` at the answer and `EndsAt` at the end, so
+`ChatEntry.Duration` is the call's length. The conversation card uses its own `StartsAt`/`EndsAt`
+instead, which give the same span.
 
 ## The model
 
@@ -83,30 +90,35 @@ deliberately different places.
 
 **Recording** happens in `LiveSessionsBackend` at each terminal response — `DeclineCall`,
 `CancelCall`, and `ExpireRings` when a ring times out — through `SetOutcome`, under
-`_changeLocks`. It is **first-writer-wins**: the earliest terminal response is the call's
-story, and nothing later may overwrite it, so a decline outranks a sibling invitee's ring
-expiring into `NoAnswer` afterwards.
+`_changeLocks`. The outcome lives on the chat's `LiveCall`, and it is **first-writer-wins**:
+the earliest terminal response is the call's story, and nothing later may overwrite it, so a
+decline outranks a sibling invitee's ring expiring into `NoAnswer` afterwards. An answer
+counts as a writer too: once `AnsweredAt` is set, no outcome is recorded, and once an outcome
+is set, `AcceptCall` refuses.
 
-**Writing** happens once, in `CloseAndMaterialize`, the single funnel every close path
-reaches — a hang-up, a ring expiry, the session finalizer behind the summary flow, or the
-backstop self-close. Several of those can decide the same call is over at the same instant,
-so the funnel opens with an atomic claim: dropping the session key from Redis returns
-whether this caller is the one that removed it, and only the winner writes.
+**Writing** happens once, in `EndCall`, the single funnel every end of a call reaches — a
+hang-up, a decline, a ring expiry, a party check, the self-heal that notices a call nobody is
+in any more, or the backstop close of the session the call started. Several of those can
+decide the same call is over at the same instant, so the funnel opens with an atomic claim:
+dropping the call's key from Redis returns whether this caller is the one that removed it,
+and only the winner writes.
 
 The claim is taken **under `_changeLocks`**, the same lock every write of that key takes,
-and the state it writes the entry from is re-read inside that lock. Both matter: taken
+and the call it writes the entry from is re-read inside that lock. Both matter: taken
 outside it, a write whose read-modify-write straddled the claim would put the key back, and
-the resurrected session would be closed — and recorded — a second time; and the snapshot the
+the resurrected call would be ended — and recorded — a second time; and the snapshot the
 caller read before the lock can miss an outcome a racing hang-up just recorded, which
 dropped the entry entirely.
 
-Whether a call counts as finished is decided by `SessionStartedAt`, not by the recorded
-outcome. `CancelCall` is also how a caller hangs up a call that *did* connect, so a session
-that ever latched writes `Ended` whichever button ended it.
+Whether a call counts as finished is decided by whether it was answered, not by the recorded
+outcome. `CancelCall` is also how a caller hangs up a call that *was* answered — there it is a
+party leaving — so an answered call writes `Ended` whichever button ended it.
 
-`Close` then tears the session down. It drops the participant map and invalidates
-everything derived from it — a caller is registered as a recorder the moment they dial, and
-a stale `HasRecorder` reads as someone talking in the chat list long after the call is over.
+The teardown then drops the call's invites and invalidates everything derived from them. The
+session - whichever started it - keeps its participants: it outlives the call and closes once
+nobody records, taking its participant map along then. In a peer chat that is at once, as the
+call's end stops both clients' media (see
+[Incoming call flow](./incoming-call-flow.md#when-the-call-ends-and-its-session)).
 
 ### The tail the close can't see
 
@@ -133,26 +145,32 @@ path needs is that the range **covers** it, not that it ends on it.
 
 ## Render path
 
-`ChatEntryMessageView` routes a `CallEntry` to its own card **unless** the outcome is
-`Ended`; `ChatUI.Tiles` skips building a visible message for an `Ended` entry but keeps it
-in the pipeline, because for a transcription-off call it is the only entry inside the
-conversation's lid range — the thing the card hangs on.
+`ChatEntryMessageView` routes every `CallEntry` it is given to its own card. `ChatUI.Tiles`
+skips building a visible message for an `Ended` entry that a call conversation's lid range
+covers, but keeps it in the pipeline, because for a transcription-off call it is the only entry
+inside that range — the thing the card hangs on. An `Ended` entry no call conversation covers
+is one that rang into an ongoing session, and it is shown.
 
-The conversation carries `CallerId`, set once when the call is dialled — not at close, where
-`Host` may already have been handed to another participant by `ReassignHost`. It is the only
-stored mark of a call: `Conversation.IsCall` derives from it, and the card reads both, the
-flag to swap in the call icon and label, the caller to say which way the call went.
+The conversation carries `CallerId`, set once when the answer starts the call's session — not at
+close, where `Host` may already have been handed to another participant by `ReassignHost`. It is
+the only stored mark of a call: `Conversation.IsCall` derives from it, and the card reads both,
+the flag to swap in the call icon and label, the caller to say which way the call went. A
+session the call rang into never gets one, so its block stays an ordinary conversation.
 
-Two consequences follow from a call never reaching the summary flow:
+While it lasts, a call is summarized like any live session: `LiveConversationSummaryFlow` runs
+on it with the same gates. Only its finish differs - the flow's `Finalize` pass is for an
+ambient session alone, so a call's last stretch is summarized after the close instead, by the
+`ConversationRefreshFlow` that `ScheduleCallRefresh` sets up at materialization (#5052 is about
+unifying the two). Two consequences follow:
 
-- **It is sized at materialization instead.** `ConversationsBackend.OnMaterialize` counts
+- **It is sized at materialization.** `ConversationsBackend.OnMaterialize` counts
   the entries and words in the range and applies `SummarizationSettings.IsExpandedByDefault`
   — the same rule, from the same thresholds, that the summary flow applies to an ordinary
   conversation. A short call materializes expanded, a long one collapsed. The count at the
   close is provisional, though; `CallTailFlow` redoes it once the transcripts are final.
 - **A call with no transcript is collapsed whatever the rule says**, and its card drops both
   the expand toggle and the details link. There is nothing behind either: expanding reveals
-  an empty block, and a call is never summarized. The footer still says "0 messages" — that
+  an empty block, and there is nothing to summarize. The footer still says "0 messages" — that
   count is the reason the toggle is gone, so hiding it would only make the card look broken.
 
 Conversation validation is skipped for a call — it has neither the summarizer's three texts
@@ -181,12 +199,9 @@ since only this build writes one.
 - Client-side expansion is an override relative to a default, and a participant's client
   latches that default as `false` when the live block appears. A long call should
   materialize collapsed, but a participant's latched override may keep it expanded.
-- The window in `CloseAndMaterialize` between the claim and the teardown now spans two
-  database round trips. A `StartCall` landing inside it creates a session the closer then
-  deletes.
-- A caller who hangs up an *answered* call does not end it for the other party — `CloseNow`
-  declines to close while the invitee is still a fresh recorder.
-- An ambient session's close has the same race, and nothing catches it there.
+- The window in `EndCall` between the claim and the teardown spans two database round trips.
+  A call placed inside it keeps its invites.
+- An ambient session's close has a race of its own, and nothing catches it there.
   `LiveConversationSummaryFlow.Finalize` takes `entries[^1].LocalId` at the moment it runs, so a
   transcript that lands after it is outside the conversation for good. It bites far less often —
   that close goes through a long grace, where a call's waits at most `CallLeaveGrace` (2 s) —

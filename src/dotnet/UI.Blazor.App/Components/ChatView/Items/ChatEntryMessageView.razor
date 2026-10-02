@@ -68,8 +68,9 @@
         throw new ArgumentOutOfRangeException();
 }
 
-@* This card is for a call that never connected; a connected one renders through its conversation card. *@
-@if (entry is CallEntry { Outcome: not CallOutcome.Ended } callEntry) {
+@* A call that started its own session renders through its conversation card, and ChatUI.Tiles skips its
+   entry; one that never connected, or rang into an ongoing session, gets this card. *@
+@if (entry is CallEntry callEntry) {
     <div class="@cls" data-chat-entry-id="@(entry.Id.Value)">
         <CallMessageView ChatContext="@ChatContext" Entry="@callEntry"/>
     </div>
