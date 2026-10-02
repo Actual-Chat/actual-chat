@@ -1466,7 +1466,12 @@ export class VideoRecorder {
             this.fullLayerLadder = [...actualScreenCastLadder];
             this.currentCodecString = bestCodecString;
             this.currentCodecHardwareAccel = bestCodecInfo?.hardwareAccelerated ?? false;
-            infoLog?.log(`ScreenCast ladder (bottom-first): [${actualScreenCastLadder.map(l => `${l.width}x${l.height}`).join(', ')}], capture ${screenCastTop.width}x${screenCastTop.height}`);
+            this.currentHardwareAcceleration = this.pickAccelerationFor(
+                supportedCodecs, audienceCodecs, bestCodecString);
+            infoLog?.log(
+                `ScreenCast ladder (bottom-first): ` +
+                `[${actualScreenCastLadder.map(l => `${l.width}x${l.height}`).join(', ')}], ` +
+                `capture ${screenCastTop.width}x${screenCastTop.height}, hwAccel=${this.currentHardwareAcceleration}`);
 
             // The screen track is pre-acquired by ScreenShareGesture inside the DOM
             // click handler (getDisplayMedia needs transient activation, which the
@@ -2375,6 +2380,8 @@ export class VideoRecorder {
             this.currentCodecString = nextCodec;
             const nextCodecInfo = this.findCodecInfo(refreshedCodecs, nextCodec);
             this.currentCodecHardwareAccel = nextCodecInfo?.hardwareAccelerated ?? false;
+            this.currentHardwareAcceleration = this.pickAccelerationFor(
+                refreshedCodecs, this.audienceCodecs, nextCodec);
             this.repriceCurrentLadders();
             infoLog?.log(
                 `repickCodecAndRestart: ${reason} → switching codec ` +

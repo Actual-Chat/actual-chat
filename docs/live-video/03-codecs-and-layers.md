@@ -140,9 +140,13 @@ The downscaler choice is independent of encode:
   because WebGPU pacing on iOS forced too many per-frame drains.
 - **Single-tier P2P**: `identityDownscaler()` clones once.
 
-The encoder picks `hardwareAcceleration: 'prefer-hardware'`. WebCodecs decides
-whether HW is actually used; the result is reported back through
-`hardwareAccelerated` in `CodecInfo`.
+The encoder is configured with the acceleration of the ladder rung its codec
+was picked from (`pickAccelerationFor`), on every path that picks a codec:
+camera start, screencast start, an audience-driven switch and a re-pick after
+an encoder failure. The two must travel together - software VP9 configured as
+`prefer-hardware` fails encoder creation on any device without a hardware VP9
+encoder, and since VP9 is the floor it is never excluded, so recovery re-picks
+it forever and the stream never starts.
 
 ## Capture frame rate
 
