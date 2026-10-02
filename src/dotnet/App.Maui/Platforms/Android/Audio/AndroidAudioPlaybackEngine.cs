@@ -481,18 +481,23 @@ internal sealed class AndroidAudioPlaybackEngine(
 
     private bool CanContinuePlaying([NotNullWhen(true)] out AudioTrack? audioTrack)
     {
-        // Cross-thread read of the track Play() publishes under Lock.
-        audioTrack = Volatile.Read(ref _audioTrack);
-        try {
-            if (!audioTrack.IsValid())
-                return false;
-            if (audioTrack.State != AudioTrackState.Initialized)
-                return false;
+        while (true) {
+            // Cross-thread read of the track Play() publishes under Lock.
+            audioTrack = Volatile.Read(ref _audioTrack);
+            try {
+                if (!audioTrack.IsValid())
+                    return false;
+                if (audioTrack.State != AudioTrackState.Initialized)
+                    return false;
 
-            return audioTrack.PlayState != PlayState.Stopped;
-        }
-        catch {
-            return false;
+                return audioTrack.PlayState != PlayState.Stopped;
+            }
+            catch {
+                // ReplaceAudioTrack disposed the one just read: the track that took its place
+                // is the one to ask, or a route change would end the playback.
+                if (Volatile.Read(ref _audioTrack) == audioTrack)
+                    return false;
+            }
         }
     }
 

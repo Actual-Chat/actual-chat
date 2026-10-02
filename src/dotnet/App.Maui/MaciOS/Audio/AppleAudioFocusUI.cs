@@ -242,9 +242,6 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
             Scopes: _activeScopes.GetScopeInfos(),
             Session: AudioSession.GetDiagnostics());
 
-    public override AudioOutputKind? GetCurrentOutputKind()
-        => AudioSession.GetCurrentOutputKind();
-
     // Private methods
 
     private async Task Release(AudioFocusRequester requester, Scope scope)

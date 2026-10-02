@@ -102,9 +102,6 @@ public class AudioFocusUI : ProcessorBase
     public virtual AudioFocusDiagnostics GetDiagnostics()
         => AudioFocusDiagnostics.Unsupported;
 
-    public virtual AudioOutputKind? GetCurrentOutputKind()
-        => null;
-
     // Nested types
 
     private sealed class FakeScope : AudioFocusScope

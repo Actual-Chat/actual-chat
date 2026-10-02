@@ -158,35 +158,12 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         // here would raise an HFP virtual call, which is what pinning playback to the phone avoids.
         => _deviceRouter.SelectBuiltinSpeaker(cancellationToken);
 
-    public Task SetCallAudioRoute(CallAudioRoute route)
+    public Task SetCallAudioRoute(CallAudioRoute route, bool mustApply = true)
     {
         _deviceRouter.CallAudioRoute = route;
-        return _isCommunicationFocus
+        return mustApply && _isCommunicationFocus
             ? _deviceRouter.RequestCommunicationDevice()
             : Task.CompletedTask;
-    }
-
-    public AudioOutputKind? GetCurrentOutputKind()
-    {
-        // Read-only, so it runs outside the serialized calls. A connected external device counts
-        // even when Android hasn't routed to it yet: the user has it on, and that's what matters.
-        try {
-            var isExternalSkipped = _isCommunicationFocus && _deviceRouter.CallAudioRoute.IsBuiltinForced;
-            if (!isExternalSkipped && GetExternalOutputKind() is { } externalKind)
-                return externalKind;
-
-            if (_audioManager.Mode != Mode.InCommunication)
-                return AudioOutputKind.Speaker;
-
-            var isEarpiece = OperatingSystem.IsAndroidVersionAtLeast(31)
-                ? _audioManager.CommunicationDevice?.Type == AudioDeviceType.BuiltinEarpiece
-                : !_audioManager.SpeakerphoneOn;
-            return isEarpiece ? AudioOutputKind.Phone : AudioOutputKind.Speaker;
-        }
-        catch (Exception e) {
-            _log.LogWarning(e, "Failed to read the audio output kind");
-            return null;
-        }
     }
 
     public AudioOutputKind? GetExternalOutputKind()

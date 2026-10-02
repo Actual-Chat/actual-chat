@@ -9,6 +9,11 @@ namespace ActualChat.UI.Blazor.App.Services;
 // taken away. On a headset or in a car it's plain media playback, and the sensor stays off.
 public partial class ChatAudioUI
 {
+    // Android phones with an ultrasound proximity sensor measure through the active speaker, so
+    // the sensor restarts on every output switch and can report "far" at the ear until it settles.
+    private static readonly TimeSpan EarSensorSettleTime =
+        OperatingSystem.IsAndroid() ? TimeSpan.FromSeconds(1) : TimeSpan.Zero;
+
     private readonly MutableState<bool> _isProximityCovered;
 
     private SensorFeed SensorFeed => field ??= Hub.Services.GetRequiredService<SensorFeed>();
@@ -95,13 +100,18 @@ public partial class ChatAudioUI
             .Capture(() => IsReplayAtEar(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var isAtEar = false;
+        var atEarSince = CpuNow;
         try {
             await foreach (var c in cIsAtEar.Changes(cancellationToken).ConfigureAwait(false)) {
                 if (c.Value == isAtEar)
                     continue;
 
+                if (!c.Value && await IsEarReleaseRetracted(atEarSince, cancellationToken).ConfigureAwait(false))
+                    continue;
+
                 isAtEar = c.Value;
                 await AudioFocusUI.SetPlaybackAtEar(isAtEar).ConfigureAwait(false);
+                atEarSince = CpuNow;
             }
         }
         finally {
@@ -109,5 +119,18 @@ public partial class ChatAudioUI
             if (isAtEar)
                 await AudioFocusUI.SetPlaybackAtEar(false).SilentAwait(false);
         }
+    }
+
+    private async Task<bool> IsEarReleaseRetracted(Moment atEarSince, CancellationToken cancellationToken)
+    {
+        // Only the sensor's word is doubted, and only while it settles after the switch to the
+        // earpiece: a replay that ended leaves the earpiece at once, and so does a phone lowered later.
+        var settleDelay = atEarSince + EarSensorSettleTime - CpuNow;
+        if (settleDelay <= TimeSpan.Zero
+            || !await MustSenseReplayAtEar(cancellationToken).ConfigureAwait(false))
+            return false;
+
+        await Task.Delay(settleDelay, cancellationToken).ConfigureAwait(false);
+        return await IsReplayAtEar(cancellationToken).ConfigureAwait(false);
     }
 }

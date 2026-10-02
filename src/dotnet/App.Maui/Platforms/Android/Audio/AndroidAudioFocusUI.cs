@@ -146,9 +146,6 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
         PlaybackRouteChanged?.Invoke();
     }
 
-    public override AudioOutputKind? GetCurrentOutputKind()
-        => _focusHelper.GetCurrentOutputKind();
-
     // Protected/internal methods
 
     protected override async Task<MauiAudioFocusHandle?> RequestAudioFocus(AudioFocusMode mode)
@@ -213,12 +210,15 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
 
             Log.LogInformation("SetCallAudioRoute: {Route}", route);
             _callAudioRoute = route;
-            await _focusHelper.SetCallAudioRoute(route ?? default).ConfigureAwait(false);
             // Only a call starting or ending changes the focus kind; a pick within a call just moves the device.
             var carAudioRoute = Volatile.Read(ref _carAudioRoute);
             mustRenew = _handle is not null
                 && GetFocusRequestKind(ActiveMode, carAudioRoute, lastRoute is not null)
                 != GetFocusRequestKind(ActiveMode, carAudioRoute, route is not null);
+            // The renewal picks the device itself, or leaves the communication route altogether:
+            // moving the device ahead of it is one more route change, and the half second the
+            // next AudioService read then blocks for.
+            await _focusHelper.SetCallAudioRoute(route ?? default, !mustRenew).ConfigureAwait(false);
         }
         if (mustRenew)
             await RenewHeldFocus().ConfigureAwait(false);
