@@ -1,12 +1,8 @@
-using ActualChat.Internal;
-
 namespace ActualChat.Core.UnitTests.Channels;
 
 /// <summary>Shared tests run against <see cref="AsyncMemoizer{T}"/>.</summary>
 public class AsyncMemoizerTest(ITestOutputHelper @out) : AsyncMemoizerTestBase(@out)
 {
-    protected override bool IsItemDropInstant => true;
-
     protected override IAsyncMemoizer<T> Memoize<T>(
         IAsyncEnumerable<T> source,
         int capacity = int.MaxValue,
@@ -171,26 +167,9 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : AsyncMemoizerTestBase(@
     }
 }
 
-/// <summary>Shared tests run against the legacy <see cref="OldAsyncMemoizer{T}"/>.</summary>
-public class OldAsyncMemoizerTest(ITestOutputHelper @out) : AsyncMemoizerTestBase(@out)
-{
-    protected override bool IsItemDropInstant => true;
-    // Its fan-out reads ring slots the producer may already have overwritten, so a stalled
-    // consumer may see no gap, or newer items ahead of older ones - up to the scheduler
-    protected override bool IsOverflowWindowConsistent => false;
-
-    protected override IAsyncMemoizer<T> Memoize<T>(
-        IAsyncEnumerable<T> source,
-        int capacity = int.MaxValue,
-        CancellationToken cancellationToken = default)
-        => new OldAsyncMemoizer<T>(source, capacity, cancellationToken);
-}
-
 /// <summary>
-/// Common tests for <see cref="IAsyncMemoizer{T}"/> implementations. Subclasses at
-/// the top of this file supply the factory and declare whether item drops happen
-/// instantly when bounded capacity overflows (old impl) or lazily once lagging
-/// consumers release their local pointers (new impl).
+/// Common tests for <see cref="IAsyncMemoizer{T}"/> implementations.
+/// The subclass at the top of this file supplies the factory.
 /// </summary>
 public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@out)
 {
@@ -199,16 +178,6 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
         IAsyncEnumerable<T> source,
         int capacity = int.MaxValue,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// True when overflowing bounded capacity physically evicts items from the buffer
-    /// immediately. False when evicted items are kept alive by any lagging consumer
-    /// that still holds a reference.
-    /// </summary>
-    protected abstract bool IsItemDropInstant { get; }
-
-    // Whether a consumer stalled through a bounded overflow sees ascending unique items with a gap
-    protected virtual bool IsOverflowWindowConsistent => true;
 
     protected IAsyncMemoizer<T> Memoize<T>(Channel<T> channel, int capacity = int.MaxValue, CancellationToken ct = default)
         => Memoize(channel.Reader.ReadAllAsync(ct), capacity, ct);
@@ -1017,12 +986,8 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
     }
 
     // === Bounded capacity overflow + slow consumer ===
-    // IsItemDropInstant=true: bounded overflow physically evicts items;
-    //     the consumer sees whatever remained in the bounded window when it resumed, with a gap
-    //     (not guaranteed for the old impl, see IsOverflowWindowConsistent).
-    // IsItemDropInstant=false: the consumer holds evicted nodes alive via its local
-    //     pointer and sees every item produced (the stall just delays delivery).
-    // Either way, a *new* late-joiner sees only the current buffer (last capacity items).
+    // Bounded overflow evicts items, so the stalled consumer resumes on whatever remained
+    // in the bounded window, with a gap. A *new* late-joiner sees only the current buffer.
 
     [Fact]
     public async Task BoundedReplay_SlowConsumerUnderCapacityOverflow()
@@ -1057,19 +1022,12 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
         gate.SetResult();
         await replayTask.WaitAsync(TimeSpan.FromSeconds(5));
 
-        if (IsItemDropInstant) {
-            items.First().Should().Be(1, "first item was read before blocking");
-            items.Last().Should().Be(50, "most recent item should be present");
-            if (IsOverflowWindowConsistent) {
-                items.Should().BeInAscendingOrder().And.OnlyHaveUniqueItems("eviction may skip items, never reorder them");
-                items.Should().HaveCountLessThan(50, "some items should be skipped due to bounded eviction");
-            }
-        }
-        else {
-            items.Should().Equal(Enumerable.Range(1, 50));
-        }
+        items.First().Should().Be(1, "first item was read before blocking");
+        items.Last().Should().Be(50, "most recent item should be present");
+        items.Should().BeInAscendingOrder().And.OnlyHaveUniqueItems("eviction may skip items, never reorder them");
+        items.Should().HaveCountLessThan(50, "some items should be skipped due to bounded eviction");
 
-        // A new late joiner sees only what's currently buffered — identical for both modes.
+        // A new late joiner sees only what's currently buffered.
         var lateItems = await memoizer.Replay()
             .ToListAsync()
             .AsTask()

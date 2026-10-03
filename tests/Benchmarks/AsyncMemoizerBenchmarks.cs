@@ -1,13 +1,11 @@
-using ActualChat.Internal;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 
 namespace ActualChat.Benchmarks;
 
 /// <summary>
-/// Benchmarks for AsyncMemoizer per-frame allocation and throughput.
-/// Compares the new linked-list <see cref="AsyncMemoizer{T}"/> against the legacy
-/// push-based <see cref="OldAsyncMemoizer{T}"/> across various reader counts.
+/// Benchmarks for <see cref="AsyncMemoizer{T}"/> per-frame allocation and throughput
+/// across various reader counts.
 /// Run: dotnet run -c Release --project tests/Benchmarks
 /// </summary>
 [Config(typeof(InProcessShortRunConfig))]
@@ -15,11 +13,6 @@ namespace ActualChat.Benchmarks;
 [ThreadingDiagnoser]
 public class AsyncMemoizerBenchmarks
 {
-    public enum MemoizerKind { Old, New }
-
-    [Params(MemoizerKind.Old, MemoizerKind.New)]
-    public MemoizerKind Kind { get; set; }
-
     [Params(0, 1, 10, 100)]
     public int ConsumerCount { get; set; }
 
@@ -30,11 +23,7 @@ public class AsyncMemoizerBenchmarks
         const int capacity = 150; // matches video pipeline
 
         var source = Channel.CreateUnbounded<int>();
-        IAsyncMemoizer<int> memoizer = Kind switch {
-            MemoizerKind.Old => new OldAsyncMemoizer<int>(source.Reader.ReadAllAsync(), capacity),
-            MemoizerKind.New => new AsyncMemoizer<int>(source.Reader.ReadAllAsync(), capacity),
-            _ => throw new ArgumentOutOfRangeException(),
-        };
+        var memoizer = new AsyncMemoizer<int>(source.Reader.ReadAllAsync(), capacity);
 
         var consumers = new Task[ConsumerCount];
         for (var i = 0; i < ConsumerCount; i++)
@@ -58,11 +47,7 @@ public class AsyncMemoizerBenchmarks
         const int frameCount = 10_000;
 
         var source = Channel.CreateUnbounded<int>();
-        IAsyncMemoizer<int> memoizer = Kind switch {
-            MemoizerKind.Old => new OldAsyncMemoizer<int>(source.Reader.ReadAllAsync(), default),
-            MemoizerKind.New => new AsyncMemoizer<int>(source.Reader.ReadAllAsync(), default),
-            _ => throw new ArgumentOutOfRangeException(),
-        };
+        var memoizer = new AsyncMemoizer<int>(source.Reader.ReadAllAsync());
 
         var consumers = new Task[ConsumerCount];
         for (var i = 0; i < ConsumerCount; i++)
