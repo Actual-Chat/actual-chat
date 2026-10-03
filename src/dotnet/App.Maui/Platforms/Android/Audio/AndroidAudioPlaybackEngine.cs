@@ -29,6 +29,9 @@ internal sealed class AndroidAudioPlaybackEngine(
 
     private CancellationTokenSource? _pauseEndTokenSource;
     private AudioTrack? _audioTrack;
+    private AndroidAudioFocusUI? _playbackRouteSource;
+    private CarAudioRoute _route = CarAudioRoute.Default;
+    private AudioUsageKind _usage;
     private Task? _decodeAndFeedTask;
     private Task? _positionWatchTask;
     private GCHandle _audioTrackHandle;
@@ -36,6 +39,8 @@ internal sealed class AndroidAudioPlaybackEngine(
     private int _remainingPreSkip;
     private float _gain = 1f;
     private int _fedSampleCount;
+    // What was fed to the tracks before the current one; its head position counts from there.
+    private int _trackStartSampleCount;
     private int _lastPlayedSampleCount;
     private int _isEnded;
     private long _nextLagReportAtTicks;
@@ -69,59 +74,15 @@ internal sealed class AndroidAudioPlaybackEngine(
         _remainingPreSkip = audioSource.Format.PreSkip;
         _frames.SetTargetDuration(GetEncodedBufferDuration(info.TargetBufferSize));
 
-        // Configure AudioTrack for float32 PCM mono at playback sample rate
-        var sampleRate = Constants.Audio.PlaybackSampleRate;
-        var channelOut = ChannelOut.Mono;
-        var encoding = Encoding.PcmFloat;
-
-        var minBufferBytes = AudioTrack.GetMinBufferSize(sampleRate, channelOut, encoding);
-        if (minBufferBytes <= 0)
-            throw new InvalidOperationException($"AudioTrack min buffer size invalid: {minBufferBytes}");
-
-        // Minimum buffer size to keep Feed blocked on track.WriteAsync
-        var bufferBytes = Math.Max(minBufferBytes, Constants.Audio.PcmFrameLength * 4);
-        AudioTrack audioTrack;
-        try {
-            // RemoteSubmix carries Media to the car but doesn't capture VOICE_COMMUNICATION, so that
-            // usage is what pins playback to the phone. Outside a car it's right only while a comm
-            // focus is held: a Media-usage recording focus leaves no comm route, i.e. the earpiece.
-            var usage = route.Output switch {
-                _ when route.UseHandsFreeLink => AudioUsageKind.VoiceCommunication,
-                AudioEndpoint.External => AudioUsageKind.Media,
-                AudioEndpoint.Builtin => AudioUsageKind.VoiceCommunication,
-                _ => AudioFocusUI.IsCommunicationFocus
-                    ? AudioUsageKind.VoiceCommunication
-                    : AudioUsageKind.Media,
-            };
-            _gain = route.Output == AudioEndpoint.External && !route.UseHandsFreeLink
-                ? Constants.Audio.ProjectionMediaGain
-                : 1f;
-            Log.LogInformation(
-                "Play: id={Id}, car route {Route}, usage {Usage}, comm focus {IsCommunicationFocus}, gain {Gain}",
-                info.TrackId, route, usage, AudioFocusUI.IsCommunicationFocus, _gain);
-            var attributes = new AudioAttributes.Builder()
-                .SetUsage(usage)!
-                .SetContentType(AudioContentType.Speech)!
-                .Build();
-
-            var audioFormat = new AudioFormat.Builder()
-                .SetEncoding(encoding)!
-                .SetSampleRate(sampleRate)!
-                .SetChannelMask(channelOut)
-                .Build();
-
-            audioTrack = new AudioTrack.Builder()
-                .SetAudioAttributes(attributes!)
-                .SetAudioFormat(audioFormat!)
-                .SetBufferSizeInBytes(bufferBytes)
-                .SetTransferMode(AudioTrackMode.Stream)
-                .SetSessionId(AudioManager.AudioSessionIdGenerate)
-                .Build();
-        }
-        catch (Exception e) {
-            Log.LogError(e, "Failed to initialize AudioTrack");
-            throw;
-        }
+        _route = route;
+        _usage = GetUsage(route);
+        _gain = route.Output == AudioEndpoint.External && !route.UseHandsFreeLink
+            ? Constants.Audio.ProjectionMediaGain
+            : 1f;
+        Log.LogInformation(
+            "Play: id={Id}, car route {Route}, usage {Usage}, comm focus {IsCommunicationFocus}, gain {Gain}",
+            info.TrackId, route, _usage, AudioFocusUI.IsCommunicationFocus, _gain);
+        var audioTrack = CreateAudioTrack(_usage);
 
         lock (Lock) {
             // Publishing state for the background tasks and for callers of Pause/Resume/End, none of
@@ -138,29 +99,18 @@ internal sealed class AndroidAudioPlaybackEngine(
         audioTrack.Play();
         Log.LogInformation("Play: id={Id} routed to {Device}; {AudioState}",
             info.TrackId, AndroidAudioRouteLog.Describe(audioTrack.RoutedDevice), AndroidAudioRouteLog.DescribeState());
-        audioTrack.RoutingChanged += (_, _) => {
-            // Raised on the main thread, and DescribeState makes blocking AudioService calls: while a route
-            // or mode change keeps AudioService busy, reading it here froze the UI for 0.7s.
-            string device;
-            try {
-                device = AndroidAudioRouteLog.Describe(audioTrack.RoutedDevice);
-            }
-            catch {
-                return; // A released track has no route left to report
-            }
-
-            _ = BackgroundTask.Run(() => {
-                Log.LogInformation("Play: id={Id} rerouted to {Device}; {AudioState}",
-                    info.TrackId, device, AndroidAudioRouteLog.DescribeState());
-                return Task.CompletedTask;
-            });
-        };
+        if (AudioFocusUI is AndroidAudioFocusUI androidAudioFocusUI) {
+            Volatile.Write(ref _playbackRouteSource, androidAudioFocusUI);
+            androidAudioFocusUI.PlaybackRouteChanged += OnPlaybackRouteChanged;
+        }
         NotifyPlaying(0); // Initial report that we're ready to play
     }
 
     protected override async Task DisposeAsyncCore()
     {
         // This method starts inside lock (Lock).
+        if (Interlocked.Exchange(ref _playbackRouteSource, null) is { } playbackRouteSource)
+            playbackRouteSource.PlaybackRouteChanged -= OnPlaybackRouteChanged;
         // Both background tasks observe StopToken, which ProcessorBase.DisposeAsync cancels before
         // calling this method, so awaiting them here cannot deadlock. Letting them fully stop before
         // releasing the track is what guarantees no callback ever runs against a released track.
@@ -271,10 +221,134 @@ internal sealed class AndroidAudioPlaybackEngine(
 
     // Private methods
 
+    private AudioUsageKind GetUsage(CarAudioRoute route)
+        // RemoteSubmix carries Media to the car but doesn't capture VOICE_COMMUNICATION, so that
+        // usage is what pins playback to the phone. Outside a car it's right only while a comm
+        // focus is held: a Media-usage recording focus leaves no comm route, i.e. the earpiece.
+        => route.Output switch {
+            _ when route.UseHandsFreeLink => AudioUsageKind.VoiceCommunication,
+            AudioEndpoint.External => AudioUsageKind.Media,
+            AudioEndpoint.Builtin => AudioUsageKind.VoiceCommunication,
+            _ => AudioFocusUI.IsCommunicationFocus
+                ? AudioUsageKind.VoiceCommunication
+                : AudioUsageKind.Media,
+        };
+
+    private AudioTrack CreateAudioTrack(AudioUsageKind usage)
+    {
+        // Float32 PCM mono at the playback sample rate
+        var sampleRate = Constants.Audio.PlaybackSampleRate;
+        var channelOut = ChannelOut.Mono;
+        var encoding = Encoding.PcmFloat;
+
+        var minBufferBytes = AudioTrack.GetMinBufferSize(sampleRate, channelOut, encoding);
+        if (minBufferBytes <= 0)
+            throw new InvalidOperationException($"AudioTrack min buffer size invalid: {minBufferBytes}");
+
+        // Minimum buffer size to keep Feed blocked on track.WriteAsync
+        var bufferBytes = Math.Max(minBufferBytes, Constants.Audio.PcmFrameLength * 4);
+        AudioTrack audioTrack;
+        try {
+            var attributes = new AudioAttributes.Builder()
+                .SetUsage(usage)!
+                .SetContentType(AudioContentType.Speech)!
+                .Build();
+
+            var audioFormat = new AudioFormat.Builder()
+                .SetEncoding(encoding)!
+                .SetSampleRate(sampleRate)!
+                .SetChannelMask(channelOut)
+                .Build();
+
+            audioTrack = new AudioTrack.Builder()
+                .SetAudioAttributes(attributes!)
+                .SetAudioFormat(audioFormat!)
+                .SetBufferSizeInBytes(bufferBytes)
+                .SetTransferMode(AudioTrackMode.Stream)
+                .SetSessionId(AudioManager.AudioSessionIdGenerate)
+                .Build();
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to initialize AudioTrack");
+            throw;
+        }
+
+        audioTrack.RoutingChanged += (_, _) => {
+            // Raised on the main thread, and DescribeState makes blocking AudioService calls: while a route
+            // or mode change keeps AudioService busy, reading it here froze the UI for 0.7s.
+            string device;
+            try {
+                device = AndroidAudioRouteLog.Describe(audioTrack.RoutedDevice);
+            }
+            catch {
+                return; // A released track has no route left to report
+            }
+
+            _ = BackgroundTask.Run(() => {
+                Log.LogInformation("Play: id={Id} rerouted to {Device}; {AudioState}",
+                    info.TrackId, device, AndroidAudioRouteLog.DescribeState());
+                return Task.CompletedTask;
+            });
+        };
+        return audioTrack;
+    }
+
+    private void OnPlaybackRouteChanged()
+    {
+        try {
+            ReplaceAudioTrack();
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to move the track to the new route: id={Id}", info.TrackId);
+        }
+    }
+
+    private void ReplaceAudioTrack()
+    {
+        var usage = GetUsage(_route);
+        if (usage == _usage || StopToken.IsCancellationRequested || Volatile.Read(ref _isEnded) != 0)
+            return;
+
+        var audioTrack = CreateAudioTrack(usage);
+        AudioTrack? oldAudioTrack;
+        lock (Lock) {
+            oldAudioTrack = Volatile.Read(ref _audioTrack);
+            if (!oldAudioTrack.IsValid() || StopToken.IsCancellationRequested) {
+                audioTrack.Release();
+                audioTrack.DisposeSilently();
+                return;
+            }
+
+            // What the old track still holds unplayed is dropped: tens of milliseconds, against
+            // a switch the listener hears as a gap anyway.
+            // Brought to the old track's play state before it's published: the feed reads a
+            // stopped track as a dead one and ends the playback.
+            var playState = oldAudioTrack.PlayState;
+            if (playState is PlayState.Playing or PlayState.Paused)
+                audioTrack.Play();
+            if (playState is PlayState.Paused)
+                audioTrack.Pause();
+            _usage = usage;
+            Volatile.Write(ref _trackStartSampleCount, Volatile.Read(ref _fedSampleCount));
+            Volatile.Write(ref _audioTrack, audioTrack);
+            if (_audioTrackHandle.IsAllocated)
+                _audioTrackHandle.Free();
+            _audioTrackHandle = GCHandle.Alloc(audioTrack, GCHandleType.Normal);
+        }
+        Log.LogInformation("Play: id={Id} rebuilt for usage {Usage}, routed to {Device}",
+            info.TrackId, usage, AndroidAudioRouteLog.Describe(audioTrack.RoutedDevice));
+        // After the new one is published: a write still blocked on the old track fails here, and
+        // DecodeAndFeed tells that failure from a dead track by the track having changed.
+        try {
+            oldAudioTrack.Stop();
+        }
+        catch { /* Ignore */ }
+        try { oldAudioTrack.Release(); } catch { /* Ignore */ }
+        oldAudioTrack.DisposeSilently();
+    }
+
     private async Task DecodeAndFeed()
     {
-        // Cross-thread read of the track Play() publishes under Lock.
-        var audioTrack = Volatile.Read(ref _audioTrack)!;
         var cancellationToken = StopToken;
         var audioData = new float[Constants.Audio.PcmFrameLength];
         try {
@@ -308,9 +382,20 @@ internal sealed class AndroidAudioPlaybackEngine(
                     pcm.Span.CopyTo(audioData.AsSpan(0, pcm.Length));
                     if (_gain != 1f)
                         AudioExt.Amplify(audioData.AsSpan(skip, playSamples), _gain);
-                    var written = await audioTrack
-                        .WriteAsync(audioData, skip, playSamples, WriteMode.Blocking)
-                        .ConfigureAwait(false);
+                    // Read per write: ReplaceAudioTrack swaps the track under a live feed.
+                    var audioTrack = Volatile.Read(ref _audioTrack)!;
+                    int written;
+                    try {
+                        written = await audioTrack
+                            .WriteAsync(audioData, skip, playSamples, WriteMode.Blocking)
+                            .ConfigureAwait(false);
+                    }
+                    catch (Exception) when (Volatile.Read(ref _audioTrack) != audioTrack) {
+                        written = 0;
+                    }
+                    // A write caught by the swap went to the track that's gone, whatever it reported.
+                    if (Volatile.Read(ref _audioTrack) != audioTrack)
+                        written = 0;
                     if (written < 0) {
                         // An AudioTrack error code - ERROR_DEAD_OBJECT after an audioserver restart
                         // or a route teardown. The track still reports Initialized/Playing, so
@@ -396,18 +481,23 @@ internal sealed class AndroidAudioPlaybackEngine(
 
     private bool CanContinuePlaying([NotNullWhen(true)] out AudioTrack? audioTrack)
     {
-        // Cross-thread read of the track Play() publishes under Lock.
-        audioTrack = Volatile.Read(ref _audioTrack);
-        try {
-            if (!audioTrack.IsValid())
-                return false;
-            if (audioTrack.State != AudioTrackState.Initialized)
-                return false;
+        while (true) {
+            // Cross-thread read of the track Play() publishes under Lock.
+            audioTrack = Volatile.Read(ref _audioTrack);
+            try {
+                if (!audioTrack.IsValid())
+                    return false;
+                if (audioTrack.State != AudioTrackState.Initialized)
+                    return false;
 
-            return audioTrack.PlayState != PlayState.Stopped;
-        }
-        catch {
-            return false;
+                return audioTrack.PlayState != PlayState.Stopped;
+            }
+            catch {
+                // ReplaceAudioTrack disposed the one just read: the track that took its place
+                // is the one to ask, or a route change would end the playback.
+                if (Volatile.Read(ref _audioTrack) == audioTrack)
+                    return false;
+            }
         }
     }
 
@@ -420,7 +510,9 @@ internal sealed class AndroidAudioPlaybackEngine(
             return Math.Max(fedSampleCount, lastPlayedSampleCount); // Pretend we played everything
 
         try {
-            var playedSampleCount = audioTrack.PlaybackHeadPosition.Clamp(0, fedSampleCount); // Can't go beyond end
+            var trackStartSampleCount = Volatile.Read(ref _trackStartSampleCount);
+            var playedSampleCount = (trackStartSampleCount + audioTrack.PlaybackHeadPosition)
+                .Clamp(0, fedSampleCount); // Can't go beyond end
             playedSampleCount = Math.Max(playedSampleCount, lastPlayedSampleCount); // Can't decrease
             Interlocked.Exchange(ref _lastPlayedSampleCount, playedSampleCount);
             return playedSampleCount;

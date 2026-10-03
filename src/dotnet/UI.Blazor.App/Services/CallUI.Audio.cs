@@ -62,7 +62,7 @@ public partial class CallUI
     {
         var activity = await GetCallActivity(cancellationToken).ConfigureAwait(false);
         if (!activity.IsCallActive)
-            return false;
+            return await ChatAudioUI.MustSenseReplayAtEar(cancellationToken).ConfigureAwait(false);
 
         var routes = await GetOutputRoutes(cancellationToken).ConfigureAwait(false);
         return routes.Current?.Kind == AudioOutputKind.Phone;
