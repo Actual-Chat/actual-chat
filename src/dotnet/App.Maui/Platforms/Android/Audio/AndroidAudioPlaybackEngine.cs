@@ -138,23 +138,23 @@ internal sealed class AndroidAudioPlaybackEngine(
         audioTrack.Play();
         Log.LogInformation("Play: id={Id} routed to {Device}; {AudioState}",
             info.TrackId, AndroidAudioRouteLog.Describe(audioTrack.RoutedDevice), AndroidAudioRouteLog.DescribeState());
-        audioTrack.RoutingChanged += (_, _) => {
-            // Raised on the main thread, and DescribeState makes blocking AudioService calls: while a route
-            // or mode change keeps AudioService busy, reading it here froze the UI for 0.7s.
-            string device;
-            try {
-                device = AndroidAudioRouteLog.Describe(audioTrack.RoutedDevice);
-            }
-            catch {
-                return; // A released track has no route left to report
-            }
-
-            _ = BackgroundTask.Run(() => {
-                Log.LogInformation("Play: id={Id} rerouted to {Device}; {AudioState}",
-                    info.TrackId, device, AndroidAudioRouteLog.DescribeState());
-                return Task.CompletedTask;
-            });
-        };
+        // Disabled, logging only: a never-unregistered listener, suspected of the self-recursive JNI Invoker
+        // stack overflow described at WatchPlaybackPosition (Sentry ACTUAL-CHAT-UI-101D).
+        // audioTrack.RoutingChanged += (_, _) => {
+        //     string device;
+        //     try {
+        //         device = AndroidAudioRouteLog.Describe(audioTrack.RoutedDevice);
+        //     }
+        //     catch {
+        //         return;
+        //     }
+        //
+        //     _ = BackgroundTask.Run(() => {
+        //         Log.LogInformation("Play: id={Id} rerouted to {Device}; {AudioState}",
+        //             info.TrackId, device, AndroidAudioRouteLog.DescribeState());
+        //         return Task.CompletedTask;
+        //     });
+        // };
         NotifyPlaying(0); // Initial report that we're ready to play
     }
 
