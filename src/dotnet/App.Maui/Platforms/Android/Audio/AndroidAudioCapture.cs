@@ -163,22 +163,23 @@ public class AndroidAudioCapture(IServiceProvider services) : IAudioCapture
                     recorder.RecordingState,
                     AndroidAudioRouteLog.Describe(recorder.RoutedDevice),
                     AndroidAudioRouteLog.DescribeState());
-                recorder.RoutingChanged += (_, _) => {
-                    // Raised on the main thread; DescribeState blocks on AudioService, see AndroidAudioPlaybackEngine.
-                    string device;
-                    try {
-                        device = AndroidAudioRouteLog.Describe(recorder.RoutedDevice);
-                    }
-                    catch {
-                        return; // A released recorder has no route left to report
-                    }
-
-                    _ = BackgroundTask.Run(() => {
-                        Log.LogInformation("Capture rerouted to {Device}; {AudioState}",
-                            device, AndroidAudioRouteLog.DescribeState());
-                        return Task.CompletedTask;
-                    });
-                };
+                // Disabled for the same reason as AndroidAudioPlaybackEngine's RoutingChanged handler:
+                // a never-unregistered listener is a suspected source of JNI Invoker stack overflows.
+                // recorder.RoutingChanged += (_, _) => {
+                //     string device;
+                //     try {
+                //         device = AndroidAudioRouteLog.Describe(recorder.RoutedDevice);
+                //     }
+                //     catch {
+                //         return;
+                //     }
+                //
+                //     _ = BackgroundTask.Run(() => {
+                //         Log.LogInformation("Capture rerouted to {Device}; {AudioState}",
+                //             device, AndroidAudioRouteLog.DescribeState());
+                //         return Task.CompletedTask;
+                //     });
+                // };
 
                 while (!cancellationToken.IsCancellationRequested) {
                     int readByteCount;
