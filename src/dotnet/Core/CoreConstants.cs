@@ -32,11 +32,6 @@ public static partial class CoreConstants
         public static readonly TimeSpan OAuthExpirationTime = TimeSpan.FromDays(90);
     }
 
-    public static class AsyncMemoizer
-    {
-        public static readonly int TargetQueueSize = 16;
-    }
-
     public static class MessageProcessor
     {
         public static readonly int QueueSize = 128;

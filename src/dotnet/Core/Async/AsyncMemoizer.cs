@@ -4,9 +4,8 @@ namespace ActualChat;
 
 /// <summary>
 /// Holds the sentinel exception used to represent successful completion of an
-/// <see cref="IAsyncMemoizer{T}"/> stream. Both <see cref="AsyncMemoizer{T}"/>
-/// and the legacy <c>OldAsyncMemoizer&lt;T&gt;</c> use the same instance so that
-/// <c>completion is ChannelClosedException</c> checks remain consistent.
+/// <see cref="IAsyncMemoizer{T}"/> stream, so that <c>completion is ChannelClosedException</c>
+/// tells a successful end from a failure.
 /// </summary>
 public static class AsyncMemoizer
 {

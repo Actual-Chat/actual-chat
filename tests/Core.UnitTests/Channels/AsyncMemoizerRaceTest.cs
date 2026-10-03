@@ -1,5 +1,3 @@
-using ActualChat.Internal;
-
 namespace ActualChat.Core.UnitTests.Channels;
 
 /// <summary>Race-condition tests run against <see cref="AsyncMemoizer{T}"/>.</summary>
@@ -12,25 +10,11 @@ public class AsyncMemoizerRaceTest(ITestOutputHelper @out) : AsyncMemoizerRaceTe
         => new AsyncMemoizer<T>(source, capacity, cancellationToken);
 }
 
-/// <summary>Race-condition tests run against the legacy <see cref="OldAsyncMemoizer{T}"/>.</summary>
-public class OldAsyncMemoizerRaceTest(ITestOutputHelper @out) : AsyncMemoizerRaceTestBase(@out)
-{
-    // Old impl's push-based fan-out is roughly 3× slower per iteration and much more
-    // sensitive to CPU contention — scale iterations down so the suite stays reliable.
-    protected override double IterationScale => 0.1;
-
-    protected override IAsyncMemoizer<T> Memoize<T>(
-        IAsyncEnumerable<T> source,
-        int capacity = int.MaxValue,
-        CancellationToken cancellationToken = default)
-        => new OldAsyncMemoizer<T>(source, capacity, cancellationToken);
-}
-
 /// <summary>
 /// CPU-intensive race-condition tests for <see cref="IAsyncMemoizer{T}"/> implementations.
-/// These mirror the races that were fixed in the legacy <c>OldAsyncMemoizer&lt;T&gt;</c>
-/// (item duplication on stale fan-out and orphan target on close-after-drain). Both the
-/// fixed legacy impl and the new impl should be structurally immune.
+/// They mirror the races of the removed push-based memoizer (item duplication on a stale
+/// fan-out, an orphaned target on close-after-drain), which the chain-walking
+/// <see cref="AsyncMemoizer{T}"/> should be structurally immune to.
 ///
 /// Each test loops many times and is sensitive to thread scheduling — to surface
 /// flakiness, run multiple instances of the test process in parallel
@@ -43,31 +27,21 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
     // the original AsyncMemoizer bug needed thousands of attempts under CPU
     // contention to reproduce reliably.
     private static readonly TimeSpan ReplayTimeout = TimeSpan.FromSeconds(5).CiScaled();
+
     protected abstract IAsyncMemoizer<T> Memoize<T>(
         IAsyncEnumerable<T> source,
         int capacity = int.MaxValue,
         CancellationToken cancellationToken = default);
 
-    // Multiplier on iteration counts. 1.0 for the fast new impl; lower for the old
-    // push-based impl, whose per-iteration cost is higher and whose WriteTask fan-out
-    // makes tests flaky under heavy CPU contention.
-    protected virtual double IterationScale => 1.0;
-
-    private int Iterations(int n) => (int)(n * IterationScale);
-
     // === Race: source completes while a Replay is starting ===
-    // In OldAsyncMemoizer this exposed the duplication bug (items 1..5 written twice
-    // when the Write sub-task's stale lastEndIndex re-fanned items the consumer already
-    // received via AddReplayTarget's initial CopyTo). The new AsyncMemoizer has no
-    // fan-out task — consumers walk the chain themselves — so duplication is impossible.
+    // A push-based fan-out duplicated items 1..5 here: its stale lastEndIndex re-sent items
+    // the consumer had already got from the initial copy. AsyncMemoizer has no fan-out
+    // task — consumers walk the chain themselves — so duplication is impossible.
 
     [Fact]
     public async Task Replay_SourceCompletesConcurrently_NoDuplication()
     {
-        if (GetType() == typeof(OldAsyncMemoizerRaceTest))
-            return; // Fails on the old async memoizer (flaky), but we don't use it
-
-        for (var attempt = 0; attempt < Iterations(50_000); attempt++) {
+        for (var attempt = 0; attempt < 50_000; attempt++) {
             var source = Channel.CreateUnbounded<int>();
             for (var i = 1; i <= 5; i++)
                 source.Writer.TryWrite(i);
@@ -95,11 +69,8 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
     [Fact]
     public async Task Replay_ManyConcurrentLateJoiners_AllSeeFullStream()
     {
-        if (GetType() == typeof(OldAsyncMemoizerRaceTest))
-            return; // Fails on the old async memoizer (flaky), but we don't use it
-
         const int consumers = 16;
-        for (var attempt = 0; attempt < Iterations(10_000); attempt++) {
+        for (var attempt = 0; attempt < 10_000; attempt++) {
             var source = Channel.CreateUnbounded<int>();
             for (var i = 1; i <= 10; i++)
                 source.Writer.TryWrite(i);
@@ -135,7 +106,7 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
     [Fact]
     public async Task Replay_LateJoinerAfterCompletion_GetsAllItems()
     {
-        for (var attempt = 0; attempt < Iterations(50_000); attempt++) {
+        for (var attempt = 0; attempt < 50_000; attempt++) {
             var source = Channel.CreateUnbounded<int>();
             for (var i = 1; i <= 5; i++)
                 source.Writer.TryWrite(i);
@@ -161,7 +132,7 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
     [FlakyFact("AY: Timing-dependent race test", 5)]
     public async Task Replay_ProducerActiveDuringIteration_NoLossNoDuplication()
     {
-        for (var attempt = 0; attempt < Iterations(5_000); attempt++) {
+        for (var attempt = 0; attempt < 5_000; attempt++) {
             var source = Channel.CreateUnbounded<int>();
             var memoizer = Memoize(source.Reader.ReadAllAsync());
 
@@ -190,7 +161,7 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
     [Fact]
     public async Task Replay_StartedBeforeAnyItems_ReceivesAllItems()
     {
-        for (var attempt = 0; attempt < Iterations(50_000); attempt++) {
+        for (var attempt = 0; attempt < 50_000; attempt++) {
             var source = Channel.CreateUnbounded<int>();
             var memoizer = Memoize(source.Reader.ReadAllAsync());
 
@@ -209,17 +180,13 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
     }
 
     // === Race: AddReplayTarget writes to a channel while the source is completing ===
-    // Mirrors the orphan-target race in the original AsyncMemoizer where a target
-    // could be queued in _newTargets after the Write sub-task's final drain but before
-    // its TryComplete + break, leaving the consumer's channel never completed.
+    // Mirrors the orphan-target race of a push-based fan-out: a target queued after the
+    // fan-out task's final drain was never completed, so the consumer's channel hung.
 
     [Fact]
     public async Task AddReplayTarget_SourceCompletesConcurrently_TargetReceivesCompletion()
     {
-        if (GetType() == typeof(OldAsyncMemoizerRaceTest))
-            return; // Fails on the old async memoizer (flaky), but we don't use it
-
-        for (var attempt = 0; attempt < Iterations(50_000); attempt++) {
+        for (var attempt = 0; attempt < 50_000; attempt++) {
             var source = Channel.CreateUnbounded<int>();
             for (var i = 1; i <= 5; i++)
                 source.Writer.TryWrite(i);
