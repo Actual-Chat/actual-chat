@@ -1,9 +1,12 @@
+using ActualLab.Resilience;
+
 namespace ActualChat.Flows;
 
 /// <summary>
 /// A flow that throttles its execution to at most once per <see cref="ThrottlePeriod"/>.
-/// If <see cref="Run"/> fails, it retries up to <see cref="MaxFailCount"/> times.
-/// After that many consecutive failures, it advances <see cref="NextRunAt"/>
+/// If <see cref="Run"/> fails, it retries up to <see cref="MaxFailCount"/> times, pacing them by
+/// <see cref="RetryDelays"/> or by the error's own <see cref="IHasRetryDelay.RetryDelay"/>, whichever
+/// is longer. After that many consecutive failures, it advances <see cref="NextRunAt"/>
 /// as if the run succeeded, to avoid retrying indefinitely.
 /// </summary>
 public abstract class ThrottledFlow : Flow<string>
@@ -11,7 +14,7 @@ public abstract class ThrottledFlow : Flow<string>
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     protected abstract TimeSpan ThrottlePeriod { get; }
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    protected virtual TimeSpan RetryDelay => TimeSpan.FromMinutes(1);
+    protected virtual RetryDelaySeq RetryDelays => RetryDelaySeq.Fixed(TimeSpan.FromMinutes(1));
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     protected virtual int MaxFailCount => 5;
 
@@ -65,9 +68,24 @@ public abstract class ThrottledFlow : Flow<string>
                 FailCount = 0;
             }
             else {
-                Runtime.StageResumeIn(RetryDelay);
-                Console.Log($"Run() failed (attempt {FailCount}/{MaxFailCount}): {e.Message}, retrying in {RetryDelay.ToShortString()}");
+                // NextRunAt holds MustUpdate() false until the retry, so the resumes a viewer
+                // schedules meanwhile don't spend the remaining attempts right away.
+                var retryDelay = GetRetryDelay(e);
+                NextRunAt = Hub.SystemNow + retryDelay;
+                Runtime.StageResumeAt(NextRunAt);
+                Console.Log($"Run() failed (attempt {FailCount}/{MaxFailCount}): {e.Message}, "
+                    + $"retrying in {retryDelay.ToShortString()}");
             }
         }
+    }
+
+    // Private methods
+
+    private TimeSpan GetRetryDelay(Exception error)
+    {
+        var retryDelay = RetryDelays[FailCount];
+        return error is IHasRetryDelay { RetryDelay: var requested } && requested > retryDelay
+            ? requested
+            : retryDelay;
     }
 }

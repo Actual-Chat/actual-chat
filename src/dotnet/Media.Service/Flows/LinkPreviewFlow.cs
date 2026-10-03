@@ -15,6 +15,12 @@ public sealed partial class LinkPreviewFlow : ThrottledUpdateFlow
     private ICommander Commander => field ??= Services.Commander();
 
     protected override TimeSpan ThrottlePeriod => MediaSettings.LinkPreviewUpdatePeriod;
+    protected override RetryDelaySeq RetryDelays
+        => RetryDelaySeq.Exp(
+            MediaSettings.LinkPreviewRetryDelay,
+            MediaSettings.LinkPreviewMaxRetryDelay,
+            multiplier: 2);
+    protected override int MaxFailCount => MediaSettings.LinkPreviewRetryCount;
 
     protected override async ValueTask Run(CancellationToken cancellationToken)
     {
@@ -29,7 +35,10 @@ public sealed partial class LinkPreviewFlow : ThrottledUpdateFlow
         linkPreview ??= new LinkPreview {
             Id = LinkPreview.ComposeId(Target),
             Url = Target,
-            PreviewMediaId = linkMeta.PreviewMediaId,
+        };
+        // A failed grab keeps the thumbnail the preview already has
+        linkPreview = linkPreview with {
+            PreviewMediaId = linkMeta.PreviewMediaId ?? linkPreview.PreviewMediaId,
         };
         if (linkMeta.OpenGraph != OpenGraph.None)
             linkPreview = linkPreview with {
@@ -45,5 +54,14 @@ public sealed partial class LinkPreviewFlow : ThrottledUpdateFlow
             };
         var cmd = new LinkPreviewsBackend_Change(id, null, Change.Upsert(linkPreview));
         await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+
+        // The page declares an image we couldn't grab (timeout, 429, ...): the title and description
+        // are saved above, and throwing makes ThrottledFlow retry the crawl after the next RetryDelays
+        // step (or the Retry-After the image host asked for) instead of after ThrottlePeriod.
+        // It gives up after MaxFailCount attempts.
+        if (linkPreview.PreviewMediaId is null && !linkMeta.OpenGraph.ImageUrl.IsNullOrEmpty())
+            throw linkMeta.RetryDelay is { } retryDelay
+                ? new RateLimitExceededException(retryDelay)
+                : StandardError.External($"Link preview thumbnail is missing: '{linkMeta.OpenGraph.ImageUrl}'.");
     }
 }

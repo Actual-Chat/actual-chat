@@ -24,13 +24,29 @@ public static class HttpMockExt
         string url,
         string resourceName = "default.jpg",
         string contentType = "image/jpeg")
-        => mock.Setup(url,
-            req => new (HttpStatusCode.OK) {
+        => mock.Setup(url, req => ImageResponse(req, resourceName, contentType));
+
+    public static HttpHandlerMock SetupDelayedImage(this HttpHandlerMock mock, string url, TimeSpan delay)
+        => mock.Setup(url, async (req, ct) => {
+            await Task.Delay(delay, ct);
+            return ImageResponse(req, "default.jpg", "image/jpeg");
+        });
+
+    public static HttpHandlerMock SetupImageAfterFailures(
+        this HttpHandlerMock mock,
+        string url,
+        HttpStatusCode failureStatusCode,
+        int failureCount,
+        TimeSpan? retryAfter = null)
+    {
+        var requestCount = 0;
+        return mock.Setup(url, req => Interlocked.Increment(ref requestCount) <= failureCount
+            ? new (failureStatusCode) {
                 RequestMessage = req,
-                Content = new StreamContent(TestImages.GetImage(resourceName)) {
-                    Headers = { ContentType = MediaTypeHeaderValue.Parse(contentType) },
-                },
-            });
+                Headers = { RetryAfter = retryAfter is { } delay ? new RetryConditionHeaderValue(delay) : null },
+            }
+            : ImageResponse(req, "default.jpg", "image/jpeg"));
+    }
 
     public static HttpHandlerMock SetupRobotsNotFound(this HttpHandlerMock mock, string url)
         => mock.Setup(GetRobotsUrl(url),
@@ -64,6 +80,14 @@ public static class HttpMockExt
                                             """,
                     MediaTypeHeaderValue.Parse("text/plain")),
             });
+
+    private static HttpResponseMessage ImageResponse(HttpRequestMessage req, string resourceName, string contentType)
+        => new (HttpStatusCode.OK) {
+            RequestMessage = req,
+            Content = new StreamContent(TestImages.GetImage(resourceName)) {
+                Headers = { ContentType = MediaTypeHeaderValue.Parse(contentType) },
+            },
+        };
 
     private static string GetRobotsUrl(string url)
         => new Uri(new Uri(url), "/robots.txt").AbsoluteUri;
