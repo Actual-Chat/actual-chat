@@ -171,7 +171,7 @@ remote cleanly (`git status` shows "up to date with origin/<branch>").
 
 Report both pushed refs and remind the user to delete the backup after
 the merge lands: `git branch -D <branch-name>-bak && git push origin
-:<branch-name>-bak`.
+:<branch-name>-bak`, or `/clean-bak-branches` for all merged ones at once.
 
 ## Common mistakes
 
