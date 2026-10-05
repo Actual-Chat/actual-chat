@@ -42,19 +42,17 @@ public sealed class PlaceImageSuggestionsTest
     [Theory]
     [InlineData(ImageSlot.Picture)]
     [InlineData(ImageSlot.Background)]
-    public async Task DescriptionShouldSampleTenOpeningMessagesAcrossTenReadableChats(ImageSlot slot)
+    public async Task OnlyTenReadableChatsShouldReachTheBackend(ImageSlot slot)
     {
         // arrange
         using var scope = new TestScope(12);
         var unreadable = scope.Chats[0];
         scope.ChatsApi.Setup(x => x.Get(scope.Session, unreadable.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Chat?)null);
-        IReadOnlyCollection<ChatImageDescriptionSource>? sources = null;
-        scope.Describer.Setup(x => x.DescribePlace(scope.Place,
-                It.IsAny<IReadOnlyCollection<ChatImageDescriptionSource>>(),
-                slot == ImageSlot.Background, It.IsAny<CancellationToken>()))
-            .Callback<Place, IReadOnlyCollection<ChatImageDescriptionSource>, bool, CancellationToken>(
-                (_, chats, _, _) => sources = chats)
+        ApiArray<ChatId> chatIds = default;
+        scope.SuggestionsBackend.Setup(x => x.DescribePlace(scope.Place.Id,
+                It.IsAny<ApiArray<ChatId>>(), slot == ImageSlot.Background, It.IsAny<CancellationToken>()))
+            .Callback<PlaceId, ApiArray<ChatId>, bool, CancellationToken>((_, ids, _, _) => chatIds = ids)
             .ReturnsAsync("");
 
         // act
@@ -64,6 +62,31 @@ public sealed class PlaceImageSuggestionsTest
 
         // assert
         result.Should().BeNull();
+        chatIds.Should().Equal(scope.Chats.Skip(1).Take(10).Select(x => x.Id));
+    }
+
+    [Theory]
+    [InlineData(ImageSlot.Picture)]
+    [InlineData(ImageSlot.Background)]
+    public async Task DescriptionShouldSampleTenOpeningMessagesPerChat(ImageSlot slot)
+    {
+        // arrange
+        using var scope = new TestScope(12);
+        var chatIds = scope.Chats.Skip(1).Take(10).Select(x => x.Id).ToApiArray();
+        var isBackground = slot == ImageSlot.Background;
+        IReadOnlyCollection<ChatImageDescriptionSource>? sources = null;
+        scope.Describer.Setup(x => x.DescribePlace(scope.Place,
+                It.IsAny<IReadOnlyCollection<ChatImageDescriptionSource>>(),
+                isBackground, It.IsAny<CancellationToken>()))
+            .Callback<Place, IReadOnlyCollection<ChatImageDescriptionSource>, bool, CancellationToken>(
+                (_, chats, _, _) => sources = chats)
+            .ReturnsAsync("");
+
+        // act
+        var description = await scope.Backend.DescribePlace(scope.Place.Id, chatIds, isBackground, default);
+
+        // assert
+        description.Should().BeEmpty();
         sources.Should().NotBeNull().And.HaveCount(10);
         sources!.Select(x => x.Title).Should().Equal(scope.Chats.Skip(1).Take(10).Select(x => x.Title));
         foreach (var source in sources)
@@ -94,6 +117,7 @@ public sealed class PlaceImageSuggestionsTest
         await generate.Should().ThrowAsync<Exception>();
         await accept.Should().ThrowAsync<Exception>();
         await dismiss.Should().ThrowAsync<Exception>();
+        scope.SuggestionsBackend.VerifyNoOtherCalls();
         scope.Describer.VerifyNoOtherCalls();
     }
 
@@ -133,7 +157,9 @@ public sealed class PlaceImageSuggestionsTest
         public Mock<IPlaces> Places { get; } = new(MockBehavior.Strict);
         public Mock<IChats> ChatsApi { get; } = new(MockBehavior.Strict);
         public Mock<IChatImageDescriber> Describer { get; } = new(MockBehavior.Strict);
+        public Mock<IChatImageSuggestionsBackend> SuggestionsBackend { get; } = new(MockBehavior.Strict);
         public ImageSuggestions Suggestions { get; }
+        public ChatImageSuggestionsBackend Backend { get; }
 
         public TestScope(int chatCount)
         {
@@ -141,17 +167,20 @@ public sealed class PlaceImageSuggestionsTest
                 var id = PlaceChatId.New(Place.Id);
                 return new Chat(id) { Title = $"Topic {i}", Rules = new(id, null, null, ChatPermissions.Read) };
             }).ToArray();
-            var backend = new Mock<IChatsBackend>(MockBehavior.Strict);
+            var chatsBackend = new Mock<IChatsBackend>(MockBehavior.Strict);
+            var placesBackend = new Mock<IPlacesBackend>(MockBehavior.Strict);
             Places.Setup(x => x.GetRules(Session, Place.Id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new PlaceRules(Place.Id, null, null, PlacePermissions.Owner));
             Places.Setup(x => x.Get(Session, Place.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Place);
-            backend.Setup(x => x.ListPlaceChatIds(Place.Id, It.IsAny<CancellationToken>()))
+            placesBackend.Setup(x => x.Get(Place.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Place);
+            chatsBackend.Setup(x => x.ListPlaceChatIds(Place.Id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Chats.Select(x => (PlaceChatId)x.Id).ToArray());
             foreach (var chat in Chats) {
                 ChatsApi.Setup(x => x.Get(Session, chat.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chat);
-                backend.Setup(x => x.GetLidRange(chat.Id, false, It.IsAny<CancellationToken>()))
+                chatsBackend.Setup(x => x.Get(chat.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chat);
+                chatsBackend.Setup(x => x.GetLidRange(chat.Id, false, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(new Range<long>(1, 20));
-                backend.Setup(x => x.GetTile(chat.Id, It.IsAny<Range<long>>(), false, It.IsAny<CancellationToken>()))
+                chatsBackend.Setup(x => x.GetTile(chat.Id, It.IsAny<Range<long>>(), false, It.IsAny<CancellationToken>()))
                     .Returns<ChatId, Range<long>, bool, CancellationToken>((_, range, _, _) => {
                         var entries = Enumerable.Range(1, 19).Select(i => new TextEntry(ChatEntryId.New(chat.Id, i)) {
                             Content = i == 1 ? "" : $"message {i}",
@@ -165,10 +194,13 @@ public sealed class PlaceImageSuggestionsTest
                 .AddSingleton(new ChatSettings())
                 .AddSingleton(Places.Object)
                 .AddSingleton(ChatsApi.Object)
-                .AddSingleton(backend.Object)
+                .AddSingleton(chatsBackend.Object)
+                .AddSingleton(placesBackend.Object)
                 .AddSingleton(Describer.Object)
+                .AddSingleton(SuggestionsBackend.Object)
                 .BuildServiceProvider();
             Suggestions = new ImageSuggestions(Services);
+            Backend = new ChatImageSuggestionsBackend(Services);
         }
 
         public void Dispose() => Services.Dispose();
