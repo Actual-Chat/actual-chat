@@ -190,7 +190,33 @@
     </script>
 }
 
-@if (_authState.CloseFlow is { } closeFlow) {
+@if (_authState.IsUnavailable) {
+    <div class="fusion-close" data-flow-name="Maintenance">
+        <div class="c-content">
+            <div class="c-title">
+                <span>Maintenance,</span>
+                <span>please wait.</span>
+            </div>
+            <div class="c-footer">
+                <div>
+                    <span class="a0">This</span>
+                    <span class="a1">page</span>
+                    <span class="a2">reloads</span>
+                    <span class="a3">itself</span>
+                </div>
+                <div>
+                    <span class="a4">in</span>
+                    <span class="a5">a</span>
+                    <span class="a6">few</span>
+                    <span class="a7">seconds.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script nonce="@nonce">
+        setTimeout(function () { window.location.reload(); }, @(MaintenanceReloadDelay.TotalMilliseconds));
+    </script>
+} else if (_authState.CloseFlow is { } closeFlow) {
     var isFailed = closeFlow.Error != null;
     <div class="fusion-close" data-flow-name="@closeFlow.Name">
         <div class="c-content">
@@ -319,6 +345,8 @@
 </html>
 
 @code {
+    private static readonly TimeSpan MaintenanceReloadDelay = TimeSpan.FromSeconds(5);
+
     private bool _isInitialized;
     private LocalUrl _url;
     private AuthHelper.AuthState _authState = null!;
@@ -365,6 +393,15 @@
         _url = new LocalUrl(HttpContext.Request.GetEncodedPathAndQuery());
         _authState = await AuthHelper.UpdateAuthState(HttpContext, cancellationToken);
         var session = SessionResolver.Session = _authState.Session;
+        if (_authState.IsUnavailable) {
+            Log.LogError("Can't establish the auth state, serving the maintenance page: {Error}",
+                _authState.Error);
+            var response = HttpContext.Response;
+            response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            response.Headers.RetryAfter = ((int)MaintenanceReloadDelay.TotalSeconds).ToString(CultureInfo.InvariantCulture);
+            return;
+        }
+
         if (!_authState.IsAnyAuthFlow) {
             var accountTask = Accounts.GetOwn(session, cancellationToken)!;
             var sessionTokenTask = SecureTokens.CreateForSession(session, cancellationToken);

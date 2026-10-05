@@ -295,8 +295,13 @@ public sealed class AuthHelper
     public record AuthState(
         Session Session,
         bool IsAnyAuthFlow,
-        CloseFlow? CloseFlow)
+        CloseFlow? CloseFlow,
+        string? Error = null)
     {
+        // True when the auth state couldn't be established for a request that isn't a close flow:
+        // the visitor asked for an ordinary page, so there is nothing for them to close or retry.
+        public bool IsUnavailable => Error != null && CloseFlow == null;
+
         public static AuthState New(
             Session session, bool isAnyAuthFlow, CloseFlow? closeFlow,
             string? error = null)
@@ -306,8 +311,11 @@ public sealed class AuthHelper
             if (closeFlow is not null)
                 return new AuthState(session, isAnyAuthFlow, closeFlow with { Error = error });
 
-            closeFlow = new CloseFlow("Sign-in", null, true, error);
-            return new AuthState(session, isAnyAuthFlow, closeFlow);
+            // No close flow to report the failure through. It used to invent one named "Sign-in",
+            // which told anyone visiting any URL that their sign-in failed and to close the tab -
+            // during a rolling deploy, where the old and the new schema overlap, that was every
+            // visitor on every page.
+            return new AuthState(session, isAnyAuthFlow, null, error);
         }
     }
 
