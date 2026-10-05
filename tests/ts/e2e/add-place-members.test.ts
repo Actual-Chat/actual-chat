@@ -105,12 +105,19 @@ async function ensurePlaceExists(page: Page, title: string): Promise<void> {
     await createBtn.waitFor({ state: 'visible', timeout: 5_000 });
     await createBtn.click();
 
+    // An account with people contacts gets a "whom to add" step before the modal closes; the
+    // call specs that run earlier leave this one with a peer chat, so skip that step when it shows.
+    const placePlusBtn = page.locator('.place-plus-btn').first();
+    const skipBtn = modal.locator('button:has-text("Skip")').first();
+    await placePlusBtn.or(skipBtn).first().waitFor({ state: 'visible', timeout: 30_000 });
+    if (await skipBtn.isVisible())
+        await skipBtn.click();
+
     // Place creation auto-navigates to the welcome chat and shows
     // `.place-plus-btn` in LeftPanelPlaceContentHeader. Wait for that landmark
     // instead of the modal disappearing — the modal may close while the
     // navigation is still in-flight, and clicking too early misses the place.
-    await page.locator('.place-plus-btn').first()
-        .waitFor({ state: 'visible', timeout: 30_000 });
+    await placePlusBtn.waitFor({ state: 'visible', timeout: 30_000 });
 }
 
 async function openPlaceAndAddMembers(page: Page): Promise<void> {
