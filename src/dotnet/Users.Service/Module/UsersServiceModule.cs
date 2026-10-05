@@ -126,6 +126,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // System properties
         rpcHost.AddApi<ISystemProperties, SystemProperties>();
+        rpcHost.AddBackend<ISystemPropertiesBackend, SystemPropertiesBackend>();
         rpcHost.AddBackend<IMaintenancesBackend, MaintenancesBackend>();
 
         // Secure tokens
@@ -200,7 +201,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // Passkeys
         rpcHost.AddBackend<IPasskeysBackend, PasskeysBackend>();
-        rpcHost.AddApi<IPasskeyAuth, PasskeyAuth>(); // Requires Redis
+        rpcHost.AddApi<IPasskeyAuth, PasskeyAuth>();
         services.AddSingleton<IFido2>(c => {
             var settings = c.GetRequiredService<UsersSettings>();
             var hostInfo = c.HostInfo();
@@ -213,10 +214,10 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         });
 
         // PhoneAuth
-        rpcHost.AddApi<IPhoneAuth, PhoneAuth>(); // Requires Redis & IVerificationCodeSender
+        rpcHost.AddApi<IPhoneAuth, PhoneAuth>();
 
         // EmailAuth
-        rpcHost.AddApi<IEmailAuth, EmailAuth>(); // Requires Redis & IEmailSender
+        rpcHost.AddApi<IEmailAuth, EmailAuth>();
 
         // NativeAuth (iOS/Android OAuth)
         if (rpcHost.IsApiHost)
@@ -257,8 +258,10 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
                 .Add<UsageContactsBackfillFlow>();
         }
 
-        // TOTP codes - used by IPhoneAuth & IEmailAuth (API)
-        services.AddSingleton<TotpCodes>(); // Requires Redis
+        // TOTP codes
+        rpcHost.AddBackend<ITotpCodesBackend, TotpCodes>();
+        if (HostInfo.Roles.GetBackendServiceMode<ITotpCodesBackend>() is ServiceMode.Local)
+            services.AddSingleton(c => (TotpCodes)c.GetRequiredService<ITotpCodesBackend>());
 
         // Email sender - used by IEmailAuth (API) & Emails
         services.AddSingleton<IEmailSender, EmailSender>();
@@ -305,6 +308,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
                 .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(20));
             services.AddSingleton<AppStoreProbes>();
             rpcHost.AddApi<IAppUpdates, AppUpdates>();
+            rpcHost.AddBackend<IAppUpdatesBackend, AppUpdatesBackend>();
         }
 
         // Redis

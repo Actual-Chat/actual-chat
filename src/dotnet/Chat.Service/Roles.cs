@@ -1,13 +1,11 @@
-using ActualChat.Chat.Db;
-using ActualLab.Fusion.EntityFramework;
-
 namespace ActualChat.Chat;
 
 /// <summary>
 /// Frontend service for managing chat roles and permissions with session-based access control.
 /// </summary>
-public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IRoles
+public class Roles(IServiceProvider services) : IRoles
 {
+    private ICommander Commander { get; } = services.Commander();
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();

@@ -1,5 +1,8 @@
 using ActualChat.Db;
+using ActualChat.Hashing;
 using ActualChat.Users.Db;
+using ActualChat.Users.Module;
+using ActualLab.Redis;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,6 +10,8 @@ namespace ActualChat.Users.Passkeys;
 
 public class PasskeysBackend(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IPasskeysBackend
 {
+    private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
+    private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
 
     // [ComputeMethod]
@@ -36,6 +41,25 @@ public class PasskeysBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbPasskeys.Select(x => x.ToModel()).ToApiArray();
+    }
+
+    public virtual async Task StoreChallenge(
+        UserId userId, string prefix, string value, CancellationToken cancellationToken)
+    {
+        var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        await db.StringSetAsync(prefix + Hash(userId.Value), value, Settings.PasskeyChallengeLifetime)
+            .ConfigureAwait(false);
+    }
+
+    public virtual async Task<string> ConsumeChallenge(
+        UserId userId, string prefix, CancellationToken cancellationToken)
+    {
+        var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var value = await db.StringGetDeleteAsync(prefix + Hash(userId.Value)).ConfigureAwait(false);
+        if (value.IsNullOrEmpty)
+            throw StandardError.Constraint("This passkey request has expired. Please try again.");
+
+        return (string)value!;
     }
 
     // [CommandHandler]
@@ -111,4 +135,7 @@ public class PasskeysBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         });
         return change.IsRemove() ? null : dbPasskey.ToModel();
     }
+
+    private static string Hash(string value)
+        => value.Hash().SHA256().ToBase64HashString(HashAlgorithm.SHA256);
 }

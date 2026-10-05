@@ -1,41 +1,41 @@
 using System.Security.Claims;
-using ActualChat.Hashing;
 using ActualChat.Resilience;
 using ActualChat.Rpc;
-using ActualChat.Users.Db;
 using ActualChat.Users.Module;
-using ActualLab.Fusion.EntityFramework;
-using ActualLab.Redis;
 using ActualLab.Rpc.Infrastructure;
-using StackExchange.Redis;
 
 namespace ActualChat.Users.Phone;
 
-public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
+public class PhoneAuth : IPhoneAuth
 {
     private static readonly string TotpFormat = new('0', Constants.Auth.Phone.TotpLength);
 
+    private IServiceProvider Services { get; }
+    private ICommander Commander { get; }
+    private MomentClockSet Clocks { get; }
     private UsersSettings Settings { get; }
     private HostInfo HostInfo { get; }
     private IVerificationCodeSender CodeSender { get; }
-    private TotpCodes Totps { get; }
+    private ITotpCodesBackend Totps { get; }
     private CaptchaProofValidator CaptchaProofs { get; }
     private RateLimitPolicy RateLimitPolicy { get; }
-    private RedisDb<UsersDbContext> RedisDb { get; }
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
+    private ILogger Log => field ??= Services.LogFor(GetType());
     private string[] BlockedPhonePrefixes
         => field ??= Settings.BlockedPhonePrefixes.Split([';', ','], StringSplitOptions.RemoveEmptyEntries);
 
-    public PhoneAuth(IServiceProvider services) : base(services)
+    public PhoneAuth(IServiceProvider services)
     {
         Settings = services.GetRequiredService<UsersSettings>();
         HostInfo = services.HostInfo();
         CodeSender = services.GetRequiredService<IVerificationCodeSender>();
-        Totps = services.GetRequiredService<TotpCodes>();
+        Totps = services.GetRequiredService<ITotpCodesBackend>();
         CaptchaProofs = services.GetRequiredService<CaptchaProofValidator>();
         RateLimitPolicy = services.GetRequiredService<RateLimitPolicy>();
-        RedisDb = services.GetRequiredService<RedisDb<UsersDbContext>>();
+        Services = services;
+        Commander = services.Commander();
+        Clocks = services.Clocks();
     }
 
     // [ComputeMethod]
@@ -109,19 +109,18 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
             .Require(session, captchaToken, captchaAction, purpose, cancellationToken)
             .ConfigureAwait(false);
 
-        // Throttle the send rate: limit by phone and by session.
         // The throttled call reports the channel of the code that's still live, so the UI keeps naming it.
-        if (await IsThrottled(session, phone, cancellationToken).ConfigureAwait(false))
+        if (await IsThrottled(phone, cancellationToken).ConfigureAwait(false))
             return new TotpSendResult(
                 NextSendAt(),
-                await GetLastChannel(session, phone, cancellationToken).ConfigureAwait(false));
+                await GetLastChannel(phone, cancellationToken).ConfigureAwait(false));
 
         var canSendValidationMessage = await CheckIfBlocked(session, phone, purpose, cancellationToken)
             .ConfigureAwait(false);
         if (!canSendValidationMessage.IsNullOrEmpty())
             throw StandardError.Constraint(canSendValidationMessage);
 
-        var totp = await Totps.Generate(purpose, phone.Value, session, cancellationToken).ConfigureAwait(false);
+        var totp = await Totps.Generate(phone.Value, purpose, cancellationToken).ConfigureAwait(false);
         var nextSendAt = NextSendAt();
         var sTotp = totp.ToString(TotpFormat);
         if (!HostInfo.IsProductionInstance)
@@ -133,7 +132,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
             .Send(phone, new VerificationMessage(sTotp, text, onlyChannel))
             .ConfigureAwait(false);
         if (sentChannel is { } sent)
-            await SetLastChannel(session, phone, sent, cancellationToken).ConfigureAwait(false);
+            await SetLastChannel(phone, sent, cancellationToken).ConfigureAwait(false);
 
         return new TotpSendResult(nextSendAt, sentChannel);
 
@@ -195,12 +194,9 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         };
 
         // save phone identity + phone claim
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
         var phoneIdentity = UserIdentityExt.NewPhoneIdentity(phone);
-        var conflictingUserId = await dbContext
-            .GetUserIdByIdentity(phoneIdentity, false, cancellationToken)
+        var conflictingUserId = await AccountsBackend
+            .GetIdByUserIdentity(phoneIdentity, cancellationToken)
             .ConfigureAwait(false);
         if (conflictingUserId != null && conflictingUserId.Value != account.Id.Value)
             throw StandardError.Unauthorized("Phone number has already been taken by another account.");
@@ -223,51 +219,18 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         return false;
     }
 
-    // It's internal to be accessible from tests
-    internal async Task SetLastChannel(
-        Session session, ActualChat.Phone phone, TotpChannel channel, CancellationToken cancellationToken)
-    {
-        var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
-        await db.StringSetAsync(LastChannelKey(session, phone), channel.ToString(), Settings.TotpCodeLifetime)
-            .ConfigureAwait(false);
-    }
+    internal Task SetLastChannel(
+        ActualChat.Phone phone, TotpChannel channel, CancellationToken cancellationToken)
+        => Totps.SetLastChannel(phone, channel, cancellationToken);
 
     // Private methods
 
-    private async Task<TotpChannel?> GetLastChannel(
-        Session session, ActualChat.Phone phone, CancellationToken cancellationToken)
-    {
-        var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
-        var value = await db.StringGetAsync(LastChannelKey(session, phone)).ConfigureAwait(false);
+    private Task<TotpChannel?> GetLastChannel(
+        ActualChat.Phone phone, CancellationToken cancellationToken)
+        => Totps.GetLastChannel(phone, cancellationToken);
 
-        return Enum.TryParse<TotpChannel>((string?)value, out var channel) ? channel : null;
-    }
-
-    private static string LastChannelKey(Session session, ActualChat.Phone phone)
-        => $".TotpLastChannel:{Hash(session.Id)}:{Hash(phone.E164Value)}";
-
-    private async Task<bool> IsThrottled(Session session, ActualChat.Phone phone, CancellationToken cancellationToken)
-    {
-        // Fixed-window throttle using a single Redis call per scope (SET NX with TTL)
-        var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
-        var window = Settings.TotpUIThrottling;
-
-        var phoneKey = $".SmsTotpThrottle:phone:{Hash(phone.E164Value)}";
-        var sessionKey = $".SmsTotpThrottle:session:{Hash(session.Id)}";
-
-        // true => first request in window; false => already requested (throttled)
-        var phoneOk = await db.StringSetAsync(phoneKey, "1", window, When.NotExists).ConfigureAwait(false);
-        var sessionOk = await db.StringSetAsync(sessionKey, "1", window, When.NotExists).ConfigureAwait(false);
-
-        // Throttle if either phone or session key already exists in the window
-        return !(phoneOk && sessionOk);
-    }
-
-    private static string Hash(string value)
-        => value
-            .Hash()
-            .SHA256()
-            .ToBase64HashString(HashAlgorithm.SHA256);
+    private Task<bool> IsThrottled(ActualChat.Phone phone, CancellationToken cancellationToken)
+        => Totps.IsPhoneThrottled(phone, cancellationToken);
 
     private async Task<bool> ValidateCode(
         Session session,
@@ -291,7 +254,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         if (TryGetPredefined(phone, out var predefinedTotp))
             return predefinedTotp == totp;
 
-        return await Totps.Validate(purpose, phone.Value, session, totp, cancellationToken).ConfigureAwait(false);
+        return await Totps.Validate(phone.Value, purpose, totp, cancellationToken).ConfigureAwait(false);
     }
 
     private bool IsTestAgentPhone(ActualChat.Phone phone)

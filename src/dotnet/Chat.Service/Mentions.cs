@@ -1,12 +1,9 @@
-using ActualChat.Chat.Db;
-using ActualLab.Fusion.EntityFramework;
-
 namespace ActualChat.Chat;
 
 /// <summary>
 /// Frontend service for retrieving chat mentions with session-based access control.
 /// </summary>
-public class Mentions(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IMentions
+public class Mentions(IServiceProvider services) : IMentions
 {
     private IMentionsBackend Backend { get; } = services.GetRequiredService<IMentionsBackend>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();

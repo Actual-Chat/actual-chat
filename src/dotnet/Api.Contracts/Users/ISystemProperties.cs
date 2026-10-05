@@ -31,14 +31,14 @@ public interface ISystemProperties : IComputeService
 public sealed partial record SystemProperties_InvalidateEverything(
     [property: DataMember, Key(0)] Session Session,
     [property: DataMember, Key(1)] bool Everywhere = false
-) : ISessionCommand<Unit>; // NOTE(AY): Maybe add backend & implement IApiCommand?
+) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record SystemProperties_PruneComputedGraph(
     [property: DataMember, Key(0)] Session Session,
     [property: DataMember, Key(1)] bool Everywhere = false
-) : ISessionCommand<Unit>; // NOTE(AY): Maybe add backend & implement IApiCommand?
+) : ISessionCommand<Unit>, IApiCommand;
 
 /// <summary>
 /// What a client reports about the RPC endpoint it connected through, so the split

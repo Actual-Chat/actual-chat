@@ -373,6 +373,17 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .ConfigureAwait(false);
         dbAccount = dbAccount.Require().RequireVersion(expectedVersion);
 
+        foreach (var identity in account.Identities.Keys) {
+            if (identity.Schema is not (AuthSchema.Email or AuthSchema.Phone))
+                continue;
+
+            var ownerId = await dbContext.GetUserIdByIdentity(identity, false, cancellationToken).ConfigureAwait(false);
+            if (ownerId is not null && ownerId != userId) {
+                var target = identity.Schema == AuthSchema.Email ? "Email" : "Phone number";
+                throw StandardError.Unauthorized($"{target} has already been taken by another account.");
+            }
+        }
+
         var mustGreet = !account.IsGreetingCompleted && dbAccount.IsGreetingCompleted;
         var mustResumeDigestFlow = dbAccount.TimeZone != account.TimeZone
             || (!dbAccount.IsEmailVerified && account.IsEmailVerified());

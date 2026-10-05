@@ -144,6 +144,26 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatWelcomeBlock>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatsNavbarButtonBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ClientUpgradeCover>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachChatToggleCard>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachChatToggleEntry>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachConversationCard>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachEmptyState>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachHeader>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachLanguageChips>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachMarkMenu>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachMilestones>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachOccurrences>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachPanel>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachProgressTab>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachRecentTab>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachScoreCard>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachScoreSheet>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachSettingsPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachSkillRow>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachSkillsTab>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachSwitchedOffSheet>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachTipBar>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachWeekDeltas>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CollapsedCallView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ContactSelector>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ContactSelectorBadges>();
@@ -402,6 +422,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightChatPanelButtonBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelContent>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelModeSwitch>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelSearchTabs>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SearchFilterBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SearchFilterMenu>();
@@ -630,6 +651,9 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.ChatEntryForwarded>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.ChatEntryForwarded>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.ChatEntryForwarded>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.SharedLocationDiff>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.SharedLocationDiff>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.SharedLocationDiff>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ChatEntryId>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ChatEntryId>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ChatEntryId>>>>();
@@ -639,6 +663,12 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ContentId>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ContentId>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ContentId>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Diff.RecordDiff>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Diff.RecordDiff>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Diff.RecordDiff>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.GeoPoint>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.GeoPoint>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.GeoPoint>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Hashing.HashString>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Hashing.HashString>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Hashing.HashString>>>>();
@@ -783,6 +813,12 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.Int64>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.Int64>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.Int64>>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.Single>>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.Single>>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.Single>>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.TimeSpan>>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.TimeSpan>>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Nullable<global::System.TimeSpan>>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Single[]>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Single[]>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Single[]>>>>();
@@ -820,12 +856,16 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.Formatters.NullableFormatter`1[[ActualLab.IO.FilePath, ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.NullableFormatter`1[[ActualLab.Time.Moment, ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.NullableInt64Formatter, MessagePack");
+        CodeKeeper.Keep("MessagePack.Formatters.NullableSingleFormatter, MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.SingleArrayFormatter, MessagePack");
+        CodeKeeper.Keep("MessagePack.Formatters.StaticNullableFormatter`1[[System.TimeSpan, System.Private.CoreLib]], MessagePack");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ChatEntryAttachmentFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ChatEntryAudioFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ChatEntryFlagsFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ChatEntryFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ChatEntryForwardedFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+SharedLocationDiffFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+GeoPointFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Media+LinkPreviewFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Media+LinkPreviewModeFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Media+MediaFormatter, ActualChat.Api");
@@ -979,6 +1019,26 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatWelcomeBlock), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatsNavbarButtonBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ClientUpgradeCover), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachChatToggleCard), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachChatToggleEntry), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachConversationCard), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachEmptyState), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachHeader), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachLanguageChips), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachMarkMenu), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachMilestones), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachOccurrences), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachPanel), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachProgressTab), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachRecentTab), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachScoreCard), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachScoreSheet), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachSettingsPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachSkillRow), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachSkillsTab), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachSwitchedOffSheet), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachTipBar), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachWeekDeltas), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CollapsedCallView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ContactSelector), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ContactSelectorBadges), AotTypeKind.Component),
@@ -1237,6 +1297,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightChatPanelButtonBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelContent), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelModeSwitch), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelSearchTabs), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SearchFilterBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SearchFilterMenu), AotTypeKind.Component),

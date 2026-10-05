@@ -9,6 +9,9 @@ public interface IPasskeysBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ApiArray<PasskeyCredential>> List(UserId userId, CancellationToken cancellationToken);
 
+    Task StoreChallenge(UserId userId, string prefix, string value, CancellationToken cancellationToken);
+    Task<string> ConsumeChallenge(UserId userId, string prefix, CancellationToken cancellationToken);
+
     [CommandHandler]
     Task<PasskeyCredential?> OnChange(PasskeysBackend_Change command, CancellationToken cancellationToken);
 }

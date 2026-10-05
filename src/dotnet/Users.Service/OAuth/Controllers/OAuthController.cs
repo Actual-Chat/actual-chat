@@ -21,7 +21,7 @@ public sealed class OAuthController(IServiceProvider services) : ControllerBase
     private IServiceProvider Services { get; } = services;
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private ISessionsBackend SessionsBackend { get; } = services.GetRequiredService<ISessionsBackend>();
-    private OAuthGrants Grants { get; } = services.GetRequiredService<OAuthGrants>();
+    private OAuthGrantsBackend Grants { get; } = services.GetRequiredService<OAuthGrantsBackend>();
     private IOpenIddictApplicationManager Applications { get; }
         = services.GetRequiredService<IOpenIddictApplicationManager>();
     private IOpenIddictAuthorizationManager Authorizations { get; }
@@ -99,7 +99,7 @@ public sealed class OAuthController(IServiceProvider services) : ControllerBase
             return Reject(Errors.InvalidGrant, "The grant has expired.");
 
         if (request.IsRefreshTokenGrantType())
-            await Grants.TouchSession(sessionId, cancellationToken).ConfigureAwait(false);
+            await Grants.TouchAuthorization(principal.GetAuthorizationId()!, cancellationToken).ConfigureAwait(false);
         principal.SetDestinations(GetDestinations);
         return SignIn(principal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }

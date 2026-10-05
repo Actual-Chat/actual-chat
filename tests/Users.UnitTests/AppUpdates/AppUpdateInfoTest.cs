@@ -2,6 +2,17 @@ namespace ActualChat.Users.UnitTests.AppUpdates;
 
 public sealed class AppUpdateInfoTest
 {
+    [Fact]
+    public void AppUpdateInfoShouldResolveThroughItsFormerAssembly()
+    {
+        // act
+        var forwardedType = Type.GetType(
+            "ActualChat.Users.AppUpdateInfo, ActualChat.Api.Contracts", throwOnError: true);
+
+        // assert
+        forwardedType.Should().Be(typeof(AppUpdateInfo));
+    }
+
     // ReSharper disable once RedundantAssignment
     [Fact]
     public void EqualityMustNotDependOnWhetherVersionWasRead()

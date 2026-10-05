@@ -1,16 +1,12 @@
 using System.Security.Cryptography;
 using ActualChat.Diagnostics;
 using ActualChat.Rpc;
-using ActualChat.Users.Db;
-using ActualLab.CommandR.Operations;
-using ActualLab.Fusion.EntityFramework;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Users;
 
-public class SystemProperties(IServiceProvider services)
-    : DbServiceBase<UsersDbContext>(services), ISystemProperties
+public class SystemProperties(IServiceProvider services) : ISystemProperties
 {
     private const int MinProbePayloadSize = 1024;
     private const int MaxProbePayloadSize = 256 * 1024;
@@ -20,6 +16,9 @@ public class SystemProperties(IServiceProvider services)
     private static readonly Version MinReportableClientVersion = MinCompatibleVersion;
     // Normalized the same way as the client version, so an X.Y match means CompatibilityLevel.Full
     private static readonly Version ApiVersion = VersionExt.ParseBuildVersion(ApiConstants.VersionString);
+    private IServiceProvider Services { get; } = services;
+    private ICommander Commander { get; } = services.Commander();
+    private MomentClockSet Clocks { get; } = services.Clocks();
     private HostInfo HostInfo => field ??= Services.HostInfo();
     private RpcProbePolicy ProbePolicy => field ??= Services.GetRequiredService<RpcProbePolicy>();
 
@@ -85,43 +84,24 @@ public class SystemProperties(IServiceProvider services)
         SystemProperties_InvalidateEverything command,
         CancellationToken cancellationToken)
     {
-        // NOTE(AY): Maybe add backend & implement IApiCommand?
-        var session = command.Session;
-        var context = CommandContext.GetCurrent();
-
         var accounts = Services.GetRequiredService<IAccounts>();
-        var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var account = await accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeAdmin);
-
-        // We must call CreateOperationDbContext to make sure this operation is logged in the Users DB
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        // SystemPropertiesOperationHandler does the invalidating, on every host this row reaches.
-        // Without it the operation carries neither events nor invalidation calls, so it would
-        // default to StoreMode.None - a row nobody reads.
-        context.Operation.StoreMode = OperationStoreMode.Operation;
+        var backendCommand = new SystemPropertiesBackend_InvalidateEverything(command.Everywhere);
+        await Commander.Call(backendCommand, true, cancellationToken)
+            .ConfigureAwait(false);
     }
 
-    // [CommandHandler]
     public virtual async Task OnPruneComputedGraph(
         SystemProperties_PruneComputedGraph command,
         CancellationToken cancellationToken)
     {
-        // NOTE(AY): Maybe add backend & implement IApiCommand?
-        var session = command.Session;
-        var context = CommandContext.GetCurrent();
-
         var accounts = Services.GetRequiredService<IAccounts>();
-        var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var account = await accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeAdmin);
-
-        // We must call CreateOperationDbContext to make sure this operation is logged in the User DB
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        // See OnInvalidateEverything - SystemPropertiesOperationHandler does the pruning
-        context.Operation.StoreMode = OperationStoreMode.Operation;
+        var backendCommand = new SystemPropertiesBackend_PruneComputedGraph(command.Everywhere);
+        await Commander.Call(backendCommand, true, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // Protected/internal methods

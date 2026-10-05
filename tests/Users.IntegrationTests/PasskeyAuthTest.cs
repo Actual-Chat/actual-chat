@@ -41,10 +41,38 @@ public class PasskeyAuthTest(AppHostFixture fixture, ITestOutputHelper @out)
         isSignedIn.Should().BeTrue();
         passkey.Id.Should().Be(authenticator.CredentialId);
         passkey.IsSynced.Should().BeTrue();
-        var signedIn = await Accounts.GetOwn(signInSession, default);
-        signedIn.Id.Should().Be(account.Id);
+        await TestWait.When(async ct =>
+            (await Accounts.GetOwn(signInSession, ct)).Id.Should().Be(account.Id));
         var listed = await PasskeyAuth.ListOwn(tester.Session, default);
         listed.Should().ContainSingle(x => x.Id == passkey.Id && x.LastUsedAt != null);
+    }
+
+    [Fact]
+    public async Task SignInChallengeShouldBelongToTheInitiatingGuest()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        await tester.SignInAsUniqueAlice();
+        using var authenticator = new SoftwareAuthenticator(RpId, Origin);
+        await Register(tester.Session, authenticator);
+        var owner = await NewSession();
+        var other = await NewSession();
+        var options = await Commander.Call(new PasskeyAuth_BeginSignIn { Session = owner });
+        var assertion = authenticator.CreateAssertionJson(options);
+
+        // act
+        var completeAsOther = () => Commander.Call(new PasskeyAuth_CompleteSignIn {
+            Session = other,
+            AssertionJson = assertion,
+        });
+
+        // assert
+        await completeAsOther.Should().ThrowAsync<InvalidOperationException>().WithMessage("*expired*");
+        (await Accounts.GetOwn(other, default)).IsGuest.Should().BeTrue();
+        (await Commander.Call(new PasskeyAuth_CompleteSignIn {
+            Session = owner,
+            AssertionJson = assertion,
+        })).Should().BeTrue("a different guest must not consume the owner's pending challenge");
     }
 
     [Fact]
@@ -129,8 +157,8 @@ public class PasskeyAuthTest(AppHostFixture fixture, ITestOutputHelper @out)
             new PasskeyAuth_CompleteRegistration { Session = tester.Session, AttestationJson = attestation });
 
         // assert
-        await act.Should().ThrowAsync<UnauthorizedAccessException>("the challenge was issued for Alice, not Bob")
-            .WithMessage("*another account*");
+        await act.Should().ThrowAsync<InvalidOperationException>("the challenge was issued for Alice, not Bob")
+            .WithMessage("*expired*");
         (await PasskeysBackend.List(bob.Id, default)).Should().BeEmpty("Alice's user handle must not land on Bob");
         (await PasskeysBackend.List(alice.Id, default)).Should().BeEmpty();
     }

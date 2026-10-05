@@ -3,17 +3,14 @@ using System.Security.Cryptography;
 using ActualChat.Hashing;
 using ActualChat.Resilience;
 using ActualChat.Rpc;
-using ActualChat.Users.Db;
 using ActualChat.Users.Module;
-using ActualLab.Fusion.EntityFramework;
-using ActualLab.Redis;
 using ActualLab.Rpc.Infrastructure;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
 
 namespace ActualChat.Users.Passkeys;
 
-public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
+public class PasskeyAuth : IPasskeyAuth
 {
     private const string CreateChallengeKeyPrefix = ".PasskeyChallenge:create:";
     private const string GetChallengeKeyPrefix = ".PasskeyChallenge:get:";
@@ -22,22 +19,27 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
     private const int MaxNameLength = 64;
     private const int UserHandleLength = 32;
 
+    private IServiceProvider Services { get; }
+    private ICommander Commander { get; }
+    private MomentClockSet Clocks { get; }
     private UsersSettings Settings { get; }
     private HostInfo HostInfo { get; }
     private IFido2 Fido2 { get; }
     private RateLimitPolicy RateLimitPolicy { get; }
-    private RedisDb<UsersDbContext> RedisDb { get; }
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
     private IPasskeysBackend PasskeysBackend => field ??= Services.GetRequiredService<IPasskeysBackend>();
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
-    public PasskeyAuth(IServiceProvider services) : base(services)
+    public PasskeyAuth(IServiceProvider services)
     {
         Settings = services.GetRequiredService<UsersSettings>();
         HostInfo = services.HostInfo();
         Fido2 = services.GetRequiredService<IFido2>();
         RateLimitPolicy = services.GetRequiredService<RateLimitPolicy>();
-        RedisDb = services.GetRequiredService<RedisDb<UsersDbContext>>();
+        Services = services;
+        Commander = services.Commander();
+        Clocks = services.Clocks();
     }
 
     // [ComputeMethod]
@@ -94,7 +96,8 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
         });
         var json = options.ToJson();
         var pending = new PendingRegistration(account.Id, json, NormalizeName(command.Name));
-        await StoreChallenge(CreateChallengeKeyPrefix, session, JsonSerializer.Serialize(pending), cancellationToken)
+        await PasskeysBackend.StoreChallenge(account.Id, CreateChallengeKeyPrefix, JsonSerializer.Serialize(pending),
+                cancellationToken)
             .ConfigureAwait(false);
         return json;
     }
@@ -110,8 +113,8 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustNotBeGuest);
 
-        var pendingJson = await ConsumeChallenge(CreateChallengeKeyPrefix, session, cancellationToken)
-            .ConfigureAwait(false);
+        var pendingJson = await PasskeysBackend
+            .ConsumeChallenge(account.Id, CreateChallengeKeyPrefix, cancellationToken).ConfigureAwait(false);
         var pending = Deserialize<PendingRegistration>(pendingJson);
         if (pending.AccountId != account.Id)
             throw StandardError.Unauthorized("This passkey request was started for another account.");
@@ -165,7 +168,9 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
             UserVerification = UserVerificationRequirement.Required,
         });
         var json = options.ToJson();
-        await StoreChallenge(GetChallengeKeyPrefix, session, json, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        await PasskeysBackend.StoreChallenge(account.Id, GetChallengeKeyPrefix, json, cancellationToken)
+            .ConfigureAwait(false);
         return json;
     }
 
@@ -178,7 +183,8 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
         await RequireEnabled(cancellationToken).ConfigureAwait(false);
         await CheckRateLimit(nameof(OnCompleteSignIn), session, cancellationToken).ConfigureAwait(false);
 
-        var optionsJson = await ConsumeChallenge(GetChallengeKeyPrefix, session, cancellationToken)
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var optionsJson = await PasskeysBackend.ConsumeChallenge(account.Id, GetChallengeKeyPrefix, cancellationToken)
             .ConfigureAwait(false);
         var options = AssertionOptions.FromJson(optionsJson);
         var assertion = Deserialize<AuthenticatorAssertionRawResponse>(command.AssertionJson);
@@ -284,27 +290,6 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
                 identities.AsSpan(0, identityCount),
                 cancellationToken)
             .ConfigureAwait(false);
-    }
-
-    private async Task StoreChallenge(
-        string prefix,
-        Session session,
-        string value,
-        CancellationToken cancellationToken)
-    {
-        var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
-        await db.StringSetAsync(prefix + Hash(session.Id), value, Settings.PasskeyChallengeLifetime)
-            .ConfigureAwait(false);
-    }
-
-    private async Task<string> ConsumeChallenge(string prefix, Session session, CancellationToken cancellationToken)
-    {
-        var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
-        var value = await db.StringGetDeleteAsync(prefix + Hash(session.Id)).ConfigureAwait(false);
-        if (value.IsNullOrEmpty)
-            throw StandardError.Constraint("This passkey request has expired. Please try again.");
-
-        return (string)value!;
     }
 
     private static string? NormalizeName(string? name)
