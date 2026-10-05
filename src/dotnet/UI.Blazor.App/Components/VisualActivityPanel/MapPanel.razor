@@ -13,13 +13,13 @@
             Class="c-map"
             Markers="@m.Markers"
             Center="@m.Center"/>
-        <HeaderButton Class="btn-video-panel c-expand" Click="@OnExpandClick">
+        <HeaderButton Class="btn-glass c-expand" Click="@OnExpandClick">
             <i class="icon-expand text-lg"></i>
         </HeaderButton>
         @if (m.Distance is { } distance) {
             <div class="c-distance">@L.Location_DistanceAway_Format(L.DistanceText(distance))</div>
         }
-        <HeaderButton Class="btn-video-panel c-menu-btn" Click="@OnOpenMenu">
+        <HeaderButton Class="btn-glass c-menu-btn" Click="@OnOpenMenu">
             <i class="icon-more-vertical text-lg"></i>
         </HeaderButton>
         @if (m.Countdown is { } countdown) {

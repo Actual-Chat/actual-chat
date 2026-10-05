@@ -82,13 +82,13 @@
         <div class="video-panel-toolbar video-panel-header">
             <div class="header-row">
                 <div class="c-left">
-                    <HeaderButton Class="btn-video-panel expand-btn show-with-delay" Click="@OnExpandClick">
+                    <HeaderButton Class="btn-glass expand-btn show-with-delay" Click="@OnExpandClick">
                         <i class="icon-expand text-lg collapsed-video-panel"></i>
                         <i class="icon-collapse text-lg expanded-video-panel"></i>
                     </HeaderButton>
                     @if (m.IsExpanded) {
                         <HeaderButton
-                            Class="@("btn-video-panel layout-toggle-btn " + (m.IsEqualLayout ? "on" : ""))"
+                            Class="@("btn-glass layout-toggle-btn " + (m.IsEqualLayout ? "on" : ""))"
                             StopPropagation="true"
                             PreventDefault="true"
                             Click="@(() => ChatVideoUI.SetVideoPanelEqualLayout(!m.IsEqualLayout))">
@@ -106,7 +106,7 @@
 
                 <div class="c-right">
                     <HeaderButton
-                        Class="btn-video-panel btn-video-menu"
+                        Class="btn-glass btn-video-menu"
                         StopPropagation="true"
                         PreventDefault="true"
                         data-menu="@videoMenuRef"
@@ -114,14 +114,14 @@
                         <i class="icon-more-vertical text-lg"></i>
                     </HeaderButton>
                     <HeaderButton
-                        Class="btn-video-panel video-panel-collapse-toggle"
+                        Class="btn-glass video-panel-collapse-toggle"
                         StopPropagation="true"
                         PreventDefault="true"
                         Click="@(() => ChatActivityUI.SetPanelMode(Chat.Id, VisualActivityPanelMode.Expanded))">
                         <i class="icon-expand text-lg"></i>
                     </HeaderButton>
                     <HeaderButton
-                        Class="btn-video-panel talking"
+                        Class="btn-glass talking"
                         StopPropagation="true"
                         PreventDefault="true"
                         Click="@OnHangUpClick"
@@ -138,14 +138,14 @@
             @if (m is { IsEqualLayout: false, IsCollapsed: false, IsHidden: false } && hasRemoteStreams) {
                 <div class="header-row header-row-pin">
                     <HeaderButton
-                        Class="@("btn-video-panel btn-pin-toggle " + (m.IsPinned ? "on" : ""))"
+                        Class="@("btn-glass btn-pin-toggle " + (m.IsPinned ? "on" : ""))"
                         StopPropagation="true"
                         PreventDefault="true"
                         Click="@OnTogglePinClick">
                         <i class="icon-pin text-lg"></i>
                     </HeaderButton>
                     @if (m.IsExpanded && isFocusedHandRaised) {
-                        <div class="btn-video-panel btn-h btn-hand on">
+                        <div class="btn-glass btn-h btn-hand on">
                             <i class="icon-hand text-lg"></i>
                         </div>
                     }
@@ -163,7 +163,7 @@
                 }
                 <HeaderButton
                     Click="@(() => OnVideoClick(!isOwnCameraStreaming))"
-                    Class="@("btn-video-panel btn-video-toggle " + videoBtnCls)">
+                    Class="@("btn-glass btn-video-toggle " + videoBtnCls)">
                     <i class="icon-video text-lg"></i>
                 </HeaderButton>
             } else {
@@ -175,7 +175,7 @@
                 }
                 <HeaderButton
                     Click="@(() => OnScreenCastClick(!isOwnScreenCasting))"
-                    Class="@("btn-video-panel " + screenCastBtnCls)">
+                    Class="@("btn-glass " + screenCastBtnCls)">
                     <i class="icon-screen-share text-lg"></i>
                 </HeaderButton>
             }
@@ -184,7 +184,7 @@
                 @if (isOwnCameraStreaming) {
                     <HeaderButton
                         Click="@OnSwitchCamera"
-                        Class="btn-video-panel"
+                        Class="btn-glass"
                         data-menu="@cameraMenuRef"
                         data-menu-trigger="@MenuTrigger.Secondary"
                         data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
@@ -198,16 +198,16 @@
             } else {
                 <HeaderButton
                     Click="@(() => OnVideoClick(!isOwnCameraStreaming))"
-                    Class="@("btn-video-panel btn-video-toggle " + videoBtnCls)">
+                    Class="@("btn-glass btn-video-toggle " + videoBtnCls)">
                     <i class="icon-video text-lg"></i>
                 </HeaderButton>
-                <HeaderButton Click="@OnToggleChatVisibilityClick" Class="@("btn-video-panel chat-btn " + chatBtnCls)">
+                <HeaderButton Click="@OnToggleChatVisibilityClick" Class="@("btn-glass chat-btn " + chatBtnCls)">
                     <i class="icon-message-ellipse text-lg"></i>
                 </HeaderButton>
             }
             @if (m.CanReact) {
                 <HeaderButton
-                    Class="@("btn-video-panel btn-react " + (m.IsOwnHandRaised ? "on" : ""))"
+                    Class="@("btn-glass btn-react " + (m.IsOwnHandRaised ? "on" : ""))"
                     data-menu="@reactionsMenuRef"
                     data-menu-trigger="@MenuTrigger.Primary"
                     data-menu-placement="@(FloatingPosition.Top.ToPositionString())">

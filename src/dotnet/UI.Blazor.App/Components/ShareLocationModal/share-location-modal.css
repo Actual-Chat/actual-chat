@@ -59,7 +59,7 @@ body.device-android .share-location-modal.picking .c-map-area {
 .share-location-modal .c-permission-prompt span {
     @apply text-body-500 text-02;
 }
-.share-location-modal .c-map-area .btn-video-panel i {
+.share-location-modal .c-map-area .btn-glass i {
     @apply text-2xl;
 }
 .share-location-modal .c-map-area .c-close {

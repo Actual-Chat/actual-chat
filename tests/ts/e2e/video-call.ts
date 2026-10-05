@@ -138,7 +138,7 @@ export async function hangUpIfAny(page: Page | undefined) {
         await page.keyboard.press('Escape').catch(() => { /* ignore */ });
         await page.waitForTimeout(300);
     }
-    const hangUp = page.locator('.video-panel .btn-video-panel.talking').first();
+    const hangUp = page.locator('.video-panel .btn-glass.talking').first();
     if (await hangUp.isVisible({ timeout: 1_000 }).catch(() => false)) {
         await hangUp.click().catch(() => { /* ignore */ });
         await page.locator('.video-panel').first()

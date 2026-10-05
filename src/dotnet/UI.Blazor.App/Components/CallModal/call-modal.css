@@ -10,7 +10,7 @@ body.narrow .call-modal .dialog-buttons {
     @apply w-[3.25rem] h-[3.25rem];
     @apply rounded-full;
 }
-/* Solid gradients stay as plain CSS (same as .btn-video-panel): the shorthand also clears the
+/* Solid gradients stay as plain CSS (same as .btn-glass): the shorthand also clears the
    default .btn-round background so the fill is exact. */
 .call-modal .btn-call.c-decline,
 .call-modal .btn-call.c-hang-up {
@@ -23,7 +23,7 @@ body.narrow .call-modal .dialog-buttons {
 }
 .call-modal .btn-call.c-mute,
 .call-modal .btn-call.c-message {
-    /* Same neutral glass as the video-panel controls (.btn-video-panel). */
+    /* Same neutral glass as the video-panel controls (.btn-glass). */
     background: linear-gradient(180deg, var(--black-20) -20.83%, var(--black-40) 100%);
     @apply text-white;
     text-shadow: 0 1px 3px rgb(0 0 0 / 60%);

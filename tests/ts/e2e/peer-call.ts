@@ -135,8 +135,8 @@ export async function hangUpIfAny(page: Page | undefined) {
 
     // Most specific first: the recorder toggle would restart a recording that a hang-up is still stopping.
     const controls = [
-        page.locator(`${CALL_SCREEN} .c-call-bar .btn-video-panel.talking`).first(),
-        page.locator('.video-panel .btn-video-panel.talking').first(),
+        page.locator(`${CALL_SCREEN} .c-call-bar .btn-glass.talking`).first(),
+        page.locator('.video-panel .btn-glass.talking').first(),
         page.locator('.chat-audio-controls .c-hangup').first(),
         // On a wide screen an active call has no screen of its own: it ends with the recording
         page.locator('.chat-audio-panel .recorder-wrapper.record-on button').first(),

@@ -25,10 +25,10 @@ body.device-android .location-map-modal .c-map-host {
     @apply p-6;
     @apply text-center text-02;
 }
-.location-map-modal .c-map-host .btn-video-panel.c-close {
+.location-map-modal .c-map-host .btn-glass.c-close {
     @apply absolute top-2 left-2 z-10;
 }
-.location-map-modal .c-map-host .btn-video-panel i {
+.location-map-modal .c-map-host .btn-glass i {
     @apply text-2xl;
 }
 .location-map-modal .c-map-menu {

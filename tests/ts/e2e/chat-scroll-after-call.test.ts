@@ -54,7 +54,7 @@ async function hangUpIfAny(page: Page | undefined) {
     if (!page)
         return;
 
-    const hangUp = page.locator(`${CALL_SCREEN} .c-call-bar .btn-video-panel.talking`).first();
+    const hangUp = page.locator(`${CALL_SCREEN} .c-call-bar .btn-glass.talking`).first();
     if (await hangUp.isVisible({ timeout: 1_000 }).catch(() => false))
         await hangUp.click().catch(() => { /* ignore */ });
 }

@@ -25,14 +25,14 @@
 .map-panel .c-map {
     @apply w-full h-full;
 }
-.map-panel .btn-video-panel.btn,
-.map-panel .btn-video-panel.btn-h {
+.map-panel .btn-glass.btn,
+.map-panel .btn-glass.btn-h {
     @apply w-8 h-8;
 }
-.map-panel .btn-video-panel.c-expand {
+.map-panel .btn-glass.c-expand {
     @apply absolute top-2 left-2 z-10;
 }
-.map-panel .btn-video-panel.c-menu-btn {
+.map-panel .btn-glass.c-menu-btn {
     @apply absolute top-2 right-2 z-10;
 }
 .map-panel .c-distance {
