@@ -69,24 +69,25 @@
                 <Spinner/>
             } else {
                 @if (ScreenSize.IsWide()) {
-                    <HeaderButton Tooltip="@L.Replay_Backward" Click="@OnBackward">
+                    <HeaderButton Class="btn-glass btn-sm" Tooltip="@L.Replay_Backward" Click="@OnBackward">
                         <i class="icon-rewind-left-fill"></i>
                     </HeaderButton>
                 }
                 @if (m?.IsPaused ?? false) {
-                    <HeaderButton Class="c-play-btn" Tooltip="@L.MessageMenu_Play" Click="@OnResume">
+                    <HeaderButton Class="btn-glass btn-primary btn-sm" Tooltip="@L.MessageMenu_Play"
+                                  Click="@OnResume">
                         <i class="icon-play-fill"></i>
                     </HeaderButton>
                 } else {
-                    <HeaderButton Class="c-play-btn" Tooltip="@L.Common_Pause" Click="@OnPause">
+                    <HeaderButton Class="btn-glass btn-primary btn-sm" Tooltip="@L.Common_Pause" Click="@OnPause">
                         <i class="icon-pause-fill"></i>
                     </HeaderButton>
                 }
                 @if (ScreenSize.IsWide()) {
-                    <HeaderButton Tooltip="@L.AudioPlayer_Forward" Click="@OnForward">
+                    <HeaderButton Class="btn-glass btn-sm" Tooltip="@L.AudioPlayer_Forward" Click="@OnForward">
                         <i class="icon-rewind-right-fill"></i>
                     </HeaderButton>
-                    <HeaderButton Tooltip="@L.Common_Stop" Click="@OnStop">
+                    <HeaderButton Class="btn-glass btn-sm" Tooltip="@L.Common_Stop" Click="@OnStop">
                         <i class="icon-stop-fill"></i>
                     </HeaderButton>
                 }

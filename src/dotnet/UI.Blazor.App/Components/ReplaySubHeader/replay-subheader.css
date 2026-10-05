@@ -3,7 +3,7 @@
     @apply relative z-10;
     @apply flex items-center gap-x-1 md:gap-x-2;
     @apply w-full min-h-12;
-    @apply pl-2 md:pl-1 pr-3 md:pr-1;
+    @apply pl-2 pr-3;
     @apply rounded-lg;
     @apply bg-replay;
     @apply text-replay;
@@ -72,12 +72,6 @@ a.c-title {
 }
 .replay-subheader .c-playback {
     @apply flex-none flex-x items-center gap-x-1 md:gap-x-2;
-    @apply p-1;
-    @apply rounded-lg border border-replay;
-    @apply bg-transparent;
-}
-.replay-subheader .c-playback .c-play-btn {
-    @apply text-primary;
 }
 .replay-subheader .spinner {
     @apply m-1;
