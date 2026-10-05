@@ -67,6 +67,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
             replaced = [.. _shares.Value.Where(x => x.ChatId == chatId)];
             _shares.Value = [.. _shares.Value.Where(x => x.ChatId != chatId), share];
         }
+        _ = PersistShares();
         _ = StopServerShares(replaced, StopToken);
     }
 
@@ -79,6 +80,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
             stopped = _shares.Value.Where(x => x.ChatId == chatId).ToArray();
             _shares.Value = _shares.Value.Where(x => x.ChatId != chatId).ToArray();
         }
+        await PersistShares(cancellationToken).ConfigureAwait(false);
         await StopServerShares(stopped, cancellationToken).ConfigureAwait(false);
         if (locationId is { } id && stopped.All(x => x.LocationId != id))
             await StopServerShare(chatId, id, cancellationToken).ConfigureAwait(false);
@@ -91,6 +93,7 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
             stopped = _shares.Value;
             _shares.Value = [];
         }
+        await PersistShares(cancellationToken).ConfigureAwait(false);
         await StopServerShares(stopped, cancellationToken).ConfigureAwait(false);
     }
 
@@ -440,7 +443,11 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
     {
         // Stored before the send is queued: a restart in between must find the request, not queue another
         var uuid = Ulid.NewUlid().ToString();
-        UpdatePendingShare(share.ChatId, x => x with { SendUuid = uuid });
+        // Replaced or stopped while this worker was on its way here: posting would mint a live share
+        // nothing owns, and the server freezes every other live share of the author on each create.
+        if (!UpdatePendingShare(share, x => x with { SendUuid = uuid }))
+            return share;
+
         var request = SendMessageRequest.NewLiveLocation(share.ChatId, point, share.Duration, uuid);
         await SendingMessages.Send(request, cancellationToken).ConfigureAwait(false);
         return share with { SendUuid = uuid };
@@ -448,13 +455,13 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
 
     private ActiveShare RequeueShareEntry(ActiveShare share)
     {
-        UpdatePendingShare(share.ChatId, x => x with { SendUuid = "" });
+        UpdatePendingShare(share, x => x with { SendUuid = "" });
         return share with { SendUuid = "" };
     }
 
     private ActiveShare AdoptLocationId(ActiveShare share, SharedLocationId locationId)
     {
-        UpdatePendingShare(share.ChatId, x => x with { LocationId = locationId });
+        UpdatePendingShare(share, x => x with { LocationId = locationId });
         return share with { LocationId = locationId };
     }
 
@@ -479,21 +486,32 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
             : point;
     }
 
-    private void UpdatePendingShare(ChatId chatId, Func<ActiveShare, ActiveShare> update)
+    private bool UpdatePendingShare(ActiveShare share, Func<ActiveShare, ActiveShare> update)
     {
-        lock (_lock)
-            _shares.Value = _shares.Value
-                .Select(x => x.ChatId == chatId && x.LocationId is null ? update(x) : x)
-                .ToArray();
+        // Matched by StartedAt too: a worker still running for a replaced share must not write
+        // its send or location id onto the share that replaced it.
+        lock (_lock) {
+            var shares = _shares.Value;
+            var index = Array.FindIndex(shares, x => IsSameShare(x, share) && x.LocationId is null);
+            if (index < 0)
+                return false;
+
+            _shares.Value = [.. shares[..index], update(shares[index]), .. shares[(index + 1)..]];
+            return true;
+        }
     }
 
     private void DropShare(ActiveShare share)
     {
         lock (_lock)
-            _shares.Value = _shares.Value
-                .Where(x => x.ChatId != share.ChatId || x.StartedAt != share.StartedAt)
-                .ToArray();
+            _shares.Value = _shares.Value.Where(x => !IsSameShare(x, share)).ToArray();
+        _ = PersistShares();
     }
+
+    private Task PersistShares(CancellationToken cancellationToken = default)
+        // _shares reaches storage only after the batching delay, and a reload inside it restores
+        // a share that is gone: its pending send is then requeued as a brand-new live share.
+        => LocalSettings.Flush(cancellationToken);
 
     private void DropExpiredShares()
     {
@@ -505,6 +523,9 @@ public class LiveLocationReporter : UIWorkerBase<AppUIHub>, IComputeService
 
     private ActiveShare[] WithoutExpired(ActiveShare[] shares)
         => shares.Where(x => x.ExpiresAt > ServerNow).ToArray();
+
+    private static bool IsSameShare(ActiveShare x, ActiveShare y)
+        => x.ChatId == y.ChatId && x.StartedAt == y.StartedAt;
 
     // Nested types
 
