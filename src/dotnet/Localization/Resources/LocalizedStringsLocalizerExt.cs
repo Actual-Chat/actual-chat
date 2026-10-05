@@ -1307,9 +1307,9 @@ public static class LocalizedStringsLocalizerExt
         public string VoiceSettings_SecondLanguageHint_Suffix => l["VoiceSettings_SecondLanguageHint_Suffix"].Value;
         public string Recording_InChat_Prefix => l["Recording_InChat_Prefix"].Value;
         public string Recording_InChat_Suffix => l["Recording_InChat_Suffix"].Value;
-        public string Recording_InChat_CountdownPrefix => l["Recording_InChat_CountdownPrefix"].Value;
-        public string Recording_InChat_CountdownMid => l["Recording_InChat_CountdownMid"].Value;
-        public string Recording_InChat_CountdownTail => l["Recording_InChat_CountdownTail"].Value;
+        public string Recording_InChatCountdown_Prefix => l["Recording_InChatCountdown_Prefix"].Value;
+        public string Recording_InChatCountdownMid => l["Recording_InChatCountdownMid"].Value;
+        public string Recording_InChatCountdown_Suffix => l["Recording_InChatCountdown_Suffix"].Value;
         public string Recording_SecondsUnit => l["Recording_SecondsUnit"].Value;
         public string Recording_WillStopIn => l["Recording_WillStopIn"].Value;
         public string Recording_StopRecording => l["Recording_StopRecording"].Value;
