@@ -118,6 +118,36 @@ describe('floodGate operator', () => {
         expect(gate.skipCount).toBe(2);
     });
 
+    it('hands skipped frames to onSkip instead of closing them', async () => {
+        const stats = createEmptyRecorderStats();
+        const gate = new FloodGate();
+        gate.close();
+        const frames = [new MockVideoFrame(1), new MockVideoFrame(2)];
+        const envelopes = frames.map((f, i) => envelope(stats, f, i));
+        const skipped: number[] = [];
+
+        const out = await drain(floodGate(gate, frame => {
+            skipped.push((frame as unknown as MockVideoFrame).id);
+        })(source(envelopes)));
+
+        expect(out).toHaveLength(0);
+        expect(skipped).toEqual([1, 2]);
+        expect(frames.every(f => !f.closed)).toBe(true);
+        expect(gate.skipCount).toBe(2);
+    });
+
+    it('keeps skipping when onSkip throws', async () => {
+        const stats = createEmptyRecorderStats();
+        const gate = new FloodGate();
+        gate.close();
+        const envelopes = [new MockVideoFrame(1), new MockVideoFrame(2)].map((f, i) => envelope(stats, f, i));
+
+        const out = await drain(floodGate(gate, () => { throw new Error('synthetic'); })(source(envelopes)));
+
+        expect(out).toHaveLength(0);
+        expect(gate.skipCount).toBe(2);
+    });
+
     it('stats: floodGateSkipPerSec reflects count of skip events in the last second', async () => {
         const stats = createEmptyRecorderStats();
         const gate = new FloodGate();

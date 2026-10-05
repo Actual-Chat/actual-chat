@@ -62,6 +62,8 @@ export interface NormalizeDownscaleOptions {
     isCamera: boolean;
     isFrontCamera: boolean;
     isIos: boolean;
+    // Pass the one shared with createSkippedFramePreview, so both paths latch the same rotation.
+    orientation?: NormalizeFrameOrientation;
     // Self-preview tap. Fed a clone of the full-res ceiling per kept frame —
     // the ceiling only exists inside this stage, so the tap lives here rather
     // than as a downstream operator over the bundle. Omit to skip preview.
@@ -143,7 +145,7 @@ export function createDownscalerForMode(mode: DownscalerMode): DownscalerLike {
 // the produced tier frames; the only closer of the ceiling-when-orphan is the
 // downstream previewForwarder, of the tiers is the encode stage.
 export function normalizeDownscale(opts: NormalizeDownscaleOptions): PipeOperator<CapturedFrame, CapturedBundle> {
-    const orientation = new NormalizeFrameOrientation(opts);
+    const orientation = opts.orientation ?? new NormalizeFrameOrientation(opts);
     const mode = opts.mode ?? 'webgl';
     const createDownscaler = opts.createDownscaler ?? (() => createDownscalerForMode(mode));
     const concurrency = Math.max(1, opts.concurrency ?? 2);
@@ -293,6 +295,36 @@ export function normalizeDownscale(opts: NormalizeDownscaleOptions): PipeOperato
     };
 }
 
+export interface SkippedFramePreviewOptions {
+    orientation: NormalizeFrameOrientation;
+    getNormalizeSize: () => LayerSpec;
+    preview: PreviewSink;
+}
+
+/** Feeds the self-preview from a frame the encode path skips (flood gate closed),
+ *  normalized the way normalizeDownscale would have. Takes ownership of the frame. */
+export function createSkippedFramePreview(opts: SkippedFramePreviewOptions): (frame: VideoFrame) => void {
+    const { orientation, getNormalizeSize, preview } = opts;
+    let normSlot: Slot | null = null;
+    return frame => {
+        let ceiling: VideoFrame | null = null;
+        try {
+            const target = getNormalizeSize();
+            const transform = orientation.decide(frame, target);
+            ceiling = produceCeiling(frame, target, transform.cropboxRotation, () => {
+                normSlot ??= createSlot('skippedFramePreview');
+                return normSlot;
+            });
+            preview.forward(ceiling, transform.wireRotation);
+        } catch (e) {
+            warnLog?.log('skippedFramePreview: failed:', e);
+        } finally {
+            // produceCeiling has already closed `frame` unless it returned it as the ceiling.
+            closeFrames(ceiling === null ? [frame] : [ceiling, frame]);
+        }
+    };
+}
+
 // Produce the normalized ceiling frame from the captured input, applying the
 // decided crop/rotation. Consumes `input` (closes it) whenever it allocates a
 // new frame; returns `input` unchanged on the true-identity path.
@@ -358,7 +390,7 @@ function closeBundle(bundle: CapturedBundle): void {
     }
 }
 
-class NormalizeFrameOrientation {
+export class NormalizeFrameOrientation {
     private initialDeviceAngle: number | null = null;
     private currentCropboxRotation: RotationQuarter = 0;
 
