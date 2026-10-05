@@ -756,7 +756,9 @@ body.wide .video-panel-content .video-track-player.item-x {
    doesn't compete for attention. */
 .video-fps {
     @apply hidden;
-    color: rgba(255, 255, 255, 0.7);
+    @apply flex-none;
+    @apply min-w-9;
+    @apply tabular-nums text-right text-pal-white-70;
 }
 /* Separator: WORD SEPARATOR MIDDLE DOT (U+2E31, already wide enough on its
    own). Suffix: ᶠᵖˢ (U+1DA0, U+1D56, U+02E2 — small modifier letters). */
@@ -1048,6 +1050,53 @@ body.narrow .video-panel.expanded.layout-equal .c-grid {
     .video-panel.expanded.layout-equal .c-grid.tiles-3 {
         grid-template-columns: repeat(3, 1fr);
         grid-template-rows: 1fr;
+    }
+}
+
+/* ── Name badge row placement (multi-row equal grid) ──
+   A bottom-row tile sits under the footer, so its badge moves to the tile's top-left;
+   every other row keeps it bottom-left (the base .video-tile-caption). The bottom row
+   is read from the C#-assigned grid index (gi-N, visual order) against the row/column
+   count, which depends on tiles-N and the content-box orientation. gi-N also pins
+   `order` here so placement is deterministic — the sidebar's item-* orders tie at 0. */
+.video-panel.expanded.layout-equal .gi-0 { order: 0; }
+.video-panel.expanded.layout-equal .gi-1 { order: 1; }
+.video-panel.expanded.layout-equal .gi-2 { order: 2; }
+.video-panel.expanded.layout-equal .gi-3 { order: 3; }
+.video-panel.expanded.layout-equal .gi-4 { order: 4; }
+.video-panel.expanded.layout-equal .gi-5 { order: 5; }
+/* The badge never outgrows its tile: cap it to the tile minus the 0.25rem insets and
+   let the name ellipsis inside (min-w-0 lets the flex name span shrink below content). */
+.video-panel.expanded.layout-equal .video-tile-caption {
+    max-width: calc(100% - 0.5rem);
+}
+.video-panel.expanded.layout-equal .video-participant-label,
+.video-panel.expanded.layout-equal .video-participant-label > span {
+    @apply min-w-0;
+}
+/* 2x2: the bottom row is the last two tiles in both orientations */
+.video-panel.expanded.layout-equal .c-grid.tiles-4 .gi-2 .video-tile-caption,
+.video-panel.expanded.layout-equal .c-grid.tiles-4 .gi-3 .video-tile-caption {
+    @apply top-1 bottom-auto;
+}
+@container vp-content (orientation: portrait) {
+    /* one column: only the last tile is the bottom row (2x1, 3x1); two columns: last row (5,6) */
+    .video-panel.expanded.layout-equal .c-grid.tiles-2 .gi-1 .video-tile-caption,
+    .video-panel.expanded.layout-equal .c-grid.tiles-3 .gi-2 .video-tile-caption,
+    .video-panel.expanded.layout-equal .c-grid.tiles-5 .gi-4 .video-tile-caption,
+    .video-panel.expanded.layout-equal .c-grid.tiles-6 .gi-4 .video-tile-caption,
+    .video-panel.expanded.layout-equal .c-grid.tiles-6 .gi-5 .video-tile-caption {
+        @apply top-1 bottom-auto;
+    }
+}
+@container vp-content (orientation: landscape) {
+    /* three columns, two rows: the bottom row is everything after the first full row */
+    .video-panel.expanded.layout-equal .c-grid.tiles-5 .gi-3 .video-tile-caption,
+    .video-panel.expanded.layout-equal .c-grid.tiles-5 .gi-4 .video-tile-caption,
+    .video-panel.expanded.layout-equal .c-grid.tiles-6 .gi-3 .video-tile-caption,
+    .video-panel.expanded.layout-equal .c-grid.tiles-6 .gi-4 .video-tile-caption,
+    .video-panel.expanded.layout-equal .c-grid.tiles-6 .gi-5 .video-tile-caption {
+        @apply top-1 bottom-auto;
     }
 }
 

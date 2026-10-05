@@ -11,6 +11,12 @@ const TAP_MOVE_THRESHOLD = 225; // 15px squared
 const TAP_MAX_DURATION = 500;
 const DOUBLE_TAP_INTERVAL = 300;
 const ZOOM_TRANSITION_MS = 250;
+// Name-badge flow around the footer buttons (single-row layouts). GAP is the clearance kept
+// between a badge and the buttons; MIN is the narrowest a badge is truncated to beside them
+// before it gives up and lifts above instead. The badge's own inset from the tile edge is read
+// live from the rendered caption (it's `bottom-1 left-1` in css), so it needs no constant here.
+const BADGE_GAP = 8;
+const BADGE_MIN_REM = 8;
 
 export class VideoPanel {
     private static readonly bodyClass = 'has-video-panel';
@@ -65,6 +71,15 @@ export class VideoPanel {
     private closeContent: Element | null = null;
     private closeComplete: (() => void) | null = null;
     private closing = false;
+
+    // Name-badge placement (expanded only): a rAF-coalesced relayout fed by a ResizeObserver
+    // (content resize) and a MutationObserver (tiles join/leave, name edits, toolbar-hidden and
+    // layout-equal class toggles). movedBadges holds the labels carrying inline styles this run,
+    // so they can be reset on teardown or when the layout stops needing them.
+    private badgeResizeObserver: ResizeObserver | null = null;
+    private badgeMutationObserver: MutationObserver | null = null;
+    private badgeRaf = 0;
+    private movedBadges = new Set<HTMLElement>();
 
     static create(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject): VideoPanel {
         return new VideoPanel(videoPanel, blazorRef);
@@ -766,6 +781,187 @@ export class VideoPanel {
         this.restoreToParent();
     }
 
+    // ── Name-badge placement ──
+    // Multi-row grids are handled by css (the bottom row's badge moves to the tile top). This only
+    // runs the single-row case and the sidebar's big focused tile. Every badge stays at its base
+    // bottom-left (0.25rem from the edges); only a badge the central footer controls actually cover
+    // is touched — truncated to the room on their left, or pushed flush against their right edge and
+    // grown rightwards, or (only when neither side has room) lifted just above them. Right-side
+    // obstacles — the chat toggle on desktop, the small-tile column in the sidebar — clamp how far
+    // right a bottom badge may reach so it never slides under them.
+    private setupBadgeLayout(): void {
+        const content = this.videoPanel.querySelector<HTMLElement>('.video-panel-content');
+        if (!content)
+            return;
+
+        if (!this.badgeResizeObserver) {
+            this.badgeResizeObserver = new ResizeObserver(() => this.scheduleBadgeLayout());
+            this.badgeResizeObserver.observe(content);
+        }
+        if (!this.badgeMutationObserver) {
+            this.badgeMutationObserver = new MutationObserver(() => this.scheduleBadgeLayout());
+            this.badgeMutationObserver.observe(content, { childList: true, subtree: true, characterData: true });
+            this.badgeMutationObserver.observe(this.videoPanel, { attributes: true, attributeFilter: ['class'] });
+        }
+        void document.fonts.ready.then(() => this.scheduleBadgeLayout());
+        this.scheduleBadgeLayout();
+    }
+
+    private teardownBadgeLayout(): void {
+        this.badgeResizeObserver?.disconnect();
+        this.badgeResizeObserver = null;
+        this.badgeMutationObserver?.disconnect();
+        this.badgeMutationObserver = null;
+        if (this.badgeRaf) {
+            cancelAnimationFrame(this.badgeRaf);
+            this.badgeRaf = 0;
+        }
+        this.movedBadges.forEach(label => this.resetBadge(label));
+        this.movedBadges.clear();
+    }
+
+    private scheduleBadgeLayout(): void {
+        if (this.badgeRaf)
+            return;
+
+        this.badgeRaf = requestAnimationFrame(() => {
+            this.badgeRaf = 0;
+            this.layoutBadges();
+        });
+    }
+
+    private resetBadge(label: HTMLElement): void {
+        label.style.maxWidth = '';
+        label.style.transform = '';
+    }
+
+    // Union of the central footer control cluster — not the full-width bar. Excludes the invisible
+    // counterweight and the chat toggle (it sits at the right edge and is handled as a separate
+    // right-side obstacle, not something badges flow around). Null when the footer is tap-hidden.
+    private footerButtonsRect(): DOMRect | null {
+        const footer = this.videoPanel.querySelector<HTMLElement>('.video-panel-footer');
+        if (!footer || this.videoPanel.classList.contains('toolbar-hidden'))
+            return null;
+
+        return this.unionRect(Array.from(footer.children)
+            .filter(c => !c.classList.contains('btn-incut') && !c.classList.contains('chat-btn')));
+    }
+
+    private unionRect(elements: Element[]): DOMRect | null {
+        let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+        for (const el of elements) {
+            const r = el.getBoundingClientRect();
+            if (r.width <= 0 || r.height <= 0)
+                continue;
+
+            left = Math.min(left, r.left);
+            top = Math.min(top, r.top);
+            right = Math.max(right, r.right);
+            bottom = Math.max(bottom, r.bottom);
+        }
+        return left === Infinity ? null : new DOMRect(left, top, right - left, bottom - top);
+    }
+
+    private layoutBadges(): void {
+        if (this.disposed$.closed)
+            return;
+
+        const content = this.videoPanel.querySelector<HTMLElement>('.video-panel-content');
+        if (!content)
+            return;
+
+        const isEqual = this.videoPanel.classList.contains('layout-equal');
+        const tiles = isEqual
+            ? Array.from(content.querySelectorAll<HTMLElement>(
+                '.c-grid > .video-track-player.item-focused, .c-grid > .video-track-player.item-x'))
+            : Array.from(content.querySelectorAll<HTMLElement>('.video-track-player.item-focused'));
+        const items = tiles
+            .map(tile => ({ tile, label: tile.querySelector<HTMLElement>('.video-participant-label') }))
+            .filter((it): it is { tile: HTMLElement; label: HTMLElement } => it.label != null);
+
+        // Reset first: clears any prior run so the css (multi-row) or the base bottom-left take over.
+        for (const it of items)
+            this.resetBadge(it.label);
+        this.movedBadges.forEach(label => { if (!items.some(it => it.label === label)) this.resetBadge(label); });
+        this.movedBadges = new Set<HTMLElement>();
+        if (!this.isExpanded() || items.length === 0)
+            return;
+
+        // Several rows → css owns it (the bottom-row badge sits at the tile top). Leave them reset.
+        if (isEqual && new Set(items.map(it => Math.round(it.tile.getBoundingClientRect().top))).size > 1)
+            return;
+
+        // Footer hidden → nothing to flow around; badges stay bottom-left.
+        const buttons = this.footerButtonsRect();
+        if (!buttons)
+            return;
+
+        // The central control cluster badges flow around, grown by GAP on the sides and top (the
+        // bottom edge is the screen edge, so it isn't padded).
+        const box = {
+            l: buttons.left - BADGE_GAP,
+            r: buttons.right + BADGE_GAP,
+            t: buttons.top - BADGE_GAP,
+            b: buttons.bottom,
+        };
+
+        // Right-side obstacles a bottom badge must never slide under: the chat toggle (desktop) and,
+        // in the sidebar, the small-tile column. They clamp each tile's usable right edge.
+        const rightObstacles: DOMRect[] = [];
+        const chatBtn = this.videoPanel.querySelector<HTMLElement>('.video-panel-footer .chat-btn');
+        if (chatBtn) {
+            const r = chatBtn.getBoundingClientRect();
+            if (r.width > 0 && r.height > 0)
+                rightObstacles.push(r);
+        }
+        if (!isEqual) {
+            const column = this.unionRect(
+                Array.from(content.querySelectorAll<HTMLElement>('.video-track-player.item-x')));
+            if (column)
+                rightObstacles.push(column);
+        }
+        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+        const min = BADGE_MIN_REM * rem;
+
+        // Measure each badge at a generous width (left/bottom-anchored, so left/bottom stay put) and
+        // work out its tile's usable right edge after the right-side obstacles.
+        const measured = items.map(it => {
+            const tileRect = it.tile.getBoundingClientRect();
+            it.label.style.maxWidth = `${tileRect.width}px`;
+            const rect = it.label.getBoundingClientRect();
+            const inset = rect.left - tileRect.left;
+            let usableRight = tileRect.right - inset;
+            for (const o of rightObstacles)
+                if (o.left < tileRect.right && o.right > tileRect.left && o.left > rect.left)
+                    usableRight = Math.min(usableRight, o.left - BADGE_GAP);
+            return { ...it, tileRect, inset, usableRight,
+                anchorLeft: rect.left, anchorBottom: rect.bottom, h: rect.height, naturalW: rect.width };
+        });
+        for (const it of measured) {
+            let dx = 0, dy = 0, maxW = Math.max(0, it.usableRight - it.anchorLeft);
+            const hit = it.anchorLeft < box.r && it.anchorLeft + it.naturalW > box.l
+                && it.anchorBottom > box.t && it.anchorBottom - it.h < box.b;
+            if (hit) {
+                const leftRoom = box.l - it.anchorLeft;
+                const rightRoom = it.usableRight - box.r;
+                if (leftRoom >= min)
+                    maxW = leftRoom;  // stays bottom-left, truncated before the buttons
+                else if (rightRoom >= Math.min(it.naturalW, min)) {
+                    maxW = rightRoom;  // flush against the right of the buttons, grows rightwards
+                    dx = box.r - it.anchorLeft;
+                }
+                else {
+                    dy = box.t - it.anchorBottom;  // no room beside the buttons: lift above them
+                    maxW = it.tileRect.width - 2 * it.inset;
+                }
+            }
+            it.label.style.maxWidth = `${Math.max(0, maxW)}px`;
+            if (dx !== 0 || dy !== 0)
+                it.label.style.transform = `translate(${dx}px, ${dy}px)`;
+            this.movedBadges.add(it.label);
+        }
+    }
+
     // Place the island top-right. Narrow: just below the main header title row
     // (ignoring activity panel + subheader so the island stays close to the top and
     // away from the editor), with safe-area-right respected. Wide: below subheader
@@ -909,6 +1105,7 @@ export class VideoPanel {
             clearTimeout(this.singleTapTimer);
             this.singleTapTimer = 0;
         }
+        this.teardownBadgeLayout();
         this.teardownIsland();
         this.collapse();
         this.homeMarker?.parentNode?.removeChild(this.homeMarker);
@@ -941,12 +1138,14 @@ export class VideoPanel {
             ScreenSize.freeze();
 
         void this.blazorRef.invokeMethodAsync('OnExpanded');
+        this.setupBadgeLayout();
     }
 
     public collapse() {
         if (this.videoPanel.parentElement !== document.body)
             return;
 
+        this.teardownBadgeLayout();
         this.resetZoom();
         // If compact reasons still demand island mode, stay attached to body — no point
         // restoring to the inline parent only to setupIsland() will reparent right back.

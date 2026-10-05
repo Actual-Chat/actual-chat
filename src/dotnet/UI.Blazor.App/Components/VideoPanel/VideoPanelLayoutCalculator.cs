@@ -373,6 +373,22 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             remoteClasses.Add(new RemoteStreamPlayerClass(stream.StreamId.Value, cls));
         }
 
+        // Grid index (gi-N): a tile's 0-based slot in the equal grid's visual order —
+        // focused, then own camera, then sidebar cameras. The equal layout pins `order`
+        // from it (see `.layout-equal .gi-*` in video-panel.css), so the per-row badge
+        // placement can tell which tiles land in the bottom row. The sidebar layout
+        // ignores gi-* and keeps its own item-* order.
+        var gridIndex = 0;
+        if (ownCameraClass == "item-focused")
+            ownCameraClass += $" gi-{gridIndex++}";
+        else if (remoteClasses.Count > 0) {
+            remoteClasses[0] = remoteClasses[0] with { Class = $"{remoteClasses[0].Class} gi-{gridIndex++}" };
+            if (ownCameraClass.Contains("item-x", StringComparison.Ordinal))
+                ownCameraClass += $" gi-{gridIndex++}";
+        }
+        for (var i = 1; i < remoteClasses.Count; i++)
+            remoteClasses[i] = remoteClasses[i] with { Class = $"{remoteClasses[i].Class} gi-{gridIndex++}" };
+
         return new VideoPanelLayout(ownCameraClass, [..remoteClasses], [..pipPairs]);
     }
 
