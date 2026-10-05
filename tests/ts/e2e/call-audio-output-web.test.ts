@@ -52,7 +52,7 @@ async function hangUpIfAny(page: Page | undefined) {
     if (!page)
         return;
 
-    const hangUp = page.locator('.full-screen-call-view .c-call-bar .btn-video-panel.talking').first();
+    const hangUp = page.locator('.full-screen-call-view .c-call-bar .btn-glass.talking').first();
     if (await hangUp.isVisible({ timeout: 1_000 }).catch(() => false))
         await hangUp.click().catch(() => { /* ignore */ });
 }
@@ -112,7 +112,7 @@ describe('call audio output on the web', () => {
             await page.screenshot({ path: shot(`${who}-in-call`) });
             expect(await toolbar.locator('.c-speaker').count(), `${who}: a browser has no outputs to pick from`)
                 .toBe(0);
-            expect(await toolbar.locator('.btn-video-panel').count(), `${who}: share, video, record, options`)
+            expect(await toolbar.locator('.btn-glass').count(), `${who}: share, video, record, options`)
                 .toBe(4);
         }
     }, 120_000);

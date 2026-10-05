@@ -29,10 +29,10 @@
     }
     else {
         <div class="c-topbar c-call-bar">
-            <HeaderButton Class="btn-video-panel" Click="@OnCollapseClick">
+            <HeaderButton Class="btn-glass" Click="@OnCollapseClick">
                 <i class="icon-collapse text-lg"></i>
             </HeaderButton>
-            <HeaderButton Class="btn-video-panel talking" Click="@OnHangUpClick">
+            <HeaderButton Class="btn-glass talking" Click="@OnHangUpClick">
                 <i class="icon-phone-off"></i>
             </HeaderButton>
         </div>
@@ -113,26 +113,26 @@
                 @* Mobile switches the front/back camera; anywhere else (incl. a narrow desktop window)
                    keeps screen share, which is where sharing actually makes sense. *@
                 @if (Hub.BrowserInfo.IsMobile) {
-                    <HeaderButton Class="btn-video-panel" Click="@OnSwitchCameraClick">
+                    <HeaderButton Class="btn-glass" Click="@OnSwitchCameraClick">
                         <i class="icon-camera-switch text-lg"></i>
                     </HeaderButton>
                 }
                 else {
                     <HeaderButton
                         Click="@(() => OnScreenShareClick(!m.IsScreenCasting))"
-                        Class="@("btn-video-panel " + (m.IsScreenCasting ? "on" : "screen-share-start"))">
+                        Class="@("btn-glass " + (m.IsScreenCasting ? "on" : "screen-share-start"))">
                         <i class="icon-screen-share text-lg"></i>
                     </HeaderButton>
                 }
                 <HeaderButton
                     Click="@(() => OnVideoClick(!m.IsCameraOn))"
-                    Class="@("btn-video-panel btn-video-toggle " + (m.IsCameraOn ? "on" : ""))">
+                    Class="@("btn-glass btn-video-toggle " + (m.IsCameraOn ? "on" : ""))">
                     <i class="icon-video text-lg"></i>
                 </HeaderButton>
                 <HeaderButton
                     Click="@(() => OnToggleRecordingClick(!m.IsRecording))"
                     IsDisabled="@(m.Phase == CallPhase.Dialing)"
-                    Class="@("btn-video-panel btn-rec " + (m.IsRecording ? "recording" : ""))">
+                    Class="@("btn-glass btn-rec " + (m.IsRecording ? "recording" : ""))">
                     @if (m.IsRecording) {
                         <active-recording-svg size="8" isRecording="true"/>
                     } else {
@@ -151,7 +151,7 @@
                     if (output.HasExternal) {
                         @* With a headset in play there are three or more places to go, so a toggle won't do. *@
                         <HeaderButton
-                            Class="@($"btn-video-panel c-speaker {outputCls}")"
+                            Class="@($"btn-glass c-speaker {outputCls}")"
                             data-menu="@(MenuRef.New<AudioOutputMenu>().ToString())"
                             data-menu-trigger="@MenuTrigger.Primary"
                             data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
@@ -159,21 +159,21 @@
                         </HeaderButton>
                     }
                     else {
-                        <HeaderButton Class="@($"btn-video-panel c-speaker {outputCls}")" Click="@OnSpeakerClick">
+                        <HeaderButton Class="@($"btn-glass c-speaker {outputCls}")" Click="@OnSpeakerClick">
                             <i class="icon-volume-up-2 text-lg"></i>
                         </HeaderButton>
                     }
                 }
                 @if (m.CanReact) {
                     <HeaderButton
-                        Class="@("btn-video-panel btn-react " + (m.IsOwnHandRaised ? "on" : ""))"
+                        Class="@("btn-glass btn-react " + (m.IsOwnHandRaised ? "on" : ""))"
                         data-menu="@reactionsMenuRef"
                         data-menu-trigger="@MenuTrigger.Primary"
                         data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
                         <i class="@(m.IsOwnHandRaised ? "icon-hand" : "icon-add-reaction") text-lg"></i>
                     </HeaderButton>
                 }
-                <HeaderButton Class="btn-video-panel" Click="@OnOptionsClick">
+                <HeaderButton Class="btn-glass" Click="@OnOptionsClick">
                     <i class="icon-options-2 text-lg"></i>
                 </HeaderButton>
             </div>

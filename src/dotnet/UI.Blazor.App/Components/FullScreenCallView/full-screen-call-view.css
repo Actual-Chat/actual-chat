@@ -147,15 +147,15 @@ body.touch-capable .full-screen-call-view .c-hints {
     text-shadow: 0 1px 3px rgb(0 0 0 / 60%);
 }
 
-/* In-call: 5-control toolbar (reuses .btn-video-panel HeaderButton styling from video-panel.css) */
+/* In-call: 5-control toolbar (reuses .btn-glass HeaderButton styling from video-panel.css) */
 .full-screen-call-view .c-toolbar {
     @apply flex-x items-center justify-center gap-4;
 }
-.full-screen-call-view .c-toolbar .btn-video-panel.btn-h {
+.full-screen-call-view .c-toolbar .btn-glass.btn-h {
     @apply w-12 h-12;
 }
 /* Lit whenever the sound leaves the earpiece: speaker, headset or car. */
-.full-screen-call-view .c-toolbar .btn-video-panel.btn-h.c-speaker.on {
+.full-screen-call-view .c-toolbar .btn-glass.btn-h.c-speaker.on {
     @apply bg-pal-blue-50-50;
     @apply text-pal-blue-95;
 }

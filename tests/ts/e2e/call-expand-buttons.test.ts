@@ -167,7 +167,7 @@ describe('expand buttons during a call with video, narrow screen', () => {
         const { caller, callee } = users;
         await startPeerCall(caller, callee);
         await caller.locator(`${CALL_SCREEN} .c-toolbar`).first().waitFor({ state: 'visible', timeout: 30_000 });
-        await caller.locator(`${CALL_SCREEN} .c-call-bar .btn-video-panel`).first().click();
+        await caller.locator(`${CALL_SCREEN} .c-call-bar .btn-glass`).first().click();
         await caller.locator(ISLAND).first().waitFor({ state: 'visible', timeout: 10_000 });
         await caller.waitForTimeout(1_000);
         await caller.screenshot({ path: shot('narrow-8-caller-chat-without-video') });

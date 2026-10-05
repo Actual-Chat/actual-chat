@@ -346,8 +346,8 @@ body.device-mobile.narrow .video-panel.expanded .video-panel-content.video-panel
 .video-panel.expanded[data-has-video-panel-chat] .video-panel-toolbar {
     right: calc(var(--video-panel-chat-width) + 0.5rem);
 }
-.btn-video-panel.btn,
-.btn-video-panel.btn-h {
+.btn-glass.btn,
+.btn-glass.btn-h {
     @apply w-10 h-10;
     @apply rounded-full border-none;
     @apply text-white;
@@ -357,13 +357,17 @@ body.device-mobile.narrow .video-panel.expanded .video-panel-content.video-panel
     background: linear-gradient(180deg, var(--black-20) -20.83%, var(--black-40) 100%);
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.60);
 }
-body.hoverable .btn-video-panel.btn:hover,
-body.hoverable .btn-video-panel.btn-h:hover {
+.btn-glass.btn.btn-sm,
+.btn-glass.btn-h.btn-sm {
+    @apply w-8 h-8;
+}
+body.hoverable .btn-glass.btn:hover,
+body.hoverable .btn-glass.btn-h:hover {
     @apply text-white;
     @apply opacity-80;
 }
-.btn-video-panel.btn::before,
-.btn-video-panel.btn-h::before {
+.btn-glass.btn::before,
+.btn-glass.btn-h::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -384,20 +388,23 @@ body.hoverable .btn-video-panel.btn-h:hover {
     mask-composite: exclude;
     pointer-events: none;
 }
-.btn-video-panel.btn-h.btn-video-toggle.on,
-.btn-video-panel.btn-h.chat-btn.on,
-.btn-video-panel.btn-h.layout-toggle-btn.on,
-.btn-video-panel.btn-h.btn-pin-toggle.on,
-.btn-video-panel.btn-h.btn-hand.on,
-.btn-video-panel.btn-h.btn-react.on {
+.btn-glass.btn-h.btn-video-toggle.on,
+.btn-glass.btn-h.chat-btn.on,
+.btn-glass.btn-h.layout-toggle-btn.on,
+.btn-glass.btn-h.btn-pin-toggle.on,
+.btn-glass.btn-h.btn-hand.on,
+.btn-glass.btn-h.btn-react.on,
+.btn-glass.btn-h.btn-primary {
     @apply bg-pal-blue-50-50;
     @apply text-pal-blue-95;
 }
-.btn-video-panel.btn-h.talking {
+.btn-glass.btn-h.talking,
+.btn-glass.btn-h.btn-danger {
     @apply bg-pal-magenta-30-50;
     @apply text-pal-magenta-95;
 }
-.btn-video-panel.btn-h.talking::before {
+.btn-glass.btn-h.talking::before,
+.btn-glass.btn-h.btn-danger::before {
     background: conic-gradient(
         from 330deg,
         var(--magenta-80) 0deg,
@@ -407,8 +414,8 @@ body.hoverable .btn-video-panel.btn-h:hover {
         var(--magenta-80) 360deg
     );
 }
-.video-panel-footer .btn-video-panel.btn,
-.video-panel-footer .btn-video-panel.btn-h {
+.video-panel-footer .btn-glass.btn,
+.video-panel-footer .btn-glass.btn-h {
     @apply w-12 h-12;
 }
 .video-panel-footer .btn-incut {
@@ -499,7 +506,8 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
 .recorder-wrapper.compact .rec-icon i.left {
     @apply -mr-0.5;
 }
-.btn-video-panel.btn-h.on::before {
+.btn-glass.btn-h.on::before,
+.btn-glass.btn-h.btn-primary::before {
     background: conic-gradient(
         from 330deg,
         var(--blue-80) 0deg,
