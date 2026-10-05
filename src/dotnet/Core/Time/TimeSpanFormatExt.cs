@@ -21,6 +21,7 @@ public static class TimeSpanFormatExt
             "Default" => FormatDefault(value),
             "Short" => value.ToShortString(),
             "Clock" => FormatClock(value),
+            "Seconds" => FormatSeconds(value),
             _ => value.ToString(format),
         };
 
@@ -33,6 +34,10 @@ public static class TimeSpanFormatExt
         };
 
     // Private methods
+
+    // Bare whole seconds, no unit — the caller appends a localized one
+    private static string FormatSeconds(TimeSpan value)
+        => $"{(int)Math.Abs(value.TotalSeconds)}";
 
     private static string FormatClock(TimeSpan value)
     {

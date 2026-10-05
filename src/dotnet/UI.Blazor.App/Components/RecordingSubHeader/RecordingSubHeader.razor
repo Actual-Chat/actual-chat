@@ -24,26 +24,34 @@
         </div>
 
         <div class="c-container">
-            @if (row?.Chat != null) {
-                <div class="c-line-1 composed-sentence"><span class="c-text c-part"
-                    >@L.Recording_InChat_Prefix</span><a class="c-text c-value highlight"
-                    href="@Links.Chat(row.Chat.Id)">@row.Chat.Title</a><span class="c-text c-part"
-                    >@L.Recording_InChat_Suffix</span>
-                    @* The leading icon shows the camera, so a parallel screencast needs its own mark *@
-                    @if (row is { IsCamera: true, IsScreenCast: true }) {
-                        <span class="c-video-kinds">
-                            <i class="icon-screen-share"></i>
-                        </span>
-                    }
-                </div>
-            }
-
-            @if (row?.StopRecordingAt != null) {
-                <div class="c-line-2 flex-none pr-4">
-                    <div class="c-text">@L.Recording_WillStopIn</div>
-                    <Countdown EndsAt="@row.StopRecordingAt.Value" Clock="@Clocks.CpuClock" Class="c-text highlight"/>
-                </div>
-            }
+            @* One flowing sentence; with a countdown the whole tail switches, so the name reads as part
+               of "<chat> ... stops in <n>s". A flex row (css), so whitespace between these items is dropped.
+               @key on the countdown flag re-mounts the line once per switch, replaying its opacity fade -
+               the per-second ticks keep the same key, so they never re-trigger it *@
+            <div class="c-line-1 composed-sentence" @key="@(row?.StopRecordingAt is not null)">
+                @if (row is { StopRecordingAt: not null, Chat: not null }) {
+                    <span class="c-text c-part">@L.Recording_InChat_CountdownPrefix</span>
+                    <a class="c-text c-value highlight" href="@Links.Chat(row.Chat.Id)">@row.Chat.Title</a>
+                    <span class="c-text c-part">@L.Recording_InChat_CountdownMid</span>
+                    <Countdown EndsAt="@row.StopRecordingAt.Value" Clock="@Clocks.CpuClock"
+                        Format="Seconds" Class="c-text highlight c-countdown"/>
+                    <span class="c-text c-part">@L.Recording_SecondsUnit</span>
+                    <span class="c-text c-part">@L.Recording_InChat_CountdownTail</span>
+                } else if (row?.Chat != null) {
+                    <span class="c-text c-part">@L.Recording_InChat_Prefix</span>
+                    <a class="c-text c-value highlight" href="@Links.Chat(row.Chat.Id)">@row.Chat.Title</a>
+                    <span class="c-text c-part">@L.Recording_InChat_Suffix</span>
+                } else if (row?.StopRecordingAt != null) {
+                    <span class="c-text c-part">@L.Recording_WillStopIn</span>
+                    <Countdown EndsAt="@row.StopRecordingAt.Value" Clock="@Clocks.CpuClock"
+                        Format="Seconds" Class="c-text highlight c-countdown"/>
+                    <span class="c-text c-part">@L.Recording_SecondsUnit</span>
+                }
+                @* The leading icon shows the camera, so a parallel screencast needs its own mark *@
+                @if (row is { Chat: not null, IsCamera: true, IsScreenCast: true }) {
+                    <span class="c-video-kinds"><i class="icon-screen-share"></i></span>
+                }
+            </div>
         </div>
 
         <Button
