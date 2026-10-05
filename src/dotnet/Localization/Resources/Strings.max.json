@@ -1436,6 +1436,10 @@
   // The recording sub-header, and the reasons recording cannot start.
   "Recording_InChat_Prefix": "Nagrywanie w czacie",
   "Recording_InChat_Suffix": "sohbetinde!",
+  "Recording_InChat_CountdownPrefix": "Nagrywanie w czacie",
+  "Recording_InChat_CountdownMid": "чате остановится через ",
+  "Recording_InChat_CountdownTail": " 후 중지됩니다",
+  "Recording_SecondsUnit": "秒",
   "Recording_WillStopIn": "녹음이 다음 시간 후 중지됩니다: ",
   "Recording_StopRecording": "Interrompi la registrazione",
   "Recording_NoMicrophoneAccess": "マイクへのアクセスがありません",

@@ -8,21 +8,29 @@
     @apply animate-opacity-from-0;
 }
 .recording-sub-header > .c-container {
-    @apply flex-1 flex-y md:flex-x items-start justify-start gap-y-1;
+    @apply flex-1 flex-y md:flex-x items-start md:items-center justify-start gap-y-1;
     @apply overflow-hidden;
 }
-/* The line's own font must match its text: the inherited body-size strut
-   otherwise pushes the inline-block chat title below the rest of the sentence */
+/* A circumfix sentence ("Идёт запись в <chat> чате!"): a flex row keeps it on one line by pinning the
+   literal parts and letting only the title shrink - laid out inline the title eats the row and orphans
+   the suffix. text-caption also matches the strut to the text so baselines line up. */
 .recording-sub-header .c-line-1 {
-    @apply flex-1;
-    @apply max-w-full;
-    @apply overflow-hidden;
+    @apply flex-x items-baseline min-w-0 flex-1;
+    @apply max-w-full overflow-hidden;
     @apply text-caption;
+    /* Re-mounted via @key on each active<->countdown switch, so this one-shot fade plays once per switch */
+    @apply animate-opacity-from-0;
+}
+@media (prefers-reduced-motion: reduce) {
+    .recording-sub-header .c-line-1 {
+        animation: none;
+    }
 }
 /* Recording_InChat_Prefix/_Suffix have no edge space of their own - this replaces the row's gap */
 .recording-sub-header .c-line-1 > .c-value {
     @apply px-1;
     @apply align-text-top;
+    min-width: 3rem;
 }
 .recording-sub-header .c-round-container {
     @apply flex-none flex justify-center items-center;
@@ -41,34 +49,24 @@
 .recording-sub-header .c-line-1 a {
     text-decoration: none;
 }
-.recording-sub-header .c-line-2 {
-    @apply flex-1 md:flex-none self-start flex-x items-center gap-x-1;
-}
-
-.recording-sub-header .c-line-1 .c-text,
-.recording-sub-header .c-line-2 .c-text {
+.recording-sub-header .c-line-1 .c-text {
     @apply shrink-0;
     @apply text-caption text-banner-error;
-}
-.recording-sub-header.recording-elsewhere .c-line-1 .c-text,
-.recording-sub-header.recording-elsewhere .c-line-2 .c-text {
-    @apply shrink-0;
-    @apply text-caption text-banner-error;
-}
-.recording-sub-header .c-line-2 .c-text {
-    @apply text-banner-error;
-}
-.recording-sub-header.recording-elsewhere .c-line-2 .c-text {
-    @apply text-banner-error;
 }
 .recording-sub-header .c-line-1 .c-text.highlight {
     @apply shrink;
     @apply truncate;
     @apply text-caption-500;
 }
+/* Only the chat title absorbs the shortfall; the countdown number stays whole next to its unit.
+   tabular-nums keeps its width fixed, so a tick (9->8) never reflows the sentence */
+.recording-sub-header .c-line-1 .c-text.c-countdown {
+    @apply flex-none;
+    @apply tabular-nums;
+}
 /* Inline with the sentence, so the icons read as part of "Recording in <chat>" */
 .recording-sub-header .c-line-1 > .c-video-kinds {
-    @apply inline-flex items-center gap-x-1;
+    @apply inline-flex flex-none items-center gap-x-1;
     @apply ml-1;
     @apply align-text-top;
     @apply text-base leading-none text-banner-error;
