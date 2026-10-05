@@ -1,5 +1,3 @@
-using ActualChat.Media;
-
 namespace ActualChat.Chat;
 
 // Target-specific methods keep authorization out of the opaque-key suggestion store.

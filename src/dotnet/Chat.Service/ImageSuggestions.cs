@@ -1,19 +1,16 @@
-using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
-using ActualChat.Media;
 
 namespace ActualChat.Chat;
 
 public class ImageSuggestions(IServiceProvider services) : IImageSuggestions
 {
-    private static readonly TileLayer<long> EntryIdTiles = Constants.Chat.EntryIdTiles;
-
     private IServiceProvider Services { get; } = services;
     private ChatSettings Settings { get; } = services.GetRequiredService<ChatSettings>();
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();
     private IPlaces Places => field ??= Services.GetRequiredService<IPlaces>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
-    private IChatImageDescriber ChatImageDescriber => field ??= Services.GetRequiredService<IChatImageDescriber>();
+    private IChatImageSuggestionsBackend ChatBackend
+        => field ??= Services.GetRequiredService<IChatImageSuggestionsBackend>();
     private IImageSuggestionsBackend Backend => field ??= Services.GetRequiredService<IImageSuggestionsBackend>();
     private ICommander Commander => field ??= Services.Commander();
 
@@ -105,7 +102,7 @@ public class ImageSuggestions(IServiceProvider services) : IImageSuggestions
             return null;
 
         if (imageDescription.IsNullOrEmpty()) {
-            imageDescription = await Describe(chat, cancellationToken).ConfigureAwait(false);
+            imageDescription = await ChatBackend.DescribeChat(chatId, cancellationToken).ConfigureAwait(false);
             if (imageDescription.IsNullOrEmpty())
                 return null; // Nothing to describe yet, or the describer is disabled
         }
@@ -193,13 +190,9 @@ public class ImageSuggestions(IServiceProvider services) : IImageSuggestions
 
         var isBackground = slot == ImageSlot.Background;
         if (imageDescription.IsNullOrWhiteSpace()) {
-            var sources = new List<ChatImageDescriptionSource>();
-            foreach (var chat in chats) {
-                var entries = await ListFirstTextEntries(chat.Id, cancellationToken).ConfigureAwait(false);
-                sources.Add(new ChatImageDescriptionSource(chat.Title, chat.Description, entries));
-            }
-            imageDescription = await ChatImageDescriber
-                .DescribePlace(place, sources, isBackground, cancellationToken).ConfigureAwait(false);
+            var chatIds = chats.Select(x => x.Id).ToApiArray();
+            imageDescription = await ChatBackend
+                .DescribePlace(placeId, chatIds, isBackground, cancellationToken).ConfigureAwait(false);
             if (imageDescription.IsNullOrWhiteSpace())
                 return null;
         }
@@ -277,30 +270,6 @@ public class ImageSuggestions(IServiceProvider services) : IImageSuggestions
         return chats;
     }
 
-    private async Task<IReadOnlyCollection<ChatEntrySlim>> ListFirstTextEntries(
-        ChatId chatId, CancellationToken cancellationToken)
-    {
-        var range = await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
-        var entries = new List<ChatEntrySlim>();
-        var nextId = range.Start;
-        while (nextId < range.End && entries.Count < 10) {
-            var tileRange = EntryIdTiles.GetTile(nextId).Range;
-            var tile = await ChatsBackend.GetTile(chatId, tileRange, false, cancellationToken).ConfigureAwait(false);
-            foreach (var entry in tile.Entries.OrderBy(x => x.LocalId)) {
-                if (entry.LocalId < nextId || !range.Contains(entry.LocalId)
-                    || entry.IsSystemEntry || entry.IsRemoved || entry.IsContentStreaming
-                    || entry.Content.IsNullOrWhiteSpace())
-                    continue;
-
-                entries.Add(new ChatEntrySlim(entry));
-                if (entries.Count == 10)
-                    break;
-            }
-            nextId = tileRange.End;
-        }
-        return entries;
-    }
-
     private static string GetKey(PlaceId placeId, ImageSlot slot)
         => slot switch {
             ImageSlot.Picture => $"picture/p:{placeId.Value}",
@@ -312,42 +281,4 @@ public class ImageSuggestions(IServiceProvider services) : IImageSuggestions
     // which is the same string - that is why the prefix is spelled out here.
     private static string GetKey(ChatId chatId, ImageSlot slot)
         => $"{slot.ToString().ToLower()}/c:{chatId.Value}";
-
-    // No "is there enough to describe this" check: the client decides when to ask, and an explicit
-    // regenerate must work on a chat of any size. The describer returning "" is still a no.
-    private async Task<string> Describe(Chat chat, CancellationToken cancellationToken)
-    {
-        var entries = await ListRecentTextEntries(chat.Id, cancellationToken).ConfigureAwait(false);
-        return await ChatImageDescriber
-            .Describe(chat.Title, chat.Description, entries, cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    private async Task<IReadOnlyList<ChatEntrySlim>> ListRecentTextEntries(
-        ChatId chatId,
-        CancellationToken cancellationToken)
-    {
-        var lidRange = await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
-        var maxCount = Settings.MaxImageSuggestionEntries;
-        var start = Math.Max(lidRange.Start, lidRange.End - maxCount);
-        var tailRange = new Range<long>(start, lidRange.End);
-        if (tailRange.IsEmpty)
-            return [];
-
-        var tiles = await EntryIdTiles
-            .GetCoveringTiles(tailRange)
-            .Select(idTile => ChatsBackend.GetTile(chatId, idTile.Range, false, cancellationToken))
-            .Collect(cancellationToken)
-            .ConfigureAwait(false);
-
-        return tiles
-            .SelectMany(tile => tile.Entries)
-            .Where(e => tailRange.Contains(e.LocalId))
-            // A system entry stores no text, so it would reach the describer as a blank line
-            .Where(e => !e.IsSystemEntry && !e.IsRemoved && !e.IsContentStreaming)
-            .DistinctBy(e => e.LocalId)
-            .OrderBy(e => e.LocalId)
-            .Select(e => new ChatEntrySlim(e))
-            .ToList();
-    }
 }
