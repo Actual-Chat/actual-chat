@@ -109,6 +109,43 @@ public class EmailLocalizationTest(ITestOutputHelper @out)
     }
 
     [Fact]
+    public async Task DigestShouldNotSummarizeAnnouncements()
+    {
+        // arrange
+        var sender = new CapturingEmailSender();
+        var summarizer = new FakeDigestSummarizer();
+        await using var h = await NewAppHost(options => options with {
+            ChatDbInitializerOptions = TestAppHostOptions.WithAnnouncementsChat.ChatDbInitializerOptions,
+            ConfigureServices = (_, services) => {
+                services.Replace(ServiceDescriptor.Singleton<IEmailSender>(sender));
+                services.Replace(ServiceDescriptor.Singleton<IChatDigestSummarizer>(summarizer));
+            },
+        });
+        await using var tester = h.NewWebClientTester(Out);
+        var account = await tester.SignInAsNew("Digest");
+        var chatId = Constants.Chat.AnnouncementsChatId;
+        var authors = h.Services.GetRequiredService<IAuthorsBackend>();
+        var author = await authors
+            .GetByUserId(chatId, Constants.User.Admin.UserId, RequestedAuthorKind.Full, default)
+            .Require();
+        await h.Services.Commander().Call(new ChatsBackend_ChangeEntry(
+            ChatEntryId.New(chatId, 0),
+            null,
+            Change.Create(new ChatEntryDiff {
+                AuthorId = author.Id,
+                Content = "A new Voxt announcement",
+                BeginsAt = h.Services.Clocks().SystemClock.Now,
+            })));
+
+        // act
+        await h.Services.Commander().Call(new EmailsBackend_SendDigest(account.Id));
+
+        // assert
+        sender.Sent.Should().BeEmpty();
+        summarizer.Languages.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task DigestShouldUseChosenDigestLanguageForChromeAndSummary()
     {
         // arrange
