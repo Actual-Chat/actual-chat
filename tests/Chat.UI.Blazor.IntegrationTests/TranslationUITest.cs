@@ -207,6 +207,27 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     }
 
     [Fact]
+    public async Task ChatPreviewShouldFollowTranslation()
+    {
+        // arrange
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15).Debuggable());
+        var cancellationToken = cts.Token;
+        var chatId = await CreateChat(cancellationToken);
+        const string text = "¡Hola! ¿Cómo estás?";
+        await AliceTester.CreateTextEntry(chatId, text);
+        await TestWait.When(async ct => (await ChatUI.GetPreview(chatId, ct)).Text.Should().Be(text));
+
+        // act
+        await TranslationUI.SetTargetLanguage(chatId, Languages.English, cancellationToken);
+        await TranslationUI.SetIsOn(chatId, true, cancellationToken);
+
+        // assert
+        await TestWait.When(
+            async ct => (await ChatUI.GetPreview(chatId, ct)).Text.Should().BeSimilarTo("Hello! How are you?", 0.7),
+            TimeSpan.FromSeconds(10).Debuggable());
+    }
+
+    [Fact]
     public async Task MustTranslateShouldConsiderIsOn()
     {
         // arrange
