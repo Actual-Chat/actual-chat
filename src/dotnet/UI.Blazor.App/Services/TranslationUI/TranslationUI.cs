@@ -27,9 +27,19 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
     }
 
     [ComputeMethod]
-    public virtual Task<bool?> IsEnabled(ChatId chatId, CancellationToken cancellationToken = default)
-        => UserSettingsUI.ChatUserSettings(GetTranslationSettingsTargetChatId(chatId))
-            .Get(x => x.MustTranslate, cancellationToken);
+    public virtual async Task<bool?> IsEnabled(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        chatId = GetTranslationSettingsTargetChatId(chatId);
+        var mustTranslate = await UserSettingsUI.ChatUserSettings(chatId)
+            .Get(x => x.MustTranslate, cancellationToken)
+            .ConfigureAwait(false);
+        if (mustTranslate is not null || !IsTranslatedByDefault(chatId))
+            return mustTranslate;
+
+        // It is written in English, so a reader in any English has nothing to translate
+        var language = await GetTranslationLanguage(chatId, cancellationToken).ConfigureAwait(false);
+        return language.IsAnyEnglish ? null : true;
+    }
 
     [ComputeMethod]
     public virtual Task<bool> MustTranslateOwnMessages(
@@ -43,8 +53,17 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
     {
         chatId = GetTranslationSettingsTargetChatId(chatId);
         var settings = await UserSettingsUI.ChatUserSettings(chatId).Get(cancellationToken).ConfigureAwait(false);
-        return settings.TranslationTargetLanguage
-            ?? await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
+        if (settings.TranslationTargetLanguage is { } targetLanguage)
+            return targetLanguage;
+        if (!IsTranslatedByDefault(chatId))
+            return await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
+
+        // The stored setting rather than the language the app renders in: it is what the server
+        // translates this chat's pushes to, and it switches before the reload that applies it here
+        var languageSettings = await LanguageUI.Settings
+            .Use(LanguageUI.WhenReady, cancellationToken)
+            .ConfigureAwait(false);
+        return languageSettings.GetEffectiveUILanguage();
     }
 
     [ComputeMethod]
@@ -298,6 +317,10 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
 
     private static ChatId GetTranslationSettingsTargetChatId(ChatId chatId)
         => chatId.IsThread(out var threadChatId) ? threadChatId.GetOutermostParent() : chatId;
+
+    private static bool IsTranslatedByDefault(ChatId chatId)
+        // Its readers never picked a language to read it in, so it follows the one their UI is in
+        => chatId == Constants.Chat.AnnouncementsChatId;
 
     private void StoreMustSuggest(ChatId chatId)
     {

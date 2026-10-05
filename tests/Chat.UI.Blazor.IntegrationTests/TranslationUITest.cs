@@ -120,6 +120,93 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     }
 
     [Fact]
+    public async Task AnnouncementsShouldBeTranslatedToTheUILanguageByDefault()
+    {
+        // arrange
+        ChatId chatId = Constants.Chat.AnnouncementsChatId;
+
+        // act
+        await LanguageUI.UpdateSettings(x => x with {
+            Primary = Languages.English,
+            UILanguage = Languages.Russian,
+        });
+
+        // assert
+        await AssertTranslatedTo(chatId, Languages.Russian);
+
+        // act
+        await LanguageUI.UpdateSettings(x => x with { UILanguage = Languages.German });
+
+        // assert
+        await AssertTranslatedTo(chatId, Languages.German);
+    }
+
+    [Fact]
+    public async Task AnnouncementsShouldFollowTheDetectedLanguageWhenNoneIsSelected()
+    {
+        // arrange
+        ChatId chatId = Constants.Chat.AnnouncementsChatId;
+
+        // act
+        await LanguageUI.UpdateSettings(x => x with {
+            UILanguage = null,
+            DetectedUILanguage = Languages.French,
+        });
+
+        // assert
+        await AssertTranslatedTo(chatId, Languages.French);
+    }
+
+    [Fact]
+    public async Task AnnouncementsShouldNotBeTranslatedForAReaderInTheLanguageTheyAreWrittenIn()
+    {
+        // arrange
+        ChatId chatId = Constants.Chat.AnnouncementsChatId;
+        await LanguageUI.UpdateSettings(x => x with { UILanguage = Languages.Russian });
+        await AssertTranslatedTo(chatId, Languages.Russian);
+
+        // act
+        await LanguageUI.UpdateSettings(x => x with { UILanguage = Languages.English });
+
+        // assert
+        await TestWait.When(async ct => (await TranslationUI.IsEnabled(chatId, ct)).Should().BeNull());
+    }
+
+    [Fact]
+    public async Task AnnouncementsShouldStayUntranslatedOnceTranslationIsTurnedOff()
+    {
+        // arrange
+        ChatId chatId = Constants.Chat.AnnouncementsChatId;
+
+        // act
+        await TranslationUI.SetIsOn(chatId, false);
+
+        // assert
+        await TestWait.When(async ct => (await TranslationUI.IsEnabled(chatId, ct)).Should().BeFalse());
+    }
+
+    [Fact]
+    public async Task OtherChatsShouldNotBeTranslatedByDefault()
+    {
+        // arrange
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15).Debuggable());
+        var cancellationToken = cts.Token;
+        var chatId = await CreateChat(cancellationToken);
+        await LanguageUI.UpdateSettings(x => x with {
+            Primary = Languages.English,
+            UILanguage = Languages.Russian,
+        });
+
+        // act
+        var isEnabled = await TranslationUI.IsEnabled(chatId, cancellationToken);
+        var language = await TranslationUI.GetTranslationLanguage(chatId, cancellationToken);
+
+        // assert
+        isEnabled.Should().BeNull();
+        language.Should().Be(Languages.English, "a chat nobody set a language for is read in the primary one");
+    }
+
+    [Fact]
     public async Task MustTranslateShouldConsiderIsOn()
     {
         // arrange
@@ -598,6 +685,12 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         => TestWait.When(async ct => {
             var isVisible = await TranslationUI.IsSubHeaderVisible(chatId, ct);
             isVisible.Should().Be(expected);
+        });
+
+    private Task AssertTranslatedTo(ChatId chatId, Language expected)
+        => TestWait.When(async ct => {
+            (await TranslationUI.IsEnabled(chatId, ct)).Should().BeTrue();
+            (await TranslationUI.GetTranslationLanguage(chatId, ct)).Should().Be(expected);
         });
 
     private Task AssertMustTranslate(ChatEntry entry, bool expected)

@@ -18,7 +18,6 @@ public sealed class UserLocalizers(IServiceProvider services)
             .UserLanguageSettings()
             .Get(cancellationToken)
             .ConfigureAwait(false);
-        var language = settings.UILanguage ?? settings.DetectedUILanguage ?? Languages.Main;
-        return LanguageStringLocalizer.Get(language);
+        return LanguageStringLocalizer.Get(settings.GetEffectiveUILanguage());
     }
 }

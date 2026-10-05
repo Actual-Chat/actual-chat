@@ -67,6 +67,10 @@ reactor with one emoji composes exactly what the send path already wrote, which 
 peer chat — reactions are one per author per entry (`DbReaction.Id` is `(entryId, authorId)`)
 and your own never notify, so a peer chat's reactor count is always 1.
 
+**A message is the author's words, except in the announcements chat.** There the text is
+translated into each recipient's app language before the fan-out - see
+[i18n.md → The announcements chat is read translated](i18n.md#the-announcements-chat-is-read-translated).
+
 Two details that are easy to get wrong there:
 
 - **The count rides on `ReactionNotification.DisplaySenderName`, not only in `Title`.** Android

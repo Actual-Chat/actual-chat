@@ -962,19 +962,74 @@ public class NotificationsBackend(IServiceProvider services)
         // own and never need the voice grouping.
         var mentioned = mentionableUserIds.Where(mentionedUserIds.Contains).ToList();
         if (mentioned.Count > 0)
-            await EnqueueMessageRelatedNotifications(
-                chatId, entryId, author, content, NotificationKind.Mention,
-                entryId.Value, "", mentioned, null, cancellationToken)
+            await EnqueueChatMessageNotifications(
+                freshEntry, author, content, NotificationKind.Mention,
+                entryId.Value, "", mentioned, cancellationToken)
                 .ConfigureAwait(false);
 
         var others = userIds.Where(x => !mentionedUserIds.Contains(x)).ToList();
         var ordinaryUserIds = await FilterByNotificationMode(
             others, chatId, NotificationImportance.Ordinary, cancellationToken)
             .ConfigureAwait(false);
-        await EnqueueMessageRelatedNotifications(
-            chatId, entryId, author, content, NotificationKind.Message,
-            chatId.Value, beepGroup, ordinaryUserIds, null, cancellationToken)
+        await EnqueueChatMessageNotifications(
+            freshEntry, author, content, NotificationKind.Message,
+            chatId.Value, beepGroup, ordinaryUserIds, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    private async ValueTask EnqueueChatMessageNotifications(
+        ChatEntry entry,
+        AuthorFull author,
+        NotificationContent content,
+        NotificationKind kind,
+        string similarityKey,
+        string beepGroup,
+        IReadOnlyList<UserId> userIds,
+        CancellationToken cancellationToken)
+    {
+        var chatId = entry.ChatId;
+        var translationLanguageByUserId = await GetTranslationLanguageByUserId(chatId, userIds, cancellationToken)
+            .ConfigureAwait(false);
+        var translatedUserIds = userIds.Where(translationLanguageByUserId.ContainsKey).ToList();
+        var untranslatedUserIds = userIds.Where(x => !translationLanguageByUserId.ContainsKey(x)).ToList();
+
+        // First, so that nobody who reads it as written waits for the translations
+        if (untranslatedUserIds.Count != 0)
+            await Enqueue(content, untranslatedUserIds).ConfigureAwait(false);
+        if (translatedUserIds.Count != 0) {
+            var languages = translationLanguageByUserId.Values.ToHashSet();
+            var textByLanguage = await TextComposer
+                .ComposeTextByLanguage(entry, MarkupConsumer.Notification, languages, cancellationToken)
+                .ConfigureAwait(false);
+            await Enqueue(content.WithTranslations(textByLanguage), translatedUserIds).ConfigureAwait(false);
+        }
+        return;
+
+        ValueTask Enqueue(NotificationContent text, IReadOnlyList<UserId> recipientIds)
+            => EnqueueMessageRelatedNotifications(
+                chatId, entry.Id, author, text, kind,
+                similarityKey, beepGroup, recipientIds, null, cancellationToken);
+    }
+
+    private async Task<Dictionary<UserId, Language>> GetTranslationLanguageByUserId(
+        ChatId chatId,
+        IReadOnlyList<UserId> userIds,
+        CancellationToken cancellationToken)
+    {
+        // A user who gets the push as written is absent from the result.
+        // The announcements chat is read translated unless its reader turned that off, and so is
+        // its push - into the language the rest of the push is worded in
+        var settingsChatId = chatId.GetThreadOutermostParentOrSelf();
+        if (userIds.Count == 0 || settingsChatId != Constants.Chat.AnnouncementsChatId)
+            return [];
+
+        var readerIds = await FilterByTranslation(userIds, settingsChatId, cancellationToken).ConfigureAwait(false);
+        var localizers = await GetLocalizers(readerIds, cancellationToken).ConfigureAwait(false);
+        return localizers
+            .Select(x => (x.UserId, Language: ((IHasUILanguage)x.Localizer).UILanguage))
+            // It is written in English, so a reader in any English gets it as written
+            .Where(x => !x.Language.IsAnyEnglish)
+            .ToDictionary(x => x.UserId, x => x.Language);
     }
 
     // Resolves personal (author/user) mentions to user ids; chat/place/emoji mention kinds carry
@@ -1644,6 +1699,27 @@ public class NotificationsBackend(IServiceProvider services)
             .Select(kv => kv.UserId)
             .ToArray();
         return subscriberIds;
+    }
+
+    private async Task<UserId[]> FilterByTranslation(
+        IReadOnlyList<UserId> userIds,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var mustTranslateFlags = await userIds
+            .Select(async userId => {
+                var kvas = ServerKvasBackend.ForUser(userId);
+                var mustTranslate = await kvas.ChatUserSettings(chatId)
+                    .Get(x => x.MustTranslate, cancellationToken)
+                    .ConfigureAwait(false);
+                return (UserId: userId, MustTranslate: mustTranslate);
+            })
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+        return mustTranslateFlags
+            .Where(x => x.MustTranslate != false)
+            .Select(x => x.UserId)
+            .ToArray();
     }
 
     private async Task<UserId[]> FilterByFollowThreadStatus(IReadOnlyList<UserId> userIds, ChatId chatId,
