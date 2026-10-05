@@ -9,4 +9,6 @@ public static class LayoutSlots
     public const string SubFooter = nameof(SubFooter);
     public const string MainBodyOverlay = nameof(MainBodyOverlay);
     public const string MainRightDrawer = nameof(MainRightDrawer);
+    // A nomad slot: for RenderIntoNomadSlot and RenderNomadSlot only
+    public const string CallScreen = nameof(CallScreen);
 }

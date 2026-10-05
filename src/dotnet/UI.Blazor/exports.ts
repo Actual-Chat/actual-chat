@@ -65,6 +65,7 @@ export * from './Components/VirtualList/infinite-list';
 export * from './Components/VisualMediaViewerModal/visual-media-viewer';
 export * from './Components/YoutubePlayer/youtube-player';
 export * from './Components/delayed-invoker';
+export * from './Components/nomad-slot';
 export * from './Components/demand-user-interaction';
 
 export * from './Pages/IconsTestPage/icons-test-page';

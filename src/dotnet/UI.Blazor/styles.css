@@ -29,6 +29,7 @@
 @import './Components/MapView/map-view.css';
 @import './Components/Menu/menu.css';
 @import './Components/Modal/modal.css';
+@import './Components/nomad-slot.css';
 @import './Components/Overlays/reconnect-overlay.css';
 @import './Components/Overlays/web-splash.css';
 @import './Components/Phone/phone-verifier.css';

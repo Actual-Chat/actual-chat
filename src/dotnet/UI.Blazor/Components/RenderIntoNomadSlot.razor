@@ -1,0 +1,16 @@
+@* Renders its content once, right here, and shows it in the RenderNomadSlot that Target names - or here,
+   when Target is null or no such slot is on the page. Unlike RenderIntoSlot, the content is never
+   re-created on the way: only its DOM moves (nomad-slot.ts), so media in it keeps playing. While it is in
+   a slot, its nomad-slot-content element carries data-nomad-slot with the slot's key. *@
+<render-into-nomad-slot data-name="@Name">
+    <nomad-slot-content data-name="@Name" data-target="@Target">
+        @ChildContent
+    </nomad-slot-content>
+</render-into-nomad-slot>
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+    // The key of the RenderNomadSlot to show the content in
+    [Parameter] public string? Target { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

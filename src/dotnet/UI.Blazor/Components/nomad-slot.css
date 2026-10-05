@@ -1,0 +1,6 @@
+/* No boxes of their own: the content lays out as a child of whichever parent it is in */
+render-into-nomad-slot,
+nomad-slot-content,
+render-nomad-slot {
+    display: contents;
+}
