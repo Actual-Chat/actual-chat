@@ -52,20 +52,29 @@ body.narrow .side-nav.side-nav-left[data-side-nav="closed"] {
 
 /* Right SideNav
    md (820–1099): overlay covering the right half — Tailwind md: variants set absolute/w-1/2/left-1/2.
-   lg+ (≥1100):   in flow, slides via margin-right — lg: variants override the md ones. */
+   lg+ (≥1100):   in flow. Slides via transform (GPU), not margin-right: animating margin reflowed the
+                  chat's VirtualList every frame. margin-right still changes, but once per toggle -
+                  instantly on open (chat makes room, then the panel slides into the gap) and delayed
+                  to the end of the slide on close (chat reclaims the width a single time). */
 .side-nav.side-nav-right {
     @apply flex-none flex-y;
     @apply md:absolute md:w-1/2 md:left-1/2;
     @apply md:transition-transform md:duration-200 md:ease-[cubic-bezier(0.32,0.54,0.4,0.9)];
     @apply lg:relative lg:left-auto lg:w-88 xl:w-112;
-    @apply lg:transition-[margin-right] lg:duration-200 lg:ease-[cubic-bezier(0.32,0.54,0.4,0.9)];
+    @apply lg:transition-transform lg:duration-200 lg:ease-[cubic-bezier(0.32,0.54,0.4,0.9)];
 }
 .side-nav.side-nav-right[data-side-nav="open"] {
     @apply md:shadow-[-1px_0_0_var(--separator)] lg:shadow-none;
 }
 .side-nav.side-nav-right[data-side-nav="closed"] {
     @apply md:translate-x-full;
-    @apply lg:translate-x-0 lg:-mr-88 xl:-mr-112;
+    @apply lg:translate-x-full lg:-mr-88 xl:-mr-112;
+}
+/* lg+ close: slide out on the GPU first, reclaim the chat width one frame later (duration 0, delay 200ms) */
+@media (min-width: 1100px) {
+    .side-nav.side-nav-right[data-side-nav="closed"] {
+        transition: transform 200ms cubic-bezier(0.32, 0.54, 0.4, 0.9), margin-right 0ms 200ms;
+    }
 }
 body.narrow .side-nav.side-nav-right[data-side-nav="closed"] {
     transform: translate3d(100%, 0, 0);
