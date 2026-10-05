@@ -118,8 +118,10 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ReconnectOverlay>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.RegionVisibilityProvider>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.RenderAtDepth>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.RenderIntoNomadSlot>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.RenderIntoSlot>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.RenderIntoStack>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.RenderNomadSlot>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.RenderSlot>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.RenderStack>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.RequireAccount>();
@@ -682,8 +684,10 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.ReconnectOverlay), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.RegionVisibilityProvider), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.RenderAtDepth), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.RenderIntoNomadSlot), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.RenderIntoSlot), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.RenderIntoStack), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.RenderNomadSlot), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.RenderSlot), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.RenderStack), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.RequireAccount), AotTypeKind.Component),

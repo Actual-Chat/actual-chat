@@ -1,0 +1,8 @@
+@* A place the content of the RenderIntoNomadSlot with the same Name can be shown in, when its Target is
+   this Key. Always empty in markup: the content is moved in by nomad-slot.ts. *@
+<render-nomad-slot @key="@Key" data-name="@Name" data-key="@Key"></render-nomad-slot>
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+    [Parameter, EditorRequired] public string Key { get; set; } = "";
+}

@@ -971,9 +971,40 @@ public expand(): void {
 
 This is critical when the class also gates DOM position. If JS reparented the element to `document.body` based on the class, a class wipe alone leaves the element stuck there with nothing signalling that it should come back.
 
+### Moving rendered content between places
+
+To show one live piece of UI in different places - and keep it alive on the way, players and all -
+render it once in a `RenderIntoNomadSlot` and mark the places it can go with `RenderNomadSlot`:
+
+```razor
+@* Rendered here, once; shown in the slot Target names, or here when it is null or absent *@
+<RenderIntoNomadSlot Name="@LayoutSlots.CallScreen" Target="@inlineChatId">
+    ...
+</RenderIntoNomadSlot>
+
+@* One of the places, in another component *@
+<RenderNomadSlot Name="@LayoutSlots.CallScreen" Key="@chatId"/>
+```
+
+Unlike `RenderIntoSlot`, which renders its content in the slot and re-creates it there,
+`RenderIntoNomadSlot` moves only the DOM (`nomad-slot.ts`). The rules:
+
+- The content decides where it goes (`Target`); slots only mark places. Two slots with the same
+  name and key: the first in document order wins.
+- The move is `moveBefore()` where the browser has it - which keeps focus, running animations and
+  iframes - and otherwise an `appendChild` within the same DOM operation, which keeps media playing.
+- `<render-into-nomad-slot>`, `<nomad-slot-content>` and `<render-nomad-slot>` are custom elements so that their callbacks
+  run within the operation that adds or removes them: content removed together with its slot is
+  back where it is declared before the browser pauses its media.
+- In a slot, `<nomad-slot-content>` carries `data-nomad-slot` with the slot's key; CSS reads it to style
+  content that has nowhere to be. C# isn't told where the content is.
+- A script that knows the content must stay where it is declared ahead of the render can set
+  `data-nomad-hold` on `<nomad-slot-content>`.
+- Cascading values reach the content from where it is declared, not from the slot.
+
 ### Reparenting Blazor-rendered elements
 
-If JS moves a Blazor-rendered element out of its home (e.g. `document.body.appendChild` for fixed-positioning escape), capture the original parent in the constructor and restore it on teardown:
+Prefer `RenderIntoNomadSlot` (above). If JS moves a Blazor-rendered element out of its home (e.g. `document.body.appendChild` for fixed-positioning escape), capture the original parent in the constructor and restore it on teardown:
 
 ```typescript
 constructor(panel: HTMLElement, blazorRef: DotNet.DotNetObject) {

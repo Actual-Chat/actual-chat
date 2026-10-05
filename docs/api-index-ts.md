@@ -321,6 +321,7 @@ See also: [C# Full API Index](api-index-full.md), [Condensed API Index](api-inde
 - `getUnit` (function) - Get unit value from number.
 - `getRandomColor` (function) - Get color from number using palette.
 - `getContrast` (function) - Determine contrast color (black or white).
+- `NomadSlot` (class) - Moves the DOM of a `RenderIntoNomadSlot` into the `RenderNomadSlot` it targets, keeping it alive.
 
 
 ## UI Blazor — Avatar (`src/dotnet/UI.Blazor/Components/Avatar`)
