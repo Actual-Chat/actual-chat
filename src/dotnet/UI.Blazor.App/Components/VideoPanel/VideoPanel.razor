@@ -167,6 +167,12 @@
                     <i class="icon-video text-lg"></i>
                 </HeaderButton>
             } else {
+                @* Left counterweight: the record button has screencast on its left and video on its
+                   right; the reaction button (chat is out of flow — absolute) tips the right side, so
+                   this slot re-centers the recorder on the footer. *@
+                @if (m.CanReact) {
+                    <div class="btn-incut"></div>
+                }
                 <HeaderButton
                     Click="@(() => OnScreenCastClick(!isOwnScreenCasting))"
                     Class="@("btn-video-panel " + screenCastBtnCls)">
