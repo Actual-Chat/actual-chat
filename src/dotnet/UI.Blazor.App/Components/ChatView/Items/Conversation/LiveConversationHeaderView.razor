@@ -87,7 +87,7 @@
         var isJoined = isLive
             && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
         var isVoiceOnly = isLive
-            && !await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(false);
+            && !await LiveSessionUI.HasTranscript(chatId, cancellationToken).ConfigureAwait(false);
         var participantsText = isLive || isDissolving
             ? await ConversationParticipantsFormatter
                 .GetText(Authors, L, Hub.Session, chatId, conversation.AuthorIds, cancellationToken)

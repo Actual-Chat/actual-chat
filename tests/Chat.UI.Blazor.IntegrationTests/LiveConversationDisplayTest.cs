@@ -1722,6 +1722,68 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task UnsummarizedBlockShouldFoldOnlyOnceItHasATranscript()
+    {
+        // A session without summarization renders no card to fold behind: nothing to preview, no "show
+        // more". A transcript is what gives it one, whatever the chat's summarization setting says.
+
+        // arrange - a chat with summarization off, both speakers' streams untranscribed
+        await Tester.SignInAsUniqueBob();
+        var chat = await CreateSettledChat("unsummarized-fold-test");
+        await Tester.Commander.Call(new Chats_Change {
+            Session = Tester.Session,
+            ChatId = chat.Id,
+            ExpectedVersion = null,
+            Change = Change.Update(new ChatDiff { IsSummarized = false }),
+        });
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_410);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, false, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, false, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        var lids = new List<long>();
+        for (var i = 0; i < 5 + LiveFoldMath.MinTailEntryCount; i++)
+            lids.Add((await CreateSpokenEntry(chat.Id, $"spoken-{i}")).LocalId);
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        await chatAudioUI.SetRecordingChatId(chat.Id);   // Bob is a recorder => joined
+        chatUI.SelectChatOnNavigation(chat.Id);
+        await AwaitJoinedBlockExpansion(chatUI, chat.Id, live!.ToConversation());
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        var viewportTop = lids[5];
+        ChatViewItemVisibility ScrolledTo(long lid)
+            => new(chat.Id, new HashSet<ChatMessageKey> { ChatMessageKey.New(ChatMessageKind.None, lid) }, false, false);
+
+        // act - the reader scrolls five rows past the top
+        chatUI.ReportItemVisibility(ScrolledTo(viewportTop));
+        await Task.Delay(700);
+
+        // assert - voice-only: nothing folds, since nothing could bring it back
+        (await liveBlockUI.GetBlock(chat.Id)).Require().FoldRange.IsEmpty
+            .Should().BeTrue("a block with no transcript has no card to swallow rows into");
+        LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None))
+            .Should().Contain(lids, "every row stays reachable by scrolling");
+
+        // act - a transcribed stream joins; the chat's summarization is still off
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        chatUI.ReportItemVisibility(ScrolledTo(viewportTop));
+
+        // assert - the block folds what is above the viewport, and "show more" offers exactly that back
+        await TestWait.When(async ct => {
+            (await liveBlockUI.GetBlock(chat.Id, ct)).Require().FoldEndLid
+                .Should().BeGreaterThanOrEqualTo(viewportTop, "a transcript gives the block a card to fold into");
+            (await liveBlockUI.GetSwallowedCount(chat.Id, ct)).Should().Be(5, "that is what \"show more\" offers");
+            var renderedLids = LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, ct));
+            renderedLids.Should().NotContain(lids.Take(5));
+            renderedLids.Should().Contain(lids.Skip(5));
+        }, TimeSpan.FromSeconds(15));
+    }
+
+    [Fact]
     public async Task StreamingTailSeparatesOwnSuppressionFromTheFold()
     {
         // One pass answers two questions: the floor covers whoever is speaking - that's what the live

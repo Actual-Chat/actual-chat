@@ -186,7 +186,7 @@ sequenceDiagram
     participant FCM as FirebaseMessagingClient
     participant APNs as ApnsClient
 
-    Pub->>LSB: OnStreamRegistered(chatId, authorId,<br/>entryLid, transcriptionOn, hasVoice)
+    Pub->>LSB: OnStreamRegistered(chatId, authorId,<br/>entryLid, hasText, hasVoice)
     alt hasVoice
         LSB->>Q: Enqueue(SpeechStartedEvent(chatId, authorId, now))
     end

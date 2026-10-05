@@ -60,6 +60,10 @@ public sealed partial record LiveSessionState
     // to another participant; it outlives the LiveCall, which a group call's session does too.
     [DataMember(Order = 24), Key(24)]
     public AuthorId? CallerId { get; init; }
+    // Set once any stream in the session is transcribed, and never cleared. Not TranscriptionOn: that one is
+    // the chat's summarization setting, so a call or an unsummarized chat lacks it with every word transcribed.
+    [DataMember(Order = 26), Key(26)]
+    public bool HasTranscript { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public long EffectiveVisibleStartLid => VisibleStartLid > 0 ? VisibleStartLid : StartEntryLid;

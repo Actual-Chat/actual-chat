@@ -567,7 +567,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public static bool IsActuallyConversing(
         ConversationStats? stats,
         AuthorId? ownAuthorId,
-        bool isTranscriptionOn,
+        bool hasTranscript,
         AudioSettings audioSettings)
     {
         // Own speech deliberately doesn't count: talking to people in the room is exactly the case
@@ -577,9 +577,9 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         if (stats.Duration < audioSettings.ConversationMinAge)
             return true;
 
-        // Where transcription is on it's the better signal: speech duration can't tell words from
+        // Where there's a transcript it's the better signal: speech duration can't tell words from
         // the noise that tripped VAD, and transcribed characters can.
-        return isTranscriptionOn
+        return hasTranscript
             ? stats.GetTranscriptSize(ownAuthorId) >= audioSettings.TranscriptSizeThreshold
             : stats.GetSpeechDuration(ownAuthorId) >= audioSettings.SpeechDurationThreshold;
     }

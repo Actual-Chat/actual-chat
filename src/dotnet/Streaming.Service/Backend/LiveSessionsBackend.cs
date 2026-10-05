@@ -302,7 +302,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
         ChatId chatId,
         AuthorId authorId,
         long? entryLid,
-        bool transcriptionOn,
+        bool hasText,
         bool hasVoice,
         CancellationToken cancellationToken)
     {
@@ -325,9 +325,9 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
         var now = Clocks.SystemClock.Now;
         var state = await SafeGet(chatId).ConfigureAwait(false);
         if (state is null) {
-            var startEntryLid = transcriptionOn && entryLid is { } lid
-                ? lid
-                : (await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false)).End;
+            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+            var startEntryLid = entryLid
+                ?? (await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false)).End;
             state = new LiveSessionState {
                 ChatId = chatId,
                 StartEntryLid = startEntryLid,
@@ -335,7 +335,8 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
                 StartedAt = now,
                 AuthorIds = [authorId],
                 Host = authorId,
-                TranscriptionOn = transcriptionOn,
+                TranscriptionOn = chat?.IsSummarized ?? false,
+                HasTranscript = hasText,
                 Version = VersionGenerator.NextVersion(),
             };
         }
@@ -343,7 +344,10 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
             var authorIds = state.AuthorIds.Contains(authorId)
                 ? state.AuthorIds
                 : [..state.AuthorIds, authorId];
-            if (ReferenceEquals(authorIds, state.AuthorIds) && !state.IsClosing) {
+            var hasTranscript = state.HasTranscript || hasText;
+            if (ReferenceEquals(authorIds, state.AuthorIds)
+                && !state.IsClosing
+                && hasTranscript == state.HasTranscript) {
                 // Nothing to write, but a re-registering stream is proof of life: keep the key alive.
                 await _redisScope.Refresh(chatId.Value).ConfigureAwait(false);
                 return;
@@ -351,6 +355,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
 
             state = state with {
                 AuthorIds = authorIds,
+                HasTranscript = hasTranscript,
                 IsClosing = false,
                 ClosingAt = null,
                 Version = VersionGenerator.NextVersion(state.Version),

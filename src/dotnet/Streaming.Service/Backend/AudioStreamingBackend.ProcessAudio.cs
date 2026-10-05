@@ -228,7 +228,7 @@ public partial class AudioStreamingBackend
         var wasRegisteredAsStream = mustStreamVoice || isSummarized;
         if (wasRegisteredAsStream)
             await LiveSessionsBackend
-                .OnStreamRegistered(chatId, author.Id, null, isSummarized, mustStreamVoice, cancellationToken)
+                .OnStreamRegistered(chatId, author.Id, null, mustTranscribe, mustStreamVoice, cancellationToken)
                 .ConfigureAwait(false);
 
         var headerFrame = new AudioFrame {

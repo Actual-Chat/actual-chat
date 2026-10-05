@@ -80,10 +80,10 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         => await LiveSessions.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
 
     [ComputeMethod(ConsolidationDelay = 0.2)]
-    public virtual async Task<bool> IsTranscriptionOn(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<bool> HasTranscript(ChatId chatId, CancellationToken cancellationToken)
     {
         var state = await LiveSessions.GetState(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return state?.TranscriptionOn ?? false;
+        return state?.HasTranscript ?? false;
     }
 
     public Task SetRules(ChatId chatId, SessionRules rules, CancellationToken cancellationToken)
