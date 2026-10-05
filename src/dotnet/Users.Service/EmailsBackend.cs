@@ -131,6 +131,9 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         async Task<DigestParameters.DigestChat?> BuildUnreadDigestChat(ContactId contactId)
         {
             var chatId = contactId.ChatId;
+            if (chatId == Constants.Chat.AnnouncementsChatId)
+                return default;
+
             var chat = await ChatsBackend
                 .Get(chatId, cancellationToken)
                 .ConfigureAwait(false);
