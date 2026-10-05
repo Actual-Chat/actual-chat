@@ -319,6 +319,36 @@ describe('location sharing', () => {
         }
     }, 120_000);
 
+    // A stop has to reach storage before the page can go away: reloaded inside the batching delay,
+    // the app used to restore the stopped share and start it over as a brand-new one (#5066).
+    // The reload only sometimes lands inside that delay, hence several rounds.
+    it('keeps a stopped share stopped across an immediate reload (#5066)', async () => {
+        const mapPanel = page.locator('.visual-activity-panel .map-panel').first();
+        await openChat(page);
+        for (let round = 1; round <= 3; round++) {
+            // arrange
+            await conn.context.setGeolocation(START);
+            await page.locator('.chat-message-editor .attach-btn').first().click({ force: true });
+            await page.locator('.ac-menu-item:has-text("Location")').first().click({ force: true });
+            const modal = page.locator('.share-location-modal').first();
+            await modal.waitFor({ state: 'visible', timeout: 10_000 });
+            await modal.locator('.c-share-live').first().click();
+            await modal.locator('.c-duration-menu .c-menu-item:has-text("15 minutes")').first().click();
+            await mapPanel.waitFor({ state: 'visible', timeout: 8_000 });
+            // The share itself must be in storage first - a stop issued before it gets there leaves
+            // nothing to restore, so the round would pass with the bug in place.
+            await page.waitForTimeout(1_000);
+
+            // act — stop, then reload right away, the way a user closing the tab after Stop would
+            await mapPanel.locator('.btn-stop-sharing').first().click();
+            await mapPanel.waitFor({ state: 'hidden', timeout: 20_000 });
+            await openChat(page);
+
+            // assert
+            expect(await isVisibleWithin(mapPanel, 5_000), `round ${round}`).toBe(false);
+        }
+    }, 180_000);
+
     // Every duration option must start a live share (the inline map panel appears), not just
     // the first one. The countdown ring text is duration-specific: minutes for sub-hour
     // shares, "Nh" for hour-scale ones ("1 hour" may render as "60" or "1h" depending on
