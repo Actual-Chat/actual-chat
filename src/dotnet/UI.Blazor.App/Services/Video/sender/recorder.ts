@@ -15,7 +15,13 @@ import { FrameDropStage, traceDrops } from '../frame-drop-trace';
 import { mstpSource } from '../operators/capture';
 import { stampCaptureTime } from '../operators/stamp-capture-time';
 import { attachSourceDims } from '../operators/attach-source-dims';
-import { normalizeDownscale, type DownscalerMode } from '../operators/downscale';
+import {
+    createSkippedFramePreview,
+    normalizeDownscale,
+    NormalizeFrameOrientation,
+    type DownscalerMode,
+    type LayerSpec,
+} from '../operators/downscale';
 import { createPreviewSink, isPreviewTraceEnabled } from '../operators/preview-forwarder';
 import { applyKeyframePolicy } from '../operators/apply-keyframe-policy';
 import { encode, type EncoderConfigPerLayer, type EncoderFactory } from '../operators/encode';
@@ -158,13 +164,53 @@ export class Recorder {
             reportPresentation: p => this.session.reportPreviewFramePresentation(p),
             trace: isPreviewTraceEnabled() ? this.session.previewTrace : undefined,
         });
+        /** Caps the ceiling at the active top. At full ladder height the two are equal and
+         *  the ceiling IS the top tier, so nothing changes. Once QC or the thermal cap
+         *  shrinks the ladder, an uncapped ceiling becomes an orphan full-res frame
+         *  produced every frame for nothing but the self-preview - exactly when the device
+         *  is least able to afford it. The preview then rides the top tier, still well
+         *  above the ~240x240 device px it is displayed in. */
+        const getNormalizeSize = (): LayerSpec => {
+            const { configs } = ladderController.current;
+            const activeTop = configs[configs.length - 1];
+            // Compare by area: an orientation flip swaps W/H on either side.
+            const area = (s: { width: number; height: number }): number => s.width * s.height;
+            // The self-preview is not a remote viewer: shedding upper tiers for
+            // the call must not blur it, so it holds the ceiling up to its own size.
+            // Only its SCALE though - it reports a layout box, and a tile is rarely
+            // the camera's shape. Using the box as a frame size squeezed the picture
+            // into the tile's aspect, and since this is the ceiling every tier is
+            // built from, the wire carried that distortion to every viewer.
+            const preview = this.previewSize
+                ? scaleToAspectOf(this.previewSize, normalizeSize)
+                : null;
+            const floor = preview && area(preview) > area(activeTop) ? preview : activeTop;
+            return area(floor) < area(normalizeSize) ? floor : normalizeSize;
+        };
+        const orientation = new NormalizeFrameOrientation({
+            isCamera: config.sourceKind === 0,
+            isFrontCamera: config.isFrontCamera,
+            isIos: config.isIos,
+        });
+        const skippedFramePreview = createSkippedFramePreview({
+            orientation,
+            getNormalizeSize,
+            preview: previewSink,
+        });
 
         // Two pipes only because pipe()'s typed overload tops out at 10 ops;
         // runtime composition is identical.
         const captureToBundle = pipe(
             captureSource,
             traceDrops<CapturedFrame>(FrameDropStage.SenderSource),
-            floodGate(gate),
+            // Frames the gate skips still feed the self-preview: a wire stall (e.g. the
+            // video peer still connecting) must not freeze it. fps 0 stops both, as below.
+            floodGate(gate, frame => {
+                if (paceState.targetFps > 0)
+                    skippedFramePreview(frame);
+                else
+                    try { frame.close(); } catch { /* ignore */ }
+            }),
             traceDrops<CapturedFrame>(FrameDropStage.SenderFloodGate),
             // Before stampCaptureTime so injected frames get a fresh monotonic
             // capturedAt; before temporalPace so fps=0 (no viewers) still
@@ -183,32 +229,11 @@ export class Recorder {
             traceDrops<CapturedFrame>(FrameDropStage.SenderFpsPacing),
             normalizeDownscale({
                 controller: ladderController,
-                // Cap the ceiling at the active top. At full ladder height the two are equal and
-                // the ceiling IS the top tier, so nothing changes. Once QC or the thermal cap
-                // shrinks the ladder, an uncapped ceiling becomes an orphan full-res frame
-                // produced every frame for nothing but the self-preview - exactly when the device
-                // is least able to afford it. The preview then rides the top tier, still well
-                // above the ~240x240 device px it is displayed in.
-                getNormalizeSize: () => {
-                    const { configs } = ladderController.current;
-                    const activeTop = configs[configs.length - 1];
-                    // Compare by area: an orientation flip swaps W/H on either side.
-                    const area = (s: { width: number; height: number }): number => s.width * s.height;
-                    // The self-preview is not a remote viewer: shedding upper tiers for
-                    // the call must not blur it, so it holds the ceiling up to its own size.
-                    // Only its SCALE though - it reports a layout box, and a tile is rarely
-                    // the camera's shape. Using the box as a frame size squeezed the picture
-                    // into the tile's aspect, and since this is the ceiling every tier is
-                    // built from, the wire carried that distortion to every viewer.
-                    const preview = this.previewSize
-                        ? scaleToAspectOf(this.previewSize, normalizeSize)
-                        : null;
-                    const floor = preview && area(preview) > area(activeTop) ? preview : activeTop;
-                    return area(floor) < area(normalizeSize) ? floor : normalizeSize;
-                },
+                getNormalizeSize,
                 isCamera: config.sourceKind === 0,
                 isFrontCamera: config.isFrontCamera,
                 isIos: config.isIos,
+                orientation,
                 preview: previewSink,
                 mode: config.downscalerMode,
             }),

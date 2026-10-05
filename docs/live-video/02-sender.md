@@ -92,8 +92,13 @@ reference.
 
 ### `floodGate(gate)`
 File: `operators/flood-gate.ts`.
-Skips frames while the gate is `closed` (capture-side resource is released
-immediately via `frame.close()`). The gate is driven from the Denque in
+Skips frames while the gate is `closed`. A skipped frame never reaches the
+encoders: the recorder hands it to `createSkippedFramePreview`
+(`operators/downscale.ts`), which normalizes it with the same
+`NormalizeFrameOrientation` as `normalizeDownscale`, forwards it to the
+self-preview and closes it. Without that the self-preview froze for as long as
+the wire stalled, e.g. the ~2 s a cold video RPC peer can take to connect when
+the camera starts in a call (#5068). The gate is driven from the Denque in
 `push-to-pull-buffer.ts`: closes when the Denque hits half-capacity, reopens
 below quarter-capacity. `gate.skipCount` feeds
 `stats.floodGateSkipCount` via the wire-send sink.
@@ -270,7 +275,9 @@ stays in the pipeline. The Blazor side has a `<video srcObject=…>` bound to
 that MSTG track, so users see what they're sending. Local preview is
 **pre-encode** (post-downscale would be possible but costs an extra GPU read;
 the current design keeps preview on the unencoded frame). Failures are
-counted in `stats.previewClonesFailed`.
+counted in `stats.previewClonesFailed`. Frames the flood gate skips feed the
+preview too (see `floodGate` above), so wire backpressure never freezes it;
+only demand pacing to fps 0 stops it.
 
 ## Stop and cleanup
 

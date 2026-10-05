@@ -3,8 +3,10 @@
 // pushPullBufferSize/4 (hysteresis). Skips bypass encoder/downscaler/wire.
 
 import { from, type PipeOperator } from 'ix-ext';
+import { getLogs } from 'logging';
 import type { CapturedFrame } from '../frame-envelopes';
 
+const { warnLog } = getLogs('VideoPipeline');
 const SKIP_RATE_WINDOW_MS = 1_000;
 
 export class FloodGate {
@@ -33,9 +35,14 @@ export class FloodGate {
     }
 }
 
-// Place immediately after the capture source so dropped frames release
-// the underlying GPU/CPU resource without traversing heavier downstream stages.
-export function floodGate(gate: FloodGate): PipeOperator<CapturedFrame, CapturedFrame> {
+/** Place immediately after the capture source so dropped frames release
+ *  the underlying GPU/CPU resource without traversing heavier downstream stages.
+ *  `onSkip` takes ownership of each skipped frame instead of it being closed here:
+ *  the self-preview keeps playing from them while the wire is stalled. */
+export function floodGate(
+    gate: FloodGate,
+    onSkip?: (frame: VideoFrame) => void,
+): PipeOperator<CapturedFrame, CapturedFrame> {
     return source => {
         return from(impl());
 
@@ -52,9 +59,19 @@ export function floodGate(gate: FloodGate): PipeOperator<CapturedFrame, Captured
                 if (gate.isOpen) {
                     updateRate(captured.stats);
                     yield captured;
+
                     continue;
                 }
-                try { captured.frame.close(); } catch { /* ignore */ }
+
+                if (onSkip) {
+                    try {
+                        onSkip(captured.frame);
+                    } catch (e) {
+                        warnLog?.log('floodGate: onSkip failed:', e);
+                    }
+                } else {
+                    try { captured.frame.close(); } catch { /* ignore */ }
+                }
                 gate.recordSkip();
                 skipTimestamps.push(performance.now());
                 updateRate(captured.stats);
