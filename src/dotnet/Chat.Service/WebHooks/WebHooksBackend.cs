@@ -141,13 +141,7 @@ public partial class WebHooksBackend(IServiceProvider services)
     {
         var (scope, scopeId, id, expectedVersion, change, changedBy) = command;
         var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            InvalidateHook(context);
-            _ = HasUserScopedHooks(default);
-            if (change.IsRemove() && context.Operation.Items.KeylessGet<WebHook>() is { } removedHook)
-                _ = ListDeliveries(removedHook.Id, Constants.WebHooks.DeliveryListLimit, default);
-            return default!;
-        }
+        var invalidatedTokenHashes = new HashSet<string>(StringComparer.Ordinal);
 
         change.RequireValid();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
@@ -198,7 +192,7 @@ public partial class WebHooksBackend(IServiceProvider services)
                 secret = WebHookTokens.New();
                 dbWebHook = new DbWebHook(webHook) { TokenHash = WebHookTokens.Hash(secret) };
                 await EnsureBot(webHook, ChatId.Parse(scopeId), createDiff, cancellationToken).ConfigureAwait(false);
-                AddInvalidatedTokenHash(context, dbWebHook.TokenHash);
+                AddInvalidatedTokenHash(invalidatedTokenHashes, dbWebHook.TokenHash);
             }
             else {
                 secret = StandardWebhookSigner.NewSecret();
@@ -229,7 +223,7 @@ public partial class WebHooksBackend(IServiceProvider services)
                 await UpdateBot(webHook, updateDiff, cancellationToken).ConfigureAwait(false);
             else
                 ApplyCustomHeader(dbWebHook, updateDiff);
-            AddInvalidatedTokenHash(context, dbWebHook.TokenHash);
+            AddInvalidatedTokenHash(invalidatedTokenHashes, dbWebHook.TokenHash);
         }
         else {
             dbWebHook.Require().RequireVersion(expectedVersion);
@@ -242,13 +236,18 @@ public partial class WebHooksBackend(IServiceProvider services)
             var removed = dbWebHook.ToModel();
             if (removed.Kind == WebHookKind.Incoming) {
                 await RetireBot(removed, cancellationToken).ConfigureAwait(false);
-                AddInvalidatedTokenHash(context, dbWebHook.TokenHash);
+                AddInvalidatedTokenHash(invalidatedTokenHashes, dbWebHook.TokenHash);
             }
         }
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         var model = dbWebHook.ToModel();
-        context.Operation.Items.KeylessSet(model);
+        Invalidation.Defer(() => {
+            InvalidateHook(model, invalidatedTokenHashes);
+            _ = HasUserScopedHooks(default);
+            if (change.IsRemove())
+                _ = ListDeliveries(model.Id, Constants.WebHooks.DeliveryListLimit, default);
+        });
         return new WebHookChangeResult(change.IsRemove() ? null : model, secret);
     }
 
@@ -257,11 +256,7 @@ public partial class WebHooksBackend(IServiceProvider services)
         WebHooksBackend_RotateSecret command,
         CancellationToken cancellationToken)
     {
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            InvalidateHook(context);
-            return default!;
-        }
+        var invalidatedTokenHashes = new HashSet<string>(StringComparer.Ordinal);
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -271,14 +266,15 @@ public partial class WebHooksBackend(IServiceProvider services)
         if (dbWebHook.Kind == WebHookKind.Incoming) {
             // A token has no overlap window: the old one stops working the moment the new one is minted
             var token = WebHookTokens.New();
-            AddInvalidatedTokenHash(context, dbWebHook.TokenHash);
+            AddInvalidatedTokenHash(invalidatedTokenHashes, dbWebHook.TokenHash);
             dbWebHook.TokenHash = WebHookTokens.Hash(token);
-            AddInvalidatedTokenHash(context, dbWebHook.TokenHash);
+            AddInvalidatedTokenHash(invalidatedTokenHashes, dbWebHook.TokenHash);
             dbWebHook.ModifiedAt = now;
             dbWebHook.Version = VersionGenerator.NextVersion(dbWebHook.Version);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-            context.Operation.Items.KeylessSet(dbWebHook.ToModel());
+            var incomingWebHook = dbWebHook.ToModel();
+            Invalidation.Defer(() => InvalidateHook(incomingWebHook, invalidatedTokenHashes));
             return token;
         }
 
@@ -290,7 +286,8 @@ public partial class WebHooksBackend(IServiceProvider services)
         dbWebHook.Version = VersionGenerator.NextVersion(dbWebHook.Version);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        context.Operation.Items.KeylessSet(dbWebHook.ToModel());
+        var rotatedWebHook = dbWebHook.ToModel();
+        Invalidation.Defer(() => InvalidateHook(rotatedWebHook, invalidatedTokenHashes));
         return secret;
     }
 
@@ -299,10 +296,6 @@ public partial class WebHooksBackend(IServiceProvider services)
     {
         var (id, _, deliveryId, eventType, payload) = command;
         var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            _ = ListDeliveries(id, Constants.WebHooks.DeliveryListLimit, default);
-            return;
-        }
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -340,6 +333,8 @@ public partial class WebHooksBackend(IServiceProvider services)
         });
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+        Invalidation.Defer(() => _ = ListDeliveries(id, Constants.WebHooks.DeliveryListLimit, default));
+
         // An operation event, not a direct Schedule: the flow must not wake up before the row is committed
         context.Operation.AddEvent(FlowHub.NewResumeEvent<WebHookDeliveryFlow>(id.Value));
     }
@@ -350,12 +345,7 @@ public partial class WebHooksBackend(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         var (id, _, deliveryId, status, statusCode, error, latencyMs, nextAttemptAt) = command;
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            InvalidateHook(context);
-            _ = ListDeliveries(id, Constants.WebHooks.DeliveryListLimit, default);
-            return;
-        }
+        var invalidatedTokenHashes = new HashSet<string>(StringComparer.Ordinal);
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -385,18 +375,18 @@ public partial class WebHooksBackend(IServiceProvider services)
         dbWebHook.ConsecutiveFailures = isSuccess ? 0 : dbWebHook.ConsecutiveFailures + 1;
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        context.Operation.Items.KeylessSet(dbWebHook.ToModel());
-        AddInvalidatedTokenHash(context, dbWebHook.TokenHash);
+        var webHook = dbWebHook.ToModel();
+        AddInvalidatedTokenHash(invalidatedTokenHashes, dbWebHook.TokenHash);
+        Invalidation.Defer(() => {
+            InvalidateHook(webHook, invalidatedTokenHashes);
+            _ = ListDeliveries(id, Constants.WebHooks.DeliveryListLimit, default);
+        });
     }
 
     // [CommandHandler]
     public virtual async Task OnRecordPost(WebHooksBackend_RecordPost command, CancellationToken cancellationToken)
     {
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            InvalidateHook(context);
-            return;
-        }
+        var invalidatedTokenHashes = new HashSet<string>(StringComparer.Ordinal);
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -406,21 +396,16 @@ public partial class WebHooksBackend(IServiceProvider services)
         dbWebHook.ConsecutiveFailures = 0;
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        context.Operation.Items.KeylessSet(dbWebHook.ToModel());
-        AddInvalidatedTokenHash(context, dbWebHook.TokenHash);
+        var webHook = dbWebHook.ToModel();
+        AddInvalidatedTokenHash(invalidatedTokenHashes, dbWebHook.TokenHash);
+        Invalidation.Defer(() => InvalidateHook(webHook, invalidatedTokenHashes));
     }
 
     // [CommandHandler]
     public virtual async Task OnDisable(WebHooksBackend_Disable command, CancellationToken cancellationToken)
     {
         var (id, _, reason, error) = command;
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            InvalidateHook(context);
-            _ = HasUserScopedHooks(default);
-            _ = ListDeliveries(id, Constants.WebHooks.DeliveryListLimit, default);
-            return;
-        }
+        var invalidatedTokenHashes = new HashSet<string>(StringComparer.Ordinal);
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -443,8 +428,13 @@ public partial class WebHooksBackend(IServiceProvider services)
             .ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        context.Operation.Items.KeylessSet(dbWebHook.ToModel());
-        AddInvalidatedTokenHash(context, dbWebHook.TokenHash);
+        var webHook = dbWebHook.ToModel();
+        AddInvalidatedTokenHash(invalidatedTokenHashes, dbWebHook.TokenHash);
+        Invalidation.Defer(() => {
+            InvalidateHook(webHook, invalidatedTokenHashes);
+            _ = HasUserScopedHooks(default);
+            _ = ListDeliveries(id, Constants.WebHooks.DeliveryListLimit, default);
+        });
     }
 
     // [CommandHandler]
@@ -452,11 +442,6 @@ public partial class WebHooksBackend(IServiceProvider services)
     {
         var (id, _, deliveryId) = command;
         var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            _ = ListDeliveries(id, Constants.WebHooks.DeliveryListLimit, default);
-            return;
-        }
-
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -485,6 +470,7 @@ public partial class WebHooksBackend(IServiceProvider services)
         });
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+        Invalidation.Defer(() => _ = ListDeliveries(id, Constants.WebHooks.DeliveryListLimit, default));
         context.Operation.AddEvent(FlowHub.NewResumeEvent<WebHookDeliveryFlow>(id.Value));
     }
 
@@ -494,9 +480,6 @@ public partial class WebHooksBackend(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         var (id, _, sentBy) = command;
-        if (Invalidation.IsActive)
-            return default!;
-
         var webHook = await Get(id, cancellationToken).Require().ConfigureAwait(false);
         if (webHook.Kind == WebHookKind.Incoming) {
             var startedAt = CpuTimestamp.Now;
@@ -509,31 +492,21 @@ public partial class WebHooksBackend(IServiceProvider services)
 
     // Private methods
 
-    private void InvalidateHook(CommandContext context)
+    private void InvalidateHook(WebHook webHook, IReadOnlyCollection<string> tokenHashes)
     {
-        // Create mints the id inside the handler, so every command reads the hook back from the operation
-        if (context.Operation.Items.KeylessGet<WebHook>() is not { } webHook)
-            return;
-
         _ = Get(webHook.Id, default);
         _ = ListByScope(webHook.Scope, webHook.ScopeId, default);
         if (webHook.CreatedBy is { } createdBy)
             _ = ListByCreator(createdBy, default);
-        foreach (var tokenHash in context.Operation.Items.KeylessGet<InvalidatedTokenHashes>()?.Hashes ?? [])
+        foreach (var tokenHash in tokenHashes)
             _ = GetByTokenHash(tokenHash, default);
     }
 
     // Any write to a hook row must invalidate its token lookup, not just the ones changing the token
-    private static void AddInvalidatedTokenHash(CommandContext context, string? tokenHash)
+    private static void AddInvalidatedTokenHash(HashSet<string> tokenHashes, string? tokenHash)
     {
-        if (tokenHash.IsNullOrEmpty())
-            return;
-
-        var hashes = context.Operation.Items.KeylessGet<InvalidatedTokenHashes>()?.Hashes ?? [];
-        if (hashes.Contains(tokenHash))
-            return;
-
-        context.Operation.Items.KeylessSet(new InvalidatedTokenHashes([..hashes, tokenHash]));
+        if (!tokenHash.IsNullOrEmpty())
+            tokenHashes.Add(tokenHash);
     }
 
     private async Task EnsureBot(WebHook webHook, ChatId chatId, WebHookDiff diff, CancellationToken cancellationToken)
@@ -688,12 +661,4 @@ public partial class WebHooksBackend(IServiceProvider services)
 
     private static int LatencyMs(CpuTimestamp startedAt)
         => (int)Math.Min(startedAt.Elapsed.TotalMilliseconds, int.MaxValue);
-
-    // Nested types
-
-    // Read back during the invalidation phase, possibly on another node: Operation.Items round-trips
-    // through _Operations.ItemsJson, so the serialization attributes are what makes it survive
-    [DataContract, MessagePackObject(AllowPrivate = true)]
-    internal sealed partial record InvalidatedTokenHashes(
-        [property: DataMember(Order = 0), Key(0)] string[] Hashes);
 }

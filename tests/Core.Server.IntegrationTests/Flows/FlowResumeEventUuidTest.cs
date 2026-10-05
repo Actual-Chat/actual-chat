@@ -63,7 +63,13 @@ public sealed class FlowResumeEventUuidTest(ITestOutputHelper @out)
         await using var h = await NewAppHost();
         var flowHub = h.Services.FlowHub();
         var flowId = flowHub.NewId<QuantaFlow>("uuids,3");
-        var slotStart = (flowHub.SystemNow + TimeSpan.FromMinutes(1)).Ceiling(Quanta);
+        // Fusion 15 offsets the quanta lattice by a hash of the Uuid prefix, so a slot boundary is
+        // no longer a round multiple of Quanta. Read one off the lattice instead of assuming it -
+        // what the coalescing contract requires is that two instants in one cell agree, and a cell
+        // is (slotStart - Quanta, slotStart] wherever the seam happens to fall.
+        var probe = flowHub.NewResumeEvent(flowId).WithDelay(flowHub.SystemNow + TimeSpan.FromMinutes(1), Quanta);
+        _ = Uuid(probe, h); // Quantizing happens in ToOperationEvent, which is what puts DelayUntil on the lattice
+        var slotStart = probe.DelayUntil;
         var earlier = flowHub.NewResumeEvent(flowId).WithDelay(slotStart - Quanta + TimeSpan.FromSeconds(1), Quanta);
         var later = flowHub.NewResumeEvent(flowId).WithDelay(slotStart - TimeSpan.FromSeconds(1), Quanta);
 

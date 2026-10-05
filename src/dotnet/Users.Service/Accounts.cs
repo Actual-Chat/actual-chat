@@ -96,9 +96,6 @@ public class Accounts(IServiceProvider services) : IAccounts
     // [CommandHandler]
     public virtual async Task OnSignOut(Accounts_SignOut command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var backendCommand = new AccountsBackend_SignOut(command.Session, command.Deactivate);
         await Commander.Call(backendCommand, cancellationToken).ConfigureAwait(false);
     }
@@ -106,9 +103,6 @@ public class Accounts(IServiceProvider services) : IAccounts
     // [CommandHandler]
     public virtual async Task OnUpdate(Accounts_Update command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var account = command.Account;
         var expectedVersion = command.ExpectedVersion;
@@ -135,9 +129,6 @@ public class Accounts(IServiceProvider services) : IAccounts
     // [CommandHandler]
     public virtual async Task OnDeleteOwn(Accounts_DeleteOwn command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var ownAccount = await GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         ownAccount.Require(AccountFull.MustBeActive);
 
@@ -171,9 +162,6 @@ public class Accounts(IServiceProvider services) : IAccounts
     // [CommandHandler]
     public virtual async Task<string> OnCreateApiKey(Accounts_CreateApiKey command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return ""; // It just spawns other commands, so nothing to do here
-
         var maxDays = (int)CoreConstants.Session.MaxApiKeyExpirationTime.TotalDays;
         if (command.ExpiresInDays < 1 || command.ExpiresInDays > maxDays)
             throw StandardError.Constraint($"API key expiration must be between 1 and {maxDays} days.");
@@ -195,9 +183,6 @@ public class Accounts(IServiceProvider services) : IAccounts
     // [CommandHandler]
     public virtual async Task OnDeactivateSession(Accounts_DeactivateSession command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var ownAccount = await GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         ownAccount.Require(AccountFull.MustNotBeGuest);
 
@@ -216,9 +201,6 @@ public class Accounts(IServiceProvider services) : IAccounts
     // [CommandHandler]
     public virtual async Task OnConfirmRegister(Accounts_ConfirmRegister command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var session = command.Session;
         var token = command.Token;
         session.RequireValid();
@@ -244,9 +226,6 @@ public class Accounts(IServiceProvider services) : IAccounts
     // [CommandHandler]
     public virtual async Task OnCancelRegister(Accounts_CancelRegister command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var session = command.Session;
         var token = command.Token;
         session.RequireValid();
@@ -267,9 +246,6 @@ public class Accounts(IServiceProvider services) : IAccounts
     // [CommandHandler]
     public virtual async Task OnDeactivateAllSessions(Accounts_DeactivateAllSessions command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var ownAccount = await GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         ownAccount.Require(AccountFull.MustBeActive);
 

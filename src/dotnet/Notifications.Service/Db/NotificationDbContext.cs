@@ -44,6 +44,8 @@ public class NotificationDbContext(DbContextOptions<NotificationDbContext> optio
         notificationHistory.Property(e => e.ChatId).UseCollation("C");
         notificationHistory.Property(e => e.AuthorId).UseCollation("C");
 
+        model.IgnoreUnusedOperationsFrameworkColumns(DbLogEntrySerializer.Default);
+
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");
         operation.Property(e => e.HostId).UseCollation("C");

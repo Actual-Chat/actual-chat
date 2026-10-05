@@ -26,10 +26,8 @@ public class MaintenancesBackend(IServiceProvider services)
         if (!Enum.IsDefined(mode))
             throw new ArgumentOutOfRangeException(nameof(command));
 
-        var context = CommandContext.GetCurrent();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
-        context.Operation.MustStore(false);
 
         var id = key.ToString();
         await dbContext.Maintenances.Lock(id, cancellationToken).ConfigureAwait(false);
@@ -44,17 +42,11 @@ public class MaintenancesBackend(IServiceProvider services)
         else
             row.Mode = mode;
 
-        context.Operation.AddCompletionHandler(scope => {
-            if (scope.IsCommitted != true)
-                return Task.CompletedTask;
-
-            using (Invalidation.Begin()) {
-                _ = GetPartition(key.PartitionKey, default);
-                _ = Get(key, default);
-            }
-            return Task.CompletedTask;
-        });
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Invalidation.Defer(() => {
+            _ = GetPartition(key.PartitionKey, default);
+            _ = Get(key, default);
+        });
     }
 
     // Protected methods

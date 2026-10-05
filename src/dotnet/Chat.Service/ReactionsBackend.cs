@@ -48,15 +48,9 @@ public class ReactionsBackend(IServiceProvider services)
         var entryId = reaction.EntryId;
         var chatId = entryId.ChatId;
         var authorId = reaction.AuthorId;
-
-        if (Invalidation.IsActive) {
-            _ = List(entryId, default);
-            _ = Get(entryId, authorId, default);
-            return;
-        }
-
-        var context = CommandContext.GetCurrent();
         var emoji = reaction.Emoji;
+        var context = CommandContext.GetCurrent();
+
         var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).Require().ConfigureAwait(false);
         var entryAuthor = await AuthorsBackend.Get(chatId, entry.AuthorId, RequestedAuthorKind.Full, cancellationToken).Require().ConfigureAwait(false);
         var author = await AuthorsBackend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).Require().ConfigureAwait(false);
@@ -108,6 +102,11 @@ public class ReactionsBackend(IServiceProvider services)
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         if (mustUpdateHasReactions)
             await UpdateHasReactions().ConfigureAwait(false);
+
+        Invalidation.Defer(() => {
+            _ = List(entryId, default);
+            _ = Get(entryId, authorId, default);
+        });
 
         // Raise events
         context.Operation.AddEvent(new ReactionChangedEvent(reaction, entry, entryAuthor, author, changeKind));

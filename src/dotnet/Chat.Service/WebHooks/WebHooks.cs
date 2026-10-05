@@ -58,9 +58,6 @@ public class WebHooks(IServiceProvider services) : IWebHooks
         WebHooks_Change command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default!; // It just spawns other commands, so nothing to do here
-
         var (session, scope, scopeId, id, change) =
             (command.Session, command.Scope, command.ScopeId, command.Id, command.Change);
         change.RequireValid();
@@ -92,9 +89,6 @@ public class WebHooks(IServiceProvider services) : IWebHooks
         WebHooks_RotateSecret command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default!;
-
         var (session, id) = (command.Session, command.Id);
         var webHook = await Backend.Get(id, cancellationToken).Require().ConfigureAwait(false);
         await RequireManager(session, webHook.Scope, webHook.ScopeId, cancellationToken).ConfigureAwait(false);
@@ -105,9 +99,6 @@ public class WebHooks(IServiceProvider services) : IWebHooks
     // [CommandHandler]
     public virtual async Task<WebHookTestResult> OnTest(WebHooks_Test command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default!;
-
         var (session, id) = (command.Session, command.Id);
         var webHook = await Backend.Get(id, cancellationToken).Require().ConfigureAwait(false);
         var account = await RequireManager(session, webHook.Scope, webHook.ScopeId, cancellationToken)
@@ -119,9 +110,6 @@ public class WebHooks(IServiceProvider services) : IWebHooks
     // [CommandHandler]
     public virtual async Task OnRedeliver(WebHooks_Redeliver command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (session, id, deliveryId) = (command.Session, command.Id, command.DeliveryId);
         var webHook = await Backend.Get(id, cancellationToken).Require().ConfigureAwait(false);
         await RequireManager(session, webHook.Scope, webHook.ScopeId, cancellationToken).ConfigureAwait(false);

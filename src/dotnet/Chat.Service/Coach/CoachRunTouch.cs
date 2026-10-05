@@ -1,8 +1,8 @@
 namespace ActualChat.Chat.Coach;
 
-// Set into Operation.Items in the write phase of AnalyzeConversation and read back in its
-// invalidation phase, possibly on another node via _Operations.ItemsJson (Newtonsoft), hence
-// the explicit serialization attributes.
+// What a run touched, for its deferred invalidation block to walk. These no longer round-trip
+// through Operation.Items, but they stay round-trippable wire types - that's the codebase standard,
+// and it's what any future event payload carrying them would need.
 [DataContract, MessagePackObject(AllowPrivate = true)]
 internal sealed partial record CoachRunTouch(
     [property: DataMember(Order = 0), Key(0)] ConversationId Id,
@@ -13,9 +13,3 @@ internal sealed partial record CoachRunTouch(
 internal sealed partial record CoachTaggedEntry(
     [property: DataMember(Order = 0), Key(0)] ChatEntryId Id,
     [property: DataMember(Order = 1), Key(1)] AuthorId AuthorId);
-
-// The rows DeleteUserData removed, for its invalidation phase
-[DataContract, MessagePackObject(AllowPrivate = true)]
-internal sealed partial record CoachUserDataTouch(
-    [property: DataMember(Order = 0), Key(0)] ApiArray<CoachTaggedEntry> Entries,
-    [property: DataMember(Order = 1), Key(1)] ApiArray<CoachRunTouch> Runs);

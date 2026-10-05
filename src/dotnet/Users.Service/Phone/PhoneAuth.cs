@@ -97,9 +97,6 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         // NOTE(AY): A bit suspicious IApiCommand design:
         // - On one hand, it doesn't have to invalidate anything
         // - On another, it doesn't use a backend.
-        if (Invalidation.IsActive)
-            return null!;
-
         var session = command.Session;
         var phone = command.Phone;
         var purpose = command.Purpose;
@@ -148,9 +145,6 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
     [Obsolete("2026.08: Use PhoneAuth_SendCode. Old clients only.")]
     public virtual async Task<Moment> OnSendTotp(PhoneAuth_SendTotp command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default; // It just spawns other commands, so nothing to do here
-
         var sendCodeCommand = new PhoneAuth_SendCode {
             Session = command.Session,
             Phone = command.Phone,
@@ -168,9 +162,6 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         PhoneAuth_ValidateTotp command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return false; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var phone = command.Phone;
         var totp = command.Totp;
@@ -189,9 +180,6 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
     // [CommandHandler]
     public virtual async Task<bool> OnVerifyPhone(PhoneAuth_VerifyPhone command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return false; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var phone = command.Phone;
         var totp = command.Totp;

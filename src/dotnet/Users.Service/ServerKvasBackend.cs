@@ -45,13 +45,6 @@ public class ServerKvasBackend(IServiceProvider services) : DbServiceBase<UsersD
         if (prefix.IsNullOrEmpty())
             return;
 
-        if (Invalidation.IsActive) {
-            foreach (var (key, _) in command.Items)
-                _ = Get(prefix, key, default);
-            _ = List(prefix, default);
-            return;
-        }
-
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -95,5 +88,10 @@ public class ServerKvasBackend(IServiceProvider services) : DbServiceBase<UsersD
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Invalidation.Defer(() => {
+            foreach (var (key, _) in command.Items)
+                _ = Get(prefix, key, default);
+            _ = List(prefix, default);
+        });
     }
 }

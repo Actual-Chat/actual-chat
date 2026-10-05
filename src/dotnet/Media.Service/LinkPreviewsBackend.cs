@@ -40,12 +40,6 @@ public class LinkPreviewsBackend(IServiceProvider services)
     public virtual async Task<LinkPreview?> OnChange(LinkPreviewsBackend_Change command, CancellationToken cancellationToken)
     {
         var (id, expectedVersion, change) = command;
-        if (Invalidation.IsActive) {
-            _ = Get(id, false, default);
-            _ = Get(id, true, default);
-            return default!;
-        }
-
         change.RequireValid();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -82,6 +76,10 @@ public class LinkPreviewsBackend(IServiceProvider services)
             throw StandardError.NotSupported("Link previews cannot be removed.");
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Invalidation.Defer(() => {
+            _ = Get(id, false, default);
+            _ = Get(id, true, default);
+        });
         return dbLinkPreview.ToModel();
     }
 
@@ -89,9 +87,6 @@ public class LinkPreviewsBackend(IServiceProvider services)
     public virtual Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         var (entry, _, changeKind, oldEntry) = eventCommand;
-        if (Invalidation.IsActive)
-            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
-
         return ScheduleNewLinksCrawling();
 
         async Task ScheduleNewLinksCrawling() {

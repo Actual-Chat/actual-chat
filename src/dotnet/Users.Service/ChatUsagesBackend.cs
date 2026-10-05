@@ -39,15 +39,8 @@ public class ChatUsagesBackend(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         var (userId, kind, chatId, accessTimeOpt) = command;
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            if (context.Operation.Items.KeylessGet<bool>())
-                _ = GetRecencyList(userId, kind, default);
-            return;
-        }
-
         var accessTime = accessTimeOpt ?? Clocks.SystemClock.Now;
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -72,9 +65,10 @@ public class ChatUsagesBackend(IServiceProvider services)
             hasChanges = true;
         }
 
-        if (hasChanges)
+        if (hasChanges) {
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(hasChanges);
+            Invalidation.Defer(() => _ = GetRecencyList(userId, kind, default));
+        }
     }
 
     // [CommandHandler]
@@ -83,11 +77,6 @@ public class ChatUsagesBackend(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         var (userId, kind, size) = command;
-
-        if (Invalidation.IsActive) {
-            _ = GetRecencyList(userId, kind, default);
-            return;
-        }
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -101,14 +90,12 @@ public class ChatUsagesBackend(IServiceProvider services)
         dbContext.RemoveRange(chatUsagesToRemove);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Invalidation.Defer(() => _ = GetRecencyList(userId, kind, default));
     }
 
     // [EventHandler]
     public virtual async Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (entry, author, changeKind, _) = eventCommand;
         if (entry.IsSystemEntry)
             return;

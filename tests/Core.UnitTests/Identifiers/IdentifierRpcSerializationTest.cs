@@ -1,5 +1,6 @@
 using ActualLab.Interception;
 using ActualLab.Rpc;
+using ActualLab.Interception.Serialization;
 using ActualLab.Rpc.Serialization;
 
 namespace ActualChat.Core.UnitTests.Identifiers;
@@ -10,8 +11,8 @@ namespace ActualChat.Core.UnitTests.Identifiers;
 /// </summary>
 public class IdentifierRpcSerializationTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    private static readonly RpcArgumentSerializer ArgumentSerializer
-        = new RpcByteArgumentSerializerV4(Serializers.MessagePack);
+    private static readonly ArgumentListSerializer ArgumentSerializer
+        = new ByteArgumentListSerializer(Serializers.MessagePack);
 
     public static TheoryData<string, Type> ChatIdCases => new() {
         { "1234abcd", typeof(GroupChatId) },
@@ -35,7 +36,7 @@ public class IdentifierRpcSerializationTest(ITestOutputHelper @out) : TestBase(@
 
         // act
         var polymorphic = types
-            .Where(t => RpcArgumentSerializer.IsPolymorphic(t) || RpcArgumentSerializer.IsPolymorphic(t.MakeArrayType()))
+            .Where(t => ArgumentListSerializer.IsPolymorphic(t) || ArgumentListSerializer.IsPolymorphic(t.MakeArrayType()))
             .Select(t => t.GetName())
             .ToArray();
         WriteLine($"{types.Length} string-like types, {polymorphic.Length} polymorphic");
@@ -56,7 +57,7 @@ public class IdentifierRpcSerializationTest(ITestOutputHelper @out) : TestBase(@
         var arguments = ArgumentList.New(chatId);
 
         // act
-        var data = Serialize(arguments, RpcArgumentSerializer.IsPolymorphic(typeof(ChatId)));
+        var data = Serialize(arguments, ArgumentListSerializer.IsPolymorphic(typeof(ChatId)));
         var plain = Serialize(arguments, false);
         var copy = ArgumentList.New<ChatId>(null!);
         ArgumentSerializer.Deserialize(ref copy, false, data);

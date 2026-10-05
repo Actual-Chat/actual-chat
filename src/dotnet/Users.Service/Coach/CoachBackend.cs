@@ -127,12 +127,6 @@ public class CoachBackend(IServiceProvider services)
     public virtual async Task OnRecord(CoachBackend_Record command, CancellationToken cancellationToken)
     {
         var (userId, record, isRemoved) = command;
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            if (context.Operation.Items.KeylessGet<bool>())
-                _ = ListAllDays(userId, default);
-            return;
-        }
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
@@ -176,18 +170,13 @@ public class CoachBackend(IServiceProvider services)
         if (oldDay is { } movedFrom)
             await RebuildDay(dbContext, userId, movedFrom, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(true);
+        Invalidation.Defer(() => _ = ListAllDays(userId, default));
     }
 
     // [CommandHandler]
     public virtual async Task OnDeleteUserData(CoachBackend_DeleteUserData command, CancellationToken cancellationToken)
     {
         var userId = command.UserId;
-        if (Invalidation.IsActive) {
-            _ = ListAllDays(userId, default);
-            return;
-        }
-
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
         await dbContext.CoachDays.Lock(userId.Value, cancellationToken).ConfigureAwait(false);
@@ -199,17 +188,14 @@ public class CoachBackend(IServiceProvider services)
             .Where(d => d.UserId == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        Invalidation.Defer(() => _ = ListAllDays(userId, default));
     }
 
     // [CommandHandler]
     public virtual async Task OnRebuildDays(CoachBackend_RebuildDays command, CancellationToken cancellationToken)
     {
         var userId = command.UserId;
-        if (Invalidation.IsActive) {
-            _ = ListAllDays(userId, default);
-            return;
-        }
-
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
         await dbContext.CoachDays.Lock(userId.Value, cancellationToken).ConfigureAwait(false);
@@ -227,6 +213,7 @@ public class CoachBackend(IServiceProvider services)
         foreach (var day in days)
             await RebuildDay(dbContext, userId, day, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Invalidation.Defer(() => _ = ListAllDays(userId, default));
     }
 
     // [CommandHandler]
@@ -234,15 +221,10 @@ public class CoachBackend(IServiceProvider services)
         CoachBackend_SetConversationExcluded command, CancellationToken cancellationToken)
     {
         var (userId, chatId, startEntryLid, language, isExcluded) = command;
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            if (context.Operation.Items.KeylessGet<bool>())
-                _ = ListAllDays(userId, default);
-            return;
-        }
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
+
         await dbContext.CoachDays.Lock(userId.Value, cancellationToken).ConfigureAwait(false);
         var startSourceId = ChatEntryId.New(chatId, startEntryLid).Value;
         var startedAt = await dbContext.CoachEvents
@@ -280,16 +262,13 @@ public class CoachBackend(IServiceProvider services)
         foreach (var day in days)
             await RebuildDay(dbContext, userId, day, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(true);
+        Invalidation.Defer(() => _ = ListAllDays(userId, default));
     }
 
     // [EventHandler]
     public virtual async Task OnCoachEntryAnalyzedEvent(
         CoachEntryAnalyzedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var analysis = eventCommand.Analysis;
         if (!IsTrackedUser(analysis.UserId))
             return;
@@ -309,9 +288,6 @@ public class CoachBackend(IServiceProvider services)
     public virtual async Task OnCoachConversationAnalyzedEvent(
         CoachConversationAnalyzedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var analysis = eventCommand.Analysis;
         if (!IsTrackedUser(analysis.UserId))
             return;
@@ -327,6 +303,8 @@ public class CoachBackend(IServiceProvider services)
     [ComputeMethod]
     protected virtual async Task<ApiArray<CoachDay>> ListAllDays(UserId userId, CancellationToken cancellationToken)
     {
+        await ShardOwner.RequireShardOwnership(userId, addDependency: true, cancellationToken).ConfigureAwait(false);
+
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var rows = await dbContext.CoachDays

@@ -11,7 +11,7 @@ namespace ActualChat.Streaming;
 /// <see cref="GetUserCall"/> reads its phase off the chat's live session, answering only while that
 /// session still backs it.
 /// </summary>
-public class CallsBackend : ShardComputeService, ICallsBackend
+public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
 {
     // Counts from the last GetUserCall that found the claim backed, so it lapses only once nobody reads
     // it any more. Long enough to outlive a ring (RingTtl), short enough that a claim left by a crashed
@@ -41,15 +41,11 @@ public class CallsBackend : ShardComputeService, ICallsBackend
     // [ComputeMethod]
     public virtual async Task<UserCall?> GetUserCall(UserId userId, CancellationToken cancellationToken)
     {
-        // Captured before the awaits below, as in LiveSessionsBackend.GetState.
-        var computed = Computed.GetCurrent();
-        await ShardOwner.RequireShardOwnership(userId, addDependency: true, cancellationToken)
-            .ConfigureAwait(false);
-
         var call = await SafeGet(userId).ConfigureAwait(false);
         if (call is null)
             return null;
 
+        var computed = Computed.GetCurrent();
         var phase = await GetPhase(call, cancellationToken).ConfigureAwait(false);
         if (phase is { } p) {
             // Nothing rewrites a claim once its call connects (#4766)

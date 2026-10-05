@@ -1,4 +1,4 @@
-﻿using ActualChat.Streaming.Diagnostics;
+using ActualChat.Streaming.Diagnostics;
 using ActualChat.Comparison;
 using ActualChat.Flows;
 using ActualChat.Live;
@@ -16,7 +16,7 @@ namespace ActualChat.Streaming;
 /// Backend for the single live conversation per chat: its in-progress summary block,
 /// the participant registry, and open/close driven by live audio/video streams.
 /// </summary>
-public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBackend
+public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessionsBackend
 {
     private static readonly TimeSpan KeyTtl = TimeSpan.FromMinutes(6);
     private static readonly TimeSpan SelfHealDelay = TimeSpan.FromSeconds(30);
@@ -99,15 +99,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     // [ComputeMethod]
     public virtual async Task<LiveSessionState?> GetState(ChatId chatId, CancellationToken cancellationToken)
     {
-        var computed = Computed.GetCurrent();
-        var startedAt = CpuTimestamp.Now;
-        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
-        var ownershipWaitMs = (long)startedAt.Elapsed.TotalMilliseconds;
-        if (ownershipWaitMs > 250)
-            Log.LogWarning(
-                "GetState: waited {WaitMs}ms for shard ownership of chat #{ChatId}",
-                ownershipWaitMs, chatId);
-
         var redisReadAt = CpuTimestamp.Now;
         var state = await SafeGet(chatId).ConfigureAwait(false);
         var redisReadMs = (long)redisReadAt.Elapsed.TotalMilliseconds;
@@ -134,7 +125,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         // Required, not merely defensive: IsSessionLive reads raw Redis against a time-based staleness
         // cutoff, so nothing invalidates this on its own. The churn it creates is filtered before it can
         // reach the conversation metadata cache - see GetConsolidatedVisibleStartLid.
-        computed.Invalidate(SelfHealDelay);
+        Computed.GetCurrent().InvalidateSafely(SelfHealDelay);
         return state;
     }
 
@@ -275,10 +266,6 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     // [ComputeMethod]
     public virtual async Task<LiveCall?> GetCall(ChatId chatId, CancellationToken cancellationToken)
     {
-        // Captured before the awaits below — see GetState.
-        var computed = Computed.GetCurrent();
-        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
-
         var call = await SafeGetCall(chatId).ConfigureAwait(false);
         if (call is null)
             return null;
@@ -295,7 +282,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             if (!await IsCallAlive(chatId, call).ConfigureAwait(false))
                 _ = EndCall(chatId, mustRecheckParties: true, call.Id);
         }
-        computed.Invalidate(SelfHealDelay);
+        Computed.GetCurrent().InvalidateSafely(SelfHealDelay);
         return call;
     }
 
@@ -950,22 +937,18 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         ChatId chatId,
         CancellationToken cancellationToken)
     {
-        // Captured before the awaits below — see GetState.
-        var computed = Computed.GetCurrent();
         await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
 
         var authorIds = await GetFreshParticipantIds(chatId).ConfigureAwait(false);
         if (authorIds.Count > 0)
             // Re-check so a stale (left) participant drops without an explicit off signal.
-            computed.Invalidate(SelfHealDelay);
+            Computed.GetCurrent().Invalidate(SelfHealDelay);
         return authorIds;
     }
 
     [ComputeMethod(ConsolidationDelay = 0.2)]
     protected virtual async Task<bool> GetConsolidatedHasRecorder(ChatId chatId, CancellationToken cancellationToken)
     {
-        // Captured before the awaits below — see GetState.
-        var computed = Computed.GetCurrent();
         await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
 
         var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
@@ -973,7 +956,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         var hasRecorder = participants.Values.Any(p => IsFreshRecorder(p, cutoff));
         if (hasRecorder)
             // Re-check so a stale (crashed) recorder drops without an explicit off signal.
-            computed.Invalidate(SelfHealDelay);
+            Computed.GetCurrent().Invalidate(SelfHealDelay);
         return hasRecorder;
     }
 

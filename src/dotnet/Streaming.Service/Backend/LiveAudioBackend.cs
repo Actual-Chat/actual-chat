@@ -10,7 +10,7 @@ namespace ActualChat.Streaming;
 /// <summary>
 /// Backend service implementation for managing active live audio streams in chats.
 /// </summary>
-public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
+public partial class LiveAudioBackend : ShardedComputeServiceBase, ILiveAudioBackend
 {
     private static readonly TimeSpan MinInvDelay = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan StreamTtl = Constants.Audio.MaxStreamDuration;
@@ -22,6 +22,7 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 
     private IChatsBackend ChatsBackend { get; }
     private VersionGenerator<long> VersionGenerator { get; }
+    private MeshWatcher MeshWatcher => ShardOwner.Host.MeshWatcher;
 
     public LiveAudioBackend(IServiceProvider services)
         : base(services, ShardScheme.LiveBackend)
@@ -43,7 +44,9 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
             return default;
 
         var meshState = await MeshWatcher.State.Use(cancellationToken).ConfigureAwait(false);
-        return state.Streams.WhereAlive(meshState, static info => StreamId.Parse(info.StreamId)).ToApiArray();
+        return state.Streams
+            .WhereAlive(meshState, static info => StreamId.Parse(info.StreamId))
+            .ToApiArray();
     }
 
     public virtual async Task Register(ChatId chatId, LiveAudioStreamInfo streamInfo, CancellationToken cancellationToken)

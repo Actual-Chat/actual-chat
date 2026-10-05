@@ -125,20 +125,6 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         }
 
         var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            var (invAuthor, invOldAuthor) = context.Operation.Items.KeylessGet<(AuthorFull?, AuthorFull?)>();
-            if (invAuthor is not null) {
-                _ = GetInternal(chatId, invAuthor.Id, default);
-                _ = GetInternal(chatId, invAuthor.UserId, default);
-                var invOldHadLeft = invOldAuthor?.HasLeft ?? true;
-                if (invAuthor.HasLeft != invOldHadLeft) {
-                    _ = ListAuthorIdsInternal(chatId, default);
-                    _ = ListUserIdsInternal(chatId, default);
-                }
-            }
-            return default!;
-        }
-
         var defaultAuthor = chatId is PeerChatId peerChatId
             ? GetDefaultPeerChatAuthor(peerChatId, authorId, userId!).RequireValid(userId!)
             : null;
@@ -293,7 +279,16 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 
         { // Nested to get a new var scope
             var author = dbAuthor.ToModel();
-            context.Operation.Items.KeylessSet((author, existingAuthor));
+            Invalidation.Defer(() => {
+                _ = GetInternal(chatId, author.Id, default);
+                _ = GetInternal(chatId, author.UserId, default);
+                // A missing previous author counts as "had left", so joining flips the lists
+                var oldHadLeft = existingAuthor?.HasLeft ?? true;
+                if (author.HasLeft != oldHadLeft) {
+                    _ = ListAuthorIdsInternal(chatId, default);
+                    _ = ListUserIdsInternal(chatId, default);
+                }
+            });
 
             if (existingAuthor == null) {
                 // Set the read position to the very end
@@ -327,26 +322,6 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
                 "Only one of the following properties must be non-null: AuthorId, UserId, or ChatId.");
 
         var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            var invAuthors = context.Operation.Items.KeylessGet<AuthorFull[]>();
-            var invChatIds = new HashSet<ChatId>();
-            if (chatId is not null)
-                invChatIds.Add(chatId);
-            if (invAuthors is not null) {
-                foreach (var invAuthor in invAuthors) {
-                    var invChatId = invAuthor.ChatId;
-                    invChatIds.Add(invChatId);
-                    _ = GetInternal(invChatId, invAuthor.Id, default);
-                    _ = GetInternal(invChatId, invAuthor.UserId, default);
-                }
-            }
-            foreach (var invChatId in invChatIds) {
-                _ = ListAuthorIdsInternal(invChatId, default);
-                _ = ListUserIdsInternal(invChatId, default);
-            }
-            return;
-        }
-
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -391,7 +366,22 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
                 "One of the following properties must be non-null: AuthorId, UserId, or ChatId.");
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(authors.ToArray());
+        Invalidation.Defer(() => {
+            // The command may name a chat with no authors left to remove, and it is still that
+            // chat's lists that have to be invalidated
+            var invalidatedChatIds = new HashSet<ChatId>();
+            if (chatId is not null)
+                invalidatedChatIds.Add(chatId);
+            foreach (var author in authors) {
+                invalidatedChatIds.Add(author.ChatId);
+                _ = GetInternal(author.ChatId, author.Id, default);
+                _ = GetInternal(author.ChatId, author.UserId, default);
+            }
+            foreach (var invalidatedChatId in invalidatedChatIds) {
+                _ = ListAuthorIdsInternal(invalidatedChatId, default);
+                _ = ListUserIdsInternal(invalidatedChatId, default);
+            }
+        });
         if (authors.Count > 0)
             context.Operation.AddEvent(new AuthorsRemovedEvent(authors.ToArray()));
     }
@@ -400,17 +390,6 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     public virtual async Task<bool> OnCopyChat(AuthorsBackend_CopyChat command, CancellationToken cancellationToken)
     {
         var (chatId, newChatId, rolesMap, correlationId) = command;
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            if (context.Operation.Items.KeylessGet<List<UserId>>() is { } invAuthorUserIds)
-                foreach (var invAuthorUserId in invAuthorUserIds)
-                    _ = GetInternal(newChatId, invAuthorUserId, default);
-            if (context.Operation.Items.KeylessGet<List<AuthorId>>() is { } invAuthorIds)
-                foreach (var invAuthorId in invAuthorIds)
-                    _ = GetInternal(newChatId, invAuthorId, default);
-            return default;
-        }
-
         var chatSid = chatId.Value;
         var placeRootChatId = ((PlaceChatId)newChatId).RootChatId;
         var createdAuthors = 0;
@@ -495,17 +474,18 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         }
 
         Log.LogInformation("OnCopyChat({CorrelationId}) created {Count} authors", correlationId, createdAuthors);
-        context.Operation.Items.KeylessSet(newAuthorUserIds);
-        context.Operation.Items.KeylessSet(newAuthorIds);
+        Invalidation.Defer(() => {
+            foreach (var newAuthorUserId in newAuthorUserIds)
+                _ = GetInternal(newChatId, newAuthorUserId, default);
+            foreach (var newAuthorId in newAuthorIds)
+                _ = GetInternal(newChatId, newAuthorId, default);
+        });
         return hasChanges;
     }
 
     // [EventHandler]
     public virtual async Task OnAvatarChangedEvent(AvatarChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (_, oldAvatar, changeKind) = eventCommand;
         if (changeKind != ChangeKind.Remove)
             return;
@@ -527,9 +507,6 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     // [EventHandler]
     public virtual async Task OnAuthorLeftPlaceEvent(AuthorUpsertedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (author, oldAuthor) = eventCommand;
         if (author.ChatId is not PlaceChatId { IsRoot: true } placeChatId)
             return;

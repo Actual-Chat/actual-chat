@@ -26,9 +26,6 @@ public class NativeAuth(IServiceProvider services) : INativeAuth
     // [CommandHandler]
     public virtual async Task OnSignInGoogle(NativeAuth_SignInGoogle command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var session = command.Session;
         var code = command.Code;
         try {
@@ -71,9 +68,6 @@ public class NativeAuth(IServiceProvider services) : INativeAuth
     // [CommandHandler]
     public virtual async Task OnSignInApple(NativeAuth_SignInApple command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var session = command.Session;
         var userId = command.UserId;
         var code = command.Code;
@@ -134,9 +128,6 @@ public class NativeAuth(IServiceProvider services) : INativeAuth
     // [CommandHandler]
     public virtual async Task OnSignOut(NativeAuth_SignOut command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var session = command.Session;
         var signOutCommand = new AccountsBackend_SignOut(session);
         await ((Task)Commander.Call(signOutCommand, true, cancellationToken)).ConfigureAwait(false);

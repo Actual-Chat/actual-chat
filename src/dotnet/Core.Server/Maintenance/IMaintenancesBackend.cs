@@ -19,7 +19,7 @@ public interface IMaintenancesBackend : IComputeService, IBackendService
 public sealed partial record MaintenancesBackend_Set(
     [property: DataMember, Key(0)] MaintenanceKey Key,
     [property: DataMember, Key(1)] MaintenanceMode Mode
-) : IDelegatingCommand<Unit>, IBackendCommand, IHasShardKey
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => Key.ShardKey;

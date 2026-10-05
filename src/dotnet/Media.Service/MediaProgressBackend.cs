@@ -23,11 +23,6 @@ public class MediaProgressBackend(IServiceProvider services) : DbServiceBase<Med
     public virtual async Task<MediaProgress?> OnChange(MediaProgressBackend_Change command, CancellationToken cancellationToken)
     {
         var (mediaId, expectedVersion, change) = command;
-        if (Invalidation.IsActive) {
-            _ = Get(mediaId, default);
-            return default!;
-        }
-
         change.RequireValid();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -69,6 +64,7 @@ public class MediaProgressBackend(IServiceProvider services) : DbServiceBase<Med
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+        Invalidation.Defer(() => _ = Get(mediaId, default));
         return progress;
     }
 }

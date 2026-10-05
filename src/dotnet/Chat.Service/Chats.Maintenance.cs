@@ -4,9 +4,6 @@ public partial class Chats
 {
     public virtual async Task OnSetMaintenance(Chats_SetMaintenance command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeAdmin);
         await Backend.Get(command.ChatId, cancellationToken).Require().ConfigureAwait(false);

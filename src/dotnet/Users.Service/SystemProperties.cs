@@ -2,8 +2,8 @@ using System.Security.Cryptography;
 using ActualChat.Diagnostics;
 using ActualChat.Rpc;
 using ActualChat.Users.Db;
+using ActualLab.CommandR.Operations;
 using ActualLab.Fusion.EntityFramework;
-using ActualLab.Fusion.Internal;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Infrastructure;
 
@@ -86,18 +86,8 @@ public class SystemProperties(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         // NOTE(AY): Maybe add backend & implement IApiCommand?
-
-        var (session, everywhere) = command;
+        var session = command.Session;
         var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            // It should happen inside this block to make sure it runs on every node
-            var hostId = Services.GetRequiredService<HostId>();
-            var operation = context.Operation;
-            if (everywhere || operation.HostId == hostId.Id)
-                ComputedRegistry.InvalidateEverything();
-            return;
-        }
 
         var accounts = Services.GetRequiredService<IAccounts>();
         var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -106,6 +96,11 @@ public class SystemProperties(IServiceProvider services)
         // We must call CreateOperationDbContext to make sure this operation is logged in the Users DB
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
+        // SystemPropertiesOperationHandler does the invalidating, on every host this row reaches.
+        // Without it the operation carries neither events nor invalidation calls, so it would
+        // default to StoreMode.None - a row nobody reads.
+        context.Operation.StoreMode = OperationStoreMode.Operation;
     }
 
     // [CommandHandler]
@@ -114,19 +109,8 @@ public class SystemProperties(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         // NOTE(AY): Maybe add backend & implement IApiCommand?
-
-        var (session, everywhere) = command;
+        var session = command.Session;
         var context = CommandContext.GetCurrent();
-        var computedGraphPruner = Services.GetRequiredService<ComputedGraphPruner>();
-
-        if (Invalidation.IsActive) {
-            // It should happen inside this block to make sure it runs on every node
-            var hostId = Services.GetRequiredService<HostId>();
-            var operation = context.Operation;
-            if (everywhere || operation.HostId == hostId.Id)
-                _ = computedGraphPruner.PruneOnce(CancellationToken.None);
-            return;
-        }
 
         var accounts = Services.GetRequiredService<IAccounts>();
         var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -135,6 +119,9 @@ public class SystemProperties(IServiceProvider services)
         // We must call CreateOperationDbContext to make sure this operation is logged in the User DB
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
+        // See OnInvalidateEverything - SystemPropertiesOperationHandler does the pruning
+        context.Operation.StoreMode = OperationStoreMode.Operation;
     }
 
     // Protected/internal methods

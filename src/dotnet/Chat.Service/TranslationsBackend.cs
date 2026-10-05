@@ -144,11 +144,6 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     public virtual async Task<Translation?> OnChange(TranslationsBackend_Change command, CancellationToken cancellationToken)
     {
         var (id, expectedVersion, change) = command;
-        if (Invalidation.IsActive) {
-            _ = GetInternal(id, default);
-            return null!;
-        }
-
         if (!Settings.IsTranslationEnabled)
             return null;
 
@@ -210,6 +205,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 .ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         var result = dbTranslation.ToModel();
+        Invalidation.Defer(() => _ = GetInternal(id, default));
         if (previousDubMediaId is { } orphan && result.DubMediaId != orphan) {
             var removeOrphan = new MediaBackend_Change(orphan, null, Change.Remove<MediaFull>());
             await Commander.Call(removeOrphan, true, cancellationToken).ConfigureAwait(false);
@@ -236,9 +232,6 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     public virtual async Task<Translation?> OnTranslate(TranslationsBackend_Translate command, CancellationToken cancellationToken)
     {
         var (sourceId, targetLanguage, ignoreVersion, skipRealtime) = command;
-        if (Invalidation.IsActive)
-            return null!; // It just spawns other commands, so nothing to do here
-
         var id = TranslationId.New(sourceId, targetLanguage);
         var (translationSource, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
         var isRetranslation = translation is not null && ignoreVersion && skipRealtime;
@@ -367,9 +360,6 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         TranslationsBackend_TranslateStream command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!; // It just spawns other commands, so nothing to do here
-
         var (streamId, targetLanguage) = command;
         DebugLog?.LogDebug("OnTranslateStream: #{StreamId} -> {Language}", streamId, targetLanguage);
 

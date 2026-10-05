@@ -191,9 +191,6 @@ public class NotificationsBackend(IServiceProvider services)
         NotificationsBackend_Notify command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
-
         var notification = command.Notification;
         var userId = notification.UserId.Require();
 
@@ -249,9 +246,6 @@ public class NotificationsBackend(IServiceProvider services)
         NotificationsBackend_Process command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
-
         var userId = command.UserId;
         var batch = DrainSoftBuffer(userId);
         if (batch.Count == 0)
@@ -266,9 +260,6 @@ public class NotificationsBackend(IServiceProvider services)
         NotificationsBackend_Dismiss command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
-
         var notificationId = command.NotificationId;
         DebugLog?.LogDebug("-> OnDismiss. NotificationId={NotificationId}", notificationId);
         await ApplyHardUpdate(notificationId.UserId, [], [notificationId], cancellationToken).ConfigureAwait(false);
@@ -279,9 +270,6 @@ public class NotificationsBackend(IServiceProvider services)
         NotificationsBackend_DismissAll command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
-
         var userId = command.UserId;
         DebugLog?.LogDebug("-> OnDismissAll. UserId={UserId}", userId);
         // dismissAll dismisses the raw committed set (not the compute-filtered view), so
@@ -297,13 +285,6 @@ public class NotificationsBackend(IServiceProvider services)
     {
         var notification = command.Notification;
         var sid = notification.Id.Value;
-
-        if (Invalidation.IsActive) {
-            // Created or Updated
-            _ = GetExplicit(notification.Id, default);
-            return default;
-        }
-
         try {
             var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
             await using var __ = dbContext.ConfigureAwait(false);
@@ -340,6 +321,8 @@ public class NotificationsBackend(IServiceProvider services)
             return false;
         }
 
+        // Created or Updated
+        Invalidation.Defer(() => _ = GetExplicit(notification.Id, default));
         return true;
     }
 
@@ -348,18 +331,6 @@ public class NotificationsBackend(IServiceProvider services)
         NotificationsBackend_RegisterDevice command,
         CancellationToken cancellationToken)
     {
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            var device = context.Operation.Items.KeylessGet<DbDevice>();
-            var mustInvalidate = context.Operation.Items.KeylessGet(false);
-            if (mustInvalidate && device != null)
-                _ = ListDevices(UserId.Parse(device.UserId), default);
-            if (context.Operation.Items.KeylessGet<UserId>() is { } previousUserId)
-                _ = ListDevices(previousUserId, default);
-            return;
-        }
-
         var (userId, deviceId, deviceType, sessionHash, isPttEnabled) = command;
         DebugLog?.LogDebug("-> OnRegisterDevice. UserId={UserId}, DeviceId={DeviceId}, "
             + "DeviceType={DeviceType}, SessionHash={SessionHash}",
@@ -372,6 +343,8 @@ public class NotificationsBackend(IServiceProvider services)
 
         var dbDevice = existingDbDevice;
         var isChanged = existingDbDevice == null;
+        // Set when a non-guest device changes hands: that user's list loses it
+        UserId? previousUserId = null;
         if (dbDevice == null) {
             dbDevice = new DbDevice {
                 Id = deviceId,
@@ -414,7 +387,7 @@ public class NotificationsBackend(IServiceProvider services)
                     dbDevice.UserId = userId.Value;
                     isChanged = true;
                     if (!existingUserId.IsGuest)
-                        context.Operation.Items.KeylessSet(existingUserId);
+                        previousUserId = existingUserId;
                     DebugLog?.LogDebug(
                         "UserId for Device '{DeviceId}' has been updated: '{OldUserId}'->'{NewUserId}'",
                         deviceId, existingUserId, userId);
@@ -426,8 +399,12 @@ public class NotificationsBackend(IServiceProvider services)
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(dbDevice);
-        context.Operation.Items.KeylessSet(isChanged);
+        Invalidation.Defer(() => {
+            if (isChanged)
+                _ = ListDevices(UserId.Parse(dbDevice.UserId), default);
+            if (previousUserId is { } movedFrom)
+                _ = ListDevices(movedFrom, default);
+        });
     }
 
     // [CommandHandler]
@@ -435,16 +412,6 @@ public class NotificationsBackend(IServiceProvider services)
         NotificationsBackend_RemoveDevices command,
         CancellationToken cancellationToken)
     {
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            var invUserIds = context.Operation.Items.KeylessGet<HashSet<UserId>>();
-            if (invUserIds is { Count: > 0 })
-                foreach (var invUserId in invUserIds)
-                    _ = ListDevices(invUserId, default);
-            return;
-        }
-
         var affectedUserIds = new HashSet<UserId>();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -462,7 +429,10 @@ public class NotificationsBackend(IServiceProvider services)
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         Log.LogInformation("Removed {Count} devices", affectedUserIds.Count);
-        context.Operation.Items.KeylessSet(affectedUserIds);
+        Invalidation.Defer(() => {
+            foreach (var affectedUserId in affectedUserIds)
+                _ = ListDevices(affectedUserId, default);
+        });
     }
 
     // [CommandHandler]
@@ -470,14 +440,10 @@ public class NotificationsBackend(IServiceProvider services)
         NotificationsBackend_RemoveAccount command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var userId = command.UserId;
-        var context = CommandContext.GetCurrent();
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
-        context.Operation.MustStore(false);
 
         var removedDeviceCount = await dbContext.Devices
             .Where(a => a.UserId == userId.Value)
@@ -492,13 +458,10 @@ public class NotificationsBackend(IServiceProvider services)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        context.Operation.AddCompletionHandler(scope => {
-            using (Invalidation.Begin()) {
-                _ = GetUserNotificationInfo(userId, default);
-                _ = ListDevices(userId, default);
-                _ = GetHistoryVersion(userId, default);
-            }
-            return Task.CompletedTask;
+        Invalidation.Defer(() => {
+            _ = GetUserNotificationInfo(userId, default);
+            _ = ListDevices(userId, default);
+            _ = GetHistoryVersion(userId, default);
         });
         Log.LogInformation("Removed account notification data: {DeviceCount} device(s), UserId={UserId}",
             removedDeviceCount, userId);
@@ -509,9 +472,6 @@ public class NotificationsBackend(IServiceProvider services)
         NotificationsBackend_NotifyMembers command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (userId, chatId, lastEntryLocalId) = command;
         // An explicit author action ("notify all") is a ringer: it breaks through chat mute.
         var userIds = await ListSubscribedUserIds(chatId, NotificationImportance.Ringer, cancellationToken)
@@ -524,11 +484,8 @@ public class NotificationsBackend(IServiceProvider services)
         NotificationsBackend_NotifyMentionedMembers command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
-        var (userId, ChatEntryId, mentionedUserIds) = command;
-        var chatId = ChatEntryId.ChatId;
+        var (userId, chatEntryId, mentionedUserIds) = command;
+        var chatId = chatEntryId.ChatId;
 
         // An explicit author action ("urgently notify mentioned members") is a ringer: it breaks
         // through chat mute — unlike plain in-text mentions, which ride the Message fan-out.
@@ -538,7 +495,7 @@ public class NotificationsBackend(IServiceProvider services)
         if (userIds.Length == 0)
             return;
 
-        await NotifyMembersInternal(userId, chatId, ChatEntryId.LocalId, userIds, cancellationToken)
+        await NotifyMembersInternal(userId, chatId, chatEntryId.LocalId, userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -547,9 +504,6 @@ public class NotificationsBackend(IServiceProvider services)
         NotificationsBackend_NotifyConversation command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (conversationId, phase, text, endEntryLid, authorIds) = command;
         var chatId = conversationId.ChatId;
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
@@ -627,9 +581,6 @@ public class NotificationsBackend(IServiceProvider services)
         NotificationsBackend_NotifyCall command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (callId, caller, invitees, hasVideo) = command;
         var chatId = callId.ChatId;
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
@@ -676,9 +627,6 @@ public class NotificationsBackend(IServiceProvider services)
         NotificationsBackend_CancelCall command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (callId, invitees) = command;
         var chatId = callId.ChatId;
         var inviteeUserIds = await AuthorsBackend
@@ -702,9 +650,6 @@ public class NotificationsBackend(IServiceProvider services)
         ChatEntryChangedEvent eventCommand,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (entry, author, changeKind, oldEntry) = eventCommand;
         if (entry.IsSystemEntry)
             return;
@@ -746,9 +691,6 @@ public class NotificationsBackend(IServiceProvider services)
         ReactionChangedEvent eventCommand,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (reaction, entry, author, reactionAuthor, changeKind) = eventCommand;
         if (changeKind == ChangeKind.Remove)
             return;
@@ -790,9 +732,6 @@ public class NotificationsBackend(IServiceProvider services)
         ChatChangedEvent eventCommand,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (chat, _, changeKind) = eventCommand;
         if (!(changeKind is ChangeKind.Create && chat.Id.IsThread(out var threadChatId)))
             return;
@@ -820,9 +759,6 @@ public class NotificationsBackend(IServiceProvider services)
         ConversationChangedEvent eventCommand,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (conversation, _, changeKind, suppressNotification) = eventCommand;
         if (suppressNotification || changeKind == ChangeKind.Remove)
             return; // A live conversation's materialization is already covered by its Final notification
@@ -844,9 +780,6 @@ public class NotificationsBackend(IServiceProvider services)
         ReadPositionChangedEvent eventCommand,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (userId, chatId, _) = eventCommand;
 
         // Cheap gate: avoid the operation + row lock + push path unless this user has a items
@@ -876,9 +809,6 @@ public class NotificationsBackend(IServiceProvider services)
         UserSignedOutEvent eventCommand,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = eventCommand.Session;
         var devices = await ListDevices(eventCommand.UserId, session.Hash, null, cancellationToken)
             .ConfigureAwait(false);
@@ -892,18 +822,14 @@ public class NotificationsBackend(IServiceProvider services)
     // [EventHandler]
     public virtual async Task OnUserNotifiedEvent(UserNotifiedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // GetHistoryVersion is invalidated by the completion handler below
-
         var notification = eventCommand.Notification;
         if (!NotificationHistoryItem.IsLoggedKind(notification.Kind))
             return;
 
         var userId = notification.UserId;
-        var context = CommandContext.GetCurrent();
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
-        context.Operation.MustStore(false);
 
         var item = new DbNotificationHistoryItem(notification, VersionGenerator.NextVersion(), Clocks.SystemClock.Now);
         dbContext.NotificationHistory.Add(item);
@@ -915,22 +841,12 @@ public class NotificationsBackend(IServiceProvider services)
             return;
         }
 
-        context.Operation.AddCompletionHandler(scope => {
-            if (scope.IsCommitted != true)
-                return Task.CompletedTask;
-
-            using (Invalidation.Begin())
-                _ = GetHistoryVersion(userId, default);
-            return Task.CompletedTask;
-        });
+        Invalidation.Defer(() => _ = GetHistoryVersion(userId, default));
     }
 
     [EventHandler]
     public virtual async Task OnSpeechStartedEvent(SpeechStartedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (chatId, authorId, startedAt) = eventCommand;
         if (!Settings.EnablePttPush)
             return;
@@ -1097,9 +1013,6 @@ public class NotificationsBackend(IServiceProvider services)
         NotificationsBackend_Push command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // No state change, nothing to invalidate
-
         var notification = command.Notification;
         var userId = notification.UserId.Require();
 
@@ -1146,9 +1059,6 @@ public class NotificationsBackend(IServiceProvider services)
         NotificationsBackend_Converge command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
-
         var userId = command.UserId;
         DebugLog?.LogDebug("-> OnConverge. UserId={UserId}", userId);
 
@@ -1223,12 +1133,6 @@ public class NotificationsBackend(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         var (userId, ids) = command;
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            if (context.Operation.Items.KeylessGet<bool>())
-                _ = GetUserNotificationInfo(userId, default);
-            return;
-        }
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -1242,12 +1146,12 @@ public class NotificationsBackend(IServiceProvider services)
         var info = dbUserNotifications.ToModel();
         var updated = info.WithoutPendingDismissals(ids);
         var hasChanges = updated.PendingDismissals.Count != info.PendingDismissals.Count;
-        context.Operation.Items.KeylessSet(hasChanges);
         if (!hasChanges)
             return;
 
         dbUserNotifications.UpdateFrom(updated);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Invalidation.Defer(() => _ = GetUserNotificationInfo(userId, default));
     }
 
     // Fetches each distinct chat's seen position once (in parallel) instead of one sequential
@@ -1879,9 +1783,9 @@ public class NotificationsBackend(IServiceProvider services)
         var context = CommandContext.GetCurrent();
         // One localizer for the pass: every notification here is this user's.
         var l = await UserLocalizers.Get(userId, cancellationToken).ConfigureAwait(false);
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
-        context.Operation.MustStore(false);
 
         var dbUserNotifications = await dbContext.UserNotifications.ForUpdate()
             .FirstOrDefaultAsync(x => x.Id == userId.Value, cancellationToken)
@@ -1919,11 +1823,7 @@ public class NotificationsBackend(IServiceProvider services)
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        context.Operation.AddCompletionHandler(scope => {
-            using (Invalidation.Begin())
-                _ = GetUserNotificationInfo(userId, default);
-            return Task.CompletedTask;
-        });
+        Invalidation.Defer(() => _ = GetUserNotificationInfo(userId, default));
 
         // Push one banner per distinct client tag (per chat for coalescing kinds, per entry for
         // mentions/attention/reactions): a coalesced batch can add notifications for several

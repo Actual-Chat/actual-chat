@@ -49,6 +49,8 @@ public class MediaDbContext(DbContextOptions<MediaDbContext> options) : DbContex
         linkPreview.Property(e => e.Id).UseCollation("C");
         linkPreview.Property(e => e.ThumbnailMediaId).UseCollation("C");
 
+        model.IgnoreUnusedOperationsFrameworkColumns(DbLogEntrySerializer.Default);
+
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");
         operation.Property(e => e.HostId).UseCollation("C");

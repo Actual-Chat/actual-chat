@@ -26,11 +26,6 @@ public class GrabStatusesBackend(IServiceProvider services)
     public virtual async Task<GrabStatus> OnChange(GrabStatusesBackend_Change command, CancellationToken cancellationToken)
     {
         var (id, success) = command;
-        if (Invalidation.IsActive) {
-            _ = Get(id, default);
-            return default!;
-        }
-
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -43,6 +38,7 @@ public class GrabStatusesBackend(IServiceProvider services)
         dbGrabStatus.Version = VersionGenerator.NextVersion(dbGrabStatus.Version);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Invalidation.Defer(() => _ = Get(id, default));
         return dbGrabStatus.ToModel();
     }
 }

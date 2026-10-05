@@ -174,16 +174,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         _ = identities.HasInternalIdentity(out var internalUserId);
 
         var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            var invAccount = context.Operation.Items.KeylessGet<AccountFull>();
-            if (invAccount is not null) {
-                _ = Get(invAccount.Id, default);
-                foreach (var (invIdentity, _) in invAccount.Identities)
-                    _ = GetIdByUserIdentity(invIdentity, default);
-            }
-            return;
-        }
-
         // Check if session is valid (not expired)
         var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
         if (sessionInfo is { IsActive: false })
@@ -262,8 +252,11 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
                 .ConfigureAwait(false);
         }
 
-        context.Operation.Items.KeylessSet(account);
-        context.Operation.Items.KeylessSet(isNew);
+        Invalidation.Defer(() => {
+            _ = Get(account.Id, default);
+            foreach (var (identity, _) in account.Identities)
+                _ = GetIdByUserIdentity(identity, default);
+        });
 
         var upsertCommand = new SessionsBackend_Upsert(session) {
             UserId = userId,
@@ -341,9 +334,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         session.RequireValid();
 
         var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive)
-            return; // SessionsBackend_Upsert handles all invalidation
-
         // Check current session state
         var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
         if (sessionInfo is { IsActive: false })
@@ -368,22 +358,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     public virtual async Task OnUpdate(AccountsBackend_Update command, CancellationToken cancellationToken)
     {
         var (account, expectedVersion) = command;
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            var invAccount = context.Operation.Items.KeylessGet<AccountFull>();
-            if (invAccount is not null) {
-                _ = Get(invAccount.Id, default);
-                foreach (var (invIdentity, _) in invAccount.Identities)
-                    _ = GetIdByUserIdentity(invIdentity, default);
-            }
-            var invAliasIds = context.Operation.Items.KeylessGet<List<AliasId>>();
-            if (invAliasIds is not null)
-                foreach (var invAliasId in invAliasIds)
-                    _ = GetIdByAlias(invAliasId, default);
-            return;
-        }
-
         var userId = account.Id;
+        var context = CommandContext.GetCurrent();
+
         var existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
         existingAccount.Require().RequireVersion(expectedVersion);
 
@@ -408,17 +385,20 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         account = dbAccount.ToModel();
-        context.Operation.Items.KeylessSet(account);
         var oldAliasId = existingAccount.AliasId;
         var newAliasId = account.AliasId;
-        if (oldAliasId != newAliasId) {
-            var aliasesToInvalidate = new List<AliasId>();
+        Invalidation.Defer(() => {
+            _ = Get(account.Id, default);
+            foreach (var (identity, _) in account.Identities)
+                _ = GetIdByUserIdentity(identity, default);
+            if (oldAliasId == newAliasId)
+                return;
+
             if (oldAliasId is not null)
-                aliasesToInvalidate.Add(oldAliasId);
+                _ = GetIdByAlias(oldAliasId, default);
             if (newAliasId is not null)
-                aliasesToInvalidate.Add(newAliasId);
-            context.Operation.Items.KeylessSet(aliasesToInvalidate);
-        }
+                _ = GetIdByAlias(newAliasId, default);
+        });
         context.Operation.AddEvent(new AccountChangedEvent(account, existingAccount, ChangeKind.Update));
 
         if (mustGreet)
@@ -436,18 +416,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     {
         var userId = command.UserId;
         var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            var invAccount = context.Operation.Items.KeylessGet<AccountFull>();
-            if (invAccount is not null) {
-                _ = Get(invAccount.Id, default);
-                foreach (var (invIdentity, _) in invAccount.Identities)
-                    _ = GetIdByUserIdentity(invIdentity, default);
-                if (invAccount.AliasId is { } invAliasId)
-                    _ = GetIdByAlias(invAliasId, default);
-                _ = ListSessions(invAccount.Id, default);
-            }
-            return;
-        }
 
         var account = await Get(userId, cancellationToken).Require().ConfigureAwait(false);
 
@@ -492,6 +460,15 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+        Invalidation.Defer(() => {
+            _ = Get(account.Id, default);
+            foreach (var (identity, _) in account.Identities)
+                _ = GetIdByUserIdentity(identity, default);
+            if (account.AliasId is { } aliasId)
+                _ = GetIdByAlias(aliasId, default);
+            _ = ListSessions(account.Id, default);
+        });
+
         context.Operation.AddEvent(new AccountChangedEvent(account, account, ChangeKind.Remove));
 
         // Authors
@@ -504,9 +481,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     // [EventHandler]
     public virtual Task OnNewAccountEvent(NewAccountEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return Task.CompletedTask; // It just notifies GreetingDispatcher
-
         ContactGreeter.Activate();
         return Task.CompletedTask;
     }

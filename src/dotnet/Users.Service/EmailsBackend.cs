@@ -69,9 +69,6 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
     // [CommandHandler]
     public virtual async Task<Unit> OnSendDigest(EmailsBackend_SendDigest command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default;
-
         var isDiagnosticsEnabled = command.IsDiagnosticsEnabled;
         var diagLog = isDiagnosticsEnabled ? Log : null;
         diagLog?.LogInformation("-> OnSendDigest");

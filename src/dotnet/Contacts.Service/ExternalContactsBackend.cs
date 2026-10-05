@@ -153,34 +153,11 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         ExternalContactsBackend_BulkChange command,
         CancellationToken cancellationToken)
     {
-        const string hashesItemKey = "ModifiedItemHashesKey";
         var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            var invUserDeviceIds = command.Changes.Select(x => x.Id.UserDeviceId).Distinct();
-            foreach (var invId in invUserDeviceIds)
-                _ = List(invId, default);
-            var invIds = command.Changes.Select(x => x.Id);
-            foreach (var invId in invIds)
-                _ = Get(invId, default);
-
-            var ownerId = command.Changes[0].Id.UserDeviceId.OwnerId;
-            var invModifiedItemHashes = context.Operation.Items.Get<List<string>>(hashesItemKey)!;
-            foreach (var hash in invModifiedItemHashes) {
-                Log.LogInformation("-> OnBulkChange. Invalidate By hash ('{OwnerId}', '{Link}')", ownerId, hash);
-                _ = List(ownerId, hash, default);
-            }
-
-            // NOTE(DF): force sync after changes are committed
-            var isLocal = context.Operation.HostId == HostId.Id;
-            if (isLocal && command.Changes.Any(x => x.Change.Kind is ChangeKind.Update or ChangeKind.Create))
-                ContactLinker.Activate();
-            return default!;
-        }
-
         var overallAffectedHashes = new HashSet<string>();
         var updatedItemHashes = new List<IReadOnlyCollection<string>>();
         var result = new List<Result<ExternalContactFull?>>(command.Changes.Length);
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -203,7 +180,29 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
                 result.Add(new Result<ExternalContactFull?>(null, e));
             }
 
-        context.Operation.Items.Set(hashesItemKey, overallAffectedHashes.ToList());
+        Invalidation.Defer(() => {
+            foreach (var userDeviceId in command.Changes.Select(x => x.Id.UserDeviceId).Distinct())
+                _ = List(userDeviceId, default);
+            foreach (var id in command.Changes.Select(x => x.Id))
+                _ = Get(id, default);
+
+            var invOwnerId = command.Changes[0].Id.UserDeviceId.OwnerId;
+            foreach (var hash in overallAffectedHashes) {
+                Log.LogInformation("-> OnBulkChange. Invalidate By hash ('{OwnerId}', '{Link}')", invOwnerId, hash);
+                _ = List(invOwnerId, hash, default);
+            }
+        });
+
+        // NOTE(DF): force sync after changes are committed. A completion handler rather than the
+        // deferred block above: waking the linker is a side effect, and a deferred block runs under
+        // an invalidation-capturing context, where the work it kicks off would be captured rather
+        // than performed. The host check is gone with replay - this runs where the command ran.
+        if (command.Changes.Any(x => x.Change.Kind is ChangeKind.Update or ChangeKind.Create))
+            context.Operation.AddCompletionHandler(_ => {
+                ContactLinker.Activate();
+                return Task.CompletedTask;
+            });
+
         if (updatedItemHashes.Count > 0) {
             var ownerId = command.Changes[0].Id.UserDeviceId.OwnerId;
             foreach (var itemHash in updatedItemHashes)
@@ -278,8 +277,6 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
     public virtual async Task OnRemoveAccount(ExternalContactsBackend_RemoveAccount command, CancellationToken cancellationToken)
     {
         var userId = command.UserId;
-        if (Invalidation.IsActive)
-            return; // we can skip invalidation for own contacts
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);

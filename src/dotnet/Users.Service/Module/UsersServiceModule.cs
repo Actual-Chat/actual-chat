@@ -2,6 +2,7 @@ using System.Security.Claims;
 using ActualChat.Authentication;
 using ActualChat.Db.Module;
 using ActualChat.Kvas;
+using ActualChat.Operations;
 using ActualChat.Redis.Module;
 using ActualChat.Security;
 using ActualChat.Users.Db;
@@ -134,6 +135,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // The recipient's UI language, for any server-side text: notifications now, email next.
         services.AddSingleton<UserLocalizers>();
+        services.AddSingleton<IEveryHostOperationHandler, SystemPropertiesOperationHandler>();
 
         if (rpcHost.IsApiHost) {
             services.AddSingleton<AuthHelper>(); // Used by ApiHost-s

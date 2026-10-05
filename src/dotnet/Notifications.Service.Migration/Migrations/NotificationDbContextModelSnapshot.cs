@@ -17,13 +17,13 @@ partial class NotificationDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20260921161427_Add_NotificationHistory";
+    public override string LastMigrationId => "20261005020127_Fusion15_DeferredInvalidation";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
 #pragma warning disable 612, 618
         modelBuilder
-            .HasAnnotation("ProductVersion", "11.0.0-preview.6.26359.118")
+            .HasAnnotation("ProductVersion", "11.0.0-rc.1.26425.128")
             .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
         NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -247,8 +247,11 @@ partial class NotificationDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("integer")
                     .HasColumnName("state");
 
+                b.Property<byte[]>("ValueData")
+                    .HasColumnType("bytea")
+                    .HasColumnName("value_data");
+
                 b.Property<string>("ValueJson")
-                    .IsRequired()
                     .HasColumnType("text")
                     .HasColumnName("value_json");
 
@@ -280,10 +283,9 @@ partial class NotificationDbContextModelSnapshot : ModelSnapshot
 
                 NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(index);
 
-                b.Property<string>("CommandJson")
-                    .IsRequired()
-                    .HasColumnType("text")
-                    .HasColumnName("command_json");
+                b.Property<byte[]>("CommandData")
+                    .HasColumnType("bytea")
+                    .HasColumnName("command_data");
 
                 b.Property<string>("HostId")
                     .IsRequired()
@@ -291,17 +293,13 @@ partial class NotificationDbContextModelSnapshot : ModelSnapshot
                     .HasColumnName("host_id")
                     .UseCollation("C");
 
-                b.Property<string>("ItemsJson")
-                    .HasColumnType("text")
-                    .HasColumnName("items_json");
+                b.Property<byte[]>("InvalidationCallsData")
+                    .HasColumnType("bytea")
+                    .HasColumnName("invalidation_calls_data");
 
                 b.Property<DateTime>("LoggedAt")
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("logged_at");
-
-                b.Property<string>("NestedOperations")
-                    .HasColumnType("text")
-                    .HasColumnName("nested_operations");
 
                 b.Property<string>("Uuid")
                     .IsRequired()

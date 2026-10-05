@@ -2,7 +2,7 @@ using System.Buffers;
 using ActualLab.Interception;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Infrastructure;
-using ActualLab.Rpc.Serialization;
+using ActualLab.Interception.Serialization;
 
 namespace ActualChat.Serialization;
 
@@ -15,7 +15,7 @@ namespace ActualChat.Serialization;
 public sealed class ApiCommandRpcArgumentSerializer(
     IByteSerializer baseSerializer,
     Func<Version?>? peerVersionSource = null
-    ) : RpcArgumentSerializer
+    ) : ArgumentListSerializer
 {
     // The API version (from the RPC handshake's per-peer RemoteApiVersionSet) that introduces ApiCommand.Uuid.
     // Pinned to the release this ships in, NOT ApiConstants.Version, which floats forward with every build.
@@ -23,8 +23,7 @@ public sealed class ApiCommandRpcArgumentSerializer(
     // above is trusted to send the Uuid layout, so a threshold below the actual release breaks those clients.
     public static readonly Version UuidVersion = new(2, 17);
 
-    private readonly IByteSerializer _baseSerializer = baseSerializer;
-    private readonly RpcByteArgumentSerializerV4 _inner = new(baseSerializer);
+    private readonly ByteArgumentListSerializer _inner = new(baseSerializer);
     private readonly Func<Version?> _peerVersionSource = peerVersionSource ?? GetInboundApiVersion;
 
     public override void Serialize(ArgumentList arguments, bool needsPolymorphism, ArrayPoolBuffer<byte> buffer)
@@ -48,7 +47,7 @@ public sealed class ApiCommandRpcArgumentSerializer(
 
             var item = typeof(ApiCommand).IsAssignableFrom(type) && IsArrayLayout(data)
                 ? ReadMigratedCommand(ref data, type)
-                : _baseSerializer.Read(ref data, type);
+                : baseSerializer.Read(ref data, type);
             arguments.SetUntyped(i, item);
         }
     }
@@ -68,7 +67,7 @@ public sealed class ApiCommandRpcArgumentSerializer(
         var consumed = checked((int)reader.Consumed);
         var migrated = (ReadOnlyMemory<byte>)PrependUuid(data.Slice(0, consumed));
         data = data.Slice(consumed);
-        return _baseSerializer.Read(ref migrated, type);
+        return baseSerializer.Read(ref migrated, type);
     }
 
     private static byte[] PrependUuid(ReadOnlyMemory<byte> legacyData)

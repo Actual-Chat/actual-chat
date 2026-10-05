@@ -106,9 +106,6 @@ public class Places(IServiceProvider services) : IPlaces
     // [CommandHandler]
     public virtual async Task<Place> OnChange(Places_Change command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var placeId = command.PlaceId;
         var expectedVersion = command.ExpectedVersion;
@@ -144,9 +141,6 @@ public class Places(IServiceProvider services) : IPlaces
 
     public virtual async Task OnJoin(Places_Join command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var placeId = command.PlaceId;
         var avatarId = command.AvatarId;
@@ -157,9 +151,6 @@ public class Places(IServiceProvider services) : IPlaces
     // [CommandHandler]
     public virtual async Task OnInvite(Places_Invite command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var placeId = command.PlaceId;
         var userIds = command.UserIds;
@@ -170,9 +161,6 @@ public class Places(IServiceProvider services) : IPlaces
     // [CommandHandler]
     public virtual async Task OnExclude(Places_Exclude command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var authorId = command.AuthorId;
         ThrowIfNonPlaceRootChatAuthor(authorId);
@@ -184,9 +172,6 @@ public class Places(IServiceProvider services) : IPlaces
     // [CommandHandler]
     public virtual async Task OnRestore(Places_Restore command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var authorId = command.AuthorId;
         ThrowIfNonPlaceRootChatAuthor(authorId);
@@ -198,9 +183,6 @@ public class Places(IServiceProvider services) : IPlaces
     // [CommandHandler]
     public virtual async Task OnChangeRole(Places_ChangeRole command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var authorId = command.AuthorId;
         var systemRole = command.SystemRole;
@@ -220,9 +202,6 @@ public class Places(IServiceProvider services) : IPlaces
     [Obsolete("2026.08: Use Places_ChangeRole. Old clients only.")]
     public virtual async Task OnPromoteToOwner(Places_PromoteToOwner command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var authorId = command.AuthorId;
         var changeRoleCommand = new Places_ChangeRole {
@@ -237,9 +216,6 @@ public class Places(IServiceProvider services) : IPlaces
     // [CommandHandler]
     public virtual async Task OnLeave(Places_Leave command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var placeId = command.PlaceId;
         var place = await Get(session, placeId, cancellationToken).ConfigureAwait(false);

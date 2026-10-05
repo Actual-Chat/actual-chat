@@ -64,9 +64,6 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
         PasskeyAuth_BeginRegistration command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!;
-
         var session = command.Session;
         await RequireEnabled(cancellationToken).ConfigureAwait(false);
         await CheckRateLimit(nameof(OnBeginRegistration), session, cancellationToken).ConfigureAwait(false);
@@ -107,9 +104,6 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
         PasskeyAuth_CompleteRegistration command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!;
-
         var session = command.Session;
         await RequireEnabled(cancellationToken).ConfigureAwait(false);
         await CheckRateLimit(nameof(OnCompleteRegistration), session, cancellationToken).ConfigureAwait(false);
@@ -163,9 +157,6 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
         PasskeyAuth_BeginSignIn command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!;
-
         var session = command.Session;
         await RequireEnabled(cancellationToken).ConfigureAwait(false);
         await CheckRateLimit(nameof(OnBeginSignIn), session, cancellationToken).ConfigureAwait(false);
@@ -183,9 +174,6 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
         PasskeyAuth_CompleteSignIn command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return false;
-
         var session = command.Session;
         await RequireEnabled(cancellationToken).ConfigureAwait(false);
         await CheckRateLimit(nameof(OnCompleteSignIn), session, cancellationToken).ConfigureAwait(false);
@@ -241,9 +229,6 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
     // [CommandHandler]
     public virtual async Task OnRename(PasskeyAuth_Rename command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (session, id) = (command.Session, command.Id);
         var name = NormalizeName(command.Name) ?? throw StandardError.Constraint(NameLengthMessage);
 
@@ -255,9 +240,6 @@ public class PasskeyAuth : DbServiceBase<UsersDbContext>, IPasskeyAuth
     // [CommandHandler]
     public virtual async Task OnDelete(PasskeyAuth_Delete command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (session, id) = (command.Session, command.Id);
         var (account, _) = await GetOwnPasskey(session, id, cancellationToken).ConfigureAwait(false);
         var passkeys = await PasskeysBackend.List(account.Id, cancellationToken).ConfigureAwait(false);

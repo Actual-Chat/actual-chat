@@ -30,6 +30,8 @@ public class OAuthDbContext(DbContextOptions<OAuthDbContext> options) : DbContex
                 t => t.Namespace?.StartsWith("ActualChat.OAuth", StringComparison.Ordinal) == true)
             .UseSnakeCaseNaming();
 
+        model.IgnoreUnusedOperationsFrameworkColumns(DbLogEntrySerializer.Default);
+
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");
         operation.Property(e => e.HostId).UseCollation("C");

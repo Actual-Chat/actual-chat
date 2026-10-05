@@ -325,28 +325,9 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var placeId = (chatId as PlaceChatId)?.PlaceId;
         var context = CommandContext.GetCurrent();
 
-        if (Invalidation.IsActive) {
-            var invIndex = context.Operation.Items.KeylessGet(long.MinValue);
-            if (invIndex != long.MinValue) {
-                _ = Get(ownerId, id, default);
-                _ = ListIds(ownerId, placeId, default);
-                if (chatId is PeerChatId peerChatId) {
-                    var otherUserId = peerChatId.AnotherUserIdOrNull(ownerId);
-                    if (otherUserId is not null) {
-                        _ = IsBlocked(ownerId, otherUserId, default);
-                        // Other side's IsBlockedByPeer depends on ownerId's IsBlocked
-                        _ = Get(otherUserId, ContactId.NewUser(otherUserId, ownerId), default);
-                    }
-                    _ = ListBlockedIds(ownerId, default);
-                }
-            }
-            return default!;
-        }
-
         id.Require();
         ownerId.Require();
         change.RequireValid();
-        var oldContactIds = await ListIds(ownerId, placeId, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -373,7 +354,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 };
                 dbContact.UpdateFrom(contact);
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-                context.Operation.Items.KeylessSet((long)oldContactIds.IndexOf(id));
+                DeferInvalidation();
                 context.Operation.AddEvent(new ContactChangedEvent(contact, existing, ChangeKind.Update));
                 return contact;
             }
@@ -415,10 +396,25 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(change.Update.HasValue ? oldContactIds.IndexOf(id) : -1L);
+        DeferInvalidation();
         contact = dbContact.ToModel();
         context.Operation.AddEvent(new ContactChangedEvent(contact, existing, change.Kind));
         return contact;
+
+        void DeferInvalidation()
+            => Invalidation.Defer(() => {
+                _ = Get(ownerId, id, default);
+                _ = ListIds(ownerId, placeId, default);
+                if (chatId is PeerChatId invPeerChatId) {
+                    var otherUserId = invPeerChatId.AnotherUserIdOrNull(ownerId);
+                    if (otherUserId is not null) {
+                        _ = IsBlocked(ownerId, otherUserId, default);
+                        // Other side's IsBlockedByPeer depends on ownerId's IsBlocked
+                        _ = Get(otherUserId, ContactId.NewUser(otherUserId, ownerId), default);
+                    }
+                    _ = ListBlockedIds(ownerId, default);
+                }
+            });
     }
 
     // [CommandHandler]
@@ -428,19 +424,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var ownerId = id.OwnerId;
         var chatId = id.ChatId;
         var placeId = (chatId as PlaceChatId)?.PlaceId;
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            var invIndex = context.Operation.Items.KeylessGet(long.MinValue);
-            if (invIndex != long.MinValue) {
-                _ = Get(ownerId, id, default);
-                // Contacts are sorted by TouchedAt, and we load contacts in 2 stages: the 1st is limited by MinLoadLimit,
-                // hence we need to invalidate ListIds for Update only in case it was not in MinLoadList before the change.
-                if (invIndex < 0 || invIndex > Constants.Contacts.MinLoadLimit)
-                    _ = ListIds(ownerId, placeId, default); // Create, Delete or move into MinLoadLimit
-            }
-            return;
-        }
 
         var contactIds = await ListIds(ownerId, placeId, cancellationToken).ConfigureAwait(false);
 
@@ -461,15 +444,19 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         dbContact.UpdateFrom(contact);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet((long)contactIds.IndexOf(id));
+        var index = (long)contactIds.IndexOf(id);
+        Invalidation.Defer(() => {
+            _ = Get(ownerId, id, default);
+            // Contacts are sorted by TouchedAt, and we load contacts in 2 stages: the 1st is limited by MinLoadLimit,
+            // hence we need to invalidate ListIds for Update only in case it was not in MinLoadList before the change.
+            if (index < 0 || index > Constants.Contacts.MinLoadLimit)
+                _ = ListIds(ownerId, placeId, default); // Create, Delete or move into MinLoadLimit
+        });
     }
 
     // [CommandHandler]
     public virtual async Task OnSetIsBlocked(ContactsBackend_SetIsBlocked command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // The child ContactsBackend_Change commands handle invalidation
-
         var (id, isBlocked) = command;
         id.Require();
         if (id.ChatId is not PeerChatId)
@@ -506,9 +493,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     public virtual async Task OnRemoveAccount(ContactsBackend_RemoveAccount command, CancellationToken cancellationToken)
     {
         var userId = command.UserId;
-        if (Invalidation.IsActive)
-            return; // spawns commands to remove contacts for other owners, we can skip invalidation for own contacts
-
         // var contactIds = await ListIds(userId, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
@@ -540,17 +524,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     public virtual async Task OnRemoveChatContacts(ContactsBackend_RemoveChatContacts command, CancellationToken cancellationToken)
     {
         var chatId = command.ChatId;
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            var invPlaceId = context.Operation.Items.KeylessGet<PlaceId>();
-            if (invPlaceId is not null)
-                _ = PseudoPlaceContact(invPlaceId);
-            var invChatId = context.Operation.Items.KeylessGet<ChatId>();
-            if (invChatId is not null)
-                _ = PseudoChatContact(invChatId);
-            return;
-        }
 
         if (chatId is PlaceChatId { IsRoot: true } placeChatId) {
             var placeId = placeChatId.PlaceId;
@@ -564,7 +537,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 .ConfigureAwait(false);
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation.Items.KeylessSet(placeId);
+            Invalidation.Defer(() => _ = PseudoPlaceContact(placeId));
         }
         else {
             var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
@@ -576,16 +549,13 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 .ConfigureAwait(false);
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation.Items.KeylessSet(chatId);
+            Invalidation.Defer(() => _ = PseudoChatContact(chatId));
         }
     }
 
     // [CommandHandler]
     public virtual async Task OnGreet(ContactsBackend_Greet command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var account = await AccountsBackend.Get(command.UserId, cancellationToken).ConfigureAwait(false);
         if (account is null || account.IsGreetingCompleted || account.IsBot)
             return;
@@ -658,13 +628,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var (placeId, ownerId, hasLeft) = command;
         var context = CommandContext.GetCurrent();
 
-        if (Invalidation.IsActive) {
-            var invOwnerId = context.Operation.Items.KeylessGet<UserId>();
-            if (invOwnerId is not null)
-                _ = ListPlaceIds(invOwnerId, default);
-            return;
-        }
-
         ownerId.Require();
         placeId.Require();
 
@@ -693,7 +656,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
         if (hasChanges) {
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation.Items.KeylessSet(ownerId);
+            Invalidation.Defer(() => _ = ListPlaceIds(ownerId, default));
             context.Operation.AddEvent(new PlaceMembershipChangedEvent(ownerId, placeId, hasLeft));
         }
     }
@@ -705,12 +668,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     {
         var chatId = command.ChatId;
         var placeId = chatId.PlaceId;
-
-        if (Invalidation.IsActive) {
-            _ = PseudoChatContact(chatId);
-            _ = PseudoPlaceContact(placeId);
-            return;
-        }
 
         Log.LogInformation("-> OnPublishCopiedChat: creating contacts for chat '{ChatId}'", chatId);
 
@@ -736,6 +693,11 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             await Commander.Call(createContact, false, cancellationToken).ConfigureAwait(false);
         }
 
+        Invalidation.Defer(() => {
+            _ = PseudoChatContact(chatId);
+            _ = PseudoPlaceContact(placeId);
+        });
+
         Log.LogInformation("<- OnPublishCopiedChat: created contacts for chat '{ChatId}'", chatId);
     }
 
@@ -744,9 +706,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         ContactsBackend_ReviewExternalContactName command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var contactId = command.Id;
         var ownerUserId = contactId.OwnerId;
         var contact = await Get(ownerUserId, contactId, cancellationToken).ConfigureAwait(false);
@@ -782,20 +741,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     {
         var (id, expectedVersion, change) = command;
         var ownerId = id.OwnerId;
-
-        if (Invalidation.IsActive) {
-            _ = GetThreadContact(ownerId, id, default);
-            var threadChatId = (ThreadChatId)id.ChatId;
-            ThreadChatId? invChatId = threadChatId;
-            while (invChatId is not null) {
-                _ = ListThreadIdsForChat(ownerId, invChatId.ParentChatId, default);
-                invChatId = invChatId.ParentChatId as ThreadChatId;
-            }
-            var parentChat = threadChatId.GetOutermostParent();
-            var placeId = parentChat is PlaceChatId placeChatId ? placeChatId.PlaceId : null;
-            _ = ListThreadIdsForPlace(ownerId, placeId, default);
-            return default!;
-        }
 
         id.Require();
         id.ChatId.IsThread().RequireTrue("Id.ChatId.IsThread must be true.");
@@ -844,6 +789,18 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         threadContact = dbThreadContact.ToModel();
+        Invalidation.Defer(() => {
+            _ = GetThreadContact(ownerId, id, default);
+            var threadChatId = (ThreadChatId)id.ChatId;
+            ThreadChatId? invChatId = threadChatId;
+            while (invChatId is not null) {
+                _ = ListThreadIdsForChat(ownerId, invChatId.ParentChatId, default);
+                invChatId = invChatId.ParentChatId as ThreadChatId;
+            }
+            var parentChat = threadChatId.GetOutermostParent();
+            var parentPlaceId = parentChat is PlaceChatId placeChatId ? placeChatId.PlaceId : null;
+            _ = ListThreadIdsForPlace(ownerId, parentPlaceId, default);
+        });
         return threadContact;
     }
 
@@ -852,9 +809,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     // [EventHandler]
     public virtual async Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (chat, oldChat, changeKind) = eventCommand;
         // Thread contacts are created elsewhere: the starter's by ChatThreads.OnStart (threads have no
         // roles to find an owner in), everyone else's when they post or get mentioned.
@@ -878,9 +832,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     // [EventHandler]
     public virtual async Task OnAuthorChangedEvent(AuthorUpsertedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (author, oldAuthor) = eventCommand;
         var oldHasLeft = oldAuthor?.HasLeft ?? true;
         if (oldHasLeft == author.HasLeft && (oldAuthor?.Version ?? 0) != 0)
@@ -919,9 +870,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     // [EventHandler]
     public virtual async Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (entry, author, changeKind, _) = eventCommand;
         if (changeKind == ChangeKind.Remove || entry.IsSystemEntry)
             return;
@@ -948,9 +896,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         ExternalContactNameMayHaveChangedEvent eventCommand,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (ownerUserId, links) = eventCommand;
         var peerUserIds = new List<UserId>();
         foreach (var link in links.OrderBy(c => c)) {
@@ -974,9 +919,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         UserMentionedInThreadChatEvent eventCommand,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (threadChatId, mentionIds) = eventCommand;
         var parentChat = threadChatId.GetOutermostParent();
         foreach (var mentionId in mentionIds) {

@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Diagnostics;
 using ActualChat.Users.Db;
@@ -69,13 +68,6 @@ public class UsageBackend(IServiceProvider services)
     public virtual async Task OnRecord(UsageBackend_Record command, CancellationToken cancellationToken)
     {
         var (userId, events) = command;
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            if (context.Operation.Items.KeylessGet<bool>())
-                _ = ListAllDays(userId, default);
-            return;
-        }
-
         if (events.Count == 0)
             return;
 
@@ -123,20 +115,16 @@ public class UsageBackend(IServiceProvider services)
             dbDay.Version = VersionGenerator.NextVersion(dbDay.Version);
         }
 
-        if (hasChanges)
+        if (hasChanges) {
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(hasChanges);
+            Invalidation.Defer(() => _ = ListAllDays(userId, default));
+        }
     }
 
     // [CommandHandler]
     public virtual async Task OnRebuildDays(UsageBackend_RebuildDays command, CancellationToken cancellationToken)
     {
         var userId = command.UserId;
-        if (Invalidation.IsActive) {
-            _ = ListAllDays(userId, default);
-            return;
-        }
-
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -166,15 +154,13 @@ public class UsageBackend(IServiceProvider services)
             dbDay.Apply(usageEvent);
         }
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Invalidation.Defer(() => _ = ListAllDays(userId, default));
     }
 
     // [CommandHandler]
     public virtual async Task OnCountFunnelEvent(
         UsageBackend_CountFunnelEvent command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var appKind = AppKind.Unknown;
         if (command.Session is { } session) {
             var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
@@ -187,9 +173,6 @@ public class UsageBackend(IServiceProvider services)
     public virtual async Task OnChatEntryChangedEvent(
         ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (entry, author, changeKind, oldEntry) = eventCommand;
         if (!IsTrackedUser(author.UserId))
             return;
@@ -207,9 +190,6 @@ public class UsageBackend(IServiceProvider services)
     public virtual async Task OnLiveSessionEndedEvent(
         LiveSessionEndedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var chatId = eventCommand.ChatId;
         var minParticipation = Settings.Usage.MinLiveSessionParticipation;
         foreach (var member in eventCommand.Members) {
@@ -234,9 +214,6 @@ public class UsageBackend(IServiceProvider services)
     public virtual async Task OnContactChangedEvent(
         ContactChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (contact, oldContact, changeKind) = eventCommand;
         var ownerId = contact.OwnerId;
         if (!IsTrackedUser(ownerId))
@@ -257,6 +234,8 @@ public class UsageBackend(IServiceProvider services)
     [ComputeMethod]
     protected virtual async Task<ApiArray<UsageDay>> ListAllDays(UserId userId, CancellationToken cancellationToken)
     {
+        await ShardOwner.RequireShardOwnership(userId, addDependency: true, cancellationToken).ConfigureAwait(false);
+
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
@@ -271,6 +250,8 @@ public class UsageBackend(IServiceProvider services)
     [ComputeMethod]
     protected virtual async Task<int> GetFriendCount(UserId userId, CancellationToken cancellationToken)
     {
+        await ShardOwner.RequireShardOwnership(userId, addDependency: true, cancellationToken).ConfigureAwait(false);
+
         var contactIds = await ContactsBackend
             .ListPeerContactIds(userId, null, cancellationToken)
             .ConfigureAwait(false);

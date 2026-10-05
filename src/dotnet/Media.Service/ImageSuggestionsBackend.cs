@@ -80,12 +80,6 @@ public class ImageSuggestionsBackend(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         var key = command.Key;
-        if (Invalidation.IsActive) {
-            _ = Get(key, default);
-            _ = GetDismissedUntil(key, default);
-            return default!;
-        }
-
         if (!ImageGenerations.IsAvailable)
             return null;
 
@@ -114,6 +108,10 @@ public class ImageSuggestionsBackend(IServiceProvider services)
                 return null;
 
             var stored = await Store(key, mediaId, command.ImageDescription, cancellationToken).ConfigureAwait(false);
+            Invalidation.Defer(() => {
+                _ = Get(key, default);
+                _ = GetDismissedUntil(key, default);
+            });
             // After the row is committed, so a failed commit can never strand the chat without one
             await DeleteMedia(replacedMediaId, cancellationToken).ConfigureAwait(false);
             return stored;
@@ -128,11 +126,6 @@ public class ImageSuggestionsBackend(IServiceProvider services)
     public virtual async Task OnDismiss(ImageSuggestionsBackend_Dismiss command, CancellationToken cancellationToken)
     {
         var key = command.Key;
-        if (Invalidation.IsActive) {
-            _ = GetDismissedUntil(key, default);
-            return;
-        }
-
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -148,18 +141,13 @@ public class ImageSuggestionsBackend(IServiceProvider services)
         dbSuggestion.Version = VersionGenerator.NextVersion(dbSuggestion.Version);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Invalidation.Defer(() => _ = GetDismissedUntil(key, default));
     }
 
     // [CommandHandler]
     public virtual async Task OnRemove(ImageSuggestionsBackend_Remove command, CancellationToken cancellationToken)
     {
         var key = command.Key;
-        if (Invalidation.IsActive) {
-            _ = Get(key, default);
-            _ = GetDismissedUntil(key, default);
-            return;
-        }
-
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -170,6 +158,10 @@ public class ImageSuggestionsBackend(IServiceProvider services)
         var mediaId = dbSuggestion.ToModel()?.MediaId;
         dbContext.Remove(dbSuggestion);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Invalidation.Defer(() => {
+            _ = Get(key, default);
+            _ = GetDismissedUntil(key, default);
+        });
 
         // An accepted suggestion keeps its media - it is the content's own picture now
         if (command.MustDeleteMedia)

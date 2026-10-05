@@ -14,22 +14,6 @@ public partial class ChatsBackend
             ? placeChatId.LocalChatId
             : chatId.Id.Value;
         var newChatId = PlaceChatId.Parse(PlaceChatId.Format(placeId, localChatId));
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            _ = GetPublicChatIdsFor(placeId, default);
-            if (context.Operation.Items[typeof(ChatEntryId)] is string invLastEntrySid) {
-                Log.LogInformation("OnCopyChat({CorrelationId}): InvLastEntrySid is {EntrySid}", correlationId, invLastEntrySid);
-                InvalidateTiles(newChatId,
-                    ChatEntryId.Parse(invLastEntrySid).LocalId,
-                    ChangeKind.Create,
-                    false);
-                _ = GetMinLid(newChatId, default);
-                _ = GetMaxLid(newChatId, true, default);
-                _ = GetMaxLid(newChatId, false, default);
-            }
-            return default!;
-        }
 
         Log.LogInformation("-> OnCopyChat({CorrelationId}): coping chat '{ChatId}' to place '{PlaceId}'",
             correlationId, chatId.Value, placeId);
@@ -168,8 +152,19 @@ public partial class ChatsBackend
             await using var __ = dbContext.ConfigureAwait(false);
             Log.LogInformation(
                 "OnCopyChat({CorrelationId}): LastProcessedEntryId is {EntryId}", correlationId, lastProcessedEntryId);
-            context.Operation.Items[typeof(ChatEntryId)] = lastProcessedEntryId.Value;
         }
+
+        var lastEntryId = lastProcessedEntryId;
+        Invalidation.Defer(() => {
+            _ = GetPublicChatIdsFor(placeId, default);
+            if (lastEntryId is null)
+                return;
+
+            InvalidateTiles(newChatId, lastEntryId.LocalId, ChangeKind.Create, false);
+            _ = GetMinLid(newChatId, default);
+            _ = GetMaxLid(newChatId, true, default);
+            _ = GetMaxLid(newChatId, false, default);
+        });
 
         Log.LogInformation(
             "<- OnCopyChat({CorrelationId})", correlationId);

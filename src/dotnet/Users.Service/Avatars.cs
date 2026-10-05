@@ -43,9 +43,6 @@ public class Avatars(IServiceProvider services) : IAvatars
     // [CommandHandler]
     public virtual async Task<AvatarFull> OnChange(Avatars_Change command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var avatarId = command.AvatarId;
         var expectedVersion = command.ExpectedVersion;
@@ -79,9 +76,6 @@ public class Avatars(IServiceProvider services) : IAvatars
     // [CommandHandler]
     public virtual async Task OnSetDefault(Avatars_SetDefault command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var avatarId = command.AvatarId;
         var userSettingsUI = Services.UserSettingsUI(session);

@@ -69,13 +69,6 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
         var (placeId, expectedVersion, change, ownerId) = command;
         var context = CommandContext.GetCurrent();
 
-        if (Invalidation.IsActive) {
-            var invPlace = context.Operation.Items.KeylessGet<Place>();
-            if (invPlace != null)
-                _ = Get(invPlace.Id, default);
-            return null!;
-        }
-
         change.RequireValid();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -125,7 +118,7 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
             await RemoveAlias(oldPlace!).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        context.Operation.Items.KeylessSet(place);
+        Invalidation.Defer(() => _ = Get(place.Id, default));
 
         long? chatExpectedVersion;
         Change<ChatDiff> chatChange;

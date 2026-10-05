@@ -97,9 +97,6 @@ public class Contacts(IServiceProvider services) : IContacts
     // [CommandHandler]
     public virtual async Task<Contact?> OnChange(Contacts_Change command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var id = command.Id;
         var expectedVersion = command.ExpectedVersion;
@@ -119,9 +116,6 @@ public class Contacts(IServiceProvider services) : IContacts
     // [CommandHandler]
     public virtual async Task OnTouch(Contacts_Touch command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var id = command.Id;
         id.Require();
@@ -137,9 +131,6 @@ public class Contacts(IServiceProvider services) : IContacts
     // [CommandHandler]
     public virtual async Task OnSetIsBlocked(Contacts_SetIsBlocked command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var id = command.Id;
         var isBlocked = command.IsBlocked;

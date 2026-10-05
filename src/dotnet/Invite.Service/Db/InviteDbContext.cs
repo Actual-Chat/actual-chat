@@ -28,6 +28,8 @@ public class InviteDbContext(DbContextOptions<InviteDbContext> options) : DbCont
         invite.Property(e => e.SearchKey).UseCollation("C");
         invite.Property(e => e.CreatedBy).UseCollation("C");
 
+        model.IgnoreUnusedOperationsFrameworkColumns(DbLogEntrySerializer.Default);
+
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");
         operation.Property(e => e.HostId).UseCollation("C");

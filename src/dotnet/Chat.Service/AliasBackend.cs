@@ -21,11 +21,6 @@ public class AliasBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     {
         var (id, expectedVersion, change) = command;
 
-        if (Invalidation.IsActive) {
-            _ = Get(id, default);
-            return default!;
-        }
-
         id.Require();
         change.RequireValid();
         var sid = id.NormalizedValue;
@@ -69,7 +64,7 @@ public class AliasBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        alias = dbAlias.ToModel();
-        return alias;
+        Invalidation.Defer(() => _ = Get(id, default));
+        return dbAlias.ToModel();
     }
 }

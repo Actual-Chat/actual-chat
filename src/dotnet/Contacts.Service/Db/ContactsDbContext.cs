@@ -57,6 +57,8 @@ public class ContactsDbContext(DbContextOptions<ContactsDbContext> options) : Db
         threadContact.Property(c => c.OutermostParentChatId).UseCollation("C");
         threadContact.Property(c => c.PlaceId).UseCollation("C");
 
+        model.IgnoreUnusedOperationsFrameworkColumns(DbLogEntrySerializer.Default);
+
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");
         operation.Property(e => e.HostId).UseCollation("C");

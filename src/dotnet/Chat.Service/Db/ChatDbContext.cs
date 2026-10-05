@@ -180,6 +180,11 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         coachConversation.Property(e => e.AuthorId).UseCollation("C");
         coachConversation.Property(e => e.UserId).UseCollation("C");
 
+        // Bytes writes the *Data columns, so the text ones are dead weight here: _Operations is
+        // history the trimmer removes on age, so nothing is left to read out of them. DbEvent
+        // .ValueJson is kept by MustDeserializeLegacyEvents - a delayed event has no such horizon.
+        model.IgnoreUnusedOperationsFrameworkColumns(DbLogEntrySerializer.Default);
+
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");
         operation.Property(e => e.HostId).UseCollation("C");

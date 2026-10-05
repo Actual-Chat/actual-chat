@@ -129,31 +129,15 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var (conversationId, _, change) = command;
         var chatId = conversationId.ChatId;
         var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            var invConversation = context.Operation.Items.KeylessGet<Conversation>();
-            if (invConversation != null) {
-                _ = Get(invConversation.Id, default);
-                foreach (var cidTile in ConversationIdTiles.GetCoveringTiles(invConversation.EntryLidRange))
-                    _ = GetConversationRangeTile(chatId, cidTile.Range.Start, default);
-                var previousConversationId = context.Operation.Items
-                    .Get<long>(nameof(ConversationRangeTile.PreviousConversationRange));
-                var nextConversationId = context.Operation.Items
-                    .Get<long>(nameof(ConversationRangeTile.NextConversationRange));
-                if (previousConversationId != default) {
-                    var previousCidTile = ConversationIdTiles.GetTile(previousConversationId);
-                    _ = GetConversationRangeTile(chatId, previousCidTile.Range.Start, default);
-                }
-                if (nextConversationId != default) {
-                    var nextCidTile = ConversationIdTiles.GetTile(nextConversationId);
-                    _ = GetConversationRangeTile(chatId, nextCidTile.Range.Start, default);
-                }
-            }
-            return null!;
-        }
-
         change.RequireValid();
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
+        // Written by StorePreviousAndNextConversationIds below, read by the deferred block: a
+        // neighbour's range tile is only known once the overlapping rows have been resolved
+        var previousConversationLid = 0L;
+        var nextConversationLid = 0L;
 
         await dbContext.Conversations.Lock(conversationId, cancellationToken).ConfigureAwait(false);
 
@@ -228,7 +212,17 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         conversation = dbConversation.Require().ToModel();
-        context.Operation.Items.KeylessSet(conversation);
+        Invalidation.Defer(() => {
+            _ = Get(conversation.Id, default);
+            foreach (var cidTile in ConversationIdTiles.GetCoveringTiles(conversation.EntryLidRange))
+                _ = GetConversationRangeTile(chatId, cidTile.Range.Start, default);
+            if (previousConversationLid != 0)
+                _ = GetConversationRangeTile(
+                    chatId, ConversationIdTiles.GetTile(previousConversationLid).Range.Start, default);
+            if (nextConversationLid != 0)
+                _ = GetConversationRangeTile(
+                    chatId, ConversationIdTiles.GetTile(nextConversationLid).Range.Start, default);
+        });
 
         var titleOrDescriptionChanged = oldConversation is null
             || oldConversation.Title != conversation.Title
@@ -275,11 +269,8 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .MinAsync(c => (long?)c.StartEntryLid, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (previousConversationId != 0)
-                context.Operation.Items
-                    .Set(nameof(ConversationRangeTile.PreviousConversationRange), previousConversationId);
-            if (nextConversationId != 0)
-                context.Operation.Items.Set(nameof(ConversationRangeTile.NextConversationRange), nextConversationId);
+            previousConversationLid = previousConversationId ?? 0;
+            nextConversationLid = nextConversationId ?? 0;
         }
     }
 
@@ -288,9 +279,6 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         ConversationBackend_Summarize command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!; // No invalidation there as we call other commands
-
         var (chatId, entryIdRanges) = command;
         if (entryIdRanges.Length == 0)
             throw StandardError.Constraint("ConversationBackend_Summarize.EntryIdRanges should not be empty.");
@@ -365,9 +353,6 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         ConversationBackend_Materialize command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!; // Persist runs nested commands; nothing to invalidate here.
-
         // Persist the live session's already-computed summary as-is — no summarizer call.
         var conversation = command.Conversation;
         var words = 0;
@@ -463,9 +448,6 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         ConversationBackend_AppendReply command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!; // This handler makes changes only via nested commands
-
         var (chatId, entryLid, replyIdRange) = command;
         var cidTile = ConversationIdTiles.GetTile(entryLid);
         var conversationRangeTile = await GetConversationRangeTile(

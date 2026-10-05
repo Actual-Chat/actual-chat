@@ -25,11 +25,6 @@ public class ExternalContactHashesBackend(IServiceProvider services) : DbService
         CancellationToken cancellationToken)
     {
         var (userDeviceId, expectedVersion, change) = command;
-        if (Invalidation.IsActive) {
-            _ = Get(userDeviceId, default);
-            return null!;
-        }
-
         // Keep logging for debugging VersionMismatchException
         Log.LogInformation("-> OnChange: userDeviceId={UserDeviceId}, expectedVersion={ExpectedVersion}, change={Change}",
             userDeviceId, expectedVersion, change);
@@ -75,6 +70,7 @@ public class ExternalContactHashesBackend(IServiceProvider services) : DbService
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Invalidation.Defer(() => _ = Get(userDeviceId, default));
         return dbHash.ToModel();
     }
 
@@ -83,9 +79,6 @@ public class ExternalContactHashesBackend(IServiceProvider services) : DbService
         ExternalContactHashesBackend_RemoveAccount command, CancellationToken cancellationToken)
     {
         var userId = command.UserId;
-        if (Invalidation.IsActive)
-            return; // we can skip invalidation for own contacts
-
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 

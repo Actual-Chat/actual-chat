@@ -1,6 +1,8 @@
 using System.Net.WebSockets;
+using ActualChat.Operations;
 using ActualChat.Resilience.Internal;
 using ActualChat.Rpc.Internal;
+using ActualLab.CommandR.Operations;
 using ActualLab.Fusion.Server;
 using ActualLab.Fusion.Server.Middlewares;
 using ActualLab.Rpc;
@@ -52,6 +54,11 @@ public readonly struct RpcHostBuilder
         RpcServiceRegistry.ConstructionDumpLogLevel = LogLevel.Information;
         Services.AddSingleton(c => new BackendServiceDefs(c));
         Services.AddSingleton(c => new RpcBackendHelpers(c));
+        // Replaces DeferredInvalidationModeResolver with AppDeferredInvalidationModeResolver
+        Services.AddSingleton<DeferredInvalidationModeResolver>(
+            c => new AppDeferredInvalidationModeResolver(c, c.GetRequiredService<ServiceTypeResolver>()));
+        // Fusion's handler plus IEveryHostOperationHandler fan-out
+        Fusion.Commander.AddOperationCompletionHandler(c => new AppOperationCompletionHandler(c));
         AddMeshServices();
         AddRpcServer(IsApiHost);
         AddRpcClient();

@@ -29,9 +29,6 @@ public class SessionTemporalsBackend(IServiceProvider services) : ISessionTempor
     // [CommandHandler]
     public virtual async Task OnSet(SessionTemporalsBackend_Set command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // Self-invalidating command
-
         if (command.Key.Length > MaxKeyLength)
             throw new ArgumentOutOfRangeException(nameof(command),
                 $"Key length must be at most {MaxKeyLength} characters.");

@@ -106,18 +106,6 @@ public class InvitesBackend(IServiceProvider services)
         InvitesBackend_Generate command,
         CancellationToken cancellationToken)
     {
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            var invInvite = context.Operation.Items.KeylessGet<Invite>();
-            if (invInvite != null) {
-                _ = PseudoGetAll(invInvite.GetSearchKey());
-                _ = Get(invInvite.Id, default);
-            }
-
-            return default!;
-        }
-
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -139,7 +127,10 @@ public class InvitesBackend(IServiceProvider services)
         dbContext.Invites.Add(new DbInvite(invite));
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(invite);
+        Invalidation.Defer(() => {
+            _ = PseudoGetAll(invite.GetSearchKey());
+            _ = Get(invite.Id, default);
+        });
         return invite;
     }
 
@@ -149,16 +140,6 @@ public class InvitesBackend(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            var invInvite = context.Operation.Items.KeylessGet<Invite>();
-            if (invInvite != null) {
-                _ = PseudoGetAll(invInvite.GetSearchKey());
-                _ = Get(invInvite.Id, default);
-            }
-
-            return default!;
-        }
 
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
 
@@ -207,7 +188,10 @@ public class InvitesBackend(IServiceProvider services)
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation.AddEvent(new UsageBackend_CountFunnelEvent(account.Id, FunnelEvent.JoinUsed, command.Session));
-        context.Operation.Items.KeylessSet(invite);
+        Invalidation.Defer(() => {
+            _ = PseudoGetAll(invite.GetSearchKey());
+            _ = Get(invite.Id, default);
+        });
         return invite;
 
         Task OnUseForPlace(PlaceId placeId)
@@ -231,18 +215,6 @@ public class InvitesBackend(IServiceProvider services)
         InvitesBackend_Revoke command,
         CancellationToken cancellationToken)
     {
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            var invInvite = context.Operation.Items.KeylessGet<Invite>();
-            if (invInvite != null) {
-                _ = PseudoGetAll(invInvite.GetSearchKey());
-                _ = Get(invInvite.Id, default);
-            }
-
-            return;
-        }
-
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -256,7 +228,10 @@ public class InvitesBackend(IServiceProvider services)
         dbInvite.UpdateFrom(invite);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(invite);
+        Invalidation.Defer(() => {
+            _ = PseudoGetAll(invite.GetSearchKey());
+            _ = Get(invite.Id, default);
+        });
     }
 
     [ComputeMethod]

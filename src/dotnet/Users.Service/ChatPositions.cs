@@ -25,9 +25,6 @@ public class ChatPositions(IServiceProvider services) : DbServiceBase<UsersDbCon
     // [CommandHandler]
     public virtual async Task OnSet(ChatPositions_Set command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var chatId = command.ChatId;
         var kind = command.Kind;

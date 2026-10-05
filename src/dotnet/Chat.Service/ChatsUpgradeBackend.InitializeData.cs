@@ -1,6 +1,7 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Module;
 using ActualChat.Mathematics.Internal;
+using ActualLab.CommandR.Operations;
 using ActualLab.IO;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,9 +14,6 @@ public partial class ChatsUpgradeBackend
         ChatsUpgradeBackend_CreateAnnouncementsChat command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!; // It just spawns other commands, so nothing to do here
-
         var chatId = Constants.Chat.AnnouncementsChatId;
         var hostInfo = Services.HostInfo();
         var userIds = await ListAllAccountIds(cancellationToken).ConfigureAwait(false);
@@ -121,17 +119,13 @@ public partial class ChatsUpgradeBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<Chat> OnCreateDefaultChat(ChatsUpgradeBackend_CreateDefaultChat command, CancellationToken cancellationToken)
+    public virtual async Task<Chat> OnCreateDefaultChat(
+        ChatsUpgradeBackend_CreateDefaultChat command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive) {
-            // This command changes a lot of things directly, so we invalidate everything here
-            ComputedRegistry.InvalidateEverything();
-            return null!;
-        }
-
         var chatId = Constants.Chat.DefaultChatId;
         var randomWords = new[] { "most", "chat", "actual", "ever", "amazing", "absolutely", "terrific", "truly", "level 100500" };
         var audioBlobs = Services.GetRequiredService<IBlobStorages>()[BlobScope.AudioRecord];
+        var context = CommandContext.GetCurrent();
 
         // Signing in admin
         var admin = await AccountsBackend.Get(Constants.User.Admin.UserId, cancellationToken).ConfigureAwait(false);
@@ -165,6 +159,9 @@ public partial class ChatsUpgradeBackend
         await AddEntries(adminAuthor, 0.1, 2000, null).ConfigureAwait(false);
         // await AddEntries(adminAuthor, 1, 4, Clocks.SystemClock.Now).ConfigureAwait(false);
 
+        // This command changes a lot of things directly, so EVERYTHING is invalidated,
+        // ChatsUpgradeOperationHandler is responsible to trigger the invalidation on every host
+        context.Operation.StoreMode = OperationStoreMode.Operation;
         return chat;
 
         async Task AddEntries(AuthorFull author, double audioProbability, int count, Moment? beginsAt)
@@ -346,9 +343,6 @@ public partial class ChatsUpgradeBackend
     // [CommandHandler]
     public virtual async Task<Chat> OnCreateFeedbackTemplateChat(ChatsUpgradeBackend_CreateFeedbackTemplateChat command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!; // It just spawns other commands, so nothing to do here
-
         var chatId = Constants.Chat.FeedbackTemplateChatId;
         var hostInfo = Services.HostInfo();
         var userIds = await ListAllAccountIds(cancellationToken).ConfigureAwait(false);
