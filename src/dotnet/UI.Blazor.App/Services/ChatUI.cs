@@ -58,6 +58,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
+    private TranslationUI TranslationUI => Hub.TranslationUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
     private LocationUI LocationUI => Hub.LocationUI;
     private SelectionUI SelectionUI => Hub.SelectionUI;
@@ -212,9 +213,19 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (emoji is not null)
             return new ChatPreview { Text = emoji.Symbol };
 
+        // A chat read translated is previewed translated; until the translation lands, as written
+        var mustTranslate = await TranslationUI
+            .MustTranslate(lastTextEntry, false, cancellationToken)
+            .ConfigureAwait(false);
+        var translation = mustTranslate
+            ? await TranslationUI.Get(lastTextEntry.Id, cancellationToken).ConfigureAwait(false)
+            : null;
+        if (translation is not null && translation.MatchesOriginal(lastTextEntry.Content))
+            translation = null;
+
         var chatMarkupHub = ChatMarkupHubFactory[chatId];
         var markup = await chatMarkupHub
-            .GetMarkup(lastTextEntry, MarkupConsumer.ChatListItemText, cancellationToken)
+            .GetMarkup(lastTextEntry, translation, MarkupConsumer.ChatListItemText, cancellationToken)
             .ConfigureAwait(false);
         return new ChatPreview { Text = markup.ToReadableText(MarkupConsumer.ChatListItemText) };
     }
