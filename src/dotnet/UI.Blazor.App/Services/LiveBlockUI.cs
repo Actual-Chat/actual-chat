@@ -212,8 +212,11 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             isBlockExpanded = Hub.ChatUI.IsConversationExpanded(
                 ConversationId.New(chatId, raw.VisibleStartLid), raw.IsExpandedByDefault);
         }
+        var hasTranscript = raw is { IsLatched: true }
+            && await LiveSessionUI.HasTranscript(chatId, cancellationToken).ConfigureAwait(false);
         return new GovernorInputs(
-            chatId, raw, visibility, isJoined, isBlockExpanded, streamingTail.FloorLid, tailFloorLid);
+            chatId, raw, visibility, isJoined, isBlockExpanded, hasTranscript,
+            streamingTail.FloorLid, tailFloorLid);
     }
 
     [ComputeMethod(ConsolidationDelay = 1)]
@@ -366,7 +369,8 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
 
     private async Task<Moment?> ProcessChat(ChatId chatId, GovernorInputs inputs, CancellationToken cancellationToken)
     {
-        var (_, raw, visibility, isJoined, isBlockExpanded, rawStreamingFloorLid, tailFloorLid) = inputs;
+        var (_, raw, visibility, isJoined, isBlockExpanded, hasTranscript, rawStreamingFloorLid, tailFloorLid)
+            = inputs;
         var chatState = await GetOrCreateChatState(chatId, cancellationToken).ConfigureAwait(false);
 
         // Keep tracking the descriptor after leaving; only session closure stops the refresh.
@@ -435,7 +439,10 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
                     chatState.StaleVisibility = Hub.ChatUI.GetItemVisibilityAtExpansionChange(
                         ConversationId.New(chatId, v));
                 chatState.WasBlockExpanded = isBlockExpanded;
+                // Without a transcript the card has neither a preview nor "show more" to stand in for what
+                // it would swallow, so the rows stay: what a voice-only session hides, nothing brings back.
                 var isVisibilityUsable = isBlockExpanded
+                    && hasTranscript
                     && !ReferenceEquals(visibility, chatState.StaleVisibility)
                     && visibility.ChatId == chatId
                     && !visibility.IsEmpty;
@@ -538,9 +545,11 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         ChatViewItemVisibility Visibility,
         bool IsJoined,
         bool IsBlockExpanded,
+        bool HasTranscript,
         long StreamingFloorLid = long.MaxValue,
         long TailFloorLid = long.MaxValue)
     {
-        public static readonly GovernorInputs None = new(null, null, ChatViewItemVisibility.Empty, false, false);
+        public static readonly GovernorInputs None = new(
+            null, null, ChatViewItemVisibility.Empty, false, false, false);
     }
 }

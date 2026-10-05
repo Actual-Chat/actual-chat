@@ -69,6 +69,59 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task TranscribedStreamShouldGiveAnUnsummarizedSessionATranscript()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(c => c with { IsPublic = true, IsSummarized = false });
+        var author = await tester.GetOwnAuthor(chatId);
+        var peerId = AuthorId.New(chatId, 777_090);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, author!.Id, null, false, true, default);
+        (await backend.GetState(chatId, default))!.HasTranscript.Should().BeFalse("nothing is transcribed yet");
+
+        // act
+        await backend.OnStreamRegistered(chatId, peerId, null, true, true, default);
+
+        // assert
+        var live = await backend.GetState(chatId, default);
+        live!.HasTranscript.Should().BeTrue("the peer's stream is transcribed");
+        live.TranscriptionOn.Should().BeFalse("whether it is summarized is the chat's setting, not the stream's");
+
+        // act - the first speaker registers again, still untranscribed
+        await backend.OnStreamRegistered(chatId, author.Id, null, false, true, default);
+
+        // assert
+        (await backend.GetState(chatId, default))!.HasTranscript
+            .Should().BeTrue("a transcript the session has had doesn't go away");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SpokenTextEntryShouldStartASessionSummarizedAsItsChatIs(bool isSummarized)
+    {
+        // A bot speaking a text entry has a transcript - its text - but no say in whether the chat is summarized
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(c => c with { IsPublic = true, IsSummarized = isSummarized });
+        var entry = await tester.CreateTextEntry(chatId, "spoken by a bot");
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+
+        // act - what TextEntryStreamer registers
+        await backend.OnStreamRegistered(chatId, entry.AuthorId, entry.LocalId, true, true, default);
+
+        // assert
+        var live = await backend.GetState(chatId, default);
+        live!.HasTranscript.Should().BeTrue();
+        live.TranscriptionOn.Should().Be(isSummarized);
+        live.StartEntryLid.Should().Be(entry.LocalId, "the session starts at the entry being spoken");
+    }
+
+    [Fact]
     public async Task ParticipationShouldBeTracked()
     {
         // arrange

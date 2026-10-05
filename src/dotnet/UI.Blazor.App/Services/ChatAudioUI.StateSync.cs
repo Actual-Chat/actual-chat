@@ -1137,9 +1137,9 @@ public partial class ChatAudioUI
     protected virtual async Task<bool> IsActuallyConversing(ChatId chatId, CancellationToken cancellationToken)
     {
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var isTranscriptionOn = await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(false);
+        var hasTranscript = await LiveSessionUI.HasTranscript(chatId, cancellationToken).ConfigureAwait(false);
         var stats = await LiveStreamUI.GetConversationStats(chatId, cancellationToken).ConfigureAwait(false);
-        return IsActuallyConversing(stats, ownAuthor?.Id, isTranscriptionOn, AudioSettings);
+        return IsActuallyConversing(stats, ownAuthor?.Id, hasTranscript, AudioSettings);
     }
 
     // Exists so Computed.Capture in WhenIdle gets a Computed<ListeningLinger>: capture binds

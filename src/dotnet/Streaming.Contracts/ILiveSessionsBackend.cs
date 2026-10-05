@@ -31,11 +31,13 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ApiArray<CallInvite>> ListInvites(ChatId chatId, CancellationToken cancellationToken);
 
+    // hasText sits where a caller up to 2.21 passed the chat's summarization setting, so the call keeps its
+    // wire identity; what that caller means by it is what the session reported as its transcript then.
     Task OnStreamRegistered(
         ChatId chatId,
         AuthorId authorId,
         long? entryLid,
-        bool transcriptionOn,
+        bool hasText,
         bool hasVoice,
         CancellationToken cancellationToken);
     Task SetParticipation(

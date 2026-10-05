@@ -920,7 +920,7 @@ rarely moves; skipped where it doesn't:
 |---|---|---|
 | `LiveStreamUI.IsAnyoneStreaming` / `IsAuthorStreaming` | `bool` | ✅ — `GetStreamingAuthorIds` rebuilds its array every update |
 | `ChatVideoUI.GetVideoStreamMemberCount` | `int` | ✅ — same source |
-| `LiveSessionUI.IsTranscriptionOn` | `bool` | ✅ — collapses `LiveSessionState` |
+| `LiveSessionUI.HasTranscript` | `bool` | ✅ — collapses `LiveSessionState` |
 | `ChatVideoUI.IsVideoAvailable` | `bool` | ✅ — collapses the chat record and its rules |
 | `ChatUI.GetUnreadCount` | `Trimmed<int>` | ✅ — collapses `ChatUI.Get`, which fires on news, mentions, read position or settings |
 | `ChatVideoUI.IsOwnCameraRecording` / `IsOwnScreenCasting` | `bool` | ❌ — read local state set by the user's own click, so a delay lags their own feedback; only upstream is the now-consolidated `IsVideoAvailable` |
@@ -953,7 +953,7 @@ The original analysis, kept for the reasoning:
 > immediately, so option 1 stands as the right one. Consolidated instead:
 > `LiveSessionUI.GetConversation` (with `ConversationContentComparer`) and
 > `ILiveSessions.GetCallStatus` — the latter server-side, so a no-op change never
-> reaches the caller at all. `LiveSessionUI.IsTranscriptionOn` came with §9.6.
+> reaches the caller at all. `LiveSessionUI.HasTranscript` came with §9.6.
 
 `GetState` self-invalidates on `SelfHealDelay` (`LiveSessionsBackend.cs:138`) and is
 invalidated by most call mutations, yet during a stable call the state is unchanged.
@@ -972,7 +972,7 @@ consolidates a rebuilt `Conversation`.
 
 Options, in order of preference:
 
-1. Consolidate the **scalar consumers** instead — `LiveSessionUI.IsTranscriptionOn`
+1. Consolidate the **scalar consumers** instead — `LiveSessionUI.HasTranscript`
    (`bool`), `LiveSessions.GetCallStatus` / `LiveSessionUI.GetCallStatus`
    (`CallStatus` enum), `LiveSessionUI.GetState`'s derived predicates. Same effect
    for the UI, no type surgery.
@@ -1043,7 +1043,7 @@ shows `GetRules` still churning.
 | `ChatsBackend.GetConsolidatedRules` | 0.2 s | `AuthorRules` | **✅ yes** — via `ConsolidationComparer`. `AuthorRulesComparer` compares `ChatId`/`Permissions` by value and `Author`/`Account` by reference, so only a real author or account change propagates. On a protected method, per §2.2 |
 | `ChatUI.GetReadEntryLid` | 0.2 s | `long` | **✅ yes** — client-local; the local lease usually already holds the position the server is catching up to |
 | `IChats.IsEntryReadByMentionedUser` | 0.2 s | `bool` | **✅ yes** — monotone, so after the single false→true flip every later invalidation is swallowed |
-| `LiveStreamUI.IsAnyoneStreaming` / `IsAuthorStreaming`, `ChatVideoUI.GetVideoStreamMemberCount` / `IsVideoAvailable`, `LiveSessionUI.IsTranscriptionOn`, `ChatUI.GetUnreadCount` | 0.2 s | `bool` / `int` / `Trimmed<int>` | **✅ yes** — client-local leaves; see §9.6 for what was deliberately left out |
+| `LiveStreamUI.IsAnyoneStreaming` / `IsAuthorStreaming`, `ChatVideoUI.GetVideoStreamMemberCount` / `IsVideoAvailable`, `LiveSessionUI.HasTranscript`, `ChatUI.GetUnreadCount` | 0.2 s | `bool` / `int` / `Trimmed<int>` | **✅ yes** — client-local leaves; see §9.6 for what was deliberately left out |
 
 ### 10.1 What the two former ❌ rows needed
 

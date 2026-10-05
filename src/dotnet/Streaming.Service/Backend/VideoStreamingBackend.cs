@@ -251,9 +251,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         await LiveVideoBackend.Register(record.ChatId, streamInfo, cancellationToken)
             .ConfigureAwait(false);
 
-        var chat = await Chats.Get(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
         await LiveSessionsBackend
-            .OnStreamRegistered(record.ChatId, author.Id, null, chat?.IsSummarized ?? false, false, cancellationToken)
+            .OnStreamRegistered(record.ChatId, author.Id, null, false, false, cancellationToken)
             .ConfigureAwait(false);
 
         Task? silenceWatchdogTask = null;

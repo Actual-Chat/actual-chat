@@ -106,6 +106,26 @@ public sealed class CallIntoSessionTest(ChatCollection.AppHostFixture fixture, I
     }
 
     [Fact]
+    public async Task CallSessionShouldHaveATranscriptOnceAStreamIsTranscribed()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+        (await backend.GetState(chatId, default))!.HasTranscript.Should().BeFalse("nobody has spoken yet");
+
+        // act - the answer started the session; the streams come after it
+        await backend.OnStreamRegistered(chatId, alice.Id, null, true, true, default);
+
+        // assert
+        var live = await backend.GetState(chatId, default);
+        live!.Kind.Should().Be(LiveSessionKind.Call);
+        live.HasTranscript.Should().BeTrue("a session the call started is transcribed like any other");
+    }
+
+    [Fact]
     public async Task GroupCallSessionShouldOutliveTheCall()
     {
         // arrange - Bob calls Alice in a group chat; Carol, not in the call, records too

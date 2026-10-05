@@ -244,7 +244,7 @@
         // The rest stay conditional: asking them when there is no live session would add dependencies
         // that recompute this card for sessions it doesn't show
         var isVoiceOnly = isLive
-            && !await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(false);
+            && !await LiveSessionUI.HasTranscript(chatId, cancellationToken).ConfigureAwait(false);
         var isExpanded = Message.IsExpanded;
         var tailPreview = isLive && !isVoiceOnly && !isExpanded
             ? await GetTailPreview(chatId, conversation.Id.StartEntryLid, cancellationToken)
