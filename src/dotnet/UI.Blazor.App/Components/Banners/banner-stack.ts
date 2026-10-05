@@ -156,7 +156,12 @@ export class BannerStack implements Disposable {
     private updateButtonsWrap(banner: HTMLElement): void {
         const lead = banner.querySelector<HTMLElement>('.banner-lead');
         const buttons = banner.querySelector<HTMLElement>('.banner-buttons');
-        const wrapped = lead != null && buttons != null && buttons.offsetTop > lead.offsetTop;
+        // "Wrapped" must mean the buttons dropped onto their own row below the lead - not merely sitting a
+        // few px lower because the lead (with its avatar) is taller than the button row and both are
+        // vertically centered. Compare against half the lead's height: a same-row height difference never
+        // crosses it, while a real wrap puts the buttons a full lead-height below.
+        const wrapped = lead != null && buttons != null
+            && buttons.offsetTop - lead.offsetTop > lead.offsetHeight / 2;
         banner.classList.toggle('buttons-wrapped', wrapped);
     }
 }
