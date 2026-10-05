@@ -80,7 +80,7 @@ Then set the org-level **issue type** (not labels — labels are ignored in this
 gh api -X PATCH repos/Actual-Chat/actual-chat/issues/<NUMBER> -f type=Bug --jq '.type.name'
 ```
 
-Pick `Bug` for defects in the product, `Feature` for new user-visible capability, `Task` for everything else.
+Pick `Bug` for defects in the product, `Feature` only for a large new user-visible capability that spans several pieces of work, `Task` for everything else — including a small, self-contained addition to the product. When in doubt between `Feature` and `Task`, pick `Task`.
 
 A failing, flaky or outdated **test** is a `Task`, not a `Bug` — e2e specs, integration and unit tests, test rigs and CI checks alike. `Bug` means the product misbehaves for a user; when only the test is wrong (a stale selector, a race in a wait, a spec that no longer matches intended behavior), nothing is broken for users, so the fix is maintenance work. If the failing test exposed a real product defect, file that defect as a `Bug` and describe the user-visible symptom, not the red test.
 
