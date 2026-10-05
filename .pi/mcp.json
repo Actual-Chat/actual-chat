@@ -1,0 +1,69 @@
+{
+  "mcpServers": {
+    "chrome1": {
+      "type": "http",
+      "url": "http://localhost:8765/mcp",
+      "description": "Chrome DevTools MCP server"
+    },
+    "chrome2": {
+      "type": "http",
+      "url": "http://localhost:8766/mcp",
+      "description": "Chrome DevTools MCP server"
+    },
+    "figma": {
+      "type": "http",
+      "url": "https://mcp.figma.com/mcp",
+      "description": "Figma MCP server for design context"
+    },
+    "seq": {
+      "command": "tools/seq-mcp-mcp-wrapper",
+      "description": "Seq logs MCP server"
+    },
+    "sentry": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@sentry/mcp-server@latest"
+      ],
+      "env": {
+        "SENTRY_ACCESS_TOKEN": "${SENTRY_ACCESS_TOKEN}",
+        "SENTRY_HOST": "sentry.io"
+      },
+      "description": "Sentry MCP server"
+    },
+    "voxt-robokitty": {
+      "type": "http",
+      "url": "https://voxt.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer ${ActualChat_RoboKitty_API_Key}"
+      },
+      "description": "Voxt MCP server"
+    },
+    "voxt-robokitty-dev": {
+      "type": "http",
+      "url": "https://dev.voxt.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer ${ActualChat_RoboKitty_Dev_API_Key}"
+      },
+      "description": "Voxt MCP server"
+    },
+    "voxt-local": {
+      "type": "http",
+      "url": "https://local.voxt.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer ${ActualChat_Local_API_Key}"
+      },
+      "description": "Voxt MCP server"
+    },
+    "rider": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote@latest",
+        "http://127.0.0.1:64342/sse"
+      ],
+      "description": "JetBrains Rider MCP server for IDE navigation and codebase context"
+    }
+  }
+}
