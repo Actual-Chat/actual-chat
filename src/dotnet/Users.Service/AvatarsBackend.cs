@@ -38,14 +38,9 @@ public class AvatarsBackend(IServiceProvider services) : DbServiceBase<UsersDbCo
     public virtual async Task<AvatarFull> OnChange(AvatarsBackend_Change command, CancellationToken cancellationToken)
     {
         var (avatarId, expectedVersion, change) = command;
-        if (Invalidation.IsActive) {
-            if (!avatarId.IsEmpty)
-                _ = Get(avatarId, default);
-            return default!;
-        }
-
         change = NormalizeAvatarDiff(change.RequireValid());
         var context = CommandContext.GetCurrent();
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -80,6 +75,11 @@ public class AvatarsBackend(IServiceProvider services) : DbServiceBase<UsersDbCo
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        Invalidation.Defer(() => {
+            if (!avatarId.IsEmpty)
+                _ = Get(avatarId, default);
+        });
 
         // Raise events
         context.Operation.AddEvent(

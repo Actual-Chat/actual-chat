@@ -295,7 +295,7 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
             "the-actual-one:0:2067");
         var notification = new ExplicitNotification(explicitNotificationId);
         var command = new NotificationsBackend_UpsertExplicitNotification(notification);
-        var commandJson = DbOperation.Serializer.Write(command);
+        var commandJson = DbLogEntrySerializer.Default.TextSerializer.Write(command);
         commandJson.Should().NotBeNullOrWhiteSpace();
     }
 

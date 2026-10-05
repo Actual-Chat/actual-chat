@@ -1,4 +1,5 @@
 using ActualLab.Caching;
+using ActualLab.CommandR.Operations;
 
 namespace ActualChat.Sharding;
 
@@ -54,6 +55,9 @@ public static class ShardKeyResolvers
         Register<Session>(static x => ShardKey.New(x.Id));
         Register<ISessionCommand>(static x => ShardKey.New(x.Session.Id));
         Register<UserIdentity>(static x => ShardKey.New(x.Id));
+        Register<OperationCompletion>(static x => x.Command is { } command
+            ? GetUntyped(command.GetType()).Invoke(command)
+            : default);
     }
 
     public static void Register<T>(ShardKeyResolver<T> resolver)

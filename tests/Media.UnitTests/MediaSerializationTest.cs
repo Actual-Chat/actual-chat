@@ -171,7 +171,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         foreach (var format in formats) {
             var peer = new RpcClientPeer(hub, RpcRef.NewClient("payload-test", format.Key).Route);
             using var argumentBuffer = new ArrayPoolBuffer<byte>(mustClear: false);
-            format.ArgumentSerializer.Serialize(arguments, false, argumentBuffer);
+            format.ArgumentListSerializer.Serialize(arguments, false, argumentBuffer);
             var argumentData = argumentBuffer.WrittenMemory;
             var context = new RpcOutboundContext(peer) {
                 Arguments = arguments,

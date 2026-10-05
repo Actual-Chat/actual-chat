@@ -287,7 +287,10 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         // We don't store DbOperation entries for flow updates,
         // coz invalidation must be handled by the local node only.
         // See AddCompletionHandler below.
-        context.Operation.MustStore(false);
+        // It also keeps Flows_Store out of _Operations, and that command is deliberately not
+        // serializable - Flow and Events are live objects. The events it carries are flushed
+        // either way: that happens before this choice is even looked at.
+        context.Operation.StoreMode = OperationStoreMode.None;
         context.Operation.AddCompletionHandler(async scope => {
             if (scope.IsCommitted != true)
                 return;
@@ -325,7 +328,8 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
             foreach (var item in items)
                 context.Operation.AddEvent(item);
 
-        context.Operation.MustStore(false);
+        // See OnStore - Flows_ScheduleResume is just as unserializable, and needs no operation row
+        context.Operation.StoreMode = OperationStoreMode.None;
     }
 
     // Private methods

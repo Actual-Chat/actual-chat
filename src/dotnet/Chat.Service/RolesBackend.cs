@@ -115,16 +115,6 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     public virtual async Task<Role> Change(RolesBackend_Change command, CancellationToken cancellationToken)
     {
         var (chatId, roleId, expectedVersion, change) = command;
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            var invRole = context.Operation.Items.KeylessGet<Role>();
-            if (invRole != null) {
-                _ = Get(chatId, invRole.Id, default);
-                _ = PseudoList(chatId);
-            }
-            return default!;
-        }
 
         change.RequireValid();
         chatId.Require("Command.ChatId");
@@ -251,7 +241,10 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         role = dbRole.ToModel();
-        context.Operation.Items.KeylessSet(role);
+        Invalidation.Defer(() => {
+            _ = Get(chatId, role.Id, default);
+            _ = PseudoList(chatId);
+        });
         return role;
     }
 

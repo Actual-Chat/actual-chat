@@ -251,12 +251,6 @@ public partial class ChatsBackend
             return;
 
         var commandContext = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            var invPageCounts = commandContext.Operation.Items.KeylessGet<ContentIndexPageCounts>();
-            InvalidateContentIndex(kind, chatId, invPageCounts);
-            return;
-        }
-
         var entrySids = entryIds.Select(x => x.Value).Distinct().ToList();
         if (items.Length == 0) {
             // Nothing to insert: this is a no-op unless there are existing rows to remove.
@@ -294,8 +288,7 @@ public partial class ChatsBackend
                 .Where(x => x.ChatId == chatSid && x.At >= periodStart && x.At < periodEnd)
                 .CountAsync(cancellationToken).ConfigureAwait(false);
         }
-        commandContext.Operation.Items
-            .KeylessSet(new ContentIndexPageCounts(pageCounts));
+        Invalidation.Defer(() => InvalidateContentIndex(kind, chatId, new ContentIndexPageCounts(pageCounts)));
     }
 
     private static HashSet<string> CollectAffectedMonths<TItem>(
@@ -313,22 +306,8 @@ public partial class ChatsBackend
         return months;
     }
 
-    private void InvalidateContentIndex(ChatContentKind kind, ChatId chatId, ContentIndexPageCounts? pageCounts)
+    private void InvalidateContentIndex(ChatContentKind kind, ChatId chatId, ContentIndexPageCounts pageCounts)
     {
-        if (pageCounts == null) {
-            // Write phase always puts a ContentIndexPageCounts into Operation.Items,
-            // and it round-trips via _Operations.ItemsJson — so reaching this branch
-            // means the serialization round-trip broke (e.g. type rename without a
-            // backwards-compatibility shim). Bail to the conservative path that at
-            // least keeps the public router fresh; the LogError surfaces the
-            // breakage in DevLog.
-            Log.LogError(
-                "InvalidateContentIndex: missing ContentIndexPageCounts for {ChatId}/{Kind} — falling back to skeleton-only invalidation",
-                chatId, kind);
-            _ = GetContentPeriods(chatId, kind, null, default);
-            return;
-        }
-
         // Skeleton: each affected month sits in exactly one calendar-year
         // bucket — invalidate GetContentPeriodsByYear(year). The public
         // GetContentPeriods(beforeKey=...) cascade-invalidates via its

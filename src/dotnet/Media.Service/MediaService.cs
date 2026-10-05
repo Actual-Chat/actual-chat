@@ -59,9 +59,6 @@ public class MediaService(IServiceProvider services) : IMedia
     // [CommandHandler]
     public virtual async Task<MediaId> OnReserveMedia(Media_ReserveMedia command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default!;
-
         var session = command.Session;
         var scope = command.Scope;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -89,9 +86,6 @@ public class MediaService(IServiceProvider services) : IMedia
     // [CommandHandler]
     public virtual async Task<MediaRef?> OnGenerate(Media_Generate command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default!;
-
         // Scope is not checked beyond requiring an account, exactly as OnReserveMedia does not check
         // it: generating into a scope is an upload you did not have to take yourself. What the check
         // below guards is money, not access.
@@ -118,9 +112,6 @@ public class MediaService(IServiceProvider services) : IMedia
     // [CommandHandler]
     public virtual async Task OnRemoveMedia(Media_RemoveMedia command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var session = command.Session;
         var mediaId = command.MediaId;
         var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
@@ -141,9 +132,6 @@ public class MediaService(IServiceProvider services) : IMedia
     // [CommandHandler]
     public virtual async Task OnUpdateProgress(Media_UpdateProgress command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var session = command.Session;
         var mediaId = command.MediaId;
         var expectedVersion = command.ExpectedVersion;
@@ -166,9 +154,6 @@ public class MediaService(IServiceProvider services) : IMedia
     public virtual async Task<MediaRef> OnProcessUpload(
         Media_ProcessUpload command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default!;
-
         var session = command.Session;
         var mediaId = command.MediaId;
         var uploadId = command.UploadId;

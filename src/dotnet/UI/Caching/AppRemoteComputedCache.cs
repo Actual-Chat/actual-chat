@@ -4,7 +4,7 @@ using ActualLab.Fusion.Client.Caching;
 using ActualLab.Fusion.Interception;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Caching;
-using ActualLab.Rpc.Serialization;
+using ActualLab.Interception.Serialization;
 
 namespace ActualChat.UI.Caching;
 
@@ -27,8 +27,8 @@ public abstract class AppRemoteComputedCache : SafeAsyncDisposableBase, IRemoteC
     protected Options Settings { get; }
     protected HashSet<Symbol> ForceFlushFor { get; }
     protected RpcHub Hub { get; }
-    protected RpcArgumentSerializer ArgumentSerializer
-        => field ??= Hub.SerializationFormats.DefaultFormat.ArgumentSerializer;
+    protected ArgumentListSerializer ArgumentSerializer
+        => field ??= Hub.SerializationFormats.DefaultFormat.ArgumentListSerializer;
     protected RpcMethodResolver AnyMethodResolver
         => field ??= Hub.ServiceRegistry.AnyMethodResolver;
     protected ILogger Log => field ??= Services.LogFor(GetType());

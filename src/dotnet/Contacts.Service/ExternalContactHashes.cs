@@ -20,9 +20,6 @@ public class ExternalContactHashes(IAccounts accounts, IExternalContactHashesBac
         ExternalContactHashes_Change command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var deviceId = command.DeviceId;
         var expectedVersion = command.ExpectedVersion;

@@ -72,12 +72,6 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
     public virtual async Task<MediaFull?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken)
     {
         var (mediaId, expectedVersion, change) = command;
-        if (Invalidation.IsActive) {
-            _ = Get(mediaId, default);
-            _ = GetFull(mediaId, default);
-            return default!;
-        }
-
         change.RequireValid();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -116,6 +110,10 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+        Invalidation.Defer(() => {
+            _ = Get(mediaId, default);
+            _ = GetFull(mediaId, default);
+        });
         return media;
     }
 
@@ -124,9 +122,6 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
     {
         var (newChatId, correlationId, mediaIds) = command;
         if (mediaIds.Length == 0)
-            return;
-
-        if (Invalidation.IsActive)
             return;
 
         Log.LogInformation("-> OnCopyChat({CorrelationId}): MediaIds.Length={Count}",
@@ -209,9 +204,6 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
     // [CommandHandler]
     public virtual async Task<MediaId?> OnGrabImage(MediaBackend_GrabImage command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default!; // ImageGrabber runs MediaBackend_Change, which invalidates on its own
-
         try {
             return await ImageGrabber.GetOrGrab(command.Url, cancellationToken).ConfigureAwait(false);
         }

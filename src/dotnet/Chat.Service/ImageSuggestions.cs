@@ -95,9 +95,6 @@ public class ImageSuggestions(IServiceProvider services) : IImageSuggestions
         ImageSuggestions_GenerateForChat command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default!;
-
         var (session, chatId, slot, imageDescription) = command;
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanEditProperties())
@@ -130,9 +127,6 @@ public class ImageSuggestions(IServiceProvider services) : IImageSuggestions
         ImageSuggestions_AcceptForChat command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (session, chatId, slot) = command;
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanEditProperties())
@@ -161,9 +155,6 @@ public class ImageSuggestions(IServiceProvider services) : IImageSuggestions
         ImageSuggestions_DismissForChat command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (session, chatId, slot) = command;
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanEditProperties())
@@ -178,9 +169,6 @@ public class ImageSuggestions(IServiceProvider services) : IImageSuggestions
         ImageSuggestions_GenerateForPlace command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default!;
-
         var (session, placeId, slot, imageDescription) = command;
         var key = GetKey(placeId, slot);
         var rules = await Places.GetRules(session, placeId, cancellationToken).ConfigureAwait(false);
@@ -232,9 +220,6 @@ public class ImageSuggestions(IServiceProvider services) : IImageSuggestions
         ImageSuggestions_AcceptForPlace command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (session, placeId, slot) = command;
         var key = GetKey(placeId, slot);
         var rules = await Places.GetRules(session, placeId, cancellationToken).ConfigureAwait(false);
@@ -264,9 +249,6 @@ public class ImageSuggestions(IServiceProvider services) : IImageSuggestions
         ImageSuggestions_DismissForPlace command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (session, placeId, slot) = command;
         var key = GetKey(placeId, slot);
         var rules = await Places.GetRules(session, placeId, cancellationToken).ConfigureAwait(false);

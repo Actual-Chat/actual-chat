@@ -8,6 +8,7 @@ public abstract class ShardedDbWorkerBase<TDbContext> : DbWorkerBase<TDbContext>
 {
     protected ShardOwner ShardOwner { get; }
     protected ShardScheme ShardScheme => ShardOwner.ShardScheme;
+    protected MeshWatcher MeshWatcher => ShardOwner.Host.MeshWatcher;
 
     protected ShardedDbWorkerBase(IServiceProvider services, ShardScheme? shardScheme = null)
         : base(services)

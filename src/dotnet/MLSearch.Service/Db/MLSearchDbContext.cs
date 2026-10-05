@@ -21,6 +21,8 @@ public class MLSearchDbContext(DbContextOptions<MLSearchDbContext> options) : Db
     {
         model.ApplyConfigurationsFromAssembly(typeof(MLSearchDbContext).Assembly).UseSnakeCaseNaming();
 
+        model.IgnoreUnusedOperationsFrameworkColumns(DbLogEntrySerializer.Default);
+
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");
         operation.Property(e => e.HostId).UseCollation("C");

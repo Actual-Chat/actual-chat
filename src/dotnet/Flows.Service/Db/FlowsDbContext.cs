@@ -26,6 +26,8 @@ public class FlowsDbContext(DbContextOptions<FlowsDbContext> options) : DbContex
         var contact = model.Entity<DbFlow>();
         contact.Property(e => e.Id).UseCollation("C");
 
+        model.IgnoreUnusedOperationsFrameworkColumns(DbLogEntrySerializer.Default);
+
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");
         operation.Property(e => e.HostId).UseCollation("C");

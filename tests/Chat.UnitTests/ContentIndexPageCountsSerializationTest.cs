@@ -1,11 +1,8 @@
 namespace ActualChat.Chat.UnitTests;
 
-// ContentIndexPageCounts is set into CommandContext.Operation.Items during the
-// write phase of UpdateContentIndex and read back during the invalidation phase.
-// On nodes other than the one that committed the operation, that bag arrives
-// via _Operations.ItemsJson — i.e. it goes through NewtonsoftJsonSerializer on
-// both ends. These tests pin the round-trip so a type rename / missing
-// attribute breaks the build instead of silently dropping invalidations.
+// ContentIndexPageCounts no longer round-trips through Operation.Items, but it stays a
+// round-trippable wire type - this pins that, so a rename or a dropped attribute breaks here
+// rather than wherever it's next put on the wire.
 public class ContentIndexPageCountsSerializationTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact]
@@ -13,25 +10,6 @@ public class ContentIndexPageCountsSerializationTest(ITestOutputHelper @out) : T
     {
         var value = NewSample();
         value.AssertPassesThroughSerializers(AssertEqual, Out);
-    }
-
-    [Fact]
-    public void RoundTripsViaOperationItems_Newtonsoft()
-    {
-        // Mirrors DbOperation.UpdateFrom + ToModel: snapshot the bag, serialize
-        // via NewtonsoftJsonSerializer.Default (== DbOperation.Serializer),
-        // deserialize back, then KeylessGet.
-        var bag = new MutablePropertyBag();
-        bag.KeylessSet(NewSample());
-
-        var json = NewtonsoftJsonSerializer.Default.Write(bag.Snapshot);
-        Out.WriteLine($"ItemsJson: {json}");
-
-        var roundTripped = NewtonsoftJsonSerializer.Default.Read<PropertyBag>(json).ToMutable();
-        var got = roundTripped.KeylessGet<ContentIndexPageCounts>();
-
-        got.Should().NotBeNull();
-        AssertEqual(got!, NewSample());
     }
 
     private static ContentIndexPageCounts NewSample()

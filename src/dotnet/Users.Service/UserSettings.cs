@@ -59,9 +59,6 @@ public class UserSettings(IServiceProvider services) : IUserSettings
     // [CommandHandler]
     public virtual async Task OnSet(UserSettings_Set command, CancellationToken cancellationToken = default)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var session = command.Session;
         var key = command.Key;
         var value = command.Value;

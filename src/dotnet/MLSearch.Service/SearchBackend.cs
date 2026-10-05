@@ -77,9 +77,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     // [CommandHandler]
     public virtual async Task OnRefresh(SearchBackend_Refresh command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         if (!Settings.IsEnabled) {
             Log.LogWarning($"{nameof(OnRefresh)}: search is disabled");
             return;
@@ -103,9 +100,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     // [EventHandler]
     public virtual Task OnAccountChangedEvent(AccountChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
-
         if (!Settings.IsEnabled)
             return Task.CompletedTask;
 
@@ -129,9 +123,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     // [EventHandler]
     public virtual Task OnPlaceMembershipChangedEvent(PlaceMembershipChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
-
         if (!Settings.IsEnabled)
             return Task.CompletedTask;
 
@@ -158,9 +149,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     // [EventHandler]
     public virtual async Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         if (!Settings.IsEnabled)
             return;
 
@@ -189,9 +177,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     // [EventHandler]
     public virtual async Task OnPlaceChangedEvent(PlaceChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         if (!Settings.IsEnabled)
             return;
 
@@ -212,9 +197,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     // [EventHandler]
     public virtual Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
-
         var entry = eventCommand.Entry;
         return UpdateIndexedEntries();
 
@@ -227,9 +209,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     // [EventHandler]
     public virtual Task OnContactChangedEvent(ContactChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
-
         var (contact, _, changeKind) = eventCommand;
         return UpdateIndexedUserContacts();
 

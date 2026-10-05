@@ -28,16 +28,6 @@ public class SessionsBackend(IServiceProvider services)
         var session = command.Session;
         session.RequireValid();
 
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            _ = Get(session, default);
-            if (context.Operation.Items.Get<UserId?>("OldUserId") is { } invOldUserId)
-                _ = AccountsBackend.ListSessions(invOldUserId, default);
-            if (context.Operation.Items.Get<UserId?>("NewUserId") is { } invNewUserId)
-                _ = AccountsBackend.ListSessions(invNewUserId, default);
-            return null!;
-        }
-
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
 
@@ -75,7 +65,6 @@ public class SessionsBackend(IServiceProvider services)
                     .Where(x => x.UserId == oldUserId.Value && x.SessionId == session.Id)
                     .ExecuteDeleteAsync(cancellationToken)
                     .ConfigureAwait(false);
-                context.Operation.Items.Set("OldUserId", oldUserId);
             }
             // Add new mapping
             if (newUserId is not null) {
@@ -84,9 +73,19 @@ public class SessionsBackend(IServiceProvider services)
                     SessionId = session.Id,
                 });
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-                context.Operation.Items.Set("NewUserId", newUserId);
             }
         }
+
+        Invalidation.Defer(() => {
+            _ = Get(session, default);
+            if (oldUserId == newUserId)
+                return;
+
+            if (oldUserId is { } movedFrom)
+                _ = AccountsBackend.ListSessions(movedFrom, default);
+            if (newUserId is { } movedTo)
+                _ = AccountsBackend.ListSessions(movedTo, default);
+        });
 
         sessionInfo = dbSession.ToModel();
         return sessionInfo;

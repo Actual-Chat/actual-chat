@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using ActualChat.Chat.ML;
 using Microsoft.Extensions.Hosting;
 
@@ -26,7 +25,7 @@ public partial class CoachAnalysisBackend
     public virtual async Task OnChatEntryStreamingStartedEvent(
         ChatEntryStreamingStartedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive || !Settings.Coach.IsEnabled)
+        if (!Settings.Coach.IsEnabled)
             return;
 
         var (entry, author) = eventCommand;

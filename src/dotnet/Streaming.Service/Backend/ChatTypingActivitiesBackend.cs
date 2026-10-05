@@ -6,7 +6,7 @@ namespace ActualChat.Streaming;
 /// Tracks who is typing in a chat. The state is node-local RAM only - it lives in the
 /// <see cref="ListRaw"/> computed - so a shard handover simply starts the new owner off empty.
 /// </summary>
-public partial class ChatTypingActivitiesBackend : ShardComputeService, IChatTypingActivitiesBackend
+public class ChatTypingActivitiesBackend : ShardedComputeServiceBase, IChatTypingActivitiesBackend
 {
     // Keeps ExpireStale from waking a tick early and finding nothing to drop.
     private static readonly TimeSpan ExpirationGrace = TimeSpan.FromMilliseconds(100);
@@ -22,8 +22,6 @@ public partial class ChatTypingActivitiesBackend : ShardComputeService, IChatTyp
         ChatId chatId,
         CancellationToken cancellationToken)
     {
-        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
-
         // ExpireStale drops every entry as it lapses, so the freshness filter here covers just the
         // ExpirationGrace-wide gap between an expiration and the pass that removes it.
         var now = Clocks.SystemClock.Now;

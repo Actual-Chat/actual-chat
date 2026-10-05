@@ -18,6 +18,6 @@ public class ApiCommandVersionSeamTest(ChatCollection.AppHostFixture fixture, IT
 
         msgpackFormats.Should().NotBeEmpty();
         foreach (var format in msgpackFormats)
-            format.ArgumentSerializer.Should().BeOfType<ApiCommandRpcArgumentSerializer>();
+            format.ArgumentListSerializer.Should().BeOfType<ApiCommandRpcArgumentSerializer>();
     }
 }

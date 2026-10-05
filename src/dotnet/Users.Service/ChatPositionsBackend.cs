@@ -35,12 +35,6 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
         var (userId, chatId, kind, position, force) = command;
         var context = CommandContext.GetCurrent();
 
-        if (Invalidation.IsActive) {
-            if (context.Operation.Items.KeylessGet<bool>())
-                _ = Get(userId, chatId, kind, default);
-            return;
-        }
-
         // Guard against the "unbounded" sentinel (long.MaxValue) being persisted as a read/heard
         // position. OnSet is forward-only for both, so a stored MaxValue would mark the chat
         // permanently fully-read/heard and suppress every notification. Clamp to the last entry.
@@ -75,9 +69,10 @@ public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<Use
             hasChanges = true;
         }
 
-        if (hasChanges)
+        if (hasChanges) {
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(hasChanges);
+            Invalidation.Defer(() => _ = Get(userId, chatId, kind, default));
+        }
 
         if (hasChanges && kind is ChatPositionKind.Read or ChatPositionKind.Heard) {
             if (kind == ChatPositionKind.Read)

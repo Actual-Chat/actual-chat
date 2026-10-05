@@ -18,9 +18,6 @@ public class SessionTemporals(IServiceProvider services) : ISessionTemporals
     // [CommandHandler]
     public virtual async Task OnSet(SessionTemporals_Set command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var key = command.Key;
         var value = command.Value;

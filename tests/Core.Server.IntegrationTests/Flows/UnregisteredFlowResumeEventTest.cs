@@ -35,7 +35,7 @@ public sealed class UnregisteredFlowResumeEventTest(ITestOutputHelper @out)
         // removal deserializes to.
         var arguments = $"removed-{Guid.NewGuid():N}";
         var template = flowHub.NewResumeEvent(flowHub.NewId<QuantaFlow>(arguments));
-        var valueJson = DbEvent.Serializer.Write(template, typeof(object))
+        var valueJson = DbLogEntrySerializer.Default.TextSerializer.Write(template, typeof(object))
             .Replace($"{nameof(QuantaFlow)}:{arguments}", $"RemovedFlow:{arguments}", StringComparison.Ordinal);
         valueJson.Should().Contain($"RemovedFlow:{arguments}");
 

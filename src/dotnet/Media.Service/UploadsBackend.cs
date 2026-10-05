@@ -54,10 +54,6 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     public virtual async Task OnCreate(UploadsBackend_Create command, CancellationToken cancellationToken)
     {
         var uploadId = command.UploadId;
-        if (Invalidation.IsActive) {
-            _ = Get(uploadId, default);
-            return;
-        }
         var upload = new Upload(uploadId, command.UserId, command.Length, command.Tag, command.Metadata);
         // Clients can't be trusted to type a HEIC: Chrome on Windows and Android's picker send octet-stream
         var contentType = MediaTypeExt.NormalizeContentType(upload.ContentType, upload.FileName)
@@ -75,31 +71,25 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             await UploadsStorage.CreateMetadataFile(uploadId, json, cancellationToken).ConfigureAwait(false);
             await UploadsStorage.CreateEmptyDataFile(uploadId, contentType, cancellationToken).ConfigureAwait(false);
         }
+        Invalidation.Defer(() => _ = Get(uploadId, default));
         await TriggerDistributedInvalidation(cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task OnRemove(UploadsBackend_Remove command, CancellationToken cancellationToken)
     {
         var uploadId = command.Id;
-        if (Invalidation.IsActive) {
-            _ = Get(uploadId, default);
-            return;
-        }
-
         if (IsGoogleStorage) {
             var upload = await Get(uploadId, cancellationToken).ConfigureAwait(false);
             if (upload is not null)
                 await GoogleResumableUploads.CancelUpload(upload.SessionUri.Require(), cancellationToken).ConfigureAwait(false);
         }
         await UploadsStorage.DeleteFiles(uploadId, cancellationToken).ConfigureAwait(false);
+        Invalidation.Defer(() => _ = Get(uploadId, default));
         await TriggerDistributedInvalidation(cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<long> OnAppend(UploadsBackend_Append command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default!; // Invalidation is not expected to happen during the append operation, but just in case.
-
         var (uploadId, uploadOffset, data) = command;
         if (IsGoogleStorage) {
             var upload1 = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
@@ -139,9 +129,6 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
 
     public virtual async Task<MediaRef> OnConvertToMediaRef(UploadsBackend_ConvertToMediaRef command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default!;
-
         var uploadId = command.UploadId;
         var upload = await Get(uploadId, cancellationToken).ConfigureAwait(false);
         if (upload is null)
@@ -183,9 +170,6 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
 
     public virtual async Task<MediaRef> OnProcessAndSaveContent(UploadsBackend_ProcessAndSaveContent command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default!;
-
         var (uploadId, mediaId) = command;
         var totalSw = Stopwatch.StartNew();
         var stepSw = Stopwatch.StartNew();

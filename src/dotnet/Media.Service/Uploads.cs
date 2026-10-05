@@ -156,9 +156,6 @@ public class Uploads(IServiceProvider services) : IUploads
     // [CommandHandler]
     public virtual async Task OnStartProcessUpload(Uploads_StartProcessUpload command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var session = command.Session;
         var uploadId = command.UploadId;
         var mediaId = command.MediaId;

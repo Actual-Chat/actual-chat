@@ -72,9 +72,6 @@ public class NotificationsService(IServiceProvider services) : INotifications
     public virtual async Task OnDismiss(
         Notifications_Dismiss command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var notificationId = command.NotificationId;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -88,9 +85,6 @@ public class NotificationsService(IServiceProvider services) : INotifications
     public virtual async Task OnDismissAll(
         Notifications_DismissAll command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         await Commander.Run(new NotificationsBackend_DismissAll(account.Id), cancellationToken).ConfigureAwait(false);
     }
@@ -99,9 +93,6 @@ public class NotificationsService(IServiceProvider services) : INotifications
     public virtual async Task OnRegisterDevice(
         Notifications_RegisterDevice command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var deviceId = command.DeviceId;
         var deviceType = command.DeviceType;
@@ -122,9 +113,6 @@ public class NotificationsService(IServiceProvider services) : INotifications
     public virtual async Task OnDeregisterDevice(
         Notifications_DeregisterDevice command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var deviceId = command.DeviceId;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -141,9 +129,6 @@ public class NotificationsService(IServiceProvider services) : INotifications
     public virtual async Task OnNotifyMembers(
         Notifications_NotifyMembers command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var chatId = command.ChatId;
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
@@ -187,9 +172,6 @@ public class NotificationsService(IServiceProvider services) : INotifications
     // [CommandHandler]
     public virtual async Task OnNotifyMentionedMembers(Notifications_NotifyMentionedMembers command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var ChatEntryId = command.ChatEntryId;
         var chatId = ChatEntryId.ChatId;

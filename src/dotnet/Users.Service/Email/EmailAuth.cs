@@ -68,9 +68,6 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     // [CommandHandler]
     public virtual async Task<Moment> OnSendTotp(EmailAuth_SendTotp command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var purpose = command.Purpose;
         var email = command.Email.Value;
@@ -131,9 +128,6 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     // [CommandHandler]
     public virtual async Task<bool> OnValidateTotp(EmailAuth_ValidateTotp command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return false; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var email = command.Email;
         var totp = command.Totp;
@@ -153,9 +147,6 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     // [CommandHandler]
     public virtual async Task<bool> OnVerifyEmail(EmailAuth_VerifyEmail command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return false; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var email = command.Email;
         var totp = command.Token;

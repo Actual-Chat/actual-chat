@@ -68,9 +68,6 @@ public class Usage(IServiceProvider services) : IUsage
     public virtual async Task OnRecordReviewPrompt(
         Usage_RecordReviewPrompt command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeActive);
         var kvas = ServerKvasBackend.ForUser(account.Id).AppReviewPromptState();
@@ -89,9 +86,6 @@ public class Usage(IServiceProvider services) : IUsage
     public virtual async Task OnResetReviewPrompt(
         Usage_ResetReviewPrompt command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeAdmin);
         await ServerKvasBackend.ForUser(account.Id).AppReviewPromptState()
@@ -102,9 +96,6 @@ public class Usage(IServiceProvider services) : IUsage
     // [CommandHandler]
     public virtual async Task OnRebuildOwnDays(Usage_RebuildOwnDays command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeAdmin);
         await Commander.Call(new UsageBackend_RebuildDays(account.Id), true, cancellationToken).ConfigureAwait(false);
@@ -114,9 +105,6 @@ public class Usage(IServiceProvider services) : IUsage
     public virtual async Task OnRecordOnboardingStep(
         Usage_RecordOnboardingStep command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         if (!OnboardingSteps.IsValid(command.Step))
             throw StandardError.Constraint($"Unknown onboarding step: '{command.Step}'.");
 
@@ -131,9 +119,6 @@ public class Usage(IServiceProvider services) : IUsage
     // [CommandHandler]
     public virtual async Task OnRecordFunnelEvent(Usage_RecordFunnelEvent command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var funnelEvent = command.Event;
         if (!funnelEvent.IsClientReportable())
             throw StandardError.Constraint($"Funnel event '{funnelEvent}' can't be reported by a client.");

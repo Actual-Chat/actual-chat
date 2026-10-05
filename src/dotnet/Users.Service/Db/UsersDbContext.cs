@@ -107,6 +107,8 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
         coachDay.Property(e => e.UserId).UseCollation("C");
         coachDay.Property(e => e.Language).UseCollation("C");
 
+        model.IgnoreUnusedOperationsFrameworkColumns(DbLogEntrySerializer.Default);
+
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");
         operation.Property(e => e.HostId).UseCollation("C");

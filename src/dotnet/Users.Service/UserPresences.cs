@@ -62,9 +62,6 @@ public class UserPresences(IServiceProvider services) : IUserPresences
     // [CommandHandler]
     public virtual async Task OnCheckIn(UserPresences_CheckIn command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var isActive = command.IsActive;
         if (!session.IsValid())

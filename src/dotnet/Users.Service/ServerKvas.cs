@@ -48,9 +48,6 @@ public class ServerKvas(IServiceProvider services) : IServerKvas
     // [CommandHandler]
     public virtual async Task OnSet(ServerKvas_Set command, CancellationToken cancellationToken = default)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var key = command.Key;
         var value = command.Value;
@@ -78,9 +75,6 @@ public class ServerKvas(IServiceProvider services) : IServerKvas
     // [CommandHandler]
     public virtual async Task OnSetMany(ServerKvas_SetMany command, CancellationToken cancellationToken = default)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var items = command.Items;
         var maxItemCount = ServerKvas_SetMany.MaxItemCount;
@@ -118,9 +112,6 @@ public class ServerKvas(IServiceProvider services) : IServerKvas
         // Nothing dispatches this command anymore: its last user was invite activation, which now
         // requires a signed-in account. Kept for now in case guest-to-user hand-off comes back,
         // and because released clients may still call it.
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
 
         // This piece is tricky: since this command is started while auth info isn't committed yet,

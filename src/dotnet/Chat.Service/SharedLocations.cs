@@ -35,9 +35,6 @@ public class SharedLocations(IServiceProvider services) : ISharedLocations
         SharedLocations_Change command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var chatId = command.ChatId;
         var id = command.Id;

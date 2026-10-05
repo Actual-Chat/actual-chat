@@ -35,11 +35,6 @@ public class UserVoicesBackend(IServiceProvider services)
     public virtual async Task<UserVoice?> OnChange(UserVoicesBackend_Change command, CancellationToken cancellationToken)
     {
         var (userId, expectedVersion, change) = command;
-        if (Invalidation.IsActive) {
-            _ = Get(userId, default);
-            return default!;
-        }
-
         change.RequireValid();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -75,6 +70,7 @@ public class UserVoicesBackend(IServiceProvider services)
             throw new NotSupportedException("Invalid change.");
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Invalidation.Defer(() => _ = Get(userId, default));
         return userVoice;
     }
 }

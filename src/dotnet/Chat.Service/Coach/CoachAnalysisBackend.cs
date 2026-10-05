@@ -86,12 +86,6 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
     {
         var id = command.Id;
         var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            var written = context.Operation.Items.KeylessGet<CoachEntryAnalysis?>();
-            if (written is not null)
-                InvalidateEntry(written.Id, written.AuthorId);
-            return;
-        }
         if (!Settings.Coach.IsEnabled)
             return;
 
@@ -150,7 +144,7 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
         else
             dbEntry.UpdateFrom(analysis);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(analysis);
+        Invalidation.Defer(() => InvalidateEntry(analysis.Id, analysis.AuthorId));
         context.Operation.AddEvent(new CoachEntryAnalyzedEvent(analysis, false));
     }
 
@@ -160,17 +154,6 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
     {
         var (chatId, entryLid) = command;
         var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            var touch = context.Operation.Items.KeylessGet<CoachRunTouch?>();
-            if (touch is null)
-                return;
-
-            foreach (var authorId in touch.AuthorIds)
-                _ = GetConversation(touch.Id, authorId, default);
-            foreach (var taggedEntry in touch.TaggedEntries)
-                InvalidateEntry(taggedEntry.Id, taggedEntry.AuthorId);
-            return;
-        }
         if (!Settings.Coach.IsEnabled)
             return;
 
@@ -260,8 +243,12 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             context.Operation.AddEvent(new CoachConversationAnalyzedEvent(model));
         }
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(
-            new CoachRunTouch(conversationId, touchedAuthors.ToApiArray(), touchedEntries.ToApiArray()));
+        Invalidation.Defer(() => {
+            foreach (var invalidatedAuthorId in touchedAuthors)
+                _ = GetConversation(conversationId, invalidatedAuthorId, default);
+            foreach (var invalidatedEntry in touchedEntries)
+                InvalidateEntry(invalidatedEntry.Id, invalidatedEntry.AuthorId);
+        });
     }
 
     // [CommandHandler]
@@ -269,22 +256,10 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
         CoachAnalysisBackend_DeleteUserData command, CancellationToken cancellationToken)
     {
         var userId = command.UserId;
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            var touch = context.Operation.Items.KeylessGet<CoachUserDataTouch?>();
-            if (touch is null)
-                return;
-
-            foreach (var entry in touch.Entries)
-                InvalidateEntry(entry.Id, entry.AuthorId);
-            foreach (var run in touch.Runs)
-                foreach (var authorId in run.AuthorIds)
-                    _ = GetConversation(run.Id, authorId, default);
-            return;
-        }
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
+
         var authors = await dbContext.Authors
             .Where(a => a.UserId == userId.Value)
             .Select(a => new { a.ChatId, a.Id })
@@ -320,14 +295,20 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             runs.AddRange(startLids.Select(
                 lid => new CoachRunTouch(ConversationId.New(chatId, lid), ApiArray.New(authorId), default)));
         }
-        context.Operation.Items.KeylessSet(new CoachUserDataTouch(entries.ToApiArray(), runs.ToApiArray()));
+        Invalidation.Defer(() => {
+            foreach (var entry in entries)
+                InvalidateEntry(entry.Id, entry.AuthorId);
+            foreach (var run in runs)
+                foreach (var runAuthorId in run.AuthorIds)
+                    _ = GetConversation(run.Id, runAuthorId, default);
+        });
     }
 
     // [EventHandler]
     public virtual async Task OnChatEntryChangedEvent(
         ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive || !Settings.Coach.IsEnabled)
+        if (!Settings.Coach.IsEnabled)
             return;
 
         var (entry, author, changeKind, oldEntry) = eventCommand;
@@ -416,7 +397,7 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
         var removed = dbEntry.ToModel();
         dbContext.Remove(dbEntry);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(removed);
+        Invalidation.Defer(() => InvalidateEntry(removed.Id, removed.AuthorId));
         context.Operation.AddEvent(new CoachEntryAnalyzedEvent(removed, true));
     }
 

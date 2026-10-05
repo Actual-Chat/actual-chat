@@ -42,13 +42,6 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
         // certainly preferable for that).
 
         var chatId = command.ChatId.Require();
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            var invChat = context.Operation.Items.KeylessGet<Chat>()!;
-            _ = ChatsBackend.Get(invChat.Id, default);
-            return;
-        }
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -111,7 +104,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         chat = dbChat.ToModel();
-        context.Operation.Items.KeylessSet(chat);
+        Invalidation.Defer(() => _ = ChatsBackend.Get(chat.Id, default));
     }
 
     private async Task<UserId[]> ListAllAccountIds(CancellationToken cancellationToken)

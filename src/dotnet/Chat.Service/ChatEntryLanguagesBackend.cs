@@ -45,9 +45,6 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         var id = command.Id;
-        if (Invalidation.IsActive)
-            return default!; // It just spawns other commands, so nothing to do here
-
         var (entry, entryLanguage) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
         if (!entry.NeedsLanguageDetection(entryLanguage))
             return entryLanguage;
@@ -71,13 +68,6 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
         var (id, expectedVersion, change) = command;
         id.Require();
         change.RequireValid();
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            if (context.Operation.Items.KeylessGet<bool>())
-                _ = Get(id, default);
-            return default!; // only bulk changes trigger invalidation
-        }
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
@@ -123,20 +113,13 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(true);
+        Invalidation.Defer(() => _ = Get(id, default));
         return dbChatEntryLanguage.ToModel();
     }
 
     // [EventHandler]
     public virtual Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            if (context.Operation.Items.KeylessGet<bool>())
-                _ = Get(eventCommand.Entry.Id, default);
-            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
-        }
-
         if (!Settings.IsTranslationEnabled)
             return Task.CompletedTask;
 
@@ -161,7 +144,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
             var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
             await using var _1 = dbContext.ConfigureAwait(false);
 
-            context.Operation.Items.KeylessSet(true);
+            Invalidation.Defer(() => _ = Get(eventCommand.Entry.Id, default));
         }
     }
 

@@ -6,7 +6,7 @@ namespace ActualChat.Streaming;
 /// Emoji reactions sent in a chat's call. Like <see cref="ChatTypingActivitiesBackend"/>, the state is
 /// node-local RAM only - it lives in the <see cref="ListRaw"/> computed - so a shard handover drops it.
 /// </summary>
-public partial class ChatCallReactionsBackend : ShardComputeService, IChatCallReactionsBackend
+public class ChatCallReactionsBackend : ShardedComputeServiceBase, IChatCallReactionsBackend
 {
     // Keeps ExpireStale from waking a tick early and finding nothing to drop.
     private static readonly TimeSpan ExpirationGrace = TimeSpan.FromMilliseconds(100);
@@ -22,8 +22,6 @@ public partial class ChatCallReactionsBackend : ShardComputeService, IChatCallRe
     // [ComputeMethod]
     public virtual async Task<ApiArray<CallReaction>> List(ChatId chatId, CancellationToken cancellationToken)
     {
-        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
-
         // ExpireStale drops every reaction as it lapses, so the freshness filter here covers just the
         // ExpirationGrace-wide gap between an expiration and the pass that removes it.
         var minSentAt = Clocks.SystemClock.Now - ReactionDuration;

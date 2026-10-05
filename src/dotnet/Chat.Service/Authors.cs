@@ -176,9 +176,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task<AuthorFull> OnJoin(Authors_Join command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var chatId = command.ChatId;
         var avatarId = command.AvatarId;
@@ -241,9 +238,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnLeave(Authors_Leave command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var chatId = command.ChatId;
         chatId.EnsureNonThread();
@@ -273,9 +267,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnInvite(Authors_Invite command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var chatId = command.ChatId;
         var userIds = command.UserIds;
@@ -309,9 +300,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnExclude(Authors_Exclude command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var authorId = command.AuthorId;
         var chatId = authorId.ChatId;
@@ -349,9 +337,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnRestore(Authors_Restore command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var authorId = command.AuthorId;
         var chatId = authorId.ChatId;
@@ -372,9 +357,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnSetAvatar(Authors_SetAvatar command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var chatId = command.ChatId;
         var avatarId = command.AvatarId;
@@ -403,9 +385,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     // [CommandHandler]
     public virtual async Task OnChangeRole(Authors_ChangeRole command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var authorId = command.AuthorId;
         var systemRole = command.SystemRole;
@@ -441,9 +420,6 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     [Obsolete("2026.08: Use Authors_ChangeRole. Old clients only.")]
     public virtual async Task OnPromoteToOwner(Authors_PromoteToOwner command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var authorId = command.AuthorId;
         var changeRoleCommand = new Authors_ChangeRole {

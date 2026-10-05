@@ -158,9 +158,6 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     // [CommandHandler]
     public virtual async Task<Chat> OnStart(ChatThreads_Start command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var parentChatId = command.ParentChatId;
         var title = command.Title;
@@ -241,9 +238,6 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         ChatThreads_ToggleThreadFollowStatus command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var threadChatId = command.ThreadChatId;
         if (!threadChatId.IsThread())

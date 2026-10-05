@@ -18,7 +18,6 @@ namespace ActualChat.Chat;
 /// </summary>
 public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IChatsBackend
 {
-    private const string CreatedChatEntryId = "CreatedChatEntryId";
     // A peer chat used only for calling would otherwise scan its whole history on every
     // chat-list render for old clients.
     private const int MaxLegacyNewsTiles = 4;
@@ -933,21 +932,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var (chatId, expectedVersion, change, ownerId) = command;
         var context = CommandContext.GetCurrent();
 
-        if (Invalidation.IsActive) {
-            var invChat = context.Operation.Items.KeylessGet<Chat>();
-            if (invChat != null) {
-                _ = Get(invChat.Id, default);
-                if (invChat is { TemplateId: not null, TemplatedForUserId: not null })
-                    _ = GetTemplatedChatFor(invChat.TemplateId, invChat.TemplatedForUserId, default);
-                if (invChat.Id is PlaceChatId invPlaceChatId) {
-                    _ = GetPublicChatIdsFor(invPlaceChatId.PlaceId, default);
-                    if (!invPlaceChatId.IsRoot && change.Kind != ChangeKind.Update)
-                        _ = ListPlaceChatIds(invPlaceChatId.PlaceId, default);
-                }
-            }
-            return null!;
-        }
-
         change.RequireValid();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -1171,7 +1155,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         chat = dbChat.Require().ToModel();
-        context.Operation.Items.KeylessSet(chat);
+        Invalidation.Defer(() => {
+            _ = Get(chat.Id, default);
+            if (chat is { TemplateId: not null, TemplatedForUserId: not null })
+                _ = GetTemplatedChatFor(chat.TemplateId, chat.TemplatedForUserId, default);
+            if (chat.Id is PlaceChatId placeChatId) {
+                _ = GetPublicChatIdsFor(placeChatId.PlaceId, default);
+                if (!placeChatId.IsRoot && change.Kind != ChangeKind.Update)
+                    _ = ListPlaceChatIds(placeChatId.PlaceId, default);
+            }
+        });
 
         // Raise events
         context.Operation.AddEvent(new ChatChangedEvent(chat, oldChat, change.Kind));
@@ -1306,56 +1299,14 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var changeKind = change.Kind;
         var expectedVersion = command.ExpectedVersion;
         var context = CommandContext.GetCurrent();
-        const string boundToThreadHasChangedKey = "boundToThreadHasChanged";
-
-        if (Invalidation.IsActive) {
-            var invChatEntry = context.Operation.Items.KeylessGet<ChatEntry>();
-            var invBoundToThreadHasChanged = context.Operation.Items.Get<bool>(boundToThreadHasChangedKey);
-            var previousEntryId = context.Operation.Items.Get<long>(nameof(ChatEntryRangeTile.PreviousEntryLid));
-            var nextEntryId = context.Operation.Items.Get<long>(nameof(ChatEntryRangeTile.NextEntryLid));
-            if (invChatEntry != null) {
-                InvalidateTiles(chatId, invChatEntry.LocalId, changeKind, invBoundToThreadHasChanged);
-
-                // Range meta is pure lid structure, so only changes that add or drop a lid can touch it.
-                // A content-only Update used to invalidate it anyway, which forced every tail-following
-                // client into a ~RTT range-meta refetch per utterance finalization and per message edit.
-                if (changeKind is ChangeKind.Create or ChangeKind.Remove || invBoundToThreadHasChanged) {
-                    var entryTile = ConversationIdTiles.GetTile(invChatEntry.LocalId);
-                    if (previousEntryId != 0 && !entryTile.Range.Contains(previousEntryId)) {
-                        var previousCidTile = ConversationIdTiles.GetTile(previousEntryId);
-                        _ = GetEntryRangeTile(chatId, previousCidTile.Range.Start, default);
-                    }
-                    if (nextEntryId != 0 && !entryTile.Range.Contains(nextEntryId)) {
-                        var nextCidTile = ConversationIdTiles.GetTile(nextEntryId);
-                        _ = GetEntryRangeTile(chatId, nextCidTile.Range.Start, default);
-                    }
-                }
-            }
-
-            // Invalidate min-max Id range at last
-            switch (changeKind) {
-            case ChangeKind.Create:
-                var createdChatEntryId = context.Operation.Items.Get<ChatEntryId>(CreatedChatEntryId);
-                if (createdChatEntryId is not null && previousEntryId == 0)
-                    _ = GetMinLid(createdChatEntryId.ChatId, default);
-                _ = GetMaxLid(chatId, true, default);
-                _ = GetMaxLid(chatId, false, default);
-                break;
-            case ChangeKind.Update when invBoundToThreadHasChanged:
-                _ = GetMaxLid(chatId, true, default);
-                _ = GetMaxLid(chatId, false, default);
-                break;
-            case ChangeKind.Remove:
-                _ = GetMaxLid(chatId, false, default);
-                break;
-            }
-            return null!;
-        }
 
         change.RequireValid();
         ChatEntry entry;
         ChatEntry? oldEntry;
         bool boundToThreadHasChanged = false;
+        // Written by StorePreviousAndNextEntryIds below, read by the deferred block
+        var previousEntryLid = 0L;
+        var nextEntryLid = 0L;
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using (var __ = dbContext.ConfigureAwait(false)) {
             var dbEntry = changeKind == ChangeKind.Create
@@ -1394,7 +1345,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     HasAttachments = entry.Attachments.Length > 0,
                 };
                 dbContext.Add(dbEntry);
-                context.Operation.Items.Set(CreatedChatEntryId, chatEntryId);
                 await StorePreviousAndNextEntryIds(localId).ConfigureAwait(false);
             }
             else if (change.IsUpdate(out update)) {
@@ -1432,8 +1382,41 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             else
                 throw StandardError.Internal("Invalid ChatEntryDiff state.");
 
-            context.Operation.Items.KeylessSet(entry);
-            context.Operation.Items.Set(boundToThreadHasChangedKey, boundToThreadHasChanged);
+            Invalidation.Defer(() => {
+                InvalidateTiles(chatId, entry.LocalId, changeKind, boundToThreadHasChanged);
+
+                // Range meta is pure lid structure, so only changes that add or drop a lid can touch it.
+                // A content-only Update used to invalidate it anyway, which forced every tail-following
+                // client into a ~RTT range-meta refetch per utterance finalization and per message edit.
+                if (changeKind is ChangeKind.Create or ChangeKind.Remove || boundToThreadHasChanged) {
+                    var entryTile = ConversationIdTiles.GetTile(entry.LocalId);
+                    if (previousEntryLid != 0 && !entryTile.Range.Contains(previousEntryLid)) {
+                        var previousCidTile = ConversationIdTiles.GetTile(previousEntryLid);
+                        _ = GetEntryRangeTile(chatId, previousCidTile.Range.Start, default);
+                    }
+                    if (nextEntryLid != 0 && !entryTile.Range.Contains(nextEntryLid)) {
+                        var nextCidTile = ConversationIdTiles.GetTile(nextEntryLid);
+                        _ = GetEntryRangeTile(chatId, nextCidTile.Range.Start, default);
+                    }
+                }
+
+                // Invalidate min-max Id range at last
+                switch (changeKind) {
+                case ChangeKind.Create:
+                    if (previousEntryLid == 0)
+                        _ = GetMinLid(chatEntryId.ChatId, default);
+                    _ = GetMaxLid(chatId, true, default);
+                    _ = GetMaxLid(chatId, false, default);
+                    break;
+                case ChangeKind.Update when boundToThreadHasChanged:
+                    _ = GetMaxLid(chatId, true, default);
+                    _ = GetMaxLid(chatId, false, default);
+                    break;
+                case ChangeKind.Remove:
+                    _ = GetMaxLid(chatId, false, default);
+                    break;
+                }
+            });
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             entry = dbEntry.ToModel().WithPopulatedValues(entry);
         }
@@ -1570,10 +1553,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .FirstOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            if (previousEntryId != 0)
-                context.Operation.Items.Set(nameof(ChatEntryRangeTile.PreviousEntryLid), previousEntryId);
-            if (nextEntryId != 0)
-                context.Operation.Items.Set(nameof(ChatEntryRangeTile.NextEntryLid), nextEntryId);
+            previousEntryLid = previousEntryId;
+            nextEntryLid = nextEntryId;
         }
     }
 
@@ -1591,12 +1572,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             throw StandardError.Constraint("Attachments cannot belong to different messages.");
 
         var entryId = entryIds[0];
-
-        if (Invalidation.IsActive) {
-            _ = GetEntryAttachments(entryId, default);
-            InvalidateTiles(entryId.ChatId, entryId.LocalId, ChangeKind.Update, false);
-            return default!;
-        }
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -1620,6 +1595,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         // Keep the content index in sync even if this handler is ever called standalone
         // (without a follow-up entry update that would re-fire ResumeContentIndexing).
+        Invalidation.Defer(() => {
+            _ = GetEntryAttachments(entryId, default);
+            InvalidateTiles(entryId.ChatId, entryId.LocalId, ChangeKind.Update, false);
+        });
+
         if (Settings.IsChatContentItemIndexingEnabled)
             await FlowHub.NewResumeEvent<ChatMediaIndexingFlow>(entryId.ChatId.Value)
                 .WithDelay(TimeSpan.FromSeconds(2))
@@ -1636,12 +1616,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     {
         var entryId = command.EntryId;
 
-        if (Invalidation.IsActive) {
-            _ = GetEntryAttachments(entryId, default);
-            InvalidateTiles(entryId.ChatId, entryId.LocalId, ChangeKind.Update, false);
-            return;
-        }
-
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -1655,6 +1629,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         // (without a follow-up entry update that would re-fire ResumeContentIndexing).
         // When it's called as part of an Update, the per-FlowId lock just serializes
         // the two resumes; the second one runs an empty no-op pass.
+        Invalidation.Defer(() => {
+            _ = GetEntryAttachments(entryId, default);
+            InvalidateTiles(entryId.ChatId, entryId.LocalId, ChangeKind.Update, false);
+        });
+
         if (Settings.IsChatContentItemIndexingEnabled)
             await FlowHub.NewResumeEvent<ChatMediaIndexingFlow>(entryId.ChatId.Value)
                 .WithDelay(TimeSpan.FromSeconds(2))
@@ -1667,9 +1646,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         ChatsBackend_RemoveOwnChats command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var userId = command.UserId;
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -1711,27 +1687,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         ChatsBackend_RemoveOwnEntries command,
         CancellationToken cancellationToken)
     {
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            var invChats = context.Operation.Items.KeylessGet<Dictionary<string, long>>();
-            if (invChats == null)
-                return;
-
-            var tileSize = EntryIdTiles.TileSize;
-            foreach (var chatEntryPair in invChats) {
-                var chatId = ChatId.Parse(chatEntryPair.Key);
-                var entryId = chatEntryPair.Value;
-                InvalidateTiles(chatId, entryId, ChangeKind.Remove, false);
-                InvalidateTiles(chatId, entryId - tileSize, ChangeKind.Remove, false);
-                InvalidateTiles(chatId, entryId - tileSize*2, ChangeKind.Remove, false);
-                InvalidateTiles(chatId, entryId - tileSize*3, ChangeKind.Remove, false);
-                InvalidateTiles(chatId, entryId - tileSize*4, ChangeKind.Remove, false);
-                _ = GetEntryAttachments(ChatEntryId.New(chatId, entryId), default);
-            }
-            return;
-        }
-
         var chatEntriesToInvalidate = new Dictionary<string, long>();
         var userId = command.UserId;
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
@@ -1823,14 +1778,23 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .ConfigureAwait(false);
         }
 
-        context.Operation.Items.KeylessSet(chatEntriesToInvalidate);
+        Invalidation.Defer(() => {
+            var tileSize = EntryIdTiles.TileSize;
+            foreach (var chatEntryPair in chatEntriesToInvalidate) {
+                var invChatId = ChatId.Parse(chatEntryPair.Key);
+                var invEntryLid = chatEntryPair.Value;
+                InvalidateTiles(invChatId, invEntryLid, ChangeKind.Remove, false);
+                InvalidateTiles(invChatId, invEntryLid - tileSize, ChangeKind.Remove, false);
+                InvalidateTiles(invChatId, invEntryLid - tileSize*2, ChangeKind.Remove, false);
+                InvalidateTiles(invChatId, invEntryLid - tileSize*3, ChangeKind.Remove, false);
+                InvalidateTiles(invChatId, invEntryLid - tileSize*4, ChangeKind.Remove, false);
+                _ = GetEntryAttachments(ChatEntryId.New(invChatId, invEntryLid), default);
+            }
+        });
     }
 
     public virtual async Task OnCreateNotesChat(ChatsBackend_CreateNotesChat command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var userId = command.UserId;
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -1876,11 +1840,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var change = command.Change;
         var chatId = command.ChatId;
         var expectedVersion = command.ExpectedVersion;
-
-        if (Invalidation.IsActive) {
-            _ = GetChatCopyState(chatId, default);
-            return null!;
-        }
 
         change.RequireValid();
         ChatCopyState chatCopyState;
@@ -1940,6 +1899,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+        Invalidation.Defer(() => _ = GetChatCopyState(chatId, default));
         return chatCopyState;
     }
 
@@ -1948,14 +1908,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         CancellationToken cancellationToken)
     {
         var chatId = command.ChatId;
-        var context = CommandContext.GetCurrent();
-
-        if (Invalidation.IsActive) {
-            if (context.Operation.Items.KeylessGet<bool>())
-                _ = GetReadPositionsStat(chatId, default);
-            return;
-        }
-
         var userId = command.UserId;
         var entryLid = command.EntryLid;
 
@@ -2009,7 +1961,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         if (hasChanges) {
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation.Items.KeylessSet(true);
+            Invalidation.Defer(() => _ = GetReadPositionsStat(chatId, default));
         }
     }
 
@@ -2018,9 +1970,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     // [EventHandler]
     public virtual async Task OnNewAccountEvent(NewAccountEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
         var isTested = HostInfo.IsTested;
 
@@ -2053,9 +2002,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     // [EventHandler]
     public virtual async Task OnAuthorChangedEvent(AuthorUpsertedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (author, oldAuthor) = eventCommand;
         if (author.ChatId == Constants.Chat.AnnouncementsChatId || author.ChatId.Kind == ChatKind.Peer)
             return;
@@ -2123,9 +2069,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     // [EventHandler]
     public virtual async Task OnPlaceRemoved(PlaceChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (_, oldPlace, kind) = eventCommand;
         if (kind != ChangeKind.Remove)
             return;
@@ -2148,9 +2091,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     // [EventHandler]
     public virtual async Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (chat, oldChat, kind) = eventCommand;
         if (chat.Id.IsThread(out var threadChatId) && kind == ChangeKind.Remove) {
             var startThreadEntryId = ChatEntryId.New(threadChatId, threadChatId.ThreadId);
@@ -2179,9 +2119,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     // [EventHandler]
     public virtual async Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var (entry, _, kind, oldEntry) = eventCommand;
         await ResumeContentIndexing(eventCommand, cancellationToken).ConfigureAwait(false);
 

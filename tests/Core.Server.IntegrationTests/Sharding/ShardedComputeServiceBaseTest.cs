@@ -3,8 +3,8 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Core.Server.IntegrationTests.Sharding;
 
-public class ShardComputeServiceTest(ITestOutputHelper @out)
-    : AppHostTestBase($"x-{nameof(ShardComputeServiceTest)}",
+public class ShardedComputeServiceBaseTest(ITestOutputHelper @out)
+    : AppHostTestBase($"x-{nameof(ShardedComputeServiceBaseTest)}",
         TestAppHostOptions.None with {
             MustStart = true,
             ConfigureServices = (ctx, services) => {
@@ -120,6 +120,10 @@ public class TestShardComputeService(IServiceProvider services, ITestOutputHelpe
     [ComputeMethod]
     public virtual async Task<CpuTimestamp> GetTime(string key, CancellationToken cancellationToken = default)
     {
+        // Unlike a backend service, this one is registered with AddComputeService and has no mesh
+        // route, so MeshRpcRoute.CreateLocalExecutionAwaiter never runs for it - the ownership
+        // requirement and its dependency have to come from here. It is also what makes the call block
+        // until this node owns the shard, which the test's first assertions rely on.
         await ShardOwner.RequireShardOwnership(key, true, cancellationToken).ConfigureAwait(false);
         return CpuTimestamp.Now;
     }

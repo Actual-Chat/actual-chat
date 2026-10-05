@@ -208,9 +208,6 @@ public class Coach(IServiceProvider services) : ICoach
     // [CommandHandler]
     public virtual async Task OnSetFocus(Coach_SetFocus command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeActive);
         var iso = Language.GetIsoCode(command.Language);
@@ -224,9 +221,6 @@ public class Coach(IServiceProvider services) : ICoach
     // [CommandHandler]
     public virtual async Task OnSetLanguageLevel(Coach_SetLanguageLevel command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeActive);
         var iso = Language.GetIsoCode(command.Language);
@@ -238,9 +232,6 @@ public class Coach(IServiceProvider services) : ICoach
     // [CommandHandler]
     public virtual async Task OnSetChatCoaching(Coach_SetChatCoaching command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeActive);
         var kvas = ServerKvasBackend.ForUser(account.Id, isOutermost: true);
@@ -262,9 +253,6 @@ public class Coach(IServiceProvider services) : ICoach
     public virtual async Task OnExcludeConversation(
         Coach_ExcludeConversation command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeActive);
         var backendCommand = new CoachBackend_SetConversationExcluded(
@@ -275,9 +263,6 @@ public class Coach(IServiceProvider services) : ICoach
     // [CommandHandler]
     public virtual async Task OnDeleteOwnData(Coach_DeleteOwnData command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeActive);
         // The chat side goes first: its rows are what would refill the log on the next re-analysis
@@ -331,9 +316,6 @@ public class Coach(IServiceProvider services) : ICoach
     // [CommandHandler]
     public virtual async Task OnDismissTip(Coach_DismissTip command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeActive);
         var accessor = ServerKvasBackend.ForUser(account.Id, isOutermost: true).UserCoachTip();
@@ -345,9 +327,6 @@ public class Coach(IServiceProvider services) : ICoach
     // [CommandHandler]
     public virtual async Task OnRebuildOwnDays(Coach_RebuildOwnDays command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustBeAdmin);
         await Commander.Call(new CoachBackend_RebuildDays(account.Id), true, cancellationToken).ConfigureAwait(false);

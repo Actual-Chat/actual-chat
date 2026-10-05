@@ -10,9 +10,6 @@ public partial class WebHooksBackend
         ChatEntryChangedEvent eventCommand,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (entry, author, changeKind, oldEntry) = eventCommand;
         if (entry.IsSystemEntry)
             return;
@@ -52,9 +49,6 @@ public partial class WebHooksBackend
         ReactionChangedEvent eventCommand,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (reaction, entry, _, reactionAuthor, changeKind) = eventCommand;
         var e = changeKind == ChangeKind.Remove ? WebHookEvents.ReactionRemoved : WebHookEvents.ReactionAdded;
         var hooks = await HooksForChat(entry.ChatId, cancellationToken).ConfigureAwait(false);
@@ -70,9 +64,6 @@ public partial class WebHooksBackend
         AuthorUpsertedEvent eventCommand,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (author, oldAuthor) = eventCommand;
         if (!IsMemberEventAuthor(author))
             return;
@@ -92,9 +83,6 @@ public partial class WebHooksBackend
         AuthorsRemovedEvent eventCommand,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         foreach (var chatAuthors in eventCommand.Authors.Where(IsMemberEventAuthor).GroupBy(x => x.ChatId)) {
             var hooks = await HooksForChat(chatAuthors.Key, cancellationToken).ConfigureAwait(false);
             foreach (var author in chatAuthors)
@@ -105,9 +93,6 @@ public partial class WebHooksBackend
     // [EventHandler]
     public virtual async Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (chat, oldChat, changeKind) = eventCommand;
         WebHookEvents e;
         List<WebHook> hooks;
@@ -139,9 +124,6 @@ public partial class WebHooksBackend
     // [EventHandler]
     public virtual async Task OnPlaceChangedEvent(PlaceChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (place, oldPlace, changeKind) = eventCommand;
         if (changeKind != ChangeKind.Update)
             return;
@@ -159,9 +141,6 @@ public partial class WebHooksBackend
         PlaceMembershipChangedEvent eventCommand,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var (userId, placeId, hasLeft) = eventCommand;
         var author = await AuthorsBackend
             .GetByUserId(placeId.RootChatId, userId, RequestedAuthorKind.Full, cancellationToken)
@@ -177,9 +156,6 @@ public partial class WebHooksBackend
     // [EventHandler]
     public virtual async Task OnUserNotifiedEvent(UserNotifiedEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return;
-
         var n = eventCommand.Notification;
         if (n is not ChatNotification cn)
             return;

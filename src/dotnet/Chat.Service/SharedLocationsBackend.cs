@@ -56,19 +56,8 @@ public class SharedLocationsBackend(IServiceProvider services)
     {
         var (id, authorId, change) = command;
         var chatId = authorId.ChatId;
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            // The created id is minted below and a takeover freezes rows this command never named,
-            // so the affected set is read back from the operation.
-            var invLocations = context.Operation.Items.KeylessGet<ApiArray<SharedLocation>>();
-            foreach (var invLocation in invLocations)
-                _ = Get(invLocation.Id, default);
-            if (!invLocations.IsEmpty)
-                _ = ListLive(chatId, default);
-            return null!;
-        }
-
         change.RequireValid();
+
         var isCreate = change.IsCreate(out var createDiff);
         if (!isCreate && id is { } existingId) {
             // A device that lost its share to a takeover keeps pushing into the frozen row - once per
@@ -151,7 +140,14 @@ public class SharedLocationsBackend(IServiceProvider services)
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(affected.With(sharedLocation));
+        Invalidation.Defer(() => {
+            // A takeover freezes rows this command never named, so the created id isn't the whole set
+            var invalidated = affected.With(sharedLocation);
+            foreach (var location in invalidated)
+                _ = Get(location.Id, default);
+            if (!invalidated.IsEmpty)
+                _ = ListLive(chatId, default);
+        });
         return sharedLocation;
     }
 

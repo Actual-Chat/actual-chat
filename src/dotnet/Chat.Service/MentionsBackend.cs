@@ -38,15 +38,6 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
         var (entry, _, changeKind, _) = eventCommand;
         var context = CommandContext.GetCurrent();
 
-        if (Invalidation.IsActive) {
-            var invChangedMentionIds = context.Operation.Items.KeylessGet<HashSet<MentionRef>>();
-            if (invChangedMentionIds != null) {
-                foreach (var mentionId in invChangedMentionIds)
-                    _ = GetLast(entry.ChatId, mentionId, default);
-            }
-            return;
-        }
-
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -85,7 +76,10 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
             return;
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.Items.KeylessSet(changedMentionIds);
+        Invalidation.Defer(() => {
+            foreach (var mentionId in changedMentionIds)
+                _ = GetLast(entry.ChatId, mentionId, default);
+        });
 
         var chatId = eventCommand.Entry.ChatId;
         if (chatId.IsThread(out var threadChatId) && toAddMentionIds.Length > 0)

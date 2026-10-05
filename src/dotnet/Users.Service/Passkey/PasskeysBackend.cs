@@ -45,16 +45,6 @@ public class PasskeysBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     {
         var (userId, id, change) = command;
         var identity = UserIdentityExt.NewPasskeyIdentity(id);
-        if (Invalidation.IsActive) {
-            _ = Get(userId, id, default);
-            _ = List(userId, default);
-            if (change.Kind != ChangeKind.Update) {
-                _ = AccountsBackend.Get(userId, default);
-                _ = AccountsBackend.GetIdByUserIdentity(identity, default);
-            }
-            return default!;
-        }
-
         change.RequireValid();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -111,6 +101,14 @@ public class PasskeysBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Invalidation.Defer(() => {
+            _ = Get(userId, id, default);
+            _ = List(userId, default);
+            if (change.Kind != ChangeKind.Update) {
+                _ = AccountsBackend.Get(userId, default);
+                _ = AccountsBackend.GetIdByUserIdentity(identity, default);
+            }
+        });
         return change.IsRemove() ? null : dbPasskey.ToModel();
     }
 }

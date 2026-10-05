@@ -386,9 +386,6 @@ public partial class Chats(IServiceProvider services) : IChats
     // [CommandHandler]
     public virtual async Task<Chat> OnChange(Chats_Change command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var chatId = command.ChatId;
         var expectedVersion = command.ExpectedVersion;
@@ -683,9 +680,6 @@ public partial class Chats(IServiceProvider services) : IChats
     // [CommandHandler]
     public virtual async Task<ChatEntry> OnUpsertEntry(Chats_UpsertEntry command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!; // It just spawns other commands, so nothing to do here
-
         var (session, chatId, localId, text, repliedEntryLid) =
             (command.Session, command.ChatId, command.LocalId, command.Text, command.RepliedEntryLid);
         ThrowIfPlaceRootChat(chatId);
@@ -869,9 +863,6 @@ public partial class Chats(IServiceProvider services) : IChats
     // [CommandHandler]
     public virtual async Task OnRemoveEntry(Chats_RemoveEntry command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var chatId = command.ChatId;
         var localId = command.LocalId;
@@ -888,9 +879,6 @@ public partial class Chats(IServiceProvider services) : IChats
     // [CommandHandler]
     public virtual async Task OnRestoreEntry(Chats_RestoreEntry command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var chatId = command.ChatId;
         var localId = command.LocalId;
@@ -910,9 +898,6 @@ public partial class Chats(IServiceProvider services) : IChats
     // [CommandHandler]
     public virtual async Task OnRemoveEntries(Chats_RemoveEntries command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var chatId = command.ChatId;
         var localIds = command.LocalIds;
@@ -931,9 +916,6 @@ public partial class Chats(IServiceProvider services) : IChats
     // [CommandHandler]
     public virtual async Task OnRestoreEntries(Chats_RestoreEntries command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var chatId = command.ChatId;
         var localIds = command.LocalIds;
@@ -952,9 +934,6 @@ public partial class Chats(IServiceProvider services) : IChats
         Chats_GetOrCreateFromTemplate command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var templateChatId = command.TemplateChatId;
         var templateChat = await Get(session, templateChatId, cancellationToken).ConfigureAwait(false);
@@ -1096,9 +1075,6 @@ public partial class Chats(IServiceProvider services) : IChats
     // [CommandHandler]
     public virtual async Task<Unit> OnForwardEntries(Chats_ForwardEntries command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var chatId = command.ChatId;
         var chatEntryIds = command.ChatEntries;
@@ -1175,9 +1151,6 @@ public partial class Chats(IServiceProvider services) : IChats
         Chats_ForwardAttachment command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return default;
-
         var session = command.Session;
         var chatEntryId = command.ChatEntryId;
         var attachmentIndex = command.AttachmentIndex;
@@ -1219,9 +1192,6 @@ public partial class Chats(IServiceProvider services) : IChats
         Chat_CopyChat command,
         CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return null!; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var sourceChatId = command.SourceChatId;
         var placeId = command.PlaceId;
@@ -1339,9 +1309,6 @@ public partial class Chats(IServiceProvider services) : IChats
     // [CommandHandler]
     public virtual async Task OnPublishCopiedChat(Chat_PublishCopiedChat command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
         var session = command.Session;
         var newChatId = command.NewChatId;
         var sourceChatId = command.SourceChatId;
@@ -1417,9 +1384,6 @@ public partial class Chats(IServiceProvider services) : IChats
     // [CommandHandler]
     public virtual async Task OnSetPinned(Chats_SetPinned command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return; // The nested ServerKvasBackend_SetMany handles invalidation
-
         var session = command.Session;
         var entryId = command.EntryId;
         var mustPin = command.MustPin;

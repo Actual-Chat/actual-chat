@@ -7,6 +7,7 @@ using ActualChat.Chat.ML;
 using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Module;
+using ActualChat.Operations;
 using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualChat.Resilience;
@@ -36,9 +37,10 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         // Chats
         rpcHost.AddLocalApi<IChats, Chats>(); // Used by many
         rpcHost.AddBackend<IChatsBackend, ChatsBackend>();
-        rpcHost.AddBackend<IChatsUpgradeBackend, ChatsUpgradeBackend>();
         rpcHost.AddBackend<IChatEntryStreamsBackend, ChatEntryStreams>();
         rpcHost.AddBackend<IChatVoiceStreamsBackend, ChatVoiceStreams>();
+        rpcHost.AddBackend<IChatsUpgradeBackend, ChatsUpgradeBackend>();
+        services.AddSingleton<IEveryHostOperationHandler, ChatsUpgradeOperationHandler>();
 
         // Places
         rpcHost.AddLocalApi<IPlaces, Places>(); // Used by Chats
