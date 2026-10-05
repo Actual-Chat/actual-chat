@@ -1,5 +1,6 @@
 import { fromEvent, Subject, takeUntil, filter } from 'rxjs';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
+import { DeviceInfo } from 'device-info';
 import { CompactLayout } from 'compact-layout';
 
 const MIN_SCALE = 1;
@@ -932,9 +933,13 @@ export class VideoPanel {
         document.body.appendChild(this.videoPanel);
         this.videoPanel.classList.remove('minimized');
         this.videoPanel.classList.add('expanded');
-        // Freeze narrow/wide state so rotating the device while fullscreen
-        // doesn't reflow the hidden app layout underneath (e.g. left panel appearing).
-        ScreenSize.freeze();
+        // Freeze narrow/wide state on mobile only: there a rotation would otherwise reflow the
+        // hidden app layout underneath (e.g. the left panel appearing in landscape). On desktop
+        // the user resizes deliberately and the fullscreen panel must honor it live - it drops
+        // the side chat and its controls once the viewport falls below Large.
+        if (DeviceInfo.isMobile)
+            ScreenSize.freeze();
+
         void this.blazorRef.invokeMethodAsync('OnExpanded');
     }
 

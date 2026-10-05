@@ -66,7 +66,10 @@
     var panelCls = $"video-panel {firstOpenCls} {recordingCls} {remoteStreamsCls} "
         + $"{collapsedCls} {hiddenCls} {expandedCls} {equalLayoutCls}";
     var contentLayoutCls = m.IsEqualLayout && m.IsExpanded ? "video-panel-layout__equal" : layout.LayoutClass;
-    var isMobileOrNarrow = ScreenSize.IsNarrow() || Hub.BrowserInfo.IsMobile;
+    // The side chat docks only on a genuinely wide desktop (>= Large / 1024px). Below that the
+    // expanded panel becomes full-screen video with the mobile control set: no side chat, no
+    // chat toggle and no screen-share.
+    var isWideCallLayout = ScreenSize >= ScreenSize.Large && !Hub.BrowserInfo.IsMobile;
     // Speaker view hides the speaker's tile label (the name is in the header), so its hand moves there too
     var isFocusedHandRaised = m.FocusedAuthorId is { } focusedAuthorId
         ? m.RaisedHandAuthorIds.Contains(focusedAuthorId)
@@ -94,16 +97,12 @@
                     }
                 </div>
 
-                @if (m.VideoStreamMemberCount > 0 || !m.FocusedParticipantName.IsNullOrEmpty()) {
-                    <div class="c-center">
-                        @if (!m.FocusedParticipantName.IsNullOrEmpty()) {
-                            <div class="c-member-name">@m.FocusedParticipantName</div>
-                        }
-                        @if (m.VideoStreamMemberCount > 0) {
-                            <div class="c-member-count">@m.VideoStreamMemberCount members</div>
-                        }
-                    </div>
-                }
+                <div class="c-center">
+                    <div class="c-chat-title">@Chat.Title</div>
+                    @if (m.VideoStreamMemberCount > 0) {
+                        <div class="c-member-count">@m.VideoStreamMemberCount members</div>
+                    }
+                </div>
 
                 <div class="c-right">
                     <HeaderButton
@@ -156,7 +155,7 @@
 
         @* Footer for mobile full-screen video *@
         <div class="video-panel-toolbar video-panel-footer">
-            @if (isMobileOrNarrow) {
+            @if (!isWideCallLayout) {
                 @* Left counterweight: the record button has one control on its left and, once the
                    camera is on, two on its right (switch + react). This slot re-centers it on them. *@
                 @if (isOwnCameraStreaming && m.CanReact) {
@@ -175,7 +174,7 @@
                 </HeaderButton>
             }
             <RecorderToggle Chat="@Chat" Compact="true"/>
-            @if (isMobileOrNarrow) {
+            @if (!isWideCallLayout) {
                 @if (isOwnCameraStreaming) {
                     <HeaderButton
                         Click="@OnSwitchCamera"
@@ -270,7 +269,7 @@
             </div>
             <CallReactionsOverlay ChatId="@Chat.Id"/>
         </div>
-        @if (m.IsExpanded && isChatVisible && !ScreenSize.IsNarrow() && m.ChatContext is { } chatContext) {
+        @if (m.IsExpanded && isChatVisible && isWideCallLayout && m.ChatContext is { } chatContext) {
             <div class="video-panel-chat upload-drag-drop-host" data-child="video-panel-chat">
                 <CascadingValue Value="@chatContext">
                     <ChatView @key="@chatContext.Chat.Id.Value" NavigationSlotName="@ChatNavigationSlot"/>
@@ -504,9 +503,6 @@
                 RaisedHandAuthorIds: raisedHandAuthorIds);
 
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
-        // Name of the currently focused participant — shown above the member count in the header
-        var focusedName = await GetFocusedParticipantName(chatId, layout, remoteStreams, cancellationToken)
-            .ConfigureAwait(false);
         // Authors currently streaming audio (VAD-gated) — includes the local user; used to
         // ring the active speaker(s) in the equal layout, where focus alone can't (it never
         // points at own).
@@ -514,13 +510,6 @@
             .ConfigureAwait(false);
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var ownAuthorId = ownAuthor?.Id;
-        // Equal layout has no focused tile, so the header name tracks the current speaker
-        // and — unlike focus — may be the local user. Show "You" when we're the sole speaker;
-        // if a remote is also talking the focused remote name stays.
-        if (isEqualLayout && isExpanded && ownAuthorId is { } ownId
-            && speakingAuthorIds.Contains(ownId)
-            && !speakingAuthorIds.Any(a => a != ownId))
-            focusedName = L.ChatView_You;
 
         var pinnedAuthorId = await _layoutCalculator.GetPinnedAuthor(cancellationToken).ConfigureAwait(false);
         // Author shown in the big tile right now — what the pin button pins when toggled on.
@@ -535,7 +524,6 @@
             audioState.IsRecording,
             videoStreamMemberCount,
             isCollapsed,
-            FocusedParticipantName: focusedName,
             IsHidden: isHidden,
             IsExpanded: isExpanded,
             IsEqualLayout: isEqualLayout,
@@ -557,28 +545,6 @@
 
         var stream = remoteStreams.FirstOrDefault(s => s.StreamId.Value == focused.StreamId);
         return stream?.AuthorId;
-    }
-
-    private async Task<string?> GetFocusedParticipantName(
-        ChatId chatId,
-        VideoPanelLayout layout,
-        VideoStreamInfo[] remoteStreams,
-        CancellationToken cancellationToken) {
-        const string focusedCls = "item-focused";
-        if (layout.OwnCameraPreviewClass.Contains(focusedCls))
-            return L.ChatView_You;
-
-        var focused = layout.RemoteStreamPlayerClasses.FirstOrDefault(c => c.Class.Contains(focusedCls));
-        if (focused is null)
-            return null;
-
-        var focusedStream = remoteStreams.FirstOrDefault(s => s.StreamId.Value == focused.StreamId);
-        if (focusedStream is null)
-            return null;
-
-        var author = await Authors.Get(Session, chatId, focusedStream.AuthorId, cancellationToken)
-            .ConfigureAwait(false);
-        return author?.Avatar.Name;
     }
 
     private void OnHangUpClick() {
@@ -698,7 +664,6 @@
         bool IsAudioRecording,
         int VideoStreamMemberCount,
         bool IsCollapsed = false,
-        string? FocusedParticipantName = null,
         bool IsHidden = false,
         bool IsExpanded = false,
         bool IsEqualLayout = false,
