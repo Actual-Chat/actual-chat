@@ -46,6 +46,9 @@ public sealed partial record UserLanguageSettings : StoredSettings, IHasOrigin, 
     [DataMember, MemoryPackOrder(10), Key(10)]
     public bool IsSpokenTextDisabled { get; init; }
 
+    public Language GetEffectiveUILanguage()
+        => UILanguage ?? DetectedUILanguage ?? Languages.Main;
+
     public List<Language> ListSpoken()
     {
         var result = new List<Language> { Primary };

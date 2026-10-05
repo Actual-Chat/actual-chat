@@ -14,6 +14,10 @@ public abstract record NotificationContent
     public virtual string? SharedText => null;
 
     public abstract string Render(IStringLocalizer l);
+
+    public virtual NotificationContent WithTranslations(IReadOnlyDictionary<Language, string> textByLanguage)
+        // Text this app words itself has no translations to take: it is composed per language already
+        => this;
 }
 
 /// <summary>
@@ -24,6 +28,22 @@ public sealed record SharedNotificationContent(string Text) : NotificationConten
 {
     public override string? SharedText => Text;
     public override string Render(IStringLocalizer l) => Text;
+
+    public override NotificationContent WithTranslations(IReadOnlyDictionary<Language, string> textByLanguage)
+        => textByLanguage.Count == 0 ? this : new TranslatedNotificationContent(Text, textByLanguage);
+}
+
+/// <summary>
+/// A message translated for its readers: each gets the text in their language, and the
+/// author's own words where there is no translation to it.
+/// </summary>
+public sealed record TranslatedNotificationContent(
+    string Text,
+    IReadOnlyDictionary<Language, string> TextByLanguage
+) : NotificationContent
+{
+    public override string Render(IStringLocalizer l)
+        => TextByLanguage.GetValueOrDefault(((IHasUILanguage)l).UILanguage, Text);
 }
 
 public sealed record ThreadCreatedNotificationContent(string ChatTitle) : NotificationContent
