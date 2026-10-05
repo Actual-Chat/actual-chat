@@ -37,4 +37,5 @@ jobs:
       build-target: e2e-tests
       report-name: TS E2E tests results
       checkout-ref: ${{ github.ref_name }}
+      checkout-configs: true
     secrets: inherit

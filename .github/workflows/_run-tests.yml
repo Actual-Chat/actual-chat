@@ -239,6 +239,12 @@ jobs:
         if: ${{ inputs.build-target == 'e2e-tests' }}
         run: echo "NatsSettings__Url=nats://127.0.0.1:4222" >> $GITHUB_ENV
 
+      - name: Configure E2E server log
+        # A loopback BaseUri isn't a local dev host, so the server gets no console or Seq logger
+        # here and its ILogger output would be lost; the DevLog file keeps it.
+        if: ${{ inputs.build-target == 'e2e-tests' }}
+        run: echo "ActualChat_DevLog=${{ github.workspace }}/tmp/e2e-server-dev.log" >> $GITHUB_ENV
+
       - name: Run tests
         id: run-tests
         env:
@@ -294,6 +300,17 @@ jobs:
         with:
           name: e2e-screenshots
           path: tmp/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload E2E server logs
+        if: ${{ always() && inputs.build-target == 'e2e-tests' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-server-logs
+          path: |
+            tmp/e2e-server.log
+            tmp/e2e-server-dev.log
           if-no-files-found: ignore
           retention-days: 7
 
