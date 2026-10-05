@@ -3,15 +3,16 @@ using ActualChat.Hashing;
 using ActualChat.Users.Db;
 using ActualChat.Users.Module;
 using ActualLab.Redis;
+using StackExchange.Redis;
 
 namespace ActualChat.Users.Phone;
 
 /// <summary>
-/// Keeps at most one pending code per (purpose, target, session): its hash, issue time and remaining
+/// Keeps at most one pending code per (purpose, target): its hash, issue time and remaining
 /// attempt count live in a single Redis record, so consuming an attempt and dropping the code once
 /// they run out is one atomic operation. A new code overwrites the pending one - newest wins.
 /// </summary>
-public sealed class TotpCodes(IServiceProvider services)
+public class TotpCodes(IServiceProvider services) : ITotpCodesBackend
 {
     private const string KeyPrefix = ".TotpCode.";
     private const long Match = 1;
@@ -63,22 +64,19 @@ public sealed class TotpCodes(IServiceProvider services)
     private MomentClockSet Clocks { get; } = services.Clocks();
     private ILogger Log => field ??= services.LogFor(GetType());
 
-    public Task<int> Generate(
-        TotpPurpose purpose,
+    public virtual Task<int> Generate(
         string target,
-        Session session,
+        TotpPurpose purpose,
         CancellationToken cancellationToken = default)
-        => Generate(purpose,
-            target,
-            session,
+        => Generate(target,
+            purpose,
             Settings.TotpCodeLifetime,
             Settings.TotpMaxAttemptCount,
             cancellationToken);
 
-    public async Task<bool> Validate(
-        TotpPurpose purpose,
+    public virtual async Task<bool> Validate(
         string target,
-        Session session,
+        TotpPurpose purpose,
         int code,
         CancellationToken cancellationToken = default)
     {
@@ -86,8 +84,8 @@ public sealed class TotpCodes(IServiceProvider services)
         var result = await database
             .ScriptEvaluateAsync(
                 ValidateScript,
-                [ToKey(purpose, target, session)],
-                [ToCodeHash(purpose, target, session, code)]
+                [ToKey(purpose, target)],
+                [ToCodeHash(purpose, target, code)]
             ).ConfigureAwait(false);
         var values = (long[])result!;
         var status = values[0];
@@ -95,21 +93,56 @@ public sealed class TotpCodes(IServiceProvider services)
             return true;
 
         if (status == Exhausted)
-            Log.LogWarning("{Purpose}: no attempts left for session #{SessionHash}, pending code dropped",
-                purpose, session.Hash);
+            Log.LogWarning("{Purpose}: no attempts left for target #{TargetHash}, pending code dropped",
+                purpose, Hash(target));
         else
-            Log.LogDebug("{Purpose}: check failed for session #{SessionHash}, status = {Status}, left = {Left}",
-                purpose, session.Hash, status, values[1]);
+            Log.LogDebug("{Purpose}: check failed for target #{TargetHash}, status = {Status}, left = {Left}",
+                purpose, Hash(target), status, values[1]);
 
         return false;
+    }
+
+    public virtual async Task<bool> IsEmailThrottled(
+        string email, CancellationToken cancellationToken)
+    {
+        var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var window = Settings.TotpUIThrottling;
+        var emailKey = $".EmailTotpThrottle:email:{Hash(email)}";
+        var isEmailAllowed = await db.StringSetAsync(emailKey, "1", window, When.NotExists).ConfigureAwait(false);
+        return !isEmailAllowed;
+    }
+
+    public virtual async Task<bool> IsPhoneThrottled(
+        ActualChat.Phone phone, CancellationToken cancellationToken)
+    {
+        var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var window = Settings.TotpUIThrottling;
+        var phoneKey = $".SmsTotpThrottle:phone:{Hash(phone.E164Value)}";
+        var isPhoneAllowed = await db.StringSetAsync(phoneKey, "1", window, When.NotExists).ConfigureAwait(false);
+        return !isPhoneAllowed;
+    }
+
+    public virtual async Task<TotpChannel?> GetLastChannel(
+        ActualChat.Phone phone, CancellationToken cancellationToken)
+    {
+        var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var value = await db.StringGetAsync(LastChannelKey(phone)).ConfigureAwait(false);
+        return Enum.TryParse<TotpChannel>((string?)value, out var channel) ? channel : null;
+    }
+
+    public virtual async Task SetLastChannel(
+        ActualChat.Phone phone, TotpChannel channel, CancellationToken cancellationToken)
+    {
+        var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        await db.StringSetAsync(LastChannelKey(phone), channel.ToString(), Settings.TotpCodeLifetime)
+            .ConfigureAwait(false);
     }
 
     // Protected/internal methods
 
     internal async Task<int> Generate(
-        TotpPurpose purpose,
         string target,
-        Session session,
+        TotpPurpose purpose,
         TimeSpan lifetime,
         int maxAttemptCount,
         CancellationToken cancellationToken)
@@ -119,9 +152,9 @@ public sealed class TotpCodes(IServiceProvider services)
         await database
             .ScriptEvaluateAsync(
                 SetScript,
-                [ToKey(purpose, target, session)],
+                [ToKey(purpose, target)],
                 [
-                    ToCodeHash(purpose, target, session, code),
+                    ToCodeHash(purpose, target, code),
                     maxAttemptCount,
                     (long)Clocks.SystemClock.Now.EpochOffset.TotalMilliseconds,
                     (long)lifetime.TotalMilliseconds,
@@ -132,11 +165,14 @@ public sealed class TotpCodes(IServiceProvider services)
 
     // Private methods
 
-    private static string ToKey(TotpPurpose purpose, string target, Session session)
-        => $"{KeyPrefix}{purpose}.{Hash(target)}.{Hash(session.Id)}";
+    private static string LastChannelKey(ActualChat.Phone phone)
+        => $".TotpLastChannel:{Hash(phone.E164Value)}";
 
-    private static string ToCodeHash(TotpPurpose purpose, string target, Session session, int code)
-        => Hash($"{purpose}:{target}:{session.Id}:{code.Format()}");
+    private static string ToKey(TotpPurpose purpose, string target)
+        => $"{KeyPrefix}{purpose}.{Hash(target)}";
+
+    private static string ToCodeHash(TotpPurpose purpose, string target, int code)
+        => Hash($"{purpose}:{target}:{code.Format()}");
 
     private static string Hash(string value)
         => value.Hash().SHA256().ToBase64HashString(Hashing.HashAlgorithm.SHA256);

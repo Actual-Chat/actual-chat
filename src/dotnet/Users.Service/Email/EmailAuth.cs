@@ -1,34 +1,31 @@
 using System.Security.Claims;
-using ActualChat.Hashing;
 using ActualChat.Localization;
 using ActualChat.Resilience;
 using ActualChat.Rpc;
-using ActualChat.Users.Db;
 using ActualChat.Users.Module;
-using ActualLab.Fusion.EntityFramework;
-using ActualChat.Users.Phone;
 using ActualChat.Users.Templates;
-using ActualLab.Redis;
 using ActualLab.Rpc.Infrastructure;
 using Mjml.Net;
-using StackExchange.Redis;
 
 namespace ActualChat.Users.Email;
 
-public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IEmailAuth
+public class EmailAuth(IServiceProvider services) : IEmailAuth
 {
     private static readonly string TotpFormat = new('0', Constants.Auth.Email.TotpLength);
 
+    private IServiceProvider Services { get; } = services;
+    private ICommander Commander { get; } = services.Commander();
+    private MomentClockSet Clocks { get; } = services.Clocks();
     private HostInfo HostInfo { get; } = services.HostInfo();
     private UsersSettings UsersSettings { get; } = services.GetRequiredService<UsersSettings>();
     private IEmailSender EmailSender { get; } = services.GetRequiredService<IEmailSender>();
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
-    private TotpCodes TotpCodes { get; } = services.GetRequiredService<TotpCodes>();
+    private ITotpCodesBackend TotpCodes { get; } = services.GetRequiredService<ITotpCodesBackend>();
     private CaptchaProofValidator CaptchaProofs { get; } = services.GetRequiredService<CaptchaProofValidator>();
     private RateLimitPolicy RateLimitPolicy => field ??= Services.GetRequiredService<RateLimitPolicy>();
     private UserLocalizers UserLocalizers => field ??= Services.GetRequiredService<UserLocalizers>();
-    private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     // [ComputeMethod]
     public virtual Task<string> GetEmailValidationMessage(
@@ -81,7 +78,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             .Require(session, command.CaptchaToken, command.CaptchaAction, purpose, cancellationToken)
             .ConfigureAwait(false);
 
-        if (await IsThrottled(session, email, cancellationToken).ConfigureAwait(false))
+        if (await IsThrottled(email, cancellationToken).ConfigureAwait(false))
             return NextSendAt();
 
         var canSendValidationMessage = await GetEmailValidationMessage(
@@ -90,7 +87,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (!canSendValidationMessage.IsNullOrEmpty())
             throw StandardError.Constraint(canSendValidationMessage);
 
-        var totp = await TotpCodes.Generate(purpose, email, session, cancellationToken).ConfigureAwait(false);
+        var totp = await TotpCodes.Generate(email, purpose, cancellationToken).ConfigureAwait(false);
         var nextSendAt = NextSendAt();
         var sTotp = totp.ToString(TotpFormat);
         if (!HostInfo.IsProductionInstance)
@@ -159,12 +156,9 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var updatedAccount = account.WithEmailIdentity(email);
         await Accounts.AssertCanUpdate(session, updatedAccount, cancellationToken).ConfigureAwait(false);
 
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
         var emailIdentity = UserIdentityExt.NewEmailIdentity(email);
-        var conflictingUserId = await dbContext
-            .GetUserIdByIdentity(emailIdentity, false, cancellationToken)
+        var conflictingUserId = await AccountsBackend
+            .GetIdByUserIdentity(emailIdentity, cancellationToken)
             .ConfigureAwait(false);
         if (conflictingUserId != null && conflictingUserId.Value != account.Id.Value)
             throw StandardError.Unauthorized("Email has already been taken by another account.");
@@ -226,7 +220,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (predefinedTotpPrefix is not null)
             return totp == UsersSettings.PredefinedEmailTotps[predefinedTotpPrefix];
 
-        return await TotpCodes.Validate(purpose, email, session, totp, cancellationToken).ConfigureAwait(false);
+        return await TotpCodes.Validate(email, purpose, totp, cancellationToken).ConfigureAwait(false);
     }
 
     private string? GetPredefinedTotpPrefix(string email)
@@ -234,20 +228,6 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             ? GetPredefinedTotpPrefix(UsersSettings.PredefinedEmailTotps, email)
             : null;
 
-    private async Task<bool> IsThrottled(Session session, string email, CancellationToken cancellationToken)
-    {
-        var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
-        var window = UsersSettings.TotpUIThrottling;
-        var emailKey = $".EmailTotpThrottle:email:{Hash(email)}";
-        var sessionKey = $".EmailTotpThrottle:session:{Hash(session.Id)}";
-        var emailOk = await db.StringSetAsync(emailKey, "1", window, When.NotExists).ConfigureAwait(false);
-        var sessionOk = await db.StringSetAsync(sessionKey, "1", window, When.NotExists).ConfigureAwait(false);
-        return !(emailOk && sessionOk);
-    }
-
-    private static string Hash(string value)
-        => value
-            .Hash()
-            .SHA256()
-            .ToBase64HashString(HashAlgorithm.SHA256);
+    private Task<bool> IsThrottled(string email, CancellationToken cancellationToken)
+        => TotpCodes.IsEmailThrottled(email, cancellationToken);
 }

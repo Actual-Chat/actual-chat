@@ -1,8 +1,6 @@
-using ActualChat.Chat.Db;
 using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.Kvas;
-using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
@@ -10,8 +8,10 @@ namespace ActualChat.Chat;
 /// Frontend service for managing chat authors (participants) with session-based access control.
 /// </summary>
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IAuthors
+public class Authors(IServiceProvider services) : IAuthors
 {
+    private IServiceProvider Services { get; } = services;
+    private ICommander Commander { get; } = services.Commander();
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IAvatars Avatars => field ??= Services.GetRequiredService<IAvatars>();

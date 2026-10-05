@@ -1,10 +1,8 @@
-using ActualChat.Users.Db;
-using ActualLab.Fusion.EntityFramework;
-
 namespace ActualChat.Users.Email;
 
-public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IEmails
+public class Emails(IServiceProvider services) : IEmails
 {
+    private ICommander Commander { get; } = services.Commander();
     private IEmailsBackend Backend { get; } = services.GetRequiredService<IEmailsBackend>();
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();

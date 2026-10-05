@@ -28,7 +28,7 @@ public sealed class RevocationSessionHandler(IServiceProvider services)
     private IOpenIddictAuthorizationManager Authorizations { get; }
         = services.GetRequiredService<IOpenIddictAuthorizationManager>();
 
-    private OAuthGrants Grants { get; } = services.GetRequiredService<OAuthGrants>();
+    private OAuthGrantsBackend Grants { get; } = services.GetRequiredService<OAuthGrantsBackend>();
 
     public async ValueTask HandleAsync(ApplyRevocationResponseContext context)
     {

@@ -10,7 +10,9 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
     private static readonly Version OwnVersion = ApiConstants.BuildVersion;
     // Generous, because the collections of this suite run in parallel
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(20);
-    private AppUpdates Service => field ??= (AppUpdates)AppHost.Services.GetRequiredService<IAppUpdates>();
+    private IAppUpdates Service => field ??= AppHost.Services.GetRequiredService<IAppUpdates>();
+    private AppUpdatesBackend Backend
+        => field ??= (AppUpdatesBackend)AppHost.Services.GetRequiredService<IAppUpdatesBackend>();
     private ScriptedAppStoreProbes Probes
         => (ScriptedAppStoreProbes)AppHost.Services.GetRequiredService<AppStoreProbes>();
     private AppUpdateSettings Settings
@@ -84,12 +86,12 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
 
         // act
         await WhenPolled(async () => {
-            await Service.Invalidate(appKind);
+            await Backend.Invalidate(appKind);
             var info = await Service.GetLatestUpdateInfo(appKind, default);
             info.Should().NotBeNull();
         });
         for (var i = 0; i < 5; i++) {
-            await Service.Invalidate(appKind);
+            await Backend.Invalidate(appKind);
             _ = await Service.GetLatestUpdateInfo(appKind, default);
             await Task.Delay(TimeSpan.FromMilliseconds(200));
         }
@@ -131,7 +133,7 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         var knownBuild = NewBuildBehindOwn(1);
         var detectedAt = Clocks.SystemClock.Now;
         var known = new AppUpdateInfo(appKind, knownBuild, knownBuild, detectedAt, detectedAt);
-        await Service.SetCachedStoreUpdateInfo(appKind, new AppUpdates.CachedUpdateInfo(known), default);
+        await Backend.SetCachedStoreUpdateInfo(appKind, new AppUpdatesBackend.CachedUpdateInfo(known), default);
         var playProbe = Probes.Script(AppKind.Android, new(knownBuild, null));
         var probe = Probes.Script(appKind, new(OwnVersion.ToString(), null));
 
@@ -141,7 +143,7 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
             info.Should().NotBeNull("Play has to be probed regardless");
         });
         await Task.Delay(TimeSpan.FromSeconds(2));
-        await Service.Invalidate(appKind);
+        await Backend.Invalidate(appKind);
         _ = await Service.GetLatestUpdateInfo(appKind, default);
         var callCountWhilePlayHasNothingNewer = probe.CallCount;
         playProbe.Result = new(OwnVersion.ToString(), null);
@@ -186,13 +188,13 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         using var __ = await NewTestSettings(appKind);
         var announcedAt = Clocks.SystemClock.Now - TimeSpan.FromDays(1);
         var announced = new AppUpdateInfo(appKind, "1.0.0", "1.0.0.0", announcedAt, announcedAt);
-        await Service.SetCachedStoreUpdateInfo(appKind, new AppUpdates.CachedUpdateInfo(announced), default);
+        await Backend.SetCachedStoreUpdateInfo(appKind, new AppUpdatesBackend.CachedUpdateInfo(announced), default);
         Probes.Script(appKind, new("1.0.0", null));
 
         // act
         var info = (AppUpdateInfo?)null;
         await WhenPolled(async () => {
-            await Service.Invalidate(appKind);
+            await Backend.Invalidate(appKind);
             info = await Service.GetLatestUpdateInfo(appKind, default);
             info.Should().NotBeNull();
         });
@@ -210,8 +212,8 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         Settings.AnnounceDelay = TimeSpan.FromSeconds(6);
         var announcedAt = Clocks.SystemClock.Now - TimeSpan.FromDays(1);
         var announced = new AppUpdateInfo(appKind, "1.0.0", "1.0.0.0", announcedAt, announcedAt);
-        await Service.SetCachedStoreUpdateInfo(appKind, new AppUpdates.CachedUpdateInfo(announced), default);
-        await Service.Invalidate(appKind);
+        await Backend.SetCachedStoreUpdateInfo(appKind, new AppUpdatesBackend.CachedUpdateInfo(announced), default);
+        await Backend.Invalidate(appKind);
         Probes.Script(appKind, new(OwnVersion.ToString(), null));
 
         // act
@@ -219,7 +221,7 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         // so there is no invalidation to wait for
         var whilePending = (AppUpdateInfo?)null;
         await WhenPolled(async () => {
-            var storeInfo = await Service.GetCachedStoreUpdateInfo(appKind, default);
+            var storeInfo = await Backend.GetCachedStoreUpdateInfo(appKind, default);
             storeInfo!.PendingInfo!.VersionString.Should()
                 .Be(OwnVersion.ToString(), "the release must be detected first");
             // Invalidate's consolidation may still be under way, so the value can lag behind the record
@@ -247,13 +249,14 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         var now = Clocks.SystemClock.Now;
         var pending = new AppUpdateInfo(appKind, "0.9.0", "0.9.0", now, now);
         var announced = new AppUpdateInfo(appKind, "0.8.0", "0.8.0", now, now);
-        await Service.SetCachedStoreUpdateInfo(appKind, new AppUpdates.CachedUpdateInfo(announced, pending), default);
+        var cachedInfo = new AppUpdatesBackend.CachedUpdateInfo(announced, pending);
+        await Backend.SetCachedStoreUpdateInfo(appKind, cachedInfo, default);
         var probe = Probes.Script(appKind, new("0.9.0", null));
 
         // act
         var whilePending = (AppUpdateInfo?)null;
         await WhenPolled(async () => {
-            await Service.Invalidate(appKind);
+            await Backend.Invalidate(appKind);
             whilePending = await Service.GetLatestUpdateInfo(appKind, default);
             whilePending.Should().NotBeNull();
         });
@@ -279,14 +282,14 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         // act
         var withinGrace = (AppUpdateInfo?)null;
         await WhenPolled(async () => {
-            await Service.Invalidate(AppKind.Wasm);
+            await Backend.Invalidate(AppKind.Wasm);
             withinGrace = await Service.GetLatestUpdateInfo(AppKind.Wasm, default);
             withinGrace.Should().BeNull();
         });
         Settings.WasmGracePeriod = TimeSpan.Zero;
         var afterGrace = (AppUpdateInfo?)null;
         await WhenPolled(async () => {
-            await Service.Invalidate(AppKind.Wasm);
+            await Backend.Invalidate(AppKind.Wasm);
             afterGrace = await Service.GetLatestUpdateInfo(AppKind.Wasm, default);
             afterGrace.Should().NotBeNull();
         });
@@ -307,14 +310,14 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         // act
         var disabled = (AppUpdateInfo?)null;
         await WhenPolled(async () => {
-            await Service.Invalidate(appKind);
+            await Backend.Invalidate(appKind);
             disabled = await Service.GetLatestUpdateInfo(appKind, default);
             disabled.Should().BeNull();
         });
         Settings.Overrides = new Dictionary<string, string> { { appKind.ToString(), "9.9.9" } };
         var overridden = (AppUpdateInfo?)null;
         await WhenPolled(async () => {
-            await Service.Invalidate(appKind);
+            await Backend.Invalidate(appKind);
             overridden = await Service.GetLatestUpdateInfo(appKind, default);
             overridden.Should().NotBeNull();
         });
@@ -331,8 +334,8 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
     {
         Probes.Probes.Clear();
         // The records have no TTL, so a rerun would otherwise see what the last run settled
-        await Service.RemoveCachedStoreUpdateInfo(appKind, default);
-        await Service.RemoveCachedStoreUpdateInfo(AppKind.Android, default);
+        await Backend.RemoveCachedStoreUpdateInfo(appKind, default);
+        await Backend.RemoveCachedStoreUpdateInfo(AppKind.Android, default);
         var settings = Settings;
         var restore = new SettingsBackup(settings);
         settings.IsEnabled = true;
@@ -368,7 +371,7 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
             return Task.CompletedTask;
 
         return WhenPolled(async () => {
-            await Service.Invalidate(appKind);
+            await Backend.Invalidate(appKind);
             var info = await Service.GetLatestUpdateInfo(appKind, default);
             info.Should().BeNull();
         });

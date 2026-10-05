@@ -14,13 +14,13 @@ public sealed class OAuthPruner : WorkerBase
     private static readonly RandomTimeSpan Period = TimeSpan.FromHours(1).ToRandom(0.25);
     private static readonly TimeSpan FirstDelay = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan TokenRetention = TimeSpan.FromDays(1);
-    // OAuthGrants.OnApprove creates the authorization before its backing session, so a grant this young
+    // OAuthGrantsBackend.OnApprove creates the authorization before its backing session, so a grant this young
     // with no session row is a consent in flight, not a dead grant
     private static readonly TimeSpan NewGrantGrace = TimeSpan.FromMinutes(5);
     private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(30, 600);
 
     private IServiceProvider Services { get; }
-    private OAuthGrants Grants { get; }
+    private OAuthGrantsBackend Grants { get; }
     private ISessionsBackend SessionsBackend { get; }
     private OAuthSettings Settings { get; }
     private MomentClockSet Clocks { get; }
@@ -29,7 +29,7 @@ public sealed class OAuthPruner : WorkerBase
     public OAuthPruner(IServiceProvider services)
     {
         Services = services;
-        Grants = services.GetRequiredService<OAuthGrants>();
+        Grants = services.GetRequiredService<OAuthGrantsBackend>();
         SessionsBackend = services.GetRequiredService<ISessionsBackend>();
         Settings = services.GetRequiredService<OAuthSettings>();
         Clocks = services.Clocks();

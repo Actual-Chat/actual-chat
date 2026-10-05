@@ -1,8 +1,10 @@
+using ActualChat.App.Server.Module;
 using ActualChat.Resilience;
 using ActualChat.Testing.Host;
 using ActualChat.Users.Module;
 using ActualChat.Users.Phone;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Configuration;
 
 namespace ActualChat.Users.IntegrationTests;
 
@@ -20,19 +22,81 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     private UsersSettings Settings => AppHost.Services.GetRequiredService<UsersSettings>();
     private CaptchaProofValidator CaptchaProofs => AppHost.Services.GetRequiredService<CaptchaProofValidator>();
 
+    [Fact(Timeout = 60_000)]
+    public async Task AuthenticationBackendsShouldShareStateAcrossApiAndBackendHosts()
+    {
+        // arrange
+        var meshLockSubspace = Alphabet.AlphaNumeric.Generator8.Next();
+        await using var backendHost = await NewAppHost(AppHost.Options.InstanceName,
+            options => WithRole(options, HostRole.OneBackendServer));
+        await using var apiHost = await NewAppHost(AppHost.Options.InstanceName,
+            options => WithRole(options, HostRole.OneApiServer));
+        var apiWatcher = apiHost.Services.MeshWatcher();
+        var backendWatcher = backendHost.Services.MeshWatcher();
+        await apiWatcher.WhenAnnounced;
+        await backendWatcher.WhenAnnounced;
+        await TestWait.When(async ct => {
+            (await apiWatcher.State.Use(ct)).AllNodes.Count.Should().BeGreaterThanOrEqualTo(2);
+            (await backendWatcher.State.Use(ct)).AllNodes.Count.Should().BeGreaterThanOrEqualTo(2);
+        });
+        var apiCodes = apiHost.Services.GetRequiredService<ITotpCodesBackend>();
+        var backendCodes = backendHost.Services.GetRequiredService<ITotpCodesBackend>();
+        apiHost.Services.HostInfo().Roles.GetBackendServiceMode<ITotpCodesBackend>().Should().Be(ServiceMode.Client);
+        var (purpose, target) = NewInputs();
+        var phone = NewPhone();
+        var apiPasskeys = apiHost.Services.GetRequiredService<IPasskeysBackend>();
+        var backendPasskeys = backendHost.Services.GetRequiredService<IPasskeysBackend>();
+        var userId = UserId.NewGuest();
+        var prefix = $".PasskeyTest:{Ulid.NewUlid()}:";
+
+        // act
+        var code = await apiCodes.Generate(target, purpose);
+        var validations = await Task.WhenAll(
+            apiCodes.Validate(target, purpose, code),
+            backendCodes.Validate(target, purpose, code));
+        var isFirstThrottled = await apiCodes.IsPhoneThrottled(phone, default);
+        var isSecondThrottled = await backendCodes.IsPhoneThrottled(phone, default);
+        await apiCodes.SetLastChannel(phone, TotpChannel.Sms, default);
+        var channel = await backendCodes.GetLastChannel(phone, default);
+        await apiPasskeys.StoreChallenge(userId, prefix, "pending-challenge", default);
+        var consumeAsOther = () => backendPasskeys.ConsumeChallenge(UserId.NewGuest(), prefix, default);
+
+        // assert
+        await consumeAsOther.Should().ThrowAsync<InvalidOperationException>().WithMessage("*expired*");
+        (await backendPasskeys.ConsumeChallenge(userId, prefix, default)).Should().Be("pending-challenge");
+        var consumeAgain = () => apiPasskeys.ConsumeChallenge(userId, prefix, default);
+        await consumeAgain.Should().ThrowAsync<InvalidOperationException>().WithMessage("*expired*");
+        validations.Should().ContainSingle(x => x);
+        isFirstThrottled.Should().BeFalse();
+        isSecondThrottled.Should().BeTrue();
+        channel.Should().Be(TotpChannel.Sms);
+        return;
+
+        TestAppHostOptions WithRole(TestAppHostOptions options, HostRole role) {
+            return options with {
+                MustInitializeDb = false,
+                MeshLockSubspace = meshLockSubspace,
+                ConfigureHost = (ctx, cfg) => {
+                    options.ConfigureHost?.Invoke(ctx, cfg);
+                    cfg.AddInMemory<HostSettings>((x => x.ServerRole, role.Value));
+                },
+            };
+        }
+    }
+
     [Fact]
     public async Task ValidateShouldRefuseCodeAfterTooManyAttempts()
     {
         // arrange
-        var (purpose, target, session) = NewInputs();
-        var code = await TotpCodes.Generate(purpose, target, session);
+        var (purpose, target) = NewInputs();
+        var code = await TotpCodes.Generate(target, purpose);
         var maxAttemptCount = Settings.TotpMaxAttemptCount;
 
         // act
         var wrongResults = new List<bool>();
         for (var i = 0; i < maxAttemptCount; i++)
-            wrongResults.Add(await TotpCodes.Validate(purpose, target, session, NextCode(code + i)));
-        var isCorrectAccepted = await TotpCodes.Validate(purpose, target, session, code);
+            wrongResults.Add(await TotpCodes.Validate(target, purpose, NextCode(code + i)));
+        var isCorrectAccepted = await TotpCodes.Validate(target, purpose, code);
 
         // assert
         wrongResults.Should().AllSatisfy(x => x.Should().BeFalse());
@@ -43,12 +107,12 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task ValidateShouldAcceptCorrectCodeWhileAttemptsRemain()
     {
         // arrange
-        var (purpose, target, session) = NewInputs();
-        var code = await TotpCodes.Generate(purpose, target, session);
+        var (purpose, target) = NewInputs();
+        var code = await TotpCodes.Generate(target, purpose);
 
         // act
-        var isWrongAccepted = await TotpCodes.Validate(purpose, target, session, NextCode(code));
-        var isCorrectAccepted = await TotpCodes.Validate(purpose, target, session, code);
+        var isWrongAccepted = await TotpCodes.Validate(target, purpose, NextCode(code));
+        var isCorrectAccepted = await TotpCodes.Validate(target, purpose, code);
 
         // assert
         isWrongAccepted.Should().BeFalse();
@@ -56,15 +120,34 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
+    public async Task CodeShouldBeScopedToTargetAndPurpose()
+    {
+        // arrange
+        var (purpose, target) = NewInputs();
+        var (_, otherTarget) = NewInputs();
+        var code = await TotpCodes.Generate(target, purpose);
+
+        // act
+        var isOtherTargetAccepted = await TotpCodes.Validate(otherTarget, purpose, code);
+        var isOtherPurposeAccepted = await TotpCodes.Validate(target, TotpPurpose.VerifyEmail, code);
+        var isCorrectAccepted = await TotpCodes.Validate(target, purpose, code);
+
+        // assert
+        isOtherTargetAccepted.Should().BeFalse();
+        isOtherPurposeAccepted.Should().BeFalse();
+        isCorrectAccepted.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task CodeShouldNotBeReusable()
     {
         // arrange
-        var (purpose, target, session) = NewInputs();
-        var code = await TotpCodes.Generate(purpose, target, session);
+        var (purpose, target) = NewInputs();
+        var code = await TotpCodes.Generate(target, purpose);
 
         // act
-        var isFirstAccepted = await TotpCodes.Validate(purpose, target, session, code);
-        var isSecondAccepted = await TotpCodes.Validate(purpose, target, session, code);
+        var isFirstAccepted = await TotpCodes.Validate(target, purpose, code);
+        var isSecondAccepted = await TotpCodes.Validate(target, purpose, code);
 
         // assert
         isFirstAccepted.Should().BeTrue();
@@ -75,14 +158,14 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task ResendShouldReplaceTheCode()
     {
         // arrange
-        var (purpose, target, session) = NewInputs();
+        var (purpose, target) = NewInputs();
 
         // act
         var codes = new List<int>();
         for (var i = 0; i < 5; i++)
-            codes.Add(await TotpCodes.Generate(purpose, target, session));
-        var isOldAccepted = await TotpCodes.Validate(purpose, target, session, codes[0]);
-        var isNewestAccepted = await TotpCodes.Validate(purpose, target, session, codes[^1]);
+            codes.Add(await TotpCodes.Generate(target, purpose));
+        var isOldAccepted = await TotpCodes.Validate(target, purpose, codes[0]);
+        var isNewestAccepted = await TotpCodes.Validate(target, purpose, codes[^1]);
 
         // assert
         codes.Distinct().Should().HaveCountGreaterThan(1);
@@ -94,16 +177,16 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task CodeShouldStayValidUntilItsLifetimeEnds()
     {
         // arrange
-        var (purpose, target, session) = NewInputs();
+        var (purpose, target) = NewInputs();
         var lifetime = TimeSpan.FromSeconds(3);
-        var earlyCode = await TotpCodes.Generate(purpose, target, session, lifetime, 5, default);
+        var earlyCode = await TotpCodes.Generate(target, purpose, lifetime, 5, default);
 
         // act
         await Task.Delay(TimeSpan.FromSeconds(1));
-        var isAcceptedWithinLifetime = await TotpCodes.Validate(purpose, target, session, earlyCode);
-        var lateCode = await TotpCodes.Generate(purpose, target, session, lifetime, 5, default);
+        var isAcceptedWithinLifetime = await TotpCodes.Validate(target, purpose, earlyCode);
+        var lateCode = await TotpCodes.Generate(target, purpose, lifetime, 5, default);
         await Task.Delay(lifetime + TimeSpan.FromSeconds(1));
-        var isAcceptedAfterLifetime = await TotpCodes.Validate(purpose, target, session, lateCode);
+        var isAcceptedAfterLifetime = await TotpCodes.Validate(target, purpose, lateCode);
 
         // assert
         isAcceptedWithinLifetime.Should().BeTrue();
@@ -335,8 +418,8 @@ public class TotpCodesTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     // Private methods
 
-    private static (TotpPurpose Purpose, string Target, Session Session) NewInputs()
-        => (TotpPurpose.SignInEmail, $"{Ulid.NewUlid().ToString().ToLower()}@actual.chat", Session.New());
+    private static (TotpPurpose Purpose, string Target) NewInputs()
+        => (TotpPurpose.SignInEmail, $"{Ulid.NewUlid().ToString().ToLower()}@actual.chat");
 
     private static ActualChat.Phone NewPhone()
         => ActualChat.Phone.New("1", $"555{Random.Shared.Next(1_000_000, 9_999_999)}");

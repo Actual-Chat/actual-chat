@@ -14,6 +14,14 @@ public sealed class SystemPropertiesOperationHandler(IServiceProvider services) 
     public Task OnOperationCompleted(Operation operation, bool isOrigin, CancellationToken cancellationToken)
     {
         switch (operation.Command) {
+        case SystemPropertiesBackend_InvalidateEverything backendCommand:
+            if (backendCommand.Everywhere || isOrigin)
+                ComputedRegistry.InvalidateEverything();
+            break;
+        case SystemPropertiesBackend_PruneComputedGraph backendCommand:
+            if (backendCommand.Everywhere || isOrigin)
+                _ = services.GetRequiredService<ComputedGraphPruner>().PruneOnce(CancellationToken.None);
+            break;
         case SystemProperties_InvalidateEverything command:
             if (command.Everywhere || isOrigin)
                 ComputedRegistry.InvalidateEverything();
