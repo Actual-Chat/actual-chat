@@ -30,13 +30,13 @@
                the per-second ticks keep the same key, so they never re-trigger it *@
             <div class="c-line-1 composed-sentence" @key="@(row?.StopRecordingAt is not null)">
                 @if (row is { StopRecordingAt: not null, Chat: not null }) {
-                    <span class="c-text c-part">@L.Recording_InChat_CountdownPrefix</span>
+                    <span class="c-text c-part">@L.Recording_InChatCountdown_Prefix</span>
                     <a class="c-text c-value highlight" href="@Links.Chat(row.Chat.Id)">@row.Chat.Title</a>
-                    <span class="c-text c-part">@L.Recording_InChat_CountdownMid</span>
+                    <span class="c-text c-part">@L.Recording_InChatCountdownMid</span>
                     <Countdown EndsAt="@row.StopRecordingAt.Value" Clock="@Clocks.CpuClock"
                         Format="Seconds" Class="c-text highlight c-countdown"/>
                     <span class="c-text c-part">@L.Recording_SecondsUnit</span>
-                    <span class="c-text c-part">@L.Recording_InChat_CountdownTail</span>
+                    <span class="c-text c-part">@L.Recording_InChatCountdown_Suffix</span>
                 } else if (row?.Chat != null) {
                     <span class="c-text c-part">@L.Recording_InChat_Prefix</span>
                     <a class="c-text c-value highlight" href="@Links.Chat(row.Chat.Id)">@row.Chat.Title</a>
