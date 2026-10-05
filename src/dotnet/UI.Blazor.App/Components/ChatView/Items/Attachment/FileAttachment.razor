@@ -2,7 +2,8 @@
 @inherits ComponentBase<UIHub>
 @{
     var fileSize = Attachment.Media.Length;
-    var url = UrlMapper.ContentUrl(Attachment.Media.BlobId);
+    // ToOrigin: the link opens outside the WebView, which can't resolve the app's content scheme
+    var url = UrlMapper.ToOrigin(UrlMapper.ContentUrl(Attachment.Media.BlobId));
     var kind = FileTypeHelper.GetKind(Attachment.Media.FileName, Attachment.Media.ContentType);
     var fileCls = FileTypeHelper.GetCssClass(kind);
     var iconCls = FileTypeHelper.GetIconClass(kind);

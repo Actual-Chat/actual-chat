@@ -26,7 +26,8 @@
                 <AudioFileRow File="@file" VisorDate="@item.VisorDate"/>
             }
             else {
-                var url = UrlMapper.ContentUrl(file.BlobId);
+                // ToOrigin: the link opens outside the WebView, which can't resolve the app's content scheme
+                var url = UrlMapper.ToOrigin(UrlMapper.ContentUrl(file.BlobId));
                 var menuRef = MenuRef.New<ChatContentItemMenu>(file.EntryId.Value, file.LocalIndex.ToString()).ToString();
                 var kind = FileTypeHelper.GetKind(file.FileName, file.ContentType);
                 var fileCls = FileTypeHelper.GetCssClass(kind);
