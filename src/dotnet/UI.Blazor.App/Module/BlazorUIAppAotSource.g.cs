@@ -101,7 +101,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListItemSkeleton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListNavbarWidget>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListPttToggle>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListRecordingToggle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListSortButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListSortMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatListTabUnreadCount>();
@@ -978,7 +977,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListItemSkeleton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListNavbarWidget), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListPttToggle), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListRecordingToggle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListSortButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListSortMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatListTabUnreadCount), AotTypeKind.Component),
