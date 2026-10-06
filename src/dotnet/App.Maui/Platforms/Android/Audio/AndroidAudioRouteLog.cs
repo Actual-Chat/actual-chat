@@ -17,7 +17,7 @@ public static class AndroidAudioRouteLog
         try {
             var audioManager = (AudioManager)Platform.AppContext.GetSystemService(Context.AudioService)!;
             var commDevice = OperatingSystem.IsAndroidVersionAtLeast(31)
-                ? Describe(audioManager.CommunicationDevice)
+                ? Describe(CommunicationDeviceListener.LastDevice)
                 : "n/a";
             var musicVolume = DescribeVolume(audioManager, Android.Media.Stream.Music);
             var callVolume = DescribeVolume(audioManager, Android.Media.Stream.VoiceCall);

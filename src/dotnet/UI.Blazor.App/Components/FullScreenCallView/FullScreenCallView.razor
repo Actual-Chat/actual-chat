@@ -370,8 +370,7 @@
     private void OnSpeakerClick() {
         // Never routed through the listing: the toggle has to work even before the first one
         // arrives, and the earpiece and the speaker are there whatever it says.
-        var isOnSpeaker = State.Value.OutputRoutes.Current?.Kind == AudioOutputKind.Speaker;
-        Hub.CallUI.SelectOutputRoute(isOnSpeaker ? AudioOutputRoute.PhoneId : AudioOutputRoute.SpeakerId);
+        Hub.CallUI.ToggleSpeaker(State.Value.OutputRoutes);
     }
 
     private void OnOptionsClick() {

@@ -31,6 +31,15 @@ public partial class CallUI
     public void SelectOutputRoute(string routeId)
         => _pickedOutputRouteId.Value = routeId;
 
+    public void ToggleSpeaker(AudioOutputRoutes shownRoutes)
+    {
+        // From the last pick, not the shown route: a second tap landing before the re-render must undo the first.
+        var isOnSpeaker = _pickedOutputRouteId.Value is { } pickedId
+            ? pickedId == AudioOutputRoute.SpeakerId
+            : shownRoutes.Current?.Kind == AudioOutputKind.Speaker;
+        SelectOutputRoute(isOnSpeaker ? AudioOutputRoute.PhoneId : AudioOutputRoute.SpeakerId);
+    }
+
     // Protected/internal methods
 
     [ComputeMethod]
