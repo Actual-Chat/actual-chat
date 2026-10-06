@@ -294,6 +294,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.WebHooks.WebHookChangeResult>();
         CodeKeeper.KeepSerializable<global::ActualChat.WebHooks.WebHookDelivery>();
         CodeKeeper.KeepSerializable<global::ActualChat.WebHooks.WebHookDiff>();
+        CodeKeeper.KeepSerializable<global::ActualChat.WebHooks.WebHookScopeRef>();
         CodeKeeper.KeepSerializable<global::ActualChat.WebHooks.WebHookTestResult>();
 
         // MessagePackByteSerializer<T> generic instantiations used by the
@@ -1510,6 +1511,9 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.WebHooks.WebHookScope>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.WebHooks.WebHookScope>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.WebHooks.WebHookScope>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.WebHooks.WebHookScopeRef>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.WebHooks.WebHookScopeRef>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.WebHooks.WebHookScopeRef>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.WebHooks.WebHookTestResult>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.WebHooks.WebHookTestResult>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.WebHooks.WebHookTestResult>>>>();
@@ -2446,6 +2450,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+WebHooks+WebHookFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+WebHooks+WebHookKindFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+WebHooks+WebHookScopeFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+WebHooks+WebHookScopeRefFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+WebHooks+WebHookTestResultFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.ImmutableCollection.ImmutableListFormatter`1[[ActualChat.AuthorId, ActualChat.Api]], MessagePack");
     }
@@ -2731,6 +2736,7 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.WebHooks.WebHookChangeResult), AotTypeKind.Serializable),
             (typeof(global::ActualChat.WebHooks.WebHookDelivery), AotTypeKind.Serializable),
             (typeof(global::ActualChat.WebHooks.WebHookDiff), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.WebHooks.WebHookScopeRef), AotTypeKind.Serializable),
             (typeof(global::ActualChat.WebHooks.WebHookTestResult), AotTypeKind.Serializable),
         ];
 }

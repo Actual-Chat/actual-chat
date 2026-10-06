@@ -229,7 +229,7 @@ public partial class WebHooksBackend
 
     private async Task<List<WebHook>> HooksForPlace(PlaceId placeId, CancellationToken cancellationToken)
     {
-        var hooks = await ListByScope(WebHookScope.Place, placeId.Value, cancellationToken).ConfigureAwait(false);
+        var hooks = await ListByScope(new(WebHookScope.Place, placeId.Value), cancellationToken).ConfigureAwait(false);
         return hooks.Where(x => x.IsActiveOutgoing).ToList();
     }
 
