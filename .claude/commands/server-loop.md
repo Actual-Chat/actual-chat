@@ -23,7 +23,7 @@ arbitration of their own.
 fight you. To restart the running .NET server, use one of:
 
 - `s` or `x` keypress in the loop terminal — in fact *any* key except
-  `j` (rebundle), `h` (hard restart) and `k` (kill), all below. The loop
+  `j` (rebundle), `h` (hard restart), `k` (kill), `m` (switch mode) and, in multihost mode, `b`/`B`, all below. The loop
   forwards it to `/health/stop` and force-kills the process if it hasn't
   exited 10s later.
 - `curl https://local.voxt.ai/health/stop` (it's a **GET**, not POST —
@@ -45,6 +45,44 @@ or press a key in the loop terminal.
 To rebuild **only the TS/CSS bundle** without stopping anything, press `j`
 in the loop terminal or `touch tmp/server-loop-rebundle` — see "Rebundle
 without restarting the server" below for what it does and does not get you.
+
+### Multihost mode — API plus separate backends
+
+`server-loop.cmd -multihost` (or pressing `m` in the loop terminal, which
+toggles it and restarts) runs Step 3 as two processes instead of one: an API
+server (`-role:2:OneApiServer`) on the base port (7080, or
+`HostSettings__BasePort` from `.env`) and a backend
+(`-role:2:OneBackendServer`) on base port + 1. It is the layout
+`-multihost-role:2:OneApiServer` produces, except that the loop owns every
+process, so the hosts can be added and removed by hand:
+
+- `b` starts one more backend. Backends are named `backend<XX>`, `XX` a two-digit
+  hex id (`backend01`, `backend02`, ... `backendff`): the first one with no running
+  host and no log left in this iteration, so a stopped backend's id isn't reused
+  until the next restart. Port = base port + id.
+- `B` (shift-b) stops a random backend gracefully (`/health/stop` on its own
+  port, force-kill after 10s).
+- `m` switches between regular and multihost mode.
+
+A restart (any other key, `h`, `/health/stop` on the API) stops every host,
+wipes all logs and starts the API plus as many backends as were running (at
+least one, renumbered from `01`). `k` force-kills all hosts. The watchdog, rebundle
+and the stop deadline follow the API host; a backend that dies on its own is
+logged and dropped, not restarted.
+
+Every backend start and stop (`b`, `B`, an unexpected exit) logs the full
+list to `tmp/server-loop.log`:
+
+```
+[hh:mm:ss] Hosts: api :7080; backends (2): backend01 :7081 PID 45008; backend02 :7082 PID 51234.
+```
+
+A backend asked to stop shows as `(stopping)` until it exits. All hosts share a fresh mesh-lock subspace per iteration and run
+with `--no-build` after Step 2, so the builds don't race.
+
+Each host has its own log set, `tmp/server-loop-server-run-<name>.{out,err,log}`
+with `<name>` = `api`, `backend01`, `backend02`, ... — the API's `.log` is what
+the regular `server-run.log` is. Regular mode keeps the unsuffixed names.
 
 ### Prefer the loop over building a native app
 
@@ -402,6 +440,7 @@ rebuild on its own.
 | `tmp/server-loop-server-run.out` | Step 3 — `dotnet run` stdout |
 | `tmp/server-loop-server-run.err` | Step 3 — `dotnet run` stderr (empty on a healthy run) |
 | `tmp/server-loop-server-run.log` | Server's `ActualChat_DevLog` — the structured app diagnostics, richer than stdout |
+| `tmp/server-loop-server-run-<api\|backendXX>.{out,err,log}` | Multihost mode only: the same three files per host (replace the unsuffixed `server-run.*` ones) |
 | `tmp/server-loop-rebundle` | Write it to request an in-place rebundle (same as pressing `j` in the loop terminal); the loop deletes it when it starts building |
 | `tmp/server-loop-hard-restart` | Write it to request a hard restart — stop, purge `artifacts/{obj,bin}/App.Wasm`, drop both stamps, full rebuild (same as pressing `h`). For when the browser is reload-looping on stale WASM assemblies |
 | `tmp/server-loop-npm-build.stamp` | "npm-build last succeeded at" (UTC ticks) — drives the skip check |

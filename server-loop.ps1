@@ -39,6 +39,16 @@
 #
 # All loop log files (tmp/server-loop.log + tmp/server-loop-<step>.log + the
 # DevLog) are wiped at the start of every iteration.
+#
+# Multihost mode (-multihost argument, or the 'm' key to toggle it): Step 3
+# starts two processes instead of one - an API server on the base port
+# (-role:2:OneApiServer) and a backend (-role:2:OneBackendServer) on base port +
+# 1 - the same layout -multihost-role:2:OneApiServer produces, except that the
+# loop owns every process. 'b' starts one more backend, 'B' (shift-b) stops a
+# random one. Each host writes its own
+# tmp/server-loop-server-run-<name>.{out,err,log} (api, backend01, backend02, ...).
+# Every restart stops all hosts, wipes their logs and starts the API plus as
+# many backends as were running.
 
 [CmdletBinding()]
 param(
@@ -54,6 +64,8 @@ param(
 )
 
 $ErrorActionPreference = "Continue"
+$multiHost = $ServerArgs -contains '-multihost'
+$ServerArgs = @($ServerArgs | Where-Object { $_ -ne '-multihost' })
 $ScriptDir = $PSScriptRoot
 Set-Location $ScriptDir
 
@@ -73,6 +85,7 @@ $serverRunBase   = Join-Path $tmpDir "server-loop-server-run"
 $serverRunOutLog = "$serverRunBase.out"  # dotnet run stdout
 $serverRunErrLog = "$serverRunBase.err"  # dotnet run stderr
 $devLog          = "$serverRunBase.log"  # ActualChat_DevLog
+$regularDevLog   = $devLog
 $projectCsproj   = "src/dotnet/App.Server/App.Server.csproj"
 
 $allLoopLogs = @($loopLog, $npmBuildLog, $dotnetBuildLog, $serverRunOutLog, $serverRunErrLog, $devLog)
@@ -177,6 +190,9 @@ function Reset-LoopLogs {
     foreach ($f in $allLoopLogs) {
         Remove-Item $f -Force -ErrorAction SilentlyContinue
     }
+    # Per-host logs of multihost mode: server-loop-server-run-<name>.{out,err,log}
+    Get-ChildItem -Path $tmpDir -Filter 'server-loop-server-run-*' -File -ErrorAction SilentlyContinue |
+        Remove-Item -Force -ErrorAction SilentlyContinue
 }
 
 # npm-build, shared by Step 1 and the in-place rebundle. Returns the exit code.
@@ -451,10 +467,12 @@ function Start-ServerProcess {
         [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $BuildProperties,
         [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $ServerArgs,
         [Parameter(Mandatory)] [string]   $StdoutPath,
-        [Parameter(Mandatory)] [string]   $StderrPath
+        [Parameter(Mandatory)] [string]   $StderrPath,
+        [switch] $NoBuild
     )
+    $noBuildArgs = if ($NoBuild) { @('--no-build') } else { @() }
     if ($IsWindows) {
-        $runArgs = @('run', '-c', $Configuration, '--no-launch-profile', '--project', $ProjectCsproj) + $BuildProperties + @('--') + $ServerArgs
+        $runArgs = @('run', '-c', $Configuration, '--no-launch-profile', '--project', $ProjectCsproj) + $noBuildArgs + $BuildProperties + @('--') + $ServerArgs
         return Start-Process -FilePath dotnet `
             -ArgumentList $runArgs `
             -RedirectStandardOutput $StdoutPath -RedirectStandardError $StderrPath `
@@ -474,7 +492,8 @@ function Start-ServerProcess {
     # child early; the direct API does not.)
     $quotedArgs = ($ServerArgs | ForEach-Object { "'$(($_ -replace "'", "'\''"))'" }) -join ' '
     $quotedProps = ($BuildProperties | ForEach-Object { "'$(($_ -replace "'", "'\''"))'" }) -join ' '
-    $shellLine = "exec dotnet run -c '$Configuration' --no-launch-profile --project '$ProjectCsproj' $quotedProps -- $quotedArgs > '$StdoutPath' 2> '$StderrPath'"
+    $quotedNoBuild = $noBuildArgs -join ' '
+    $shellLine = "exec dotnet run -c '$Configuration' --no-launch-profile --project '$ProjectCsproj' $quotedNoBuild $quotedProps -- $quotedArgs > '$StdoutPath' 2> '$StderrPath'"
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = '/bin/sh'
     $psi.ArgumentList.Add('-c')
@@ -520,6 +539,140 @@ function Send-StopSignal {
     }
 }
 
+# Multihost mode. Hosts are hashtables: Name, Role, Port, Process, OutLog,
+# ErrLog, DevLog, StopDeadline. The loop's main wait (stop deadline, watchdog,
+# exit handling) follows the API host; backends are pruned from the list as
+# they exit.
+$hosts = [System.Collections.Generic.List[hashtable]]::new()
+$apiHost = $null
+$backendCount = 1
+$meshLockSubspace = $null
+$basePort = 7080
+$runMultiHost = $false
+
+# HostSettings__BasePort in .env is what ai.ps1 sets for worktrees; the Aspire
+# host reads it the same way.
+function Get-BasePort {
+    $port = 7080
+    $envFile = Join-Path $ScriptDir ".env"
+    if (Test-Path $envFile) {
+        Get-Content $envFile | ForEach-Object {
+            if ($_ -match '^HostSettings__BasePort=(\d+)\s*$') { $port = [int]$Matches[1] }
+        }
+    }
+    return $port
+}
+
+# --no-build: Step 2 has just built (or found up to date) the one project every
+# host runs, and several `dotnet run` builds racing over the same obj/ is
+# exactly what we don't want.
+function Start-MultiHost {
+    param(
+        [Parameter(Mandatory)] [string] $Name,
+        [Parameter(Mandatory)] [string] $Role,
+        [Parameter(Mandatory)] [int]    $Port
+    )
+    $base = Join-Path $tmpDir "server-loop-server-run-$Name"
+    $h = @{
+        Name = $Name; Role = $Role; Port = $Port
+        OutLog = "$base.out"; ErrLog = "$base.err"; DevLog = "$base.log"
+        StopDeadline = $null
+    }
+    $env:ActualChat_DevLog = $h.DevLog
+    $env:ASPNETCORE_ENVIRONMENT = "Development"
+    $env:HostSettings__MeshLockSubspace = $meshLockSubspace
+    $env:HostSettings__MeshLockOptionsPreset = 'Default'
+    try {
+        $h.Process = Start-ServerProcess `
+            -Configuration    $Configuration `
+            -ProjectCsproj    $projectCsproj `
+            -BuildProperties  $buildProperties `
+            -ServerArgs       (@("-role:2:$Role", "-url:http://localhost:$Port", '-distributed') + $ServerArgs) `
+            -StdoutPath       $h.OutLog `
+            -StderrPath       $h.ErrLog `
+            -NoBuild
+    } finally {
+        Remove-Item Env:HostSettings__MeshLockSubspace, Env:HostSettings__MeshLockOptionsPreset -ErrorAction SilentlyContinue
+    }
+    Write-LoopLog "Started $Name ($Role) on port $Port, PID $($h.Process.Id), log $($h.DevLog)."
+    return $h
+}
+
+# Backends are named backend<XX>, XX = two-digit hex id: the first one with no
+# running host and no log left from this iteration (logs are wiped at its
+# start, so a stopped backend's id isn't reused until the next restart).
+# The port is base + id.
+function New-BackendId {
+    for ($id = 1; $id -le 255; $id++) {
+        $name = 'backend{0:x2}' -f $id
+        if ($hosts | Where-Object { $_.Name -eq $name }) { continue }
+        if (Test-Path (Join-Path $tmpDir "server-loop-server-run-$name.log")) { continue }
+        return $id
+    }
+    return $null
+}
+
+function Start-Backend([int]$Id) {
+    $hosts.Add((Start-MultiHost ('backend{0:x2}' -f $Id) 'OneBackendServer' ($basePort + $Id)))
+}
+
+function Write-HostList {
+    $backends = @($hosts | Where-Object { $_ -ne $apiHost -and -not $_.Process.HasExited })
+    $items = @($backends | ForEach-Object {
+        $state = if ($_.StopDeadline) { ' (stopping)' } else { '' }
+        "$($_.Name) :$($_.Port) PID $($_.Process.Id)$state"
+    })
+    $list = if ($items.Count -gt 0) { $items -join '; ' } else { 'none' }
+    Write-LoopLog "Hosts: api :$($apiHost.Port); backends ($($backends.Count)): $list."
+}
+
+function Send-HostStop($H) {
+    try {
+        Invoke-WebRequest -Uri "http://127.0.0.1:$($H.Port)/health/stop" -TimeoutSec 5 -UseBasicParsing | Out-Null
+    } catch {
+        Write-LoopLog "Stop request to $($H.Name) failed: $($_.Exception.Message)"
+    }
+    if (-not $H.StopDeadline) { $H.StopDeadline = (Get-Date).AddSeconds($stopDeadlineSeconds) }
+}
+
+function Stop-HostNow($H, [string]$Reason) {
+    Write-LoopLog "$($H.Name): $Reason force-killing PID $($H.Process.Id) and its children."
+    try { $H.Process.Kill($true) }
+    catch { Write-LoopLog "$($H.Name): kill failed: $_" }
+}
+
+# One stop request for whatever is running: every host in multihost mode, the
+# single server otherwise.
+function Request-ServerStop([bool]$Multi) {
+    if (-not $Multi) {
+        Send-StopSignal
+        return
+    }
+    foreach ($h in $hosts) {
+        if (-not $h.Process.HasExited) { Send-HostStop $h }
+    }
+}
+
+# Used once the API has exited: nothing may outlive an iteration, because the
+# next one wipes the logs these processes still write to.
+function Stop-AllHosts {
+    foreach ($h in $hosts) {
+        if (-not $h.Process.HasExited) { Send-HostStop $h }
+    }
+    while ($true) {
+        $running = @($hosts | Where-Object { -not $_.Process.HasExited })
+        if ($running.Count -eq 0) { break }
+        foreach ($h in $running) {
+            if ((Get-Date) -ge $h.StopDeadline) {
+                Stop-HostNow $h "graceful shutdown didn't complete within ${stopDeadlineSeconds}s;"
+                $h.StopDeadline = (Get-Date).AddSeconds($stopDeadlineSeconds)
+            }
+        }
+        Start-Sleep -Milliseconds 200
+    }
+    $hosts.Clear()
+}
+
 # One-time banner: listing log paths here keeps per-iteration output terse.
 Write-Host "server-loop log files (wiped at the start of every iteration):"
 Write-Host "  loop          $loopLog"
@@ -528,6 +681,8 @@ Write-Host "  dotnet-build  $dotnetBuildLog"
 Write-Host "  server-run    $serverRunOutLog (stdout)"
 Write-Host "                $serverRunErrLog (stderr)"
 Write-Host "                $devLog (DevLog)"
+Write-Host "multihost mode (-multihost argument, 'm' key): one API + backend hosts, one log set per host:"
+Write-Host "  $tmpDir/server-loop-server-run-<api|backendXX>.{out,err,log}"
 Write-Host "Press 'j' here, or create $rebundleFlag, while the server runs to rebuild the bundle without restarting it."
 Write-Host "Press 'h' here, or create $hardRestartFlag, to stop, purge the WASM build outputs and rebuild from scratch."
 Write-Host ""
@@ -614,30 +769,52 @@ while ($true) {
     # Step 3: server-run
     if (-not $failureMessage) {
         Write-LoopLog "Step 3/3 (server-run)"
-        $env:ActualChat_DevLog = $devLog
-        $env:ASPNETCORE_ENVIRONMENT = "Development"
-        # Run dotnet asynchronously so this PowerShell can poll its own stdin
-        # while the server is up. Otherwise `*>` redirection makes 's'/'x' keys
-        # invisible to the child's Console.ReadKey watcher (the child no longer
-        # has a TTY for stdin on Windows). On 's'/'x' from the loop terminal we
-        # forward a /health/stop instead — which triggers the same clean
-        # IHostApplicationLifetime.StopApplication path the child would have.
-        # Stdout and stderr go to separate sibling files so output streams stay
-        # uninterleaved — the .err file is empty on a healthy run.
-        # Args after `--` are forwarded to App.Server.exe. The loop owns
-        # keypress handling itself ('j' rebundles, anything else goes to
-        # /health/stop), so the App.Server-side `-kb` keyboard watcher
-        # would have nothing to read — its stdin is captured by the
-        # redirect anyway. We don't pass `-kb`. `$ServerArgs` appends
-        # whatever the operator passed to server-loop.ps1.
-        $proc = Start-ServerProcess `
-            -Configuration    $Configuration `
-            -ProjectCsproj    $projectCsproj `
-            -BuildProperties  $buildProperties `
-            -ServerArgs       $ServerArgs `
-            -StdoutPath       $serverRunOutLog `
-            -StderrPath       $serverRunErrLog
-        Write-Host "Keyboard: 'j' = rebundle in place (npm only, server keeps running); 'h' = hard restart (stop, purge the WASM build outputs, full rebuild); 'k' = kill the server process right now (no /health/stop, no wait); any other key = stop the server (forwarded to /health/stop; force-kill after ${stopDeadlineSeconds}s)." -ForegroundColor Cyan
+        # Captured per iteration: the 'm' key flips $multiHost for the next one.
+        $runMultiHost = $multiHost
+        $hosts.Clear()
+        if ($runMultiHost) {
+            # Fresh subspace per iteration, so mesh locks of hosts that were
+            # force-killed can't hold up the next set.
+            $meshLockSubspace = -join (((48..57) + (97..122)) | Get-Random -Count 8 | ForEach-Object { [char]$_ })
+            $basePort = Get-BasePort
+            $devLog = Join-Path $tmpDir "server-loop-server-run-api.log"
+            Write-LoopLog "Multihost mode: API on port $basePort, mesh lock subspace '$meshLockSubspace'."
+            $apiHost = Start-MultiHost 'api' 'OneApiServer' $basePort
+            $hosts.Add($apiHost)
+            for ($i = 1; $i -le [Math]::Max(1, $backendCount); $i++) {
+                Start-Backend (New-BackendId)
+            }
+            $backendCount = $hosts.Count - 1
+            Write-HostList
+            $proc = $apiHost.Process
+            Write-Host "Keyboard: 'b' = start one more backend; 'B' = stop a random backend; 'm' = switch to regular mode (restart); 'j' = rebundle in place; 'h' = hard restart; 'k' = kill all hosts right now; any other key = stop all hosts (force-kill after ${stopDeadlineSeconds}s)." -ForegroundColor Cyan
+        } else {
+            $devLog = $regularDevLog
+            $env:ActualChat_DevLog = $devLog
+            $env:ASPNETCORE_ENVIRONMENT = "Development"
+            # Run dotnet asynchronously so this PowerShell can poll its own stdin
+            # while the server is up. Otherwise `*>` redirection makes 's'/'x' keys
+            # invisible to the child's Console.ReadKey watcher (the child no longer
+            # has a TTY for stdin on Windows). On 's'/'x' from the loop terminal we
+            # forward a /health/stop instead - which triggers the same clean
+            # IHostApplicationLifetime.StopApplication path the child would have.
+            # Stdout and stderr go to separate sibling files so output streams stay
+            # uninterleaved - the .err file is empty on a healthy run.
+            # Args after `--` are forwarded to App.Server.exe. The loop owns
+            # keypress handling itself ('j' rebundles, anything else goes to
+            # /health/stop), so the App.Server-side `-kb` keyboard watcher
+            # would have nothing to read - its stdin is captured by the
+            # redirect anyway. We don't pass `-kb`. `$ServerArgs` appends
+            # whatever the operator passed to server-loop.ps1.
+            $proc = Start-ServerProcess `
+                -Configuration    $Configuration `
+                -ProjectCsproj    $projectCsproj `
+                -BuildProperties  $buildProperties `
+                -ServerArgs       $ServerArgs `
+                -StdoutPath       $serverRunOutLog `
+                -StderrPath       $serverRunErrLog
+            Write-Host "Keyboard: 'j' = rebundle in place (npm only, server keeps running); 'h' = hard restart (stop, purge the WASM build outputs, full rebuild); 'k' = kill the server process right now (no /health/stop, no wait); 'm' = switch to multihost mode (restart); any other key = stop the server (forwarded to /health/stop; force-kill after ${stopDeadlineSeconds}s)." -ForegroundColor Cyan
+        }
 
         # Watchdog state: probe /healthz/live once we've learned the port
         # from the MeshWatcher log line. Two consecutive misses
@@ -669,8 +846,52 @@ while ($true) {
                     # or e.g. the developer's rebundle request would kill their
                     # server.
                     $key = [System.Console]::ReadKey($true)
-                    $keyChar = [char]::ToLowerInvariant($key.KeyChar)
-                    if ($keyChar -eq 'j') {
+                    $rawChar = $key.KeyChar
+                    $keyChar = [char]::ToLowerInvariant($rawChar)
+                    if ($rawChar -ceq 'b') {
+                        if (-not $runMultiHost) {
+                            Write-LoopLog "'b' only works in multihost mode - press 'm' to switch."
+                        } elseif ($stopRequested) {
+                            Write-LoopLog "'b' ignored - a stop is already in flight."
+                        } else {
+                            $id = New-BackendId
+                            if ($null -eq $id) {
+                                Write-LoopLog "'b': no free backend id left."
+                            } else {
+                                Start-Backend $id
+                                $backendCount = $hosts.Count - 1
+                                Write-HostList
+                            }
+                        }
+                    }
+                    elseif ($rawChar -ceq 'B') {
+                        $victims = @($hosts | Where-Object {
+                            $_ -ne $apiHost -and -not $_.Process.HasExited -and -not $_.StopDeadline })
+                        if (-not $runMultiHost) {
+                            Write-LoopLog "'B' only works in multihost mode - press 'm' to switch."
+                        } elseif ($victims.Count -eq 0) {
+                            Write-LoopLog "'B': no running backend to stop."
+                        } else {
+                            $victim = $victims | Get-Random
+                            Write-LoopLog "Stopping $($victim.Name) (PID $($victim.Process.Id))."
+                            Send-HostStop $victim
+                            $backendCount = [Math]::Max(0, $backendCount - 1)
+                            Write-HostList
+                        }
+                    }
+                    elseif ($keyChar -eq 'm') {
+                        $multiHost = -not $multiHost
+                        $nextMode = if ($multiHost) { 'multihost' } else { 'regular' }
+                        if ($stopRequested) {
+                            Write-LoopLog "Mode switch: the next iteration runs in $nextMode mode."
+                        } else {
+                            Write-LoopLog "Mode switch: restarting in $nextMode mode."
+                            Request-ServerStop $runMultiHost
+                            $stopRequested = $true
+                            $keyStopForceKillAt = (Get-Date).AddSeconds($stopDeadlineSeconds)
+                        }
+                    }
+                    elseif ($keyChar -eq 'j') {
                         $rebundleRequested = $true
                     }
                     elseif ($keyChar -eq 'h') {
@@ -689,11 +910,18 @@ while ($true) {
                         # next iteration rebuilds. So 'k' alone recycles the loop
                         # normally, and 'h' then 'k' still purges below.
                         Stop-ServerProcessNow -Process $proc -Label 'Kill' -Reason 'requested from the loop terminal;'
+                        if ($runMultiHost) {
+                            foreach ($h in $hosts) {
+                                if ($h -ne $apiHost -and -not $h.Process.HasExited) {
+                                    Stop-HostNow $h 'requested from the loop terminal;'
+                                }
+                            }
+                        }
                         $stopRequested = $true
                         $keyStopForceKillAt = $null
                     }
                     elseif (-not $keyStopForceKillAt) {
-                        Send-StopSignal
+                        Request-ServerStop $runMultiHost
                         $stopRequested = $true
                         $keyStopForceKillAt = (Get-Date).AddSeconds($stopDeadlineSeconds)
                         Write-LoopLog "Stop signal sent; will force-kill PID $($proc.Id) if it doesn't exit within ${stopDeadlineSeconds}s."
@@ -731,7 +959,7 @@ while ($true) {
             # send a second stop and re-arm a deadline on a dying process.
             if ($hardRestartRequested -and -not $stopRequested) {
                 Write-LoopLog "Hard restart requested: stopping the server, then purging the WASM build outputs."
-                Send-StopSignal
+                Request-ServerStop $runMultiHost
                 $stopRequested = $true
                 $keyStopForceKillAt = (Get-Date).AddSeconds($stopDeadlineSeconds)
             }
@@ -744,6 +972,19 @@ while ($true) {
                     -WatchdogPort         ([ref]$watchdogPort) `
                     -WatchdogMissCount    ([ref]$watchdogMissCount) `
                     -WatchdogNextProbeAt  ([ref]$watchdogNextProbeAt)
+            }
+
+            # Backends only: the API's own deadline is $keyStopForceKillAt below.
+            foreach ($h in @($hosts)) {
+                if ($h -eq $apiHost) { continue }
+                if ($h.Process.HasExited) {
+                    Write-LoopLog "$($h.Name) exited (code $($h.Process.ExitCode))."
+                    [void]$hosts.Remove($h)
+                    Write-HostList
+                } elseif ($h.StopDeadline -and (Get-Date) -ge $h.StopDeadline) {
+                    Stop-HostNow $h "graceful shutdown didn't complete within ${stopDeadlineSeconds}s;"
+                    $h.StopDeadline = (Get-Date).AddSeconds($stopDeadlineSeconds)
+                }
             }
 
             if ($keyStopForceKillAt -and (Get-Date) -ge $keyStopForceKillAt) {
@@ -788,6 +1029,7 @@ while ($true) {
 
             Start-Sleep -Milliseconds 200
         }
+        if ($runMultiHost) { Stop-AllHosts }
         $exitCode = $proc.ExitCode
         # Did the server reach "I bound a port" before exiting? If so any
         # exit is a post-start termination (stop signal in any of its
