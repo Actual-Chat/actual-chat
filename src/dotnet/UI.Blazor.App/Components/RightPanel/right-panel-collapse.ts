@@ -86,10 +86,13 @@ export class RightPanelCollapse {
             takeUntil(this.disposed$),
         ).subscribe(e => this.onScroll(e));
 
-        // Drag the header itself to expand/collapse, following the finger (touch only).
+        // Drag the header itself to expand/collapse, following the finger (touch only) — except on the
+        // bio, which has its own overflow scroll: a collapse drag there preventDefaults and swallows it,
+        // leaving a long bio unreadable, so that touch is left to the native scroll.
         DocumentEvents.capturedPassive.touchStart$.pipe(
             filter(() => !ScreenSize.isWide() && !this.isDragging && !this.isSnapping && !this.isAvatarExpanded),
-            filter(e => this.header?.contains(e.target as Node) ?? false),
+            filter(e => (this.header?.contains(e.target as Node) ?? false)
+                && !(e.target instanceof Element && e.target.closest('.c-chat-description') != null)),
             takeUntil(this.disposed$),
         ).subscribe(e => Gestures.addActive(new CollapseDragGesture(this, e)));
 
@@ -120,18 +123,13 @@ export class RightPanelCollapse {
         // has no collapse-dependent styles, so reading its offsetHeight never feeds back on the var.
         const topRegion = rightPanel.querySelector('.c-top-region');
         if (topRegion) {
-            this.chatInfoObserver = new MutationObserver(() => this.measureGeometry());
+            this.chatInfoObserver = new MutationObserver(() => {
+                this.ensureChatInfoObserved();
+                this.measureGeometry();
+            });
             this.chatInfoObserver.observe(topRegion, { childList: true, subtree: true });
         }
-        // The card renders lazily and settles its height a frame or two after insertion (toggles, captions),
-        // which the childList observer above misses — so the range stayed short and the tabs overlapped the
-        // card until the first collapse re-measured it. A ResizeObserver catches the final height; the card
-        // has no collapse-dependent styles, so measuring it never feeds back on the var.
-        const chatInfo = rightPanel.querySelector('.c-chat-info');
-        if (chatInfo) {
-            this.chatInfoResizeObserver = new ResizeObserver(() => this.measureChatInfo());
-            this.chatInfoResizeObserver.observe(chatInfo);
-        }
+        this.ensureChatInfoObserved();
         this.measureGeometry();
         this.rightPanel.classList.toggle('rp-expanded', this.progress === 0);
     }
@@ -174,6 +172,24 @@ export class RightPanelCollapse {
         this.targetProgress = 0;
         this.headerBasePx = 0; // force a re-measure for the new chat's header (its bio may differ)
         this.setProgress(0);
+    }
+
+    // The card renders lazily (ChatSidePanelInfo returns nothing while its state is initial), so .c-chat-info
+    // is usually absent when this controller is built and a construction-time observe would never attach. It
+    // settles its height a frame or two after insertion (toggles, captions), which the childList observer
+    // misses — so the range stayed short and the tabs overlapped the card until the first collapse re-measured
+    // it (and a list too short to collapse never did). Attach on first sight instead; the card has no
+    // collapse-dependent styles, so measuring it never feeds back on the var.
+    private ensureChatInfoObserved() {
+        if (this.chatInfoResizeObserver)
+            return;
+
+        const chatInfo = this.rightPanel.querySelector('.c-chat-info');
+        if (!chatInfo)
+            return;
+
+        this.chatInfoResizeObserver = new ResizeObserver(() => this.measureChatInfo());
+        this.chatInfoResizeObserver.observe(chatInfo);
     }
 
     private measureChatInfo() {
