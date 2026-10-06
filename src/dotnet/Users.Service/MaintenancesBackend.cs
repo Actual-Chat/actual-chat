@@ -8,14 +8,24 @@ public class MaintenancesBackend(IServiceProvider services)
     : ShardedDbServiceBase<UsersDbContext>(services), IMaintenancesBackend
 {
     // [ComputeMethod]
-    public virtual async Task<MaintenanceMode> Get(MaintenanceKey key, CancellationToken cancellationToken)
+    public virtual async Task<MaintenanceMode> GetMode(MaintenanceKey key, CancellationToken cancellationToken)
     {
         key.RequireValid();
         // Deliberately isolated: depending on the partition would make every write invalidate every
         // key in it. OnSet invalidates this method for the key it actually changed instead.
         using var _ = Computed.BeginIsolation();
         var partition = await GetPartition(key.PartitionKey, cancellationToken).ConfigureAwait(false);
-        return partition.GetValueOrDefault(key.Value);
+        return partition.GetValueOrDefault(key.Value)?.Mode ?? MaintenanceMode.None;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<Maintenance> Get(MaintenanceKey key, CancellationToken cancellationToken)
+    {
+        key.RequireValid();
+        // Isolated for the same reason as GetMode
+        using var _ = Computed.BeginIsolation();
+        var partition = await GetPartition(key.PartitionKey, cancellationToken).ConfigureAwait(false);
+        return partition.GetValueOrDefault(key.Value) ?? Maintenance.None;
     }
 
     // [CommandHandler]
@@ -33,18 +43,32 @@ public class MaintenancesBackend(IServiceProvider services)
         await dbContext.Maintenances.Lock(id, cancellationToken).ConfigureAwait(false);
         var row = await dbContext.Maintenances
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken).ConfigureAwait(false);
+        if (row is not null && row.OwnerId != command.OwnerId)
+            throw StandardError.Constraint("Maintenance belongs to another operation.");
+
+        var targets = command.Targets.ToDelimitedString(" ");
         if (mode == MaintenanceMode.None) {
             if (row is not null)
                 dbContext.Remove(row);
         }
         else if (row is null)
-            dbContext.Add(new DbMaintenance { Id = id, Mode = mode });
-        else
+            dbContext.Add(new DbMaintenance {
+                Id = id,
+                Mode = mode,
+                OwnerId = command.OwnerId,
+                StartedBy = command.StartedBy?.Value ?? "",
+                StartedAt = command.StartedAt ?? Clocks.SystemClock.Now,
+                Targets = targets,
+            });
+        else {
             row.Mode = mode;
+            row.Targets = targets;
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         Invalidation.Defer(() => {
             _ = GetPartition(key.PartitionKey, default);
+            _ = GetMode(key, default);
             _ = Get(key, default);
         });
     }
@@ -53,7 +77,7 @@ public class MaintenancesBackend(IServiceProvider services)
 
     // Not exposed via IMaintenancesBackend: it must stay a local call of Get, which routes for it.
     [ComputeMethod(MinCacheDuration = 3600)]
-    protected virtual async Task<ApiMap<string, MaintenanceMode>> GetPartition(
+    protected virtual async Task<ApiMap<string, Maintenance>> GetPartition(
         ShardKey partitionKey,
         CancellationToken cancellationToken)
     {
@@ -67,6 +91,8 @@ public class MaintenancesBackend(IServiceProvider services)
         var rows = await dbContext.Maintenances.AsNoTracking()
             .Where(x => x.Id.StartsWith(prefix))
             .ToListAsync(cancellationToken).ConfigureAwait(false);
-        return rows.ToDictionary(x => x.Id[MaintenanceKey.IdPrefixLength..], x => x.Mode).ToApiMap();
+        return rows
+            .ToDictionary(x => x.Id[MaintenanceKey.IdPrefixLength..], x => x.ToModel())
+            .ToApiMap();
     }
 }

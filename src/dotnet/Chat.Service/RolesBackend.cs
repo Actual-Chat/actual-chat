@@ -11,6 +11,7 @@ namespace ActualChat.Chat;
 public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IRolesBackend
 {
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
+    private IMaintenancesBackend MaintenancesBackend => field ??= Services.GetRequiredService<IMaintenancesBackend>();
     private IDbEntityResolver<string, DbRole> DbRoleResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbRole>>();
     private IDbShardLocalIdGenerator<DbRole, string> DbRoleIdGenerator { get; }
@@ -120,6 +121,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         chatId.Require("Command.ChatId");
         if (chatId.IsThread() || chatId is PeerChatId)
             throw StandardError.Constraint("Roles are not supported in thread or peer chats.");
+        await MaintenancesBackend.RequireNotImporting(chatId, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);

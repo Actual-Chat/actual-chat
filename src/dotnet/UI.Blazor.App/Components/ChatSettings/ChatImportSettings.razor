@@ -1,0 +1,31 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, Chat?>
+@{
+    var chat = State.Value;
+}
+@if (chat is not null && chat.Rules.IsOwner() && chat.Id is not ThreadChatId && !chat.AllowAnonymousAuthors) {
+    <TileItem Class="item-danger" Click="OnStart" aria-disabled="@(chat.MaintenanceMode != MaintenanceMode.None)">
+        <Icon><i class="icon-cloud-upload text-xl"></i></Icon>
+        <Content>@L.ChatImport_Start</Content>
+    </TileItem>
+}
+
+@code {
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
+    [Parameter] public EventCallback Started { get; set; }
+
+    protected override Task<Chat?> ComputeState(CancellationToken cancellationToken)
+        => Hub.Chats.Get(Session, ChatId, cancellationToken);
+
+    // Private methods
+
+    private async Task OnStart() {
+        if (State.Value?.MaintenanceMode != MaintenanceMode.None)
+            return;
+
+        // Starting takes a while, so the settings make way for the chat and a modal that tracks the start
+        await Started.InvokeAsync();
+        Hub.PanelsUI.RevealMiddle();
+        await Hub.ModalUI.Show(new ChatImportStartModal.Model(ChatId));
+    }
+}

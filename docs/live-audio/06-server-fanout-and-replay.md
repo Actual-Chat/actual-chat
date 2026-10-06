@@ -50,7 +50,7 @@ Remove the entry, prime the compute method, propagate invalidation.
 
 If Redis is unavailable, `LiveAudioBackend` reconstructs state from
 `ChatsBackend.ListEntries` (entries that have `entry.Audio?.StreamId` and
-`BeginsAt > now - MaxEntryDuration`). The recovered state is
+`BeginsAt > now - MaxVoiceEntryDuration`). The recovered state is
 re-persisted to Redis as soon as it comes back.
 
 ## `ListeningStreamMuxer` — the live multiplex

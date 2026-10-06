@@ -14,14 +14,15 @@ public class LiveVideoStreams : ILiveVideoStreams
     private static readonly TimeSpan ReAddPliRetention = TimeSpan.FromMinutes(10);
 
     private IServiceProvider Services { get; }
-    private MeshWatcher MeshWatcher { get; }
-    private IHostApplicationLifetime HostLifetime { get; }
     private ILiveVideoBackend Backend { get; }
-    private IVideoStreamingBackend VideoStreamingBackend { get; }
-    private RemoteVideoStreamCache RemoteVideoCache { get; }
     private IChats Chats { get; }
     private IAccounts Accounts { get; }
-    private LiveStreamAccess Access { get; }
+    private LiveStreamAccess LiveStreamAccess { get; }
+    private RemoteVideoStreamCache RemoteVideoCache { get; }
+    private IVideoStreamingBackend VideoStreamingBackend { get; }
+    private IMaintenancesBackend MaintenancesBackend => field ??= Services.GetRequiredService<IMaintenancesBackend>();
+    private MeshWatcher MeshWatcher { get; }
+    private IHostApplicationLifetime HostLifetime { get; }
     private MomentClock SystemClock { get; }
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -35,14 +36,14 @@ public class LiveVideoStreams : ILiveVideoStreams
     {
         Services = services;
         Log = Services.LogFor(GetType());
-        MeshWatcher = services.MeshWatcher();
-        HostLifetime = services.HostLifetime();
         Backend = services.GetRequiredService<ILiveVideoBackend>();
-        VideoStreamingBackend = services.GetRequiredService<IVideoStreamingBackend>();
-        RemoteVideoCache = services.GetRequiredService<RemoteVideoStreamCache>();
         Chats = services.GetRequiredService<IChats>();
         Accounts = services.GetRequiredService<IAccounts>();
-        Access = services.GetRequiredService<LiveStreamAccess>();
+        LiveStreamAccess = services.GetRequiredService<LiveStreamAccess>();
+        VideoStreamingBackend = services.GetRequiredService<IVideoStreamingBackend>();
+        RemoteVideoCache = services.GetRequiredService<RemoteVideoStreamCache>();
+        HostLifetime = services.HostLifetime();
+        MeshWatcher = services.MeshWatcher();
         SystemClock = Services.Clocks().SystemClock;
 
         _qualityBySessionCleanupTask = BackgroundTask.Run(
@@ -120,7 +121,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         StreamId streamId,
         CancellationToken cancellationToken)
     {
-        await Access.RequireReadVideo(session, streamId, cancellationToken).ConfigureAwait(false);
+        await LiveStreamAccess.RequireReadVideo(session, streamId, cancellationToken).ConfigureAwait(false);
         var streamIdValue = streamId.Value;
         var isLocal = streamId.NodeRef == MeshWatcher.ThisNode.Ref;
 
@@ -186,7 +187,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         StreamId streamId,
         CancellationToken cancellationToken)
     {
-        if (!await Access.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
+        if (!await LiveStreamAccess.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
             return default;
 
         return await VideoStreamingBackend.LastKeyframeRequestAt(streamId, cancellationToken).ConfigureAwait(false);
@@ -200,7 +201,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         StreamId streamId,
         CancellationToken cancellationToken)
     {
-        if (!await Access.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
+        if (!await LiveStreamAccess.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
             return MaxLayerIdFromMask(0);
 
         // `session` must NOT reach the aggregate's cache key (the aggregate spans
@@ -226,7 +227,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         StreamId streamId,
         CancellationToken cancellationToken)
     {
-        if (!await Access.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
+        if (!await LiveStreamAccess.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
             return 0;
 
         // Same session-key caveat as MaxRequestedLayerId: the aggregate spans
@@ -249,7 +250,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         StreamId streamId,
         CancellationToken cancellationToken)
     {
-        if (!await Access.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
+        if (!await LiveStreamAccess.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
             return false;
 
         // Same session-key caveat as MaxRequestedLayerId: the aggregate spans
@@ -272,7 +273,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         StreamId streamId,
         CancellationToken cancellationToken)
     {
-        if (!await Access.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
+        if (!await LiveStreamAccess.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
             return StreamDemandInfo.None;
 
         // Same session-key caveat as MaxRequestedLayerId: the aggregate spans
@@ -291,7 +292,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         StreamId streamId,
         CancellationToken cancellationToken)
     {
-        await Access.RequireReadVideo(session, streamId, cancellationToken).ConfigureAwait(false);
+        await LiveStreamAccess.RequireReadVideo(session, streamId, cancellationToken).ConfigureAwait(false);
         return await VideoStreamingBackend.GetDemandStats(streamId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -307,29 +308,31 @@ public class LiveVideoStreams : ILiveVideoStreams
         // Live video calls: cap at Constants.Video.MaxLiveDuration (8h) rather than
         // the 3-min chat-entry duration. Every VideoSourceKind (Camera/ScreenCast) is a
         // live stream; there is no voice-message-style video path.
-        using var stopCts = new CancellationTokenSource(Constants.Video.MaxLiveDuration);
+        var stopCts = new CancellationTokenSource(Constants.Video.MaxLiveDuration);
         try {
             var chatIdTyped = ChatId.Parse(chatId);
             var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
             var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartAt, format, sourceKind);
             Log.LogInformation("PushStream: {VideoRecord}", videoRecord);
 
-            var maintenances = Services.GetRequiredService<IMaintenancesBackend>();
-            await maintenances.RequireAvailable(chatIdTyped, cancellationToken).ConfigureAwait(false);
-            var checkedFrameStream = frameStream.RequireAvailable(maintenances, chatIdTyped, stopCts.Token);
-            var newFrameStream = RpcStream.New(checkedFrameStream);
+            await MaintenancesBackend.RequireAvailable(chatIdTyped, cancellationToken).ConfigureAwait(false);
+            // Maintenance ends the frames where they are
+            var whenMaintenanceStarted = MaintenancesBackend.WhenMaintenanceStarted(chatIdTyped, stopCts.Token);
+            var newFrameStream = RpcStream.New(frameStream.TakeWhile(whenMaintenanceStarted, stopCts.Token));
             await VideoStreamingBackend.PushVideo(videoRecord, newFrameStream, stopCts.Token).ConfigureAwait(false);
         }
         finally {
             // Release the remote sender on method exit so its writeFrom doesn't hang.
             frameStream.Disconnect();
+            // Cancelled, not only disposed: that's what ends the maintenance watch above
+            stopCts.CancelAndDisposeSilently();
         }
     }
 
     public async Task RequestKeyFrame(Session session, string streamId, CancellationToken cancellationToken)
     {
         var sid = StreamId.Parse(streamId);
-        await Access.RequireReadVideo(session, sid, cancellationToken).ConfigureAwait(false);
+        await LiveStreamAccess.RequireReadVideo(session, sid, cancellationToken).ConfigureAwait(false);
         await RpcNoWait.Tasks
             .From(VideoStreamingBackend.RequestKeyFrame(sid, cancellationToken))
             .ConfigureAwait(false);
@@ -448,7 +451,7 @@ public class LiveVideoStreams : ILiveVideoStreams
                 break;
 
             if (StreamId.TryParse(streamId, out var parsedStreamId)
-                && await Access.CanReadVideo(session, parsedStreamId, cancellationToken).ConfigureAwait(false))
+                && await LiveStreamAccess.CanReadVideo(session, parsedStreamId, cancellationToken).ConfigureAwait(false))
                 result[streamId] = ClientStats.Quality(quality);
         }
 

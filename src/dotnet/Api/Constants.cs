@@ -73,8 +73,8 @@ public static partial class Constants
         // IConversationsBackend.GetConversationRangeTile and IConversationsBackend.GetTile accept
         public static readonly TileLayer<long> ConversationIdTiles = TileLayers.Long1280;
         public static readonly TileLayer<int> ChatListIndexTiles = TileLayers.Int5;
-        public static readonly TimeSpan MaxEntryDuration = TimeSpan.FromMinutes(3);
-        public static readonly TimeSpan StreamingEntryFixupDelay = MaxEntryDuration + TimeSpan.FromSeconds(30);
+        public static readonly TimeSpan MaxVoiceEntryDuration = TimeSpan.FromMinutes(3);
+        public static readonly TimeSpan StreamingEntryFixupDelay = MaxVoiceEntryDuration + TimeSpan.FromSeconds(30);
         // How long after the last interaction we still count an open chat at its tail as "being read".
         // Much longer than Presence.ActivityPeriod: reading a long message without touching anything
         // is normal, while a user who walked away must stop consuming unread messages.
@@ -88,6 +88,8 @@ public static partial class Constants
         // The cap a lease can live under even while it keeps being fed, so a stuck producer
         // can't hold an entry open forever.
         public static readonly TimeSpan MaxTextEntryStreamDuration = TimeSpan.FromMinutes(30);
+        // How long starting an import takes: the client counts it down, ChatSettings defaults to it
+        public static readonly TimeSpan ImportStartSettleDelay = TimeSpan.FromSeconds(10);
         // An Ogg Opus utterance at ~32 kbps; well above any plausible single message
         public const int MaxVoiceStreamAudioBytes = 16 * 1024 * 1024;
         public const int MaxVoiceStreamChunkBytes = 1024 * 1024;

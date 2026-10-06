@@ -172,6 +172,31 @@ public class ChatEntryStreamsTest(ChatCollection.AppHostFixture fixture, ITestOu
     }
 
     [Fact]
+    public async Task ShouldFinalizeAStreamWhenMaintenanceStarts()
+    {
+        // arrange
+        await using var admin = AppHost.NewWebClientTester(Out);
+        await admin.SignInAsUniqueBobAdmin();
+        var chatId = await NewChat();
+        var stream = await Tester.Chats.StartEntryStream(Tester.Session, chatId, null, null, default);
+        await Append(stream, "Cut short");
+
+        // act
+        await SetMaintenance(admin, chatId, true);
+        try {
+            // assert
+            await TestWait.When(async ct => {
+                var entry = await ChatsBackend.GetEntry(stream.EntryId, ct);
+                entry!.IsContentStreaming.Should().BeFalse();
+                entry.Content.Should().Be("Cut short");
+            }, WaitTimeout);
+        }
+        finally {
+            await SetMaintenance(admin, chatId, false);
+        }
+    }
+
+    [Fact]
     public async Task ShouldMarkAnApiKeyStreamAsViaApi()
     {
         // arrange

@@ -106,6 +106,8 @@
                 </TileItem>
             }
 
+            <ChatImportSettings ChatId="@ChatId" Started="@(() => Context.Close())"/>
+
             @if (m is { IsOwner: true, Chat: not null } && !_isPlaceWelcomeChat) {
                 <TileItem Class="item-archive-chat item-danger" Click="@(() => OnArchiveChatClick(m.Chat))">
                     <Icon><i class="icon-history"></i></Icon>

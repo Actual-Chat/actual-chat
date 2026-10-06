@@ -451,6 +451,25 @@ public static class LocalizedStringsLocalizerExt
         public string SystemEntry_CallEnded => l["SystemEntry_CallEnded"].Value;
 
         public string ChatMaintenance_Mode => l["ChatMaintenance_Mode"].Value;
+        public string ChatImport_Start => l["ChatImport_Start"].Value;
+        public string ChatImport_Starting_Title => l["ChatImport_Starting_Title"].Value;
+        public string ChatImport_Starting_Text => l["ChatImport_Starting_Text"].Value;
+        public string ChatImport_Starting_SecondsLeft(long count, object arg0)
+            => l.Plural("ChatImport_Starting_SecondsLeft", count, arg0);
+        public string ChatImport_Title => l["ChatImport_Title"].Value;
+        public string ChatImport_Consent => l["ChatImport_Consent"].Value;
+        public string ChatImport_ConsentConfirmTitle => l["ChatImport_ConsentConfirmTitle"].Value;
+        public string ChatImport_ConsentConfirmText => l["ChatImport_ConsentConfirmText"].Value;
+        public string ChatImport_Consenting => l["ChatImport_Consenting"].Value;
+        public string ChatImport_ConsentPercent_Format(object arg0) => l["ChatImport_ConsentPercent_Format", arg0].Value;
+        public string ChatImport_ConsentOutOf_Format(object arg0, object arg1)
+            => l["ChatImport_ConsentOutOf_Format", arg0, arg1].Value;
+        public string ChatImport_WaitingFor_Prefix => l["ChatImport_WaitingFor_Prefix"].Value;
+        public string ChatImport_WaitingFor_Suffix => l["ChatImport_WaitingFor_Suffix"].Value;
+        public string ChatImport_AndMoreUsers(long count, object arg0)
+            => l.Plural("ChatImport_AndMoreUsers", count, arg0);
+        public string ChatImport_End => l["ChatImport_End"].Value;
+        public string ChatImport_PlaceScope => l["ChatImport_PlaceScope"].Value;
         public string ChatMaintenance_Title => l["ChatMaintenance_Title"].Value;
         public string ChatFooter_ReadOnly => l["ChatFooter_ReadOnly"].Value;
         public string ChatFooter_YouBlockedUser => l["ChatFooter_YouBlockedUser"].Value;

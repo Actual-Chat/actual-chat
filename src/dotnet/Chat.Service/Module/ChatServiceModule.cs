@@ -35,6 +35,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IChatsBackend>() is ServiceMode.Client;
 
         // Chats
+        rpcHost.AddApi<IChatImports, ChatImports>();
         rpcHost.AddLocalApi<IChats, Chats>(); // Used by many
         rpcHost.AddBackend<IChatsBackend, ChatsBackend>();
         rpcHost.AddBackend<IChatEntryStreamsBackend, ChatEntryStreams>();

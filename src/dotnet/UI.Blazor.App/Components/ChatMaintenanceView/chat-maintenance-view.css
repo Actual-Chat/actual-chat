@@ -1,12 +1,51 @@
 .chat-maintenance-view {
-    @apply flex-y items-center justify-center gap-4;
+    @apply flex-y items-center gap-4;
     @apply w-full h-full min-h-0;
-    @apply p-6;
+    @apply p-6 overflow-y-auto;
     @apply text-center text-01;
+}
+/* Auto margins center the content vertically, yet keep its top reachable when it overflows */
+.chat-maintenance-view > :first-child {
+    @apply mt-auto;
+}
+.chat-maintenance-view > :last-child {
+    @apply mb-auto;
 }
 .chat-maintenance-view h2 {
     @apply text-xl font-semibold;
 }
 .chat-maintenance-view .kitty {
     @apply w-60 max-w-full;
+}
+
+.chat-maintenance-view .c-consent {
+    @apply max-w-full;
+}
+/* Checkbox truncates its label; the consent sentence must wrap on narrow screens instead */
+.chat-maintenance-view .c-consent .c-text {
+    @apply whitespace-normal text-left;
+}
+/* Sized to its content: the column's items-center shrinks it to fit */
+.chat-maintenance-view .c-counts {
+    @apply max-w-full;
+    @apply text-left;
+}
+/* tile-item's padding suits a toggle; here the icon sits close to the label, as in an inline line */
+.chat-maintenance-view .c-counts .tile-item {
+    @apply pb-0 px-3;
+}
+.chat-maintenance-view .c-counts .ti-left {
+    @apply min-w-0 max-w-none;
+}
+.chat-maintenance-view .c-counts .ti-title {
+    @apply text-01 font-normal;
+}
+.chat-maintenance-view .c-counts .ti-right {
+    @apply gap-x-1;
+}
+.chat-maintenance-view .c-counts .c-percent {
+    @apply font-semibold;
+}
+.chat-maintenance-view .c-members {
+    @apply leading-7;
 }

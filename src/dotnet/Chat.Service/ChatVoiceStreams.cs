@@ -21,7 +21,7 @@ public class ChatVoiceStreams(IServiceProvider services) : IChatVoiceStreamsBack
     private IAudioStreamingBackend StreamingBackend
         => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
 
-    private IMaintenancesBackend Maintenances => field ??= Services.GetRequiredService<IMaintenancesBackend>();
+    private IMaintenancesBackend MaintenancesBackend => field ??= Services.GetRequiredService<IMaintenancesBackend>();
     private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILogger Log => field ??= Services.LogFor(GetType());
@@ -165,9 +165,7 @@ public class ChatVoiceStreams(IServiceProvider services) : IChatVoiceStreamsBack
         if (lease.StreamTask is not null)
             return;
 
-        var chunks = lease.Chunks.Reader
-            .ReadAllAsync(lease.StopTokenSource.Token)
-            .RequireAvailable(Maintenances, lease.ChatId, lease.StopTokenSource.Token);
+        var chunks = lease.Chunks.Reader.ReadAllAsync(lease.StopTokenSource.Token);
         lease.StreamTask = StreamingBackend.ProcessAudioWithTranscript(
             lease.Record,
             lease.OggReader.PreSkip,
@@ -175,6 +173,15 @@ public class ChatVoiceStreams(IServiceProvider services) : IChatVoiceStreamsBack
             RpcStream.New(chunks),
             lease.Language,
             lease.StopTokenSource.Token);
+        // Completing both channels finalizes the entry with the audio and text it already has
+        _ = MaintenancesBackend.WhenMaintenanceStarted(lease.ChatId, lease.StopTokenSource.Token).ContinueWith(
+            _ => {
+                lease.Frames.Writer.TryComplete();
+                lease.Chunks.Writer.TryComplete();
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnRanToCompletion,
+            TaskScheduler.Default);
     }
 
     private ExpiringEntry<Symbol, Lease> GetOwnLease(StreamId streamId, UserId userId)
@@ -208,7 +215,7 @@ public class ChatVoiceStreams(IServiceProvider services) : IChatVoiceStreamsBack
         public Channel<AudioFrame> Frames { get; } = ChannelExt.UnboundedFanInOptions.NewChannel<AudioFrame>();
         public Channel<ExternalTranscriptChunk> Chunks { get; }
             = ChannelExt.UnboundedFanInOptions.NewChannel<ExternalTranscriptChunk>();
-        public CancellationTokenSource StopTokenSource { get; } = new(Constants.Chat.MaxTextEntryStreamDuration);
+        public CancellationTokenSource StopTokenSource { get; } = new(Constants.Chat.MaxVoiceEntryDuration);
 
         public Task? StreamTask { get; set; }
         public ChatEntryId? EntryId { get; set; }
@@ -223,7 +230,7 @@ public class ChatVoiceStreams(IServiceProvider services) : IChatVoiceStreamsBack
             Frames.Writer.TryComplete();
             Chunks.Writer.TryComplete();
             _ = (StreamTask ?? Task.CompletedTask).ContinueWith(
-                (_, state) => ((CancellationTokenSource)state!).DisposeSilently(),
+                (_, state) => ((CancellationTokenSource)state!).CancelAndDisposeSilently(),
                 StopTokenSource,
                 CancellationToken.None,
                 TaskContinuationOptions.ExecuteSynchronously,

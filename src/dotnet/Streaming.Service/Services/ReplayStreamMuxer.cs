@@ -82,8 +82,9 @@ public sealed class ReplayStreamMuxer : WorkerBase
 
             var entryReader = new ChatEntryReader(Chats, Session, ChatId);
             var idRange = await Chats.GetIdRange(Session, ChatId, cancellationToken).ConfigureAwait(false);
+            var minBeginsAt = resolvedStartAt.Value - Constants.Chat.MaxVoiceEntryDuration;
             var startEntry = await entryReader
-                .FindByMinBeginsAt(resolvedStartAt.Value - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
+                .FindByMinBeginsAt(minBeginsAt, idRange, cancellationToken)
                 .ConfigureAwait(false);
             if (startEntry == null) {
                 Log.LogWarning("OnRun: Couldn't find start entry");
@@ -404,7 +405,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
         var entryReader = new ChatEntryReader(Chats, Session, ChatId);
         var idRange = await Chats.GetIdRange(Session, ChatId, cancellationToken).ConfigureAwait(false);
         var startEntry = await entryReader
-            .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
+            .FindByMinBeginsAt(startAt - Constants.Chat.MaxVoiceEntryDuration, idRange, cancellationToken)
             .ConfigureAwait(false);
 
         if (startEntry == null)
@@ -434,7 +435,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
         var entryReader = new ChatEntryReader(Chats, Session, ChatId);
         var idRange = await Chats.GetIdRange(Session, ChatId, cancellationToken).ConfigureAwait(false);
         var startEntry = await entryReader
-            .FindByMinBeginsAt(playingAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
+            .FindByMinBeginsAt(playingAt - Constants.Chat.MaxVoiceEntryDuration, idRange, cancellationToken)
             .ConfigureAwait(false);
         if (startEntry == null)
             return null;
@@ -472,7 +473,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
         var entryReader = new ChatEntryReader(Chats, Session, ChatId);
         var fullIdRange = await Chats.GetIdRange(Session, ChatId, cancellationToken).ConfigureAwait(false);
         var startEntry = await entryReader
-            .FindByMinBeginsAt(playingAt - Constants.Chat.MaxEntryDuration, fullIdRange, cancellationToken)
+            .FindByMinBeginsAt(playingAt - Constants.Chat.MaxVoiceEntryDuration, fullIdRange, cancellationToken)
             .ConfigureAwait(false);
         if (startEntry == null)
             return null;

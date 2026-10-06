@@ -3,7 +3,8 @@
 > The [object maintenance design](./object-maintenance.md) supersedes the storage,
 > routing, and backend-access architecture below. Maintenance is centralized in
 > Users, with 16 mesh shards with whole-shard snapshots. Trusted backend operations
-> remain available. Owner-driven import/reset behavior below is later work.
+> remain available. Owner-driven import now follows [consented chat import](./consented-chat-import.md).
+> Reset remains separate future work.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

@@ -16,7 +16,7 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261005020114_Fusion15_DeferredInvalidation";
+    public override string LastMigrationId => "20261006004807_Add_MaintenanceTargets";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -387,6 +387,25 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
                 b.Property<int>("Mode")
                     .HasColumnType("integer")
                     .HasColumnName("mode");
+
+                b.Property<string>("OwnerId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("owner_id");
+
+                b.Property<DateTime>("StartedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("started_at");
+
+                b.Property<string>("StartedBy")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("started_by");
+
+                b.Property<string>("Targets")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("targets");
 
                 b.HasKey("Id")
                     .HasName("pk_maintenances");

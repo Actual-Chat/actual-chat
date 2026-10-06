@@ -13,6 +13,11 @@ namespace ActualChat.Notifications.Flows;
 [DataContract, MessagePackObject(true)]
 public partial class MentionReminderFlow : PeriodicFlow
 {
+    private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
+    private INotificationsBackend NotificationsBackend
+        => field ??= Services.GetRequiredService<INotificationsBackend>();
+    private IMaintenancesBackend MaintenancesBackend => field ??= Services.GetRequiredService<IMaintenancesBackend>();
+
     // Persisted state. Orders continue after PeriodicFlow's 0..2 with a gap for future base state.
     [DataMember(Order = 10), Key(10)]
     public Dictionary<string, int> ReAlertCounts { get; set; } = new();
@@ -26,8 +31,7 @@ public partial class MentionReminderFlow : PeriodicFlow
     protected override async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
     {
         var userId = UserId.Parse(Id.Arguments);
-        var accounts = Services.GetRequiredService<IAccountsBackend>();
-        var account = await accounts.Get(userId, cancellationToken).ConfigureAwait(false);
+        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         if (account?.IsGuestOrNull() != false || account.IsBot)
             return "No account";
 
@@ -37,8 +41,7 @@ public partial class MentionReminderFlow : PeriodicFlow
     protected override async ValueTask<Moment> Run(CancellationToken cancellationToken)
     {
         var userId = UserId.Parse(Id.Arguments);
-        var backend = Services.GetRequiredService<INotificationsBackend>();
-        var info = await backend.GetUserNotificationInfo(userId, cancellationToken).ConfigureAwait(false);
+        var info = await NotificationsBackend.GetUserNotificationInfo(userId, cancellationToken).ConfigureAwait(false);
         var mentions = info.Items.Where(n => n.Kind == NotificationKind.Mention).ToList();
         if (mentions.Count == 0) {
             ReAlertCounts.Clear();
@@ -54,6 +57,14 @@ public partial class MentionReminderFlow : PeriodicFlow
         var hasMore = false;
         foreach (var mention in mentions) {
             var id = mention.Id.Value;
+            if (mention.GetChatId() is { } chatId) {
+                var maintenanceMode = await MaintenancesBackend.GetMode(chatId, cancellationToken).ConfigureAwait(false);
+                if (maintenanceMode is not MaintenanceMode.None) {
+                    ReAlertCounts[id] = Constants.Notification.MaxMentionReAlerts;
+                    continue;
+                }
+            }
+
             var count = ReAlertCounts.GetValueOrDefault(id);
             if (ShouldReAlert(mention, now, count)) {
                 await queues.Enqueue(new NotificationsBackend_Push(mention), cancellationToken).ConfigureAwait(false);

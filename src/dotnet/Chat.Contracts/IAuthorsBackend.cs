@@ -53,6 +53,11 @@ public sealed partial record AuthorsBackend_Upsert(
     [property: DataMember, Key(5)] bool DoNotNotify = false
 ) : ICommand<AuthorFull>, IBackendCommand, IHasShardKey
 {
+    // Set by an import batch, which runs while the chat is in Import maintenance: materializing a
+    // Place member's per-chat author row isn't a membership change, so the import guard must let it
+    // through. Any other value than the running session's ID is rejected.
+    [DataMember, Key(6)] public ChatImportId? ImportId { get; init; }
+
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => ChatId.ShardKey;
 }

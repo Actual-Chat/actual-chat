@@ -38,6 +38,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<IOwnVoices>();
 
         // Chat
+        fusion.AddClient<IChatImports>();
         fusion.AddClient<IChats>();
         fusion.AddClient<IAuthors>();
         fusion.AddClient<IRoles>();

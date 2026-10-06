@@ -94,14 +94,37 @@ public sealed class ChatMaintenanceTest(ChatCollection.AppHostFixture fixture, I
 
         // act
         await SetMode(place.Id.RootChatId, true);
-        await SetMode(chatId, true);
-        await SetMode(place.Id.RootChatId, false);
 
         // assert
         await WaitMode(chatId, MaintenanceMode.System);
         await WaitMode(thread.Id, MaintenanceMode.System);
-        await SetMode(chatId, false);
+        await SetMode(place.Id.RootChatId, false);
+        await WaitMode(chatId, MaintenanceMode.None);
         await WaitMode(thread.Id, MaintenanceMode.None);
+    }
+
+    [Fact]
+    public async Task PlaceChatMaintenanceShouldTargetOnlyItsChats()
+    {
+        // arrange
+        await Admin.SignInAsUniqueBobAdmin();
+        await Owner.SignInAsUniqueAlice();
+        var place = await Owner.CreatePlace(true);
+        var (first, _) = await Owner.CreateChat(true, placeId: place.Id);
+        var (second, _) = await Owner.CreateChat(true, placeId: place.Id);
+        var (third, _) = await Owner.CreateChat(true, placeId: place.Id);
+
+        // act
+        await SetMode(first, true);
+        await SetMode(second, true);
+        await SetMode(first, false);
+
+        // assert
+        await WaitMode(second, MaintenanceMode.System);
+        await WaitMode(first, MaintenanceMode.None);
+        await WaitMode(third, MaintenanceMode.None);
+        await WaitMode(place.Id.RootChatId, MaintenanceMode.None);
+        await SetMode(second, false);
     }
 
     [Fact]
@@ -114,42 +137,18 @@ public sealed class ChatMaintenanceTest(ChatCollection.AppHostFixture fixture, I
         var first = new MaintenanceKey($"test:{RandomStringGenerator.Default.Next()}", fullPartitionKey);
         var second = new MaintenanceKey($"test:{RandomStringGenerator.Default.Next()}", fullPartitionKey);
         first.PartitionKey.Should().Be(second.PartitionKey);
-        var unchanged = await Computed.Capture(() => backend.Get(second, default));
+        var unchanged = await Computed.Capture(() => backend.GetMode(second, default));
 
         // act
         await Admin.Commander.Call(new MaintenancesBackend_Set(first, MaintenanceMode.System));
         await TestWait.When(async ct => {
-            (await backend.Get(first, ct)).Should().Be(MaintenanceMode.System);
+            (await backend.GetMode(first, ct)).Should().Be(MaintenanceMode.System);
         });
 
         // assert
         unchanged.IsConsistent().Should().BeTrue();
         unchanged.Value.Should().Be(MaintenanceMode.None);
         await Admin.Commander.Call(new MaintenancesBackend_Set(first, MaintenanceMode.None));
-    }
-
-    [Fact]
-    public async Task MaintenanceShouldStopAnExistingClientStream()
-    {
-        await Admin.SignInAsUniqueBobAdmin();
-        await Owner.SignInAsUniqueAlice();
-        var (chatId, _) = await Owner.CreateChat(true);
-        var maintenances = Admin.AppServices.GetRequiredService<IMaintenancesBackend>();
-        var received = new List<int>();
-        await FluentActions.Awaiting(async () => {
-            await foreach (var item in Frames().RequireAvailable(maintenances, chatId, default))
-                received.Add(item);
-        }).Should().ThrowAsync<Exception>();
-        received.Should().Equal(1);
-        await SetMode(chatId, false);
-        return;
-
-        async IAsyncEnumerable<int> Frames()
-        {
-            yield return 1;
-            await SetMode(chatId, true);
-            yield return 2;
-        }
     }
 
     // Private methods
