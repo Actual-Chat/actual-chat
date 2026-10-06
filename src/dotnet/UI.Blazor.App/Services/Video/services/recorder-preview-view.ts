@@ -21,7 +21,7 @@ import {
     BG_CANVAS_WIDTH,
     BG_DRAW_INTERVAL_MS,
 } from './bg-canvas';
-import { applyRotationLayout, chooseFit, isPrimaryTile, updateCollapsedIslandAspect } from './tile-fit';
+import { applyRotationLayout, chooseTileFit, isPrimaryTile, updateCollapsedIslandAspect } from './tile-fit';
 
 const { infoLog, warnLog } = getLogs('VideoRecorder');
 const BG_DRAW_GATE_TOLERANCE_MS = 20;
@@ -207,14 +207,9 @@ export class RecorderPreviewView {
             videoEl.closest<HTMLElement>('.video-panel'),
             frameW,
             frameH);
-        // Secondary tiles (sidebar squares, PiP overlay during screencast) always
-        // use cover — the crop is invisible at that size and the letterbox bars
-        // would dominate the small square. In the equal-tile layout there are no
-        // secondary tiles, so every one gets the real decision. Same rule the
-        // receiver follows in VideoPlayer.applyFitDecision.
-        const fit = isPrimaryTile(parent)
-            ? chooseFit(frameW, frameH, parent.clientWidth, parent.clientHeight)
-            : 'cover';
+        // Same rule the receiver follows in VideoPlayer.applyFitDecision.
+        const isScreenCast = this.attachedRecorder?.isScreenCastActive() ?? false;
+        const fit = chooseTileFit(parent, isScreenCast, frameW, frameH);
         if (fit !== this.currentFit) {
             this.currentFit = fit;
             videoEl.style.objectFit = fit;

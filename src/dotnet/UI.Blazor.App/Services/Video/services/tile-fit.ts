@@ -64,6 +64,21 @@ export function chooseFit(frameW: number, frameH: number, tileW: number, tileH: 
     return cropLoss > COVER_LOSS_MAX ? 'contain' : 'cover';
 }
 
+/** The fit both sides apply to a tile, so a viewer never sees one rule for a remote
+ *  tile and another for their own. `frameW/H` are post-rotation visible dims.
+ *
+ *  A screen share is never cropped, whatever the tile: every pixel of it is content.
+ *  A camera's secondary tile (sidebar square, PiP overlay) always covers - the crop is
+ *  invisible at that size and letterbox bars would dominate the small square. */
+export function chooseTileFit(tile: Element, isScreenCast: boolean, frameW: number, frameH: number): Fit {
+    if (isScreenCast)
+        return 'contain';
+    if (!isPrimaryTile(tile))
+        return 'cover';
+
+    return chooseFit(frameW, frameH, tile.clientWidth, tile.clientHeight);
+}
+
 /** Publish the focused tile's post-rotation aspect to the collapsed (island)
  *  panel via CSS variable + `data-portrait-video` attribute. CSS owns the actual width
  *  / height; this only updates the inputs. No-op when the panel isn't

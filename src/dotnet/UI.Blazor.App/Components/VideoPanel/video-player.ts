@@ -10,7 +10,7 @@ import type { Disposable } from 'disposable';
 import { DocumentEvents } from 'event-handling';
 import { Versioning } from 'versioning';
 import { type Subscription } from 'rxjs';
-import { chooseFit, isPrimaryTile, updateCollapsedIslandAspect } from '../../Services/Video/services/tile-fit';
+import { chooseTileFit, isPrimaryTile, updateCollapsedIslandAspect } from '../../Services/Video/services/tile-fit';
 import type {
     PlayerWorker,
     PlayerWorkerConnectionState,
@@ -891,8 +891,9 @@ export class VideoPlayer {
     // 1 − min(frameW·tileH, frameH·tileW) / max(...). When that's small
     // we keep cover (a thin sliver is invisible); when it grows past the
     // threshold we fall back to contain and light up the blurred backdrop
-    // on focused tiles. Sidebar/PiP/minimized tiles are cover-only; the island
-    // itself is resized to the stream aspect, so cover fills without gray bars.
+    // on focused tiles. Sidebar/PiP tiles are cover-only, a screen share is
+    // contain-only; the island itself is resized to the stream aspect, so it
+    // has no gray bars either way.
     private applyFitDecision(): void {
         const backend = this.renderBackend;
         const parent = this.canvas.parentElement;
@@ -903,13 +904,9 @@ export class VideoPlayer {
         // in the equal layout every tile is primary, and the island shows one.
         if (parent.classList.contains('item-focused'))
             this.updateCollapsedIslandAspect();
-        if (!isPrimary) {
-            try { backend.setFit('cover'); } catch { /* ignore */ }
-            this.applyBackdrop(false);
-            return;
-        }
-        const fit = this.computePrimaryFit(parent);
-        if (isMinimized) {
+        const isScreenCast = parent.classList.contains('screencast');
+        const fit = chooseTileFit(parent, isScreenCast, this.lastFrameW, this.lastFrameH);
+        if (!isPrimary || isMinimized) {
             try { backend.setFit(fit); } catch { /* ignore */ }
             this.applyBackdrop(false);
             return;
@@ -934,15 +931,6 @@ export class VideoPlayer {
         if (!worker) return; // Flushed once initPlayerWorker brings the worker up.
         void worker.setBgActive(this.streamId, active, rpcNoWait)
             .catch((e: unknown) => warnLog?.log('worker setBgActive failed:', e));
-    }
-
-    // Shared with the sender's self-preview: a viewer must not see one rule for a
-    // remote tile and another for their own. The local copy this replaced had
-    // drifted - no same-orientation shortcut, no square dead-band - so the two
-    // sides disagreed about contain on near-square sources.
-    private computePrimaryFit(parent: Element): 'cover' | 'contain' {
-        const rect = parent.getBoundingClientRect();
-        return chooseFit(this.lastFrameW, this.lastFrameH, rect.width, rect.height);
     }
 
     private updateCollapsedIslandAspect(): void {
