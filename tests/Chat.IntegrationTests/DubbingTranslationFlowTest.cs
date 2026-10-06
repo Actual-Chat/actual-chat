@@ -587,6 +587,8 @@ public class DubbingTranslationFlowTest(
         streamingBackend.RememberChatId(first, chatId);
         streamingBackend.RememberAuthorId(first, entry.ChatEntrySlim.AuthorId);
         var firstStream = await backend.GetAudio(firstDub, TimeSpan.Zero, ct);
+        // The dub measures its backlog after GetAudio returns: the long text landing first is skipped as one
+        await recorder.WhenStarted(firstDub.Value, ct);
         Push(Stable(longText));
         source.Writer.Complete();
         await pushSourceTask.SilentAwait(false);
