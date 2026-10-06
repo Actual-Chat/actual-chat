@@ -64,6 +64,12 @@ body.hoverable .tile-item.clickable.item-danger:hover,
     @apply flex-1 flex-x justify-end items-center;
     @apply min-h-6;
 }
+/* A toggle's base .toggle is flex-1 (for the labelled standalone case); in the right slot that
+   stretches its clickable label across the whole cell. Keep it content-sized so only the switch
+   is the toggle's tap target and the rest of the row stays the row's. */
+.ti-right > .toggle {
+    @apply flex-none;
+}
 /* With a caption the row is two lines tall, and items-center would float the icon and the
    right slot down to the block's centre - i.e. onto the gap between title and caption. Give the
    icon, title and right slot a shared min-h-8 header band (the icon's own size) and centre each

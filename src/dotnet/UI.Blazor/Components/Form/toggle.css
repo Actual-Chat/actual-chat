@@ -1,7 +1,6 @@
 .toggle {
     @apply flex-1 flex-x justify-end items-center gap-x-2;
     @apply px-px;
-    @apply overflow-hidden;
     @apply cursor-pointer;
 }
 .toggle:hover {
@@ -39,6 +38,14 @@
     @apply w-5 h-5;
     @apply bg-toggle-circle border-[1.5px] border-toggle rounded-full;
     transition: .15s;
+}
+
+/* Square ~40px touch target centered on the dash, matching the hit area of buttons.
+   Shown only on touch via .touch-capable (base styles in button.css). */
+.toggle > .dash > .button-touch-target {
+    @apply inset-auto top-1/2 left-1/2;
+    @apply -translate-x-1/2 -translate-y-1/2;
+    @apply h-10 w-10;
 }
 
 .toggle[data-input-checked] > .dash {
