@@ -223,6 +223,15 @@ contain and paints a **blurred backdrop** on a second (background) canvas to
 fill the letterbox (`applyFitDecision`; backdrop can be disabled). Fit is
 recomputed on tile resize from the last post-rotation frame dims.
 
+A **screen share is always contain**, in a tile of any size: every pixel of it
+is content. `chooseTileFit` (`tile-fit.ts`) holds the rule for both the remote
+tile and the sharer's self-preview. The sender keeps the same promise one step
+earlier - a screencast's ladder takes the shape of the captured screen
+(`screenCastTopSize`), so `normalize` has nothing to cover-crop. That shape is
+read from real frames (`VideoRecorder.watchScreenSize`), not from the track's
+settings, which describe the whole display at first when a tab or a window is
+shared; the ladder is refitted, with a worker restart, when it changes.
+
 ## Player lifecycle
 
 File: `playback/player.ts`.

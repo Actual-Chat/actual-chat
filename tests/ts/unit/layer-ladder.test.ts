@@ -3,6 +3,7 @@ import {
     buildLadder,
     fitWithin,
     cameraTopSize,
+    screenCastTopSize,
     type LayerConfig,
 } from '../../../src/dotnet/UI.Blazor.App/Components/VideoPanel/layer-ladder';
 
@@ -204,6 +205,24 @@ describe('buildLadder — explicit tierSizes (append model)', () => {
 describe('capture top sizing', () => {
     it('screencast caps to fit within 1080p preserving aspect', () => {
         expect(fitWithin(3440, 1440, 1920, 1080)).toEqual({ width: 1920, height: 804 });
+    });
+
+    it('screencast top keeps the shape of the shared screen', () => {
+        const maxSize = { width: 1920, height: 1080 };
+        expect(screenCastTopSize({ width: 1920, height: 1080 }, maxSize)).toEqual({ width: 1920, height: 1080 });
+        expect(screenCastTopSize({ width: 3456, height: 2234 }, maxSize)).toEqual({ width: 1672, height: 1080 });
+        expect(screenCastTopSize({ width: 1280, height: 800 }, maxSize)).toEqual({ width: 1280, height: 800 });
+        expect(screenCastTopSize({ width: 1440, height: 2560 }, maxSize)).toEqual({ width: 1080, height: 1920 });
+    });
+
+    it('screencast top is mod-8 whatever the screen, so HEVC codes exactly what is displayed', () => {
+        const maxSize = { width: 1920, height: 1080 };
+        const screens = [{ width: 3456, height: 2234 }, { width: 1366, height: 768 }, { width: 1047, height: 811 }];
+        for (const screen of screens) {
+            const top = screenCastTopSize(screen, maxSize);
+            expect(top.width % 8).toBe(0);
+            expect(top.height % 8).toBe(0);
+        }
     });
 
     it('camera top uses 16:9 cover-crop target capped at 720p', () => {

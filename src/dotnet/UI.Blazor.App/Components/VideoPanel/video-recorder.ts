@@ -71,6 +71,7 @@ import {
 } from '../../Services/Video/codec-support';
 import {
     buildLadder,
+    screenCastTopSize,
     type LayerConfig,
 } from './layer-ladder';
 import { computeCaptureFps, computeTargetFps } from './fps-policy';
@@ -260,6 +261,8 @@ export interface OwnLayerDiagnostics {
 // ---- Active recorder registry --------------------------------------------
 
 const VideoSourceKindCamera = 0;
+const SCREEN_SIZE_PROBE_TIMEOUT_MS = 2_000;
+const SCREEN_RESIZE_SETTLE_MS = 500;
 const activeRecorders = new Map<number, VideoRecorder>();
 
 export function getActiveRecorder(kind: number = VideoSourceKindCamera): VideoRecorder | null {
@@ -574,6 +577,10 @@ export class VideoRecorder {
     // so paceCaptureFps must constrain the worker's clone in tandem with the
     // main-side original (via setCaptureFrameRate).
     private workerSourceUsesClone = false;
+
+    // Plays the shared screen's track for its frame size alone - see watchScreenSize.
+    private screenSizeProbe: HTMLVideoElement | null = null;
+    private screenResizeTimer: ReturnType<typeof setTimeout> | null = null;
 
     // Listeners.
     private previewSizesByView = new Map<object, { width: number; height: number }>();
@@ -1435,8 +1442,7 @@ export class VideoRecorder {
 
         this.setRecordingState('starting');
         this.currentMode = 'screen';
-        const tierCap = Math.max(1, Math.min(maxLayerCount, 2));
-        infoLog?.log(`Starting screencast... maxLayerCount=${maxLayerCount} → tierCap=${tierCap}`);
+        infoLog?.log(`Starting screencast... maxLayerCount=${maxLayerCount} → tierCap=${this.screenCastTierCap()}`);
 
         try {
             const detectionWidth = DeviceInfo.isMobile ? 1280 : 1920;
@@ -1444,34 +1450,6 @@ export class VideoRecorder {
             const supportedCodecs = await detectSupportedCodecs(detectionWidth, detectionHeight);
             this.supportedCodecs = supportedCodecs;
             this.supportedEncoderCategories = this.extractEncoderCategories(supportedCodecs);
-
-            const screenTopByTier: Record<number, Size> = {
-                1: { width: 960, height: 540 },
-                2: { width: 1920, height: 1080 },
-            };
-            const targetSize: Size = screenTopByTier[tierCap];
-            const bestCodecString = this.pickInitialCodec(supportedCodecs, audienceCodecs, targetSize);
-            const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
-
-            const screenCastLadder = buildLadder({
-                topWidth: targetSize.width,
-                topHeight: targetSize.height,
-                tierCount: tierCap,
-                maxTierCount: VIDEO.screenCastLayerBaseBitratesKbps.length,
-                bitratesKbps: VIDEO.screenCastLayerBaseBitratesKbps,
-            });
-            const actualScreenCastLadder = this.withCodecBitrates(screenCastLadder, bestCodecString);
-            const screenCastTop = actualScreenCastLadder[actualScreenCastLadder.length - 1];
-            this.layers = [...actualScreenCastLadder];
-            this.fullLayerLadder = [...actualScreenCastLadder];
-            this.currentCodecString = bestCodecString;
-            this.currentCodecHardwareAccel = bestCodecInfo?.hardwareAccelerated ?? false;
-            this.currentHardwareAcceleration = this.pickAccelerationFor(
-                supportedCodecs, audienceCodecs, bestCodecString);
-            infoLog?.log(
-                `ScreenCast ladder (bottom-first): ` +
-                `[${actualScreenCastLadder.map(l => `${l.width}x${l.height}`).join(', ')}], ` +
-                `capture ${screenCastTop.width}x${screenCastTop.height}, hwAccel=${this.currentHardwareAcceleration}`);
 
             // The screen track is pre-acquired by ScreenShareGesture inside the DOM
             // click handler (getDisplayMedia needs transient activation, which the
@@ -1482,9 +1460,28 @@ export class VideoRecorder {
             this.previewTrack = screenTrack;
 
             const trackSettings = screenTrack.getSettings();
-            this.cameraWidth = trackSettings.width ?? targetSize.width;
-            this.cameraHeight = trackSettings.height ?? targetSize.height;
             this.currentFramerate = trackSettings.frameRate ?? VIDEO.frameRate;
+            // The ladder takes the screen's own shape: normalize cover-crops whatever doesn't
+            // match it, and on a screen that is the menu bar, the dock or the sides of a window.
+            const screenSize = await this.watchScreenSize(screenTrack);
+            this.cameraWidth = screenSize.width;
+            this.cameraHeight = screenSize.height;
+            const targetSize = screenCastTopSize(screenSize, this.screenCastMaxSize());
+            const bestCodecString = this.pickInitialCodec(supportedCodecs, audienceCodecs, targetSize);
+            const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
+
+            this.currentCodecString = bestCodecString;
+            const actualScreenCastLadder = this.buildScreenCastLadder(targetSize);
+            const screenCastTop = actualScreenCastLadder[actualScreenCastLadder.length - 1];
+            this.layers = [...actualScreenCastLadder];
+            this.fullLayerLadder = [...actualScreenCastLadder];
+            this.currentCodecHardwareAccel = bestCodecInfo?.hardwareAccelerated ?? false;
+            this.currentHardwareAcceleration = this.pickAccelerationFor(
+                supportedCodecs, audienceCodecs, bestCodecString);
+            infoLog?.log(
+                `ScreenCast ladder (bottom-first): ` +
+                `[${actualScreenCastLadder.map(l => `${l.width}x${l.height}`).join(', ')}], ` +
+                `capture ${screenCastTop.width}x${screenCastTop.height}, hwAccel=${this.currentHardwareAcceleration}`);
 
             screenTrack.onended = () => {
                 infoLog?.log('Screen sharing track ended (user stopped sharing)');
@@ -2605,6 +2602,110 @@ export class VideoRecorder {
         return this.currentFramerate;
     }
 
+    private screenCastTierCap(): number {
+        return Math.max(1, Math.min(this.currentMaxLayerCount, 2));
+    }
+
+    private screenCastMaxSize(): Size {
+        return this.screenCastTierCap() >= 2
+            ? { width: 1920, height: 1080 }
+            : { width: 960, height: 540 };
+    }
+
+    private buildScreenCastLadder(topSize: Size): LayerConfig[] {
+        const ladder = buildLadder({
+            topWidth: topSize.width,
+            topHeight: topSize.height,
+            tierCount: this.screenCastTierCap(),
+            maxTierCount: VIDEO.screenCastLayerBaseBitratesKbps.length,
+            bitratesKbps: VIDEO.screenCastLayerBaseBitratesKbps,
+        });
+        return this.withCodecBitrates(ladder, this.currentCodecString);
+    }
+
+    /** Resolves with the size of the frames the shared screen really delivers, and from then
+     *  on refits the ladder whenever that size changes.
+     *
+     *  The track's settings can't be asked: for a tab or a window they first describe the whole
+     *  display, and a tab or a window is resized at will while it's shared. */
+    private async watchScreenSize(track: MediaStreamTrack): Promise<Size> {
+        this.unwatchScreenSize();
+        const probe = document.createElement('video');
+        probe.muted = true;
+        probe.playsInline = true;
+        probe.srcObject = new MediaStream([track]);
+        this.screenSizeProbe = probe;
+        void probe.play().catch(() => { /* a size is all it's for */ });
+        await new Promise<void>(resolve => {
+            const timer = setTimeout(resolve, SCREEN_SIZE_PROBE_TIMEOUT_MS);
+            probe.addEventListener('loadedmetadata', () => {
+                clearTimeout(timer);
+                resolve();
+            }, { once: true });
+        });
+        probe.addEventListener('resize', () => this.scheduleScreenCastRefit());
+        if (probe.videoWidth > 0 && probe.videoHeight > 0)
+            return { width: probe.videoWidth, height: probe.videoHeight };
+
+        const settings = track.getSettings();
+        const maxSize = this.screenCastMaxSize();
+        return { width: settings.width ?? maxSize.width, height: settings.height ?? maxSize.height };
+    }
+
+    private unwatchScreenSize(): void {
+        if (this.screenResizeTimer !== null) {
+            clearTimeout(this.screenResizeTimer);
+            this.screenResizeTimer = null;
+        }
+        const probe = this.screenSizeProbe;
+        if (!probe)
+            return;
+
+        this.screenSizeProbe = null;
+        probe.pause();
+        probe.srcObject = null;
+    }
+
+    // A window being dragged to a new size reports every step of the way
+    private scheduleScreenCastRefit(): void {
+        if (this.screenResizeTimer !== null)
+            clearTimeout(this.screenResizeTimer);
+        this.screenResizeTimer = setTimeout(() => {
+            this.screenResizeTimer = null;
+            void this.refitScreenCastLadder().catch((e: unknown) =>
+                warnLog?.log('refitScreenCastLadder failed:', e));
+        }, SCREEN_RESIZE_SETTLE_MS);
+    }
+
+    private async refitScreenCastLadder(): Promise<void> {
+        const probe = this.screenSizeProbe;
+        const full = this.fullLayerLadder;
+        if (!probe || !full || !this.isScreenCasting || this.isStoppingRecording)
+            return;
+        if (probe.videoWidth <= 0 || probe.videoHeight <= 0)
+            return;
+
+        const screenSize: Size = { width: probe.videoWidth, height: probe.videoHeight };
+        const topSize = screenCastTopSize(screenSize, this.screenCastMaxSize());
+        const top = full[full.length - 1];
+        if (topSize.width === top.width && topSize.height === top.height)
+            return;
+
+        const ladder = this.buildScreenCastLadder(topSize);
+        infoLog?.log(
+            `ScreenCast resized to ${screenSize.width}x${screenSize.height}, ` +
+            `ladder: [${ladder.map(l => `${l.width}x${l.height}`).join(', ')}]`);
+        this.cameraWidth = screenSize.width;
+        this.cameraHeight = screenSize.height;
+        this.fullLayerLadder = ladder;
+        // Same tiers, new sizes: which of them are active is not for a resize to decide
+        this.layers = this.layers?.map((l, i) => {
+            const tier = ladder[Math.min(l.layerId ?? i, ladder.length - 1)];
+            return { ...l, ...tier, layerId: l.layerId };
+        }) ?? null;
+        await this.restartWithCurrentConfig();
+    }
+
     private async restartWithCurrentConfig(): Promise<void> {
         if (!this.worker || !this.inputTrack) return;
         const ladder = this.resolveActiveLadder();
@@ -2965,6 +3066,7 @@ export class VideoRecorder {
     }
 
     private cleanupPreviewTrack(): void {
+        this.unwatchScreenSize();
         this.cleanupGeneratedPreviewTrack();
         this.setPreviewFramePresentation(null);
         this.previewCanvasFallback = false;

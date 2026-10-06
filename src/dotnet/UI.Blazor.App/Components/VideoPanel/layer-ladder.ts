@@ -141,6 +141,24 @@ export function fitWithin(width: number, height: number, maxWidth: number, maxHe
     };
 }
 
+/** The top tier for a shared screen: its own shape, never cropped, scaled down to fit `maxSize`.
+ *  `maxSize` is landscape and is turned for a portrait screen.
+ *
+ *  Unlike a camera's top, which is one of a few known sizes, this one is arbitrary, so it is
+ *  rounded like a derived tier: see DERIVED_TIER_MULTIPLE for what Edge does to the rest. */
+export function screenCastTopSize(screen: Size, maxSize: Size): Size {
+    const size = screen.height > screen.width
+        ? fitWithin(screen.width, screen.height, maxSize.height, maxSize.width)
+        : fitWithin(screen.width, screen.height, maxSize.width, maxSize.height);
+    if (size.width <= 0 || size.height <= 0)
+        return size;
+
+    return {
+        width: roundToMultiple(size.width, DERIVED_TIER_MULTIPLE),
+        height: roundToMultiple(size.height, DERIVED_TIER_MULTIPLE),
+    };
+}
+
 export function cameraTopSize(width: number, height: number): Size {
     if (width <= 0 || height <= 0)
         return { width: 0, height: 0 };
